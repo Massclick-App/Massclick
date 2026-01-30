@@ -6,32 +6,32 @@ import {
   markHelpfulAction,
   reportReviewAction
 } from "../controller/reviewController/reviewController.js";
-import { oauthAuthentication, optionalAuth } from "../helper/oauthHelper.js";
+import { oauthAuthentication } from "../helper/oauthHelper.js";
 
 const router = express.Router();
 
 router.post(
-  "/api/business/:businessId/reviews",optionalAuth,
+  "/api/business/:businessId/reviews",
   addReviewAction
 );
 
 router.get(
-  "/api/business/:businessId/reviews",optionalAuth,
+  "/api/business/:businessId/reviews",
   getReviewsAction
 );
 
 router.post(
-  "/api/business/:businessId/reviews/:reviewId/reply",optionalAuth,
+  "/api/business/:businessId/reviews/:reviewId/reply",
   addReplyAction
 );
 
 router.post(
-  "/api/business/:businessId/reviews/:reviewId/helpful",optionalAuth,
+  "/api/business/:businessId/reviews/:reviewId/helpful",
   markHelpfulAction
 );
 
 router.post(
-  "/api/business/:businessId/reviews/:reviewId/report",optionalAuth,
+  "/api/business/:businessId/reviews/:reviewId/report",
   reportReviewAction
 );
 

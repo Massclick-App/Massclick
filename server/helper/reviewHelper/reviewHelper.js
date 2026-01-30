@@ -1,76 +1,55 @@
 import businessListModel from "../../model/businessList/businessListModel.js";
+import businessReviewModel from "../../model/businessReview/businessReviewModel.js";
 import { uploadImageToS3, getSignedUrlByKey } from "../../s3Uploder.js";
 import mongoose from "mongoose";
 
 
-export const addReviewHelper = async ({ businessId, user, reviewData }) => {
+
+export const addReviewHelper = async ({ businessId, reviewData }) => {
+  const { userId, userName, rating, ratingExperience, ratingLove, ratingPhotos } = reviewData;
+
   if (!mongoose.Types.ObjectId.isValid(businessId)) {
     throw new Error("Invalid business ID");
   }
 
-  const business = await businessListModel.findById(businessId);
-  if (!business) {
-    throw new Error("Business not found");
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    throw new Error("Invalid user ID");
   }
 
-  const alreadyReviewed = business.reviews.find(
-    r => r.userId?.toString() === user.userId.toString()
-  );
+  const userObjectId = new mongoose.Types.ObjectId(userId);
+
+  const alreadyReviewed = await businessReviewModel.findOne({
+    businessId,
+    userId: userObjectId
+  });
+
   if (alreadyReviewed) {
     throw new Error("You already reviewed this business");
   }
 
-  const ratingPhotos = Array.isArray(reviewData.ratingPhotos)
-    ? reviewData.ratingPhotos
-    : [];
+  const review = await businessReviewModel.create({
+    businessId,
+    userId: userObjectId,
+    userName: userName || "Anonymous",
+    rating: Number(rating),
+    ratingExperience,
+    ratingLove: ratingLove || [],
+    ratingPhotos: ratingPhotos || []
+  });
 
-  let photoKeys = [];
-  if (ratingPhotos.length > 0) {
-    photoKeys = await Promise.all(
-      ratingPhotos.map(async (img, i) => {
-        if (typeof img === "string" && img.startsWith("data:image")) {
-          const upload = await uploadImageToS3(
-            img,
-            `businessList/reviews/${businessId}/photo-${Date.now()}-${i}`
-          );
-          return upload.key;
-        }
-        return null;
-      })
-    );
-    photoKeys = photoKeys.filter(Boolean);
+  const business = await businessListModel.findById(businessId);
+  if (business) {
+    const newTotal = (business.totalReviews || 0) + 1;
+    const newAverage =
+      ((business.averageRating || 0) * (newTotal - 1) + review.rating) / newTotal;
+
+    business.totalReviews = newTotal;
+    business.averageRating = Number(newAverage.toFixed(1));
+    await business.save();
   }
 
-  const review = {
-  rating: Number(reviewData.rating),
-  ratingExperience: reviewData.ratingExperience,
-  ratingLove: Array.isArray(reviewData.ratingLove) ? reviewData.ratingLove : [],
-  ratingPhotos: photoKeys,
-
-  userId: user.userId,
-  userName: user.userName,    
-  userProfileImage: user.profileImage || "",
-  isVerifiedUser: user.mobileVerified,
-
-  helpfulCount: 0,
-  helpfulBy: [],
-  status: "ACTIVE",
-  createdAt: new Date(),
-};
-
-  business.reviews.push(review);
-
-  const total = business.reviews.reduce((s, r) => s + r.rating, 0);
-  business.averageRating = Number(
-    (total / business.reviews.length).toFixed(1)
-  );
-
-  await business.save();
   return review;
 };
-
-
-
 
 export const getReviewsHelper = async ({
   businessId,
@@ -78,70 +57,76 @@ export const getReviewsHelper = async ({
   page = 1,
   limit = 10
 }) => {
-  const business = await businessListModel.findById(businessId).lean();
-  if (!business) throw new Error("Business not found");
+  const skip = (page - 1) * limit;
 
-  let reviews = business.reviews.filter(r => r.status === "ACTIVE");
+  let sortQuery = { createdAt: -1 };
+  if (sortBy === "rating") sortQuery = { rating: -1 };
+  if (sortBy === "helpful") sortQuery = { helpfulCount: -1 };
 
-  if (sortBy === "rating") reviews.sort((a, b) => b.rating - a.rating);
-  else if (sortBy === "helpful") reviews.sort((a, b) => b.helpfulCount - a.helpfulCount);
-  else reviews.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-  const start = (page - 1) * limit;
-  const paginated = reviews.slice(start, start + limit);
+  const [reviews, total] = await Promise.all([
+    businessReviewModel
+      .find({ businessId, status: "ACTIVE" })
+      .sort(sortQuery)
+      .skip(skip)
+      .limit(limit)
+      .lean(),
+    businessReviewModel.countDocuments({ businessId, status: "ACTIVE" })
+  ]);
 
   return {
-    reviews: paginated,
-    total: reviews.length,
-    hasMore: start + limit < reviews.length
+    reviews,
+    total,
+    hasMore: skip + reviews.length < total,
+    page
   };
 };
 
-export const addReplyHelper = async ({ businessId, reviewId, user, message }) => {
-  const business = await businessListModel.findById(businessId);
-  if (!business) throw new Error("Business not found");
+export const addReplyHelper = async ({ reviewId, userId, userName, role, message }) => {
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    throw new Error("Invalid user ID");
+  }
 
-  const review = business.reviews.id(reviewId);
+  const review = await businessReviewModel.findById(reviewId);
   if (!review) throw new Error("Review not found");
 
   review.replies.push({
-    userId: user.userId,
-    userName: user.userName,
-    role: user.role === "ADMIN" ? "ADMIN" : "OWNER",
-    message,
+    userId: new mongoose.Types.ObjectId(userId),
+    userName,
+    role,
+    message
   });
 
-  await business.save();
+  await review.save();
   return review;
 };
 
-export const markHelpfulHelper = async ({ businessId, reviewId, userId }) => {
-  const business = await businessListModel.findById(businessId);
-  const review = business.reviews.id(reviewId);
+export const markHelpfulHelper = async ({ reviewId, userId }) => {
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    throw new Error("Invalid user ID");
+  }
 
-  const alreadyHelpful = review.helpfulBy.some(
-    id => id.toString() === userId.toString()
-  );
+  const review = await businessReviewModel.findById(reviewId);
+  if (!review) throw new Error("Review not found");
 
-  if (alreadyHelpful) {
+  const userObjectId = new mongoose.Types.ObjectId(userId);
+
+  if (review.helpfulBy.some(id => id.equals(userObjectId))) {
     throw new Error("Already marked helpful");
   }
 
-  review.helpfulBy.push(userId);
+  review.helpfulBy.push(userObjectId);
   review.helpfulCount = review.helpfulBy.length;
 
-  await business.save();
-
+  await review.save();
   return review;
 };
 
-export const reportReviewHelper = async ({ businessId, reviewId }) => {
-  const business = await businessListModel.findById(businessId);
-  const review = business?.reviews.id(reviewId);
+
+export const reportReviewHelper = async ({ reviewId }) => {
+  const review = await businessReviewModel.findById(reviewId);
   if (!review) throw new Error("Review not found");
 
   review.status = "REPORTED";
-  await business.save();
-
+  await review.save();
   return true;
 };

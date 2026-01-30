@@ -42,7 +42,6 @@ export const getBusinessReviews =
       }
     };
 
-
 export const createReview =
   (businessId, reviewData) =>
     async (dispatch) => {
@@ -76,65 +75,56 @@ export const createReview =
 
 
 export const replyToReview =
-  (businessId, reviewId, message) =>
-    async (dispatch) => {
+  (businessId, reviewId, payload) =>
+  async (dispatch) => {
+    dispatch({ type: REPLY_REVIEW_REQUEST });
 
-      dispatch({ type: REPLY_REVIEW_REQUEST });
+    try {
+      const response = await axios.post(
+        `${API_URL}/business/${businessId}/reviews/${reviewId}/reply`,
+        payload
+      );
 
-      try {
-        const token = await getValidToken(dispatch);
+      dispatch({
+        type: REPLY_REVIEW_SUCCESS,
+        payload: response.data.data
+      });
 
-        const response = await axios.post(
-          `${API_URL}/business/${businessId}/reviews/${reviewId}/reply`,
-          { message },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-
-        dispatch({
-          type: REPLY_REVIEW_SUCCESS,
-          payload: response.data.data
-        });
-
-        return response.data.data;
-
-      } catch (error) {
-        dispatch({
-          type: REPLY_REVIEW_FAILURE,
-          payload: error.response?.data || error.message
-        });
-        throw error;
-      }
-    };
+      return response.data.data;
+    } catch (error) {
+      dispatch({
+        type: REPLY_REVIEW_FAILURE,
+        payload: error.response?.data || error.message
+      });
+      throw error;
+    }
+  };
 
 
 export const markReviewHelpful =
-  (businessId, reviewId) =>
-    async (dispatch) => {
+  (businessId, reviewId, userId) =>
+  async (dispatch) => {
 
-      dispatch({ type: HELPFUL_REVIEW_REQUEST });
+    dispatch({ type: HELPFUL_REVIEW_REQUEST });
 
-      try {
-        const token = await getValidToken(dispatch);
+    try {
+      const response = await axios.post(
+        `${API_URL}/business/${businessId}/reviews/${reviewId}/helpful`,
+        { userId }
+      );
 
-        const response = await axios.post(
-          `${API_URL}/business/${businessId}/reviews/${reviewId}/helpful`,
-          {},
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+      dispatch({
+        type: HELPFUL_REVIEW_SUCCESS,
+        payload: response.data.review
+      });
 
-        dispatch({
-          type: HELPFUL_REVIEW_SUCCESS,
-          payload: response.data.review
-        });
-
-
-      } catch (error) {
-        dispatch({
-          type: HELPFUL_REVIEW_FAILURE,
-          payload: error.response?.data || error.message
-        });
-      }
-    };
+    } catch (error) {
+      dispatch({
+        type: HELPFUL_REVIEW_FAILURE,
+        payload: error.response?.data || error.message
+      });
+    }
+  };
 
 
 export const reportReview =

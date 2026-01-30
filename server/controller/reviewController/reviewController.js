@@ -6,22 +6,18 @@ import {
   reportReviewHelper
 } from "../../helper/reviewHelper/reviewHelper.js";
 
-
 export const addReviewAction = async (req, res) => {
   try {
     const result = await addReviewHelper({
       businessId: req.params.businessId,
-      user: req.authUser,
-      reviewData: req.body,
+      reviewData: req.body
     });
-console.log("user", req.authUser);
 
-    res.send({ success: true, data: result });
+    res.status(200).json({ success: true, data: result });
   } catch (err) {
-    res.status(400).send({ message: err.message });
+    res.status(400).json({ message: err.message });
   }
 };
-
 
 export const getReviewsAction = async (req, res) => {
   try {
@@ -31,43 +27,39 @@ export const getReviewsAction = async (req, res) => {
       page: Number(req.query.page || 1),
       limit: Number(req.query.limit || 10),
     });
-    ;
 
-    res.send(reviews);
+    res.status(200).json(reviews);
   } catch (err) {
-    res.status(400).send({ message: err.message });
+    res.status(400).json({ message: err.message });
   }
 };
-
 
 export const addReplyAction = async (req, res) => {
   try {
     const reply = await addReplyHelper({
-      businessId: req.params.businessId,
       reviewId: req.params.reviewId,
-      user: req.authUser,
-      message: req.body.message,
+      userId: req.body.userId,
+      userName: req.body.userName,
+      role: req.body.role || "OWNER",
+      message: req.body.message
     });
 
-    res.send({ success: true, data: reply });
+    res.status(200).json({ success: true, data: reply });
   } catch (err) {
-    res.status(403).send({ message: err.message });
+    res.status(400).json({ message: err.message });
   }
 };
 
-
 export const markHelpfulAction = async (req, res) => {
   try {
+    const { userId } = req.body;
+
     const review = await markHelpfulHelper({
-      businessId: req.params.businessId,
       reviewId: req.params.reviewId,
-      userId: req.authUser.userId
+      userId
     });
 
-    res.send({
-      success: true,
-      review
-    });
+    res.send({ success: true, review });
   } catch (err) {
     res.status(400).send({ message: err.message });
   }
@@ -76,9 +68,9 @@ export const markHelpfulAction = async (req, res) => {
 
 export const reportReviewAction = async (req, res) => {
   try {
-    await reportReviewHelper(req.params);
-    res.send({ success: true });
+    await reportReviewHelper({ reviewId: req.params.reviewId });
+    res.status(200).json({ success: true });
   } catch (err) {
-    res.status(400).send({ message: err.message });
+    res.status(400).json({ message: err.message });
   }
 };

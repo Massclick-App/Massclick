@@ -13,7 +13,6 @@ export default function ReviewList({ businessId }) {
     state => state.businessListReducer
   );
 
-  console.log("businessDetails", businessDetails);
   
   useEffect(() => {
     dispatch(getBusinessReviews(businessId));

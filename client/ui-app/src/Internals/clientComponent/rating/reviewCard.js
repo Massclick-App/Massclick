@@ -14,27 +14,22 @@ export default function ReviewCard({ review, businessId, business }) {
   const [showReplyBox, setShowReplyBox] = useState(false);
 
 
-const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
+  const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
 
-const displayName = review.userName || "Anonymous User";
-console.log("displayName", displayName);
+  const displayName = review.userName || "Anonymous User";
 
-
-
- 
   const alreadyHelpful = review.helpfulBy?.some(
-    id => id.toString() === authUser?._id
+    id => id === authUser._id
   );
 
- 
   const isOwner =
     authUser?.businessPeople === true &&
     authUser?.businessName === business?.businessName;
 
-  
+
   const handleHelpful = () => {
     if (alreadyHelpful) return;
-    dispatch(markReviewHelpful(businessId, review._id));
+    dispatch(markReviewHelpful(businessId, review._id, authUser._id));
   };
 
   const handleReport = () => {

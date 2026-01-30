@@ -115,41 +115,43 @@ const WriteReviewPage = () => {
     );
   };
 
- const handleSubmitReview = async () => {
-  if (!rating || reviewText.length < 5) {
-    alert("Please provide a rating and at least 5 characters.");
-    return;
-  }
+  const handleSubmitReview = async () => {
+    if (!rating || reviewText.length < 5) {
+      alert("Please provide a rating and at least 5 characters.");
+      return;
+    }
 
-  setIsSubmitting(true);
+    setIsSubmitting(true);
 
-  const base64Photos = await Promise.all(
-    ratingPhotos.map(file =>
-      new Promise(resolve => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result);
-        reader.readAsDataURL(file);
-      })
-    )
-  );
+    const base64Photos = await Promise.all(
+      ratingPhotos.map(file =>
+        new Promise(resolve => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.readAsDataURL(file);
+        })
+      )
+    );
+    const storedUser = JSON.parse(localStorage.getItem("authUser") || "{}");
 
- const newReview = {
-  rating,
-  ratingExperience: reviewText,
-  ratingLove: selectedTags || [],
-  ratingPhotos: base64Photos || [], 
-};
+    const newReview = {
+      userId: storedUser._id,
+      userName: storedUser.userName,
+      rating,
+      ratingExperience: reviewText,
+      ratingLove: selectedTags || [],
+      ratingPhotos: base64Photos || [],
+    };
 
-
-  try {
-    await dispatch(createReview(businessId, newReview));
-    setShowSuccessModal(true);
-  } catch (err) {
-    alert(err.response?.data?.message || "Failed to submit review");
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+    try {
+      await dispatch(createReview(businessId, newReview));
+      setShowSuccessModal(true);
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to submit review");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
 
   const isSubmitDisabled = isSubmitting || !rating || reviewText.length < 5;

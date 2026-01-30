@@ -143,64 +143,7 @@ export const oauthAuthentication = async (req, res, next) => {
     }
 };
 
-export const optionalAuth = async (req, res, next) => {
-  const authHeader = req.headers.authorization;
 
-  if (!authHeader) {
-    req.authUser = null;
-    return next();
-  }
-
-  try {
-    const request = new OAuth2Server.Request(req);
-    const response = new OAuth2Server.Response(res);
-
-    const token = await oauthtoken.authenticate(request, response);
-    const tokenUser = token.user;
-
-    if (mongoose.Types.ObjectId.isValid(tokenUser?.userId)) {
-      req.authUser = tokenUser;
-      return next();
-    }
-
-    if (tokenUser?.userId === "client_user_id") {
-      const mobile =
-        req.body?.mobileNumber1 ||
-        req.query?.mobileNumber1 ||
-        req.headers["x-mobile-number"];
-
-      if (!mobile) {
-        req.authUser = null;
-        return next();
-      }
-
-      const msgUser = await message91Model
-        .findOne({ mobileNumber1: String(mobile).trim() })
-        .lean();
-
-      if (!msgUser) {
-        req.authUser = null;
-        return next();
-      }
-
-      req.authUser = {
-        userId: msgUser._id,
-        userName: msgUser.userName,
-        profileImage: msgUser.profileImageKey || "",
-        mobileVerified: msgUser.mobileNumber1Verified,
-        role: "USER",
-      };
-
-      return next();
-    }
-
-    req.authUser = null;
-    next();
-  } catch (err) {
-    req.authUser = null;
-    next();
-  }
-};
 
 export const handleRefreshTokenRequest = async (req, res) => {
     const request = new OAuth2Server.Request(req);

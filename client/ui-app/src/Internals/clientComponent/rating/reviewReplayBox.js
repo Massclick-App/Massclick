@@ -7,14 +7,23 @@ export default function ReplyBox({ businessId, reviewId, onClose }) {
   const [message, setMessage] = useState("");
   const dispatch = useDispatch();
 
- const handleReply = async () => {
-  if (!message.trim()) return;
+  const handleReply = async () => {
+    if (!message.trim()) return;
 
-  await dispatch(replyToReview(businessId, reviewId, message));
+    const storedUser = JSON.parse(localStorage.getItem("authUser") || "{}");
 
-  setMessage("");
-  onClose(); 
-};
+    await dispatch(
+      replyToReview(businessId, reviewId, {
+        userId: storedUser._id,
+        userName: storedUser.userName,
+        role: "OWNER",
+        message
+      })
+    );
+
+    setMessage("");
+    onClose();
+  };
 
 
   return (

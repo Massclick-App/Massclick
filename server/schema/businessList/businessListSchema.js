@@ -1,83 +1,6 @@
 import mongoose from "mongoose"
 const { Schema } = mongoose;
 
-const replySchema = new Schema({
-  userId: { type: Schema.Types.ObjectId, ref: "User" },
-  userName: String,
-  role: {
-    type: String,
-    enum: ["OWNER", "ADMIN", "USER"],
-    default: "USER"
-  },
-  message: { type: String, required: true, trim: true },
-  createdAt: { type: Date, default: Date.now }
-});
-
-
-const reviewSchema = new mongoose.Schema({
-  rating: {
-    type: Number,
-    required: true,
-    min: 0.5,
-    max: 5
-  },
-  ratingExperience: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  ratingLove: {
-    type: [String],
-    default: []
-  },
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    default: null,
-  },
-  userName: {
-    type: String,
-    trim: true
-  },
-  userProfileImage: {
-    type: String,
-    trim: true
-  },
-  
-  isVerifiedUser: { type: Boolean, default: false }, 
-
-helpfulCount: { type: Number, default: 0 },
-
-helpfulBy: [{
-  type: mongoose.Schema.Types.ObjectId,
-  ref: "User"
-}],
-
-  status: {
-    type: String,
-    enum: ["ACTIVE", "HIDDEN", "REPORTED"],
-    default: "ACTIVE"
-  },
-
-  replies: [replySchema],
-  businessName: {
-    type: String,
-    trim: true
-  },
-  businessLocation: {
-    type: String,
-    trim: true
-  },
-  ratingPhotos: [{
-    type: String,
-    default: ''
-  }],
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-});
-
 const paymentSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -125,7 +48,6 @@ const paymentSchema = new mongoose.Schema({
   },
 });
 
-
 const businessListSchema = new mongoose.Schema({
   clientId: { type: String, default: '', },
   businessName: { type: String, default: '', },
@@ -169,10 +91,7 @@ const businessListSchema = new mongoose.Schema({
   linkedin: { type: String, default: '', },
   businessDetails: { type: String, default: '', },
   globalAddress: { type: String, default: '', },
-  reviews: {
-    type: [reviewSchema],
-    default: []
-  },
+
   payment: {
     type: [paymentSchema],
     default: []

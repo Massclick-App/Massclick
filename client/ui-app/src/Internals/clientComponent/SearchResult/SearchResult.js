@@ -223,7 +223,8 @@ const SearchResults = () => {
                   title={business.businessName}
                   phone={business.contact}
                   whatsapp={business.whatsappNumber}
-                  address={business.locationDetails || business.location}
+                  address={business.location}
+                  details={`Experience: ${business.experience} | Category: ${business.category}`}
                   rating={averageRating}
                   reviews={business.reviews?.length || 0}
                   imageSrc={
@@ -231,6 +232,7 @@ const SearchResults = () => {
                     "https://via.placeholder.com/120x100?text=Logo"
                   }
                   to={businessUrl}
+                  state={{ id: business._id }}
                 />
               );
             })}
