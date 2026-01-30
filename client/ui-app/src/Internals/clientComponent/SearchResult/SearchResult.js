@@ -15,10 +15,15 @@ import { fetchSeoMeta } from "../../../redux/actions/seoAction.js";
 import { fetchSeoPageContentMeta } from "../../../redux/actions/seoPageContentAction.js";
 import { CLEAR_SEO_META } from "../../../redux/actions/userActionTypes.js";
 
-
 const createSlug = (text = "") =>
   text.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-");
 
+
+const sanitizeSeoHtml = (html = "") => {
+  return html
+    .replace(/<h1(\s[^>]*)?>/gi, "<h2>")
+    .replace(/<\/h1>/gi, "</h2>");
+};
 
 const SearchResults = () => {
   const dispatch = useDispatch();
@@ -50,7 +55,6 @@ const SearchResults = () => {
   const [results, setResults] = useState([]);
   const stateAppliedRef = useRef(false);
 
- 
   useEffect(() => {
     const resultsFromState = locationState.state?.results;
 
@@ -71,7 +75,6 @@ const SearchResults = () => {
     });
   }, [searchText, locationText, dispatch]);
 
-  
   useEffect(() => {
     if (!searchText || !locationText) return;
 
@@ -86,7 +89,6 @@ const SearchResults = () => {
     );
   }, [dispatch, searchText, locationText]);
 
-  
   useEffect(() => {
     if (!searchText) return;
 
@@ -104,7 +106,6 @@ const SearchResults = () => {
       backendMainSearch(searchText, locationText, searchText)
     );
   }, [dispatch, searchText, locationText]);
-
 
   if (error) {
     return (
@@ -130,21 +131,29 @@ const SearchResults = () => {
 
   const seoContent = seoPageContents?.[0];
 
+  const sanitizedHeaderContent = seoContent?.headerContent
+    ? sanitizeSeoHtml(seoContent.headerContent)
+    : null;
+
+  const sanitizedPageContent = seoContent?.pageContent
+    ? sanitizeSeoHtml(seoContent.pageContent)
+    : null;
+
   const itemListSchema =
     results.length > 0
       ? {
-          "@context": "https://schema.org",
-          "@type": "ItemList",
-          "name": `Best ${searchText} in ${locationText}`,
-          "itemListElement": results.map((business, index) => ({
-            "@type": "ListItem",
-            "position": index + 1,
-            "name": business.businessName,
-            "url": `https://massclick.in/${createSlug(
-              business.location
-            )}/${createSlug(business.businessName)}/${business._id}`,
-          })),
-        }
+        "@context": "https://schema.org",
+        "@type": "ItemList",
+        "name": `Best ${searchText} in ${locationText}`,
+        "itemListElement": results.map((business, index) => ({
+          "@type": "ListItem",
+          "position": index + 1,
+          "name": business.businessName,
+          "url": `https://massclick.in/${createSlug(
+            business.location
+          )}/${createSlug(business.businessName)}/${business._id}`,
+        })),
+      }
       : null;
 
   return (
@@ -170,13 +179,13 @@ const SearchResults = () => {
       <Box sx={{ minHeight: "100vh", bgcolor: "#f8f9fb", pt: 4, pb: 8 }}>
         <Box sx={{ maxWidth: 1200, mx: "auto", px: 2 }}>
 
-          {!seoContentLoading && seoContent?.headerContent && (
+          {!seoContentLoading && sanitizedHeaderContent && (
             <Box sx={{ py: 6 }}>
               <article className="seo-article">
                 <section
                   className="seo-header-content"
                   dangerouslySetInnerHTML={{
-                    __html: seoContent.headerContent,
+                    __html: sanitizedHeaderContent,
                   }}
                 />
               </article>
@@ -226,14 +235,14 @@ const SearchResults = () => {
               );
             })}
           </div>
-          {!seoContentLoading && seoContent?.pageContent && (
+          {!seoContentLoading && sanitizedPageContent && (
             <Box sx={{ mt: 8 }}>
               <article className="seo-article">
                 <div className="seo-divider" />
                 <section
                   className="seo-page-content"
                   dangerouslySetInnerHTML={{
-                    __html: seoContent.pageContent,
+                    __html: sanitizedPageContent,
                   }}
                 />
               </article>

@@ -38,6 +38,7 @@ import Tooltip from "@mui/material/Tooltip";
 
 import Footer from "../footer/footer";
 import BusinessMap from "../businessMap/businessMap";
+import ReviewList from "../rating/reviewList";
 
 const SimpleModal = ({ children, onClose, title }) => (
   <div
@@ -121,7 +122,7 @@ const FullScreenGallery = ({ images, initialIndex, onClose }) => {
 };
 
 const BusinessDetail = () => {
-const { location, businessSlug, id } = useParams();
+  const { location, businessSlug, id } = useParams();
   const { state } = useLocation();
   const businessID = id || state?.id;
 
@@ -145,18 +146,18 @@ const { location, businessSlug, id } = useParams();
   const photosRef = useRef(null);
   const reviewsRef = useRef(null);
 
-useEffect(() => {
-  if (id) {
-    dispatch(getBusinessDetailsById(id));
-  } else if (location && businessSlug) {
-    dispatch(
-      getBusinessDetailsBySlug({
-        location,
-        slug: businessSlug,
-      })
-    );
-  }
-}, [dispatch, id, location, businessSlug]);
+  useEffect(() => {
+    if (id) {
+      dispatch(getBusinessDetailsById(id));
+    } else if (location && businessSlug) {
+      dispatch(
+        getBusinessDetailsBySlug({
+          location,
+          slug: businessSlug,
+        })
+      );
+    }
+  }, [dispatch, id, location, businessSlug]);
 
   if (businessDetailsLoading) {
     return (
@@ -423,7 +424,6 @@ useEffect(() => {
 
   const overviewHtml = business.businessDetails;
 
-
   const normalizeOverviewHtml = (html = "") => {
     return html
       .replace(/<p>\s*(<br\s*\/?>|&nbsp;)?\s*<\/p>/gi, "")
@@ -448,9 +448,11 @@ useEffect(() => {
             }}
           >
             <img
-              src={bannerImageSrc}
-              alt={business.businessName}
+              key={business?._id || business?.bannerImage}
+              src={business?.bannerImage || "/placeholder.jpg"}
+              alt={business?.businessName}
               className="business-CardDetails-bannerImage"
+              loading="eager"
             />
             <div className="business-CardDetails-heroGradient" />
             <div className="business-CardDetails-heroMeta">
@@ -752,8 +754,23 @@ useEffect(() => {
                   <p>No photos uploaded yet.</p>
                 )}
               </section>
-
               <section
+                ref={reviewsRef}
+                className="business-CardDetails-reviewsSection"
+              >
+                <h2>Reviews & Ratings</h2>
+
+                <div className="business-CardDetails-startReview">
+                  <UserRatingWidget
+                    businessId={business._id}
+                    initialValue={business.averageRating || 0}
+                  />
+                </div>
+
+                <ReviewList businessId={business._id} />
+              </section>
+
+              {/* <section
                 ref={reviewsRef}
                 className="business-CardDetails-reviewsSection"
               >
@@ -930,7 +947,8 @@ useEffect(() => {
                     </div>
                   )}
                 </div>
-              </section>
+              </section> */}
+              
             </div>
 
             {business.googleMap && (

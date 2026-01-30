@@ -20,6 +20,7 @@ import seoRoutes from './routes/seoRoutes.js'
 import mrpRoutes from './routes/mrpRoutes.js';
 import popularSearchRoutes from './routes/popularSearchRoutes.js';
 import sitemapRoutes from "./routes/sitemapRoutes.js"
+import reviewRoutes from "./routes/reviewRoutes.js";
 
 // import { startWhatsAppCron } from "./cron/whatsappCron.js";
 
@@ -97,6 +98,7 @@ app.use('/', seoRoutes);
 app.use('/', mrpRoutes);
 app.use('/', popularSearchRoutes);
 app.use("/", sitemapRoutes);
+app.use('/', reviewRoutes);
 
 mongoose.connect(MONGO_URI)
   .then(() => {

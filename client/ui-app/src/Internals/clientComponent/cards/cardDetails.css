@@ -945,6 +945,189 @@
   font-size: var(--bc-text-sm);
 }
 
+/* ===== Reviews Section Wrapper ===== */
+.business-CardDetails-reviewsSection {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 24px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+  margin-bottom: 32px;
+}
+
+/* ===== Individual Review Card ===== */
+.review-card {
+  padding: 20px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.review-card:last-child {
+  border-bottom: none;
+}
+
+/* ===== Review Header ===== */
+.review-card strong {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f2937;
+  display: block;
+  margin-bottom: 6px;
+}
+
+/* ===== Rating Stars ===== */
+.review-card .MuiRating-root {
+  font-size: 20px;
+  color: #ff8c00;
+  margin-bottom: 6px;
+}
+
+/* ===== Review Text ===== */
+.review-card p {
+  font-size: 14px;
+  color: #374151;
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+
+/* ===== Review Actions ===== */
+.review-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.review-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.review-actions button:hover {
+  background: #fff7ed;
+  border-color: #ff8c00;
+  color: #ff8c00;
+}
+
+/* ===== Comment Box ===== */
+.comment-box {
+  margin-top: 12px;
+  background: #f9fafb;
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.comment-box textarea {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  padding: 10px;
+  font-size: 13px;
+  resize: none;
+  outline: none;
+}
+
+.comment-box textarea:focus {
+  border-color: #ff8c00;
+}
+
+.comment-box button {
+  margin-top: 8px;
+  background: #ff8c00;
+  color: #fff;
+  border: none;
+  padding: 6px 14px;
+  font-size: 13px;
+  border-radius: 20px;
+  cursor: pointer;
+}
+
+.comment-box button:hover {
+  background: #e67600;
+}
+
+/* ===== Owner / Admin Reply ===== */
+.owner-reply {
+  margin-top: 14px;
+  background: #f0f9ff;
+  border-left: 4px solid #2563eb;
+  padding: 12px 14px;
+  border-radius: 8px;
+}
+
+.owner-reply strong {
+  font-size: 13px;
+  color: #2563eb;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.owner-reply p {
+  font-size: 13px;
+  color: #1e3a8a;
+  margin: 0;
+}
+
+/* ===== Reply Box (Owner Input) ===== */
+.reply-input {
+  margin-top: 12px;
+}
+
+.reply-input textarea {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  padding: 10px;
+  font-size: 13px;
+  resize: none;
+}
+
+.reply-input button {
+  margin-top: 8px;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  padding: 6px 14px;
+  font-size: 13px;
+  border-radius: 20px;
+  cursor: pointer;
+}
+
+.reply-input button:hover {
+  background: #1d4ed8;
+}
+
+/* ===== Rating Widget Center ===== */
+.business-CardDetails-startReview {
+  text-align: center;
+  padding: 20px 0;
+}
+
+.business-CardDetails-startReview h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+/* ===== Mobile Responsive ===== */
+@media (max-width: 768px) {
+  .review-actions {
+    gap: 8px;
+  }
+
+  .review-actions button {
+    font-size: 12px;
+    padding: 5px 10px;
+  }
+}
+
+
 /* =========================================================
    MAP SECTION
    ========================================================= */

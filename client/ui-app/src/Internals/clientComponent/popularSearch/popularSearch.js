@@ -92,7 +92,6 @@ const CardCarousel = () => {
     <>
       <section className="popular-search">
         <div className="popular-search__inner">
-
           <div className="popular-search__header">
             <div>
               <h2 className="popular-search__title">Popular Searches</h2>
@@ -100,7 +99,6 @@ const CardCarousel = () => {
                 Quick access to the most in-demand services around you.
               </p>
             </div>
-
             <div className="popular-search__controls">
               <button
                 type="button"

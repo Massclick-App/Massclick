@@ -52,6 +52,7 @@ export const oauthToken = async (req, res) => {
         return res.status(BAD_REQUEST.code).send(error.message);
     }
 };
+
 export const logoutAction = async (req, res) => {
   try {
     const authHeader = req.headers.authorization;

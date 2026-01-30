@@ -18,6 +18,7 @@ import seoReducer from './reducers/seoReducer.js';
 import seoPageContentReducer from './reducers/seoPageContentReducer.js'
 import mrpReducer from './reducers/mrpReducer.js';
 import enquiryNowReducer from './reducers/popularSearchesReducer.js';
+import reviewReducer from './reducers/reviewReducer.js';
 
 const rootReducer = combineReducers({
   auth: authReducer,
@@ -38,6 +39,7 @@ const rootReducer = combineReducers({
   seoPageContentReducer,
   mrp: mrpReducer,
   enquiryNow: enquiryNowReducer,
+  reviews: reviewReducer
 
 });
 

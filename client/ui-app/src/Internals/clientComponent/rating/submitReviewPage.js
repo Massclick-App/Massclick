@@ -5,6 +5,7 @@ import Rating from '@mui/material/Rating';
 import StarIcon from '@mui/icons-material/Star';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import { editBusinessList, getBusinessDetailsById } from '../../../redux/actions/businessListAction';
+import { createReview } from '../../../redux/actions/reviewAction';
 import './submitReview.css';
 import CardsSearch from '../CardsSearch/CardsSearch';
 import Footer from '../footer/footer';
@@ -77,28 +78,28 @@ const WriteReviewPage = () => {
   // const businessNameSlug = business.businessName.toLowerCase().replace(/\s+/g, '-');
   // const locationSlug = business.location.toLowerCase().replace(/\s+/g, '-');
 
- const handleModalClose = () => {
-  const businessNameSlug = business.businessName
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)+/g, "");
+  const handleModalClose = () => {
+    const businessNameSlug = business.businessName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)+/g, "");
 
-  const addressSlug = business.street
-    ?.toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)+/g, "") || "unknown";
+    const addressSlug = business.street
+      ?.toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)+/g, "") || "unknown";
 
-  const locationSlug = business.location
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)+/g, "");
+    const locationSlug = business.location
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)+/g, "");
 
-  const businessSlug = `${businessNameSlug}-${addressSlug}`;
+    const businessSlug = `${businessNameSlug}-${addressSlug}`;
 
-  setShowSuccessModal(false);
+    setShowSuccessModal(false);
 
-  navigate(`/${locationSlug}/${businessSlug}/${businessId}`);
-};
+    navigate(`/${locationSlug}/${businessSlug}/${businessId}`);
+  };
 
 
 
@@ -114,47 +115,42 @@ const WriteReviewPage = () => {
     );
   };
 
-  const handleSubmitReview = async () => {
-    if (!rating || reviewText.length < 5) {
-      alert("Please provide a rating and at least 5 characters for your experience.");
-      return;
-    }
+ const handleSubmitReview = async () => {
+  if (!rating || reviewText.length < 5) {
+    alert("Please provide a rating and at least 5 characters.");
+    return;
+  }
 
-    setIsSubmitting(true);
+  setIsSubmitting(true);
 
-    const base64Photos = await Promise.all(
-      ratingPhotos.map(file => {
-        return new Promise(resolve => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result);
-          reader.readAsDataURL(file);
-        });
+  const base64Photos = await Promise.all(
+    ratingPhotos.map(file =>
+      new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.readAsDataURL(file);
       })
-    );
+    )
+  );
 
-    const newReview = {
-      rating,
-      ratingExperience: reviewText,
-      ratingLove: selectedTags,
-      userId: storedUser?._id || null,
-      userName: storedUser?.userName || "",
-      userProfileImage: storedUser?.profileImage || "",
-      mobileNumber1: storedUser?.mobileNumber1 || "",
-      businessName: business.businessName,
-      businessLocation: business.location,
-      ratingPhotos: base64Photos,
-    };
+ const newReview = {
+  rating,
+  ratingExperience: reviewText,
+  ratingLove: selectedTags || [],
+  ratingPhotos: base64Photos || [], 
+};
 
-    try {
-      await dispatch(editBusinessList(businessId, { reviewData: newReview }));
-      setShowSuccessModal(true);
-    } catch (error) {
-      console.error("Failed to submit review:", error);
-      alert(`Failed to submit review: ${error.message || 'Check console.'}`);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+
+  try {
+    await dispatch(createReview(businessId, newReview));
+    setShowSuccessModal(true);
+  } catch (err) {
+    alert(err.response?.data?.message || "Failed to submit review");
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
 
   const isSubmitDisabled = isSubmitting || !rating || reviewText.length < 5;
 
