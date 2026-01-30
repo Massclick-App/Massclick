@@ -32,20 +32,20 @@ export const getSeo = async ({ pageType, category, location }) => {
 
 export const getSeoMeta = async ({ pageType, category, location }) => {
   try {
-    const normalize = (v = "") => v.toString().trim();
+    const normalize = (v = "") =>
+      v.toLowerCase().trim().replace(/[-_\s]+/g, " ");
 
     const safePageType = normalize(pageType);
-    const safeCategory = normalize(category);
-    const safeLocation = normalize(location);
+    const safeCategory = category ? normalize(category) : null;
+    const safeLocation = location ? normalize(location) : null;
 
     let seo = null;
 
-   
     if (safeCategory && safeLocation) {
       seo = await seoModel.findOne({
         pageType: safePageType,
-        category: { $regex: `^${safeCategory}$`, $options: "i" },
-        location: { $regex: `^${safeLocation}$`, $options: "i" },
+        category: { $regex: safeCategory, $options: "i" },
+        location: { $regex: safeLocation, $options: "i" },
         isActive: true,
       }).lean();
 
@@ -55,7 +55,7 @@ export const getSeoMeta = async ({ pageType, category, location }) => {
     if (safeCategory) {
       seo = await seoModel.findOne({
         pageType: safePageType,
-        category: { $regex: `^${safeCategory}$`, $options: "i" },
+        category: { $regex: safeCategory, $options: "i" },
         isActive: true,
       }).lean();
 
@@ -69,22 +69,19 @@ export const getSeoMeta = async ({ pageType, category, location }) => {
 
     if (seo) return seo;
 
- 
     return {
       title: "Massclick - Local Business Search Platform",
       description:
         "Find trusted local businesses, services, and professionals near you on Massclick.",
-      keywords: "local search, businesses near me, Massclick",
       canonical: "https://massclick.in",
       robots: "index, follow",
     };
+
   } catch (error) {
     console.error("SEO META FETCH ERROR:", error);
-
     return {
       title: "Massclick",
       description: "Massclick - India's local business search platform",
-      robots: "index, follow",
     };
   }
 };

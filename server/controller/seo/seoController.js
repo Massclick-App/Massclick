@@ -27,8 +27,8 @@ export const getSeoAction = async (req, res) => {
   }
 };
 
-const normalize = (text = "") =>
-  text.toLowerCase().trim().replace(/\s+/g, "");
+const normalizeSeoText = (text = "") =>
+  text.toLowerCase().trim().replace(/[-_\s]+/g, " ");
 
 export const getSeoMetaAction = async (req, res) => {
   try {
@@ -39,9 +39,9 @@ export const getSeoMetaAction = async (req, res) => {
     }
 
     const seoData = await getSeoMeta({
-      pageType: normalize(pageType),
-      category: category ? normalize(category) : undefined,
-      location: location ? normalize(location) : undefined,
+      pageType: normalizeSeoText(pageType),
+      category: category ? normalizeSeoText(category) : undefined,
+      location: location ? normalizeSeoText(location) : undefined,
     });
 
     res.send(seoData);
