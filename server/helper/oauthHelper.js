@@ -8,6 +8,7 @@ import mongoose from 'mongoose';
 import crypto from 'crypto';
 import userModel from '../model/userModel.js';
 import message91Model from '../model/msg91Model/usersModels.js';
+
 // ---------- OAuth2 Server Model Functions ----------
 const getAccessToken = (token) => oauthModel.findOne({ accessToken: token }).lean();
 
@@ -98,7 +99,7 @@ export const createClientToken = async (clientId, clientSecret) => {
     const tokenObj = {
         accessToken,
         refreshToken,
-        accessTokenExpiresAt: new Date(Date.now() + 20 * 60 * 1000),
+        accessTokenExpiresAt: new Date(Date.now() + 60 * 60 * 1000),
         refreshTokenExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
     };
 
@@ -142,8 +143,6 @@ export const oauthAuthentication = async (req, res, next) => {
         return res.status(UNAUTHORIZED.code).send({ error: err.message });
     }
 };
-
-
 
 export const handleRefreshTokenRequest = async (req, res) => {
     const request = new OAuth2Server.Request(req);

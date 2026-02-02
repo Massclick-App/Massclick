@@ -86,8 +86,6 @@ export const getSeoMeta = async ({ pageType, category, location }) => {
   }
 };
 
-
-
 export const viewAllSeo = async ({
   pageNo,
   pageSize,
