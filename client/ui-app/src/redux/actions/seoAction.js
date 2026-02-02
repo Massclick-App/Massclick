@@ -21,28 +21,43 @@ const getValidToken = async (dispatch) => {
 
 
 export const getAllSeo =
-  ({ pageNo = 1, pageSize = 10 } = {}) =>
-    async (dispatch) => {
-      dispatch({ type: FETCH_SEO_REQUEST });
-      try {
-        const token = await getValidToken(dispatch);
+  ({ pageNo = 1, pageSize = 10, options = {} } = {}) =>
+  async (dispatch) => {
+    dispatch({ type: FETCH_SEO_REQUEST });
 
-        const response = await axios.get(
-          `${API_URL}/seo/viewall?pageNo=${pageNo}&pageSize=${pageSize}`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+    try {
+      const token = await getValidToken(dispatch);
 
-        dispatch({
-          type: FETCH_SEO_SUCCESS,
-          payload: response.data
-        });
-      } catch (error) {
-        dispatch({
-          type: FETCH_SEO_FAILURE,
-          payload: error.response?.data || error.message
-        });
-      }
-    };
+      const {
+        search = "",
+        status = "all",
+        sortBy = "",
+        sortOrder = ""
+      } = options;
+
+      const response = await axios.get(
+        `${API_URL}/seo/viewall?pageNo=${pageNo}&pageSize=${pageSize}&search=${search}&status=${status}&sortBy=${sortBy}&sortOrder=${sortOrder}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      dispatch({
+        type: FETCH_SEO_SUCCESS,
+        payload: {
+          data: response.data.data,
+          total: response.data.total,
+          pageNo,
+          pageSize
+        }
+      });
+
+    } catch (error) {
+      dispatch({
+        type: FETCH_SEO_FAILURE,
+        payload: error.response?.data || error.message
+      });
+    }
+  };
+
 
 export const createSeo = (seoData) => async (dispatch) => {
   dispatch({ type: CREATE_SEO_REQUEST });

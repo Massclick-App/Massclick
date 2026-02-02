@@ -56,19 +56,34 @@ export const viewAllSeoAction = async (req, res) => {
   try {
     const pageNo = parseInt(req.query.pageNo) || 1;
     const pageSize = parseInt(req.query.pageSize) || 10;
+
     const search = req.query.search || "";
+    const status = req.query.status || "all";
+    const sortBy = req.query.sortBy || null;
+    const sortOrder = req.query.sortOrder === "desc" ? -1 : 1;
 
     const { list, total } = await viewAllSeo({
       pageNo,
       pageSize,
       search,
+      status,
+      sortBy,
+      sortOrder
     });
 
-    res.send({ data: list, total, pageNo, pageSize });
+    res.send({
+      data: list,
+      total,
+      pageNo,
+      pageSize
+    });
+
   } catch (error) {
+    console.error("viewAllSeoAction error:", error);
     return res.status(BAD_REQUEST.code).send({ message: error.message });
   }
 };
+
 
 export const updateSeoAction = async (req, res) => {
   try {

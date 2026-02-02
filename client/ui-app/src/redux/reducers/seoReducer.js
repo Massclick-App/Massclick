@@ -27,13 +27,16 @@ import {
 } from "../actions/userActionTypes.js";
 
 const initialState = {
-  list: [],                  
-  total: 0,                  
-  meta: null,               
-  categorySuggestions: [],   
-  loading: false,            
-  error: null,               
+  list: [],
+  total: 0,
+  pageNo: 1,
+  pageSize: 10,
+  meta: null,
+  categorySuggestions: [],
+  loading: false,
+  error: null,
 };
+
 
 
 export default function seoReducer(state = initialState, action) {
@@ -51,13 +54,17 @@ export default function seoReducer(state = initialState, action) {
       };
 
    
-    case FETCH_SEO_SUCCESS:
-      return {
-        ...state,
-        loading: false,
-        list: action.payload.data || [],
-        total: action.payload.total || 0,
-      };
+   case FETCH_SEO_SUCCESS:
+  return {
+    ...state,
+    loading: false,
+    list: action.payload.data,
+    total: action.payload.total,
+    pageNo: action.payload.pageNo,
+    pageSize: action.payload.pageSize,
+    error: null,
+  };
+
 
    
     case CREATE_SEO_SUCCESS:

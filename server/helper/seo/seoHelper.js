@@ -90,27 +90,46 @@ export const viewAllSeo = async ({
   pageNo,
   pageSize,
   search,
+  status,
+  sortBy,
+  sortOrder
 }) => {
-  const query = {};
+  try {
+    let query = {};
 
-  if (search) {
-    query.$or = [
-      { title: { $regex: search, $options: "i" } },
-      { category: { $regex: search, $options: "i" } },
-      { location: { $regex: search, $options: "i" } },
-    ];
+    if (status === "active") query.isActive = true;
+    if (status === "inactive") query.isActive = false;
+
+    if (search && search.trim() !== "") {
+      query.$or = [
+        { title: { $regex: search.trim(), $options: "i" } },
+        { category: { $regex: search.trim(), $options: "i" } },
+        { location: { $regex: search.trim(), $options: "i" } }
+      ];
+    }
+
+    let sortQuery = {};
+    if (sortBy) {
+      sortQuery[sortBy] = sortOrder;
+    }
+
+    const total = await seoModel.countDocuments(query);
+
+    const list = await seoModel
+      .find(query)
+      .sort(sortQuery)
+      .skip((pageNo - 1) * pageSize)
+      .limit(pageSize)
+      .lean();
+
+    return { list, total };
+
+  } catch (error) {
+    console.error("Error fetching SEO list:", error);
+    throw error;
   }
-
-  const total = await seoModel.countDocuments(query);
-
-  const list = await seoModel
-    .find(query)
-    .skip((pageNo - 1) * pageSize)
-    .limit(pageSize)
-    .lean();
-
-  return { list, total };
 };
+
 
 export const updateSeo = async (id, data) => {
   const seo = await seoModel.findByIdAndUpdate(id, data, { new: true });

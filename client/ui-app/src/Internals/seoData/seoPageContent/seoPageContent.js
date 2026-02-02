@@ -300,8 +300,8 @@ export default function SeoPageContent() {
                         data={rows}
                         columns={columns}
                         total={total}
-                        fetchData={(p, s) =>
-                            dispatch(viewAllSeoPageContent({ pageNo: p, pageSize: s }))
+                        fetchData={(pageNo, pageSize, options) =>
+                            dispatch(viewAllSeoPageContent({ pageNo, pageSize,options }))
                         }
                     />
                 </Box>

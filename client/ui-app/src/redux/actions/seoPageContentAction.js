@@ -32,18 +32,43 @@ const getToken = async (dispatch) => {
 };
 
 export const viewAllSeoPageContent =
-  ({ pageNo = 1, pageSize = 10, search = "" } = {}) =>
+  ({ pageNo = 1, pageSize = 10, options = {} } = {}) =>
   async (dispatch) => {
     dispatch({ type: FETCH_SEOPAGECONTENT_REQUEST });
+
     try {
       const token = await getToken(dispatch);
 
-      const res = await axios.get(`${API}/seopagecontent/viewall`, {
-        params: { pageNo, pageSize, search },
-        headers: { Authorization: `Bearer ${token}` },
+      const {
+        search = "",
+        sortBy = "updatedAt",
+        sortOrder = "desc"
+      } = options;
+
+      const res = await axios.get(
+        `${API}/seopagecontent/viewall`,
+        {
+          params: {
+            pageNo,
+            pageSize,
+            search,
+            sortBy,
+            sortOrder
+          },
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      dispatch({
+        type: FETCH_SEOPAGECONTENT_SUCCESS,
+        payload: {
+          data: res.data.data,
+          total: res.data.total,
+          pageNo,
+          pageSize,
+        },
       });
 
-      dispatch({ type: FETCH_SEOPAGECONTENT_SUCCESS, payload: res.data });
     } catch (err) {
       dispatch({
         type: FETCH_SEOPAGECONTENT_FAILURE,
@@ -51,6 +76,7 @@ export const viewAllSeoPageContent =
       });
     }
   };
+
 
 export const createSeoPageContent = (data) => async (dispatch) => {
   dispatch({ type: CREATE_SEOPAGECONTENT_REQUEST });

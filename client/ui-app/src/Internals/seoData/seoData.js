@@ -330,8 +330,8 @@ export default function SeoData() {
             data={rows}
             columns={columns}
             total={total}
-            fetchData={(pageNo, pageSize) =>
-              dispatch(getAllSeo({ pageNo, pageSize }))
+            fetchData={(pageNo, pageSize, options) =>
+              dispatch(getAllSeo({ pageNo, pageSize,options }))
             }
           />
         </Box>

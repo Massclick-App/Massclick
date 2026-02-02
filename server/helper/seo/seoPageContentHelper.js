@@ -33,34 +33,27 @@ export const getSeoPageContentMetaService = async ({
   location,
 }) => {
   try {
+    const safePageType = normalizeSeoText(pageType);
+    const safeCategory = category ? normalizeSeoText(category) : null;
+    const safeLocation = location ? normalizeSeoText(location) : null;
+
     let seo = null;
 
-    const normalizedCategory = category?.toLowerCase();
-    const singularCategory = normalizedCategory?.endsWith("s")
-      ? normalizedCategory.slice(0, -1)
-      : normalizedCategory;
-
-    if (normalizedCategory && location) {
+    if (safeCategory && safeLocation) {
       seo = await seoPageContentModel.findOne({
-        pageType,
-        category: {
-          $regex: `^(?:${normalizedCategory}|${singularCategory})$`,
-          $options: "i",
-        },
-        location: { $regex: `^${location}$`, $options: "i" },
+        pageType: safePageType,
+        category: { $regex: `^${safeCategory}$`, $options: "i" },
+        location: { $regex: `^${safeLocation}$`, $options: "i" },
         isActive: true,
       }).lean();
 
       if (seo) return seo;
     }
 
-    if (normalizedCategory) {
+    if (safeCategory) {
       seo = await seoPageContentModel.findOne({
-        pageType,
-        category: {
-          $regex: `^(?:${normalizedCategory}|${singularCategory})$`,
-          $options: "i",
-        },
+        pageType: safePageType,
+        category: { $regex: `^${safeCategory}$`, $options: "i" },
         isActive: true,
       }).lean();
 
@@ -68,50 +61,81 @@ export const getSeoPageContentMetaService = async ({
     }
 
     seo = await seoPageContentModel.findOne({
-      pageType,
-      categorySlug: category.toLowerCase().trim(),
+      pageType: safePageType,
       isActive: true,
     }).lean();
-
 
     if (seo) return seo;
 
     return {
       headerContent: `<h1>Discover Local Businesses on Massclick</h1>`,
-      pageContent: `<p>Explore trusted businesses near you.</p>`,
+      pageContent: `<p>Explore trusted businesses and services near you on Massclick.</p>`,
     };
+
   } catch (error) {
     console.error("SEO PAGE CONTENT FETCH ERROR:", error);
-    throw error;
+
+    return {
+      headerContent: `<h1>Massclick Local Business Directory</h1>`,
+      pageContent: `<p>Find trusted local businesses across categories and locations.</p>`,
+    };
   }
 };
 
+export const normalizeSeoText = (v = "") =>
+  v
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/[-_\s]+/g, " ");
 
 export const viewAllSeoPageContent = async ({
   pageNo,
   pageSize,
   search,
+  status,
+  sortBy,
+  sortOrder,
 }) => {
-  const query = {};
+  try {
+    let query = {};
 
-  if (search) {
-    query.$or = [
-      { title: { $regex: search, $options: "i" } },
-      { category: { $regex: search, $options: "i" } },
-      { location: { $regex: search, $options: "i" } },
-    ];
+    if (status === "active") query.isActive = true;
+    if (status === "inactive") query.isActive = false;
+
+    if (search && search.trim()) {
+      const safeSearch = normalizeSeoText(search);
+
+      query.$or = [
+        { pageType: { $regex: safeSearch, $options: "i" } },
+        { category: { $regex: safeSearch, $options: "i" } },
+        { location: { $regex: safeSearch, $options: "i" } },
+        { headerContent: { $regex: safeSearch, $options: "i" } },
+        { pageContent: { $regex: safeSearch, $options: "i" } },
+      ];
+    }
+
+    let sortQuery = {};
+    if (sortBy) {
+      sortQuery[sortBy] = sortOrder;
+    }
+
+    const total = await seoPageContentModel.countDocuments(query);
+
+    const list = await seoPageContentModel
+      .find(query)
+      .sort(sortQuery)
+      .skip((pageNo - 1) * pageSize)
+      .limit(pageSize)
+      .lean();
+
+    return { list, total };
+  } catch (error) {
+    console.error("viewAllSeoPageContent error:", error);
+    throw error;
   }
-
-  const total = await seoPageContentModel.countDocuments(query);
-
-  const list = await seoPageContentModel
-    .find(query)
-    .skip((pageNo - 1) * pageSize)
-    .limit(pageSize)
-    .lean();
-
-  return { list, total };
 };
+
 
 export const updateSeoPageContent = async (id, data) => {
   const seo = await seoPageContentModel.findByIdAndUpdate(id, data, { new: true });

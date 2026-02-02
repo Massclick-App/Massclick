@@ -23,9 +23,12 @@ import {
 const initialState = {
   list: [],
   total: 0,
+  pageNo: 1,
+  pageSize: 10,
   loading: false,
   error: null,
 };
+
 
 export default function seoPageContentReducer(state = initialState, action) {
   switch (action.type) {
@@ -42,12 +45,15 @@ export default function seoPageContentReducer(state = initialState, action) {
       };
       
     case FETCH_SEOPAGECONTENT_SUCCESS:
-      return {
-        ...state,
-        loading: false,
-        list: action.payload?.data || [],
-        total: action.payload?.total || 0,
-      };
+  return {
+    ...state,
+    loading: false,
+    list: action.payload.data,
+    total: action.payload.total,
+    pageNo: action.payload.pageNo,
+    pageSize: action.payload.pageSize,
+    error: null,
+  };
 
     case FETCH_SEOPAGECONTENT_META_SUCCESS:
       return {
