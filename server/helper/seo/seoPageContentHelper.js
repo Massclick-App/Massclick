@@ -27,6 +27,7 @@ export const getSeoPageContent = async ({ pageType, category, location }) => {
   }
 };
 
+
 export const getSeoPageContentMetaService = async ({
   pageType,
   category,
@@ -34,53 +35,38 @@ export const getSeoPageContentMetaService = async ({
 }) => {
   try {
     const safePageType = normalizeSeoText(pageType);
-    const safeCategory = category ? normalizeSeoText(category) : null;
+    const safeCategory = category
+      ? category.toLowerCase().replace(/[^a-z0-9]+/g, "-")
+      : null;
     const safeLocation = location ? normalizeSeoText(location) : null;
 
-    let seo = null;
-
     if (safeCategory && safeLocation) {
-      seo = await seoPageContentModel.findOne({
+      return await seoPageContentModel.findOne({
         pageType: safePageType,
-        category: { $regex: `^${safeCategory}$`, $options: "i" },
+        category: {
+          $regex: `^${safeCategory.replace(/-/g, " ")}$|^${safeCategory}$`,
+          $options: "i"
+        },
         location: { $regex: `^${safeLocation}$`, $options: "i" },
         isActive: true,
       }).lean();
-
-      if (seo) return seo;
     }
 
-    if (safeCategory) {
-      seo = await seoPageContentModel.findOne({
+    if (safeCategory && !safeLocation) {
+      return await seoPageContentModel.findOne({
         pageType: safePageType,
         category: { $regex: `^${safeCategory}$`, $options: "i" },
         isActive: true,
       }).lean();
-
-      if (seo) return seo;
     }
 
-    seo = await seoPageContentModel.findOne({
-      pageType: safePageType,
-      isActive: true,
-    }).lean();
-
-    if (seo) return seo;
-
-    return {
-      headerContent: `<h1>Discover Local Businesses on Massclick</h1>`,
-      pageContent: `<p>Explore trusted businesses and services near you on Massclick.</p>`,
-    };
-
+    return null;
   } catch (error) {
     console.error("SEO PAGE CONTENT FETCH ERROR:", error);
-
-    return {
-      headerContent: `<h1>Massclick Local Business Directory</h1>`,
-      pageContent: `<p>Find trusted local businesses across categories and locations.</p>`,
-    };
+    return null;
   }
 };
+
 
 export const normalizeSeoText = (v = "") =>
   v
