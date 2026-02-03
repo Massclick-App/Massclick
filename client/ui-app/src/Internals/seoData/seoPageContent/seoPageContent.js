@@ -210,10 +210,12 @@ export default function SeoPageContent() {
                                     value={categoryInput}
                                     placeholder="Search category…"
                                     onChange={(e) => {
-                                        setCategoryInput(e.target.value);
+                                        const value = e.target.value;
+                                        setCategoryInput(value);
                                         setShowSuggestions(true);
-                                        setFormData(p => ({ ...p, category: "" }));
+                                        setFormData(p => ({ ...p, category: value }));
                                     }}
+
                                     onFocus={() => setShowSuggestions(true)}
                                     onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
                                 />
@@ -301,7 +303,7 @@ export default function SeoPageContent() {
                         columns={columns}
                         total={total}
                         fetchData={(pageNo, pageSize, options) =>
-                            dispatch(viewAllSeoPageContent({ pageNo, pageSize,options }))
+                            dispatch(viewAllSeoPageContent({ pageNo, pageSize, options }))
                         }
                     />
                 </Box>

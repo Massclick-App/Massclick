@@ -1,4 +1,4 @@
-import { createLocation, viewLocation, viewAllLocation, updateLocation, deleteLocation } from "../../helper/location/locationHelper.js";
+import { createLocation, viewLocation, viewAllLocation, updateLocation, deleteLocation, detectDistrictFromLatLng } from "../../helper/location/locationHelper.js";
 import { BAD_REQUEST } from "../../errorCodes.js";
 
 export const addLocationAction = async (req, res) => {
@@ -73,4 +73,24 @@ export const deleteLocationAction = async (req, res) => {
         console.error(error);
         return res.status(400).send({ message: error.message });
     }
+};
+
+export const detectDistrictAction = async (req, res) => {
+  try {
+    const { latitude, longitude } = req.body;
+
+    if (!latitude || !longitude) {
+      return res
+        .status(BAD_REQUEST.code)
+        .send({ message: "Latitude and Longitude are required" });
+    }
+
+    const result = await detectDistrictFromLatLng(latitude, longitude);
+    res.send(result);
+  } catch (error) {
+    console.error("Detect district error:", error.message);
+    return res
+      .status(BAD_REQUEST.code)
+      .send({ message: error.message });
+  }
 };

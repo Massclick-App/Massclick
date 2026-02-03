@@ -5,6 +5,7 @@ import {
   EDIT_LOCATION_REQUEST, EDIT_LOCATION_SUCCESS, EDIT_LOCATION_FAILURE,
   DELETE_LOCATION_REQUEST, DELETE_LOCATION_SUCCESS, DELETE_LOCATION_FAILURE,
   FETCH_IP_LOCATION_REQUEST, FETCH_IP_LOCATION_SUCCESS, FETCH_IP_LOCATION_FAILURE,
+  DETECT_DISTRICT_REQUEST, DETECT_DISTRICT_SUCCESS, DETECT_DISTRICT_FAILURE
 } from "../actions/userActionTypes.js";
 import { getClientToken } from "./clientAuthAction.js";
 
@@ -20,40 +21,40 @@ const getValidToken = async (dispatch) => {
 
 export const getAllLocation =
   ({ pageNo = 1, pageSize = 10, options = {} } = {}) =>
-  async (dispatch) => {
-    dispatch({ type: FETCH_LOCATION_REQUEST });
+    async (dispatch) => {
+      dispatch({ type: FETCH_LOCATION_REQUEST });
 
-    try {
-      const token = await getValidToken(dispatch);
+      try {
+        const token = await getValidToken(dispatch);
 
-      const {
-        search = "",
-        status = "all",
-        sortBy = "",
-        sortOrder = ""
-      } = options;
+        const {
+          search = "",
+          status = "all",
+          sortBy = "",
+          sortOrder = ""
+        } = options;
 
-      const response = await axios.get(
-        `${API_URL}/location/viewall?pageNo=${pageNo}&pageSize=${pageSize}&search=${search}&status=${status}&sortBy=${sortBy}&sortOrder=${sortOrder}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+        const response = await axios.get(
+          `${API_URL}/location/viewall?pageNo=${pageNo}&pageSize=${pageSize}&search=${search}&status=${status}&sortBy=${sortBy}&sortOrder=${sortOrder}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
 
-      dispatch({
-        type: FETCH_LOCATION_SUCCESS,
-        payload: {
-          data: response.data.data,
-          total: response.data.total,
-          pageNo,
-          pageSize
-        }
-      });
-    } catch (error) {
-      dispatch({
-        type: FETCH_LOCATION_FAILURE,
-        payload: error.response?.data || error.message
-      });
-    }
-  };
+        dispatch({
+          type: FETCH_LOCATION_SUCCESS,
+          payload: {
+            data: response.data.data,
+            total: response.data.total,
+            pageNo,
+            pageSize
+          }
+        });
+      } catch (error) {
+        dispatch({
+          type: FETCH_LOCATION_FAILURE,
+          payload: error.response?.data || error.message
+        });
+      }
+    };
 
 
 
@@ -130,3 +131,30 @@ export const getIpLocation = () => async (dispatch) => {
     throw error;
   }
 };
+
+export const detectDistrict =
+  ({ latitude, longitude }) =>
+  async (dispatch) => {
+    dispatch({ type: DETECT_DISTRICT_REQUEST });
+
+    try {
+      const response = await axios.post(
+        `${API_URL}/location/detect-district`,
+        { latitude, longitude }
+      );
+
+      dispatch({
+        type: DETECT_DISTRICT_SUCCESS,
+        payload: response.data,
+      });
+
+      return response.data;
+    } catch (error) {
+      dispatch({
+        type: DETECT_DISTRICT_FAILURE,
+        payload: error.response?.data || error.message,
+      });
+      throw error;
+    }
+  };
+

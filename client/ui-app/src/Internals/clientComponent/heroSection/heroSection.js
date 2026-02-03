@@ -11,6 +11,7 @@ import {
   logSearchActivity,
 } from "../../../redux/actions/businessListAction";
 import { logUserSearch } from "../../../redux/actions/otpAction";
+import { detectDistrict } from "../../../redux/actions/locationAction";
 // import backgroundImage from "../../../assets/background9.jpg";
 // import backgroundImage from "../../../assets/background.png";
 import { useNavigate } from "react-router-dom";
@@ -96,6 +97,40 @@ const HeroSection = ({
 
   const businessState = useSelector((state) => state.businessListReducer);
   const { searchLogs = [], backendSuggestions = [] } = businessState;
+
+  const locationState = useSelector((state) => state.locationReducer);
+  const { detectedDistrict } = locationState;
+console.log("detectedDistrict", detectedDistrict);
+
+  
+ useEffect(() => {
+    if (!navigator.geolocation) {
+      setLocationName("All Districts");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async ({ coords }) => {
+        try {
+          const result = await dispatch(
+            detectDistrict({
+              latitude: coords.latitude,
+              longitude: coords.longitude,
+            })
+          );
+
+          setLocationName(result?.district || "All Districts");
+        } catch {
+          setLocationName("All Districts");
+        }
+      },
+      () => {
+        setLocationName("All Districts");
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }, [dispatch, setLocationName]);
+
 
   useEffect(() => {
     dispatch(getAllSearchLogs());
@@ -194,7 +229,6 @@ const HeroSection = ({
     return list;
   })();
 
-
   const parsedLocationSuggestions = (() => {
     if (!Array.isArray(backendSuggestions) || backendSuggestions.length === 0)
       return [];
@@ -225,49 +259,6 @@ const HeroSection = ({
 
     return list;
   })();
-
-
-  // useEffect(() => {
-  //   if (!navigator.geolocation) return;
-
-  //   navigator.geolocation.getCurrentPosition(
-  //     async (position) => {
-  //       const { latitude, longitude } = position.coords;
-
-  //       try {
-  //         // Use OpenStreetMap (FREE, global, no API key)
-  //         const res = await fetch(
-  //           `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
-  //         );
-  //         const data = await res.json();
-
-  //         const address = data.address || {};
-  //         const detectedLocation =
-  //           address.city ||
-  //           address.town ||
-  //           address.village ||
-  //           address.state ||
-  //           address.country ||
-  //           "";
-
-  //         if (detectedLocation) {
-  //           setLocationName(detectedLocation);
-  //         }
-  //       } catch (err) {
-  //         console.error("Location fetch failed", err);
-  //       }
-  //     },
-  //     (error) => {
-  //       console.warn("Location permission denied");
-  //       setLocationName("Global");
-  //     },
-  //     {
-  //       enableHighAccuracy: true,
-  //       timeout: 10000,
-  //     }
-  //   );
-  // }, []);
-
 
   const handleSearch = async (e) => {
     e.preventDefault();

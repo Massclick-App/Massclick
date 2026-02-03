@@ -1,5 +1,6 @@
 import { ObjectId } from "mongodb";
 import locationModel from "../../model/locationModel/locationModel.js"
+import fetch from "node-fetch";
 
 export const createLocation = async function (reqBody = {}) {
   try {
@@ -99,4 +100,34 @@ export const deleteLocation = async (id) => {
     { new: true }
   ); if (!deletedLocation) throw new Error("Location not found");
   return deletedLocation;
+};
+
+export const detectDistrictFromLatLng = async (latitude, longitude) => {
+  if (!process.env.GOOGLE_MAPS_KEY) {
+    throw new Error("Google Maps API key not configured");
+  }
+
+  const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${process.env.GOOGLE_MAPS_KEY}`;
+
+  const response = await fetch(url);
+  const data = await response.json();
+
+  console.log("Google Geocode response:", data.status);
+
+  if (data.status !== "OK") {
+    throw new Error(data.error_message || "Google Geocoding failed");
+  }
+
+  const components = data.results[0].address_components;
+
+  const get = (type) =>
+    components.find((c) => c.types.includes(type))?.long_name || null;
+
+  return {
+    district:
+      get("administrative_area_level_3") ||
+      get("administrative_area_level_2"),
+    state: get("administrative_area_level_1"),
+    country: get("country"),
+  };
 };
