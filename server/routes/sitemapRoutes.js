@@ -10,7 +10,6 @@ const SITE_BASE = "https://massclick.in";
 
 const LIMIT = 1000;
 
-
 const slugify = (text = "") =>
   text
     .toLowerCase()
@@ -18,7 +17,6 @@ const slugify = (text = "") =>
     .replace(/&/g, "and")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
-
 
 router.get("/sitemap-category-city-:page.xml", async (req, res) => {
   try {
@@ -97,7 +95,6 @@ router.get("/sitemap-business-:page.xml", async (req, res) => {
 ${urls}
 </urlset>`);
 });
-
 
 router.get("/sitemap.xml", async (req, res) => {
   try {

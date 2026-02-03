@@ -61,6 +61,7 @@ import { fetchMatchedLeads } from "./redux/actions/leadsAction.js";
 import SeoData from './Internals/seoData/seoData.js';
 import SeoPageContent from './Internals/seoData/seoPageContent/seoPageContent.js';
 import MRPDatas from './Internals/MRPDATA/mrpData.js';
+import RouteChangeTracker from './RouteChangeTracker.js';
 
 const ComingSoon = ({ title }) => (
   <div style={{ textAlign: 'center', marginTop: '20%' }}>
@@ -147,6 +148,7 @@ function App() {
         preventDuplicate
       >
         <Router>
+          <RouteChangeTracker />
           <ScrollToTop />
           <GlobalDrawer />
           <Routes>

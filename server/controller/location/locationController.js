@@ -11,6 +11,7 @@ export const addLocationAction = async (req, res) => {
         return res.status(BAD_REQUEST.code).send(error.message);
     }
 };
+
 export const viewLocationAction = async (req, res) => {
     try {
         const locationId = req.params.id;
@@ -21,6 +22,7 @@ export const viewLocationAction = async (req, res) => {
         return res.status(BAD_REQUEST.code).send({ message: error.message });
     }
 };
+
 export const viewAllLocationAction = async (req, res) => {
   try {
     const pageNo = parseInt(req.query.pageNo) || 1;
@@ -52,6 +54,7 @@ export const viewAllLocationAction = async (req, res) => {
     return res.status(BAD_REQUEST.code).send({ message: error.message });
   }
 };
+
 export const updateLocationAction = async (req, res) => {
     try {
         const locationId = req.params.id;
@@ -79,18 +82,17 @@ export const detectDistrictAction = async (req, res) => {
   try {
     const { latitude, longitude } = req.body;
 
-    if (!latitude || !longitude) {
-      return res
-        .status(BAD_REQUEST.code)
-        .send({ message: "Latitude and Longitude are required" });
+    if (latitude == null || longitude == null) {
+      return res.status(400).json({
+        message: "Latitude and Longitude are required",
+      });
     }
 
     const result = await detectDistrictFromLatLng(latitude, longitude);
-    res.send(result);
+    res.status(200).json(result);
+
   } catch (error) {
-    console.error("Detect district error:", error.message);
-    return res
-      .status(BAD_REQUEST.code)
-      .send({ message: error.message });
+    console.error("Detect district error:", error);
+    res.status(400).json({ message: error.message });
   }
 };
