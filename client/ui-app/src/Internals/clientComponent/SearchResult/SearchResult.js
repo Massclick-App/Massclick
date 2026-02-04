@@ -14,6 +14,7 @@ import { backendMainSearch } from "../../../redux/actions/businessListAction";
 import { fetchSeoMeta } from "../../../redux/actions/seoAction.js";
 import { fetchSeoPageContentMeta } from "../../../redux/actions/seoPageContentAction.js";
 import { CLEAR_SEO_META } from "../../../redux/actions/userActionTypes.js";
+import TopBannerAds from "../banners/topBanner/topBanner.js";
 
 const createSlug = (text = "") =>
   text.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-");
@@ -169,26 +170,19 @@ const SearchResults = () => {
       )}
 
       <CardsSearch />
-
-      <Box sx={{ maxWidth: 1200, mx: "auto", px: 2, mt: 3 }}>
-        <h1 className="page-h1">
-          Best {searchText} in {locationText}
-        </h1>
-      </Box>
-
+      <div className="page-spacing" />
+      <TopBannerAds category={searchText} />
       <Box sx={{ minHeight: "100vh", bgcolor: "#f8f9fb", pt: 4, pb: 8 }}>
         <Box sx={{ maxWidth: 1200, mx: "auto", px: 2 }}>
 
           {!seoContentLoading && sanitizedHeaderContent && (
-            <Box sx={{ py: 6 }}>
-              <article className="seo-article">
-                <section
-                  className="seo-header-content"
-                  dangerouslySetInnerHTML={{
-                    __html: sanitizedHeaderContent,
-                  }}
-                />
-              </article>
+            <Box sx={{ maxWidth: 1200, mx: "auto", px: 2, mt: 3 }}>
+              <section
+                className="seo-header-content"
+                dangerouslySetInnerHTML={{
+                  __html: sanitizedHeaderContent,
+                }}
+              />
             </Box>
           )}
 

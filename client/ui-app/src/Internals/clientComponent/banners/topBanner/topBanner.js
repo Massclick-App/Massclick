@@ -2,8 +2,10 @@ import React, { useMemo, useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { getAdvertisementByCategory } from "../../../../redux/actions/advertisementAction";
 import "./topBanner.css";
+import defaultBanner from "../../../../assets/new_banner.jpg";
 
-const SLIDE_INTERVAL = 5000;
+const SLIDE_INTERVAL = 5000; 
+const DEFAULT_DELAY = 5000; 
 
 const parseDate = (date) => {
   if (!date) return null;
@@ -12,18 +14,17 @@ const parseDate = (date) => {
   return null;
 };
 
-const normalizeCategory = (value = "") => {
-  return value
+const normalizeCategory = (value = "") =>
+  value
     .toString()
     .trim()
     .toLowerCase()
-    .replace(/[^a-z]/g, "")
-    .replace(/s$/, "");
-};
+    .replace(/[^a-z]/g, "");
 
 const TopBannerAds = ({ category }) => {
   const dispatch = useDispatch();
 
+ 
   useEffect(() => {
     if (category) {
       dispatch(getAdvertisementByCategory(category));
@@ -34,38 +35,71 @@ const TopBannerAds = ({ category }) => {
     (state) => state.advertisement || {}
   );
 
+  const DEFAULT_BANNER = {
+    _id: "default-banner",
+    title: "Default Banner",
+    redirectUrl: null,
+    _image: defaultBanner,
+    isDefault: true,
+  };
+
+ 
   const bannerAds = useMemo(() => {
-    if (!categoryAdvertisements.length || !category) return [];
+    if (!category) return [DEFAULT_BANNER];
 
-    const now = new Date();
+    const nowTime = Date.now();
 
-    return categoryAdvertisements.filter((ad) => {
-      const start = parseDate(ad.startTime);
-      const end = parseDate(ad.endTime);
+    const apiBanners = categoryAdvertisements
+      .filter((ad) => {
+        const start = parseDate(ad.startTime);
+        const end = parseDate(ad.endTime);
+        if (!start || !end) return false;
 
-      if (!start || !end) return false;
+        if (nowTime < start.getTime() || nowTime > end.getTime()) return false;
 
-      const image =
-        ad.bannerImage ||
-        (ad.bannerImageKey
-          ? `https://massclickdev.s3.ap-southeast-2.amazonaws.com/${ad.bannerImageKey}`
-          : null);
-      if (now < start.getTime() || now > end.getTime()) return false;
+        const image =
+          ad.bannerImage ||
+          (ad.bannerImageKey
+            ? `https://massclickdev.s3.ap-southeast-2.amazonaws.com/${ad.bannerImageKey}`
+            : null);
 
-      return (
-        ad.isActive &&
-        !ad.isDeleted &&
-        ad.position === "TOP_BANNER" &&
-        normalizeCategory(ad.category) === normalizeCategory(category) &&
-        image
-      );
-    });
+        return (
+          ad.isActive &&
+          !ad.isDeleted &&
+          ad.position === "TOP_BANNER" &&
+          normalizeCategory(ad.category) === normalizeCategory(category) &&
+          image
+        );
+      })
+      .map((ad) => ({
+        ...ad,
+        _image:
+          ad.bannerImage ||
+          `https://massclickdev.s3.ap-southeast-2.amazonaws.com/${ad.bannerImageKey}`,
+      }));
+
+    return [DEFAULT_BANNER, ...apiBanners];
   }, [categoryAdvertisements, category]);
 
+
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [autoPlay, setAutoPlay] = useState(false);
+
 
   useEffect(() => {
-    if (bannerAds.length <= 1) return;
+    setCurrentIndex(0);
+    setAutoPlay(false);
+
+    const delayTimer = setTimeout(() => {
+      setAutoPlay(true);
+    }, DEFAULT_DELAY);
+
+    return () => clearTimeout(delayTimer);
+  }, [bannerAds.length]);
+
+ 
+  useEffect(() => {
+    if (!autoPlay || bannerAds.length <= 1) return;
 
     const timer = setInterval(() => {
       setCurrentIndex((prev) =>
@@ -74,7 +108,7 @@ const TopBannerAds = ({ category }) => {
     }, SLIDE_INTERVAL);
 
     return () => clearInterval(timer);
-  }, [bannerAds]);
+  }, [autoPlay, bannerAds.length]);
 
   if (loading || bannerAds.length === 0) return null;
 
@@ -88,17 +122,14 @@ const TopBannerAds = ({ category }) => {
           <a
             key={ad._id}
             href={ad.redirectUrl || "#"}
-            target="_blank"
+            target={ad.redirectUrl ? "_blank" : "_self"}
             rel="noopener noreferrer"
             className="carousel-slide"
           >
             <div className="banner-image-wrapper">
               <img
-                src={
-                  ad.bannerImage ||
-                  `https://massclickdev.s3.ap-southeast-2.amazonaws.com/${ad.bannerImageKey}`
-                }
-                alt={ad.title}
+                src={ad._image}
+                alt={ad.title || "Top banner advertisement"}
                 loading="lazy"
               />
             </div>

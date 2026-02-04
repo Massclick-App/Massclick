@@ -8,7 +8,7 @@ import CardsSearch from "../../CardsSearch/CardsSearch.js";
 import TopBannerAds from "../../banners/topBanner/topBanner.js";
 import { getBusinessByCategory } from "../../../../redux/actions/businessListAction.js";
 
-const CATEGORY = "restaurant";
+const CATEGORY = "Restaurants";
 
 const createSlug = (text) => {
   if (typeof text !== "string" || !text.trim()) return "unknown";

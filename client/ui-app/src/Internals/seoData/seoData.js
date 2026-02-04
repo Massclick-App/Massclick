@@ -57,7 +57,6 @@ export default function SeoData() {
   const [categoryInput, setCategoryInput] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
 
-
   useEffect(() => {
     dispatch(getAllSeo());
   }, [dispatch]);
@@ -76,7 +75,6 @@ export default function SeoData() {
 
     return () => clearTimeout(delay);
   }, [categoryInput, dispatch]);
-
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -165,7 +163,6 @@ export default function SeoData() {
     setSelectedRow(null);
   };
 
-
   const rows = seoList
     .filter((seo) => seo.isActive)
     .map((seo) => ({
@@ -212,7 +209,6 @@ export default function SeoData() {
     { label: "Canonical URL", name: "canonical" },
     { label: "Robots", name: "robots" },
   ];
-
 
   return (
     <div className="seo-page">
@@ -264,8 +260,6 @@ export default function SeoData() {
               </ul>
             )}
           </div>
-
-
 
           {fields.map(({ label, name }) => (
             <div key={name} className="seo-form-input-group">
