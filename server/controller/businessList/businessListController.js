@@ -135,27 +135,39 @@ export const getSuggestionsController = async (req, res) => {
         $match: {
           businessesLive: true,
           $or: [
-            { location: containsRegex },
-            { locationDetails: containsRegex },
-            { businessName: containsRegex },
             { category: containsRegex },
-            { keywords: containsRegex }
+            { businessName: containsRegex },
+            { location: containsRegex },
+            { locationDetails: containsRegex }
           ]
         }
       },
       {
         $addFields: {
           priority: {
-            $cond: [
-              {
-                $or: [
-                  { $regexMatch: { input: "$location", regex: startsWithRegex } },
-                  { $regexMatch: { input: "$locationDetails", regex: startsWithRegex } }
-                ]
-              },
-              1, 
-              2  
-            ]
+            $switch: {
+              branches: [
+                {
+                  case: {
+                    $or: [
+                      { $regexMatch: { input: "$category", regex: startsWithRegex } },
+                      { $regexMatch: { input: "$businessName", regex: startsWithRegex } }
+                    ]
+                  },
+                  then: 1  
+                },
+                {
+                  case: {
+                    $or: [
+                      { $regexMatch: { input: "$category", regex: containsRegex } },
+                      { $regexMatch: { input: "$businessName", regex: containsRegex } }
+                    ]
+                  },
+                  then: 2
+                }
+              ],
+              default: 3
+            }
           }
         }
       },
@@ -166,7 +178,8 @@ export const getSuggestionsController = async (req, res) => {
           businessName: 1,
           category: 1,
           location: 1,
-          locationDetails: 1
+          locationDetails: 1,
+          priority: 1
         }
       }
     ]);
