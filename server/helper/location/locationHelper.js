@@ -112,21 +112,25 @@ export const detectDistrictFromLatLng = async (latitude, longitude) => {
   const response = await fetch(url);
   const data = await response.json();
 
-  console.log("Google Geocode response:", data.status);
-
   if (data.status !== "OK") {
     throw new Error(data.error_message || "Google Geocoding failed");
   }
 
-  const components = data.results[0].address_components;
+  const preferredResult =
+    data.results.find(r => r.types.includes("locality")) ||
+    data.results.find(r => r.types.includes("administrative_area_level_2")) ||
+    data.results[0];
+
+  const components = preferredResult.address_components;
 
   const get = (type) =>
-    components.find((c) => c.types.includes(type))?.long_name || null;
+    components.find(c => c.types.includes(type))?.long_name || null;
 
   return {
     district:
-      get("administrative_area_level_3") ||
-      get("administrative_area_level_2"),
+      get("administrative_area_level_2") ||
+      get("locality") ||
+      get("sublocality"),
     state: get("administrative_area_level_1"),
     country: get("country"),
   };

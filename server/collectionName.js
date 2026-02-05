@@ -20,6 +20,7 @@ export const Collections = {
     MRPDATAS: 'mrpdatas',
     ENQUIRYNOWDATAS: 'enquirynowdatas',
     BUSINESSREVIEW: 'businessreview',
+    LEADROTATION: 'leadsrotation'
 
 };
 
@@ -44,5 +45,6 @@ export const {
     SEOPAGECONTENT,
     MRPDATAS,
     ENQUIRYNOWDATAS,
-    BUSINESSREVIEW
+    BUSINESSREVIEW,
+    LEADROTATION
 } = Collections;

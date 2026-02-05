@@ -20,7 +20,6 @@ import {
   DialogContent,
   DialogActions,
 } from "@mui/material";
-
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import { fetchSeoCategorySuggestions } from "../../redux/actions/seoAction.js";
@@ -83,7 +82,6 @@ export default function SeoData() {
 
   const validateForm = () => {
     const newErrors = {};
-
     if (!formData.pageType) newErrors.pageType = "Page type required";
     if (!formData.title.trim()) newErrors.title = "Meta title required";
     if (!formData.description.trim())
@@ -216,7 +214,6 @@ export default function SeoData() {
         <h2 className="seo-card-title">
           {editingId ? "Edit SEO Meta" : "Add SEO Meta"}
         </h2>
-
         <form onSubmit={handleSubmit} className="seo-form-grid">
           <div className="seo-form-input-group category-search">
             <label className="seo-input-label">Category</label>
@@ -238,7 +235,6 @@ export default function SeoData() {
                 setTimeout(() => setShowSuggestions(false), 150);
               }}
             />
-
             {showSuggestions && categorySuggestions.length > 0 && (
               <ul className="category-suggestion-list">
                 {categorySuggestions.map((item) => (
@@ -260,11 +256,9 @@ export default function SeoData() {
               </ul>
             )}
           </div>
-
           {fields.map(({ label, name }) => (
             <div key={name} className="seo-form-input-group">
               <label className="seo-input-label">{label}</label>
-
               {name === "description" ? (
                 <textarea
                   name={name}

@@ -124,35 +124,52 @@ export const viewBusinessByCategory = async (req, res) => {
 
 export const getSuggestionsController = async (req, res) => {
   try {
-    const search = req.query.search || "";
+    const search = (req.query.search || "").trim();
+    if (search.length < 2) return res.send([]);
 
-    if (search.trim().length < 2) return res.send([]);
+    const startsWithRegex = new RegExp(`^${search}`, "i");
+    const containsRegex = new RegExp(search, "i");
 
-    const regex = new RegExp(search.trim(), "i");
-
-    const suggestions = await businessListModel.find(
+    const suggestions = await businessListModel.aggregate([
       {
-        businessesLive: true,
-        $or: [
-          { businessName: regex },
-          { category: regex },
-          { keywords: regex },
-          { location: regex },
-          { locationDetails: regex },
-          { street: regex },
-          { plotNumber: regex },
-          { pincode: regex },
-        ],
+        $match: {
+          businessesLive: true,
+          $or: [
+            { location: containsRegex },
+            { locationDetails: containsRegex },
+            { businessName: containsRegex },
+            { category: containsRegex },
+            { keywords: containsRegex }
+          ]
+        }
       },
       {
-        businessName: 1,
-        category: 1,
-        location: 1,
-        locationDetails: 1,
-        street: 1,
-        pincode: 1,
+        $addFields: {
+          priority: {
+            $cond: [
+              {
+                $or: [
+                  { $regexMatch: { input: "$location", regex: startsWithRegex } },
+                  { $regexMatch: { input: "$locationDetails", regex: startsWithRegex } }
+                ]
+              },
+              1, 
+              2  
+            ]
+          }
+        }
+      },
+      { $sort: { priority: 1 } },
+      { $limit: 15 },
+      {
+        $project: {
+          businessName: 1,
+          category: 1,
+          location: 1,
+          locationDetails: 1
+        }
       }
-    ).limit(15);
+    ]);
 
     res.send(suggestions);
   } catch (err) {

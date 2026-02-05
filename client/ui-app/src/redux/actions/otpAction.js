@@ -170,13 +170,13 @@ export const logUserSearch = (userId, query, location, category) => async (dispa
   }
 };
 
-export const sendWhatsAppForLead = (leadId, customMessage = "") => async (dispatch) => {
+export const sendWhatsAppForLead = (leadId) => async (dispatch) => {
   dispatch({ type: SEND_WHATSAPP_REQUEST });
 
   try {
     const res = await axios.post(
       `${API_URL}/leadssend/whatsapp`,
-      { leadId, customMessage },
+      { leadId },
       { headers: { "Content-Type": "application/json" } }
     );
 
@@ -199,13 +199,14 @@ export const sendWhatsAppForLead = (leadId, customMessage = "") => async (dispat
   }
 };
 
-export const sendWhatsAppToLeadsBulk = (leadIds = [], customMessage = "") => async (dispatch) => {
+
+export const sendWhatsAppToLeadsBulk = (leadIds = []) => async (dispatch) => {
   dispatch({ type: SEND_WHATSAPP_ALL_REQUEST });
 
   try {
     const res = await axios.post(
       `${API_URL}/leadssend/whatsappall`,
-      { leadIds, customMessage },
+      { leadIds },
       { headers: { "Content-Type": "application/json" } }
     );
 
@@ -224,6 +225,7 @@ export const sendWhatsAppToLeadsBulk = (leadIds = [], customMessage = "") => asy
     throw error;
   }
 };
+
 
 
 

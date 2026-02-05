@@ -96,8 +96,8 @@ export const verifyOtp = async (number, otp) => {
 };
 
 
-export const sendWhatsAppMessage = async (mobile, variables = {}) => {debugger
-  const cleanMobile = mobile.replace(/\D/g, "");
+export const sendWhatsAppMessage = async (ownerMobile, lead = {}) => {
+  const cleanMobile = ownerMobile.replace(/\D/g, "");
   if (cleanMobile.length !== 10) {
     throw new Error("Invalid mobile number");
   }
@@ -109,9 +109,9 @@ export const sendWhatsAppMessage = async (mobile, variables = {}) => {debugger
       messaging_product: "whatsapp",
       type: "template",
       template: {
-        name: process.env.MSG91_TEMPLATE_NAME,
+        name: "business_lead_alert_v1",
         language: {
-          code: process.env.MSG91_TEMPLATE_LANGUAGE,
+          code: "en_US",
           policy: "deterministic"
         },
         namespace: process.env.MSG91_TEMPLATE_NAMESPACE,
@@ -119,14 +119,11 @@ export const sendWhatsAppMessage = async (mobile, variables = {}) => {debugger
           {
             to: [`91${cleanMobile}`],
             components: {
-              body_1: {
-                type: "text",
-                value: variables.name || "Customer"
-              },
-              body_2: {
-                type: "text",
-                value: variables.message || "your recent search"
-              }
+              body_1: { type: "text", value: lead.searchText || "N/A" },
+              body_2: { type: "text", value: lead.location || "N/A" },
+              body_3: { type: "text", value: lead.customerName || "N/A" },
+              body_4: { type: "text", value: lead.customerMobile || "N/A" },
+              body_5: { type: "text", value: lead.email || "Not Provided" }
             }
           }
         ]
