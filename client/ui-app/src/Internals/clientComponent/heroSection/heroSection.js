@@ -100,10 +100,9 @@ const HeroSection = ({
 
   const locationState = useSelector((state) => state.locationReducer);
   const { detectedDistrict } = locationState;
-console.log("detectedDistrict", detectedDistrict);
 
-  
- useEffect(() => {
+
+  useEffect(() => {
     if (!navigator.geolocation) {
       setLocationName("All Districts");
       return;
@@ -296,7 +295,7 @@ console.log("detectedDistrict", detectedDistrict);
   return (
     <div
       className="hero-section"
-   
+
     >
 
       <div className="hero-content hero-minimal">
@@ -369,7 +368,7 @@ console.log("detectedDistrict", detectedDistrict);
             <MicIcon className="input-adornment end" />
           </div>
           <button type="submit" className="search-button">
-            <SearchIcon className="search-icon" style={{ color: "#fff" }} />
+            <SearchIcon className="search-icon" />
           </button>
         </form>
       </div>

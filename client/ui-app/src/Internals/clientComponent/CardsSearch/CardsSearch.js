@@ -69,7 +69,6 @@ const CategoryDropdown = ({ options, setSearchTerm, closeDropdown }) => {
   );
 };
 
-
 const CardsSearch = ({
   locationName: propLocationName,
   setLocationName: propSetLocationName,
@@ -113,7 +112,6 @@ const CardsSearch = ({
   useEffect(() => {
     dispatch(getAllSearchLogs());
   }, [dispatch]);
-
 
   useEffect(() => {
     if (debouncedSearch.trim().length >= 2) {
@@ -264,12 +262,10 @@ const CardsSearch = ({
     navigate(`/${slugLocation}/${slugTerm}`, { state: { results } });
   };
 
-
   const handleOpenModal = () => setIsModalOpen(true);
   const handleCloseModal = () => setIsModalOpen(false);
 
   const loggedIn = categoryBarHelpers.checkLogin();
-
 
   return (
     <>

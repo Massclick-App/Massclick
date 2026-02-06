@@ -81,7 +81,6 @@ export const verifyOtp = async (number, otp) => {
       }
     );
 
-
     const { type, message } = response.data;
 
     if (type === "success" || message === "Mobile no. already verified") {

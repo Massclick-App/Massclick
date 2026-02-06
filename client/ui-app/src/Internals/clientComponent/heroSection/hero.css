@@ -164,6 +164,8 @@
 /**************************************/
 
 .search-button {
+  position: relative;
+  z-index: 10;
   height: 56px;
   width: 56px;
 
@@ -174,10 +176,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
+
   cursor: pointer;
+  flex-shrink: 0;
 
   box-shadow: 0px 8px 20px rgba(255, 123, 0, 0.4);
-  transition: 0.25s ease;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
 .search-button:hover {
@@ -187,12 +191,8 @@
 
 .search-icon {
   font-size: 26px;
-  color: #fff;
+  color: #ffffff !important;
 }
-
-/***********************/
-/*   MOBILE VIEW       */
-/***********************/
 
 @media (max-width: 768px) {
   .search-bar-container {
@@ -334,7 +334,7 @@
 /* --- Search Button --- */
 /* ========================================================= */
 
-.search-button {
+/* .search-button {
   height: var(--search-height);
   width: var(--search-height);
 
@@ -359,11 +359,9 @@
   background-color: var(--color-primary-hover);
   box-shadow: 0 10px 30px rgba(255, 123, 0, 0.8);
   transform: translateY(-2px);
-}
+} */
 
-.search-icon {
-  font-size: 30px;
-}
+
 
 /* ========================================================= */
 /* --- Responsiveness --- */
@@ -413,7 +411,7 @@
   position: absolute !important;
   top: calc(100% + 8px);
   left: 0;
-  width: 100%;           
+  width: 100%;
   max-width: 100%;
   background: #ffffff;
   z-index: 3000 !important;

@@ -30,7 +30,6 @@ const getValidToken = async (dispatch) => {
   return token;
 };
 
-
 // export const getAllBusinessList = () => async (dispatch) => {
 //   dispatch({ type: FETCH_BUSINESS_REQUEST });
 
@@ -240,7 +239,7 @@ export const toggleBusinessStatus = ({ id, newStatus }) => async (dispatch) => {
 export const editBusinessList = (id, businessData) => async (dispatch) => {
   dispatch({ type: EDIT_BUSINESS_REQUEST });
   try {
-    const token = await dispatch(getClientToken());
+    const token = await getValidToken(dispatch);
 
     const response = await axios.put(`${API_URL}/businesslist/update/${id}`, businessData, {
       headers: { Authorization: `Bearer ${token}` },
@@ -254,11 +253,10 @@ export const editBusinessList = (id, businessData) => async (dispatch) => {
   }
 };
 
-
 export const deleteBusinessList = (id) => async (dispatch) => {
   dispatch({ type: DELETE_BUSINESS_REQUEST });
   try {
-    const token = localStorage.getItem("accessToken");
+    const token = await getValidToken(dispatch);
 
 
     if (!token) {
