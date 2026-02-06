@@ -352,7 +352,6 @@ const CardsSearch = ({
                   </div>
                 )}
             </div>
-
             <div className="input-group search-group" ref={categoryRef}>
               <input
                 className="custom-input"
@@ -365,7 +364,6 @@ const CardsSearch = ({
                 }}
                 onFocus={() => setIsCategoryDropdownOpen(true)}
               />
-
               {isCategoryDropdownOpen && searchTerm.trim().length < 2 && (
                 <CategoryDropdown
                   options={categoryOptions}
@@ -381,7 +379,6 @@ const CardsSearch = ({
                   }}
                 />
               )}
-
               {isCategoryDropdownOpen && searchTerm.trim().length >= 2 && (
                 <div className="category-custom-dropdown" style={{ zIndex: 2000 }}>
                   <div className="trending-label">SUGGESTIONS</div>
