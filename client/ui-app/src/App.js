@@ -62,7 +62,8 @@ import SeoData from './Internals/seoData/seoData.js';
 import SeoPageContent from './Internals/seoData/seoPageContent/seoPageContent.js';
 import MRPDatas from './Internals/MRPDATA/mrpData.js';
 import RouteChangeTracker from './RouteChangeTracker.js';
-import FloatingButtons from './Internals/clientComponent/floatingButtons.js';
+import FloatingButtons from './Internals/clientComponent/floating/floatingButtons.js';
+import FloatingAdCard from './Internals/clientComponent/floating/floatingAdCard.js';
 
 const ComingSoon = ({ title }) => (
   <div style={{ textAlign: 'center', marginTop: '20%' }}>
@@ -152,6 +153,7 @@ function App() {
           <RouteChangeTracker />
           <ScrollToTop />
           <GlobalDrawer />
+          <FloatingAdCard />
           <FloatingButtons />
           <Routes>
             <Route path="/" element={<Navigate to="/home" replace />} />
