@@ -5,31 +5,38 @@ import { useEffect, useState } from "react";
 const FloatingButtons = () => {
   const navigate = useNavigate();
   const location = useLocation();
-
   const [visible, setVisible] = useState(true);
 
+  const HIDE_ON_ROUTES = ["/admin", "/dashboard"];
+
+  const shouldHide = HIDE_ON_ROUTES.some(path =>
+    location.pathname.startsWith(path)
+  );
+
   useEffect(() => {
-    setVisible(false); 
+    if (shouldHide) return;
 
-    const timer = setTimeout(() => {
-      setVisible(true); 
-    }, 250); 
-
+    setVisible(false);
+    const timer = setTimeout(() => setVisible(true), 250);
     return () => clearTimeout(timer);
-  }, [location.pathname]);
+  }, [location.pathname, shouldHide]);
+
+  if (shouldHide) {
+    return null;
+  }
 
   return (
     <Box
       sx={{
         position: "fixed",
-        right: visible ? 0 : -60, 
+        right: visible ? 0 : -70,
         top: "50%",
         transform: "translateY(-50%)",
         zIndex: 3000,
         display: { xs: "none", md: "flex" },
         flexDirection: "column",
         gap: 1,
-        transition: "right 0.3s ease-in-out", 
+        transition: "right 0.35s ease-in-out",
       }}
     >
       <Box
