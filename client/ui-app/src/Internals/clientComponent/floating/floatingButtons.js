@@ -1,4 +1,4 @@
-import { Box } from "@mui/material";
+import { Box, Typography } from "@mui/material";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 
@@ -9,7 +9,7 @@ const FloatingButtons = () => {
 
   const HIDE_ON_ROUTES = ["/admin", "/dashboard"];
 
-  const shouldHide = HIDE_ON_ROUTES.some(path =>
+  const shouldHide = HIDE_ON_ROUTES.some((path) =>
     location.pathname.startsWith(path)
   );
 
@@ -17,64 +17,114 @@ const FloatingButtons = () => {
     if (shouldHide) return;
 
     setVisible(false);
-    const timer = setTimeout(() => setVisible(true), 250);
+    const timer = setTimeout(() => setVisible(true), 220);
     return () => clearTimeout(timer);
   }, [location.pathname, shouldHide]);
 
-  if (shouldHide) {
-    return null;
-  }
+  if (shouldHide) return null;
 
   return (
     <Box
       sx={{
         position: "fixed",
-        right: visible ? 0 : -70,
+
+        right: visible ? { md: 0, lg: 8 } : -80,
+
         top: "50%",
         transform: "translateY(-50%)",
+
         zIndex: 3000,
-        display: { xs: "none", md: "flex" },
+
+        display: { xs: "none", sm: "none", md: "flex" },
+
         flexDirection: "column",
-        gap: 1,
-        transition: "right 0.35s ease-in-out",
+        gap: 1.5,
+
+        transition: "right 0.35s cubic-bezier(0.4, 0, 0.2, 1)",
       }}
     >
       <Box
+        onClick={() => navigate("/advertise")}
         sx={{
           writingMode: "vertical-rl",
           transform: "rotate(180deg)",
+
           bgcolor: "#ff5722",
-          color: "#fff",
-          px: 1.5,
-          py: 2,
-          fontWeight: 600,
+          color: "#ffffff",
+
+          px: 1.8,
+          py: 2.4,
+
+          fontSize: "0.85rem",
+          fontWeight: 700,
+          letterSpacing: "0.04em",
+
           cursor: "pointer",
-          borderRadius: "8px 0 0 8px",
-          boxShadow: 3,
-          "&:hover": { bgcolor: "#e64a19" },
+          userSelect: "none",
+
+          borderRadius: "10px 0 0 10px",
+
+          boxShadow: "0 8px 24px rgba(0,0,0,0.28)",
+
+          transition: "all 0.25s ease",
+
+          "&:hover": {
+            bgcolor: "#e64a19",
+            transform: "rotate(180deg) translateX(-2px)",
+            boxShadow: "0 14px 32px rgba(0,0,0,0.35)",
+          },
         }}
-        onClick={() => navigate("/advertise")}
       >
-        Advertise
+        <Typography
+          sx={{
+            fontSize: "inherit",
+            fontWeight: "inherit",
+          }}
+        >
+          Advertise
+        </Typography>
       </Box>
 
       <Box
+        onClick={() => navigate("/customercare")}
         sx={{
           writingMode: "vertical-rl",
           transform: "rotate(180deg)",
+
           bgcolor: "#06155d",
-          color: "#fff",
-          px: 1.5,
-          py: 2,
+          color: "#ffffff",
+
+          px: 1.8,
+          py: 2.4,
+
+          fontSize: "0.8rem",
           fontWeight: 600,
+          letterSpacing: "0.04em",
+
           cursor: "pointer",
-          borderRadius: "8px 0 0 8px",
-          boxShadow: 3,
-          "&:hover": { bgcolor: "#115293" },
+          userSelect: "none",
+
+          borderRadius: "10px 0 0 10px",
+
+          boxShadow: "0 8px 24px rgba(0,0,0,0.25)",
+
+          transition: "all 0.25s ease",
+
+          "&:hover": {
+            bgcolor: "#0b1f85",
+            transform: "rotate(180deg) translateX(-2px)",
+            boxShadow: "0 14px 32px rgba(0,0,0,0.35)",
+          },
         }}
-        onClick={() => navigate("/customercare")}
       >
-        Help & Support
+        <Typography
+          sx={{
+            fontSize: "inherit",
+            fontWeight: "inherit",
+          }}
+        >
+          Help & Support
+        </Typography>
       </Box>
     </Box>
   );
