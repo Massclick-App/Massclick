@@ -185,7 +185,6 @@ const HeroSection = ({
     return lower.length <= 4 || !lower.includes(" ");
   };
 
-
   const suggestionCategories = (() => {
     if (!Array.isArray(backendSuggestions) || backendSuggestions.length === 0)
       return [];
@@ -321,6 +320,10 @@ const HeroSection = ({
                 onSelect={(val) => {
                   const chosen = typeof val === "string" ? val : String(val);
                   setLocationName(chosen);
+                  dispatch({
+                    type: "SET_SELECTED_DISTRICT",
+                    payload: chosen,
+                  });
                   setShowLocationDropdown(false);
                 }}
               />

@@ -89,7 +89,6 @@ const initialState = {
 export default function businessListReducer(state = initialState, action) {
   switch (action.type) {
 
-    /** ------------------- BUSINESS ------------------- **/
     case FETCH_BUSINESS_REQUEST:
     case CREATE_BUSINESS_REQUEST:
     case EDIT_BUSINESS_REQUEST:
@@ -220,7 +219,6 @@ export default function businessListReducer(state = initialState, action) {
         searchLogsError: action.payload,
       };
 
-
     case FETCH_DASHBOARDCARD_REQUEST:
       return {
         ...state,
@@ -266,7 +264,6 @@ export default function businessListReducer(state = initialState, action) {
         error: null,
       };
 
-
     case CATEGORY_BUSINESS_FAILURE:
       return {
         ...state,
@@ -277,7 +274,6 @@ export default function businessListReducer(state = initialState, action) {
         },
         error: action.payload.error,
       };
-
 
     case FETCH_TRENDING_REQUEST:
       return { ...state, trendingLoading: true, trendingError: null };
@@ -297,7 +293,6 @@ export default function businessListReducer(state = initialState, action) {
         trendingList: [],
         trendingError: action.payload,
       };
-
 
     case FIND_BUSINESS_BY_MOBILE_REQUEST:
       return {
@@ -344,7 +339,6 @@ export default function businessListReducer(state = initialState, action) {
         pendingBusinessError: action.payload,
       };
 
-    /** ------------------- SEARCH LOGS ------------------- **/
     case FETCH_SEARCH_LOGS_REQUEST:
       return { ...state, searchLogsLoading: true, searchLogsError: null };
 
@@ -392,7 +386,6 @@ export default function businessListReducer(state = initialState, action) {
         leadsHistoryUsers: action.payload
       };
 
-
     case SUGGESTION_BUSINESS_REQUEST:
       return { ...state, loading: true };
 
@@ -402,7 +395,6 @@ export default function businessListReducer(state = initialState, action) {
     case SUGGESTION_BUSINESS_FAILURE:
       return { ...state, loading: false, backendSuggestions: [] };
 
-    /** ------------------- SEARCH ------------------- **/
     case SEARCH_BUSINESS_REQUEST:
       return { ...state, loading: true };
 
@@ -412,7 +404,6 @@ export default function businessListReducer(state = initialState, action) {
     case SEARCH_BUSINESS_FAILURE:
       return { ...state, loading: false, backendSearchResults: [] };
 
-    /** ------------------- DEFAULT ------------------- **/
     default:
       return state;
   }

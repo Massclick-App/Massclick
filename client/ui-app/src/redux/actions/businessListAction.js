@@ -156,7 +156,7 @@ export const getAllClientBusinessList = () => async (dispatch) => {
   }
 };
 
-export const getBusinessByCategory = (category) => async (dispatch) => {
+export const getBusinessByCategory = (category, district) => async (dispatch) => {
   dispatch({ type: CATEGORY_BUSINESS_REQUEST });
 
   try {
@@ -164,7 +164,7 @@ export const getBusinessByCategory = (category) => async (dispatch) => {
     if (!token) throw new Error("Client token not available");
 
     const response = await axios.get(
-      `${API_URL}/businesslist/category?category=${category}`,
+      `${API_URL}/businesslist/category?category=${category}&district=${district}`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
 
@@ -186,7 +186,6 @@ export const getBusinessByCategory = (category) => async (dispatch) => {
     });
   }
 };
-
 
 export const createBusinessList = (businessListData) => async (dispatch) => {
   dispatch({ type: CREATE_BUSINESS_REQUEST });

@@ -27,7 +27,9 @@ import {
 const initialState = {
   location: [],
   ipLocation: null,
-  detectedDistrict: null,
+  detectedDistrict: null,   
+  selectedDistrict: null,   
+
   total: 0,
   pageNo: 1,
   pageSize: 10,
@@ -47,7 +49,7 @@ export default function locationReducer(state = initialState, action) {
       return {
         ...state,
         loading: true,
-        error: null
+        error: null,
       };
 
     case FETCH_LOCATION_SUCCESS:
@@ -58,7 +60,7 @@ export default function locationReducer(state = initialState, action) {
         total: action.payload.total,
         pageNo: action.payload.pageNo,
         pageSize: action.payload.pageSize,
-        error: null
+        error: null,
       };
 
     case CREATE_LOCATION_SUCCESS:
@@ -66,7 +68,7 @@ export default function locationReducer(state = initialState, action) {
         ...state,
         loading: false,
         location: [...state.location, action.payload],
-        error: null
+        error: null,
       };
 
     case EDIT_LOCATION_SUCCESS:
@@ -76,7 +78,7 @@ export default function locationReducer(state = initialState, action) {
         location: state.location.map((loc) =>
           loc._id === action.payload._id ? action.payload : loc
         ),
-        error: null
+        error: null,
       };
 
     case DELETE_LOCATION_SUCCESS:
@@ -86,7 +88,7 @@ export default function locationReducer(state = initialState, action) {
         location: state.location.filter(
           (loc) => loc._id !== action.payload._id
         ),
-        error: null
+        error: null,
       };
 
     case FETCH_IP_LOCATION_SUCCESS:
@@ -94,7 +96,7 @@ export default function locationReducer(state = initialState, action) {
         ...state,
         loading: false,
         ipLocation: action.payload,
-        error: null
+        error: null,
       };
 
     case DETECT_DISTRICT_SUCCESS:
@@ -102,9 +104,15 @@ export default function locationReducer(state = initialState, action) {
         ...state,
         loading: false,
         detectedDistrict: action.payload,
-        error: null
+        selectedDistrict: state.selectedDistrict || action.payload,
+        error: null,
       };
 
+    case "SET_SELECTED_DISTRICT":
+      return {
+        ...state,
+        selectedDistrict: action.payload,
+      };
 
     case FETCH_LOCATION_FAILURE:
     case CREATE_LOCATION_FAILURE:
@@ -115,7 +123,7 @@ export default function locationReducer(state = initialState, action) {
       return {
         ...state,
         loading: false,
-        error: action.payload
+        error: action.payload,
       };
 
     default:

@@ -3,7 +3,7 @@ import CategoryModel from "../../model/category/categoryModel.js";
 import { getSignedUrlByKey } from "../../s3Uploder.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
 import { sendWhatsAppMessage } from "../../helper/msg91/smsGatewayHelper.js";
-import leadsRotationModel from "../../model/leadsData/leadsRotationalModel.js";
+// import leadsRotationModel from "../../model/leadsData/leadsRotationalModel.js";
 
 // export const logSearchAction = async (req, res) => {
 //   try {
@@ -62,7 +62,6 @@ export const logSearchAction = async (req, res) => {
     }
 
     const finalCategoryName = categoryName.trim();
-
     const normalizedLocation = location?.toLowerCase().trim() || "global";
 
     const categorySlug = finalCategoryName
@@ -85,16 +84,16 @@ export const logSearchAction = async (req, res) => {
     ];
 
     await createSearchLog({
-      categoryName: finalCategoryName,        
+      categoryName: finalCategoryName,
       categoryImage: category?.categoryImageKey || "",
       location: normalizedLocation,
-      searchedUserText,                      
+      searchedUserText,
       userDetails: filteredUser
     });
 
     const businesses = await businessListModel.find(
       {
-        category: finalCategoryName,           
+        category: finalCategoryName,
         location: { $regex: new RegExp(`^${normalizedLocation}$`, "i") },
         isActive: true,
         businessesLive: true
@@ -105,26 +104,9 @@ export const logSearchAction = async (req, res) => {
     if (!businesses.length) {
       return res.status(200).json({
         success: true,
-        message: "Search logged, no matching businesses for this category & location"
+        message: "Search logged, no businesses found"
       });
     }
-
-    const rotation = await leadsRotationModel.findOneAndUpdate(
-      { category: finalCategoryName, location: normalizedLocation },
-      { $setOnInsert: { lastIndex: -1 } },
-      { new: true, upsert: true }
-    );
-
-    const nextIndex = (rotation.lastIndex + 1) % businesses.length;
-    const selectedBusiness = businesses[nextIndex];
-
-    const leadData = {
-      searchText: searchedUserText || finalCategoryName,
-      location: normalizedLocation,
-      customerName: userDetails?.userName || "Unknown",
-      customerMobile: userDetails?.mobileNumber1 || "",
-      email: userDetails?.email || ""
-    };
 
     const hasValidUserDetails =
       userDetails &&
@@ -134,32 +116,48 @@ export const logSearchAction = async (req, res) => {
         userDetails.mobileNumber2 ||
         userDetails.email
       );
+    
 
-    const ownerMobile =
-      selectedBusiness.contactList || selectedBusiness.whatsappNumber;
+    const leadData = {
+      searchText: searchedUserText || finalCategoryName,
+      location: normalizedLocation,
+      customerName: userDetails?.userName || "Unknown",
+      customerMobile: userDetails?.mobileNumber1 || "",
+      email: userDetails?.email || ""
+    };
 
-    if (ownerMobile && hasValidUserDetails) {
-      try {
-        await sendWhatsAppMessage(ownerMobile, leadData);
-      } catch (err) {
-        console.error(
-          `WhatsApp failed for ${selectedBusiness.businessName}`,
-          err.message
-        );
+    const notifiedBusinesses = [];
+
+    if (hasValidUserDetails) {
+      for (const business of businesses) {
+        const ownerMobile =
+          business.contactList || business.whatsappNumber;
+
+        if (!ownerMobile) continue;
+
+        try {
+          await sendWhatsAppMessage(ownerMobile, leadData);
+          notifiedBusinesses.push({
+            businessName: business.businessName,
+            mobile: ownerMobile
+          });
+
+        } catch (err) {
+          console.error(
+            `WhatsApp failed for ${business.businessName}`,
+            err.message
+          );
+        }
       }
     }
 
-    await leadsRotationModel.updateOne(
-      { category: finalCategoryName, location: normalizedLocation },
-      { $set: { lastIndex: nextIndex } }
-    );
-
     return res.status(202).json({
       success: true,
-      message: "Search logged successfully",
+      message: "Search logged & lead sent to all matching businesses",
       category: finalCategoryName,
-      searchedText: searchedUserText,
-      sentTo: hasValidUserDetails ? selectedBusiness.businessName : null
+      location: normalizedLocation,
+      totalBusinesses: businesses.length,
+      notifiedBusinesses
     });
 
   } catch (error) {

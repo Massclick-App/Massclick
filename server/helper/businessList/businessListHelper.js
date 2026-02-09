@@ -102,7 +102,7 @@ export const viewBusinessList = async (id) => {
     return business;
 };
 
-export const findBusinessesByCategory = async (category) => {
+export const findBusinessesByCategory = async (category, district) => {
   const query = {
     businessesLive: true,
     $or: [
@@ -111,9 +111,27 @@ export const findBusinessesByCategory = async (category) => {
     ]
   };
 
+  if (
+    district &&
+    district !== "All Districts" &&
+    district !== "Enter location manually..."
+  ) {
+    query.$and = [
+      {
+        $or: [
+          { district: { $regex: district, $options: "i" } },
+          { location: { $regex: district, $options: "i" } },
+          { locationDetails: { $regex: district, $options: "i" } },
+          { street: { $regex: district, $options: "i" } },
+          { pincode: { $regex: district, $options: "i" } }
+        ]
+      }
+    ];
+  }
+
   const businessList = await businessListModel.find(query).lean();
 
- if (!businessList || businessList.length === 0) {
+  if (!businessList || businessList.length === 0) {
     return [];
   }
 
@@ -559,61 +577,61 @@ export const updateBusinessList = async (id, data) => {
 // };
 
 export const deleteBusinessList = async (id) => {
-    if (!ObjectId.isValid(id)) throw new Error("Invalid business ID");
+  if (!ObjectId.isValid(id)) throw new Error("Invalid business ID");
 
-    const deletedBusiness = await businessListModel.findByIdAndUpdate(
-        id,
-        { isActive: false, updatedAt: new Date() },
-        { new: true }
-    );
+  const deletedBusiness = await businessListModel.findByIdAndUpdate(
+    id,
+    { isActive: false, updatedAt: new Date() },
+    { new: true }
+  );
 
-    if (!deletedBusiness) {
-        throw new Error("Business not found");
-    }
+  if (!deletedBusiness) {
+    throw new Error("Business not found");
+  }
 
-    return deletedBusiness;
+  return deletedBusiness;
 };
 export const restoreBusinessList = async (id) => {
-    if (!mongoose.Types.ObjectId.isValid(id)) throw new Error("Invalid business ID");
+  if (!mongoose.Types.ObjectId.isValid(id)) throw new Error("Invalid business ID");
 
-    const restoredBusiness = await businessListModel.findByIdAndUpdate(
-        id,
-        { isActive: true, updatedAt: new Date() },
-        { new: true }
-    );
+  const restoredBusiness = await businessListModel.findByIdAndUpdate(
+    id,
+    { isActive: true, updatedAt: new Date() },
+    { new: true }
+  );
 
-    if (!restoredBusiness) throw new Error("Business not found");
+  if (!restoredBusiness) throw new Error("Business not found");
 
-    return restoredBusiness;
+  return restoredBusiness;
 };
 
 export const activeBusinessList = async (id, newStatus) => {
-    if (!mongoose.Types.ObjectId.isValid(id)) throw new Error("Invalid business ID");
+  if (!mongoose.Types.ObjectId.isValid(id)) throw new Error("Invalid business ID");
 
-    const business = await businessListModel.findByIdAndUpdate(
-        id,
-        { activeBusinesses: newStatus },
-        { new: true }
-    );
+  const business = await businessListModel.findByIdAndUpdate(
+    id,
+    { activeBusinesses: newStatus },
+    { new: true }
+  );
 
-    if (!business) throw new Error("Business not found");
+  if (!business) throw new Error("Business not found");
 
-    return business;
+  return business;
 };
 
 
 export const getTrendingSearches = async (limit = 4) => {
-    const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
+  const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
 
-    const pipeline = [
-        { $match: { createdAt: { $gte: twoDaysAgo } } },
-        { $group: { _id: "$categoryName", count: { $sum: 1 } } },
-        { $sort: { count: -1 } },
-        { $limit: limit },
-        { $project: { _id: 0, name: "$_id", path: { $concat: ["/trending/", { $toLower: "$_id" }] } } },
-    ];
+  const pipeline = [
+    { $match: { createdAt: { $gte: twoDaysAgo } } },
+    { $group: { _id: "$categoryName", count: { $sum: 1 } } },
+    { $sort: { count: -1 } },
+    { $limit: limit },
+    { $project: { _id: 0, name: "$_id", path: { $concat: ["/trending/", { $toLower: "$_id" }] } } },
+  ];
 
-    return await SearchLogModel.aggregate(pipeline);
+  return await SearchLogModel.aggregate(pipeline);
 };
 
 export const findBusinessByMobile = async (mobile) => {
@@ -658,7 +676,7 @@ export const getDashboardSummaryHelper = async ({ role, userId }) => {
   // -------------------------
   if (role === "SuperAdmin") {
     query = {};
-  } 
+  }
   else if (role === "SalesManager") {
     const manager = await userModel.findById(userId).lean();
     const salesOfficerIds = manager?.salesBy || [];
@@ -669,13 +687,13 @@ export const getDashboardSummaryHelper = async ({ role, userId }) => {
     ];
 
     query = { createdBy: { $in: allowedCreators } };
-  } 
+  }
   else if (role === "SalesOfficer") {
     query = { createdBy: new mongoose.Types.ObjectId(userId) };
-  } 
+  }
   else if (["client", "PublicUser", "user"].includes(role)) {
     query = { isActive: true };
-  } 
+  }
   else {
     throw new Error("Unauthorized role");
   }
@@ -769,7 +787,7 @@ export const getDashboardChartsHelper = async ({ role, userId }) => {
   const startOfYear = new Date(`${year}-01-01`);
   const endOfYear = new Date(`${year}-12-31`);
 
- 
+
   const monthly = await businessListModel.aggregate([
     {
       $match: {

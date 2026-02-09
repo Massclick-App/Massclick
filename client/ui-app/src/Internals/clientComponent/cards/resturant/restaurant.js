@@ -28,14 +28,23 @@ const RestaurantsCards = () => {
   );
 
   const restaurantList = categoryBusinessList[CATEGORY] || [];
+  const { selectedDistrict, detectedDistrict } = useSelector(
+    (state) => state.locationReducer
+  );
+  const district = selectedDistrict || detectedDistrict;
+
 
   useEffect(() => {
-    dispatch(getBusinessByCategory(CATEGORY));
-  }, [dispatch]);
+    if (district) {
+      dispatch(getBusinessByCategory(CATEGORY, district));
+    }
+  }, [dispatch, district]);
 
   const handleRetry = useCallback(() => {
-    dispatch(getBusinessByCategory(CATEGORY));
-  }, [dispatch]);
+    if (district) {
+      dispatch(getBusinessByCategory(CATEGORY, district));
+    }
+  }, [dispatch, district]);
 
   if (error && !restaurantList.length) {
     return (

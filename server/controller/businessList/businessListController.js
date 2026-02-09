@@ -107,18 +107,17 @@ export const viewAllClientBusinessListAction = async (req, res) => {
 
 export const viewBusinessByCategory = async (req, res) => {
   try {
-    const { category } = req.query;
+    const { category, district } = req.query;
 
     if (!category)
       return res.status(400).send({ message: "Category is required" });
 
-    const result = await findBusinessesByCategory(category);
+    const result = await findBusinessesByCategory(category, district);
 
     res.status(200).send(result);
 
   } catch (error) {
-    console.error("Error in viewBusinessByCategory:", error);
-    res.status(BAD_REQUEST.code).send({ message: error.message });
+    res.status(400).send({ message: error.message });
   }
 };
 

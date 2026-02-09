@@ -133,28 +133,38 @@ export const getIpLocation = () => async (dispatch) => {
 };
 
 export const detectDistrict =
-  ({ latitude, longitude }) =>
-  async (dispatch) => {
-    dispatch({ type: DETECT_DISTRICT_REQUEST });
+  (coords = {}) =>
+    async (dispatch) => {
+      dispatch({ type: DETECT_DISTRICT_REQUEST });
 
-    try {
-      const response = await axios.post(
-        `${API_URL}/location/detect-district`,
-        { latitude, longitude }
-      );
+      try {
+        const { latitude, longitude } = coords;
 
-      dispatch({
-        type: DETECT_DISTRICT_SUCCESS,
-        payload: response.data,
-      });
+        if (!latitude || !longitude) {
+          dispatch({
+            type: DETECT_DISTRICT_FAILURE,
+            payload: "Coordinates not available",
+          });
+          return null;
+        }
 
-      return response.data;
-    } catch (error) {
-      dispatch({
-        type: DETECT_DISTRICT_FAILURE,
-        payload: error.response?.data || error.message,
-      });
-      throw error;
-    }
-  };
+        const response = await axios.post(
+          `${API_URL}/location/detect-district`,
+          { latitude, longitude }
+        );
+
+        dispatch({
+          type: DETECT_DISTRICT_SUCCESS,
+          payload: response.data,
+        });
+
+        return response.data;
+      } catch (error) {
+        dispatch({
+          type: DETECT_DISTRICT_FAILURE,
+          payload: error.response?.data || error.message,
+        });
+        return null;
+      }
+    };
 
