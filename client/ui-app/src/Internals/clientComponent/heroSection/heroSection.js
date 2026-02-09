@@ -118,6 +118,16 @@ const HeroSection = ({
             })
           );
 
+          const autoDistrict = result?.district || "All Districts";
+
+          setLocationName(autoDistrict);
+
+          dispatch({
+            type: "SET_SELECTED_DISTRICT",
+            payload: autoDistrict,
+          });
+
+
           setLocationName(result?.district || "All Districts");
         } catch {
           setLocationName("All Districts");
