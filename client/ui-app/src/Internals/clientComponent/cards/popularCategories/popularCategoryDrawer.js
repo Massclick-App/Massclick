@@ -35,15 +35,28 @@ const CategoryDynamicPage = () => {
 
   const businessList = categoryBusinessList[realCategoryName] || [];
 
+  const { selectedDistrict } = useSelector(
+    (state) => state.locationReducer
+  );
+
+  const district = selectedDistrict;
+
   useEffect(() => {
-    if (!businessList.length) {
-      dispatch(getBusinessByCategory(realCategoryName));
+    if (
+      typeof district === "string" &&
+      district.trim().length > 0
+    ) {
+      dispatch(
+        getBusinessByCategory(realCategoryName, district.trim())
+      );
     }
-  }, [businessList.length, realCategoryName, dispatch]);
+  }, [dispatch, realCategoryName, district]);
 
   const handleRetry = useCallback(() => {
-    dispatch(getBusinessByCategory(realCategoryName));
-  }, [dispatch, realCategoryName]);
+    if (district) {
+      dispatch(getBusinessByCategory(realCategoryName, district));
+    }
+  }, [dispatch, realCategoryName, district]);
 
   if (error) {
     return (

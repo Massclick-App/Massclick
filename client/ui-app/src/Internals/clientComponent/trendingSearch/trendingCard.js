@@ -38,15 +38,23 @@ const TrendingCards = () => {
 
     const businessList = categoryBusinessList[CATEGORY] || [];
 
+    const { selectedDistrict } = useSelector(
+        (state) => state.locationReducer
+    );
+
+    const district = selectedDistrict;
+
     useEffect(() => {
-        if (!businessList.length && CATEGORY) {
-            dispatch(getBusinessByCategory(CATEGORY));
+        if (typeof district === "string" && district.trim().length > 0) {
+            dispatch(getBusinessByCategory(CATEGORY, district.trim()));
         }
-    }, [businessList.length, dispatch, CATEGORY]);
+    }, [dispatch, district]);
 
     const handleRetry = useCallback(() => {
-        dispatch(getBusinessByCategory(CATEGORY));
-    }, [dispatch, CATEGORY]);
+        if (district) {
+            dispatch(getBusinessByCategory(CATEGORY, district));
+        }
+    }, [dispatch, district]);
 
     if (error) {
         return (

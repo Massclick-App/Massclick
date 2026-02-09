@@ -32,15 +32,24 @@ const GymCards = () => {
 
   const gymList = categoryBusinessList[CATEGORY] || [];
 
+   const { selectedDistrict } = useSelector(
+     (state) => state.locationReducer
+   );
+ 
+   const district = selectedDistrict;
+ 
   useEffect(() => {
-    if (!gymList.length) {
-      dispatch(getBusinessByCategory(CATEGORY));
-    }
-  }, [gymList.length, dispatch]);
-
-  const handleRetry = useCallback(() => {
-    dispatch(getBusinessByCategory(CATEGORY));
-  }, [dispatch]);
+   if (typeof district === "string" && district.trim().length > 0) {
+     dispatch(getBusinessByCategory(CATEGORY, district.trim()));
+   }
+ }, [dispatch, district]);
+ 
+ 
+   const handleRetry = useCallback(() => {
+     if (district) {
+       dispatch(getBusinessByCategory(CATEGORY, district));
+     }
+   }, [dispatch, district]);
 
   if (error) {
     return (

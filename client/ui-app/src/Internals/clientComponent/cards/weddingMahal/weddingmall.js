@@ -32,15 +32,24 @@ const WeddingMallCards = () => {
 
   const weddingMallList = categoryBusinessList[CATEGORY] || [];
 
+  const { selectedDistrict } = useSelector(
+    (state) => state.locationReducer
+  );
+
+  const district = selectedDistrict;
+
   useEffect(() => {
-    if (!weddingMallList.length) {
-      dispatch(getBusinessByCategory(CATEGORY));
+    if (typeof district === "string" && district.trim().length > 0) {
+      dispatch(getBusinessByCategory(CATEGORY, district.trim()));
     }
-  }, [weddingMallList.length, dispatch]);
+  }, [dispatch, district]);
+
 
   const handleRetry = useCallback(() => {
-    dispatch(getBusinessByCategory(CATEGORY));
-  }, [dispatch]);
+    if (district) {
+      dispatch(getBusinessByCategory(CATEGORY, district));
+    }
+  }, [dispatch, district]);
 
   if (error) {
     return (

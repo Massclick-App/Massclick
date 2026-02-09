@@ -32,15 +32,24 @@ const SalonsCards = () => {
 
   const salonList = categoryBusinessList[CATEGORY] || [];
 
-  useEffect(() => {
-    if (!salonList.length) {
-      dispatch(getBusinessByCategory(CATEGORY));
-    }
-  }, [salonList.length, dispatch]);
+   const { selectedDistrict } = useSelector(
+    (state) => state.locationReducer
+  );
+
+  const district = selectedDistrict;
+
+ useEffect(() => {
+  if (typeof district === "string" && district.trim().length > 0) {
+    dispatch(getBusinessByCategory(CATEGORY, district.trim()));
+  }
+}, [dispatch, district]);
+
 
   const handleRetry = useCallback(() => {
-    dispatch(getBusinessByCategory(CATEGORY));
-  }, [dispatch]);
+    if (district) {
+      dispatch(getBusinessByCategory(CATEGORY, district));
+    }
+  }, [dispatch, district]);
 
   if (error) {
     return (

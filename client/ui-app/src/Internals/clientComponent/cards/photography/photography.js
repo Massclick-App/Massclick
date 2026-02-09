@@ -32,15 +32,24 @@ const PhotographyCards = () => {
 
   const photographerList = categoryBusinessList[CATEGORY] || [];
 
-  useEffect(() => {
-    if (!photographerList.length) {
-      dispatch(getBusinessByCategory(CATEGORY));
+    const { selectedDistrict } = useSelector(
+      (state) => state.locationReducer
+    );
+  
+    const district = selectedDistrict;
+  
+   useEffect(() => {
+    if (typeof district === "string" && district.trim().length > 0) {
+      dispatch(getBusinessByCategory(CATEGORY, district.trim()));
     }
-  }, [photographerList.length, dispatch]);
-
-  const handleRetry = useCallback(() => {
-    dispatch(getBusinessByCategory(CATEGORY));
-  }, [dispatch]);
+  }, [dispatch, district]);
+  
+  
+    const handleRetry = useCallback(() => {
+      if (district) {
+        dispatch(getBusinessByCategory(CATEGORY, district));
+      }
+    }, [dispatch, district]);
 
   if (error) {
     return (

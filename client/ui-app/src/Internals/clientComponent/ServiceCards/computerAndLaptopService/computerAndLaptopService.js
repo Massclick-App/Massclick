@@ -32,15 +32,24 @@ const ComputerAndLaptopServiceCards = () => {
 
   const computerAndLaptopsServiceList = categoryBusinessList[CATEGORY] || [];
 
-  useEffect(() => {
-    if (!computerAndLaptopsServiceList.length) {
-      dispatch(getBusinessByCategory(CATEGORY));
-    }
-  }, [computerAndLaptopsServiceList.length, dispatch]);
+ const { selectedDistrict } = useSelector(
+    (state) => state.locationReducer
+  );
+
+  const district = selectedDistrict;
+
+ useEffect(() => {
+  if (typeof district === "string" && district.trim().length > 0) {
+    dispatch(getBusinessByCategory(CATEGORY, district.trim()));
+  }
+}, [dispatch, district]);
+
 
   const handleRetry = useCallback(() => {
-    dispatch(getBusinessByCategory(CATEGORY));
-  }, [dispatch]);
+    if (district) {
+      dispatch(getBusinessByCategory(CATEGORY, district));
+    }
+  }, [dispatch, district]);
 
   if (error) {
     return (

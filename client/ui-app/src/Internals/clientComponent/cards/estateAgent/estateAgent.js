@@ -32,15 +32,24 @@ const EstateAgentCards = () => {
 
   const estateAgentList = categoryBusinessList[CATEGORY] || [];
 
+  const { selectedDistrict } = useSelector(
+    (state) => state.locationReducer
+  );
+
+  const district = selectedDistrict;
+
   useEffect(() => {
-    if (!estateAgentList.length) {
-      dispatch(getBusinessByCategory(CATEGORY));
+    if (typeof district === "string" && district.trim().length > 0) {
+      dispatch(getBusinessByCategory(CATEGORY, district.trim()));
     }
-  }, [estateAgentList.length, dispatch]);
+  }, [dispatch, district]);
+
 
   const handleRetry = useCallback(() => {
-    dispatch(getBusinessByCategory(CATEGORY));
-  }, [dispatch]);
+    if (district) {
+      dispatch(getBusinessByCategory(CATEGORY, district));
+    }
+  }, [dispatch, district]);
 
   if (error) {
     return (

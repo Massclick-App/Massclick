@@ -34,8 +34,6 @@ const RestaurantsCards = () => {
 
   const district = selectedDistrict;
 
-
-
  useEffect(() => {
   if (typeof district === "string" && district.trim().length > 0) {
     dispatch(getBusinessByCategory(CATEGORY, district.trim()));
