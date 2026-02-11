@@ -32,6 +32,9 @@ import {
   FETCH_BUSINESS_BY_SLUG_REQUEST,
   FETCH_BUSINESS_BY_SLUG_SUCCESS,
   FETCH_BUSINESS_BY_SLUG_FAILURE,
+  QR_DOWNLOAD_REQUEST,
+  QR_DOWNLOAD_SUCCESS,
+  QR_DOWNLOAD_FAILURE,
 } from '../actions/userActionTypes';
 
 const initialState = {
@@ -174,6 +177,37 @@ export default function businessListReducer(state = initialState, action) {
         businessDetails: null,
         businessDetailsError: action.payload,
       };
+    case QR_DOWNLOAD_REQUEST:
+      return {
+        ...state,
+        loading: true,
+        error: null,
+      };
+
+    case QR_DOWNLOAD_SUCCESS:
+      return {
+        ...state,
+        loading: false,
+        businessList: state.businessList.map((b) =>
+          b._id === action.payload
+            ? {
+              ...b,
+              qrDownloads: [
+                ...(b.qrDownloads || []),
+                { downloadedAt: new Date() },
+              ],
+            }
+            : b
+        ),
+      };
+
+    case QR_DOWNLOAD_FAILURE:
+      return {
+        ...state,
+        loading: false,
+        error: action.payload,
+      };
+
     case FETCH_BUSINESS_BY_SLUG_REQUEST:
       return {
         ...state,

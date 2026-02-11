@@ -1,6 +1,6 @@
 import express from 'express'
 
-import { addBusinessListAction, viewBusinessListAction,getBusinessBySlugAction, getSuggestionsController, mainSearchController, viewAllBusinessListAction, updateBusinessListAction, deleteBusinessListAction, activeBusinessListAction, viewAllClientBusinessListAction, viewBusinessByCategory, findBusinessByMobileAction, dashboardSummaryAction, dashboardChartsAction, getPendingBusinessAction } from "../controller/businessList/businessListController.js"
+import { addBusinessListAction, viewBusinessListAction,getBusinessBySlugAction, getSuggestionsController, mainSearchController, viewAllBusinessListAction, updateBusinessListAction, deleteBusinessListAction, activeBusinessListAction, viewAllClientBusinessListAction, viewBusinessByCategory, findBusinessByMobileAction, dashboardSummaryAction, dashboardChartsAction, getPendingBusinessAction, trackQrDownload } from "../controller/businessList/businessListController.js"
 import { oauthAuthentication } from '../helper/oauthHelper.js';
 import { logSearchAction, viewLogSearchAction, viewSearchAction, updateSearchAction, getTrendingSearchesAction } from "../controller/businessList/logSearchController.js"
 
@@ -28,5 +28,6 @@ router.get("/api/businesslist/findByMobile/:mobile", findBusinessByMobileAction)
 router.get('/api/businesslist/dashboard-summary', oauthAuthentication, dashboardSummaryAction);
 router.get('/api/businesslist/dashboard-charts', oauthAuthentication, dashboardChartsAction);
 router.get('/api/businesslist/pendingbusiness', oauthAuthentication, getPendingBusinessAction);
+router.post("/api/businesslist/qr-download/:id", oauthAuthentication, trackQrDownload);
 
 export default router; 

@@ -19,6 +19,7 @@ import {
   FETCH_PENDINGBUSINESS_REQUEST, FETCH_PENDINGBUSINESS_SUCCESS, FETCH_PENDINGBUSINESS_FAILURE,
   UPDATE_SEARCH_LOG_REQUEST, UPDATE_SEARCH_LOG_SUCCESS, UPDATE_SEARCH_LOG_FAILURE,
   FETCH_BUSINESS_BY_SLUG_REQUEST, FETCH_BUSINESS_BY_SLUG_SUCCESS, FETCH_BUSINESS_BY_SLUG_FAILURE,
+  QR_DOWNLOAD_REQUEST, QR_DOWNLOAD_SUCCESS, QR_DOWNLOAD_FAILURE,
 } from "../actions/userActionTypes.js";
 import { getClientToken } from "./clientAuthAction.js";
 const API_URL = process.env.REACT_APP_API_URL;
@@ -58,6 +59,39 @@ const getValidToken = async (dispatch) => {
 //     });
 //   }
 // };
+
+export const trackQrDownload = (businessId) => async (dispatch) => {
+  dispatch({ type: QR_DOWNLOAD_REQUEST });
+
+  try {
+    const token = await getValidToken(dispatch);
+
+    const response = await axios.post(
+      `${API_URL}/businesslist/qr-download/${businessId}`,
+      {},
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+
+    dispatch({
+      type: QR_DOWNLOAD_SUCCESS,
+      payload: businessId,
+    });
+
+    return response.data;
+
+  } catch (error) {
+    dispatch({
+      type: QR_DOWNLOAD_FAILURE,
+      payload: error.response?.data?.message || error.message,
+    });
+
+    throw error;
+  }
+};
+
+
 export const getBusinessDetailsById = (id) => async (dispatch) => {
   dispatch({ type: FETCH_VIEWBUSINESSDETAILS_REQUEST });
 

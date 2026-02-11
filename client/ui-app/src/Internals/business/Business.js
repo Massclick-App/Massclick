@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { getAllBusinessList, createBusinessList, editBusinessList, deleteBusinessList } from "../../redux/actions/businessListAction";
+import { getAllBusinessList, createBusinessList, editBusinessList, deleteBusinessList, trackQrDownload } from "../../redux/actions/businessListAction";
 import { getAllLocation } from "../../redux/actions/locationAction";
 import { createCategory, editCategory, getAllCategory, businessCategorySearch } from "../../redux/actions/categoryAction";
 import { getAllUsersClient, getUserClientSuggestion } from "../../redux/actions/userClientAction.js";
@@ -815,6 +815,9 @@ export default function BusinessList() {
       openingHours: bl.openingHours || defaultOpeningHours,
       createdBy: bl.createdBy,
       payment: bl.payment || [],
+      qrImage: bl.qrCode?.qrImage || null,
+      qrImage: bl.qrCode?.qrImage || null,
+      qrDownloads: bl.qrDownloads || [],
 
     }));
 
@@ -847,6 +850,67 @@ export default function BusinessList() {
         return user ? user.userName : "—";
       },
     },
+    {
+      id: "qrCode",
+      label: "Review QR",
+      renderCell: (_, row) => {
+        if (!row.qrImage) return "—";
+
+        const handleDownload = async () => {
+          try {
+            const response = await fetch(row.qrImage);
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `${row.businessName}-review-qr.png`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+
+            await dispatch(trackQrDownload(row._id));
+
+            enqueueSnackbar("QR downloaded successfully", { variant: "success" });
+
+          } catch (err) {
+            enqueueSnackbar("Download failed", { variant: "error" });
+          }
+        };
+
+        const lastDownload =
+          row.qrDownloads?.length > 0
+            ? new Date(
+              row.qrDownloads[row.qrDownloads.length - 1].downloadedAt
+            ).toLocaleString()
+            : "Not Downloaded";
+
+        return (
+          <Box sx={{ textAlign: "center" }}>
+            <Avatar
+              src={row.qrImage}
+              sx={{ width: 60, height: 60, margin: "0 auto" }}
+            />
+            <Typography variant="caption" sx={{ display: "block", mt: 1 }}>
+              {row.qrText}
+            </Typography>
+            <Typography variant="caption" sx={{ display: "block", mt: 1 }}>
+              Last: {lastDownload}
+            </Typography>
+
+            <Button
+              size="small"
+              variant="contained"
+              sx={{ mt: 1 }}
+              onClick={handleDownload}
+            >
+              Download
+            </Button>
+          </Box>
+        );
+      },
+    },
+
     {
       id: "payment",
       label: "Payment",

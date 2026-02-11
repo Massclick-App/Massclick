@@ -22,6 +22,36 @@ export const addBusinessListAction = async (req, res) => {
     return res.status(BAD_REQUEST.code).send("Error saving Business.");
   }
 };
+export const trackQrDownload = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const business = await businessListModel.findById(id);
+
+    if (!business) {
+      return res.status(404).send({ message: "Business not found" });
+    }
+
+    if (!business.qrDownloads) {
+      business.qrDownloads = [];
+    }
+
+    business.qrDownloads.push({
+      downloadedAt: new Date(),
+      downloadedBy: req.authUser?.userId || null,
+    });
+
+    await business.save();
+
+    res.send({ success: true });
+
+  } catch (err) {
+    console.error("QR Download Error:", err);
+    res.status(400).send({ message: err.message });
+  }
+};
+
+
 
 export const getBusinessBySlugAction = async (req, res) => {
   try {

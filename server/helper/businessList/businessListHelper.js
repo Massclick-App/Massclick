@@ -5,52 +5,136 @@ import mongoose from "mongoose";
 import { uploadImageToS3, getSignedUrlByKey } from "../../s3Uploder.js";
 import locationModel from "../../model/locationModel/locationModel.js";
 import userModel from "../../model/userModel.js";
+import QRCode from "qrcode";
+
+
+// export const createBusinessList = async (reqBody = {}) => {
+//     try {
+//         if (reqBody.bannerImage) {
+//             const uploadResult = await uploadImageToS3(
+//                 reqBody.bannerImage,
+//                 `businessList/banners/banner-${Date.now()}`
+//             );
+//             reqBody.bannerImageKey = uploadResult.key;
+//             delete reqBody.bannerImage;
+//         }
+
+//         if (reqBody.businessImages?.length > 0) {
+//             const businessImageKeys = await Promise.all(
+//                 reqBody.businessImages.map(async (img, i) => {
+//                     const uploadResult = await uploadImageToS3(
+//                         img,
+//                         `businessList/gallery/image-${Date.now()}-${i}`
+//                     );
+//                     return uploadResult.key;
+//                 })
+//             );
+//             reqBody.businessImagesKey = businessImageKeys;
+//             delete reqBody.businessImages;
+//         }
+//         if (reqBody.kycDocuments?.length > 0) {
+//             const kycDocumentsKey = await Promise.all(
+//                 reqBody.kycDocuments.map(async (doc, i) => {
+//                     const uploadResult = await uploadImageToS3(
+//                         doc,
+//                         `businessList/kyc/document-${Date.now()}-${i}`
+//                     );
+//                     return uploadResult.key;
+//                 })
+//             );
+//             reqBody.kycDocumentsKey = kycDocumentsKey;
+//             delete reqBody.kycDocuments;
+//         }
+//         const businessListDocument = new businessListModel(reqBody);
+//         const result = await businessListDocument.save();
+//         return result;
+//     } catch (error) {
+//         console.error("Error saving business:", error);
+//         throw error;
+//     }
+// };
 
 export const createBusinessList = async (reqBody = {}) => {
-    try {
-        if (reqBody.bannerImage) {
-            const uploadResult = await uploadImageToS3(
-                reqBody.bannerImage,
-                `businessList/banners/banner-${Date.now()}`
-            );
-            reqBody.bannerImageKey = uploadResult.key;
-            delete reqBody.bannerImage;
-        }
+  try {
 
-        if (reqBody.businessImages?.length > 0) {
-            const businessImageKeys = await Promise.all(
-                reqBody.businessImages.map(async (img, i) => {
-                    const uploadResult = await uploadImageToS3(
-                        img,
-                        `businessList/gallery/image-${Date.now()}-${i}`
-                    );
-                    return uploadResult.key;
-                })
-            );
-            reqBody.businessImagesKey = businessImageKeys;
-            delete reqBody.businessImages;
-        }
-        if (reqBody.kycDocuments?.length > 0) {
-            const kycDocumentsKey = await Promise.all(
-                reqBody.kycDocuments.map(async (doc, i) => {
-                    const uploadResult = await uploadImageToS3(
-                        doc,
-                        `businessList/kyc/document-${Date.now()}-${i}`
-                    );
-                    return uploadResult.key;
-                })
-            );
-            reqBody.kycDocumentsKey = kycDocumentsKey;
-            delete reqBody.kycDocuments;
-        }
-        const businessListDocument = new businessListModel(reqBody);
-        const result = await businessListDocument.save();
-        return result;
-    } catch (error) {
-        console.error("Error saving business:", error);
-        throw error;
+    if (reqBody.bannerImage) {
+      const uploadResult = await uploadImageToS3(
+        reqBody.bannerImage,
+        `businessList/banners/banner-${Date.now()}`
+      );
+
+      reqBody.bannerImageKey = uploadResult.key;
+      delete reqBody.bannerImage;
     }
+
+    if (reqBody.businessImages?.length > 0) {
+      const businessImageKeys = await Promise.all(
+        reqBody.businessImages.map(async (img, i) => {
+          const uploadResult = await uploadImageToS3(
+            img,
+            `businessList/gallery/image-${Date.now()}-${i}`
+          );
+          return uploadResult.key;
+        })
+      );
+
+      reqBody.businessImagesKey = businessImageKeys;
+      delete reqBody.businessImages;
+    }
+
+    if (reqBody.kycDocuments?.length > 0) {
+      const kycDocumentsKey = await Promise.all(
+        reqBody.kycDocuments.map(async (doc, i) => {
+          const uploadResult = await uploadImageToS3(
+            doc,
+            `businessList/kyc/document-${Date.now()}-${i}`
+          );
+          return uploadResult.key;
+        })
+      );
+
+      reqBody.kycDocumentsKey = kycDocumentsKey;
+      delete reqBody.kycDocuments;
+    }
+
+
+    const businessListDocument = new businessListModel(reqBody);
+    const savedBusiness = await businessListDocument.save();
+
+
+    const publicReviewUrl = `${process.env.PUBLIC_BASE_URL}/write-review/${savedBusiness._id}`;
+
+
+    const qrBase64 = await QRCode.toDataURL(publicReviewUrl);
+
+
+    const qrUploadResult = await uploadImageToS3(
+      qrBase64,
+      `businessList/qr/review-${savedBusiness._id}`
+    );
+
+    savedBusiness.qrCode = {
+      qrText: publicReviewUrl,
+      qrImageKey: qrUploadResult.key,
+      createdAt: new Date()
+    };
+
+    await savedBusiness.save();
+
+    const result = savedBusiness.toObject();
+
+    result.qrCode.qrImage = getSignedUrlByKey(
+      savedBusiness.qrCode.qrImageKey
+    );
+
+    return result;
+
+  } catch (error) {
+    console.error("Error saving business:", error);
+    throw error;
+  }
 };
+
 
 export const findBusinessBySlug = async ({ location, slug }) => {
   try {
@@ -239,7 +323,7 @@ export const viewAllBusinessList = async ({
 
   if (role === "SuperAdmin") {
     query = {};
-  } 
+  }
   else if (role === "SalesManager") {
     const manager = await userModel.findById(userId).lean();
     const salesOfficerIds = manager?.salesBy || [];
@@ -250,13 +334,13 @@ export const viewAllBusinessList = async ({
     ];
 
     query = { createdBy: { $in: allowedCreators } };
-  } 
+  }
   else if (role === "SalesOfficer") {
     query = { createdBy: new mongoose.Types.ObjectId(userId) };
-  } 
+  }
   else if (["client", "PublicUser", "user"].includes(role)) {
     query = { isActive: true };
-  } 
+  }
   else {
     throw new Error("Unauthorized role");
   }
@@ -265,7 +349,7 @@ export const viewAllBusinessList = async ({
   if (status === "active") query.activeBusinesses = true;
   if (status === "inactive") query.activeBusinesses = false;
 
- 
+
   const searchableFields = [
     "businessName",
     "location",
@@ -324,12 +408,10 @@ export const viewAllBusinessList = async ({
   const businessListWithDetails = await Promise.all(
     businessList.map(async (business) => {
 
-      // Signed banner
       if (business.bannerImageKey) {
         business.bannerImage = getSignedUrlByKey(business.bannerImageKey);
       }
 
-      // Signed business images
       if (business.businessImagesKey?.length > 0) {
         business.businessImages = business.businessImagesKey.map((key) =>
           getSignedUrlByKey(key)
@@ -341,7 +423,11 @@ export const viewAllBusinessList = async ({
           getSignedUrlByKey(key)
         );
       }
-
+      if (business.qrCode?.qrImageKey) {
+        business.qrCode.qrImage = getSignedUrlByKey(
+          business.qrCode.qrImageKey
+        );
+      }
       business.locationDetails = business.location || "";
 
       return business;
