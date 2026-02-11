@@ -16,6 +16,7 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import Button from '@mui/material/Button';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import OTPLoginModal from '../AddBusinessModel';
 
 const labels = {
   0.5: 'Useless', 1: 'Poor', 1.5: 'Bad', 2: 'Weak', 2.5: 'Average',
@@ -41,6 +42,7 @@ const WriteReviewPage = () => {
   const [ratingPhotos, setRatingPhotos] = useState([]);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   const storedUser = JSON.parse(localStorage.getItem("authUser") || "{}");
 
@@ -116,6 +118,14 @@ const WriteReviewPage = () => {
   };
 
   const handleSubmitReview = async () => {
+
+  const storedUser = JSON.parse(localStorage.getItem("authUser") || "{}");
+
+    if (!storedUser?._id) {
+      setShowLoginModal(true);
+      return;
+    }
+
     if (!rating || reviewText.length < 5) {
       alert("Please provide a rating and at least 5 characters.");
       return;
@@ -132,7 +142,6 @@ const WriteReviewPage = () => {
         })
       )
     );
-    const storedUser = JSON.parse(localStorage.getItem("authUser") || "{}");
 
     const newReview = {
       userId: storedUser._id,
@@ -290,6 +299,15 @@ const WriteReviewPage = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <OTPLoginModal
+        open={showLoginModal}
+        handleClose={() => setShowLoginModal(false)}
+        onSuccess={() => {
+          setShowLoginModal(false);
+          handleSubmitReview();
+        }}
+      />
 
       <Footer />
     </>
