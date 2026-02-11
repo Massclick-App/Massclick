@@ -312,17 +312,21 @@ export const mainSearchController = async (req, res) => {
 export const updateBusinessListAction = async (req, res) => {
   try {
     const businessId = req.params.id;
+
     const businessData = {
       ...req.body,
       updatedBy: req.authUser?.userId,
     };
+
     const business = await updateBusinessList(businessId, businessData);
+
     res.send(business);
   } catch (error) {
     console.error(error);
     return res.status(400).send({ message: error.message });
   }
 };
+
 
 export const deleteBusinessListAction = async (req, res) => {
     try {

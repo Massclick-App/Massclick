@@ -388,7 +388,7 @@ export default function BusinessList() {
     experience: "",
     location: "",
     category: "",
-    keywords: "",
+    keywords: [],
     slug: "",
     seoTitle: "",
     seoDescription: "",
@@ -404,7 +404,7 @@ export default function BusinessList() {
     twitter: "",
     linkedin: "",
     businessDetails: "",
-    kycDocuments: "",
+    kycDocuments: [],
     openingHours: defaultOpeningHours,
 
   });
@@ -622,7 +622,7 @@ export default function BusinessList() {
     setActiveStep(0);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
-  
+
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -858,25 +858,26 @@ export default function BusinessList() {
 
         const handleDownload = async () => {
           try {
-            const response = await fetch(row.qrImage);
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-
             const link = document.createElement("a");
-            link.href = url;
-            link.download = `${row.businessName}-review-qr.png`;
+            link.href = row.qrImage;
+            link.target = "_blank";
             document.body.appendChild(link);
             link.click();
-            link.remove();
+            document.body.removeChild(link);
 
             await dispatch(trackQrDownload(row._id));
 
-            enqueueSnackbar("QR downloaded successfully", { variant: "success" });
+            enqueueSnackbar("QR downloaded successfully", {
+              variant: "success",
+            });
 
           } catch (err) {
-            enqueueSnackbar("Download failed", { variant: "error" });
+            enqueueSnackbar("Download failed", {
+              variant: "error",
+            });
           }
         };
+
 
         const lastDownload =
           row.qrDownloads?.length > 0

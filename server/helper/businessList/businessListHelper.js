@@ -448,13 +448,22 @@ export const updateBusinessList = async (id, data) => {
   const business = await businessListModel.findById(id);
   if (!business) throw new Error("Business not found");
 
+  /* ===============================
+     1️⃣ HANDLE REVIEW ADDITION
+  =============================== */
   if (data.reviewData) {
     const { reviewData } = data;
 
+    // Ensure reviews array exists
+    if (!Array.isArray(business.reviews)) {
+      business.reviews = [];
+    }
+
     const uploadedPhotoKeys = [];
+
     if (Array.isArray(reviewData.ratingPhotos) && reviewData.ratingPhotos.length > 0) {
       const photoUploadPromises = reviewData.ratingPhotos.map(async (img, i) => {
-        if (img.startsWith("data:image")) {
+        if (typeof img === "string" && img.startsWith("data:image")) {
           const uploadResult = await uploadImageToS3(
             img,
             `businessList/reviews/${business._id}/photo-${Date.now()}-${i}`
@@ -464,7 +473,8 @@ export const updateBusinessList = async (id, data) => {
         return null;
       });
 
-      uploadedPhotoKeys.push(...(await Promise.all(photoUploadPromises)).filter(key => key));
+      const uploaded = await Promise.all(photoUploadPromises);
+      uploadedPhotoKeys.push(...uploaded.filter(Boolean));
     }
 
     const newReview = {
@@ -475,15 +485,24 @@ export const updateBusinessList = async (id, data) => {
 
     business.reviews.push(newReview);
 
-    const totalRating = business.reviews.reduce((sum, review) => sum + review.rating, 0);
-    business.averageRating = business.reviews.length > 0
-      ? parseFloat((totalRating / business.reviews.length).toFixed(1))
-      : 0;
+    // Recalculate average rating safely
+    const totalRating = business.reviews.reduce(
+      (sum, review) => sum + (Number(review.rating) || 0),
+      0
+    );
+
+    business.averageRating =
+      business.reviews.length > 0
+        ? parseFloat((totalRating / business.reviews.length).toFixed(1))
+        : 0;
 
     delete data.reviewData;
   }
 
-  if (data.bannerImage?.startsWith("data:image")) {
+  /* ===============================
+     2️⃣ HANDLE BANNER IMAGE
+  =============================== */
+  if (typeof data.bannerImage === "string" && data.bannerImage.startsWith("data:image")) {
     const uploadResult = await uploadImageToS3(
       data.bannerImage,
       `businessList/banners/banner-${Date.now()}`
@@ -492,11 +511,20 @@ export const updateBusinessList = async (id, data) => {
   } else if (data.bannerImage === null || data.bannerImage === "") {
     business.bannerImageKey = "";
   }
+
   delete data.bannerImage;
 
+  /* ===============================
+     3️⃣ HANDLE GALLERY IMAGES
+  =============================== */
   if (Array.isArray(data.businessImages)) {
-    const oldKeys = business.businessImagesKey || [];
-    const newImages = data.businessImages.filter(img => img.startsWith("data:image"));
+    const oldKeys = Array.isArray(business.businessImagesKey)
+      ? business.businessImagesKey
+      : [];
+
+    const newImages = data.businessImages.filter(
+      img => typeof img === "string" && img.startsWith("data:image")
+    );
 
     const newKeys = await Promise.all(
       newImages.map(async (img, i) => {
@@ -512,11 +540,20 @@ export const updateBusinessList = async (id, data) => {
   } else if (data.businessImages === null) {
     business.businessImagesKey = [];
   }
+
   delete data.businessImages;
 
+  /* ===============================
+     4️⃣ HANDLE KYC DOCUMENTS
+  =============================== */
   if (Array.isArray(data.kycDocuments)) {
-    const oldKycKeys = business.kycDocumentsKey || [];
-    const newKycDocs = data.kycDocuments.filter(doc => doc.startsWith("data:"));
+    const oldKycKeys = Array.isArray(business.kycDocumentsKey)
+      ? business.kycDocumentsKey
+      : [];
+
+    const newKycDocs = data.kycDocuments.filter(
+      doc => typeof doc === "string" && doc.startsWith("data:")
+    );
 
     const newKycKeys = await Promise.all(
       newKycDocs.map(async (doc, i) => {
@@ -532,33 +569,56 @@ export const updateBusinessList = async (id, data) => {
   } else if (data.kycDocuments === null) {
     business.kycDocumentsKey = [];
   }
+
   delete data.kycDocuments;
 
+  /* ===============================
+     5️⃣ UPDATE NORMAL FIELDS
+  =============================== */
   Object.keys(data).forEach(key => {
-    if (!['reviews', 'averageRating', 'clientId'].includes(key)) {
+    if (!["reviews", "averageRating", "clientId"].includes(key)) {
       business[key] = data[key];
     }
   });
 
   await business.save();
+
+  /* ===============================
+     6️⃣ FORMAT RESPONSE
+  =============================== */
   const result = business.toObject();
 
-  if (business.bannerImageKey)
+  if (business.bannerImageKey) {
     result.bannerImage = getSignedUrlByKey(business.bannerImageKey);
+  }
 
-  if (business.businessImagesKey?.length > 0)
-    result.businessImages = business.businessImagesKey.map(key => getSignedUrlByKey(key));
+  if (Array.isArray(business.businessImagesKey) && business.businessImagesKey.length > 0) {
+    result.businessImages = business.businessImagesKey.map(key =>
+      getSignedUrlByKey(key)
+    );
+  }
 
-  if (business.kycDocumentsKey?.length > 0)
-    result.kycDocuments = business.kycDocumentsKey.map(key => getSignedUrlByKey(key));
+  if (Array.isArray(business.kycDocumentsKey) && business.kycDocumentsKey.length > 0) {
+    result.kycDocuments = business.kycDocumentsKey.map(key =>
+      getSignedUrlByKey(key)
+    );
+  }
 
-  result.reviews = result.reviews.map(review => ({
-    ...review,
-    ratingPhotos: review.ratingPhotos.map(key => getSignedUrlByKey(key)),
-  }));
+  // SAFE reviews formatting
+  if (Array.isArray(result.reviews) && result.reviews.length > 0) {
+    result.reviews = result.reviews.map(review => ({
+      ...review,
+      ratingPhotos: Array.isArray(review.ratingPhotos)
+        ? review.ratingPhotos.map(key => getSignedUrlByKey(key))
+        : [],
+    }));
+  } else {
+    result.reviews = [];
+  }
 
   return result;
 };
+
 
 
 // export const updateBusinessList = async (id, data) => {
