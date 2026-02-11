@@ -12,16 +12,21 @@ export const addBusinessListAction = async (req, res) => {
     } else {
       return res.status(401).send({ message: "Unauthorized: Missing userId" });
     }
+
     const result = await createBusinessList(reqBody);
     res.send(result);
+
   } catch (error) {
     console.error("Error in addBusinessListAction:", error);
+
     if (error.name === "ValidationError") {
-      return res.status(BAD_REQUEST.code).send(error.message);
+      return res.status(400).send(error.message);
     }
-    return res.status(BAD_REQUEST.code).send("Error saving Business.");
+
+    return res.status(400).send("Error saving Business.");
   }
 };
+
 export const trackQrDownload = async (req, res) => {
   try {
     const { id } = req.params;

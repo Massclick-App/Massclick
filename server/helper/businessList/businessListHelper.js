@@ -67,7 +67,7 @@ export const createBusinessList = async (reqBody = {}) => {
       delete reqBody.bannerImage;
     }
 
-    if (reqBody.businessImages?.length > 0) {
+    if (Array.isArray(reqBody.businessImages) && reqBody.businessImages.length > 0) {
       const businessImageKeys = await Promise.all(
         reqBody.businessImages.map(async (img, i) => {
           const uploadResult = await uploadImageToS3(
@@ -82,7 +82,8 @@ export const createBusinessList = async (reqBody = {}) => {
       delete reqBody.businessImages;
     }
 
-    if (reqBody.kycDocuments?.length > 0) {
+   
+    if (Array.isArray(reqBody.kycDocuments) && reqBody.kycDocuments.length > 0) {
       const kycDocumentsKey = await Promise.all(
         reqBody.kycDocuments.map(async (doc, i) => {
           const uploadResult = await uploadImageToS3(
@@ -97,22 +98,29 @@ export const createBusinessList = async (reqBody = {}) => {
       delete reqBody.kycDocuments;
     }
 
-
+    /* --------------------------
+       4. SAVE BUSINESS FIRST
+    -------------------------- */
     const businessListDocument = new businessListModel(reqBody);
     const savedBusiness = await businessListDocument.save();
 
+   
 
-    const publicReviewUrl = `${process.env.PUBLIC_BASE_URL}/write-review/${savedBusiness._id}`;
+    const publicReviewUrl = `${process.env.PUBLIC_BASE_URL}/write-review/${savedBusiness._id}/0`;
 
-
+    /* --------------------------
+       5. GENERATE QR CODE
+    -------------------------- */
     const qrBase64 = await QRCode.toDataURL(publicReviewUrl);
-
 
     const qrUploadResult = await uploadImageToS3(
       qrBase64,
       `businessList/qr/review-${savedBusiness._id}`
     );
 
+    /* --------------------------
+       6. SAVE QR INFO
+    -------------------------- */
     savedBusiness.qrCode = {
       qrText: publicReviewUrl,
       qrImageKey: qrUploadResult.key,
@@ -121,6 +129,9 @@ export const createBusinessList = async (reqBody = {}) => {
 
     await savedBusiness.save();
 
+    /* --------------------------
+       7. RETURN WITH SIGNED URL
+    -------------------------- */
     const result = savedBusiness.toObject();
 
     result.qrCode.qrImage = getSignedUrlByKey(
@@ -134,6 +145,7 @@ export const createBusinessList = async (reqBody = {}) => {
     throw error;
   }
 };
+
 
 
 export const findBusinessBySlug = async ({ location, slug }) => {
