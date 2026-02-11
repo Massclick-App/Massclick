@@ -217,49 +217,49 @@ export default function BusinessList() {
     });
   };
 
-const FIELD_LABELS = {
-  clientId: "Client ID",
-  businessName: "Business Name",
-  experience: "Experience",
-  location: "Location",
-  category: "Category",
-};
+  const FIELD_LABELS = {
+    clientId: "Client ID",
+    businessName: "Business Name",
+    experience: "Experience",
+    location: "Location",
+    category: "Category",
+  };
 
   const validateStep = (step) => {
-  let newErrors = {};
+    let newErrors = {};
 
-  if (step === 0) {
-    if (!formData.clientId) newErrors.clientId = "Client ID is required";
-    if (!formData.businessName) newErrors.businessName = "Business Name is required";
-    if (!formData.experience) newErrors.experience = "Experience is required";
-    if (!formData.location) newErrors.location = "Location is required";
-  }
+    if (step === 0) {
+      if (!formData.clientId) newErrors.clientId = "Client ID is required";
+      if (!formData.businessName) newErrors.businessName = "Business Name is required";
+      if (!formData.experience) newErrors.experience = "Experience is required";
+      if (!formData.location) newErrors.location = "Location is required";
+    }
 
-  if (step === 2) {
-    if (!formData.category) newErrors.category = "Category is required";
-  }
+    if (step === 2) {
+      if (!formData.category) newErrors.category = "Category is required";
+    }
 
-  setErrors(newErrors);
+    setErrors(newErrors);
 
-  if (Object.keys(newErrors).length > 0) {
-    const missingFields = Object.keys(newErrors)
-      .map((key) => FIELD_LABELS[key] || key)
-      .join(", ");
+    if (Object.keys(newErrors).length > 0) {
+      const missingFields = Object.keys(newErrors)
+        .map((key) => FIELD_LABELS[key] || key)
+        .join(", ");
 
-    enqueueSnackbar(
-      `Please fill required fields: ${missingFields}`,
-      {
-        variant: "error",
-        autoHideDuration: 4000,
-      }
-    );
+      enqueueSnackbar(
+        `Please fill required fields: ${missingFields}`,
+        {
+          variant: "error",
+          autoHideDuration: 4000,
+        }
+      );
 
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    return false;
-  }
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return false;
+    }
 
-  return true;
-};
+    return true;
+  };
 
 
 
@@ -532,10 +532,45 @@ const FIELD_LABELS = {
     setEditMode(true);
     setEditId(row.id);
     setFormData({
-      ...row,
-      openingHours: row.openingHours?.length ? row.openingHours : defaultOpeningHours,
-    }); setBusinessValue(row.businessDetails || "");
+      clientId: row.clientId || "",
+      businessName: row.businessName || "",
+      plotNumber: row.plotNumber || "",
+      street: row.street || "",
+      pincode: row.pincode || "",
+      globalAddress: row.globalAddress || "",
+      email: row.email || "",
+      contact: row.contact || "",
+      contactList: row.contactList || "",
+      gstin: row.gstin || "",
+      whatsappNumber: row.whatsappNumber || "",
+      experience: row.experience || "",
+      location: row.location || "",
+      category: row.category || "",
+      keywords: Array.isArray(row.keywords) ? row.keywords : [],
+      slug: row.slug || "",
+      seoTitle: row.seoTitle || "",
+      seoDescription: row.seoDescription || "",
+      title: row.title || "",
+      description: row.description || "",
+      restaurantOptions: row.restaurantOptions || "",
+      bannerImage: row.bannerImage || "",
+      googleMap: row.googleMap || "",
+      website: row.website || "",
+      facebook: row.facebook || "",
+      instagram: row.instagram || "",
+      youtube: row.youtube || "",
+      pinterest: row.pinterest || "",
+      twitter: row.twitter || "",
+      linkedin: row.linkedin || "",
+      businessDetails: row.businessDetails || "",
+      openingHours: row.openingHours?.length
+        ? row.openingHours
+        : defaultOpeningHours,
+      kycDocuments: row.kycDocuments || [],
+    });
+    setBusinessValue(row.businessDetails || "");
     setPreview(row.bannerImage || null);
+    setActiveStep(0);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -759,6 +794,13 @@ const FIELD_LABELS = {
       experience: bl.experience || "-",
       location: bl.location || "-",
       category: bl.category || "-",
+      seoTitle: bl.seoTitle || "",
+      seoDescription: bl.seoDescription || "",
+      title: bl.title || "",
+      description: bl.description || "",
+      slug: bl.slug || "",
+      keywords: bl.keywords || [],
+      restaurantOptions: bl.restaurantOptions || "",
       bannerImage: bl.bannerImage || null,
       businessImages: bl.businessImages || [],
       googleMap: bl.googleMap || "-",
@@ -775,7 +817,6 @@ const FIELD_LABELS = {
       payment: bl.payment || [],
 
     }));
-
 
   const businessListTable = [
     { id: "clientId", label: "Client ID" },
@@ -1382,16 +1423,16 @@ const FIELD_LABELS = {
                     <li
                       key={cat._id}
                       onClick={() => {
-                        setFormData({
-                          ...formData,
+                        setFormData((prev) => ({
+                          ...prev,
                           category: cat.category,
-                          keywords: cat.keywords || [],
-                          slug: cat.slug || "",
-                          seoTitle: cat.seoTitle || "",
-                          seoDescription: cat.seoDescription || "",
-                          title: cat.title || "",
-                          description: cat.description || "",
-                        });
+                          keywords: prev.keywords?.length ? prev.keywords : cat.keywords || [],
+                          slug: prev.slug || cat.slug || "",
+                          seoTitle: prev.seoTitle || cat.seoTitle || "",
+                          seoDescription: prev.seoDescription || cat.seoDescription || "",
+                          title: prev.title || cat.title || "",
+                          description: prev.description || cat.description || "",
+                        }));
 
                         setCategorySelected(true);
                         setShowCategorySuggest(false);

@@ -6,7 +6,6 @@ import { relogin } from './redux/actions/authAction.js';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import theme from './Internals/clientComponent/theme.js';
-
 import Dashboard from './Dashboard';
 import Login from './Internals/Login/login.js';
 import User from './Internals/user/Users.js';
@@ -64,6 +63,7 @@ import MRPDatas from './Internals/MRPDATA/mrpData.js';
 import RouteChangeTracker from './RouteChangeTracker.js';
 import FloatingButtons from './Internals/clientComponent/floating/floatingButtons.js';
 import FloatingAdCard from './Internals/clientComponent/floating/floatingAdCard.js';
+import OTPLoginModal from './Internals/clientComponent/AddBusinessModel.js';
 
 const ComingSoon = ({ title }) => (
   <div style={{ textAlign: 'center', marginTop: '20%' }}>
@@ -91,6 +91,7 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const [showTokenExpired, setShowTokenExpired] = useState(false);
+  const [openLoginModal, setOpenLoginModal] = useState(false);
   const dispatch = useDispatch();
 
   useEffect(() => {
@@ -154,7 +155,7 @@ function App() {
           <ScrollToTop />
           <GlobalDrawer />
           <FloatingAdCard />
-          <FloatingButtons />
+          <FloatingButtons onRequireLogin={() => setOpenLoginModal(true)} />
           <Routes>
             <Route path="/" element={<Navigate to="/home" replace />} />
             <Route path="/admin" element={<Login setIsAuthenticated={setIsAuthenticated} isAuthenticated={isAuthenticated} />} />
@@ -215,6 +216,10 @@ function App() {
               </Route>
             </Route>
           </Routes>
+          <OTPLoginModal
+            open={openLoginModal}
+            handleClose={() => setOpenLoginModal(false)}
+          />
         </Router>
         {showTokenExpired && <TokenExpiredModal onClose={() => setShowTokenExpired(false)} />}
       </SnackbarProvider>

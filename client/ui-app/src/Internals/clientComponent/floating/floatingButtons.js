@@ -2,7 +2,7 @@ import { Box, Typography } from "@mui/material";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 
-const FloatingButtons = () => {
+const FloatingButtons = ({ onRequireLogin }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [visible, setVisible] = useState(true);
@@ -22,6 +22,17 @@ const FloatingButtons = () => {
   }, [location.pathname, shouldHide]);
 
   if (shouldHide) return null;
+
+  const handleAdvertiseClick = () => {
+    const authToken = localStorage.getItem("authToken");
+
+    if (authToken) {
+      navigate("/advertise");
+    } else {
+      onRequireLogin();
+    }
+  };
+
 
   return (
     <Box
@@ -44,30 +55,22 @@ const FloatingButtons = () => {
       }}
     >
       <Box
-        onClick={() => navigate("/advertise")}
+        onClick={handleAdvertiseClick}
         sx={{
           writingMode: "vertical-rl",
           transform: "rotate(180deg)",
-
           bgcolor: "#ff5722",
           color: "#ffffff",
-
           px: 1.8,
           py: 2.4,
-
           fontSize: "0.85rem",
           fontWeight: 700,
           letterSpacing: "0.04em",
-
           cursor: "pointer",
           userSelect: "none",
-
           borderRadius: "10px 0 0 10px",
-
           boxShadow: "0 8px 24px rgba(0,0,0,0.28)",
-
           transition: "all 0.25s ease",
-
           "&:hover": {
             bgcolor: "#e64a19",
             transform: "rotate(180deg) translateX(-2px)",
@@ -90,26 +93,18 @@ const FloatingButtons = () => {
         sx={{
           writingMode: "vertical-rl",
           transform: "rotate(180deg)",
-
           bgcolor: "#06155d",
           color: "#ffffff",
-
           px: 1.8,
           py: 2.4,
-
           fontSize: "0.8rem",
           fontWeight: 600,
           letterSpacing: "0.04em",
-
           cursor: "pointer",
           userSelect: "none",
-
           borderRadius: "10px 0 0 10px",
-
           boxShadow: "0 8px 24px rgba(0,0,0,0.25)",
-
           transition: "all 0.25s ease",
-
           "&:hover": {
             bgcolor: "#0b1f85",
             transform: "rotate(180deg) translateX(-2px)",

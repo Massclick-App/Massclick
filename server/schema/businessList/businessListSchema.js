@@ -81,6 +81,11 @@ const businessListSchema = new mongoose.Schema({
   description: { type: String, default: '' },
   bannerImageKey: { type: String, default: '' },
   businessImagesKey: [{ type: String, default: '' }],
+  qrCode: {
+    qrText: { type: String, default: "" },
+    qrImageKey: { type: String, default: "" },
+    createdAt: { type: Date, default: null }
+  },
   googleMap: { type: String, default: '', },
   website: { type: String, default: '', },
   facebook: { type: String, default: '', },
@@ -92,6 +97,58 @@ const businessListSchema = new mongoose.Schema({
   businessDetails: { type: String, default: '', },
   globalAddress: { type: String, default: '', },
 
+  subscription: {
+    plan: {
+      type: String,
+      enum: ["FREE", "PREMIUM", "DIAMOND", "PLATINUM"],
+      default: "FREE",
+    },
+    isActive: { type: Boolean, default: false },
+    startDate: { type: Date, default: null },
+    endDate: { type: Date, default: null },
+    autoRenew: { type: Boolean, default: false },
+  },
+
+  verification: {
+    isVerified: { type: Boolean, default: false },
+    verifiedBy: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    verifiedAt: { type: Date, default: null },
+    verificationType: {
+      type: String,
+      enum: ["ADMIN", "DOCUMENT", "AUTO"],
+      default: "ADMIN",
+    },
+  },
+
+  badges: {
+    isFeatured: { type: Boolean, default: false },
+    isSponsored: { type: Boolean, default: false },
+    isTrending: { type: Boolean, default: false },
+    priorityScore: { type: Number, default: 0 },
+  },
+
+  geoLocation: {
+    type: {
+      type: String,
+      enum: ["Point"],
+      default: "Point",
+    },
+    coordinates: {
+      type: [Number],
+      default: [0, 0],
+    },
+  },
+
+  analytics: {
+    views: { type: Number, default: 0 },
+    clicks: { type: Number, default: 0 },
+    leads: { type: Number, default: 0 },
+    lastViewedAt: { type: Date, default: null },
+  },
   payment: {
     type: [paymentSchema],
     default: []
