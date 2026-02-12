@@ -199,7 +199,7 @@ export const viewBusinessList = async (id) => {
 };
 
 export const findBusinessesByCategory = async (category, district) => {
-  const query = {
+  const matchQuery = {
     businessesLive: true,
     $or: [
       { category: { $regex: category, $options: "i" } },
@@ -212,7 +212,7 @@ export const findBusinessesByCategory = async (category, district) => {
     district !== "All Districts" &&
     district !== "Enter location manually..."
   ) {
-    query.$and = [
+    matchQuery.$and = [
       {
         $or: [
           { district: { $regex: district, $options: "i" } },
@@ -225,11 +225,32 @@ export const findBusinessesByCategory = async (category, district) => {
     ];
   }
 
-  const businessList = await businessListModel.find(query).lean();
+  const businessList = await businessListModel.aggregate([
+    { $match: matchQuery },
 
-  if (!businessList || businessList.length === 0) {
-    return [];
-  }
+    {
+      $lookup: {
+        from: "businessreviews", 
+        localField: "_id",
+        foreignField: "businessId",
+        as: "reviews"
+      }
+    },
+
+    {
+      $addFields: {
+        totalReviews: { $size: "$reviews" }
+      }
+    },
+
+    {
+      $project: {
+        reviews: 0
+      }
+    }
+  ]);
+
+  if (!businessList.length) return [];
 
   return businessList.map((business) => {
     if (business.bannerImageKey)
@@ -248,6 +269,7 @@ export const findBusinessesByCategory = async (category, district) => {
     return business;
   });
 };
+
 
 export const viewAllClientBusinessList = async () => {
     const businessList = await businessListModel.find().lean();

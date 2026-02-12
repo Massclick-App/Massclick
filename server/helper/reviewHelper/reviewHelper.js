@@ -3,7 +3,36 @@ import businessReviewModel from "../../model/businessReview/businessReviewModel.
 import { uploadImageToS3, getSignedUrlByKey } from "../../s3Uploder.js";
 import mongoose from "mongoose";
 
+const updateBusinessRatingSummary = async (businessId) => {
+  const stats = await businessReviewModel.aggregate([
+    {
+      $match: {
+        businessId: new mongoose.Types.ObjectId(businessId),
+        status: "ACTIVE"
+      }
+    },
+    {
+      $group: {
+        _id: "$businessId",
+        averageRating: { $avg: "$rating" },
+        totalReviews: { $sum: 1 }
+      }
+    }
+  ]);
 
+  const business = await businessListModel.findById(businessId);
+  if (!business) return;
+
+  if (stats.length > 0) {
+    business.averageRating = Number(stats[0].averageRating.toFixed(1));
+    business.totalReviews = stats[0].totalReviews;
+  } else {
+    business.averageRating = 0;
+    business.totalReviews = 0;
+  }
+
+  await business.save();
+};
 
 export const addReviewHelper = async ({ businessId, reviewData }) => {
   const { userId, userName, rating, ratingExperience, ratingLove, ratingPhotos } = reviewData;
@@ -20,7 +49,8 @@ export const addReviewHelper = async ({ businessId, reviewData }) => {
 
   const alreadyReviewed = await businessReviewModel.findOne({
     businessId,
-    userId: userObjectId
+    userId: userObjectId,
+    status: "ACTIVE"
   });
 
   if (alreadyReviewed) {
@@ -34,22 +64,15 @@ export const addReviewHelper = async ({ businessId, reviewData }) => {
     rating: Number(rating),
     ratingExperience,
     ratingLove: ratingLove || [],
-    ratingPhotos: ratingPhotos || []
+    ratingPhotos: ratingPhotos || [],
+    status: "ACTIVE"
   });
 
-  const business = await businessListModel.findById(businessId);
-  if (business) {
-    const newTotal = (business.totalReviews || 0) + 1;
-    const newAverage =
-      ((business.averageRating || 0) * (newTotal - 1) + review.rating) / newTotal;
-
-    business.totalReviews = newTotal;
-    business.averageRating = Number(newAverage.toFixed(1));
-    await business.save();
-  }
+  await updateBusinessRatingSummary(businessId);
 
   return review;
 };
+
 
 export const getReviewsHelper = async ({
   businessId,
@@ -128,5 +151,8 @@ export const reportReviewHelper = async ({ reviewId }) => {
 
   review.status = "REPORTED";
   await review.save();
+
+  await updateBusinessRatingSummary(review.businessId);
+
   return true;
 };

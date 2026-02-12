@@ -230,16 +230,15 @@ export const mainSearchController = async (req, res) => {
   try {
     const { term = "", location = "", category = "" } = req.query;
 
-    const query = {
+    const matchQuery = {
       businessesLive: true,
       $and: []
     };
 
-  
     if (location.trim()) {
       const loc = new RegExp(location.trim(), "i");
 
-      query.$and.push({
+      matchQuery.$and.push({
         $or: [
           { location: loc },
           { street: loc },
@@ -250,10 +249,10 @@ export const mainSearchController = async (req, res) => {
       });
     }
 
-  
     if (category.trim()) {
       const cat = new RegExp(category.trim(), "i");
-      query.$and.push({
+
+      matchQuery.$and.push({
         $or: [
           { category: cat },
           { keywords: cat },
@@ -269,7 +268,8 @@ export const mainSearchController = async (req, res) => {
 
     if (term.trim()) {
       const t = new RegExp(term.trim(), "i");
-      query.$and.push({
+
+      matchQuery.$and.push({
         $or: [
           { businessName: t },
           { category: t },
@@ -283,10 +283,34 @@ export const mainSearchController = async (req, res) => {
       });
     }
 
-    if (query.$and.length === 0) delete query.$and;
+    if (matchQuery.$and.length === 0) {
+      delete matchQuery.$and;
+    }
 
-  
-    const results = await businessListModel.find(query).lean();
+    const results = await businessListModel.aggregate([
+      { $match: matchQuery },
+
+      {
+        $lookup: {
+          from: "businessreviews", 
+          localField: "_id",
+          foreignField: "businessId",
+          as: "reviews"
+        }
+      },
+
+      {
+        $addFields: {
+          totalReviews: { $size: "$reviews" }
+        }
+      },
+
+      {
+        $project: {
+          reviews: 0
+        }
+      }
+    ]);
 
     results.forEach((b) => {
       if (b.bannerImageKey) {
@@ -310,9 +334,10 @@ export const mainSearchController = async (req, res) => {
 
   } catch (err) {
     console.error(err);
-    res.status(BAD_REQUEST.code).send({ message: err.message });
+    res.status(400).send({ message: err.message });
   }
 };
+
 
 export const updateBusinessListAction = async (req, res) => {
   try {

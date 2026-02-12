@@ -91,7 +91,11 @@ const RestaurantsCards = () => {
               ? business.averageRating.toFixed(1)
               : "0.0";
 
-          const totalRatings = business.reviews?.length || 0;
+          const totalRatings =
+            typeof business.totalReviews === "number"
+              ? business.totalReviews
+              : 0;
+        
 
           const businessUrl = `/${createSlug(business.location)}/${createSlug(
             `${business.businessName}-${business.street}`

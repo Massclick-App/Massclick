@@ -3,7 +3,6 @@
 
 
 :root {
-  /* BRAND COLORS */
   --bc-primary: #ff6b2c;
   --bc-primary-dark: #e05210;
   --bc-primary-soft: rgba(255, 107, 44, 0.08);
@@ -11,41 +10,33 @@
   --bc-secondary-soft: rgba(26, 115, 232, 0.1);
   --bc-whatsapp: #25d366;
 
-  /* TEXT */
   --bc-text-dark: #111827;
   --bc-text-med: #4b5563;
   --bc-text-light: #9ca3af;
 
-  /* SURFACES */
   --bc-bg: #f5f7fb;
   --bc-card-bg: #ffffff;
   --bc-border: #e5e7eb;
 
-  /* RADIUS */
-  --bc-radius-lg: 1.25rem; /* 20px */
-  --bc-radius-md: 0.875rem; /* 14px */
+  --bc-radius-lg: 1.25rem; 
+  --bc-radius-md: 0.875rem; 
   --bc-radius-pill: 999px;
 
-  /* SHADOWS */
   --bc-shadow-soft: 0 12px 35px rgba(15, 23, 42, 0.12);
   --bc-shadow-hover: 0 20px 60px rgba(15, 23, 42, 0.18);
 
-  /* TYPOGRAPHY (using clamp for fluid sizes) */
-  --bc-title-xl: clamp(1.8rem, 2.4vw, 2.4rem); /* ~29–38px */
-  --bc-title-lg: clamp(1.4rem, 2vw, 1.9rem); /* ~22–30px */
-  --bc-title-md: clamp(1.15rem, 1.8vw, 1.5rem); /* ~18–24px */
-  --bc-text-lg: clamp(1rem, 1.4vw, 1.125rem); /* ~16–18px */
-  --bc-text-md: 0.95rem; /* 15px */
-  --bc-text-sm: 0.875rem; /* 14px */
-  --bc-text-xs: 0.75rem; /* 12px */
+  --bc-title-xl: clamp(1.8rem, 2.4vw, 2.4rem); 
+  --bc-title-lg: clamp(1.4rem, 2vw, 1.9rem);
+  --bc-title-md: clamp(1.15rem, 1.8vw, 1.5rem);
+  --bc-text-lg: clamp(1rem, 1.4vw, 1.125rem); 
+  --bc-text-md: 0.95rem; 
+  --bc-text-sm: 0.875rem; 
+  --bc-text-xs: 0.75rem; 
 
-  /* LAYOUT */
-  --bc-max-width: 90rem; /* 1440px */
+  --bc-max-width: 90rem;
   --bc-page-pad-x-mobile: 1rem;
   --bc-page-pad-x-desktop: 1.75rem;
 }
-
-/* ========= PAGE WRAPPER ================================= */
 
 .business-CardDetails-pageWrapper {
   width: 100%;

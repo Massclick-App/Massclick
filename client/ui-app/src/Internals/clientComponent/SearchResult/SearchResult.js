@@ -207,6 +207,11 @@ const SearchResults = () => {
                   ? business.averageRating.toFixed(1)
                   : "0.0";
 
+              const totalRatings =
+                typeof business.totalReviews === "number"
+                  ? business.totalReviews
+                  : 0;
+
               const businessUrl = `/${createSlug(
                 business.location
               )}/${createSlug(business.businessName)}/${business._id}`;
@@ -220,7 +225,7 @@ const SearchResults = () => {
                   address={business.location}
                   details={`Experience: ${business.experience} | Category: ${business.category}`}
                   rating={averageRating}
-                  reviews={business.reviews?.length || 0}
+                  reviews={totalRatings}
                   imageSrc={
                     business.bannerImage ||
                     "https://via.placeholder.com/120x100?text=Logo"

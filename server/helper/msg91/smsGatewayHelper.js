@@ -197,8 +197,10 @@ export const sendBusinessesToCustomer = async (
 
   businesses.forEach((biz, index) => {
     const contact = biz.contactList || biz.whatsappNumber || "N/A";
-    businessListText += `${index + 1}. ${biz.businessName} - ${contact}\n`;
+    businessListText += `${index + 1}. ${biz.businessName} - ${contact} | `;
   });
+
+  businessListText = businessListText.replace(/\|\s*$/, "");
 
   const payload = {
     integrated_number: process.env.MSG91_WHATSAPP_SENDER_ID,
@@ -220,7 +222,7 @@ export const sendBusinessesToCustomer = async (
               body_1: { type: "text", value: lead.customerName },
               body_2: { type: "text", value: lead.searchText },
               body_3: { type: "text", value: lead.location },
-              body_4: { type: "text", value: businessListText.trim() }
+              body_4: { type: "text", value: businessListText }
             }
           }
         ]
@@ -239,6 +241,7 @@ export const sendBusinessesToCustomer = async (
     }
   );
 };
+
 
 
 

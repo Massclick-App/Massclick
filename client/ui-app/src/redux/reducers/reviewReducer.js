@@ -14,6 +14,9 @@ import {
 
 const initialState = {
   reviews: [],
+  total: 0,
+  page: 1,
+  hasMore: false,
   loading: false,
   error: null
 };
@@ -34,9 +37,10 @@ export default function reviewReducer(state = initialState, action) {
       return {
         ...state,
         loading: false,
-        reviews: Array.isArray(action.payload?.reviews)
-          ? action.payload.reviews
-          : []
+        reviews: action.payload?.reviews || [],
+        total: action.payload?.total || 0,
+        hasMore: action.payload?.hasMore || false,
+        page: action.payload?.page || 1
       };
 
     case CREATE_REVIEW_SUCCESS:
@@ -46,31 +50,35 @@ export default function reviewReducer(state = initialState, action) {
         reviews: [
           action.payload,
           ...state.reviews
-        ]
+        ],
+        total: state.total + 1
       };
 
     case REPLY_REVIEW_SUCCESS:
       return {
         ...state,
         loading: false,
-        reviews: state.reviews.map(r =>
-          r._id === action.payload._id
-            ? { ...r, replies: action.payload.replies }
-            : r
+        reviews: state.reviews.map(review =>
+          review._id === action.payload._id
+            ? {
+                ...review,
+                replies: action.payload.replies
+              }
+            : review
         )
       };
 
     case HELPFUL_REVIEW_SUCCESS:
       return {
         ...state,
-        reviews: state.reviews.map(r =>
-          r._id === action.payload._id
+        reviews: state.reviews.map(review =>
+          review._id === action.payload._id
             ? {
-                ...r,
+                ...review,
                 helpfulCount: action.payload.helpfulCount,
                 helpfulBy: action.payload.helpfulBy
               }
-            : r
+            : review
         )
       };
 
@@ -78,8 +86,9 @@ export default function reviewReducer(state = initialState, action) {
       return {
         ...state,
         reviews: state.reviews.filter(
-          r => r._id !== action.payload
-        )
+          review => review._id !== action.payload
+        ),
+        total: state.total > 0 ? state.total - 1 : 0
       };
 
     case FETCH_REVIEWS_FAILURE:

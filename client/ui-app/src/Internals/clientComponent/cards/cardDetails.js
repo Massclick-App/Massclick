@@ -39,6 +39,7 @@ import Tooltip from "@mui/material/Tooltip";
 import Footer from "../footer/footer";
 import BusinessMap from "../businessMap/businessMap";
 import ReviewList from "../rating/reviewList";
+import { getBusinessReviews } from "../../../redux/actions/reviewAction.js";
 
 const SimpleModal = ({ children, onClose, title }) => (
   <div
@@ -131,6 +132,8 @@ const BusinessDetail = () => {
   const { businessDetails, businessDetailsLoading, businessDetailsError } =
     useSelector(state => state.businessListReducer);
 
+  const reviewState = useSelector(state => state.reviews || {});
+  const totalReview = reviewState.total || 0;
   const [mainImage, setMainImage] = useState(null);
   const [showFullGallery, setShowFullGallery] = useState(false);
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
@@ -145,6 +148,7 @@ const BusinessDetail = () => {
   const servicesRef = useRef(null);
   const photosRef = useRef(null);
   const reviewsRef = useRef(null);
+  const business = businessDetails;
 
   useEffect(() => {
     if (id) {
@@ -158,6 +162,13 @@ const BusinessDetail = () => {
       );
     }
   }, [dispatch, id, location, businessSlug]);
+
+  useEffect(() => {
+    if (business?._id) {
+      dispatch(getBusinessReviews(business._id));
+    }
+  }, [dispatch, business?._id]);
+
 
   if (businessDetailsLoading) {
     return (
@@ -183,7 +194,7 @@ const BusinessDetail = () => {
     );
   }
 
-  const business = businessDetails;
+
 
   if (!business) {
     return (
@@ -224,7 +235,7 @@ const BusinessDetail = () => {
   const displayedAverageRating = business.averageRating
     ? business.averageRating.toFixed(1)
     : "0.0";
-  const totalRatings = business?.reviews?.length || 0;
+  // const totalRatings = business?.reviews?.length || 0;
 
   const daysOfWeek = [
     "Sunday",
@@ -468,8 +479,8 @@ const BusinessDetail = () => {
                     ★
                   </span>
                   <span className="business-CardDetails-heroRatingCount">
-                    {totalRatings} rating
-                    {totalRatings !== 1 ? "s" : ""}
+                    {totalReview} rating
+                    {totalReview !== 1 ? "s" : ""}
                   </span>
                 </div>
               </div>
@@ -518,7 +529,7 @@ const BusinessDetail = () => {
                   {displayedAverageRating} ★
                 </span>
                 <span className="business-CardDetails-ratingText">
-                  {totalRatings} ratings •{" "}
+                  {totalReview} ratings •{" "}
                   <a href="#" onClick={(e) => e.preventDefault()}>
                     Claim this business
                   </a>
@@ -948,7 +959,7 @@ const BusinessDetail = () => {
                   )}
                 </div>
               </section> */}
-              
+
             </div>
 
             {business.googleMap && (
