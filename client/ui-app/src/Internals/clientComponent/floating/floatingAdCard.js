@@ -1,12 +1,13 @@
 import { Box, Typography, Button, IconButton } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 
 const FloatingAdCard = () => {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const timerRef = useRef(null);
 
   const HIDE_ON = ["/admin", "/dashboard"];
 
@@ -17,9 +18,17 @@ const FloatingAdCard = () => {
   useEffect(() => {
     if (shouldHide) return;
 
-    const timer = setTimeout(() => setOpen(true), 2000);
-    return () => clearTimeout(timer);
+    timerRef.current = setTimeout(() => {
+      setOpen(true);
+    }, 2000);
+
+    return () => clearTimeout(timerRef.current);
   }, [location.pathname, shouldHide]);
+
+  const handleClose = () => {
+    clearTimeout(timerRef.current);
+    setOpen(false);
+  };
 
   if (shouldHide || !open) return null;
 
@@ -30,7 +39,7 @@ const FloatingAdCard = () => {
         right: { xs: 12, sm: 20, md: 28 },
         bottom: { xs: 12, sm: 20, md: 28 },
 
-        width: { xs: "92vw", sm: 340, md: 360, lg: 380 },
+        width: { xs: "94vw", sm: 340, md: 360, lg: 380 },
         maxWidth: 420,
 
         display: "flex",
@@ -39,12 +48,14 @@ const FloatingAdCard = () => {
         bgcolor: "#06155d",
         color: "#ffffff",
 
-        borderRadius: 4,
+        borderRadius: 3,
+        boxShadow: "0 20px 60px rgba(0,0,0,0.45)",
 
-        boxShadow: "0 24px 60px rgba(0,0,0,0.4)",
-        zIndex: 3500,
+        zIndex: (theme) => theme.zIndex.modal + 5,
 
-        animation: "fadeSlideUp 0.45s cubic-bezier(0.4, 0, 0.2, 1)",
+        transform: "translateZ(0)", 
+
+        animation: "fadeSlideUp 0.4s ease-out",
 
         "@keyframes fadeSlideUp": {
           from: { transform: "translateY(40px)", opacity: 0 },
@@ -52,12 +63,7 @@ const FloatingAdCard = () => {
         },
       }}
     >
-      <Box
-        sx={{
-          width: 6,
-          bgcolor: "#ff5722",
-        }}
-      />
+      <Box sx={{ width: 6, bgcolor: "#ff5722" }} />
 
       <Box
         sx={{
@@ -67,17 +73,22 @@ const FloatingAdCard = () => {
         }}
       >
         <IconButton
-          size="small"
-          onClick={() => setOpen(false)}
+          onClick={handleClose}
           sx={{
             position: "absolute",
             top: 8,
             right: 8,
+            width: 44,
+            height: 44,
             color: "#ffffff",
-            opacity: 0.65,
+            backgroundColor: "rgba(255,255,255,0.08)",
+
             "&:hover": {
-              opacity: 1,
-              bgcolor: "rgba(255,255,255,0.12)",
+              backgroundColor: "rgba(255,255,255,0.2)",
+            },
+
+            "&:active": {
+              transform: "scale(0.92)",
             },
           }}
         >
@@ -96,10 +107,9 @@ const FloatingAdCard = () => {
 
         <Typography
           sx={{
-            fontSize: { xs: "1.35rem", sm: "1.5rem", md: "1.65rem" },
+            fontSize: { xs: "1.3rem", sm: "1.5rem", md: "1.6rem" },
             fontWeight: 700,
             mt: 0.5,
-            letterSpacing: "-0.02em",
           }}
         >
           50,000+ Buyers
@@ -109,9 +119,9 @@ const FloatingAdCard = () => {
           sx={{
             fontSize: { xs: "0.85rem", sm: "0.9rem" },
             mt: 1,
-            mb: 2.8,
-            opacity: 0.9,
+            mb: 2.5,
             lineHeight: 1.6,
+            opacity: 0.9,
           }}
         >
           Grow your business globally in just 3 simple steps with Massclick
@@ -122,19 +132,18 @@ const FloatingAdCard = () => {
           onClick={() => navigate("/business-enquiry")}
           sx={{
             bgcolor: "#ff5722",
-            color: "#ffffff",
+            color: "#fff",
             fontWeight: 700,
-            fontSize: { xs: "0.85rem", sm: "0.9rem" },
-            py: { xs: 1, sm: 1.25 },
+            py: 1.2,
             borderRadius: "999px",
             textTransform: "none",
 
-            boxShadow: "0 8px 22px rgba(0,0,0,0.3)",
-
             "&:hover": {
               bgcolor: "#e64a19",
-              boxShadow: "0 14px 30px rgba(0,0,0,0.4)",
-              transform: "translateY(-1px)",
+            },
+
+            "&:active": {
+              transform: "scale(0.97)",
             },
           }}
         >

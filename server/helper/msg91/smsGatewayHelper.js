@@ -94,7 +94,6 @@ export const verifyOtp = async (number, otp) => {
   }
 };
 
-
 export const sendWhatsAppMessage = async (ownerMobile, lead = {}) => {
   const cleanMobile = ownerMobile.replace(/\D/g, "");
   if (cleanMobile.length !== 10) {
@@ -143,6 +142,104 @@ export const sendWhatsAppMessage = async (ownerMobile, lead = {}) => {
 
   return response.data;
 };
+
+export const sendBusinessLead = async (cleanMobile, lead = {}) => {
+
+  const payload = {
+    integrated_number: process.env.MSG91_WHATSAPP_SENDER_ID,
+    content_type: "template",
+    payload: {
+      messaging_product: "whatsapp",
+      type: "template",
+      template: {
+        name: "business_lead_alert_v1",
+        language: {
+          code: "en_US",
+          policy: "deterministic"
+        },
+        namespace: process.env.MSG91_TEMPLATE_NAMESPACE,
+        to_and_components: [
+          {
+            to: [`91${cleanMobile}`],
+            components: {
+              body_1: { type: "text", value: lead.searchText },
+              body_2: { type: "text", value: lead.location },
+              body_3: { type: "text", value: lead.customerName },
+              body_4: { type: "text", value: lead.customerMobile },
+              body_5: { type: "text", value: lead.email || "Not Provided" }
+            }
+          }
+        ]
+      }
+    }
+  };
+
+  return axios.post(
+    "https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/",
+    payload,
+    {
+      headers: {
+        authkey: process.env.MSG91_AUTH_KEY,
+        "Content-Type": "application/json"
+      }
+    }
+  );
+};
+
+
+export const sendBusinessesToCustomer = async (
+  cleanMobile,
+  lead,
+  businesses
+) => {
+
+  let businessListText = "";
+
+  businesses.forEach((biz, index) => {
+    const contact = biz.contactList || biz.whatsappNumber || "N/A";
+    businessListText += `${index + 1}. ${biz.businessName} - ${contact}\n`;
+  });
+
+  const payload = {
+    integrated_number: process.env.MSG91_WHATSAPP_SENDER_ID,
+    content_type: "template",
+    payload: {
+      messaging_product: "whatsapp",
+      type: "template",
+      template: {
+        name: "customer_business_list_v1",
+        language: {
+          code: "en_US",
+          policy: "deterministic"
+        },
+        namespace: process.env.MSG91_TEMPLATE_NAMESPACE,
+        to_and_components: [
+          {
+            to: [`91${cleanMobile}`],
+            components: {
+              body_1: { type: "text", value: lead.customerName },
+              body_2: { type: "text", value: lead.searchText },
+              body_3: { type: "text", value: lead.location },
+              body_4: { type: "text", value: businessListText.trim() }
+            }
+          }
+        ]
+      }
+    }
+  };
+
+  return axios.post(
+    "https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/",
+    payload,
+    {
+      headers: {
+        authkey: process.env.MSG91_AUTH_KEY,
+        "Content-Type": "application/json"
+      }
+    }
+  );
+};
+
 
 
 

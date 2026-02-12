@@ -31,8 +31,6 @@ export default function AdvertisePage() {
     setErrors(err);
 
     if (Object.keys(err).length === 0) {
-      console.log("FORM DATA 👉", formData);
-      // API call later
     }
   };
 

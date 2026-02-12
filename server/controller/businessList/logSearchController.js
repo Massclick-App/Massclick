@@ -2,8 +2,9 @@ import { createSearchLog, getAllSearchLogs, getMatchedSearchLogs, updateSearchDa
 import CategoryModel from "../../model/category/categoryModel.js";
 import { getSignedUrlByKey } from "../../s3Uploder.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
-import { sendWhatsAppMessage } from "../../helper/msg91/smsGatewayHelper.js";
+import { sendBusinessesToCustomer, sendBusinessLead } from "../../helper/msg91/smsGatewayHelper.js";
 // import leadsRotationModel from "../../model/leadsData/leadsRotationalModel.js";
+import searchLogModel from "../../model/businessList/searchLogModel.js";
 
 // export const logSearchAction = async (req, res) => {
 //   try {
@@ -50,19 +51,81 @@ import { sendWhatsAppMessage } from "../../helper/msg91/smsGatewayHelper.js";
 //   }
 // };
 
+const cleanIndianMobile = (mobile) => {
+  if (!mobile) return null;
+
+  let clean = mobile.replace(/\D/g, "");
+
+  if (clean.startsWith("91") && clean.length === 12) {
+    clean = clean.slice(2);
+  }
+
+  if (/^[6-9]\d{9}$/.test(clean)) {
+    return clean;
+  }
+
+  return null;
+};
+
+
 export const logSearchAction = async (req, res) => {
   try {
     const { categoryName, location, searchedUserText, userDetails } = req.body;
 
-    if (!categoryName || !categoryName.trim()) {
+    if (!searchedUserText || !searchedUserText.trim()) {
       return res.status(400).json({
         success: false,
-        message: "Category selection is mandatory"
+        message: "Search text is mandatory"
       });
     }
 
-    const finalCategoryName = categoryName.trim();
+    const cleanSearchText = searchedUserText.trim().toLowerCase();
     const normalizedLocation = location?.toLowerCase().trim() || "global";
+
+    const isValidUser =
+      userDetails &&
+      userDetails.userName &&
+      userDetails.userName.trim() &&
+      userDetails.mobileNumber1 &&
+      userDetails.mobileNumber1.trim();
+
+    if (!isValidUser) {
+      return res.status(200).json({
+        success: false,
+        message: "Valid name and mobile number required to process lead"
+      });
+    }
+
+    let finalCategoryName = "";
+
+    if (
+      categoryName &&
+      categoryName.trim() &&
+      categoryName.toLowerCase() !== "all categories"
+    ) {
+      finalCategoryName = categoryName.trim();
+    } else {
+      const matchedCategory = await CategoryModel.findOne({
+        categoryName: { $regex: cleanSearchText, $options: "i" }
+      }).lean();
+
+      if (matchedCategory) {
+        finalCategoryName = matchedCategory.categoryName;
+      } else {
+        const searchWords = cleanSearchText.split(" ");
+
+        const possibleCategory = await CategoryModel.findOne({
+          categoryName: {
+            $regex: searchWords.join("|"),
+            $options: "i"
+          }
+        }).lean();
+
+        finalCategoryName = possibleCategory
+          ? possibleCategory.categoryName
+          : "Other";
+      }
+    }
 
     const categorySlug = finalCategoryName
       .toLowerCase()
@@ -74,21 +137,20 @@ export const logSearchAction = async (req, res) => {
       { categoryImageKey: 1 }
     ).lean();
 
-    const filteredUser = [
-      {
-        userName: userDetails?.userName || "",
-        mobileNumber1: userDetails?.mobileNumber1 || "",
-        mobileNumber2: userDetails?.mobileNumber2 || "",
-        email: userDetails?.email || ""
-      }
-    ];
-
-    await createSearchLog({
+    const savedLog = await createSearchLog({
       categoryName: finalCategoryName,
       categoryImage: category?.categoryImageKey || "",
-      location: normalizedLocation,
       searchedUserText,
-      userDetails: filteredUser
+      location: normalizedLocation,
+      userDetails: [
+        {
+          userName: userDetails.userName,
+          mobileNumber1: userDetails.mobileNumber1,
+          mobileNumber2: userDetails.mobileNumber2 || "",
+          email: userDetails.email || ""
+        }
+      ],
+      whatsapp: false
     });
 
     const businesses = await businessListModel.find(
@@ -104,60 +166,80 @@ export const logSearchAction = async (req, res) => {
     if (!businesses.length) {
       return res.status(200).json({
         success: true,
-        message: "Search logged, no businesses found"
+        message: "Lead stored but no businesses found",
+        detectedCategory: finalCategoryName
       });
     }
 
-    const hasValidUserDetails =
-      userDetails &&
-      (
-        userDetails.userName ||
-        userDetails.mobileNumber1 ||
-        userDetails.mobileNumber2 ||
-        userDetails.email
-      );
-    
-
     const leadData = {
-      searchText: searchedUserText || finalCategoryName,
+      searchText: searchedUserText,
       location: normalizedLocation,
-      customerName: userDetails?.userName || "Unknown",
-      customerMobile: userDetails?.mobileNumber1 || "",
-      email: userDetails?.email || ""
+      customerName: userDetails.userName,
+      customerMobile: userDetails.mobileNumber1,
+      email: userDetails.email || ""
     };
+
+    let businessSendSuccess = false;
+    let customerSendSuccess = false;
 
     const notifiedBusinesses = [];
 
-    if (hasValidUserDetails) {
-      for (const business of businesses) {
-        const ownerMobile =
-          business.contactList || business.whatsappNumber;
+    for (const business of businesses) {
+      const ownerMobile =
+        business.contactList || business.whatsappNumber;
 
-        if (!ownerMobile) continue;
+      const cleanMobile = cleanIndianMobile(ownerMobile);
+      if (!cleanMobile) continue;
 
-        try {
-          await sendWhatsAppMessage(ownerMobile, leadData);
-          notifiedBusinesses.push({
-            businessName: business.businessName,
-            mobile: ownerMobile
-          });
+      try {
+        await sendBusinessLead(cleanMobile, leadData);
+        businessSendSuccess = true;
 
-        } catch (err) {
-          console.error(
-            `WhatsApp failed for ${business.businessName}`,
-            err.message
-          );
-        }
+        notifiedBusinesses.push({
+          businessName: business.businessName,
+          mobile: cleanMobile
+        });
+
+      } catch (err) {
+        console.error(
+          `Business WhatsApp failed`,
+          err.response?.data || err.message
+        );
       }
+    }
+
+    const cleanCustomerMobile = cleanIndianMobile(userDetails.mobileNumber1);
+
+    if (cleanCustomerMobile) {
+      try {
+        await sendBusinessesToCustomer(
+          cleanCustomerMobile,
+          leadData,
+          businesses
+        );
+        customerSendSuccess = true;
+      } catch (err) {
+        console.error(
+          "Customer WhatsApp failed",
+          err.response?.data || err.message
+        );
+      }
+    }
+
+    if (businessSendSuccess && customerSendSuccess) {
+      await searchLogModel.findByIdAndUpdate(
+        savedLog._id,
+        { whatsapp: true }
+      );
     }
 
     return res.status(202).json({
       success: true,
-      message: "Search logged & lead sent to all matching businesses",
-      category: finalCategoryName,
-      location: normalizedLocation,
+      message: "Valid lead stored & processed",
+      detectedCategory: finalCategoryName,
       totalBusinesses: businesses.length,
-      notifiedBusinesses
+      notifiedBusinesses,
+      whatsappUpdated: businessSendSuccess && customerSendSuccess
     });
 
   } catch (error) {

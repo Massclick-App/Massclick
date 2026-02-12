@@ -319,6 +319,10 @@ export const viewAllClientBusinessList = async () => {
 
 //   return businessListWithDetails;
 // };
+function escapeRegex(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 export const viewAllBusinessList = async ({
   role,
   userId,
@@ -376,17 +380,17 @@ export const viewAllBusinessList = async ({
     "keywords"
   ];
 
-  if (search) {
-    const regexSearch = searchableFields.map((field) => ({
-      [field]: { $regex: search, $options: "i" }
-    }));
+ if (search) {
+  const safeSearch = escapeRegex(search);
 
-    query.$or = regexSearch;
-  }
+  const regexSearch = searchableFields.map((field) => ({
+    [field]: { $regex: safeSearch, $options: "i" }
+  }));
 
-  // -------------------------
-  // SORTING
-  // -------------------------
+  query.$or = regexSearch;
+}
+
+
   const allowedSortFields = [
     "createdAt",
     "businessName",
@@ -399,12 +403,10 @@ export const viewAllBusinessList = async ({
   if (allowedSortFields.includes(sortBy)) {
     sort[sortBy] = sortOrder === "asc" ? 1 : -1;
   } else {
-    sort.createdAt = -1;  // default sort
+    sort.createdAt = -1; 
   }
 
-  // -------------------------
-  // PAGINATION + TOTAL COUNT
-  // -------------------------
+
   const total = await businessListModel.countDocuments(query);
 
   const businessList = await businessListModel
@@ -414,9 +416,6 @@ export const viewAllBusinessList = async ({
     .limit(pageSize)
     .lean();
 
-  // -------------------------
-  // ATTACH IMAGES + LOCATION DETAILS
-  // -------------------------
   const businessListWithDetails = await Promise.all(
     businessList.map(async (business) => {
 
@@ -452,21 +451,15 @@ export const viewAllBusinessList = async ({
   };
 };
 
-
-
 export const updateBusinessList = async (id, data) => {
   if (!ObjectId.isValid(id)) throw new Error("Invalid business ID");
 
   const business = await businessListModel.findById(id);
   if (!business) throw new Error("Business not found");
 
-  /* ===============================
-     1️⃣ HANDLE REVIEW ADDITION
-  =============================== */
   if (data.reviewData) {
     const { reviewData } = data;
 
-    // Ensure reviews array exists
     if (!Array.isArray(business.reviews)) {
       business.reviews = [];
     }
