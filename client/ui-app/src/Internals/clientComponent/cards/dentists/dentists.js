@@ -102,7 +102,10 @@ const DentistsCards = () => {
               ? business.averageRating.toFixed(1)
               : "0.0";
 
-          const totalRatings = business.reviews?.length || 0;
+           const totalRatings =
+            typeof business.totalReviews === "number"
+              ? business.totalReviews
+              : 0;
 
           const locationSlug = createSlug(business.location);
           const businessSlug = createSlug(

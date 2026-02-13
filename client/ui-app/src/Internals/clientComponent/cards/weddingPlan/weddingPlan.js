@@ -33,24 +33,24 @@ const WeddingPlanCards = () => {
 
   const weddingList = categoryBusinessList[CATEGORY] || [];
 
-   const { selectedDistrict } = useSelector(
-     (state) => state.locationReducer
-   );
- 
-   const district = selectedDistrict;
- 
+  const { selectedDistrict } = useSelector(
+    (state) => state.locationReducer
+  );
+
+  const district = selectedDistrict;
+
   useEffect(() => {
-   if (typeof district === "string" && district.trim().length > 0) {
-     dispatch(getBusinessByCategory(CATEGORY, district.trim()));
-   }
- }, [dispatch, district]);
- 
- 
-   const handleRetry = useCallback(() => {
-     if (district) {
-       dispatch(getBusinessByCategory(CATEGORY, district));
-     }
-   }, [dispatch, district]);
+    if (typeof district === "string" && district.trim().length > 0) {
+      dispatch(getBusinessByCategory(CATEGORY, district.trim()));
+    }
+  }, [dispatch, district]);
+
+
+  const handleRetry = useCallback(() => {
+    if (district) {
+      dispatch(getBusinessByCategory(CATEGORY, district));
+    }
+  }, [dispatch, district]);
 
   if (error) {
     return (
@@ -103,7 +103,10 @@ const WeddingPlanCards = () => {
               ? business.averageRating.toFixed(1)
               : "0.0";
 
-          const totalRatings = business.reviews?.length || 0;
+          const totalRatings =
+            typeof business.totalReviews === "number"
+              ? business.totalReviews
+              : 0;
 
           const locationSlug = createSlug(business.location);
           const businessSlug = createSlug(

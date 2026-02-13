@@ -40,7 +40,6 @@ const RestaurantsCards = () => {
   }
 }, [dispatch, district]);
 
-
   const handleRetry = useCallback(() => {
     if (district) {
       dispatch(getBusinessByCategory(CATEGORY, district));
@@ -96,7 +95,6 @@ const RestaurantsCards = () => {
               ? business.totalReviews
               : 0;
         
-
           const businessUrl = `/${createSlug(business.location)}/${createSlug(
             `${business.businessName}-${business.street}`
           )}/${business._id}`;

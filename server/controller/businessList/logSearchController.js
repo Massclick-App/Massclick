@@ -137,21 +137,42 @@ export const logSearchAction = async (req, res) => {
       { categoryImageKey: 1 }
     ).lean();
 
-    const savedLog = await createSearchLog({
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const existingLog = await searchLogModel.findOne({
       categoryName: finalCategoryName,
-      categoryImage: category?.categoryImageKey || "",
-      searchedUserText,
       location: normalizedLocation,
-      userDetails: [
-        {
-          userName: userDetails.userName,
-          mobileNumber1: userDetails.mobileNumber1,
-          mobileNumber2: userDetails.mobileNumber2 || "",
-          email: userDetails.email || ""
-        }
-      ],
-      whatsapp: false
+      "userDetails.mobileNumber1": userDetails.mobileNumber1,
+      createdAt: { $gte: startOfDay, $lte: endOfDay }
     });
+
+    let savedLog;
+
+    if (existingLog) {
+      existingLog.updatedAt = new Date();
+      await existingLog.save();
+      savedLog = existingLog;
+    } else {
+      savedLog = await createSearchLog({
+        categoryName: finalCategoryName,
+        categoryImage: category?.categoryImageKey || "",
+        searchedUserText,
+        location: normalizedLocation,
+        userDetails: [
+          {
+            userName: userDetails.userName,
+            mobileNumber1: userDetails.mobileNumber1,
+            mobileNumber2: userDetails.mobileNumber2 || "",
+            email: userDetails.email || ""
+          }
+        ],
+        whatsapp: false
+      });
+    }
 
     const businesses = await businessListModel.find(
       {

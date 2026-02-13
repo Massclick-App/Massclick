@@ -32,17 +32,17 @@ const ComputerAndLaptopServiceCards = () => {
 
   const computerAndLaptopsServiceList = categoryBusinessList[CATEGORY] || [];
 
- const { selectedDistrict } = useSelector(
+  const { selectedDistrict } = useSelector(
     (state) => state.locationReducer
   );
 
   const district = selectedDistrict;
 
- useEffect(() => {
-  if (typeof district === "string" && district.trim().length > 0) {
-    dispatch(getBusinessByCategory(CATEGORY, district.trim()));
-  }
-}, [dispatch, district]);
+  useEffect(() => {
+    if (typeof district === "string" && district.trim().length > 0) {
+      dispatch(getBusinessByCategory(CATEGORY, district.trim()));
+    }
+  }, [dispatch, district]);
 
 
   const handleRetry = useCallback(() => {
@@ -102,7 +102,10 @@ const ComputerAndLaptopServiceCards = () => {
               ? business.averageRating.toFixed(1)
               : "0.0";
 
-          const totalRatings = business.reviews?.length || 0;
+          const totalRatings =
+            typeof business.totalReviews === "number"
+              ? business.totalReviews
+              : 0;
 
           const locationSlug = createSlug(business.location);
           const businessSlug = createSlug(

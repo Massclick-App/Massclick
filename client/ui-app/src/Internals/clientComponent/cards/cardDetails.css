@@ -1,7 +1,6 @@
 
 @import url("https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500;600;700;800&display=swap");
 
-
 :root {
   --bc-primary: #ff6b2c;
   --bc-primary-dark: #e05210;
@@ -47,14 +46,12 @@
   background: radial-gradient(circle at top left, #fdf2e8, #eef2ff);
 }
 
-/* >= 768px (tablets up) */
 @media (min-width: 48rem) {
   .business-CardDetails-pageWrapper {
     padding: 2rem 1.25rem 3rem;
   }
 }
 
-/* >= 1024px (laptops) */
 @media (min-width: 64rem) {
   .business-CardDetails-pageWrapper {
     padding: 2.5rem var(--bc-page-pad-x-desktop) 3.25rem;
@@ -62,19 +59,14 @@
   }
 }
 
-/* =========================================================
-   HERO SECTION + BANNER
-   ========================================================= */
-
 .business-CardDetails-heroSection {
   margin-bottom: 1.5rem;
 }
 
-/* Main banner */
 .business-CardDetails-mainImageContainer {
   position: relative;
   width: 100%;
-  height: 16.5rem; /* 264px - mobile */
+  height: 16.5rem; 
   border-radius: var(--bc-radius-lg);
   overflow: hidden;
   box-shadow: var(--bc-shadow-soft);
@@ -83,16 +75,15 @@
   transform: translateZ(0);
 }
 
-/* larger devices */
 @media (min-width: 48rem) {
   .business-CardDetails-mainImageContainer {
-    height: 19rem; /* 304px */
+    height: 19rem; 
   }
 }
 
 @media (min-width: 75rem) {
   .business-CardDetails-mainImageContainer {
-    height: 21rem; /* 336px */
+    height: 21rem; 
   }
 }
 
@@ -112,7 +103,6 @@
   filter: brightness(1.03);
 }
 
-/* dark gradient layer */
 .business-CardDetails-heroGradient {
   position: absolute;
   inset: 0;
@@ -124,7 +114,6 @@
   );
 }
 
-/* hero text over image */
 .business-CardDetails-heroMeta {
   position: absolute;
   left: 1.2rem;
@@ -144,7 +133,6 @@
   }
 }
 
-/* header & rating chip */
 .business-CardDetails-heroMetaPrimary {
   display: flex;
   align-items: center;
@@ -182,14 +170,12 @@
   opacity: 0.9;
 }
 
-/* Address line */
 .business-CardDetails-heroAddress {
   margin: 0;
   font-size: var(--bc-text-sm);
   opacity: 0.94;
 }
 
-/* Thumbnails bar */
 .business-CardDetails-thumbnails {
   display: flex;
   gap: 0.6rem;
@@ -228,18 +214,12 @@
   box-shadow: 0 0 0 2px rgba(255, 107, 44, 0.5);
 }
 
-/* =========================================================
-   MAIN GRID LAYOUT (LEFT + RIGHT)
-   Mobile-first: single column, expand to 2 columns on wider screens
-   ========================================================= */
-
 .business-CardDetails-mainGrid {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
 }
 
-/* >= 900px => two-column layout */
 @media (min-width: 56.25rem) {
   .business-CardDetails-mainGrid {
     display: grid;
@@ -249,16 +229,11 @@
   }
 }
 
-/* Very large screens: widen left column slightly */
 @media (min-width: 75rem) {
   .business-CardDetails-mainGrid {
     grid-template-columns: minmax(0, 2.3fr) minmax(0, 1fr);
   }
 }
-
-/* =========================================================
-   GENERIC CARD STYLE
-   ========================================================= */
 
 .business-CardDetails-headerCard,
 .business-CardDetails-overviewCard,
@@ -274,7 +249,6 @@
   border: 1px solid rgba(229, 231, 235, 0.9);
 }
 
-/* Slight hover lift on desktop */
 @media (min-width: 64rem) {
   .business-CardDetails-headerCard:hover,
   .business-CardDetails-overviewCard:hover,
@@ -289,7 +263,6 @@
   }
 }
 
-/* Larger internal padding on bigger screens */
 @media (min-width: 48rem) {
   .business-CardDetails-headerCard,
   .business-CardDetails-overviewCard,
@@ -301,7 +274,6 @@
     padding: 1.5rem 1.65rem;
   }
 }
-
 
 .business-CardDetails-overviewText p:empty {
   display: none;
