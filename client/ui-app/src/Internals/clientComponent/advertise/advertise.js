@@ -1,43 +1,76 @@
 import "./advertise.css";
 import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useSnackbar } from "notistack";
 import { businessCategorySearch } from "../../../redux/actions/categoryAction.js";
+import { createAdvertise } from "../../../redux/actions/advertiseAction.js";
 
 export default function AdvertisePage() {
   const dispatch = useDispatch();
+  const { enqueueSnackbar } = useSnackbar();
 
   const { searchCategory = [] } = useSelector(
     (state) => state.categoryReducer || {}
   );
+  const { loading } = useSelector((state) => state.advertise || {});
 
   const [showCategorySuggest, setShowCategorySuggest] = useState(false);
 
   const [formData, setFormData] = useState({
     businessName: "",
-    mobile: "",
+    mobileNumber: "",
     pincode: "",
     category: "",
     city: "",
-    address: "",
+    businessAddress: "",
   });
 
   const [errors, setErrors] = useState({});
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     let err = {};
-    if (!formData.category) err.category = "Category is required";
+
+    if (!formData.businessName) err.businessName = "Business name required";
+    if (!formData.mobileNumber) err.mobileNumber = "Mobile required";
+    if (!formData.pincode) err.pincode = "Pincode required";
+    if (!formData.category) err.category = "Category required";
+    if (!formData.city) err.city = "City required";
+    if (!formData.businessAddress)
+      err.businessAddress = "Address required";
+
     setErrors(err);
 
     if (Object.keys(err).length === 0) {
+      try {
+        await dispatch(createAdvertise(formData));
+
+        enqueueSnackbar(
+          `${formData.businessName} submitted successfully!`,
+          { variant: "success" }
+        );
+
+        setFormData({
+          businessName: "",
+          mobileNumber: "",
+          pincode: "",
+          category: "",
+          city: "",
+          businessAddress: "",
+        });
+      } catch (error) {
+        enqueueSnackbar("Something went wrong. Please try again.", {
+          variant: "error",
+        });
+
+      }
     }
   };
 
   return (
     <div className="advertise-wrapper">
       <div className="advertise-card">
-
         <div className="advertise-left">
           <h1>Publicize Your Business</h1>
           <p>
@@ -65,16 +98,22 @@ export default function AdvertisePage() {
               placeholder="Business Name"
               value={formData.businessName}
               onChange={(e) =>
-                setFormData((p) => ({ ...p, businessName: e.target.value }))
+                setFormData((p) => ({
+                  ...p,
+                  businessName: e.target.value,
+                }))
               }
             />
 
             <input
               type="text"
               placeholder="Mobile Number"
-              value={formData.mobile}
+              value={formData.mobileNumber}
               onChange={(e) =>
-                setFormData((p) => ({ ...p, mobile: e.target.value }))
+                setFormData((p) => ({
+                  ...p,
+                  mobileNumber: e.target.value,
+                }))
               }
             />
 
@@ -83,11 +122,13 @@ export default function AdvertisePage() {
               placeholder="Pincode"
               value={formData.pincode}
               onChange={(e) =>
-                setFormData((p) => ({ ...p, pincode: e.target.value }))
+                setFormData((p) => ({
+                  ...p,
+                  pincode: e.target.value,
+                }))
               }
             />
 
-            {/* CATEGORY SEARCH (same logic as AdvertisementPage) */}
             <div className="form-field" style={{ position: "relative" }}>
               <label>Category</label>
 
@@ -149,23 +190,30 @@ export default function AdvertisePage() {
               placeholder="City"
               value={formData.city}
               onChange={(e) =>
-                setFormData((p) => ({ ...p, city: e.target.value }))
+                setFormData((p) => ({
+                  ...p,
+                  city: e.target.value,
+                }))
               }
             />
 
             <input
               type="text"
               placeholder="Business Address"
-              value={formData.address}
+              value={formData.businessAddress}
               onChange={(e) =>
-                setFormData((p) => ({ ...p, address: e.target.value }))
+                setFormData((p) => ({
+                  ...p,
+                  businessAddress: e.target.value,
+                }))
               }
             />
 
-            <button type="submit">Save & Continue</button>
+            <button type="submit" disabled={loading}>
+              {loading ? "Submitting..." : "Save & Continue"}
+            </button>
           </form>
         </div>
-
       </div>
     </div>
   );

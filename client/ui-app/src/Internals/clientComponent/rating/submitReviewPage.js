@@ -17,6 +17,7 @@ import DialogActions from '@mui/material/DialogActions';
 import Button from '@mui/material/Button';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import OTPLoginModal from '../AddBusinessModel';
+import Tooltip from "@mui/material/Tooltip";
 
 const labels = {
   0.5: 'Useless', 1: 'Poor', 1.5: 'Bad', 2: 'Weak', 2.5: 'Average',
@@ -103,9 +104,6 @@ const WriteReviewPage = () => {
     navigate(`/${locationSlug}/${businessSlug}/${businessId}`);
   };
 
-
-
-
   const handlePhotoUpload = (event) => {
     const files = Array.from(event.target.files);
     setRatingPhotos(files);
@@ -119,7 +117,7 @@ const WriteReviewPage = () => {
 
   const handleSubmitReview = async () => {
 
-  const storedUser = JSON.parse(localStorage.getItem("authUser") || "{}");
+    const storedUser = JSON.parse(localStorage.getItem("authUser") || "{}");
 
     if (!storedUser?._id) {
       setShowLoginModal(true);
@@ -162,7 +160,6 @@ const WriteReviewPage = () => {
     }
   };
 
-
   const isSubmitDisabled = isSubmitting || !rating || reviewText.length < 5;
 
   return (
@@ -185,19 +182,32 @@ const WriteReviewPage = () => {
         </div>
 
         <div className="review-form-body">
-          {/* LEFT */}
           <div className="rating-column">
             <div className="rating-section">
               <h3>How would you rate your experience?</h3>
-
-              <Rating
-                value={rating}
-                precision={0.5}
-                onChange={(e, newValue) => setRating(newValue || 0)}
-                emptyIcon={<StarIcon style={{ opacity: 0.2 }} fontSize="inherit" />}
-                size="large"
-              />
-
+              <Tooltip
+                title={labels[rating] || "Select your rating"}
+                arrow
+                placement="top"
+              >
+                <Rating
+                  value={rating}
+                  precision={0.5}
+                  onChange={(e, newValue) => setRating(newValue || 0)}
+                  emptyIcon={<StarIcon style={{ opacity: 0.2 }} />}
+                  sx={{
+                    "& .MuiSvgIcon-root": {
+                      fontSize: "2.2rem"
+                    },
+                    "& .MuiRating-iconFilled": {
+                      color: "#ffc107"
+                    },
+                    "& .MuiRating-iconHover": {
+                      color: "#ffb300"
+                    }
+                  }}
+                />
+              </Tooltip>
               <p className="rating-label">
                 {labels[rating] || 'Select your rating...'}
                 <span>{rating >= 4 ? '🤩' : rating >= 2.5 ? '🙂' : '😔'}</span>
@@ -233,7 +243,6 @@ const WriteReviewPage = () => {
             </div>
           </div>
 
-          {/* RIGHT */}
           <div className="content-column">
             <div className="tags-section">
               <h3>What did you like or dislike?</h3>
@@ -276,7 +285,6 @@ const WriteReviewPage = () => {
         </div>
       </div>
 
-      {/* SUCCESS MODAL */}
       <Dialog open={showSuccessModal} onClose={handleModalClose}>
         <DialogTitle style={{ textAlign: 'center', color: '#16a085', paddingTop: '20px' }}>
           <CheckCircleIcon style={{ fontSize: 60, color: '#16a085' }} />

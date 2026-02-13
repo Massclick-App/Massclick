@@ -19,6 +19,7 @@ import seoPageContentReducer from './reducers/seoPageContentReducer.js'
 import mrpReducer from './reducers/mrpReducer.js';
 import enquiryNowReducer from './reducers/popularSearchesReducer.js';
 import reviewReducer from './reducers/reviewReducer.js';
+import advertiseReducer from './reducers/advertiseReducer.js';
 
 const rootReducer = combineReducers({
   auth: authReducer,
@@ -39,8 +40,9 @@ const rootReducer = combineReducers({
   seoPageContentReducer,
   mrp: mrpReducer,
   enquiryNow: enquiryNowReducer,
-  reviews: reviewReducer
-
+  reviews: reviewReducer,
+  advertise: advertiseReducer, 
+  
 });
 
 export const store = createStore(rootReducer, applyMiddleware(thunk));

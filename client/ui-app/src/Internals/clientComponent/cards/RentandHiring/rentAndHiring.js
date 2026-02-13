@@ -79,7 +79,6 @@ const RentAndHiringCards = () => {
       {loading && (
         <p className="loading-text">Loading Rent & Hire...</p>
       )}
-
       {!loading && rentAndHireList.length === 0 && (
         <div className="no-results-container">
           <p className="no-results-title">No Rent & Hire Found 😔</p>
