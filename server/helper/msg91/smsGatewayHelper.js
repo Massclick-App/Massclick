@@ -152,9 +152,9 @@ export const sendBusinessLead = async (cleanMobile, lead = {}) => {
       messaging_product: "whatsapp",
       type: "template",
       template: {
-        name: "business_lead_alert_v1",
+        name: "business_lead_alert_v2",
         language: {
-          code: "en_US",
+          code: "en",
           policy: "deterministic"
         },
         namespace: process.env.MSG91_TEMPLATE_NAMESPACE,
@@ -214,6 +214,7 @@ export const sendBusinessesToCustomer = async (
           code: "en_US",
           policy: "deterministic"
         },
+        
         namespace: process.env.MSG91_TEMPLATE_NAMESPACE,
         to_and_components: [
           {

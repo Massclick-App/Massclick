@@ -20,8 +20,8 @@ export const Collections = {
     MRPDATAS: 'mrpdatas',
     ENQUIRYNOWDATAS: 'enquirynowdatas',
     BUSINESSREVIEW: 'businessreview',
-    LEADROTATION: 'leadsrotation'
-
+    LEADROTATION: 'leadsrotation',
+    ADVERTISE: 'advertise'
 };
 
 export const {
@@ -46,5 +46,6 @@ export const {
     MRPDATAS,
     ENQUIRYNOWDATAS,
     BUSINESSREVIEW,
-    LEADROTATION
+    LEADROTATION,
+    ADVERTISE
 } = Collections;
