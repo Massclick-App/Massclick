@@ -172,7 +172,7 @@ export default function Login({ setIsAuthenticated }) {
               </p>
             </form>
             <footer className="corp-card-footer">
-              <span>© {new Date().getFullYear()} MassClick</span>
+              <span>© {new Date().getFullYear()} Massclick</span>
               <span className="corp-status">
                 <span className="status-dot" /> Systems: Operational
               </span>

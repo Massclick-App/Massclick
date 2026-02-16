@@ -73,7 +73,7 @@ const Footer = () => {
 
                     <div className="brand-box">
                         <div className="logo-text">
-                            Mass<span className="brand-accent">Click</span>™
+                            Mass<span className="brand-accent">click</span>™
                         </div>
                         <p className="logo-tagline">
                             India’s trusted local discovery platform
@@ -85,7 +85,7 @@ const Footer = () => {
                 </div>
             </div>
             <div className="footer-bottom">
-                © {new Date().getFullYear()} MassClick. All rights reserved.
+                © {new Date().getFullYear()} Massclick. All rights reserved.
             </div>
         </footer>
     );
