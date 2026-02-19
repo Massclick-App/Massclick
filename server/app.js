@@ -33,6 +33,7 @@ import seoModel from "./model/seoModel/seoModel.js";
 dotenv.config();
 
 const app = express();
+app.set("trust proxy", true);
 
 const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URL;
@@ -43,7 +44,30 @@ const __dirname = path.dirname(__filename);
 const CLIENT_BUILD_PATH =
   "/var/www/massclickQA/client/ui-app/build";
 
-console.log("CLIENT_BUILD_PATH:", CLIENT_BUILD_PATH);
+app.use((req, res, next) => {
+
+  const host = req.headers.host;
+
+  const protocol = req.headers["x-forwarded-proto"] || req.protocol;
+
+  if (protocol !== "https") {
+
+    return res.redirect(301, `https://${host}${req.originalUrl}`);
+
+  }
+
+  if (host.startsWith("www.")) {
+
+    const newHost = host.replace("www.", "");
+
+    return res.redirect(301, `https://${newHost}${req.originalUrl}`);
+
+  }
+
+  next();
+
+});
+
 
 const slugify = (text = "") =>
   text
@@ -73,7 +97,6 @@ app.use(
 
 const allowedOrigins = [
   "https://massclick.in",
-  "https://www.massclick.in",
   "http://localhost:3000",
 ];
 
@@ -150,7 +173,6 @@ app.get(/.*/, async (req, res) => {
   try {
 
     const indexPath = path.join(CLIENT_BUILD_PATH, "index.html");
-    console.log("indexPath", indexPath);
 
     if (!fs.existsSync(indexPath)) {
       return res.status(404).send("Build not found");
@@ -192,14 +214,25 @@ app.get(/.*/, async (req, res) => {
           `<meta name="keywords" content="${seo.keywords}" />`
         );
 
-        html = html.replace(
+          html = html.replace(
+
           /<link rel="canonical".*?>/,
+
           `<link rel="canonical" href="${seo.canonical}" />`
         );
 
       }
 
-    }
+    } else {
+
+      html = html.replace(
+
+        /<link rel="canonical".*?>/,
+
+        `<link rel="canonical" href="https://massclick.in${req.path}" />`
+      );
+
+      }
 
     res.send(html);
 
