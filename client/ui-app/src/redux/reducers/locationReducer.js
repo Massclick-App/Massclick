@@ -27,8 +27,8 @@ import {
 const initialState = {
   location: [],
   ipLocation: null,
-  detectedDistrict: null,   
-  selectedDistrict: null,   
+  detectedDistrict: null,
+  selectedDistrict: null,
 
   total: 0,
   pageNo: 1,
@@ -109,10 +109,12 @@ export default function locationReducer(state = initialState, action) {
       };
 
     case "SET_SELECTED_DISTRICT":
+      localStorage.setItem("selectedLocation", action.payload);
       return {
         ...state,
         selectedDistrict: action.payload,
       };
+
 
     case FETCH_LOCATION_FAILURE:
     case CREATE_LOCATION_FAILURE:

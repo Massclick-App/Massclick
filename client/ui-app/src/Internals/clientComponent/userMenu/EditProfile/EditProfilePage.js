@@ -1,6 +1,6 @@
 // src/components/.../MultiStepProfileForm.jsx
-import React, { useState, useEffect, useRef } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import React, { useState, useEffect} from "react";
+import { useDispatch} from "react-redux";
 import "./EditProfile.css";
 import Footer from "../../footer/footer";
 import CardsSearch from "../../CardsSearch/CardsSearch";

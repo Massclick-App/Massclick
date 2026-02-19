@@ -8,7 +8,6 @@ import Stack from '@mui/material/Stack';
 import { Typography } from '@mui/material';
 import SelectContent from './SelectContent';
 import MenuContent from './MenuContent';
-import CardAlert from './CardAlert';
 import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 
@@ -68,7 +67,6 @@ export default function SideMenu() {
         }}
       >
         <MenuContent />
-        <CardAlert />
       </Box>
       <Stack
         direction="row"

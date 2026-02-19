@@ -2,12 +2,17 @@ import { Box, Typography, Button, IconButton } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useTheme, useMediaQuery } from "@mui/material";
 
 const FloatingAdCard = () => {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const timerRef = useRef(null);
+  const theme = useTheme();
+  const isDesktop = useMediaQuery(theme.breakpoints.up("lg"));
+
+
 
   const HIDE_ON = ["/admin", "/dashboard"];
 
@@ -30,16 +35,31 @@ const FloatingAdCard = () => {
     setOpen(false);
   };
 
-  if (shouldHide || !open) return null;
+if (shouldHide || !open || !isDesktop) return null;
 
   return (
     <Box
       sx={{
         position: "fixed",
-        right: { xs: 12, sm: 20, md: 28 },
+
         bottom: { xs: 12, sm: 20, md: 28 },
 
-        width: { xs: "94vw", sm: 340, md: 360, lg: 380 },
+        // center on mobile
+        left: { xs: "50%", sm: "auto" },
+        right: { xs: "auto", sm: 20, md: 28 },
+
+        transform: {
+          xs: "translateX(-50%)",
+          sm: "translateX(0)",
+        },
+
+        width: {
+          xs: "92vw",
+          sm: 340,
+          md: 360,
+          lg: 380,
+        },
+
         maxWidth: 420,
 
         display: "flex",
@@ -53,8 +73,6 @@ const FloatingAdCard = () => {
 
         zIndex: (theme) => theme.zIndex.modal + 5,
 
-        transform: "translateZ(0)", 
-
         animation: "fadeSlideUp 0.4s ease-out",
 
         "@keyframes fadeSlideUp": {
@@ -63,6 +81,7 @@ const FloatingAdCard = () => {
         },
       }}
     >
+
       <Box sx={{ width: 6, bgcolor: "#ff5722" }} />
 
       <Box

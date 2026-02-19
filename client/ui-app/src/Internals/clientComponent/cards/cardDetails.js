@@ -37,7 +37,6 @@ import LinkIcon from "@mui/icons-material/Link";
 import Tooltip from "@mui/material/Tooltip";
 
 import Footer from "../footer/footer";
-import BusinessMap from "../businessMap/businessMap";
 import ReviewList from "../rating/reviewList";
 import { getBusinessReviews } from "../../../redux/actions/reviewAction.js";
 
@@ -124,8 +123,6 @@ const FullScreenGallery = ({ images, initialIndex, onClose }) => {
 
 const BusinessDetail = () => {
   const { location, businessSlug, id } = useParams();
-  const { state } = useLocation();
-  const businessID = id || state?.id;
 
   const dispatch = useDispatch();
 
@@ -309,11 +306,6 @@ const BusinessDetail = () => {
     }
   };
 
-  const getMapLink = (iframeString) => {
-    if (!iframeString) return "#";
-    const match = iframeString.match(/src="([^"]+)"/);
-    return match ? match[1] : "#";
-  };
 
   const getGoogleMapSrc = (iframeString) => {
     if (!iframeString) return null;

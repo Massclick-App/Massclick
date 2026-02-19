@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 
 import './enquiry.css'; // Import the new CSS file
 // Removed all MUI imports except Alert (which is good for global messages)

@@ -1,16 +1,16 @@
 import React, { useRef, useState, useEffect } from "react";
 import "./CardCarousel.css";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
 
 import KeyboardDoubleArrowRightIcon from "@mui/icons-material/KeyboardDoubleArrowRight";
 import KeyboardDoubleArrowLeftIcon from "@mui/icons-material/KeyboardDoubleArrowLeft";
 
-import Cctv from "../../../assets/Popular/CCTV.png";
-import Education from "../../../assets/Popular/Education.png";
-import HotelRoom from "../../../assets/Popular/HotelRoom.png";
-import Photography from "../../../assets/Popular/Photography.png";
+import Cctv from "../../../assets/Popular/CCTV.webp";
+import Education from "../../../assets/Popular/Education.webp";
+import HotelRoom from "../../../assets/Popular/HotelRoom.webp";
+import Photography from "../../../assets/Popular/Photography.webp";
 import { createEnquiryNow } from "../../../redux/actions/popularSearchesAction";
 
 import OTPLoginModal from "../AddBusinessModel";

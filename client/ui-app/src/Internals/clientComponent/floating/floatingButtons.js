@@ -5,7 +5,8 @@ import { useEffect, useState } from "react";
 const FloatingButtons = ({ onRequireLogin }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [visible, setVisible] = useState(true);
+
+  const [visible, setVisible] = useState(false);
 
   const HIDE_ON_ROUTES = ["/admin", "/dashboard"];
 
@@ -16,8 +17,7 @@ const FloatingButtons = ({ onRequireLogin }) => {
   useEffect(() => {
     if (shouldHide) return;
 
-    setVisible(false);
-    const timer = setTimeout(() => setVisible(true), 220);
+    const timer = setTimeout(() => setVisible(true), 200);
     return () => clearTimeout(timer);
   }, [location.pathname, shouldHide]);
 
@@ -33,25 +33,26 @@ const FloatingButtons = ({ onRequireLogin }) => {
     }
   };
 
-
   return (
     <Box
       sx={{
         position: "fixed",
-
-        right: visible ? { md: 0, lg: 8 } : -80,
-
         top: "50%",
-        transform: "translateY(-50%)",
+        right: { md: 0, lg: 8 },
+
+        transform: visible
+          ? "translate3d(0, -50%, 0)"
+          : "translate3d(100%, -50%, 0)",
+
+        transition: "transform 0.35s cubic-bezier(0.4, 0, 0.2, 1)",
 
         zIndex: 3000,
-
         display: { xs: "none", sm: "none", md: "flex" },
 
         flexDirection: "column",
         gap: 1.5,
 
-        transition: "right 0.35s cubic-bezier(0.4, 0, 0.2, 1)",
+        willChange: "transform",
       }}
     >
       <Box
@@ -71,6 +72,7 @@ const FloatingButtons = ({ onRequireLogin }) => {
           borderRadius: "10px 0 0 10px",
           boxShadow: "0 8px 24px rgba(0,0,0,0.28)",
           transition: "all 0.25s ease",
+
           "&:hover": {
             bgcolor: "#e64a19",
             transform: "rotate(180deg) translateX(-2px)",
@@ -78,12 +80,7 @@ const FloatingButtons = ({ onRequireLogin }) => {
           },
         }}
       >
-        <Typography
-          sx={{
-            fontSize: "inherit",
-            fontWeight: "inherit",
-          }}
-        >
+        <Typography fontSize="inherit" fontWeight="inherit">
           Advertise
         </Typography>
       </Box>
@@ -105,6 +102,7 @@ const FloatingButtons = ({ onRequireLogin }) => {
           borderRadius: "10px 0 0 10px",
           boxShadow: "0 8px 24px rgba(0,0,0,0.25)",
           transition: "all 0.25s ease",
+
           "&:hover": {
             bgcolor: "#0b1f85",
             transform: "rotate(180deg) translateX(-2px)",
@@ -112,12 +110,7 @@ const FloatingButtons = ({ onRequireLogin }) => {
           },
         }}
       >
-        <Typography
-          sx={{
-            fontSize: "inherit",
-            fontWeight: "inherit",
-          }}
-        >
+        <Typography fontSize="inherit" fontWeight="inherit">
           Help & Support
         </Typography>
       </Box>

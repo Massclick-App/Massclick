@@ -17,11 +17,9 @@ import Location from './Internals/location/Location.js';
 import MainGrid from './components/MainGrid.js';
 import PrivateRoute from './PrivateRoute';
 import BusinessListing from './Internals/clientComponent/home.js';
-import { featuredServices } from './Internals/clientComponent/featuredService/featureService.js';
 import { SnackbarProvider } from 'notistack';
 import SearchResults from './Internals/clientComponent/SearchResult/SearchResult.js';
 import { categoriesServices } from './Internals/clientComponent/serviceCard/serviceCard.js';
-import TrendingCards from './Internals/clientComponent/trendingSearch/trendingCard.js';
 import BusinessDetails from './Internals/clientComponent/cards/cardDetails.js';
 import AboutUsPage from './Internals/clientComponent/footer/aboutUs/aboutUsPage.js';
 import Testimonials from './Internals/clientComponent/footer/testimonials/testimonials.js';
@@ -38,7 +36,6 @@ import GraphicDesign from './Internals/clientComponent/footer/graphicDesign/grap
 import Seo from './Internals/clientComponent/footer/seo/seo.js';
 import WriteReviewPage from './Internals/clientComponent/rating/submitReviewPage.js';
 import { userMenuItems } from './Internals/clientComponent/categoryBar.js';
-import PopularCategoryPage from './Internals/clientComponent/popularCategories/popularCategoriesPage.js';
 import Profile from './Internals/Login/profile/profile.js';
 import { clientLogin } from './redux/actions/clientAuthAction.js';
 import PaymentStatus from './Internals/phonePay/paymentStatus.js';
@@ -50,12 +47,9 @@ import MRPPage from './Internals/clientComponent/MRP/mrp.js';
 import LeadsCardHistory from './Internals/clientComponent/LeadsPage/leadsCards/leadsCards.js';
 import TokenExpiredModal from './Internals/tokenModel/tokenModel.js';
 import BusinessEnquiry from './Internals/clientComponent/businessEnquiry/businessEnquiry.js';
-import CategoryDynamicPage from './Internals/clientComponent/cards/popularCategories/popularCategoryDrawer.js';
 import EnquiryPage from './Internals/enquiry-page/enquiry-page.js';
 import AdvertisementPage from './Internals/advertisement/advertisement.js';
 import GlobalDrawer from "./Internals/clientComponent/Drawer/globalDrawer.js";
-// import { useSelector } from "react-redux";
-// import { sendWhatsAppForLead } from "./redux/actions/otpAction.js";
 import { fetchMatchedLeads } from "./redux/actions/leadsAction.js";
 import SeoData from './Internals/seoData/seoData.js';
 import SeoPageContent from './Internals/seoData/seoPageContent/seoPageContent.js';
@@ -160,7 +154,6 @@ function App() {
             <Route path="/" element={<Navigate to="/home" replace />} />
             <Route path="/admin" element={<Login setIsAuthenticated={setIsAuthenticated} isAuthenticated={isAuthenticated} />} />
             <Route path="/home" element={<BusinessListing />} />
-            <Route path="/category/:categorySlug" element={<CategoryDynamicPage />} />
 
             {userMenuItems.map((item) => {
               const Component = item.component || (() => <ComingSoon title={item.name} />);
@@ -172,13 +165,6 @@ function App() {
             ))}
 
             <Route path="/:location/:searchTerm" element={<SearchResults />} />
-            <Route path="/trending/:categorySlug" element={<TrendingCards />} />
-
-            {featuredServices.map((service) => {
-              const Component = service.component || (() => <ComingSoon title={service.name} />);
-              return <Route key={service.path} path={service.path} element={<Component />} />;
-            })}
-
             <Route
               path="/:location/:businessSlug/:id?"
               element={<BusinessDetails />}

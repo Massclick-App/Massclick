@@ -1,13 +1,15 @@
 /* Container */
 .featured-services-container {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  grid-template-columns: repeat(auto-fill, 130px);
+  justify-content: center;
   gap: 20px;
-  justify-items: center;
   padding: 25px;
   max-width: 1750px;
   margin: 0 auto;
+  min-height: 420px;
 }
+
 
 /* Card */
 .service-card {
@@ -23,23 +25,23 @@
   text-align: center;
   cursor: pointer;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
-  border: 1px solid #e0e0e0; 
+  border: 1px solid #e0e0e0;
 }
 
 .service-card:hover {
   transform: translateY(-10px) scale(1.05);
   box-shadow: 0 20px 25px rgba(0, 0, 0, 0.15);
-  border: 1px solid #bdbdbd; 
+  border: 1px solid #bdbdbd;
 }
 
 .service-icons {
-  width: 80px;
-  height: 80px;
+   width: 80px;
+  aspect-ratio: 1 / 1;
   object-fit: contain;
   margin-bottom: 12px;
   border-radius: 50%;
   padding: 10px;
-  background-color: #f0f0f0; 
+  background-color: #f0f0f0;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
 
 }
@@ -58,15 +60,18 @@
     gap: 12px;
     padding: 15px;
   }
+
   .service-card {
     width: 100px;
     height: 140px;
   }
+
   .service-icons {
     width: 55px;
     height: 55px;
     padding: 8px;
   }
+
   .service-name {
     font-size: 0.85rem;
   }
@@ -78,15 +83,18 @@
     gap: 16px;
     padding: 18px;
   }
+
   .service-card {
     width: 115px;
     height: 150px;
   }
+
   .service-icons {
     width: 60px;
     height: 60px;
     padding: 9px;
   }
+
   .service-name {
     font-size: 0.9rem;
   }
@@ -98,15 +106,18 @@
     gap: 20px;
     padding: 22px;
   }
+
   .service-card {
     width: 125px;
     height: 155px;
   }
+
   .service-icons {
     width: 65px;
     height: 65px;
     padding: 10px;
   }
+
   .service-name {
     font-size: 1rem;
   }
@@ -118,15 +129,18 @@
     gap: 25px;
     padding: 25px;
   }
+
   .service-card {
     width: 140px;
     height: 160px;
   }
+
   .service-icons {
     width: 75px;
     height: 75px;
     padding: 12px;
   }
+
   .service-name {
     font-size: 1.1rem;
   }

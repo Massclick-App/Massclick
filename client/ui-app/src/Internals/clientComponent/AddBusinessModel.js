@@ -14,7 +14,7 @@ import {
     useMediaQuery,
     useTheme,
 } from "@mui/material";
-import { sendOtp, verifyOtp, viewOtpUser } from "../../redux/actions/otpAction";
+import { sendOtp, verifyOtp } from "../../redux/actions/otpAction";
 import { useDispatch, useSelector } from "react-redux";
 import { Link as RouterLink } from 'react-router-dom';
 import { Link as MuiLink } from '@mui/material';
@@ -39,11 +39,6 @@ const LogoComponent = () => (
 const OTPLoginModal = ({ open, handleClose }) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-    const { loading, error, otpResponse, verifyResponse } = useSelector(
-        (state) => state.otp
-    );
-
-
     const [mobileNumber, setMobileNumber] = React.useState('');
     const [agreed, setAgreed] = React.useState(false);
 

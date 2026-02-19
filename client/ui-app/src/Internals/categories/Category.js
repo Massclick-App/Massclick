@@ -10,7 +10,6 @@ import "./categories.css";
 import {
   Box,
   Button,
-  Paper,
   Typography,
   CircularProgress,
   IconButton,

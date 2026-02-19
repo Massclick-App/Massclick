@@ -1,140 +1,327 @@
 import React, { useEffect, useCallback } from "react";
+
 import { useDispatch, useSelector } from "react-redux";
+
 import { useNavigate, useParams } from "react-router-dom";
+
 
 import "./trendingCard.css";
 
+
 import CardDesign from "../../clientComponent/cards/cards.js";
+
 import CardsSearch from "../../clientComponent/CardsSearch/CardsSearch.js";
+
 import TopBannerAds from "../../clientComponent/banners/topBanner/topBanner.js";
 
-import { getBusinessByCategory } from "../../../redux/actions/businessListAction.js";
+
+import { getBusinessByCategory }
+from "../../../redux/actions/businessListAction.js";
+
 
 const createSlug = (text) => {
-    if (typeof text !== "string" || !text.trim()) return "unknown";
 
-    return text
-        .toLowerCase()
-        .trim()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/(^-|-$)+/g, "");
+  if (!text) return "unknown";
+
+  if (typeof text === "object") {
+
+    text =
+      text.slug ||
+      text.name ||
+      text.location ||
+      "";
+
+  }
+
+  if (typeof text !== "string") return "unknown";
+
+
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)+/g, "");
+
 };
-const normalizeCategory = (slug = "") =>
-    slug.toLowerCase().endsWith("s")
-        ? slug.slice(0, -1)
-        : slug;
+
+
+
+
 
 
 const TrendingCards = () => {
-    const dispatch = useDispatch();
-    const navigate = useNavigate();
-    const { categorySlug } = useParams();
 
-    const CATEGORY = normalizeCategory(categorySlug);
 
-    const { categoryBusinessList = {}, loading, error } = useSelector(
-        (state) => state.businessListReducer
-    );
+  const dispatch = useDispatch();
 
-    const businessList = categoryBusinessList[CATEGORY] || [];
+  const navigate = useNavigate();
 
-    const { selectedDistrict } = useSelector(
-        (state) => state.locationReducer
-    );
 
-    const district = selectedDistrict;
 
-    useEffect(() => {
-        if (typeof district === "string" && district.trim().length > 0) {
-            dispatch(getBusinessByCategory(CATEGORY, district.trim()));
-        }
-    }, [dispatch, district]);
+  const { categorySlug } = useParams();
 
-    const handleRetry = useCallback(() => {
-        if (district) {
-            dispatch(getBusinessByCategory(CATEGORY, district));
-        }
-    }, [dispatch, district]);
 
-    if (error) {
-        return (
-            <div className="no-results-container">
-                <p className="no-results-title">Something went wrong 😕</p>
-                <p className="no-results-suggestion">Please try again later.</p>
-                <button className="go-home-button" onClick={handleRetry}>
-                    Retry
-                </button>
-            </div>
-        );
+  const CATEGORY =
+    createSlug(categorySlug);
+
+
+
+
+  const { selectedDistrict } =
+    useSelector((state) => state.locationReducer);
+
+
+
+  const districtSlug =
+
+    selectedDistrict?.slug ||
+
+    createSlug(selectedDistrict) ||
+
+    localStorage.getItem("selectedDistrictSlug") ||
+
+    "tiruchirappalli";
+
+
+
+
+  const {
+    categoryBusinessList = {},
+    loading,
+    error
+
+  } = useSelector(
+
+    (state) => state.businessListReducer
+
+  );
+
+
+
+  const businessList =
+    categoryBusinessList[CATEGORY] || [];
+
+
+
+
+  useEffect(() => {
+
+    if (CATEGORY && districtSlug) {
+
+      dispatch(
+        getBusinessByCategory(
+          CATEGORY,
+          districtSlug
+        )
+      );
+
     }
 
+  }, [
+
+    dispatch,
+    CATEGORY,
+    districtSlug
+
+  ]);
+
+
+
+
+
+  const handleRetry =
+    useCallback(() => {
+
+      if (CATEGORY && districtSlug) {
+
+        dispatch(
+          getBusinessByCategory(
+            CATEGORY,
+            districtSlug
+          )
+        );
+
+      }
+
+    }, [
+
+      dispatch,
+      CATEGORY,
+      districtSlug
+
+    ]);
+
+
+
+
+  if (error) {
+
     return (
-        <>
-            <CardsSearch />
 
-            <div className="page-spacing" />
+      <div className="no-results-container">
 
-            <TopBannerAds category={CATEGORY} />
+        <p className="no-results-title">
 
-            {loading && (
-                <p className="loading-text">Loading {CATEGORY}...</p>
-            )}
+          Something went wrong 😕
 
-            {!loading && businessList.length === 0 && (
-                <div className="no-results-container">
-                    <p className="no-results-title">
-                        No {CATEGORY} Found 😔
-                    </p>
-                    <button
-                        className="go-home-button"
-                        onClick={() => navigate("/home")}
-                    >
-                        Go to Homepage
-                    </button>
-                </div>
-            )}
+        </p>
 
-            <div className="restaurants-list-wrapper">
-                {businessList.map((business) => {
-                    const averageRating =
-                        typeof business.averageRating === "number"
-                            ? business.averageRating.toFixed(1)
-                            : "0.0";
 
-                    const totalRatings =
-                        typeof business.totalReviews === "number"
-                            ? business.totalReviews
-                            : 0;
-                            
-                    const locationSlug = createSlug(business.location);
-                    const businessSlug = createSlug(
-                        `${business.businessName}-${business.street}`
-                    );
+        <p className="no-results-suggestion">
 
-                    const businessUrl = `/${locationSlug}/${businessSlug}/${business._id}`;
+          Please try again later.
 
-                    return (
-                        <CardDesign
-                            key={business._id}
-                            title={business.businessName}
-                            phone={business.contact}
-                            whatsapp={business.whatsappNumber}
-                            address={business.location}
-                            details={`Experience: ${business.experience} | Category: ${business.category}`}
-                            imageSrc={
-                                business.bannerImage ||
-                                "https://via.placeholder.com/120x100?text=Logo"
-                            }
-                            rating={averageRating}
-                            reviews={totalRatings}
-                            to={businessUrl}
-                            state={{ id: business._id }}
-                        />
-                    );
-                })}
-            </div>
-        </>
+        </p>
+
+
+        <button
+          className="go-home-button"
+          onClick={handleRetry}
+        >
+
+          Retry
+
+        </button>
+
+      </div>
+
     );
+
+  }
+
+
+
+  return (
+
+    <>
+
+      <CardsSearch />
+
+
+      <div className="page-spacing" />
+
+
+      <TopBannerAds category={CATEGORY} />
+
+
+      {loading && (
+
+        <p className="loading-text">
+
+          Loading {CATEGORY}...
+
+        </p>
+
+      )}
+
+
+
+      {!loading && businessList.length === 0 && (
+
+        <div className="no-results-container">
+
+          <p className="no-results-title">
+
+            No {CATEGORY} Found 😔
+
+          </p>
+
+
+          <button
+            className="go-home-button"
+            onClick={() => navigate("/home")}
+          >
+
+            Go to Homepage
+
+          </button>
+
+        </div>
+
+      )}
+
+
+
+      <div className="restaurants-list-wrapper">
+
+        {businessList.map((business) => {
+
+
+          const averageRating =
+            typeof business.averageRating === "number"
+              ? business.averageRating.toFixed(1)
+              : "0.0";
+
+
+          const totalRatings =
+            typeof business.totalReviews === "number"
+              ? business.totalReviews
+              : 0;
+
+
+
+          const locationSlug =
+            createSlug(business.location);
+
+
+
+          const businessSlug =
+            createSlug(
+              `${business.businessName}-${business.street}`
+            );
+
+
+
+          const businessUrl =
+            `/${locationSlug}/${businessSlug}/${business._id}`;
+
+
+
+          return (
+
+            <CardDesign
+              key={business._id}
+
+              title={business.businessName}
+
+              phone={business.contact}
+
+              whatsapp={business.whatsappNumber}
+
+              address={business.location}
+
+              details={
+                `Experience: ${business.experience}
+                | Category: ${business.category}`
+              }
+
+              imageSrc={
+                business.bannerImage ||
+                "https://via.placeholder.com/120x100?text=Logo"
+              }
+
+              rating={averageRating}
+
+              reviews={totalRatings}
+
+              to={businessUrl}
+
+              state={{ id: business._id }}
+
+            />
+
+          );
+
+        })}
+
+      </div>
+
+    </>
+
+  );
+
 };
+
+
 
 export default TrendingCards;

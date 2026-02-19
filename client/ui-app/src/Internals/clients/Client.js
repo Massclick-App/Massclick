@@ -6,14 +6,9 @@ import {
   editUserClient,
   deleteUserClient,
 } from "../../redux/actions/userClientAction.js";
-import CustomizedDataGrid from "../../components/CustomizedDataGrid";
 import {
   Box,
   Button,
-  Container,
-  Grid,
-  Paper,
-  TextField,
   Typography,
   CircularProgress,
   IconButton,

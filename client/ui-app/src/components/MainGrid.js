@@ -1,13 +1,8 @@
 import React, { useEffect } from 'react';
 import Grid from '@mui/material/Grid';
 import Box from '@mui/material/Box';
-import Stack from '@mui/material/Stack';
-import { Typography, Button } from '@mui/material';
-// import ChartUserByCountry from './ChartUserByCountry';
-import CustomizedDataGrid from './CustomizedDataGrid';
-// import PageViewsBarChart from './PageViewsBaChart.js';
-// import SessionsChart from './SessionsChart';
-// import StatCard, { StatCardProps } from './StatCard';
+import  Button  from '@mui/material/Button';
+
 import { useSelector, useDispatch } from "react-redux";
 import { getAllBusinessList, toggleBusinessStatus } from "../redux/actions/businessListAction"; // your thunk/action
 import { useSnackbar } from 'notistack';
@@ -17,7 +12,6 @@ import { Payment as PaymentIcon, CheckCircle, HourglassEmpty, Cancel } from "@mu
 import Tooltip from "@mui/material/Tooltip";
 import IconButton from '@mui/material/IconButton';
 import {
-  Paper,
   Avatar,
 
 } from "@mui/material";
@@ -30,7 +24,7 @@ import { createPhonePePayment } from '../redux/actions/phonePayAction.js';
 export default function MainGrid() {
   const { enqueueSnackbar } = useSnackbar();
   const { users = [] } = useSelector((state) => state.userReducer || {});
-  const { businessList = [], total = 0, loading, error } = useSelector(
+  const { businessList = [], total = 0 } = useSelector(
     (state) => state.businessListReducer || {}
   );
   const [activeStatus, setActiveStatus] = React.useState(
@@ -39,7 +33,6 @@ export default function MainGrid() {
       return acc;
     }, {})
   );
-  const { location = [] } = useSelector((state) => state.locationReducer || {});
 
   const dispatch = useDispatch();
 

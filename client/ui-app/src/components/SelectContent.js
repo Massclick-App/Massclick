@@ -1,6 +1,4 @@
 import * as React from 'react';
-import MuiAvatar from '@mui/material/Avatar';
-import { styled } from '@mui/material/styles';
 import MI from '../assets/Mi.png';
 
 export default function SelectContent() {

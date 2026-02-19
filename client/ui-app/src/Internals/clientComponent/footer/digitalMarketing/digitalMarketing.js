@@ -16,9 +16,8 @@ import EnquiryImage from '../../../../assets/enquiry.png';
 import digitmarketing from '../../../../assets/digitalmarketing.jpg'
 import {
     Typography, Button, Box,
-    Modal, TextField, IconButton, CircularProgress, Alert
+    Modal,CircularProgress
 } from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
 
 const primaryOrange = '#ff6600';
 const darkOrange = '#e65100';
@@ -51,7 +50,7 @@ const DigitalMarketing = () => {
         robots: "index, follow",
     };
 
-    const { loading, error } = useSelector(state => state.startProjectReducer);
+    const { loading } = useSelector(state => state.startProjectReducer);
 
     const [open, setOpen] = useState(false);
     const [formData, setFormData] = useState(initialFormState);

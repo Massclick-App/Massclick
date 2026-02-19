@@ -102,43 +102,62 @@ const HeroSection = ({
   const { detectedDistrict } = locationState;
 
 
-  useEffect(() => {
-    if (!navigator.geolocation) {
-      setLocationName("All Districts");
-      return;
-    }
+ useEffect(() => {
 
-    navigator.geolocation.getCurrentPosition(
-      async ({ coords }) => {
-        try {
-          const result = await dispatch(
-            detectDistrict({
-              latitude: coords.latitude,
-              longitude: coords.longitude,
-            })
-          );
+  const savedLocation = localStorage.getItem("selectedLocation");
 
-          const autoDistrict = result?.district || "All Districts";
+  if (savedLocation) {
 
-          setLocationName(autoDistrict);
+    setLocationName(savedLocation);
 
-          dispatch({
-            type: "SET_SELECTED_DISTRICT",
-            payload: autoDistrict,
-          });
+    dispatch({
+      type: "SET_SELECTED_DISTRICT",
+      payload: savedLocation,
+    });
+
+    return;   
+  }
 
 
-          setLocationName(result?.district || "All Districts");
-        } catch {
-          setLocationName("All Districts");
-        }
-      },
-      () => {
+  if (!navigator.geolocation) {
+    setLocationName("All Districts");
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    async ({ coords }) => {
+      try {
+
+        const result = await dispatch(
+          detectDistrict({
+            latitude: coords.latitude,
+            longitude: coords.longitude,
+          })
+        );
+
+        const autoDistrict = result?.district || "All Districts";
+
+        setLocationName(autoDistrict);
+
+        localStorage.setItem("selectedLocation", autoDistrict);  // optional
+
+        dispatch({
+          type: "SET_SELECTED_DISTRICT",
+          payload: autoDistrict,
+        });
+
+      } catch {
         setLocationName("All Districts");
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
-  }, [dispatch, setLocationName]);
+      }
+    },
+    () => {
+      setLocationName("All Districts");
+    },
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
+
+}, [dispatch]);
+
 
 
   useEffect(() => {
@@ -317,9 +336,20 @@ const HeroSection = ({
               placeholder={locationName ? "Change location..." : "Detecting location..."}
               value={locationName}
               onChange={(e) => {
-                setLocationName(e.target.value);
+                const value = e.target.value;
+
+                setLocationName(value);
+
+                localStorage.setItem("selectedLocation", value);   // ✅ ADD THIS
+
+                dispatch({
+                  type: "SET_SELECTED_DISTRICT",
+                  payload: value,
+                });
+
                 setShowLocationDropdown(true);
               }}
+
               onFocus={() => setShowLocationDropdown(true)}
             />
 
@@ -329,13 +359,19 @@ const HeroSection = ({
                 options={parsedLocationSuggestions}
                 onSelect={(val) => {
                   const chosen = typeof val === "string" ? val : String(val);
+
                   setLocationName(chosen);
+
+                  localStorage.setItem("selectedLocation", chosen);   // ✅ ADD THIS
+
                   dispatch({
                     type: "SET_SELECTED_DISTRICT",
                     payload: chosen,
                   });
+
                   setShowLocationDropdown(false);
                 }}
+
               />
             )}
           </div>

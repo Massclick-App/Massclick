@@ -6,15 +6,10 @@ import {
     editLocation,
     deleteLocation,
 } from "../../redux/actions/locationAction.js";
-import CustomizedDataGrid from "../../components/CustomizedDataGrid";
 import './location.css'
 import {
     Box,
     Button,
-    Container,
-    Grid,
-    Paper,
-    TextField,
     Typography,
     CircularProgress,
     IconButton,

@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
 import './portfolio.css';
-import VisibilityIcon from '@mui/icons-material/Visibility';
 import LaunchIcon from '@mui/icons-material/Launch';
 import CardsSearch from '../../CardsSearch/CardsSearch';
 import Footer from '../footer';

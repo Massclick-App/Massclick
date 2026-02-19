@@ -13,7 +13,6 @@ import {
 
 import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
 import CategoryIcon from "@mui/icons-material/Category";
-import LocationOnIcon from "@mui/icons-material/LocationOn";
 import BusinessIcon from "@mui/icons-material/Business";
 import SupportAgentIcon from "@mui/icons-material/SupportAgent";
 import InterpreterModeIcon from "@mui/icons-material/InterpreterMode";
@@ -55,12 +54,7 @@ export default function SideMenu({ onItemClick }) {
       path: "/dashboard/category",
       roles: ["SuperAdmin"],
     },
-    // {
-    //   text: "Location",
-    //   icon: LocationOnIcon,
-    //   path: "/dashboard/location",
-    //   roles: ["SuperAdmin"],
-    // },
+   
     {
       text: "Seo Management",
       icon: DatasetIcon,

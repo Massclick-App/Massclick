@@ -4,7 +4,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import Rating from '@mui/material/Rating';
 import StarIcon from '@mui/icons-material/Star';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
-import { editBusinessList, getBusinessDetailsById } from '../../../redux/actions/businessListAction';
+import { getBusinessDetailsById } from '../../../redux/actions/businessListAction';
 import { createReview } from '../../../redux/actions/reviewAction';
 import './submitReview.css';
 import CardsSearch from '../CardsSearch/CardsSearch';
@@ -45,7 +45,6 @@ const WriteReviewPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
 
-  const storedUser = JSON.parse(localStorage.getItem("authUser") || "{}");
 
   useEffect(() => {
     dispatch(getBusinessDetailsById(businessId));

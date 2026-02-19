@@ -4,7 +4,7 @@ import { createStartProject } from '../../../../redux/actions/startProjectAction
 
 import {
     Container, Grid, Card, CardContent, Typography, Button, Box,
-    Modal, TextField, IconButton, CircularProgress, Alert
+    Modal, CircularProgress
 } from '@mui/material';
 import SeoMeta from "../../seo/seoMeta";
 import { fetchSeoMeta } from "../../../../redux/actions/seoAction";
@@ -16,7 +16,6 @@ import DevicesIcon from '@mui/icons-material/Devices';
 import RocketLaunchIcon from '@mui/icons-material/RocketLaunch';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import SupportAgentIcon from '@mui/icons-material/SupportAgent';
-import CloseIcon from '@mui/icons-material/Close';
 
 import './webDevSection.css';
 import CardsSearch from '../../CardsSearch/CardsSearch';
@@ -62,7 +61,7 @@ const WebDevSection = () => {
         robots: "index, follow",
     };
 
-    const { loading, error } = useSelector(state => state.startProjectReducer);
+    const { loading } = useSelector(state => state.startProjectReducer);
 
     const [open, setOpen] = useState(false);
     const [formData, setFormData] = useState(initialFormState);

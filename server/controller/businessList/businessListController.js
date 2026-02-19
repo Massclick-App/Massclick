@@ -228,15 +228,27 @@ export const getSuggestionsController = async (req, res) => {
 
 export const mainSearchController = async (req, res) => {
   try {
-    const { term = "", location = "", category = "" } = req.query;
+
+    let { term = "", location = "", category = "" } = req.query;
+
+    // NORMALIZE SLUG → SPACE FORMAT
+    const normalize = (text = "") =>
+      text
+        .trim()
+        .replace(/-/g, " ")        // rent-and-hire → rent and hire
+        .replace(/\s+/g, " ");     // remove extra spaces
+
+    term = normalize(term);
+    location = normalize(location);
+    category = normalize(category);
 
     const matchQuery = {
       businessesLive: true,
       $and: []
     };
 
-    if (location.trim()) {
-      const loc = new RegExp(location.trim(), "i");
+    if (location) {
+      const loc = new RegExp(location, "i");
 
       matchQuery.$and.push({
         $or: [
@@ -249,8 +261,8 @@ export const mainSearchController = async (req, res) => {
       });
     }
 
-    if (category.trim()) {
-      const cat = new RegExp(category.trim(), "i");
+    if (category) {
+      const cat = new RegExp(category, "i");
 
       matchQuery.$and.push({
         $or: [
@@ -266,8 +278,8 @@ export const mainSearchController = async (req, res) => {
       });
     }
 
-    if (term.trim()) {
-      const t = new RegExp(term.trim(), "i");
+    if (term) {
+      const t = new RegExp(term, "i");
 
       matchQuery.$and.push({
         $or: [
@@ -292,7 +304,7 @@ export const mainSearchController = async (req, res) => {
 
       {
         $lookup: {
-          from: "businessreviews", 
+          from: "businessreviews",
           localField: "_id",
           foreignField: "businessId",
           as: "reviews"
@@ -337,6 +349,7 @@ export const mainSearchController = async (req, res) => {
     res.status(400).send({ message: err.message });
   }
 };
+
 
 
 export const updateBusinessListAction = async (req, res) => {

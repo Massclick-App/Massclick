@@ -61,7 +61,7 @@ const cleanIndianMobile = (mobile) => {
   }
 
   if (/^[6-9]\d{9}$/.test(clean)) {
-    return clean;
+    return "91" + clean;
   }
 
   return null;
@@ -92,7 +92,7 @@ export const logSearchAction = async (req, res) => {
     if (!isValidUser) {
       return res.status(200).json({
         success: false,
-        message: "Valid name and mobile number required to process lead"
+        message: "Valid name and mobile number required"
       });
     }
 
@@ -105,6 +105,7 @@ export const logSearchAction = async (req, res) => {
     ) {
       finalCategoryName = categoryName.trim();
     } else {
+
       const matchedCategory = await CategoryModel.findOne({
         categoryName: { $regex: cleanSearchText, $options: "i" }
       }).lean();
@@ -112,6 +113,7 @@ export const logSearchAction = async (req, res) => {
       if (matchedCategory) {
         finalCategoryName = matchedCategory.categoryName;
       } else {
+
         const searchWords = cleanSearchText.split(" ");
 
         const possibleCategory = await CategoryModel.findOne({
@@ -137,42 +139,53 @@ export const logSearchAction = async (req, res) => {
       { categoryImageKey: 1 }
     ).lean();
 
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
 
-    const endOfDay = new Date();
-    endOfDay.setHours(23, 59, 59, 999);
 
-    const existingLog = await searchLogModel.findOne({
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+
+    const recentLog = await searchLogModel.findOne({
       categoryName: finalCategoryName,
       location: normalizedLocation,
       "userDetails.mobileNumber1": userDetails.mobileNumber1,
-      createdAt: { $gte: startOfDay, $lte: endOfDay }
+      createdAt: { $gte: fiveMinutesAgo }
     });
 
-    let savedLog;
+    if (recentLog) {
 
-    if (existingLog) {
-      existingLog.updatedAt = new Date();
-      await existingLog.save();
-      savedLog = existingLog;
-    } else {
-      savedLog = await createSearchLog({
-        categoryName: finalCategoryName,
-        categoryImage: category?.categoryImageKey || "",
-        searchedUserText,
-        location: normalizedLocation,
-        userDetails: [
-          {
-            userName: userDetails.userName,
-            mobileNumber1: userDetails.mobileNumber1,
-            mobileNumber2: userDetails.mobileNumber2 || "",
-            email: userDetails.email || ""
-          }
-        ],
-        whatsapp: false
+      return res.status(200).json({
+        success: true,
+        message: "Lead already sent recently (5 min protection)",
+        detectedCategory: finalCategoryName
       });
+
     }
+
+
+    const savedLog = await createSearchLog({
+
+      categoryName: finalCategoryName,
+
+      categoryImage: category?.categoryImageKey || "",
+
+      searchedUserText,
+
+      location: normalizedLocation,
+
+      userDetails: [
+        {
+          userName: userDetails.userName,
+          mobileNumber1: userDetails.mobileNumber1,
+          mobileNumber2: userDetails.mobileNumber2 || "",
+          email: userDetails.email || ""
+        }
+      ],
+
+      whatsapp: false
+
+    });
+
+
+    // Find businesses
 
     const businesses = await businessListModel.find(
       {
@@ -181,96 +194,180 @@ export const logSearchAction = async (req, res) => {
         isActive: true,
         businessesLive: true
       },
-      { businessName: 1, contactList: 1, whatsappNumber: 1 }
+      {
+        businessName: 1,
+        contactList: 1,
+        whatsappNumber: 1
+      }
     ).lean();
 
+
     if (!businesses.length) {
+
       return res.status(200).json({
         success: true,
         message: "Lead stored but no businesses found",
         detectedCategory: finalCategoryName
       });
+
     }
 
+
     const leadData = {
+
       searchText: searchedUserText,
+
       location: normalizedLocation,
+
       customerName: userDetails.userName,
+
       customerMobile: userDetails.mobileNumber1,
+
       email: userDetails.email || ""
+
     };
 
+
     let businessSendSuccess = false;
+
     let customerSendSuccess = false;
 
     const notifiedBusinesses = [];
 
+
+    // SEND WHATSAPP TO BUSINESSES
+
     for (const business of businesses) {
+
       const ownerMobile =
         business.contactList || business.whatsappNumber;
 
       const cleanMobile = cleanIndianMobile(ownerMobile);
+
       if (!cleanMobile) continue;
 
+
       try {
+
         await sendBusinessLead(cleanMobile, leadData);
+
         businessSendSuccess = true;
 
+
         notifiedBusinesses.push({
+
           businessName: business.businessName,
+
           mobile: cleanMobile
+
         });
 
+
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+
       } catch (err) {
+
         console.error(
-          `Business WhatsApp failed`,
+
+          "Business WhatsApp failed:",
+
           err.response?.data || err.message
+
         );
+
       }
+
     }
 
-    const cleanCustomerMobile = cleanIndianMobile(userDetails.mobileNumber1);
+
+    const cleanCustomerMobile = cleanIndianMobile(
+      userDetails.mobileNumber1
+    );
+
 
     if (cleanCustomerMobile) {
+
       try {
+
         await sendBusinessesToCustomer(
+
           cleanCustomerMobile,
+
           leadData,
+
           businesses
+
         );
+
         customerSendSuccess = true;
-      } catch (err) {
-        console.error(
-          "Customer WhatsApp failed",
-          err.response?.data || err.message
-        );
+
       }
+
+      catch (err) {
+
+        console.error(
+
+          "Customer WhatsApp failed",
+
+          err.response?.data || err.message
+
+        );
+
+      }
+
     }
+
+
 
     if (businessSendSuccess && customerSendSuccess) {
+
       await searchLogModel.findByIdAndUpdate(
+
         savedLog._id,
+
         { whatsapp: true }
+
       );
+
     }
 
+
     return res.status(202).json({
+
       success: true,
-      message: "Valid lead stored & processed",
+
+      message: "Lead stored & WhatsApp sent",
+
       detectedCategory: finalCategoryName,
+
       totalBusinesses: businesses.length,
+
       notifiedBusinesses,
+
       whatsappUpdated: businessSendSuccess && customerSendSuccess
+
     });
 
-  } catch (error) {
-    console.error("Error logging search:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Error logging search"
-    });
+
   }
+
+  catch (error) {
+
+    console.error("Error logging search:", error);
+
+    return res.status(500).json({
+
+      success: false,
+
+      message: "Server error"
+
+    });
+
+  }
+
 };
+
 
 export const viewLogSearchAction = async (req, res) => {
     try {

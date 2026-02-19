@@ -1,68 +1,64 @@
 import React, { useEffect, useState } from "react";
 import "./popularCategories.css";
-import CardDesign from "../cards.js";
-import { useDispatch, useSelector } from "react-redux";
-import CardsSearch from "../../CardsSearch/CardsSearch.js";
+import {  useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import Drawer from "@mui/material/Drawer";
 import CloseIcon from "@mui/icons-material/Close";
 import SearchIcon from "@mui/icons-material/Search";
 
-import Salon from "../../../../assets/features/barbershop.png";
-import Astrologers from "../../../../assets/features/astrologers.png";
-import BodyMassage from "../../../../assets/features/Bodymassage.png";
-import BeautyParlour from "../../../../assets/features/beauty-parlour.png";
-import CarHire from "../../../../assets/features/Carhired.png";
-import Spa from "../../../../assets/features/spa.png";
-import CharteredAccountant from "../../../../assets/features/accountant.png";
-import ComputerTraining from "../../../../assets/features/computer-course.png";
-import CourierServices from "../../../../assets/features/delivery.png";
-import Electricians from "../../../../assets/features/electrician.png";
-import EventOrganiser from "../../../../assets/features/eventorgan.png";
-import RealEstate from "../../../../assets/features/real-estates.png";
-import Fabricators from "../../../../assets/features/fabricator.png";
-import Hobbies from "../../../../assets/features/hobby.png";
-import InternetWeb from "../../../../assets/features/internet-web.png";
-import Jewellery from "../../../../assets/features/jewelry.png";
-import Lawyers from "../../../../assets/features/lawyer.png";
-import NursingServices from "../../../../assets/features/nurse-service.png";
-import Printing from "../../../../assets/features/printer.png";
-import Placement from "../../../../assets/features/hiring.png";
-import Painting from "../../../../assets/features/painters.png";
-import ScrapDealers from "../../../../assets/features/scrap.png";
-import Registration from "../../../../assets/features/Registration.png";
-import Coaching from "../../../../assets/features/coaching.png";
-import ScrapBuyers from "../../../../assets/features/scrap-buyers.png";
-import VocationalTraining from "../../../../assets/features/vocational-training.png";
-import VastuConsultant from "../../../../assets/features/vastu-consultant.png";
-import Numerology from "../../../../assets/features/numerology.png";
-import Geologist from "../../../../assets/features/geologist.png";
-import Textile from "../../../../assets/features/textile.png";
-import PaintingService from "../../../../assets/features/paint-services.png";
-import Opticals from "../../../../assets/features/opticals.png";
-import Tailoring from "../../../../assets/features/tailoring.png";
-import OrganicShop from "../../../../assets/features/organics.png";
-import KidsSchool from "../../../../assets/features/kids-school.png";
+import Salon from "../../../../assets/features/barbershop.webp";
+import Astrologers from "../../../../assets/features/astrologers.webp";
+import BodyMassage from "../../../../assets/features/Bodymassage.webp";
+import BeautyParlour from "../../../../assets/features/beauty-parlour.webp";
+import CarHire from "../../../../assets/features/Carhired.webp";
+import Spa from "../../../../assets/features/spa.webp";
+import CharteredAccountant from "../../../../assets/features/accountant.webp";
+import ComputerTraining from "../../../../assets/features/computer-course.webp";
+import CourierServices from "../../../../assets/features/delivery.webp";
+import Electricians from "../../../../assets/features/electrician.webp";
+import EventOrganiser from "../../../../assets/features/eventorgan.webp";
+import RealEstate from "../../../../assets/features/real-estates.webp";
+import Fabricators from "../../../../assets/features/fabricator.webp";
+import Hobbies from "../../../../assets/features/hobby.webp";
+import InternetWeb from "../../../../assets/features/internet-web.webp";
+import Jewellery from "../../../../assets/features/jewelry.webp";
+import Lawyers from "../../../../assets/features/lawyer.webp";
+import NursingServices from "../../../../assets/features/nurse-service.webp";
+import Printing from "../../../../assets/features/printer.webp";
+import Placement from "../../../../assets/features/hiring.webp";
+import ScrapDealers from "../../../../assets/features/scrap.webp";
+import Registration from "../../../../assets/features/Registration.webp";
+import Coaching from "../../../../assets/features/coaching.webp";
+import VocationalTraining from "../../../../assets/features/vocational-training.webp";
+import VastuConsultant from "../../../../assets/features/vastu-consultant.webp";
+import Numerology from "../../../../assets/features/numerology.webp";
+import Geologist from "../../../../assets/features/geologist.webp";
+import Textile from "../../../../assets/features/textile.webp";
+import PaintingService from "../../../../assets/features/paint-services.webp";
+import Opticals from "../../../../assets/features/opticals.webp";
+import Tailoring from "../../../../assets/features/tailoring.webp";
+import OrganicShop from "../../../../assets/features/organics.webp";
+import KidsSchool from "../../../../assets/features/kids-school.webp";
 
-import Physiotherapy from "../../../../assets/features/physiotherapy.png";
-import ClinicalLab from "../../../../assets/features/clinicalLab.png";
-import Architect from "../../../../assets/features/architech.png";
-import Sports from "../../../../assets/features/sports.png";
-import Tiles from "../../../../assets/features/tiles.png";
-import ExportAndImport from "../../../../assets/features/import-export.png";
-import Boutique from "../../../../assets/features/boutique.png";
-import BookShop from "../../../../assets/features/book-shop.png";
-import FancyShop from "../../../../assets/features/fancy-store.png";
-import Tatoos from "../../../../assets/features/tatoo.png";
-import NurseryGarden from "../../../../assets/features/nursery.png";
-import SpecialSchool from "../../../../assets/features/special-school.png";
-import MosquitoNet from "../../../../assets/features/mosquito-net.png";
-import FootwearShop from "../../../../assets/features/footwear-shop.png";
-import HomeoClinic from "../../../../assets/features/homieo.png";
-import HearingAid from "../../../../assets/features/hearing-aid.png";
-import Automobiles from "../../../../assets/features/auto-mobiles.png";
-import Cosmetics from "../../../../assets/features/cosmetics.png";
-import Loans from "../../../../assets/features/Loans.png";
+import Physiotherapy from "../../../../assets/features/physiotherapy.webp";
+import ClinicalLab from "../../../../assets/features/clinicalLab.webp";
+import Architect from "../../../../assets/features/architech.webp";
+import Sports from "../../../../assets/features/sports.webp";
+import Tiles from "../../../../assets/features/tiles.webp";
+import ExportAndImport from "../../../../assets/features/import-export.webp";
+import Boutique from "../../../../assets/features/boutique.webp";
+import BookShop from "../../../../assets/features/book-shop.webp";
+import FancyShop from "../../../../assets/features/fancy-store.webp";
+import Tatoos from "../../../../assets/features/tatoo.webp";
+import NurseryGarden from "../../../../assets/features/nursery.webp";
+import SpecialSchool from "../../../../assets/features/special-school.webp";
+import MosquitoNet from "../../../../assets/features/mosquito-net.webp";
+import FootwearShop from "../../../../assets/features/footwear-shop.webp";
+import HomeoClinic from "../../../../assets/features/homieo.webp";
+import HearingAid from "../../../../assets/features/hearing-aid.webp";
+import Automobiles from "../../../../assets/features/auto-mobiles.webp";
+import Cosmetics from "../../../../assets/features/cosmetics.webp";
+import Loans from "../../../../assets/features/Loans.webp";
 
 export const STATIC_CATEGORIES = [
     { icon: Astrologers, label: "Astrologer", path: "/astrologers" },
@@ -134,7 +130,6 @@ export const STATIC_CATEGORIES = [
 ];
 
 const PopularCategoriesDrawer = ({ openFromHome = false, onClose }) => {
-    const dispatch = useDispatch();
     const navigate = useNavigate();
 
     const [drawerOpen, setDrawerOpen] = useState(openFromHome);
@@ -150,6 +145,11 @@ const PopularCategoriesDrawer = ({ openFromHome = false, onClose }) => {
     const filtered = STATIC_CATEGORIES.filter((cat) =>
         cat.label.toLowerCase().includes(search.toLowerCase())
     );
+
+const { selectedDistrict } = useSelector(
+  (state) => state.locationReducer
+);
+
 
     return (
         <Drawer
@@ -189,11 +189,21 @@ const PopularCategoriesDrawer = ({ openFromHome = false, onClose }) => {
                         key={cat.label}
                         className="pc-item"
                         onClick={() => {
-                            navigate(`/category/${slugify(cat.label)}`, {
-                                state: { categoryName: cat.label }
+
+                            const districtSlug = slugify(selectedDistrict || "india");
+
+                            const categorySlug = slugify(cat.label);
+
+                            navigate(`/${districtSlug}/${categorySlug}`, {
+                                state: {
+                                    categoryName: cat.label
+                                }
                             });
+
                             setDrawerOpen(false);
+
                         }}
+
                     >
                         <img src={cat.icon} alt={cat.label} className="pc-icon" />
                         <span>{cat.label}</span>

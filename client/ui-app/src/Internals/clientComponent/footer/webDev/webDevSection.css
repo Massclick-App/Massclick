@@ -1,20 +1,14 @@
-/* ========================================= */
-/* webDevSection.css - Global Styles and Overrides */
-/* ========================================= */
 
-/* Import Fonts (Critical for design consistency) */
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800&family=Poppins:wght@300;400;500&display=swap');
 
 :root {
     --primary-orange: #ff6600;
     --dark-orange: #e65100;
     --text-dark: #1f1f1f;
     --text-medium: #555;
-    --bg-light: #f0f2f5; /* Light grey background for the whole section/page */
+    --bg-light: #f0f2f5; 
 }
 
 body {
-    /* Apply global font and background */
     font-family: 'Poppins', sans-serif;
     color: var(--text-dark);
     line-height: 1.6;

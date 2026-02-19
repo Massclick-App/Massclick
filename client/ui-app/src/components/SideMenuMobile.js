@@ -9,7 +9,6 @@ import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import NotificationsRoundedIcon from "@mui/icons-material/NotificationsRounded";
 import MenuButton from "./MenuButton";
 import MenuContent from "./MenuContent";
-import CardAlert from "./CardAlert";
 import NotificationDropdown from "./notificationModel.js"; 
 
 export default function SideMenuMobile({ open, toggleDrawer, handleClose }) {
@@ -82,7 +81,6 @@ export default function SideMenuMobile({ open, toggleDrawer, handleClose }) {
           <Divider />
         </Stack>
 
-        <CardAlert />
         <Stack sx={{ p: 2 }}>
           <Button
             variant="outlined"

@@ -8,7 +8,7 @@ import ReviewCard from "./reviewCard";
 
 export default function ReviewList({ businessId }) {
   const dispatch = useDispatch();
-  const { reviews, loading, hasMore } = useSelector(state => state.reviews);
+  const { reviews,hasMore } = useSelector(state => state.reviews);
   const { businessDetails } = useSelector(
     state => state.businessListReducer
   );

@@ -2,10 +2,10 @@ import React, { useMemo, useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { getAdvertisementByCategory } from "../../../../redux/actions/advertisementAction";
 import "./topBanner.css";
-import defaultBanner from "../../../../assets/new_banner.jpg";
+import defaultBanner from "../../../../assets/new_banner.webp";
 
-const SLIDE_INTERVAL = 5000; 
-const DEFAULT_DELAY = 5000; 
+const SLIDE_INTERVAL = 2000; 
+const DEFAULT_DELAY = 0; 
 
 const parseDate = (date) => {
   if (!date) return null;
@@ -15,16 +15,11 @@ const parseDate = (date) => {
 };
 
 const normalizeCategory = (value = "") =>
-  value
-    .toString()
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z]/g, "");
+  value.toString().trim().toLowerCase().replace(/[^a-z]/g, "");
 
 const TopBannerAds = ({ category }) => {
   const dispatch = useDispatch();
 
- 
   useEffect(() => {
     if (category) {
       dispatch(getAdvertisementByCategory(category));
@@ -39,11 +34,11 @@ const TopBannerAds = ({ category }) => {
     _id: "default-banner",
     title: "Default Banner",
     redirectUrl: null,
-    _image: defaultBanner,
+    image: defaultBanner,
+    imageWebp: defaultBanner,
     isDefault: true,
   };
 
- 
   const bannerAds = useMemo(() => {
     if (!category) return [DEFAULT_BANNER];
 
@@ -53,53 +48,41 @@ const TopBannerAds = ({ category }) => {
       .filter((ad) => {
         const start = parseDate(ad.startTime);
         const end = parseDate(ad.endTime);
-        if (!start || !end) return false;
 
+        if (!start || !end) return false;
         if (nowTime < start.getTime() || nowTime > end.getTime()) return false;
 
-        const image =
-          ad.bannerImage ||
-          (ad.bannerImageKey
-            ? `https://massclickdev.s3.ap-southeast-2.amazonaws.com/${ad.bannerImageKey}`
-            : null);
+        const imageKey = ad.bannerImageKey;
 
         return (
           ad.isActive &&
           !ad.isDeleted &&
           ad.position === "TOP_BANNER" &&
           normalizeCategory(ad.category) === normalizeCategory(category) &&
-          image
+          imageKey
         );
       })
-      .map((ad) => ({
-        ...ad,
-        _image:
-          ad.bannerImage ||
-          `https://massclickdev.s3.ap-southeast-2.amazonaws.com/${ad.bannerImageKey}`,
-      }));
+      .map((ad) => {
+        const baseUrl =
+          `https://massclickdev.s3.ap-southeast-2.amazonaws.com/${ad.bannerImageKey}`;
+
+        return {
+          ...ad,
+          image: baseUrl,
+          imageWebp: baseUrl.endsWith(".webp")
+            ? baseUrl
+            : baseUrl.replace(/\.(jpg|jpeg|png)$/i, ".webp"),
+        };
+      });
+
 
     return [DEFAULT_BANNER, ...apiBanners];
   }, [categoryAdvertisements, category]);
 
-
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [autoPlay, setAutoPlay] = useState(false);
-
 
   useEffect(() => {
-    setCurrentIndex(0);
-    setAutoPlay(false);
-
-    const delayTimer = setTimeout(() => {
-      setAutoPlay(true);
-    }, DEFAULT_DELAY);
-
-    return () => clearTimeout(delayTimer);
-  }, [bannerAds.length]);
-
- 
-  useEffect(() => {
-    if (!autoPlay || bannerAds.length <= 1) return;
+    if (bannerAds.length <= 1) return;
 
     const timer = setInterval(() => {
       setCurrentIndex((prev) =>
@@ -108,7 +91,7 @@ const TopBannerAds = ({ category }) => {
     }, SLIDE_INTERVAL);
 
     return () => clearInterval(timer);
-  }, [autoPlay, bannerAds.length]);
+  }, [bannerAds.length]);
 
   if (loading || bannerAds.length === 0) return null;
 
@@ -116,9 +99,12 @@ const TopBannerAds = ({ category }) => {
     <div className="top-banner-carousel">
       <div
         className="carousel-track"
-        style={{ transform: `translateX(-${currentIndex * 100}%)` }}
+        style={{
+          transform: `translateX(-${currentIndex * 100}%)`,
+          transition: "transform 0.5s ease-in-out",
+        }}
       >
-        {bannerAds.map((ad) => (
+        {bannerAds.map((ad, index) => (
           <a
             key={ad._id}
             href={ad.redirectUrl || "#"}
@@ -127,11 +113,32 @@ const TopBannerAds = ({ category }) => {
             className="carousel-slide"
           >
             <div className="banner-image-wrapper">
-              <img
-                src={ad._image}
-                alt={ad.title || "Top banner advertisement"}
-                loading="lazy"
-              />
+              <picture>
+
+                {ad.imageWebp && (
+                  <source
+                    srcSet={ad.imageWebp}
+                    type="image/webp"
+                  />
+                )}
+
+                <img
+                  src={ad.image}
+                  alt={ad.title || "Top banner"}
+                  width="1200"
+                  height="400"
+                  loading="eager"
+                  fetchpriority="high"
+                  decoding="async"
+                  style={{
+                    width: "100%",
+                    height: "auto",
+                    objectFit: "cover"
+                  }}
+                />
+
+              </picture>
+
             </div>
           </a>
         ))}

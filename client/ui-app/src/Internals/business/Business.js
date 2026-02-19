@@ -2,10 +2,9 @@ import React, { useEffect, useState, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { getAllBusinessList, createBusinessList, editBusinessList, deleteBusinessList, trackQrDownload } from "../../redux/actions/businessListAction";
 import { getAllLocation } from "../../redux/actions/locationAction";
-import { createCategory, editCategory, getAllCategory, businessCategorySearch } from "../../redux/actions/categoryAction";
+import { createCategory, editCategory,businessCategorySearch } from "../../redux/actions/categoryAction";
 import { getAllUsersClient, getUserClientSuggestion } from "../../redux/actions/userClientAction.js";
 import { getAllUsers } from "../../redux/actions/userAction.js";
-import CustomizedDataGrid from "../../components/CustomizedDataGrid";
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
@@ -13,7 +12,6 @@ import './business.css'
 import SkipNextIcon from '@mui/icons-material/SkipNext';
 import SkipPreviousIcon from '@mui/icons-material/SkipPrevious';
 import BusinessCenterIcon from '@mui/icons-material/BusinessCenter';
-import DetailsIcon from '@mui/icons-material/Details';
 import PrivacyTipIcon from '@mui/icons-material/PrivacyTip';
 import CategoryIcon from '@mui/icons-material/Category';
 import VerifiedUserIcon from "@mui/icons-material/VerifiedUser";
@@ -25,7 +23,6 @@ import {
   CircularProgress,
   IconButton,
   Avatar,
-  MenuItem,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -41,10 +38,6 @@ import {
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import Autocomplete from "@mui/material/Autocomplete";
 import TextField from "@mui/material/TextField";
-
-import {
-  FormControl,
-} from "@mui/material";
 import { useSnackbar } from 'notistack';
 
 import PropTypes from 'prop-types';
@@ -140,7 +133,7 @@ const steps = [
 export default function BusinessList() {
   const dispatch = useDispatch();
   const { enqueueSnackbar } = useSnackbar();
-  const { businessList = [], total = 0, loading, error } = useSelector(
+  const { businessList = [], total = 0, loading } = useSelector(
     (state) => state.businessListReducer || {}
   );
   const { searchSuggestion = [] } = useSelector(
@@ -585,44 +578,7 @@ export default function BusinessList() {
     }
     setDeleteDialog({ open: false, id: null, name: "" });
   };
-  const resetForm = () => {
-    setFormData({
-      clientId: "",
-      businessName: "",
-      plotNumber: "",
-      street: "",
-      pincode: "",
-      globalAddress: "",
-      email: "",
-      contact: "",
-      contactList: "",
-      gstin: "",
-      whatsappNumber: "",
-      experience: "",
-      location: "",
-      category: "",
-      keywords: "",
-      bannerImage: "",
-      googleMap: "",
-      website: "",
-      facebook: "",
-      instagram: "",
-      youtube: "",
-      pinterest: "",
-      twitter: "",
-      linkedin: "",
-      businessDetails: "",
-      openingHours: defaultOpeningHours,
-      kycDocuments: "",
-    });
-    setBusinessValue("");
-    setPreview(null);
-    setEditMode(false);
-    setEditId(null);
-    setActiveStep(0);
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  };
-
+  
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -634,50 +590,6 @@ export default function BusinessList() {
       reader.readAsDataURL(file);
     }
   };
-
-  // const handleSubmit = async (e) => {
-  //   e.preventDefault();
-  //   if (!validateForm()) return;
-
-  //   const kycBase64 = await Promise.all(
-  //     kycFiles.map(
-  //       (file) =>
-  //         new Promise((resolve, reject) => {
-  //           const reader = new FileReader();
-  //           reader.onload = () => resolve(reader.result);
-  //           reader.onerror = reject;
-  //           reader.readAsDataURL(file);
-  //         })
-  //     )
-  //   );
-
-  //   const payload = {
-  //     ...formData,
-  //     businessDetails: businessvalue,
-  //     kycDocuments: kycBase64
-  //   };
-
-  //   if (editMode && editId) {
-  //     dispatch(editBusinessList(editId, payload))
-  //       .then(() => {
-  //         enqueueSnackbar(`${formData.businessName} updated successfully!`, { variant: 'success' });
-  //         resetForm();
-  //         dispatch(getAllBusinessList());
-  //         setActiveStep(3);
-  //       })
-  //       .catch((err) => console.error("Edit failed:", err));
-  //   } else {
-  //     dispatch(createBusinessList(payload))
-  //       .then(() => {
-  //         enqueueSnackbar(`${formData.businessName} created successfully!`, { variant: 'success' });
-  //         resetForm();
-  //         dispatch(getAllBusinessList());
-  //         setActiveStep(3);
-  //       })
-  //       .catch((err) => console.error("Create failed:", err));
-  //   }
-  // };
-
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -815,7 +727,6 @@ export default function BusinessList() {
       openingHours: bl.openingHours || defaultOpeningHours,
       createdBy: bl.createdBy,
       payment: bl.payment || [],
-      qrImage: bl.qrCode?.qrImage || null,
       qrImage: bl.qrCode?.qrImage || null,
       qrDownloads: bl.qrDownloads || [],
 

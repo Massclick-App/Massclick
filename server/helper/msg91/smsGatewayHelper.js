@@ -115,7 +115,7 @@ export const sendWhatsAppMessage = async (ownerMobile, lead = {}) => {
         namespace: process.env.MSG91_TEMPLATE_NAMESPACE,
         to_and_components: [
           {
-            to: [`91${cleanMobile}`],
+            to: [cleanMobile],
             components: {
               body_1: { type: "text", value: lead.searchText || "N/A" },
               body_2: { type: "text", value: lead.location || "N/A" },
@@ -160,7 +160,7 @@ export const sendBusinessLead = async (cleanMobile, lead = {}) => {
         namespace: process.env.MSG91_TEMPLATE_NAMESPACE,
         to_and_components: [
           {
-            to: [`91${cleanMobile}`],
+            to: [cleanMobile],
             components: {
               body_1: { type: "text", value: lead.searchText },
               body_2: { type: "text", value: lead.location },
@@ -214,11 +214,11 @@ export const sendBusinessesToCustomer = async (
           code: "en_US",
           policy: "deterministic"
         },
-        
+
         namespace: process.env.MSG91_TEMPLATE_NAMESPACE,
         to_and_components: [
           {
-            to: [`91${cleanMobile}`],
+            to: [cleanMobile],
             components: {
               body_1: { type: "text", value: lead.customerName },
               body_2: { type: "text", value: lead.searchText },

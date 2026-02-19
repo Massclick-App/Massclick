@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import { Box } from "@mui/material";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
@@ -16,8 +15,16 @@ import { fetchSeoPageContentMeta } from "../../../redux/actions/seoPageContentAc
 import { CLEAR_SEO_META } from "../../../redux/actions/userActionTypes.js";
 import TopBannerAds from "../banners/topBanner/topBanner.js";
 
+
+
 const createSlug = (text = "") =>
-  text.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-");
+  text
+    .toLowerCase()
+    .trim()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
 
 
 const sanitizeSeoHtml = (html = "") => {
@@ -26,7 +33,10 @@ const sanitizeSeoHtml = (html = "") => {
     .replace(/<\/h1>/gi, "</h2>");
 };
 
+
+
 const SearchResults = () => {
+
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
@@ -36,6 +46,14 @@ const SearchResults = () => {
   const locationText = locParam?.trim() || "";
   const searchText = termParam?.trim() || "";
 
+  const locationSlug = createSlug(locationText);
+  const searchSlug = createSlug(searchText);
+
+  const canonicalUrl = `https://massclick.in/${locationSlug}/${searchSlug}`;
+
+
+
+
   const { loading, error } = useSelector(
     (state) => state.businessListReducer || {}
   );
@@ -44,19 +62,21 @@ const SearchResults = () => {
     (state) => state.seoReducer || {}
   );
 
-  const seoPageContentState = useSelector(
-    (state) => state.seoPageContentReducer || {}
-  );
-
   const {
     list: seoPageContents = [],
     loading: seoContentLoading = false,
-  } = seoPageContentState;
+  } = useSelector(
+    (state) => state.seoPageContentReducer || {}
+  );
+
+
+ 
 
   const [results, setResults] = useState([]);
   const stateAppliedRef = useRef(false);
 
   useEffect(() => {
+
     const resultsFromState = locationState.state?.results;
 
     if (
@@ -74,6 +94,7 @@ const SearchResults = () => {
     ).then((action) => {
       setResults(action?.payload || []);
     });
+
   }, [searchText, locationText, dispatch]);
 
   useEffect(() => {
@@ -100,159 +121,230 @@ const SearchResults = () => {
         ...(locationText ? { location: locationText } : {}),
       })
     );
+
   }, [dispatch, searchText, locationText]);
 
+
   const handleRetry = useCallback(() => {
+
     dispatch(
       backendMainSearch(searchText, locationText, searchText)
     );
+
   }, [dispatch, searchText, locationText]);
 
+
   if (error) {
+
     return (
       <>
         <CardsSearch />
+
         <div className="no-results-container">
-          <p className="no-results-title">Something went wrong 😕</p>
-          <button className="go-home-button" onClick={handleRetry}>
+
+          <h1>
+            {searchText} in {locationText}
+          </h1>
+
+          <p>Something went wrong</p>
+
+          <button onClick={handleRetry}>
             Retry
           </button>
+
         </div>
       </>
     );
   }
 
+
+
   const fallbackSeo = {
-    title: `${searchText} in ${locationText} - Massclick`,
-    description: `Find the best ${searchText} in ${locationText}.`,
-    canonical: `https://massclick.in/${createSlug(locationText)}/${createSlug(
-      searchText
-    )}`,
+
+    title:
+      `${searchText} in ${locationText} | Best ${searchText} Near You | Massclick`,
+
+    description:
+      `Find trusted ${searchText} in ${locationText}. View ratings, reviews, contact details and hire the best ${searchText} near you.`,
+
+    keywords:
+      `${searchText}, ${searchText} in ${locationText}, best ${searchText} ${locationText}, top ${searchText} ${locationText}`,
+
+    canonical: canonicalUrl,
+
+    robots: "index, follow",
+
   };
+
+
 
   const seoContent = seoPageContents?.[0];
 
-  const sanitizedHeaderContent = seoContent?.headerContent
-    ? sanitizeSeoHtml(seoContent.headerContent)
-    : null;
+  const sanitizedHeaderContent =
+    seoContent?.headerContent
+      ? sanitizeSeoHtml(seoContent.headerContent)
+      : null;
 
-  const sanitizedPageContent = seoContent?.pageContent
-    ? sanitizeSeoHtml(seoContent.pageContent)
-    : null;
+  const sanitizedPageContent =
+    seoContent?.pageContent
+      ? sanitizeSeoHtml(seoContent.pageContent)
+      : null;
+
 
   const itemListSchema =
     results.length > 0
       ? {
         "@context": "https://schema.org",
         "@type": "ItemList",
-        "name": `Best ${searchText} in ${locationText}`,
-        "itemListElement": results.map((business, index) => ({
+        name: `Best ${searchText} in ${locationText}`,
+        itemListElement: results.map((business, index) => ({
           "@type": "ListItem",
-          "position": index + 1,
-          "name": business.businessName,
-          "url": `https://massclick.in/${createSlug(
-            business.location
-          )}/${createSlug(business.businessName)}/${business._id}`,
+          position: index + 1,
+          name: business.businessName,
+          url:
+            `https://massclick.in/${createSlug(business.location)}/${createSlug(business.businessName)}/${business._id}`,
         })),
       }
       : null;
 
-  return (
-    <>
-      <SeoMeta seoData={seoMetaData} fallback={fallbackSeo} />
 
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: "https://massclick.in",
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: locationText,
+        item: `https://massclick.in/${locationSlug}`,
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: searchText,
+        item: canonicalUrl,
+      },
+    ],
+  };
+
+
+ return (
+  <>
+    <SeoMeta seoData={seoMetaData} fallback={fallbackSeo} />
+
+    <Helmet>
       {itemListSchema && (
-        <Helmet>
-          <script type="application/ld+json">
-            {JSON.stringify(itemListSchema)}
-          </script>
-        </Helmet>
+        <script type="application/ld+json">
+          {JSON.stringify(itemListSchema)}
+        </script>
       )}
+      <script type="application/ld+json">
+        {JSON.stringify(breadcrumbSchema)}
+      </script>
+    </Helmet>
 
+    <div className="results-page">
       <CardsSearch />
       <div className="page-spacing" />
-      <TopBannerAds category={searchText} />
-      <Box sx={{ minHeight: "100vh", bgcolor: "#f8f9fb", pt: 4, pb: 8 }}>
-        <Box sx={{ maxWidth: 1200, mx: "auto", px: 2 }}>
+      <div className="results-container banner-section">
+        <TopBannerAds category={searchText} />
+      </div>
 
-          {!seoContentLoading && sanitizedHeaderContent && (
-            <Box sx={{ maxWidth: 1200, mx: "auto", px: 2, mt: 3 }}>
-              <section
-                className="seo-header-content"
-                dangerouslySetInnerHTML={{
-                  __html: sanitizedHeaderContent,
-                }}
-              />
-            </Box>
-          )}
+      <div className="results-container content-section">
 
-          {loading && <p className="loading-text">Searching businesses...</p>}
+        {!seoContentLoading && sanitizedHeaderContent && (
+          <section
+            className="seo-header-content premium-section"
+            dangerouslySetInnerHTML={{
+              __html: sanitizedHeaderContent,
+            }}
+          />
+        )}
 
-          {!loading && results.length === 0 && (
-            <div className="no-results-container">
-              <p className="no-results-title">No results found 😔</p>
-              <button
-                className="go-home-button"
-                onClick={() => navigate("/home")}
-              >
-                Go to Homepage
-              </button>
-            </div>
-          )}
+        {/* LOADING */}
+        {loading && (
+          <div className="loading-wrapper">
+            Searching businesses...
+          </div>
+        )}
 
-          <div className="restaurants-list-wrapper">
-            {results.map((business) => {
-              const averageRating =
-                typeof business.averageRating === "number"
-                  ? business.averageRating.toFixed(1)
-                  : "0.0";
+        {/* NO RESULTS */}
+        {!loading && results.length === 0 && (
+          <div className="no-results-container">
+            <p className="no-results-title">No results found 😔</p>
+            <button
+              className="go-home-button"
+              onClick={() => navigate("/home")}
+            >
+              Go to Homepage
+            </button>
+          </div>
+        )}
 
-              const totalRatings =
-                typeof business.totalReviews === "number"
-                  ? business.totalReviews
-                  : 0;
+        {/* BUSINESS LIST */}
+        <div className="business-list">
 
-              const businessUrl = `/${createSlug(
-                business.location
-              )}/${createSlug(business.businessName)}/${business._id}`;
+          {results.map((business) => {
+            const averageRating =
+              typeof business.averageRating === "number"
+                ? business.averageRating.toFixed(1)
+                : "0.0";
 
-              return (
+            const totalRatings =
+              typeof business.totalReviews === "number"
+                ? business.totalReviews
+                : 0;
+
+            const businessUrl = `/${createSlug(
+              business.location
+            )}/${createSlug(business.businessName)}/${business._id}`;
+
+            return (
+              <div className="business-card-wrapper" key={business._id}>
                 <CardDesign
-                  key={business._id}
                   title={business.businessName}
                   phone={business.contact}
-                  whatsapp={business.whatsappNumber}
                   address={business.location}
                   details={`Experience: ${business.experience} | Category: ${business.category}`}
                   rating={averageRating}
                   reviews={totalRatings}
                   imageSrc={
                     business.bannerImage ||
-                    "https://via.placeholder.com/120x100?text=Logo"
+                    "https://via.placeholder.com/120"
                   }
                   to={businessUrl}
-                  state={{ id: business._id }}
                 />
-              );
-            })}
-          </div>
-          {!seoContentLoading && sanitizedPageContent && (
-            <Box sx={{ mt: 8 }}>
-              <article className="seo-article">
-                <div className="seo-divider" />
-                <section
-                  className="seo-page-content"
-                  dangerouslySetInnerHTML={{
-                    __html: sanitizedPageContent,
-                  }}
-                />
-              </article>
-            </Box>
-          )}
-        </Box>
-      </Box>
-    </>
-  );
+              </div>
+            );
+          })}
+
+        </div>
+
+        {/* SEO CONTENT */}
+        {!seoContentLoading && sanitizedPageContent && (
+          <article className="seo-article">
+            <div className="seo-divider" />
+            <section
+              className="seo-page-content"
+              dangerouslySetInnerHTML={{
+                __html: sanitizedPageContent,
+              }}
+            />
+          </article>
+        )}
+
+      </div>
+    </div>
+  </>
+);
+
+
 };
 
 export default SearchResults;

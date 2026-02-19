@@ -1,13 +1,11 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { getAllUsers, createUser, editUser, deleteUser } from "../../redux/actions/userAction.js";
-import CustomizedDataGrid from "../../components/CustomizedDataGrid";
 import { getAllRoles } from "../../redux/actions/rolesAction.js";
 import {
   Box,
   Button,
   CircularProgress,
-  Paper,
   Typography,
   IconButton,
   Dialog,
