@@ -8,6 +8,7 @@ import helmet from "helmet";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
+
 import userRoutes from "./routes/userRoutes.js";
 import userClientRoutes from "./routes/userClientRoute.js";
 import locationRoutes from "./routes/locationRoute.js";
@@ -29,13 +30,12 @@ import reviewRoutes from "./routes/reviewRoutes.js";
 import advertiseRoute from "./routes/advertiseRoute.js";
 import seoModel from "./model/seoModel/seoModel.js";
 
-
 dotenv.config();
 
 const app = express();
 app.set("trust proxy", true);
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 4000;
 const MONGO_URI = process.env.MONGO_URL;
 
 const __filename = fileURLToPath(import.meta.url);
@@ -44,24 +44,36 @@ const __dirname = path.dirname(__filename);
 const CLIENT_BUILD_PATH =
   "/var/www/massclickQA/client/ui-app/build";
 
+
 app.use((req, res, next) => {
 
-  const host = req.headers.host;
+  const host = req.headers.host || "";
 
-  const protocol = req.headers["x-forwarded-proto"] || req.protocol;
+  if (
+    host.includes("localhost") ||
+    host.includes("127.0.0.1")
+  ) {
+    return next();
+  }
+
+  const protocol =
+    req.headers["x-forwarded-proto"] || req.protocol;
 
   if (protocol !== "https") {
-
-    return res.redirect(301, `https://${host}${req.originalUrl}`);
-
+    return res.redirect(
+      301,
+      `https://${host}${req.originalUrl}`
+    );
   }
 
   if (host.startsWith("www.")) {
 
     const newHost = host.replace("www.", "");
 
-    return res.redirect(301, `https://${newHost}${req.originalUrl}`);
-
+    return res.redirect(
+      301,
+      `https://${newHost}${req.originalUrl}`
+    );
   }
 
   next();
@@ -76,6 +88,7 @@ const slugify = (text = "") =>
     .replace(/&/g, "and")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
+
 
 app.use(
   helmet({
@@ -93,21 +106,35 @@ app.use(
 );
 
 
-
-
 const allowedOrigins = [
   "https://massclick.in",
   "http://localhost:3000",
+  "http://127.0.0.1:3000"
 ];
 
-app.use(cors({
-  origin: allowedOrigins,
-  credentials: true,
+app.use(
+  cors({
+    origin: function (origin, callback) {
+
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("CORS not allowed"));
+      }
+    },
+    credentials: true,
+  })
+);
+
+
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({
+  extended: true,
+  limit: "50mb"
 }));
 
-
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 app.get("/robots.txt", (req, res) => {
 
@@ -122,6 +149,8 @@ Sitemap: https://massclick.in/sitemap.xml
 
 });
 
+
+// routes
 app.use("/", sitemapRoutes);
 app.use("/", userRoutes);
 app.use("/", oauthRoutes);
@@ -142,55 +171,69 @@ app.use("/", popularSearchRoutes);
 app.use("/", reviewRoutes);
 app.use("/", advertiseRoute);
 
-app.use(express.static(CLIENT_BUILD_PATH, {
 
-  maxAge: "365d",
+app.use(
+  express.static(CLIENT_BUILD_PATH, {
+    maxAge: "365d",
+    etag: true,
+    lastModified: true,
 
-  etag: true,
+    setHeaders: (res, filePath) => {
 
-  lastModified: true,
+      if (filePath.endsWith(".html")) {
 
-  setHeaders: (res, filePath) => {
+        res.setHeader(
+          "Cache-Control",
+          "no-cache"
+        );
 
-    if (filePath.endsWith(".html")) {
+      } else {
 
-      res.setHeader("Cache-Control", "no-cache");
+        res.setHeader(
+          "Cache-Control",
+          "public, max-age=31536000, immutable"
+        );
 
-    } else {
+      }
 
-      res.setHeader(
-        "Cache-Control",
-        "public, max-age=31536000, immutable"
-      );
+    },
+  })
+);
 
-    }
 
-  },
-
-}));
 app.get(/.*/, async (req, res) => {
 
   try {
 
-    const indexPath = path.join(CLIENT_BUILD_PATH, "index.html");
+    const indexPath =
+      path.join(CLIENT_BUILD_PATH, "index.html");
 
     if (!fs.existsSync(indexPath)) {
-      return res.status(404).send("Build not found");
+
+      return res.status(404)
+        .send("Build not found");
+
     }
 
-    let html = fs.readFileSync(indexPath, "utf8");
+    let html =
+      fs.readFileSync(indexPath, "utf8");
 
-    const parts = req.path.split("/").filter(Boolean);
+    const parts =
+      req.path.split("/").filter(Boolean);
 
-    const locationSlug = parts[0] || "";
-    const categorySlug = parts[1] || "";
+    const locationSlug =
+      parts[0] || "";
+
+    const categorySlug =
+      parts[1] || "";
 
     if (locationSlug && categorySlug) {
 
-      const seoList = await seoModel.find({
-        pageType: "category",
-        isActive: true
-      }).lean();
+      const seoList =
+        await seoModel.find({
+          pageType: "category",
+          isActive: true
+        }).lean();
 
       const seo = seoList.find(item =>
         slugify(item.location) === locationSlug &&
@@ -214,10 +257,8 @@ app.get(/.*/, async (req, res) => {
           `<meta name="keywords" content="${seo.keywords}" />`
         );
 
-          html = html.replace(
-
+        html = html.replace(
           /<link rel="canonical".*?>/,
-
           `<link rel="canonical" href="${seo.canonical}" />`
         );
 
@@ -226,20 +267,20 @@ app.get(/.*/, async (req, res) => {
     } else {
 
       html = html.replace(
-
         /<link rel="canonical".*?>/,
-
         `<link rel="canonical" href="https://massclick.in${req.path}" />`
       );
 
-      }
+    }
 
     res.send(html);
 
   } catch (err) {
 
     console.error(err);
-    res.status(500).send("Server error");
+
+    res.status(500)
+      .send("Server error");
 
   }
 
@@ -253,7 +294,9 @@ mongoose.connect(MONGO_URI)
 
     app.listen(PORT, () => {
 
-      console.log(`Server running on ${PORT}`);
+      console.log(
+        `Server running on port ${PORT}`
+      );
 
     });
 
