@@ -8,7 +8,7 @@ const router = express.Router();
 
 router.post('/api/businesslist/create', oauthAuthentication, addBusinessListAction);
 router.get("/api/business/by-slug", getBusinessBySlugAction);
-router.get('/api/businesslist/view/:id', oauthAuthentication, viewBusinessListAction);
+router.get('/api/businesslist/view/:id', viewBusinessListAction);
 router.get('/api/businesslist/viewall', oauthAuthentication, viewAllBusinessListAction);
 router.get('/api/businesslist/clientview', oauthAuthentication, viewAllClientBusinessListAction);
 router.put('/api/businesslist/update/:id', oauthAuthentication, updateBusinessListAction);

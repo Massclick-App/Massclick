@@ -93,16 +93,13 @@ export const trackQrDownload = (businessId) => async (dispatch) => {
 
 
 export const getBusinessDetailsById = (id) => async (dispatch) => {
+
   dispatch({ type: FETCH_VIEWBUSINESSDETAILS_REQUEST });
 
   try {
-    const token = await dispatch(getClientToken());
 
     const response = await axios.get(
-      `${API_URL}/businesslist/view/${id}`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
+      `${API_URL}/businesslist/view/${id}`
     );
 
     dispatch({
@@ -111,14 +108,20 @@ export const getBusinessDetailsById = (id) => async (dispatch) => {
     });
 
     return response.data;
+
   } catch (error) {
+
     dispatch({
       type: FETCH_VIEWBUSINESSDETAILS_FAILURE,
-      payload: error.response?.data?.message || error.message,
+      payload:
+        error.response?.data?.message ||
+        error.message,
     });
 
     return null;
+
   }
+
 };
 
 
