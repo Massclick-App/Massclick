@@ -44,7 +44,6 @@ const __dirname = path.dirname(__filename);
 const CLIENT_BUILD_PATH =
   "/var/www/massclickQA/client/ui-app/build";
 
-
 app.use((req, res, next) => {
 
   const host = req.headers.host || "";
@@ -80,7 +79,6 @@ app.use((req, res, next) => {
 
 });
 
-
 const slugify = (text = "") =>
   text
     .toLowerCase()
@@ -98,13 +96,11 @@ app.use(
 
 app.use(compression());
 
-
 app.use(
   prerender
     .set("prerenderToken", process.env.PRERENDER_TOKEN)
     .set("protocol", "https")
 );
-
 
 const allowedOrigins = [
   "https://massclick.in",
@@ -128,7 +124,6 @@ app.use(
   })
 );
 
-
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({
   extended: true,
@@ -148,7 +143,6 @@ Sitemap: https://massclick.in/sitemap.xml
 `);
 
 });
-
 
 // routes
 app.use("/", sitemapRoutes);
@@ -170,7 +164,6 @@ app.use("/", mrpRoutes);
 app.use("/", popularSearchRoutes);
 app.use("/", reviewRoutes);
 app.use("/", advertiseRoute);
-
 
 app.use(
   express.static(CLIENT_BUILD_PATH, {
@@ -199,7 +192,6 @@ app.use(
     },
   })
 );
-
 
 app.get(/.*/, async (req, res) => {
 
@@ -285,7 +277,6 @@ app.get(/.*/, async (req, res) => {
   }
 
 });
-
 
 mongoose.connect(MONGO_URI)
   .then(() => {

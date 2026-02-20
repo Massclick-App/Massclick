@@ -1,7 +1,8 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
-
+import { useDispatch } from "react-redux";
+import { logSearchActivity } from "../../../redux/actions/businessListAction";
 import TvService from "../../../assets/services/tv-service.png";
 import PestService from "../../../assets/services/pestService.png";
 import CarMechanic from "../../../assets/services/car-service.png";
@@ -284,14 +285,10 @@ const findServiceByAlias = (input) => {
 };
 
 
-
-/* ========================================= */
-/* MAIN COMPONENT */
-/* ========================================= */
-
 const ServiceCardsGrid = () => {
 
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
 
   const selectedDistrict = useSelector(
@@ -307,18 +304,36 @@ const ServiceCardsGrid = () => {
 
 
 
-  const handleClick = (service) => {
+const handleClick = (service) => {
 
-    const found =
-      findServiceByAlias(service.slug);
+    const found = findServiceByAlias(service.slug);
 
     if (!found) return;
+
+    const categoryName = found.name;
+    const locationName = selectedDistrict || "Global";
+
+    const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
+
+    const userDetails = {
+      userName: authUser?.userName,
+      mobileNumber1: authUser?.mobileNumber1,
+      mobileNumber2: authUser?.mobileNumber2,
+      email: authUser?.email,
+    };
+
+    dispatch(
+      logSearchActivity(
+        categoryName,
+        locationName,
+        userDetails,
+        categoryName
+      )
+    );
 
     navigate(`/${districtSlug}/${found.slug}`);
 
   };
-
-
 
   return (
 

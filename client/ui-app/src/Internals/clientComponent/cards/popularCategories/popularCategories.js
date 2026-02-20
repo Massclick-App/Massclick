@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from "react";
 import "./popularCategories.css";
-import {  useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import Drawer from "@mui/material/Drawer";
 import CloseIcon from "@mui/icons-material/Close";
 import SearchIcon from "@mui/icons-material/Search";
-
+import { useDispatch } from "react-redux";
+import { logSearchActivity } from "../../../../redux/actions/businessListAction";
 import Salon from "../../../../assets/features/barbershop.webp";
 import Astrologers from "../../../../assets/features/astrologers.webp";
 import BodyMassage from "../../../../assets/features/Bodymassage.webp";
@@ -131,6 +132,7 @@ export const STATIC_CATEGORIES = [
 
 const PopularCategoriesDrawer = ({ openFromHome = false, onClose }) => {
     const navigate = useNavigate();
+    const dispatch = useDispatch();
 
     const [drawerOpen, setDrawerOpen] = useState(openFromHome);
     const [search, setSearch] = useState("");
@@ -146,9 +148,9 @@ const PopularCategoriesDrawer = ({ openFromHome = false, onClose }) => {
         cat.label.toLowerCase().includes(search.toLowerCase())
     );
 
-const { selectedDistrict } = useSelector(
-  (state) => state.locationReducer
-);
+    const { selectedDistrict } = useSelector(
+        (state) => state.locationReducer
+    );
 
 
     return (
@@ -194,9 +196,31 @@ const { selectedDistrict } = useSelector(
 
                             const categorySlug = slugify(cat.label);
 
+                            const categoryName = cat.label;
+                            const locationName = selectedDistrict || "Global";
+
+                            // ✅ get logged-in user
+                            const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
+
+                            const userDetails = {
+                                userName: authUser?.userName,
+                                mobileNumber1: authUser?.mobileNumber1,
+                                mobileNumber2: authUser?.mobileNumber2,
+                                email: authUser?.email,
+                            };
+
+                            dispatch(
+                                logSearchActivity(
+                                    categoryName,
+                                    locationName,
+                                    userDetails,
+                                    categoryName
+                                )
+                            );
+
                             navigate(`/${districtSlug}/${categorySlug}`, {
                                 state: {
-                                    categoryName: cat.label
+                                    categoryName: categoryName
                                 }
                             });
 

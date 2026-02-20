@@ -3,6 +3,7 @@ import "./CardCarousel.css";
 import { useDispatch } from "react-redux";
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
+import { useSelector } from "react-redux";
 
 import KeyboardDoubleArrowRightIcon from "@mui/icons-material/KeyboardDoubleArrowRight";
 import KeyboardDoubleArrowLeftIcon from "@mui/icons-material/KeyboardDoubleArrowLeft";
@@ -12,7 +13,7 @@ import Education from "../../../assets/Popular/Education.webp";
 import HotelRoom from "../../../assets/Popular/HotelRoom.webp";
 import Photography from "../../../assets/Popular/Photography.webp";
 import { createEnquiryNow } from "../../../redux/actions/popularSearchesAction";
-
+import { logSearchActivity } from "../../../redux/actions/businessListAction";
 import OTPLoginModal from "../AddBusinessModel";
 
 const cardsData = [
@@ -33,6 +34,10 @@ const CardCarousel = () => {
 
   const authUser = JSON.parse(localStorage.getItem("authUser") || "null");
 
+const selectedDistrict = useSelector(
+  (state) => state.locationReducer.selectedDistrict
+);
+
   const scrollByCard = (direction) => {
     if (!containerRef.current) return;
     const cardWidth = containerRef.current.querySelector(".popular-search__card")?.offsetWidth || 280;
@@ -52,29 +57,52 @@ const CardCarousel = () => {
     proceedEnquiry(card);
   };
 
-  const proceedEnquiry = async (card) => {
-    try {
-      if (!authUser?._id) return;
+ const proceedEnquiry = async (card) => {
+  try {
 
-      const enquiryPayload = {
-        category: card.title,
-        categorySlug: card.title.toLowerCase().replace(/\s+/g, "-"),
-        enquirySource: "Popular Searches",
-        userId: authUser._id,
-        userName: authUser.userName,
-        mobileNumber1: authUser.mobileNumber1,
-        mobileNumber2: authUser.mobileNumber2 || "",
-        email: authUser.email || "",
-        businessName: authUser.businessName || "",
-      };
+    if (!authUser?._id) return;
 
-      await dispatch(createEnquiryNow(enquiryPayload));
-      setShowSuccess(true);
+    const categoryName = card.title;
+    const locationName = selectedDistrict || "Global";
 
-    } catch (error) {
-      console.error("❌ Enquiry failed:", error);
-    }
-  };
+    const userDetails = {
+      userName: authUser?.userName,
+      mobileNumber1: authUser?.mobileNumber1,
+      mobileNumber2: authUser?.mobileNumber2 || "",
+      email: authUser?.email || "",
+    };
+
+    dispatch(
+      logSearchActivity(
+        categoryName,
+        locationName,
+        userDetails,
+        categoryName
+      )
+    );
+
+    const enquiryPayload = {
+      category: card.title,
+      categorySlug: card.title.toLowerCase().replace(/\s+/g, "-"),
+      enquirySource: "Popular Searches",
+      userId: authUser._id,
+      userName: authUser.userName,
+      mobileNumber1: authUser.mobileNumber1,
+      mobileNumber2: authUser.mobileNumber2 || "",
+      email: authUser.email || "",
+      businessName: authUser.businessName || "",
+    };
+
+    await dispatch(createEnquiryNow(enquiryPayload));
+
+    setShowSuccess(true);
+
+  } catch (error) {
+
+    console.error("❌ Enquiry failed:", error);
+
+  }
+};
 
   useEffect(() => {
     const onAuthChange = () => {

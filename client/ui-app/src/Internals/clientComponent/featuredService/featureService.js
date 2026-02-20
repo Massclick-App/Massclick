@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useSelector } from "react-redux";
-
+import { useSelector,useDispatch  } from "react-redux";
+import { logSearchActivity } from "../../../redux/actions/businessListAction";
 import RestuarantIcon from "../../../assets/features/restuarant.webp";
 import HotelIcon from "../../../assets/features/hotel.webp";
 import InteriorDesignerIcon from "../../../assets/features/interiors-Designers.webp";
@@ -98,6 +98,7 @@ export const featuredServices = [
 const FeaturedServicesSection = () => {
 
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   const [openDrawer, setOpenDrawer] = useState(false);
 
@@ -120,10 +121,30 @@ const districtSlug =
     if (service.isDrawer) {
 
       setOpenDrawer(true);
-
       return;
 
     }
+
+    const categoryName = service.name;
+    const locationName = selectedDistrict || "Global";
+
+    const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
+
+    const userDetails = {
+      userName: authUser?.userName,
+      mobileNumber1: authUser?.mobileNumber1,
+      mobileNumber2: authUser?.mobileNumber2,
+      email: authUser?.email,
+    };
+
+    dispatch(
+      logSearchActivity(
+        categoryName,
+        locationName,
+        userDetails,
+        categoryName
+      )
+    );
 
     const categorySlug = createSlug(service.name);
 
