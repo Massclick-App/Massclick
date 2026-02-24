@@ -52,8 +52,6 @@ const SearchResults = () => {
   const canonicalUrl = `https://massclick.in/${locationSlug}/${searchSlug}`;
 
 
-
-
   const { loading, error } = useSelector(
     (state) => state.businessListReducer || {}
   );
@@ -68,9 +66,6 @@ const SearchResults = () => {
   } = useSelector(
     (state) => state.seoPageContentReducer || {}
   );
-
-
- 
 
   const [results, setResults] = useState([]);
   const stateAppliedRef = useRef(false);
@@ -157,8 +152,6 @@ const SearchResults = () => {
     );
   }
 
-
-
   const fallbackSeo = {
 
     title:
@@ -177,7 +170,6 @@ const SearchResults = () => {
   };
 
 
-
   const seoContent = seoPageContents?.[0];
 
 const sanitizedHeaderContent = seoContent?.headerContent || null;
@@ -186,7 +178,6 @@ const sanitizedHeaderContent = seoContent?.headerContent || null;
     seoContent?.pageContent
       ? sanitizeSeoHtml(seoContent.pageContent)
       : null;
-
 
   const itemListSchema =
     results.length > 0
@@ -203,7 +194,6 @@ const sanitizedHeaderContent = seoContent?.headerContent || null;
         })),
       }
       : null;
-
 
   const breadcrumbSchema = {
     "@context": "https://schema.org",

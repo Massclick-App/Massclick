@@ -19,7 +19,7 @@ import { viewOtpUser } from '../../redux/actions/otpAction.js';
 // import { HOME_META } from "../clientComponent/seo/seoDocument.js";
 import SeoMeta from "./seo/seoMeta";
 import { fetchSeoMeta } from "../../redux/actions/seoAction";
-
+import PageHeaderContents from './pageHeaderContents/pageHeaderContents.js';
 
 const STICKY_SEARCH_BAR_HEIGHT = 85;
 
@@ -136,7 +136,7 @@ const LandingPage = () => {
                 <meta name="publisher" content="Massclick" />
                 <link rel="canonical" href={HOME_META.canonical} />
             </Helmet> */}
-            
+
             <SeoMeta seoData={seoMetaData} fallback={fallbackSeo} />
 
             <Box sx={{ flexGrow: 1, bgcolor: 'background.default', width: '100%' }}>
@@ -218,7 +218,9 @@ const LandingPage = () => {
                         {/* <Box sx={{ mb: { xs: 4, sm: 5, md: 6 } }}>
                             <PopularCategories />
                         </Box> */}
-
+                        <Box sx={{ mb: { xs: 4, sm: 5, md: 6 } }}>
+                            <PageHeaderContents />
+                        </Box>
                         <Footer />
                     </>
                 )}
