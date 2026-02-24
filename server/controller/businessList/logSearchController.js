@@ -67,7 +67,6 @@ const cleanIndianMobile = (mobile) => {
   return null;
 };
 
-
 export const logSearchAction = async (req, res) => {
   try {
     const { categoryName, location, searchedUserText, userDetails } = req.body;
@@ -367,7 +366,6 @@ export const logSearchAction = async (req, res) => {
   }
 
 };
-
 
 export const viewLogSearchAction = async (req, res) => {
     try {

@@ -180,10 +180,7 @@ const SearchResults = () => {
 
   const seoContent = seoPageContents?.[0];
 
-  const sanitizedHeaderContent =
-    seoContent?.headerContent
-      ? sanitizeSeoHtml(seoContent.headerContent)
-      : null;
+const sanitizedHeaderContent = seoContent?.headerContent || null;
 
   const sanitizedPageContent =
     seoContent?.pageContent

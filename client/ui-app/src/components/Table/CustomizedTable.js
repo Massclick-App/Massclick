@@ -1,4 +1,3 @@
-// UNIVERSAL DYNAMIC CUSTOMIZED TABLE
 import React, { useState, useEffect } from "react";
 import {
   Table,
@@ -113,7 +112,6 @@ const CustomizedTable = ({
   return (
     <Paper className={`custom-table-container ${isScrolled ? "table-scrolled" : ""}`}>
       
-      {/* HEADER TOOLBAR */}
       <div className="table-toolbar">
         <div className="toolbar-left">
           <h3 className="table-title">{title}</h3>
@@ -122,7 +120,6 @@ const CustomizedTable = ({
 
         <div className="toolbar-right">
 
-          {/* Universal Search */}
           {enableSearch && (
             <div className="search-box">
               <input
@@ -134,7 +131,6 @@ const CustomizedTable = ({
             </div>
           )}
 
-          {/* Universal Status Filter */}
           {enableStatusFilter && (
             <div className="filter-chips">
               {["all", "active", "inactive"].map((s) => (
@@ -154,7 +150,6 @@ const CustomizedTable = ({
         </div>
       </div>
 
-      {/* TABLE */}
       <TableContainer
         className="table-wrapper"
         onScroll={(e) => setIsScrolled(e.target.scrollTop > 0)}
@@ -208,7 +203,6 @@ const CustomizedTable = ({
         </Table>
       </TableContainer>
 
-      {/* PAGINATION */}
       <Box className="pagination-wrapper">
         <TablePagination
           component="div"

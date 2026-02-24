@@ -2,13 +2,26 @@ import seoModel from "../../model/seoModel/seoModel.js";
 import categoryModel from "../../model/category/categoryModel.js";
 import { getSignedUrlByKey } from "../../s3Uploder.js";
 
-
-export const createSeo = async (reqBody = {}) => {
+export const createSeo = async (data) => {
   try {
-    const seoDoc = new seoModel(reqBody);
-    return await seoDoc.save();
+
+    data.locationKey =
+      data.location
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]/g, "");
+
+    const seo = await seoModel.create(data);
+
+    return seo;
+
   } catch (error) {
-    console.error("SEO create error:", error);
+
+    if (error.code === 11000)
+      throw new Error(
+        "SEO already exists for this category and location"
+      );
+
     throw error;
   }
 };
@@ -87,63 +100,101 @@ export const getSeoMeta = async ({ pageType, category, location }) => {
 };
 
 export const viewAllSeo = async ({
-  pageNo,
-  pageSize,
-  search,
-  status,
-  sortBy,
-  sortOrder
+  pageNo = 1,
+  pageSize = 10,
+  search = "",
+  status = "all",
+  sortBy = "createdAt",
+  sortOrder = -1
 }) => {
+
+  const query = {};
+
+  // status filter
+  if (status === "active")
+    query.isActive = true;
+
+  if (status === "inactive")
+    query.isActive = false;
+
+  // search filter
+  if (search && search.trim() !== "") {
+
+    const regex = new RegExp(search.trim(), "i");
+
+    query.$or = [
+      { title: regex },
+      { category: regex },
+      { location: regex }
+    ];
+  }
+
+  // total count
+  const total = await seoModel.countDocuments(query);
+
+  const sortQuery = {
+    [sortBy]: sortOrder,
+    _id: sortOrder  
+  };
+
+  const list = await seoModel
+    .find(query)
+    .sort(sortQuery)
+    .skip((pageNo - 1) * pageSize)
+    .limit(pageSize)
+    .lean();
+
+  return { list, total };
+};
+
+export const updateSeo = async (id, data) => {
+
   try {
-    let query = {};
 
-    if (status === "active") query.isActive = true;
-    if (status === "inactive") query.isActive = false;
-
-    if (search && search.trim() !== "") {
-      query.$or = [
-        { title: { $regex: search.trim(), $options: "i" } },
-        { category: { $regex: search.trim(), $options: "i" } },
-        { location: { $regex: search.trim(), $options: "i" } }
-      ];
+    if (data.location) {
+      data.locationKey =
+        data.location
+          .toLowerCase()
+          .trim()
+          .replace(/[^a-z0-9]/g, "");
     }
 
-    let sortQuery = {};
-    if (sortBy) {
-      sortQuery[sortBy] = sortOrder;
-    }
+    const seo = await seoModel.findByIdAndUpdate(
+      id,
+      data,
+      {
+        new: true,
+        runValidators: true
+      }
+    );
 
-    const total = await seoModel.countDocuments(query);
+    if (!seo)
+      throw new Error("SEO not found");
 
-    const list = await seoModel
-      .find(query)
-      .sort(sortQuery)
-      .skip((pageNo - 1) * pageSize)
-      .limit(pageSize)
-      .lean();
-
-    return { list, total };
+    return seo;
 
   } catch (error) {
-    console.error("Error fetching SEO list:", error);
+
+    if (error.code === 11000)
+      throw new Error(
+        "SEO already exists for this category and location"
+      );
+
     throw error;
   }
 };
 
-
-export const updateSeo = async (id, data) => {
-  const seo = await seoModel.findByIdAndUpdate(id, data, { new: true });
-  if (!seo) throw new Error("SEO not found");
-  return seo;
-};
-
 export const deleteSeo = async (id) => {
+
   const seo = await seoModel.findByIdAndUpdate(
     id,
     { isActive: false },
     { new: true }
   );
-  if (!seo) throw new Error("SEO not found");
+
+  if (!seo)
+    throw new Error("SEO not found");
+
   return seo;
 };
 

@@ -62,7 +62,7 @@ import Cosmetics from "../../../../assets/features/cosmetics.webp";
 import Loans from "../../../../assets/features/Loans.webp";
 
 export const STATIC_CATEGORIES = [
-    { icon: Astrologers, label: "Astrologer", path: "/astrologers" },
+    { icon: Astrologers, label: "Astrology", path: "/astrologers" },
     { icon: VastuConsultant, label: "Vastu Consultant", path: "/vastu-consultants" },
     { icon: Numerology, label: "Numerology", path: "/numerology" },
     { icon: Geologist, label: "Geologist", path: "/geologist" },
@@ -83,8 +83,8 @@ export const STATIC_CATEGORIES = [
     { icon: Spa, label: "Spa", path: "/spa" },
 
     { icon: CarHire, label: "Car Hire", path: "/car-hire" },
-    { icon: Electricians, label: "Electrician", path: "/electricians" },
-    { icon: EventOrganiser, label: "Event Organizer", path: "/event-organisers" },
+    { icon: Electricians, label: "Electrician Services", path: "/electrician-service" },
+    { icon: EventOrganiser, label: "Event Organisers", path: "/event-organisers" },
     { icon: RealEstate, label: "Real Estate", path: "/real-estate" },
 
     { icon: Textile, label: "Textile", path: "/textile" },
@@ -92,7 +92,7 @@ export const STATIC_CATEGORIES = [
     { icon: Jewellery, label: "Jewellery Showroom", path: "/jewellery" },
     { icon: Tailoring, label: "Tailoring", path: "/tailoring" },
 
-    { icon: PaintingService, label: "Painting Service", path: "/painting-service" },
+    { icon: PaintingService, label: "Painting Contractor", path: "/painting-contractor" },
     { icon: NursingServices, label: "Nursing Service", path: "/nursing-services" },
     { icon: CourierServices, label: "Courier Services", path: "/courier-service" },
     { icon: Printing, label: "Printing & Publishing Service", path: "/printing" },
@@ -111,7 +111,6 @@ export const STATIC_CATEGORIES = [
     { icon: ClinicalLab, label: "Clinical Lab", path: "/clinical-lab" },
     { icon: HomeoClinic, label: "Homeo Clinic", path: "/homeo-clinic" },
     { icon: Cosmetics, label: "Cosmetics", path: "/cosmetics" },
-
 
     { icon: Architect, label: "Architect", path: "/architect" },
     { icon: Sports, label: "Sports", path: "/sports" },

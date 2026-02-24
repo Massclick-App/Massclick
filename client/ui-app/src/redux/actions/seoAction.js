@@ -60,8 +60,11 @@ export const getAllSeo =
 
 
 export const createSeo = (seoData) => async (dispatch) => {
+
   dispatch({ type: CREATE_SEO_REQUEST });
+
   try {
+
     const token = await getValidToken(dispatch);
 
     const response = await axios.post(
@@ -70,15 +73,29 @@ export const createSeo = (seoData) => async (dispatch) => {
       { headers: { Authorization: `Bearer ${token}` } }
     );
 
-    dispatch({ type: CREATE_SEO_SUCCESS, payload: response.data });
+    dispatch({
+      type: CREATE_SEO_SUCCESS,
+      payload: response.data
+    });
+
     return response.data;
-  } catch (error) {
+
+  }
+  catch (error) {
+
+    const message =
+      error?.response?.data?.message ||
+      "SEO creation failed";
+
     dispatch({
       type: CREATE_SEO_FAILURE,
-      payload: error.response?.data || error.message
+      payload: message
     });
-    throw error;
+
+    throw new Error(message);
+
   }
+
 };
 
 export const editSeo = (id, seoData) => async (dispatch) => {

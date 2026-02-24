@@ -214,9 +214,9 @@ const LandingPage = () => {
                             <TopTourist />
                         </Box>
 
-                        <Box sx={{ mb: { xs: 4, sm: 5, md: 6 } }}>
+                        {/* <Box sx={{ mb: { xs: 4, sm: 5, md: 6 } }}>
                             <PopularCategories />
-                        </Box>
+                        </Box> */}
 
                         <Footer />
                     </>

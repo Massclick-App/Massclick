@@ -38,6 +38,7 @@
     "react-redux": "^9.2.0",
     "react-router-dom": "^7.9.1",
     "react-scripts": "5.0.1",
+    "react-snap": "^1.23.0",
     "recharts": "^3.3.0",
     "sharp": "^0.34.5",
     "styled-components": "^6.1.19",
@@ -46,29 +47,37 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
+    "postbuild": "react-snap",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
+ "reactSnap": {
+  "inlineCss": true,
+  "minifyHtml": true,
+  "crawl": false,
+  "include": ["/", "/home"],
+  "waitFor": "#root"
+},
   "eslintConfig": {
     "extends": [
       "react-app",
       "react-app/jest"
     ]
   },
-"browserslist": {
-  "production": [
-    "last 2 Chrome versions",
-    "last 2 Firefox versions",
-    "last 2 Safari versions",
-    "last 2 Edge versions",
-    "not IE 11"
-  ],
-  "development": [
-    "last 1 chrome version",
-    "last 1 firefox version",
-    "last 1 safari version"
-  ]
-},
+  "browserslist": {
+    "production": [
+      "last 2 Chrome versions",
+      "last 2 Firefox versions",
+      "last 2 Safari versions",
+      "last 2 Edge versions",
+      "not IE 11"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
   "devDependencies": {
     "@eslint/js": "^9.35.0",
     "autoprefixer": "^10.4.21",

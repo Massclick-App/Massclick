@@ -75,7 +75,7 @@ export const featuredServices = [
 
   { name: "Furnitures", icon: FurnitureIcon },
 
-  { name: "Florist", icon: FloristIcon },
+  { name: "Florists", icon: FloristIcon },
 
   { name: "Packers and Movers", icon: PackersIcon },
 
@@ -85,7 +85,7 @@ export const featuredServices = [
 
   { name: "Wedding Mahal", icon: WeddingHallIcon },
 
-  { name: "Photography", icon: PhotographerIcon },
+  { name: "photographers", icon: PhotographerIcon },
 
   { name: "Matrimony", icon: MatrimonyIcon },
 

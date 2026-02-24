@@ -26,6 +26,11 @@ import {
   CLEAR_SEO_META
 } from "../actions/userActionTypes.js";
 
+
+
+/**
+ * INITIAL STATE
+ */
 const initialState = {
   list: [],
   total: 0,
@@ -39,9 +44,18 @@ const initialState = {
 
 
 
+/**
+ * REDUCER
+ */
 export default function seoReducer(state = initialState, action) {
+
   switch (action.type) {
 
+    /**
+     * ========================================
+     * LOADING STATES
+     * ========================================
+     */
     case FETCH_SEO_REQUEST:
     case CREATE_SEO_REQUEST:
     case EDIT_SEO_REQUEST:
@@ -53,76 +67,111 @@ export default function seoReducer(state = initialState, action) {
         error: null,
       };
 
-   
-   case FETCH_SEO_SUCCESS:
-  return {
-    ...state,
-    loading: false,
-    list: action.payload.data,
-    total: action.payload.total,
-    pageNo: action.payload.pageNo,
-    pageSize: action.payload.pageSize,
-    error: null,
-  };
 
 
-   
+    /**
+     * ========================================
+     * FETCH SEO LIST (MAIN TABLE DATA)
+     * This is the ONLY place list should update
+     * ========================================
+     */
+    case FETCH_SEO_SUCCESS:
+      return {
+        ...state,
+        loading: false,
+
+        // replace entire list (prevents duplicates)
+        list: action.payload.data || [],
+
+        total: action.payload.total || 0,
+        pageNo: action.payload.pageNo || 1,
+        pageSize: action.payload.pageSize || 10,
+
+        error: null,
+      };
+
+
+
+    /**
+     * ========================================
+     * CREATE SUCCESS
+     * DO NOT manually add to list
+     * Because getAllSeo() will refresh list
+     * ========================================
+     */
     case CREATE_SEO_SUCCESS:
       return {
         ...state,
         loading: false,
-        list: [...state.list, action.payload],
+        error: null,
       };
 
-    
+
+
+    /**
+     * ========================================
+     * EDIT SUCCESS
+     * DO NOT modify list manually
+     * getAllSeo() refresh handles update
+     * ========================================
+     */
     case EDIT_SEO_SUCCESS:
       return {
         ...state,
         loading: false,
-        list: state.list.map((seo) =>
-          seo._id === action.payload._id ? action.payload : seo
-        ),
+        error: null,
       };
 
-   
+
+
+    /**
+     * ========================================
+     * DELETE SUCCESS
+     * DO NOT modify list manually
+     * getAllSeo() refresh handles delete
+     * ========================================
+     */
     case DELETE_SEO_SUCCESS:
       return {
         ...state,
         loading: false,
-        list: state.list.filter(
-          (seo) =>
-            seo._id !==
-            (action.payload?._id || action.payload?.data?._id)
-        ),
+        error: null,
       };
 
-    
+
+
     case FETCH_SEO_META_SUCCESS:
       return {
         ...state,
         loading: false,
-        meta: action.payload,
+        meta: action.payload || null,
+        error: null,
       };
 
-    
+
     case CLEAR_SEO_META:
       return {
         ...state,
         meta: null,
       };
 
- 
+
     case FETCH_SEO_CATEGORY_SUGGESTIONS_REQUEST:
       return {
         ...state,
         error: null,
       };
 
+
+
     case FETCH_SEO_CATEGORY_SUGGESTIONS_SUCCESS:
       return {
         ...state,
         categorySuggestions: action.payload || [],
+        error: null,
       };
+
+
 
     case FETCH_SEO_CATEGORY_SUGGESTIONS_FAILURE:
       return {
@@ -131,7 +180,7 @@ export default function seoReducer(state = initialState, action) {
         error: action.payload,
       };
 
-  
+
     case FETCH_SEO_FAILURE:
     case CREATE_SEO_FAILURE:
     case EDIT_SEO_FAILURE:
@@ -143,7 +192,7 @@ export default function seoReducer(state = initialState, action) {
         error: action.payload,
       };
 
-   
+
     default:
       return state;
   }

@@ -269,7 +269,7 @@ const CategoryBar = () => {
                 </div>
 
                 <nav className="desktopNav">
-                    <FormControl size="small" className="languageSelectControlDesktop">
+                    {/* <FormControl size="small" className="languageSelectControlDesktop">
                         <Select
                             value={selectedLanguage}
                             onChange={(e) => setSelectedLanguage(e.target.value)}
@@ -281,7 +281,7 @@ const CategoryBar = () => {
                                 </MenuItem>
                             ))}
                         </Select>
-                    </FormControl>
+                    </FormControl> */}
 
                     <div className="categoryButtons">
                         {categories.map((category, index) => (

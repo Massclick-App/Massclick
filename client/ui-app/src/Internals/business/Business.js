@@ -141,7 +141,6 @@ export default function BusinessList() {
   );
   const [showCategorySuggest, setShowCategorySuggest] = useState(false);
   const { searchCategory } = useSelector((state) => state.categoryReducer);
-  const [categorySelected, setCategorySelected] = useState(false);
 
   const { users = [] } = useSelector((state) => state.userReducer || {});
 
@@ -602,6 +601,7 @@ export default function BusinessList() {
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
+
     const kycBase64 = await Promise.all(
       kycFiles.map(
         (file) =>
@@ -1361,7 +1361,6 @@ export default function BusinessList() {
                   const value = e.target.value;
                   setFormData({ ...formData, category: value });
 
-                  setCategorySelected(false);
 
                   if (value.length >= 2) {
                     dispatch(businessCategorySearch(value));
@@ -1410,7 +1409,6 @@ export default function BusinessList() {
                           description: prev.description || cat.description || "",
                         }));
 
-                        setCategorySelected(true);
                         setShowCategorySuggest(false);
                       }}
                       style={{

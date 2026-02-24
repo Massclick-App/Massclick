@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import companyLogo from "../../assets/mclogo.png";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
+import { Link } from "react-router-dom";
 
 import './login.css';
 
@@ -168,7 +169,7 @@ export default function Login({ setIsAuthenticated }) {
                 {auth.loading ? 'Signing you in...' : 'Login'}
               </button>
               <p className="corp-signup">
-                New to MassClick? <a href="#">Talk to sales</a>
+                New to MassClick? <Link to="/contact-sales">Talk to sales</Link>
               </p>
             </form>
             <footer className="corp-card-footer">

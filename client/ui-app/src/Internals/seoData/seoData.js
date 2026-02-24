@@ -6,7 +6,7 @@ import {
   deleteSeo,
   getAllSeo,
 } from "../../redux/actions/seoAction.js";
-
+import { useSnackbar } from "notistack";
 import {
   Box,
   Button,
@@ -27,7 +27,7 @@ import "./seoData.css";
 
 export default function SeoData() {
   const dispatch = useDispatch();
-
+  const { enqueueSnackbar } = useSnackbar();
   const {
     list: seoList = [],
     total = 0,
@@ -104,22 +104,62 @@ export default function SeoData() {
     setErrors({});
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!validateForm()) return;
+  const handleSubmit = async (e) => {
+
+  e.preventDefault();
+
+  if (!validateForm()) {
+
+    enqueueSnackbar(
+      "Please fill all required fields before proceeding.",
+      { variant: "warning" }
+    );
+
+    return;
+  }
+
+  try {
 
     if (editingId) {
-      dispatch(editSeo(editingId, formData)).then(() => {
-        resetForm();
-        dispatch(getAllSeo());
-      });
+
+      await dispatch(editSeo(editingId, formData));
+
+      enqueueSnackbar(
+        "SEO updated successfully",
+        { variant: "success" }
+      );
+
     } else {
-      dispatch(createSeo(formData)).then(() => {
-        resetForm();
-        dispatch(getAllSeo());
-      });
+
+      await dispatch(createSeo(formData));
+
+      enqueueSnackbar(
+        "SEO created successfully",
+        { variant: "success" }
+      );
+
     }
-  };
+
+    resetForm();
+
+    dispatch(getAllSeo());
+
+  }
+  catch (error) {
+
+    const message =
+      error?.response?.data?.message ||
+      error?.message ||
+      "Failed to save SEO data";
+
+    enqueueSnackbar(
+      message,
+      { variant: "error" }
+    );
+
+  }
+
+};
 
   const handleEdit = (row) => {
     setEditingId(row.id);
@@ -317,7 +357,7 @@ export default function SeoData() {
             columns={columns}
             total={total}
             fetchData={(pageNo, pageSize, options) =>
-              dispatch(getAllSeo({ pageNo, pageSize,options }))
+              dispatch(getAllSeo({ pageNo, pageSize, options }))
             }
           />
         </Box>
