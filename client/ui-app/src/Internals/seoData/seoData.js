@@ -38,7 +38,6 @@ export default function SeoData() {
 
   const [formData, setFormData] = useState({
     pageType: "",
-    category: "",
     location: "",
     title: "",
     description: "",
@@ -89,76 +88,61 @@ export default function SeoData() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const resetForm = () => {
-    setFormData({
-      pageType: "",
-      category: "",
-      location: "",
-      title: "",
-      description: "",
-      keywords: "",
-      canonical: "",
-      robots: "index, follow",
-    });
-    setEditingId(null);
-    setErrors({});
-  };
+ const resetForm = () => {
 
-  const handleSubmit = async (e) => {
+  setFormData({
+    pageType: "",
+    category: "",
+    location: "",
+    title: "",
+    description: "",
+    keywords: "",
+    canonical: "",
+    robots: "index, follow",
+  });
+
+  setCategoryInput("");
+  setEditingId(null);
+  setErrors({});
+};
+
+ const handleSubmit = async (e) => {
 
   e.preventDefault();
 
-  if (!validateForm()) {
+  const finalData = {
+    ...formData,
+    category: categoryInput  
+  };
 
-    enqueueSnackbar(
-      "Please fill all required fields before proceeding.",
-      { variant: "warning" }
-    );
+  console.log("Submitting finalData:", finalData);
 
-    return;
-  }
+  if (!validateForm()) return;
 
   try {
 
     if (editingId) {
-
-      await dispatch(editSeo(editingId, formData));
-
-      enqueueSnackbar(
-        "SEO updated successfully",
-        { variant: "success" }
-      );
-
+      await dispatch(editSeo(editingId, finalData));
+      enqueueSnackbar("SEO updated successfully", { variant: "success" });
     } else {
-
-      await dispatch(createSeo(formData));
-
-      enqueueSnackbar(
-        "SEO created successfully",
-        { variant: "success" }
-      );
-
+      await dispatch(createSeo(finalData));
+      enqueueSnackbar("SEO created successfully", { variant: "success" });
     }
 
     resetForm();
-
+    setCategoryInput(""); 
     dispatch(getAllSeo());
 
-  }
-  catch (error) {
+  } catch (error) {
 
     const message =
       error?.response?.data?.message ||
       error?.message ||
       "Failed to save SEO data";
 
-    enqueueSnackbar(
-      message,
-      { variant: "error" }
-    );
+    enqueueSnackbar(message, { variant: "error" });
 
   }
-
 };
 
   const handleEdit = (row) => {
@@ -261,11 +245,14 @@ export default function SeoData() {
               placeholder="Search category"
               className="seo-text-input"
               onChange={(e) => {
-                setCategoryInput(e.target.value);
+                const value = e.target.value;
+
+                setCategoryInput(value);
                 setShowSuggestions(true);
+
                 setFormData((prev) => ({
                   ...prev,
-                  category: "",
+                  category: value,
                 }));
               }}
               onFocus={() => setShowSuggestions(true)}

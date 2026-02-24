@@ -136,6 +136,7 @@ const LandingPage = () => {
                 <meta name="publisher" content="Massclick" />
                 <link rel="canonical" href={HOME_META.canonical} />
             </Helmet> */}
+            
             <SeoMeta seoData={seoMetaData} fallback={fallbackSeo} />
 
             <Box sx={{ flexGrow: 1, bgcolor: 'background.default', width: '100%' }}>

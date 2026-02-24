@@ -5,11 +5,21 @@ import { getSignedUrlByKey } from "../../s3Uploder.js";
 export const createSeo = async (data) => {
   try {
 
-    data.locationKey =
-      data.location
-        .toLowerCase()
-        .trim()
-        .replace(/[^a-z0-9]/g, "");
+    if (!data.category || data.category.trim() === "") {
+      throw new Error("Category is required");
+    }
+
+    data.category = data.category.toLowerCase().trim();
+
+    if (data.pageType)
+      data.pageType = data.pageType.toLowerCase().trim();
+
+    if (data.location) {
+      data.location = data.location.toLowerCase().trim();
+
+      data.locationKey =
+        data.location.replace(/[^a-z0-9]/g, "");
+    }
 
     const seo = await seoModel.create(data);
 
@@ -149,39 +159,34 @@ export const viewAllSeo = async ({
 
 export const updateSeo = async (id, data) => {
 
-  try {
-
-    if (data.location) {
-      data.locationKey =
-        data.location
-          .toLowerCase()
-          .trim()
-          .replace(/[^a-z0-9]/g, "");
-    }
-
-    const seo = await seoModel.findByIdAndUpdate(
-      id,
-      data,
-      {
-        new: true,
-        runValidators: true
-      }
-    );
-
-    if (!seo)
-      throw new Error("SEO not found");
-
-    return seo;
-
-  } catch (error) {
-
-    if (error.code === 11000)
-      throw new Error(
-        "SEO already exists for this category and location"
-      );
-
-    throw error;
+  if (data.location) {
+    data.locationKey =
+      data.location
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]/g, "");
   }
+
+  const exists = await seoModel.findOne({
+    _id: { $ne: id },
+    pageType: data.pageType,
+    category: data.category,
+    locationKey: data.locationKey
+  });
+
+  if (exists)
+    throw new Error("SEO already exists for this category and location");
+
+  const seo = await seoModel.findByIdAndUpdate(
+    id,
+    data,
+    { new: true, runValidators: true }
+  );
+
+  if (!seo)
+    throw new Error("SEO not found");
+
+  return seo;
 };
 
 export const deleteSeo = async (id) => {

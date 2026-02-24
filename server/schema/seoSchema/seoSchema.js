@@ -25,7 +25,8 @@ const seoSchema = new mongoose.Schema(
 
     location: {
       type: String,
-      trim: true
+      set: normalizeText,
+      index: true
     },
 
     locationKey: {
