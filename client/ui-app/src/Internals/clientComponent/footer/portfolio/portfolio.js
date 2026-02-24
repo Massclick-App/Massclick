@@ -3,21 +3,21 @@ import './portfolio.css';
 import LaunchIcon from '@mui/icons-material/Launch';
 import CardsSearch from '../../CardsSearch/CardsSearch';
 import Footer from '../footer';
-import geoPark from "../../../../assets/portfolio/geopark.jpg"
-import ginfraBricks from "../../../../assets/portfolio/ginfraBricks.jpg"
-import vestleySchool from "../../../../assets/portfolio/vestleySchool.jpeg"
-import royalSathyam from "../../../../assets/portfolio/royalSathyam.jpeg"
-import varahaBoutique from "../../../../assets/portfolio/varahaBoutique.jpg"
-import meinfotech from "../../../../assets/portfolio/meinfotech.jpg"
-import armSons from "../../../../assets/portfolio/arm-sons.jpg"
-import abiramiTimbers from "../../../../assets/portfolio/abiramitimber.jpg"
+import geoPark from "../../../../assets/portfolio/geopark.webp"
+import ginfraBricks from "../../../../assets/portfolio/ginfraBricks.webp"
+import vestleySchool from "../../../../assets/portfolio/vestleySchool.webp"
+import royalSathyam from "../../../../assets/portfolio/royalSathyam.webp"
+import varahaBoutique from "../../../../assets/portfolio/varahaBoutique.webp"
+import meinfotech from "../../../../assets/portfolio/meinfotech.webp"
+import armSons from "../../../../assets/portfolio/arm-sons.webp"
+import abiramiTimbers from "../../../../assets/portfolio/abiramitimber.webp"
 
 
 
 const projectData = [
     {
         id: 1,
-        title: "Geo Park Hotel", // Matches 'https://geopark.in/'
+        title: "Geo Park Hotel", 
         category: "Web Design",
         description: "Full-stack development of a scalable, multi-region e-commerce solution with custom payment gateways.",
         tags: ["React", "Node.js", "Booking Engine"],

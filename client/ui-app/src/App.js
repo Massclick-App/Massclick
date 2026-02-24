@@ -177,6 +177,7 @@ function App() {
             <Route path="/advertise" element={<AdvertisePage />} />
             <Route path="/user/search-history" element={<LeadsCardHistory />} />
             <Route path="/business-enquiry" element={<BusinessEnquiry />} />
+            
             {categoriesServices.flatMap((category, categoryIndex) =>
               category.items.map((item, itemIndex) => {
                 const path = item.path || item.route || `auto-path-${categoryIndex}-${itemIndex}`;
@@ -184,6 +185,7 @@ function App() {
                 return <Route key={path} path={path} element={<Component />} />;
               })
             )}
+
             <Route element={<PrivateRoute isAuthenticated={isAuthenticated} />}>
               <Route path="/dashboard" element={<Dashboard />}>
                 <Route index element={<MainGrid />} />

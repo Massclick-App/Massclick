@@ -118,7 +118,6 @@ const HeroSection = ({
     return;   
   }
 
-
   if (!navigator.geolocation) {
     setLocationName("All Districts");
     return;
@@ -139,7 +138,7 @@ const HeroSection = ({
 
         setLocationName(autoDistrict);
 
-        localStorage.setItem("selectedLocation", autoDistrict);  // optional
+        localStorage.setItem("selectedLocation", autoDistrict);
 
         dispatch({
           type: "SET_SELECTED_DISTRICT",
@@ -157,8 +156,6 @@ const HeroSection = ({
   );
 
 }, [dispatch]);
-
-
 
   useEffect(() => {
     dispatch(getAllSearchLogs());
@@ -323,9 +320,7 @@ const HeroSection = ({
   return (
     <div
       className="hero-section"
-
     >
-
       <div className="hero-content hero-minimal">
 
         <form className="search-bar-container" onSubmit={handleSearch}>
@@ -340,7 +335,7 @@ const HeroSection = ({
 
                 setLocationName(value);
 
-                localStorage.setItem("selectedLocation", value);   // ✅ ADD THIS
+                localStorage.setItem("selectedLocation", value);
 
                 dispatch({
                   type: "SET_SELECTED_DISTRICT",
@@ -362,7 +357,7 @@ const HeroSection = ({
 
                   setLocationName(chosen);
 
-                  localStorage.setItem("selectedLocation", chosen);   // ✅ ADD THIS
+                  localStorage.setItem("selectedLocation", chosen);  
 
                   dispatch({
                     type: "SET_SELECTED_DISTRICT",

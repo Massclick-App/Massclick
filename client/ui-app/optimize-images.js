@@ -2,9 +2,9 @@ const sharp = require('sharp');
 const fs = require('fs');
 const path = require('path');
 
-const inputFolder = path.join(__dirname, 'src/assets/features');
+const inputFolder = path.join(__dirname, 'src/assets/images');
 
-const outputFolder = path.join(__dirname, 'src/assets/features/webp');
+const outputFolder = path.join(__dirname, 'src/assets/images/webp');
 
 if (!fs.existsSync(outputFolder)) {
   fs.mkdirSync(outputFolder, { recursive: true });
