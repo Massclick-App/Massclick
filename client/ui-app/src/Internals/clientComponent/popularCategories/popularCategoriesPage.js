@@ -91,7 +91,7 @@ export default function PopularCategoryPage() {
           </p>
           <button
             className="go-home-button"
-            onClick={() => navigate("/home")}
+            onClick={() => navigate("/")}
           >
             Go to Homepage
           </button>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react"; // <-- added useEffect
+import React, { useState, useEffect } from "react"; 
 import { useNavigate, useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { viewOtpUser } from "../../redux/actions/otpAction.js";
@@ -93,7 +93,7 @@ export const userMenuItems = [
     { name: "User Feedback", path: "/user_feedback", icon: <FeedbackIcon color="action" />, component: FeedbackPage },
     { name: "User Help", path: "/user_help", icon: <HelpOutlineIcon color="action" />, component: HelpPage },
     { name: "Change Language", isLanguageSwitch: true, icon: <LanguageIcon color="action" /> },
-    { name: "Logout", isLogout: true, path: "/home", icon: <ExitToAppIcon color="action" /> },
+    { name: "Logout", isLogout: true, path: "/", icon: <ExitToAppIcon color="action" /> },
 ];
 
 const CategoryBar = () => {
@@ -142,7 +142,7 @@ const CategoryBar = () => {
         localStorage.removeItem("authUser");
         setIsLoggedIn(false);
         setIsDrawerOpen(false);
-        navigate("/home");
+        navigate("/");
         window.dispatchEvent(new Event('authChange'));
     };
 
@@ -366,6 +366,6 @@ export const categoryBarHelpers = {
         localStorage.removeItem("authToken");
         localStorage.removeItem("mobileNumber");
         window.dispatchEvent(new Event("authChange"));
-        navigate("/home");
+        navigate("/");
     },
 };

@@ -1,8 +1,8 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { useSelector } from "react-redux";
-import { useDispatch } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { logSearchActivity } from "../../../redux/actions/businessListAction";
+
 import TvService from "../../../assets/services/tv-service.webp";
 import PestService from "../../../assets/services/pestService.webp";
 import CarMechanic from "../../../assets/services/car-service.webp";
@@ -18,17 +18,16 @@ import ACServiceIcon from "../../../assets/features/ACservice.webp";
 
 import "./serviceCard.css";
 
+
+// ==============================
+// Helper: Create SEO slug
+// ==============================
 const createSlug = (text) => {
 
   if (!text) return "";
 
   if (typeof text === "object") {
-
-    text =
-      text.slug ||
-      text.name ||
-      "";
-
+    text = text.slug || text.name || "";
   }
 
   if (typeof text !== "string") return "";
@@ -42,242 +41,132 @@ const createSlug = (text) => {
 };
 
 
-export const categoriesServices = [
+// ==============================
+// Helper: Generate SEO alt text
+// ==============================
+const generateAltText = (serviceName, districtSlug) => {
+  return `${serviceName} in ${districtSlug} - Best ${serviceName.toLowerCase()} services | MassClick`;
+};
 
+
+// ==============================
+// Categories Data
+// ==============================
+export const categoriesServices = [
   {
     title: "Repair and Services",
-
     items: [
-
       {
         name: "Car Service",
         slug: "car-service",
         icon: CarMechanic,
-
-        aliases: [
-          "car service",
-          "car repair",
-          "car mechanic",
-          "vehicle repair",
-          "auto repair"
-        ]
-
+        aliases: ["car service", "car repair", "car mechanic", "vehicle repair", "auto repair"]
       },
-
       {
         name: "TV Service",
         slug: "tv-service",
         icon: TvService,
-
-        aliases: [
-          "tv repair",
-          "tv service",
-          "television repair",
-          "tv mechanic"
-        ]
-
+        aliases: ["tv repair", "tv service", "television repair", "tv mechanic"]
       },
-
       {
         name: "Bike Service",
         slug: "bike-service",
         icon: BikeService,
-
-        aliases: [
-          "bike repair",
-          "bike mechanic",
-          "motorcycle repair",
-          "two wheeler repair"
-        ]
-
+        aliases: ["bike repair", "bike mechanic", "motorcycle repair", "two wheeler repair"]
       }
-
     ]
-
   },
-
-
-
   {
     title: "Services",
-
     items: [
-
       {
         name: "Pest Control Service",
         slug: "pest-control-service",
         icon: PestService,
-
-        aliases: [
-          "pest control",
-          "pest control service",
-          "termite control",
-          "pest removal"
-        ]
-
+        aliases: ["pest control", "termite control", "pest removal"]
       },
-
       {
         name: "AC Service",
         slug: "ac-service",
         icon: ACServiceIcon,
-
-        aliases: [
-          "ac service",
-          "ac repair",
-          "air conditioner repair",
-          "air conditioner service"
-        ]
-
+        aliases: ["ac service", "ac repair", "air conditioner repair"]
       },
-
       {
         name: "Computer And Laptop Service",
         slug: "computer-laptop-service",
         icon: ComputerAndLaptopIcon,
-
-        aliases: [
-          "computer repair",
-          "laptop repair",
-          "pc repair",
-          "computer service"
-        ]
-
+        aliases: ["computer repair", "laptop repair", "pc repair"]
       }
-
     ]
-
   },
-
   {
     title: "Hot Categories",
-
     items: [
-
       {
         name: "Catering Services",
         slug: "catering-services",
         icon: CateringIcon,
-
-        aliases: [
-          "catering",
-          "catering service",
-          "food catering"
-        ]
-
+        aliases: ["catering", "food catering"]
       },
-
       {
         name: "Transports",
-        slug: "transporter",   
+        slug: "transporter",
         icon: Transports,
-
-        aliases: [
-          "Transporter",
-          "transport",
-          "transports",
-          "transporter",
-          "transporters",
-          "transportation",
-          "transport service",
-          "transport services",
-          "logistics",
-          "delivery service",
-          "delivery"
-        ]
-
+        aliases: ["transport", "transporters", "logistics", "delivery"]
       },
-
       {
         name: "Driving School",
         slug: "driving-school",
         icon: DrivingSchool,
-
-        aliases: [
-          "driving school",
-          "driving schools",
-          "driving class",
-          "driving classes"
-        ]
-
+        aliases: ["driving school", "driving classes"]
       }
-
     ]
-
   },
-
   {
     title: "Building Materials",
-
     items: [
-
       {
         name: "Fencing",
         slug: "fencing",
         icon: Fencing,
-
-        aliases: [
-          "fencing",
-          "fence work"
-        ]
-
+        aliases: ["fencing", "fence work"]
       },
-
       {
         name: "Interlock Bricks",
         slug: "interlock-bricks",
         icon: Interlock,
-
-        aliases: [
-          "interlock",
-          "interlock bricks"
-        ]
-
+        aliases: ["interlock bricks"]
       },
-
       {
         name: "Steel Dealer",
         slug: "steel-dealer",
         icon: SteelDealers,
-
-        aliases: [
-          "steel",
-          "steel dealer",
-          "steel supplier"
-        ]
-
+        aliases: ["steel supplier"]
       }
-
     ]
-
   }
-
 ];
 
+
+// ==============================
+// Find service helper
+// ==============================
 const findServiceByAlias = (input) => {
 
   if (!input) return null;
 
-  const normalized =
-    input.toLowerCase().trim();
-
+  const normalized = input.toLowerCase().trim();
 
   for (const section of categoriesServices) {
-
     for (const item of section.items) {
-
       if (
         item.slug === normalized ||
         item.name.toLowerCase() === normalized ||
         item.aliases?.includes(normalized)
       ) {
-
         return item;
-
       }
-
     }
-
   }
 
   return null;
@@ -285,26 +174,31 @@ const findServiceByAlias = (input) => {
 };
 
 
+// ==============================
+// Main Component
+// ==============================
 const ServiceCardsGrid = () => {
 
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-
   const selectedDistrict = useSelector(
     (state) => state.locationReducer.selectedDistrict
   );
 
+  // Memoized slug
+  const districtSlug = useMemo(() => {
+    return (
+      selectedDistrict?.slug ||
+      createSlug(selectedDistrict) ||
+      localStorage.getItem("selectedDistrictSlug") ||
+      "tiruchirappalli"
+    );
+  }, [selectedDistrict]);
 
-  const districtSlug =
-    selectedDistrict?.slug ||
-    createSlug(selectedDistrict) ||
-    localStorage.getItem("selectedDistrictSlug") ||
-    "tiruchirappalli";
 
-
-
-const handleClick = (service) => {
+  // Click handler
+  const handleClick = (service) => {
 
     const found = findServiceByAlias(service.slug);
 
@@ -335,58 +229,83 @@ const handleClick = (service) => {
 
   };
 
+
+  // Render
   return (
 
-    <div className="service-cards-container">
+    <section
+      className="service-cards-container"
+      aria-label="Service Categories"
+    >
 
-      {categoriesServices.map((category, index) => (
+      {categoriesServices.map((category) => (
 
-        <div className="category-card" key={index}>
+        <article
+          className="category-card"
+          key={category.title}
+        >
 
           <h2 className="category-title">
-
             {category.title}
-
           </h2>
 
           <div className="items-grid">
 
-            {category.items.map((item, idx) => (
+            {category.items.map((item, index) => {
 
-              <div
-                key={idx}
-                className="item-card"
-                onClick={() => handleClick(item)}
-              >
+              const altText = generateAltText(item.name, districtSlug);
 
-                <img
-                  src={item.icon}
-                  alt={item.name}
-                  className="item-icon"
-                />
+              return (
 
-                <p className="item-name">
+                <div
+                  key={item.slug}
+                  className="item-card"
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`View ${item.name}`}
+                  onClick={() => handleClick(item)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      handleClick(item);
+                    }
+                  }}
+                >
 
-                  {item.name}
+                  {/* SEO Optimized Image */}
+                  <img
+                    src={item.icon}
+                    alt={altText}
+                    title={`${item.name} in ${districtSlug}`}
+                    className="item-icon"
+                    width="64"
+                    height="64"
+                    loading="lazy"
+                    decoding="async"
+                    fetchpriority={index < 3 ? "high" : "auto"}
+                    itemProp="image"
+                  />
 
-                </p>
+                  <p className="item-name">
+                    {item.name}
+                  </p>
 
-              </div>
+                </div>
 
-            ))}
+              );
+
+            })}
 
           </div>
 
-        </div>
+        </article>
 
       ))}
 
-    </div>
+    </section>
 
   );
 
 };
-
 
 
 export default ServiceCardsGrid;

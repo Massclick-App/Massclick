@@ -78,7 +78,7 @@ export default function GlobalDrawer() {
     localStorage.removeItem("authUser");
 
     closeDrawer();
-    navigate("/home");
+    navigate("/");
     window.dispatchEvent(new Event("authChange"));
   };
 
@@ -114,7 +114,7 @@ export default function GlobalDrawer() {
         <HeaderBox
           onClick={() => {
             closeDrawer();
-            navigate("/home");
+            navigate("/");
           }}
 
           sx={{ cursor: "pointer" }}>

@@ -51,12 +51,12 @@
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
- "reactSnap": {
+"reactSnap": {
   "inlineCss": true,
   "minifyHtml": true,
-  "crawl": false,
-  "include": ["/", "/home"],
-  "waitFor": "#root"
+  "crawl": true,
+  "waitFor": 3000,
+  "skipThirdPartyRequests": true
 },
   "eslintConfig": {
     "extends": [

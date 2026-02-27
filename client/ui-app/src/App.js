@@ -151,10 +151,8 @@ function App() {
           <FloatingAdCard />
           <FloatingButtons onRequireLogin={() => setOpenLoginModal(true)} />
           <Routes>
-            <Route path="/" element={<Navigate to="/home" replace />} />
+            <Route path="/" element={<BusinessListing />} />
             <Route path="/admin" element={<Login setIsAuthenticated={setIsAuthenticated} isAuthenticated={isAuthenticated} />} />
-            <Route path="/home" element={<BusinessListing />} />
-
             {userMenuItems.map((item) => {
               const Component = item.component || (() => <ComingSoon title={item.name} />);
               return <Route key={item.path} path={item.path} element={<Component />} />;
@@ -177,7 +175,7 @@ function App() {
             <Route path="/advertise" element={<AdvertisePage />} />
             <Route path="/user/search-history" element={<LeadsCardHistory />} />
             <Route path="/business-enquiry" element={<BusinessEnquiry />} />
-            
+
             {categoriesServices.flatMap((category, categoryIndex) =>
               category.items.map((item, itemIndex) => {
                 const path = item.path || item.route || `auto-path-${categoryIndex}-${itemIndex}`;

@@ -9,11 +9,18 @@ import { getClientToken } from "./clientAuthAction";
 
 const API_URL = process.env.REACT_APP_API_URL;
 
+const getValidToken = async (dispatch) => {
+    let token = localStorage.getItem("accessToken");
+    if (!token) token = await dispatch(getClientToken());
+    if (!token) throw new Error("No valid token found");
+    return token;
+};
+
 
 export const createStartProject = (projectData) => async (dispatch) => {
     dispatch({ type: CREATE_STARTPROJECT_REQUEST });
     try {
-        const token = await dispatch(getClientToken());
+        const token = await getValidToken(dispatch);
 
         const response = await axios.post(`${API_URL}/startproject/create`, projectData, {
             headers: { Authorization: `Bearer ${token}` },
@@ -34,7 +41,7 @@ export const createStartProject = (projectData) => async (dispatch) => {
 export const getAllStartProjects = () => async (dispatch) => {
     dispatch({ type: FETCH_STARTPROJECT_REQUEST });
     try {
-        const token = localStorage.getItem("accessToken");
+        const token = await getValidToken(dispatch);
         const response = await axios.get(`${API_URL}/startproject/viewall`, {
             headers: { Authorization: `Bearer ${token}` },
         });
@@ -52,7 +59,7 @@ export const getAllStartProjects = () => async (dispatch) => {
 export const editStartProject = (id, projectData) => async (dispatch) => {
     dispatch({ type: EDIT_STARTPROJECT_REQUEST });
     try {
-        const token = localStorage.getItem("accessToken");
+        const token = await getValidToken(dispatch);
         const response = await axios.put(`${API_URL}/startproject/update/${id}`, projectData, {
             headers: { Authorization: `Bearer ${token}` },
         });
@@ -69,7 +76,7 @@ export const editStartProject = (id, projectData) => async (dispatch) => {
 export const deleteStartProject = (id) => async (dispatch) => {
     dispatch({ type: DELETE_STARTPROJECT_REQUEST });
     try {
-        const token = localStorage.getItem("accessToken");
+        const token = await getValidToken(dispatch);
         const { data } = await axios.delete(`${API_URL}/startproject/delete/${id}`, {
             headers: { Authorization: `Bearer ${token}` },
         });

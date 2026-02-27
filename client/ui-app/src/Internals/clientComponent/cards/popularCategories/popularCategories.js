@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import "./popularCategories.css";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
@@ -129,6 +129,12 @@ export const STATIC_CATEGORIES = [
 
 ];
 
+const generateAltText = (label, districtSlug) =>
+  `${label} services in ${districtSlug} - Find best ${label.toLowerCase()} near you on MassClick`;
+
+const slugify = (text) =>
+        text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+
 const PopularCategoriesDrawer = ({ openFromHome = false, onClose }) => {
     const navigate = useNavigate();
     const dispatch = useDispatch();
@@ -140,100 +146,134 @@ const PopularCategoriesDrawer = ({ openFromHome = false, onClose }) => {
         if (openFromHome) setDrawerOpen(true);
     }, [openFromHome]);
 
-    const slugify = (text) =>
-        text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-
-    const filtered = STATIC_CATEGORIES.filter((cat) =>
-        cat.label.toLowerCase().includes(search.toLowerCase())
-    );
-
-    const { selectedDistrict } = useSelector(
+     const { selectedDistrict } = useSelector(
         (state) => state.locationReducer
     );
+
+     const districtSlug = useMemo(() => {
+    return slugify(selectedDistrict || "india");
+  }, [selectedDistrict]);
+
+  const filtered = useMemo(() => {
+    return STATIC_CATEGORIES.filter((cat) =>
+      cat.label.toLowerCase().includes(search.toLowerCase())
+    );
+  }, [search]);
+
+   
 
 
     return (
         <Drawer
-            anchor="right"
-            open={drawerOpen}
-            onClose={() => {
+      anchor="right"
+      open={drawerOpen}
+      onClose={() => {
+        setDrawerOpen(false);
+        onClose && onClose();
+      }}
+      PaperProps={{
+        sx: { width: "70%", maxWidth: "900px", padding: "20px" }
+      }}
+    >
+
+      {/* Header */}
+      <header className="pc-header">
+        <h2>Popular Categories</h2>
+        <CloseIcon
+          className="pc-close"
+          onClick={() => {
+            setDrawerOpen(false);
+            onClose && onClose();
+          }}
+        />
+      </header>
+
+      <div className="pc-search">
+        <SearchIcon />
+        <input
+          placeholder="Search categories"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
+
+      <section
+        className="pc-grid"
+        aria-label="Popular Categories"
+      >
+
+        {filtered.map((cat, index) => {
+
+          const altText = generateAltText(cat.label, districtSlug);
+
+          return (
+
+            <article
+              key={cat.label}
+              className="pc-item"
+              role="button"
+              tabIndex={0}
+              aria-label={`View ${cat.label}`}
+              onClick={() => {
+
+                const categorySlug = slugify(cat.label);
+
+                const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
+
+                const userDetails = {
+                  userName: authUser?.userName,
+                  mobileNumber1: authUser?.mobileNumber1,
+                  mobileNumber2: authUser?.mobileNumber2,
+                  email: authUser?.email,
+                };
+
+                dispatch(
+                  logSearchActivity(
+                    cat.label,
+                    selectedDistrict || "Global",
+                    userDetails,
+                    cat.label
+                  )
+                );
+
+                navigate(`/${districtSlug}/${categorySlug}`, {
+                  state: { categoryName: cat.label }
+                });
+
                 setDrawerOpen(false);
-                onClose && onClose();
-            }}
-            PaperProps={{
-                sx: { width: "70%", maxWidth: "900px", padding: "20px" }
-            }}
-        >
-            <div className="pc-header">
-                <h2>Popular Categories</h2>
-                <CloseIcon
-                    className="pc-close"
-                    onClick={() => {
-                        setDrawerOpen(false);
-                        onClose && onClose();
-                    }}
-                />
-            </div>
 
-            <div className="pc-search">
-                <SearchIcon />
-                <input
-                    placeholder="Search"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                />
-            </div>
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.currentTarget.click();
+                }
+              }}
+            >
 
-            <div className="pc-grid">
-                {filtered.map((cat) => (
-                    <div
-                        key={cat.label}
-                        className="pc-item"
-                        onClick={() => {
+              <img
+                src={cat.icon}
+                alt={altText}
+                title={`${cat.label} in ${districtSlug}`}
+                className="pc-icon"
+                width="64"
+                height="64"
+                loading="lazy"
+                decoding="async"
+                fetchpriority={index < 6 ? "high" : "auto"}
+                itemProp="image"
+              />
 
-                            const districtSlug = slugify(selectedDistrict || "india");
+              <span>{cat.label}</span>
 
-                            const categorySlug = slugify(cat.label);
+            </article>
 
-                            const categoryName = cat.label;
-                            const locationName = selectedDistrict || "Global";
+          );
 
-                            // ✅ get logged-in user
-                            const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
+        })}
 
-                            const userDetails = {
-                                userName: authUser?.userName,
-                                mobileNumber1: authUser?.mobileNumber1,
-                                mobileNumber2: authUser?.mobileNumber2,
-                                email: authUser?.email,
-                            };
+      </section>
 
-                            dispatch(
-                                logSearchActivity(
-                                    categoryName,
-                                    locationName,
-                                    userDetails,
-                                    categoryName
-                                )
-                            );
-
-                            navigate(`/${districtSlug}/${categorySlug}`, {
-                                state: {
-                                    categoryName: categoryName
-                                }
-                            });
-
-                            setDrawerOpen(false);
-
-                        }}
-
-                    >
-                        <img src={cat.icon} alt={cat.label} className="pc-icon" />
-                        <span>{cat.label}</span>
-                    </div>
-                ))}
-            </div>
-        </Drawer>
+    </Drawer>
     );
 };
 

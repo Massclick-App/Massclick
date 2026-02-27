@@ -10,18 +10,15 @@ import {
 
 const API_URL = process.env.REACT_APP_API_URL;
 
-// =========================================================
-// 1. GET ALL ENQUIRIES (Admin Dashboard Use)
-// =========================================================
+
 export const getAllEnquiry = () => async (dispatch) => {
-    dispatch({ type: FETCH_ENQUIRY_REQUEST }); // Use ENQUIRY type
+    dispatch({ type: FETCH_ENQUIRY_REQUEST });
     try {
         const token = localStorage.getItem("accessToken");
-        const response = await axios.get(`${API_URL}/api/enquiry/viewall`, { // *** CORRECTED API ROUTE ***
+        const response = await axios.get(`${API_URL}/enquiry/viewall`, { 
             headers: { Authorization: `Bearer ${token}` },
         });
 
-        // Simplified data handling for consistency with backend
         const enquiries = response.data || []; 
         
         dispatch({ type: FETCH_ENQUIRY_SUCCESS, payload: enquiries });
@@ -35,7 +32,7 @@ export const getAllEnquiry = () => async (dispatch) => {
 
 
 export const createEnquiry = (enquiryData) => async (dispatch) => { 
-    dispatch({ type: CREATE_ENQUIRY_REQUEST }); // Use ENQUIRY type
+    dispatch({ type: CREATE_ENQUIRY_REQUEST }); 
     try {
     
         const token = localStorage.getItem("accessToken"); 
@@ -61,7 +58,7 @@ export const editEnquiry = (id, enquiryData) => async (dispatch) => {
     dispatch({ type: EDIT_ENQUIRY_REQUEST });
     try {
         const token = localStorage.getItem("accessToken");
-        const response = await axios.put(`${API_URL}/api/enquiry/update/${id}`, enquiryData, { 
+        const response = await axios.put(`${API_URL}/enquiry/update/${id}`, enquiryData, { 
             headers: { Authorization: `Bearer ${token}` },
         });
         
@@ -80,7 +77,7 @@ export const deleteEnquiry = (id) => async (dispatch) => {
     dispatch({ type: DELETE_ENQUIRY_REQUEST }); 
     try {
         const token = localStorage.getItem("accessToken");
-        const { data } = await axios.delete(`${API_URL}/api/enquiry/delete/${id}`, { 
+        const { data } = await axios.delete(`${API_URL}/enquiry/delete/${id}`, { 
             headers: { Authorization: `Bearer ${token}` },
         });
         

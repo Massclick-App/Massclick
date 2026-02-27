@@ -2,7 +2,6 @@ import express from "express";
 import cors from "cors";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
-import prerender from "prerender-node";
 import compression from "compression";
 import helmet from "helmet";
 import path from "path";
@@ -48,44 +47,23 @@ app.use((req, res, next) => {
 
   const host = req.headers.host || "";
 
-  if (
-    host.includes("localhost") ||
-    host.includes("127.0.0.1")
-  ) {
+  if (host.includes("localhost") || host.includes("127.0.0.1")) {
     return next();
   }
 
-  const protocol =
-    req.headers["x-forwarded-proto"] || req.protocol;
+  const protocol = req.headers["x-forwarded-proto"] || req.protocol;
 
   if (protocol !== "https") {
-    return res.redirect(
-      301,
-      `https://${host}${req.originalUrl}`
-    );
+    return res.redirect(301, `https://massclick.in${req.originalUrl}`);
   }
 
   if (host.startsWith("www.")) {
-
-    const newHost = host.replace("www.", "");
-
-    return res.redirect(
-      301,
-      `https://${newHost}${req.originalUrl}`
-    );
+    return res.redirect(301, `https://massclick.in${req.originalUrl}`);
   }
 
   next();
-
 });
 
-const slugify = (text = "") =>
-  text
-    .toLowerCase()
-    .trim()
-    .replace(/&/g, "and")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
 
 
 app.use(
@@ -96,14 +74,9 @@ app.use(
 
 app.use(compression());
 
-app.use(
-  prerender
-    .set("prerenderToken", process.env.PRERENDER_TOKEN)
-    .set("protocol", "https")
-);
-
 const allowedOrigins = [
   "https://massclick.in",
+  "https://www.massclick.in",
   "http://localhost:3000",
   "http://127.0.0.1:3000"
 ];
@@ -111,9 +84,7 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: function (origin, callback) {
-
       if (!origin) return callback(null, true);
-
       if (allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
@@ -130,7 +101,6 @@ app.use(express.urlencoded({
   limit: "50mb"
 }));
 
-
 app.get("/robots.txt", (req, res) => {
 
   res.type("text/plain");
@@ -144,7 +114,7 @@ Sitemap: https://massclick.in/sitemap.xml
 
 });
 
-// routes
+
 app.use("/", sitemapRoutes);
 app.use("/", userRoutes);
 app.use("/", oauthRoutes);
@@ -188,7 +158,6 @@ app.use(
         );
 
       }
-
     },
   })
 );

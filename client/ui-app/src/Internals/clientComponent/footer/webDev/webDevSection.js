@@ -79,32 +79,28 @@ const WebDevSection = () => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
-    // 2. REDUX FORM SUBMISSION LOGIC
     const handleSubmit = async (event) => {
         event.preventDefault();
-        setSubmissionSuccess(false); // Clear previous success before new submission
+        setSubmissionSuccess(false); 
 
-        // The helper expects fields: name, email, phone, message
         const payload = {
             name: formData.name,
             email: formData.email,
-            phone: formData.phone, // contactNumber on backend
-            message: formData.message, // message on backend
+            phone: formData.phone, 
+            message: formData.message, 
         };
 
         try {
             await dispatch(createStartProject(payload));
             setSubmissionSuccess(true);
-            setFormData(initialFormState); // Clear form fields
+            setFormData(initialFormState); 
 
-            // Optionally close the modal after a delay
             setTimeout(() => {
                 handleClose();
             }, 3000);
 
         } catch (err) {
-            // Error is handled by the Redux reducer and useSelector, 
-            // but the catch block prevents uncaught promise rejection.
+  
             console.error("Project submission failed:", err);
         }
     };

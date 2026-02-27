@@ -282,7 +282,7 @@ const CardsSearch = ({
                   src={MI}
                   alt="Logo"
                   className="logo-image"
-                  onClick={() => (window.location.href = "/home")}
+                  onClick={() => (window.location.href = "/")}
                 />
               </Tooltip>
             </div>

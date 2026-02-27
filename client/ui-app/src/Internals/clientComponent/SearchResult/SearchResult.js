@@ -49,8 +49,7 @@ const SearchResults = () => {
   const locationSlug = createSlug(locationText);
   const searchSlug = createSlug(searchText);
 
-  const canonicalUrl = `https://massclick.in/${locationSlug}/${searchSlug}`;
-
+  const canonicalUrl = `https://www.massclick.in/${locationSlug}/${searchSlug}`;
 
   const { loading, error } = useSelector(
     (state) => state.businessListReducer || {}
@@ -172,7 +171,7 @@ const SearchResults = () => {
 
   const seoContent = seoPageContents?.[0];
 
-const sanitizedHeaderContent = seoContent?.headerContent || null;
+  const sanitizedHeaderContent = seoContent?.headerContent || null;
 
   const sanitizedPageContent =
     seoContent?.pageContent
@@ -190,7 +189,7 @@ const sanitizedHeaderContent = seoContent?.headerContent || null;
           position: index + 1,
           name: business.businessName,
           url:
-            `https://massclick.in/${createSlug(business.location)}/${createSlug(business.businessName)}/${business._id}`,
+            `https://www.massclick.in/${createSlug(business.location)}/${createSlug(business.businessName)}/${business._id}`
         })),
       }
       : null;
@@ -203,13 +202,13 @@ const sanitizedHeaderContent = seoContent?.headerContent || null;
         "@type": "ListItem",
         position: 1,
         name: "Home",
-        item: "https://massclick.in",
+        item: "https://www.massclick.in"
       },
       {
         "@type": "ListItem",
         position: 2,
         name: locationText,
-        item: `https://massclick.in/${locationSlug}`,
+        item: `https://www.massclick.in/${locationSlug}`
       },
       {
         "@type": "ListItem",
@@ -221,115 +220,115 @@ const sanitizedHeaderContent = seoContent?.headerContent || null;
   };
 
 
- return (
-  <>
-    <SeoMeta seoData={seoMetaData} fallback={fallbackSeo} />
+  return (
+    <>
+      <SeoMeta seoData={seoMetaData} fallback={fallbackSeo} />
 
-    <Helmet>
-      {itemListSchema && (
+      <Helmet>
+        {itemListSchema && (
+          <script type="application/ld+json">
+            {JSON.stringify(itemListSchema)}
+          </script>
+        )}
         <script type="application/ld+json">
-          {JSON.stringify(itemListSchema)}
+          {JSON.stringify(breadcrumbSchema)}
         </script>
-      )}
-      <script type="application/ld+json">
-        {JSON.stringify(breadcrumbSchema)}
-      </script>
-    </Helmet>
+      </Helmet>
 
-    <div className="results-page">
-      <CardsSearch />
-      <div className="page-spacing" />
-      <div className="results-container banner-section">
-        <TopBannerAds category={searchText} />
-      </div>
-
-      <div className="results-container content-section">
-
-        {!seoContentLoading && sanitizedHeaderContent && (
-          <section
-            className="seo-header-content premium-section"
-            dangerouslySetInnerHTML={{
-              __html: sanitizedHeaderContent,
-            }}
-          />
-        )}
-
-        {/* LOADING */}
-        {loading && (
-          <div className="loading-wrapper">
-            Searching businesses...
-          </div>
-        )}
-
-        {/* NO RESULTS */}
-        {!loading && results.length === 0 && (
-          <div className="no-results-container">
-            <p className="no-results-title">No results found 😔</p>
-            <button
-              className="go-home-button"
-              onClick={() => navigate("/home")}
-            >
-              Go to Homepage
-            </button>
-          </div>
-        )}
-
-        {/* BUSINESS LIST */}
-        <div className="business-list">
-
-          {results.map((business) => {
-            const averageRating =
-              typeof business.averageRating === "number"
-                ? business.averageRating.toFixed(1)
-                : "0.0";
-
-            const totalRatings =
-              typeof business.totalReviews === "number"
-                ? business.totalReviews
-                : 0;
-
-            const businessUrl = `/${createSlug(
-              business.location
-            )}/${createSlug(business.businessName)}/${business._id}`;
-
-            return (
-              <div className="business-card-wrapper" key={business._id}>
-                <CardDesign
-                  title={business.businessName}
-                  phone={business.contact}
-                  address={business.location}
-                  details={`Experience: ${business.experience} | Category: ${business.category}`}
-                  rating={averageRating}
-                  reviews={totalRatings}
-                  imageSrc={
-                    business.bannerImage ||
-                    "https://via.placeholder.com/120"
-                  }
-                  to={businessUrl}
-                />
-              </div>
-            );
-          })}
-
+      <div className="results-page">
+        <CardsSearch />
+        <div className="page-spacing" />
+        <div className="results-container banner-section">
+          <TopBannerAds category={searchText} />
         </div>
 
-        {/* SEO CONTENT */}
-        {!seoContentLoading && sanitizedPageContent && (
-          <article className="seo-article">
-            <div className="seo-divider" />
+        <div className="results-container content-section">
+
+          {!seoContentLoading && sanitizedHeaderContent && (
             <section
-              className="seo-page-content"
+              className="seo-header-content premium-section"
               dangerouslySetInnerHTML={{
-                __html: sanitizedPageContent,
+                __html: sanitizedHeaderContent,
               }}
             />
-          </article>
-        )}
+          )}
 
+          {/* LOADING */}
+          {loading && (
+            <div className="loading-wrapper">
+              Searching businesses...
+            </div>
+          )}
+
+          {/* NO RESULTS */}
+          {!loading && results.length === 0 && (
+            <div className="no-results-container">
+              <p className="no-results-title">No results found 😔</p>
+              <button
+                className="go-home-button"
+                onClick={() => navigate("/")}
+              >
+                Go to Homepage
+              </button>
+            </div>
+          )}
+
+          {/* BUSINESS LIST */}
+          <div className="business-list">
+
+            {results.map((business) => {
+              const averageRating =
+                typeof business.averageRating === "number"
+                  ? business.averageRating.toFixed(1)
+                  : "0.0";
+
+              const totalRatings =
+                typeof business.totalReviews === "number"
+                  ? business.totalReviews
+                  : 0;
+
+              const businessUrl = `/${createSlug(
+                business.location
+              )}/${createSlug(business.businessName)}/${business._id}`;
+
+              return (
+                <div className="business-card-wrapper" key={business._id}>
+                  <CardDesign
+                    title={business.businessName}
+                    phone={business.contact}
+                    address={business.location}
+                    details={`Experience: ${business.experience} | Category: ${business.category}`}
+                    rating={averageRating}
+                    reviews={totalRatings}
+                    imageSrc={
+                      business.bannerImage ||
+                      "https://via.placeholder.com/120"
+                    }
+                    to={businessUrl}
+                  />
+                </div>
+              );
+            })}
+
+          </div>
+
+          {/* SEO CONTENT */}
+          {!seoContentLoading && sanitizedPageContent && (
+            <article className="seo-article">
+              <div className="seo-divider" />
+              <section
+                className="seo-page-content"
+                dangerouslySetInnerHTML={{
+                  __html: sanitizedPageContent,
+                }}
+              />
+            </article>
+          )}
+
+        </div>
       </div>
-    </div>
-  </>
-);
+    </>
+  );
 
 
 };

@@ -7,11 +7,6 @@ import CardsSearch from '../../CardsSearch/CardsSearch';
 import SeoMeta from "../../seo/seoMeta";
 import { fetchSeoMeta } from "../../../../redux/actions/seoAction";
 
-// NOTE: ICONS from react-icons/fa ARE NOT USED IN THIS VERSION, 
-// since the service icons are handled by <i> tags with CSS classes.
-// import { FaSearchengin, FaGlobe, FaHandsHelping, FaBullhorn, FaMailBulk, FaGoogle } from 'react-icons/fa'; // REMOVED IMPORT
-
-// Import the local image for the CTA section
 import EnquiryImage from '../../../../assets/enquiry.png';
 import digitmarketing from '../../../../assets/digitalmarketing.jpg'
 import {

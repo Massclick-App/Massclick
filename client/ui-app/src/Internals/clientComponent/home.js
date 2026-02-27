@@ -10,7 +10,7 @@ import CardCarousel from './popularSearch/popularSearch';
 import TopTourist from './topTourist/topTourist';
 import MassClickBanner from './massClickBanner/massClickBanner';
 import SearchResults from './SearchResult/SearchResult';
-import PopularCategories from './popularCategories/popularCategories';
+// import PopularCategories from './popularCategories/popularCategories';
 import Footer from './footer/footer';
 import CardsSearch from './CardsSearch/CardsSearch';
 import OTPLoginModel from './AddBusinessModel.js';

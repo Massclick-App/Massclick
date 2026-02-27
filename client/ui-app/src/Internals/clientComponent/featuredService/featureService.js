@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { useSelector,useDispatch  } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { logSearchActivity } from "../../../redux/actions/businessListAction";
 import RestuarantIcon from "../../../assets/features/restuarant.webp";
 import HotelIcon from "../../../assets/features/hotel.webp";
@@ -49,6 +49,10 @@ const createSlug = (text) => {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
 
+};
+
+const generateAltText = (serviceName, districtSlug) => {
+  return `${serviceName} services in ${districtSlug} - MassClick local search`;
 };
 
 export const featuredServices = [
@@ -108,11 +112,14 @@ const FeaturedServicesSection = () => {
   );
 
 
-const districtSlug =
-  selectedDistrict?.slug ||
-  createSlug(selectedDistrict) ||
-  localStorage.getItem("selectedDistrictSlug") ||
-  "tiruchirappalli";
+  const districtSlug = useMemo(() => {
+    return (
+      selectedDistrict?.slug ||
+      createSlug(selectedDistrict) ||
+      localStorage.getItem("selectedDistrictSlug") ||
+      "tiruchirappalli"
+    );
+  }, [selectedDistrict]);
 
 
 
@@ -153,51 +160,64 @@ const districtSlug =
   };
 
   return (
-
     <>
+      <section
+        className="featured-services-container"
+        aria-label="Featured Services"
+      >
 
-      <div className="featured-services-container">
+        {featuredServices.map((service, index) => {
 
-        {featuredServices.map((service, index) => (
+          const altText = generateAltText(service.name, districtSlug);
 
-          <div
-            key={index}
-            className="service-card"
-            onClick={() => handleClick(service)}
-          >
+          return (
+            <article
+              key={service.name}
+              className="service-card"
+              onClick={() => handleClick(service)}
+              role="button"
+              tabIndex={0}
+              aria-label={`View ${service.name} services`}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  handleClick(service);
+                }
+              }}
+            >
 
-            <img
-              src={service.icon}
-              alt={service.name}
-              className="service-icons"
-              width="80"
-              height="80"
-            />
+              <img
+                src={service.icon}
+                alt={altText}
+                title={`${service.name} services in ${districtSlug}`}
+                className="service-icons"
+                width="80"
+                height="80"
+                loading="lazy"
+                decoding="async"
+                fetchpriority={index < 4 ? "high" : "auto"}
+                itemProp="image"
+              />
 
-            <div className="service-name">
+              <h3 className="service-name">
+                {service.name}
+              </h3>
 
-              {service.name}
+            </article>
+          );
 
-            </div>
+        })}
 
-          </div>
-
-        ))}
-
-      </div>
+      </section>
 
 
       {openDrawer && (
-
         <PopularCategoriesDrawer
           openFromHome={true}
           onClose={() => setOpenDrawer(false)}
         />
-
       )}
 
     </>
-
   );
 
 };
