@@ -1,4 +1,3 @@
-
 :root {
   --bc-primary: #ff6b2c;
   --bc-primary-dark: #e05210;
@@ -15,20 +14,20 @@
   --bc-card-bg: #ffffff;
   --bc-border: #e5e7eb;
 
-  --bc-radius-lg: 1.25rem; 
-  --bc-radius-md: 0.875rem; 
+  --bc-radius-lg: 1.25rem;
+  --bc-radius-md: 0.875rem;
   --bc-radius-pill: 999px;
 
   --bc-shadow-soft: 0 12px 35px rgba(15, 23, 42, 0.12);
   --bc-shadow-hover: 0 20px 60px rgba(15, 23, 42, 0.18);
 
-  --bc-title-xl: clamp(1.8rem, 2.4vw, 2.4rem); 
+  --bc-title-xl: clamp(1.8rem, 2.4vw, 2.4rem);
   --bc-title-lg: clamp(1.4rem, 2vw, 1.9rem);
   --bc-title-md: clamp(1.15rem, 1.8vw, 1.5rem);
-  --bc-text-lg: clamp(1rem, 1.4vw, 1.125rem); 
-  --bc-text-md: 0.95rem; 
-  --bc-text-sm: 0.875rem; 
-  --bc-text-xs: 0.75rem; 
+  --bc-text-lg: clamp(1rem, 1.4vw, 1.125rem);
+  --bc-text-md: 0.95rem;
+  --bc-text-sm: 0.875rem;
+  --bc-text-xs: 0.75rem;
 
   --bc-max-width: 90rem;
   --bc-page-pad-x-mobile: 1rem;
@@ -41,7 +40,7 @@
   margin: 0 auto;
   padding: 1.5rem var(--bc-page-pad-x-mobile) 2.5rem;
   box-sizing: border-box;
-  background: radial-gradient(circle at top left, #fdf2e8, #eef2ff);
+  background: linear-gradient(180deg, #fdf2e8, #eef2ff);
 }
 
 @media (min-width: 48rem) {
@@ -64,7 +63,7 @@
 .business-CardDetails-mainImageContainer {
   position: relative;
   width: 100%;
-  height: 16.5rem; 
+  height: 16.5rem;
   border-radius: var(--bc-radius-lg);
   overflow: hidden;
   box-shadow: var(--bc-shadow-soft);
@@ -75,41 +74,41 @@
 
 @media (min-width: 48rem) {
   .business-CardDetails-mainImageContainer {
-    height: 19rem; 
+    height: 19rem;
   }
 }
 
 @media (min-width: 75rem) {
   .business-CardDetails-mainImageContainer {
-    height: 21rem; 
+    height: 21rem;
   }
 }
 
 .business-CardDetails-bannerImage {
   width: 100%;
   height: 100%;
-  object-fit: contain;        
-  background-color: #000;      
-  transform: none;              
+  object-fit: contain;
+  background-color: #000;
+
+  will-change: transform;
+  backface-visibility: hidden;
+
   transition: filter 0.3s ease;
 }
 
 
-.business-CardDetails-mainImageContainer:hover
-  .business-CardDetails-bannerImage {
-  transform: none;            
+.business-CardDetails-mainImageContainer:hover .business-CardDetails-bannerImage {
+  transform: none;
   filter: brightness(1.03);
 }
 
 .business-CardDetails-heroGradient {
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    to top,
-    rgba(0, 0, 0, 0.75) 0%,
-    rgba(0, 0, 0, 0.35) 40%,
-    transparent 100%
-  );
+  background: linear-gradient(to top,
+      rgba(0, 0, 0, 0.75) 0%,
+      rgba(0, 0, 0, 0.35) 40%,
+      transparent 100%);
 }
 
 .business-CardDetails-heroMeta {
@@ -176,8 +175,8 @@
 
 .business-CardDetails-thumbnails {
   display: flex;
-  gap: 0.6rem;
-  padding: 0.6rem 0.25rem 0;
+  gap: 0.75rem;
+  padding: 0.75rem 0.3rem 0;
   margin-top: 0.25rem;
   overflow-x: auto;
   scrollbar-width: thin;
@@ -186,6 +185,7 @@
 .business-CardDetails-thumbnails::-webkit-scrollbar {
   height: 0.3rem;
 }
+
 .business-CardDetails-thumbnails::-webkit-scrollbar-thumb {
   background: rgba(148, 163, 184, 0.6);
   border-radius: 999px;
@@ -248,6 +248,7 @@
 }
 
 @media (min-width: 64rem) {
+
   .business-CardDetails-headerCard:hover,
   .business-CardDetails-overviewCard:hover,
   .business-CardDetails-infoBlock:hover,
@@ -262,6 +263,7 @@
 }
 
 @media (min-width: 48rem) {
+
   .business-CardDetails-headerCard,
   .business-CardDetails-overviewCard,
   .business-CardDetails-infoBlock,
@@ -331,7 +333,7 @@
   .business-CardDetails-rightSidebar {
     position: sticky;
     top: 1.5rem;
-    align-self: flex-start;
+    will-change: transform;
   }
 }
 
@@ -424,17 +426,19 @@
 .business-CardDetails-btn {
   border-radius: var(--bc-radius-pill);
   border: 1px solid transparent;
-  padding: 0.55rem 1.1rem;
+  padding: 0.75rem 1.2rem;
   font-size: var(--bc-text-md);
   font-weight: 600;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.45rem;
   cursor: pointer;
   text-decoration: none;
   transition: all 0.2s ease;
   background: #ffffff;
   white-space: nowrap;
+  min-height: 48px;
 }
 
 .business-CardDetails-btn--primary {
@@ -466,8 +470,8 @@
 }
 
 .business-CardDetails-iconBtn {
-  width: 2.6rem;
-  height: 2.6rem;
+  width: 3rem;
+  height: 3rem;
   border-radius: 50%;
   border: 1px solid #e4e4e7;
   background: #ffffff;
@@ -491,8 +495,8 @@
   flex-shrink: 0;
 }
 
-/* Action bar mobile stack */
 @media (max-width: 37.5rem) {
+
   .business-CardDetails-actionBar {
     flex-direction: column;
     align-items: stretch;
@@ -500,13 +504,15 @@
 
   .business-CardDetails-actionLeft {
     width: 100%;
-    justify-content: flex-start;
+    gap: 10px;
   }
 
   .business-CardDetails-btn {
     flex: 1;
     justify-content: center;
+    min-height: 50px;
   }
+
 }
 
 /* Share popup */
@@ -553,6 +559,7 @@
 .business-CardDetails-tabs::-webkit-scrollbar {
   height: 0.25rem;
 }
+
 .business-CardDetails-tabs::-webkit-scrollbar-thumb {
   background: rgba(156, 163, 175, 0.6);
   border-radius: 999px;
@@ -812,6 +819,7 @@
 .business-CardDetails-reviewFilters::-webkit-scrollbar {
   height: 0.25rem;
 }
+
 .business-CardDetails-reviewFilters::-webkit-scrollbar-thumb {
   background: rgba(156, 163, 175, 0.65);
   border-radius: 999px;
@@ -1407,6 +1415,7 @@
   .business-CardDetails-galleryNav--prev {
     left: 0.3rem;
   }
+
   .business-CardDetails-galleryNav--next {
     right: 0.3rem;
   }

@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
+// import prerender from "prerender-node";
 import compression from "compression";
 import helmet from "helmet";
 import path from "path";
@@ -33,7 +34,6 @@ dotenv.config();
 
 const app = express();
 app.set("trust proxy", true);
-
 const PORT = process.env.PORT || 4000;
 const MONGO_URI = process.env.MONGO_URL;
 
@@ -43,28 +43,55 @@ const __dirname = path.dirname(__filename);
 const CLIENT_BUILD_PATH =
   "/var/www/massclickQA/client/ui-app/build";
 
-app.use((req, res, next) => {
+// const CLIENT_BUILD_PATH = path.join(
+//   __dirname,
+//   "../client/ui-app/build"
+// );
 
-  const host = req.headers.host || "";
+console.log("Client build path:", CLIENT_BUILD_PATH);
 
-  if (host.includes("localhost") || host.includes("127.0.0.1")) {
-    return next();
-  }
+// app.use((req, res, next) => {
 
-  const protocol = req.headers["x-forwarded-proto"] || req.protocol;
+//   const host = req.headers.host || "";
 
-  if (protocol !== "https") {
-    return res.redirect(301, `https://massclick.in${req.originalUrl}`);
-  }
+//   if (
+//     host.includes("localhost") ||
+//     host.includes("127.0.0.1")
+//   ) {
+//     return next();
+//   }
 
-  if (host.startsWith("www.")) {
-    return res.redirect(301, `https://massclick.in${req.originalUrl}`);
-  }
+//   const protocol =
+//     req.headers["x-forwarded-proto"] || req.protocol;
 
-  next();
-});
+//   if (protocol !== "https") {
+//     return res.redirect(
+//       301,
+//       `https://${host}${req.originalUrl}`
+//     );
+//   }
 
+//   if (host.startsWith("www.")) {
 
+//     const newHost = host.replace("www.", "");
+
+//     return res.redirect(
+//       301,
+//       `https://${newHost}${req.originalUrl}`
+//     );
+//   }
+
+//   next();
+
+// });
+
+const slugify = (text = "") =>
+  text
+    .toLowerCase()
+    .trim()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 
 app.use(
   helmet({
@@ -76,15 +103,18 @@ app.use(compression());
 
 const allowedOrigins = [
   "https://massclick.in",
-  "https://www.massclick.in",
   "http://localhost:3000",
-  "http://127.0.0.1:3000"
+  "http://127.0.0.1:3000",
+  "http://localhost:4000"
+
 ];
 
 app.use(
   cors({
     origin: function (origin, callback) {
+
       if (!origin) return callback(null, true);
+
       if (allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
@@ -114,7 +144,7 @@ Sitemap: https://massclick.in/sitemap.xml
 
 });
 
-
+// routes
 app.use("/", sitemapRoutes);
 app.use("/", userRoutes);
 app.use("/", oauthRoutes);
@@ -158,6 +188,7 @@ app.use(
         );
 
       }
+
     },
   })
 );
@@ -166,82 +197,90 @@ app.get(/.*/, async (req, res) => {
 
   try {
 
-    const indexPath =
-      path.join(CLIENT_BUILD_PATH, "index.html");
+    const indexPath = path.join(CLIENT_BUILD_PATH, "index.html");
 
     if (!fs.existsSync(indexPath)) {
-
-      return res.status(404)
-        .send("Build not found");
-
+      return res.status(404).send("Build not found");
     }
 
-    let html =
-      fs.readFileSync(indexPath, "utf8");
+    let html = fs.readFileSync(indexPath, "utf8");
 
-    const parts =
-      req.path.split("/").filter(Boolean);
+    const parts = req.path.split("/").filter(Boolean);
+    const locationSlug = parts[0] || "";
+    const categorySlug = parts[1] || "";
 
-    const locationSlug =
-      parts[0] || "";
-
-    const categorySlug =
-      parts[1] || "";
+    let seo = null;
 
     if (locationSlug && categorySlug) {
 
-      const seoList =
-        await seoModel.find({
-          pageType: "category",
-          isActive: true
-        }).lean();
+      seo = await seoModel.findOne({
+        pageType: "category",
+        isActive: true,
+        location: new RegExp(`^${locationSlug}$`, "i"),
+        category: new RegExp(`^${categorySlug}$`, "i")
+      }).lean();
 
-      const seo = seoList.find(item =>
-        slugify(item.location) === locationSlug &&
-        slugify(item.category) === categorySlug
+    }
+
+    if (seo) {
+
+      const title = seo.title;
+      const description = seo.description;
+      const keywords = seo.keywords;
+      const canonical = seo.canonical;
+
+      html = html.replace(
+        /<title>.*<\/title>/,
+        `<title>${title}</title>`
       );
 
-      if (seo) {
+      html = html.replace(
+        /<meta name="description".*?>/,
+        `<meta name="description" content="${description}" />`
+      );
 
-        html = html.replace(
-          /<title>.*<\/title>/,
-          `<title>${seo.title}</title>`
-        );
-
-        html = html.replace(
-          /<meta name="description".*?>/,
-          `<meta name="description" content="${seo.description}" />`
-        );
-
-        html = html.replace(
-          /<meta name="keywords".*?>/,
-          `<meta name="keywords" content="${seo.keywords}" />`
-        );
-
-        html = html.replace(
-          /<link rel="canonical".*?>/,
-          `<link rel="canonical" href="${seo.canonical}" />`
-        );
-
-      }
-
-    } else {
+      html = html.replace(
+        /<meta name="keywords".*?>/,
+        `<meta name="keywords" content="${keywords}" />`
+      );
 
       html = html.replace(
         /<link rel="canonical".*?>/,
-        `<link rel="canonical" href="https://massclick.in${req.path}" />`
+        `<link rel="canonical" href="${canonical}" />`
       );
 
+      html = html.replace(
+        /<meta property="og:title".*?>/,
+        `<meta property="og:title" content="${title}" />`
+      );
+
+      html = html.replace(
+        /<meta property="og:description".*?>/,
+        `<meta property="og:description" content="${description}" />`
+      );
+
+      html = html.replace(
+        /<meta property="og:url".*?>/,
+        `<meta property="og:url" content="${canonical}" />`
+      );
+
+      html = html.replace(
+        /<meta name="twitter:title".*?>/,
+        `<meta name="twitter:title" content="${title}" />`
+      );
+
+      html = html.replace(
+        /<meta name="twitter:description".*?>/,
+        `<meta name="twitter:description" content="${description}" />`
+      );
     }
 
     res.send(html);
 
   } catch (err) {
 
-    console.error(err);
-
-    res.status(500)
-      .send("Server error");
+    console.error("SEO ERROR:", err);
+    res.status(500).send("Server error");
 
   }
 

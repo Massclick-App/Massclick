@@ -7,14 +7,22 @@ import {
     EDIT_ENQUIRY_REQUEST, EDIT_ENQUIRY_SUCCESS, EDIT_ENQUIRY_FAILURE,
     DELETE_ENQUIRY_REQUEST, DELETE_ENQUIRY_SUCCESS, DELETE_ENQUIRY_FAILURE
 } from "../actions/userActionTypes.js"; // Note: Ensure userActionTypes contains the ENQUIRY types
+import { getClientToken } from "./clientAuthAction.js";
 
 const API_URL = process.env.REACT_APP_API_URL;
+
+const getValidToken = async (dispatch) => {
+  let token = localStorage.getItem("accessToken");
+  if (!token) token = await dispatch(getClientToken());
+  if (!token) throw new Error("No valid token found");
+  return token;
+};
 
 
 export const getAllEnquiry = () => async (dispatch) => {
     dispatch({ type: FETCH_ENQUIRY_REQUEST });
     try {
-        const token = localStorage.getItem("accessToken");
+      const token = await getValidToken(dispatch);
         const response = await axios.get(`${API_URL}/enquiry/viewall`, { 
             headers: { Authorization: `Bearer ${token}` },
         });
@@ -35,7 +43,7 @@ export const createEnquiry = (enquiryData) => async (dispatch) => {
     dispatch({ type: CREATE_ENQUIRY_REQUEST }); 
     try {
     
-        const token = localStorage.getItem("accessToken"); 
+      const token = await getValidToken(dispatch);
         
        const response = await axios.post(`${API_URL}/enquiry/create`, enquiryData, { 
             headers: { Authorization: `Bearer ${token}` },
@@ -57,7 +65,7 @@ export const createEnquiry = (enquiryData) => async (dispatch) => {
 export const editEnquiry = (id, enquiryData) => async (dispatch) => { 
     dispatch({ type: EDIT_ENQUIRY_REQUEST });
     try {
-        const token = localStorage.getItem("accessToken");
+      const token = await getValidToken(dispatch);
         const response = await axios.put(`${API_URL}/enquiry/update/${id}`, enquiryData, { 
             headers: { Authorization: `Bearer ${token}` },
         });
@@ -76,7 +84,7 @@ export const editEnquiry = (id, enquiryData) => async (dispatch) => {
 export const deleteEnquiry = (id) => async (dispatch) => {
     dispatch({ type: DELETE_ENQUIRY_REQUEST }); 
     try {
-        const token = localStorage.getItem("accessToken");
+      const token = await getValidToken(dispatch);
         const { data } = await axios.delete(`${API_URL}/enquiry/delete/${id}`, { 
             headers: { Authorization: `Bearer ${token}` },
         });

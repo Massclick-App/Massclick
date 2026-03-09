@@ -46,10 +46,10 @@ const Footer = () => {
                 <div className="footer-section">
                     <h3 className="footer-heading">Services</h3>
                     <ul className="footer-link-list">
-                        <FooterLink to="/services/web">Web Design & Development</FooterLink>
-                        <FooterLink to="/services/digital">Digital Marketing</FooterLink>
-                        <FooterLink to="/services/graphic">Graphic Design</FooterLink>
-                        <FooterLink to="/services/seo">Search Engine Optimisation</FooterLink>
+                        <FooterLink to="/web">Web Design & Development</FooterLink>
+                        <FooterLink to="/digital">Digital Marketing</FooterLink>
+                        <FooterLink to="/graphic">Graphic Design</FooterLink>
+                        <FooterLink to="/seo">Search Engine Optimisation</FooterLink>
                     </ul>
                 </div>
         

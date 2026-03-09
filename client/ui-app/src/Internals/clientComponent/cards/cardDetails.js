@@ -1,18 +1,14 @@
 // BusinessDetail.jsx
 import React, { useEffect, useState, useRef } from "react";
-import { useParams, useLocation } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-
 import {
   getBusinessDetailsById,
   getBusinessDetailsBySlug,
 } from "../../../redux/actions/businessListAction";
-
 import "./cardDetails.css";
-
 import UserRatingWidget from "../rating/rating";
 import CardsSearch from "../../clientComponent/CardsSearch/CardsSearch";
-
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import SpaIcon from "@mui/icons-material/Spa";
@@ -35,7 +31,6 @@ import FacebookIcon from "@mui/icons-material/Facebook";
 import InstagramIcon from "@mui/icons-material/Instagram";
 import LinkIcon from "@mui/icons-material/Link";
 import Tooltip from "@mui/material/Tooltip";
-
 import Footer from "../footer/footer";
 import ReviewList from "../rating/reviewList";
 import { getBusinessReviews } from "../../../redux/actions/reviewAction.js";
@@ -191,8 +186,6 @@ const BusinessDetail = () => {
     );
   }
 
-
-
   if (!business) {
     return (
       <>
@@ -219,6 +212,11 @@ const BusinessDetail = () => {
 
   const website = business.website;
 
+const formattedWebsite =
+  website && website.startsWith("http")
+    ? website
+    : `https://${website}`;
+
   const addressParts = [
     business.plotNumber,
     business.street,
@@ -243,7 +241,7 @@ const BusinessDetail = () => {
     "Friday",
     "Saturday",
   ];
-
+  
   const getTodayHours = () => {
     if (!business.openingHours || business.openingHours.length === 0)
       return "Open hours not available";
@@ -305,7 +303,6 @@ const BusinessDetail = () => {
         return null;
     }
   };
-
 
   const getGoogleMapSrc = (iframeString) => {
     if (!iframeString) return null;
@@ -456,6 +453,9 @@ const BusinessDetail = () => {
               alt={business?.businessName}
               className="business-CardDetails-bannerImage"
               loading="eager"
+              fetchpriority="high"
+              width="1200"
+              height="600"
             />
             <div className="business-CardDetails-heroGradient" />
             <div className="business-CardDetails-heroMeta">
@@ -664,7 +664,6 @@ const BusinessDetail = () => {
                   }}
                 />
               </section>
-
               <section
                 ref={quickInfoRef}
                 className="business-CardDetails-infoBlock"
@@ -795,7 +794,6 @@ const BusinessDetail = () => {
                     </p>
                   </div>
                 </div>
-
                 <div className="business-CardDetails-startReview">
                   <h3>Start your Review</h3>
                   <UserRatingWidget
@@ -1014,7 +1012,6 @@ const BusinessDetail = () => {
                 </button>
               </div>
 
-              {/* HOURS */}
               <div
                 className="business-CardDetails-sidebarItem business-CardDetails-sidebarItem--expandable"
                 onClick={() => setShowFullHours(!showFullHours)}
@@ -1058,7 +1055,6 @@ const BusinessDetail = () => {
                 </div>
               )}
 
-              {/* OTHER ACTIONS */}
               <ul className="business-CardDetails-sidebarList">
                 <li className="business-CardDetails-sidebarItem">
                   <NoteAltIcon className="business-CardDetails-sidebarIcon" />
@@ -1095,17 +1091,38 @@ const BusinessDetail = () => {
                   <LanguageIcon className="business-CardDetails-sidebarIcon" />
                   {website ? (
                     <a
-                      href={website}
+                      href={formattedWebsite}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="business-CardDetails-websiteLink"
                     >
-                      Website
+                      Visit Website
                     </a>
                   ) : (
                     <span className="business-CardDetails-websiteLink business-CardDetails-websiteLink--disabled">
                       Website not added
                     </span>
+                  )}
+                  {business.facebook && (
+                    <a
+                      href={business.facebook}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="business-CardDetails-socialLink"
+                    >
+                      <FacebookIcon /> Facebook
+                    </a>
+                  )}
+
+                  {business.instagram && (
+                    <a
+                      href={business.instagram}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="business-CardDetails-socialLink"
+                    >
+                      <InstagramIcon /> Instagram
+                    </a>
                   )}
                 </li>
               </ul>

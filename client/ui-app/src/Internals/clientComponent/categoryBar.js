@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react"; 
+import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { viewOtpUser } from "../../redux/actions/otpAction.js";
@@ -65,7 +65,7 @@ import './categoryBar.css'
 
 const categories = [
     { name: "Leads", icon: <MailIcon /> },
-    // { name: "MNI", icon: <CorporateFareIcon /> },
+    { name: "MNI", icon: <CorporateFareIcon /> },
     { name: "Advertise", icon: <CampaignIcon /> },
     { name: "Business Enquiry", icon: <AppRegistrationIcon /> },
 ];
@@ -184,10 +184,22 @@ const CategoryBar = () => {
             }
             navigate("/leads");
         } else if (name === "Advertise") {
+            if (!localStorage.getItem("authUser")) {
+                setIsModalOpen(true);
+                return;
+            }
             navigate("/advertise");
         } else if (name === "MNI") {
+            if (!localStorage.getItem("authUser")) {
+                setIsModalOpen(true);
+                return;
+            }
             navigate("/mni");
         } else if (name === "Business Enquiry") {
+            if (!localStorage.getItem("authUser")) {
+                setIsModalOpen(true);
+                return;
+            }
             navigate("/business-enquiry");
         }
     };
@@ -357,15 +369,19 @@ const CategoryBar = () => {
 
 export default CategoryBar;
 
+
 export const categoryBarHelpers = {
+    
     checkLogin: () => {
         const token = localStorage.getItem("authToken");
         return !!token;
     },
+
     handleLogout: (navigate) => {
         localStorage.removeItem("authToken");
         localStorage.removeItem("mobileNumber");
         window.dispatchEvent(new Event("authChange"));
         navigate("/");
     },
+
 };

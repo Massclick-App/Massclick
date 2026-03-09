@@ -60,6 +60,8 @@
 }
 
 /* ===== FORM ===== */
+/* ===== FORM ===== */
+
 .mrp-form {
   margin-top: 40px;
   display: grid;
@@ -72,11 +74,17 @@
   }
 }
 
+.mrp-field {
+  display: flex;
+  flex-direction: column;
+}
+
 .mrp-full {
   grid-column: 1 / -1;
 }
 
 /* ===== INPUTS ===== */
+
 .mrp-field label {
   font-size: 14px;
   font-weight: 600;
@@ -107,8 +115,9 @@
   transition: all .2s ease;
 }
 
-textarea {
+.mrp-field textarea {
   min-height: 180px;
+  resize: vertical;
 }
 
 .mrp-field input:focus,
@@ -116,6 +125,34 @@ textarea {
   outline: none;
   border-color: var(--primary);
   box-shadow: 0 0 0 4px var(--focus);
+}
+
+/* ===== CTA ===== */
+
+.mrp-actions {
+  grid-column: 1 / -1;
+  margin-top: 10px;
+}
+
+.mrp-actions button {
+  padding: 18px 56px;
+  font-size: 16px;
+  font-weight: 700;
+  border-radius: 24px;
+  border: none;
+  color: white;
+  background: linear-gradient(
+    135deg,
+    var(--primary),
+    var(--primary-dark)
+  );
+  box-shadow: 0 25px 60px rgba(255,138,0,.45);
+  cursor: pointer;
+  transition: all .2s ease;
+}
+
+.mrp-actions button:hover {
+  transform: translateY(-2px);
 }
 
 /* ===== DROPDOWN ===== */

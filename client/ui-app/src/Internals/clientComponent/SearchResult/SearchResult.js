@@ -2,6 +2,10 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
+import VerifiedIcon from "@mui/icons-material/Verified";
+import StarIcon from "@mui/icons-material/Star";
+import GroupsIcon from "@mui/icons-material/Groups";
+import LockIcon from "@mui/icons-material/Lock";
 
 import "./SearchResult.css";
 
@@ -15,8 +19,6 @@ import { fetchSeoPageContentMeta } from "../../../redux/actions/seoPageContentAc
 import { CLEAR_SEO_META } from "../../../redux/actions/userActionTypes.js";
 import TopBannerAds from "../banners/topBanner/topBanner.js";
 
-
-
 const createSlug = (text = "") =>
   text
     .toLowerCase()
@@ -25,15 +27,11 @@ const createSlug = (text = "") =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
-
-
 const sanitizeSeoHtml = (html = "") => {
   return html
     .replace(/<h1(\s[^>]*)?>/gi, "<h2>")
     .replace(/<\/h1>/gi, "</h2>");
 };
-
-
 
 const SearchResults = () => {
 
@@ -151,6 +149,42 @@ const SearchResults = () => {
     );
   }
 
+  const extractFaqFromHtml = (html = "") => {
+    if (!html) return [];
+
+    const faqSectionMatch = html.split("Frequently Asked Questions - (FAQs)");
+    if (faqSectionMatch.length < 2) return [];
+
+    const faqHtml = faqSectionMatch[1];
+
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(faqHtml, "text/html");
+
+    const strongTags = doc.querySelectorAll("strong");
+
+    const faqs = [];
+
+    strongTags.forEach((strongTag) => {
+      const question = strongTag.textContent?.trim();
+
+      const answerElement = strongTag.parentElement?.nextElementSibling;
+      const answer = answerElement?.textContent?.trim();
+
+      if (question && answer) {
+        faqs.push({
+          "@type": "Question",
+          name: question,
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: answer,
+          },
+        });
+      }
+    });
+
+    return faqs;
+  };
+
   const fallbackSeo = {
 
     title:
@@ -167,7 +201,6 @@ const SearchResults = () => {
     robots: "index, follow",
 
   };
-
 
   const seoContent = seoPageContents?.[0];
 
@@ -219,6 +252,71 @@ const SearchResults = () => {
     ],
   };
 
+    const websiteSchema = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: "Massclick",
+    url: "https://www.massclick.in"
+  };
+
+  const organizationSchema = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: "Massclick",
+    url: "https://www.massclick.in",
+    logo: "https://www.massclick.in/logo.png"
+  };
+
+  const extractedFaqs = extractFaqFromHtml(seoContent?.pageContent || "");
+
+  const faqSchema =
+    extractedFaqs.length > 0
+      ? {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        mainEntity: extractedFaqs,
+      }
+      : null;
+
+  const totalReviewCount = results.reduce(
+    (acc, curr) => acc + (curr.totalReviews || 0),
+    0
+  );
+
+  const overallRating =
+    results.length > 0
+      ? (
+        results.reduce(
+          (acc, curr) => acc + (curr.averageRating || 0),
+          0
+        ) / results.length
+      ).toFixed(1)
+      : null;
+
+  const serviceSchema = {
+    "@context": "https://schema.org",
+    "@type": "Service",
+    name: `${searchText} in ${locationText}`,
+    serviceType: searchText,
+    areaServed: {
+      "@type": "City",
+      name: locationText,
+    },
+    provider: {
+      "@type": "Organization",
+      name: "Massclick",
+      url: "https://www.massclick.in",
+    },
+    ...(overallRating && totalReviewCount > 0
+      ? {
+        aggregateRating: {
+          "@type": "AggregateRating",
+          ratingValue: overallRating,
+          reviewCount: totalReviewCount,
+        },
+      }
+      : {}),
+  };
 
   return (
     <>
@@ -232,6 +330,21 @@ const SearchResults = () => {
         )}
         <script type="application/ld+json">
           {JSON.stringify(breadcrumbSchema)}
+        </script>
+        <script type="application/ld+json">
+          {JSON.stringify(websiteSchema)}
+        </script>
+
+        <script type="application/ld+json">
+          {JSON.stringify(organizationSchema)}
+        </script>
+        {faqSchema && (
+          <script type="application/ld+json">
+            {JSON.stringify(faqSchema)}
+          </script>
+        )}
+        <script type="application/ld+json">
+          {JSON.stringify(serviceSchema)}
         </script>
       </Helmet>
 
@@ -252,15 +365,40 @@ const SearchResults = () => {
               }}
             />
           )}
+          <div className="results-heading">
 
-          {/* LOADING */}
+            <h4 className="results-subheading">
+              Discover trusted {searchText} in {locationText}. Compare ratings,
+              reviews and contact details to find the best near you.
+            </h4>
+
+            <div className="category-trust-badges">
+
+              <span className="trust-badge">
+                <VerifiedIcon fontSize="small" /> Verified Listings
+              </span>
+
+              <span className="trust-badge">
+                <StarIcon fontSize="small" /> Top Rated Businesses
+              </span>
+
+              <span className="trust-badge">
+                <GroupsIcon fontSize="small" /> Trusted by Thousands
+              </span>
+
+              <span className="trust-badge">
+                <LockIcon fontSize="small" /> Secure Enquiry Platform
+              </span>
+
+            </div>
+
+          </div>
           {loading && (
             <div className="loading-wrapper">
               Searching businesses...
             </div>
           )}
 
-          {/* NO RESULTS */}
           {!loading && results.length === 0 && (
             <div className="no-results-container">
               <p className="no-results-title">No results found 😔</p>
@@ -273,7 +411,6 @@ const SearchResults = () => {
             </div>
           )}
 
-          {/* BUSINESS LIST */}
           <div className="business-list">
 
             {results.map((business) => {
@@ -312,7 +449,6 @@ const SearchResults = () => {
 
           </div>
 
-          {/* SEO CONTENT */}
           {!seoContentLoading && sanitizedPageContent && (
             <article className="seo-article">
               <div className="seo-divider" />

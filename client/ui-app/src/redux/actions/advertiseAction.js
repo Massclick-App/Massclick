@@ -49,7 +49,6 @@ export const getAllAdvertise = () => async (dispatch) => {
   }
 };
 
-
 export const createAdvertise = (advertiseData) => async (dispatch) => {
   dispatch({ type: CREATE_ADVERTISE_REQUEST });
 

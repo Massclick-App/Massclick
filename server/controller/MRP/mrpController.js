@@ -1,15 +1,19 @@
-import { createMRP, viewMRP, viewAllMRP, updateMRP, deleteMRP, searchMrpBusinesses, searchMrpCategories } from "../../helper/MRP/mrpHelper.js";
+import { createMRP, viewMRP, viewAllMRP, updateMRP, deleteMRP, searchMrpBusinesses, searchMrpCategories,sendMrpLeads } from "../../helper/MRP/mrpHelper.js";
 import { BAD_REQUEST } from "../../errorCodes.js";
 
 export const addMRPAction = async (req, res) => {
-    try {
-        const reqBody = req.body;
-        const result = await createMRP(reqBody);
-        res.send(result);
-    } catch (error) {
-        console.error(error);
-        return res.status(BAD_REQUEST.code).send(error.message);
-    }
+  try {
+    const reqBody = req.body;
+    const result = await createMRP(reqBody);
+
+    res.send({
+      data: result
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(BAD_REQUEST.code).send(error.message);
+  }
 };
 export const viewMRPAction = async (req, res) => {
     try {
@@ -112,3 +116,24 @@ export const searchMrpCategoryAction = async (req, res) => {
   }
 };
 
+export const sendMrpLeadsAction = async (req, res) => {
+  try {
+
+    const mrpId = req.params.id;
+
+    const result = await sendMrpLeads(mrpId);
+
+    res.send({
+      message: "Leads sent successfully",
+      ...result
+    });
+
+  } catch (error) {
+
+    console.error("❌ sendMrpLeadsAction error:", error);
+
+    return res.status(BAD_REQUEST.code).send({
+      message: error.message
+    });
+  }
+};

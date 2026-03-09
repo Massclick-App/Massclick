@@ -154,14 +154,11 @@ const PopularCategoriesDrawer = ({ openFromHome = false, onClose }) => {
     return slugify(selectedDistrict || "india");
   }, [selectedDistrict]);
 
-  const filtered = useMemo(() => {
+  const filtered = useMemo(() => {  
     return STATIC_CATEGORIES.filter((cat) =>
       cat.label.toLowerCase().includes(search.toLowerCase())
     );
   }, [search]);
-
-   
-
 
     return (
         <Drawer
@@ -176,7 +173,6 @@ const PopularCategoriesDrawer = ({ openFromHome = false, onClose }) => {
       }}
     >
 
-      {/* Header */}
       <header className="pc-header">
         <h2>Popular Categories</h2>
         <CloseIcon
@@ -249,7 +245,6 @@ const PopularCategoriesDrawer = ({ openFromHome = false, onClose }) => {
                 }
               }}
             >
-
               <img
                 src={cat.icon}
                 alt={altText}

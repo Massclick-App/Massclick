@@ -75,10 +75,10 @@ const FooterRoutes = [
   { path: 'privacy', title: 'Privacy Policy', element: <PrivacyPolicy /> },
   { path: 'refund', title: 'Refund Policy', element: <RefundPolicy /> },
   { path: 'enquiry', title: 'Enquiry Now', element: <EnquiryNow /> },
-  { path: 'services/web', title: 'Web Design & Development', element: <WebDevSection /> },
-  { path: 'services/digital', title: 'Digital Marketing', element: <DigitalMarketing /> },
-  { path: 'services/graphic', title: 'Graphic Design', element: <GraphicDesign /> },
-  { path: 'services/seo', title: 'SEO', element: <Seo /> },
+  { path: 'web', title: 'Web Design & Development', element: <WebDevSection /> },
+  { path: 'digital', title: 'Digital Marketing', element: <DigitalMarketing /> },
+  { path: 'graphic', title: 'Graphic Design', element: <GraphicDesign /> },
+  { path: 'seo', title: 'SEO', element: <Seo /> },
 ];
 
 function App() {
@@ -163,10 +163,12 @@ function App() {
             ))}
 
             <Route path="/:location/:searchTerm" element={<SearchResults />} />
+            
             <Route
               path="/:location/:businessSlug/:id?"
               element={<BusinessDetails />}
             />
+
             <Route path="/payment-status/:transactionId" element={<PaymentStatus />} />
             <Route path="/write-review/:businessId/:ratingValue" element={<WriteReviewPage />} />
             <Route path="/leads" element={<LeadsPage />} />

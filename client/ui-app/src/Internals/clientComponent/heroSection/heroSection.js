@@ -102,60 +102,60 @@ const HeroSection = ({
   const { detectedDistrict } = locationState;
 
 
- useEffect(() => {
+  useEffect(() => {
 
-  const savedLocation = localStorage.getItem("selectedLocation");
+    const savedLocation = localStorage.getItem("selectedLocation");
 
-  if (savedLocation) {
+    if (savedLocation) {
 
-    setLocationName(savedLocation);
+      setLocationName(savedLocation);
 
-    dispatch({
-      type: "SET_SELECTED_DISTRICT",
-      payload: savedLocation,
-    });
+      dispatch({
+        type: "SET_SELECTED_DISTRICT",
+        payload: savedLocation,
+      });
 
-    return;   
-  }
+      return;
+    }
 
-  if (!navigator.geolocation) {
-    setLocationName("All Districts");
-    return;
-  }
-
-  navigator.geolocation.getCurrentPosition(
-    async ({ coords }) => {
-      try {
-
-        const result = await dispatch(
-          detectDistrict({
-            latitude: coords.latitude,
-            longitude: coords.longitude,
-          })
-        );
-
-        const autoDistrict = result?.district || "All Districts";
-
-        setLocationName(autoDistrict);
-
-        localStorage.setItem("selectedLocation", autoDistrict);
-
-        dispatch({
-          type: "SET_SELECTED_DISTRICT",
-          payload: autoDistrict,
-        });
-
-      } catch {
-        setLocationName("All Districts");
-      }
-    },
-    () => {
+    if (!navigator.geolocation) {
       setLocationName("All Districts");
-    },
-    { enableHighAccuracy: true, timeout: 10000 }
-  );
+      return;
+    }
 
-}, [dispatch]);
+    navigator.geolocation.getCurrentPosition(
+      async ({ coords }) => {
+        try {
+
+          const result = await dispatch(
+            detectDistrict({
+              latitude: coords.latitude,
+              longitude: coords.longitude,
+            })
+          );
+
+          const autoDistrict = result?.district || "All Districts";
+
+          setLocationName(autoDistrict);
+
+          localStorage.setItem("selectedLocation", autoDistrict);
+
+          dispatch({
+            type: "SET_SELECTED_DISTRICT",
+            payload: autoDistrict,
+          });
+
+        } catch {
+          setLocationName("All Districts");
+        }
+      },
+      () => {
+        setLocationName("All Districts");
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+
+  }, [dispatch]);
 
   useEffect(() => {
     dispatch(getAllSearchLogs());
@@ -357,7 +357,7 @@ const HeroSection = ({
 
                   setLocationName(chosen);
 
-                  localStorage.setItem("selectedLocation", chosen);  
+                  localStorage.setItem("selectedLocation", chosen);
 
                   dispatch({
                     type: "SET_SELECTED_DISTRICT",
@@ -415,6 +415,27 @@ const HeroSection = ({
             <SearchIcon className="search-icon" />
           </button>
         </form>
+        <div className="hero-trust">
+          <div className="trust-card">
+            <span className="trust-icon">✔</span>
+            <span>50,000+ Businesses Listed</span>
+          </div>
+
+          <div className="trust-card">
+            <span className="trust-icon">👥</span>
+            <span>Trusted by Thousands of Users</span>
+          </div>
+
+          <div className="trust-card">
+            <span className="trust-icon">⭐</span>
+            <span>Verified Local Businesses</span>
+          </div>
+
+          <div className="trust-card">
+            <span className="trust-icon">🔒</span>
+            <span>Secure & Spam-Free Platform</span>
+          </div>
+        </div>
       </div>
     </div>
   );

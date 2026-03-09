@@ -5,7 +5,8 @@ import {
   EDIT_MRP_REQUEST, EDIT_MRP_SUCCESS, EDIT_MRP_FAILURE,
   DELETE_MRP_REQUEST, DELETE_MRP_SUCCESS, DELETE_MRP_FAILURE,
   SEARCH_MRP_BUSINESS_REQUEST, SEARCH_MRP_BUSINESS_SUCCESS, SEARCH_MRP_BUSINESS_FAILURE,
-  SEARCH_MRP_CATEGORY_REQUEST, SEARCH_MRP_CATEGORY_SUCCESS, SEARCH_MRP_CATEGORY_FAILURE
+  SEARCH_MRP_CATEGORY_REQUEST, SEARCH_MRP_CATEGORY_SUCCESS, SEARCH_MRP_CATEGORY_FAILURE,
+  SEND_MRP_LEADS_REQUEST, SEND_MRP_LEADS_SUCCESS, SEND_MRP_LEADS_FAILURE
 } from "./userActionTypes.js";
 
 import { getClientToken } from "./clientAuthAction";
@@ -189,6 +190,39 @@ export const searchMrpCategory = (searchText) => async (dispatch) => {
       type: SEARCH_MRP_CATEGORY_FAILURE,
       payload: error.response?.data || error.message
     });
+    throw error;
+  }
+};
+
+export const sendMrpLeads = (mrpId) => async (dispatch) => {
+
+  dispatch({ type: SEND_MRP_LEADS_REQUEST });
+
+  try {
+    const token = await getValidToken(dispatch);
+
+    const response = await axios.post(
+      `${API_URL}/mrpdata/send-leads/${mrpId}`,
+      {},
+      {
+        headers: { Authorization: `Bearer ${token}` }
+      }
+    );
+
+    dispatch({
+      type: SEND_MRP_LEADS_SUCCESS,
+      payload: response.data
+    });
+
+    return response.data;
+
+  } catch (error) {
+
+    dispatch({
+      type: SEND_MRP_LEADS_FAILURE,
+      payload: error.response?.data || error.message
+    });
+
     throw error;
   }
 };

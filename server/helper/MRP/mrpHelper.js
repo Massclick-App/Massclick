@@ -2,6 +2,7 @@ import { ObjectId } from "mongodb";
 import mrpModel from "../../model/MRP/mrpModel.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
 import categoryModel from "../../model/category/categoryModel.js";
+import { sendMniBusinessLead, sendCustomerBusinessList  } from "../msg91/smsGatewayHelper.js";
 
 export const createMRP = async function (reqBody = {}) {
   try {
@@ -12,28 +13,22 @@ export const createMRP = async function (reqBody = {}) {
     }
 
     const business = await businessListModel
-      .findById(organizationId)
+      .findOne({ contactList: contactDetails })
       .lean();
 
     if (!business) {
-      throw new Error("Business not found");
+      throw new Error("Business not found in business list");
     }
 
-    const businessSnapshot = {
-      businessName: business.businessName,
-      location: business.location,
-      category: business.category,
-      contact: business.contact,
-      contactList: business.contactList,
-      whatsappNumber: business.whatsappNumber,
-      email: business.email,
-      website: business.website,
-      averageRating: business.averageRating,
-    };
+    const { _id, __v, createdAt, updatedAt, ...cleanBusiness } = business;
 
     const mrpDocument = new mrpModel({
-      ...reqBody,         
-      businessSnapshot
+      organizationId,
+      contactDetails,
+      categoryId: reqBody.categoryId,
+      location: reqBody.location,
+      description: reqBody.description,
+      businessSnapshot: cleanBusiness
     });
 
     return await mrpDocument.save();
@@ -43,8 +38,6 @@ export const createMRP = async function (reqBody = {}) {
     throw error;
   }
 };
-
-
 
 export const viewMRP = async (id) => {
     try {
@@ -75,7 +68,6 @@ export const viewAllMRP = async ({
   try {
     const query = {};
 
-    // 🔍 Correct searchable fields
     if (search) {
       query.$or = [
         { categoryId: { $regex: search, $options: "i" } },
@@ -105,7 +97,6 @@ export const viewAllMRP = async ({
     throw error;
   }
 };
-
 
 export const updateMRP = async (id, data) => {
     if (!ObjectId.isValid(id)) throw new Error("Invalid MRP ID");
@@ -155,4 +146,90 @@ export const searchMrpCategories = async (search, limit) => {
     .lean();
 
   return list.map(item => item.category);
+};
+
+
+export const sendMrpLeads = async (mrpId) => {
+
+
+  if (!ObjectId.isValid(mrpId)) {
+    throw new Error("Invalid MRP ID");
+  }
+
+  const mrp = await mrpModel.findById(mrpId).lean();
+
+  if (!mrp) {
+    throw new Error("MRP not found");
+  }
+
+
+  const businesses = await businessListModel.find({
+    category: mrp.categoryId,
+    location: mrp.location,
+    isActive: true,
+    businessesLive: true
+  })
+  .limit(5) 
+  .lean();
+
+
+  if (!businesses.length) {
+    return {
+      totalBusinesses: 0,
+      message: "No businesses found for this requirement"
+    };
+  }
+
+  const leadData = {
+    businessName: mrp.businessSnapshot.businessName,
+    location: mrp.location,
+    category: mrp.categoryId,
+    description: mrp.description,
+    customerMobile: mrp.contactDetails
+  };
+
+  for (const biz of businesses) {
+
+    const mobile = (biz.contactList || biz.whatsappNumber || "")
+      .toString()
+      .replace(/\D/g, "")
+      .slice(-10);
+
+    if (!mobile) continue;
+
+    try {
+
+      await sendMniBusinessLead(mobile, leadData);
+
+    } catch (err) {
+
+      console.error("❌ WhatsApp failed for:", mobile, err.message);
+
+    }
+  }
+
+  try {
+
+    const customerMobile = mrp.contactDetails
+      .toString()
+      .replace(/\D/g, "")
+      .slice(-10);
+
+    await sendCustomerBusinessList(
+      customerMobile,
+      mrp.businessSnapshot.businessName,
+      mrp.location,
+      mrp.categoryId,
+      businesses
+    );
+
+  } catch (err) {
+
+    console.error("❌ Customer WhatsApp failed:", err.message);
+
+  }
+
+  return {
+    totalBusinesses: businesses.length
+  };
 };

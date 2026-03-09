@@ -120,14 +120,12 @@ export const viewAllSeo = async ({
 
   const query = {};
 
-  // status filter
   if (status === "active")
     query.isActive = true;
 
   if (status === "inactive")
     query.isActive = false;
 
-  // search filter
   if (search && search.trim() !== "") {
 
     const regex = new RegExp(search.trim(), "i");
@@ -139,7 +137,6 @@ export const viewAllSeo = async ({
     ];
   }
 
-  // total count
   const total = await seoModel.countDocuments(query);
 
   const sortQuery = {

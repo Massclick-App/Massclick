@@ -11,6 +11,7 @@ import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import SendIcon from "@mui/icons-material/Send";
 import StarIcon from "@mui/icons-material/Star";
 import ReviewsIcon from "@mui/icons-material/Reviews";
+import { useNavigate } from "react-router-dom";
 
 const EMPTY_PIXEL =
   "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
@@ -29,6 +30,8 @@ const Cards = ({
   index = 0,
   ...props
 }) => {
+
+const navigate = useNavigate();
 
   const safeRating =
     typeof rating === "object"
@@ -56,14 +59,14 @@ const Cards = ({
 
   const handleEnquiryClick = (e) => {
     e.preventDefault();
-    alert("Enquiry form will open!");
+    e.stopPropagation();
+    navigate("/business-enquiry");
   };
 
   return (
     <Link to={to} state={props.state} className="card-link">
       <div className="base-card">
 
-        {/* IMAGE */}
         <div className="card-image-container">
 
           <LazyLoadImage
@@ -73,16 +76,12 @@ const Cards = ({
 
             decoding="async"
             loading={index < 3 ? "eager" : "lazy"}
-
             effect="opacity"
-
             className="card-image"
           />
 
-
         </div>
 
-        {/* CONTENT */}
         <div className="card-content">
 
           <h2 className="card-title">{title}</h2>

@@ -16,7 +16,6 @@ const getValidToken = async (dispatch) => {
     return token;
 };
 
-
 export const createStartProject = (projectData) => async (dispatch) => {
     dispatch({ type: CREATE_STARTPROJECT_REQUEST });
     try {
@@ -72,6 +71,7 @@ export const editStartProject = (id, projectData) => async (dispatch) => {
         throw error;
     }
 };
+
 
 export const deleteStartProject = (id) => async (dispatch) => {
     dispatch({ type: DELETE_STARTPROJECT_REQUEST });
