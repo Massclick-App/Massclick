@@ -18,6 +18,7 @@ import { fetchSeoMeta } from "../../../redux/actions/seoAction.js";
 import { fetchSeoPageContentMeta } from "../../../redux/actions/seoPageContentAction.js";
 import { CLEAR_SEO_META } from "../../../redux/actions/userActionTypes.js";
 import TopBannerAds from "../banners/topBanner/topBanner.js";
+import OTPLoginModal from "../AddBusinessModel.js";
 
 const createSlug = (text = "") =>
   text
@@ -40,7 +41,7 @@ const SearchResults = () => {
 
   const { location: locParam, searchTerm: termParam } = useParams();
   const locationState = useLocation();
-
+  const [openLoginModal, setOpenLoginModal] = useState(false);
   const locationText = locParam?.trim() || "";
   const searchText = termParam?.trim() || "";
 
@@ -66,6 +67,14 @@ const SearchResults = () => {
 
   const [results, setResults] = useState([]);
   const stateAppliedRef = useRef(false);
+
+useEffect(() => {
+  const authUser = localStorage.getItem("authUser");
+  if (!authUser) {
+    setOpenLoginModal(true);
+  }
+}, []);
+
 
   useEffect(() => {
 
@@ -252,7 +261,7 @@ const SearchResults = () => {
     ],
   };
 
-    const websiteSchema = {
+  const websiteSchema = {
     "@context": "https://schema.org",
     "@type": "WebSite",
     name: "Massclick",
@@ -320,6 +329,10 @@ const SearchResults = () => {
 
   return (
     <>
+      <OTPLoginModal
+        open={openLoginModal}
+        handleClose={() => setOpenLoginModal(false)}
+      />
       <SeoMeta seoData={seoMetaData} fallback={fallbackSeo} />
 
       <Helmet>
@@ -465,7 +478,6 @@ const SearchResults = () => {
       </div>
     </>
   );
-
 
 };
 
