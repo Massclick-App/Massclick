@@ -139,7 +139,6 @@ const CardsSearch = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-
   const capitalizeWords = (str) =>
     str
       .toLowerCase()
@@ -194,7 +193,6 @@ const CardsSearch = ({
 
     return list;
   })();
-
 
   const parsedLocationSuggestions = (() => {
     if (!backendSuggestions.length) return [];
@@ -352,6 +350,7 @@ const CardsSearch = ({
                   </div>
                 )}
             </div>
+            
             <div className="input-group search-group" ref={categoryRef}>
               <input
                 className="custom-input"
@@ -379,6 +378,7 @@ const CardsSearch = ({
                   }}
                 />
               )}
+
               {isCategoryDropdownOpen && searchTerm.trim().length >= 2 && (
                 <div className="category-custom-dropdown" style={{ zIndex: 2000 }}>
                   <div className="trending-label">SUGGESTIONS</div>

@@ -24,7 +24,7 @@ const Cards = ({
   address,
   details,
   phone,
-  whatsapp,
+  whatsappNumber,
   category,
   to,
   index = 0,
@@ -52,10 +52,19 @@ const navigate = useNavigate();
     window.location.href = `tel:${phone}`;
   };
 
-  const handleWhatsAppClick = (e) => {
-    e.preventDefault();
-    window.open(`https://wa.me/${whatsapp}`, "_blank");
-  };
+const handleWhatsAppClick = (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+
+  if (!whatsappNumber) {
+    alert("WhatsApp number not available");
+    return;
+  }
+
+  const cleanNumber = whatsappNumber.replace(/\D/g, "");
+
+  window.open(`https://wa.me/${cleanNumber}`, "_blank", "noopener,noreferrer");
+};
 
   const handleEnquiryClick = (e) => {
     e.preventDefault();
@@ -132,7 +141,7 @@ const navigate = useNavigate();
               onClick={handleWhatsAppClick}
             >
               <WhatsAppIcon />
-              Chat
+              WhatsApp
             </button>
 
             <button

@@ -35,7 +35,9 @@
 }
 
 .service-icons {
-   width: 80px;
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
   aspect-ratio: 1 / 1;
   object-fit: contain;
   margin-bottom: 12px;

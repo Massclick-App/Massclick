@@ -139,7 +139,6 @@ export const logSearchAction = async (req, res) => {
     ).lean();
 
 
-
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
 
     const recentLog = await searchLogModel.findOne({
@@ -188,8 +187,8 @@ export const logSearchAction = async (req, res) => {
 
     const businesses = await businessListModel.find(
       {
-        category: finalCategoryName,
-        location: { $regex: new RegExp(`^${normalizedLocation}$`, "i") },
+        category: { $regex: `^${finalCategoryName}$`, $options: "i" },
+        location: { $regex: normalizedLocation, $options: "i" },
         isActive: true,
         businessesLive: true
       },
@@ -198,7 +197,9 @@ export const logSearchAction = async (req, res) => {
         contactList: 1,
         whatsappNumber: 1
       }
-    ).lean();
+    )
+      .limit(5)  
+      .lean();
 
 
     if (!businesses.length) {
@@ -210,7 +211,6 @@ export const logSearchAction = async (req, res) => {
       });
 
     }
-
 
     const leadData = {
 
@@ -261,9 +261,7 @@ export const logSearchAction = async (req, res) => {
 
         });
 
-
         await new Promise(resolve => setTimeout(resolve, 500));
-
 
       } catch (err) {
 

@@ -13,12 +13,13 @@ import CardsSearch from "../CardsSearch/CardsSearch";
 import CardDesign from "../cards/cards.js";
 import SeoMeta from "../seo/seoMeta.js";
 
-import { backendMainSearch } from "../../../redux/actions/businessListAction";
+import { backendMainSearch, logSearchActivity } from "../../../redux/actions/businessListAction";
 import { fetchSeoMeta } from "../../../redux/actions/seoAction.js";
 import { fetchSeoPageContentMeta } from "../../../redux/actions/seoPageContentAction.js";
 import { CLEAR_SEO_META } from "../../../redux/actions/userActionTypes.js";
 import TopBannerAds from "../banners/topBanner/topBanner.js";
 import OTPLoginModal from "../AddBusinessModel.js";
+import { logUserSearch } from "../../../redux/actions/otpAction.js";
 
 const createSlug = (text = "") =>
   text
@@ -68,13 +69,76 @@ const SearchResults = () => {
   const [results, setResults] = useState([]);
   const stateAppliedRef = useRef(false);
 
-useEffect(() => {
-  const authUser = localStorage.getItem("authUser");
-  if (!authUser) {
-    setOpenLoginModal(true);
-  }
-}, []);
+  useEffect(() => {
+    const authUser = localStorage.getItem("authUser");
+    if (!authUser) {
+      setOpenLoginModal(true);
+    }
+  }, []);
 
+  const searchLoggedRef = useRef(false);
+
+  const logSearchIfLoggedIn = useCallback(() => {
+
+    if (searchLoggedRef.current) return;
+
+    const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
+
+    if (!authUser?._id) return;
+
+    const userDetails = {
+      userName: authUser?.userName,
+      mobileNumber1: authUser?.mobileNumber1,
+      mobileNumber2: authUser?.mobileNumber2,
+      email: authUser?.email,
+    };
+
+    const term = searchText;
+    const location = locationText;
+    const category = searchText;
+
+    if (!term) return;
+
+    dispatch(
+      logUserSearch(
+        authUser._id,
+        term,
+        location || "Global",
+        category || "All Categories"
+      )
+    );
+
+    dispatch(
+      logSearchActivity(
+        category || "All Categories",
+        location || "Global",
+        userDetails,
+        term
+      )
+    );
+
+    searchLoggedRef.current = true;
+
+  }, [dispatch, searchText, locationText]);
+
+
+  useEffect(() => {
+    logSearchIfLoggedIn();
+  }, [logSearchIfLoggedIn]);
+
+  useEffect(() => {
+
+    const handleAuthChange = () => {
+      logSearchIfLoggedIn();
+    };
+
+    window.addEventListener("authChange", handleAuthChange);
+
+    return () => {
+      window.removeEventListener("authChange", handleAuthChange);
+    };
+
+  }, [logSearchIfLoggedIn]);
 
   useEffect(() => {
 
@@ -446,6 +510,7 @@ useEffect(() => {
                   <CardDesign
                     title={business.businessName}
                     phone={business.contact}
+                    whatsappNumber={business.whatsappNumber}
                     address={business.location}
                     details={`Experience: ${business.experience} | Category: ${business.category}`}
                     rating={averageRating}
@@ -459,7 +524,6 @@ useEffect(() => {
                 </div>
               );
             })}
-
           </div>
 
           {!seoContentLoading && sanitizedPageContent && (

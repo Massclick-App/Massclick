@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import Grid from '@mui/material/Grid';
 import Box from '@mui/material/Box';
-import  Button  from '@mui/material/Button';
+import Button from '@mui/material/Button';
 
 import { useSelector, useDispatch } from "react-redux";
 import { getAllBusinessList, toggleBusinessStatus } from "../redux/actions/businessListAction"; // your thunk/action
@@ -243,14 +243,25 @@ export default function MainGrid() {
       </Grid><br />
       <Grid elevation={3} sx={{ p: 3, borderRadius: 2 }}>
         <Box sx={{ width: "100%" }}>
-           <CustomizedTable
+          <CustomizedTable
             data={rows}
             total={total}
             columns={businessListTable}
-            fetchData={fetchData}
-            onSelectRows={(ids) => console.log("selected ids:", ids)}
-          />     
-            </Box>
+            fetchData={(pageNo, pageSize, options = {}) => {
+              dispatch(
+                getAllBusinessList({
+                  pageNo,
+                  pageSize,
+                  search: options.search || "",
+                  status: options.status || "all",
+                  sortBy: options.sortBy || null,
+                  sortOrder: options.sortOrder || "asc",
+                })
+              );
+            }}
+          />
+
+        </Box>
       </Grid>
     </Box>
   );

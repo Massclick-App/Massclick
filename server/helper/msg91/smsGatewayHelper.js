@@ -186,7 +186,6 @@ export const sendBusinessLead = async (cleanMobile, lead = {}) => {
   );
 };
 
-
 export const sendBusinessesToCustomer = async (
   cleanMobile,
   lead,

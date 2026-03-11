@@ -1424,14 +1424,13 @@ export default function BusinessList() {
               )}
             </div>
 
-
             <div className="category-form-input-group" style={{ marginTop: "25px" }}>
               <label className="category-input-label">Keywords</label>
 
               <Autocomplete
                 multiple
                 freeSolo
-                options={[]}   // empty because user enters freely
+                options={[]}  
                 value={Array.isArray(formData.keywords) ? formData.keywords : []}
                 onChange={(event, newValue) => {
                   setFormData({
@@ -1476,7 +1475,6 @@ export default function BusinessList() {
                             onClick={() => {
                               if (!inputKeyword.trim()) return;
 
-                              // Add keyword
                               setFormData((prev) => ({
                                 ...prev,
                                 keywords: [...prev.keywords, inputKeyword.trim()],
@@ -1499,7 +1497,6 @@ export default function BusinessList() {
               />
             </div>
 
-            {/* SEO TITLE */}
             <div className="form-input-group">
               <label className="input-label">SEO Title</label>
               <input
@@ -1511,7 +1508,6 @@ export default function BusinessList() {
               />
             </div>
 
-            {/* SEO DESCRIPTION */}
             <div className="form-input-group">
               <label className="input-label">SEO Description</label>
               <textarea
@@ -1544,6 +1540,7 @@ export default function BusinessList() {
                 onChange={handleChange}
               />
             </div>
+            
             {["restaurants", "hotels"].includes(formData.category?.toLowerCase()) && (
               <div className="form-input-group">
                 <label className="input-label">Restaurant Options</label>

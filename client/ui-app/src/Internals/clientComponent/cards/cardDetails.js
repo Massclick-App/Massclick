@@ -432,6 +432,8 @@ const formattedWebsite =
       .replace(/ style="[^"]*"/gi, "")
       .trim();
   };
+const whatsappNumber =
+  business.whatsappNumber || business.contactList || business.contact;
 
   return (
     <>
@@ -550,10 +552,10 @@ const formattedWebsite =
                     Show Number
                   </button>
 
-                  {business.whatsappNumber && (
+                  {whatsappNumber && (
                     <a
                       className="business-CardDetails-btn business-CardDetails-btn--whatsapp"
-                      href={`https://wa.me/${business.whatsappNumber}?text=${currentTitle}%20${currentUrl}`}
+                      href={`https://wa.me/${whatsappNumber}?text=${currentTitle}%20${currentUrl}`}
                       target="_blank"
                       rel="noopener noreferrer"
                     >
