@@ -129,7 +129,6 @@ const steps = [
   "Payment"
 ];
 
-
 export default function BusinessList() {
   const dispatch = useDispatch();
   const { enqueueSnackbar } = useSnackbar();
@@ -254,7 +253,6 @@ export default function BusinessList() {
   };
 
 
-
   const handleNext = () => {
     if (!validateStep(activeStep)) return;
 
@@ -324,7 +322,6 @@ export default function BusinessList() {
         const newValues = current[field]
           .map(k => k.trim().toLowerCase())
           .filter(k => !existing[field]?.map(e => e.trim().toLowerCase()).includes(k));
-
 
         if (newValues.length > 0) {
           updates[field] = [...existing[field], ...newValues];
@@ -429,6 +426,7 @@ export default function BusinessList() {
     "image",
     "video",
   ];
+
   const validateForm = () => {
     let newErrors = {};
 
@@ -519,7 +517,6 @@ export default function BusinessList() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-
   const handleEdit = (row) => {
     setEditMode(true);
     setEditId(row.id);
@@ -569,6 +566,7 @@ export default function BusinessList() {
   const handleDelete = (row) => {
     setDeleteDialog({ open: true, id: row.id, name: row.businessName });
   };
+
   const confirmDelete = () => {
     if (deleteDialog.id) {
       dispatch(deleteBusinessList(deleteDialog.id)).then(() => {
@@ -789,7 +787,6 @@ export default function BusinessList() {
           }
         };
 
-
         const lastDownload =
           row.qrDownloads?.length > 0
             ? new Date(
@@ -871,6 +868,7 @@ export default function BusinessList() {
         );
       },
     },
+
     {
       id: "action",
       label: "Action",
@@ -885,6 +883,7 @@ export default function BusinessList() {
         </div>
       ),
     },
+
     {
       id: "gallery",
       label: "Gallery",
@@ -895,7 +894,6 @@ export default function BusinessList() {
       ),
     },
   ];
-
 
   const renderStepContent = (step) => {
     switch (step) {
@@ -975,6 +973,7 @@ export default function BusinessList() {
                 </ul>
               )}
             </div>
+
             <div className="form-input-group">
               <label htmlFor="businessName" className="input-label">Business Name</label>
               <input
@@ -1164,7 +1163,6 @@ export default function BusinessList() {
                 />
               </div>
             ))}
-
 
             <div className="form-input-group col-span-all upload-section">
               <div className="upload-content">
@@ -1540,7 +1538,7 @@ export default function BusinessList() {
                 onChange={handleChange}
               />
             </div>
-            
+
             {["restaurants", "hotels"].includes(formData.category?.toLowerCase()) && (
               <div className="form-input-group">
                 <label className="input-label">Restaurant Options</label>

@@ -4,7 +4,7 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 
 import { useSelector, useDispatch } from "react-redux";
-import { getAllBusinessList, toggleBusinessStatus } from "../redux/actions/businessListAction"; // your thunk/action
+import { getAllBusinessList, toggleBusinessStatus, trackQrDownload } from "../redux/actions/businessListAction";
 import { useSnackbar } from 'notistack';
 import { getAllLocation } from "../redux/actions/locationAction";
 import { getAllUsers } from "../redux/actions/userAction.js";
@@ -72,6 +72,10 @@ export default function MainGrid() {
     createdBy: bl.createdBy,
     payment: bl.payment || [],
 
+    qrImage: bl.qrCode?.qrImage || null,
+    qrText: bl.qrCode?.qrText || "",
+    qrDownloads: bl.qrDownloads || [],
+
   }));
 
   const handlePayNow = (row) => {
@@ -117,6 +121,65 @@ export default function MainGrid() {
         return user ? user.userName : "—";
       },
     },
+    {
+      id: "qrCode",
+      label: "Review QR",
+      renderCell: (_, row) => {
+        if (!row.qrImage) return "—";
+
+        const handleDownload = async () => {
+          try {
+            const link = document.createElement("a");
+            link.href = row.qrImage;
+            link.target = "_blank";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            await dispatch(trackQrDownload(row._id));
+
+            enqueueSnackbar("QR downloaded successfully", {
+              variant: "success",
+            });
+
+          } catch (err) {
+            enqueueSnackbar("Download failed", {
+              variant: "error",
+            });
+          }
+        };
+
+        const lastDownload =
+          row.qrDownloads?.length > 0
+            ? new Date(
+              row.qrDownloads[row.qrDownloads.length - 1].downloadedAt
+            ).toLocaleString()
+            : "Not Downloaded";
+
+        return (
+          <Box sx={{ textAlign: "center" }}>
+            <Avatar
+              src={row.qrImage}
+              sx={{ width: 60, height: 60, margin: "0 auto" }}
+            />
+
+            <div style={{ fontSize: "12px", marginTop: "5px" }}>
+              Last: {lastDownload}
+            </div>
+
+            <Button
+              size="small"
+              variant="contained"
+              sx={{ mt: 1 }}
+              onClick={handleDownload}
+            >
+              Download
+            </Button>
+          </Box>
+        );
+      },
+    },
+
     {
       id: "payment",
       label: "Payment",
@@ -165,6 +228,7 @@ export default function MainGrid() {
         );
       },
     },
+
     {
       id: "isActive",
       label: "Status",
@@ -216,18 +280,6 @@ export default function MainGrid() {
       },
     },
   ];
-
-
-  const fetchData = (pageNumber = 1, pageSizeParam = 10, options = {}) => {
-    dispatch(getAllBusinessList({
-      pageNo: pageNumber,
-      pageSize: pageSizeParam,
-      search: options.search || "",
-      status: options.status || "all",
-      sortBy: options.sortBy || "createdAt",
-      sortOrder: options.sortOrder || "desc",
-    }));
-  };
 
   return (
     <Box sx={{ width: '100%', maxWidth: { sm: '100%', md: '1700px' } }}>

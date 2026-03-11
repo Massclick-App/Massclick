@@ -18,8 +18,8 @@ import { sendOtp, verifyOtp } from "../../redux/actions/otpAction";
 import { useDispatch, useSelector } from "react-redux";
 import { Link as RouterLink } from 'react-router-dom';
 import { Link as MuiLink } from '@mui/material';
+import { useSnackbar } from "notistack";
 
-// --- Logo Component for Clean Branding ---
 const LogoComponent = () => (
     <Box sx={{ mb: 2, textAlign: 'center' }}>
         <Typography
@@ -35,7 +35,6 @@ const LogoComponent = () => (
     </Box>
 );
 
-// --- Main OTP Login Modal Component ---
 const OTPLoginModal = ({ open, handleClose }) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -47,6 +46,7 @@ const OTPLoginModal = ({ open, handleClose }) => {
     const [userName, setUserName] = React.useState('');
     
     const dispatch = useDispatch();
+    const { enqueueSnackbar } = useSnackbar();
 
     const handleSendOtp = async () => {
         if (!agreed || mobileNumber.length !== 10) return;
@@ -68,19 +68,27 @@ const OTPLoginModal = ({ open, handleClose }) => {
         if (!otp) return;
         try {
             const res = await dispatch(verifyOtp(mobileNumber, otp, userName));
-            console.log("Login Successful:", res);
 
             if (res.token) {
                 localStorage.setItem("authToken", res.token);
                 window.dispatchEvent(new Event("authChange"));
+
+                enqueueSnackbar("Login successfully!", {
+                    variant: "success",
+                    autoHideDuration: 3000,
+                });
             }
 
             handleClose();
         } catch (error) {
             console.error("Error verifying OTP:", error);
+
+            enqueueSnackbar("Invalid OTP. Please try again.", {
+                variant: "error",
+                autoHideDuration: 3000,
+            });
         }
     };
-
 
     return (
         <Dialog

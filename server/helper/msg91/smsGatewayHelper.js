@@ -377,6 +377,64 @@ export const sendCustomerBusinessList = async (
   }
 };
 
+export const sendLoginWelcomeMessage = async (mobile, userName) => {
+
+  const cleanMobile = mobile.toString().replace(/\D/g, "").slice(-10);
+
+  const payload = {
+    integrated_number: process.env.MSG91_WHATSAPP_SENDER_ID,
+    content_type: "template",
+    payload: {
+      messaging_product: "whatsapp",
+      type: "template",
+      template: {
+        name: "login_welcome_massclick",
+        language: {
+          code: "en_US",
+          policy: "deterministic"
+        },
+        namespace: process.env.MSG91_TEMPLATE_NAMESPACE,
+        to_and_components: [
+          {
+            to: [`91${cleanMobile}`],
+            components: {
+              body_1: {
+                type: "text",
+                value: userName
+              }
+            }
+          }
+        ]
+      }
+    }
+  };
+
+  try {
+
+    const response = await axios.post(
+      "https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/",
+      payload,
+      {
+        headers: {
+          authkey: process.env.MSG91_AUTH_KEY,
+          "Content-Type": "application/json"
+        }
+      }
+    );
+
+    return response.data;
+
+  } catch (error) {
+
+    console.error(
+      "❌ Login WhatsApp Error:",
+      error.response?.data || error.message
+    );
+
+    throw error;
+  }
+};
+
 
 
 
