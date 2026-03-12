@@ -49,7 +49,7 @@ const SearchResults = () => {
   const locationSlug = createSlug(locationText);
   const searchSlug = createSlug(searchText);
 
-  const canonicalUrl = `https://www.massclick.in/${locationSlug}/${searchSlug}`;
+  const canonicalUrl = `https://massclick.in/${locationSlug}/${searchSlug}`;
 
   const { loading, error } = useSelector(
     (state) => state.businessListReducer || {}
@@ -176,6 +176,7 @@ const SearchResults = () => {
     );
   }, [dispatch, searchText, locationText]);
 
+
   useEffect(() => {
     if (!searchText) return;
 
@@ -188,7 +189,6 @@ const SearchResults = () => {
     );
 
   }, [dispatch, searchText, locationText]);
-
 
   const handleRetry = useCallback(() => {
 
@@ -329,15 +329,15 @@ const SearchResults = () => {
     "@context": "https://schema.org",
     "@type": "WebSite",
     name: "Massclick",
-    url: "https://www.massclick.in"
+    url: "https://massclick.in",
   };
 
   const organizationSchema = {
     "@context": "https://schema.org",
     "@type": "Organization",
     name: "Massclick",
-    url: "https://www.massclick.in",
-    logo: "https://www.massclick.in/logo.png"
+    url: "https://massclick.in",
+    logo: "https://massclick.in/logo.png"
   };
 
   const extractedFaqs = extractFaqFromHtml(seoContent?.pageContent || "");
@@ -356,21 +356,26 @@ const SearchResults = () => {
     0
   );
 
+  const totalRatingScore = results.reduce(
+    (acc, curr) =>
+      acc + (curr.averageRating || 0) * (curr.totalReviews || 0),
+    0
+  );
+
+  const calculatedRating =
+    totalReviewCount > 0
+      ? (totalRatingScore / totalReviewCount)
+      : null;
+
   const overallRating =
-    results.length > 0
-      ? (
-        results.reduce(
-          (acc, curr) => acc + (curr.averageRating || 0),
-          0
-        ) / results.length
-      ).toFixed(1)
+    calculatedRating !== null
+      ? Math.max(1, Math.min(5, Number(calculatedRating.toFixed(1))))
       : null;
 
   const serviceSchema = {
     "@context": "https://schema.org",
-    "@type": "Service",
+    "@type": "LocalBusiness",
     name: `${searchText} in ${locationText}`,
-    serviceType: searchText,
     areaServed: {
       "@type": "City",
       name: locationText,
@@ -384,15 +389,17 @@ const SearchResults = () => {
       ? {
         aggregateRating: {
           "@type": "AggregateRating",
-          ratingValue: overallRating,
+          ratingValue: Number(overallRating),
           reviewCount: totalReviewCount,
+          bestRating: 5,
+          worstRating: 1
         },
       }
       : {}),
   };
 
   return (
-    <>
+    <>  
       <OTPLoginModal
         open={openLoginModal}
         handleClose={() => setOpenLoginModal(false)}
@@ -466,7 +473,6 @@ const SearchResults = () => {
               <span className="trust-badge">
                 <LockIcon fontSize="small" /> Secure Enquiry Platform
               </span>
-
             </div>
 
           </div>

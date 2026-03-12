@@ -4,9 +4,7 @@ import { sendOtpAction, sendWhatsAppForLead, sendWhatsAppToLeadsBulk, verifyOtpA
 const router = express.Router();
 
 router.post('/api/otp/send',  requestOtp);
-
 router.post('/api/otp/verify',  verifyOtpAndLogin);
-
 router.post('/api/otp_user/send-otp', sendOtpAction);
 router.post('/api/otp_user/verify-otp', verifyOtpAction);
 router.put('/api/otp_user_update/:mobile', updateOtpUser);

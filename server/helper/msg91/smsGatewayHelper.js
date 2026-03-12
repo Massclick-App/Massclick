@@ -305,7 +305,6 @@ export const sendCustomerBusinessList = async (
   businesses
 ) => {
 
-
   const mobile = cleanMobile.toString().replace(/\D/g, "").slice(-10);
 
   let businessListText = "";
@@ -397,12 +396,18 @@ export const sendLoginWelcomeMessage = async (mobile, userName) => {
         to_and_components: [
           {
             to: [`91${cleanMobile}`],
+
             components: {
               body_1: {
                 type: "text",
-                value: userName
+                value: userName || "User"
+              },
+              body_2: {
+                type: "text",
+                value: "MassClick"
               }
             }
+
           }
         ]
       }
@@ -433,6 +438,7 @@ export const sendLoginWelcomeMessage = async (mobile, userName) => {
 
     throw error;
   }
+
 };
 
 

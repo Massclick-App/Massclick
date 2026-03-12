@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { getAllBusinessList, createBusinessList, editBusinessList, deleteBusinessList, trackQrDownload } from "../../redux/actions/businessListAction";
 import { getAllLocation } from "../../redux/actions/locationAction";
-import { createCategory, editCategory,businessCategorySearch } from "../../redux/actions/categoryAction";
+import { createCategory, editCategory, businessCategorySearch } from "../../redux/actions/categoryAction";
 import { getAllUsersClient, getUserClientSuggestion } from "../../redux/actions/userClientAction.js";
 import { getAllUsers } from "../../redux/actions/userAction.js";
 import ReactQuill from 'react-quill';
@@ -108,6 +108,7 @@ function ColorlibStepIcon(props) {
     3: <PrivacyTipIcon />,
     4: <VerifiedUserIcon />,
   };
+
   return (
     <ColorlibStepIconRoot ownerState={{ completed, active }} className={className}>
       {icons[String(props.icon)]}
@@ -252,7 +253,6 @@ export default function BusinessList() {
     return true;
   };
 
-
   const handleNext = () => {
     if (!validateStep(activeStep)) return;
 
@@ -280,6 +280,7 @@ export default function BusinessList() {
       setNewGalleryImages((prev) => [...prev, ...images]);
     });
   };
+
   const handleUploadGalleryImages = async () => {
     if (!galleryDialog.data?._id) return;
 
@@ -357,7 +358,6 @@ export default function BusinessList() {
     }
   };
 
-
   const handleCloseGallery = () => {
     setGalleryDialog({ open: false, data: null });
   };
@@ -395,7 +395,6 @@ export default function BusinessList() {
     businessDetails: "",
     kycDocuments: [],
     openingHours: defaultOpeningHours,
-
   });
 
   const [preview, setPreview] = useState(null);
@@ -575,7 +574,7 @@ export default function BusinessList() {
     }
     setDeleteDialog({ open: false, id: null, name: "" });
   };
-  
+
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -638,6 +637,7 @@ export default function BusinessList() {
         })
       );
     }
+
     const payload = {
       ...formData,
       businessDetails: businessvalue,
@@ -759,6 +759,7 @@ export default function BusinessList() {
         return user ? user.userName : "—";
       },
     },
+
     {
       id: "qrCode",
       label: "Review QR",
@@ -806,7 +807,6 @@ export default function BusinessList() {
             <Typography variant="caption" sx={{ display: "block", mt: 1 }}>
               Last: {lastDownload}
             </Typography>
-
             <Button
               size="small"
               variant="contained"
@@ -1221,6 +1221,7 @@ export default function BusinessList() {
                         className="text-input"
                         placeholder="Open Time"
                       />
+                      
                       <input
                         type="time"
                         value={hour.is24Hours ? "23:59" : hour.close}
@@ -1336,8 +1337,6 @@ export default function BusinessList() {
                       </IconButton>
                     </div>
                   </div>
-
-
                 </div>
               ))}
             </div>
@@ -1358,7 +1357,6 @@ export default function BusinessList() {
                 onChange={(e) => {
                   const value = e.target.value;
                   setFormData({ ...formData, category: value });
-
 
                   if (value.length >= 2) {
                     dispatch(businessCategorySearch(value));
@@ -1428,7 +1426,7 @@ export default function BusinessList() {
               <Autocomplete
                 multiple
                 freeSolo
-                options={[]}  
+                options={[]}
                 value={Array.isArray(formData.keywords) ? formData.keywords : []}
                 onChange={(event, newValue) => {
                   setFormData({

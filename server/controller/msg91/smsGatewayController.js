@@ -4,7 +4,7 @@ import User from "../../model/msg91Model/usersModels.js";
 import { getSignedUrlByKey } from "../../s3Uploder.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
 import searchLogModel from "../../model/businessList/searchLogModel.js";
-import { sendWhatsAppMessage } from "../../helper/msg91/smsGatewayHelper.js";
+import { sendWhatsAppMessage, sendLoginWelcomeMessage } from "../../helper/msg91/smsGatewayHelper.js";
 
 export const sendOtpAction = async (req, res) => {
   const { phoneNumber } = req.body;
@@ -31,7 +31,6 @@ export const sendOtpAction = async (req, res) => {
   }
 };
 
-// Verify OTP controller
 export const verifyOtpAction = async (req, res) => {
   try {
     const { phoneNumber, otp, userName } = req.body;
@@ -40,10 +39,8 @@ export const verifyOtpAction = async (req, res) => {
       return res.status(400).json({ success: false, message: "Missing phone number or OTP." });
     }
 
-    // 1️⃣ Verify OTP
     await verifyOtp(phoneNumber.trim(), otp.trim());
 
-    // 2️⃣ Find existing user or create new one
     let user = await User.findOne({ mobileNumber1: phoneNumber });
 
     if (!user) {
@@ -55,7 +52,6 @@ export const verifyOtpAction = async (req, res) => {
       user.userName = userName;
     }
 
-    // 3️⃣ Match Business by phoneNumber (contact or contactList)
     const mobileRegex = new RegExp(`\\b${phoneNumber}\\b`);
     const matchedBusiness = await businessListModel.findOne({
       $or: [
@@ -65,7 +61,6 @@ export const verifyOtpAction = async (req, res) => {
     }).lean();
 
 
-    // 4️⃣ Auto-fill business details into user
     if (matchedBusiness) {
       user.businessName = matchedBusiness.businessName || "";
       user.businessLocation = matchedBusiness.location || "";
@@ -83,6 +78,12 @@ export const verifyOtpAction = async (req, res) => {
     }
 
     await user.save();
+
+    try {
+      await sendLoginWelcomeMessage(user.mobileNumber1, user.userName);
+    } catch (err) {
+      console.error("WhatsApp welcome message failed:", err.message);
+    }
 
     const token = jwt.sign(
       { userId: user._id, mobile: user.mobileNumber1 },
@@ -123,7 +124,7 @@ export const sendWhatsAppForLead = async (req, res) => {
       });
     }
 
-   
+
     const lead = await searchLogModel.findOne({
       _id: leadId,
       whatsapp: { $ne: true }
@@ -146,7 +147,7 @@ export const sendWhatsAppForLead = async (req, res) => {
       });
     }
 
-  
+
     await sendWhatsAppMessage(mobile, {
       name: user.userName || "Customer",
       message:
@@ -193,7 +194,7 @@ export const sendWhatsAppToLeadsBulk = async (req, res) => {
       });
     }
 
- 
+
     const leads = await searchLogModel.find({
       _id: { $in: leadIds },
       whatsapp: { $ne: true }

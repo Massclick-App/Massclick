@@ -48,42 +48,41 @@ const CLIENT_BUILD_PATH =
 //   "../client/ui-app/build"
 // );
 
-console.log("Client build path:", CLIENT_BUILD_PATH);
 
-// app.use((req, res, next) => {
+app.use((req, res, next) => {
 
-//   const host = req.headers.host || "";
+  const host = req.headers.host || "";
 
-//   if (
-//     host.includes("localhost") ||
-//     host.includes("127.0.0.1")
-//   ) {
-//     return next();
-//   }
+  if (
+    host.includes("localhost") ||
+    host.includes("127.0.0.1")
+  ) {
+    return next();
+  }
 
-//   const protocol =
-//     req.headers["x-forwarded-proto"] || req.protocol;
+  const protocol =
+    req.headers["x-forwarded-proto"] || req.protocol;
 
-//   if (protocol !== "https") {
-//     return res.redirect(
-//       301,
-//       `https://${host}${req.originalUrl}`
-//     );
-//   }
+  if (protocol !== "https") {
+    return res.redirect(
+      301,
+      `https://${host}${req.originalUrl}`
+    );
+  }
 
-//   if (host.startsWith("www.")) {
+  if (host.startsWith("www.")) {
 
-//     const newHost = host.replace("www.", "");
+    const newHost = host.replace("www.", "");
 
-//     return res.redirect(
-//       301,
-//       `https://${newHost}${req.originalUrl}`
-//     );
-//   }
+    return res.redirect(
+      301,
+      `https://${newHost}${req.originalUrl}`
+    );
+  }
 
-//   next();
+  next();
 
-// });
+});
 
 const slugify = (text = "") =>
   text
@@ -103,10 +102,10 @@ app.use(compression());
 
 const allowedOrigins = [
   "https://massclick.in",
+  "https://www.massclick.in",
   "http://localhost:3000",
   "http://127.0.0.1:3000",
   "http://localhost:4000"
-
 ];
 
 app.use(
