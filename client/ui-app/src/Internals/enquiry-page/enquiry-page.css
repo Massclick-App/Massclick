@@ -367,9 +367,6 @@
   margin-top: 6px;
 }
 
-/* ===========================
-   DRAWER (DETAIL VIEW)
-=========================== */
 .be-drawer-overlay {
   position: fixed;
   inset: 0;

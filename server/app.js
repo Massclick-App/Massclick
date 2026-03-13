@@ -48,7 +48,6 @@ const CLIENT_BUILD_PATH =
 //   "../client/ui-app/build"
 // );
 
-
 app.use((req, res, next) => {
 
   const host = req.headers.host || "";

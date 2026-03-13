@@ -6,7 +6,6 @@ import LocationOnIcon from "@mui/icons-material/LocationOn";
 import PhoneIcon from "@mui/icons-material/Phone";
 import CategoryIcon from "@mui/icons-material/Category";
 
-
 import './mrp.css';
 import CardsSearch from '../CardsSearch/CardsSearch';
 import {
@@ -175,7 +174,6 @@ export default function MRPPage() {
             .
             <form className="mrp-form" onSubmit={handleSubmit}>
 
-              {/* Requesting Organization */}
               <div className="mrp-field async-search">
                 <label>Requesting Organization</label>
 
@@ -214,8 +212,6 @@ export default function MRPPage() {
                   )}
               </div>
 
-
-              {/* Requirement Location */}
               <div className="mrp-field">
                 <label>Requirement Location</label>
 
@@ -238,8 +234,6 @@ export default function MRPPage() {
                 </div>
               </div>
 
-
-              {/* Contact Details */}
               <div className="mrp-field">
                 <label>Contact Details</label>
 
@@ -262,8 +256,6 @@ export default function MRPPage() {
                 </div>
               </div>
 
-
-              {/* Requirement Category */}
               <div className="mrp-field async-search">
                 <label>Requirement Category</label>
 
@@ -303,8 +295,6 @@ export default function MRPPage() {
                   )}
               </div>
 
-
-              {/* Requirement Details */}
               <div className="mrp-field mrp-full">
                 <label>Requirement Details</label>
 
@@ -321,11 +311,8 @@ export default function MRPPage() {
                 />
               </div>
 
-
               {error && <div className="mrp-error">{error}</div>}
 
-
-              {/* Submit Button */}
               <div className="mrp-actions">
                 <button type="submit" disabled={loading}>
                   {loading ? 'Publishing…' : 'Publish Requirement'}
