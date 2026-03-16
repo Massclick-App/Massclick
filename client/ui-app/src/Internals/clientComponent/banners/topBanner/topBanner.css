@@ -1,56 +1,64 @@
-/* Outer container */
+/* Banner container */
 .top-banner-carousel {
   width: 100%;
   margin: 0 auto;
   overflow: hidden;
   position: relative;
-    margin-bottom: 16px;   /* was too large visually */
-
+  margin-bottom: 20px;
 }
 
-/* Track */
+/* Carousel track */
 .carousel-track {
   display: flex;
-  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-  will-change: transform;
+  transition: transform 0.5s ease;
 }
 
 /* Each slide */
 .carousel-slide {
   flex: 0 0 100%;
-  display: flex;
-  justify-content: center;  
-  background: transparent;  
+  display: block;
+  text-align: center;
 }
 
+/* Banner wrapper */
 .banner-image-wrapper {
   width: 100%;
-  max-width: 1320px;       
-  height: 160px;     
+  max-width: 1320px;
   margin: 0 auto;
-  overflow: hidden;
-  border-radius: 16px;
+  padding: 0 12px;
+  box-sizing: border-box;
 }
 
-/* Banner image */
+/* Image responsive */
 .banner-image-wrapper img {
   width: 100%;
-  height: 100%;
-  object-fit: cover;        
+  height: auto;
   display: block;
+  border-radius: 10px;
+  object-fit: cover;
 }
 
-/* ===== Tablets ===== */
+/* ===== Tablet ===== */
 @media (max-width: 1024px) {
   .banner-image-wrapper {
-    height: 130px;
+    padding: 0 10px;
   }
 }
 
+/* ===== Mobile ===== */
 @media (max-width: 768px) {
   .banner-image-wrapper {
-    height: 110px;
-    border-radius: 0;
+    padding: 0;
+  }
+
+  .banner-image-wrapper img {
+    border-radius: 6px;
   }
 }
 
+/* ===== Small Mobile ===== */
+@media (max-width: 480px) {
+  .banner-image-wrapper img {
+    border-radius: 4px;
+  }
+}

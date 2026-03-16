@@ -49,6 +49,7 @@ export default function Roles() {
         const { name, value } = e.target;
         setFormData((prev) => ({ ...prev, [name]: value }));
     };
+
     const validateForm = () => {
         let newErrors = {};
         if (!formData.roleName.trim()) newErrors.roleName = "Role Name is required";
@@ -58,7 +59,6 @@ export default function Roles() {
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
-
 
     const resetForm = () => {
         setFormData({
@@ -158,7 +158,6 @@ export default function Roles() {
         },
     ];
 
-
     const fields = [
         { label: "RoleName", name: "roleName", required: true, type: "text" },
         { label: "Permissions", name: "permissions", required: true, type: "text" },
@@ -221,10 +220,8 @@ export default function Roles() {
                         dispatch(getAllRoles({ pageNo, pageSize, options }))
                     }
                 />
-
             </Box>
 
-            {/* 🔹 Delete Confirmation Dialog */}
             <Dialog open={deleteDialogOpen} onClose={cancelDelete}>
                 <DialogTitle>Confirm Delete</DialogTitle>
                 <DialogContent>

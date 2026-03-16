@@ -79,9 +79,6 @@
   margin-top: 2px;
 }
 
-/* ===========================
-   CONTROLS ROW
-=========================== */
 .be-controls-row {
   max-width: 1160px;
   margin: 0 auto 16px;
@@ -114,7 +111,6 @@
   transform: translateY(-1px);
 }
 
-/* filter tabs */
 .be-filter-tabs {
   display: inline-flex;
   border-radius: 999px;
@@ -141,9 +137,6 @@
   transform: translateY(-1px);
 }
 
-/* ===========================
-   LOADING / EMPTY
-=========================== */
 .be-loading-row {
   max-width: 1160px;
   margin: 20px auto;
@@ -191,9 +184,6 @@
   color: #6b7280;
 }
 
-/* ===========================
-   CARD LIST / CARD
-=========================== */
 .business-enquiry-card-list {
   width: 100%;
   max-width: 1160px;
@@ -203,7 +193,6 @@
   gap: 16px;
 }
 
-/* Card box */
 .business-enquiry-card {
   background: #ffffff;
   padding: 18px 20px 16px;
@@ -220,7 +209,6 @@
   border-color: rgba(249, 115, 22, 0.45);
 }
 
-/* Header row */
 .business-enquiry-header {
   display: flex;
   justify-content: space-between;
@@ -286,7 +274,6 @@
   color: rgba(15, 23, 42, 0.3);
 }
 
-/* Right side status + buttons */
 .business-enquiry-btn-group {
   display: flex;
   flex-direction: column;
@@ -313,7 +300,6 @@
   color: #b91c1c;
 }
 
-/* Button row (View / Close) */
 .business-enquiry-btn-row {
   display: flex;
   gap: 8px;
@@ -349,7 +335,6 @@
   transform: translateY(-1px);
 }
 
-/* Card body */
 .business-enquiry-text {
   margin: 6px 0;
   font-size: 14px;
@@ -497,11 +482,7 @@
   transform: translateY(-1px);
 }
 
-/* ===========================
-   RESPONSIVE
-=========================== */
 
-/* Tablets */
 @media (max-width: 1024px) {
   .be-header-metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -512,7 +493,6 @@
   }
 }
 
-/* Mobile / small tablets */
 @media (max-width: 768px) {
   .business-enquiry-container {
     padding: 18px 12px 32px;
@@ -561,7 +541,6 @@
   }
 }
 
-/* Very small mobile */
 @media (max-width: 480px) {
   .be-header-row {
     gap: 10px;
@@ -580,7 +559,6 @@
   }
 }
 
-/* Ultra-wide */
 @media (min-width: 1600px) {
   .business-enquiry-card-list,
   .be-header-row,
