@@ -13,7 +13,7 @@ import {
   searchMrpBusiness,
   searchMrpCategory,
   getAllMRP,
-sendMrpLeads
+  sendMrpLeads
 } from '../../../redux/actions/mrpAction';
 import MRPInsights from './mrpInsights/mrpInsights';
 import MRPCategoryChart from './mrpChart/mrpCategoryChart';
@@ -45,21 +45,27 @@ export default function MRPPage() {
     details: ''
   });
 
- useEffect(() => {
-  const authUser = JSON.parse(localStorage.getItem("authUser"));
+  useEffect(() => {
+    try {
+      const storedUser = localStorage.getItem("authUser");
 
-  if (authUser) {
-    setBusinessQuery(authUser.businessName || "");
-    setBusinessSelected(true);
+      if (!storedUser) return;
 
-    setFormData(prev => ({
-      ...prev,
-      organizationId: authUser._id || "",
-      contactDetails: authUser.mobileNumber1 || "",
-      location: authUser.businessLocation || ""
-    }));
-  }
-}, []);
+      const authUser = JSON.parse(storedUser);
+
+      setBusinessQuery(authUser.businessName || "");
+      setBusinessSelected(true);
+
+      setFormData(prev => ({
+        ...prev,
+        organizationId: authUser._id || "",
+        contactDetails: authUser.mobileNumber1 || "",
+        location: authUser.businessLocation || ""
+      }));
+    } catch (error) {
+      console.error("Invalid authUser in localStorage:", error);
+    }
+  }, []);
 
   useEffect(() => {
     return () => clearTimeout(timerRef.current);
@@ -81,7 +87,6 @@ export default function MRPPage() {
   }
 
   try {
-
     const createdMRP = await dispatch(createMRP({
       organizationId: formData.organizationId,
       categoryId: formData.categoryId,
@@ -170,7 +175,6 @@ export default function MRPPage() {
                 targeted business requirement.
               </p>
             </header>
-
             .
             <form className="mrp-form" onSubmit={handleSubmit}>
 
@@ -253,6 +257,7 @@ export default function MRPPage() {
                     placeholder="Phone / WhatsApp / Email"
                     required
                   />
+                  
                 </div>
               </div>
 
@@ -332,8 +337,12 @@ export default function MRPPage() {
               Based on published requirements
             </p>
 
-            <MRPCategoryChart data={mrpList} />
-            <MRPChartKPI data={mrpList} />
+            {mrpList && mrpList.length > 0 && (
+              <>
+                <MRPCategoryChart data={mrpList} />
+                <MRPChartKPI data={mrpList} />
+              </>
+            )}
 
             <p className="mrp-chart-insight">
               {mrpList.length

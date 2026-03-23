@@ -1,4 +1,4 @@
-import { createBusinessList, viewBusinessList, findBusinessBySlug, getDashboardChartsHelper,getPendingBusinessList, findBusinessesByCategory,getDashboardSummaryHelper,findBusinessByMobile, viewAllBusinessList, viewAllClientBusinessList, updateBusinessList, getTrendingSearches, deleteBusinessList, activeBusinessList } from "../../helper/businessList/businessListHelper.js";
+import { createBusinessList, viewBusinessList, findBusinessBySlug, getDashboardChartsHelper, getPendingBusinessList, findBusinessesByCategory, getDashboardSummaryHelper, findBusinessByMobile, viewAllBusinessList, viewAllClientBusinessList, updateBusinessList, getTrendingSearches, deleteBusinessList, activeBusinessList } from "../../helper/businessList/businessListHelper.js";
 import { BAD_REQUEST } from "../../errorCodes.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
 import { getSignedUrlByKey } from "../../s3Uploder.js";
@@ -84,14 +84,14 @@ export const getBusinessBySlugAction = async (req, res) => {
 };
 
 export const viewBusinessListAction = async (req, res) => {
-    try {
-        const businessId = req.params.id;
-        const business = await viewBusinessList(businessId);
-        res.send(business);
-    } catch (error) {
-        console.error(error);
-        return res.status(BAD_REQUEST.code).send({ message: error.message });
-    }
+  try {
+    const businessId = req.params.id;
+    const business = await viewBusinessList(businessId);
+    res.send(business);
+  } catch (error) {
+    console.error(error);
+    return res.status(BAD_REQUEST.code).send({ message: error.message });
+  }
 };
 
 export const viewAllBusinessListAction = async (req, res) => {
@@ -102,8 +102,8 @@ export const viewAllBusinessListAction = async (req, res) => {
     const pageSize = parseInt(req.query.pageSize) || 10;
 
     const search = (req.query.search || "").trim();
-    const status = req.query.status || "all";          
-    const sortBy = req.query.sortBy || "createdAt";   
+    const status = req.query.status || "all";
+    const sortBy = req.query.sortBy || "createdAt";
     const sortOrder = req.query.sortOrder === "asc" ? "asc" : "desc";
 
     const { list, total } = await viewAllBusinessList({
@@ -131,13 +131,13 @@ export const viewAllBusinessListAction = async (req, res) => {
 };
 
 export const viewAllClientBusinessListAction = async (req, res) => {
-    try {
-        const allBusiness = await viewAllClientBusinessList();
-        res.send(allBusiness);
-    } catch (error) {
-        console.error(error);
-        return res.status(BAD_REQUEST.code).send({ message: error.message });
-    }
+  try {
+    const allBusiness = await viewAllClientBusinessList();
+    res.send(allBusiness);
+  } catch (error) {
+    console.error(error);
+    return res.status(BAD_REQUEST.code).send({ message: error.message });
+  }
 };
 
 export const viewBusinessByCategory = async (req, res) => {
@@ -188,7 +188,7 @@ export const getSuggestionsController = async (req, res) => {
                       { $regexMatch: { input: "$businessName", regex: startsWithRegex } }
                     ]
                   },
-                  then: 1  
+                  then: 1
                 },
                 {
                   case: {
@@ -225,18 +225,21 @@ export const getSuggestionsController = async (req, res) => {
   }
 };
 
+const districtAliasMap = {
+  tiruchirappalli: ["tiruchirappalli", "trichy"],
+  trichy: ["tiruchirappalli", "trichy"],
+};
 
 export const mainSearchController = async (req, res) => {
   try {
 
     let { term = "", location = "", category = "" } = req.query;
 
-    // NORMALIZE SLUG → SPACE FORMAT
     const normalize = (text = "") =>
       text
         .trim()
-        .replace(/-/g, " ")        // rent-and-hire → rent and hire
-        .replace(/\s+/g, " ");     // remove extra spaces
+        .replace(/-/g, " ")        
+        .replace(/\s+/g, " ");     
 
     term = normalize(term);
     location = normalize(location);
@@ -248,16 +251,14 @@ export const mainSearchController = async (req, res) => {
     };
 
     if (location) {
-      const loc = new RegExp(location, "i");
+      const locKey = location.toLowerCase().trim();
+
+      const aliases = districtAliasMap[locKey] || [locKey];
 
       matchQuery.$and.push({
-        $or: [
-          { location: loc },
-          { street: loc },
-          { plotNumber: loc },
-          { pincode: loc },
-          { locationDetails: loc }
-        ]
+        location: {
+          $in: aliases.map((l) => new RegExp(`^${l}$`, "i"))
+        }
       });
     }
 
@@ -350,8 +351,6 @@ export const mainSearchController = async (req, res) => {
   }
 };
 
-
-
 export const updateBusinessListAction = async (req, res) => {
   try {
     const businessId = req.params.id;
@@ -370,17 +369,17 @@ export const updateBusinessListAction = async (req, res) => {
   }
 };
 
-
 export const deleteBusinessListAction = async (req, res) => {
-    try {
-        const businessId = req.params.id;
-        const business = await deleteBusinessList(businessId);
-        res.send({ message: "business deleted successfully", business });
-    } catch (error) {
-        console.error(error);
-        return res.status(400).send({ message: error.message });
-    }
+  try {
+    const businessId = req.params.id;
+    const business = await deleteBusinessList(businessId);
+    res.send({ message: "business deleted successfully", business });
+  } catch (error) {
+    console.error(error);
+    return res.status(400).send({ message: error.message });
+  }
 };
+
 export const activeBusinessListAction = async (req, res) => {
   try {
     const businessId = req.params.id;
@@ -397,17 +396,18 @@ export const activeBusinessListAction = async (req, res) => {
     res.status(400).send({ message: error.message });
   }
 };
+
 export const getTrendingSearchesAction = async (req, res) => {
-    try {
-        const location = req.query.location; 
+  try {
+    const location = req.query.location;
 
-        const trendingList = await getTrendingSearches(4, location); 
+    const trendingList = await getTrendingSearches(4, location);
 
-        res.send(trendingList);
-    } catch (error) {
-        console.error(error);
-        return res.status(500).send({ message: "Failed to fetch trending data" });
-    }
+    res.send(trendingList);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).send({ message: "Failed to fetch trending data" });
+  }
 };
 
 export const findBusinessByMobileAction = async (req, res) => {
@@ -435,7 +435,7 @@ export const dashboardSummaryAction = async (req, res) => {
   try {
     const { userRole, userId } = req.authUser;
 
-    
+
     const summary = await getDashboardSummaryHelper({
       role: userRole,
       userId
@@ -479,7 +479,7 @@ export const getPendingBusinessAction = async (req, res) => {
 
     res.status(200).send({
       success: true,
-      data: result,   
+      data: result,
     });
 
   } catch (error) {

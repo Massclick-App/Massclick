@@ -38,7 +38,6 @@ const createSlug = (text) => {
       text.name ||
       text.label ||
       "";
-
   }
 
   if (typeof text !== "string") return "";
@@ -48,7 +47,6 @@ const createSlug = (text) => {
     .trim()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
-
 };
 
 const generateAltText = (serviceName, districtSlug) => {

@@ -432,6 +432,7 @@ const formattedWebsite =
       .replace(/ style="[^"]*"/gi, "")
       .trim();
   };
+  
 const whatsappNumber =
   business.whatsappNumber || business.contactList || business.contact;
 

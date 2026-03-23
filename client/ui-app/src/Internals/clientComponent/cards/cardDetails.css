@@ -173,6 +173,25 @@
   opacity: 0.94;
 }
 
+.business-CardDetails-socialLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: #f3f4f6;
+  text-decoration: none;
+  color: #374151;
+  font-size: 13px;
+  margin-left: 8px;
+  transition: all 0.2s ease;
+}
+
+.business-CardDetails-socialLink:hover {
+  background: #fff7ed;
+  color: var(--bc-primary);
+}
+
 .business-CardDetails-thumbnails {
   display: flex;
   gap: 0.75rem;
@@ -312,7 +331,6 @@
 .business-CardDetails-overviewText li {
   margin-bottom: 0.35rem;
 }
-
 
 /* Left column container */
 .business-CardDetails-leftColumn {
@@ -538,10 +556,6 @@
   cursor: pointer;
 }
 
-/* =========================================================
-   TABS (Overview / Quick Info / Services / Photos / Reviews)
-   ========================================================= */
-
 .business-CardDetails-tabsWrapper {
   margin-top: 1rem;
   margin-bottom: 0.4rem;
@@ -597,9 +611,6 @@
   gap: 1rem;
 }
 
-/* =========================================================
-   OVERVIEW SECTION
-   ========================================================= */
 
 .business-CardDetails-overviewCard h2,
 .business-CardDetails-infoBlock h2,
@@ -621,9 +632,6 @@
   margin: 0.45rem 0;
 }
 
-/* =========================================================
-   QUICK INFO (Grid of key-value items)
-   ========================================================= */
 
 .business-CardDetails-infoGrid {
   display: grid;
@@ -665,9 +673,6 @@
   color: var(--bc-text-dark);
 }
 
-/* =========================================================
-   SERVICES SECTION
-   ========================================================= */
 
 .business-CardDetails-servicesList {
   list-style: none;
@@ -687,9 +692,6 @@
   font-weight: 500;
 }
 
-/* =========================================================
-   PHOTOS SECTION
-   ========================================================= */
 
 .business-CardDetails-photoGrid {
   display: grid;
@@ -737,10 +739,6 @@
   transform: translateY(-3px);
   box-shadow: 0 14px 38px rgba(15, 23, 42, 0.36);
 }
-
-/* =========================================================
-   REVIEWS SECTION
-   ========================================================= */
 
 .business-CardDetails-reviewsSection {
   background: #f9fafb;
@@ -942,7 +940,6 @@
   margin-bottom: 6px;
 }
 
-/* ===== Rating Stars ===== */
 .review-card .MuiRating-root {
   font-size: 20px;
   color: #ff8c00;

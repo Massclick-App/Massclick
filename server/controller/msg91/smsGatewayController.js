@@ -10,24 +10,37 @@ export const sendOtpAction = async (req, res) => {
   const { phoneNumber } = req.body;
 
   if (!phoneNumber) {
-    return res.status(400).json({ success: false, message: "Missing phone number." });
+    return res.status(400).json({
+      success: false,
+      message: "Missing phone number."
+    });
   }
 
   try {
-    const result = await sendOtp(phoneNumber.trim());
+
+    const mobile = phoneNumber.trim();
+
+    const existingUser = await User.findOne({ mobileNumber1: mobile });
+
+    const result = await sendOtp(mobile);
 
     return res.status(200).json({
       success: true,
       message: "OTP sent successfully",
       data: result.apiResponse,
+      isNewUser: !existingUser
     });
+
   } catch (error) {
+
     console.error("Controller Error (sendOtpAction):", error.message);
+
     return res.status(500).json({
       success: false,
-      message: "Failed to send OTP.",
-      error: error.message,
+      message: "Failed to send OTP",
+      error: error.message
     });
+
   }
 };
 
@@ -40,22 +53,30 @@ export const verifyOtpAction = async (req, res) => {
     }
 
     await verifyOtp(phoneNumber.trim(), otp.trim());
+    const cleanNumber = phoneNumber.replace(/\D/g, "");
 
-    let user = await User.findOne({ mobileNumber1: phoneNumber });
+    let user = await User.findOne({ mobileNumber1: cleanNumber });
+    let isNewUser = false;
 
     if (!user) {
+
+      isNewUser = true;
+
       user = new User({
-        userName: userName || `User_${phoneNumber}`,
-        mobileNumber1: phoneNumber,
+        userName: userName || `User_${cleanNumber}`,
+        mobileNumber1: cleanNumber
       });
+
     } else if (userName && userName !== user.userName) {
+
       user.userName = userName;
+
     }
 
-    const mobileRegex = new RegExp(`\\b${phoneNumber}\\b`);
+    const mobileRegex = new RegExp(`\\b${cleanNumber}\\b`);
     const matchedBusiness = await businessListModel.findOne({
       $or: [
-        { contact: phoneNumber },
+        { contact: cleanNumber },
         { contactList: { $regex: mobileRegex } }
       ]
     }).lean();
@@ -79,11 +100,19 @@ export const verifyOtpAction = async (req, res) => {
 
     await user.save();
 
-    try {
-      await sendLoginWelcomeMessage(user.mobileNumber1, user.userName);
-    } catch (err) {
-      console.error("WhatsApp welcome message failed:", err.message);
+    if (isNewUser) {
+      try {
+        await sendLoginWelcomeMessage(user.mobileNumber1, user.userName);
+      } catch (err) {
+        console.error("WhatsApp welcome message failed:", err.message);
+      }
     }
+
+    // try {
+    //   await sendLoginWelcomeMessage(user.mobileNumber1, user.userName);
+    // } catch (err) {
+    //   console.error("WhatsApp welcome message failed:", err.message);
+    // }
 
     const token = jwt.sign(
       { userId: user._id, mobile: user.mobileNumber1 },
@@ -124,7 +153,6 @@ export const sendWhatsAppForLead = async (req, res) => {
       });
     }
 
-
     const lead = await searchLogModel.findOne({
       _id: leadId,
       whatsapp: { $ne: true }
@@ -146,7 +174,6 @@ export const sendWhatsAppForLead = async (req, res) => {
         message: "Valid mobile number not found"
       });
     }
-
 
     await sendWhatsAppMessage(mobile, {
       name: user.userName || "Customer",

@@ -94,13 +94,15 @@ const HeroSection = ({
   const [showLocationDropdown, setShowLocationDropdown] = useState(false);
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [debouncedLocation, setDebouncedLocation] = useState("");
-
+  const [showVoiceModal, setShowVoiceModal] = useState(false);
   const businessState = useSelector((state) => state.businessListReducer);
   const { searchLogs = [], backendSuggestions = [] } = businessState;
 
   const locationState = useSelector((state) => state.locationReducer);
   const { detectedDistrict } = locationState;
-
+  const recognitionRef = useRef(null);
+  const [isListening, setIsListening] = useState(false);
+  const [voiceLang, setVoiceLang] = useState("en-IN");
 
   useEffect(() => {
 
@@ -284,20 +286,75 @@ const HeroSection = ({
     return list;
   })();
 
+  const parseVoiceQuery = (text) => {
+
+    const lower = text.toLowerCase().trim();
+
+    let category = "";
+    let location = "";
+
+    const inMatch = lower.match(/(.+)\s+in\s+(.+)/);
+    const nearMatch = lower.match(/(.+)\s+near\s+(.+)/);
+    const nearMeMatch = lower.match(/near me\s+(.+)/);
+
+    if (inMatch) {
+      category = inMatch[1].trim();
+      location = inMatch[2].trim();
+    }
+
+    else if (nearMatch) {
+      category = nearMatch[1].trim();
+      location = nearMatch[2].trim();
+    }
+
+    else if (nearMeMatch) {
+      category = nearMeMatch[1].trim();
+    }
+
+    else {
+      category = lower;
+    }
+
+    category = category
+      .replace("near me", "")
+      .replace("near", "")
+      .replace("in", "")
+      .trim();
+
+    return { category, location };
+  };
+
   const handleSearch = async (e) => {
     e.preventDefault();
 
-    const term = searchTerm.trim();
-    const location = locationName.trim();
-    const category = categoryName.trim();
+    let term = searchTerm.toLowerCase().trim();
+    let location = locationName.toLowerCase().trim();
+    let category = categoryName.toLowerCase().trim();
 
-    const response = await dispatch(backendMainSearch(term, location, category));
+    if (location && term.includes(location)) {
+      term = term.replace(new RegExp(`\\b${location}\\b`, "gi"), "").trim();
+    }
+
+    const stopWords = ["location", "near", "in", "around", "nearby"];
+
+    let words = term.split(" ").filter(Boolean);
+
+    words = words.filter(word => !stopWords.includes(word));
+
+    if (words.length > 0) {
+      category = words[words.length - 1];
+    }
+
+    const response = await dispatch(
+      backendMainSearch("", location, category)
+    );
+
     const results = response?.payload || [];
 
     if (setSearchResults) setSearchResults(results);
 
     const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
-    const userId = authUser?._id;
+
     const userDetails = {
       userName: authUser?.userName,
       mobileNumber1: authUser?.mobileNumber1,
@@ -305,16 +362,80 @@ const HeroSection = ({
       email: authUser?.email,
     };
 
-    if (userId && term) {
-      dispatch(logUserSearch(userId, term, location || "Global", category || "All Categories"));
+    dispatch(
+      logSearchActivity(category || "All Categories", location || "Global", userDetails, term)
+    );
+
+    const slugLocation = toSlug(location || "all");
+    const slugCategory = toSlug(category || "all");
+
+    navigate(`/${slugLocation}/${slugCategory}`, { state: { results } });
+  };
+
+  const handleVoiceSearch = () => {
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      alert("Voice search not supported in this browser");
+      return;
     }
 
-    dispatch(logSearchActivity(category || "All Categories", location || "Global", userDetails, term));
+    if (isListening) return;
 
-    const slugLocation = toSlug(location || "All");
-    const slugTerm = toSlug(term || "All");
+    if (!recognitionRef.current) {
+      recognitionRef.current = new SpeechRecognition();
+    }
 
-    navigate(`/${slugLocation}/${slugTerm}`, { state: { results } });
+    const recognition = recognitionRef.current;
+
+    recognition.lang = voiceLang;
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    setShowVoiceModal(true);
+
+    try {
+      recognition.start();
+    } catch {
+      console.log("Recognition already running");
+    }
+
+    recognition.onstart = () => {
+      setIsListening(true);
+    };
+
+    recognition.onresult = (event) => {
+
+      const transcript = event.results[0][0].transcript;
+
+      console.log("Voice:", transcript);
+      setSearchTerm(transcript);
+      setShowVoiceModal(false);
+
+      const parsed = parseVoiceQuery(transcript);
+
+      if (parsed.category) {
+        setSearchTerm(parsed.category);
+        setCategoryName(parsed.category);
+      }
+
+      if (parsed.location) {
+        setLocationName(parsed.location);
+      }
+
+    };
+
+    recognition.onerror = (event) => {
+      if (event.error === "no-speech") return;
+      console.log("Voice error:", event.error);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+      setShowVoiceModal(false);
+
+    };
   };
 
   return (
@@ -409,8 +530,49 @@ const HeroSection = ({
               />
             )}
 
-            <MicIcon className="input-adornment end" />
+            <MicIcon
+              className="input-adornment end"
+              onClick={handleVoiceSearch}
+              style={{
+                color: isListening ? "red" : "#ff7b00",
+                pointerEvents: isListening ? "none" : "auto"
+              }}
+            />
           </div>
+          {showVoiceModal && (
+            <div className="voice-modal">
+              <div className="voice-box">
+                <div className="voice-close" onClick={() => setShowVoiceModal(false)}>
+                  ✕
+                </div>
+                <h3>Listening...</h3>
+                <div className="voice-dots">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+              </div>
+            </div>
+          )}
+          {/* <select
+            value={voiceLang}
+            onChange={(e) => setVoiceLang(e.target.value)}
+            style={{
+              height: "50px",
+              borderRadius: "10px",
+              border: "1px solid #ddd",
+              padding: "0 10px",
+              cursor: "pointer",
+            }}
+          >
+            <option value="en-IN">English</option>
+            <option value="ta-IN">Tamil</option>
+            <option value="hi-IN">Hindi</option>
+            <option value="te-IN">Telugu</option>
+            <option value="ml-IN">Malayalam</option>
+            <option value="kn-IN">Kannada</option>
+          </select> */}
           <button type="submit" className="search-button">
             <SearchIcon className="search-icon" />
           </button>
@@ -438,6 +600,7 @@ const HeroSection = ({
         </div>
       </div>
     </div>
+
   );
 };
 

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { relogin } from './redux/actions/authAction.js';
-
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import theme from './Internals/clientComponent/theme.js';
@@ -173,7 +172,7 @@ function App() {
             <Route path="/write-review/:businessId/:ratingValue" element={<WriteReviewPage />} />
             <Route path="/leads" element={<LeadsPage />} />
             <Route path="/free-listing" element={<FreeListingPage />} />
-            <Route path="/mni" element={<MRPPage />} />
+            {/* <Route path="/user/mni" element={<MRPPage />} /> */}
             <Route path="/advertise" element={<AdvertisePage />} />
             <Route path="/user/search-history" element={<LeadsCardHistory />} />
             <Route path="/business-enquiry" element={<BusinessEnquiry />} />

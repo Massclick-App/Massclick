@@ -44,7 +44,7 @@ const OTPLoginModal = ({ open, handleClose }) => {
     const [otpSent, setOtpSent] = React.useState(false);
     const [otp, setOtp] = React.useState('');
     const [userName, setUserName] = React.useState('');
-    
+    const [isNewUser, setIsNewUser] = React.useState(false);
     const dispatch = useDispatch();
     const { enqueueSnackbar } = useSnackbar();
 
@@ -52,8 +52,8 @@ const OTPLoginModal = ({ open, handleClose }) => {
         if (!agreed || mobileNumber.length !== 10) return;
         try {
             const res = await dispatch(sendOtp(mobileNumber));
-            console.log("OTP Sent Response:", res);
             setOtpSent(true);
+            setIsNewUser(res.isNewUser);
             localStorage.setItem("mobileNumber", mobileNumber);
         } catch (error) {
             console.error("Error sending OTP:", error);
@@ -266,28 +266,28 @@ const OTPLoginModal = ({ open, handleClose }) => {
                                 '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.primary.main },
                             }}
                         />
-
-                        <TextField
-                            fullWidth
-                            placeholder="UserName"
-                            variant="outlined"
-                            value={userName}
-                            onChange={(e) => setUserName(e.target.value)}
-                            InputProps={{
-                                sx: {
-                                    borderRadius: "12px",
-                                    fontSize: '1.1rem',
-                                    fontWeight: 500,
-                                    '& .MuiInputBase-input': { py: '16.5px' }
-                                }
-                            }}
-                            sx={{
-                                mb: 2,
-                                '& .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.grey[400] },
-                                '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.primary.main },
-                            }}
-                        />
-
+                        {isNewUser && (
+                            <TextField
+                                fullWidth
+                                placeholder="UserName"
+                                variant="outlined"
+                                value={userName}
+                                onChange={(e) => setUserName(e.target.value)}
+                                InputProps={{
+                                    sx: {
+                                        borderRadius: "12px",
+                                        fontSize: '1.1rem',
+                                        fontWeight: 500,
+                                        '& .MuiInputBase-input': { py: '16.5px' }
+                                    }
+                                }}
+                                sx={{
+                                    mb: 2,
+                                    '& .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.grey[400] },
+                                    '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.primary.main },
+                                }}
+                            />
+                        )}
                         <Button
                             fullWidth
                             onClick={handleVerifyOtp}

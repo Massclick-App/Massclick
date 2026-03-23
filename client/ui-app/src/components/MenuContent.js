@@ -10,7 +10,6 @@ import {
   useTheme,
   useMediaQuery,
 } from "@mui/material";
-
 import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
 import CategoryIcon from "@mui/icons-material/Category";
 import BusinessIcon from "@mui/icons-material/Business";
@@ -26,10 +25,8 @@ export default function SideMenu({ onItemClick }) {
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
-
   const isTabletDown = useMediaQuery(theme.breakpoints.down("md"));
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-
   const userRole = localStorage.getItem("userRole") || "Guest";
 
   const mainListItems = [
@@ -54,7 +51,6 @@ export default function SideMenu({ onItemClick }) {
       path: "/dashboard/category",
       roles: ["SuperAdmin"],
     },
-   
     {
       text: "Seo Management",
       icon: DatasetIcon,
@@ -149,7 +145,6 @@ export default function SideMenu({ onItemClick }) {
                   },
                   color: selected ? "#e1580f" : "#394150",
                   transition: "all 0.18s ease-in-out",
-                  // left accent bar when selected
                   "&::before": selected
                     ? {
                       content: '""',
@@ -171,7 +166,6 @@ export default function SideMenu({ onItemClick }) {
                     mr: 1.3,
                   }}
                 >
-                  {/* icon pill */}
                   <Box
                     sx={{
                       width: isMobile ? 34 : 38,
@@ -193,7 +187,6 @@ export default function SideMenu({ onItemClick }) {
                   </Box>
                 </ListItemIcon>
 
-                {/* label */}
                 <Typography
                   noWrap
                   sx={{

@@ -80,7 +80,7 @@ export const STATIC_CATEGORIES = [
     { icon: BeautyParlour, label: "Beauty Parlour", path: "/beauty-spa" },
     { icon: BodyMassage, label: "Body Massage", path: "/beauty/spa-massages" },
     { icon: Salon, label: "Salon", path: "/salon" },
-    { icon: Spa, label: "Spa", path: "/spa" },
+    { icon: Spa, label: "Beauty Spa", path: "/beauty-spa" },
 
     { icon: CarHire, label: "Car Hire", path: "/car-hire" },
     { icon: Electricians, label: "Electrician Services", path: "/electrician-service" },

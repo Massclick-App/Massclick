@@ -137,9 +137,7 @@ const TopBannerAds = ({ category }) => {
             rel="noopener noreferrer"
             className="carousel-slide"
           >
-
             <div className="banner-image-wrapper">
-
               <img
                 src={ad.image}
                 alt={ad.title || "Top banner"}
