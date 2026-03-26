@@ -57,6 +57,9 @@ import RouteChangeTracker from './RouteChangeTracker.js';
 import FloatingButtons from './Internals/clientComponent/floating/floatingButtons.js';
 import FloatingAdCard from './Internals/clientComponent/floating/floatingAdCard.js';
 import OTPLoginModal from './Internals/clientComponent/AddBusinessModel.js';
+import CategoryRouter from './Internals/clientComponent/categories/categoryRouter.js';
+import BlogDetail from './Internals/clientComponent/relatedBlogs/blogDetails/blogDetails.js';
+import SeoPageContentBlogs from './Internals/seoData/seoPageContentBlog/seoPageContentBlog.js';
 
 const ComingSoon = ({ title }) => (
   <div style={{ textAlign: 'center', marginTop: '20%' }}>
@@ -161,13 +164,11 @@ function App() {
               <Route key={route.path} path={route.path} element={route.element} />
             ))}
 
-            <Route path="/:location/:searchTerm" element={<SearchResults />} />
-            
-            <Route
-              path="/:location/:businessSlug/:id?"
-              element={<BusinessDetails />}
-            />
+            <Route path="/:location/:category" element={<CategoryRouter />} />
 
+            <Route path="/business/:location/:businessSlug/:id" element={<BusinessDetails />} />
+            <Route path="/:location/:category/:subcategory" element={<SearchResults />} />
+            <Route path="/blog/:slug" element={<BlogDetail />} />
             <Route path="/payment-status/:transactionId" element={<PaymentStatus />} />
             <Route path="/write-review/:businessId/:ratingValue" element={<WriteReviewPage />} />
             <Route path="/leads" element={<LeadsPage />} />
@@ -196,6 +197,7 @@ function App() {
                 <Route path="location" element={<Location />} />
                 <Route path="seo" element={<SeoData />} />
                 <Route path="seopagecontent" element={<SeoPageContent />} />
+                <Route path="seopagecontentblogs" element={<SeoPageContentBlogs />} />
                 <Route path="roles" element={<Roles />} />
                 <Route path="enquiry" element={<EnquiryPage />} />
                 <Route path="advertisements" element={<AdvertisementPage />} />

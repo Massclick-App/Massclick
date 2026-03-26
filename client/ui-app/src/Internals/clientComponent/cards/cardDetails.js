@@ -1130,20 +1130,6 @@ const whatsappNumber =
                 </li>
               </ul>
             </div>
-
-            <div className="business-CardDetails-sidebarCard business-CardDetails-tagsCard">
-              <h3 className="business-CardDetails-tagsTitle">
-                Also listed in
-              </h3>
-              <div className="business-CardDetails-tags">
-                <span className="business-CardDetails-tag">
-                  Mangalorean Restaurants
-                </span>
-                <span className="business-CardDetails-tag">
-                  Restaurants
-                </span>
-              </div>
-            </div>
           </aside>
         </div>
       </div>

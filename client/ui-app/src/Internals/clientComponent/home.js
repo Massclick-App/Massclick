@@ -20,6 +20,7 @@ import { viewOtpUser } from '../../redux/actions/otpAction.js';
 import SeoMeta from "./seo/seoMeta";
 import { fetchSeoMeta } from "../../redux/actions/seoAction";
 import PageHeaderContents from './pageHeaderContents/pageHeaderContents.js';
+import RelatedBlogs from './relatedBlogs/relatedBlogs.js';
 
 const STICKY_SEARCH_BAR_HEIGHT = 85;
 
@@ -46,11 +47,13 @@ const LandingPage = () => {
     const [searchResults, setSearchResults] = useState(null);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [isScrolled, setIsScrolled] = useState(false);
-    const [locationName, setLocationName] = useState('');
-    const [searchTerm, setSearchTerm] = useState('');
+    const [locationName, setLocationName] = useState(
+        localStorage.getItem("selectedLocation") || "trichy"
+    ); const [searchTerm, setSearchTerm] = useState('');
     const [categoryName, setCategoryName] = useState('');
     const [showLoginModal, setShowLoginModal] = useState(false);
     const [checkedLogin, setCheckedLogin] = useState(false);
+
 
     const heroSectionRef = useRef(null);
 
@@ -111,7 +114,8 @@ const LandingPage = () => {
     }, [checkedLogin]);
 
     const handleMobileMenuClose = () => setMobileMenuOpen(false);
-    const isSearching = searchResults !== null;
+
+    const isSearching = searchResults && searchResults.length > 0;
 
     const drawerContent = (
         <Box onClick={handleMobileMenuClose} sx={{ textAlign: 'center' }}>
@@ -215,9 +219,9 @@ const LandingPage = () => {
                             <TopTourist />
                         </Box>
 
-                        {/* <Box sx={{ mb: { xs: 4, sm: 5, md: 6 } }}>
-                            <PopularCategories />
-                        </Box> */}
+                        <Box sx={{ mb: { xs: 4, sm: 5, md: 6 } }}>
+                            <RelatedBlogs location={locationName} />
+                        </Box>
                         <Box sx={{ mb: { xs: 4, sm: 5, md: 6 } }}>
                             <PageHeaderContents />
                         </Box>

@@ -4,6 +4,7 @@ const categorySchema = new mongoose.Schema(
   {
     categoryImageKey: { type: String, default: "" },
     category: { type: String, trim: true },
+    subcategory: { type: String, default: '' },
     categoryType: {
       type: String,
       enum: ["Primary Category", "Sub Category"],

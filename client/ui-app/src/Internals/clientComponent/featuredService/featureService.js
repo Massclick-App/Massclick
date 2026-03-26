@@ -69,7 +69,7 @@ export const featuredServices = [
 
   { name: "Sexologist", icon: SexologyIcon },
 
-  { name: "Contractors", icon: ContractIcon },
+  { name: "Contractors", icon: ContractIcon, subCategories: true },
 
   { name: "Interior Designer", icon: InteriorDesignerIcon },
 

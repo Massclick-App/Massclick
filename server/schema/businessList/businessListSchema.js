@@ -73,6 +73,7 @@ const businessListSchema = new mongoose.Schema({
   restaurantOptions: { type: String, default: '', },
   location: { type: String, default: '', required: true },
   category: { type: String, default: '', required: true },
+  subcategory: { type: String, default: '' },
   keywords: [{ type: String, default: '' }],
   slug: { type: String, default: '' },
   seoTitle: { type: String, default: '' },
@@ -96,7 +97,6 @@ const businessListSchema = new mongoose.Schema({
   linkedin: { type: String, default: '', },
   businessDetails: { type: String, default: '', },
   globalAddress: { type: String, default: '', },
-
   subscription: {
     plan: {
       type: String,
@@ -108,7 +108,6 @@ const businessListSchema = new mongoose.Schema({
     endDate: { type: Date, default: null },
     autoRenew: { type: Boolean, default: false },
   },
-
   verification: {
     isVerified: { type: Boolean, default: false },
     verifiedBy: {
@@ -123,14 +122,12 @@ const businessListSchema = new mongoose.Schema({
       default: "ADMIN",
     },
   },
-
   badges: {
     isFeatured: { type: Boolean, default: false },
     isSponsored: { type: Boolean, default: false },
     isTrending: { type: Boolean, default: false },
     priorityScore: { type: Number, default: 0 },
   },
-
   geoLocation: {
     type: {
       type: String,
@@ -142,7 +139,6 @@ const businessListSchema = new mongoose.Schema({
       default: [0, 0],
     },
   },
-
   analytics: {
     views: { type: Number, default: 0 },
     clicks: { type: Number, default: 0 },
@@ -154,7 +150,6 @@ const businessListSchema = new mongoose.Schema({
     default: []
   },
   kycDocumentsKey: [{ type: String, default: '' }],
-
   averageRating: {
     type: Number,
     default: 0,

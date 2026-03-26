@@ -20,6 +20,8 @@ import TodayIcon from "@mui/icons-material/Today";
 import { useNavigate, useLocation } from "react-router-dom";
 import DatasetIcon from '@mui/icons-material/Dataset';
 import CorporateFareIcon from '@mui/icons-material/CorporateFare';
+import NewspaperIcon from '@mui/icons-material/Newspaper';
+import SourceIcon from '@mui/icons-material/Source';
 
 export default function SideMenu({ onItemClick }) {
   const navigate = useNavigate();
@@ -53,7 +55,7 @@ export default function SideMenu({ onItemClick }) {
     },
     {
       text: "Seo Management",
-      icon: DatasetIcon,
+      icon: SourceIcon,
       path: "/dashboard/seo",
       roles: ["SuperAdmin"],
     },
@@ -61,6 +63,12 @@ export default function SideMenu({ onItemClick }) {
       text: "Seo PageContent",
       icon: DatasetIcon,
       path: "/dashboard/seopagecontent",
+      roles: ["SuperAdmin"],
+    },
+    {
+      text: "Seo PageContent Blogs",
+      icon: NewspaperIcon,
+      path: "/dashboard/seopagecontentblogs",
       roles: ["SuperAdmin"],
     },
     {

@@ -40,13 +40,14 @@ const SearchResults = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const { location: locParam, searchTerm: termParam } = useParams();
+  const { location: locParam, category, subcategory } = useParams();
+
   const locationState = useLocation();
   const [openLoginModal, setOpenLoginModal] = useState(false);
   const locationText = locParam?.trim() || "";
-  const searchText = termParam?.trim() || "";
+  const searchText = subcategory || category || "";
 
-  const locationSlug = createSlug(locationText);
+  const locationSlug = createSlug(locParam);
   const searchSlug = createSlug(searchText);
 
   const canonicalUrl = `https://massclick.in/${locationSlug}/${searchSlug}`;
@@ -183,7 +184,7 @@ const SearchResults = () => {
     dispatch(
       fetchSeoPageContentMeta({
         pageType: "category",
-        category: searchText,
+        category: searchText.replace(/-/g, " "),
         ...(locationText ? { location: locationText } : {}),
       })
     );
@@ -399,7 +400,7 @@ const SearchResults = () => {
   };
 
   return (
-    <>  
+    <>
       <OTPLoginModal
         open={openLoginModal}
         handleClose={() => setOpenLoginModal(false)}
@@ -507,7 +508,7 @@ const SearchResults = () => {
                   ? business.totalReviews
                   : 0;
 
-              const businessUrl = `/${createSlug(
+              const businessUrl = `/business/${createSlug(
                 business.location
               )}/${createSlug(business.businessName)}/${business._id}`;
 

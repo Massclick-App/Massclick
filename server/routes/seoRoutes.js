@@ -10,6 +10,7 @@ import {
 } from "../controller/seo/seoController.js";
 import { addSeoPageContentAction, viewAllSeoPageContentAction,getSeoPageContentMetaAction,getSeoPageContentAction,deleteSeoPageContentAction,updateSeoPageContentAction } from "../controller/seo/seoPageContentController.js";
 import { oauthAuthentication } from "../helper/oauthHelper.js";
+import { addSeoPageContentBlogAction, getSeoPageContentBlogAction, getSeoPageContentBlogMetaAction, viewAllSeoPageContentBlogAction, updateSeoPageContentBlogAction, deleteSeoPageContentBlogAction, getSeoBlogBySlugAction, getBusinessSuggestionAction } from "../controller/seo/seoOnPageBlogController.js";
 
 const router = express.Router();
 
@@ -27,5 +28,14 @@ router.get("/api/seopagecontent/meta", getSeoPageContentMetaAction);
 router.get("/api/seopagecontent/viewall", oauthAuthentication, viewAllSeoPageContentAction);
 router.put("/api/seopagecontent/update/:id", oauthAuthentication, updateSeoPageContentAction);
 router.delete("/api/seopagecontent/delete/:id", oauthAuthentication, deleteSeoPageContentAction);
+
+router.post("/api/seopagecontentblog/create", oauthAuthentication, addSeoPageContentBlogAction);
+router.get("/api/seopagecontentblog/get", getSeoPageContentBlogAction);
+router.get("/api/seopagecontentblog/meta", getSeoPageContentBlogMetaAction);
+router.get("/api/seopagecontentblog/viewall", oauthAuthentication, viewAllSeoPageContentBlogAction);
+router.put("/api/seopagecontentblog/update/:id", oauthAuthentication, updateSeoPageContentBlogAction);
+router.delete("/api/seopagecontentblog/delete/:id", oauthAuthentication, deleteSeoPageContentBlogAction);
+router.get("/api/seopagecontentblog/blog/:slug", getSeoBlogBySlugAction);
+router.get("/api/seopagecontentblog/suggestion", getBusinessSuggestionAction);
 
 export default router;
