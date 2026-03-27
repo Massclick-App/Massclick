@@ -1,15 +1,6 @@
 import seoPageContentBlogModel from "../../model/seoModel/seoPageContentBlogModel.js";
 import { uploadImageToS3, getSignedUrlByKey } from "../../s3Uploder.js";
 
-const slugify = (text = "") =>
-  text
-    .toLowerCase()
-    .replace(/[–—-]/g, " ")     
-    .replace(/[()]/g, "")       
-    .replace(/[^\w\s]/g, "")    
-    .replace(/\s+/g, "-")       
-    .trim();
-
 /* ================= CREATE ================= */
 export const createPageContentBlogSeo = async (reqBody = {}) => {
   try {
@@ -67,7 +58,7 @@ export const createPageContentBlogSeo = async (reqBody = {}) => {
           location: b.location,
         }));
       }
-      
+
       delete reqBody.popularBusiness;
 
       delete reqBody.selectedBusiness;

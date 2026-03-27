@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchSeoBlogBySlug } from "../../../../redux/actions/seoPageContentBlogAction";
@@ -13,21 +13,11 @@ const BlogDetail = () => {
     (state) => state.seoPageContentBlogReducer
   );
 
-  /* ================= FETCH BLOG ================= */
   useEffect(() => {
     if (slug) {
       dispatch(fetchSeoBlogBySlug(slug));
     }
   }, [dispatch, slug]);
-
-  /* ================= CLEAN CONTENT ================= */
-  const cleanContent = useMemo(() => {
-    if (!blog?.pageContent) return "<p>No content available</p>";
-
-    return blog.pageContent
-      .replace(/<p><br><\/p>/g, "")       // remove empty lines
-      .replace(/(<br>\s*){2,}/g, "");     // remove extra breaks
-  }, [blog]);
 
   /* ================= LINK CLICK HANDLER ================= */
   const handleContentClick = (e) => {
@@ -38,7 +28,6 @@ const BlogDetail = () => {
 
     const href = link.getAttribute("href");
 
-    /* -------- INTERNAL LINK -------- */
     if (href && href.startsWith("/")) {
       const parts = href.split("/").filter(Boolean);
 
@@ -63,7 +52,6 @@ const BlogDetail = () => {
       return;
     }
 
-    /* -------- TEXT BASED LINK -------- */
     let text = link.innerText.toLowerCase().trim();
 
     let category = "";
@@ -101,52 +89,47 @@ const BlogDetail = () => {
 
       <div className="blog-container">
 
-        {/* ================= BREADCRUMB ================= */}
         <div className="breadcrumb">
           Home › {blog.category} › {blog.heading}
         </div>
 
-        {/* ================= HEADER ================= */}
         <div className="blog-header">
           <h1>{blog.heading}</h1>
 
           <div className="blog-meta">
-            <span>👁 {blog.views || 48} views</span>
-            <span>⏱ {blog.readTime || "5 min read"}</span>
+            <span>{blog.views || 48} views</span>
+            <span>• {blog.readTime || "5 min read"}</span>
           </div>
         </div>
 
         <div className="blog-grid">
 
-          {/* ================= LEFT CONTENT ================= */}
           <div className="blog-content-area">
 
-            {/* HERO IMAGE (FIXED) */}
-            {blog.pageImageKey?.[0] && (
+            {blog.pageImages?.[0] && (
               <img
-                src={blog.pageImageKey[0]}
+                src={blog.pageImages[0]}
                 className="hero-img"
                 alt={blog.heading}
               />
             )}
 
-            {/* BLOG CONTENT (CLEANED) */}
             <div
               className="blog-content"
               onClick={handleContentClick}
-              dangerouslySetInnerHTML={{ __html: cleanContent }}
+              dangerouslySetInnerHTML={{
+                __html: blog.pageContent || "<p>No content available</p>",
+              }}
             />
 
-            {/* IMAGE GRID (FIXED) */}
-            {blog.pageImageKey?.length > 1 && (
+            {blog.pageImages?.length > 1 && (
               <div className="image-grid">
-                {blog.pageImageKey.slice(1).map((img, i) => (
+                {blog.pageImages.slice(1).map((img, i) => (
                   <img key={i} src={img} alt="gallery" />
                 ))}
               </div>
             )}
 
-            {/* ================= BUSINESS DETAILS ================= */}
             {blog.businessDetails?.length > 0 && (
               <div className="business-section">
 
@@ -155,10 +138,14 @@ const BlogDetail = () => {
                 {blog.businessDetails.map((b, index) => (
                   <div className="business-card" key={index}>
 
+                    {/* HEADER */}
                     <div className="business-header">
                       <h3>{b.businessName}</h3>
 
-                      <a href={`tel:${b.contact}`} className="call-btn">
+                      <a
+                        href={`tel:${b.contact}`}
+                        className="call-btn"
+                      >
                         Call Now
                       </a>
                     </div>
@@ -171,10 +158,12 @@ const BlogDetail = () => {
                       />
                     )}
 
+                    {/* DESCRIPTION */}
                     <p className="business-desc">
                       {b.businessName} is one of the best {b.category} in {b.location}.
                     </p>
 
+                    {/* DETAILS */}
                     <div className="business-info">
 
                       <div>
@@ -194,6 +183,7 @@ const BlogDetail = () => {
 
                     </div>
 
+                    {/* ADDRESS */}
                     <div className="business-address">
                       <strong>Address</strong>
                       <p>{b.street}</p>
@@ -219,12 +209,11 @@ const BlogDetail = () => {
 
           </div>
 
-          {/* ================= RIGHT SIDEBAR ================= */}
           <div className="sidebar">
 
             <div className="author-card">
               <img
-                src={blog.profileImageKey || "https://via.placeholder.com/80"}
+                src={blog.profileImage || "https://via.placeholder.com/80"}
                 alt="author"
               />
               <div>
