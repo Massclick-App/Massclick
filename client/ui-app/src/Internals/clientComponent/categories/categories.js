@@ -5,11 +5,9 @@ import { categoriesData } from "./categoriesData";
 
 import DefaultIcon from "../../../assets/features/contractor.webp";
 
-// 🔹 Convert text to URL slug
 const createSlug = (text = "") =>
   text.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-");
 
-// 🔹 Format heading text
 const formatText = (text = "") =>
   text
     .replace(/-/g, " ")
@@ -20,26 +18,22 @@ const CategoriesPage = () => {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
 
-  // 🔹 Get category key
   const categoryKey = useMemo(
     () => category?.toLowerCase(),
     [category]
   );
 
-  // 🔹 Get subcategories (now objects)
   const subcategories = useMemo(
     () => categoriesData[categoryKey] || [],
     [categoryKey]
   );
 
-  // 🔹 Filter based on name
   const filteredCategories = useMemo(() => {
     return subcategories.filter((item) =>
       item.name.toLowerCase().includes(search.toLowerCase())
     );
   }, [search, subcategories]);
 
-  // 🔹 Handle click
   const handleClick = (subName) => {
     const subSlug = createSlug(subName);
     navigate(`/${location}/${category}/${subSlug}`);
@@ -48,12 +42,10 @@ const CategoriesPage = () => {
   return (
     <div className="category-container">
 
-      {/* 🔹 Title */}
       <h2 className="category-title">
         {formatText(category)}
       </h2>
 
-      {/* 🔹 Search */}
       <input
         type="text"
         placeholder="Search All Category"
@@ -62,7 +54,6 @@ const CategoriesPage = () => {
         onChange={(e) => setSearch(e.target.value)}
       />
 
-      {/* 🔹 Grid */}
       <div className="category-grid">
 
         {filteredCategories.length > 0 ? (
@@ -77,7 +68,6 @@ const CategoriesPage = () => {
                 if (e.key === "Enter") handleClick(item.name);
               }}
             >
-              {/* 🔹 Icon */}
               <img
                 src={item.icon || DefaultIcon}
                 alt={item.name}
@@ -85,7 +75,6 @@ const CategoriesPage = () => {
                 loading="lazy"
               />
 
-              {/* 🔹 Text */}
               <span className="category-text">
                 {item.name}
               </span>

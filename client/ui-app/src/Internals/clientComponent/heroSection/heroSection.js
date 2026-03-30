@@ -44,7 +44,12 @@ const CategoryDropdown = ({ label, options, onSelect }) => {
           const displayText =
             typeof option === "string"
               ? option
-              : option.category || option.businessName || option.location || "";
+              : String(
+                option.category ||
+                option.businessName ||
+                option.location ||
+                ""
+              );
 
           return (
             <div

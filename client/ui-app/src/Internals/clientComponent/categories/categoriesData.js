@@ -40,4 +40,5 @@ export const categoriesData = {
     { name: "Welding Contractors", icon: weldingIcon },
     { name: "Fire Fighting Contractors", icon: fireIcon },
   ],
+  
 };

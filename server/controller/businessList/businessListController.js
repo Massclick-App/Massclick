@@ -56,8 +56,6 @@ export const trackQrDownload = async (req, res) => {
   }
 };
 
-
-
 export const getBusinessBySlugAction = async (req, res) => {
   try {
     const { location, slug } = req.query;
@@ -140,6 +138,7 @@ export const viewAllClientBusinessListAction = async (req, res) => {
   }
 };
 
+
 export const viewBusinessByCategory = async (req, res) => {
   try {
     const { category, district } = req.query;
@@ -209,6 +208,7 @@ export const getSuggestionsController = async (req, res) => {
       { $limit: 15 },
       {
         $project: {
+           _id: 0,   
           businessName: 1,
           category: 1,
           location: 1,
@@ -232,67 +232,96 @@ const districtAliasMap = {
 
 export const mainSearchController = async (req, res) => {
   try {
-
     let { term = "", location = "", category = "" } = req.query;
 
     const normalize = (text = "") =>
       text
         .trim()
-        .replace(/-/g, " ")        
-        .replace(/\s+/g, " ");     
+        .replace(/-/g, " ")
+        .replace(/\s+/g, " ");
 
     term = normalize(term);
     location = normalize(location);
     category = normalize(category);
+
+    const escapeRegex = (text = "") =>
+      text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+    const getWordVariations = (word = "") => {
+      const w = word.toLowerCase().trim();
+
+      if (!w) return [];
+
+      if (w.endsWith("s")) {
+        return [w, w.slice(0, -1)];
+      } else {
+        return [w, w + "s"]; 
+      }
+    };
 
     const matchQuery = {
       businessesLive: true,
       $and: []
     };
 
+  
     if (location) {
       const locKey = location.toLowerCase().trim();
-
       const aliases = districtAliasMap[locKey] || [locKey];
 
       matchQuery.$and.push({
         location: {
-          $in: aliases.map((l) => new RegExp(`^${l}$`, "i"))
+          $in: aliases.map(
+            (l) => new RegExp(`^${escapeRegex(l)}$`, "i")
+          )
         }
       });
     }
 
+   
     if (category) {
-      const cat = new RegExp(category, "i");
+      const variations = getWordVariations(category);
+
+      const categoryConditions = variations.flatMap((val) => {
+        const regex = new RegExp(escapeRegex(val), "i");
+
+        return [
+          { category: regex },
+          { keywords: regex },
+          { slug: regex },
+          { seoTitle: regex },
+          { seoDescription: regex },
+          { title: regex },
+          { description: regex },
+          { businessName: regex }
+        ];
+      });
 
       matchQuery.$and.push({
-        $or: [
-          { category: cat },
-          { keywords: cat },
-          { slug: cat },
-          { seoTitle: cat },
-          { seoDescription: cat },
-          { title: cat },
-          { description: cat },
-          { businessName: cat }
-        ]
+        $or: categoryConditions
       });
     }
 
     if (term) {
-      const t = new RegExp(term, "i");
+      const variations = getWordVariations(term);
+
+      const termConditions = variations.flatMap((val) => {
+        const regex = new RegExp(escapeRegex(val), "i");
+
+        return [
+          { businessName: regex },
+          { category: regex },
+          { description: regex },
+          { seoDescription: regex },
+          { seoTitle: regex },
+          { title: regex },
+          { slug: regex },
+          { keywords: regex }
+        ];
+      });
 
       matchQuery.$and.push({
-        $or: [
-          { businessName: t },
-          { category: t },
-          { description: t },
-          { seoDescription: t },
-          { seoTitle: t },
-          { title: t },
-          { slug: t },
-          { keywords: t }
-        ]
+        $or: termConditions
       });
     }
 
