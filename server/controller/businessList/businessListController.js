@@ -288,11 +288,6 @@ export const mainSearchController = async (req, res) => {
         return [
           { category: regex },
           { keywords: regex },
-          { slug: regex },
-          { seoTitle: regex },
-          { seoDescription: regex },
-          { title: regex },
-          { description: regex },
           { businessName: regex }
         ];
       });

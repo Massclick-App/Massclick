@@ -2,7 +2,6 @@ import React, { useRef, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchSeoPageContentBlogsMeta } from "../../../redux/actions/seoPageContentBlogAction";
 import "./relatedBlogs.css";
-
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import ArrowBackIosIcon from "@mui/icons-material/ArrowBackIos";
 
