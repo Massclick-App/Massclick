@@ -62,70 +62,70 @@ import Cosmetics from "../../../../assets/features/cosmetics.webp";
 import Loans from "../../../../assets/features/Loans.webp";
 
 export const STATIC_CATEGORIES = [
-    { icon: Astrologers, label: "Astrology", path: "/astrologers" },
-    { icon: VastuConsultant, label: "Vastu Consultant", path: "/vastu-consultants" },
-    { icon: Numerology, label: "Numerology", path: "/numerology" },
-    { icon: Geologist, label: "Geologist", path: "/geologist" },
+  { icon: Astrologers, label: "Astrology", path: "/astrologers" },
+  { icon: VastuConsultant, label: "Vastu Consultant", path: "/vastu-consultants" },
+  { icon: Numerology, label: "Numerology", path: "/numerology" },
+  { icon: Geologist, label: "Geologist", path: "/geologist" },
 
-    { icon: CharteredAccountant, label: "Chartered Accountant", path: "/ca" },
-    { icon: ComputerTraining, label: "Computer Training Institutes", path: "/computer-training" },
-    { icon: Coaching, label: "Coaching", path: "/coaching" },
-    { icon: VocationalTraining, label: "Vocational training", path: "/vocational-training" },
+  { icon: CharteredAccountant, label: "Chartered Accountant", path: "/ca" },
+  { icon: ComputerTraining, label: "Computer Training Institutes", path: "/computer-training" },
+  { icon: Coaching, label: "Coaching", path: "/coaching" },
+  { icon: VocationalTraining, label: "Vocational training", path: "/vocational-training" },
 
-    { icon: Lawyers, label: "Lawyer", path: "/lawyers" },
-    { icon: Registration, label: "Registration Consultant", path: "/registration-consultants" },
-    { icon: Placement, label: "Placement Service", path: "/placement" },
-    { icon: KidsSchool, label: "Kids School", path: "/kids-school" },
+  { icon: Lawyers, label: "Lawyer", path: "/lawyers" },
+  { icon: Registration, label: "Registration Consultant", path: "/registration-consultants" },
+  { icon: Placement, label: "Placement Service", path: "/placement" },
+  { icon: KidsSchool, label: "Kids School", path: "/kids-school" },
 
-    { icon: BeautyParlour, label: "Beauty Parlour", path: "/beauty-spa" },
-    { icon: BodyMassage, label: "Body Massage", path: "/beauty/spa-massages" },
-    { icon: Salon, label: "Salon", path: "/salon" },
-    { icon: Spa, label: "Beauty Spa", path: "/beauty-spa" },
+  { icon: BeautyParlour, label: "Beauty Parlour", path: "/beauty-spa" },
+  { icon: BodyMassage, label: "Body Massage", path: "/beauty/spa-massages" },
+  { icon: Salon, label: "Salon", path: "/salon" },
+  { icon: Spa, label: "Beauty Spa", path: "/beauty-spa" },
 
-    { icon: CarHire, label: "Car Hire", path: "/car-hire" },
-    { icon: Electricians, label: "Electrician Services", path: "/electrician-service" },
-    { icon: EventOrganiser, label: "Event Organisers", path: "/event-organisers" },
-    { icon: RealEstate, label: "Real Estate", path: "/real-estate" },
+  { icon: CarHire, label: "Car Hire", path: "/car-hire" },
+  { icon: Electricians, label: "Electrician Services", path: "/electrician-service" },
+  { icon: EventOrganiser, label: "Event Organisers", path: "/event-organisers" },
+  { icon: RealEstate, label: "Real Estate", path: "/real-estate" },
 
-    { icon: Textile, label: "Textile", path: "/textile" },
-    { icon: Fabricators, label: "Fabricators", path: "/fabricators" },
-    { icon: Jewellery, label: "Jewellery Showroom", path: "/jewellery" },
-    { icon: Tailoring, label: "Tailoring", path: "/tailoring" },
+  { icon: Textile, label: "Textile", path: "/textile" },
+  { icon: Fabricators, label: "Fabricators", path: "/fabricators" },
+  { icon: Jewellery, label: "Jewellery Showroom", path: "/jewellery" },
+  { icon: Tailoring, label: "Tailoring", path: "/tailoring" },
 
-    { icon: PaintingService, label: "Painting Contractor", path: "/painting-contractor" },
-    { icon: NursingServices, label: "Nursing Service", path: "/nursing-services" },
-    { icon: CourierServices, label: "Courier Services", path: "/courier-service" },
-    { icon: Printing, label: "Printing & Publishing Service", path: "/printing" },
+  { icon: PaintingService, label: "Painting Contractor", path: "/painting-contractor" },
+  { icon: NursingServices, label: "Nursing Service", path: "/nursing-services" },
+  { icon: CourierServices, label: "Courier Services", path: "/courier-service" },
+  { icon: Printing, label: "Printing & Publishing Service", path: "/printing" },
 
-    { icon: Hobbies, label: "Hobbies", path: "/hobbies" },
-    { icon: InternetWeb, label: "Internet Website Designer", path: "/web-designers" },
-    { icon: Opticals, label: "Opticals", path: "/opticals" },
-    { icon: OrganicShop, label: "Organic Shop", path: "/organic-shop" },
+  { icon: Hobbies, label: "Hobbies", path: "/hobbies" },
+  { icon: InternetWeb, label: "Internet Website Designer", path: "/web-designers" },
+  { icon: Opticals, label: "Opticals", path: "/opticals" },
+  { icon: OrganicShop, label: "Organic Shop", path: "/organic-shop" },
 
-    { icon: ScrapDealers, label: "Scrap Dealer", path: "/scrap-dealers" },
-    { icon: Automobiles, label: "Automobiles", path: "/automobiles" },
-    { icon: ExportAndImport, label: "Export & Import", path: "/export-import" },
-    { icon: Loans, label: "Loans", path: "/loans" },
+  { icon: ScrapDealers, label: "Scrap Dealer", path: "/scrap-dealers" },
+  { icon: Automobiles, label: "Automobiles", path: "/automobiles" },
+  { icon: ExportAndImport, label: "Export & Import", path: "/export-import" },
+  { icon: Loans, label: "Loans", path: "/loans" },
 
-    { icon: Physiotherapy, label: "Physiotherapy", path: "/physiotherapy" },
-    { icon: ClinicalLab, label: "Clinical Lab", path: "/clinical-lab" },
-    { icon: HomeoClinic, label: "Homeo Clinic", path: "/homeo-clinic" },
-    { icon: Cosmetics, label: "Cosmetics", path: "/cosmetics" },
+  { icon: Physiotherapy, label: "Physiotherapy", path: "/physiotherapy" },
+  { icon: ClinicalLab, label: "Clinical Lab", path: "/clinical-lab" },
+  { icon: HomeoClinic, label: "Homeo Clinic", path: "/homeo-clinic" },
+  { icon: Cosmetics, label: "Cosmetics", path: "/cosmetics" },
 
-    { icon: Architect, label: "Architect", path: "/architect" },
-    { icon: Sports, label: "Sports", path: "/sports" },
-    { icon: Tiles, label: "Ceramic", path: "/ceramic" },
-    { icon: BookShop, label: "Book Shop", path: "/book-shop" },
+  { icon: Architect, label: "Architect", path: "/architect" },
+  { icon: Sports, label: "Sports", path: "/sports" },
+  { icon: Tiles, label: "Ceramic", path: "/ceramic" },
+  { icon: BookShop, label: "Book Shop", path: "/book-shop" },
 
-    { icon: FancyShop, label: "Fancy Shop", path: "/fancy-shop" },
-    { icon: Tatoos, label: "Tattoo Artist", path: "/tattoo-artists" },
-    { icon: Boutique, label: "Boutique", path: "/boutique" },
-    { icon: FootwearShop, label: "Footwear Shop", path: "/footwear-shop" },
+  { icon: FancyShop, label: "Fancy Shop", path: "/fancy-shop" },
+  { icon: Tatoos, label: "Tattoo Artist", path: "/tattoo-artists" },
+  { icon: Boutique, label: "Boutique", path: "/boutique" },
+  { icon: FootwearShop, label: "Footwear Shop", path: "/footwear-shop" },
 
-    { icon: NurseryGarden, label: "Nursery Garden", path: "/nursery-garden" },
-    { icon: SpecialSchool, label: "Special School", path: "/special-school" },
-    { icon: MosquitoNet, label: "Mosquito Net", path: "/mosquito-net" },
-    { icon: HearingAid, label: "Hearing Aid", path: "/hearing-aid" },
+  { icon: NurseryGarden, label: "Nursery Garden", path: "/nursery-garden" },
+  { icon: SpecialSchool, label: "Special School", path: "/special-school" },
+  { icon: MosquitoNet, label: "Mosquito Net", path: "/mosquito-net" },
+  { icon: HearingAid, label: "Hearing Aid", path: "/hearing-aid" },
 
 ];
 
@@ -133,35 +133,35 @@ const generateAltText = (label, districtSlug) =>
   `${label} services in ${districtSlug} - Find best ${label.toLowerCase()} near you on MassClick`;
 
 const slugify = (text) =>
-        text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 
 const PopularCategoriesDrawer = ({ openFromHome = false, onClose }) => {
-    const navigate = useNavigate();
-    const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
 
-    const [drawerOpen, setDrawerOpen] = useState(openFromHome);
-    const [search, setSearch] = useState("");
+  const [drawerOpen, setDrawerOpen] = useState(openFromHome);
+  const [search, setSearch] = useState("");
 
-    useEffect(() => {
-        if (openFromHome) setDrawerOpen(true);
-    }, [openFromHome]);
+  useEffect(() => {
+    if (openFromHome) setDrawerOpen(true);
+  }, [openFromHome]);
 
-     const { selectedDistrict } = useSelector(
-        (state) => state.locationReducer
-    );
+  const { selectedDistrict } = useSelector(
+    (state) => state.locationReducer
+  );
 
-     const districtSlug = useMemo(() => {
+  const districtSlug = useMemo(() => {
     return slugify(selectedDistrict || "india");
   }, [selectedDistrict]);
 
-  const filtered = useMemo(() => {  
+  const filtered = useMemo(() => {
     return STATIC_CATEGORIES.filter((cat) =>
       cat.label.toLowerCase().includes(search.toLowerCase())
     );
   }, [search]);
 
-    return (
-        <Drawer
+  return (
+    <Drawer
       anchor="right"
       open={drawerOpen}
       onClose={() => {
@@ -172,7 +172,6 @@ const PopularCategoriesDrawer = ({ openFromHome = false, onClose }) => {
         sx: { width: "70%", maxWidth: "900px", padding: "20px" }
       }}
     >
-
       <header className="pc-header">
         <h2>Popular Categories</h2>
         <CloseIcon
@@ -212,7 +211,7 @@ const PopularCategoriesDrawer = ({ openFromHome = false, onClose }) => {
               aria-label={`View ${cat.label}`}
               onClick={() => {
 
-                const categorySlug = slugify(cat.label);
+                const categorySlug = cat.path.replace("/", "");
 
                 const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
 
@@ -269,7 +268,7 @@ const PopularCategoriesDrawer = ({ openFromHome = false, onClose }) => {
       </section>
 
     </Drawer>
-    );
+  );
 };
 
 export default PopularCategoriesDrawer;

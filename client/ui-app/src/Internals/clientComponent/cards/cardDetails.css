@@ -309,7 +309,8 @@
 }
 
 .business-CardDetails-overviewText * {
-  margin-top: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .business-CardDetails-overviewText p {
@@ -623,9 +624,12 @@
 }
 
 .business-CardDetails-overviewText {
-  font-size: var(--bc-text-md);
-  color: var(--bc-text-med);
-  line-height: 1.8;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .business-CardDetails-overviewText p {

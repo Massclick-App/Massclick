@@ -424,14 +424,16 @@ const formattedWebsite =
 
   const overviewHtml = business.businessDetails;
 
-  const normalizeOverviewHtml = (html = "") => {
-    return html
-      .replace(/<p>\s*(<br\s*\/?>|&nbsp;)?\s*<\/p>/gi, "")
-      .replace(/<div>\s*(<br\s*\/?>|&nbsp;)?\s*<\/div>/gi, "")
-      .replace(/(<br\s*\/?>\s*){2,}/gi, "<br>")
-      .replace(/ style="[^"]*"/gi, "")
-      .trim();
-  };
+ const normalizeOverviewHtml = (html = "") => {
+  return html
+    .replace(/<p>\s*(<br\s*\/?>|&nbsp;)?\s*<\/p>/gi, "")
+    .replace(/<div>\s*(<br\s*\/?>|&nbsp;)?\s*<\/div>/gi, "")
+    .replace(/(<br\s*\/?>\s*){2,}/gi, "<br>")
+    .replace(/ style="[^"]*"/gi, "")
+    .replace(/width="[^"]*"/gi, "")   
+    .replace(/height="[^"]*"/gi, "") 
+    .trim();
+};
   
 const whatsappNumber =
   business.whatsappNumber || business.contactList || business.contact;

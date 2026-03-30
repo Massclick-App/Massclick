@@ -246,7 +246,6 @@ export default function Category() {
       isActive: cat.isActive,
     }));
 
-
   const categoryList = [
     {
       id: "categoryImage",
@@ -278,7 +277,6 @@ export default function Category() {
       ),
     },
   ];
-
 
   return (
     <div className="category-page-container">
