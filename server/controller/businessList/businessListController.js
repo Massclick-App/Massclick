@@ -1,4 +1,4 @@
-import { createBusinessList, viewBusinessList, findBusinessBySlug, getDashboardChartsHelper, getPendingBusinessList, findBusinessesByCategory, getDashboardSummaryHelper, findBusinessByMobile, viewAllBusinessList, viewAllClientBusinessList, updateBusinessList, getTrendingSearches, deleteBusinessList, activeBusinessList } from "../../helper/businessList/businessListHelper.js";
+import { createBusinessList, viewBusinessList, findBusinessBySlug,viewAllBusiness, getDashboardChartsHelper, getPendingBusinessList, findBusinessesByCategory, getDashboardSummaryHelper, findBusinessByMobile, viewAllBusinessList, viewAllClientBusinessList, updateBusinessList, getTrendingSearches, deleteBusinessList, activeBusinessList } from "../../helper/businessList/businessListHelper.js";
 import { BAD_REQUEST } from "../../errorCodes.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
 import { getSignedUrlByKey } from "../../s3Uploder.js";
@@ -92,6 +92,16 @@ export const viewBusinessListAction = async (req, res) => {
   }
 };
 
+  export const viewAllBusinessAction = async (req, res) => {
+  try {
+    const businesses = await viewAllBusiness();
+    res.send(businesses);
+  } catch (error) {
+    console.error(error);
+    return res.status(BAD_REQUEST.code).send({ message: error.message });
+  }
+};
+
 export const viewAllBusinessListAction = async (req, res) => {
   try {
     const { userRole, userId } = req.authUser;
@@ -138,7 +148,6 @@ export const viewAllClientBusinessListAction = async (req, res) => {
   }
 };
 
-
 export const viewBusinessByCategory = async (req, res) => {
   try {
     const { category, district } = req.query;
@@ -154,6 +163,7 @@ export const viewBusinessByCategory = async (req, res) => {
     res.status(400).send({ message: error.message });
   }
 };
+
 
 export const getSuggestionsController = async (req, res) => {
   try {

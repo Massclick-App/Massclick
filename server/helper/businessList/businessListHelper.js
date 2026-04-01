@@ -198,6 +198,32 @@ export const viewBusinessList = async (id) => {
     return business;
 };
 
+export const viewAllBusiness = async () => {
+  const businesses = await businessListModel.find().lean();
+
+  const updatedBusinesses = businesses.map((business) => {
+    if (business.bannerImageKey) {
+      business.bannerImage = getSignedUrlByKey(business.bannerImageKey);
+    }
+
+    if (business.businessImagesKey?.length > 0) {
+      business.businessImages = business.businessImagesKey.map((key) =>
+        getSignedUrlByKey(key)
+      );
+    }
+
+    if (business.kycDocumentsKey?.length > 0) {
+      business.kycDocuments = business.kycDocumentsKey.map((key) =>
+        getSignedUrlByKey(key)
+      );
+    }
+
+    return business;
+  });
+
+  return updatedBusinesses;
+};
+
 export const findBusinessesByCategory = async (category, district) => {
   const matchQuery = {
     businessesLive: true,
