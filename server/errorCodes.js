@@ -1,5 +1,6 @@
 // errorCodes.js
 
+export const OK = { code: 200, message: "OK" };
 export const BAD_REQUEST = { code: 400, message: "Bad Request" };
 export const UNAUTHORIZED = { code: 401, message: "Unauthorized" };
 export const FORBIDDEN = { code: 403, message: "Forbidden" };
@@ -10,6 +11,7 @@ export const BAD_GATEWAY = { code: 502, message: "Bad Gateway" };
 export const SERVICE_UNAVAILABLE = { code: 503, message: "Service Unavailable" };
 
 export const ERROR_CODES = {
+    OK,
     BAD_REQUEST,
     UNAUTHORIZED,
     FORBIDDEN,

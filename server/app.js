@@ -10,6 +10,7 @@ import fs from "fs";
 import { fileURLToPath } from "url";
 
 import userRoutes from "./routes/userRoutes.js";
+import fcmTokenRoutes from "./routes/fcmTokenRoutes.js";
 import userClientRoutes from "./routes/userClientRoute.js";
 import locationRoutes from "./routes/locationRoute.js";
 import oauthRoutes from "./routes/oauthRoutes.js";
@@ -146,6 +147,7 @@ Sitemap: https://massclick.in/sitemap.xml
 // routes
 app.use("/", sitemapRoutes);
 app.use("/", userRoutes);
+app.use("/", fcmTokenRoutes);
 app.use("/", oauthRoutes);
 app.use("/", userClientRoutes);
 app.use("/", locationRoutes);
