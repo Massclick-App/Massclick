@@ -71,12 +71,25 @@ export const uploadImageToS3 = async (fileData, uploadPath) => {
 };
 
 
-export const getSignedUrlByKey = (key, bucketName, expiryTime = 3600) => {
+// export const getSignedUrlByKey = (key, bucketName, expiryTime = 3600) => {
+//   if (!key) return "";
+
+//   return s3.getSignedUrl("getObject", {
+//     Bucket: bucketName ?? assetsBucket,
+//     Key: key,
+//     Expires: expiryTime,
+//   });
+// };
+export const getSignedUrlByKey = (key, { signed = false, expiry = 3600 } = {}) => {
   if (!key) return "";
 
-  return s3.getSignedUrl("getObject", {
-    Bucket: bucketName ?? assetsBucket,
-    Key: key,
-    Expires: expiryTime,
-  });
+  if (signed) {
+    return s3.getSignedUrl("getObject", {
+      Bucket: assetsBucket,
+      Key: key,
+      Expires: expiry,
+    });
+  }
+
+  return `https://${assetsBucket}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
 };

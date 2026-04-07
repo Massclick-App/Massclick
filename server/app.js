@@ -10,9 +10,9 @@ import fs from "fs";
 import { fileURLToPath } from "url";
 
 import userRoutes from "./routes/userRoutes.js";
-import fcmTokenRoutes from "./routes/fcmTokenRoutes.js";
 import userClientRoutes from "./routes/userClientRoute.js";
 import locationRoutes from "./routes/locationRoute.js";
+import fcmTokenRoutes from "./routes/fcmTokenRoutes.js";
 import oauthRoutes from "./routes/oauthRoutes.js";
 import categoryRoutes from "./routes/categoryRoute.js";
 import businessListRoutes from "./routes/businessListRoute.js";
@@ -64,20 +64,16 @@ const CLIENT_BUILD_PATH =
 //   const protocol =
 //     req.headers["x-forwarded-proto"] || req.protocol;
 
+//   // ✅ FIX: only redirect when REALLY needed
 //   if (protocol !== "https") {
-//     return res.redirect(
-//       301,
-//       `https://${host}${req.originalUrl}`
-//     );
+//     return res.redirect(301, `https://${host}${req.originalUrl}`);
 //   }
 
-//   if (host.startsWith("www.")) {
-
-//     const newHost = host.replace("www.", "");
-
+//   // ✅ FIX: avoid loop
+//   if (host === "www.massclick.in") {
 //     return res.redirect(
 //       301,
-//       `https://${newHost}${req.originalUrl}`
+//       `https://massclick.in${req.originalUrl}`
 //     );
 //   }
 

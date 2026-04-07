@@ -67,7 +67,7 @@ export const STATIC_CATEGORIES = [
   { icon: Numerology, label: "Numerology", path: "/numerology" },
   { icon: Geologist, label: "Geologist", path: "/geologist" },
 
-  { icon: CharteredAccountant, label: "Chartered Accountant", path: "/ca" },
+  { icon: CharteredAccountant, label: "Chartered Accountant", path: "/chartered-accountant" },
   { icon: ComputerTraining, label: "Computer Training Institutes", path: "/computer-training" },
   { icon: Coaching, label: "Coaching", path: "/coaching" },
   { icon: VocationalTraining, label: "Vocational training", path: "/vocational-training" },
@@ -95,7 +95,7 @@ export const STATIC_CATEGORIES = [
   { icon: PaintingService, label: "Painting Contractor", path: "/painting-contractor" },
   { icon: NursingServices, label: "Nursing Service", path: "/nursing-services" },
   { icon: CourierServices, label: "Courier Services", path: "/courier-service" },
-  { icon: Printing, label: "Printing & Publishing Service", path: "/printing" },
+  { icon: Printing, label: "Printing & Publishing Service", path: "/printing-publishing-service" },
 
   { icon: Hobbies, label: "Hobbies", path: "/hobbies" },
   { icon: InternetWeb, label: "Internet Website Designer", path: "/web-designers" },

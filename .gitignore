@@ -1,6 +1,7 @@
-server/google-chrome-stable_current_x86_64.rpm
+server/node_modules/
 server/google-chrome-stable_current_x86_64.rpm
 server/node_modules/
+server/google-chrome-stable_current_x86_64.rpm
  
 
 **/node_modules

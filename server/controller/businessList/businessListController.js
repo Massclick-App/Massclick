@@ -1,4 +1,4 @@
-import { createBusinessList, viewBusinessList, findBusinessBySlug, viewAllBusiness, getDashboardChartsHelper, getPendingBusinessList, findBusinessesByCategory, getDashboardSummaryHelper, findBusinessByMobile, viewAllBusinessList, viewAllClientBusinessList, updateBusinessList, getTrendingSearches, deleteBusinessList, activeBusinessList } from "../../helper/businessList/businessListHelper.js";
+import { createBusinessList, viewBusinessList, findBusinessBySlug,viewAllBusiness, getDashboardChartsHelper, getPendingBusinessList, findBusinessesByCategory, getDashboardSummaryHelper, findBusinessByMobile, viewAllBusinessList, viewAllClientBusinessList, updateBusinessList, getTrendingSearches, deleteBusinessList, activeBusinessList } from "../../helper/businessList/businessListHelper.js";
 import { BAD_REQUEST } from "../../errorCodes.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
 import { getSignedUrlByKey } from "../../s3Uploder.js";
@@ -92,7 +92,7 @@ export const viewBusinessListAction = async (req, res) => {
   }
 };
 
-export const viewAllBusinessAction = async (req, res) => {
+  export const viewAllBusinessAction = async (req, res) => {
   try {
     const businesses = await viewAllBusiness();
     res.send(businesses);
@@ -218,7 +218,7 @@ export const getSuggestionsController = async (req, res) => {
       { $limit: 15 },
       {
         $project: {
-          _id: 0,
+           _id: 0,   
           businessName: 1,
           category: 1,
           location: 1,
@@ -265,7 +265,7 @@ export const mainSearchController = async (req, res) => {
       if (w.endsWith("s")) {
         return [w, w.slice(0, -1)];
       } else {
-        return [w, w + "s"];
+        return [w, w + "s"]; 
       }
     };
 
@@ -274,6 +274,7 @@ export const mainSearchController = async (req, res) => {
       $and: []
     };
 
+  
     if (location) {
       const locKey = location.toLowerCase().trim();
       const aliases = districtAliasMap[locKey] || [locKey];
@@ -287,19 +288,32 @@ export const mainSearchController = async (req, res) => {
       });
     }
 
-    if (category) {
-      const variations = getWordVariations(category);
+   
+   if (category) {
+  const variations = getWordVariations(category);
 
-      const categoryConditions = variations.map((val) => {
-        return {
-          category: new RegExp(`^${escapeRegex(val)}$`, "i")
-        };
-      });
+  const exactConditions = variations.map((val) => ({
+    category: new RegExp(`^${escapeRegex(val)}$`, "i")
+  }));
 
-      matchQuery.$and.push({
-        $or: categoryConditions
-      });
-    }
+  const partialConditions = variations.flatMap((val) => {
+    const regex = new RegExp(escapeRegex(val), "i");
+
+    return [
+      { category: regex },
+      { keywords: regex },
+      // { businessName: regex },
+      // { title: regex }
+    ];
+  });
+
+  matchQuery.$and.push({
+    $or: [
+      ...exactConditions,   
+      ...partialConditions  
+    ]
+  });
+}
 
     if (term) {
       const variations = getWordVariations(term);
