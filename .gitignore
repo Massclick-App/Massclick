@@ -62,3 +62,4 @@ Thumbs.db           # Windows
 
 # JetBrains/IntelliJ (e.g., WebStorm, IDEA)
 .idea/
+server/.env
