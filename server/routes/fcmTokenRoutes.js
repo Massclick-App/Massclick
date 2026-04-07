@@ -14,18 +14,11 @@ const router = express.Router();
  * All routes require OAuth authentication
  */
 
-// // Save new FCM token
-// router.post('/api/fcm-token/save', oauthAuthentication, saveFCMTokenAction);
-
-// // Refresh FCM token (remove old, save new)
-// router.put('/api/fcm-token/refresh/:userId/:oldToken', oauthAuthentication, refreshFCMTokenAction);
-
 // Save new FCM token
-router.post('/api/fcm-token/save', saveFCMTokenAction);
+router.post('/api/fcm-token/save', oauthAuthentication, saveFCMTokenAction);
 
 // Refresh FCM token (remove old, save new)
-router.put('/api/fcm-token/refresh/:userId/:oldToken', refreshFCMTokenAction);
-
+router.put('/api/fcm-token/refresh/:userId/:oldToken', oauthAuthentication, refreshFCMTokenAction);
 
 // Remove FCM token
 router.delete('/api/fcm-token/remove/:userId/:token', oauthAuthentication, removeFCMTokenAction);

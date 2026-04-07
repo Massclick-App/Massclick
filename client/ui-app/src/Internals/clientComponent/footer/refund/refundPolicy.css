@@ -1,0 +1,150 @@
+/* --- Color Variables (Consistent with your Orange scheme) --- */
+:root {
+    --color-primary: #ff6600;      /* Orange Accent */
+    --color-text-dark: #212529;
+    --color-text-grey: #495057;
+    --color-background-white: #ffffff;
+    --color-background-light: #f8f9fa; /* Light background for section */
+    --color-border-clean: #e9ecef;  /* Very light border */
+    --color-highlight-bg: #ffe0b2; /* Subtle light orange for highlights */
+    --font-family-primary: 'Inter', sans-serif;
+}
+
+/* ========================================================= */
+/* --- 1. Refund Policy Section Layout --- */
+/* ========================================================= */
+
+.section-refund-policy {
+    padding: 80px 20px;
+    background-color: var(--color-background-light); 
+    font-family: var(--font-family-primary);
+}
+
+.refund-header-wrapper {
+    max-width: 900px;
+    margin: 0 auto 50px auto;
+    text-align: center;
+}
+
+.section-title-refund {
+    font-size: 3rem;
+    font-weight: 800;
+    color: var(--color-text-dark);
+    margin-bottom: 10px;
+}
+
+.highlight-text-refund {
+    color: var(--color-primary);
+}
+
+.section-subtitle-refund {
+    font-size: 1.1rem;
+    color: var(--color-text-grey);
+    line-height: 1.6;
+    margin-bottom: 20px;
+}
+
+.contact-policy-note {
+    font-size: 0.95rem;
+    color: var(--color-text-grey);
+    font-style: italic;
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+/* --- Policy Highlights Container (3-Column Grid) --- */
+.policy-highlights-container {
+    max-width: 1200px;
+    margin: 0 auto 40px auto;
+    display: grid;
+    /* Default: 1 Column on mobile */
+    grid-template-columns: 1fr;
+    gap: 30px;
+}
+
+/* ========================================================= */
+/* --- 2. Policy Card Styling --- */
+/* ========================================================= */
+
+.refund-policy-card {
+    background-color: var(--color-background-white);
+    padding: 30px;
+    border-radius: 10px;
+    border: 1px solid var(--color-border-clean);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    text-align: center;
+}
+
+.card-icon-refund {
+    color: var(--color-primary);
+    font-size: 3rem !important;
+    margin-bottom: 15px;
+}
+
+.card-title-refund {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--color-text-dark);
+    margin-bottom: 15px;
+}
+
+.card-description-refund {
+    font-size: 1rem;
+    color: var(--color-text-grey);
+    line-height: 1.6;
+    margin-bottom: 20px;
+    min-height: 60px; /* Ensures visual stability */
+}
+
+.card-highlight-refund {
+    display: inline-block;
+    background-color: var(--color-highlight-bg); /* Subtle color highlight */
+    color: var(--color-text-dark);
+    font-weight: 600;
+    font-size: 0.9rem;
+    padding: 8px 15px;
+    border-radius: 5px;
+    border: 1px solid var(--color-primary);
+}
+
+/* --- Full Policy CTA --- */
+.full-policy-cta {
+    text-align: center;
+    max-width: 600px;
+    margin: 0 auto;
+    font-size: 1rem;
+    color: var(--color-text-dark);
+    padding-top: 30px;
+    border-top: 1px solid var(--color-border-clean);
+}
+
+.terms-link-refund {
+    color: var(--color-primary);
+    font-weight: 600;
+    text-decoration: none;
+    transition: text-decoration 0.3s;
+}
+
+.terms-link-refund:hover {
+    text-decoration: underline;
+}
+
+/* ========================================================= */
+/* --- 3. RESPONSIVENESS --- */
+/* ========================================================= */
+
+/* Tablet (Screen width > 600px) */
+@media (min-width: 600px) {
+    .policy-highlights-container {
+        /* 2 Columns on tablet */
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* Desktop (Screen width > 992px) */
+@media (min-width: 992px) {
+    .policy-highlights-container {
+        /* 3 Columns on desktop */
+        grid-template-columns: repeat(3, 1fr);
+    }
+}

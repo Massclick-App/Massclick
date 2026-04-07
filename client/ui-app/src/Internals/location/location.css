@@ -1,0 +1,226 @@
+/* ===========================
+   🌎 Location Component Styles (Orange Theme)
+   =========================== */
+
+:root {
+  --color-background: #f8f9fb;
+  --color-card-bg: #ffffff;
+  --color-text-primary: #1f2937;
+  --color-text-secondary: #6b7280;
+  --color-border: #e5e7eb;
+
+  /* Orange Theme Colors */
+  --color-primary-orange: #ff8c00;
+  --color-primary-hover: #d97800;
+  --color-disabled-orange: #ffc280;
+  --color-error: #ef4444;
+}
+
+/* ===========================
+   🧱 Base Layout
+   =========================== */
+.location-page {
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 16px;
+  background-color: var(--color-background);
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* ===========================
+   📦 Card Section
+   =========================== */
+.location-card {
+  background-color: var(--color-card-bg);
+  padding: 30px;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--color-border);
+  margin-bottom: 30px;
+  transition: box-shadow 0.3s ease;
+}
+
+.location-card:hover {
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.08);
+}
+
+.location-card-title {
+  font-size: 1.65rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-bottom: 30px;
+  border-bottom: 3px solid var(--color-primary-orange);
+  width: fit-content;
+  padding-bottom: 8px;
+}
+
+/* ===========================
+   🧾 Form Section
+   =========================== */
+.location-form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 35px 28px;
+}
+
+.location-col-span-all {
+  grid-column: 1 / -1;
+}
+
+.location-form-input-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.location-input-label {
+  font-size: 0.95rem;
+  color: var(--color-text-secondary);
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+.location-text-input {
+  width: 100%;
+  height: 52px;
+  padding: 0 16px;
+  font-size: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background-color: var(--color-card-bg);
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.location-text-input:focus {
+  outline: none;
+  border-color: var(--color-primary-orange);
+  box-shadow: 0 0 0 3px rgba(255, 140, 0, 0.2);
+}
+
+.location-text-input.error {
+  border-color: var(--color-error);
+}
+
+.location-error-text {
+  color: var(--color-error);
+  font-size: 0.85rem;
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+
+.location-upload-section {
+  padding-top: 20px;
+  grid-column: 1 / -1;
+}
+
+.location-upload-content {
+  display: flex;
+  align-items: start;
+  gap: 20px;
+  justify-content: start;
+}
+
+.location-submit-button,
+.location-upload-button {
+  height: 48px;
+  padding: 0 24px;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: background-color 0.3s, box-shadow 0.3s, transform 0.1s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+/* Submit Button (Primary Orange) */
+.location-submit-button {
+  background-color: var(--color-primary-orange);
+  color: white;
+}
+
+.location-submit-button:hover:not(:disabled) {
+  background-color: var(--color-primary-hover);
+  box-shadow: 0 4px 10px rgba(255, 140, 0, 0.4);
+}
+
+.location-submit-button:disabled {
+  background-color: var(--color-disabled-orange);
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Cancel Button */
+.location-upload-button {
+  background-color: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+.location-upload-button:hover {
+  background-color: #e5e7eb;
+}
+
+/* ===========================
+   🧾 DataGrid / Table Section
+   =========================== */
+.MuiPaper-root {
+  margin-top: 2rem;
+  border-radius: 16px !important;
+}
+
+.MuiDataGrid-root {
+  background-color: #fff;
+  border-radius: 12px;
+}
+
+.MuiDataGrid-columnHeaders {
+  background-color: #f7f7f9;
+  color: #1f2937;
+  font-weight: 600;
+}
+
+.MuiDataGrid-row:hover {
+  background-color: #f9fafb;
+}
+
+.MuiIconButton-root:hover {
+  background-color: rgba(255, 140, 0, 0.1) !important;
+}
+
+/* ===========================
+   📱 Responsive Design
+   =========================== */
+@media (max-width: 992px) {
+  .location-form-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 25px 18px;
+  }
+
+  .location-card {
+    padding: 25px;
+  }
+}
+
+@media (max-width: 600px) {
+  .location-page {
+    padding: 0 10px;
+  }
+
+  .location-card {
+    padding: 20px;
+  }
+
+  .location-form-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .location-card-title {
+    font-size: 1.4rem;
+    margin-bottom: 20px;
+  }
+}

@@ -1,0 +1,231 @@
+/* DashboardPage.css */
+
+:root {
+  /* Massclick Brand Colors - unchanged */
+  --brand-orange-primary: #ff8c00; 
+  --brand-orange-secondary: #ffa500;
+  --brand-gradient: linear-gradient(135deg, #ff9933 0%, #ff6600 100%); 
+  
+  --success-green: #28a745;
+  --info-blue: #17a2b8; /* New color for 'Enquiries' */
+  --secondary-purple: #6f42c1; /* New color for 'Shares' */
+  
+  /* Layout & Utility */
+  --neutral-bg: #f5f6f8; 
+  --text-dark: #2c3e50; /* Slightly darker for better contrast */
+  --text-muted: #7f8c8d; /* More modern muted grey */
+  --card-shadow: 0 8px 25px rgba(0, 0, 0, 0.08); /* Refined shadow */
+  --card-radius: 12px; /* Slightly smaller radius for compactness */
+}
+
+/* Base Page Styling */
+.dashboard-page-container {
+  padding: 30px 25px; /* Slightly reduced padding */
+  background-color: var(--neutral-bg);
+  min-height: 100vh;
+  font-family: 'Inter', sans-serif; /* Using a modern, clean font if available */
+  /* Fallback to Arial, Helvetica if Inter isn't linked */
+  font-family: 'Inter', 'Arial', sans-serif; 
+}
+
+/* Header Styling */
+.dashboard-main-title {
+  font-size: 2.2rem; /* Slightly smaller title */
+  font-weight: 700;
+  color: var(--text-dark);
+  margin-bottom: 5px;
+}
+
+.title-separator {
+  border: 0;
+  border-top: 1px solid #e0e0e0; /* Thinner, subtle separator */
+  margin-bottom: 40px; /* Reduced margin */
+}
+
+/* 2. RESPONSIVE METRIC GRID */
+/* 2. RESPONSIVE METRIC GRID */
+.key-metrics-grid {
+  display: grid;
+  /* Default: 2 columns for tablets and medium desktops, min card width 250px */
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); 
+  gap: 25px; /* Consistent spacing */
+
+  /* For larger screens, aim for 4 columns */
+  @media (min-width: 1200px) {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* 3. PREMIUM METRIC CARD STYLING - **COMPACTED AND REFINED** */
+.metric-card {
+  background: white;
+  padding: 25px; /* Reduced padding for compactness */
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  transition: all 0.3s ease-in-out; /* Smoother transition */
+  overflow: hidden;
+  position: relative;
+  display: flex; /* Using flexbox for internal card layout */
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 150px; /* Ensure cards have a minimum height */
+}
+
+/* Hover effect */
+.metric-card:hover {
+  transform: translateY(-5px); /* Subtle lift */
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.12); /* Enhanced shadow on hover */
+}
+
+/* Gradient Bar Accent at the TOP */
+.metric-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 4px; /* Thinner accent bar */
+    width: 100%;
+    background: var(--brand-orange-primary); /* Default */
+}
+
+/* Card Content Structure */
+.metric-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px; /* Space above value */
+}
+
+.metric-title {
+  font-size: 0.95rem; /* Smaller, more concise title */
+  font-weight: 500;
+  color: var(--text-muted); 
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Icon Styling - subtle, background-like */
+.metric-icon {
+  font-size: 2.2rem; /* Slightly smaller icon */
+  opacity: 0.15; /* More visible than before, but still subtle */
+  color: var(--text-dark);
+  align-self: flex-start; /* Align with title */
+}
+
+/* Main Value - still impactful, but proportional to new card size */
+.metric-value {
+  font-size: 3rem; /* Adjusted for smaller card size */
+  font-weight: 800;
+  color: var(--text-dark);
+  line-height: 1;
+  margin: 0; /* Reset margins */
+}
+
+.metric-context {
+  font-size: 0.8rem; /* Smaller context text */
+  color: var(--text-muted);
+  margin-top: auto; /* Pushes to the bottom */
+  padding-top: 12px;
+  border-top: 1px dashed #e9ecef; 
+}
+
+/* 4. SPECIFIC CARD THEMING */
+
+/* Total Business Views - Use the Brand Gradient */
+/* 4. SPECIFIC CARD THEMING */
+
+/* Total Business Views (Orange/Massclick Brand) */
+.views-card::before {
+    background: var(--brand-gradient);
+}
+.views-card .metric-value {
+    color: var(--text-dark); /* Keep text dark for readability */
+}
+.views-card .metric-icon {
+    color: var(--brand-orange-primary); /* Icon subtly takes brand color */
+}
+
+/* Total WhatsApp Clicks (Green) */
+.whatsapp-card::before {
+    background: var(--success-green);
+}
+.whatsapp-card .metric-value {
+    color: var(--success-green);
+}
+.whatsapp-card .metric-icon {
+    color: var(--success-green);
+    opacity: 0.4;
+}
+
+/* NEW: Total Enquiries (Info Blue) */
+.enquiry-card::before {
+    background: var(--info-blue);
+}
+.enquiry-card .metric-value {
+    color: var(--info-blue);
+}
+.enquiry-card .metric-icon {
+    color: var(--info-blue);
+    opacity: 0.4;
+}
+
+/* NEW: Profile Shares (Secondary Purple) */
+.share-card::before {
+    background: var(--secondary-purple);
+}
+.share-card .metric-value {
+    color: var(--secondary-purple);
+}
+.share-card .metric-icon {
+    color: var(--secondary-purple);
+    opacity: 0.4;
+}
+
+/* 5. FULL RESPONSIVENESS */
+
+/* TABLET/MEDIUM DESKTOP OPTIMIZATION (2 columns) */
+@media (min-width: 768px) and (max-width: 1199px) {
+    .dashboard-page-container {
+        padding: 25px 20px;
+    }
+    .key-metrics-grid {
+        grid-template-columns: repeat(2, 1fr); /* Explicitly 2 columns */
+        gap: 20px;
+    }
+    .metric-value {
+        font-size: 2.8rem; 
+    }
+}
+
+/* PHONE OPTIMIZATION (1 column) */
+@media (max-width: 767px) {
+    .dashboard-page-container {
+        padding: 20px 15px;
+    }
+    .dashboard-main-title {
+        font-size: 1.8rem;
+    }
+    .title-separator {
+        margin-bottom: 25px;
+    }
+    .key-metrics-grid {
+        grid-template-columns: 1fr; /* Stacks to 1 column */
+        gap: 20px;
+    }
+    .metric-card {
+        padding: 20px;
+        min-height: 140px;
+    }
+    .metric-title {
+      font-size: 0.85rem;
+    }
+    .metric-icon {
+      font-size: 2rem;
+    }
+    .metric-value {
+        font-size: 2.5rem; 
+    }
+    .metric-context {
+        font-size: 0.75rem;
+    }
+}

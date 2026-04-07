@@ -1,0 +1,75 @@
+/* --- Base Styles for All Screens (Underlined Text Look) --- */
+
+.popular-categories-container-text {
+    /* Set a max-width and padding consistent with a typical website content area */
+    max-width: 1750px;
+    margin: 40px auto; 
+    padding: 20px; 
+    /* Light grey background for the container, matching your image */
+}
+
+.popular-categories-heading-text {
+    /* Color and size matching the image */
+    font-size: 1.5rem; 
+    font-weight: 700;
+    color: #E67E22; /* Your specific orange brand color */
+    margin-bottom: 25px;
+    letter-spacing: -0.5px;
+}
+
+.search-links-wrapper {
+    /* The layout must allow wrapping for responsiveness */
+    display: block; 
+    line-height: 1.8; /* Good vertical spacing for readability */
+    font-size: 0.95rem; /* Standard readable font size */
+    color: #333; /* Default text color */
+}
+
+.search-link {
+    /* Link styling */
+    text-decoration: underline; /* Key requirement: underlined text */
+    color: #333; /* Link color matching the dark grey in your image */
+    margin: 0 0.25rem; /* Slight horizontal spacing around links */
+    transition: color 0.2s ease;
+    
+    /* Font style consistent with the text around it */
+    font-weight: 400; 
+}
+
+.search-link:first-child {
+    /* Removes margin from the very first link if needed */
+    margin-left: 0;
+}
+
+.search-link:hover {
+    /* Subtle hover effect for better user experience */
+    color: #ff6600;
+    text-decoration: none; /* Optional: Remove underline on hover for a modern touch */
+}
+
+.link-separator {
+    /* Style for the pipe separator */
+    color: #999; /* Lighter color for the separator pipe */
+    font-weight: 400;
+    margin: 0; /* Ensures the pipe sits right next to the links */
+    /* Use white-space: nowrap to avoid breaking the separator */
+    white-space: nowrap; 
+}
+
+/* --- Responsiveness: Mobile (Screen Width < 768px) --- */
+@media (max-width: 768px) {
+    .popular-categories-container-text {
+        margin: 20px auto;
+        padding: 15px;
+    }
+
+    .popular-categories-heading-text {
+        font-size: 1.3rem;
+        margin-bottom: 15px;
+    }
+
+    .search-links-wrapper {
+        line-height: 1.6;
+        font-size: 0.9rem;
+    }
+}

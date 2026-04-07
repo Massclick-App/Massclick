@@ -1,0 +1,248 @@
+/* --- Color Variables (Consistent with your Orange scheme) --- */
+:root {
+    --color-primary: #ff6600;
+    --color-primary-dark: #e65100;
+    --color-text-dark: #212529;
+    --color-text-light: #ffffff;
+    --color-text-grey: #6c757d;
+    --color-background-light: #f8f9fa;
+    --color-overlay: rgba(33, 37, 41, 0.9); /* Dark, high-contrast overlay */
+    --font-family-primary: 'Inter', sans-serif;
+}
+
+/* ========================================================= */
+/* --- 1. Portfolio Section Layout --- */
+/* ========================================================= */
+
+.section-portfolio {
+    padding: 80px 20px;
+    background-color: var(--color-background-light);
+    font-family: var(--font-family-primary);
+}
+
+.portfolio-header-wrapper {
+    max-width: 900px;
+    margin: 0 auto 40px auto;
+    text-align: center;
+}
+
+.section-title-portfolio {
+    font-size: 3rem;
+    font-weight: 800;
+    color: var(--color-text-dark);
+    margin-bottom: 10px;
+}
+
+.highlight-text-portfolio {
+    color: var(--color-primary);
+}
+
+.section-subtitle-portfolio {
+    font-size: 1.15rem;
+    color: var(--color-text-grey);
+}
+
+.card-image-actual {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.5s ease;
+}
+
+.portfolio-card:hover .card-image-actual {
+  transform: scale(1.05);
+}
+
+/* ========================================================= */
+/* --- 2. Filter Tabs/Buttons --- */
+/* ========================================================= */
+
+.portfolio-filter-tabs {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 40px;
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.filter-tab-button {
+    background-color: transparent;
+    border: 2px solid var(--color-text-grey);
+    color: var(--color-text-grey);
+    padding: 10px 25px;
+    border-radius: 50px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+}
+
+.filter-tab-button:hover,
+.filter-tab-button.active {
+    background-color: var(--color-primary);
+    border-color: var(--color-primary);
+    color: var(--color-text-light);
+}
+
+
+/* ========================================================= */
+/* --- 3. Portfolio Grid & Cards --- */
+/* ========================================================= */
+
+.portfolio-grid {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: grid;
+    /* Mobile: 1 Column */
+    grid-template-columns: 1fr;
+    gap: 30px;
+}
+
+.portfolio-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 10px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+    background-color: var(--color-text-dark); /* Dark background for the card */
+    cursor: pointer;
+}
+
+/* --- Image Placeholder/Wrapper Styling --- */
+.card-image-placeholder {
+    width: 100%;
+    /* Aspect ratio height (e.g., 3:2 ratio) */
+    padding-top: 66.66%; 
+    background-color: #ccc; /* Placeholder color if image fails */
+    background-size: cover;
+    background-position: center;
+    transition: transform 0.5s ease;
+}
+
+/* Ensure images cover the area */
+.card-image-actual {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* --- Overlay Effect (The "Blast" Look) --- */
+.card-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: var(--color-overlay);
+    color: var(--color-text-light);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    
+    /* Initial state: Invisible and slightly moved up */
+    opacity: 0;
+    transform: translateY(100%); 
+    transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.portfolio-card:hover .card-image-placeholder {
+    /* Subtle zoom effect on the image */
+    transform: scale(1.05); 
+}
+
+.portfolio-card:hover .card-overlay {
+    /* Final state: Fully visible and centered */
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.overlay-title {
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin-bottom: 5px;
+    /* Optional: Small accent line */
+    border-bottom: 2px solid var(--color-primary); 
+    padding-bottom: 5px;
+}
+
+.overlay-category {
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--color-primary);
+    text-transform: uppercase;
+    margin-bottom: 20px;
+}
+
+.overlay-button {
+    color: var(--color-text-light);
+    font-size: 1.5rem;
+    border: 2px solid var(--color-primary);
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    background-color: var(--color-primary);
+}
+
+.overlay-button:hover {
+    background-color: transparent;
+    color: var(--color-primary);
+}
+
+/* Load More Button */
+.load-more-wrapper {
+    text-align: center;
+    margin-top: 50px;
+}
+
+.load-more-button {
+    background-color: var(--color-text-dark);
+    color: var(--color-text-light);
+    padding: 12px 35px;
+    border: none;
+    border-radius: 50px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.load-more-button:hover {
+    background-color: var(--color-primary);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+
+/* ========================================================= */
+/* --- 4. RESPONSIVENESS --- */
+/* ========================================================= */
+
+/* Tablet (Screen width > 600px) */
+@media (min-width: 600px) {
+    .portfolio-grid {
+        /* 2 Columns on tablet */
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* Desktop (Screen width > 1024px) */
+@media (min-width: 1024px) {
+    .portfolio-grid {
+        /* 3 Columns on desktop for high density */
+        grid-template-columns: repeat(3, 1fr);
+    }
+    .section-title-portfolio {
+        font-size: 3.5rem;
+    }
+}

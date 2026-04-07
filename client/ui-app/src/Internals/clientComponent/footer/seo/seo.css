@@ -1,0 +1,258 @@
+
+:root {
+    --accent-color: #ff6b00;
+    /* Your orange as a highlight */
+    --dark-bg: #1a1a1a;
+    /* Dark background for contrast */
+    --light-bg: #ffffff;
+    --text-dark: #333;
+    --text-light: #f8f8f8;
+    --shadow-deep: 0 10px 30px rgba(0, 0, 0, 0.15);
+    --font-family-modern: 'Inter', sans-serif;
+    /* Assumes Inter font is linked */
+}
+
+.seo-container {
+    font-family: var(--font-family-modern);
+    color: var(--text-dark);
+    line-height: 1.6;
+    overflow-x: hidden;
+}
+
+/* Renamed from .section-heading to .global-section-heading for clarity */
+.global-section-heading {
+    font-size: 2.2em;
+    font-weight: 700;
+    margin-bottom: 20px;
+    color: var(--primary-color);
+    text-align: center;
+}
+
+/* -------------------- 1. Hero Section -------------------- */
+.seo-hero-section {
+    position: relative;
+    height: 40vh;
+    /* Good height for mobile hero */
+    background-size: cover;
+    background-position: center 30%;
+    /* Adjust to focus on the top of the image */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.hero-overlay {
+    background-color: rgba(0, 0, 0, 0.7);
+    /* Dark overlay for text readability */
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0 5%;
+}
+
+.hero-title {
+    font-size: 2.5em;
+    font-weight: 800;
+    color: var(--text-light);
+    margin: 0;
+}
+
+.hero-breadcrumb {
+    font-size: 1em;
+    color: var(--accent-color);
+    margin-top: 10px;
+}
+
+/* -------------------- 2. Intro/Content Section -------------------- */
+.seo-intro-section {
+    padding: 60px 5%;
+    display: flex;
+    flex-direction: column;
+    /* Stacked on mobile */
+    gap: 40px;
+}
+
+.intro-image-area {
+    order: -1;
+    /* Image appears above text on mobile */
+    text-align: center;
+}
+
+.search-graphic {
+    width: 80%;
+    max-width: 450px;
+    height: auto;
+    transition: transform 0.4s ease-in-out;
+}
+
+.search-graphic:hover {
+    transform: scale(1.03);
+}
+
+.intro-text-content .global-section-heading {
+    text-align: left;
+    color: var(--dark-bg);
+}
+
+.intro-text-content p {
+    font-size: 1em;
+    margin-bottom: 20px;
+    color: var(--text-dark);
+}
+
+/* -------------------- 3. Services/Cards Section (UPDATED) -------------------- */
+.seo-services-section {
+    background-color: var(light-bg);
+    color: var(--text-light);
+    padding: 80px 5%;
+}
+
+.seo-services-section .seo-section-heading {
+    /* UPDATED */
+    color: var(--accent-color);
+    margin-bottom: 60px;
+    text-align: center;
+}
+
+.seo-services-grid {
+    /* UPDATED */
+    display: grid;
+    grid-template-columns: 1fr;
+    /* Single column on mobile */
+    gap: 30px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.seo-service-card {
+    /* UPDATED */
+    background-color: var(--light-bg);
+    color: var(--text-dark);
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: var(--shadow-deep);
+    transition: all 0.3s ease;
+    border-bottom: 5px solid var(--primary-color);
+}
+
+.seo-service-card:hover {
+    /* UPDATED */
+    transform: translateY(-8px);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+}
+
+.primary-card {
+    /* Highlight the middle card, often the most popular/important */
+    border-bottom: 5px solid var(--accent-color);
+}
+
+.seo-card-icon {
+    /* UPDATED */
+    font-size: 3em;
+    display: block;
+    margin-bottom: 10px;
+    color: var(--primary-color);
+}
+
+.seo-service-heading {
+    /* UPDATED */
+    font-size: 1.5em;
+    font-weight: 700;
+    margin-bottom: 15px;
+    color: var(--dark-bg);
+}
+
+.seo-service-list {
+    /* UPDATED */
+    list-style: none;
+    /* Remove default bullets */
+    padding-left: 0;
+}
+
+.seo-service-list li {
+    /* UPDATED */
+    font-size: 1em;
+    padding-left: 20px;
+    position: relative;
+    margin-bottom: 10px;
+}
+
+.seo-service-list li::before {
+    /* UPDATED */
+    content: '✓';
+    /* Custom checkmark for a cleaner look */
+    color: var(--primary-color);
+    font-weight: bold;
+    position: absolute;
+    left: 0;
+}
+
+/* ========================================================== */
+/* Tablet & Medium Screens (Min-width: 768px) */
+/* ========================================================== */
+@media (min-width: 768px) {
+    .seo-hero-section {
+        height: 50vh;
+    }
+
+    .hero-title {
+        font-size: 3.5em;
+    }
+
+    /* Cards: Two columns on tablet */
+    .seo-services-grid {
+        /* UPDATED */
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+
+@media (min-width: 1200px) {
+    .seo-hero-section {
+        height: 60vh;
+    }
+
+    .hero-title {
+        font-size: 4em;
+    }
+
+    .seo-intro-section {
+        flex-direction: row;
+        align-items: center;
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 80px 5%;
+        gap: 80px;
+    }
+
+    .intro-image-area {
+        flex: 0 0 60%;
+        max-width: 60%;
+        text-align: left;
+    }
+
+    .search-graphic {
+        width: 100%;
+        max-width: 100%;
+        border-radius: 12px;
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+    }
+
+
+    .intro-text-content {
+        flex: 0 0 40%;
+        max-width: 40%;
+    }
+
+    .seo-services-grid {
+        /* UPDATED */
+        grid-template-columns: repeat(3, 1fr);
+        gap: 40px;
+    }
+}

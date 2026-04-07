@@ -52,19 +52,6 @@ const userSchema = new mongoose.Schema({
 
   isPhoneVerified: { type: Boolean, default: false },
 
-  
-  // FCM & NOTIFICATIONS =======================
-  fcmTokens: [
-    {
-      token: { type: String, required: true },
-      deviceName: { type: String, default: '' },
-      platform: { type: String, enum: ['android', 'ios', 'web'], default: 'android' },
-      isActive: { type: Boolean, default: true },
-      registeredAt: { type: Date, default: Date.now },
-      lastRefreshedAt: { type: Date, default: Date.now },
-      expiresAt: { type: Date, default: () => new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) } // 30 days
-    }
-  ],
 
   // PREFERENCES ================================
   preferences: {

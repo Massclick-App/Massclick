@@ -1,0 +1,360 @@
+
+.enquiry-wrapper {
+  display: flex;
+  width: 100%;
+  max-width: 1800px;
+  margin: 0 auto;
+  padding: 20px;
+  gap: 24px;
+  align-items: stretch;
+}
+
+/* ====================================
+   LEFT SIDE FORM (50%)
+==================================== */
+.enquiry-container {
+  width: 50%;
+  background: #ffffff;
+  padding: 42px;
+  border-radius: 20px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+  animation: slideFade 0.6s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes slideFade {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ====================================
+   HEADER
+==================================== */
+.enquiry-header {
+  display: flex;
+  align-items: center;
+  gap: 25px;
+  margin-bottom: 35px;
+}
+
+.header-logo {
+  width: 95px;
+  height: 95px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid #f7941d;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+}
+
+.enquiry-header-text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+}
+
+.enquiry-header-text h2 {
+  font-size: 32px;
+  font-weight: 700;
+  color: #f7941d;
+  line-height: 1.2;
+  white-space: nowrap; 
+}
+
+.enquiry-header-text p {
+  font-size: 16px;
+  color: #666;
+  margin: 0;
+  max-width: 500px;
+  line-height: 1.5;
+}
+
+/* ====================================
+   GRID SYSTEM
+==================================== */
+.enquiry-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 22px;
+}
+
+.full {
+  grid-column: span 2;
+}
+
+/* ====================================
+   FORM FIELDS
+==================================== */
+.enquiry-form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.enquiry-form-group label {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  color: #222;
+}
+
+.enquiry-form-group label svg {
+  margin-right: 6px;
+  color: #f7941d;
+}
+
+.enquiry-form-group input,
+.enquiry-form-group textarea {
+  padding: 14px 16px;
+  border: 1px solid #dedede;
+  background: #fafafa;
+  border-radius: 10px;
+  font-size: 15px;
+  transition: 0.25s ease;
+}
+
+.enquiry-form-group textarea {
+  height: 130px;
+  resize: vertical;
+}
+
+.enquiry-form-group input:focus,
+.enquiry-form-group textarea:focus {
+  border-color: #f7941d;
+  background: #fffdf6;
+  box-shadow: 0 0 0 3px rgba(247, 148, 29, 0.25);
+  outline: none;
+}
+
+/* ====================================
+   SUBMIT BUTTON
+==================================== */
+.enquiry-submit-btn {
+  width: 220px;
+  background: #f7941d;
+  padding: 16px;
+  border: none;
+  border-radius: 12px;
+  font-size: 17px;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+  margin-top: 24px;
+  transition: 0.3s ease;
+  text-align: center;
+  align-self: flex-end;
+}
+
+.enquiry-submit-btn:hover {
+  background: #e07f0d;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(247, 148, 29, 0.35);
+}
+
+/* ====================================
+   RIGHT SIDE IMAGE FIXED & CLEAN
+==================================== */
+.enquiry-side-image {
+  width: 50%;
+  border-radius: 20px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.12);
+  align-self: stretch;
+  display: flex;
+}
+
+/* Image inside container */
+.enquiry-side-image img.enquiry-side-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;   /* ensures perfect display */
+  display: block;
+}
+
+/* Orange tint */
+.enquiry-side-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom right,
+    rgba(247, 148, 29, 0.45),
+    rgba(247, 148, 29, 0.15)
+  );
+  pointer-events: none;
+}
+
+/* ====================================
+   SUCCESS MODAL
+==================================== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal-box {
+  width: 90%;
+  max-width: 420px;
+  background: #ffffff;
+  padding: 30px;
+  border-radius: 16px;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.20);
+  animation: popIn 0.35s ease;
+}
+
+@keyframes popIn {
+  from { transform: scale(0.7); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.success-animation {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background: #4caf50;
+  margin: 0 auto 18px auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  animation: scaleUp 0.4s ease;
+}
+
+@keyframes scaleUp {
+  from { transform: scale(0.4); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.success-check {
+  width: 28px;
+  height: 55px;
+  border: solid white;
+  border-width: 0 8px 8px 0;
+  transform: rotate(45deg);
+  animation: drawCheck 0.4s ease-out;
+}
+
+@keyframes drawCheck {
+  0% { height: 0; }
+  100% { height: 55px; }
+}
+
+.modal-box h3 {
+  font-size: 26px;
+  font-weight: 700;
+  margin-top: 10px;
+  color: #333;
+}
+
+.modal-box p {
+  font-size: 15px;
+  color: #555;
+  margin-top: 6px;
+}
+
+.modal-btn {
+  margin-top: 20px;
+  padding: 12px 26px;
+  background: #f7941d;
+  border: none;
+  border-radius: 10px;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.25s ease;
+  font-size: 16px;
+}
+
+.modal-btn:hover {
+  background: #e07f0d;
+  transform: translateY(-2px);
+}
+
+/* ====================================
+   RESPONSIVE MEDIA QUERIES
+==================================== */
+
+@media (max-width: 1024px) {
+  .enquiry-wrapper {
+    flex-direction: column;
+  }
+
+  .enquiry-container,
+  .enquiry-side-image {
+    width: 100%;
+  }
+
+  .enquiry-side-image {
+    height: 420px;
+  }
+}
+
+@media (max-width: 768px) {
+  .enquiry-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .full {
+    grid-column: span 1;
+  }
+
+  .header-logo {
+    width: 80px;
+    height: 80px;
+  }
+
+  .enquiry-header-text h2 {
+    font-size: 26px;
+  }
+
+  .enquiry-side-image {
+    height: 330px;
+  }
+}
+
+@media (max-width: 480px) {
+  .enquiry-container {
+    padding: 22px;
+  }
+
+  .enquiry-header-text h2 {
+    font-size: 24px;
+  }
+
+  .enquiry-side-image {
+    height: 260px;
+  }
+
+  .header-logo {
+    width: 70px;
+    height: 70px;
+  }
+}
+
+@media (max-width: 380px) {
+  .header-logo {
+    width: 60px;
+    height: 60px;
+  }
+
+  .enquiry-header-text h2 {
+    font-size: 20px;
+  }
+
+  .enquiry-container {
+    padding: 18px;
+  }
+}

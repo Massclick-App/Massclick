@@ -1,0 +1,613 @@
+:root {
+  --brand-orange: #ff7a1a;
+  --brand-orange-2: #ff944d;
+  --indigo-700: #2f3a8f;
+  --muted: #6b7280;
+  --muted-soft: #9ca3af;
+  --bg: #f3f4f6;
+  --card-bg: #ffffff;
+  --soft-shadow: 0 6px 18px rgba(31, 41, 55, 0.06);
+  --soft-shadow-2: 0 12px 30px rgba(31, 41, 55, 0.08);
+  --radius-lg: 14px;
+  --radius-md: 10px;
+  --radius-pill: 999px;
+  --gap: 16px;
+  --container-max: 1180px;
+  font-family: "Inter", "Poppins", system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial;
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: radial-gradient(circle at top left, #fff7ed 0, #f9fafb 45%, #eef2ff 100%);
+  color: #0f172a;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+/* Top bar */
+.lh-topbar {
+  width: 100%;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.04);
+  background: rgba(255, 255, 255, 0.92);
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  backdrop-filter: blur(10px);
+}
+
+.lh-topbar-inner {
+  max-width: var(--container-max);
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 18px;
+}
+
+/* Brand */
+.lh-brand {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.lh-logo {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  object-fit: cover;
+  box-shadow: var(--soft-shadow);
+  background: #ffffff;
+  padding: 5px;
+}
+
+.lh-brand-texts {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.lh-title {
+  font-weight: 700;
+  color: var(--brand-orange);
+  font-size: 18px;
+}
+
+.lh-sub {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Page container */
+.lh-container {
+  max-width: var(--container-max);
+  margin: 18px auto 40px;
+  padding: 0 18px 48px;
+}
+
+/* CardsSearch wrapper */
+.lh-search-shell {
+  margin-bottom: 18px;
+}
+
+/* Main content card */
+.lh-content-card {
+  background: var(--card-bg);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--soft-shadow-2);
+  border: 1px solid rgba(15, 23, 42, 0.04);
+  padding: 20px 18px 22px;
+}
+
+/* Header */
+.lh-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.lh-header h2 {
+  margin: 0;
+  font-size: 20px;
+  color: #0b1220;
+}
+
+.lh-header-sub {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--muted-soft);
+}
+
+.lh-header-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.lh-count {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+/* Summary row */
+.lh-summary-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.lh-summary-card {
+  background: linear-gradient(180deg, #ffffff, #f9fafb);
+  border-radius: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(15, 23, 42, 0.04);
+  box-shadow: var(--soft-shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.lh-summary-card.primary {
+  background: radial-gradient(circle at top left, #fff5e8, #ffffff);
+  border-color: rgba(255, 122, 26, 0.25);
+}
+
+.lh-summary-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted-soft);
+}
+
+.lh-summary-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.lh-summary-chip {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Controls (search + sort) */
+.lh-controls-row {
+  margin: 4px 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.lh-controls-left {
+  flex: 1 1 220px;
+}
+
+.lh-controls-right {
+  flex: 0 0 auto;
+}
+
+.lh-search-input {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  outline: none;
+  font-size: 14px;
+  background: #ffffff;
+  box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
+  transition: box-shadow 150ms ease-out, border-color 150ms ease-out,
+    transform 150ms ease-out;
+}
+
+.lh-search-input:focus {
+  border-color: rgba(37, 99, 235, 0.4);
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.25);
+  transform: translateY(-1px);
+}
+
+.lh-sort-label {
+  font-size: 13px;
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.lh-sort-select {
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  font-size: 13px;
+  background: #ffffff;
+  outline: none;
+}
+
+/* Empty view */
+.lh-empty {
+  padding: 32px 20px;
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  text-align: center;
+  color: var(--muted);
+}
+
+/* Grid layout for cards */
+.lh-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+/* Card */
+.lh-card {
+  background: linear-gradient(180deg, #ffffff, #fffbf6 10%);
+  border-radius: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.04);
+  padding: 14px;
+  box-shadow: var(--soft-shadow);
+  transition: transform 0.18s ease, box-shadow 0.18s ease,
+    border-color 0.18s ease, background 0.18s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: relative;
+  overflow: hidden;
+}
+
+.lh-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border-left: 4px solid rgba(255, 122, 26, 0.7);
+  pointer-events: none;
+}
+
+.lh-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 18px 36px rgba(31, 41, 55, 0.12);
+  border-color: rgba(255, 122, 26, 0.3);
+  background: linear-gradient(180deg, #ffffff, #fff7ec);
+}
+
+/* Card head */
+.lh-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.lh-card-left {
+  display: flex;
+  gap: 10px;
+  min-width: 0;  
+  align-items: flex-start;
+}
+
+.lh-avatar-pill {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: radial-gradient(circle at top left, #eef2ff, #ffffff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 16px;
+  color: #1d4ed8;
+  box-shadow: 0 6px 14px rgba(37, 99, 235, 0.25);
+  flex-shrink: 0;
+}
+
+.lh-card-texts {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.lh-card-title {
+  font-weight: 700;
+  color: #0b1220;
+  font-size: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.lh-card-meta {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 13px;
+  flex-wrap: wrap;
+}
+
+.lh-date {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.lh-location {
+  color: var(--muted-soft);
+}
+
+/* dot separator */
+.lh-dot {
+  color: rgba(15, 23, 42, 0.12);
+  padding: 0 4px;
+}
+
+/* Icons */
+.lh-card-icons {
+  display: flex;
+  flex-direction: column;     
+  gap: 6px;
+  width: 48px;                 
+  flex-shrink: 0;             
+}
+.lh-card-icons .MuiIconButton-root {
+   width: 36px;
+  height: 36px;
+  padding: 6px;
+  border-radius: 10px;
+  background: #fff;
+  border: 1px solid rgba(15,23,42,0.07);
+  transition: 0.2s ease;
+}
+
+.lh-card-icons .MuiIconButton-root:hover {
+  transform: translateY(-3px);
+  background: rgba(47,58,143,0.04);
+}
+/* Styling for MUI IconButton via extra class */
+.lh-card-icons .icon-btn {
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 6px;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  transition: background 0.12s ease, transform 0.12s ease,
+    border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.lh-card-icons .icon-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.15);
+  background: #f9fafb;
+}
+
+.icon-btn.call {
+  color: var(--brand-orange);
+  border-color: rgba(255, 122, 26, 0.15);
+}
+
+.icon-btn.whatsapp {
+  color: #22c55e;
+  border-color: rgba(34, 197, 94, 0.16);
+}
+
+.icon-btn.mail {
+  color: #ea4335;
+  border-color: rgba(234, 67, 53, 0.16);
+}
+
+.icon-btn.share {
+  color: #475569;
+  border-color: rgba(148, 163, 184, 0.22);
+}
+
+/* Divider */
+.lh-divider {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(15, 23, 42, 0.06),
+    rgba(255, 255, 255, 0)
+  );
+  margin: 4px 0 2px;
+  border-radius: 2px;
+}
+
+/* Body */
+.lh-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lh-match {
+  margin: 0;
+  color: #334155;
+  font-size: 14px;
+}
+
+/* Lead health pills */
+.lh-pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.lh-pill {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  color: #64748b;
+  background: #f9fafb;
+}
+
+.lh-pill.ok {
+  border-color: rgba(34, 197, 94, 0.6);
+  color: #166534;
+  background: #dcfce7;
+}
+
+.lh-pill.muted {
+  opacity: 0.7;
+}
+
+/* Actions */
+.lh-card-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.lh-card-actions .MuiButton-contained {
+  background: linear-gradient(90deg, var(--brand-orange), var(--brand-orange-2));
+  color: #fff;
+}
+
+.lh-card-actions .MuiButton-outlined {
+  border-color: rgba(15, 23, 42, 0.08);
+  color: #0b1220;
+}
+
+/* Modal */
+.lh-modal {
+  width: 92%;
+  max-width: 420px;
+  background: var(--card-bg);
+  margin: auto;
+  padding: 20px;
+  border-radius: 14px;
+  outline: none;
+  box-shadow: 0 30px 80px rgba(15, 23, 42, 0.2);
+  display: flex;
+  gap: 12px;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.mh-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #0b1220;
+}
+
+.mh-body {
+  color: var(--muted);
+  font-size: 14px;
+  margin-top: 6px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 980px) {
+  .lh-topbar-inner {
+    padding: 10px 14px;
+  }
+
+  .lh-container {
+    padding: 0 14px 40px;
+  }
+
+  .lh-summary-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .lh-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .lh-content-card {
+    padding: 18px 16px;
+  }
+}
+
+@media (max-width: 720px) {
+  .lh-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .lh-summary-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .lh-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .lh-controls-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .lh-controls-right {
+    align-self: flex-start;
+  }
+}
+
+@media (max-width: 520px) {
+  .lh-topbar-inner {
+    gap: 8px;
+    padding: 8px 10px;
+  }
+
+  .lh-brand-texts {
+    display: none;
+  }
+
+  .lh-container {
+    padding: 0 12px 32px;
+  }
+
+  .lh-card {
+    padding: 12px;
+    border-radius: 10px;
+  }
+
+  .lh-card-title {
+    font-size: 15px;
+  }
+ .lh-card-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .lh-card-icons {
+    justify-content: flex-start;
+    margin-top: 6px;
+  }
+  .lh-card-meta {
+    gap: 4px;
+    font-size: 12px;
+  }
+
+  .lh-card-actions {
+    flex-direction: column;
+  }
+
+  .lh-modal {
+    width: 95%;
+    padding: 16px;
+  }
+}

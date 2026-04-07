@@ -1,0 +1,578 @@
+/* ===========================
+   GLOBAL / THEME
+=========================== */
+.business-enquiry-container {
+  width: 100%;
+  padding: 24px 20px 40px;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, #f9fafb 0%, #f5f5f7 100%);
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: #111827;
+}
+
+/* ===========================
+   HEADER & METRICS
+=========================== */
+.be-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 18px;
+  max-width: 1160px;
+  margin: 0 auto 18px;
+  flex-wrap: wrap;
+}
+
+.business-enquiry-title {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  margin: 0 0 6px;
+}
+
+.business-enquiry-sub {
+  margin: 0;
+  font-size: 14px;
+  color: #6b7280;
+  max-width: 460px;
+}
+
+/* metrics row */
+.be-header-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(140px, 1fr));
+  gap: 10px;
+  flex: 1;
+  min-width: 280px;
+}
+
+.be-metric-card {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(15, 23, 42, 0.04);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+}
+
+.be-metric-card.primary {
+  background: radial-gradient(circle at top left, #fff7ed, #ffffff);
+  border-color: rgba(234, 88, 12, 0.4);
+}
+
+.be-metric-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #9ca3af;
+}
+
+.be-metric-value {
+  font-size: 20px;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+.be-metric-sub {
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 2px;
+}
+
+.be-controls-row {
+  max-width: 1160px;
+  margin: 0 auto 16px;
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.be-search-wrapper {
+  flex: 1;
+  min-width: 220px;
+}
+
+.be-search-input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: #ffffff;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease,
+    transform 0.1s ease;
+}
+
+.be-search-input:focus {
+  border-color: rgba(59, 130, 246, 0.8);
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.4);
+  transform: translateY(-1px);
+}
+
+.be-filter-tabs {
+  display: inline-flex;
+  border-radius: 999px;
+  background: #ffffff;
+  padding: 3px;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.be-filter-tab {
+  border: none;
+  border-radius: 999px;
+  padding: 6px 14px;
+  background: transparent;
+  font-size: 13px;
+  color: #6b7280;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease,
+    transform 0.12s ease;
+}
+
+.be-filter-tab.active {
+  background: linear-gradient(90deg, #fb923c, #f97316);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.be-loading-row {
+  max-width: 1160px;
+  margin: 20px auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.be-loading-spinner {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 2px solid rgba(156, 163, 175, 0.5);
+  border-top-color: #f97316;
+  animation: be-spin 0.8s linear infinite;
+}
+
+@keyframes be-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.be-empty-state {
+  max-width: 1160px;
+  margin: 32px auto;
+  padding: 28px;
+  border-radius: 16px;
+  background: #ffffff;
+  border: 1px dashed rgba(15, 23, 42, 0.12);
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+}
+
+.be-empty-state h3 {
+  margin: 0 0 6px;
+  font-size: 20px;
+}
+
+.be-empty-state p {
+  margin: 0;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.business-enquiry-card-list {
+  width: 100%;
+  max-width: 1160px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 16px;
+}
+
+.business-enquiry-card {
+  background: #ffffff;
+  padding: 18px 20px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(15, 23, 42, 0.05);
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.06);
+  transition: transform 0.18s ease, box-shadow 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.business-enquiry-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
+  border-color: rgba(249, 115, 22, 0.45);
+}
+
+.business-enquiry-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.be-header-left-side {
+  display: flex;
+  gap: 10px;
+}
+
+.be-avatar-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: radial-gradient(circle at top left, #eff6ff, #e5edff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 16px;
+  color: #1d4ed8;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.12);
+}
+
+.be-name-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.be-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.business-enquiry-name {
+  font-size: 17px;
+  margin: 0;
+  font-weight: 600;
+}
+
+.be-badge-new {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(22, 163, 74, 0.08);
+  color: #16a34a;
+  font-weight: 600;
+}
+
+.be-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.be-dot {
+  color: rgba(15, 23, 42, 0.3);
+}
+
+.business-enquiry-btn-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.be-status-pill {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-weight: 600;
+}
+
+.status-open {
+  background: rgba(22, 163, 74, 0.08);
+  color: #15803d;
+}
+
+.status-closed {
+  background: rgba(239, 68, 68, 0.08);
+  color: #b91c1c;
+}
+
+.business-enquiry-btn-row {
+  display: flex;
+  gap: 8px;
+}
+
+.business-enquiry-view-btn,
+.business-enquiry-close-btn {
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+  transition: 0.16s ease;
+}
+
+.business-enquiry-view-btn {
+  background: linear-gradient(90deg, #f97316, #fb923c);
+}
+
+.business-enquiry-view-btn:hover {
+  box-shadow: 0 12px 26px rgba(249, 115, 22, 0.45);
+  transform: translateY(-1px);
+}
+
+.business-enquiry-close-btn {
+  background: linear-gradient(90deg, #ef4444, #f97373);
+}
+
+.business-enquiry-close-btn:hover {
+  box-shadow: 0 12px 26px rgba(239, 68, 68, 0.45);
+  transform: translateY(-1px);
+}
+
+.business-enquiry-text {
+  margin: 6px 0;
+  font-size: 14px;
+  color: #4b5563;
+}
+
+.be-message-preview {
+  margin-top: 12px;
+}
+
+.be-card-details-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px 18px;
+  margin-top: 6px;
+}
+
+.be-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.4);
+  z-index: 999;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.be-drawer {
+  width: 420px;
+  max-width: 100%;
+  height: 100%;
+  background: #ffffff;
+  box-shadow: -10px 0 30px rgba(15, 23, 42, 0.5);
+  display: flex;
+  flex-direction: column;
+  animation: be-slide-in 0.25s ease forwards;
+}
+
+@keyframes be-slide-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0%);
+  }
+}
+
+.be-drawer-header {
+  padding: 18px 20px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.be-drawer-title-block {
+  max-width: 320px;
+}
+
+.be-drawer-title {
+  margin: 0 0 4px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.be-drawer-subtitle {
+  margin: 0;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.be-drawer-close-btn {
+  border: none;
+  background: transparent;
+  font-size: 20px;
+  cursor: pointer;
+  line-height: 1;
+  color: #6b7280;
+}
+
+.be-drawer-close-btn:hover {
+  color: #111827;
+}
+
+.be-drawer-body {
+  padding: 16px 20px 12px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.be-drawer-section {
+  margin-bottom: 14px;
+}
+
+.be-drawer-section h4 {
+  margin: 0 0 6px;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #9ca3af;
+}
+
+.be-drawer-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
+  font-size: 14px;
+  color: #374151;
+}
+
+.be-drawer-footer {
+  padding: 10px 20px 16px;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.be-drawer-primary-btn,
+.be-drawer-secondary-btn {
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: 0.16s ease;
+}
+
+.be-drawer-secondary-btn {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+.be-drawer-secondary-btn:hover {
+  background: #d1d5db;
+}
+
+.be-drawer-primary-btn {
+  background: linear-gradient(90deg, #ef4444, #f97373);
+  color: #ffffff;
+}
+
+.be-drawer-primary-btn:hover {
+  box-shadow: 0 14px 28px rgba(239, 68, 68, 0.42);
+  transform: translateY(-1px);
+}
+
+
+@media (max-width: 1024px) {
+  .be-header-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .be-card-details-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .business-enquiry-container {
+    padding: 18px 12px 32px;
+  }
+
+  .be-header-row {
+    margin-bottom: 14px;
+  }
+
+  .business-enquiry-title {
+    font-size: 24px;
+  }
+
+  .business-enquiry-sub {
+    font-size: 13px;
+  }
+
+  .be-header-metrics {
+    width: 100%;
+  }
+
+  .be-controls-row {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .business-enquiry-card-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .business-enquiry-card {
+    padding: 16px 14px;
+  }
+
+  .be-card-details-row {
+    grid-template-columns: 1fr;
+  }
+
+  .business-enquiry-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .business-enquiry-btn-group {
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .be-header-row {
+    gap: 10px;
+  }
+
+  .business-enquiry-title {
+    font-size: 22px;
+  }
+
+  .be-metric-card {
+    padding: 8px 10px;
+  }
+
+  .be-drawer {
+    width: 100%;
+  }
+}
+
+@media (min-width: 1600px) {
+  .business-enquiry-card-list,
+  .be-header-row,
+  .be-controls-row,
+  .be-empty-state,
+  .be-loading-row {
+    max-width: 1320px;
+  }
+
+  .business-enquiry-title {
+    font-size: 30px;
+  }
+
+  .business-enquiry-card {
+    padding: 20px 22px;
+  }
+}

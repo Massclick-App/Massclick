@@ -1,0 +1,366 @@
+/* MultiStepProfileForm.css */
+
+/* Reusing established Massclick branding and utility variables */
+:root {
+    --brand-gradient: linear-gradient(135deg, #ff9933 0%, #ff6600 100%); 
+    --brand-orange-primary: #ff8c00;
+    --neutral-bg: #f5f6f8; 
+    --text-dark: #2c3e50;
+    --text-muted: #7f8c8d;
+    --shadow-subtle: 0 4px 12px rgba(0, 0, 0, 0.06);
+    --card-radius: 8px;
+    --color-complete: #28a745; /* Green for completed steps */
+}
+
+.profile-form-wrapper {
+    background-color: var(--neutral-bg);
+    padding: 40px 20px;
+    min-height: 80vh; 
+}
+
+.profile-form-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    background: white;
+    border-radius: var(--card-radius);
+    box-shadow: var(--shadow-subtle);
+    display: flex; 
+    overflow: hidden;
+}
+
+/* --- SIDEBAR NAVIGATION (Desktop) --- */
+.sidebar-progress-container {
+    flex: 0 0 280px; 
+    padding: 30px;
+    background-color: #fcfcfc;
+    border-right: 1px solid #e9ecef;
+}
+
+.overall-progress-header {
+    margin-bottom: 30px;
+}
+.overall-progress-text-wrapper {
+    margin-bottom: 10px;
+}
+.overall-progress-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin: 0;
+}
+.overall-progress-percentage {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--brand-orange-primary);
+    font-weight: 500;
+}
+.progress-bar-container {
+    height: 8px; /* Slightly thicker bar */
+    background-color: #e9ecef;
+    border-radius: 4px;
+    overflow: hidden;
+}
+.progress-bar-fill {
+    height: 100%;
+    /* Use solid color for a cleaner look */
+    background-color: var(--brand-orange-primary); 
+    transition: width 0.4s ease-in-out;
+}
+
+.step-navigation {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.step-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 0;
+    margin-bottom: 10px;
+    cursor: pointer;
+    border-left: 3px solid transparent;
+    transition: all 0.2s ease;
+    color: var(--text-muted);
+}
+.step-item.active {
+    border-left-color: var(--brand-orange-primary);
+    color: var(--text-dark);
+    font-weight: 600;
+}
+.step-item.completed {
+    border-left-color: var(--color-complete);
+}
+
+.step-number {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background-color: #e9ecef;
+    color: var(--text-dark);
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-right: 15px;
+    transition: background-color 0.2s;
+}
+
+.step-item.active .step-number {
+    background-color: var(--brand-orange-primary);
+    color: white;
+}
+
+.step-item.completed .step-number {
+    display: none; /* Hide number when completed */
+}
+.check-icon {
+    fill: var(--color-complete);
+    width: 20px;
+    height: 20px;
+    margin-right: 18px;
+    margin-left: 5px; /* Adjust spacing to align with step-number */
+}
+
+
+/* --- FORM CONTENT AREA (No major changes here) --- */
+.form-content-area {
+    flex-grow: 1;
+    padding: 40px;
+}
+/* ... rest of the form content styling ... */
+.content-header h1 {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin: 0 0 5px 0;
+}
+.step-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); 
+    gap: 20px 30px;
+}
+
+.form-field {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-field.full-width {
+    grid-column: 1 / -1;
+}
+
+label {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-dark);
+    margin-bottom: 5px;
+}
+
+input[type="text"], 
+input[type="email"], 
+input[type="date"],
+input[type="tel"],
+select {
+    padding: 12px;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    font-size: 1rem;
+    color: var(--text-dark);
+    background-color: #fcfcfc;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+input:focus, select:focus {
+    border-color: var(--brand-orange-primary);
+    box-shadow: 0 0 0 2px rgba(255, 140, 0, 0.1);
+    outline: none;
+}
+
+/* Advanced Input Styling (Email/Mobile with button) */
+.input-with-button {
+    display: flex;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    overflow: hidden;
+    background-color: #fcfcfc;
+}
+.input-with-button input {
+    border: none;
+    flex-grow: 1;
+}
+.input-with-button .country-code {
+    padding: 12px;
+    background-color: #e9ecef;
+    color: var(--text-dark);
+    font-weight: 500;
+}
+.btn-verify {
+    background-color: var(--brand-orange-primary);
+    color: white;
+    padding: 12px 15px;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+.btn-verify:hover {
+    opacity: 0.9;
+}
+.input-with-button.verified {
+    border-color: var(--color-complete);
+}
+.input-with-button .verify-status {
+    padding: 12px 15px;
+    background-color: var(--color-complete);
+    color: white;
+    font-weight: 700;
+}
+
+/* Image Upload Styling */
+.image-upload-group {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.image-preview {
+    width: 80px;
+    height: 80px;
+    background-image: url('https://via.placeholder.com/80/f7f9fc/888888?text=Image'); 
+    background-size: cover;
+    background-position: center;
+    border-radius: 50%;
+    border: 3px solid #eee;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.upload-controls {
+    display: flex;
+    flex-direction: column;
+}
+.upload-controls .label-text {
+    font-weight: 500;
+    color: var(--text-dark);
+    margin-bottom: 5px;
+}
+
+
+/* --- ACTION BUTTONS --- */
+.form-actions-footer {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: flex-start; /* Aligns buttons to the left */
+    gap: 15px;
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid #e9ecef;
+}
+
+.btn-primary, .btn-secondary {
+    padding: 12px 25px;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: none;
+}
+
+.btn-primary {
+    background: var(--brand-gradient);
+    color: white;
+    box-shadow: 0 4px 10px rgba(255, 140, 0, 0.4);
+}
+
+.btn-secondary {
+    background: #e9ecef;
+    color: var(--text-dark);
+    border: 1px solid #dee2e6;
+}
+
+/* --- FULL RESPONSIVENESS (Mobile Stacked) --- */
+
+/* MOBILE OPTIMIZATION (Below 768px) */
+@media (max-width: 768px) {
+    .profile-form-container {
+        flex-direction: column; 
+        box-shadow: none; 
+    }
+    .profile-form-wrapper {
+        padding: 20px 0; 
+    }
+
+    /* Sidebar becomes a top navigation bar (tabs) */
+    .sidebar-progress-container {
+        flex: none;
+        padding: 20px 20px 0 20px; 
+        border-right: none;
+        border-bottom: 1px solid #e9ecef;
+        background-color: white;
+        margin-bottom: 20px;
+    }
+    
+    /* Move progress header to top of form wrapper or hide it if design dictates */
+    .overall-progress-header {
+        display: none; /* Hide for cleaner mobile tabs if preferred, or redesign it entirely */
+    }
+
+    .step-navigation {
+        display: flex;
+        overflow-x: auto; 
+        padding-bottom: 10px;
+    }
+    
+    .step-item {
+        flex-direction: column; 
+        flex: 0 0 auto;
+        padding: 5px 15px;
+        margin-right: 5px;
+        border-left: none;
+        border-bottom: 3px solid transparent; 
+        text-align: center;
+        opacity: 0.6;
+    }
+
+    .step-item.active {
+        border-bottom-color: var(--brand-orange-primary);
+        border-left-color: transparent;
+        opacity: 1;
+    }
+    .step-item.completed {
+        border-bottom-color: var(--color-complete);
+        border-left-color: transparent;
+    }
+    
+    .step-number, .check-icon {
+        width: 25px;
+        height: 25px;
+        margin: 0 0 5px 0; /* Center and space out */
+    }
+    .step-item.completed .check-icon {
+        display: block; /* Show check icon on mobile for completed tabs */
+    }
+    .step-title {
+        font-size: 0.8rem;
+    }
+
+
+    /* Form Content */
+    .form-content-area {
+        padding: 10px 20px 40px 20px;
+    }
+    /* Form fields stack completely */
+    .step-form-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    .form-actions-footer {
+        flex-direction: column;
+        gap: 10px;
+    }
+    .btn-primary, .btn-secondary {
+        width: 100%;
+    }
+}

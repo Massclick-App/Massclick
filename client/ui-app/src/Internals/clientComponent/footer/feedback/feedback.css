@@ -1,0 +1,156 @@
+/* --- Color Variables (Using your original scheme) --- */
+:root {
+    --color-primary: #ff6600; /* Orange Accent */
+    --color-text-dark: #212529;
+    --color-text-grey: #495057;
+    --color-background-light: #f8f9fa;
+    --color-card-background: #ffffff;
+    --color-shadow-medium: rgba(0, 0, 0, 0.08); 
+    --color-border-subtle: #e9ecef; 
+    --font-family-primary: 'Inter', sans-serif;
+}
+
+/* ========================================================= */
+/* --- 1. Feedback Grid Section Layout (NO CHANGE) --- */
+/* ========================================================= */
+
+.section-feedback-grid {
+    padding: 80px 20px;
+    background-color: var(--color-background-light);
+    font-family: var(--font-family-primary);
+}
+
+.feedback-header-wrapper {
+    max-width: 900px;
+    margin: 0 auto 50px auto;
+    text-align: center;
+}
+
+.section-title-feedback-grid {
+    font-size: 2.8rem;
+    font-weight: 800;
+    color: var(--color-text-dark);
+    margin-bottom: 10px;
+}
+
+.section-subtitle-feedback-grid {
+    font-size: 1.1rem;
+    color: var(--color-text-grey);
+}
+
+.feedback-grid-masonry {
+    max-width: 1200px;
+    margin: 0 auto;
+    gap: 20px;
+    display: grid;
+    grid-template-columns: 1fr; 
+    grid-auto-rows: 10px; 
+}
+
+
+/* ========================================================= */
+/* --- 2. Feedback Card Styling (HEIGHT DECREASED) --- */
+/* ========================================================= */
+
+.feedback-card {
+    background-color: var(--color-card-background);
+    /* TIGHTENED VERTICAL PADDING: 25px -> 20px */
+    padding: 20px 25px; 
+    border-radius: 10px;
+    border: 1px solid var(--color-border-subtle); 
+    box-shadow: 0 5px 15px var(--color-shadow-medium);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    
+    break-inside: avoid;
+    
+    /* DEFAULT HEIGHT REDUCED (28 -> 22) */
+    grid-row-end: span 22; 
+    
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.feedback-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15); 
+    border-color: var(--color-primary); 
+}
+
+.feedback-quote {
+    /* FONT SIZE DECREASED: 1rem -> 0.95rem */
+    font-size: 0.95rem;
+    font-style: italic;
+    color: var(--color-text-dark); 
+    /* LINE HEIGHT TIGHTENED: 1.6 -> 1.5 */
+    line-height: 1.5;
+    margin-top: 10px; /* Reduced margin */
+    margin-bottom: 15px; /* Reduced margin */
+}
+
+.rating-stars {
+    color: var(--color-primary);
+    display: flex;
+    gap: 2px;
+}
+
+.star-icon {
+    font-size: 1.1rem !important; 
+}
+
+.feedback-author-info {
+    /* PADDING REDUCED: 15px -> 10px */
+    padding-top: 10px; 
+    border-top: 1px solid var(--color-border-subtle); 
+}
+
+.author-name-feedback {
+    font-size: 1.1rem; /* Slightly smaller name */
+    font-weight: 700;
+    color: var(--color-text-dark);
+    margin: 0;
+}
+
+.author-role-feedback {
+    font-size: 0.8rem; /* Slightly smaller role text */
+    color: var(--color-text-grey);
+    margin-top: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+
+/* ========================================================= */
+/* --- 3. RESPONSIVENESS & MASONRY FINE-TUNING (HEIGHT REDUCED) --- */
+/* ========================================================= */
+
+/* Tablet/Small Desktop (Screen width > 600px) - TWO COLUMNS */
+@media (min-width: 600px) {
+    .feedback-grid-masonry {
+        grid-template-columns: repeat(2, 1fr); 
+        grid-auto-rows: 10px;
+    }
+    
+    /* SIGNIFICANT HEIGHT REDUCTION FOR 2 COLUMNS */
+    /* Previous: short 25, medium 30, long 45 */
+    .feedback-card--short { grid-row-end: span 22; }
+    .feedback-card--medium { grid-row-end: span 27; }
+    .feedback-card--long { grid-row-end: span 40; }
+}
+
+/* Large Desktop (Screen width > 1024px) - THREE COLUMNS */
+@media (min-width: 1024px) {
+    .section-title-feedback-grid {
+        font-size: 3.5rem;
+    }
+    
+    .feedback-grid-masonry {
+        grid-template-columns: repeat(3, 1fr); 
+    }
+    
+    /* SIGNIFICANT HEIGHT REDUCTION FOR 3 COLUMNS */
+    /* Previous: short 25, medium 35, long 50 */
+    .feedback-card--short { grid-row-end: span 22; }
+    .feedback-card--medium { grid-row-end: span 30; }
+    .feedback-card--long { grid-row-end: span 45; }
+}

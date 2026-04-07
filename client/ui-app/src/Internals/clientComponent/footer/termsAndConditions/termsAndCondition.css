@@ -1,0 +1,150 @@
+/* --- Color Variables (Consistent with your Orange scheme) --- */
+:root {
+    --color-primary: #ff6600;      /* Orange Accent */
+    --color-text-dark: #212529;
+    --color-text-grey: #495057;
+    --color-background-white: #ffffff;
+    --color-background-light: #f8f9fa;
+    --color-border-clean: #dee2e6;  /* Light, clean border color */
+    --font-family-primary: 'Inter', sans-serif;
+}
+
+/* ========================================================= */
+/* --- 1. Terms Section Layout --- */
+/* ========================================================= */
+
+.section-terms {
+    padding: 80px 20px;
+    background-color: var(--color-background-white); /* Clean white background */
+    font-family: var(--font-family-primary);
+}
+
+.terms-header-wrapper {
+    max-width: 900px;
+    margin: 0 auto 50px auto;
+    text-align: center;
+}
+
+.section-title-terms {
+    font-size: 3rem;
+    font-weight: 800;
+    color: var(--color-text-dark);
+    margin-bottom: 10px;
+}
+
+.highlight-text-terms {
+    color: var(--color-primary);
+}
+
+.section-subtitle-terms {
+    font-size: 1.15rem;
+    color: var(--color-text-grey);
+}
+
+/* --- Accordion Container --- */
+.accordion-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    border: 1px solid var(--color-border-clean);
+    border-radius: 8px;
+    overflow: hidden; /* Contains the borders neatly */
+}
+
+/* ========================================================= */
+/* --- 2. Accordion Item Styling --- */
+/* ========================================================= */
+
+.accordion-item {
+    border-bottom: 1px solid var(--color-border-clean);
+    background-color: var(--color-background-white);
+    transition: background-color 0.3s ease;
+}
+
+.accordion-item:last-child {
+    border-bottom: none; /* No border on the last item */
+}
+
+.accordion-header {
+    width: 100%;
+    padding: 20px 25px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    text-align: left;
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.accordion-header:hover {
+    background-color: var(--color-background-light); /* Subtle hover effect */
+}
+
+.accordion-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--color-text-dark);
+    margin: 0;
+}
+
+.accordion-icon {
+    color: var(--color-primary);
+    font-size: 1.5rem;
+    transition: transform 0.3s ease;
+}
+
+/* Open/Active state styling */
+.accordion-item.open .accordion-header {
+    background-color: var(--color-background-light);
+    border-bottom: 1px solid var(--color-border-clean);
+}
+
+.accordion-item.open .accordion-title {
+    color: var(--color-primary);
+}
+
+
+/* --- Content Area (The Collapsible Part) --- */
+.accordion-content {
+    /* Animation for smooth reveal */
+    max-height: 0; 
+    overflow: hidden;
+    transition: max-height 0.4s ease-out, padding 0.4s ease-out;
+}
+
+.accordion-item.open .accordion-content {
+    /* When open, set height to allow content to show */
+    max-height: 500px; /* Needs to be larger than max expected content height */
+    padding: 0 25px 20px 25px; /* Add bottom padding to content */
+}
+
+.accordion-content p {
+    font-size: 1rem;
+    line-height: 1.7;
+    color: var(--color-text-grey);
+    margin: 0 0 10px 0; /* Adds spacing between paragraphs */
+}
+
+.accordion-content p:last-child {
+    margin-bottom: 0;
+}
+/* ========================================================= */
+/* --- 3. RESPONSIVENESS --- */
+/* ========================================================= */
+
+/* Mobile refinement */
+@media (max-width: 500px) {
+    .section-title-terms {
+        font-size: 2rem;
+    }
+    .accordion-header {
+        padding: 15px 20px;
+    }
+    .accordion-title {
+        font-size: 1.1rem;
+    }
+    .accordion-item.open .accordion-content {
+        padding: 0 20px 15px 20px;
+    }
+}

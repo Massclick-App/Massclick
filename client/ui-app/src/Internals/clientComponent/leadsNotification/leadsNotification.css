@@ -1,0 +1,210 @@
+:root {
+  --primary: #f7941d;          /* Brand accent */
+  --primary-soft: #fff4e6;
+  --primary-light: #ffe0b2;
+
+  --text-dark: #1f2937;        /* Dark gray */
+  --text-medium: #4b5563;
+  --text-light: #9ca3af;
+
+  --bg-white: #ffffff;
+  --bg-soft: #fafafa;
+  --border-soft: #e5e7eb;
+
+  --success: #10b981;
+  --danger: #ef4444;
+}
+
+
+
+
+/* =====================
+   LIST CONTAINER
+===================== */
+.ln-modern-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 70vh;
+  overflow-y: auto;
+  background: var(--bg-white);
+}
+
+/* =====================
+   LIST ITEM
+===================== */
+.ln-modern-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 18px 20px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border-soft);
+  transition: background 0.25s ease, transform 0.15s ease;
+}
+
+.ln-modern-item:hover {
+  background: var(--bg-soft);
+  transform: translateY(-1px);
+}
+
+/* UNREAD notification */
+.ln-modern-item.unread {
+  background: #fff3e5;
+  cursor: pointer;
+}
+
+.ln-modern-item.unread:hover {
+  background: #ffe5c4;
+}
+
+/* READ notification */
+.ln-modern-item.read {
+  background: #ffffff;
+  opacity: 0.75;
+}
+
+/* Orange dot (only for unread) */
+.ln-modern-dot {
+  width: 8px;
+  height: 8px;
+  background: #f7941d;
+  border-radius: 50%;
+}
+
+/* Hide dot for read */
+.ln-modern-item.read .ln-modern-dot {
+  display: none;
+}
+
+
+/* =====================
+   AVATAR
+===================== */
+.ln-modern-avatar {
+  min-width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #ffb86c, #f7941d);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 16px;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+/* =====================
+   BODY
+===================== */
+.ln-modern-body {
+  flex: 1;
+}
+
+.ln-modern-title {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-dark);
+}
+
+.ln-modern-title strong {
+  font-weight: 700;
+}
+
+.ln-modern-time {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-light);
+}
+
+/* =====================
+   UNREAD DOT
+===================== */
+.ln-modern-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--primary);
+  margin-top: 8px;
+}
+
+/* =====================
+   DETAILS VIEW
+===================== */
+.ln-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  font-size: 14px;
+  color: var(--text-medium);
+}
+
+/* =====================
+   EMPTY STATE
+===================== */
+.ln-empty {
+  padding: 48px;
+  text-align: center;
+  color: var(--text-light);
+  font-size: 14px;
+}
+
+/* =====================
+   SCROLLBAR (MODERN)
+===================== */
+.ln-modern-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.ln-modern-list::-webkit-scrollbar-thumb {
+  background: #e5e7eb;
+  border-radius: 6px;
+}
+
+/* =====================
+   MOBILE
+===================== */
+@media (max-width: 600px) {
+  .ln-modern-item {
+    padding: 14px 14px;
+    gap: 12px;
+  }
+
+  .ln-modern-title {
+    font-size: 13px;
+  }
+
+  .ln-modern-avatar {
+    min-width: 40px;
+    height: 40px;
+    font-size: 14px;
+  }
+}
+
+/* =====================
+   TABLET / IPAD
+===================== */
+@media (min-width: 601px) and (max-width: 1024px) {
+  .ln-modern-item {
+    padding: 16px 18px;
+  }
+
+  .ln-modern-title {
+    font-size: 14px;
+  }
+}
+
+/* =====================
+   LARGE SCREENS
+===================== */
+@media (min-width: 1440px) {
+  .ln-modern-list {
+    max-height: 75vh;
+  }
+
+  .ln-modern-title {
+    font-size: 15px;
+  }
+}

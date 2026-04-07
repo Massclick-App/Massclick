@@ -1,0 +1,343 @@
+/* ROOT BANNER */
+.mc-banner {
+  width: 100%;
+  max-width: 1720px;
+  margin: 40px auto;
+  margin-top: -50px;     
+  margin-bottom: 40px; 
+  padding: 0 16px;
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.mc-banner-inner {
+  position: relative;
+  border-radius: 24px;
+  background: #ffffff;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.18);
+  padding: 32px 40px;
+  display: flex;
+  align-items: stretch;
+  gap: 32px;
+  overflow: hidden;
+}
+
+.mc-banner-inner::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 0% 0%, #ffe4c2 0, transparent 45%),
+              radial-gradient(circle at 100% 100%, #ffd1b0 0, transparent 45%);
+  opacity: 0.65;
+  pointer-events: none;
+}
+
+/* content layer */
+.mc-left,
+.mc-right {
+  position: relative;
+  z-index: 1;
+}
+
+/* LEFT SIDE */
+.mc-left {
+  flex: 1.2;
+  min-width: 0;
+}
+
+/* Brand Row */
+.mc-brand-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.mc-logo-pill {
+  width: 45px;
+  height: 45px;
+  border-radius: 999px;
+  overflow: hidden;       
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;        
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.15);
+}
+
+.mc-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;      
+}
+
+
+.mc-logo-m {
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 20px;
+}
+
+.mc-logo-text {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+}
+
+.mc-logo-mass {
+  color: #ff9800;
+}
+
+.mc-logo-click {
+  color: #263238;
+}
+
+.mc-logo-tm {
+  font-size: 0.45em;
+  color: #ff9800;
+}
+
+.mc-tagline {
+  margin: 2px 0 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: #757575;
+}
+
+/* Main heading */
+.mc-heading {
+  font-size: 28px;
+  line-height: 1.3;
+  color: #0f172a;
+  margin: 8px 0 12px;
+  max-width: 520px;
+}
+
+.mc-highlight {
+  color: #0d47a1;
+}
+
+/* Description text */
+.mc-description {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #4b5563;
+  margin-bottom: 16px;
+  max-width: 540px;
+}
+
+/* Bullet points */
+.mc-points {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.mc-points li {
+  font-size: 13px;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mc-points li::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ff9800, #ff7043);
+}
+
+/* RIGHT SIDE - PRICE CARD */
+.mc-right {
+  flex: 0.9;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.mc-price-card {
+  width: 100%;
+  max-width: 320px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #ffb95e, #ff8a4a);
+  padding: 22px 20px 20px;
+  color: #ffffff;
+  box-shadow: 0 16px 30px rgba(255, 138, 74, 0.4);
+  position: relative;
+  overflow: hidden;
+}
+
+/* subtle glass stripe */
+.mc-price-card::after {
+  content: "";
+  position: absolute;
+  inset: -40%;
+  background: linear-gradient(120deg, rgba(255, 255, 255, 0.4), transparent 55%);
+  opacity: 0.4;
+  transform: translateX(-40%);
+  pointer-events: none;
+}
+
+/* top label */
+.mc-offer-label {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(6px);
+}
+
+.mc-price-title {
+  margin: 10px 0 12px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* price row */
+.mc-price-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  margin-bottom: 16px;
+}
+
+.mc-price-currency {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.mc-price-main {
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+.mc-price-sub {
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+/* CTA button */
+.mc-cta-btn {
+  width: 100%;
+  border: none;
+  border-radius: 999px;
+  padding: 10px 18px;
+  font-size: 15px;
+  font-weight: 600;
+  background: #ffffff;
+  color: #f97316;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  position: relative;
+  z-index: 1;
+}
+
+.mc-cta-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.22);
+  background: #fef4eb;
+}
+
+.mc-note {
+  margin-top: 10px;
+  font-size: 11px;
+  opacity: 0.95;
+}
+
+/* ========================= */
+/* RESPONSIVE BREAKPOINTS   */
+/* ========================= */
+
+/* large tablets / small laptops */
+@media (max-width: 1024px) {
+  .mc-banner-inner {
+    padding: 28px 24px;
+    gap: 24px;
+  }
+
+  .mc-heading {
+    font-size: 24px;
+  }
+
+  .mc-description {
+    font-size: 13px;
+  }
+
+  .mc-price-card {
+    max-width: 280px;
+  }
+}
+
+/* tablets & below – stack layout */
+@media (max-width: 768px) {
+  .mc-banner-inner {
+    flex-direction: column;
+    padding: 24px 20px 26px;
+  }
+
+  .mc-left,
+  .mc-right {
+    width: 100%;
+  }
+
+  .mc-right {
+    justify-content: flex-start;
+  }
+
+  .mc-price-card {
+    max-width: 100%;
+  }
+
+  .mc-heading {
+    max-width: 100%;
+  }
+}
+
+/* phones */
+@media (max-width: 480px) {
+  .mc-banner-inner {
+    border-radius: 18px;
+    padding: 20px 16px 22px;
+  }
+
+  .mc-logo-text {
+    font-size: 22px;
+  }
+
+  .mc-heading {
+    font-size: 21px;
+  }
+
+  .mc-description {
+    font-size: 12px;
+  }
+
+  .mc-points li {
+    font-size: 12px;
+  }
+
+  .mc-price-row {
+    margin-bottom: 12px;
+  }
+
+  .mc-price-main {
+    font-size: 30px;
+  }
+
+  .mc-cta-btn {
+    font-size: 14px;
+  }
+}
