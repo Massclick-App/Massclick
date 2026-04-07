@@ -2,7 +2,7 @@ const sharp = require('sharp');
 const fs = require('fs');
 const path = require('path');
 
-const inputFolder = path.join(__dirname, 'src/assets/subCategories');
+const inputFolder = path.join(__dirname, 'src/assets/packers');
 
 const outputFolder = path.join(__dirname, 'src/assets/subCategories/webp');
 

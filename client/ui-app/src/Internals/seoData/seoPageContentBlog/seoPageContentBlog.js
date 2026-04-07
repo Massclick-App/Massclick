@@ -155,7 +155,7 @@ export default function SeoPageContentBlogs() {
             <div className="seo-container">
                 <header className="seo-header">
                     <h1>
-                        {editingId ? "Edit SEO Page Content" : "Create SEO Page Content"}
+                        {editingId ? "Edit Page Content Blogs" : "Create Page Content Blogs"}
                     </h1>
                     <p>Premium SEO content management</p>
                 </header>
