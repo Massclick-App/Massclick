@@ -1,5 +1,5 @@
 import { ObjectId } from 'mongodb';
-import userModel from '../model/userModel.js';
+import userModel from '../model/msg91Model/usersModels.js';
 
 /**
  * Save or update FCM token for a user
