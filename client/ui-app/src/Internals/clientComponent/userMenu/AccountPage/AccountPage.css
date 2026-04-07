@@ -1,0 +1,201 @@
+/* AccountDetailsForm.css */
+
+/* Reusing established Massclick branding and utility variables */
+:root {
+  --brand-gradient: linear-gradient(135deg, #ff9933 0%, #ff6600 100%); 
+  --brand-orange-primary: #ff8c00;
+  --neutral-bg: #f5f6f8; 
+  --text-dark: #2c3e50;
+  --text-muted: #7f8c8d;
+  --card-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+  --card-radius: 12px;
+}
+
+.account-details-container {
+  max-width: 1000px; /* Reduced max-width for a cleaner, centered look */
+  margin: 40px auto; 
+  background: white;
+  padding: 30px 40px;
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+}
+
+/* Header Styling */
+.card-header {
+  border-bottom: 1px solid #e0e0e0;
+  padding-bottom: 20px;
+  margin-bottom: 30px;
+}
+
+.card-title {
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: var(--text-dark);
+  margin: 0;
+}
+
+.card-subtitle {
+  font-size: 1rem;
+  color: var(--text-muted);
+  margin-top: 5px;
+}
+
+/* 2-Column Responsive Form Layout */
+.details-form-grid {
+  display: grid;
+  /* Desktop: Two equal columns */
+  grid-template-columns: repeat(2, 1fr);
+  gap: 25px 35px; /* Vertical and horizontal gap */
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-field.full-width {
+  /* Spans both columns for Address lines and Pincode on desktop */
+  grid-column: 1 / -1; 
+}
+
+label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-dark);
+  margin-bottom: 8px;
+}
+
+/* --- Input Group Styling (High Quality) --- */
+.input-group {
+  display: flex;
+  align-items: center;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background-color: #fcfcfc;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.input-group:focus-within {
+  border-color: var(--brand-orange-primary);
+  box-shadow: 0 0 0 3px rgba(255, 140, 0, 0.2);
+}
+
+.input-icon {
+  padding: 0 12px;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+}
+
+input[type="text"], 
+input[type="email"] {
+  flex-grow: 1;
+  padding: 12px 10px;
+  border: none;
+  background: transparent;
+  font-size: 1rem;
+  color: var(--text-dark);
+  outline: none;
+}
+/* ------------------------------------- */
+
+
+/* --- File Input Custom Styling --- */
+.file-input-hidden {
+    display: none; /* Hide default file input */
+}
+
+.file-input-label {
+    display: flex;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    background-color: #fcfcfc;
+    overflow: hidden;
+}
+
+.file-button {
+    background-color: #e0e0e0;
+    color: var(--text-dark);
+    padding: 12px 15px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: background-color 0.2s;
+}
+
+.file-button:hover {
+    background-color: #d0d0d0;
+}
+
+.file-name-display {
+    padding: 12px 10px;
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    flex-grow: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+/* ------------------------------------- */
+
+
+/* Form Action Button */
+.form-actions {
+  grid-column: 1 / -1; /* Full width for the button */
+  margin-top: 15px;
+}
+
+.btn-primary {
+  padding: 12px 30px;
+  border-radius: 8px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: none;
+  
+  /* Massclick Branding */
+  background: var(--brand-gradient);
+  color: white;
+  box-shadow: 0 4px 10px rgba(255, 140, 0, 0.4);
+}
+
+.btn-primary:hover {
+  opacity: 0.95;
+  transform: translateY(-1px);
+}
+
+.empty-field {
+    /* Used as a filler to align fields correctly when one is full-width (like Email) */
+    display: block; 
+}
+
+
+/* --- FULL RESPONSIVENESS (Mobile Stack) --- */
+@media (max-width: 768px) {
+  .account-details-container {
+    padding: 25px 15px;
+    margin: 30px 10px;
+  }
+  
+  /* Force all fields to stack in a single column on mobile */
+  .details-form-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .card-title {
+    font-size: 1.6rem;
+  }
+  
+  /* Reset grid span and remove placeholders */
+  .form-field.full-width, .form-actions {
+    grid-column: auto;
+  }
+  .empty-field {
+      display: none;
+  }
+
+  .btn-primary {
+      width: 100%; /* Full width button on mobile */
+  }
+}

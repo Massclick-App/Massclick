@@ -1,0 +1,302 @@
+/* src/components/rating/WriteReviewModal.css */
+
+/* Define CSS Variables for Theming */
+:root {
+    --primary-color: #FF8C00;      
+    --color-secondary: #FF8C00; /* Example accent color (Orange) */
+    --color-text-dark: #1a1a1a;
+    --color-text-medium: #555;
+    --color-background-light: #f5f7fa;
+    --color-border-light: #eee;
+}
+
+/* ========================================================= */
+/* 1. Modal Container Styles */
+/* ========================================================= */
+
+.review-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    overflow-y: auto; /* Allow scrolling on smaller screens */
+    padding: 20px 0;
+}
+
+.review-modal-content {
+    background: #ffffff;
+    border-radius: 16px;
+    max-width: 1000px;
+    width: 95%;
+    position: relative;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+}
+
+.review-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 30px;
+    border-bottom: 1px solid var(--color-border-light);
+}
+
+.review-title {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--color-text-dark);
+    margin: 0;
+}
+
+.close-btn {
+    font-size: 28px !important;
+    color: var(--color-text-medium);
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.close-btn:hover {
+    color: var(--color-primary);
+}
+
+/* ========================================================= */
+/* 2. Form Layout Grid (Responsive) */
+/* ========================================================= */
+
+.review-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 2.5fr; /* Desktop: Left/Right Panel Split */
+    min-height: 500px;
+}
+
+/* Tablet and Mobile Layout: Stack columns */
+@media (max-width: 768px) {
+    .review-form-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* --- Left Panel (Side Navigation/Summary) --- */
+.review-panel-left {
+    background-color: var(--color-background-light);
+    padding: 30px;
+    border-right: 1px solid var(--color-border-light);
+}
+
+@media (max-width: 768px) {
+    .review-panel-left {
+        border-right: none;
+        border-bottom: 1px solid var(--color-border-light);
+    }
+}
+
+/* --- Right Panel (Main Input Area) --- */
+.review-panel-right {
+    padding: 30px;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ========================================================= */
+/* 3. Content Styling */
+/* ========================================================= */
+
+.review-panel-left h4, .review-panel-right h4 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--color-text-dark);
+    margin: 0 0 15px 0;
+}
+
+/* --- Business Summary --- */
+.business-summary {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 40px;
+}
+
+.business-logo {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+}
+
+.business-details h3 {
+    font-size: 1.3rem;
+    margin-bottom: 5px;
+    color: var(--color-primary);
+}
+.business-details p {
+    font-size: 0.9rem;
+    color: var(--color-text-medium);
+}
+
+/* --- Rating Section --- */
+.rating-section {
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--color-border-light);
+}
+
+.star-rating-input {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 10px;
+}
+
+.star {
+    font-size: 40px !important;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.star.filled {
+    color: var(--color-secondary);
+}
+
+.star.empty {
+    color: #ccc;
+}
+
+.label-badge {
+    display: inline-block;
+    background-color: #fff4e6;
+    color: var(--color-secondary);
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    border: 1px solid var(--color-secondary);
+}
+
+/* --- Tags Section (Pills) --- */
+.tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.review-tag {
+    cursor: pointer;
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    border: 1px solid #ddd;
+    color: var(--color-text-medium);
+    background-color: #f9f9f9;
+    transition: all 0.2s;
+}
+
+.review-tag.selected {
+    background-color: var(--color-secondary);
+    color: white;
+    border-color: var(--color-secondary);
+}
+
+/* --- Textarea Section --- */
+.textarea-section {
+    position: relative;
+    margin-bottom: 30px;
+}
+
+.tips-icon {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background-color: #e6f7ff;
+    color: #1890ff;
+    padding: 5px 10px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.review-textarea {
+    width: 100%;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    resize: none;
+    font-size: 1rem;
+    line-height: 1.5;
+    box-sizing: border-box;
+    min-height: 150px;
+}
+
+.btn-ai-write {
+    position: absolute;
+    bottom: 15px;
+    right: 15px;
+    background: #722ed1;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    z-index: 10;
+}
+
+/* --- Photo Upload Section --- */
+.photo-upload-section {
+    margin-bottom: 30px;
+}
+.upload-box {
+    width: 120px;
+    height: 120px;
+    border: 2px dashed #ccc;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    color: var(--color-text-medium);
+}
+.upload-box:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    background-color: #e6ffed;
+}
+
+/* --- Submit Button --- */
+.btn-submit-review {
+    align-self: flex-end; 
+    margin-top: auto; 
+    padding: 12px 30px;
+    background-color: var(--color-primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.btn-submit-review:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+/* Mobile Adjustment for Submit Button */
+@media (max-width: 768px) {
+    .btn-submit-review {
+        width: 100%;
+        margin-top: 20px;
+    }
+}

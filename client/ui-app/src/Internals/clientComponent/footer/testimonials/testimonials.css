@@ -1,0 +1,243 @@
+/* --- Testimonials Color Variables (Reference to original primary color) --- */
+:root {
+    --color-primary: #ff6600; /* Orange */
+    --color-text-dark: #212529;
+    --color-text-grey: #495057;
+    --color-background-light: #f8f9fa;
+    --color-card-background: #ffffff;
+    --color-shadow-medium: rgba(0, 0, 0, 0.1);
+    --font-family-primary: 'Inter', sans-serif;
+}
+
+/* ========================================================= */
+/* --- 1. Testimonials Section Layout --- */
+/* ========================================================= */
+
+.section-testimonials {
+    padding: 80px 20px;
+    background-color: var(--color-background-light);
+    font-family: var(--font-family-primary);
+    overflow: hidden; /* Crucial to hide cards outside the view */
+}
+
+.section-title-testimonials {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: var(--color-text-dark);
+    text-align: center;
+    margin-bottom: 60px;
+}
+
+.highlight-text-testimonials {
+    color: var(--color-primary);
+}
+
+/* --- Slider Container (The viewable window) --- */
+.slider-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    position: relative;
+    overflow: hidden; /* Hides cards that are outside the current viewport */
+    padding: 0 40px; /* Space for control buttons to live outside the track on desktop */
+}
+
+/* --- Slider Track (The moving part) --- */
+.slider-track {
+    display: flex;
+    /* Must not wrap */
+    flex-wrap: nowrap; 
+    /* Ensures smooth animation for auto/manual scroll */
+    transition: transform 1s cubic-bezier(0.25, 0.8, 0.25, 1); 
+    gap: 30px;
+}
+
+/* ========================================================= */
+/* --- 2. Testimonial Card Styling (Height Reduced/High Quality) --- */
+/* ========================================================= */
+
+.testimonial-card {
+    /* Base width: 100% minus the gap, for one card per view on mobile */
+    flex: 0 0 100%; 
+    max-width: 100%;
+    background-color: var(--color-card-background);
+    /* **HEIGHT REDUCTION CHANGE:** Reduced vertical padding */
+    padding: 30px 25px; 
+    border-radius: 12px;
+    box-shadow: 0 10px 30px var(--color-shadow-medium);
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.testimonial-quote {
+    /* **HEIGHT REDUCTION CHANGE:** Slightly reduced font size for compactness */
+    font-size: 1.05rem; 
+    font-style: italic;
+    color: var(--color-text-grey);
+    /* Slightly tighter line height */
+    line-height: 1.6; 
+    /* Reduced margin below the quote */
+    margin-bottom: 20px; 
+    position: relative;
+}
+
+.testimonial-quote::before,
+.testimonial-quote::after {
+    content: "”";
+    color: var(--color-primary);
+    /* **HEIGHT REDUCTION CHANGE:** Slightly smaller quote icon size */
+    font-size: 2rem; 
+    line-height: 0;
+    position: absolute;
+    opacity: 0.2;
+}
+
+.testimonial-quote::before {
+    content: "“";
+    top: 5px;
+    left: 10px;
+}
+
+.testimonial-quote::after {
+    bottom: 5px;
+    right: 10px;
+}
+
+.testimonial-author-info {
+    border-top: 1px solid #eee;
+    /* **HEIGHT REDUCTION CHANGE:** Reduced padding top */
+    padding-top: 10px; 
+}
+
+.author-name {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--color-text-dark);
+    margin: 0;
+}
+
+.author-source {
+    font-size: 0.9rem;
+    color: var(--color-text-grey);
+    margin-top: 5px;
+}
+
+.author-company {
+    font-weight: 600;
+}
+
+.author-divider {
+    margin: 0 8px;
+    color: #ccc;
+}
+
+
+/* ========================================================= */
+/* --- 3. Navigation Controls & Indicators --- */
+/* ========================================================= */
+
+.slider-control {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background-color: var(--color-primary);
+    color: var(--color-card-background);
+    border: none;
+    border-radius: 50%;
+    width: 45px;
+    height: 45px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    z-index: 10;
+    transition: background-color 0.3s ease;
+}
+
+.slider-control:hover {
+    background-color: #e65100; /* Darker orange on hover */
+}
+
+.slider-control.prev {
+    left: 0; /* Positioned by container padding on desktop */
+}
+
+.slider-control.next {
+    right: 0; /* Positioned by container padding on desktop */
+}
+
+.control-icon {
+    font-size: 1.5rem !important;
+}
+
+/* Indicators (Dots) */
+.slider-indicators {
+    text-align: center;
+    margin-top: 30px;
+}
+
+.indicator-dot {
+    width: 10px;
+    height: 10px;
+    background-color: #ccc;
+    border: none;
+    border-radius: 50%;
+    margin: 0 5px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    padding: 0;
+}
+
+.indicator-dot.active {
+    width: 25px;
+    background-color: var(--color-primary);
+    border-radius: 5px;
+}
+
+
+/* ========================================================= */
+/* --- 4. RESPONSIVENESS --- */
+/* ========================================================= */
+
+/* Tablet (Screen width > 768px) */
+@media (min-width: 768px) {
+    .section-title-testimonials {
+        font-size: 3rem;
+    }
+    
+    .slider-container {
+        padding: 0 60px; /* More space for side controls */
+    }
+    
+    /* 2 cards visible on tablet */
+    .testimonial-card {
+        flex: 0 0 calc(50% - 15px); /* 50% width minus half the gap (30px/2) */
+    }
+    
+    .slider-control.prev {
+        left: 0;
+    }
+    
+    .slider-control.next {
+        right: 0;
+    }
+}
+
+/* Desktop (Screen width > 1024px) */
+@media (min-width: 1024px) {
+    .section-title-testimonials {
+        font-size: 3.5rem;
+    }
+
+    /* 3 cards visible on desktop */
+    .testimonial-card {
+        /* 100% / 3 cards = 33.33% - Gap reduction */
+        flex: 0 0 calc(33.33% - 20px); 
+    }
+    
+    .slider-container {
+        padding: 0 80px;
+    }
+}

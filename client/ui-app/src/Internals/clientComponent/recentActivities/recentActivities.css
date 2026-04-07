@@ -1,0 +1,230 @@
+/* --- Global Variables --- */
+:root {
+    --brand-orange: #E67E22;
+    --whatsapp-green: #25D366;
+    --card-shadow-soft: 0 4px 15px rgba(0, 0, 0, 0.1);
+    --card-shadow-hover: 0 8px 25px rgba(0, 0, 0, 0.15);
+    --transition-fast: all 0.3s ease-out;
+    --card-gap: 20px;
+    --card-width-base: 300px;
+}
+
+/* --- Section Container (The main wrapper) --- */
+.recent-activities-section {
+    position: relative;
+    max-width: 1750px;
+    margin: 40px auto;
+    padding: 0 20px; /* Horizontal padding for the section itself */
+}
+
+/* --- Section Title (Styled for start alignment and color) --- */
+.section-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--brand-orange) !important; 
+    margin-bottom: 25px;
+    text-align: left;
+    padding-left: 0; /* Aligned with the container padding */
+}
+
+/* --- NEW Wrapper for Carousel (Allows arrows to float outside the scroll area) --- */
+.carousel-wrapper {
+    position: relative;
+    padding: 0; 
+}
+
+/* --- Cards Wrapper (The Scrollable Area) --- */
+.cards-wrapper-v2 {
+    display: flex;
+    overflow-x: scroll;
+    flex-wrap: nowrap;
+    gap: var(--card-gap);
+    scroll-snap-type: x mandatory;
+    padding: 20px 5px; /* Added vertical padding for spacing and slight scroll visibility */
+    
+    /* Hide scrollbar */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+.cards-wrapper-v2::-webkit-scrollbar {
+    display: none;
+}
+
+/* --- Individual Activity Card --- */
+.activity-card {
+    flex: 0 0 var(--card-width-base); /* Fixed Width for consistency */
+    background-color: white;
+    border-radius: 12px;
+    box-shadow: var(--card-shadow-soft);
+    overflow: hidden;
+    scroll-snap-align: start;
+    transition: var(--transition-fast);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    display: flex; /* Use Flexbox for internal structure */
+    flex-direction: column; /* Stack header, image, and button */
+}
+
+.activity-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--card-shadow-hover);
+}
+
+.card-header {
+    padding: 15px;
+}
+
+.card-title {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.2;
+}
+
+.card-location {
+    margin: 4px 0 0 0;
+    font-size: 0.85rem;
+    color: #777;
+    text-transform: capitalize;
+}
+
+/* --- Divider Style (To mimic the orange line in the original image) --- */
+.divider {
+    width: 80%;
+    height: 3px;
+    background-color: var(--brand-orange);
+    margin: 0 15px 10px 15px;
+}
+
+/* --- Image Section --- */
+.card-image-wrapper-v2 {
+    height: 180px; /* Consistent height for all images */
+    width: 100%;
+    overflow: hidden;
+}
+
+.card-image-v2 {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.6s ease;
+}
+
+.activity-card:hover .card-image-v2 {
+    transform: scale(1.05);
+}
+
+/* --- Card Actions (WhatsApp Button) --- */
+.card-actions {
+    padding: 15px;
+    /* FIX: Ensures button is always aligned correctly */
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    /* FIX: Push to the bottom */
+    margin-top: auto; 
+}
+
+.whatsapp-button {
+    display: flex;
+    align-items: center;
+    /* Changed to a more standard WhatsApp green for better recognition, but kept the orange shadow */
+    background-color: var(--whatsapp-green); 
+    color: white;
+    border: none;
+    border-radius: 8px; /* Slightly larger border-radius */
+    padding: 10px 22px; /* Increased padding */
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(40, 200, 80, 0.3);
+    transition: var(--transition-fast);
+    text-decoration: none; /* If you change to an anchor tag */
+}
+
+.whatsapp-button:hover {
+    background-color: #1daa59;
+    box-shadow: 0 6px 15px rgba(40, 200, 80, 0.5);
+}
+
+
+/* --- Navigation Arrows Styling (FIXED AND RESPONSIVE) --- */
+.nav-arrow {
+    position: absolute;
+    top: 50%; /* Center relative to the carousel-wrapper */
+    transform: translateY(-50%);
+    
+    background-color: white;
+    color: var(--brand-orange);
+    border: 2px solid var(--brand-orange);
+    border-radius: 50%;
+    width: 50px; 
+    height: 50px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2); 
+    cursor: pointer;
+    z-index: 10;
+    transition: var(--transition-fast);
+    
+    display: none; /* Hide by default (Mobile First) */
+    justify-content: center;
+    align-items: center;
+}
+
+.nav-arrow:hover {
+    background-color: var(--brand-orange);
+    color: white;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+    transform: translateY(-50%) scale(1.1);
+}
+
+.nav-arrow.right {
+    right: -25px; /* Position fully outside the scroll area */
+}
+
+.nav-arrow.left {
+    left: -25px; /* Position fully outside the scroll area */
+}
+
+
+/* --- RESPONSIVENESS (Media Queries) --- */
+
+/* Tablet View (Show arrows and start showing more than one card) */
+@media (min-width: 768px) {
+    .cards-wrapper-v2 {
+        /* Create space inside the container for the arrows */
+        padding: 20px 40px; 
+    }
+    
+    .activity-card {
+        /* Show 2 cards per view */
+        width: calc(50% - (var(--card-gap) / 2));
+        max-width: none;
+    }
+    
+    .nav-arrow {
+        display: flex; /* Show arrows */
+        top: 50%; /* Keep vertically centered */
+        transform: translateY(-50%);
+    }
+
+    .nav-arrow.right {
+        right: 0; /* Position right on the edge of the scroll area */
+    }
+
+    .nav-arrow.left {
+        left: 0; /* Position left on the edge of the scroll area */
+    }
+}
+
+@media (min-width: 1024px) {
+    .activity-card {
+        width: calc(33.33% - (2 * var(--card-gap) / 3));
+    }
+}
+
+@media (min-width: 1400px) {
+    .activity-card {
+        width: calc(25% - (3 * var(--card-gap) / 4));
+    }
+}

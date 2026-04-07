@@ -1,0 +1,25 @@
+.mrp-info-card {
+  background: #ffffff;
+  border-radius: 28px;
+  padding: 24px;
+  box-shadow: 0 30px 70px rgba(0,0,0,.08);
+}
+
+.mrp-info-card h3 {
+  font-size: 18px;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.mrp-info-sub {
+  font-size: 13px;
+  color: #64748b;
+  margin-bottom: 16px;
+}
+
+/* Responsive spacing */
+@media (max-width: 768px) {
+  .mrp-info-card {
+    padding: 20px;
+  }
+}

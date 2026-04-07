@@ -14,12 +14,16 @@ import { BAD_REQUEST, OK } from '../errorCodes.js';
 export const saveFCMTokenAction = async (req, res) => {
   try {
     const { userId: requestUserId, token, deviceName, platform } = req.body;
-    const authUserId = req.authUser?.userId;
-    const userId = authUserId && authUserId !== 'client_user_id' ? authUserId : requestUserId;
+    const authUserId = req.authUser?.userId?.toString().trim();
+    const requestUserIdTrimmed = requestUserId?.toString().trim();
+    const userId = authUserId != null && authUserId !== 'client_user_id'
+      ? authUserId
+      : requestUserIdTrimmed;
 
-    console.debug('saveFCMTokenAction request:', {
+    console.log('saveFCMTokenAction request:', {
       authUserId,
-      requestUserId,
+      requestUserId: requestUserIdTrimmed,
+      userId,
       tokenPresent: Boolean(token),
       platform
     });

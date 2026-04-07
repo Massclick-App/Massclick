@@ -1,0 +1,291 @@
+/* ============================================================
+   DASHBOARD GLOBAL LAYOUT — RESPONSIVE
+============================================================ */
+
+.dashboard-container {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 32px;
+  padding: 16px;
+  width: 100%;
+  max-width: 1800px;
+  margin: 0 auto;
+}
+
+/* Desktop (>= 1024px) → 2 columns */
+@media (min-width: 1024px) {
+  .dashboard-container {
+    grid-template-columns: 1.6fr 1fr;
+    gap: 48px;
+  }
+}
+
+/* Large Desktop / 4K (>= 1600px) → Wider spacing */
+@media (min-width: 1600px) {
+  .dashboard-container {
+    grid-template-columns: 1.8fr 1fr;
+    gap: 70px;
+  }
+}
+
+/* ============================================================
+   CHART CARD WRAPPER
+============================================================ */
+
+.chart-card {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 22px;
+  padding: 24px;
+  border: 1px solid rgba(0,0,0,0.1);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.1);
+  backdrop-filter: blur(10px);
+}
+
+/* ============================================================
+   HEADER AREA
+============================================================ */
+
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.chart-header h2 {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.chart-header p {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+/* ============================================================
+   TAGS
+============================================================ */
+
+.tag-group {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.tag {
+  font-size: 11px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.tag-primary {
+  background: rgba(37,99,235,0.1);
+  color: #2563eb;
+}
+
+.tag-soft {
+  background: rgba(148,163,184,0.15);
+  color: #6b7280;
+}
+
+/* ============================================================
+   METRIC STRIP
+============================================================ */
+
+.metric-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.metric-box {
+  background: #f9fafb;
+  border-radius: 14px;
+  padding: 10px 12px;
+  border: 1px solid rgba(148,163,184,0.35);
+}
+
+.metric-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #6b7280;
+  margin-bottom: 4px;
+  display: block;
+}
+
+.metric-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+}
+
+/* ============================================================
+   CHART BOX
+============================================================ */
+
+.chart-wrapper {
+  margin-top: 18px;
+  background: #fff;
+  border-radius: 18px;
+  border: 1px solid rgba(0,0,0,0.08);
+  padding: 15px;
+  min-height: 320px;
+  position: relative;
+}
+
+/* ============================================================
+   DONUT CENTER LABEL
+============================================================ */
+
+.donut-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: none;
+}
+
+.donut-center strong {
+  font-size: 20px;
+  color: #111;
+}
+
+.donut-center span {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+/* ============================================================
+   DONUT BREAKDOWN LIST
+============================================================ */
+
+.donut-breakdown {
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.breakdown-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.breakdown-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.breakdown-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #111827;
+}
+
+.breakdown-meta {
+  font-size: 11px;
+  color: #6b7280;
+  display: flex;
+  gap: 8px;
+}
+
+.breakdown-count {
+  font-weight: 600;
+  color: #111827;
+  font-size: 12px;
+}
+
+.breakdown-percent {
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.breakdown-bar-track {
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: #e5e7eb;
+  overflow: hidden;
+}
+
+.breakdown-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+/* ============================================================
+   TOOLTIP
+============================================================ */
+
+.tooltip-box {
+  background: #fff;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(0,0,0,0.15);
+  box-shadow: 0 3px 12px rgba(0,0,0,0.2);
+}
+
+.tooltip-box h4 {
+  font-size: 12px;
+}
+
+.tooltip-box p {
+  font-size: 11.5px;
+}
+
+/* ============================================================
+   MOBILE OPTIMIZATION (All Phones & Tablets)
+============================================================ */
+
+@media (max-width: 768px) {
+  .metric-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-header h2 {
+    font-size: 16px;
+  }
+
+  .metric-value {
+    font-size: 13px;
+  }
+
+  .donut-center strong {
+    font-size: 18px;
+  }
+}
+
+/* Very Small Phones */
+@media (max-width: 420px) {
+  .chart-card {
+    padding: 18px;
+  }
+
+  .chart-wrapper {
+    min-height: 260px;
+    padding: 12px;
+  }
+
+  .donut-center strong {
+    font-size: 16px;
+  }
+
+  .breakdown-title {
+    font-size: 11px;
+  }
+}

@@ -1,0 +1,178 @@
+/* BusinessListingCTA.css */
+
+/* Reusing established Massclick branding and utility variables */
+:root {
+  --brand-gradient: linear-gradient(135deg, #ff9933 0%, #ff6600 100%); 
+  --brand-orange-primary: #ff8c00;
+  --neutral-bg: #f5f6f8; 
+  --text-dark: #2c3e50;
+  --text-muted: #7f8c8d;
+  --card-shadow-light: 0 10px 30px rgba(0, 0, 0, 0.08);
+  --card-shadow-heavy: 0 15px 40px rgba(0, 0, 0, 0.15);
+  --card-radius: 16px;
+}
+
+/* Page container for centering the CTA card */
+.cta-page-container {
+  min-height: calc(100vh - 120px); /* Adjust based on your header/footer height */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: var(--neutral-bg);
+  padding: 30px 15px; /* Added padding for smaller screens */
+  box-sizing: border-box; /* Include padding in element's total width and height */
+}
+
+/* The CTA Card Itself */
+.listing-cta-card {
+  background: white;
+  padding: 40px; /* Generous padding for premium feel */
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow-light);
+  text-align: center;
+  max-width: 450px; /* Max width to keep it focused and elegant */
+  width: 100%; /* Ensures it takes full width on small screens */
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.listing-cta-card:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--card-shadow-heavy);
+}
+
+.cta-title {
+  font-size: 1.3rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-bottom: 5px;
+}
+
+.cta-brand {
+  font-size: 2.5rem;
+  font-weight: 700;
+  background: var(--brand-gradient);
+  -webkit-background-clip: text; /* For text gradient */
+  -webkit-text-fill-color: transparent; /* For text gradient */
+  background-clip: text;
+  color: transparent; /* Fallback for browsers not supporting -webkit-text-fill-color */
+  margin-top: 0;
+  margin-bottom: 25px;
+}
+
+.cta-price-details {
+  margin-bottom: 30px;
+}
+
+.cta-price-value {
+  font-size: 3.5rem; /* Very large price for impact */
+  font-weight: 900;
+  color: var(--text-dark);
+  line-height: 1;
+  margin: 0;
+}
+
+.cta-price-value .currency {
+  font-size: 2.5rem; /* Slightly smaller currency symbol */
+  font-weight: 700;
+  vertical-align: super;
+}
+
+.cta-tax-info {
+  font-size: 1.1rem;
+  color: var(--text-muted);
+  margin-top: 5px;
+}
+
+/* Pay Now Button - Strong MassClick branding */
+.btn-pay-now {
+  display: block; /* Make it full width of its container */
+  width: 100%;
+  padding: 18px 25px; /* Generous padding */
+  border: none;
+  border-radius: 10px; /* Slightly more rounded button */
+  background: var(--brand-gradient);
+  color: white;
+  font-size: 1.4rem; /* Prominent font size */
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(255, 140, 0, 0.4); /* Stronger shadow */
+  transition: all 0.3s ease;
+  letter-spacing: 0.5px;
+}
+
+.btn-pay-now:hover {
+  opacity: 0.9;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(255, 140, 0, 0.6);
+}
+
+.payment-note {
+  font-size: 0.85rem;
+  color: #a0a0a0;
+  margin-top: 20px;
+}
+
+
+/* --- FULL RESPONSIVENESS --- */
+
+/* TABLET/MEDIUM DESKTOP OPTIMIZATION */
+@media (min-width: 601px) and (max-width: 991px) {
+  .listing-cta-card {
+    padding: 35px;
+    max-width: 400px;
+  }
+  .cta-title {
+    font-size: 1.2rem;
+  }
+  .cta-brand {
+    font-size: 2.2rem;
+  }
+  .cta-price-value {
+    font-size: 3rem;
+  }
+  .cta-price-value .currency {
+    font-size: 2.2rem;
+  }
+  .cta-tax-info {
+    font-size: 1rem;
+  }
+  .btn-pay-now {
+    padding: 15px 20px;
+    font-size: 1.2rem;
+  }
+}
+
+/* PHONE OPTIMIZATION */
+@media (max-width: 600px) {
+  .cta-page-container {
+    padding: 20px 10px;
+  }
+  .listing-cta-card {
+    padding: 30px;
+    border-radius: 12px;
+  }
+  .cta-title {
+    font-size: 1.1rem;
+  }
+  .cta-brand {
+    font-size: 2rem;
+    margin-bottom: 20px;
+  }
+  .cta-price-value {
+    font-size: 2.8rem;
+  }
+  .cta-price-value .currency {
+    font-size: 2rem;
+  }
+  .cta-tax-info {
+    font-size: 0.9rem;
+  }
+  .btn-pay-now {
+    padding: 14px 18px;
+    font-size: 1.1rem;
+    border-radius: 8px;
+  }
+  .payment-note {
+    font-size: 0.75rem;
+  }
+}

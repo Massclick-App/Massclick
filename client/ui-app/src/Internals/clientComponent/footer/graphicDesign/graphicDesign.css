@@ -1,0 +1,358 @@
+/* ========================================================== */
+/* Global/Base Styles (Mobile First Approach) */
+/* ========================================================== */
+:root {
+    /* Define a modern, clean color palette */
+    --primary-color: #ff6b00; /* Richer, slightly darker orange */
+    --secondary-color: #007bff; /* A nice accent blue (optional) */
+    --dark-text: #1a1a1a;
+    --light-text: #ffffff;
+    --background-light: #f8f9fa;
+    --shadow-light: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.graphic-design-container {
+    font-family: 'Poppins', sans-serif; /* Use a modern, popular font like Poppins or Inter (assuming you link it) */
+    color: var(--dark-text);
+    overflow-x: hidden; /* Prevent horizontal scroll on small devices */
+}
+
+/* -------------------- 1. Intro Section (Hero) -------------------- */
+.graphic-design-intro-section {
+    display: flex;
+    flex-direction: column;
+    background-color: var(--primary-color);
+    color: var(--light-text);
+    padding: 40px 0;
+}
+
+.intro-text-block {
+    padding: 30px 8%;
+    max-width: 90%;
+}
+
+.intro-text-block h1 {
+    font-size: 2.8em;
+    font-weight: 700;
+    margin-bottom: 0.5em;
+    line-height: 1.1;
+}
+
+.intro-text-block p {
+    font-size: 1.1em;
+    line-height: 1.7;
+    opacity: 0.95;
+}
+
+.intro-image-block {
+    padding: 20px 8% 0;
+}
+
+.intro-image {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3); /* Deeper shadow for visual interest */
+    transform: translateY(0);
+    transition: transform 0.3s ease-in-out;
+}
+.intro-image:hover {
+    transform: translateY(-5px); /* Subtle hover effect */
+}
+
+/* -------------------- 2. Portfolio Section -------------------- */
+/* ========================================================== */
+/* 2. Portfolio Section - REFINED FOR INTERNATIONAL LOOK */
+/* ========================================================== */
+.portfolio-section {
+    text-align: center;
+    padding: 80px 8%; /* Increased vertical padding */
+    background-color: var(--background-light); 
+}
+
+.portfolio-section h2 {
+    font-size: 2.5em; /* Larger, more impactful heading */
+    font-weight: 700;
+    margin-bottom: 50px;
+    color: var(--dark-text);
+}
+
+.portfolio-content {
+    /* Max-width container to center the entire section on large screens */
+    max-width: 1400px; 
+    margin: 0 auto;
+    
+    display: flex;
+    flex-direction: column; /* Stacks on mobile/tablet */
+    gap: 50px; /* Increased space between image and benefits */
+    text-align: left;
+}
+
+/* --- Image Block (Mobile/Tablet) --- */
+.portfolio-image-block {
+    max-width: 100%;
+    /* Keep the clean white background wrapper on smaller screens */
+    background-color: var(--light-text);
+    padding: 0; /* Removed padding around image inside the block */
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1); /* Elevated shadow */
+}
+
+.portfolio-image {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 12px; /* Apply rounding to the image itself */
+    /* Remove redundant box-shadow here, it's on the block */
+}
+
+/* --- Benefit Cards (Mobile/Tablet) --- */
+.portfolio-benefits {
+    display: grid;
+    grid-template-columns: 1fr; /* Single column on mobile */
+    gap: 20px;
+}
+
+.benefit-item {
+    padding: 30px; /* More padding for spaciousness */
+    border: 1px solid #e0e0e0; /* Subtle border for definition */
+    background-color: var(--light-text);
+    border-radius: 12px; /* Matching corner radius */
+    /* Removed the primary color left border for a cleaner look */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05); /* Lighter, cleaner shadow */
+    transition: all 0.3s ease;
+}
+
+.benefit-item:hover {
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15); /* More pronounced shadow on hover */
+    transform: translateY(-5px); /* Stronger lift effect */
+}
+
+.benefit-item h3 {
+    color: var(--dark-text);
+    font-size: 1.4em; /* Slightly larger headings */
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.benefit-item p {
+    font-size: 1em;
+    line-height: 1.6;
+    color: #555;
+}
+
+
+/* ========================================================== */
+/* Tablet & Medium Screens (Min-width: 768px) */
+/* ========================================================== */
+@media (min-width: 768px) {
+    /* Portfolio: Use two columns for benefits on tablets */
+    .portfolio-benefits {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+
+/* ========================================================== */
+/* Desktop & Large Screens (Min-width: 1100px) */
+/* ========================================================== */
+@media (min-width: 1100px) {
+    /* 2. Portfolio Section: Image and benefits side-by-side */
+    .portfolio-content {
+        flex-direction: row; /* Side-by-side layout */
+        align-items: flex-start;
+        gap: 50px;
+    }
+
+    .portfolio-image-block {
+        /* Image takes up more space, e.g., 55% of the total width */
+        flex: 0 0 55%; 
+        max-width: 55%;
+        padding: 0;
+        /* Removed white background and box shadow wrapper on desktop */
+        background-color: transparent; 
+        box-shadow: none;
+        
+        /* Ensure the image block content is centered/well-placed */
+        display: flex;
+        align-items: center;
+    }
+    
+    .portfolio-image {
+        /* Apply shadow directly to the image */
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2); 
+    }
+
+    .portfolio-benefits {
+        /* Benefits take the remaining 45% of the width */
+        flex: 1; 
+        grid-template-columns: 1fr 1fr; /* Two columns */
+        gap: 20px;
+        padding-top: 0; /* Ensure clean alignment */
+    }
+}
+
+
+/* -------------------- 3. CTA Section - MODIFIED -------------------- */
+.cta-section {
+    background-color: var(--primary-color);
+    color: var(--light-text);
+    padding: 40px 8%; /* Adjust padding for mobile */
+    text-align: center; /* Center content by default */
+    display: flex;
+    flex-direction: column; /* Stacks image and text on mobile */
+    gap: 30px; /* Space between text and image */
+    align-items: center; /* Center items horizontally in column layout */
+}
+
+.cta-content {
+    max-width: 800px; /* Constrain text width on mobile for readability */
+}
+
+.cta-content h2 {
+    font-size: 2.2em;
+    font-weight: 700;
+    margin-bottom: 15px;
+}
+
+.cta-content p {
+    font-size: 1.1em;
+    line-height: 1.6;
+    opacity: 0.95;
+}
+
+.cta-image-block {
+    width: 100%; /* Image takes full width on mobile */
+    max-width: 500px; /* Limit image width on smaller screens for better presentation */
+    border-radius: 12px; /* Rounded corners for the image */
+    overflow: hidden; /* Ensure image corners are rounded */
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2); /* Soft shadow for depth */
+}
+
+.cta-image {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+
+/* ========================================================== */
+/* Tablet & Medium Screens (e.g., Min-width: 650px) */
+/* ========================================================== */
+@media (min-width: 650px) {
+    /* Portfolio: Two columns for benefits on tablets */
+    .portfolio-benefits {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    /* CTA Section: No change, still stacked. Could add an intermediate layout here if desired. */
+}
+@media (min-width: 768px) {
+    /* Portfolio: Use two columns for benefits on tablets */
+    .portfolio-benefits {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+/* ========================================================== */
+/* Desktop & Large Screens (e.g., Min-width: 1100px) */
+/* ========================================================== */
+@media (min-width: 1100px) {
+    .graphic-design-intro-section {
+        flex-direction: row;
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr; 
+        min-height: 550px;
+        padding: 0;
+    }
+
+    .intro-text-block {
+        padding: 80px 50px 80px 10%;
+        align-self: center;
+    }
+
+    .intro-text-block h1 {
+        font-size: 4em;
+    }
+
+    .intro-image-block {
+        padding: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: var(--light-text); 
+    }
+    
+    .intro-image {
+        width: 90%;
+        box-shadow: -20px 20px 40px rgba(0, 0, 0, 0.3); 
+    }
+    
+   .portfolio-content {
+        flex-direction: row; /* Side-by-side layout */
+        align-items: flex-start;
+        gap: 50px;
+    }
+
+    .portfolio-image-block {
+        flex: 0 0 55%; 
+        max-width: 55%;
+        padding: 0;
+        background-color: transparent; 
+        box-shadow: none;
+        
+        display: flex;
+        align-items: center;
+    }
+    
+    .portfolio-image {
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2); 
+    }
+
+    .portfolio-benefits {
+        flex: 1; 
+        grid-template-columns: 1fr 1fr; /* Two columns */
+        gap: 20px;
+        padding-top: 0; /* Ensure clean alignment */
+    }
+
+    /* 3. CTA Section - Desktop Layout (half-half) */
+    .cta-section {
+        flex-direction: row; /* Arranges text and image side-by-side */
+        text-align: left; /* Align text to left within its half */
+        justify-content: center; /* Center the whole section content */
+        gap: 5%; /* Space between text and image */
+        padding: 80px 5%; /* More vertical padding for desktop */
+    }
+
+    .cta-content {
+        flex: 1; /* Takes up available space */
+        max-width: 50%; /* Ensures it takes roughly half, flex will manage the rest */
+        padding-right: 20px; /* Some spacing before the image */
+        margin: 0; /* Remove auto margin from mobile */
+    }
+
+    .cta-content h2 {
+        font-size: 2.8em; /* Adjust font size for desktop CTA */
+        margin-bottom: 20px;
+    }
+
+    .cta-image-block {
+        flex: 1; /* Takes up the other half */
+        max-width: 50%; /* Ensures it takes roughly half */
+        box-shadow: none; /* Remove background box shadow */
+        border-radius: 0; /* No rounding for the container */
+        overflow: visible; /* Allow image to be manipulated without container clipping */
+    }
+
+    .cta-image {
+        border-radius: 12px; /* Apply rounding and shadow directly to the image */
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        transform: translateY(0);
+        transition: transform 0.3s ease-in-out;
+    }
+    .cta-image:hover {
+        transform: translateY(-5px); /* Subtle hover effect */
+    }
+}

@@ -1,0 +1,32 @@
+.mrp-chart-kpi {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.mrp-chart-kpi div {
+  background: #f8fafc;
+  border-radius: 14px;
+  padding: 10px 12px;
+  text-align: center;
+}
+
+.mrp-chart-kpi span {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.mrp-chart-kpi strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+/* Mobile */
+@media (max-width: 600px) {
+  .mrp-chart-kpi {
+    grid-template-columns: 1fr;
+  }
+}

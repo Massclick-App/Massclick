@@ -1,0 +1,252 @@
+/* ===========================
+   🧡 Clients Component Styles (Improved Responsive)
+   =========================== */
+
+:root {
+  --color-background: #f8f9fb;
+  --color-card-bg: #ffffff;
+  --color-text-primary: #1f2937;
+  --color-text-secondary: #6b7280;
+  --color-border: #e5e7eb;
+  --color-primary-orange: #ff8c00;
+  --color-primary-hover: #d97800;
+  --color-disabled-orange: #ffc280;
+  --color-error: #ef4444;
+}
+
+/* ===========================
+   🔹 Page Layout
+   =========================== */
+.client-page {
+  width: 100%;
+  padding: 0 16px;
+  background-color: var(--color-background);
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  box-sizing: border-box;
+}
+
+/* ===========================
+   🧾 Card Section
+   =========================== */
+.client-card {
+  background-color: var(--color-card-bg);
+  padding: 28px;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--color-border);
+  margin-bottom: 24px;
+  transition: box-shadow 0.3s ease;
+}
+
+.client-card:hover {
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
+}
+
+.client-card-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-bottom: 24px;
+  border-bottom: 3px solid var(--color-primary-orange);
+  width: fit-content;
+  padding-bottom: 4px;
+}
+
+/* ===========================
+   🧍‍♂️ Form Fields
+   =========================== */
+.client-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px 18px;
+}
+
+.client-form-input-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.client-input-label {
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+.client-text-input {
+  height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background-color: var(--color-card-bg);
+  font-size: 1rem;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.client-text-input:focus {
+  outline: none;
+  border-color: var(--color-primary-orange);
+  box-shadow: 0 0 0 3px rgba(255, 140, 0, 0.2);
+}
+
+.client-error-text {
+  color: var(--color-error);
+  font-size: 0.85rem;
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+/* ===========================
+   🧡 Buttons
+   =========================== */
+.client-button-group {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.client-submit-button {
+  background-color: var(--color-primary-orange);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  font-weight: 600;
+  font-size: 1rem;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.client-submit-button:hover:not(:disabled) {
+  background-color: var(--color-primary-hover);
+  box-shadow: 0 4px 10px rgba(255, 140, 0, 0.4);
+}
+
+.client-submit-button:disabled {
+  background-color: var(--color-disabled-orange);
+  cursor: not-allowed;
+}
+
+.client-cancel-button {
+  background-color: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  padding: 12px 24px;
+  font-weight: 600;
+  font-size: 1rem;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.client-cancel-button:hover {
+  background-color: #e5e7eb;
+}
+
+/* ===========================
+   🧮 DataGrid / Table Section
+   =========================== */
+.client-table-wrapper {
+  margin-top: 2rem;
+  overflow-x: auto;
+}
+
+.MuiPaper-root {
+  border-radius: 12px !important;
+}
+
+.MuiDataGrid-root {
+  background-color: #fff;
+  border-radius: 10px;
+  min-width: 600px;
+}
+
+.MuiDataGrid-columnHeaders {
+  background-color: #f7f7f9;
+  color: #1f2937;
+  font-weight: 600;
+}
+
+.MuiDataGrid-row:hover {
+  background-color: #f9fafb;
+}
+
+/* ===========================
+   🧾 Dialog Styles
+   =========================== */
+.client-dialog-title {
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.client-dialog-content strong {
+  color: var(--color-primary-orange);
+}
+
+/* ===========================
+   📱 Responsive Design
+   =========================== */
+
+/* Medium devices (tablets) */
+@media (max-width: 992px) {
+  .client-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .client-card {
+    padding: 20px;
+  }
+
+  .client-card-title {
+    font-size: 1.3rem;
+  }
+
+  .client-submit-button,
+  .client-cancel-button {
+    width: 100%;
+  }
+}
+
+/* Small devices (mobile phones) */
+@media (max-width: 600px) {
+  .client-page {
+    padding: 0 12px;
+  }
+
+  .client-card {
+    padding: 16px;
+    border-radius: 10px;
+  }
+
+  .client-card-title {
+    font-size: 1.2rem;
+  }
+
+  .client-form-grid {
+    gap: 16px;
+  }
+
+  .client-text-input {
+    height: 44px;
+    font-size: 0.95rem;
+  }
+
+  .client-button-group {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .client-submit-button,
+  .client-cancel-button {
+    width: 100%;
+    font-size: 0.95rem;
+    padding: 10px;
+  }
+
+  .MuiDataGrid-root {
+    min-width: 500px;
+  }
+}
