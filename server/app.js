@@ -10,6 +10,7 @@ import fs from "fs";
 import { fileURLToPath } from "url";
 
 import userRoutes from "./routes/userRoutes.js";
+import fcmTokenRoutes from "./routes/fcmTokenRoutes.js";
 import userClientRoutes from "./routes/userClientRoute.js";
 import locationRoutes from "./routes/locationRoute.js";
 import oauthRoutes from "./routes/oauthRoutes.js";
@@ -28,6 +29,7 @@ import popularSearchRoutes from "./routes/popularSearchRoutes.js";
 import sitemapRoutes from "./routes/sitemapRoutes.js";
 import reviewRoutes from "./routes/reviewRoutes.js";
 import advertiseRoute from "./routes/advertiseRoute.js";
+import versionRoutes from "./routes/versionRoutes.js";
 import seoModel from "./model/seoModel/seoModel.js";
 
 dotenv.config();
@@ -145,6 +147,7 @@ Sitemap: https://massclick.in/sitemap.xml
 // routes
 app.use("/", sitemapRoutes);
 app.use("/", userRoutes);
+app.use("/", fcmTokenRoutes);
 app.use("/", oauthRoutes);
 app.use("/", userClientRoutes);
 app.use("/", locationRoutes);
@@ -162,6 +165,7 @@ app.use("/", mrpRoutes);
 app.use("/", popularSearchRoutes);
 app.use("/", reviewRoutes);
 app.use("/", advertiseRoute);
+app.use("/", versionRoutes);
 
 app.use(
   express.static(CLIENT_BUILD_PATH, {
