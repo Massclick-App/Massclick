@@ -60,6 +60,7 @@ import OTPLoginModal from './Internals/clientComponent/AddBusinessModel.js';
 import CategoryRouter from './Internals/clientComponent/categories/categoryRouter.js';
 import BlogDetail from './Internals/clientComponent/relatedBlogs/blogDetails/blogDetails.js';
 import SeoPageContentBlogs from './Internals/seoData/seoPageContentBlog/seoPageContentBlog.js';
+import DeleteAccount from './Internals/clientComponent/footer/deleteAccount/deleteAccount.js';
 
 const ComingSoon = ({ title }) => (
   <div style={{ textAlign: 'center', marginTop: '20%' }}>
@@ -77,6 +78,7 @@ const FooterRoutes = [
   { path: 'privacy', title: 'Privacy Policy', element: <PrivacyPolicy /> },
   { path: 'refund', title: 'Refund Policy', element: <RefundPolicy /> },
   { path: 'enquiry', title: 'Enquiry Now', element: <EnquiryNow /> },
+  { path: 'deleteaccount', title: 'Delete Account', element: <DeleteAccount /> },
   { path: 'web', title: 'Web Design & Development', element: <WebDevSection /> },
   { path: 'digital', title: 'Digital Marketing', element: <DigitalMarketing /> },
   { path: 'graphic', title: 'Graphic Design', element: <GraphicDesign /> },
@@ -204,11 +206,14 @@ function App() {
                 <Route path="mni-data" element={<MRPDatas />} />
               </Route>
             </Route>
+
           </Routes>
+          
           <OTPLoginModal
             open={openLoginModal}
             handleClose={() => setOpenLoginModal(false)}
           />
+
         </Router>
         {showTokenExpired && <TokenExpiredModal onClose={() => setShowTokenExpired(false)} />}
       </SnackbarProvider>

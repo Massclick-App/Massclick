@@ -294,7 +294,6 @@ export const deleteBusinessList = (id) => async (dispatch) => {
   try {
     const token = await getValidToken(dispatch);
 
-
     if (!token) {
       throw new Error("No valid access token found");
     } await axios.delete(`${API_URL}/businesslist/delete/${id}`, {
@@ -349,7 +348,6 @@ export const logSearchActivity = (categoryName, location, userDetails, searchedU
     }
   };
 
-
 export const getAllSearchLogs = () => async (dispatch) => {
   dispatch({ type: FETCH_SEARCH_LOGS_REQUEST });
 
@@ -387,7 +385,6 @@ export const getAllSearchLogs = () => async (dispatch) => {
     });
   }
 };
-
 
 export const getBackendSuggestions = (search) => async (dispatch) => {
   dispatch({ type: SUGGESTION_BUSINESS_REQUEST });
