@@ -72,6 +72,17 @@ const message91UsersSchema = new mongoose.Schema({
       searchedAt: { type: Date, default: Date.now },
     },
   ],
+  fcmTokens: [
+    {
+      token: { type: String, required: true },
+      deviceName: { type: String, default: '' },
+      platform: { type: String, enum: ['android', 'ios', 'web'], default: 'android' },
+      isActive: { type: Boolean, default: true },
+      registeredAt: { type: Date, default: Date.now },
+      lastRefreshedAt: { type: Date, default: Date.now },
+      expiresAt: { type: Date, default: () => new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) } // 30 days
+    }
+  ],
   profileCompleted: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
