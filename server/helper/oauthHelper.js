@@ -7,52 +7,19 @@ import mongoose from 'mongoose';
 import crypto from 'crypto';
 import userModel from '../model/userModel.js';
 
+// ── Request context store ─────────────────────────────────────────────────────
+let _currentRequestBody = {};
+
+export const setRequestContext = (body) => {
+  _currentRequestBody = body || {};
+};
+
 // ---------- OAuth2 Server Model Functions ----------
 
 const getAccessToken = (token) => oauthModel.findOne({ accessToken: token }).lean();
 
-const getUser = async (userName, password) => {
-  try {
-    const user = await userValidation(userName, password);
-
-    return {
-      userId: user._id,
-      userName: user.userName,
-      emailId: user.emailId,
-      role: user.role,
-    };
-  } catch (err) {
-    const oauthError = new OAuth2Server.InvalidGrantError(err.message || "Invalid credentials");
-    throw oauthError;
-  }
-};
-
-const getRefreshToken = async (refreshToken) => {
-  const token = await oauthModel.findOne({ refreshToken }).lean();
-
-  if (!token) return null;
-
-  return {
-    refreshToken: token.refreshToken,
-    refreshTokenExpiresAt: token.refreshTokenExpiresAt,
-    client: {
-      id: token.client?.id ? String(token.client.id) : null,
-      clientId: token.client?.clientId,
-      grants: ['password', 'refresh_token', 'client_credentials'],
-    },
-    user: token.user,
-  };
-};
-
-const revokeToken = async (token) => {
-  const result = await oauthModel.deleteOne({ refreshToken: token.refreshToken });
-  return result.deletedCount > 0;
-};
-
-// In oauthHelper.js — replace getUserFromClient
-
 const getClient = async (clientId, clientSecret) => {
-  console.log('getClient: START', { clientId, clientSecret });
+  console.log('getClient: START', { clientId });
   const client = await clientModel.findOne({ clientId, clientSecret }).lean();
   console.log('getClient: result =', client ? 'found' : 'null');
   if (!client) return null;
@@ -63,13 +30,10 @@ const getClient = async (clientId, clientSecret) => {
   };
 };
 
-const getUserFromClient = async (client, request) => {
-  console.log('getUserFromClient: second arg =', JSON.stringify(request));
-  console.log('getUserFromClient: second arg keys =', request ? Object.keys(request) : 'null/undefined');
-  
-  const deviceId = request?.body?.device_id || 'unknown';
+const getUserFromClient = async (client) => {
+  console.log('getUserFromClient: START', { clientId: client?.clientId });
+  const deviceId = _currentRequestBody?.device_id || 'unknown';
   console.log('getUserFromClient: deviceId =', deviceId);
-
   return {
     userId: client.id,
     userName: client.clientId,
@@ -109,7 +73,7 @@ const saveToken = async (token, client, user) => {
 
   if (isClientCredentials) {
     const deviceId = user?.deviceId || 'unknown';
-    console.log('saveToken: deleting old token...');
+    console.log('saveToken: deleting old token for', client.clientId, deviceId);
     await oauthModel.deleteOne({
       'client.clientId': client.clientId,
       deviceId,
@@ -128,7 +92,40 @@ const saveToken = async (token, client, user) => {
   return saved;
 };
 
-// ✅ EXPORT THIS
+const getUser = async (userName, password) => {
+  try {
+    const user = await userValidation(userName, password);
+    return {
+      userId: user._id,
+      userName: user.userName,
+      emailId: user.emailId,
+      role: user.role,
+    };
+  } catch (err) {
+    throw new OAuth2Server.InvalidGrantError(err.message || "Invalid credentials");
+  }
+};
+
+const getRefreshToken = async (refreshToken) => {
+  const token = await oauthModel.findOne({ refreshToken }).lean();
+  if (!token) return null;
+  return {
+    refreshToken: token.refreshToken,
+    refreshTokenExpiresAt: token.refreshTokenExpiresAt,
+    client: {
+      id: token.client?.id ? String(token.client.id) : null,
+      clientId: token.client?.clientId,
+      grants: ['password', 'refresh_token', 'client_credentials'],
+    },
+    user: token.user,
+  };
+};
+
+const revokeToken = async (token) => {
+  const result = await oauthModel.deleteOne({ refreshToken: token.refreshToken });
+  return result.deletedCount > 0;
+};
+
 export const oauthtoken = new OAuth2Server({
   model: {
     getAccessToken,
@@ -141,34 +138,17 @@ export const oauthtoken = new OAuth2Server({
   },
 });
 
-// // ---------- PASSWORD GRANT ----------
-// export const oauthValidation = async (req) => {
-//     const request = new OAuth2Server.Request(req);
-//     const response = new OAuth2Server.Response(res);
-
-//     try {
-//         return await oauthtoken.token(request, response);
-//     } catch (error) {
-//         return { error: error.message };
-//     }
-// };
-
 // ---------- AUTH MIDDLEWARE ----------
 export const oauthAuthentication = async (req, res, next) => {
   const request = new OAuth2Server.Request(req);
   const response = new OAuth2Server.Response(res);
-
   try {
     const token = await oauthtoken.authenticate(request, response);
-
     const userId = token.user?.userId;
     if (mongoose.Types.ObjectId.isValid(userId)) {
       const latestUser = await userModel.findById(userId).lean();
-      if (latestUser) {
-        token.user.userRole = latestUser.role;
-      }
+      if (latestUser) token.user.userRole = latestUser.role;
     }
-
     req.authUser = token.user;
     next();
   } catch (err) {
@@ -182,8 +162,7 @@ export const logoutUsers = async (accessToken) => {
   try {
     const tokenRecord = await oauthModel.findOne({ accessToken }).lean();
     if (!tokenRecord) return false;
-
-    await oauthModel.deleteOne({ accessToken }); // ✅ only this session
+    await oauthModel.deleteOne({ accessToken });
     return true;
   } catch (error) {
     console.error("Logout cleanup error:", error);

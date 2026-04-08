@@ -3,7 +3,8 @@ import { BAD_REQUEST, UNAUTHORIZED } from "../errorCodes.js";
 import {
   oauthAuthentication,
   logoutUsers,
-  oauthtoken
+  oauthtoken,
+  setRequestContext,       // ✅ ADD
 } from "../helper/oauthHelper.js";
 
 // ---------- PASSWORD LOGIN ----------
@@ -11,9 +12,7 @@ export const oauthAction = async (req, res) => {
   try {
     const request = new OAuth2Server.Request(req);
     const response = new OAuth2Server.Response(res);
-
     const token = await oauthtoken.token(request, response);
-
     return res.status(200).json(token);
   } catch (error) {
     console.error(error);
@@ -21,16 +20,14 @@ export const oauthAction = async (req, res) => {
   }
 };
 
-// ---------- CLIENT TOKEN (FIXED) ----------
+// ---------- CLIENT TOKEN ----------
 export const oauthClientAction = async (req, res) => {
   console.log('oauthClientAction: HIT');
   try {
+    setRequestContext(req.body);   // ✅ store before token() call
+
     const request = new OAuth2Server.Request(req);
     const response = new OAuth2Server.Response(res);
-
-    // ✅ Attach device_id to request body so model can read it
-    request.body.device_id = req.body.device_id || 'unknown';
-
     const token = await oauthtoken.token(request, response);
     res.json(token);
   } catch (error) {
@@ -39,14 +36,12 @@ export const oauthClientAction = async (req, res) => {
   }
 };
 
-// ---------- REFRESH TOKEN (FIXED) ----------
+// ---------- REFRESH TOKEN ----------
 export const oauthReAction = async (req, res) => {
   try {
-    const request = new OAuth2Server.Request(req);   // ✅ FIX
+    const request = new OAuth2Server.Request(req);
     const response = new OAuth2Server.Response(res);
-
     const token = await oauthtoken.token(request, response);
-
     res.json(token);
   } catch (error) {
     console.error("Refresh error:", error);
@@ -71,17 +66,13 @@ export const logoutAction = async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
     const accessToken = authHeader?.split(" ")[1];
-
     if (!accessToken) {
       return res.status(UNAUTHORIZED.code).json({ error: "No token provided." });
     }
-
     const result = await logoutUsers(accessToken);
-
     if (!result) {
       return res.status(BAD_REQUEST.code).json({ error: "Logout failed" });
     }
-
     res.status(200).json({ message: "Logout successful" });
   } catch (error) {
     console.error("Logout Error:", error);
