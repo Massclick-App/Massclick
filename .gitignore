@@ -17,7 +17,6 @@ server/google-chrome-stable_current_x86_64.rpm
 
 
 # Client (React) build directory
-**/build
 **/dist
 **/out
 /web-build
@@ -34,7 +33,6 @@ server/google-chrome-stable_current_x86_64.rpm
 # Ignore all .env files that contain sensitive keys (DB, API, etc.)
 # -------------------------------------------------------------------
 # Base .env files (often in the server folder)
-.env
 **/server/.env
 **/client/.env
 
@@ -70,3 +68,4 @@ server/.env
 server/env
 server/key.json
 client/ui-app/.env
+client/ui-app/env
