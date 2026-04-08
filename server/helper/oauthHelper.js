@@ -30,8 +30,13 @@ const saveToken = async (token, client, user) => {
     const tokenInstance = new oauthModel({
         accessToken: token.accessToken,
         accessTokenExpiresAt: token.accessTokenExpiresAt,
-        refreshToken: token.refreshToken,
-        refreshTokenExpiresAt: token.refreshTokenExpiresAt,
+
+        // ✅ only include if exists
+        ...(token.refreshToken && {
+            refreshToken: token.refreshToken,
+            refreshTokenExpiresAt: token.refreshTokenExpiresAt,
+        }),
+
         client: {
             id: client.id,
             clientId: client.clientId,
