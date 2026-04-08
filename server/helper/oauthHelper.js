@@ -72,6 +72,14 @@ const getRefreshToken = (refreshToken) => oauthModel.findOne({ refreshToken }).l
 
 const revokeToken = (token) => oauthModel.deleteOne({ refreshToken: token.refreshToken }).lean();
 
+const getUserFromClient = async (client) => {
+    return {
+        userId: client.id,
+        userName: client.clientId,
+        role: 'client',
+    };
+};
+
 // ✅ EXPORT THIS
 export const oauthtoken = new OAuth2Server({
     model: {
@@ -84,14 +92,6 @@ export const oauthtoken = new OAuth2Server({
         getUserFromClient,
     },
 });
-
-const getUserFromClient = async (client) => {
-    return {
-        userId: client.id,
-        userName: client.clientId,
-        role: 'client',
-    };
-};
 
 // // ---------- PASSWORD GRANT ----------
 // export const oauthValidation = async (req) => {
