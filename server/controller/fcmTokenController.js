@@ -1,5 +1,6 @@
 import { saveFCMToken, removeFCMToken, getActiveFCMTokens } from '../helper/fcmTokenHelper.js';
 import { BAD_REQUEST, OK } from '../errorCodes.js';
+import { ObjectId } from 'mongodb'; // ✅ ADD THIS
 
 /**
  * Save or update FCM token for a user
