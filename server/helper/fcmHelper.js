@@ -1,5 +1,5 @@
 import admin from 'firebase-admin';
-import userModel from '../model/userModel.js';
+import userModel from '../model/msg91Model/usersModels.js';
 
 admin.initializeApp({
   projectId: 'massclick-dc8f6'

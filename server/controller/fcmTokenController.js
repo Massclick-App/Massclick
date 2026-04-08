@@ -14,16 +14,12 @@ import { BAD_REQUEST, OK } from '../errorCodes.js';
 export const saveFCMTokenAction = async (req, res) => {
   try {
     const { userId: requestUserId, token, deviceName, platform } = req.body;
-    const authUserId = req.authUser?.userId?.toString().trim();
-    const requestUserIdTrimmed = requestUserId?.toString().trim();
-    const userId = authUserId != null && authUserId !== 'client_user_id'
-      ? authUserId
-      : requestUserIdTrimmed;
+    
+    // Use the userId from request body directly if it's a valid ObjectId
+    const userId = requestUserId?.toString().trim();
 
     console.log('saveFCMTokenAction request:', {
-      authUserId,
-      requestUserId: requestUserIdTrimmed,
-      userId,
+      requestUserId: userId,
       tokenPresent: Boolean(token),
       platform
     });
@@ -31,6 +27,14 @@ export const saveFCMTokenAction = async (req, res) => {
     if (!userId || !token || !platform) {
       return res.status(BAD_REQUEST.code).json({
         message: 'Missing required fields: userId, token, platform',
+        code: BAD_REQUEST.code
+      });
+    }
+
+    // Validate ObjectId format before proceeding
+    if (!ObjectId.isValid(userId)) {
+      return res.status(BAD_REQUEST.code).json({
+        message: 'Invalid user ID format',
         code: BAD_REQUEST.code
       });
     }
