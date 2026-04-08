@@ -155,7 +155,6 @@ export const logSearchAction = async (req, res) => {
         message: "Lead already sent recently (5 min protection)",
         detectedCategory: finalCategoryName
       });
-
     }
 
 
@@ -185,20 +184,37 @@ export const logSearchAction = async (req, res) => {
 
     // Find businesses
 
+    const locationGroups = {
+      trichy: ["trichy", "tiruchirappalli"]
+    };
+
+    let locationList = [normalizedLocation];
+
+    for (const key in locationGroups) {
+      if (locationGroups[key].includes(normalizedLocation)) {
+        locationList = locationGroups[key];
+        break;
+      }
+    }
+
     const businesses = await businessListModel.find(
       {
         category: { $regex: `^${finalCategoryName}$`, $options: "i" },
-        location: { $regex: normalizedLocation, $options: "i" },
+        location: {
+          $in: locationList.map(loc => new RegExp(loc, "i"))
+        },
         isActive: true,
         businessesLive: true
       },
       {
         businessName: 1,
         contactList: 1,
-        whatsappNumber: 1
+        whatsappNumber: 1,
+        location: 1,
+        address: 1
       }
     )
-      .limit(5)  
+      .limit(10)
       .lean();
 
 
@@ -317,16 +333,18 @@ export const logSearchAction = async (req, res) => {
 
 
 
-    if (businessSendSuccess && customerSendSuccess) {
+    const updated = await searchLogModel.findOneAndUpdate(
+      { _id: savedLog._id, whatsapp: false },
+      { whatsapp: true },
+      { new: true }
+    );
 
-      await searchLogModel.findByIdAndUpdate(
-
-        savedLog._id,
-
-        { whatsapp: true }
-
-      );
-
+    if (!updated) {
+      console.log("🚫 Duplicate WhatsApp prevented");
+      return res.status(200).json({
+        success: true,
+        message: "Duplicate blocked"
+      });
     }
 
 
@@ -366,13 +384,13 @@ export const logSearchAction = async (req, res) => {
 };
 
 export const viewLogSearchAction = async (req, res) => {
-    try {
-        const logs = await getAllSearchLogs();
-        res.status(200).json(logs);
-    } catch (error) {
-        console.error("Error fetching search logs:", error);
-        res.status(500).json({ message: "Failed to fetch search logs" });
-    }
+  try {
+    const logs = await getAllSearchLogs();
+    res.status(200).json(logs);
+  } catch (error) {
+    console.error("Error fetching search logs:", error);
+    res.status(500).json({ message: "Failed to fetch search logs" });
+  }
 };
 
 export const viewSearchAction = async (req, res) => {
