@@ -87,7 +87,7 @@ export const oauthtoken = new OAuth2Server({
 // ---------- PASSWORD GRANT ----------
 export const oauthValidation = async (req) => {
     const request = new OAuth2Server.Request(req);
-    const response = new OAuth2Server.Response(req);
+    const response = new OAuth2Server.Response(res);
 
     try {
         return await oauthtoken.token(request, response);

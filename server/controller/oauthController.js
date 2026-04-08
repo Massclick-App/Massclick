@@ -10,13 +10,12 @@ import {
 // ---------- PASSWORD LOGIN ----------
 export const oauthAction = async (req, res) => {
   try {
-    const result = await oauthValidation(req);
+    const request = new OAuth2Server.Request(req);
+    const response = new OAuth2Server.Response(res);
 
-    if (result.error) {
-      return res.status(401).json({ error: result.error });
-    }
+    const token = await oauthtoken.token(request, response);
 
-    return res.status(200).json(result);
+    return res.status(200).json(token);
   } catch (error) {
     console.error(error);
     return res.status(400).json({ error: error.message });
@@ -26,25 +25,14 @@ export const oauthAction = async (req, res) => {
 // ---------- CLIENT TOKEN (FIXED) ----------
 export const oauthClientAction = async (req, res) => {
   try {
-    const request = new OAuth2Server.Request({
-      method: 'POST',
-      headers: {
-        'content-type': 'application/x-www-form-urlencoded',
-      },
-      body: {
-        grant_type: 'client_credentials',
-        client_id: req.body?.client_id,       // ✅ FIXED
-        client_secret: req.body?.client_secret, // ✅ FIXED
-      },
-    });
-
+    const request = new OAuth2Server.Request(req);   // ✅ FULL EXPRESS REQUEST
     const response = new OAuth2Server.Response(res);
 
     const token = await oauthtoken.token(request, response);
 
     res.json(token);
   } catch (error) {
-    console.error(error);
+    console.error("OAUTH CLIENT ERROR:", error);
     res.status(400).json({ error: error.message });
   }
 };
@@ -52,19 +40,7 @@ export const oauthClientAction = async (req, res) => {
 // ---------- REFRESH TOKEN (FIXED) ----------
 export const oauthReAction = async (req, res) => {
   try {
-    const request = new OAuth2Server.Request({
-      method: 'POST',
-      headers: {
-        'content-type': 'application/x-www-form-urlencoded',
-      },
-      body: {
-        grant_type: 'refresh_token',
-        refresh_token: req.body.refresh_token,
-        client_id: req.body.client_id,
-        client_secret: req.body.client_secret,
-      },
-    });
-
+    const request = new OAuth2Server.Request(req);   // ✅ FIX
     const response = new OAuth2Server.Response(res);
 
     const token = await oauthtoken.token(request, response);
