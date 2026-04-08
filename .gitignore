@@ -69,3 +69,4 @@ Thumbs.db           # Windows
 server/.env
 server/env
 server/key.json
+client/ui-app/.env
