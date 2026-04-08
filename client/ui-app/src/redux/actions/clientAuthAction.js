@@ -14,10 +14,20 @@ export const clientLogin = () => async (dispatch) => {
   dispatch({ type: CLIENT_AUTH_REQUEST });
 
   try {
-    const response = await axios.post(`${API_URL}/oauth/client`, {
-      clientId: CLIENT_ID,
-      clientSecret: CLIENT_SECRET,
-    });
+    const params = new URLSearchParams();
+    params.append("grant_type", "client_credentials");
+    params.append("client_id", CLIENT_ID);
+    params.append("client_secret", CLIENT_SECRET);
+
+    const response = await axios.post(
+      `${API_URL}/oauth/client`,
+      params,
+      {
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+      }
+    );
 
     const { accessToken, refreshToken, accessTokenExpiresAt } = response.data;
 
@@ -43,23 +53,23 @@ export const clientLogin = () => async (dispatch) => {
 export const getClientToken = () => async (dispatch) => {
   let clientAccessToken = localStorage.getItem("clientAccessToken");
   const expiresAtRaw = localStorage.getItem("clientAccessTokenExpiresAt");
+
   const expiresAt = expiresAtRaw ? new Date(expiresAtRaw).getTime() : 0;
   const now = Date.now();
 
+  // Client credentials flow should fetch a new token instead of using refresh_token.
   if (!clientAccessToken || now >= expiresAt) {
     try {
       const result = await dispatch(clientLogin());
       clientAccessToken = result.accessToken;
+    } catch (loginError) {
+      console.error("❌ Client login failed:", loginError);
 
-      if (result.expiresIn) {
-        const newExpiresAt = Date.now() + result.expiresIn * 1000;
-        localStorage.setItem("clientAccessTokenExpiresAt", newExpiresAt);
-      }
-    } catch (error) {
-      console.error("Client token refresh failed:", error);
       localStorage.removeItem("clientAccessToken");
+      localStorage.removeItem("clientRefreshToken");
       localStorage.removeItem("clientAccessTokenExpiresAt");
-      throw error;
+
+      throw loginError;
     }
   }
 
@@ -74,4 +84,8 @@ export const clientLogout = () => async (dispatch) => {
   } finally {
     dispatch({ type: CLIENT_LOGOUT });
   }
+};
+
+export const refreshClientToken = () => async (dispatch) => {
+  return dispatch(clientLogin());
 };
