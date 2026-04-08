@@ -33,8 +33,8 @@ export const oauthClientAction = async (req, res) => {
       },
       body: {
         grant_type: 'client_credentials',
-        client_id: req.body.clientId,
-        client_secret: req.body.clientSecret,
+        client_id: req.body?.client_id,       // ✅ FIXED
+        client_secret: req.body?.client_secret, // ✅ FIXED
       },
     });
 
