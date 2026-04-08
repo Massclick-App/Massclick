@@ -24,14 +24,14 @@ export const oauthAction = async (req, res) => {
 // ---------- CLIENT TOKEN (FIXED) ----------
 export const oauthClientAction = async (req, res) => {
   console.log('oauthClientAction: HIT');
-  console.log('oauthClientAction: body =', req.body);
-  console.log('oauthClientAction: content-type =', req.headers['content-type']);
   try {
     const request = new OAuth2Server.Request(req);
     const response = new OAuth2Server.Response(res);
 
-    const token = await oauthtoken.token(request, response);
+    // ✅ Attach device_id to request body so model can read it
+    request.body.device_id = req.body.device_id || 'unknown';
 
+    const token = await oauthtoken.token(request, response);
     res.json(token);
   } catch (error) {
     console.error("OAUTH CLIENT ERROR:", error);

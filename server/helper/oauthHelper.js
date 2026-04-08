@@ -63,13 +63,16 @@ const getClient = async (clientId, clientSecret) => {
   };
 };
 
-const getUserFromClient = async (client, req) => {
+const getUserFromClient = async (client, request) => {
   console.log('getUserFromClient: START', { clientId: client?.clientId });
+  
+  // oauth2-server passes its own Request object, not raw express req
   const deviceId =
-    req?.body?.device_id ||
-    req?.query?.device_id ||
+    request?.body?.device_id ||
     'unknown';
+
   console.log('getUserFromClient: deviceId =', deviceId);
+
   return {
     userId: client.id,
     userName: client.clientId,
