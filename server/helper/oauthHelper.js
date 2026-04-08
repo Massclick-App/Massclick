@@ -53,29 +53,24 @@ const saveToken = async (token, client, user) => {
   };
 
   if (isClientCredentials) {
-    // client_credentials: one row per (clientId + deviceId).
-    // deviceId comes in via user.deviceId — see getUserFromClient below.
-    const deviceId = user?.deviceId || 'unknown';
+  const deviceId = user?.deviceId || 'unknown';
 
-    const saved = await oauthModel.findOneAndUpdate(
-      {
-        'client.clientId': client.clientId,
-        'user.deviceId': deviceId,
+  const saved = await oauthModel.findOneAndUpdate(
+    {
+      'client.clientId': client.clientId,
+      deviceId: deviceId,           // ✅ top-level, matches the index
+    },
+    {
+      $set: {
+        ...tokenData,
+        deviceId: deviceId,         // ✅ top-level
+        'user.deviceId': deviceId,  // keep nested copy too
       },
-      {
-        $set: {
-          ...tokenData,
-          'user.deviceId': deviceId,
-        },
-      },
-      {
-        upsert: true,
-        new: true,
-        lean: true,
-      }
-    );
-    return saved;
-  }
+    },
+    { upsert: true, new: true, lean: true }
+  );
+  return saved;
+}
 
   // Non-client-credentials grants (password, refresh_token):
   // standard insert — no change to existing user-auth behaviour.
