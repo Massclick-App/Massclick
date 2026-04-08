@@ -1,11 +1,4 @@
-import admin from "firebase-admin";
-
-// Initialize Firebase Admin if it hasn't been initialized yet
-if (!admin.apps.length) {
-  admin.initializeApp({
-    projectId: "massclick-dc8f6",
-  });
-}
+import admin from "../helper/firebaseInit.js";
 
 export const sendSingleNotificationAction = async (req, res) => {
   try {

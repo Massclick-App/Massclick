@@ -68,3 +68,4 @@ Thumbs.db           # Windows
 .idea/
 server/.env
 server/env
+server/key.json
