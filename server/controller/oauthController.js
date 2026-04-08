@@ -1,58 +1,94 @@
-import { BAD_REQUEST } from "../errorCodes.js";
-import { oauthAuthentication, oauthValidation, logoutUsers, handleRefreshTokenRequest, createClientToken } from "../helper/oauthHelper.js";
+import OAuth2Server from 'oauth2-server';
+import { BAD_REQUEST, UNAUTHORIZED } from "../errorCodes.js";
+import {
+  oauthAuthentication,
+  oauthValidation,
+  logoutUsers,
+  oauthtoken
+} from "../helper/oauthHelper.js";
 
+// ---------- PASSWORD LOGIN ----------
 export const oauthAction = async (req, res) => {
-    try {
-        const result = await oauthValidation(req);
-
-        if (result.error) {
-            return res.status(401).json({ error: result.error });
-        }
-
-        return res.status(200).json(result);
-
-    } catch (error) {
-        console.error(error);
-        return res.status(400).json({ error: error.message });
-    }
-};
-export const oauthClientAction = async (req, res) => {
   try {
-    const { clientId, clientSecret } = req.body;
+    const result = await oauthValidation(req);
 
-    if (!clientId || !clientSecret) {
-      return res.status(BAD_REQUEST.code).send({ error: 'clientId and clientSecret required' });
+    if (result.error) {
+      return res.status(401).json({ error: result.error });
     }
 
-    const token = await createClientToken(clientId, clientSecret);
-    res.send(token); 
+    return res.status(200).json(result);
   } catch (error) {
     console.error(error);
-    return res.status(BAD_REQUEST.code).send({ error: error.message });
+    return res.status(400).json({ error: error.message });
   }
 };
 
+// ---------- CLIENT TOKEN (FIXED) ----------
+export const oauthClientAction = async (req, res) => {
+  try {
+    const request = new OAuth2Server.Request({
+      method: 'POST',
+      headers: {
+        'content-type': 'application/x-www-form-urlencoded',
+      },
+      body: {
+        grant_type: 'client_credentials',
+        client_id: req.body.clientId,
+        client_secret: req.body.clientSecret,
+      },
+    });
 
+    const response = new OAuth2Server.Response(res);
+
+    const token = await oauthtoken.token(request, response);
+
+    res.json(token);
+  } catch (error) {
+    console.error(error);
+    res.status(400).json({ error: error.message });
+  }
+};
+
+// ---------- REFRESH TOKEN (FIXED) ----------
 export const oauthReAction = async (req, res) => {
-    try {
-        const result = await handleRefreshTokenRequest(req, res); 
-        res.send(result);
-    } catch (error) {
-        console.error('Error refreshing access token:', error);
-        return res.status(400).send({ error: error.message });
-    }
+  try {
+    const request = new OAuth2Server.Request({
+      method: 'POST',
+      headers: {
+        'content-type': 'application/x-www-form-urlencoded',
+      },
+      body: {
+        grant_type: 'refresh_token',
+        refresh_token: req.body.refresh_token,
+        client_id: req.body.client_id,
+        client_secret: req.body.client_secret,
+      },
+    });
+
+    const response = new OAuth2Server.Response(res);
+
+    const token = await oauthtoken.token(request, response);
+
+    res.json(token);
+  } catch (error) {
+    console.error("Refresh error:", error);
+    return res.status(400).json({ error: error.message });
+  }
 };
 
+// ---------- PROTECTED ROUTE ----------
 export const oauthToken = async (req, res) => {
-    try {
-        const result = await oauthAuthentication(req);
-        res.send(result);
-    } catch (error) {
-        console.error(error);
-        return res.status(BAD_REQUEST.code).send(error.message);
-    }
+  try {
+    await oauthAuthentication(req, res, () => {
+      res.send(req.authUser);
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(BAD_REQUEST.code).send(error.message);
+  }
 };
 
+// ---------- LOGOUT ----------
 export const logoutAction = async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
@@ -64,8 +100,8 @@ export const logoutAction = async (req, res) => {
 
     const result = await logoutUsers(accessToken);
 
-    if (!result.success) {
-      return res.status(BAD_REQUEST.code).json({ error: result.message });
+    if (!result) {
+      return res.status(BAD_REQUEST.code).json({ error: "Logout failed" });
     }
 
     res.status(200).json({ message: "Logout successful" });
