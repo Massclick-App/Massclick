@@ -15,9 +15,11 @@ const getAccessToken = (token) => oauthModel.findOne({ accessToken: token }).lea
 const getClient = (clientId, clientSecret) => clientModel.findOne({ clientId, clientSecret }).lean();
 
 const saveToken = async (token, client, user) => {
-    const userId = user.userId || 'client_user_id';
+    // ✅ make session unique if not real user
+    const userId = user.userId || crypto.randomBytes(16).toString('hex');
 
-    await oauthModel.deleteMany({ 'user.userId': userId });
+    // ❌ REMOVED: this was deleting all sessions
+    // await oauthModel.deleteMany({ 'user.userId': userId });
 
     const tokenInstance = new oauthModel({
         accessToken: token.accessToken,
@@ -80,6 +82,7 @@ const oauthtoken = new OAuth2Server({
     },
 });
 
+// ---------- CLIENT TOKEN ----------
 export const createClientToken = async (clientId, clientSecret) => {
     const client = await clientModel.findOne({ clientId, clientSecret }).lean();
     if (!client) throw new Error('Invalid client credentials');
@@ -87,7 +90,7 @@ export const createClientToken = async (clientId, clientSecret) => {
     const user = {
         userName: 'client_user',
         emailId: null,
-        userId: 'client_user_id',
+        userId: crypto.randomBytes(16).toString('hex'), // ✅ UNIQUE SESSION
         userRole: 'client',
         firstTimeUser: false,
         forgotPassword: false,
@@ -144,6 +147,7 @@ export const oauthAuthentication = async (req, res, next) => {
     }
 };
 
+// ---------- Refresh Token ----------
 export const handleRefreshTokenRequest = async (req, res) => {
     const request = new OAuth2Server.Request(req);
     const response = new OAuth2Server.Response(res);
@@ -156,6 +160,7 @@ export const handleRefreshTokenRequest = async (req, res) => {
     }
 };
 
+// ---------- Logout (FIXED) ----------
 export const logoutUsers = async (accessToken) => {
   try {
     const tokenRecord = await oauthModel.findOne({ accessToken }).lean();
@@ -165,18 +170,8 @@ export const logoutUsers = async (accessToken) => {
       return false;
     }
 
-    const { user, client } = tokenRecord;
-
-    if (!client?.clientId) {
-      console.warn("Client ID missing in token");
-      return false;
-    }
-
-    const deleteQuery = {
-      "client.clientId": client.clientId,
-    };
-
-    const deleteResult = await oauthModel.deleteMany(deleteQuery);
+    // ✅ delete ONLY this session
+    await oauthModel.deleteOne({ accessToken });
 
     return true;
   } catch (error) {
