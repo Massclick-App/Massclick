@@ -27,12 +27,8 @@ const getClient = async (clientId, clientSecret) => {
 // In oauthHelper.js — replace saveToken only
 
 const saveToken = async (token, client, user) => {
-  console.log('saveToken: START', { client: client.clientId, user: user?.userName });
-  
   const userId = user?.userId || crypto.randomBytes(16).toString('hex');
   const isClientCredentials = !token.refreshToken;
-
-  console.log('saveToken: isClientCredentials =', isClientCredentials);
 
   const tokenData = {
     accessToken: token.accessToken,
@@ -48,6 +44,7 @@ const saveToken = async (token, client, user) => {
       userRole: user?.role || 'client',
       firstTimeUser: false,
       forgotPassword: false,
+      ...(user?.deviceId && { deviceId: user.deviceId }),
     },
     lastUsedAt: new Date(),
     ...(token.refreshToken && {
@@ -58,30 +55,30 @@ const saveToken = async (token, client, user) => {
 
   if (isClientCredentials) {
     const deviceId = user?.deviceId || 'unknown';
-    console.log('saveToken: deleting old token for', client.clientId, deviceId);
 
-    await oauthModel.deleteOne({
-      'client.clientId': client.clientId,
-      deviceId: deviceId,
-    });
-
-    console.log('saveToken: delete done, inserting new token');
-
-    const tokenInstance = new oauthModel({
-      ...tokenData,
-      deviceId: deviceId,
-    });
-
-    const saved = await tokenInstance.save();
-    console.log('saveToken: save done');
-    return saved;
+    return oauthModel.findOneAndUpdate(
+      {
+        'client.clientId': client.clientId,
+        deviceId,
+        refreshToken: { $exists: false },
+      },
+      {
+        $set: {
+          ...tokenData,
+          deviceId,
+          createdAt: new Date(),
+        },
+      },
+      {
+        upsert: true,
+        new: true,
+        setDefaultsOnInsert: true,
+      },
+    );
   }
 
-  console.log('saveToken: password grant, inserting');
   const tokenInstance = new oauthModel(tokenData);
-  const saved = await tokenInstance.save();
-  console.log('saveToken: done');
-  return saved;
+  return tokenInstance.save();
 };
 
 const getUser = async (userName, password) => {
