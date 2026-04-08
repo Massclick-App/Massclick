@@ -23,8 +23,11 @@ export const oauthAction = async (req, res) => {
 
 // ---------- CLIENT TOKEN (FIXED) ----------
 export const oauthClientAction = async (req, res) => {
+  console.log('oauthClientAction: HIT');
+  console.log('oauthClientAction: body =', req.body);
+  console.log('oauthClientAction: content-type =', req.headers['content-type']);
   try {
-    const request = new OAuth2Server.Request(req);   // ✅ FULL EXPRESS REQUEST
+    const request = new OAuth2Server.Request(req);
     const response = new OAuth2Server.Response(res);
 
     const token = await oauthtoken.token(request, response);

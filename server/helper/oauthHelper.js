@@ -11,76 +11,6 @@ import userModel from '../model/userModel.js';
 
 const getAccessToken = (token) => oauthModel.findOne({ accessToken: token }).lean();
 
-// ✅ FIXED
-const getClient = async (clientId, clientSecret) => {
-  const client = await clientModel.findOne({ clientId, clientSecret }).lean();
-
-  if (!client) return null;
-
-  return {
-    id: String(client._id),
-    clientId: client.clientId,
-    grants: ['password', 'refresh_token', 'client_credentials'], // ✅ IMPORTANT
-  };
-};
-
-// In oauthHelper.js — replace saveToken only
-
-const saveToken = async (token, client, user) => {
-  const userId = user?.userId || crypto.randomBytes(16).toString('hex');
-  const isClientCredentials = !token.refreshToken;
-
-  const tokenData = {
-    accessToken: token.accessToken,
-    accessTokenExpiresAt: token.accessTokenExpiresAt,
-    client: {
-      id: String(client.id),
-      clientId: client.clientId,
-    },
-    user: {
-      userName: user?.userName || 'client_user',
-      emailId: user?.emailId || null,
-      userId: userId,
-      userRole: user?.role || 'client',
-      firstTimeUser: false,
-      forgotPassword: false,
-      ...(user?.deviceId && { deviceId: user.deviceId }),
-    },
-    lastUsedAt: new Date(),
-    ...(token.refreshToken && {
-      refreshToken: token.refreshToken,
-      refreshTokenExpiresAt: token.refreshTokenExpiresAt,
-    }),
-  };
-
-  if (isClientCredentials) {
-    const deviceId = user?.deviceId || 'unknown';
-
-    return oauthModel.findOneAndUpdate(
-      {
-        'client.clientId': client.clientId,
-        deviceId,
-        refreshToken: { $exists: false },
-      },
-      {
-        $set: {
-          ...tokenData,
-          deviceId,
-          createdAt: new Date(),
-        },
-      },
-      {
-        upsert: true,
-        new: true,
-        setDefaultsOnInsert: true,
-      },
-    );
-  }
-
-  const tokenInstance = new oauthModel(tokenData);
-  return tokenInstance.save();
-};
-
 const getUser = async (userName, password) => {
   try {
     const user = await userValidation(userName, password);
@@ -121,22 +51,81 @@ const revokeToken = async (token) => {
 
 // In oauthHelper.js — replace getUserFromClient
 
+const getClient = async (clientId, clientSecret) => {
+  console.log('getClient: START', { clientId, clientSecret });
+  const client = await clientModel.findOne({ clientId, clientSecret }).lean();
+  console.log('getClient: result =', client ? 'found' : 'null');
+  if (!client) return null;
+  return {
+    id: String(client._id),
+    clientId: client.clientId,
+    grants: ['password', 'refresh_token', 'client_credentials'],
+  };
+};
+
 const getUserFromClient = async (client, req) => {
-  // oauth2-server passes the raw request as the second argument to
-  // getUserFromClient when you're using a custom model.
-  // If your version doesn't forward req here, read it from
-  // the OAuth2Server.Request you built in the controller instead.
+  console.log('getUserFromClient: START', { clientId: client?.clientId });
   const deviceId =
     req?.body?.device_id ||
     req?.query?.device_id ||
     'unknown';
-
+  console.log('getUserFromClient: deviceId =', deviceId);
   return {
     userId: client.id,
     userName: client.clientId,
     role: 'client',
-    deviceId,                    // ← forwarded into saveToken → upsert filter
+    deviceId,
   };
+};
+
+const saveToken = async (token, client, user) => {
+  console.log('saveToken: START', { clientId: client?.clientId, deviceId: user?.deviceId });
+  const userId = user?.userId || crypto.randomBytes(16).toString('hex');
+  const isClientCredentials = !token.refreshToken;
+  console.log('saveToken: isClientCredentials =', isClientCredentials);
+
+  const tokenData = {
+    accessToken: token.accessToken,
+    accessTokenExpiresAt: token.accessTokenExpiresAt,
+    client: {
+      id: String(client.id),
+      clientId: client.clientId,
+    },
+    user: {
+      userName: user?.userName || 'client_user',
+      emailId: user?.emailId || null,
+      userId: userId,
+      userRole: user?.role || 'client',
+      firstTimeUser: false,
+      forgotPassword: false,
+      ...(user?.deviceId && { deviceId: user.deviceId }),
+    },
+    lastUsedAt: new Date(),
+    ...(token.refreshToken && {
+      refreshToken: token.refreshToken,
+      refreshTokenExpiresAt: token.refreshTokenExpiresAt,
+    }),
+  };
+
+  if (isClientCredentials) {
+    const deviceId = user?.deviceId || 'unknown';
+    console.log('saveToken: deleting old token...');
+    await oauthModel.deleteOne({
+      'client.clientId': client.clientId,
+      deviceId,
+    });
+    console.log('saveToken: delete done, inserting new...');
+    const tokenInstance = new oauthModel({ ...tokenData, deviceId });
+    const saved = await tokenInstance.save();
+    console.log('saveToken: insert done');
+    return saved;
+  }
+
+  console.log('saveToken: password grant insert');
+  const tokenInstance = new oauthModel(tokenData);
+  const saved = await tokenInstance.save();
+  console.log('saveToken: done');
+  return saved;
 };
 
 // ✅ EXPORT THIS
