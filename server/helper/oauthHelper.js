@@ -27,8 +27,12 @@ const getClient = async (clientId, clientSecret) => {
 // In oauthHelper.js — replace saveToken only
 
 const saveToken = async (token, client, user) => {
+  console.log('saveToken: START', { client: client.clientId, user: user?.userName });
+  
   const userId = user?.userId || crypto.randomBytes(16).toString('hex');
   const isClientCredentials = !token.refreshToken;
+
+  console.log('saveToken: isClientCredentials =', isClientCredentials);
 
   const tokenData = {
     accessToken: token.accessToken,
@@ -54,27 +58,29 @@ const saveToken = async (token, client, user) => {
 
   if (isClientCredentials) {
     const deviceId = user?.deviceId || 'unknown';
+    console.log('saveToken: deleting old token for', client.clientId, deviceId);
 
-    // Delete old token for this client+device, then insert fresh
     await oauthModel.deleteOne({
       'client.clientId': client.clientId,
       deviceId: deviceId,
     });
 
+    console.log('saveToken: delete done, inserting new token');
+
     const tokenInstance = new oauthModel({
       ...tokenData,
       deviceId: deviceId,
-      'user.deviceId': deviceId,
     });
 
     const saved = await tokenInstance.save();
+    console.log('saveToken: save done');
     return saved;
   }
 
-  // Non-client-credentials grants (password, refresh_token):
-  // standard insert — no change to existing user-auth behaviour.
+  console.log('saveToken: password grant, inserting');
   const tokenInstance = new oauthModel(tokenData);
   const saved = await tokenInstance.save();
+  console.log('saveToken: done');
   return saved;
 };
 
