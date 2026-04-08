@@ -100,9 +100,27 @@ const getUser = async (userName, password) => {
     }
 };
 
-const getRefreshToken = (refreshToken) => oauthModel.findOne({ refreshToken }).lean();
+const getRefreshToken = async (refreshToken) => {
+  const token = await oauthModel.findOne({ refreshToken }).lean();
 
-const revokeToken = (token) => oauthModel.deleteOne({ refreshToken: token.refreshToken }).lean();
+  if (!token) return null;
+
+  return {
+    refreshToken: token.refreshToken,
+    refreshTokenExpiresAt: token.refreshTokenExpiresAt,
+    client: {
+      id: token.client?.id,
+      clientId: token.client?.clientId,
+      grants: ['password', 'refresh_token', 'client_credentials'],
+    },
+    user: token.user,
+  };
+};
+
+const revokeToken = async (token) => {
+  const result = await oauthModel.deleteOne({ refreshToken: token.refreshToken });
+  return result.deletedCount > 0;
+};
 
 // In oauthHelper.js — replace getUserFromClient
 
