@@ -1,0 +1,108 @@
+/* Container */
+.delete-container {
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #f4f6f8;
+  padding: 20px;
+}
+
+/* Card */
+.delete-card {
+  width: 100%;
+  max-width: 500px;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 30px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+}
+
+/* Title */
+.title {
+  font-size: 24px;
+  font-weight: 600;
+  margin-bottom: 15px;
+  color: #222;
+}
+
+/* Warning Text */
+.warning-text {
+  font-size: 14px;
+  color: #555;
+  margin-bottom: 20px;
+}
+
+.warning-text span {
+  color: #d32f2f;
+  font-weight: bold;
+}
+
+/* Danger Box */
+.danger-box {
+  background: #fff5f5;
+  border: 1px solid #f5c2c2;
+  padding: 15px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+}
+
+.danger-box h4 {
+  color: #d32f2f;
+  margin-bottom: 10px;
+}
+
+.danger-box ul {
+  padding-left: 18px;
+}
+
+.danger-box li {
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+/* Confirm Section */
+.confirm-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.confirm-section label {
+  font-size: 13px;
+  color: #444;
+}
+
+/* Button */
+.delete-btn {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  background: #ccc;
+  color: #fff;
+  font-weight: 600;
+  cursor: not-allowed;
+  transition: 0.3s;
+}
+
+.delete-btn.active {
+  background: #d32f2f;
+  cursor: pointer;
+}
+
+.delete-btn.active:hover {
+  background: #b71c1c;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .delete-card {
+    padding: 20px;
+  }
+
+  .title {
+    font-size: 20px;
+  }
+}
