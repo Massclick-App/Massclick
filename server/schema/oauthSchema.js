@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 // In oauthSchema.js — add deviceId field and compound index
 
 const oauthSchema = new mongoose.Schema({
