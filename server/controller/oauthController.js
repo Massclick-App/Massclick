@@ -2,7 +2,6 @@ import OAuth2Server from 'oauth2-server';
 import { BAD_REQUEST, UNAUTHORIZED } from "../errorCodes.js";
 import {
   oauthAuthentication,
-  oauthValidation,
   logoutUsers,
   oauthtoken
 } from "../helper/oauthHelper.js";

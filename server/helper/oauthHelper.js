@@ -81,20 +81,29 @@ export const oauthtoken = new OAuth2Server({
         getUser,
         getRefreshToken,
         revokeToken,
+        getUserFromClient,
     },
 });
 
-// ---------- PASSWORD GRANT ----------
-export const oauthValidation = async (req) => {
-    const request = new OAuth2Server.Request(req);
-    const response = new OAuth2Server.Response(res);
-
-    try {
-        return await oauthtoken.token(request, response);
-    } catch (error) {
-        return { error: error.message };
-    }
+const getUserFromClient = async (client) => {
+    return {
+        userId: client.id,
+        userName: client.clientId,
+        role: 'client',
+    };
 };
+
+// // ---------- PASSWORD GRANT ----------
+// export const oauthValidation = async (req) => {
+//     const request = new OAuth2Server.Request(req);
+//     const response = new OAuth2Server.Response(res);
+
+//     try {
+//         return await oauthtoken.token(request, response);
+//     } catch (error) {
+//         return { error: error.message };
+//     }
+// };
 
 // ---------- AUTH MIDDLEWARE ----------
 export const oauthAuthentication = async (req, res, next) => {
