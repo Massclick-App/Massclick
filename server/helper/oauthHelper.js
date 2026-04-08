@@ -13,15 +13,15 @@ const getAccessToken = (token) => oauthModel.findOne({ accessToken: token }).lea
 
 // ✅ FIXED
 const getClient = async (clientId, clientSecret) => {
-    const client = await clientModel.findOne({ clientId, clientSecret }).lean();
+  const client = await clientModel.findOne({ clientId, clientSecret }).lean();
 
-    if (!client) return null;
+  if (!client) return null;
 
-    return {
-        id: String(client._id),
-        clientId: client.clientId,
-        grants: ['password', 'refresh_token', 'client_credentials'], // ✅ IMPORTANT
-    };
+  return {
+    id: String(client._id),
+    clientId: client.clientId,
+    grants: ['password', 'refresh_token', 'client_credentials'], // ✅ IMPORTANT
+  };
 };
 
 // In oauthHelper.js — replace saveToken only
@@ -53,24 +53,23 @@ const saveToken = async (token, client, user) => {
   };
 
   if (isClientCredentials) {
-  const deviceId = user?.deviceId || 'unknown';
+    const deviceId = user?.deviceId || 'unknown';
 
-  const saved = await oauthModel.findOneAndUpdate(
-    {
+    // Delete old token for this client+device, then insert fresh
+    await oauthModel.deleteOne({
       'client.clientId': client.clientId,
-      deviceId: deviceId,           // ✅ top-level, matches the index
-    },
-    {
-      $set: {
-        ...tokenData,
-        deviceId: deviceId,         // ✅ top-level
-        'user.deviceId': deviceId,  // keep nested copy too
-      },
-    },
-    { upsert: true, new: true, lean: true }
-  );
-  return saved;
-}
+      deviceId: deviceId,
+    });
+
+    const tokenInstance = new oauthModel({
+      ...tokenData,
+      deviceId: deviceId,
+      'user.deviceId': deviceId,
+    });
+
+    const saved = await tokenInstance.save();
+    return saved;
+  }
 
   // Non-client-credentials grants (password, refresh_token):
   // standard insert — no change to existing user-auth behaviour.
@@ -80,19 +79,19 @@ const saveToken = async (token, client, user) => {
 };
 
 const getUser = async (userName, password) => {
-    try {
-        const user = await userValidation(userName, password);
+  try {
+    const user = await userValidation(userName, password);
 
-        return {
-            userId: user._id,
-            userName: user.userName,
-            emailId: user.emailId,
-            role: user.role,
-        };
-    } catch (err) {
-        const oauthError = new OAuth2Server.InvalidGrantError(err.message || "Invalid credentials");
-        throw oauthError;
-    }
+    return {
+      userId: user._id,
+      userName: user.userName,
+      emailId: user.emailId,
+      role: user.role,
+    };
+  } catch (err) {
+    const oauthError = new OAuth2Server.InvalidGrantError(err.message || "Invalid credentials");
+    throw oauthError;
+  }
 };
 
 const getRefreshToken = async (refreshToken) => {
@@ -139,15 +138,15 @@ const getUserFromClient = async (client, req) => {
 
 // ✅ EXPORT THIS
 export const oauthtoken = new OAuth2Server({
-    model: {
-        getAccessToken,
-        getClient,
-        saveToken,
-        getUser,
-        getRefreshToken,
-        revokeToken,
-        getUserFromClient,
-    },
+  model: {
+    getAccessToken,
+    getClient,
+    saveToken,
+    getUser,
+    getRefreshToken,
+    revokeToken,
+    getUserFromClient,
+  },
 });
 
 // // ---------- PASSWORD GRANT ----------
@@ -164,38 +163,38 @@ export const oauthtoken = new OAuth2Server({
 
 // ---------- AUTH MIDDLEWARE ----------
 export const oauthAuthentication = async (req, res, next) => {
-    const request = new OAuth2Server.Request(req);
-    const response = new OAuth2Server.Response(res);
+  const request = new OAuth2Server.Request(req);
+  const response = new OAuth2Server.Response(res);
 
-    try {
-        const token = await oauthtoken.authenticate(request, response);
+  try {
+    const token = await oauthtoken.authenticate(request, response);
 
-        const userId = token.user?.userId;
-        if (mongoose.Types.ObjectId.isValid(userId)) {
-            const latestUser = await userModel.findById(userId).lean();
-            if (latestUser) {
-                token.user.userRole = latestUser.role;
-            }
-        }
-
-        req.authUser = token.user;
-        next();
-    } catch (err) {
-        console.error("OAuth Authentication Error:", err);
-        return res.status(UNAUTHORIZED.code).send({ error: err.message });
+    const userId = token.user?.userId;
+    if (mongoose.Types.ObjectId.isValid(userId)) {
+      const latestUser = await userModel.findById(userId).lean();
+      if (latestUser) {
+        token.user.userRole = latestUser.role;
+      }
     }
+
+    req.authUser = token.user;
+    next();
+  } catch (err) {
+    console.error("OAuth Authentication Error:", err);
+    return res.status(UNAUTHORIZED.code).send({ error: err.message });
+  }
 };
 
 // ---------- LOGOUT ----------
 export const logoutUsers = async (accessToken) => {
-    try {
-        const tokenRecord = await oauthModel.findOne({ accessToken }).lean();
-        if (!tokenRecord) return false;
+  try {
+    const tokenRecord = await oauthModel.findOne({ accessToken }).lean();
+    if (!tokenRecord) return false;
 
-        await oauthModel.deleteOne({ accessToken }); // ✅ only this session
-        return true;
-    } catch (error) {
-        console.error("Logout cleanup error:", error);
-        return false;
-    }
+    await oauthModel.deleteOne({ accessToken }); // ✅ only this session
+    return true;
+  } catch (error) {
+    console.error("Logout cleanup error:", error);
+    return false;
+  }
 };
