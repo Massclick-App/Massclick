@@ -24,37 +24,64 @@ const getClient = async (clientId, clientSecret) => {
     };
 };
 
+// In oauthHelper.js — replace saveToken only
+
 const saveToken = async (token, client, user) => {
-    const userId = user?.userId || crypto.randomBytes(16).toString('hex');
+  const userId = user?.userId || crypto.randomBytes(16).toString('hex');
+  const isClientCredentials = !token.refreshToken;
 
-    const tokenInstance = new oauthModel({
-        accessToken: token.accessToken,
-        accessTokenExpiresAt: token.accessTokenExpiresAt,
+  const tokenData = {
+    accessToken: token.accessToken,
+    accessTokenExpiresAt: token.accessTokenExpiresAt,
+    client: {
+      id: client.id,
+      clientId: client.clientId,
+    },
+    user: {
+      userName: user?.userName || 'client_user',
+      emailId: user?.emailId || null,
+      userId: userId,
+      userRole: user?.role || 'client',
+      firstTimeUser: false,
+      forgotPassword: false,
+    },
+    lastUsedAt: new Date(),
+    ...(token.refreshToken && {
+      refreshToken: token.refreshToken,
+      refreshTokenExpiresAt: token.refreshTokenExpiresAt,
+    }),
+  };
 
-        // ✅ only include if exists
-        ...(token.refreshToken && {
-            refreshToken: token.refreshToken,
-            refreshTokenExpiresAt: token.refreshTokenExpiresAt,
-        }),
+  if (isClientCredentials) {
+    // client_credentials: one row per (clientId + deviceId).
+    // deviceId comes in via user.deviceId — see getUserFromClient below.
+    const deviceId = user?.deviceId || 'unknown';
 
-        client: {
-            id: client.id,
-            clientId: client.clientId,
+    const saved = await oauthModel.findOneAndUpdate(
+      {
+        'client.clientId': client.clientId,
+        'user.deviceId': deviceId,
+      },
+      {
+        $set: {
+          ...tokenData,
+          'user.deviceId': deviceId,
         },
-        user: {
-            userName: user?.userName || 'client_user',
-            emailId: user?.emailId || null,
-            userId: userId,
-            userRole: user?.role || 'client',
-            firstTimeUser: false,
-            forgotPassword: false,
-        },
-    });
+      },
+      {
+        upsert: true,
+        new: true,
+        lean: true,
+      }
+    );
+    return saved;
+  }
 
-    const savedToken = await tokenInstance.save();
-    delete savedToken._id;
-    delete savedToken.__v;
-    return savedToken;
+  // Non-client-credentials grants (password, refresh_token):
+  // standard insert — no change to existing user-auth behaviour.
+  const tokenInstance = new oauthModel(tokenData);
+  const saved = await tokenInstance.save();
+  return saved;
 };
 
 const getUser = async (userName, password) => {
@@ -77,12 +104,24 @@ const getRefreshToken = (refreshToken) => oauthModel.findOne({ refreshToken }).l
 
 const revokeToken = (token) => oauthModel.deleteOne({ refreshToken: token.refreshToken }).lean();
 
-const getUserFromClient = async (client) => {
-    return {
-        userId: client.id,
-        userName: client.clientId,
-        role: 'client',
-    };
+// In oauthHelper.js — replace getUserFromClient
+
+const getUserFromClient = async (client, req) => {
+  // oauth2-server passes the raw request as the second argument to
+  // getUserFromClient when you're using a custom model.
+  // If your version doesn't forward req here, read it from
+  // the OAuth2Server.Request you built in the controller instead.
+  const deviceId =
+    req?.body?.device_id ||
+    req?.query?.device_id ||
+    'unknown';
+
+  return {
+    userId: client.id,
+    userName: client.clientId,
+    role: 'client',
+    deviceId,                    // ← forwarded into saveToken → upsert filter
+  };
 };
 
 // ✅ EXPORT THIS
