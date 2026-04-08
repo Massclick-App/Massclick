@@ -18,7 +18,7 @@ const getClient = async (clientId, clientSecret) => {
     if (!client) return null;
 
     return {
-        id: client._id,
+        id: String(client._id),
         clientId: client.clientId,
         grants: ['password', 'refresh_token', 'client_credentials'], // ✅ IMPORTANT
     };
@@ -34,7 +34,7 @@ const saveToken = async (token, client, user) => {
     accessToken: token.accessToken,
     accessTokenExpiresAt: token.accessTokenExpiresAt,
     client: {
-      id: client.id,
+      id: String(client.id),
       clientId: client.clientId,
     },
     user: {
@@ -109,7 +109,7 @@ const getRefreshToken = async (refreshToken) => {
     refreshToken: token.refreshToken,
     refreshTokenExpiresAt: token.refreshTokenExpiresAt,
     client: {
-      id: token.client?.id,
+      id: token.client?.id ? String(token.client.id) : null,
       clientId: token.client?.clientId,
       grants: ['password', 'refresh_token', 'client_credentials'],
     },
