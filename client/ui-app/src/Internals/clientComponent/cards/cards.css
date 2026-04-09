@@ -26,16 +26,71 @@
   --transition-smooth: 0.28s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
+/* HEADER ROW */
+.card-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
 
+/* CATEGORY + LOCATION ROW */
+.card-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;  
+  flex-wrap: wrap;
+}
+
+/* LOCATION INLINE */
+.card-address-inline {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  color: #555;
+}
+
+/* PRICE */
+.price-box {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1a73e8;
+}
+
+.price-type {
+  font-size: 13px;
+  color: #777;
+  margin-left: 4px;
+}
+
+/* RATING BADGE */
+.rating-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+
+  background: #2e7d32;
+  color: white;
+
+  padding: 4px 8px;
+  border-radius: 6px;
+
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.reviews-text {
+  font-size: 14px;
+  color: #555;
+  margin-left: 4px;
+}
 
 .base-card {
   display: flex;
   gap: 20px;
   padding: 20px;
   width: 100%;
-
   align-items: flex-start;
-
   background: #ffffff;
   border-radius: var(--radius-lg);
   border: 1px solid rgba(225, 225, 225, 0.7);
@@ -43,13 +98,10 @@
   box-shadow: var(--shadow-soft);
 }
 
-
 .base-card:hover {
   transform: translateY(-4px);
   box-shadow: var(--shadow-hover);
 }
-
-
 
 .card-image-container {
   width: 140px;
@@ -75,12 +127,9 @@
 
 }
 
-
 .base-card:hover .card-image {
   transform: scale(1.06);
 }
-
-
 
 .card-content {
   flex-grow: 1;
@@ -89,7 +138,6 @@
   gap: 6px;
 }
 
-/* Title */
 .card-title {
   font-size: 1.25rem;
   font-weight: 700;
@@ -99,11 +147,10 @@
 }
 
 
-/* Meta information */
 .card-meta {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 8px;
   margin-bottom: 4px;
 }
 
@@ -120,26 +167,20 @@
 .card-category,
 .card-address,
 .card-details {
-  display: flex;
+  display: inline-flex;  
   align-items: center;
-  gap: 8px;
-
+  gap: 4px;
   font-size: 1rem;
   color: var(--text-medium);
-
   line-height: 1.35;
 }
 
 .icon {
-  font-size: 20px !important;
+  font-size: 16px !important;   
   color: #0288d1;
 }
 
-/* ======================================= */
-/* ACTION BUTTONS */
-/* ======================================= */
 
-/* ACTION BUTTONS AREA */
 
 .cardpage-actions {
   display: flex;
@@ -148,7 +189,6 @@
   justify-content: flex-start;
 }
 
-/* BUTTONS */
 .card-action-button {
   padding: 14px 18px;
   border-radius: 10px;
@@ -174,7 +214,6 @@
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
 }
 
-/* BUTTON COLORS */
 .phone-button {
   background: linear-gradient(90deg, #ff9800, #ffb74d);
 }
@@ -187,14 +226,12 @@
   background: linear-gradient(90deg, #007bff, #4da3ff);
 }
 
-/* HOVER */
 .card-action-button:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.18);
   opacity: 0.95;
 }
 
-/* MOBILE VERSION */
 @media (max-width: 768px) {
   .cardpage-actions {
     flex-direction: column;

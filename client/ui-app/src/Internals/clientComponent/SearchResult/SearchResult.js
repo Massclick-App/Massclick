@@ -45,7 +45,11 @@ const SearchResults = () => {
   const locationState = useLocation();
   const [openLoginModal, setOpenLoginModal] = useState(false);
   const locationText = locParam?.trim() || "";
-  const searchText = subcategory || category || "";
+  const stateResults = locationState.state?.results;
+
+  const stateCategory = locationState.state?.category;
+
+  const searchText = stateCategory || subcategory || category || "";
 
   const locationSlug = createSlug(locParam);
   const searchSlug = createSlug(searchText);
@@ -77,69 +81,69 @@ const SearchResults = () => {
     }
   }, []);
 
-  const searchLoggedRef = useRef(false);
+  // const searchLoggedRef = useRef(false);
 
-  const logSearchIfLoggedIn = useCallback(() => {
+  // const logSearchIfLoggedIn = useCallback(() => {
 
-    if (searchLoggedRef.current) return;
+  //   if (searchLoggedRef.current) return;
 
-    const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
+  //   const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
 
-    if (!authUser?._id) return;
+  //   if (!authUser?._id) return;
 
-    const userDetails = {
-      userName: authUser?.userName,
-      mobileNumber1: authUser?.mobileNumber1,
-      mobileNumber2: authUser?.mobileNumber2,
-      email: authUser?.email,
-    };
+  //   const userDetails = {
+  //     userName: authUser?.userName,
+  //     mobileNumber1: authUser?.mobileNumber1,
+  //     mobileNumber2: authUser?.mobileNumber2,
+  //     email: authUser?.email,
+  //   };
 
-    const term = searchText;
-    const location = locationText;
-    const category = searchText;
+  //   const term = searchText;
+  //   const location = locationText;
+  //   const category = searchText;
 
-    if (!term) return;
+  //   if (!term) return;
 
-    dispatch(
-      logUserSearch(
-        authUser._id,
-        term,
-        location || "Global",
-        category || "All Categories"
-      )
-    );
+  //   dispatch(
+  //     logUserSearch(
+  //       authUser._id,
+  //       term,
+  //       location || "Global",
+  //       category || "All Categories"
+  //     )
+  //   );
 
-    dispatch(
-      logSearchActivity(
-        category || "All Categories",
-        location || "Global",
-        userDetails,
-        term
-      )
-    );
+  //   dispatch(
+  //     logSearchActivity(
+  //       category || "All Categories",
+  //       location || "Global",
+  //       userDetails,
+  //       term
+  //     )
+  //   );
 
-    searchLoggedRef.current = true;
+  //   searchLoggedRef.current = true;
 
-  }, [dispatch, searchText, locationText]);
+  // }, [dispatch, searchText, locationText]);
 
 
-  useEffect(() => {
-    logSearchIfLoggedIn();
-  }, [logSearchIfLoggedIn]);
+  // useEffect(() => {
+  //   logSearchIfLoggedIn();
+  // }, [logSearchIfLoggedIn]);
 
-  useEffect(() => {
+  // useEffect(() => {
 
-    const handleAuthChange = () => {
-      logSearchIfLoggedIn();
-    };
+  //   const handleAuthChange = () => {
+  //     logSearchIfLoggedIn();
+  //   };
 
-    window.addEventListener("authChange", handleAuthChange);
+  //   window.addEventListener("authChange", handleAuthChange);
 
-    return () => {
-      window.removeEventListener("authChange", handleAuthChange);
-    };
+  //   return () => {
+  //     window.removeEventListener("authChange", handleAuthChange);
+  //   };
 
-  }, [logSearchIfLoggedIn]);
+  // }, [logSearchIfLoggedIn]);
 
   useEffect(() => {
 
@@ -155,11 +159,13 @@ const SearchResults = () => {
       return;
     }
 
-    dispatch(
-      backendMainSearch(searchText, locationText, searchText)
-    ).then((action) => {
-      setResults(action?.payload || []);
-    });
+    if (!resultsFromState || resultsFromState.length === 0) {
+      dispatch(
+        backendMainSearch(searchText, locationText, searchText)
+      ).then((action) => {
+        setResults(action?.payload || []);
+      });
+    }
 
   }, [searchText, locationText, dispatch]);
 
@@ -176,7 +182,6 @@ const SearchResults = () => {
       })
     );
   }, [dispatch, searchText, locationText]);
-
 
   useEffect(() => {
     if (!searchText) return;
@@ -518,10 +523,12 @@ const SearchResults = () => {
                     title={business.businessName}
                     phone={business.contact}
                     whatsappNumber={business.whatsappNumber}
-                    address={business.location}
-                    details={`Experience: ${business.experience} | Category: ${business.category}`}
+                    // address={business.location}
                     rating={averageRating}
                     reviews={totalRatings}
+                    address={business.location}
+                    details={`${business.experience}+ years experience`}
+                    category={business.category} price={business.category === "Hotels" ? business.price : null}
                     imageSrc={
                       business.bannerImage ||
                       "https://via.placeholder.com/120"

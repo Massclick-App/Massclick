@@ -22,6 +22,7 @@ import MI from "../../../assets/Mi.png";
 import AddBusinessModel from "../AddBusinessModel";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import { useDrawer } from "../Drawer/drawerContext";
+import { shouldSendSearch } from "../../../utils/searchLock";
 
 const toSlug = (text = "") =>
   text
@@ -252,7 +253,13 @@ const CardsSearch = ({
       dispatch(logUserSearch(userId, term, logLocation, derivedCategory));
     }
 
-    dispatch(logSearchActivity(derivedCategory, logLocation, userDetails, term));
+    const key = `${category}-${location}-${userDetails.mobileNumber1}`;
+
+    if (shouldSendSearch(key)) {
+      dispatch(
+        logSearchActivity(category, location, userDetails, term)
+      );
+    }
 
     const slugLocation = toSlug(location || "All");
     const slugTerm = toSlug(term || "All");
@@ -350,7 +357,7 @@ const CardsSearch = ({
                   </div>
                 )}
             </div>
-            
+
             <div className="input-group search-group" ref={categoryRef}>
               <input
                 className="custom-input"
@@ -370,7 +377,7 @@ const CardsSearch = ({
                     setSearchTerm(val);
                     setCategoryName(val);
                     setIsCategoryDropdownOpen(false);
-                    document.activeElement.blur(); 
+                    document.activeElement.blur();
                   }}
                   closeDropdown={() => {
                     setIsCategoryDropdownOpen(false);
@@ -467,4 +474,3 @@ const CardsSearch = ({
 };
 
 export default CardsSearch;
-  

@@ -40,6 +40,7 @@ const Footer = () => {
                         <FooterLink to="/privacy">Privacy Policy</FooterLink>
                         <FooterLink to="/refund">Refund Policy</FooterLink>
                         <FooterLink to="/enquiry">Business Enquiries</FooterLink>
+                        {/* <FooterLink to="/deleteaccount">Delete Account</FooterLink> */}
                     </ul>
                 </div>
 
@@ -60,15 +61,19 @@ const Footer = () => {
                         <a href="https://www.facebook.com/massClicks" aria-label="Facebook">
                             <FacebookIcon />
                         </a>
+
                         <a href="https://twitter.com" aria-label="Twitter">
                             <TwitterIcon />
                         </a>
+
                         <a href="https://www.instagram.com/massclick_/" aria-label="Instagram">
                             <InstagramIcon />
                         </a>
+
                         <a href="https://youtube.com/@mass_click" aria-label="YouTube">
                             <YouTubeIcon />
                         </a>
+
                     </div>
 
                     <div className="brand-box">

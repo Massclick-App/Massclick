@@ -2,26 +2,8 @@ import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { logSearchActivity } from "../../../redux/actions/businessListAction";
-import RestuarantIcon from "../../../assets/features/restuarant.webp";
-import HotelIcon from "../../../assets/features/hotel.webp";
-import InteriorDesignerIcon from "../../../assets/features/interiors-Designers.webp";
-import FurnitureIcon from "../../../assets/features/furniture.webp";
-import RentIcon from "../../../assets/features/rent.webp";
-import HospitalIcon from "../../../assets/features/hospital.webp";
-import ContractIcon from "../../../assets/features/contractor.webp";
-import HousekeeperIcon from "../../../assets/features/housekeeper.webp";
-import HostelsIcon from "../../../assets/features/hostels.webp";
-import SecuritySystemIcon from "../../../assets/features/security-system.webp";
-import DentistIcon from "../../../assets/features/dentist.webp";
-import FloristIcon from "../../../assets/features/florist.webp";
-import WeddingHallIcon from "../../../assets/features/wedding-hall.webp";
-import PhotographerIcon from "../../../assets/features/photographer.webp";
-import DermatologistIcon from "../../../assets/features/dermatologist.webp";
-import PackersIcon from "../../../assets/features/packers.webp";
-import MatrimonyIcon from "../../../assets/features/matrimony.webp";
-import PopularIcon from "../../../assets/features/popular.webp";
-import SexologyIcon from "../../../assets/features/sexology.webp";
-import GymIcon from "../../../assets/features/gym.webp";
+import { iconMap } from "../../../utils/iconMap";
+
 
 import PopularCategoriesDrawer from "../cards/popularCategories/popularCategories.js";
 
@@ -54,47 +36,26 @@ const generateAltText = (serviceName, districtSlug) => {
 };
 
 export const featuredServices = [
-
-  { name: "Hotels", icon: HotelIcon },
-
-  { name: "Rent And Hire", icon: RentIcon },
-
-  { name: "Restaurants", icon: RestuarantIcon },
-
-  { name: "Hospitals", icon: HospitalIcon },
-
-  { name: "Dentist", icon: DentistIcon },
-
-  { name: "Dermatologist", icon: DermatologistIcon },
-
-  { name: "Sexologist", icon: SexologyIcon },
-
-  { name: "Contractors", icon: ContractIcon, subCategories: true },
-
-  { name: "Interior Designer", icon: InteriorDesignerIcon },
-
-  { name: "Gym", icon: GymIcon },
-
-  { name: "Furnitures", icon: FurnitureIcon },
-
-  { name: "Florists", icon: FloristIcon },
-
-  { name: "Packers and Movers", icon: PackersIcon },
-
-  { name: "House Keeping Service", icon: HousekeeperIcon },
-
-  { name: "Security System", icon: SecuritySystemIcon },
-
-  { name: "Wedding Mahal", icon: WeddingHallIcon },
-
-  { name: "photographers", icon: PhotographerIcon },
-
-  { name: "Matrimony", icon: MatrimonyIcon },
-
-  { name: "Hostel", icon: HostelsIcon },
-
-  { name: "Popular Categories", icon: PopularIcon, isDrawer: true },
-
+  { name: "Hotels", icon: "hotel" },
+  { name: "Rent And Hire", icon: "rent", subCategories: true },
+  { name: "Restaurants", icon: "restuarant" },
+  { name: "Education", icon: "education", subCategories: true },
+  { name: "Hospitals", icon: "hospital", subCategories: true },
+  { name: "Dentist", icon: "dentist" },
+  { name: "Dermatologist", icon: "dermatologist" },
+  { name: "Sexologist", icon: "sexology" },
+  { name: "Contractors", icon: "contractor", subCategories: true },
+  { name: "Gym", icon: "gym" },
+  { name: "Furnitures", icon: "furniture" },
+  { name: "Florists", icon: "florist" },
+  { name: "Packers and Movers", icon: "packers" },
+  { name: "House Keeping Service", icon: "housekeeper" },
+  { name: "Security System", icon: "security-system" },
+  { name: "Wedding Mahal", icon: "wedding-hall" },
+  { name: "photographers", icon: "photographer" },
+  { name: "Matrimony", icon: "matrimony" },
+  { name: "Hostel", icon: "hostels" },
+  { name: "Popular Categories", icon: "popular", isDrawer: true },
 ];
 
 const FeaturedServicesSection = () => {
@@ -184,7 +145,7 @@ const FeaturedServicesSection = () => {
             >
 
               <img
-                src={service.icon}
+                src={iconMap[service.icon]}
                 alt={altText}
                 title={`${service.name} services in ${districtSlug}`}
                 className="service-icons"
@@ -192,8 +153,11 @@ const FeaturedServicesSection = () => {
                 height="80"
                 loading="lazy"
                 decoding="async"
-                fetchpriority={index < 4 ? "high" : "auto"}
-                itemProp="image"
+                fetchpriority={index < 2 ? "high" : "low"}
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src = iconMap["hotel"];
+                }}
               />
 
               <h3 className="service-name">

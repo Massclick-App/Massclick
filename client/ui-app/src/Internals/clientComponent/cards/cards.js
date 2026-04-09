@@ -1,5 +1,5 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { LazyLoadImage } from "react-lazy-load-image-component";
 import "react-lazy-load-image-component/src/effects/opacity.css";
 import "./cards.css";
@@ -10,8 +10,7 @@ import PhoneIcon from "@mui/icons-material/Phone";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import SendIcon from "@mui/icons-material/Send";
 import StarIcon from "@mui/icons-material/Star";
-import ReviewsIcon from "@mui/icons-material/Reviews";
-import { useNavigate } from "react-router-dom";
+import CategoryIcon from '@mui/icons-material/Category';
 
 const EMPTY_PIXEL =
   "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
@@ -26,12 +25,14 @@ const Cards = ({
   phone,
   whatsappNumber,
   category,
+  price,
+  priceType = "day",
   to,
   index = 0,
   ...props
 }) => {
 
-const navigate = useNavigate();
+  const navigate = useNavigate();
 
   const safeRating =
     typeof rating === "object"
@@ -52,19 +53,18 @@ const navigate = useNavigate();
     window.location.href = `tel:${phone}`;
   };
 
-const handleWhatsAppClick = (e) => {
-  e.preventDefault();
-  e.stopPropagation();
+  const handleWhatsAppClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
 
-  if (!whatsappNumber) {
-    alert("WhatsApp number not available");
-    return;
-  }
+    if (!whatsappNumber) {
+      alert("WhatsApp number not available");
+      return;
+    }
 
-  const cleanNumber = whatsappNumber.replace(/\D/g, "");
-
-  window.open(`https://wa.me/${cleanNumber}`, "_blank", "noopener,noreferrer");
-};
+    const cleanNumber = whatsappNumber.replace(/\D/g, "");
+    window.open(`https://wa.me/${cleanNumber}`, "_blank");
+  };
 
   const handleEnquiryClick = (e) => {
     e.preventDefault();
@@ -77,54 +77,67 @@ const handleWhatsAppClick = (e) => {
       <div className="base-card">
 
         <div className="card-image-container">
-
           <LazyLoadImage
             src={imageSrc || EMPTY_PIXEL}
             placeholderSrc={EMPTY_PIXEL}
             alt={title}
-
             decoding="async"
             loading={index < 3 ? "eager" : "lazy"}
             effect="opacity"
             className="card-image"
           />
-
         </div>
 
         <div className="card-content">
 
-          <h2 className="card-title">{title}</h2>
+          <div className="card-header-row">
+            <h2 className="card-title">{title}</h2>
+
+            {category?.toLowerCase().includes("hotel") && price && (
+              <div className="price-box">
+                ₹ {price}
+                <span className="price-type">/ {priceType}</span>
+              </div>
+            )}
+          </div>
 
           <div className="card-meta">
 
-            <div className="meta-item">
-              <StarIcon style={{ color: "#FFD700", fontSize: "18px" }} />
-              <span>{safeRating}</span>
+            <div className="rating-badge">
+              <StarIcon style={{ fontSize: "16px" }} />
+              {safeRating}
             </div>
 
-            <div className="meta-item">
-              <ReviewsIcon style={{ color: "#0288d1", fontSize: "18px" }} />
-              <span>{safeReviews} Reviews</span>
-            </div>
+            <span className="reviews-text">
+              {safeReviews} Ratings
+            </span>
 
           </div>
 
-          {category && (
-            <p className="card-category">
+          <div className="card-row">
+
+            {category && (
+              <p className="card-category">
+                <CategoryIcon className="icon" />
+                {category}
+              </p>
+            )}
+
+            {address && (
+              <p className="card-address-inline">
+                <LocationOnIcon className="icon" />
+                {address}
+              </p>
+            )}
+
+          </div>
+
+          {details && (
+            <p className="card-details">
               <InfoOutlinedIcon className="icon" />
-              {category}
+              {details}
             </p>
           )}
-
-          <p className="card-address">
-            <LocationOnIcon className="icon" />
-            {address}
-          </p>
-
-          <p className="card-details">
-            <InfoOutlinedIcon className="icon" />
-            {details}
-          </p>
 
           <div className="cardpage-actions">
 
@@ -155,7 +168,6 @@ const handleWhatsAppClick = (e) => {
           </div>
 
         </div>
-
       </div>
     </Link>
   );

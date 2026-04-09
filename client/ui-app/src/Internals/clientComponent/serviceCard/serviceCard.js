@@ -2,22 +2,8 @@ import React, { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { logSearchActivity } from "../../../redux/actions/businessListAction";
-
-import TvService from "../../../assets/services/tv-service.webp";
-import PestService from "../../../assets/services/pestService.webp";
-import CarMechanic from "../../../assets/services/car-service.webp";
-import BikeService from "../../../assets/features/bike-service.webp";
-import ComputerAndLaptopIcon from "../../../assets/services/computer-services.webp";
-import CateringIcon from "../../../assets/features/caterors.webp";
-import Fencing from "../../../assets/services/fencing.webp";
-import Interlock from "../../../assets/services/interlockBricks.webp";
-import SteelDealers from "../../../assets/services/steelDealers.webp";
-import Transports from "../../../assets/features/transportation.webp";
-import DrivingSchool from "../../../assets/features/driving.webp";
-import ACServiceIcon from "../../../assets/features/ACservice.webp";
-
 import "./serviceCard.css";
-
+import { iconMap } from "../../../utils/iconMap";
 
 // ==============================
 // Helper: Create SEO slug
@@ -56,93 +42,33 @@ export const categoriesServices = [
   {
     title: "Repair and Services",
     items: [
-      {
-        name: "Car Service",
-        slug: "car-service",
-        icon: CarMechanic,
-        aliases: ["car service", "car repair", "car mechanic", "vehicle repair", "auto repair"]
-      },
-      {
-        name: "TV Service",
-        slug: "tv-service",
-        icon: TvService,
-        aliases: ["tv repair", "tv service", "television repair", "tv mechanic"]
-      },
-      {
-        name: "Bike Service",
-        slug: "bike-service",
-        icon: BikeService,
-        aliases: ["bike repair", "bike mechanic", "motorcycle repair", "two wheeler repair"]
-      }
+      { name: "Car Service", slug: "car-service", icon: "car-service" },
+      { name: "TV Service", slug: "tv-service", icon: "tv-service" },
+      { name: "Bike Service", slug: "bike-service", icon: "bike-service" }
     ]
   },
   {
     title: "Services",
     items: [
-      {
-        name: "Pest Control Service",
-        slug: "pest-control-service",
-        icon: PestService,
-        aliases: ["pest control", "termite control", "pest removal"]
-      },
-      {
-        name: "AC Service",
-        slug: "ac-service",
-        icon: ACServiceIcon,
-        aliases: ["ac service", "ac repair", "air conditioner repair"]
-      },
-      {
-        name: "Computer And Laptop Service",
-        slug: "computer-laptop-service",
-        icon: ComputerAndLaptopIcon,
-        aliases: ["computer repair", "laptop repair", "pc repair"]
-      }
+      { name: "Pest Control Service", slug: "pest-control-service", icon: "pest-control-service" },
+      { name: "AC Service", slug: "ac-service", icon: "ac-service" },
+      { name: "Computer And Laptop Service", slug: "computer-laptop-service", icon: "computer-laptop-service" }
     ]
   },
   {
     title: "Hot Categories",
     items: [
-      {
-        name: "Catering Services",
-        slug: "catering-services",
-        icon: CateringIcon,
-        aliases: ["catering", "food catering"]
-      },
-      {
-        name: "Transports",
-        slug: "transporter",
-        icon: Transports,
-        aliases: ["transport", "transporters", "logistics", "delivery"]
-      },
-      {
-        name: "Driving School",
-        slug: "driving-school",
-        icon: DrivingSchool,
-        aliases: ["driving school", "driving classes"]
-      }
+      { name: "Catering Services", slug: "catering-services", icon: "catering-services" },
+      { name: "Transports", slug: "transporter", icon: "transporter" },
+      { name: "Driving School", slug: "driving-school", icon: "driving-school" }
     ]
   },
   {
     title: "Building Materials",
     items: [
-      {
-        name: "Fencing",
-        slug: "fencing",
-        icon: Fencing,
-        aliases: ["fencing", "fence work"]
-      },
-      {
-        name: "Interlock Bricks",
-        slug: "interlock-bricks",
-        icon: Interlock,
-        aliases: ["interlock bricks"]
-      },
-      {
-        name: "Steel Dealer",
-        slug: "steel-dealer",
-        icon: SteelDealers,
-        aliases: ["steel supplier"]
-      }
+      { name: "Fencing", slug: "fencing", icon: "fencing" },
+      { name: "Interlock Bricks", slug: "interlock-bricks", icon: "interlock-bricks" },
+      { name: "Steel Dealer", slug: "steel-dealer", icon: "steel-dealer" }
     ]
   }
 ];
@@ -273,7 +199,7 @@ const ServiceCardsGrid = () => {
 
                   {/* SEO Optimized Image */}
                   <img
-                    src={item.icon}
+                    src={iconMap[item.icon]}
                     alt={altText}
                     title={`${item.name} in ${districtSlug}`}
                     className="item-icon"
@@ -281,10 +207,12 @@ const ServiceCardsGrid = () => {
                     height="64"
                     loading="lazy"
                     decoding="async"
-                    fetchpriority={index < 3 ? "high" : "auto"}
-                    itemProp="image"
+                    fetchpriority={index < 2 ? "high" : "low"}
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = iconMap["car-service"];
+                    }}
                   />
-
                   <p className="item-name">
                     {item.name}
                   </p>

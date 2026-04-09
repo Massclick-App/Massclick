@@ -1,44 +1,107 @@
-import carpenterIcon from "../../../assets/subCategories/carpenter.webp";
-import ceilingIcon from "../../../assets/subCategories/ceiling-lamp.webp";
-import constructionIcon from "../../../assets/subCategories/construction-site.webp";
-import consultationIcon from "../../../assets/subCategories/consultation.webp";
-import fabricationIcon from "../../../assets/subCategories/cutting.webp";
-import paintingIcon from "../../../assets/subCategories/paint.webp";
-import floorIcon from "../../../assets/subCategories/floor.webp";
-import interiorIcon from "../../../assets/subCategories/ceiling-lamp.webp";
-import roadIcon from "../../../assets/subCategories/road-map.webp";
-import labourIcon from "../../../assets/subCategories/labour-day.webp";
-import borewellIcon from "../../../assets/subCategories/pipeline.webp";
-import drainageIcon from "../../../assets/subCategories/water-pollution.webp";
-import pipelineIcon from "../../../assets/subCategories/water-resistant.webp";
-import roofingIcon from "../../../assets/subCategories/roof.webp";
-import waterProofIcon from "../../../assets/subCategories/water-resistant.webp"
-import tilesIcon from "../../../assets/subCategories/tile.webp";
-import weldingIcon from "../../../assets/subCategories/welding-mask.webp"
-import fireIcon from "../../../assets/subCategories/fight-spirit.webp"
-
 export const categoriesData = {
   contractors: [
-    { name: "Civil Contractors", icon: constructionIcon },
-    { name: "Electrical Contractors", icon: consultationIcon },
-    { name: "Plumbing Contractors", icon: borewellIcon },
-    { name: "Painting Contractor", icon: paintingIcon },
-    { name: "Building Contractors", icon: consultationIcon },
-    { name: "Flooring Contractors", icon: floorIcon },
-    { name: "Carpentry Contractors", icon: carpenterIcon },
-    { name: "Interior Contractors", icon: interiorIcon },
-    { name: "False Ceiling Contractors", icon: ceilingIcon },
-    { name: "Road Construction Contractors", icon: roadIcon },
-    { name: "Labour Contractors", icon: labourIcon },
-    { name: "Fabrication Contractors", icon: fabricationIcon },
-    { name: "Borewell Contractors", icon: borewellIcon },
-    { name: "Drainage Contractors", icon: drainageIcon },
-    { name: "Pipeline Contractors", icon: pipelineIcon },
-    { name: "Roofing Contractors", icon: roofingIcon },
-    { name: "Waterproofing Contractors", icon: waterProofIcon },
-    { name: "Tiling Contractors", icon: tilesIcon },
-    { name: "Welding Contractors", icon: weldingIcon },
-    { name: "Fire Fighting Contractors", icon: fireIcon },
+    { name: "Civil Contractors", icon: "construction" },
+    { name: "Electrical Contractors", icon: "consultation" },
+    { name: "Plumbing Contractors", icon: "pipeline" },
+    { name: "Painting Contractor", icon: "paint" },
+    { name: "Building Contractors", icon: "consultation" },
+    { name: "Flooring Contractors", icon: "floor" },
+    { name: "Carpentry Contractors", icon: "carpenter" },
+    { name: "Interior Contractors", icon: "ceiling-lamp" },
+    { name: "False Ceiling Contractors", icon: "ceiling-lamp" },
+    { name: "Road Construction Contractors", icon: "road" },
+    { name: "Labour Contractors", icon: "labour" },
+    { name: "Fabrication Contractors", icon: "fabrication" },
+    { name: "Borewell Contractors", icon: "pipeline" },
+    { name: "Drainage Contractors", icon: "drainage" },
+    { name: "Pipeline Contractors", icon: "water-resistant" },
+    { name: "Roofing Contractors", icon: "roof" },
+    { name: "Waterproofing Contractors", icon: "water-resistant" },
+    { name: "Tiling Contractors", icon: "tile" },
+    { name: "Welding Contractors", icon: "welding" },
+    { name: "Fire Fighting Contractors", icon: "fire" },
   ],
-  
+
+  education: [
+    { name: "Schools", icon: "school" },
+    { name: "Colleges", icon: "college" },
+    { name: "Tutorials", icon: "tutorial" },
+    { name: "Vocational Training", icon: "vocational" },
+    { name: "Special Schools", icon: "special-school-sub" },
+    { name: "Children Schools", icon: "childrens" },
+    { name: "Play Schools", icon: "play-school" },
+    { name: "Kindergartens", icon: "kindergarten" },
+    { name: "Coaching Centers", icon: "coaching-center" },
+    { name: "Online Education", icon: "online-education" },
+    { name: "Skill Development Institutes", icon: "skill-development" },
+    { name: "Language Training Centers", icon: "language-training" },
+  ],
+
+  "rent-and-hire": [
+    { name: "Car Rental", icon: "car-rent" },
+    { name: "AC On Rent", icon: "ac-rent" },
+    { name: "Bridal Wear On Rent", icon: "bridal-wear" },
+    { name: "Cameras On Rent", icon: "camera" },
+    { name: "Cranes On Rent", icon: "cranes" },
+    { name: "Farm House On Rent", icon: "farmhouse" },
+    { name: "Mini Trucks On Rent", icon: "mini-trucks" },
+    { name: "Projectors On Rent", icon: "projector" },
+    { name: "Tempo Travellers On Rent", icon: "tempo-travellers" },
+
+    { name: "Costumes On Rent", icon: "costumes" },
+    { name: "Furnitures On Rent", icon: "furnitures" },
+    { name: "Bungalows On Rent", icon: "bungalow" },
+    { name: "Chairs On Rent", icon: "chair" },
+    { name: "DJ Equipments On Rent", icon: "dj-equipments" },
+    { name: "Generators On Rent", icon: "generators" },
+    { name: "Bike On Rent", icon: "bike" },
+    { name: "Rooms On Rent", icon: "rooms" },
+    { name: "Trucks On Rent", icon: "trucks" },
+
+    { name: "Mini Bus On Rent", icon: "minibus" },
+    { name: "Air Coolers On Rent", icon: "coolers" },
+    { name: "Bus On Rent", icon: "bus" },
+    { name: "Cooks On Rent", icon: "cooks" },
+    { name: "Dead Body Freezer Box On Rent", icon: "freezer" },
+    { name: "Laptops On Rent", icon: "laptops" },
+    { name: "Passenger Van On Rent", icon: "passenger-van" },
+    { name: "Sound Systems On Rent", icon: "sound" },
+    { name: "Vans On Rent", icon: "vans" },
+  ],
+
+  hospitals: [
+    { name: "Hospitals", icon: "hospitalSub" },
+    { name: "Eye Hospitals", icon: "eye" },
+    { name: "Private Hospitals", icon: "private" },
+    { name: "Ayurvedic Hospitals", icon: "ayurvedic" },
+    { name: "Dentist", icon: "dentalSub" },
+    { name: "Kidney Hospitals", icon: "kidney" },
+    { name: "Orthopedic Hospitals", icon: "ortho" },
+
+    { name: "Children Hospitals", icon: "children" },
+    { name: "Maternity Hospitals", icon: "maternity" },
+    { name: "Public Hospitals", icon: "public" },
+    { name: "Cancer Hospitals", icon: "cancer" },
+    { name: "Diabetic Centres", icon: "diabetic" },
+    { name: "Neurological Hospitals", icon: "neuro" },
+    { name: "Swine Flu Testing Centres", icon: "swine" },
+
+    { name: "ENT Hospitals", icon: "ent" },
+    { name: "Multispeciality Hospitals", icon: "multi" },
+    { name: "Veterinary Hospitals", icon: "veterinary" },
+    { name: "Cardiac Hospitals", icon: "cardiac" },
+    { name: "Public Veterinary Hospitals", icon: "publicVet" },
+    { name: "Nursing Homes", icon: "nursing" },
+    { name: "Tuberculosis Hospitals", icon: "tb" },
+  ],
+
+  "packers-and-movers": [
+    { name: "Packers And Movers", icon: "packers-main" },
+    { name: "Packers And Movers (Within City)", icon: "within-city" },
+    { name: "Packers And Movers (All India)", icon: "all-india" },
+    { name: "Packers And Movers (Outside India)", icon: "outside-india" },
+    { name: "Packers And Movers For Automobile", icon: "automobile" },
+    { name: "Packers And Movers For Commercial", icon: "commercial" },
+    { name: "Transporters", icon: "transport" },
+  ],
 };

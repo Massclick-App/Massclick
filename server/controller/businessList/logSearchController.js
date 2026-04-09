@@ -138,7 +138,6 @@ export const logSearchAction = async (req, res) => {
       { categoryImageKey: 1 }
     ).lean();
 
-
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
 
     const recentLog = await searchLogModel.findOne({
@@ -156,7 +155,6 @@ export const logSearchAction = async (req, res) => {
         detectedCategory: finalCategoryName
       });
     }
-
 
     const savedLog = await createSearchLog({
 
@@ -181,8 +179,6 @@ export const logSearchAction = async (req, res) => {
 
     });
 
-
-    // Find businesses
 
     const locationGroups = {
       trichy: ["trichy", "tiruchirappalli"]
@@ -211,12 +207,13 @@ export const logSearchAction = async (req, res) => {
         contactList: 1,
         whatsappNumber: 1,
         location: 1,
-        address: 1
+        street: 1,
+        plotNumber: 1,
+        averageRating: 1
       }
     )
       .limit(10)
       .lean();
-
 
     if (!businesses.length) {
 
@@ -241,7 +238,6 @@ export const logSearchAction = async (req, res) => {
       email: userDetails.email || ""
 
     };
-
 
     let businessSendSuccess = false;
 
@@ -293,7 +289,6 @@ export const logSearchAction = async (req, res) => {
 
     }
 
-
     const cleanCustomerMobile = cleanIndianMobile(
       userDetails.mobileNumber1
     );
@@ -331,8 +326,6 @@ export const logSearchAction = async (req, res) => {
 
     }
 
-
-
     const updated = await searchLogModel.findOneAndUpdate(
       { _id: savedLog._id, whatsapp: false },
       { whatsapp: true },
@@ -346,7 +339,6 @@ export const logSearchAction = async (req, res) => {
         message: "Duplicate blocked"
       });
     }
-
 
     return res.status(202).json({
 

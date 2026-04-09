@@ -2,16 +2,13 @@ import React, { useState, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import "./categories.css";
 import { categoriesData } from "./categoriesData";
-
-import DefaultIcon from "../../../assets/features/contractor.webp";
+import { iconMap } from "../../../utils/iconMap"; 
 
 const createSlug = (text = "") =>
   text.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-");
 
 const formatText = (text = "") =>
-  text
-    .replace(/-/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+  text.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
 const CategoriesPage = () => {
   const { location, category } = useParams();
@@ -57,29 +54,40 @@ const CategoriesPage = () => {
       <div className="category-grid">
 
         {filteredCategories.length > 0 ? (
-          filteredCategories.map((item, index) => (
-            <div
-              key={index}
-              className="category-item"
-              onClick={() => handleClick(item.name)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleClick(item.name);
-              }}
-            >
-              <img
-                src={item.icon || DefaultIcon}
-                alt={item.name}
-                className="category-icon"
-                loading="lazy"
-              />
+          filteredCategories.map((item, index) => {
+            const iconSrc = iconMap[item.icon];
 
-              <span className="category-text">
-                {item.name}
-              </span>
-            </div>
-          ))
+            return (
+              <div
+                key={index}
+                className="category-item"
+                onClick={() => handleClick(item.name)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleClick(item.name);
+                }}
+              >
+                <img
+                  src={iconSrc}
+                  alt={item.name}
+                  className="category-icon"
+                  width="48"
+                  height="48"
+                  loading="lazy"
+                  decoding="async"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = iconMap["construction"]; // fallback
+                  }}
+                />
+
+                <span className="category-text">
+                  {item.name}
+                </span>
+              </div>
+            );
+          })
         ) : (
           <div style={{ gridColumn: "1/-1", textAlign: "center", padding: "20px" }}>
             <p>No categories found</p>

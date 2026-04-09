@@ -16,6 +16,7 @@ import { detectDistrict } from "../../../redux/actions/locationAction";
 // import backgroundImage from "../../../assets/background.png";
 import { useNavigate } from "react-router-dom";
 import "./hero.css";
+import { shouldSendSearch } from "../../../utils/searchLock.js";
 
 const toSlug = (text = "") =>
   text
@@ -346,12 +347,10 @@ const HeroSection = ({
 
     words = words.filter(word => !stopWords.includes(word));
 
-    if (words.length > 0) {
-      category = words[words.length - 1];
-    }
+    const finalCategory = term;
 
     const response = await dispatch(
-      backendMainSearch("", location, category)
+      backendMainSearch("", location, finalCategory)
     );
 
     const results = response?.payload || [];
@@ -367,14 +366,24 @@ const HeroSection = ({
       email: authUser?.email,
     };
 
-    dispatch(
-      logSearchActivity(category || "All Categories", location || "Global", userDetails, term)
-    );
+    const key = `${category}-${location}-${userDetails.mobileNumber1}`;
+
+    if (shouldSendSearch(key)) {
+      dispatch(
+        logSearchActivity(category, location, userDetails, term)
+      );
+    }
 
     const slugLocation = toSlug(location || "all");
-    const slugCategory = toSlug(category || "all");
+    const slugCategory = toSlug(finalCategory || "all");
 
-    navigate(`/${slugLocation}/${slugCategory}`, { state: { results } });
+    navigate(`/${slugLocation}/${slugCategory}`, {
+      state: {
+        results,
+        category: finalCategory
+      }
+    });
+
   };
 
   const handleVoiceSearch = () => {
@@ -504,6 +513,7 @@ const HeroSection = ({
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
+                setCategoryName(e.target.value);
                 setIsDropdownOpen(true);
               }}
               onFocus={() => setIsDropdownOpen(true)}
@@ -543,6 +553,7 @@ const HeroSection = ({
                 pointerEvents: isListening ? "none" : "auto"
               }}
             />
+
           </div>
           {showVoiceModal && (
             <div className="voice-modal">
