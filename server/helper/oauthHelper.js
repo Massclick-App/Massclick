@@ -142,7 +142,6 @@ export const oauthAuthentication = async (req, res, next) => {
         req.authUser = token.user;
         next();
     } catch (err) {
-        console.error("OAuth Authentication Error:", err);
         return res.status(UNAUTHORIZED.code).send({ error: err.message });
     }
 };
@@ -166,7 +165,6 @@ export const logoutUsers = async (accessToken) => {
     const tokenRecord = await oauthModel.findOne({ accessToken }).lean();
 
     if (!tokenRecord) {
-      console.warn("No token found for logout");
       return false;
     }
 
@@ -175,7 +173,6 @@ export const logoutUsers = async (accessToken) => {
 
     return true;
   } catch (error) {
-    console.error("Logout cleanup error:", error);
     return false;
   }
 };
