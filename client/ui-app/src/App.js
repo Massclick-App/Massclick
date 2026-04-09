@@ -13,7 +13,7 @@ import Business from './Internals/business/Business.js';
 import Category from './Internals/categories/Category.js';
 import Roles from './Internals/Roles/Roles.js';
 import Location from './Internals/location/Location.js';
-import MainGrid from './components/MainGrid.js';
+import MainGrid from './components/MainGrid.js'; 
 import PrivateRoute from './PrivateRoute';
 import BusinessListing from './Internals/clientComponent/home.js';
 import { SnackbarProvider } from 'notistack';

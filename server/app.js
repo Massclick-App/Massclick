@@ -152,7 +152,7 @@ app.get("/health", (req, res) => {
     message: "Server is healthy",
     uptime: process.uptime(),
     timestamp: now.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
-    isoTime: now.toISOString() // Keep this for debugging
+    isoTime: now.toISOString() 
   });
 });
 
