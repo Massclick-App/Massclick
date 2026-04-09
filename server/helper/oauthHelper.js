@@ -136,6 +136,8 @@ export const oauthtoken = new OAuth2Server({
     revokeToken,
     getUserFromClient,
   },
+  accessTokenLifetime: 60 * 60, // 1 hour
+  refreshTokenLifetime: 24 * 60 * 60, // 24 hours
 });
 
 // ---------- AUTH MIDDLEWARE ----------

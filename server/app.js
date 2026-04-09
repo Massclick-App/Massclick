@@ -143,6 +143,15 @@ Sitemap: https://massclick.in/sitemap.xml
 
 });
 
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Server is healthy",
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // routes
 app.use("/", sitemapRoutes);
 app.use("/", userRoutes);
