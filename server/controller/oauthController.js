@@ -16,7 +16,6 @@ export const oauthAction = async (req, res) => {
     const token = await oauthtoken.token(request, response);
     return res.status(200).json(token);
   } catch (error) {
-    console.error(error);
     return res.status(400).json({ error: error.message });
   }
 };
@@ -43,7 +42,6 @@ export const oauthReAction = async (req, res) => {
     const token = await oauthtoken.token(request, response);
     res.json(token);
   } catch (error) {
-    console.error("Refresh error:", error);
     return res.status(400).json({ error: error.message });
   }
 };
@@ -55,7 +53,6 @@ export const oauthToken = async (req, res) => {
       res.send(req.authUser);
     });
   } catch (error) {
-    console.error(error);
     return res.status(BAD_REQUEST.code).send(error.message);
   }
 };
@@ -74,7 +71,6 @@ export const logoutAction = async (req, res) => {
     }
     res.status(200).json({ message: "Logout successful" });
   } catch (error) {
-    console.error("Logout Error:", error);
     return res.status(BAD_REQUEST.code).json({ error: error.message });
   }
 };
