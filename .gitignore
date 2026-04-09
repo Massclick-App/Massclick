@@ -69,3 +69,5 @@ server/env
 server/key.json
 client/ui-app/.env
 client/ui-app/env
+server/package-lock.json
+client/ui-app/.env
