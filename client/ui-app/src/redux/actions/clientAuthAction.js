@@ -14,10 +14,17 @@ export const clientLogin = () => async (dispatch) => {
   dispatch({ type: CLIENT_AUTH_REQUEST });
 
   try {
+    let deviceId = localStorage.getItem("device_id");
+    if (!deviceId) {
+      deviceId = `web_${Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)}`;
+      localStorage.setItem("device_id", deviceId);
+    }
+
     const params = new URLSearchParams();
     params.append("grant_type", "client_credentials");
     params.append("client_id", CLIENT_ID);
     params.append("client_secret", CLIENT_SECRET);
+    params.append("device_id", deviceId);
 
     const response = await axios.post(
       `${API_URL}/oauth/client`,

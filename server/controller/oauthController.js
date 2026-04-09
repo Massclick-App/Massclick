@@ -23,11 +23,7 @@ export const oauthAction = async (req, res) => {
 
 // ---------- CLIENT TOKEN ----------
 export const oauthClientAction = async (req, res) => {
-  console.log('oauthClientAction: HIT');
   try {
-    if (!req.body.device_id) {
-      req.body.device_id = `web_${crypto.randomBytes(16).toString('hex')}`;
-    }
     setRequestContext(req.body);   // ✅ store before token() call
 
     const request = new OAuth2Server.Request(req);
@@ -35,8 +31,7 @@ export const oauthClientAction = async (req, res) => {
     const token = await oauthtoken.token(request, response);
     res.json(token);
   } catch (error) {
-    console.error("OAUTH CLIENT ERROR:", error);
-    res.status(400).json({ error: error.message });
+    return res.status(400).json({ error: error.message });
   }
 };
 
