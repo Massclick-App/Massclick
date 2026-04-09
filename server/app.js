@@ -1,3 +1,5 @@
+process.env.TZ = "Asia/Kolkata";
+
 import express from "express";
 import cors from "cors";
 import mongoose from "mongoose";
@@ -144,11 +146,13 @@ Sitemap: https://massclick.in/sitemap.xml
 });
 
 app.get("/health", (req, res) => {
+  const now = new Date();
   res.status(200).json({
     success: true,
     message: "Server is healthy",
     uptime: process.uptime(),
-    timestamp: new Date().toISOString(),
+    timestamp: now.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
+    isoTime: now.toISOString() // Keep this for debugging
   });
 });
 
