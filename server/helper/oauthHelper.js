@@ -19,9 +19,7 @@ export const setRequestContext = (body) => {
 const getAccessToken = (token) => oauthModel.findOne({ accessToken: token }).lean();
 
 const getClient = async (clientId, clientSecret) => {
-  console.log('getClient: START', { clientId });
   const client = await clientModel.findOne({ clientId, clientSecret }).lean();
-  console.log('getClient: result =', client ? 'found' : 'null');
   if (!client) return null;
   return {
     id: String(client._id),
@@ -31,9 +29,7 @@ const getClient = async (clientId, clientSecret) => {
 };
 
 const getUserFromClient = async (client) => {
-  console.log('getUserFromClient: START', { clientId: client?.clientId });
   const deviceId = _currentRequestBody?.device_id || 'unknown';
-  console.log('getUserFromClient: deviceId =', deviceId);
   return {
     userId: client.id,
     userName: client.clientId,
@@ -43,10 +39,8 @@ const getUserFromClient = async (client) => {
 };
 
 const saveToken = async (token, client, user) => {
-  console.log('saveToken: START', { clientId: client?.clientId, deviceId: user?.deviceId });
   const userId = user?.userId || crypto.randomBytes(16).toString('hex');
   const isClientCredentials = !token.refreshToken;
-  console.log('saveToken: isClientCredentials =', isClientCredentials);
 
   const tokenData = {
     accessToken: token.accessToken,
@@ -73,22 +67,17 @@ const saveToken = async (token, client, user) => {
 
   if (isClientCredentials) {
     const deviceId = user?.deviceId || 'unknown';
-    console.log('saveToken: deleting old token for', client.clientId, deviceId);
     await oauthModel.deleteOne({
       'client.clientId': client.clientId,
       deviceId,
     });
-    console.log('saveToken: delete done, inserting new...');
     const tokenInstance = new oauthModel({ ...tokenData, deviceId });
     const saved = await tokenInstance.save();
-    console.log('saveToken: insert done');
     return saved;
   }
 
-  console.log('saveToken: password grant insert');
   const tokenInstance = new oauthModel(tokenData);
   const saved = await tokenInstance.save();
-  console.log('saveToken: done');
   return saved;
 };
 
