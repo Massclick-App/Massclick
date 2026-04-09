@@ -70,8 +70,6 @@ export const getClientToken = () => async (dispatch) => {
       const result = await dispatch(clientLogin());
       clientAccessToken = result.accessToken;
     } catch (loginError) {
-      console.error("❌ Client login failed:", loginError);
-
       localStorage.removeItem("clientAccessToken");
       localStorage.removeItem("clientRefreshToken");
       localStorage.removeItem("clientAccessTokenExpiresAt");
