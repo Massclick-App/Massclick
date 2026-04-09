@@ -1,8 +1,8 @@
 {
   "files": {
-    "main.css": "/static/css/main.45093b3f.css",
-    "main.js": "/static/js/main.9a2c5a53.js",
-    "static/js/453.2b0ed5b6.chunk.js": "/static/js/453.2b0ed5b6.chunk.js",
+    "main.css": "/static/css/main.45b78ee0.css",
+    "main.js": "/static/js/main.828cf9da.js",
+    "static/js/453.162d55fa.chunk.js": "/static/js/453.162d55fa.chunk.js",
     "static/media/graphic1.jpg": "/static/media/graphic1.29a56cd935764de6d625.jpg",
     "static/media/enquiry.png": "/static/media/enquiry.6e85c2657eb2ccd4bd8f.png",
     "static/media/seo1.jpg": "/static/media/seo1.8db619b142bf044c4c6d.jpg",
@@ -189,12 +189,12 @@
     "static/media/interlockBricks.webp": "/static/media/interlockBricks.0e2e5009d91700c1befa.webp",
     "static/media/book-shop.webp": "/static/media/book-shop.49cd8d1719722dea1e93.webp",
     "static/media/cooler.webp": "/static/media/cooler.bf01775e7a0a2d5b53be.webp",
-    "main.45093b3f.css.map": "/static/css/main.45093b3f.css.map",
-    "main.9a2c5a53.js.map": "/static/js/main.9a2c5a53.js.map",
-    "453.2b0ed5b6.chunk.js.map": "/static/js/453.2b0ed5b6.chunk.js.map"
+    "main.45b78ee0.css.map": "/static/css/main.45b78ee0.css.map",
+    "main.828cf9da.js.map": "/static/js/main.828cf9da.js.map",
+    "453.162d55fa.chunk.js.map": "/static/js/453.162d55fa.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.45093b3f.css",
-    "static/js/main.9a2c5a53.js"
+    "static/css/main.45b78ee0.css",
+    "static/js/main.828cf9da.js"
   ]
 }
