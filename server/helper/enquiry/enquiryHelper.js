@@ -11,8 +11,8 @@ export const createEnquiry = async function (reqBody = {}) {
             businessCategory: reqBody.category,
             contactNumber: reqBody.contactNumber,
             email: reqBody.email,
-            serviceInterest: reqBody.service, // Assuming your form sends 'service'
-            message: reqBody.address, // Assuming your form sends 'address' as the message
+            serviceInterest: reqBody.service,
+            message: reqBody.address, 
         };
         
         const enquiryDocument = new enquiryModel(enquiryData);

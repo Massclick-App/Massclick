@@ -7,7 +7,6 @@ export const createPageContentBlogSeo = async (reqBody = {}) => {
     let imageKeys = [];
     let profileKey = "";
 
-    /* ===== MULTIPLE IMAGES ===== */
     if (Array.isArray(reqBody.pageImages)) {
       for (const base64 of reqBody.pageImages) {
         if (typeof base64 === "string" && base64.startsWith("data:image")) {
