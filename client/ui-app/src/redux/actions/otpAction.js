@@ -121,20 +121,6 @@ export const viewAllOtpUsers = () => async (dispatch) => {
   }
 };
 
-// --- Delete User ---
-// export const deleteUser = (mobile) => async (dispatch) => {
-//   dispatch({ type: DELETE_USER_REQUEST });
-//   try {
-//     const response = await axios.delete(`${API_URL}/otp_user/${mobile}`);
-//     dispatch({ type: DELETE_USER_SUCCESS, payload: response.data });
-//     return response.data;
-//   } catch (error) {
-//     const errPayload = error.response?.data || error.message;
-//     dispatch({ type: DELETE_USER_FAILURE, payload: errPayload });
-//     throw error;
-//   }
-// };
-
 export const userLogout = () => (dispatch) => {
   localStorage.removeItem("authToken");
   delete axios.defaults.headers.common["Authorization"];

@@ -44,7 +44,6 @@ import AdvertisePage from './Internals/clientComponent/advertise/advertise.js';
 import FreeListingPage from './Internals/clientComponent/free-Listing/free-Listing.js';
 import MRPPage from './Internals/clientComponent/MRP/mrp.js';
 import LeadsCardHistory from './Internals/clientComponent/LeadsPage/leadsCards/leadsCards.js';
-import TokenExpiredModal from './Internals/tokenModel/tokenModel.js';
 import BusinessEnquiry from './Internals/clientComponent/businessEnquiry/businessEnquiry.js';
 import EnquiryPage from './Internals/enquiry-page/enquiry-page.js';
 import AdvertisementPage from './Internals/advertisement/advertisement.js';
@@ -215,7 +214,6 @@ function App() {
           />
 
         </Router>
-        {showTokenExpired && <TokenExpiredModal onClose={() => setShowTokenExpired(false)} />}
       </SnackbarProvider>
     </ThemeProvider>
   );

@@ -15,7 +15,6 @@ import PestControlImage from "../../../assets/Popular/HotelRoom.png"
 import StudioShopImage from "../../../assets/Popular/Photography.png"
 
 
-// Use data that matches the image structure (Title, Location, City, Image)
 const cardsData = [
     {
         title: 'Matahn hotel',

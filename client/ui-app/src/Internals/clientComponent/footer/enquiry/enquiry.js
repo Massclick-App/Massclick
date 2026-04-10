@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from "react";
 
-import './enquiry.css'; // Import the new CSS file
-// Removed all MUI imports except Alert (which is good for global messages)
+import './enquiry.css'; 
 import Alert from '@mui/material/Alert';
-import SendIcon from '@mui/icons-material/Send'; // Keep the icon for the button
+import SendIcon from '@mui/icons-material/Send'; 
 
 import EnquiryImage from '../../../../assets/enquiry.png';
 import CardsSearch from '../../CardsSearch/CardsSearch';

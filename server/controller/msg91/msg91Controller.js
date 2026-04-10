@@ -50,50 +50,6 @@ export const verifyOtpAndLogin = async (req, res) => {
     }
 };
 
-// export const updateOtpUser = async (req, res) => {
-//     try {
-//         const { mobile } = req.params;
-//         const updateData = req.body;
-
-//         const user = await User.findOne({ mobileNumber1: mobile });
-//         if (!user) return res.status(404).json({ success: false, message: "User not found" });
-
-
-//         if (updateData.profileImage?.startsWith("data:image")) {
-//             const uploadResult = await uploadImageToS3(
-//                 updateData.profileImage,
-//                 `user/profiles/${user._id}/profile-${Date.now()}`
-//             );
-//             user.profileImageKey = uploadResult.key; 
-//         } else if (updateData.profileImage === null || updateData.profileImage === "") {
-//             user.profileImageKey = "";
-//         }
-
-//         delete updateData.profileImage;
-
-//         const forbiddenFields = ["currentOtp", "otpGeneratedAt", "otpExpiresAt"];
-//         forbiddenFields.push("profileImageKey"); 
-
-//         forbiddenFields.forEach(field => delete updateData[field]);
-
-//         Object.keys(updateData).forEach(key => {
-//             user[key] = updateData[key];
-//         });
-
-//         await user.save();
-
-//         const userObject = user.toObject();
-//         if (userObject.profileImageKey) {
-//             userObject.profileImage = getSignedUrlByKey(userObject.profileImageKey);
-//         }
-
-//         res.json({ success: true, message: "User updated successfully", user: userObject });
-//     } catch (err) {
-//         console.error("Error updating user:", err); // Add error logging
-//         res.status(500).json({ success: false, message: err.message });
-//     }
-// };
-
 export const updateOtpUser = async (req, res) => {
   try {
     const { mobile } = req.params;
@@ -136,9 +92,7 @@ export const updateOtpUser = async (req, res) => {
     }
     delete updateData.profileImage;
 
-    /* ----------------------------------------------------
-     🔥 3. REMOVE FIELDS THAT SHOULD NEVER BE UPDATED
-    ---------------------------------------------------- */
+   
     const forbiddenFields = [
       "currentOtp",
       "otpGeneratedAt",
@@ -147,9 +101,7 @@ export const updateOtpUser = async (req, res) => {
     ];
     forbiddenFields.forEach((field) => delete updateData[field]);
 
-    /* ----------------------------------------------------
-     🔥 4. BUSINESS CATEGORY UPDATE
-    ---------------------------------------------------- */
+ 
     if (updateData.businessCategory) {
       if (
         typeof updateData.businessCategory === "object" &&
@@ -164,9 +116,7 @@ export const updateOtpUser = async (req, res) => {
       delete updateData.businessCategory;
     }
 
-    /* ----------------------------------------------------
-     🔥 5. HANDLE LEADS — STORE ONLY NEW UNIQUE LEADS
-    ---------------------------------------------------- */
+
     if (updateData.leadsData) {
       const lead = updateData.leadsData;
 
@@ -183,7 +133,6 @@ export const updateOtpUser = async (req, res) => {
             l.userName === lead.userName
         );
 
-        // only push if it's a truly NEW lead
         if (!exists) {
           user.leadsData.push({
             email: lead.email || "",
@@ -200,9 +149,7 @@ export const updateOtpUser = async (req, res) => {
       }
     }
 
-    /* ----------------------------------------------------
-     🔥 6. APPLY ANY OTHER FIELD UPDATES
-    ---------------------------------------------------- */
+
     Object.keys(updateData).forEach((key) => {
       user[key] = updateData[key];
     });
@@ -210,9 +157,7 @@ export const updateOtpUser = async (req, res) => {
     user.updatedAt = new Date();
     await user.save();
 
-    /* ----------------------------------------------------
-     🔥 7. RETURN UPDATED USER
-    ---------------------------------------------------- */
+
     const userObject = user.toObject();
     if (userObject.profileImageKey) {
       userObject.profileImage = getSignedUrlByKey(userObject.profileImageKey);

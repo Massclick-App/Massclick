@@ -12,14 +12,7 @@
     --input-border-radius: 8px; /* Slightly rounded corners */
 }
 
-/* ========================================================= */
-/* --- 1. HERO BANNER STYLE (Unchanged) --- */
-/* ========================================================= */
-/* (omitted for brevity, assume original styles remain) */
 
-/* ========================================================= */
-/* --- 2. MAIN FORM SECTION LAYOUT (Mostly Unchanged) --- */
-/* ========================================================= */
 
 .enquiry-form-section {
     padding: 60px 20px;
@@ -207,9 +200,7 @@
     100% { transform: rotate(360deg); }
 }
 
-/* ========================================================= */
-/* --- 4. RESPONSIVENESS (Tablet/Desktop) --- */
-/* ========================================================= */
+
 
 @media (min-width: 600px) {
     .enquiry-form-grid {

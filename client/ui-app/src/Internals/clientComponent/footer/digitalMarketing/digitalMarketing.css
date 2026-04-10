@@ -15,11 +15,7 @@
     line-height: 1.5;
 }
 
-/* ======================================= */
-/* CUSTOM FORM INPUT STYLES (Enquiry Modal)*/
-/* ======================================= */
 
-/* Base style for both input and textarea */
 .custom-form-input,
 .custom-form-textarea {
     width: 100%;

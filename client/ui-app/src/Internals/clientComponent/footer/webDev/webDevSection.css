@@ -16,18 +16,14 @@ body {
     background-color: var(--bg-light);
 }
 
-/* --- Media Queries (For non-MUI specific global adjustments) --- */
 
-/* Tablet and Small Desktop Screens (Max-width 1200px) */
 @media (max-width: 1200px) {
     /* If you had a custom element outside of MUI, you'd adjust it here. */
 }
 
 /* Mobile Devices (Max-width 600px - MUI's 'sm' breakpoint) */
 @media (max-width: 600px) {
-    /* This can be used to override MUI's default heading styles if the 
-       `sx` prop values aren't granular enough, using the !important tag if necessary.
-    */
+   
     .MuiTypography-root.MuiTypography-h1 {
         font-size: 2.2rem !important; /* Tighter hero title on small screens */
     }
