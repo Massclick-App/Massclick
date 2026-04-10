@@ -26,7 +26,7 @@ import {
 
 } from "@mui/icons-material";
 import CorporateFareIcon from '@mui/icons-material/CorporateFare';
-import MI from "../../assets/Mi.png";
+import MI from "../../assets/mi.png";
 import AddBusinessModal from "./AddBusinessModel.js";
 import AppRegistrationIcon from '@mui/icons-material/AppRegistration';
 import LoginIcon from '@mui/icons-material/Login';

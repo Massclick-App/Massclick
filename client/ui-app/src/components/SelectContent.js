@@ -1,5 +1,5 @@
 import * as React from 'react';
-import MI from '../assets/Mi.png';
+import MI from '../assets/mi.png';
 
 export default function SelectContent() {
   return (
