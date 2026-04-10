@@ -143,7 +143,6 @@ export const oauthAuthentication = async (req, res, next) => {
     req.authUser = token.user;
     next();
   } catch (err) {
-    console.error("OAuth Authentication Error:", err);
     return res.status(UNAUTHORIZED.code).send({ error: err.message });
   }
 };
