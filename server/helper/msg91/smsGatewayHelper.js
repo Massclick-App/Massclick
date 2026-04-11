@@ -94,6 +94,59 @@ export const verifyOtp = async (number, otp) => {
   }
 };
 
+export const fakesendOtp = async (number) => {
+  try {
+    const cleanNumber = number.replace(/\D/g, "");
+    if (cleanNumber.length !== 10) {
+      throw new Error("Invalid phone number. Must be 10 digits.");
+    }
+
+    console.log(`[DUMMY] OTP would be sent to ${cleanNumber}`);
+    
+    // Simulate successful response
+    return { 
+      success: true, 
+      apiResponse: {
+        type: "success",
+        message: "OTP sent successfully (DUMMY MODE)",
+        mobile: `91${cleanNumber}`
+      } 
+    };
+  } catch (error) {
+    console.error("Error sending OTP:", error.message);
+    throw error;
+  }
+};
+
+// Verify OTP (Dummy - accepts any OTP)
+export const fakeverifyOtp = async (number, otp) => {
+  try {
+    const cleanNumber = number.replace(/\D/g, "");
+    if (cleanNumber.length !== 10) {
+      throw new Error("Invalid phone number. Must be 10 digits.");
+    }
+
+    if (!otp) {
+      throw new Error("OTP is required for verification.");
+    }
+
+    console.log(`[DUMMY] Verifying OTP for ${cleanNumber} - OTP: ${otp} (ANY OTP ACCEPTED)`);
+    
+    // Always succeed - accept any OTP
+    return { 
+      success: true, 
+      apiResponse: {
+        type: "success",
+        message: "OTP verified successfully (DUMMY MODE)",
+        mobile: `91${cleanNumber}`
+      } 
+    };
+  } catch (error) {
+    console.error("Error verifying OTP:", error.message);
+    throw error;
+  }
+};
+
 export const sendWhatsAppMessage = async (ownerMobile, lead = {}) => {
   const cleanMobile = ownerMobile.replace(/\D/g, "");
   if (cleanMobile.length !== 10) {
