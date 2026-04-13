@@ -1,8 +1,9 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
 import "./categories.css";
-import { categoriesData } from "./categoriesData";
-import { iconMap } from "../../../utils/iconMap"; 
+
+import { fetchSubCategories } from "../../../redux/actions/categoryAction";
 
 const createSlug = (text = "") =>
   text.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-");
@@ -11,29 +12,31 @@ const formatText = (text = "") =>
   text.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
 const CategoriesPage = () => {
+
   const { location, category } = useParams();
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+
   const [search, setSearch] = useState("");
 
-  const categoryKey = useMemo(
-    () => category?.toLowerCase(),
-    [category]
+  const { subCategories = [], loading } = useSelector(
+    (state) => state.categoryReducer
   );
 
-  const subcategories = useMemo(
-    () => categoriesData[categoryKey] || [],
-    [categoryKey]
-  );
+  useEffect(() => {
+    if (category) {
+      dispatch(fetchSubCategories(category));
+    }
+  }, [dispatch, category]);
 
   const filteredCategories = useMemo(() => {
-    return subcategories.filter((item) =>
+    return subCategories.filter((item) =>
       item.name.toLowerCase().includes(search.toLowerCase())
     );
-  }, [search, subcategories]);
+  }, [search, subCategories]);
 
-  const handleClick = (subName) => {
-    const subSlug = createSlug(subName);
-    navigate(`/${location}/${category}/${subSlug}`);
+  const handleClick = (sub) => {
+    navigate(`/${location}/${category}/${sub.slug}`);
   };
 
   return (
@@ -53,48 +56,46 @@ const CategoriesPage = () => {
 
       <div className="category-grid">
 
-        {filteredCategories.length > 0 ? (
-          filteredCategories.map((item, index) => {
-            const iconSrc = iconMap[item.icon];
+        {loading && <p style={{ textAlign: "center" }}>Loading...</p>}
 
-            return (
-              <div
-                key={index}
-                className="category-item"
-                onClick={() => handleClick(item.name)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleClick(item.name);
-                }}
-              >
-                <img
-                  src={iconSrc}
-                  alt={item.name}
-                  className="category-icon"
-                  width="48"
-                  height="48"
-                  loading="lazy"
-                  decoding="async"
-                  onError={(e) => {
-                    e.target.onerror = null;
-                    e.target.src = iconMap["construction"]; // fallback
-                  }}
-                />
-
-                <span className="category-text">
-                  {item.name}
-                </span>
-              </div>
-            );
-          })
-        ) : (
-          <div style={{ gridColumn: "1/-1", textAlign: "center", padding: "20px" }}>
-            <p>No categories found</p>
-          </div>
+        {!loading && filteredCategories.length === 0 && (
+          <p style={{ textAlign: "center" }}>
+            No categories found
+          </p>
         )}
 
+        {/* ✅ DATA */}
+        {filteredCategories.map((item, index) => (
+          <div
+            key={item._id || index}
+            className="category-item"
+            onClick={() => handleClick(item)}
+          >
+
+            <img
+              className="category-icon"
+              src={item.icon || "/icons/default.webp"}
+              alt={item.name}
+              width="48"
+              height="48"
+              loading="lazy"
+              decoding="async"
+              style={{ objectFit: "contain" }}
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = "/icons/default.webp";
+              }}
+            />
+
+            <span className="category-text">
+              {item.name}
+            </span>
+
+          </div>
+        ))}
+
       </div>
+
     </div>
   );
 };

@@ -1,29 +1,43 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { logSearchActivity } from "../../../redux/actions/businessListAction";
-import { iconMap } from "../../../utils/iconMap";
-
-
-import PopularCategoriesDrawer from "../cards/popularCategories/popularCategories.js";
+import { fetchHomeCategories } from "../../../redux/actions/categoryAction";
 
 import "./featureService.css";
 
+const PopularCategoriesDrawer = React.lazy(() =>
+  import("../cards/popularCategories/popularCategories.js")
+);
+
+const FEATURED_ORDER = [
+  "Hotels",
+  "Rent And Hire",
+  "Restaurants",
+  "Education",
+  "Hospitals",
+  "Dentist",
+  "Dermatologist",
+  "Sexologist",
+  "Contractors",
+  "Gym",
+  "Furnitures",
+  "Florists",
+  "Packers and Movers",
+  "House Keeping Service",
+  "Security System",
+  "Wedding Mahal",
+  "photographers",
+  "Matrimony",
+  "Hostel",
+  "Popular Categories"
+];
+
 const createSlug = (text) => {
-
   if (!text) return "";
-
   if (typeof text === "object") {
-
-    text =
-      text.slug ||
-      text.name ||
-      text.label ||
-      "";
+    text = text.slug || text.name || text.label || "";
   }
-
-  if (typeof text !== "string") return "";
-
   return text
     .toLowerCase()
     .trim()
@@ -35,41 +49,23 @@ const generateAltText = (serviceName, districtSlug) => {
   return `${serviceName} services in ${districtSlug} - MassClick local search`;
 };
 
-export const featuredServices = [
-  { name: "Hotels", icon: "hotel" },
-  { name: "Rent And Hire", icon: "rent", subCategories: true },
-  { name: "Restaurants", icon: "restuarant" },
-  { name: "Education", icon: "education", subCategories: true },
-  { name: "Hospitals", icon: "hospital", subCategories: true },
-  { name: "Dentist", icon: "dentist" },
-  { name: "Dermatologist", icon: "dermatologist" },
-  { name: "Sexologist", icon: "sexology" },
-  { name: "Contractors", icon: "contractor", subCategories: true },
-  { name: "Gym", icon: "gym" },
-  { name: "Furnitures", icon: "furniture" },
-  { name: "Florists", icon: "florist" },
-  { name: "Packers and Movers", icon: "packers" },
-  { name: "House Keeping Service", icon: "housekeeper" },
-  { name: "Security System", icon: "security-system" },
-  { name: "Wedding Mahal", icon: "wedding-hall" },
-  { name: "photographers", icon: "photographer" },
-  { name: "Matrimony", icon: "matrimony" },
-  { name: "Hostel", icon: "hostels" },
-  { name: "Popular Categories", icon: "popular", isDrawer: true },
-];
-
 const FeaturedServicesSection = () => {
 
   const navigate = useNavigate();
   const dispatch = useDispatch();
-
   const [openDrawer, setOpenDrawer] = useState(false);
 
+  const { homeCategories = [], loading } = useSelector(
+    (state) => state.categoryReducer
+  );
 
   const selectedDistrict = useSelector(
     (state) => state.locationReducer.selectedDistrict
   );
 
+  useEffect(() => {
+    dispatch(fetchHomeCategories());
+  }, [dispatch]);
 
   const districtSlug = useMemo(() => {
     return (
@@ -80,15 +76,57 @@ const FeaturedServicesSection = () => {
     );
   }, [selectedDistrict]);
 
+  const normalize = (name) =>
+    name.toLowerCase().replace(/s$/, "").trim();
 
+  const orderedCategories = useMemo(() => {
+
+    if (!homeCategories.length) return [];
+
+    const map = new Map(
+      homeCategories.map((cat) => [
+        normalize(cat.name),
+        cat
+      ])
+    );
+
+    return FEATURED_ORDER.map((name) => {
+
+      if (name === "Popular Categories") {
+
+        const found = map.get(normalize(name));
+
+        return found
+          ? {
+            ...found,
+            isDrawer: true
+          }
+          : {
+            name,
+            slug: "popular",
+            icon: "/default.webp",
+            isDrawer: true
+          };
+      }
+
+      const found = map.get(normalize(name));
+
+      return found || {
+        name,
+        slug: createSlug(name),
+        icon: "/default.webp"
+      };
+
+    });
+
+  }, [homeCategories]);
 
   const handleClick = (service) => {
 
+    // ✅ Drawer
     if (service.isDrawer) {
-
       setOpenDrawer(true);
       return;
-
     }
 
     const categoryName = service.name;
@@ -112,20 +150,16 @@ const FeaturedServicesSection = () => {
       )
     );
 
-    const categorySlug = createSlug(service.name);
-
-    navigate(`/${districtSlug}/${categorySlug}`);
-
+    navigate(`/${districtSlug}/${service.slug}`);
   };
 
   return (
     <>
-      <section
-        className="featured-services-container"
-        aria-label="Featured Services"
-      >
+      <section className="featured-services-container">
 
-        {featuredServices.map((service, index) => {
+        {loading && <p>Loading...</p>}
+
+        {orderedCategories.map((service, index) => {
 
           const altText = generateAltText(service.name, districtSlug);
 
@@ -145,7 +179,7 @@ const FeaturedServicesSection = () => {
             >
 
               <img
-                src={iconMap[service.icon]}
+                src={service.icon ? service.icon : "/default.webp"}
                 alt={altText}
                 title={`${service.name} services in ${districtSlug}`}
                 className="service-icons"
@@ -156,7 +190,7 @@ const FeaturedServicesSection = () => {
                 fetchpriority={index < 2 ? "high" : "low"}
                 onError={(e) => {
                   e.target.onerror = null;
-                  e.target.src = iconMap["hotel"];
+                  e.target.src = "/default.webp";
                 }}
               />
 
@@ -166,23 +200,20 @@ const FeaturedServicesSection = () => {
 
             </article>
           );
-
         })}
 
       </section>
 
-
-      {openDrawer && (
-        <PopularCategoriesDrawer
-          openFromHome={true}
-          onClose={() => setOpenDrawer(false)}
-        />
-      )}
-
+      <Suspense fallback={null}>
+        {openDrawer && (
+          <PopularCategoriesDrawer
+            openFromHome={true}
+            onClose={() => setOpenDrawer(false)}
+          />
+        )}
+      </Suspense>
     </>
   );
-
 };
-
 
 export default FeaturedServicesSection;
