@@ -212,6 +212,12 @@ const cleanValue = (val) => {
     .trim();
 };
 
+const sanitizeTemplateText = (text, maxLength = 220) => {
+  const value = cleanValue(text);
+  if (value === "-") return "-";
+  return value.length > maxLength ? value.slice(0, maxLength - 3).trim() + "..." : value;
+};
+
 /**
  * Sends WhatsApp notification to a business owner about a new lead
  * @param {string} cleanMobile - Formatted mobile number with country code (e.g., 919876543210)
@@ -426,20 +432,31 @@ export const sendBusinessesToCustomer = async (
     console.log("[WhatsApp Customer] Step 7: Formatting business data");
     
     const formatBusiness = (biz, index) => {
-      const contact = Array.isArray(biz.contactList)
+      let contact = Array.isArray(biz.contactList)
         ? biz.contactList[0]
         : biz.contactList || biz.whatsappNumber || "N/A";
 
-      const name =
-        biz.businessName.length > 35
+      if (contact != null && typeof contact !== "string") {
+        contact = String(contact);
+      }
+
+      contact = contact ? contact.toString().replace(/\D/g, "") : "N/A";
+      if (contact.length === 12 && contact.startsWith("91")) {
+        contact = contact.slice(2);
+      }
+      contact = contact || "N/A";
+
+      const name = biz.businessName
+        ? biz.businessName.length > 35
           ? biz.businessName.slice(0, 35) + "..."
-          : biz.businessName;
+          : biz.businessName
+        : "Unknown Business";
 
       const street = biz.street || "";
       const location = biz.location || "";
       const fullAddress = `${street}, ${location}`.replace(/\s+/g, " ").trim();
 
-      const review = reviewMap[biz._id.toString()] || {};
+      const review = reviewMap[biz._id?.toString()] || {};
       const rating = review.avgRating
         ? `⭐ ${review.avgRating}/5`
         : "⭐ No ratings";
@@ -462,10 +479,10 @@ export const sendBusinessesToCustomer = async (
       const values = [];
       for (let i = 0; i < 5; i++) {
         const biz = list[i];
-        const formattedValue = biz 
-          ? formatBusiness(biz, startIndex + i) 
+        const formattedValue = biz
+          ? formatBusiness(biz, startIndex + i)
           : "-";
-        values.push(cleanValue(formattedValue));
+        values.push(sanitizeTemplateText(formattedValue));
       }
       return values;
     };
@@ -530,6 +547,7 @@ export const sendBusinessesToCustomer = async (
 
     console.log("[WhatsApp Customer] ✅ First batch sent successfully");
     console.log("[WhatsApp Customer] First batch response status:", firstBatchResponse.status);
+    console.log("[WhatsApp Customer] First batch response body:", firstBatchResponse.data);
 
     // Step 11: Send second batch if exists
     if (secondBatch.length > 0) {
@@ -589,6 +607,7 @@ export const sendBusinessesToCustomer = async (
 
       console.log("[WhatsApp Customer] ✅ Second batch sent successfully");
       console.log("[WhatsApp Customer] Second batch response status:", secondBatchResponse.status);
+      console.log("[WhatsApp Customer] Second batch response body:", secondBatchResponse.data);
     } else {
       console.log("[WhatsApp Customer] No second batch needed");
     }
