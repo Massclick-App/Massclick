@@ -384,9 +384,92 @@ export const sendBusinessesToCustomer = async (
 
     const values1 = prepareValues(firstBatch, 0);
 
-    await axios.post(
+    const primaryPayload = {
+      integrated_number: process.env.MSG91_WHATSAPP_SENDER_ID,
+      content_type: "template",
+      payload: {
+        messaging_product: "whatsapp",
+        type: "template",
+        template: {
+          name: "customer_business_list_v1",
+          language: { code: "en", policy: "deterministic" },
+          namespace: process.env.MSG91_TEMPLATE_NAMESPACE,
+          to_and_components: [
+            {
+              to: [cleanMobile],
+              components: {
+                body_1: {
+                  type: "text",
+                  value: cleanValue(lead.customerName || "Customer")
+                },
+                body_2: {
+                  type: "text",
+                  value: cleanValue(lead.searchText || "your search")
+                },
+                body_3: {
+                  type: "text",
+                  value: cleanValue(lead.location || "your area")
+                },
+                body_4: {
+                  type: "text",
+                  value: cleanValue(values1[0])
+                },
+                body_5: {
+                  type: "text",
+                  value: cleanValue(values1[1])
+                },
+                body_6: {
+                  type: "text",
+                  value: cleanValue(values1[2])
+                },
+                body_7: {
+                  type: "text",
+                  value: cleanValue(values1[3])
+                },
+                body_8: {
+                  type: "text",
+                  value: cleanValue(values1[4])
+                }
+              }
+            }
+          ]
+        }
+      }
+    };
+
+    console.log("MSG91 primary customer payload", {
+      to: cleanMobile,
+      template: primaryPayload.payload.template.name,
+      bodyValues: [
+        primaryPayload.payload.to_and_components[0].components.body_1.value,
+        primaryPayload.payload.to_and_components[0].components.body_2.value,
+        primaryPayload.payload.to_and_components[0].components.body_3.value
+      ]
+    });
+
+    const primaryResponse = await axios.post(
       "https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/",
+      primaryPayload,
       {
+        headers: {
+          authkey: process.env.MSG91_AUTH_KEY,
+          "Content-Type": "application/json"
+        }
+      }
+    );
+
+    console.log("MSG91 primary response", {
+      status: primaryResponse.status,
+      data: primaryResponse.data
+    });
+
+   
+
+    // ✅ SECOND BATCH FIXED
+    if (secondBatch.length > 0) {
+      const values2 = prepareValues(secondBatch, 5);
+
+      const secondPayload = {
         integrated_number: process.env.MSG91_WHATSAPP_SENDER_ID,
         content_type: "template",
         payload: {
@@ -394,13 +477,12 @@ export const sendBusinessesToCustomer = async (
           type: "template",
           template: {
             name: "customer_business_list_v1",
-            language: { code: "en", policy: "deterministic" },
+            language: { code: "en", policy: "deterministic" }, // ✅ FIXED
             namespace: process.env.MSG91_TEMPLATE_NAMESPACE,
             to_and_components: [
               {
                 to: [cleanMobile],
                 components: {
-                  // ✅ FIRST 3 → STATIC CUSTOMER DATA
                   body_1: {
                     type: "text",
                     value: cleanValue(lead.customerName || "Customer")
@@ -413,88 +495,30 @@ export const sendBusinessesToCustomer = async (
                     type: "text",
                     value: cleanValue(lead.location || "your area")
                   },
-
-                  // ✅ BUSINESS LIST STARTS HERE
-                  body_4: {
-                    type: "text",
-                    value: cleanValue(values1[0])
-                  },
-                  body_5: {
-                    type: "text",
-                    value: cleanValue(values1[1])
-                  },
-                  body_6: {
-                    type: "text",
-                    value: cleanValue(values1[2])
-                  },
-                  body_7: {
-                    type: "text",
-                    value: cleanValue(values1[3])
-                  },
-                  body_8: {
-                    type: "text",
-                    value: cleanValue(values1[4])
-                  }
+                  body_4: { type: "text", value: cleanValue(values2[0]) },
+                  body_5: { type: "text", value: cleanValue(values2[1]) },
+                  body_6: { type: "text", value: cleanValue(values2[2]) },
+                  body_7: { type: "text", value: cleanValue(values2[3]) },
+                  body_8: { type: "text", value: cleanValue(values2[4]) }
                 }
               }
             ]
           }
         }
-      },
-      {
-        headers: {
-          authkey: process.env.MSG91_AUTH_KEY,
-          "Content-Type": "application/json"
-        }
-      }
-    );
+      };
 
-   
+      console.log("MSG91 secondary customer payload", {
+        to: cleanMobile,
+        template: secondPayload.payload.template.name,
+        bodyValues: [
+          secondPayload.payload.to_and_components[0].components.body_4.value,
+          secondPayload.payload.to_and_components[0].components.body_5.value
+        ]
+      });
 
-    // ✅ SECOND BATCH FIXED
-    if (secondBatch.length > 0) {
-      const values2 = prepareValues(secondBatch, 5);
-
-      await axios.post(
+      const secondaryResponse = await axios.post(
         "https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/",
-        {
-          integrated_number: process.env.MSG91_WHATSAPP_SENDER_ID,
-          content_type: "template",
-          payload: {
-            messaging_product: "whatsapp",
-            type: "template",
-            template: {
-              name: "customer_business_list_v1",
-              language: { code: "en", policy: "deterministic" }, // ✅ FIXED
-              namespace: process.env.MSG91_TEMPLATE_NAMESPACE,
-              to_and_components: [
-                {
-                  to: [cleanMobile],
-                  components: {
-                    body_1: {
-                      type: "text",
-                      value: cleanValue(lead.customerName || "Customer")
-                    },
-                    body_2: {
-                      type: "text",
-                      value: cleanValue(lead.searchText || "your search")
-                    },
-                    body_3: {
-                      type: "text",
-                      value: cleanValue(lead.location || "your area")
-                    },
-
-                    body_4: { type: "text", value: cleanValue(values2[0]) },
-                    body_5: { type: "text", value: cleanValue(values2[1]) },
-                    body_6: { type: "text", value: cleanValue(values2[2]) },
-                    body_7: { type: "text", value: cleanValue(values2[3]) },
-                    body_8: { type: "text", value: cleanValue(values2[4]) }
-                  }
-                }
-              ]
-            }
-          }
-        },
+        secondPayload,
         {
           headers: {
             authkey: process.env.MSG91_AUTH_KEY,
@@ -502,6 +526,11 @@ export const sendBusinessesToCustomer = async (
           }
         }
       );
+
+      console.log("MSG91 secondary response", {
+        status: secondaryResponse.status,
+        data: secondaryResponse.data
+      });
     }
 
 
@@ -624,6 +653,16 @@ export const sendCustomerBusinessList = async (
   };
 
   try {
+    console.log("MSG91 fallback customer payload", {
+      to: [`91${mobile}`],
+      template: payload.payload.template.name,
+      bodyValues: [
+        payload.payload.to_and_components[0].components.body_1.value,
+        payload.payload.to_and_components[0].components.body_2.value,
+        payload.payload.to_and_components[0].components.body_3.value,
+        payload.payload.to_and_components[0].components.body_4.value
+      ]
+    });
 
     const response = await axios.post(
       "https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/",
@@ -635,6 +674,11 @@ export const sendCustomerBusinessList = async (
         }
       }
     );
+
+    console.log("MSG91 fallback response", {
+      status: response.status,
+      data: response.data
+    });
 
     return response.data;
 
