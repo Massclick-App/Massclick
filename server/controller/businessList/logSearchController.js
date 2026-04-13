@@ -71,17 +71,19 @@ export const logSearchAction = async (req, res) => {
   try {
     const { categoryName, location, searchedUserText, userDetails } = req.body;
 
-    console.log("📥 Incoming Search Request", {
+    console.log("logSearchAction request", {
       categoryName,
       location,
       searchedUserText,
-      userDetails
+      userDetails: {
+        userName: userDetails?.userName,
+        mobileNumber1: userDetails?.mobileNumber1,
+        mobileNumber2: userDetails?.mobileNumber2,
+        email: userDetails?.email
+      }
     });
 
-    // -----------------------------
-    // 1. VALIDATION
-    // -----------------------------
-    if (!searchedUserText?.trim()) {
+    if (!searchedUserText || !searchedUserText.trim()) {
       return res.status(400).json({
         success: false,
         message: "Search text is mandatory"
@@ -89,29 +91,32 @@ export const logSearchAction = async (req, res) => {
     }
 
     const cleanSearchText = searchedUserText.trim().toLowerCase();
-    const normalizedLocation = (location || "global").toLowerCase().trim();
+    const normalizedLocation = location?.toLowerCase().trim() || "global";
 
     const isValidUser =
-      userDetails?.userName?.trim() &&
-      userDetails?.mobileNumber1?.trim();
+      userDetails &&
+      userDetails.userName &&
+      userDetails.userName.trim() &&
+      userDetails.mobileNumber1 &&
+      userDetails.mobileNumber1.trim();
 
     if (!isValidUser) {
-      console.warn("❌ Invalid user details", userDetails);
-
       return res.status(200).json({
         success: false,
         message: "Valid name and mobile number required"
       });
     }
 
-    // -----------------------------
-    // 2. CATEGORY RESOLUTION
-    // -----------------------------
-    let finalCategoryName = "Other";
+    let finalCategoryName = "";
 
-    if (categoryName && categoryName.toLowerCase() !== "all categories") {
+    if (
+      categoryName &&
+      categoryName.trim() &&
+      categoryName.toLowerCase() !== "all categories"
+    ) {
       finalCategoryName = categoryName.trim();
     } else {
+
       const matchedCategory = await CategoryModel.findOne({
         categoryName: { $regex: cleanSearchText, $options: "i" }
       }).lean();
@@ -119,6 +124,7 @@ export const logSearchAction = async (req, res) => {
       if (matchedCategory) {
         finalCategoryName = matchedCategory.categoryName;
       } else {
+
         const searchWords = cleanSearchText.split(" ");
 
         const possibleCategory = await CategoryModel.findOne({
@@ -128,41 +134,34 @@ export const logSearchAction = async (req, res) => {
           }
         }).lean();
 
-        if (possibleCategory) {
-          finalCategoryName = possibleCategory.categoryName;
-        }
+        finalCategoryName = possibleCategory
+          ? possibleCategory.categoryName
+          : "Other";
       }
     }
 
-    // -----------------------------
-    // 3. CATEGORY SLUG (CRITICAL FIX)
-    // -----------------------------
     const categorySlug = finalCategoryName
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/(^-|-$)+/g, "");
 
-    console.log("📌 Category Resolved", {
+    console.log("Detected category", {
       finalCategoryName,
-      categorySlug
+      categorySlug,
+      categoryNameProvided: categoryName,
+      searchText: cleanSearchText
     });
 
-    // -----------------------------
-    // 4. CATEGORY LOOKUP
-    // -----------------------------
     const category = await CategoryModel.findOne(
       { slug: categorySlug },
       { categoryImageKey: 1 }
     ).lean();
 
-    console.log("🖼 Category Lookup", {
+    console.log("Category lookup result", {
       categorySlug,
-      found: !!category
+      categoryImageKey: category?.categoryImageKey || null
     });
 
-    // -----------------------------
-    // 5. DUPLICATE PREVENTION
-    // -----------------------------
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
 
     const recentLog = await searchLogModel.findOne({
@@ -173,22 +172,24 @@ export const logSearchAction = async (req, res) => {
     });
 
     if (recentLog) {
-      console.warn("⛔ Duplicate request blocked");
 
       return res.status(200).json({
         success: true,
-        message: "Lead already sent recently"
+        message: "Lead already sent recently (5 min protection)",
+        detectedCategory: finalCategoryName
       });
     }
 
-    // -----------------------------
-    // 6. SAVE SEARCH LOG
-    // -----------------------------
     const savedLog = await createSearchLog({
+
       categoryName: finalCategoryName,
+
       categoryImage: category?.categoryImageKey || "",
+
       searchedUserText,
+
       location: normalizedLocation,
+
       userDetails: [
         {
           userName: userDetails.userName,
@@ -197,14 +198,18 @@ export const logSearchAction = async (req, res) => {
           email: userDetails.email || ""
         }
       ],
+
+      whatsapp: false
+
+    });
+
+    console.log("Search log saved", {
+      searchLogId: savedLog._id?.toString?.(),
+      categoryName: finalCategoryName,
+      location: normalizedLocation,
       whatsapp: false
     });
 
-    console.log("💾 Search Log Saved", savedLog._id);
-
-    // -----------------------------
-    // 7. LOCATION GROUPING
-    // -----------------------------
     const locationGroups = {
       trichy: ["trichy", "tiruchirappalli"]
     };
@@ -218,100 +223,137 @@ export const logSearchAction = async (req, res) => {
       }
     }
 
-    // -----------------------------
-    // 8. BUSINESS LOOKUP (FIXED)
-    // -----------------------------
-    const businesses = await businessListModel.find({
-      categorySlug, // 🔥 FIXED HERE
-      location: {
-        $in: locationList.map(loc => new RegExp(loc, "i"))
+    const businesses = await businessListModel.find(
+      {
+        category: { $regex: `^${finalCategoryName}$`, $options: "i" },
+        location: {
+          $in: locationList.map(loc => new RegExp(loc, "i"))
+        },
+        isActive: true,
+        businessesLive: true
       },
-      isActive: true,
-      businessesLive: true
-    })
-    .limit(10)
-    .lean();
+      {
+        businessName: 1,
+        contactList: 1,
+        whatsappNumber: 1,
+        location: 1,
+        street: 1,
+        plotNumber: 1,
+        averageRating: 1
+      }
+    )
+      .limit(10)
+      .lean();
 
-    console.log("🏪 Business Lookup Result", {
-      categorySlug,
+    console.log("Business lookup result", {
+      finalCategoryName,
+      normalizedLocation,
       locationList,
-      count: businesses.length
+      businessCount: businesses.length,
+      businessIds: businesses.map(b => b._id?.toString())
     });
 
-    // -----------------------------
-    // 9. NO BUSINESSES FOUND (VISIBLE FAIL)
-    // -----------------------------
     if (!businesses.length) {
-      console.warn("⚠️ No businesses found");
 
       return res.status(200).json({
-        success: false,
-        message: "No businesses found for this category/location",
-        debug: {
-          categorySlug,
-          location: normalizedLocation
-        }
+        success: true,
+        message: "Lead stored but no businesses found",
+        detectedCategory: finalCategoryName
       });
+
     }
 
-    // -----------------------------
-    // 10. LEAD DATA
-    // -----------------------------
     const leadData = {
+
       searchText: searchedUserText,
+
       location: normalizedLocation,
+
       customerName: userDetails.userName,
+
       customerMobile: userDetails.mobileNumber1,
+
       email: userDetails.email || ""
+
     };
 
-    // -----------------------------
-    // 11. SEND BUSINESS WHATSAPP
-    // -----------------------------
-    let successCount = 0;
+    let businessSendSuccess = false;
+
+    let customerSendSuccess = false;
+
     const notifiedBusinesses = [];
 
+
+    // SEND WHATSAPP TO BUSINESSES
+
     for (const business of businesses) {
-      const ownerMobile = business.contactList || business.whatsappNumber;
+      const ownerMobile =
+        business.contactList || business.whatsappNumber;
+
       const cleanMobile = cleanIndianMobile(ownerMobile);
 
-      console.log("📤 Business Candidate", {
-        name: business.businessName,
-        rawMobile: ownerMobile,
+      console.log("Business lead candidate", {
+        businessName: business.businessName,
+        ownerMobile,
         cleanMobile
       });
 
       if (!cleanMobile) {
-        console.warn("❌ Invalid mobile skipped", business.businessName);
+        console.warn("Skipping business due to invalid mobile", {
+          businessName: business.businessName,
+          ownerMobile
+        });
         continue;
       }
 
       try {
         await sendBusinessLead(cleanMobile, leadData);
 
-        successCount++;
+        businessSendSuccess = true;
+
 
         notifiedBusinesses.push({
+
           businessName: business.businessName,
+
           mobile: cleanMobile
+
         });
+
+        await new Promise(resolve => setTimeout(resolve, 500));
 
       } catch (err) {
-        console.error("❌ WhatsApp failed", {
-          business: business.businessName,
-          error: err.response?.data || err.message
-        });
+
+        console.error(
+
+          "Business WhatsApp failed:",
+
+          err.response?.data || err.message
+
+        );
+
       }
+
     }
 
-    // -----------------------------
-    // 12. CUSTOMER WHATSAPP
-    // -----------------------------
-    const cleanCustomerMobile = cleanIndianMobile(userDetails.mobileNumber1);
+    const cleanCustomerMobile = cleanIndianMobile(
+      userDetails.mobileNumber1
+    );
 
-    let customerSendSuccess = false;
+    if (!cleanCustomerMobile) {
+      console.warn("Invalid customer mobile, cannot send WhatsApp to customer", {
+        mobile: userDetails.mobileNumber1
+      });
+    }
 
     if (cleanCustomerMobile) {
+      console.log("Sending customer WhatsApp", {
+        customerMobile: cleanCustomerMobile,
+        category: finalCategoryName,
+        businessCount: businesses.length,
+        location: normalizedLocation
+      });
+
       try {
         await sendBusinessesToCustomer(
           cleanCustomerMobile,
@@ -321,47 +363,85 @@ export const logSearchAction = async (req, res) => {
 
         customerSendSuccess = true;
       } catch (err) {
-        console.error("❌ Customer WhatsApp failed", err.message);
+        console.error(
+          "Customer WhatsApp failed (primary template)",
+          err.response?.data || err.message
+        );
+
+        try {
+          await sendCustomerBusinessList(
+            cleanCustomerMobile,
+            userDetails.userName,
+            normalizedLocation,
+            finalCategoryName,
+            businesses
+          );
+          customerSendSuccess = true;
+          console.info("Customer WhatsApp sent using fallback template");
+        } catch (fallbackErr) {
+          console.error(
+            "Customer WhatsApp failed (fallback template)",
+            fallbackErr.response?.data || fallbackErr.message
+          );
+        }
       }
     }
 
-    // -----------------------------
-    // 13. UPDATE LOG
-    // -----------------------------
-    await searchLogModel.findByIdAndUpdate(savedLog._id, {
-      whatsapp: successCount > 0
-    });
+    const updated = await searchLogModel.findOneAndUpdate(
+      { _id: savedLog._id, whatsapp: false },
+      { whatsapp: true },
+      { new: true }
+    );
 
-    // -----------------------------
-    // 14. FINAL RESPONSE
-    // -----------------------------
-    console.log("✅ PROCESS COMPLETED", {
-      category: finalCategoryName,
+    if (!updated) {
+      console.log("🚫 Duplicate WhatsApp prevented");
+      return res.status(200).json({
+        success: true,
+        message: "Duplicate blocked"
+      });
+    }
+
+    console.log("logSearchAction completed", {
+      finalCategoryName,
       totalBusinesses: businesses.length,
-      notified: notifiedBusinesses.length,
+      notifiedBusinesses,
+      businessSendSuccess,
       customerSendSuccess
     });
 
-    return res.status(200).json({
+    return res.status(202).json({
+
       success: true,
-      message: "Search processed",
-      data: {
-        category: finalCategoryName,
-        totalBusinesses: businesses.length,
-        notifiedBusinesses,
-        businessSendSuccess: successCount > 0,
-        customerSendSuccess
-      }
+
+      message: "Lead stored & WhatsApp sent",
+
+      detectedCategory: finalCategoryName,
+
+      totalBusinesses: businesses.length,
+
+      notifiedBusinesses,
+
+      whatsappUpdated: businessSendSuccess && customerSendSuccess
+
     });
 
-  } catch (error) {
-    console.error("🔥 CRASH ERROR:", error);
+
+  }
+
+  catch (error) {
+
+    console.error("Error logging search:", error);
 
     return res.status(500).json({
+
       success: false,
+
       message: "Server error"
+
     });
+
   }
+
 };
 
 export const viewLogSearchAction = async (req, res) => {
