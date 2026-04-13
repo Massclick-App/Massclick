@@ -242,23 +242,33 @@ export const sendBusinessLead = async (cleanMobile, lead = {}) => {
 export const sendBusinessesToCustomer = async (cleanMobile, lead, businesses) => {
   const REQUEST_ID = `cust_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
   
+  // ✅ FIX: Accept both 10-digit and 12-digit (with 91) formats
+  const mobileDigits = cleanMobile.replace(/\D/g, '');
+  const validMobile = mobileDigits.length === 12 && mobileDigits.startsWith('91') 
+    ? mobileDigits.slice(2)  // Remove '91' prefix
+    : mobileDigits.length === 10 
+    ? mobileDigits 
+    : null;
+
   console.log(`[${REQUEST_ID}] Starting customer WhatsApp send`, {
-    mobile: cleanMobile,
+    original: cleanMobile,
+    digits: mobileDigits,
+    validMobile,
     businessCount: businesses.length,
     customerName: lead.customerName
   });
 
   try {
     // Validate inputs
-    if (!cleanMobile || cleanMobile.length !== 10) {
-      throw new Error(`Invalid mobile number: ${cleanMobile}`);
+    if (!validMobile || validMobile.length !== 10) {
+      throw new Error(`Invalid mobile number: ${cleanMobile} → extracted: ${validMobile}`);
     }
 
     if (!businesses?.length) {
       throw new Error('No businesses to send');
     }
 
-    // Filter and deduplicate businesses
+    // Rest of the function remains the same, but use validMobile for sending
     const uniqueBusinesses = filterAndDeduplicateBusinesses(businesses, lead.location);
     
     console.log(`[${REQUEST_ID}] Filtered businesses`, {
@@ -271,11 +281,10 @@ export const sendBusinessesToCustomer = async (cleanMobile, lead, businesses) =>
       return { success: false, reason: 'No matching businesses' };
     }
 
-    // Get reviews
     const reviewMap = await getBusinessReviews(uniqueBusinesses);
     
-    // Send messages
-    const results = await sendBatchMessages(cleanMobile, lead, uniqueBusinesses, reviewMap, REQUEST_ID);
+    // ✅ Use validMobile instead of cleanMobile
+    const results = await sendBatchMessages(validMobile, lead, uniqueBusinesses, reviewMap, REQUEST_ID);
 
     return {
       success: results.some(r => r.success),
