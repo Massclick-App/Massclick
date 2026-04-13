@@ -239,311 +239,282 @@ export const sendBusinessLead = async (cleanMobile, lead = {}) => {
   );
 };
 
-const cleanValue = (val) => {
-  if (!val || val === "-") return "-";
+export const sendBusinessesToCustomer = async (cleanMobile, lead, businesses) => {
+  const REQUEST_ID = `cust_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+  
+  console.log(`[${REQUEST_ID}] Starting customer WhatsApp send`, {
+    mobile: cleanMobile,
+    businessCount: businesses.length,
+    customerName: lead.customerName
+  });
 
-  return val
-    .toString()
-    .replace(/\n/g, " ")   // ❗ REMOVE NEWLINES
-    .replace(/\s+/g, " ")  // normalize spaces
-    .trim();
-};
-
-export const sendBusinessesToCustomer = async (
-  cleanMobile,
-  lead,
-  businesses
-) => {
   try {
-    const normalize = (text = "") => text.toLowerCase().trim();
-
-    const locationGroups = {
-      trichy: ["trichy", "tiruchirappalli"]
-    };
-
-    const leadLocationRaw = normalize(lead.location);
-
-    let groupKey = null;
-
-    for (const key in locationGroups) {
-      if (
-        locationGroups[key].some((loc) =>
-          leadLocationRaw.includes(loc)
-        )
-      ) {
-        groupKey = key;
-        break;
-      }
+    // Validate inputs
+    if (!cleanMobile || cleanMobile.length !== 10) {
+      throw new Error(`Invalid mobile number: ${cleanMobile}`);
     }
 
-    const filteredBusinesses = businesses.filter((biz) => {
-      const rawLocation = normalize(
-        biz.location || biz.address || ""
-      );
+    if (!businesses?.length) {
+      throw new Error('No businesses to send');
+    }
 
-      if (groupKey) {
-        return locationGroups[groupKey].some((loc) =>
-          rawLocation.includes(loc)
-        );
-      }
-
-      return rawLocation.includes(leadLocationRaw);
+    // Filter and deduplicate businesses
+    const uniqueBusinesses = filterAndDeduplicateBusinesses(businesses, lead.location);
+    
+    console.log(`[${REQUEST_ID}] Filtered businesses`, {
+      original: businesses.length,
+      filtered: uniqueBusinesses.length
     });
 
-    const uniqueBusinesses = [];
-    const seen = new Set();
+    if (!uniqueBusinesses.length) {
+      console.warn(`[${REQUEST_ID}] No businesses after filtering`);
+      return { success: false, reason: 'No matching businesses' };
+    }
 
-    const sourceList = filteredBusinesses.length
-      ? filteredBusinesses
-      : businesses;
+    // Get reviews
+    const reviewMap = await getBusinessReviews(uniqueBusinesses);
+    
+    // Send messages
+    const results = await sendBatchMessages(cleanMobile, lead, uniqueBusinesses, reviewMap, REQUEST_ID);
 
-    sourceList.forEach((biz, index) => {
-      const key = biz._id
-        ? biz._id.toString()
-        : `${biz.businessName}-${index}`;
+    return {
+      success: results.some(r => r.success),
+      batchesSent: results.filter(r => r.success).length,
+      totalBatches: results.length,
+      requestId: REQUEST_ID
+    };
 
-      if (!seen.has(key)) {
-        seen.add(key);
-        uniqueBusinesses.push(biz);
-      }
+  } catch (error) {
+    console.error(`[${REQUEST_ID}] Fatal error:`, {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status
     });
+    throw error;
+  }
+};
 
-    const finalBusinesses = uniqueBusinesses.slice(0, 10);
+// Helper functions
+const filterAndDeduplicateBusinesses = (businesses, location) => {
+  const normalize = (text = '') => text.toLowerCase().trim();
+  const leadLocationRaw = normalize(location);
+  
+  const locationGroups = {
+    trichy: ['trichy', 'tiruchirappalli']
+  };
 
-    const businessIds = finalBusinesses.map((b) => b._id);
+  let groupKey = null;
+  for (const key in locationGroups) {
+    if (locationGroups[key].some(loc => leadLocationRaw.includes(loc))) {
+      groupKey = key;
+      break;
+    }
+  }
+
+  const filtered = businesses.filter(biz => {
+    const bizLocation = normalize(biz.location || biz.address || '');
+    
+    if (groupKey) {
+      return locationGroups[groupKey].some(loc => bizLocation.includes(loc));
+    }
+    return bizLocation.includes(leadLocationRaw);
+  });
+
+  // Deduplicate
+  const seen = new Set();
+  const unique = [];
+  
+  (filtered.length ? filtered : businesses).forEach(biz => {
+    const key = biz._id?.toString() || `${biz.businessName}-${biz.location}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      unique.push(biz);
+    }
+  });
+
+  return unique.slice(0, 10);
+};
+
+const getBusinessReviews = async (businesses) => {
+  try {
+    const businessIds = businesses.map(b => b._id).filter(Boolean);
+    
+    if (!businessIds.length) return {};
 
     const reviews = await businessReviewModel.aggregate([
-      {
-        $match: {
-          businessId: { $in: businessIds },
-          status: "ACTIVE"
-        }
-      },
-      {
+      { $match: { businessId: { $in: businessIds }, status: 'ACTIVE' } },
+      { 
         $group: {
-          _id: "$businessId",
-          avgRating: { $avg: "$rating" },
+          _id: '$businessId',
+          avgRating: { $avg: '$rating' },
           totalReviews: { $sum: 1 }
         }
       }
     ]);
 
     const reviewMap = {};
-
-    reviews.forEach((r) => {
+    reviews.forEach(r => {
       reviewMap[r._id.toString()] = {
         avgRating: r.avgRating.toFixed(1),
         totalReviews: r.totalReviews
       };
     });
 
-    const formatBusiness = (biz, index) => {
-      const contact = Array.isArray(biz.contactList)
-        ? biz.contactList[0]
-        : biz.contactList || biz.whatsappNumber || "N/A";
+    return reviewMap;
+  } catch (error) {
+    console.error('Failed to fetch reviews:', error);
+    return {};
+  }
+};
 
-      const name =
-        biz.businessName.length > 35
-          ? biz.businessName.slice(0, 35) + "..."
-          : biz.businessName;
+const formatBusinessLine = (biz, index, reviewMap) => {
+  const contact = Array.isArray(biz.contactList) 
+    ? biz.contactList[0] 
+    : biz.contactList || biz.whatsappNumber || 'N/A';
 
-      const street = biz.street || "";
-      const location = biz.location || "";
+  const name = biz.businessName.length > 35 
+    ? biz.businessName.slice(0, 35) + '...' 
+    : biz.businessName;
 
-      // ✅ FULL ADDRESS (NO TRIM)
-      const fullAddress = `${street}, ${location}`.replace(/\s+/g, " ").trim();
+  const address = `${biz.street || ''}, ${biz.location || ''}`
+    .replace(/\s+/g, ' ')
+    .trim();
 
-      const review = reviewMap[biz._id.toString()] || {};
+  const review = reviewMap[biz._id?.toString()] || {};
+  const rating = review.avgRating ? `⭐ ${review.avgRating}/5` : '⭐ No ratings';
+  const reviewCount = review.totalReviews ? `(${review.totalReviews})` : '';
 
-      const rating = review.avgRating
-        ? `⭐ ${review.avgRating}/5`
-        : "⭐ No ratings";
+  return `${index + 1}. ${name} ${rating} ${reviewCount} | 📍 ${address} | 📞 ${contact}`;
+};
 
-      const reviews = review.totalReviews
-        ? `(${review.totalReviews})`
-        : "";
+const cleanValue = (val) => {
+  if (!val || val === '-') return '-';
+  return val.toString()
+    .replace(/\n/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
 
-      return `${index + 1}. ${name} ${rating} ${reviews} | 📍 ${fullAddress} | 📞 ${contact}`;
-    };
+const sendBatchMessages = async (mobile, lead, businesses, reviewMap, requestId) => {
+  const results = [];
+  const batches = [];
+  
+  // Split into batches of 5
+  for (let i = 0; i < businesses.length; i += 5) {
+    batches.push(businesses.slice(i, i + 5));
+  }
 
-    const firstBatch = finalBusinesses.slice(0, 5);
-    const secondBatch = finalBusinesses.slice(5, 10);
+  console.log(`[${requestId}] Sending ${batches.length} batch(es)`);
 
-    const prepareValues = (list, startIndex = 0) => {
+  for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+    const batch = batches[batchIndex];
+    const batchId = `${requestId}_batch${batchIndex + 1}`;
+    
+    console.log(`[${batchId}] Preparing batch`, {
+      businessCount: batch.length,
+      startIndex: batchIndex * 5
+    });
+
+    try {
       const values = [];
-
       for (let i = 0; i < 5; i++) {
-        const biz = list[i];
+        const biz = batch[i];
         values.push(
-          biz ? formatBusiness(biz, startIndex + i) : "-"
+          biz 
+            ? formatBusinessLine(biz, batchIndex * 5 + i, reviewMap)
+            : '-'
         );
       }
 
-      return values;
-    };
+      const payload = buildPayload(mobile, lead, values);
 
-    const values1 = prepareValues(firstBatch, 0);
-
-    const primaryPayload = {
-      integrated_number: process.env.MSG91_WHATSAPP_SENDER_ID,
-      content_type: "template",
-      payload: {
-        messaging_product: "whatsapp",
-        type: "template",
-        template: {
-          name: "customer_business_list_v1",
-          language: { code: "en", policy: "deterministic" },
-          namespace: process.env.MSG91_TEMPLATE_NAMESPACE,
-          to_and_components: [
-            {
-              to: [cleanMobile],
-              components: {
-                body_1: {
-                  type: "text",
-                  value: cleanValue(lead.customerName || "Customer")
-                },
-                body_2: {
-                  type: "text",
-                  value: cleanValue(lead.searchText || "your search")
-                },
-                body_3: {
-                  type: "text",
-                  value: cleanValue(lead.location || "your area")
-                },
-                body_4: {
-                  type: "text",
-                  value: cleanValue(values1[0])
-                },
-                body_5: {
-                  type: "text",
-                  value: cleanValue(values1[1])
-                },
-                body_6: {
-                  type: "text",
-                  value: cleanValue(values1[2])
-                },
-                body_7: {
-                  type: "text",
-                  value: cleanValue(values1[3])
-                },
-                body_8: {
-                  type: "text",
-                  value: cleanValue(values1[4])
-                }
-              }
-            }
-          ]
-        }
-      }
-    };
-
-    console.log("MSG91 primary customer payload", {
-      to: cleanMobile,
-      template: primaryPayload.payload.template.name,
-      bodyValues: [
-        primaryPayload.payload.to_and_components[0].components.body_1.value,
-        primaryPayload.payload.to_and_components[0].components.body_2.value,
-        primaryPayload.payload.to_and_components[0].components.body_3.value
-      ]
-    });
-
-    const primaryResponse = await axios.post(
-      "https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/",
-      primaryPayload,
-      {
-        headers: {
-          authkey: process.env.MSG91_AUTH_KEY,
-          "Content-Type": "application/json"
-        }
-      }
-    );
-
-    console.log("MSG91 primary response", {
-      status: primaryResponse.status,
-      data: primaryResponse.data
-    });
-
-   
-
-    // ✅ SECOND BATCH FIXED
-    if (secondBatch.length > 0) {
-      const values2 = prepareValues(secondBatch, 5);
-
-      const secondPayload = {
-        integrated_number: process.env.MSG91_WHATSAPP_SENDER_ID,
-        content_type: "template",
-        payload: {
-          messaging_product: "whatsapp",
-          type: "template",
-          template: {
-            name: "customer_business_list_v1",
-            language: { code: "en", policy: "deterministic" }, // ✅ FIXED
-            namespace: process.env.MSG91_TEMPLATE_NAMESPACE,
-            to_and_components: [
-              {
-                to: [cleanMobile],
-                components: {
-                  body_1: {
-                    type: "text",
-                    value: cleanValue(lead.customerName || "Customer")
-                  },
-                  body_2: {
-                    type: "text",
-                    value: cleanValue(lead.searchText || "your search")
-                  },
-                  body_3: {
-                    type: "text",
-                    value: cleanValue(lead.location || "your area")
-                  },
-                  body_4: { type: "text", value: cleanValue(values2[0]) },
-                  body_5: { type: "text", value: cleanValue(values2[1]) },
-                  body_6: { type: "text", value: cleanValue(values2[2]) },
-                  body_7: { type: "text", value: cleanValue(values2[3]) },
-                  body_8: { type: "text", value: cleanValue(values2[4]) }
-                }
-              }
-            ]
-          }
-        }
-      };
-
-      console.log("MSG91 secondary customer payload", {
-        to: cleanMobile,
-        template: secondPayload.payload.template.name,
-        bodyValues: [
-          secondPayload.payload.to_and_components[0].components.body_4.value,
-          secondPayload.payload.to_and_components[0].components.body_5.value
-        ]
+      console.log(`[${batchId}] Sending to MSG91`, {
+        to: mobile,
+        template: payload.payload.template.name,
+        valueCount: values.filter(v => v !== '-').length
       });
 
-      const secondaryResponse = await axios.post(
-        "https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/",
-        secondPayload,
+      const response = await axios.post(
+        'https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/',
+        payload,
         {
           headers: {
             authkey: process.env.MSG91_AUTH_KEY,
-            "Content-Type": "application/json"
-          }
+            'Content-Type': 'application/json'
+          },
+          timeout: 10000
         }
       );
 
-      console.log("MSG91 secondary response", {
-        status: secondaryResponse.status,
-        data: secondaryResponse.data
+      const success = response.data?.type === 'success' || response.status === 200;
+      
+      console.log(`[${batchId}] MSG91 response`, {
+        success,
+        status: response.status,
+        type: response.data?.type,
+        message: response.data?.message,
+        requestId: response.data?.request_id
+      });
+
+      results.push({ 
+        batchIndex, 
+        success, 
+        response: response.data 
+      });
+
+      // Small delay between batches to prevent rate limiting
+      if (batchIndex < batches.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
+    } catch (error) {
+      console.error(`[${batchId}] Failed:`, {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        code: error.code
+      });
+
+      results.push({ 
+        batchIndex, 
+        success: false, 
+        error: error.response?.data || error.message 
       });
     }
-
-
-    return { success: true };
-
-  } catch (error) {
-    console.error(
-      "Error sending WhatsApp message:",
-      error?.response?.data || error.message
-    );
-    throw error;
   }
+
+  return results;
 };
+
+const buildPayload = (mobile, lead, values) => ({
+  integrated_number: process.env.MSG91_WHATSAPP_SENDER_ID,
+  content_type: 'template',
+  payload: {
+    messaging_product: 'whatsapp',
+    type: 'template',
+    template: {
+      name: 'customer_business_list_v1',
+      language: { 
+        code: 'en',
+        policy: 'deterministic' 
+      },
+      namespace: process.env.MSG91_TEMPLATE_NAMESPACE,
+      to_and_components: [{
+        to: [mobile],
+        components: {
+          body_1: { type: 'text', value: cleanValue(lead.customerName || 'Customer') },
+          body_2: { type: 'text', value: cleanValue(lead.searchText || 'your search') },
+          body_3: { type: 'text', value: cleanValue(lead.location || 'your area') },
+          body_4: { type: 'text', value: cleanValue(values[0]) },
+          body_5: { type: 'text', value: cleanValue(values[1]) },
+          body_6: { type: 'text', value: cleanValue(values[2]) },
+          body_7: { type: 'text', value: cleanValue(values[3]) },
+          body_8: { type: 'text', value: cleanValue(values[4]) }
+        }
+      }]
+    }
+  }
+});
 
 export const sendMniBusinessLead = async (cleanMobile, lead = {}) => {
 
