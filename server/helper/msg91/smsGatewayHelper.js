@@ -284,6 +284,16 @@ export const sendBusinessLead = async (cleanMobile, lead = {}) => {
 
     console.log("[WhatsApp Business] ✅ Notification sent successfully");
     console.log("[WhatsApp Business] Response status:", response.status);
+    console.log("[WhatsApp Business] Response body:", response.data);
+    
+    // Warn if response indicates potential template issue
+    if (response.data?.hasError === true) {
+      console.warn("[WhatsApp Business] ⚠️ MSG91 indicated error state:", response.data?.errors);
+    }
+    if (!response.data?.request_id) {
+      console.warn("[WhatsApp Business] ⚠️ No request_id in response - template may not exist");
+    }
+    
     return response;
 
   } catch (error) {
@@ -548,6 +558,14 @@ export const sendBusinessesToCustomer = async (
     console.log("[WhatsApp Customer] ✅ First batch sent successfully");
     console.log("[WhatsApp Customer] First batch response status:", firstBatchResponse.status);
     console.log("[WhatsApp Customer] First batch response body:", firstBatchResponse.data);
+    
+    // Warn if response indicates potential template issue
+    if (firstBatchResponse.data?.hasError === true) {
+      console.warn("[WhatsApp Customer] ⚠️ First batch - MSG91 error state:", firstBatchResponse.data?.errors);
+    }
+    if (!firstBatchResponse.data?.request_id) {
+      console.warn("[WhatsApp Customer] ⚠️ First batch - No request_id. Template 'customer_business_list_v1' may not exist in MSG91");
+    }
 
     // Step 11: Send second batch if exists
     if (secondBatch.length > 0) {
@@ -608,6 +626,13 @@ export const sendBusinessesToCustomer = async (
       console.log("[WhatsApp Customer] ✅ Second batch sent successfully");
       console.log("[WhatsApp Customer] Second batch response status:", secondBatchResponse.status);
       console.log("[WhatsApp Customer] Second batch response body:", secondBatchResponse.data);
+      
+      if (secondBatchResponse.data?.hasError === true) {
+        console.warn("[WhatsApp Customer] ⚠️ Second batch - MSG91 error state:", secondBatchResponse.data?.errors);
+      }
+      if (!secondBatchResponse.data?.request_id) {
+        console.warn("[WhatsApp Customer] ⚠️ Second batch - No request_id. Template may not exist in MSG91");
+      }
     } else {
       console.log("[WhatsApp Customer] No second batch needed");
     }
