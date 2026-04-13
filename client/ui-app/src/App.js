@@ -18,7 +18,6 @@ import PrivateRoute from './PrivateRoute';
 import BusinessListing from './Internals/clientComponent/home.js';
 import { SnackbarProvider } from 'notistack';
 import SearchResults from './Internals/clientComponent/SearchResult/SearchResult.js';
-import { categoriesServices } from './Internals/clientComponent/serviceCard/serviceCard.js';
 import BusinessDetails from './Internals/clientComponent/cards/cardDetails.js';
 import AboutUsPage from './Internals/clientComponent/footer/aboutUs/aboutUsPage.js';
 import Testimonials from './Internals/clientComponent/footer/testimonials/testimonials.js';
@@ -179,13 +178,7 @@ function App() {
             <Route path="/user/search-history" element={<LeadsCardHistory />} />
             <Route path="/business-enquiry" element={<BusinessEnquiry />} />
 
-            {categoriesServices.flatMap((category, categoryIndex) =>
-              category.items.map((item, itemIndex) => {
-                const path = item.path || item.route || `auto-path-${categoryIndex}-${itemIndex}`;
-                const Component = item.component || (() => <ComingSoon title={item.name} />);
-                return <Route key={path} path={path} element={<Component />} />;
-              })
-            )}
+           
 
             <Route element={<PrivateRoute isAuthenticated={isAuthenticated} />}>
               <Route path="/dashboard" element={<Dashboard />}>

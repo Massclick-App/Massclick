@@ -4,7 +4,11 @@ import {
   CREATE_CATEGORY_REQUEST, CREATE_CATEGORY_SUCCESS, CREATE_CATEGORY_FAILURE,
   EDIT_CATEGORY_REQUEST, EDIT_CATEGORY_SUCCESS, EDIT_CATEGORY_FAILURE,
   DELETE_CATEGORY_REQUEST, DELETE_CATEGORY_SUCCESS, DELETE_CATEGORY_FAILURE,
-  BUSINESS_CATEGORYSEARCH_REQUEST, BUSINESS_CATEGORYSEARCH_SUCCESS, BUSINESS_CATEGORYSEARCH_FAILURE
+  BUSINESS_CATEGORYSEARCH_REQUEST, BUSINESS_CATEGORYSEARCH_SUCCESS, BUSINESS_CATEGORYSEARCH_FAILURE,
+  FETCH_HOME_CATEGORY_REQUEST, FETCH_HOME_CATEGORY_SUCCESS, FETCH_HOME_CATEGORY_FAILURE,
+  FETCH_SUB_CATEGORY_REQUEST, FETCH_SUB_CATEGORY_SUCCESS, FETCH_SUB_CATEGORY_FAILURE,
+  FETCH_POPULAR_CATEGORY_REQUEST, FETCH_POPULAR_CATEGORY_SUCCESS, FETCH_POPULAR_CATEGORY_FAILURE,
+  FETCH_SERVICE_CARDS_REQUEST, FETCH_SERVICE_CARDS_SUCCESS, FETCH_SERVICE_CARDS_FAILURE
 } from "../actions/userActionTypes.js";
 import { getClientToken } from "./clientAuthAction.js";
 
@@ -125,6 +129,84 @@ export const businessCategorySearch = (query) => async (dispatch) => {
     dispatch({
       type: BUSINESS_CATEGORYSEARCH_FAILURE,
       payload: error.response?.data || error.message,
+    });
+  }
+};
+
+export const fetchHomeCategories = () => async (dispatch) => {
+  try {
+    dispatch({ type: FETCH_HOME_CATEGORY_REQUEST });
+
+    const response = await axios.get(`${API_URL}/category/home`);
+
+    dispatch({
+      type: FETCH_HOME_CATEGORY_SUCCESS,
+      payload: response.data
+    });
+
+  } catch (error) {
+    dispatch({
+      type: FETCH_HOME_CATEGORY_FAILURE,
+      payload: error.response?.data || error.message
+    });
+  }
+};
+
+export const fetchSubCategories = (parentId) => async (dispatch) => {
+  try {
+    dispatch({ type: FETCH_SUB_CATEGORY_REQUEST });
+
+    const response = await axios.get(
+      `${API_URL}/category/sub/${parentId}`
+    );
+
+    dispatch({
+      type: FETCH_SUB_CATEGORY_SUCCESS,
+      payload: response.data
+    });
+
+  } catch (error) {
+    dispatch({
+      type: FETCH_SUB_CATEGORY_FAILURE,
+      payload: error.response?.data || error.message
+    });
+  }
+};
+
+export const fetchPopularCategories = () => async (dispatch) => {
+  try {
+    dispatch({ type: FETCH_POPULAR_CATEGORY_REQUEST });
+
+    const response = await axios.get(`${API_URL}/category/popular`);
+
+    dispatch({
+      type: FETCH_POPULAR_CATEGORY_SUCCESS,
+      payload: response.data
+    });
+
+  } catch (error) {
+    dispatch({
+      type: FETCH_POPULAR_CATEGORY_FAILURE,
+      payload: error.response?.data || error.message
+    });
+  }
+};
+
+export const fetchServiceCards = () => async (dispatch) => {
+  try {
+    dispatch({ type: FETCH_SERVICE_CARDS_REQUEST });
+
+    const response = await axios.get(`${API_URL}/category/service-cards`);
+
+    dispatch({
+      type: FETCH_SERVICE_CARDS_SUCCESS,
+      payload: response.data
+    });
+
+  } catch (error) {
+    dispatch({
+      type: FETCH_SERVICE_CARDS_FAILURE,
+      payload: error.response?.data || error.message
     });
   }
 };

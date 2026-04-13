@@ -35,15 +35,15 @@
 }
 
 .service-icons {
-  width: 80px;
-  height: 80px;
+  width: 100px;
+  height: 100px;
   object-fit: contain;
   aspect-ratio: 1 / 1;
   object-fit: contain;
   margin-bottom: 12px;
   border-radius: 50%;
   padding: 10px;
-  background-color: #f0f0f0;
+  background: #fff;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
 
 }

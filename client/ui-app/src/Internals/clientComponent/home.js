@@ -1,30 +1,30 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import { useDispatch, useSelector } from "react-redux";
 import { Box, Drawer, List, ListItem, ListItemText } from '@mui/material';
+
 import HeroSection from '../clientComponent/heroSection/heroSection.js';
 import CategoryBar from '../clientComponent/categoryBar';
-import FeaturedServices from '../clientComponent/featuredService/featureService.js';
-import ServiceCardsGrid from '../clientComponent/serviceCard/serviceCard.js';
-import TrendingSearchesCarousel from './trendingSearch/trendingSearch';
-import CardCarousel from './popularSearch/popularSearch';
-import TopTourist from './topTourist/topTourist';
-import MassClickBanner from './massClickBanner/massClickBanner';
-import SearchResults from './SearchResult/SearchResult';
-// import PopularCategories from './popularCategories/popularCategories';
-import Footer from './footer/footer';
 import CardsSearch from './CardsSearch/CardsSearch';
 import OTPLoginModel from './AddBusinessModel.js';
 import { viewOtpUser } from '../../redux/actions/otpAction.js';
-// import { Helmet } from "react-helmet-async";
-// import { HOME_META } from "../clientComponent/seo/seoDocument.js";
 import SeoMeta from "./seo/seoMeta";
 import { fetchSeoMeta } from "../../redux/actions/seoAction";
-import PageHeaderContents from './pageHeaderContents/pageHeaderContents.js';
-import RelatedBlogs from './relatedBlogs/relatedBlogs.js';
+
+const FeaturedServices = lazy(() => import('../clientComponent/featuredService/featureService.js'));
+const ServiceCardsGrid = lazy(() => import('../clientComponent/serviceCard/serviceCard.js'));
+const TrendingSearchesCarousel = lazy(() => import('./trendingSearch/trendingSearch'));
+const CardCarousel = lazy(() => import('./popularSearch/popularSearch'));
+const TopTourist = lazy(() => import('./topTourist/topTourist'));
+const MassClickBanner = lazy(() => import('./massClickBanner/massClickBanner'));
+const SearchResults = lazy(() => import('./SearchResult/SearchResult'));
+const Footer = lazy(() => import('./footer/footer'));
+const PageHeaderContents = lazy(() => import('./pageHeaderContents/pageHeaderContents.js'));
+const RelatedBlogs = lazy(() => import('./relatedBlogs/relatedBlogs.js'));
 
 const STICKY_SEARCH_BAR_HEIGHT = 85;
 
 const LandingPage = () => {
+
     const dispatch = useDispatch();
 
     const { meta: seoMetaData } = useSelector(
@@ -49,11 +49,11 @@ const LandingPage = () => {
     const [isScrolled, setIsScrolled] = useState(false);
     const [locationName, setLocationName] = useState(
         localStorage.getItem("selectedLocation") || "trichy"
-    ); const [searchTerm, setSearchTerm] = useState('');
+    );
+    const [searchTerm, setSearchTerm] = useState('');
     const [categoryName, setCategoryName] = useState('');
     const [showLoginModal, setShowLoginModal] = useState(false);
     const [checkedLogin, setCheckedLogin] = useState(false);
-
 
     const heroSectionRef = useRef(null);
 
@@ -101,6 +101,7 @@ const LandingPage = () => {
                     setIsScrolled(false);
                 }
             },
+            
             {
                 root: null,
                 threshold: 0,
@@ -131,19 +132,10 @@ const LandingPage = () => {
 
     return (
         <>
-            {/* <Helmet>
-                <title>{HOME_META.title}</title>
-                <meta name="description" content={HOME_META.description} />
-                <meta name="keywords" content={HOME_META.keywords} />
-                <meta name="robots" content="index, follow" />
-                <meta name="author" content="Massclick" />
-                <meta name="publisher" content="Massclick" />
-                <link rel="canonical" href={HOME_META.canonical} />
-            </Helmet> */}
-
             <SeoMeta seoData={seoMetaData} fallback={fallbackSeo} />
 
             <Box sx={{ flexGrow: 1, bgcolor: 'background.default', width: '100%' }}>
+
                 <Drawer anchor="right" open={mobileMenuOpen} onClose={handleMobileMenuClose}>
                     {drawerContent}
                 </Drawer>
@@ -189,45 +181,51 @@ const LandingPage = () => {
                     />
                 </Box>
 
-                {isSearching ? (
-                    <Box sx={{ mt: 4, mb: 4, px: { xs: 2, sm: 4, md: 6 } }}>
-                        <SearchResults results={searchResults} />
-                    </Box>
-                ) : (
-                    <>
-                        <Box sx={{ mb: { xs: 4, sm: 5, md: 6 } }}>
-                            <FeaturedServices />
-                        </Box>
+                <Suspense fallback={<div style={{ height: 200 }}>Loading...</div>}>
 
-                        <Box sx={{ mb: { xs: 4, sm: 5, md: 6 } }}>
-                            <ServiceCardsGrid />
+                    {isSearching ? (
+                        <Box sx={{ mt: 4, mb: 4, px: { xs: 2, sm: 4, md: 6 } }}>
+                            <SearchResults results={searchResults} />
                         </Box>
+                    ) : (
+                        <>
+                            <Box sx={{ mb: { xs: 4, sm: 5, md: 6 } }}>
+                                <FeaturedServices />
+                            </Box>
 
-                        <Box sx={{ mb: { xs: 4, sm: 5, md: 6 } }}>
-                            <MassClickBanner />
-                        </Box>
+                            <Box sx={{ mb: { xs: 4, sm: 5, md: 6 } }}>
+                                <ServiceCardsGrid />
+                            </Box>
 
-                        <Box sx={{ mb: { xs: 4, sm: 5, md: 6 } }}>
-                            <TrendingSearchesCarousel />
-                        </Box>
+                            <Box sx={{ mb: { xs: 4, sm: 5, md: 6 } }}>
+                                <MassClickBanner />
+                            </Box>
 
-                        <Box sx={{ mb: { xs: 4, sm: 5, md: 6 } }}>
-                            <CardCarousel />
-                        </Box>
+                            <Box sx={{ mb: { xs: 4, sm: 5, md: 6 } }}>
+                                <TrendingSearchesCarousel />
+                            </Box>
 
-                        <Box sx={{ mb: { xs: 4, sm: 5, md: 6 } }}>
-                            <TopTourist />
-                        </Box>
+                            <Box sx={{ mb: { xs: 4, sm: 5, md: 6 } }}>
+                                <CardCarousel />
+                            </Box>
 
-                        <Box sx={{ mb: { xs: 4, sm: 5, md: 6 } }}>
-                            <RelatedBlogs location={locationName} />
-                        </Box>
-                        <Box sx={{ mb: { xs: 4, sm: 5, md: 6 } }}>
-                            <PageHeaderContents />
-                        </Box>
-                        <Footer />
-                    </>
-                )}
+                            <Box sx={{ mb: { xs: 4, sm: 5, md: 6 } }}>
+                                <TopTourist />
+                            </Box>
+
+                            <Box sx={{ mb: { xs: 4, sm: 5, md: 6 } }}>
+                                <RelatedBlogs location={locationName} />
+                            </Box>
+
+                            <Box sx={{ mb: { xs: 4, sm: 5, md: 6 } }}>
+                                <PageHeaderContents />
+                            </Box>
+
+                            <Footer />
+                        </>
+                    )}
+
+                </Suspense>
 
                 <OTPLoginModel
                     open={showLoginModal}

@@ -1,118 +1,65 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { logSearchActivity } from "../../../redux/actions/businessListAction";
+import { fetchServiceCards } from "../../../redux/actions/categoryAction";
 import "./serviceCard.css";
-import { iconMap } from "../../../utils/iconMap";
+
+// ==============================
+// FIXED SECTION ORDER (VERY IMPORTANT)
+// ==============================
+const SECTION_ORDER = [
+  "Repair and Services",
+  "Services",
+  "Hot Categories",
+  "Building Materials"
+];
 
 // ==============================
 // Helper: Create SEO slug
 // ==============================
-const createSlug = (text) => {
-
-  if (!text) return "";
-
-  if (typeof text === "object") {
-    text = text.slug || text.name || "";
-  }
-
-  if (typeof text !== "string") return "";
-
+const createSlug = (text = "") => {
   return text
     .toLowerCase()
     .trim()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
-
 };
-
 
 // ==============================
 // Helper: Generate SEO alt text
 // ==============================
 const generateAltText = (serviceName, districtSlug) => {
-  return `${serviceName} in ${districtSlug} - Best ${serviceName.toLowerCase()} services | MassClick`;
+  const safeName = serviceName || "Service";
+  return `${safeName} in ${districtSlug} - Best ${safeName.toLowerCase()} services | MassClick`;
 };
 
-
 // ==============================
-// Categories Data
-// ==============================
-export const categoriesServices = [
-  {
-    title: "Repair and Services",
-    items: [
-      { name: "Car Service", slug: "car-service", icon: "car-service" },
-      { name: "TV Service", slug: "tv-service", icon: "tv-service" },
-      { name: "Bike Service", slug: "bike-service", icon: "bike-service" }
-    ]
-  },
-  {
-    title: "Services",
-    items: [
-      { name: "Pest Control Service", slug: "pest-control-service", icon: "pest-control-service" },
-      { name: "AC Service", slug: "ac-service", icon: "ac-service" },
-      { name: "Computer And Laptop Service", slug: "computer-laptop-service", icon: "computer-laptop-service" }
-    ]
-  },
-  {
-    title: "Hot Categories",
-    items: [
-      { name: "Catering Services", slug: "catering-services", icon: "catering-services" },
-      { name: "Transports", slug: "transporter", icon: "transporter" },
-      { name: "Driving School", slug: "driving-school", icon: "driving-school" }
-    ]
-  },
-  {
-    title: "Building Materials",
-    items: [
-      { name: "Fencing", slug: "fencing", icon: "fencing" },
-      { name: "Interlock Bricks", slug: "interlock-bricks", icon: "interlock-bricks" },
-      { name: "Steel Dealer", slug: "steel-dealer", icon: "steel-dealer" }
-    ]
-  }
-];
-
-
-// ==============================
-// Find service helper
-// ==============================
-const findServiceByAlias = (input) => {
-
-  if (!input) return null;
-
-  const normalized = input.toLowerCase().trim();
-
-  for (const section of categoriesServices) {
-    for (const item of section.items) {
-      if (
-        item.slug === normalized ||
-        item.name.toLowerCase() === normalized ||
-        item.aliases?.includes(normalized)
-      ) {
-        return item;
-      }
-    }
-  }
-
-  return null;
-
-};
-
-
-// ==============================
-// Main Component
+// MAIN COMPONENT
 // ==============================
 const ServiceCardsGrid = () => {
 
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
+  const { serviceCards = [], loading } = useSelector(
+    (state) => state.categoryReducer
+  );
+
   const selectedDistrict = useSelector(
     (state) => state.locationReducer.selectedDistrict
   );
 
-  // Memoized slug
+  // ==============================
+  // FETCH API
+  // ==============================
+  useEffect(() => {
+    dispatch(fetchServiceCards());
+  }, [dispatch]);
+
+  // ==============================
+  // DISTRICT SLUG
+  // ==============================
   const districtSlug = useMemo(() => {
     return (
       selectedDistrict?.slug ||
@@ -122,15 +69,12 @@ const ServiceCardsGrid = () => {
     );
   }, [selectedDistrict]);
 
-
-  // Click handler
+  // ==============================
+  // CLICK HANDLER
+  // ==============================
   const handleClick = (service) => {
 
-    const found = findServiceByAlias(service.slug);
-
-    if (!found) return;
-
-    const categoryName = found.name;
+    const categoryName = service.name;
     const locationName = selectedDistrict || "Global";
 
     const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
@@ -151,25 +95,50 @@ const ServiceCardsGrid = () => {
       )
     );
 
-    navigate(`/${districtSlug}/${found.slug}`);
-
+    navigate(`/${districtSlug}/${service.slug}`);
   };
 
+  // ==============================
+  // GROUP DATA (FIXED DESIGN LOGIC)
+  // ==============================
+  const groupedData = useMemo(() => {
+    const map = {};
 
-  // Render
+    // Group API data
+    serviceCards.forEach((item) => {
+      const section = item.section;
+
+      if (!map[section]) {
+        map[section] = [];
+      }
+
+      map[section].push(item);
+    });
+
+    // FORCE ORDER (VERY IMPORTANT)
+    return SECTION_ORDER.map((section) => ({
+      title: section,
+      items: map[section] || []
+    }));
+
+  }, [serviceCards]);
+
+  // ==============================
+  // RENDER
+  // ==============================
   return (
 
-    <section
-      className="service-cards-container"
-      aria-label="Service Categories"
-    >
+    <section className="service-cards-container">
 
-      {categoriesServices.map((category) => (
+      {loading && <p>Loading...</p>}
 
-        <article
-          className="category-card"
-          key={category.title}
-        >
+      {!loading && serviceCards.length === 0 && (
+        <p>No services found</p>
+      )}
+
+      {groupedData.map((category) => (
+
+        <article className="category-card" key={category.title}>
 
           <h2 className="category-title">
             {category.title}
@@ -182,13 +151,11 @@ const ServiceCardsGrid = () => {
               const altText = generateAltText(item.name, districtSlug);
 
               return (
-
                 <div
-                  key={item.slug}
+                  key={item.slug || index}
                   className="item-card"
                   role="button"
                   tabIndex={0}
-                  aria-label={`View ${item.name}`}
                   onClick={() => handleClick(item)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
@@ -197,30 +164,24 @@ const ServiceCardsGrid = () => {
                   }}
                 >
 
-                  {/* SEO Optimized Image */}
                   <img
-                    src={iconMap[item.icon]}
+                    src={item.icon || "/default.webp"}
                     alt={altText}
-                    title={`${item.name} in ${districtSlug}`}
+                    title={item.name}
                     className="item-icon"
-                    width="64"
-                    height="64"
                     loading="lazy"
-                    decoding="async"
-                    fetchpriority={index < 2 ? "high" : "low"}
                     onError={(e) => {
                       e.target.onerror = null;
-                      e.target.src = iconMap["car-service"];
+                      e.target.src = "/default.webp";
                     }}
                   />
+
                   <p className="item-name">
                     {item.name}
                   </p>
 
                 </div>
-
               );
-
             })}
 
           </div>
@@ -232,8 +193,6 @@ const ServiceCardsGrid = () => {
     </section>
 
   );
-
 };
-
 
 export default ServiceCardsGrid;
