@@ -147,14 +147,14 @@ export const logSearchAction = async (req, res) => {
       createdAt: { $gte: fiveMinutesAgo }
     });
 
-    if (recentLog) {
+    // if (recentLog) {
 
-      return res.status(200).json({
-        success: true,
-        message: "Lead already sent recently (5 min protection)",
-        detectedCategory: finalCategoryName
-      });
-    }
+    //   return res.status(200).json({
+    //     success: true,
+    //     message: "Lead already sent recently (5 min protection)",
+    //     detectedCategory: finalCategoryName
+    //   });
+    // }
 
     const savedLog = await createSearchLog({
 
