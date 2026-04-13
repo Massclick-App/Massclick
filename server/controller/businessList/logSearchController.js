@@ -2,7 +2,7 @@ import { createSearchLog, getAllSearchLogs, getMatchedSearchLogs, updateSearchDa
 import CategoryModel from "../../model/category/categoryModel.js";
 import { getSignedUrlByKey } from "../../s3Uploder.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
-import { sendBusinessesToCustomer, sendBusinessLead, sendCustomerBusinessList } from "../../helper/msg91/smsGatewayHelper.js";
+import { sendBusinessesToCustomer, sendBusinessLead } from "../../helper/msg91/smsGatewayHelper.js";
 // import leadsRotationModel from "../../model/leadsData/leadsRotationalModel.js";
 import searchLogModel from "../../model/businessList/searchLogModel.js";
 
@@ -71,18 +71,6 @@ export const logSearchAction = async (req, res) => {
   try {
     const { categoryName, location, searchedUserText, userDetails } = req.body;
 
-    console.log("logSearchAction request", {
-      categoryName,
-      location,
-      searchedUserText,
-      userDetails: {
-        userName: userDetails?.userName,
-        mobileNumber1: userDetails?.mobileNumber1,
-        mobileNumber2: userDetails?.mobileNumber2,
-        email: userDetails?.email
-      }
-    });
-
     if (!searchedUserText || !searchedUserText.trim()) {
       return res.status(400).json({
         success: false,
@@ -145,22 +133,10 @@ export const logSearchAction = async (req, res) => {
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/(^-|-$)+/g, "");
 
-    console.log("Detected category", {
-      finalCategoryName,
-      categorySlug,
-      categoryNameProvided: categoryName,
-      searchText: cleanSearchText
-    });
-
     const category = await CategoryModel.findOne(
       { slug: categorySlug },
       { categoryImageKey: 1 }
     ).lean();
-
-    console.log("Category lookup result", {
-      categorySlug,
-      categoryImageKey: category?.categoryImageKey || null
-    });
 
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
 
@@ -203,12 +179,6 @@ export const logSearchAction = async (req, res) => {
 
     });
 
-    console.log("Search log saved", {
-      searchLogId: savedLog._id?.toString?.(),
-      categoryName: finalCategoryName,
-      location: normalizedLocation,
-      whatsapp: false
-    });
 
     const locationGroups = {
       trichy: ["trichy", "tiruchirappalli"]
@@ -245,14 +215,6 @@ export const logSearchAction = async (req, res) => {
       .limit(10)
       .lean();
 
-    console.log("Business lookup result", {
-      finalCategoryName,
-      normalizedLocation,
-      locationList,
-      businessCount: businesses.length,
-      businessIds: businesses.map(b => b._id?.toString())
-    });
-
     if (!businesses.length) {
 
       return res.status(200).json({
@@ -287,26 +249,17 @@ export const logSearchAction = async (req, res) => {
     // SEND WHATSAPP TO BUSINESSES
 
     for (const business of businesses) {
+
       const ownerMobile =
         business.contactList || business.whatsappNumber;
 
       const cleanMobile = cleanIndianMobile(ownerMobile);
 
-      console.log("Business lead candidate", {
-        businessName: business.businessName,
-        ownerMobile,
-        cleanMobile
-      });
+      if (!cleanMobile) continue;
 
-      if (!cleanMobile) {
-        console.warn("Skipping business due to invalid mobile", {
-          businessName: business.businessName,
-          ownerMobile
-        });
-        continue;
-      }
 
       try {
+
         await sendBusinessLead(cleanMobile, leadData);
 
         businessSendSuccess = true;
@@ -340,51 +293,37 @@ export const logSearchAction = async (req, res) => {
       userDetails.mobileNumber1
     );
 
-    if (!cleanCustomerMobile) {
-      console.warn("Invalid customer mobile, cannot send WhatsApp to customer", {
-        mobile: userDetails.mobileNumber1
-      });
-    }
 
     if (cleanCustomerMobile) {
-      console.log("Sending customer WhatsApp", {
-        customerMobile: cleanCustomerMobile,
-        category: finalCategoryName,
-        businessCount: businesses.length,
-        location: normalizedLocation
-      });
 
       try {
+
         await sendBusinessesToCustomer(
+
           cleanCustomerMobile,
+
           leadData,
+
           businesses
+
         );
 
         customerSendSuccess = true;
-      } catch (err) {
+
+      }
+
+      catch (err) {
+
         console.error(
-          "Customer WhatsApp failed (primary template)",
+
+          "Customer WhatsApp failed",
+
           err.response?.data || err.message
+
         );
 
-        try {
-          await sendCustomerBusinessList(
-            cleanCustomerMobile,
-            userDetails.userName,
-            normalizedLocation,
-            finalCategoryName,
-            businesses
-          );
-          customerSendSuccess = true;
-          console.info("Customer WhatsApp sent using fallback template");
-        } catch (fallbackErr) {
-          console.error(
-            "Customer WhatsApp failed (fallback template)",
-            fallbackErr.response?.data || fallbackErr.message
-          );
-        }
       }
+
     }
 
     const updated = await searchLogModel.findOneAndUpdate(
@@ -400,14 +339,6 @@ export const logSearchAction = async (req, res) => {
         message: "Duplicate blocked"
       });
     }
-
-    console.log("logSearchAction completed", {
-      finalCategoryName,
-      totalBusinesses: businesses.length,
-      notifiedBusinesses,
-      businessSendSuccess,
-      customerSendSuccess
-    });
 
     return res.status(202).json({
 
