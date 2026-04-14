@@ -124,7 +124,7 @@ export const logSearchAction = async (req, res) => {
 
         finalCategoryName = possibleCategory
           ? possibleCategory.categoryName
-          : "Other";
+          : searchedUserText;
       }
     }
 
@@ -144,17 +144,25 @@ export const logSearchAction = async (req, res) => {
       categoryName: finalCategoryName,
       location: normalizedLocation,
       "userDetails.mobileNumber1": userDetails.mobileNumber1,
+      searchedUserText: cleanSearchText,
       createdAt: { $gte: fiveMinutesAgo }
     });
 
-    if (recentLog) {
+    // const recentLog = await searchLogModel.findOne({
+    //   categoryName: finalCategoryName,
+    //   location: normalizedLocation,
+    //   "userDetails.mobileNumber1": userDetails.mobileNumber1,
+    //   createdAt: { $gte: fiveMinutesAgo }
+    // });
 
-      return res.status(200).json({
-        success: true,
-        message: "Lead already sent recently (5 min protection)",
-        detectedCategory: finalCategoryName
-      });
-    }
+    // if (recentLog) {
+
+    //   return res.status(200).json({
+    //     success: true,
+    //     message: "Lead already sent recently (5 min protection)",
+    //     detectedCategory: finalCategoryName
+    //   });
+    // }
 
     const savedLog = await createSearchLog({
 
@@ -195,10 +203,8 @@ export const logSearchAction = async (req, res) => {
 
     const businesses = await businessListModel.find(
       {
-        category: { $regex: `^${finalCategoryName}$`, $options: "i" },
-        location: {
-          $in: locationList.map(loc => new RegExp(loc, "i"))
-        },
+        category: { $regex: finalCategoryName, $options: "i" },
+        location: { $regex: normalizedLocation, $options: "i" },
         isActive: true,
         businessesLive: true
       },
@@ -225,6 +231,9 @@ export const logSearchAction = async (req, res) => {
 
     }
 
+    console.log("SEARCH TEXT:", searchedUserText);
+    console.log("FINAL CATEGORY:", finalCategoryName);
+
     const leadData = {
 
       searchText: searchedUserText,
@@ -246,7 +255,6 @@ export const logSearchAction = async (req, res) => {
     const notifiedBusinesses = [];
 
 
-    // SEND WHATSAPP TO BUSINESSES
 
     for (const business of businesses) {
 
@@ -257,13 +265,11 @@ export const logSearchAction = async (req, res) => {
 
       if (!cleanMobile) continue;
 
-
       try {
 
         await sendBusinessLead(cleanMobile, leadData);
 
         businessSendSuccess = true;
-
 
         notifiedBusinesses.push({
 
@@ -292,7 +298,6 @@ export const logSearchAction = async (req, res) => {
     const cleanCustomerMobile = cleanIndianMobile(
       userDetails.mobileNumber1
     );
-
 
     if (cleanCustomerMobile) {
 
@@ -326,19 +331,10 @@ export const logSearchAction = async (req, res) => {
 
     }
 
-    const updated = await searchLogModel.findOneAndUpdate(
-      { _id: savedLog._id, whatsapp: false },
-      { whatsapp: true },
-      { new: true }
+    await searchLogModel.updateOne(
+      { _id: savedLog._id },
+      { whatsapp: true }
     );
-
-    if (!updated) {
-      console.log("🚫 Duplicate WhatsApp prevented");
-      return res.status(200).json({
-        success: true,
-        message: "Duplicate blocked"
-      });
-    }
 
     return res.status(202).json({
 
@@ -355,7 +351,6 @@ export const logSearchAction = async (req, res) => {
       whatsappUpdated: businessSendSuccess && customerSendSuccess
 
     });
-
 
   }
 

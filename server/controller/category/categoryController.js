@@ -196,7 +196,6 @@ export const getSubCategoriesAction = async (req, res) => {
     const allowedNames = categoriesData[parentId]?.map(i =>
       i.name.toLowerCase().trim()
     ) || [];
-console.log("allowedNames", allowedNames);
 
     const data = await categoryModel.find({
       categoryType: "Sub Category",

@@ -18,7 +18,9 @@ const SECTION_ORDER = [
 // ==============================
 // Helper: Create SEO slug
 // ==============================
-const createSlug = (text = "") => {
+const createSlug = (text) => {
+  if (!text || typeof text !== "string") return "";
+
   return text
     .toLowerCase()
     .trim()
@@ -31,7 +33,10 @@ const createSlug = (text = "") => {
 // ==============================
 const generateAltText = (serviceName, districtSlug) => {
   const safeName = serviceName || "Service";
-  return `${safeName} in ${districtSlug} - Best ${safeName.toLowerCase()} services | MassClick`;
+
+  return `${safeName} in ${districtSlug} - Best ${
+    typeof safeName === "string" ? safeName.toLowerCase() : "service"
+  } services | MassClick`;
 };
 
 // ==============================
@@ -60,14 +65,19 @@ const ServiceCardsGrid = () => {
   // ==============================
   // DISTRICT SLUG
   // ==============================
-  const districtSlug = useMemo(() => {
-    return (
-      selectedDistrict?.slug ||
-      createSlug(selectedDistrict) ||
-      localStorage.getItem("selectedDistrictSlug") ||
-      "tiruchirappalli"
-    );
-  }, [selectedDistrict]);
+ const districtSlug = useMemo(() => {
+  if (selectedDistrict?.slug) return selectedDistrict.slug;
+
+  if (typeof selectedDistrict === "string") {
+    return createSlug(selectedDistrict);
+  }
+
+  if (selectedDistrict?.name) {
+    return createSlug(selectedDistrict.name);
+  }
+
+  return localStorage.getItem("selectedDistrictSlug") || "tiruchirappalli";
+}, [selectedDistrict]);
 
   // ==============================
   // CLICK HANDLER
