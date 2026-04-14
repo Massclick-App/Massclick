@@ -199,21 +199,41 @@ export const getSubCategoriesAction = async (req, res) => {
   try {
     const { parentId } = req.params;
 
+    console.log("getSubCategoriesAction called with parentId:", parentId);
+    console.log("Type of parentId:", typeof parentId);
+
     const BASE_URL = "https://massclickdev.s3.ap-southeast-2.amazonaws.com/";
 
-    const allowedNames = categoriesData[parentId]?.map(i =>
-      i.name.toLowerCase().trim()
-    ) || [];
-    console.log("allowedNames", allowedNames);
+    // Debug: Check what categoriesData contains
+    console.log("categoriesData keys:", Object.keys(categoriesData));
+    console.log("categoriesData[parentId] exists:", !!categoriesData[parentId]);
+    console.log("categoriesData[parentId] content:", categoriesData[parentId]);
+
+    const allowedNames = categoriesData[parentId]?.map(i => {
+      const normalized = i.name.toLowerCase().trim();
+      console.log(`Mapping "${i.name}" -> "${normalized}"`);
+      return normalized;
+    }) || [];
+
+    console.log("Final allowedNames array:", allowedNames);
+    console.log("allowedNames length:", allowedNames.length);
 
     const data = await categoryModel.find({
       categoryType: "Sub Category",
       isActive: true
     }).lean();
 
-    const filtered = data.filter(item =>
-      allowedNames.includes(item.category.toLowerCase().trim())
-    );
+    console.log("Found subcategories in DB:", data.length);
+    console.log("DB subcategory names:", data.map(item => item.category));
+
+    const filtered = data.filter(item => {
+      const itemName = item.category.toLowerCase().trim();
+      const isAllowed = allowedNames.includes(itemName);
+      console.log(`Checking "${item.category}" -> "${itemName}" -> allowed: ${isAllowed}`);
+      return isAllowed;
+    });
+
+    console.log("Filtered results:", filtered.length, filtered.map(item => item.category));
 
     if (filtered.length > 0) {
       return res.json(
@@ -235,10 +255,12 @@ export const getSubCategoriesAction = async (req, res) => {
       icon: "/icons/default.webp"
     })) || [];
 
+    console.log("Using fallback data:", fallback.length, fallback.map(item => item.name));
+
     res.json(fallback);
 
   } catch (error) {
-    console.error(error);
+    console.error("getSubCategoriesAction error:", error);
     res.status(500).json({ message: error.message });
   }
 };
