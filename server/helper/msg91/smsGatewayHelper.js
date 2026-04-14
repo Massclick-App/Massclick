@@ -3,93 +3,26 @@ import dotenv from "dotenv";
 dotenv.config();
 import businessReviewModel from "../../model/businessReview/businessReviewModel.js";
 
-// ============================================================================
-// UTILITY FUNCTIONS
-// ============================================================================
+// const MSG91_AUTHKEY = process.env.MSG91_AUTHKEY;
+// const MSG91_FLOW_ID = process.env.MSG91_WHATSAPP_FLOW_ID; 
+// const MSG91_SENDER = process.env.MSG91_WHATSAPP_SENDER; 
 
-const cleanIndianMobile = (mobile) => {
-  if (!mobile) return null;
-  
-  let clean = mobile.toString().replace(/\D/g, "");
-  
-  if (clean.startsWith("91") && clean.length === 12) {
-    clean = clean.slice(2);
-  }
-  
-  if (/^[6-9]\d{9}$/.test(clean)) {
-    return clean;
-  }
-  
-  return null;
-};
-
-const cleanValue = (val) => {
-  if (!val || val === "-") return "-";
-  
-  return val
-    .toString()
-    .replace(/\n/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-};
-
-const validateMobileNumber = (number) => {
-  const cleanNumber = number.toString().replace(/\D/g, "");
-  
-  if (cleanNumber.length !== 10) {
-    throw new Error("Invalid phone number. Must be 10 digits.");
-  }
-  
-  return cleanNumber;
-};
-
-// ============================================================================
-// MSG91 API CONFIGURATION
-// ============================================================================
-
-const MSG91_CONFIG = {
-  authKey: process.env.MSG91_AUTH_KEY,
-  templateId: process.env.MSG91_TEMPLATE_ID,
-  baseUrl: process.env.MSG91_BASE_URL,
-  verifyUrl: process.env.MSG91_VERIFY_URL,
-  senderId: process.env.MSG91_WHATSAPP_SENDER_ID,
-  templateNamespace: process.env.MSG91_TEMPLATE_NAMESPACE,
-  whatsappApiUrl: "https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/"
-};
-
-const makeWhatsAppRequest = async (payload) => {
-  try {
-    const response = await axios.post(
-      MSG91_CONFIG.whatsappApiUrl,
-      payload,
-      {
-        headers: {
-          authkey: MSG91_CONFIG.authKey,
-          "Content-Type": "application/json"
-        }
-      }
-    );
-    return response.data;
-  } catch (error) {
-    console.error("❌ MSG91 WhatsApp Error:", error.response?.data || error.message);
-    throw error;
-  }
-};
-
-// ============================================================================
-// OTP FUNCTIONS (PRODUCTION)
-// ============================================================================
-
+// Send OTP
 export const sendOtp = async (number) => {
   try {
-    const { authKey, templateId, baseUrl } = MSG91_CONFIG;
-    
+    const authKey = process.env.MSG91_AUTH_KEY;
+    const templateId = process.env.MSG91_TEMPLATE_ID;
+    const baseUrl = process.env.MSG91_BASE_URL;
+
     if (!authKey || !templateId || !baseUrl) {
       throw new Error("MSG91 environment variables missing.");
     }
-    
-    const cleanNumber = validateMobileNumber(number);
-    
+
+    const cleanNumber = number.replace(/\D/g, "");
+    if (cleanNumber.length !== 10) {
+      throw new Error("Invalid phone number. Must be 10 digits.");
+    }
+
     const response = await axios.post(
       baseUrl,
       {
@@ -103,11 +36,11 @@ export const sendOtp = async (number) => {
         },
       }
     );
-    
+
     if (response.data.type !== "success") {
       throw new Error(response.data.message || "Failed to send OTP.");
     }
-    
+
     return { success: true, apiResponse: response.data };
   } catch (error) {
     console.error("Error sending OTP:", error.response?.data || error.message);
@@ -115,20 +48,25 @@ export const sendOtp = async (number) => {
   }
 };
 
+// Verify OTP
 export const verifyOtp = async (number, otp) => {
   try {
-    const { authKey, verifyUrl } = MSG91_CONFIG;
-    
+    const authKey = process.env.MSG91_AUTH_KEY;
+    const verifyUrl = process.env.MSG91_VERIFY_URL;
+
     if (!authKey || !verifyUrl) {
       throw new Error("MSG91 environment variables missing.");
     }
-    
-    const cleanNumber = validateMobileNumber(number);
-    
+
+    const cleanNumber = number.replace(/\D/g, "");
+    if (cleanNumber.length !== 10) {
+      throw new Error("Invalid phone number. Must be 10 digits.");
+    }
+
     if (!otp) {
       throw new Error("OTP is required for verification.");
     }
-    
+
     const response = await axios.post(
       verifyUrl,
       {
@@ -142,13 +80,13 @@ export const verifyOtp = async (number, otp) => {
         },
       }
     );
-    
+
     const { type, message } = response.data;
-    
+
     if (type === "success" || message === "Mobile no. already verified") {
       return { success: true, apiResponse: response.data };
     }
-    
+
     throw new Error(message || "OTP verification failed.");
   } catch (error) {
     console.error("Error verifying OTP:", error.response?.data || error.message);
@@ -156,16 +94,16 @@ export const verifyOtp = async (number, otp) => {
   }
 };
 
-// ============================================================================
-// OTP FUNCTIONS (DUMMY/DEVELOPMENT)
-// ============================================================================
-
 export const fakesendOtp = async (number) => {
   try {
-    const cleanNumber = validateMobileNumber(number);
-    
+    const cleanNumber = number.replace(/\D/g, "");
+    if (cleanNumber.length !== 10) {
+      throw new Error("Invalid phone number. Must be 10 digits.");
+    }
+
     console.log(`[DUMMY] OTP would be sent to ${cleanNumber}`);
-    
+
+    // Simulate successful response
     return {
       success: true,
       apiResponse: {
@@ -180,16 +118,21 @@ export const fakesendOtp = async (number) => {
   }
 };
 
+// Verify OTP (Dummy - accepts any OTP)
 export const fakeverifyOtp = async (number, otp) => {
   try {
-    const cleanNumber = validateMobileNumber(number);
-    
+    const cleanNumber = number.replace(/\D/g, "");
+    if (cleanNumber.length !== 10) {
+      throw new Error("Invalid phone number. Must be 10 digits.");
+    }
+
     if (!otp) {
       throw new Error("OTP is required for verification.");
     }
-    
+
     console.log(`[DUMMY] Verifying OTP for ${cleanNumber} - OTP: ${otp} (ANY OTP ACCEPTED)`);
-    
+
+    // Always succeed - accept any OTP
     return {
       success: true,
       apiResponse: {
@@ -204,19 +147,14 @@ export const fakeverifyOtp = async (number, otp) => {
   }
 };
 
-// ============================================================================
-// WHATSAPP BUSINESS NOTIFICATION FUNCTIONS
-// ============================================================================
-
 export const sendWhatsAppMessage = async (ownerMobile, lead = {}) => {
-  const cleanMobile = cleanIndianMobile(ownerMobile);
-  
-  if (!cleanMobile) {
+  const cleanMobile = ownerMobile.replace(/\D/g, "");
+  if (cleanMobile.length !== 10) {
     throw new Error("Invalid mobile number");
   }
-  
+
   const payload = {
-    integrated_number: MSG91_CONFIG.senderId,
+    integrated_number: process.env.MSG91_WHATSAPP_SENDER_ID,
     content_type: "template",
     payload: {
       messaging_product: "whatsapp",
@@ -227,7 +165,7 @@ export const sendWhatsAppMessage = async (ownerMobile, lead = {}) => {
           code: "en_US",
           policy: "deterministic"
         },
-        namespace: MSG91_CONFIG.templateNamespace,
+        namespace: process.env.MSG91_TEMPLATE_NAMESPACE,
         to_and_components: [
           {
             to: [cleanMobile],
@@ -243,13 +181,25 @@ export const sendWhatsAppMessage = async (ownerMobile, lead = {}) => {
       }
     }
   };
-  
-  return await makeWhatsAppRequest(payload);
+
+  const response = await axios.post(
+    "https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/",
+    payload,
+    {
+      headers: {
+        authkey: process.env.MSG91_AUTH_KEY,
+        "Content-Type": "application/json"
+      }
+    }
+  );
+
+  return response.data;
 };
 
 export const sendBusinessLead = async (cleanMobile, lead = {}) => {
+
   const payload = {
-    integrated_number: MSG91_CONFIG.senderId,
+    integrated_number: process.env.MSG91_WHATSAPP_SENDER_ID,
     content_type: "template",
     payload: {
       messaging_product: "whatsapp",
@@ -260,7 +210,7 @@ export const sendBusinessLead = async (cleanMobile, lead = {}) => {
           code: "en",
           policy: "deterministic"
         },
-        namespace: MSG91_CONFIG.templateNamespace,
+        namespace: process.env.MSG91_TEMPLATE_NAMESPACE,
         to_and_components: [
           {
             to: [cleanMobile],
@@ -276,101 +226,92 @@ export const sendBusinessLead = async (cleanMobile, lead = {}) => {
       }
     }
   };
-  
-  return await makeWhatsAppRequest(payload);
-};
 
-export const sendMniBusinessLead = async (cleanMobile, lead = {}) => {
-  try {
-    const payload = {
-      integrated_number: MSG91_CONFIG.senderId,
-      content_type: "template",
-      payload: {
-        messaging_product: "whatsapp",
-        type: "template",
-        template: {
-          name: "mni_requirement_alert_v1",
-          language: {
-            code: "en_US",
-            policy: "deterministic"
-          },
-          namespace: MSG91_CONFIG.templateNamespace,
-          to_and_components: [
-            {
-              to: [`91${cleanMobile}`],
-              components: {
-                body_1: { type: "text", value: lead.businessName },
-                body_2: { type: "text", value: lead.location },
-                body_3: { type: "text", value: lead.category },
-                body_4: { type: "text", value: lead.description },
-                body_5: { type: "text", value: lead.customerMobile }
-              }
-            }
-          ]
-        }
+  return axios.post(
+    "https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/",
+    payload,
+    {
+      headers: {
+        authkey: process.env.MSG91_AUTH_KEY,
+        "Content-Type": "application/json"
       }
-    };
-    
-    return await makeWhatsAppRequest(payload);
-  } catch (error) {
-    console.error("❌ MSG91 ERROR:", error.response?.data || error.message);
-    throw error;
-  }
+    }
+  );
 };
 
-// ============================================================================
-// WHATSAPP CUSTOMER NOTIFICATION FUNCTIONS
-// ============================================================================
+const cleanValue = (val) => {
+  if (!val || val === "-") return "-";
 
-export const sendBusinessesToCustomer = async (cleanMobile, lead, businesses) => {
+  return val
+    .toString()
+    .replace(/\n/g, " ")   // ❗ REMOVE NEWLINES
+    .replace(/\s+/g, " ")  // normalize spaces
+    .trim();
+};
+
+export const sendBusinessesToCustomer = async (
+  cleanMobile,
+  lead,
+  businesses
+) => {
   try {
     const normalize = (text = "") => text.toLowerCase().trim();
-    
+
     const locationGroups = {
       trichy: ["trichy", "tiruchirappalli"]
     };
-    
+
     const leadLocationRaw = normalize(lead.location);
+
     let groupKey = null;
-    
+
     for (const key in locationGroups) {
-      if (locationGroups[key].some((loc) => leadLocationRaw.includes(loc))) {
+      if (
+        locationGroups[key].some((loc) =>
+          leadLocationRaw.includes(loc)
+        )
+      ) {
         groupKey = key;
         break;
       }
     }
-    
-    // Filter businesses by location
+
     const filteredBusinesses = businesses.filter((biz) => {
-      const rawLocation = normalize(biz.location || biz.address || "");
-      
+      const rawLocation = normalize(
+        biz.location || biz.address || ""
+      );
+
       if (groupKey) {
-        return locationGroups[groupKey].some((loc) => rawLocation.includes(loc));
+        return locationGroups[groupKey].some((loc) =>
+          rawLocation.includes(loc)
+        );
       }
-      
+
       return rawLocation.includes(leadLocationRaw);
     });
-    
-    // Remove duplicates
+
     const uniqueBusinesses = [];
     const seen = new Set();
-    
-    const sourceList = filteredBusinesses.length ? filteredBusinesses : businesses;
-    
+
+    const sourceList = filteredBusinesses.length
+      ? filteredBusinesses
+      : businesses;
+
     sourceList.forEach((biz, index) => {
-      const key = biz._id ? biz._id.toString() : `${biz.businessName}-${index}`;
-      
+      const key = biz._id
+        ? biz._id.toString()
+        : `${biz.businessName}-${index}`;
+
       if (!seen.has(key)) {
         seen.add(key);
         uniqueBusinesses.push(biz);
       }
     });
-    
+
     const finalBusinesses = uniqueBusinesses.slice(0, 10);
-    
-    // Get reviews data
+
     const businessIds = finalBusinesses.map((b) => b._id);
-    
+
     const reviews = await businessReviewModel.aggregate([
       {
         $match: {
@@ -386,88 +327,71 @@ export const sendBusinessesToCustomer = async (cleanMobile, lead, businesses) =>
         }
       }
     ]);
-    
+
     const reviewMap = {};
+
     reviews.forEach((r) => {
       reviewMap[r._id.toString()] = {
         avgRating: r.avgRating.toFixed(1),
         totalReviews: r.totalReviews
       };
     });
-    
-    // Format business display
+
     const formatBusiness = (biz, index) => {
       const contact = Array.isArray(biz.contactList)
         ? biz.contactList[0]
         : biz.contactList || biz.whatsappNumber || "N/A";
-      
-      const name = biz.businessName.length > 35
-        ? biz.businessName.slice(0, 35) + "..."
-        : biz.businessName;
-      
+
+      const name =
+        biz.businessName.length > 20
+          ? biz.businessName.slice(0, 20) + "..."
+          : biz.businessName;
+
       const street = biz.street || "";
       const location = biz.location || "";
+
       const fullAddress = `${street}, ${location}`.replace(/\s+/g, " ").trim();
-      
+
+      const shortAddress =
+        fullAddress.length > 30
+          ? fullAddress.slice(0, 30) + "..."
+          : fullAddress;
+
       const review = reviewMap[biz._id.toString()] || {};
-      const rating = review.avgRating ? `⭐ ${review.avgRating}/5` : "⭐ No ratings";
-      const reviews = review.totalReviews ? `(${review.totalReviews})` : "";
-      
-      return `${index + 1}. ${name} ${rating} ${reviews} | 📍 ${fullAddress} | 📞 ${contact}`;
+
+      const rating = review.avgRating
+        ? `⭐ ${review.avgRating}/5`
+        : "⭐ No ratings";
+
+      const reviews = review.totalReviews
+        ? `(${review.totalReviews})`
+        : "";
+
+      return `${index + 1}. ${name} ${rating} ${reviews} | 📍 ${shortAddress} | 📞 ${contact}`;
     };
-    
+
     const firstBatch = finalBusinesses.slice(0, 5);
     const secondBatch = finalBusinesses.slice(5, 10);
-    
+
     const prepareValues = (list, startIndex = 0) => {
       const values = [];
-      
+
       for (let i = 0; i < 5; i++) {
         const biz = list[i];
-        values.push(biz ? formatBusiness(biz, startIndex + i) : "-");
+        values.push(
+          biz ? formatBusiness(biz, startIndex + i) : "-"
+        );
       }
-      
+
       return values;
     };
-    
-    // Send first batch
+
     const values1 = prepareValues(firstBatch, 0);
-    
-    await makeWhatsAppRequest({
-      integrated_number: MSG91_CONFIG.senderId,
-      content_type: "template",
-      payload: {
-        messaging_product: "whatsapp",
-        type: "template",
-        template: {
-          name: "customer_business_list_v1",
-          language: { code: "en", policy: "deterministic" },
-          namespace: MSG91_CONFIG.templateNamespace,
-          to_and_components: [
-            {
-              to: [cleanMobile],
-              components: {
-                body_1: { type: "text", value: cleanValue(lead.customerName || "Customer") },
-                body_2: { type: "text", value: cleanValue(lead.searchText || "your search") },
-                body_3: { type: "text", value: cleanValue(lead.location || "your area") },
-                body_4: { type: "text", value: cleanValue(values1[0]) },
-                body_5: { type: "text", value: cleanValue(values1[1]) },
-                body_6: { type: "text", value: cleanValue(values1[2]) },
-                body_7: { type: "text", value: cleanValue(values1[3]) },
-                body_8: { type: "text", value: cleanValue(values1[4]) }
-              }
-            }
-          ]
-        }
-      }
-    });
-    
-    // Send second batch if exists
-    if (secondBatch.length > 0) {
-      const values2 = prepareValues(secondBatch, 5);
-      
-      await makeWhatsAppRequest({
-        integrated_number: MSG91_CONFIG.senderId,
+
+    await axios.post(
+      "https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/",
+      {
+        integrated_number: process.env.MSG91_WHATSAPP_SENDER_ID,
         content_type: "template",
         payload: {
           messaging_product: "whatsapp",
@@ -475,51 +399,203 @@ export const sendBusinessesToCustomer = async (cleanMobile, lead, businesses) =>
           template: {
             name: "customer_business_list_v1",
             language: { code: "en", policy: "deterministic" },
-            namespace: MSG91_CONFIG.templateNamespace,
+            namespace: process.env.MSG91_TEMPLATE_NAMESPACE,
             to_and_components: [
               {
                 to: [cleanMobile],
                 components: {
-                  body_1: { type: "text", value: cleanValue(lead.customerName || "Customer") },
-                  body_2: { type: "text", value: cleanValue(lead.searchText || "your search") },
-                  body_3: { type: "text", value: cleanValue(lead.location || "your area") },
-                  body_4: { type: "text", value: cleanValue(values2[0]) },
-                  body_5: { type: "text", value: cleanValue(values2[1]) },
-                  body_6: { type: "text", value: cleanValue(values2[2]) },
-                  body_7: { type: "text", value: cleanValue(values2[3]) },
-                  body_8: { type: "text", value: cleanValue(values2[4]) }
+                  body_1: {
+                    type: "text",
+                    value: cleanValue(lead.customerName || "Customer")
+                  },
+                  body_2: {
+                    type: "text",
+                    value: cleanValue(lead.searchText || "your search")
+                  },
+                  body_3: {
+                    type: "text",
+                    value: cleanValue(lead.location || "your area")
+                  },
+
+                  body_4: {
+                    type: "text",
+                    value: cleanValue(values1[0])
+                  },
+                  body_5: {
+                    type: "text",
+                    value: cleanValue(values1[1])
+                  },
+                  body_6: {
+                    type: "text",
+                    value: cleanValue(values1[2])
+                  },
+                  body_7: {
+                    type: "text",
+                    value: cleanValue(values1[3])
+                  },
+                  body_8: {
+                    type: "text",
+                    value: cleanValue(values1[4])
+                  }
                 }
               }
             ]
           }
         }
-      });
+      },
+      {
+        headers: {
+          authkey: process.env.MSG91_AUTH_KEY,
+          "Content-Type": "application/json"
+        }
+      }
+    );
+
+    if (secondBatch.length > 0) {
+      const values2 = prepareValues(secondBatch, 5);
+
+      await axios.post(
+        "https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/",
+        {
+          integrated_number: process.env.MSG91_WHATSAPP_SENDER_ID,
+          content_type: "template",
+          payload: {
+            messaging_product: "whatsapp",
+            type: "template",
+            template: {
+              name: "customer_business_list_v1",
+              language: { code: "en", policy: "deterministic" }, 
+              namespace: process.env.MSG91_TEMPLATE_NAMESPACE,
+              to_and_components: [
+                {
+                  to: [cleanMobile],
+                  components: {
+                    body_1: {
+                      type: "text",
+                      value: cleanValue(lead.customerName || "Customer")
+                    },
+                    body_2: {
+                      type: "text",
+                      value: cleanValue(lead.searchText || "your search")
+                    },
+                    body_3: {
+                      type: "text",
+                      value: cleanValue(lead.location || "your area")
+                    },
+
+                    body_4: { type: "text", value: cleanValue(values2[0]) },
+                    body_5: { type: "text", value: cleanValue(values2[1]) },
+                    body_6: { type: "text", value: cleanValue(values2[2]) },
+                    body_7: { type: "text", value: cleanValue(values2[3]) },
+                    body_8: { type: "text", value: cleanValue(values2[4]) }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          headers: {
+            authkey: process.env.MSG91_AUTH_KEY,
+            "Content-Type": "application/json"
+          }
+        }
+      );
     }
-    
+
+
     return { success: true };
+
   } catch (error) {
-    console.error("Error sending WhatsApp message:", error?.response?.data || error.message);
+    console.error(
+      "Error sending WhatsApp message:",
+      error?.response?.data || error.message
+    );
     throw error;
   }
 };
 
-export const sendCustomerBusinessList = async (cleanMobile, customerName, location, category, businesses) => {
+export const sendMniBusinessLead = async (cleanMobile, lead = {}) => {
+
+  try {
+
+    const payload = {
+      integrated_number: process.env.MSG91_WHATSAPP_SENDER_ID,
+      content_type: "template",
+      payload: {
+        messaging_product: "whatsapp",
+        type: "template",
+        template: {
+          name: "mni_requirement_alert_v1",
+          language: {
+            code: "en_US",
+            policy: "deterministic"
+          },
+          namespace: process.env.MSG91_TEMPLATE_NAMESPACE,
+          to_and_components: [
+            {
+              to: [`91${cleanMobile}`],
+              components: {
+                body_1: { type: "text", value: lead.businessName },
+                body_2: { type: "text", value: lead.location },
+                body_3: { type: "text", value: lead.category },
+                body_4: { type: "text", value: lead.description },
+                body_5: { type: "text", value: lead.customerMobile }
+              }
+            }
+          ]
+        }
+      }
+    };
+
+    const response = await axios.post(
+      "https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/",
+      payload,
+      {
+        headers: {
+          authkey: process.env.MSG91_AUTH_KEY,
+          "Content-Type": "application/json"
+        }
+      }
+    );
+
+    return response.data;
+
+  } catch (error) {
+
+    console.error("❌ MSG91 ERROR:", error.response?.data || error.message);
+
+    throw error;
+  }
+};
+
+export const sendCustomerBusinessList = async (
+  cleanMobile,
+  customerName,
+  location,
+  category,
+  businesses
+) => {
+
   const mobile = cleanMobile.toString().replace(/\D/g, "").slice(-10);
-  
+
   let businessListText = "";
+
   businesses.forEach((biz, index) => {
+
     const contact = (biz.contactList || biz.whatsappNumber || "N/A")
       .toString()
       .replace(/\D/g, "")
       .slice(-10);
-    
+
     businessListText += `${index + 1}. ${biz.businessName} - ${contact} | `;
+
   });
-  
+
   businessListText = businessListText.replace(/\|\s*$/, "");
-  
+
   const payload = {
-    integrated_number: MSG91_CONFIG.senderId,
+    integrated_number: process.env.MSG91_WHATSAPP_SENDER_ID,
     content_type: "template",
     payload: {
       messaging_product: "whatsapp",
@@ -530,7 +606,7 @@ export const sendCustomerBusinessList = async (cleanMobile, customerName, locati
           code: "en_US",
           policy: "deterministic"
         },
-        namespace: MSG91_CONFIG.templateNamespace,
+        namespace: process.env.MSG91_TEMPLATE_NAMESPACE,
         to_and_components: [
           {
             to: [`91${mobile}`],
@@ -545,19 +621,39 @@ export const sendCustomerBusinessList = async (cleanMobile, customerName, locati
       }
     }
   };
-  
-  return await makeWhatsAppRequest(payload);
+
+  try {
+
+    const response = await axios.post(
+      "https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/",
+      payload,
+      {
+        headers: {
+          authkey: process.env.MSG91_AUTH_KEY,
+          "Content-Type": "application/json"
+        }
+      }
+    );
+
+    return response.data;
+
+  } catch (error) {
+
+    console.error(
+      "❌ MSG91 ERROR:",
+      error.response?.data || error.message
+    );
+
+    throw error;
+  }
 };
 
-// ============================================================================
-// WELCOME MESSAGES
-// ============================================================================
-
 export const sendLoginWelcomeMessage = async (mobile, userName) => {
+
   const cleanMobile = mobile.toString().replace(/\D/g, "").slice(-10);
-  
+
   const payload = {
-    integrated_number: MSG91_CONFIG.senderId,
+    integrated_number: process.env.MSG91_WHATSAPP_SENDER_ID,
     content_type: "template",
     payload: {
       messaging_product: "whatsapp",
@@ -568,10 +664,11 @@ export const sendLoginWelcomeMessage = async (mobile, userName) => {
           code: "en_US",
           policy: "deterministic"
         },
-        namespace: MSG91_CONFIG.templateNamespace,
+        namespace: process.env.MSG91_TEMPLATE_NAMESPACE,
         to_and_components: [
           {
             to: [`91${cleanMobile}`],
+
             components: {
               body_1: {
                 type: "text",
@@ -582,11 +679,40 @@ export const sendLoginWelcomeMessage = async (mobile, userName) => {
                 value: "MassClick"
               }
             }
+
           }
         ]
       }
     }
   };
-  
-  return await makeWhatsAppRequest(payload);
+
+  try {
+
+    const response = await axios.post(
+      "https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/",
+      payload,
+      {
+        headers: {
+          authkey: process.env.MSG91_AUTH_KEY,
+          "Content-Type": "application/json"
+        }
+      }
+    );
+
+    return response.data;
+
+  } catch (error) {
+
+    console.error(
+      "❌ Login WhatsApp Error:",
+      error.response?.data || error.message
+    );
+
+    throw error;
+  }
+
 };
+
+
+
+

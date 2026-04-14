@@ -84,6 +84,7 @@ const FooterRoutes = [
 ];
 
 function App() {
+  
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const [showTokenExpired, setShowTokenExpired] = useState(false);
@@ -177,8 +178,6 @@ function App() {
             <Route path="/advertise" element={<AdvertisePage />} />
             <Route path="/user/search-history" element={<LeadsCardHistory />} />
             <Route path="/business-enquiry" element={<BusinessEnquiry />} />
-
-           
 
             <Route element={<PrivateRoute isAuthenticated={isAuthenticated} />}>
               <Route path="/dashboard" element={<Dashboard />}>
