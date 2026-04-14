@@ -147,8 +147,6 @@ export const getHomeCategoriesAction = async (req, res) => {
       isActive: true
     }).lean();
 
-    console.log("Fetched categories from DB:", categories.length, categories.map(c => c.category));
-
     const normalize = (name) =>
       name.toLowerCase().replace(/s$/, "").trim();
 
@@ -159,15 +157,11 @@ export const getHomeCategoriesAction = async (req, res) => {
       ])
     );
 
-    console.log("Normalized map keys:", Array.from(map.keys()));
-
     const S3_BASE_URL = "https://massclickdev.s3.ap-southeast-2.amazonaws.com/";
 
     const ordered = FEATURED_ORDER.map((name) => {
 
       const found = map.get(normalize(name));
-
-      console.log(`Looking for "${name}" -> normalized "${normalize(name)}" -> found:`, !!found);
 
       return found
         ? {
@@ -185,8 +179,6 @@ export const getHomeCategoriesAction = async (req, res) => {
         };
     });
 
-    console.log("Final ordered result:", ordered);
-
     res.send(ordered);
 
   } catch (error) {
@@ -199,41 +191,20 @@ export const getSubCategoriesAction = async (req, res) => {
   try {
     const { parentId } = req.params;
 
-    console.log("getSubCategoriesAction called with parentId:", parentId);
-    console.log("Type of parentId:", typeof parentId);
-
     const BASE_URL = "https://massclickdev.s3.ap-southeast-2.amazonaws.com/";
 
-    // Debug: Check what categoriesData contains
-    console.log("categoriesData keys:", Object.keys(categoriesData));
-    console.log("categoriesData[parentId] exists:", !!categoriesData[parentId]);
-    console.log("categoriesData[parentId] content:", categoriesData[parentId]);
-
-    const allowedNames = categoriesData[parentId]?.map(i => {
-      const normalized = i.name.toLowerCase().trim();
-      console.log(`Mapping "${i.name}" -> "${normalized}"`);
-      return normalized;
-    }) || [];
-
-    console.log("Final allowedNames array:", allowedNames);
-    console.log("allowedNames length:", allowedNames.length);
+    const allowedNames = categoriesData[parentId]?.map(i =>
+      i.name.toLowerCase().trim()
+    ) || [];
 
     const data = await categoryModel.find({
       categoryType: "Sub Category",
       isActive: true
     }).lean();
 
-    console.log("Found subcategories in DB:", data.length);
-    console.log("DB subcategory names:", data.map(item => item.category));
-
-    const filtered = data.filter(item => {
-      const itemName = item.category.toLowerCase().trim();
-      const isAllowed = allowedNames.includes(itemName);
-      console.log(`Checking "${item.category}" -> "${itemName}" -> allowed: ${isAllowed}`);
-      return isAllowed;
-    });
-
-    console.log("Filtered results:", filtered.length, filtered.map(item => item.category));
+    const filtered = data.filter(item =>
+      allowedNames.includes(item.category.toLowerCase().trim())
+    );
 
     if (filtered.length > 0) {
       return res.json(
@@ -255,12 +226,10 @@ export const getSubCategoriesAction = async (req, res) => {
       icon: "/icons/default.webp"
     })) || [];
 
-    console.log("Using fallback data:", fallback.length, fallback.map(item => item.name));
-
     res.json(fallback);
 
   } catch (error) {
-    console.error("getSubCategoriesAction error:", error);
+    console.error(error);
     res.status(500).json({ message: error.message });
   }
 };
