@@ -74,7 +74,7 @@ const CategoriesPage = () => {
 
             <img
               className="category-icon"
-              src={item.icon || "/icons/default.webp"}
+              src={item.icon}
               alt={item.name}
               width="48"
               height="48"
