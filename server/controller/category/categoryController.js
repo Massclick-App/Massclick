@@ -191,46 +191,81 @@ export const getSubCategoriesAction = async (req, res) => {
   try {
     const { parentId } = req.params;
 
-    const BASE_URL = "https://massclickdev.s3.ap-southeast-2.amazonaws.com/";
+    const BASE_URL =
+      "https://massclickdev.s3.ap-southeast-2.amazonaws.com/";
 
-    const allowedNames = categoriesData[parentId]?.map(i =>
+    const normalize = (text = "") =>
+      text.toLowerCase().trim().replace(/[-_\s]+/g, " ");
+
+    const cleanText = (text = "") =>
+      text
+        .toLowerCase()
+        .trim()
+        .replace(/[-_\s]+/g, " ")
+        .replace(/\bcontractors\b/g, "contractor")
+        .replace(/\s+/g, " ")
+        .replace(/s\b/g, "");
+
+    const matchedKey = Object.keys(categoriesData).find((key) => {
+      const current = normalize(key);
+      const incoming = normalize(parentId);
+
+      return (
+        current === incoming ||
+        current === incoming + "s" ||
+        current + "s" === incoming ||
+        current.replace(/s$/, "") === incoming.replace(/s$/, "") 
+      );
+    });
+
+    const selectedCategories = matchedKey
+      ? categoriesData[matchedKey]
+      : [];
+
+    const allowedNames = selectedCategories.map((i) =>
       i.name.toLowerCase().trim()
-    ) || [];
-
-    const data = await categoryModel.find({
-      categoryType: "Sub Category",
-      isActive: true
-    }).lean();
-
-    const filtered = data.filter(item =>
-      allowedNames.includes(item.category.toLowerCase().trim())
     );
 
+    const data = await categoryModel.find({
+      isActive: true,
+    }).lean();
+
+
+
+    const filtered = data.filter((item) =>
+      allowedNames.some((name) =>
+        cleanText(name) === cleanText(item.category)
+      )
+    );
+
+    // ✅ DB data found
     if (filtered.length > 0) {
       return res.json(
-        filtered.map(item => ({
+        filtered.map((item) => ({
           _id: item._id,
           name: item.category,
           slug: item.slug,
           icon: item.categoryImageKey
             ? `${BASE_URL}${item.categoryImageKey}`
-            : "/icons/default.webp"
+            : "/icons/default.webp",
         }))
       );
     }
 
-    const fallback = categoriesData[parentId]?.map((item, index) => ({
+    // ✅ fallback static data
+    const fallback = selectedCategories.map((item, index) => ({
       _id: index + 1,
       name: item.name,
       slug: item.name.toLowerCase().replace(/\s+/g, "-"),
-      icon: "/icons/default.webp"
-    })) || [];
+      icon: "/icons/default.webp",
+    }));
 
-    res.json(fallback);
-
+    return res.json(fallback);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: error.message });
+    return res.status(500).json({
+      message: error.message,
+    });
   }
 };
 
@@ -400,7 +435,7 @@ export const getServiceCardsAction = async (req, res) => {
               _id: found._id,
               name: found.category,
               slug: found.slug,
-              section, // ✅ VERY IMPORTANT
+              section, 
               icon: found.categoryImageKey
                 ? `${S3_BASE_URL}${found.categoryImageKey}`
                 : null
@@ -408,7 +443,7 @@ export const getServiceCardsAction = async (req, res) => {
             : {
               name,
               slug: name.toLowerCase().replace(/ /g, "-"),
-              section, // ✅ VERY IMPORTANT
+              section, 
               icon: null
             }
         );

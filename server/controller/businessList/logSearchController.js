@@ -187,7 +187,6 @@ export const logSearchAction = async (req, res) => {
 
     });
 
-
     const locationGroups = {
       trichy: ["trichy", "tiruchirappalli"]
     };
@@ -230,9 +229,6 @@ export const logSearchAction = async (req, res) => {
       });
 
     }
-
-    console.log("SEARCH TEXT:", searchedUserText);
-    console.log("FINAL CATEGORY:", finalCategoryName);
 
     const leadData = {
 
