@@ -147,6 +147,8 @@ export const getHomeCategoriesAction = async (req, res) => {
       isActive: true
     }).lean();
 
+    console.log("Fetched categories from DB:", categories.length, categories.map(c => c.category));
+
     const normalize = (name) =>
       name.toLowerCase().replace(/s$/, "").trim();
 
@@ -157,11 +159,15 @@ export const getHomeCategoriesAction = async (req, res) => {
       ])
     );
 
+    console.log("Normalized map keys:", Array.from(map.keys()));
+
     const S3_BASE_URL = "https://massclickdev.s3.ap-southeast-2.amazonaws.com/";
 
     const ordered = FEATURED_ORDER.map((name) => {
 
       const found = map.get(normalize(name));
+
+      console.log(`Looking for "${name}" -> normalized "${normalize(name)}" -> found:`, !!found);
 
       return found
         ? {
@@ -179,10 +185,12 @@ export const getHomeCategoriesAction = async (req, res) => {
         };
     });
 
+    console.log("Final ordered result:", ordered);
+
     res.send(ordered);
 
   } catch (error) {
-    console.error(error);
+    console.error("getHomeCategoriesAction error:", error);
     res.status(400).send({ message: error.message });
   }
 };
@@ -196,7 +204,7 @@ export const getSubCategoriesAction = async (req, res) => {
     const allowedNames = categoriesData[parentId]?.map(i =>
       i.name.toLowerCase().trim()
     ) || [];
-console.log("allowedNames", allowedNames);
+    console.log("allowedNames", allowedNames);
 
     const data = await categoryModel.find({
       categoryType: "Sub Category",
@@ -398,20 +406,20 @@ export const getServiceCardsAction = async (req, res) => {
         result.push(
           found
             ? {
-                _id: found._id,
-                name: found.category,
-                slug: found.slug,
-                section, // ✅ VERY IMPORTANT
-                icon: found.categoryImageKey
-                  ? `${S3_BASE_URL}${found.categoryImageKey}`
-                  : null
-              }
+              _id: found._id,
+              name: found.category,
+              slug: found.slug,
+              section, // ✅ VERY IMPORTANT
+              icon: found.categoryImageKey
+                ? `${S3_BASE_URL}${found.categoryImageKey}`
+                : null
+            }
             : {
-                name,
-                slug: name.toLowerCase().replace(/ /g, "-"),
-                section, // ✅ VERY IMPORTANT
-                icon: null
-              }
+              name,
+              slug: name.toLowerCase().replace(/ /g, "-"),
+              section, // ✅ VERY IMPORTANT
+              icon: null
+            }
         );
 
       });
