@@ -67,6 +67,50 @@ const cleanIndianMobile = (mobile) => {
   return null;
 };
 
+
+const escapeRegex = (text = "") =>
+  text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const getDynamicCategoryRegex = (value = "") => {
+  let text = value.toLowerCase().trim();
+
+  // remove extra spaces
+  text = text.replace(/\s+/g, " ");
+
+  // singular form
+  let singular = text;
+
+  if (text.endsWith("ies")) {
+    singular = text.slice(0, -3) + "y"; // categories -> category
+  } else if (
+    text.endsWith("ses") ||
+    text.endsWith("xes") ||
+    text.endsWith("zes") ||
+    text.endsWith("ches") ||
+    text.endsWith("shes")
+  ) {
+    singular = text.slice(0, -2); // boxes -> box, churches -> church
+  } else if (text.endsWith("s") && !text.endsWith("ss")) {
+    singular = text.slice(0, -1); // dentists -> dentist
+  }
+
+  const plural1 = singular + "s";
+  const plural2 = singular.endsWith("y")
+    ? singular.slice(0, -1) + "ies"
+    : singular + "es";
+
+  const words = [
+    escapeRegex(text),
+    escapeRegex(singular),
+    escapeRegex(plural1),
+    escapeRegex(plural2)
+  ];
+
+  const uniqueWords = [...new Set(words)];
+
+  return new RegExp(`^(${uniqueWords.join("|")})$`, "i");
+};
+
 export const logSearchAction = async (req, res) => {
   try {
     const { categoryName, location, searchedUserText, userDetails } = req.body;
@@ -200,9 +244,11 @@ export const logSearchAction = async (req, res) => {
       }
     }
 
+    const categoryRegex = getDynamicCategoryRegex(finalCategoryName);
+
     const businesses = await businessListModel.find(
       {
-        category: { $regex: finalCategoryName, $options: "i" },
+        category: categoryRegex,
 
         $or: locationList.map(loc => ({
           location: { $regex: loc, $options: "i" }
