@@ -16,31 +16,109 @@ const normalizeWord = (word = "") => {
 const getCategoryHierarchy = (category = "") => {
   const slug = slugify(category);
 
-  // ✅ EXACT contractor (NO CHILD)
-  if (slug === "contractor" || slug === "contractors") {
-    return {
+  const groups = [
+    {
       parent: "contractors",
-      child: null,
-    };
-  }
+      exact: ["contractor", "contractors"],
+      keywords: ["contractor", "builder", "construction"]
+    },
+    {
+      parent: "education",
+      exact: ["education"],
+      keywords: [
+        "school",
+        "schools",
+        "college",
+        "colleges",
+        "play-school",
+        "play-schools",
+        "kindergarten",
+        "tutorial",
+        "coaching",
+        "training",
+        "institute",
+        "tuition",
+        "vocational"
+      ]
+    },
+    {
+      parent: "rent-and-hire",
+      exact: ["rent-and-hire", "rent and hire"],
+      keywords: [
+        "rent",
+        "rental",
+        "hire",
+        "car-rental",
+        "truck",
+        "mini-bus",
+        "bus",
+        "van",
+        "tempo",
+        "generator",
+        "chairs",
+        "projector",
+        "rooms"
+      ]
+    },
+    {
+      parent: "hospitals",
+      exact: ["hospital", "hospitals"],
+      keywords: [
+        "hospital",
+        "hospitals",
+        "clinic",
+        "dentist",
+        "dentists",
+        "eye",
+        "ent",
+        "cardiac",
+        "kidney",
+        "maternity",
+        "nursing",
+        "veterinary",
+        "diabetic",
+        "cancer"
+      ]
+    },
+    {
+      parent: "packers-and-movers",
+      exact: ["packers-and-movers", "packers and movers"],
+      keywords: [
+        "packer",
+        "packers",
+        "mover",
+        "movers",
+        "transporter",
+        "transporters",
+        "relocation",
+        "shifting"
+      ]
+    }
+  ];
 
-  // ✅ SUB TYPES ONLY
-  if (
-    (slug.includes("contractor") ||
-      slug.includes("builder") ||
-      slug.includes("construction")) &&
-    slug !== "contractor" &&
-    slug !== "contractors"
-  ) {
-    return {
-      parent: "contractors",
-      child: slug,
-    };
+  for (const group of groups) {
+    if (group.exact.includes(slug)) {
+      return {
+        parent: group.parent,
+        child: null
+      };
+    }
+
+    const matched = group.keywords.some(word =>
+      slug.includes(word)
+    );
+
+    if (matched) {
+      return {
+        parent: group.parent,
+        child: slug
+      };
+    }
   }
 
   return {
     parent: slug,
-    child: null,
+    child: null
   };
 };
 
