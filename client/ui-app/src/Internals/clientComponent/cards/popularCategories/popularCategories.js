@@ -136,16 +136,32 @@ const PopularCategoriesDrawer = ({ openFromHome = false }) => {
     );
   }, [search, orderedCategories]);
 
-  const handleClick = useCallback((cat) => {
+const handleClick = useCallback((cat) => {
+  const authUser = JSON.parse(
+    localStorage.getItem("authUser") || "{}"
+  );
 
-    dispatch(
-      logSearchActivity(cat.name, selectedDistrict || "Global", {}, cat.name)
-    );
+  const userDetails = {
+    userName: authUser?.userName,
+    mobileNumber1: authUser?.mobileNumber1,
+    mobileNumber2: authUser?.mobileNumber2,
+    email: authUser?.email,
+  };
 
-    navigate(`/${districtSlug}/${cat.slug}`);
-    setDrawerOpen(false);
+  dispatch(
+    logSearchActivity(
+      cat.name,
+      selectedDistrict || "Global",
+      userDetails,
+      cat.name
+    )
+  );
+console.log("userDetails",userDetails);
 
-  }, [dispatch, navigate, selectedDistrict, districtSlug]);
+  navigate(`/${districtSlug}/${cat.slug}`);
+  setDrawerOpen(false);
+
+}, [dispatch, navigate, selectedDistrict, districtSlug]);
 
   return (
     <Drawer
