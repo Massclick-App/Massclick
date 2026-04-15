@@ -1,14 +1,23 @@
 import { createClient } from "redis";
 
-const REDIS_URL = process.env.REDIS_URL || "redis://127.0.0.1:6379";
+const REDIS_URL = process.env.REDIS_URL;
 
-export const redisClient = createClient({ url: REDIS_URL });
+export let redisClient = null;
 
-redisClient.on("error", (error) => {
-  console.error("Redis Client Error:", error);
-});
+if (REDIS_URL) {
+  redisClient = createClient({ url: REDIS_URL });
+
+  redisClient.on("error", (error) => {
+    console.error("Redis Client Error:", error);
+  });
+}
 
 export const initRedisClient = async () => {
+  if (!redisClient) {
+    console.log("Redis not configured - caching disabled");
+    return;
+  }
+
   try {
     if (!redisClient.isOpen) {
       await redisClient.connect();
@@ -16,6 +25,7 @@ export const initRedisClient = async () => {
     }
   } catch (error) {
     console.error("Failed to connect to Redis:", error);
+    redisClient = null; // Disable Redis if connection fails
   }
 };
 
@@ -25,7 +35,7 @@ export const cacheMiddleware = (ttlSeconds = 60) => {
       return next();
     }
 
-    if (!redisClient.isOpen) {
+    if (!redisClient || !redisClient.isOpen) {
       return next();
     }
 
