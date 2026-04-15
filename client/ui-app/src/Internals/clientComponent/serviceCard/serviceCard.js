@@ -108,13 +108,10 @@ const ServiceCardsGrid = () => {
     navigate(`/${districtSlug}/${service.slug}`);
   };
 
-  // ==============================
-  // GROUP DATA (FIXED DESIGN LOGIC)
-  // ==============================
+ 
   const groupedData = useMemo(() => {
     const map = {};
 
-    // Group API data
     serviceCards.forEach((item) => {
       const section = item.section;
 
@@ -125,7 +122,6 @@ const ServiceCardsGrid = () => {
       map[section].push(item);
     });
 
-    // FORCE ORDER (VERY IMPORTANT)
     return SECTION_ORDER.map((section) => ({
       title: section,
       items: map[section] || []
@@ -133,9 +129,7 @@ const ServiceCardsGrid = () => {
 
   }, [serviceCards]);
 
-  // ==============================
-  // RENDER
-  // ==============================
+
   return (
 
     <section className="service-cards-container">
