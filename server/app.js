@@ -299,7 +299,7 @@ app.get(/.*/, async (req, res) => {
 
   } catch (err) {
 
-    console.error("SEO ER ROR:", err);
+    console.error("SEO ERROR:", err);
     res.status(500).send("Server error");
 
   }
