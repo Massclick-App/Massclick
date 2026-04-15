@@ -203,7 +203,11 @@ export const logSearchAction = async (req, res) => {
     const businesses = await businessListModel.find(
       {
         category: { $regex: finalCategoryName, $options: "i" },
-        location: { $regex: normalizedLocation, $options: "i" },
+
+        $or: locationList.map(loc => ({
+          location: { $regex: loc, $options: "i" }
+        })),
+
         isActive: true,
         businessesLive: true
       },
