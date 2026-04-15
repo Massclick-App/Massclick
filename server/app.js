@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
+import { initRedisClient } from "./helper/utils/redisCache.js";
 // import prerender from "prerender-node";
 import compression from "compression";
 import helmet from "helmet";
@@ -305,6 +306,8 @@ app.get(/.*/, async (req, res) => {
   }
 
 });
+
+await initRedisClient();
 
 mongoose.connect(MONGO_URI)
   .then(() => {
