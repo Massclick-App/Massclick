@@ -68,20 +68,29 @@ const cleanIndianMobile = (mobile) => {
 };
 
 
+
 const escapeRegex = (text = "") =>
   text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const getDynamicCategoryRegex = (value = "") => {
   let text = value.toLowerCase().trim();
 
-  // remove extra spaces
   text = text.replace(/\s+/g, " ");
 
-  // singular form
+
+  const spellingMap = {
+    "nursery garden": "nursary garden",
+    "nursery": "nursary"
+  };
+
+  if (spellingMap[text]) {
+    text = spellingMap[text];
+  }
+
   let singular = text;
 
   if (text.endsWith("ies")) {
-    singular = text.slice(0, -3) + "y"; // categories -> category
+    singular = text.slice(0, -3) + "y";
   } else if (
     text.endsWith("ses") ||
     text.endsWith("xes") ||
@@ -89,9 +98,9 @@ const getDynamicCategoryRegex = (value = "") => {
     text.endsWith("ches") ||
     text.endsWith("shes")
   ) {
-    singular = text.slice(0, -2); // boxes -> box, churches -> church
+    singular = text.slice(0, -2);
   } else if (text.endsWith("s") && !text.endsWith("ss")) {
-    singular = text.slice(0, -1); // dentists -> dentist
+    singular = text.slice(0, -1);
   }
 
   const plural1 = singular + "s";
@@ -191,6 +200,16 @@ export const logSearchAction = async (req, res) => {
       searchedUserText: cleanSearchText,
       createdAt: { $gte: fiveMinutesAgo }
     });
+
+    if (recentLog) {
+      console.log("⚠️ Duplicate request blocked");
+
+      return res.status(200).json({
+        success: true,
+        message: "Lead already sent recently",
+        detectedCategory: finalCategoryName
+      });
+    }
 
     // const recentLog = await searchLogModel.findOne({
     //   categoryName: finalCategoryName,
