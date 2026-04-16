@@ -167,7 +167,6 @@ const ServiceCardsGrid = () => {
                     }
                   }}
                 >
-
                   <img
                     src={item.icon || "/default.webp"}
                     alt={altText}
