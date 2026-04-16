@@ -310,7 +310,11 @@ app.get(/.*/, async (req, res) => {
 
 });
 
-await initRedisClient();
+try {
+  await initRedisClient();
+} catch (error) {
+  console.error("Redis initialization failed, continuing without Redis:", error);
+}
 
 mongoose.connect(MONGO_URI)
   .then(() => {
