@@ -105,23 +105,20 @@ const allowedOrigins = [
   "https://dev.massclick.in",
   "http://localhost:3000",
   "http://127.0.0.1:3000",
-  "http://localhost:4000",
-  "http://localhost:62300"
+  "http://localhost:4000"
 ];
 
-// Temporary disable CORS during local development / debugging
 app.use(
   cors({
     origin: function (origin, callback) {
-      if (!origin) {
-        return callback(new Error("CORS origin denied"));
-      }
+
+      if (!origin) return callback(null, true);
 
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
 
-      return callback(new Error("CORS origin denied"));
+      return callback(null, false);
     },
     credentials: true,
   })
@@ -309,14 +306,18 @@ app.get(/.*/, async (req, res) => {
 
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
-
 mongoose.connect(MONGO_URI)
   .then(() => {
+
     console.log("MongoDB Connected");
+
+    app.listen(PORT, () => {
+
+      console.log(
+        `Server running on port ${PORT}`
+      );
+
+    });
+
   })
-  .catch((error) => {
-    console.error("MongoDB connection failed:", error);
-  });
+  .catch(console.error);
