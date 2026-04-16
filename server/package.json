@@ -29,7 +29,6 @@
     "prerender": "^5.21.6",
     "prerender-node": "^3.8.3",
     "qrcode": "^1.5.4",
-    "redis": "^5.12.1",
     "request-ip": "^3.3.0",
     "sharp": "^0.33.4"
   },

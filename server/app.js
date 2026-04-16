@@ -2,7 +2,6 @@ import express from "express";
 import cors from "cors";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
-import { initRedisClient } from "./helper/utils/redisCache.js";
 // import prerender from "prerender-node";
 import compression from "compression";
 import helmet from "helmet";
@@ -310,24 +309,14 @@ app.get(/.*/, async (req, res) => {
 
 });
 
-try {
-  await initRedisClient();
-} catch (error) {
-  console.error("Redis initialization failed, continuing without Redis:", error);
-}
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
 
 mongoose.connect(MONGO_URI)
   .then(() => {
-
     console.log("MongoDB Connected");
-
-    app.listen(PORT, () => {
-
-      console.log(
-        `Server running on port ${PORT}`
-      );
-
-    });
-
   })
-  .catch(console.error);
+  .catch((error) => {
+    console.error("MongoDB connection failed:", error);
+  });
