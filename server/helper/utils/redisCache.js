@@ -1,14 +1,23 @@
 import { createClient } from "redis";
 
-const REDIS_URL = process.env.REDIS_URL;
+const REDIS_URL = process.env.REDIS_URL || "redis://127.0.0.1:6379";
 
 export let redisClient = null;
+
+const disableRedis = (reason) => {
+  console.error("Redis disabled:", reason);
+  redisClient = null;
+};
 
 if (REDIS_URL) {
   redisClient = createClient({ url: REDIS_URL });
 
   redisClient.on("error", (error) => {
-    console.error("Redis Client Error:", error);
+    disableRedis(error);
+  });
+
+  redisClient.on("ready", () => {
+    console.log("Redis client ready", REDIS_URL);
   });
 }
 
@@ -49,7 +58,7 @@ export const cacheMiddleware = (ttlSeconds = 60) => {
         return res.status(200).json(parsedValue);
       }
     } catch (error) {
-      console.error("Redis cache read failed:", error);
+      disableRedis(error);
     }
 
     const originalJson = res.json.bind(res);
@@ -82,7 +91,7 @@ export const cacheMiddleware = (ttlSeconds = 60) => {
             : JSON.stringify(bodyToCache);
         await redisClient.setEx(cacheKey, ttlSeconds, payload);
       } catch (error) {
-        console.error("Redis cache write failed:", error);
+        disableRedis(error);
       }
     });
 
