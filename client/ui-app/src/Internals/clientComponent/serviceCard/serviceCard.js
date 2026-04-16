@@ -129,7 +129,6 @@ const ServiceCardsGrid = () => {
 
   }, [serviceCards]);
 
-
   return (
 
     <section className="service-cards-container">
