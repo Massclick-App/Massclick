@@ -32,10 +32,11 @@
   margin: 0 auto;
   padding: 0 20px;
 }
+.page-spacing {
+    margin-bottom: 90px;
+}
 
-/* ============================= */
-/* HEADER SECTION */
-/* ============================= */
+
 
 .results-header {
   padding: var(--space-lg) 0 var(--space-md);
@@ -54,26 +55,18 @@
   color: var(--text-secondary);
 }
 
-/* ============================= */
-/* BANNER */
-/* ============================= */
-
 .banner-section {
   margin-top: var(--space-md);
   margin-bottom: var(--space-lg);
 }
 
-/* ============================= */
-/* CONTENT */
-/* ============================= */
+
 
 .content-section {
   padding-top: var(--space-lg);
 }
 
-/* ============================= */
-/* BUSINESS LIST */
-/* ============================= */
+
 
 .business-list {
   display: flex;
@@ -91,9 +84,7 @@
   transform: translateY(-2px);
 }
 
-/* ============================= */
-/* SEO HEADER CONTENT */
-/* ============================= */
+
 
 .premium-section {
   background: white;
@@ -120,9 +111,7 @@
   margin-top: var(--space-md);
 }
 
-/* ============================= */
-/* SEO ARTICLE */
-/* ============================= */
+
 
 .seo-article {
   margin-top: var(--space-xl);
@@ -144,9 +133,7 @@
   color: #475569;
 }
 
-/* ============================= */
-/* LOADING */
-/* ============================= */
+
 
 .category-trust-badges{
 display:flex;
@@ -189,10 +176,6 @@ box-shadow:0 2px 8px rgba(0,0,0,0.05);
   padding: var(--space-lg);
   color: var(--text-secondary);
 }
-
-/* ============================= */
-/* NO RESULTS */
-/* ============================= */
 
 .no-results-container {
   text-align: center;
