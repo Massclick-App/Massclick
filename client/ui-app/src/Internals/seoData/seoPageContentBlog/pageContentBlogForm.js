@@ -8,6 +8,8 @@ import {
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchBusinessSuggestion } from "../../../redux/actions/seoPageContentBlogAction";
+import "react-quill/dist/quill.snow.css";
+
 
 export default function SeoPageContentForm({
   formData,

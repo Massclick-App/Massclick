@@ -15,9 +15,6 @@ const SECTION_ORDER = [
   "Building Materials"
 ];
 
-// ==============================
-// Helper: Create SEO slug
-// ==============================
 const createSlug = (text) => {
   if (!text || typeof text !== "string") return "";
 
@@ -28,9 +25,6 @@ const createSlug = (text) => {
     .replace(/(^-|-$)/g, "");
 };
 
-// ==============================
-// Helper: Generate SEO alt text
-// ==============================
 const generateAltText = (serviceName, districtSlug) => {
   const safeName = serviceName || "Service";
 
@@ -39,9 +33,6 @@ const generateAltText = (serviceName, districtSlug) => {
   } services | MassClick`;
 };
 
-// ==============================
-// MAIN COMPONENT
-// ==============================
 const ServiceCardsGrid = () => {
 
   const navigate = useNavigate();
@@ -55,16 +46,11 @@ const ServiceCardsGrid = () => {
     (state) => state.locationReducer.selectedDistrict
   );
 
-  // ==============================
-  // FETCH API
-  // ==============================
   useEffect(() => {
     dispatch(fetchServiceCards());
   }, [dispatch]);
 
-  // ==============================
-  // DISTRICT SLUG
-  // ==============================
+
  const districtSlug = useMemo(() => {
   if (selectedDistrict?.slug) return selectedDistrict.slug;
 
@@ -79,9 +65,6 @@ const ServiceCardsGrid = () => {
   return localStorage.getItem("selectedDistrictSlug") || "tiruchirappalli";
 }, [selectedDistrict]);
 
-  // ==============================
-  // CLICK HANDLER
-  // ==============================
   const handleClick = (service) => {
 
     const categoryName = service.name;
@@ -108,7 +91,6 @@ const ServiceCardsGrid = () => {
     navigate(`/${districtSlug}/${service.slug}`);
   };
 
- 
   const groupedData = useMemo(() => {
     const map = {};
 
