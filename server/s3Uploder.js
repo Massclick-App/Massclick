@@ -47,13 +47,13 @@ export const uploadImageToS3 = async (fileData, uploadPath) => {
   if (mimeType.startsWith("image/")) {
     try {
       finalBuffer = await sharp(fileBuffer)
-        .jpeg({ quality: 70 })   
+        .webp({ quality: 70 })
         .toBuffer();
 
-      mimeType = "image/jpeg";
-      extension = "jpg";
+      mimeType = "image/webp";
+      extension = "webp";
     } catch (err) {
-      console.error("Compression failed → uploading original", err);
+      console.error("WebP conversion failed → uploading original", err);
     }
   }
 
