@@ -180,8 +180,7 @@ export const getSuggestionsController = async (req, res) => {
           $or: [
             { category: containsRegex },
             { businessName: containsRegex },
-            { location: containsRegex },
-            { locationDetails: containsRegex }
+            { location: containsRegex }
           ]
         }
       },
@@ -217,18 +216,42 @@ export const getSuggestionsController = async (req, res) => {
       { $sort: { priority: 1 } },
       { $limit: 15 },
       {
+        $lookup: {
+          from: "category",
+          localField: "category",
+          foreignField: "category",
+          as: "categoryData"
+        }
+      },
+      {
+        $unwind: {
+          path: "$categoryData",
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      {
         $project: {
-           _id: 0,   
+           _id: 0,
           businessName: 1,
           category: 1,
           location: 1,
-          locationDetails: 1,
-          priority: 1
+          priority: 1,
+          categoryImageKey: { $ifNull: ["$categoryData.categoryImageKey", ""] }
         }
       }
     ]);
 
-    res.send(suggestions);
+    const suggestionsWithImages = suggestions.map((s) => {
+      if (s.categoryImageKey) {
+        s.categoryImage = getSignedUrlByKey(s.categoryImageKey);
+      } else {
+        s.categoryImage = "";
+      }
+      delete s.categoryImageKey;
+      return s;
+    });
+
+    res.send(suggestionsWithImages);
   } catch (err) {
     console.error(err);
     res.status(400).send({ message: err.message });
