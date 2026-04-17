@@ -90,7 +90,6 @@ const PopularCategoriesDrawer = ({ openFromHome = false }) => {
     (state) => state.categoryReducer
   );
 
-  /* ✅ FETCH API */
   useEffect(() => {
     dispatch(fetchPopularCategories());
   }, [dispatch]);
@@ -171,7 +170,6 @@ const handleClick = useCallback((cat) => {
         sx: { width: "70%", maxWidth: "900px", padding: "20px" },
       }}
     >
-      {/* HEADER */}
       <header className="pc-header">
         <h2>Popular Categories</h2>
         <CloseIcon
@@ -180,7 +178,6 @@ const handleClick = useCallback((cat) => {
         />
       </header>
 
-      {/* SEARCH */}
       <div className="pc-search">
         <SearchIcon />
         <input
@@ -190,18 +187,14 @@ const handleClick = useCallback((cat) => {
         />
       </div>
 
-      {/* GRID */}
       <section className="pc-grid">
 
-        {/* LOADING */}
         {loading && <p>Loading...</p>}
 
-        {/* EMPTY STATE */}
         {!loading && filtered.length === 0 && (
           <p style={{ textAlign: "center" }}>No categories found</p>
         )}
 
-        {/* DATA */}
         {filtered.map((cat) => {
 
           const altText = generateAltText(cat.name, districtSlug);
