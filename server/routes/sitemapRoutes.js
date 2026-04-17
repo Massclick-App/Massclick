@@ -7,96 +7,159 @@ const router = express.Router();
 const BASE_URL = "https://massclick.in";
 const LIMIT = 1000;
 
+/* ==================================================
+   LOCATION NORMALIZER
+================================================== */
+const normalizeLocation = (value = "") => {
+  const slug = slugify(String(value).trim());
 
-const normalizeWord = (word = "") => {
-  return word.replace(/s$/, "");
+  const aliases = {
+    trichy: "tiruchirappalli",
+    tiruchi: "tiruchirappalli",
+    tiruchy: "tiruchirappalli",
+    tiruchirapalli: "tiruchirappalli",
+    tiruchirappalli: "tiruchirappalli",
+
+    pudukottai: "pudukkottai",
+    pudukkottai: "pudukkottai",
+
+    "gudalur-the-nilgiris": "gudalur",
+    gudalur: "gudalur",
+
+    madras: "chennai",
+    bombay: "mumbai",
+    bengaluru: "bangalore"
+  };
+
+  return aliases[slug] || slug;
 };
 
+/* ==================================================
+   XML ESCAPE
+================================================== */
+const escapeXml = (value = "") => {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+};
 
+/* ==================================================
+   CATEGORY GROUPS
+================================================== */
+const categoryGroups = [
+  {
+    parent: "contractors",
+    exact: ["contractor", "contractors"],
+    keywords: [
+      "contractor",
+      "builder",
+      "construction",
+      "roofing",
+      "interior",
+      "fabrication",
+      "civil",
+      "tiles",
+      "painting",
+      "plumbing",
+      "electrical"
+    ]
+  },
+  {
+    parent: "education",
+    exact: ["education"],
+    keywords: [
+      "school",
+      "schools",
+      "college",
+      "colleges",
+      "academy",
+      "coaching",
+      "tuition",
+      "training",
+      "institute",
+      "play-school",
+      "kindergarten"
+    ]
+  },
+  {
+    parent: "hospitals",
+    exact: ["hospital", "hospitals"],
+    keywords: [
+      "hospital",
+      "hospitals",
+      "clinic",
+      "hearing",
+      "dental",
+      "dentist",
+      "ayurvedic",
+      "homeopathic",
+      "herbal",
+      "medical"
+    ]
+  },
+  {
+    parent: "restaurants",
+    exact: ["restaurant", "restaurants"],
+    keywords: [
+      "restaurant",
+      "restaurants",
+      "hotel",
+      "veg",
+      "non-veg",
+      "food",
+      "cafe",
+      "biryani",
+      "bakery"
+    ]
+  },
+  {
+    parent: "beauty-and-spa",
+    exact: ["salon", "salons"],
+    keywords: [
+      "salon",
+      "beauty",
+      "spa",
+      "hair",
+      "makeup"
+    ]
+  },
+  {
+    parent: "electronics",
+    exact: ["electronics"],
+    keywords: [
+      "cctv",
+      "camera",
+      "computer",
+      "laptop",
+      "printer",
+      "mobile"
+    ]
+  },
+  {
+    parent: "rent-and-hire",
+    exact: ["rent-and-hire"],
+    keywords: [
+      "rent",
+      "rental",
+      "hire",
+      "car-rental",
+      "van",
+      "bus",
+      "generator"
+    ]
+  }
+];
+
+/* ==================================================
+   CATEGORY + SUBCATEGORY
+================================================== */
 const getCategoryHierarchy = (category = "") => {
-  const slug = slugify(category);
+  const slug = slugify(String(category).trim());
 
-  const groups = [
-    {
-      parent: "contractors",
-      exact: ["contractor", "contractors"],
-      keywords: ["contractor", "builder", "construction"]
-    },
-    {
-      parent: "education",
-      exact: ["education"],
-      keywords: [
-        "school",
-        "schools",
-        "college",
-        "colleges",
-        "play-school",
-        "play-schools",
-        "kindergarten",
-        "tutorial",
-        "coaching",
-        "training",
-        "institute",
-        "tuition",
-        "vocational"
-      ]
-    },
-    {
-      parent: "rent-and-hire",
-      exact: ["rent-and-hire", "rent and hire"],
-      keywords: [
-        "rent",
-        "rental",
-        "hire",
-        "car-rental",
-        "truck",
-        "mini-bus",
-        "bus",
-        "van",
-        "tempo",
-        "generator",
-        "chairs",
-        "projector",
-        "rooms"
-      ]
-    },
-    {
-      parent: "hospitals",
-      exact: ["hospital", "hospitals"],
-      keywords: [
-        "hospital",
-        "hospitals",
-        "clinic",
-        "dentist",
-        "dentists",
-        "eye",
-        "ent",
-        "cardiac",
-        "kidney",
-        "maternity",
-        "nursing",
-        "veterinary",
-        "diabetic",
-        "cancer"
-      ]
-    },
-    {
-      parent: "packers-and-movers",
-      exact: ["packers-and-movers", "packers and movers"],
-      keywords: [
-        "packer",
-        "packers",
-        "mover",
-        "movers",
-        "transporter",
-        "transporters",
-        "relocation",
-        "shifting"
-      ]
-    }
-  ];
-
-  for (const group of groups) {
+  for (const group of categoryGroups) {
     if (group.exact.includes(slug)) {
       return {
         parent: group.parent,
@@ -104,7 +167,7 @@ const getCategoryHierarchy = (category = "") => {
       };
     }
 
-    const matched = group.keywords.some(word =>
+    const matched = group.keywords.some((word) =>
       slug.includes(word)
     );
 
@@ -122,98 +185,129 @@ const getCategoryHierarchy = (category = "") => {
   };
 };
 
+/* ==================================================
+   XML URL BLOCK
+================================================== */
+const createUrl = ({
+  loc,
+  lastmod,
+  changefreq = "daily",
+  priority = "0.8"
+}) => {
+  return `
+  <url>
+    <loc>${escapeXml(loc)}</loc>
+    <lastmod>${lastmod}</lastmod>
+    <changefreq>${changefreq}</changefreq>
+    <priority>${priority}</priority>
+  </url>`;
+};
 
+/* ==================================================
+   CATEGORY SITEMAP
+================================================== */
 router.get("/sitemap-category-city-:page.xml", async (req, res) => {
   try {
-    res.set("Content-Type", "application/xml");
+    res.type("application/xml");
     res.set("Cache-Control", "public, max-age=86400");
 
     const page = Number(req.params.page) || 1;
     const skip = (page - 1) * LIMIT;
 
     const categoryData = await businessListModel.aggregate([
-      { $match: { isActive: true, businessesLive: true } },
+      {
+        $match: {
+          isActive: true,
+          businessesLive: true,
+          location: { $exists: true, $ne: "" },
+          category: { $exists: true, $ne: "" }
+        }
+      },
       {
         $group: {
           _id: {
-            location: {
-              $toLower: {
-                $trim: { input: "$location" }
-              }
-            },
-            category: {
-              $toLower: {
-                $trim: { input: "$category" }
-              }
-            }
+            location: "$location",
+            category: "$category"
           },
-          updatedAt: { $max: "$updatedAt" },
-        },
+          updatedAt: { $max: "$updatedAt" }
+        }
       },
+      {
+        $sort: {
+          "_id.location": 1,
+          "_id.category": 1
+        }
+      }
     ]);
 
-    let allUrls = [];
     const uniqueUrls = new Set();
+    const allUrls = [];
 
-    categoryData.forEach((item) => {
-      const location = slugify(item._id.location);
-      const { parent, child } = getCategoryHierarchy(item._id.category);
+    for (const item of categoryData) {
+      const location = normalizeLocation(item._id.location);
+
+      const { parent, child } = getCategoryHierarchy(
+        item._id.category
+      );
 
       const lastmod = item.updatedAt
         ? new Date(item.updatedAt).toISOString()
         : new Date().toISOString();
 
-      // ✅ Parent URL
-      const parentUrl = `${BASE_URL}/${location}/${parent}`;
+      const parentUrl =
+        `${BASE_URL}/${location}/${parent}`;
 
       if (!uniqueUrls.has(parentUrl)) {
         uniqueUrls.add(parentUrl);
 
-        allUrls.push(`
-        <url>
-          <loc>${parentUrl}</loc>
-          <lastmod>${lastmod}</lastmod>
-          <changefreq>daily</changefreq>
-          <priority>0.8</priority>
-        </url>`);
+        allUrls.push(
+          createUrl({
+            loc: parentUrl,
+            lastmod,
+            priority: "0.8"
+          })
+        );
       }
 
-      if (
-        child &&
-        normalizeWord(child) !== normalizeWord(parent) &&
-        child !== parent
-      ) {
-        const childUrl = `${BASE_URL}/${location}/${parent}/${child}`;
+      if (child && child !== parent) {
+        const childUrl =
+          `${BASE_URL}/${location}/${parent}/${child}`;
 
         if (!uniqueUrls.has(childUrl)) {
           uniqueUrls.add(childUrl);
 
-          allUrls.push(`
-          <url>
-            <loc>${childUrl}</loc>
-            <lastmod>${lastmod}</lastmod>
-            <changefreq>daily</changefreq>
-            <priority>0.9</priority>
-          </url>`);
+          allUrls.push(
+            createUrl({
+              loc: childUrl,
+              lastmod,
+              priority: "0.9"
+            })
+          );
         }
       }
-    });
+    }
 
-    const paginated = allUrls.slice(skip, skip + LIMIT).join("");
+    const paginated = allUrls
+      .slice(skip, skip + LIMIT)
+      .join("");
 
     res.send(`<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${paginated}
 </urlset>`);
+
   } catch (error) {
-    console.error("❌ Category Sitemap Error:", error);
+    console.error("Category Sitemap Error:", error);
     res.status(500).end();
   }
 });
 
+/* ==================================================
+   BUSINESS SITEMAP
+================================================== */
 router.get("/sitemap-business-:page.xml", async (req, res) => {
   try {
-    res.set("Content-Type", "application/xml");
+    res.type("application/xml");
     res.set("Cache-Control", "public, max-age=86400");
 
     const page = Number(req.params.page) || 1;
@@ -221,69 +315,96 @@ router.get("/sitemap-business-:page.xml", async (req, res) => {
 
     const businesses = await businessListModel
       .find(
-        { isActive: true, businessesLive: true },
-        { businessName: 1, location: 1, updatedAt: 1 }
+        {
+          isActive: true,
+          businessesLive: true
+        },
+        {
+          businessName: 1,
+          location: 1,
+          updatedAt: 1
+        }
       )
+      .sort({ updatedAt: -1 })
       .skip(skip)
       .limit(LIMIT)
       .lean();
 
-    const urls = businesses
-      .map((b) => {
-        const location = slugify(b.location);
-        const business = slugify(b.businessName);
+    const urls = businesses.map((item) => {
+      const location =
+        normalizeLocation(item.location);
 
-        const lastmod = b.updatedAt
-          ? new Date(b.updatedAt).toISOString()
-          : new Date().toISOString();
+      const businessSlug =
+        slugify(item.businessName || "business");
 
-        return `
-        <url>
-          <loc>${BASE_URL}/${location}/${business}/${b._id}</loc>
-          <lastmod>${lastmod}</lastmod>
-          <changefreq>weekly</changefreq>
-          <priority>0.8</priority>
-        </url>`;
-      })
-      .join("");
+      const lastmod = item.updatedAt
+        ? new Date(item.updatedAt).toISOString()
+        : new Date().toISOString();
+
+      return createUrl({
+        loc: `${BASE_URL}/${location}/${businessSlug}/${item._id}`,
+        lastmod,
+        changefreq: "weekly",
+        priority: "0.8"
+      });
+    }).join("");
 
     res.send(`<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${urls}
 </urlset>`);
+
   } catch (error) {
-    console.error("❌ Business Sitemap Error:", error);
+    console.error("Business Sitemap Error:", error);
     res.status(500).end();
   }
 });
 
+/* ==================================================
+   MAIN SITEMAP INDEX
+================================================== */
 router.get("/sitemap.xml", async (req, res) => {
   try {
-    res.set("Content-Type", "application/xml");
+    res.type("application/xml");
     res.set("Cache-Control", "public, max-age=86400");
 
-    const totalBusinesses = await businessListModel.countDocuments({
-      isActive: true,
-      businessesLive: true,
-    });
+    const totalBusinesses =
+      await businessListModel.countDocuments({
+        isActive: true,
+        businessesLive: true
+      });
 
-    const totalBusinessPages = Math.ceil(totalBusinesses / LIMIT);
+    const totalBusinessPages =
+      Math.ceil(totalBusinesses / LIMIT);
 
-    const totalCategoryData = await businessListModel.aggregate([
-      { $match: { isActive: true, businessesLive: true } },
-      {
-        $group: {
-          _id: {
-            location: "$location",
-            category: "$category",
-          },
+    const categoryCount =
+      await businessListModel.aggregate([
+        {
+          $match: {
+            isActive: true,
+            businessesLive: true,
+            location: { $exists: true, $ne: "" },
+            category: { $exists: true, $ne: "" }
+          }
         },
-      },
-      { $count: "total" },
-    ]);
+        {
+          $group: {
+            _id: {
+              location: "$location",
+              category: "$category"
+            }
+          }
+        },
+        {
+          $count: "total"
+        }
+      ]);
 
-    const totalCategory = totalCategoryData[0]?.total || 0;
-    const totalCategoryPages = Math.ceil(totalCategory / LIMIT);
+    const totalCategories =
+      categoryCount[0]?.total || 0;
+
+    const totalCategoryPages =
+      Math.ceil(totalCategories / LIMIT);
 
     let links = "";
 
@@ -305,8 +426,9 @@ router.get("/sitemap.xml", async (req, res) => {
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${links}
 </sitemapindex>`);
+
   } catch (error) {
-    console.error("❌ Sitemap Index Error:", error);
+    console.error("Sitemap Index Error:", error);
     res.status(500).end();
   }
 });
