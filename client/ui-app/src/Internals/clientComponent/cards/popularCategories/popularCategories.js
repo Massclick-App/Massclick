@@ -156,7 +156,6 @@ const handleClick = useCallback((cat) => {
       cat.name
     )
   );
-console.log("userDetails",userDetails);
 
   navigate(`/${districtSlug}/${cat.slug}`);
   setDrawerOpen(false);
