@@ -48,7 +48,6 @@
   display: none;
 }
 
-/* CARD (🔥 FIXED HEIGHT STRUCTURE) */
 .card {
   flex: 0 0 320px;
   background: #fff;
@@ -94,8 +93,7 @@
   font-size: 14px;
 }
 
-/* NAV BUTTON */
-/* NAV BUTTON */
+
 .nav-btn {
   position: absolute;
   top: 40%;
@@ -114,13 +112,11 @@
   transition: all 0.25s ease;
 }
 
-/* ICON STYLE */
 .nav-icon {
   font-size: 18px !important;
   color: #333;
 }
 
-/* HOVER EFFECT */
 .nav-btn:hover {
   transform: translateY(-50%) scale(1.1);
   box-shadow: 0 10px 25px rgba(0,0,0,0.18);

@@ -5,139 +5,196 @@ import {
   viewAllSeoPageContentBlog,
   updateSeoPageContentBlog,
   deleteSeoPageContentBlog,
-  getSeoBlogBySlugService
+  getSeoBlogBySlugService,
 } from "../../helper/seo/seoOnpageBlogHelper.js";
+
 import { BAD_REQUEST } from "../../errorCodes.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
 
+/* =====================================
+   COMMON ERROR
+===================================== */
+const sendError = (res, error, code = 400) => {
+  return res.status(code).send({
+    success: false,
+    message: error?.message || "Something went wrong",
+  });
+};
 
+/* =====================================
+   CREATE BLOG
+===================================== */
 export const addSeoPageContentBlogAction = async (req, res) => {
   try {
     const result = await createPageContentBlogSeo(req.body);
-    res.send(result);
+
+    return res.send({
+      success: true,
+      message: "Blog created successfully",
+      data: result,
+    });
   } catch (error) {
-    return res.status(BAD_REQUEST.code).send({ message: error.message });
+    return sendError(res, error, BAD_REQUEST.code);
   }
 };
 
+/* =====================================
+   GET SINGLE BLOG
+===================================== */
 export const getSeoPageContentBlogAction = async (req, res) => {
   try {
-    const seo = await getSeoPageContentBlog(req.query);
-    res.send(seo);
+    const result = await getSeoPageContentBlog(req.query);
+
+    return res.send({
+      success: true,
+      data: result,
+    });
   } catch (error) {
-    return res.status(BAD_REQUEST.code).send({ message: error.message });
+    return sendError(res, error, BAD_REQUEST.code);
   }
 };
 
-const normalizeSeoText = (v = "") =>
-  v.toString().toLowerCase().trim().replace(/[-_\s]+/g, " ");
-
+/* =====================================
+   GET RELATED BLOGS / META LIST
+===================================== */
 export const getSeoPageContentBlogMetaAction = async (req, res) => {
   try {
     const { pageType, category, location } = req.query;
 
     if (!pageType) {
-      return res.status(400).send({ message: "pageType is required" });
+      throw new Error("pageType is required");
     }
 
-    const seoContent = await getSeoPageContentBlogMetaService({
+    const result = await getSeoPageContentBlogMetaService({
       pageType,
       category,
       location,
     });
 
-    res.send(seoContent);
+    return res.send({
+      success: true,
+      data: result,
+    });
   } catch (error) {
-    console.error("SEO PAGE CONTENT META ERROR:", error);
-    res.status(400).send({ message: error.message });
+    return sendError(res, error, 400);
   }
 };
 
+/* =====================================
+   ADMIN TABLE LIST
+===================================== */
 export const viewAllSeoPageContentBlogAction = async (req, res) => {
   try {
-    const pageNo = parseInt(req.query.pageNo) || 1;
-    const pageSize = parseInt(req.query.pageSize) || 10;
-
-    const search = req.query.search || "";
-    const status = req.query.status || "active";
-    const sortBy = req.query.sortBy || "updatedAt";
-    const sortOrder = req.query.sortOrder === "asc" ? 1 : -1;
-
-    const { list, total } = await viewAllSeoPageContentBlog({
-      pageNo,
-      pageSize,
-      search,
-      status,
-      sortBy,
-      sortOrder,
+    const result = await viewAllSeoPageContentBlog({
+      pageNo: Number(req.query.pageNo) || 1,
+      pageSize: Number(req.query.pageSize) || 10,
+      search: req.query.search || "",
+      status: req.query.status || "active",
+      sortBy: req.query.sortBy || "updatedAt",
+      sortOrder: req.query.sortOrder === "asc" ? "asc" : "desc",
     });
 
-    res.send({
-      data: list,
-      total,
-      pageNo,
-      pageSize,
+    return res.send({
+      success: true,
+      ...result,
     });
   } catch (error) {
-    console.error("viewAllSeoPageContentBlogAction error:", error);
-    return res.status(BAD_REQUEST.code).send({ message: error.message });
+    return sendError(res, error, BAD_REQUEST.code);
   }
 };
 
+/* =====================================
+   UPDATE BLOG
+===================================== */
 export const updateSeoPageContentBlogAction = async (req, res) => {
   try {
-    const seo = await updateSeoPageContentBlog(req.params.id, req.body);
-    res.send(seo);
+    const result = await updateSeoPageContentBlog(
+      req.params.id,
+      req.body
+    );
+
+    return res.send({
+      success: true,
+      message: "Blog updated successfully",
+      data: result,
+    });
   } catch (error) {
-    return res.status(400).send({ message: error.message });
+    return sendError(res, error, 400);
   }
 };
 
+/* =====================================
+   DELETE BLOG
+===================================== */
 export const deleteSeoPageContentBlogAction = async (req, res) => {
   try {
-    const seo = await deleteSeoPageContentBlog(req.params.id);
-    res.send({ message: "SEO deleted", seo });
+    const result = await deleteSeoPageContentBlog(req.params.id);
+
+    return res.send({
+      success: true,
+      message: "Blog deleted successfully",
+      data: result,
+    });
   } catch (error) {
-    return res.status(400).send({ message: error.message });
+    return sendError(res, error, 400);
   }
 };
 
+/* =====================================
+   GET BLOG BY SLUG
+===================================== */
 export const getSeoBlogBySlugAction = async (req, res) => {
   try {
     const { slug } = req.params;
 
     if (!slug) {
-      return res.status(400).send({ message: "slug is required" });
+      throw new Error("slug is required");
     }
 
-    const blog = await getSeoBlogBySlugService(slug);
+    const result = await getSeoBlogBySlugService(slug);
 
-    if (!blog) {
-      return res.status(404).send({ message: "Blog not found" });
+    if (!result) {
+      return sendError(res, new Error("Blog not found"), 404);
     }
 
-    res.send(blog);
-
+    return res.send({
+      success: true,
+      data: result,
+    });
   } catch (error) {
-    console.error("BLOG SLUG ERROR:", error);
-    res.status(400).send({ message: error.message });
+    return sendError(res, error, 400);
   }
 };
 
+/* =====================================
+   BUSINESS SUGGESTIONS
+===================================== */
 export const getBusinessSuggestionAction = async (req, res) => {
   try {
-    const search = req.query.search || "";
+    const search = (req.query.search || "").trim();
 
-    const businesses = await businessListModel.find({
-      businessName: { $regex: search, $options: "i" },
-      isActive: true,
-    })
-      .select("businessName plotNumber street pincode email contact contactList experience category location bannerImageKey")
+    const query = { isActive: true };
+
+    if (search) {
+      query.businessName = {
+        $regex: search,
+        $options: "i",
+      };
+    }
+
+    const result = await businessListModel
+      .find(query)
+      .select(
+        "businessName plotNumber street pincode email contact contactList experience category location bannerImageKey"
+      )
       .limit(10)
       .lean();
 
-    res.send(businesses);
+    return res.send({
+      success: true,
+      data: result,
+    });
   } catch (error) {
-    res.status(400).send({ message: error.message });
+    return sendError(res, error, 400);
   }
 };
