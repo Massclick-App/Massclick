@@ -1,15 +1,23 @@
-import React, { useEffect, useRef, useState } from "react";
+// FILE: SeoPageContentForm.jsx
+
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import ReactQuill from "react-quill";
 import {
-  CircularProgress,
   Button,
   Avatar,
+  CircularProgress,
+  IconButton,
+  Chip,
 } from "@mui/material";
+
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
+import AddIcon from "@mui/icons-material/Add";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+
 import { useDispatch, useSelector } from "react-redux";
 import { fetchBusinessSuggestion } from "../../../redux/actions/seoPageContentBlogAction";
-import "react-quill/dist/quill.snow.css";
 
+import "react-quill/dist/quill.snow.css";
 
 export default function SeoPageContentForm({
   formData,
@@ -17,23 +25,107 @@ export default function SeoPageContentForm({
   handleSubmit,
   loading,
   editingId,
-  errors,
   modules,
   formats,
 }) {
+  const dispatch = useDispatch();
   const fileInputRef = useRef(null);
+
+  const { suggestions = [] } = useSelector(
+    (state) => state.seoPageContentBlogReducer
+  ) || {};
+
+  const [searchTerm, setSearchTerm] = useState("");
   const [preview, setPreview] = useState([]);
   const [profilePreview, setProfilePreview] = useState("");
 
-  const dispatch = useDispatch();
-  const { suggestions } = useSelector(
-    (state) => state.seoPageContentBlogReducer
-  );
+  const slugPreview = useMemo(() => {
+    return (formData.heading || "")
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+  }, [formData.heading]);
 
-  const [searchTerm, setSearchTerm] = useState("");
+  const updateField = (key, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
+  };
 
-  const handleChange = (key, value) => {
-    setFormData((p) => ({ ...p, [key]: value }));
+  /* ======================================
+     BUSINESS SEARCH
+  ====================================== */
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchTerm.trim()) {
+        dispatch(fetchBusinessSuggestion(searchTerm));
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm, dispatch]);
+
+  /* ======================================
+     IMAGE PREVIEW SYNC
+  ====================================== */
+  useEffect(() => {
+    setPreview(formData.pageImages || []);
+  }, [formData.pageImages]);
+
+  useEffect(() => {
+    setProfilePreview(formData.profileImage || "");
+  }, [formData.profileImage]);
+
+  /* ======================================
+     PROFILE IMAGE
+  ====================================== */
+  const handleProfileImage = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const previewUrl = URL.createObjectURL(file);
+    setProfilePreview(previewUrl);
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      updateField("profileImage", reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  /* ======================================
+     PAGE IMAGES
+  ====================================== */
+  const handleImages = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+
+    const tempPreview = [];
+    const base64List = [];
+    let done = 0;
+
+    files.forEach((file) => {
+      tempPreview.push(URL.createObjectURL(file));
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        base64List.push(reader.result);
+        done++;
+
+        if (done === files.length) {
+          setPreview((prev) => [...prev, ...tempPreview]);
+
+          setFormData((prev) => ({
+            ...prev,
+            pageImages: [...(prev.pageImages || []), ...base64List],
+          }));
+        }
+      };
+
+      reader.readAsDataURL(file);
+    });
   };
 
   const removeImage = (index) => {
@@ -45,223 +137,229 @@ export default function SeoPageContentForm({
     }));
   };
 
-  /* ===== SEARCH API ===== */
-  useEffect(() => {
-    const delay = setTimeout(() => {
-      if (searchTerm) {
-        dispatch(fetchBusinessSuggestion(searchTerm));
-      }
-    }, 300);
+  /* ======================================
+     TAGS
+  ====================================== */
+  const addTag = (value) => {
+    const val = value.trim();
+    if (!val) return;
 
-    return () => clearTimeout(delay);
-  }, [searchTerm, dispatch]);
+    const exists = (formData.tags || []).includes(val);
+    if (exists) return;
 
-  /* ===== PROFILE IMAGE ===== */
-  const handleProfileImageChange = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const previewUrl = URL.createObjectURL(file);
-    setProfilePreview(previewUrl);
-
-    const reader = new FileReader();
-
-    reader.onloadend = () => {
-      const base64 = reader.result;
-
-      if (typeof base64 === "string") {
-        setFormData((prev) => ({
-          ...prev,
-          profileImage: base64,
-        }));
-      }
-    };
-
-    reader.readAsDataURL(file);
+    updateField("tags", [...(formData.tags || []), val]);
   };
 
-  /* ===== MULTIPLE IMAGES ===== */
-  const handleImageChange = (e) => {
-    const files = Array.from(e.target.files);
-    if (!files.length) return;
-
-    const previews = [];
-    const base64Images = [];
-
-    let completed = 0;
-
-    files.forEach((file) => {
-      const imageUrl = URL.createObjectURL(file);
-      previews.push(imageUrl);
-
-      const reader = new FileReader();
-
-      reader.onloadend = () => {
-        const base64 = reader.result;
-
-        if (typeof base64 === "string") {
-          base64Images.push(base64);
-        }
-
-        completed++;
-
-        if (completed === files.length) {
-          setPreview((prev) => [...prev, ...previews]);
-
-          setFormData((prev) => ({
-            ...prev,
-            pageImages: [...(prev.pageImages || []), ...base64Images],
-          }));
-        }
-      };
-
-      reader.readAsDataURL(file);
-    });
+  const removeTag = (tag) => {
+    updateField(
+      "tags",
+      (formData.tags || []).filter((x) => x !== tag)
+    );
   };
 
-  useEffect(() => {
-    if (Array.isArray(formData.pageImages)) {
-      setPreview(formData.pageImages);
-    }
-  }, [formData.pageImages]);
+  /* ======================================
+     FAQ
+  ====================================== */
+  const addFaq = () => {
+    updateField("faq", [
+      ...(formData.faq || []),
+      { question: "", answer: "" },
+    ]);
+  };
 
-  useEffect(() => {
-    if (formData.profileImage && typeof formData.profileImage === "string") {
-      setProfilePreview(formData.profileImage);
-    }
-  }, [formData.profileImage]);
+  const updateFaq = (index, key, value) => {
+    const updated = [...(formData.faq || [])];
+    updated[index][key] = value;
+    updateField("faq", updated);
+  };
+
+  const removeFaq = (index) => {
+    updateField(
+      "faq",
+      formData.faq.filter((_, i) => i !== index)
+    );
+  };
+
+  /* ======================================
+     FIELDS
+  ====================================== */
+  const fields = [
+    { label: "Meta Title", key: "metaTitle", limit: 60 },
+    { label: "Meta Description", key: "metaDescription", limit: 160 },
+    { label: "Meta Keywords", key: "metaKeywords" },
+    { label: "Page Type", key: "pageType" },
+    { label: "Category", key: "category" },
+    { label: "Location", key: "location" },
+    { label: "Heading", key: "heading" },
+    { label: "Excerpt", key: "excerpt" },
+    { label: "Author", key: "author" },
+  ];
 
   return (
     <form className="seo-form" onSubmit={handleSubmit}>
+      {/* ======================================
+          META CARD
+      ====================================== */}
       <section className="meta-card premium-card">
-        <h2 className="section-title">SEO Settings</h2>
+        <h2 className="section-title full-row">
+          SEO Settings
+        </h2>
 
-        {[
-          { label: "Meta Title", key: "metaTitle", limit: 60 },
-          { label: "Meta Description", key: "metaDescription", limit: 160 },
-          { label: "Meta Keywords", key: "metaKeywords" },
-          { label: "Page Type", key: "pageType" },
-          { label: "Category", key: "category" },
-          { label: "Location", key: "location" },
-          { label: "Heading", key: "heading" },
-          { label: "Popular Business", key: "popularBusiness" },
-        ].map((field) => (
+        {fields.map((field) => (
           <div className="floating-field" key={field.key}>
-
-            {/* ===== MULTI SELECT BUSINESS ===== */}
-            {field.key === "popularBusiness" ? (
-              <div className="category-input-wrapper">
-
-                {/* INPUT */}
-                <input
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder=" "
-                />
-
-                <label>Popular Business</label>
-
-                {/* TAGS */}
-                <div className="selected-tags">
-                  {(formData.popularBusiness || []).map((b, i) => (
-                    <span key={i} className="tag">
-                      {b.businessName}
-                      <span
-                        className="remove"
-                        onClick={() => {
-                          const updated = formData.popularBusiness.filter(
-                            (_, index) => index !== i
-                          );
-                          setFormData((prev) => ({
-                            ...prev,
-                            popularBusiness: updated,
-                          }));
-                        }}
-                      >
-                        ×
-                      </span>
-                    </span>
-                  ))}
-                </div>
-
-                {/* SUGGESTIONS */}
-                {suggestions?.length > 0 && searchTerm && (
-                  <ul className="category-suggestion-list">
-                    {suggestions.map((b, i) => (
-                      <li
-                        key={i}
-                        onClick={() => {
-                          const exists = (formData.popularBusiness || []).some(
-                            (item) =>
-                              item.businessName === b.businessName
-                          );
-
-                          if (!exists) {
-                            setFormData((prev) => ({
-                              ...prev,
-                              popularBusiness: [
-                                ...(prev.popularBusiness || []),
-                                b,
-                              ],
-                            }));
-                          }
-
-                          setSearchTerm("");
-                        }}
-                      >
-                        {b.businessName}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-
-              </div>
-            ) : (
-              <input
-                value={formData[field.key] || ""}
-                onChange={(e) =>
-                  handleChange(field.key, e.target.value)
-                }
-                required
-              />
-            )}
+            <input
+              value={formData[field.key] || ""}
+              onChange={(e) =>
+                updateField(field.key, e.target.value)
+              }
+              placeholder=" "
+              required={
+                ["metaTitle", "metaDescription", "pageType", "category", "heading"].includes(
+                  field.key
+                )
+              }
+            />
 
             <label>{field.label}</label>
 
             {field.limit && (
               <span className="char-count">
-                {formData[field.key]?.length || 0}/{field.limit}
+                {(formData[field.key] || "").length}/{field.limit}
               </span>
             )}
           </div>
         ))}
 
-        {/* ===== IMAGE UPLOAD ===== */}
-        <div className="upload-row">
+        {/* SLUG PREVIEW */}
+        <div className="slug-preview full-row">
+          <strong>Slug:</strong> {slugPreview || "-"}
+        </div>
 
+        {/* BUSINESS SEARCH */}
+        <div className="floating-field full-row">
+          <div className="category-input-wrapper">
+            <input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder=" "
+            />
+            <label>Popular Business</label>
+
+            {(formData.popularBusiness || []).length > 0 && (
+              <div className="selected-tags">
+                {formData.popularBusiness.map((item, i) => (
+                  <span className="tag" key={i}>
+                    {item.businessName}
+                    <span
+                      className="remove"
+                      onClick={() => {
+                        const updated =
+                          formData.popularBusiness.filter(
+                            (_, index) => index !== i
+                          );
+
+                        updateField(
+                          "popularBusiness",
+                          updated
+                        );
+                      }}
+                    >
+                      ×
+                    </span>
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {searchTerm && suggestions.length > 0 && (
+              <ul className="category-suggestion-list">
+                {suggestions.map((b, i) => (
+                  <li
+                    key={i}
+                    onClick={() => {
+                      const exists = (
+                        formData.popularBusiness || []
+                      ).some(
+                        (x) =>
+                          x.businessName ===
+                          b.businessName
+                      );
+
+                      if (!exists) {
+                        updateField(
+                          "popularBusiness",
+                          [
+                            ...(formData.popularBusiness ||
+                              []),
+                            b,
+                          ]
+                        );
+                      }
+
+                      setSearchTerm("");
+                    }}
+                  >
+                    {b.businessName}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+
+        {/* TAGS */}
+        <div className="full-row">
+          <div className="tags-box">
+            <input
+              placeholder="Add tag and press Enter"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  addTag(e.target.value);
+                  e.target.value = "";
+                }
+              }}
+            />
+
+            <div className="selected-tags">
+              {(formData.tags || []).map((tag) => (
+                <Chip
+                  key={tag}
+                  label={tag}
+                  onDelete={() => removeTag(tag)}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* IMAGES */}
+        <div className="upload-row">
           <div className="upload-box">
             <Button
               variant="contained"
-              startIcon={<CloudUploadIcon />}
               component="label"
+              startIcon={<CloudUploadIcon />}
               className="upload-btn primary"
             >
               Upload Images
               <input
+                hidden
+                multiple
                 type="file"
                 accept="image/*"
-                multiple
-                hidden
                 ref={fileInputRef}
-                onChange={handleImageChange}
+                onChange={handleImages}
               />
             </Button>
 
             <div className="preview-row">
-              {preview.map((img, index) => (
-                <div key={index} className="preview-item">
+              {preview.map((img, i) => (
+                <div className="preview-item" key={i}>
                   <Avatar src={img} />
-                  <span onClick={() => removeImage(index)}>×</span>
+                  <span onClick={() => removeImage(i)}>
+                    ×
+                  </span>
                 </div>
               ))}
             </div>
@@ -270,64 +368,123 @@ export default function SeoPageContentForm({
           <div className="upload-box">
             <Button
               variant="contained"
-              startIcon={<CloudUploadIcon />}
               component="label"
+              startIcon={<CloudUploadIcon />}
               className="upload-btn secondary"
             >
               Upload Profile
               <input
+                hidden
                 type="file"
                 accept="image/*"
-                hidden
-                onChange={handleProfileImageChange}
+                onChange={handleProfileImage}
               />
             </Button>
 
             {profilePreview && (
-              <div className="preview-row">
-                <Avatar src={profilePreview} className="profile-avatar" />
-              </div>
+              <Avatar
+                src={profilePreview}
+                className="profile-avatar"
+              />
             )}
           </div>
-
         </div>
       </section>
 
-      {/* ===== HEADER CONTENT ===== */}
+      {/* HEADER CONTENT */}
       <section className="editor-card premium-card">
-        <h2 className="section-title">Header Content</h2>
+        <h2 className="section-title">
+          Header Content
+        </h2>
+
         <div className="editor-wrapper">
           <ReactQuill
-            value={formData.headerContent}
-            onChange={(v) => handleChange("headerContent", v)}
+            value={formData.headerContent || ""}
+            onChange={(val) =>
+              updateField("headerContent", val)
+            }
             modules={modules}
             formats={formats}
           />
         </div>
       </section>
 
-      {/* ===== PAGE CONTENT ===== */}
+      {/* PAGE CONTENT */}
       <section className="editor-card premium-card">
-        <h2 className="section-title">Page Content</h2>
+        <h2 className="section-title">
+          Page Content
+        </h2>
+
         <div className="editor-wrapper">
           <ReactQuill
             value={formData.pageContent || ""}
-            onChange={(v) => handleChange("pageContent", v)}
+            onChange={(val) =>
+              updateField("pageContent", val)
+            }
             modules={modules}
             formats={formats}
           />
         </div>
       </section>
 
-      {/* ===== SUBMIT ===== */}
-      <div className="action-bar premium-action">
+      {/* FAQ */}
+      <section className="editor-card premium-card">
+        <div className="faq-head">
+          <h2 className="section-title">FAQs</h2>
+
+          <Button
+            startIcon={<AddIcon />}
+            onClick={addFaq}
+          >
+            Add FAQ
+          </Button>
+        </div>
+
+        {(formData.faq || []).map((item, index) => (
+          <div className="faq-item" key={index}>
+            <input
+              placeholder="Question"
+              value={item.question}
+              onChange={(e) =>
+                updateFaq(
+                  index,
+                  "question",
+                  e.target.value
+                )
+              }
+            />
+
+            <textarea
+              placeholder="Answer"
+              value={item.answer}
+              onChange={(e) =>
+                updateFaq(
+                  index,
+                  "answer",
+                  e.target.value
+                )
+              }
+            />
+
+            <IconButton
+              color="error"
+              onClick={() => removeFaq(index)}
+            >
+              <DeleteOutlineIcon />
+            </IconButton>
+          </div>
+        ))}
+      </section>
+
+      {/* SUBMIT */}
+      <div className="action-bar">
         <button type="submit" disabled={loading}>
           {loading ? (
             <CircularProgress size={20} />
           ) : editingId ? (
-            "Update Content"
+            "Update Blog"
           ) : (
-            "Publish Content"
+            "Publish Blog"
           )}
         </button>
       </div>
