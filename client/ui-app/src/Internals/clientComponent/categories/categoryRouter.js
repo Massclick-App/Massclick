@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useParams, useLocation } from "react-router-dom";
 import { useDispatch } from "react-redux";
 
 import CategoriesPage from "./categories.js";
@@ -10,16 +10,14 @@ import {
   backendMainSearch,
 } from "../../../redux/actions/businessListAction";
 
-const createSlug = (text = "") =>
-  text.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-");
-
 const formatText = (text = "") =>
-  text.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  text
+    .replace(/-/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 
 const CategoryRouter = () => {
-  const { location, category } = useParams();
+  const { location, category, subcategory } = useParams();
   const routerLocation = useLocation();
-  const navigate = useNavigate();
   const dispatch = useDispatch();
 
   const [resolvedCategory, setResolvedCategory] = useState(null);
@@ -28,58 +26,99 @@ const CategoryRouter = () => {
   const searchText = routerLocation.state?.searchText;
 
   useEffect(() => {
-    if (!category && !searchText) return;
-
-    if (isSearchFlow && searchText) {
-      setResolvedCategory(searchText);
-
-      dispatch(
-        backendMainSearch(searchText, location, searchText)
-      );
-
-      return;
-    }
-
-    const isParentCategory = categoriesData[category];
-
-    if (isParentCategory) {
-      setResolvedCategory(formatText(category));
-      return;
-    }
-
-    const resolveCategoryFromAPI = async () => {
+    const loadCategory = async () => {
       try {
-        const response = await dispatch(
-          backendMainSearch(category, location, category)
-        );
+        if (isSearchFlow && searchText) {
+          setResolvedCategory(searchText);
 
-        const results = response?.payload || [];
+          await dispatch(
+            backendMainSearch(
+              searchText,
+              location,
+              searchText
+            )
+          );
 
-        if (results.length > 0) {
-          const realCategory = results[0].category;
-          const correctSlug = createSlug(realCategory);
-
-          setResolvedCategory(realCategory);
-
-          if (category !== correctSlug) {
-            navigate(`/${location}/${correctSlug}`, { replace: true });
-          }
-        } else {
-          setResolvedCategory(formatText(category));
+          return;
         }
-      } catch (err) {
-        console.error(err);
-        setResolvedCategory(formatText(category));
+
+ 
+        if (category && !subcategory && categoriesData[category]) {
+          setResolvedCategory(formatText(category));
+          return;
+        }
+
+   
+        if (subcategory) {
+          const searchValue = subcategory;
+
+          const response = await dispatch(
+            backendMainSearch(
+              searchValue,
+              location,
+              searchValue
+            )
+          );
+
+          const results = response?.payload || [];
+
+          if (results.length > 0) {
+            setResolvedCategory(results[0].category);
+          } else {
+            setResolvedCategory(formatText(subcategory));
+          }
+
+          return;
+        }
+
+  
+        if (category) {
+          const response = await dispatch(
+            backendMainSearch(
+              category,
+              location,
+              category
+            )
+          );
+
+          const results = response?.payload || [];
+
+          if (results.length > 0) {
+            setResolvedCategory(results[0].category);
+          } else {
+            setResolvedCategory(formatText(category));
+          }
+
+          return;
+        }
+      } catch (error) {
+        console.error(error);
+
+        setResolvedCategory(
+          formatText(subcategory || category || "")
+        );
       }
     };
 
-    resolveCategoryFromAPI();
+    loadCategory();
 
-  }, [category, location, searchText, isSearchFlow, dispatch, navigate]);
+  }, [
+    location,
+    category,
+    subcategory,
+    isSearchFlow,
+    searchText,
+    dispatch
+  ]);
 
   if (!resolvedCategory) return null;
 
-  if (!isSearchFlow && categoriesData[category]) {
+  if (
+    !isSearchFlow &&
+    category &&
+    !subcategory &&
+    categoriesData[category]
+  ) {
     return <CategoriesPage />;
   }
 
