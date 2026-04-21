@@ -365,29 +365,13 @@ export const mainSearchController = async (req, res) => {
     }
 
    
-   if (category) {
+ if (category) {
   const variations = getWordVariations(category);
 
-  const exactConditions = variations.map((val) => ({
-    category: new RegExp(`^${escapeRegex(val)}$`, "i")
-  }));
-
-  const partialConditions = variations.flatMap((val) => {
-    const regex = new RegExp(escapeRegex(val), "i");
-
-    return [
-      { category: regex },
-      { keywords: regex },
-      // { businessName: regex },
-      // { title: regex }
-    ];
-  });
-
   matchQuery.$and.push({
-    $or: [
-      ...exactConditions,   
-      ...partialConditions  
-    ]
+    $or: variations.map(val => ({
+      category: new RegExp(`^${escapeRegex(val)}$`, "i")
+    }))
   });
 }
 
