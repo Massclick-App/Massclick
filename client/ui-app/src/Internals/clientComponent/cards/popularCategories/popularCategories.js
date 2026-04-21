@@ -38,7 +38,7 @@ const POPULAR_ORDER = [
   "Painting Contractor",
   "Nursing Service",
   "Courier Services",
-  "Printing & Publishing Service",
+  "Printing Publishing Service",
   "Hobbies",
   "Internet Website Designer",
   "Opticals",
