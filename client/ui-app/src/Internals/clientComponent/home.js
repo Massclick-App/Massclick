@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import { useDispatch, useSelector } from "react-redux";
 import { Box, Drawer, List, ListItem, ListItemText } from '@mui/material';
+import GlobalSkeleton from './globalSkeleton.js';
 
 import HeroSection from '../clientComponent/heroSection/heroSection.js';
 import CategoryBar from '../clientComponent/categoryBar';
@@ -181,7 +182,7 @@ const LandingPage = () => {
                     />
                 </Box>
 
-                <Suspense fallback={<div style={{ height: 200 }}>Loading...</div>}>
+                <Suspense fallback={<GlobalSkeleton type="landing" />}>
 
                     {isSearching ? (
                         <Box sx={{ mt: 4, mb: 4, px: { xs: 2, sm: 4, md: 6 } }}>
