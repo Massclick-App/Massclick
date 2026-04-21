@@ -149,58 +149,46 @@ export const deleteSeoPageContentBlogs = (id) => async (dispatch) => {
   }
 };
 
-export const fetchSeoPageContentBlogsMeta =
-  ({ pageType, category, location }) =>
-  async (dispatch) => {
-    dispatch({ type: FETCH_SEOPAGECONTENTBLOGS_META_REQUEST });
+export const fetchSeoPageContentBlogsMeta = (params) => async (dispatch) => {
+  try {
+    dispatch({
+      type: FETCH_SEOPAGECONTENTBLOGS_META_REQUEST,
+    });
 
-    try {
-      const res = await axios.get(
-        `${API}/seopagecontentblog/meta`,
-        {
-          params: { pageType, category, location },
-        }
-      );
+    const res = await axios.get(
+      `${API}/seopagecontentblog/meta`,
+      { params }
+    );
 
-      dispatch({
-        type: FETCH_SEOPAGECONTENTBLOGS_META_SUCCESS,
-        payload: {
-          data: res.data || [],
-          total: res.data?.length || 0,
-        },
-      });
+    dispatch({
+      type: FETCH_SEOPAGECONTENTBLOGS_META_SUCCESS,
+      payload: res.data,
+    });
 
-      return res.data;
-    } catch (err) {
-      console.log("❌ API ERROR:", err);
+  } catch (error) {
+    dispatch({
+      type: FETCH_SEOPAGECONTENTBLOGS_META_FAILURE,
+      payload:
+        error.response?.data?.message ||
+        error.message,
+    });
+  }
+};
 
-      dispatch({
-        type: FETCH_SEOPAGECONTENTBLOGS_META_FAILURE,
-        payload: err.response?.data || err.message,
-      });
-    }
-  };
-
-  export const fetchSeoBlogBySlug = (slug) => async (dispatch) => {
+ export const fetchSeoBlogBySlug = (slug) => async (dispatch) => {
   dispatch({ type: FETCH_SEOBLOG_BY_SLUG_REQUEST });
 
   try {
-    console.log("🔥 FETCH BLOG BY SLUG:", slug);
-
     const res = await axios.get(
       `${API}/seopagecontentblog/blog/${slug}`
     );
 
     dispatch({
       type: FETCH_SEOBLOG_BY_SLUG_SUCCESS,
-      payload: res.data,
+      payload: res.data.data, 
     });
 
-    return res.data;
-
   } catch (err) {
-    console.log("❌ BLOG ERROR:", err);
-
     dispatch({
       type: FETCH_SEOBLOG_BY_SLUG_FAILURE,
       payload: err.response?.data || err.message,
@@ -221,7 +209,7 @@ export const fetchBusinessSuggestion = (search) => async (dispatch) => {
 
     dispatch({
       type: FETCH_BUSINESS_SUGGESTION_SUCCESS,
-      payload: res.data,
+      payload: res.data.data || [], 
     });
 
   } catch (err) {

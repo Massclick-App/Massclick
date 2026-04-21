@@ -97,7 +97,6 @@ app.use(
 
 app.use(compression());
 
-// ? CORS CONFIG (FINAL FIX)
 
 const allowedOrigins = [
   "https://massclick.in",
