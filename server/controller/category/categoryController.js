@@ -11,8 +11,6 @@ import categoryModel from "../../model/category/categoryModel.js";
 import { uploadImageToS3, getSignedUrlByKey } from "../../s3Uploder.js";
 import { categoriesData } from "../../utils/sub-categoriesData.js";
 
-
-
 export const addCategoryAction = async (req, res) => {
   try {
     const reqBody = req.body;
@@ -24,9 +22,6 @@ export const addCategoryAction = async (req, res) => {
   }
 };
 
-/**
- * VIEW SINGLE CATEGORY
- */
 export const viewCategoryAction = async (req, res) => {
   try {
     const categoryId = req.params.id;
@@ -38,9 +33,6 @@ export const viewCategoryAction = async (req, res) => {
   }
 };
 
-/**
- * VIEW ALL CATEGORIES
- */
 export const viewAllCategoryAction = async (req, res) => {
   try {
     const pageNo = parseInt(req.query.pageNo) || 1;
@@ -73,9 +65,6 @@ export const viewAllCategoryAction = async (req, res) => {
   }
 };
 
-/**
- * UPDATE CATEGORY
- */
 export const updateCategoryAction = async (req, res) => {
   try {
     const categoryId = req.params.id;
@@ -187,6 +176,68 @@ export const getHomeCategoriesAction = async (req, res) => {
   }
 };
 
+export const getMobileHomeCategoriesAction = async (req, res) => {
+  try {
+
+    const FEATURED_ORDER = [
+      "Hotels",
+      "Rent And Hire",
+      "Restaurants",
+      "Education",
+      "Hospitals",
+      "Contractors",
+      "Gym",
+      "Furnitures",
+      "House Keeping Service",
+      "Security System",
+      "Photographers",
+      "Popular Categories",
+    ];
+
+    const categories = await categoryModel.find({
+      isActive: true
+    }).lean();
+
+    const normalize = (name) =>
+      name.toLowerCase().replace(/s$/, "").trim();
+
+    const map = new Map(
+      categories.map(cat => [
+        normalize(cat.category),
+        cat
+      ])
+    );
+
+    const S3_BASE_URL = "https://massclickdev.s3.ap-southeast-2.amazonaws.com/";
+
+    const ordered = FEATURED_ORDER.map((name) => {
+
+      const found = map.get(normalize(name));
+
+      return found
+        ? {
+          _id: found._id,
+          name: found.category,
+          slug: found.slug,
+          icon: found.categoryImageKey
+            ? `${S3_BASE_URL}${found.categoryImageKey}`
+            : null
+        }
+        : {
+          name,
+          slug: name.toLowerCase().replace(/ /g, "-"),
+          icon: null
+        };
+    });
+
+    res.send(ordered);
+
+  } catch (error) {
+    console.error("getHomeCategoriesAction error:", error);
+    res.status(400).send({ message: error.message });
+  }
+};
+
 export const getSubCategoriesAction = async (req, res) => {
   try {
     const { parentId } = req.params;
@@ -230,15 +281,12 @@ export const getSubCategoriesAction = async (req, res) => {
       isActive: true,
     }).lean();
 
-
-
     const filtered = data.filter((item) =>
       allowedNames.some((name) =>
         cleanText(name) === cleanText(item.category)
       )
     );
 
-    // ✅ DB data found
     if (filtered.length > 0) {
       return res.json(
         filtered.map((item) => ({
@@ -252,7 +300,6 @@ export const getSubCategoriesAction = async (req, res) => {
       );
     }
 
-    // ✅ fallback static data
     const fallback = selectedCategories.map((item, index) => ({
       _id: index + 1,
       name: item.name,
@@ -300,14 +347,14 @@ export const getPopularCategoriesAction = async (req, res) => {
       "Painting Contractor",
       "Nursing Service",
       "Courier Services",
-      "Printing & Publishing Service",
+      "Printing Publishing Service",
       "Hobbies",
       "Internet Website Designer",
       "Opticals",
       "Organic Shop",
       "Scrap Dealer",
       "Automobiles",
-      "Export and Import",
+      "Export Import",
       "Loans",
       "Physiotherapy",
       "Clinical Lab",

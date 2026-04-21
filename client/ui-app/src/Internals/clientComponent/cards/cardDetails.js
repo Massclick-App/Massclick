@@ -34,6 +34,7 @@ import Tooltip from "@mui/material/Tooltip";
 import Footer from "../footer/footer";
 import ReviewList from "../rating/reviewList";
 import { getBusinessReviews } from "../../../redux/actions/reviewAction.js";
+import GlobalSkeleton from "../globalSkeleton.js";
 
 const SimpleModal = ({ children, onClose, title }) => (
   <div
@@ -166,9 +167,7 @@ const BusinessDetail = () => {
     return (
       <>
         <CardsSearch />
-        <div className="business-CardDetails-pageWrapper">
-          <p>Loading...</p>
-        </div>
+        <GlobalSkeleton type="details" />
         <Footer />
       </>
     );
