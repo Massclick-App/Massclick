@@ -45,7 +45,7 @@ const POPULAR_ORDER = [
   "Organic Shop",
   "Scrap Dealer",
   "Automobiles",
-  "Export and Import",
+  "Export Import",
   "Loans",
   "Physiotherapy",
   "Clinical Lab",
