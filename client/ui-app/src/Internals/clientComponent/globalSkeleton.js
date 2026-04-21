@@ -48,104 +48,164 @@ const SectionHead = ({ titleW = 200 }) => (
 
 /* ──────────────────────────────────────────────────────────────
    1. LANDING PAGE skeleton
+   Matches the actual landing page layout:
+   - CategoryBar (header)
+   - HeroSection with search bar + trust badges
+   - FeaturedServices (horizontal scroll)
+   - ServiceCardsGrid (cards with section titles)
+   - MassClickBanner (full-width ad)
+   - TrendingSearchesCarousel
+   - CardCarousel (popular searches)
+   - TopTourist
+   - RelatedBlogs
 ────────────────────────────────────────────────────────────── */
 const LandingSkeleton = () => (
   <div className="sk-root">
     {/* ── Category bar ─────────────────────────── */}
-    <div className="sk-catbar">
-      {[...Array(9)].map((_, i) => (
-        <div key={i} className="sk-catitem">
-          <Circ size={46} />
-          <Txt w={54} h={11} />
+    <header className="categoryBarContainer sk-catbar">
+      <div className="categoryBarContent">
+        <div className="logoGroup">
+          <div className="logoWrapper">
+            <S w={40} h={40} r={8} />
+          </div>
+          <div className="brandingText">
+            <Txt w={100} h={18} sx={{ mb: 0.5 }} />
+            <Txt w={140} h={10} />
+          </div>
         </div>
-      ))}
-    </div>
+        <nav className="desktopNav">
+          <Stack direction="row" spacing={1.5}>
+            {[...Array(4)].map((_, i) => (
+              <S key={i} w={90} h={36} r={8} />
+            ))}
+          </Stack>
+        </nav>
+        <div className="actionButtons">
+          <S w={120} h={36} r={8} />
+        </div>
+      </div>
+    </header>
 
     {/* ── Hero section ─────────────────────────── */}
-    <div className="sk-hero">
-      <Txt w="55%" h={46} r={3} sx={{ maxWidth: 520 }} />
-      <Txt w="38%" h={20} r={2} sx={{ maxWidth: 340 }} />
-      <Box sx={{ width: "100%", maxWidth: 680, mt: 1 }}>
-        <S w="100%" h={58} r={30} />
-      </Box>
+    <div className="hero-section">
+      <div className="hero-content hero-minimal">
+        {/* Search bar */}
+        <form className="search-bar-container">
+          <div className="input-group location-group">
+            <Circ size={20} />
+            <S w="100%" h={56} r={0} sx={{ mx: 1 }} />
+          </div>
+          <div className="input-group search-group">
+            <S w="100%" h={56} r={0} />
+            <Circ size={20} />
+          </div>
+          <button type="button" className="search-button">
+            <Circ size={26} />
+          </button>
+        </form>
+        {/* Trust badges */}
+        <div className="hero-trust">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="trust-card">
+              <Circ size={16} />
+              <Txt w={100} h={12} />
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
 
     <Container maxWidth="xl" sx={{ py: 4 }}>
-      {/* ── Featured services ─────────────────── */}
-      <SectionHead titleW={220} />
+      {/* ── Featured services (horizontal scroll) ── */}
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2.5 }}>
+        <Box className="sk-section-accent" sx={{ height: 26, bgcolor: "rgba(255,107,44,0.15)" }} />
+        <Txt w={220} h={22} r={2} />
+      </Box>
       <div className="sk-hscroll" style={{ marginBottom: "2.5rem" }}>
-        {[...Array(5)].map((_, i) => (
-          <div key={i} className="sk-hcard" style={{ width: 180 }}>
-            <S w={180} h={130} r={14} />
-            <Txt w="70%" h={13} sx={{ mt: 1, mx: "auto" }} />
-            <Txt w="50%" h={11} sx={{ mt: 0.5, mx: "auto" }} />
+        {[...Array(8)].map((_, i) => (
+          <div key={i} className="service-card" style={{ width: 130, height: 160, flexShrink: 0 }}>
+            <S w={80} h={80} r={50} sx={{ mx: "auto", mb: 1.5 }} />
+            <Txt w="70%" h={14} sx={{ mx: "auto" }} />
+            <Txt w="50%" h={11} sx={{ mx: "auto", mt: 0.5 }} />
           </div>
         ))}
       </div>
 
       {/* ── Service cards grid ────────────────── */}
-      <SectionHead titleW={180} />
-      <Grid container spacing={2} sx={{ mb: 5 }}>
-        {[...Array(6)].map((_, i) => (
-          <Grid item xs={6} sm={4} md={2} key={i}>
-            <Paper
-              elevation={0}
-              sx={{
-                p: 1.5,
-                borderRadius: 3,
-                border: "1px solid #f0ece8",
-                textAlign: "center",
-              }}
-            >
-              <S w="100%" h={96} r={10} />
-              <Txt w="78%" h={13} sx={{ mt: 1.25, mx: "auto" }} />
-              <Txt w="52%" h={11} sx={{ mt: 0.5, mx: "auto" }} />
-            </Paper>
-          </Grid>
-        ))}
-      </Grid>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2.5 }}>
+        <Box className="sk-section-accent" sx={{ height: 26, bgcolor: "rgba(255,107,44,0.15)" }} />
+        <Txt w={180} h={22} r={2} />
+      </Box>
+      <div className="service-cards-container">
+        <Paper elevation={0} sx={{ p: 3, borderRadius: 4, border: "1px solid #f0ece8", maxWidth: 380 }}>
+          <Txt w={200} h={24} r={2} sx={{ mb: 2 }} />
+          <div className="items-grid">
+            {[...Array(12)].map((_, i) => (
+              <div key={i} className="item-card" style={{ width: "100%" }}>
+                <S w={70} h={70} r={35} sx={{ mx: "auto", mb: 1 }} />
+                <Txt w="80%" h={12} sx={{ mx: "auto" }} />
+              </div>
+            ))}
+          </div>
+        </Paper>
+      </div>
 
       {/* ── MassClick banner ─────────────────── */}
       <S w="100%" h={110} r={18} sx={{ mb: 5 }} />
 
       {/* ── Trending searches ─────────────────── */}
-      <SectionHead titleW={190} />
-      <Stack
-        direction="row"
-        flexWrap="wrap"
-        gap={1}
-        sx={{ mb: 5 }}
-      >
-        {[96, 74, 112, 88, 68, 104, 80, 92, 76, 118].map((w, i) => (
-          <S key={i} w={w} h={34} r={999} />
-        ))}
-      </Stack>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2.5 }}>
+        <Box className="sk-section-accent" sx={{ height: 26, bgcolor: "rgba(255,107,44,0.15)" }} />
+        <Txt w={190} h={22} r={2} />
+      </Box>
+      <div className="trending-search">
+        <div className="trending-search__track" style={{ display: "flex", gap: "1rem", overflow: "hidden" }}>
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="trending-search__card" style={{ width: 240, flexShrink: 0 }}>
+              <S w={240} h={150} r={14} />
+              <Txt w="60%" h={14} sx={{ mt: 1 }} />
+            </div>
+          ))}
+        </div>
+      </div>
 
       {/* ── Popular searches carousel ────────── */}
-      <SectionHead titleW={210} />
-      <div className="sk-hscroll" style={{ marginBottom: "2.5rem" }}>
-        {[...Array(4)].map((_, i) => (
-          <div key={i} className="sk-hcard" style={{ width: 240 }}>
-            <S w={240} h={150} r={14} />
-            <Txt w="65%" h={14} sx={{ mt: 1 }} />
-            <Txt w="45%" h={12} sx={{ mt: 0.5 }} />
-          </div>
-        ))}
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2.5, mt: 4 }}>
+        <Box className="sk-section-accent" sx={{ height: 26, bgcolor: "rgba(255,107,44,0.15)" }} />
+        <Txt w={210} h={22} r={2} />
+      </Box>
+      <div className="popular-search">
+        <div className="popular-search__track" style={{ display: "flex", gap: "1rem", overflow: "hidden" }}>
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="popular-search__card" style={{ width: 280, flexShrink: 0 }}>
+              <S w={280} h={180} r={14} />
+              <Txt w="65%" h={16} sx={{ mt: 1.5 }} />
+              <S w={120} h={36} r={8} sx={{ mt: 1 }} />
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* ── Top tourist ───────────────────────── */}
-      <SectionHead titleW={160} />
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2.5, mt: 4 }}>
+        <Box className="sk-section-accent" sx={{ height: 26, bgcolor: "rgba(255,107,44,0.15)" }} />
+        <Txt w={160} h={22} r={2} />
+      </Box>
       <Grid container spacing={2} sx={{ mb: 5 }}>
         {[...Array(4)].map((_, i) => (
           <Grid item xs={6} sm={3} key={i}>
-            <S w="100%" h={150} r={12} />
-            <Txt w="60%" h={13} sx={{ mt: 1 }} />
+            <S w="100%" h={200} r={12} />
+            <Txt w="60%" h={14} sx={{ mt: 1.5 }} />
+            <Txt w="40%" h={12} sx={{ mt: 0.5 }} />
           </Grid>
         ))}
       </Grid>
 
       {/* ── Blog cards ───────────────────────── */}
-      <SectionHead titleW={170} />
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2.5 }}>
+        <Box className="sk-section-accent" sx={{ height: 26, bgcolor: "rgba(255,107,44,0.15)" }} />
+        <Txt w={170} h={22} r={2} />
+      </Box>
       <Grid container spacing={3}>
         {[...Array(3)].map((_, i) => (
           <Grid item xs={12} sm={6} md={4} key={i}>
@@ -157,7 +217,7 @@ const LandingSkeleton = () => (
                 border: "1px solid #f0ece8",
               }}
             >
-              <S w="100%" h={170} r={0} />
+              <S w="100%" h={200} r={0} />
               <Box sx={{ p: 2 }}>
                 <Txt w="85%" h={18} sx={{ mb: 1 }} />
                 <Txt w="58%" h={13} sx={{ mb: 1.5 }} />

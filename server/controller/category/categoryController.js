@@ -187,6 +187,68 @@ export const getHomeCategoriesAction = async (req, res) => {
   }
 };
 
+export const getMobileHomeCategoriesAction = async (req, res) => {
+  try {
+
+    const FEATURED_ORDER = [
+      "Hotels",
+      "Rent And Hire",
+      "Restaurants",
+      "Education",
+      "Hospitals",
+      "Contractors",
+      "Gym",
+      "Furnitures",
+      "House Keeping Service",
+      "Security System",
+      "Photographers",
+      "Popular Categories",
+    ];
+
+    const categories = await categoryModel.find({
+      isActive: true
+    }).lean();
+
+    const normalize = (name) =>
+      name.toLowerCase().replace(/s$/, "").trim();
+
+    const map = new Map(
+      categories.map(cat => [
+        normalize(cat.category),
+        cat
+      ])
+    );
+
+    const S3_BASE_URL = "https://massclickdev.s3.ap-southeast-2.amazonaws.com/";
+
+    const ordered = FEATURED_ORDER.map((name) => {
+
+      const found = map.get(normalize(name));
+
+      return found
+        ? {
+          _id: found._id,
+          name: found.category,
+          slug: found.slug,
+          icon: found.categoryImageKey
+            ? `${S3_BASE_URL}${found.categoryImageKey}`
+            : null
+        }
+        : {
+          name,
+          slug: name.toLowerCase().replace(/ /g, "-"),
+          icon: null
+        };
+    });
+
+    res.send(ordered);
+
+  } catch (error) {
+    console.error("getHomeCategoriesAction error:", error);
+    res.status(400).send({ message: error.message });
+  }
+};
+
 export const getSubCategoriesAction = async (req, res) => {
   try {
     const { parentId } = req.params;
