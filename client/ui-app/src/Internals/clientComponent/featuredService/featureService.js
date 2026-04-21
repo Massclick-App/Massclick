@@ -3,21 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { logSearchActivity } from "../../../redux/actions/businessListAction";
 import { fetchHomeCategories } from "../../../redux/actions/categoryAction";
-import { Skeleton } from "@mui/material";
 
 import "./featureService.css";
-
-const FeaturedSkeleton = () => (
-  <section className="featured-services-container">
-    {[...Array(8)].map((_, i) => (
-      <div key={i} className="service-card" style={{ width: 130, height: 160 }}>
-        <Skeleton variant="circular" width={80} height={80} animation="wave" sx={{ bgcolor: "rgba(255,107,44,0.055)", mx: "auto", mb: 1.5 }} />
-        <Skeleton variant="rounded" width="70%" height={14} animation="wave" sx={{ bgcolor: "rgba(255,107,44,0.055)", mx: "auto" }} />
-        <Skeleton variant="rounded" width="50%" height={11} animation="wave" sx={{ bgcolor: "rgba(255,107,44,0.055)", mx: "auto", mt: 0.5 }} />
-      </div>
-    ))}
-  </section>
-);
 
 const PopularCategoriesDrawer = React.lazy(() =>
   import("../cards/popularCategories/popularCategories.js")
@@ -166,11 +153,11 @@ const FeaturedServicesSection = () => {
     navigate(`/${districtSlug}/${service.slug}`);
   };
 
-  if (loading) return <FeaturedSkeleton />;
-
   return (
     <>
       <section className="featured-services-container">
+
+        {loading && <p>Loading...</p>}
 
         {orderedCategories.map((service, index) => {
 
