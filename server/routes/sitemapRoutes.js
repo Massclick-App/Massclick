@@ -244,7 +244,7 @@ router.get("/sitemap-category-city-:page.xml", async (req, res) => {
     const allUrls = [];
 
     for (const item of categoryData) {
-      const location = normalizeLocation(item._id.location);
+      const location = slugify(item._id.location);
 
       const { parent, child } = getCategoryHierarchy(
         item._id.category
@@ -331,8 +331,7 @@ router.get("/sitemap-business-:page.xml", async (req, res) => {
       .lean();
 
     const urls = businesses.map((item) => {
-      const location =
-        normalizeLocation(item.location);
+     const location = slugify(item.location);
 
       const businessSlug =
         slugify(item.businessName || "business");
