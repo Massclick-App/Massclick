@@ -5,6 +5,7 @@ import {
   checkFavorite,
 } from "../../helper/favorite/favoriteHelper.js";
 import { BAD_REQUEST, NOT_FOUND, CONFLICT } from "../../errorCodes.js";
+import { getSignedUrlByKey } from "../../s3Uploder.js";
 
 export const addFavoriteAction = async (req, res) => {
   try {
@@ -66,6 +67,16 @@ export const listFavoritesAction = async (req, res) => {
     const limit = parseInt(req.query.limit) || 20;
 
     const result = await listFavorites(userId, page, limit);
+
+    result.favorites.forEach((b) => {
+      if (b.bannerImageKey) {
+        b.bannerImage = getSignedUrlByKey(b.bannerImageKey);
+      }
+      if (b.businessImagesKey?.length > 0) {
+        b.businessImages = b.businessImagesKey.map((k) => getSignedUrlByKey(k));
+      }
+    });
+
     res.send(result);
 
   } catch (error) {
