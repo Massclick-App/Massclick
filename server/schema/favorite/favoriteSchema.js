@@ -3,12 +3,12 @@ import mongoose from "mongoose";
 const favoriteSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
+    ref: "user",
     required: true,
   },
   businessId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "BusinessList",
+    ref: "businesslist",
     required: true,
   },
   createdAt: {
