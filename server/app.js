@@ -30,6 +30,7 @@ import sitemapRoutes from "./routes/sitemapRoutes.js";
 import reviewRoutes from "./routes/reviewRoutes.js";
 import advertiseRoute from "./routes/advertiseRoute.js";
 import versionRoutes from "./routes/versionRoutes.js";
+import favoriteRoute from "./routes/favoriteRoute.js";
 import seoModel from "./model/seoModel/seoModel.js";
 
 dotenv.config();
@@ -180,6 +181,7 @@ app.use("/", popularSearchRoutes);
 app.use("/", reviewRoutes);
 app.use("/", advertiseRoute);
 app.use("/", versionRoutes);
+app.use("/", favoriteRoute);
 
 app.use(
   express.static(CLIENT_BUILD_PATH, {
