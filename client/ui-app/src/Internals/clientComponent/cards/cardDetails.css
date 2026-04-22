@@ -510,6 +510,26 @@
   transform: translateY(-1px) scale(1.04);
 }
 
+.business-CardDetails-favBtn {
+  border-color: #fecaca;
+}
+
+.business-CardDetails-favBtn:hover {
+  border-color: #ef4444;
+  background: #fff0f0;
+  color: #ef4444;
+}
+
+.business-CardDetails-favBtn--active {
+  background: #fff0f0;
+  border-color: #ef4444;
+}
+
+.business-CardDetails-favBtn--loading {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
 .business-CardDetails-ratingInput {
   flex-shrink: 0;
 }
