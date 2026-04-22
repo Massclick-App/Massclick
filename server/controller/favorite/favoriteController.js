@@ -8,11 +8,10 @@ import { BAD_REQUEST, NOT_FOUND, CONFLICT } from "../../errorCodes.js";
 
 export const addFavoriteAction = async (req, res) => {
   try {
-    const { businessId } = req.params;
-    const userId = req.authUser?.userId;
+    const { businessId, userId } = req.body;
 
     if (!userId) {
-      return res.status(401).send({ message: "Unauthorized" });
+      return res.status(BAD_REQUEST.code).send({ message: "User ID required" });
     }
 
     if (!businessId) {
@@ -33,11 +32,10 @@ export const addFavoriteAction = async (req, res) => {
 
 export const removeFavoriteAction = async (req, res) => {
   try {
-    const { businessId } = req.params;
-    const userId = req.authUser?.userId;
+    const { businessId, userId } = req.body;
 
     if (!userId) {
-      return res.status(401).send({ message: "Unauthorized" });
+      return res.status(BAD_REQUEST.code).send({ message: "User ID required" });
     }
 
     if (!businessId) {
@@ -58,10 +56,10 @@ export const removeFavoriteAction = async (req, res) => {
 
 export const listFavoritesAction = async (req, res) => {
   try {
-    const userId = req.authUser?.userId;
+    const { userId } = req.query;
 
     if (!userId) {
-      return res.status(401).send({ message: "Unauthorized" });
+      return res.status(BAD_REQUEST.code).send({ message: "User ID required" });
     }
 
     const page = parseInt(req.query.page) || 1;
@@ -78,11 +76,11 @@ export const listFavoritesAction = async (req, res) => {
 
 export const checkFavoriteAction = async (req, res) => {
   try {
-    const { businessId } = req.params;
-    const userId = req.authUser?.userId;
+    const { businessId } = req.query;
+    const { userId } = req.query;
 
     if (!userId) {
-      return res.status(401).send({ message: "Unauthorized" });
+      return res.status(BAD_REQUEST.code).send({ message: "User ID required" });
     }
 
     if (!businessId) {
