@@ -33,6 +33,15 @@ const FEATURED_ORDER = [
   "Popular Categories"
 ];
 
+const toPascalCase = (str) => {
+  if (!str || typeof str !== "string") return str;
+  return str
+    .trim()
+    .split(/\s+/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+};
+
 const createSlug = (text) => {
   if (!text) return "";
   if (typeof text === "object") {
@@ -195,7 +204,7 @@ const FeaturedServicesSection = () => {
               />
 
               <h3 className="service-name">
-                {service.name}
+                {toPascalCase(service.name)}
               </h3>
 
             </article>

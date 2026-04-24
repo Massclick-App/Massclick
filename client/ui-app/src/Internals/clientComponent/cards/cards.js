@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { LazyLoadImage } from "react-lazy-load-image-component";
@@ -21,6 +21,7 @@ import {
   fetchFavorites,
   getAuthUser,
 } from "../../../redux/actions/favoriteAction";
+import OTPLoginModal from "../AddBusinessModel.js";
 
 const EMPTY_PIXEL =
   "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
@@ -46,6 +47,7 @@ const Cards = ({
 }) => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   const favoriteIds = useSelector((state) => state.favorites.favoriteIds);
   const togglingIds = useSelector((state) => state.favorites.togglingIds);
@@ -102,7 +104,7 @@ const Cards = ({
     e.preventDefault();
     e.stopPropagation();
     if (!isLoggedIn) {
-      alert("Please login to add favorites");
+      setShowLoginModal(true);
       return;
     }
     if (isToggling) return;
@@ -114,6 +116,8 @@ const Cards = ({
   };
 
   return (
+    <>
+    <OTPLoginModal open={showLoginModal} handleClose={() => setShowLoginModal(false)} />
     <Link to={to} state={props.state} className="card-link">
       <div className="base-card">
 
@@ -215,6 +219,7 @@ const Cards = ({
         </div>
       </div>
     </Link>
+    </>
   );
 };
 

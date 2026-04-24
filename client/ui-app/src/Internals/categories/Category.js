@@ -1,10 +1,12 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import axios from "axios";
 import {
   getAllCategory,
   createCategory,
   editCategory,
   deleteCategory,
+  hardDeleteCategory,
 } from "../../redux/actions/categoryAction";
 import "./categories.css";
 import {
@@ -22,6 +24,10 @@ import {
   Autocomplete,
   Chip,
   InputAdornment,
+  Checkbox,
+  Divider,
+  ToggleButton,
+  ToggleButtonGroup,
 } from "@mui/material";
 
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
@@ -29,6 +35,58 @@ import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import CustomizedTable from "../../components/Table/CustomizedTable";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
+import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
+
+const API_URL = process.env.REACT_APP_API_URL;
+
+const NOISE_WORDS = new Set([
+  "and", "the", "near", "me", "center", "centre",
+  "service", "services", "solution", "solutions",
+  "provider", "providers",
+]);
+
+const SYNONYM_MAP = (() => {
+  const groups = {
+    repair:   ["repair", "repairs", "maintenance", "fix", "fixing", "servicing"],
+    computer: ["computer", "computers", "pc", "desktop", "desktops"],
+    laptop:   ["laptop", "laptops"],
+  };
+  const map = {};
+  for (const [canonical, words] of Object.entries(groups)) {
+    for (const w of words) map[w] = canonical;
+  }
+  return map;
+})();
+
+const SPLIT_DICT = [
+  "laptop", "computer", "desktop", "mobile", "phone", "printer",
+  "repair", "service", "maintenance", "camera", "ac", "tv",
+].sort((a, b) => b.length - a.length);
+
+const splitMergedWord = (word) => {
+  for (const known of SPLIT_DICT) {
+    if (word.startsWith(known) && word.length > known.length) {
+      return [known, ...splitMergedWord(word.slice(known.length))];
+    }
+  }
+  return [word];
+};
+
+const semanticKey = (text) => {
+  const s = (text || "")
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9\s]/g, " ");
+  const words = s.split(/\s+/).filter(Boolean).flatMap(splitMergedWord);
+  const core = [
+    ...new Set(
+      words
+        .map((w) => SYNONYM_MAP[w] || w)
+        .filter((w) => !NOISE_WORDS.has(w) && w.length > 1)
+    ),
+  ].sort();
+  return core.join(" ");
+};
 
 export default function Category() {
   const dispatch = useDispatch();
@@ -57,6 +115,13 @@ export default function Category() {
   const [editMode, setEditMode] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState({ open: false, id: null });
   const [inputKeyword, setInputKeyword] = useState("");
+  const [dupDialog, setDupDialog] = useState({ open: false, groups: [] });
+  const [selectedDups, setSelectedDups] = useState([]);
+  const [dupLoading, setDupLoading] = useState(false);
+  const [dupDeleting, setDupDeleting] = useState(false);
+  const [dupMode, setDupMode] = useState("exact");
+  const [allCatsCache, setAllCatsCache] = useState([]);
+  const [businessUsage, setBusinessUsage] = useState({});
 
   const subCategories = [
     "Services",
@@ -181,6 +246,125 @@ export default function Category() {
         setPreview(reader.result);
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const computeDupGroups = (cats, mode) => {
+    const normalizeSlug = (slug) =>
+      (slug || "")
+        .toLowerCase()
+        .trim()
+        .replace(/-e?s$/, "")
+        .replace(/[-_]+/g, "-")
+        .replace(/^-|-$/g, "");
+
+    const keyFn =
+      mode === "slug"
+        ? (cat) => (cat.slug || "").toLowerCase().trim()
+        : mode === "similar-slug"
+        ? (cat) => normalizeSlug(cat.slug)
+        : mode === "semantic"
+        ? (cat) => semanticKey(cat.category)
+        : mode === "similar"
+        ? (cat) =>
+            (cat.category || "")
+              .toLowerCase()
+              .trim()
+              .replace(/e?s$/i, "")
+              .replace(/[^a-z0-9]+/g, " ")
+              .trim()
+        : (cat) => (cat.category || "").toLowerCase().trim();
+
+    const groups = {};
+    cats.forEach((cat) => {
+      const key = keyFn(cat);
+      if (!key) return;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(cat);
+    });
+    return Object.values(groups).filter((g) => g.length > 1);
+  };
+
+  const fetchBusinessUsage = async (cats) => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      const names = cats.map((c) => c.category).filter(Boolean);
+      if (!names.length) return;
+      const params = names.map((n) => `names=${encodeURIComponent(n)}`).join("&");
+      const res = await axios.get(`${API_URL}/category/business-usage?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const map = {};
+      (res.data || []).forEach(({ name, count }) => {
+        map[name.toLowerCase()] = count;
+      });
+      setBusinessUsage(map);
+    } catch (err) {
+      console.error("Failed to fetch business usage:", err);
+    }
+  };
+
+  const findDuplicates = async () => {
+    setDupLoading(true);
+    try {
+      const token = localStorage.getItem("accessToken");
+      const response = await axios.get(
+        `${API_URL}/category/viewall?pageNo=1&pageSize=9999&status=active`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const allCats = response.data.data || [];
+      setAllCatsCache(allCats);
+      const groups = computeDupGroups(allCats, dupMode);
+      setDupDialog({ open: true, groups });
+      setSelectedDups([]);
+      fetchBusinessUsage(allCats);
+    } catch (err) {
+      console.error("Failed to fetch categories for duplicate check:", err);
+    } finally {
+      setDupLoading(false);
+    }
+  };
+
+  const handleModeChange = (_, newMode) => {
+    if (!newMode) return;
+    setDupMode(newMode);
+    const groups = computeDupGroups(allCatsCache, newMode);
+    setDupDialog((prev) => ({ ...prev, groups }));
+    setSelectedDups([]);
+  };
+
+  const toggleDupSelect = (id) => {
+    setSelectedDups((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  const toggleSelectGroup = (group) => {
+    const ids = group.map((c) => c._id);
+    const allSelected = ids.every((id) => selectedDups.includes(id));
+    if (allSelected) {
+      setSelectedDups((prev) => prev.filter((id) => !ids.includes(id)));
+    } else {
+      setSelectedDups((prev) => [...new Set([...prev, ...ids])]);
+    }
+  };
+
+  const deleteSelectedDups = async (hard = false) => {
+    setDupDeleting(hard ? "hard" : "soft");
+    try {
+      for (const id of selectedDups) {
+        await dispatch(hard ? hardDeleteCategory(id) : deleteCategory(id));
+      }
+      const remaining = allCatsCache.filter((c) => !selectedDups.includes(c._id));
+      setAllCatsCache(remaining);
+      const groups = computeDupGroups(remaining, dupMode);
+      setDupDialog((prev) => ({ ...prev, groups }));
+      setSelectedDups([]);
+      dispatch(getAllCategory());
+    } catch (err) {
+      console.error("Bulk delete failed:", err);
+    } finally {
+      setDupDeleting(false);
     }
   };
 
@@ -509,9 +693,19 @@ export default function Category() {
         )}
       </div>
 
-      <Typography variant="h6" gutterBottom sx={{ textAlign: "center" }}>
-        Category Table
-      </Typography>
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 2, mb: 1 }}>
+        <Typography variant="h6">Category Table</Typography>
+        <Button
+          variant="outlined"
+          color="warning"
+          size="small"
+          startIcon={dupLoading ? <CircularProgress size={16} /> : <ContentCopyRoundedIcon />}
+          onClick={findDuplicates}
+          disabled={dupLoading}
+        >
+          Find Duplicates
+        </Button>
+      </Box>
       <Box sx={{ width: "100%" }}>
         <CustomizedTable data={rows}
           columns={categoryList}
@@ -521,6 +715,136 @@ export default function Category() {
           }
         />
       </Box>
+
+      {/* Duplicates Dialog */}
+      <Dialog
+        open={dupDialog.open}
+        onClose={() => setDupDialog({ open: false, groups: [] })}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 1 }}>
+            <span>
+              Duplicate Categories
+              {dupDialog.groups.length === 0
+                ? " — None Found"
+                : ` — ${dupDialog.groups.length} group(s)`}
+            </span>
+            <ToggleButtonGroup
+              value={dupMode}
+              exclusive
+              onChange={handleModeChange}
+              size="small"
+            >
+              <ToggleButton value="exact">Exact Name</ToggleButton>
+              <ToggleButton value="similar">Similar Name</ToggleButton>
+              <ToggleButton value="semantic">Semantic</ToggleButton>
+              <ToggleButton value="slug">Exact Slug</ToggleButton>
+              <ToggleButton value="similar-slug">Similar Slug</ToggleButton>
+            </ToggleButtonGroup>
+          </Box>
+        </DialogTitle>
+        <DialogContent dividers>
+          {dupDialog.groups.length === 0 ? (
+            <Typography>No duplicate categories found.</Typography>
+          ) : (
+            dupDialog.groups.map((group, gi) => {
+              const groupIds = group.map((c) => c._id);
+              const allSelected = groupIds.every((id) => selectedDups.includes(id));
+              return (
+                <Box key={gi} sx={{ mb: 2 }}>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
+                    <Checkbox
+                      size="small"
+                      checked={allSelected}
+                      indeterminate={groupIds.some((id) => selectedDups.includes(id)) && !allSelected}
+                      onChange={() => toggleSelectGroup(group)}
+                    />
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700, textTransform: "capitalize" }}>
+                      "{group[0].category}" — {group.length} entries
+                    </Typography>
+                  </Box>
+                  {group.map((cat) => (
+                    <Box
+                      key={cat._id}
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1.5,
+                        pl: 4,
+                        py: 0.5,
+                        borderRadius: 1,
+                        bgcolor: selectedDups.includes(cat._id) ? "rgba(211,47,47,0.07)" : "transparent",
+                      }}
+                    >
+                      <Checkbox
+                        size="small"
+                        checked={selectedDups.includes(cat._id)}
+                        onChange={() => toggleDupSelect(cat._id)}
+                      />
+                      {cat.categoryImage ? (
+                        <Avatar src={cat.categoryImage} sx={{ width: 32, height: 32 }} />
+                      ) : (
+                        <Avatar sx={{ width: 32, height: 32, fontSize: 14 }}>
+                          {(cat.category || "?")[0].toUpperCase()}
+                        </Avatar>
+                      )}
+                      <Box>
+                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                          {cat.category}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {cat.categoryType}{cat.subCategoryType ? ` › ${cat.subCategoryType}` : ""} &nbsp;|&nbsp; slug: {cat.slug || "—"} &nbsp;|&nbsp; id: {cat._id}
+                        </Typography>
+                        {(() => {
+                          const count = businessUsage[(cat.category || "").toLowerCase()];
+                          return count > 0 ? (
+                            <Typography variant="caption" sx={{ color: "warning.main", fontWeight: 600 }}>
+                              ⚠ {count} business{count !== 1 ? "es" : ""} using this category
+                            </Typography>
+                          ) : (
+                            <Typography variant="caption" sx={{ color: "success.main" }}>
+                              No businesses linked
+                            </Typography>
+                          );
+                        })()}
+                      </Box>
+                    </Box>
+                  ))}
+                  {gi < dupDialog.groups.length - 1 && <Divider sx={{ mt: 1.5 }} />}
+                </Box>
+              );
+            })
+          )}
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: "space-between", px: 3 }}>
+          <Typography variant="body2" color="text.secondary">
+            {selectedDups.length} selected
+          </Typography>
+          <Box sx={{ display: "flex", gap: 1 }}>
+            <Button onClick={() => setDupDialog({ open: false, groups: [] })}>Close</Button>
+            <Button
+              color="warning"
+              variant="outlined"
+              disabled={selectedDups.length === 0 || !!dupDeleting}
+              onClick={() => deleteSelectedDups(false)}
+              startIcon={dupDeleting === "soft" ? <CircularProgress size={16} color="inherit" /> : null}
+            >
+              Soft Delete ({selectedDups.length})
+            </Button>
+            <Button
+              color="error"
+              variant="contained"
+              disabled={selectedDups.length === 0 || !!dupDeleting}
+              onClick={() => deleteSelectedDups(true)}
+              startIcon={dupDeleting === "hard" ? <CircularProgress size={16} color="inherit" /> : null}
+            >
+              Hard Delete ({selectedDups.length})
+            </Button>
+          </Box>
+        </DialogActions>
+      </Dialog>
 
       <Dialog
         open={deleteConfirm.open}
