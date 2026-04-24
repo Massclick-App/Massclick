@@ -107,6 +107,20 @@ export const deleteCategory = (id) => async (dispatch) => {
   }
 };
 
+export const hardDeleteCategory = (id) => async (dispatch) => {
+  dispatch({ type: DELETE_CATEGORY_REQUEST });
+  try {
+    const token = localStorage.getItem("accessToken");
+    const { data } = await axios.delete(`${API_URL}/category/hard-delete/${id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    dispatch({ type: DELETE_CATEGORY_SUCCESS, payload: data.category });
+  } catch (error) {
+    dispatch({ type: DELETE_CATEGORY_FAILURE, payload: error.response?.data || error.message });
+    throw error;
+  }
+};
+
 export const businessCategorySearch = (query) => async (dispatch) => {
   try {
     dispatch({ type: BUSINESS_CATEGORYSEARCH_REQUEST });

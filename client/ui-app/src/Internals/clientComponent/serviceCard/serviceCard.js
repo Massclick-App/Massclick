@@ -34,6 +34,15 @@ const SECTION_ORDER = [
   "Building Materials"
 ];
 
+const toPascalCase = (str) => {
+  if (!str || typeof str !== "string") return str;
+  return str
+    .trim()
+    .split(/\s+/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+};
+
 const createSlug = (text) => {
   if (!text || typeof text !== "string") return "";
 
@@ -180,7 +189,7 @@ const ServiceCardsGrid = () => {
                   />
 
                   <p className="item-name">
-                    {item.name}
+                    {toPascalCase(item.name)}
                   </p>
 
                 </div>

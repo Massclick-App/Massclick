@@ -202,6 +202,20 @@ export const deleteCategory = async (id) => {
   }
 };
 
+export const hardDeleteCategory = async (id) => {
+  try {
+    if (!ObjectId.isValid(id)) throw new Error("Invalid category ID");
+
+    const deleted = await categoryModel.findByIdAndDelete(id);
+    if (!deleted) throw new Error("Category not found");
+
+    return deleted;
+  } catch (error) {
+    console.error("Error hard-deleting category:", error);
+    throw error;
+  }
+};
+
 export const businessSearchCategory = async (query, limit) => {
   try {
     const regex = new RegExp(query, "i");

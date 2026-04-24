@@ -43,6 +43,7 @@ import {
   fetchFavorites,
   getAuthUser,
 } from "../../../redux/actions/favoriteAction";
+import OTPLoginModal from "../AddBusinessModel.js";
 
 const SimpleModal = ({ children, onClose, title }) => (
   <div
@@ -156,6 +157,7 @@ const BusinessDetail = () => {
   const [showContactModal, setShowContactModal] = useState(false);
   const [activeTab, setActiveTab] = useState("Overview");
   const [reviewLimit, setReviewLimit] = useState(3);
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   const overviewRef = useRef(null);
   const quickInfoRef = useRef(null);
@@ -598,7 +600,7 @@ const whatsappNumber =
                     title={favoriteIds.includes(business._id) ? "Remove from favorites" : "Add to favorites"}
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (!isFavLoggedIn) { alert("Please login to add favorites"); return; }
+                      if (!isFavLoggedIn) { setShowLoginModal(true); return; }
                       if (togglingIds.includes(business._id)) return;
                       if (favoriteIds.includes(business._id)) {
                         dispatch(removeFavorite(business._id));
@@ -1031,6 +1033,7 @@ const whatsappNumber =
       )}
 
       <Footer />
+      <OTPLoginModal open={showLoginModal} handleClose={() => setShowLoginModal(false)} />
     </>
   );
 };

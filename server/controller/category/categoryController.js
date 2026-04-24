@@ -4,10 +4,12 @@ import {
   viewAllCategory,
   updateCategory,
   deleteCategory,
+  hardDeleteCategory,
   businessSearchCategory
 } from "../../helper/category/categoryHelper.js";
 import { BAD_REQUEST } from "../../errorCodes.js";
 import categoryModel from "../../model/category/categoryModel.js";
+import businessListModel from "../../model/businessList/businessListModel.js";
 import { uploadImageToS3, getSignedUrlByKey } from "../../s3Uploder.js";
 import { categoriesData } from "../../utils/sub-categoriesData.js";
 
@@ -82,6 +84,39 @@ export const deleteCategoryAction = async (req, res) => {
     const categoryId = req.params.id;
     const category = await deleteCategory(categoryId);
     res.send({ message: "Category deleted successfully", category });
+  } catch (error) {
+    console.error(error);
+    return res.status(BAD_REQUEST.code).send({ message: error.message });
+  }
+};
+
+export const categoryBusinessUsageAction = async (req, res) => {
+  try {
+    const names = [].concat(req.query.names || []).flatMap((n) => n.split(",")).map((n) => n.trim()).filter(Boolean);
+    if (!names.length) return res.send([]);
+
+    const counts = await businessListModel.aggregate([
+      { $match: { category: { $in: names } } },
+      { $group: { _id: "$category", count: { $sum: 1 } } },
+    ]);
+
+    const result = names.map((name) => {
+      const found = counts.find((c) => c._id?.toLowerCase() === name.toLowerCase());
+      return { name, count: found ? found.count : 0 };
+    });
+
+    res.send(result);
+  } catch (error) {
+    console.error("categoryBusinessUsageAction error:", error);
+    return res.status(BAD_REQUEST.code).send({ message: error.message });
+  }
+};
+
+export const hardDeleteCategoryAction = async (req, res) => {
+  try {
+    const categoryId = req.params.id;
+    const category = await hardDeleteCategory(categoryId);
+    res.send({ message: "Category permanently deleted", category });
   } catch (error) {
     console.error(error);
     return res.status(BAD_REQUEST.code).send({ message: error.message });
