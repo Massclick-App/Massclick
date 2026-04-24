@@ -11,21 +11,23 @@
 
 .category-card {
     background-color: #ffffff;
-    border-radius: 16px; 
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08); 
+    border-radius: 0;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.07);
     padding: 24px;
     width: 100%;
     max-width: 380px;
     display: flex;
     flex-direction: column;
-    transition: transform 0.3s ease, box-shadow 0.3s ease, border 0.3s ease;
-    border: 1px solid transparent; 
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: 1.5px solid #f0f0f0;
+    outline: 3px solid transparent;
 }
 
 .category-card:hover {
-    transform: translateY(-8px);
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.12);
-    border: 1px solid #ff7a3d;
+    transform: translateY(-6px);
+    box-shadow: 0 12px 32px rgba(255, 122, 61, 0.15);
+    border-color: #ff7a3d;
+    outline-color: rgba(255, 122, 61, 0.12);
 }
 
 /* --- Category Title Refinement --- */
@@ -73,12 +75,10 @@
 
 /* --- Item Image/Icon Styling --- */
 .item-icon {
-    width: 70px; /* Slightly smaller on mobile/base for better density */
+    width: 70px;
     height: 70px;
-    border-radius: 50%; /* Make them circular for a modern look */
-    object-fit: cover;
+    object-fit: contain;
     margin-bottom: 8px;
-    border: 3px solid #f9731633; /* A subtle ring around the icon */
 }
 
 /* --- Item Name Styling --- */
