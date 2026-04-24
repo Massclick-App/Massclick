@@ -18,6 +18,7 @@ import { fetchSeoMeta } from "../../../redux/actions/seoAction.js";
 import { fetchSeoPageContentMeta } from "../../../redux/actions/seoPageContentAction.js";
 import { CLEAR_SEO_META } from "../../../redux/actions/userActionTypes.js";
 import TopBannerAds from "../banners/topBanner/topBanner.js";
+import GlobalSkeleton from "../globalSkeleton.js";
 import OTPLoginModal from "../AddBusinessModel.js";
 import { logUserSearch } from "../../../redux/actions/otpAction.js";
 
@@ -469,11 +470,7 @@ useEffect(() => {
             </div>
 
           </div>
-          {loading && (
-            <div className="loading-wrapper">
-              Searching businesses...
-            </div>
-          )}
+          {loading && <GlobalSkeleton type="list" />}
 
           {!loading && results.length === 0 && (
             <div className="no-results-container">
@@ -507,6 +504,7 @@ useEffect(() => {
               return (
                 <div className="business-card-wrapper" key={business._id}>
                   <CardDesign
+                    businessId={business._id}
                     title={business.businessName}
                     phone={business.contact}
                     whatsappNumber={business.whatsappNumber}

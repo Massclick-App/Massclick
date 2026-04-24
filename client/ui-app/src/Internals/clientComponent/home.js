@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import { useDispatch, useSelector } from "react-redux";
-import { Box, Drawer, List, ListItem, ListItemText } from '@mui/material';
-
+import { Box, Drawer, Grid, List, ListItem, ListItemText, Skeleton } from '@mui/material';
 import HeroSection from '../clientComponent/heroSection/heroSection.js';
 import CategoryBar from '../clientComponent/categoryBar';
 import CardsSearch from './CardsSearch/CardsSearch';
@@ -9,6 +8,21 @@ import OTPLoginModel from './AddBusinessModel.js';
 import { viewOtpUser } from '../../redux/actions/otpAction.js';
 import SeoMeta from "./seo/seoMeta";
 import { fetchSeoMeta } from "../../redux/actions/seoAction";
+
+const S = ({ variant = "rounded", w, h, r, sx, ...rest }) => (
+  <Skeleton
+    variant={variant}
+    width={w}
+    height={h}
+    animation="wave"
+    sx={{ borderRadius: r ?? 2, flexShrink: 0, bgcolor: "rgba(255,107,44,0.055)", ...sx }}
+    {...rest}
+  />
+);
+
+const Txt = ({ w = "100%", h = 14, sx } = {}) => (
+  <S variant="rounded" w={w} h={h} r={1} sx={sx} />
+);
 
 const FeaturedServices = lazy(() => import('../clientComponent/featuredService/featureService.js'));
 const ServiceCardsGrid = lazy(() => import('../clientComponent/serviceCard/serviceCard.js'));
@@ -22,6 +36,91 @@ const PageHeaderContents = lazy(() => import('./pageHeaderContents/pageHeaderCon
 const RelatedBlogs = lazy(() => import('./relatedBlogs/relatedBlogs.js'));
 
 const STICKY_SEARCH_BAR_HEIGHT = 85;
+
+/* ──────────────────────────────────────────────────────────────
+   Per-section skeleton loaders
+────────────────────────────────────────────────────────────── */
+const SkeletonCard = ({ w = 80, h = 80, r = 50, mb = 1.5, mt = 0.5 }) => (
+  <S w={w} h={h} r={r} sx={{ mx: "auto", mb, mt }} />
+);
+
+const SkeletonCards = ({ type }) => {
+  const configs = {
+    featured: { count: 8, cardW: 130, cardH: 160, iconW: 80, iconH: 80 },
+    service: { count: 12, cardW: 80, cardH: 80, iconW: 70, iconH: 70 },
+    pageheader: { count: 4, cardW: 140, cardH: 80, iconW: 60, iconH: 60 },
+  };
+  const c = configs[type] || configs.featured;
+  return (
+    <div className="sk-hscroll" style={{ padding: "0 16px" }}>
+      {[...Array(c.count)].map((_, i) => (
+        <div
+          key={i}
+          className="service-card"
+          style={{ width: c.cardW, height: c.cardH, flexShrink: 0 }}
+        >
+          <SkeletonCard w={c.iconW} h={c.iconH} r={50} mb={1.5} mt={0} />
+          <Txt w="70%" h={14} sx={{ mx: "auto" }} />
+          <Txt w="50%" h={11} sx={{ mx: "auto", mt: 0.5 }} />
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const SkeletonBanner = () => (
+  <Box sx={{ px: { xs: 2, sm: 4, md: 6 } }}>
+    <S w="100%" h={110} r={18} />
+  </Box>
+);
+
+const SkeletonCarousel = ({ type }) => {
+  const isTrending = type === "trending";
+  const cardW = isTrending ? 240 : 280;
+  const cardH = isTrending ? 150 : 180;
+  const count = isTrending ? 5 : 4;
+  return (
+    <div style={{ px: { xs: 2, sm: 4, md: 6 } }}>
+      <div
+        className={isTrending ? "trending-search__track" : "popular-search__track"}
+        style={{ display: "flex", gap: "1rem", overflow: "hidden" }}
+      >
+        {[...Array(count)].map((_, i) => (
+          <div
+            key={i}
+            className={isTrending ? "trending-search__card" : "popular-search__card"}
+            style={{ width: cardW, flexShrink: 0 }}
+          >
+            <S w={cardW} h={cardH} r={14} />
+            <Txt w="60%" h={14} sx={{ mt: 1 }} />
+            {!isTrending && <S w={120} h={36} r={8} sx={{ mt: 1 }} />}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const SkeletonGrid = ({ type }) => {
+  const isTourist = type === "tourist";
+  const count = isTourist ? 4 : 3;
+  const h = isTourist ? 200 : 170;
+  return (
+    <Grid container spacing={2} sx={{ px: { xs: 2, sm: 4, md: 6 } }}>
+      {[...Array(count)].map((_, i) => (
+        <Grid item xs={6} sm={isTourist ? 3 : 4} md={isTourist ? 3 : 4} key={i}>
+          <S w="100%" h={h} r={12} />
+          <Txt w="60%" h={14} sx={{ mt: 1.5 }} />
+          {isTourist && <Txt w="40%" h={11} sx={{ mt: 0.5 }} />}
+        </Grid>
+      ))}
+    </Grid>
+  );
+};
+
+/* ──────────────────────────────────────────────────────────────
+   Main LandingPage
+────────────────────────────────────────────────────────────── */
 
 const LandingPage = () => {
 
@@ -181,7 +280,7 @@ const LandingPage = () => {
                     />
                 </Box>
 
-                <Suspense fallback={<div style={{ height: 200 }}>Loading...</div>}>
+                <Suspense fallback={null}>
 
                     {isSearching ? (
                         <Box sx={{ mt: 4, mb: 4, px: { xs: 2, sm: 4, md: 6 } }}>
@@ -190,35 +289,51 @@ const LandingPage = () => {
                     ) : (
                         <>
                             <Box sx={{ mb: { xs: 4, sm: 5, md: 6 } }}>
-                                <FeaturedServices />
+                                <Suspense fallback={<SkeletonCards type="featured" />}>
+                                    <FeaturedServices />
+                                </Suspense>
                             </Box>
 
                             <Box sx={{ mb: { xs: 4, sm: 5, md: 6 } }}>
-                                <ServiceCardsGrid />
+                                <Suspense fallback={<SkeletonCards type="service" />}>
+                                    <ServiceCardsGrid />
+                                </Suspense>
                             </Box>
 
                             <Box sx={{ mb: { xs: 4, sm: 5, md: 6 } }}>
-                                <MassClickBanner />
+                                <Suspense fallback={<SkeletonBanner />}>
+                                    <MassClickBanner />
+                                </Suspense>
                             </Box>
 
                             <Box sx={{ mb: { xs: 4, sm: 5, md: 6 } }}>
-                                <TrendingSearchesCarousel />
+                                <Suspense fallback={<SkeletonCarousel type="trending" />}>
+                                    <TrendingSearchesCarousel />
+                                </Suspense>
                             </Box>
 
                             <Box sx={{ mb: { xs: 4, sm: 5, md: 6 } }}>
-                                <CardCarousel />
+                                <Suspense fallback={<SkeletonCarousel type="popular" />}>
+                                    <CardCarousel />
+                                </Suspense>
                             </Box>
 
                             <Box sx={{ mb: { xs: 4, sm: 5, md: 6 } }}>
-                                <TopTourist />
+                                <Suspense fallback={<SkeletonGrid type="tourist" />}>
+                                    <TopTourist />
+                                </Suspense>
                             </Box>
 
                             <Box sx={{ mb: { xs: 4, sm: 5, md: 6 } }}>
-                                <RelatedBlogs location={locationName} />
+                                <Suspense fallback={<SkeletonGrid type="blogs" />}>
+                                    <RelatedBlogs location={locationName} />
+                                </Suspense>
                             </Box>
 
                             <Box sx={{ mb: { xs: 4, sm: 5, md: 6 } }}>
-                                <PageHeaderContents />
+                                <Suspense fallback={<SkeletonCards type="pageheader" />}>
+                                    <PageHeaderContents />
+                                </Suspense>
                             </Box>
 
                             <Footer />

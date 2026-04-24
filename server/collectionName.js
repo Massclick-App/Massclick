@@ -23,10 +23,8 @@ export const Collections = {
     BUSINESSREVIEW: 'businessreview',
     LEADROTATION: 'leadsrotation',
     ADVERTISE: 'advertise',
-    
-    //Footer
-    TERMSANDCONDITIONS: 'termsandconditions'
-
+    TERMSANDCONDITIONS: 'termsandconditions',
+    FAVORITES: 'favorites'
 };
 
 export const {
@@ -54,5 +52,6 @@ export const {
     BUSINESSREVIEW,
     LEADROTATION,
     ADVERTISE,
-    TERMSANDCONDITIONS
+    TERMSANDCONDITIONS,
+    FAVORITES
 } = Collections;

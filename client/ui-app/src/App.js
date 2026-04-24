@@ -92,7 +92,7 @@ const DynamicLoader = memo(() => {
     return <GlobalSkeleton type="dashboard" />;
   }
 
-  return <GlobalSkeleton type="cards" />;
+  return pathname === "/" ? <GlobalSkeleton type="landing" /> : <GlobalSkeleton type="cards" />;
 });
 
 const ComingSoon = ({ title }) => (

@@ -30,10 +30,19 @@ import CloseIcon from "@mui/icons-material/Close";
 import FacebookIcon from "@mui/icons-material/Facebook";
 import InstagramIcon from "@mui/icons-material/Instagram";
 import LinkIcon from "@mui/icons-material/Link";
+import FavoriteIcon from "@mui/icons-material/Favorite";
+import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import Tooltip from "@mui/material/Tooltip";
 import Footer from "../footer/footer";
 import ReviewList from "../rating/reviewList";
 import { getBusinessReviews } from "../../../redux/actions/reviewAction.js";
+import GlobalSkeleton from "../globalSkeleton.js";
+import {
+  addFavorite,
+  removeFavorite,
+  fetchFavorites,
+  getAuthUser,
+} from "../../../redux/actions/favoriteAction";
 
 const SimpleModal = ({ children, onClose, title }) => (
   <div
@@ -126,6 +135,19 @@ const BusinessDetail = () => {
 
   const reviewState = useSelector(state => state.reviews || {});
   const totalReview = reviewState.total || 0;
+
+  const favoriteIds = useSelector((state) => state.favorites.favoriteIds);
+  const togglingIds = useSelector((state) => state.favorites.togglingIds);
+  const favUser = getAuthUser();
+  const isFavLoggedIn = !!favUser?._id;
+  const business = businessDetails;
+
+  useEffect(() => {
+    if (isFavLoggedIn && business?._id && favoriteIds.length === 0) {
+      dispatch(fetchFavorites());
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFavLoggedIn, business?._id]);
   const [mainImage, setMainImage] = useState(null);
   const [showFullGallery, setShowFullGallery] = useState(false);
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
@@ -140,7 +162,6 @@ const BusinessDetail = () => {
   const servicesRef = useRef(null);
   const photosRef = useRef(null);
   const reviewsRef = useRef(null);
-  const business = businessDetails;
 
   useEffect(() => {
     if (id) {
@@ -166,9 +187,7 @@ const BusinessDetail = () => {
     return (
       <>
         <CardsSearch />
-        <div className="business-CardDetails-pageWrapper">
-          <p>Loading...</p>
-        </div>
+        <GlobalSkeleton type="details" />
         <Footer />
       </>
     );
@@ -573,6 +592,25 @@ const whatsappNumber =
                   >
                     <EditIcon style={{ fontSize: 20 }} />
                   </span>
+
+                  <button
+                    className={`business-CardDetails-iconBtn business-CardDetails-favBtn${favoriteIds.includes(business._id) ? " business-CardDetails-favBtn--active" : ""}${togglingIds.includes(business._id) ? " business-CardDetails-favBtn--loading" : ""}`}
+                    title={favoriteIds.includes(business._id) ? "Remove from favorites" : "Add to favorites"}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!isFavLoggedIn) { alert("Please login to add favorites"); return; }
+                      if (togglingIds.includes(business._id)) return;
+                      if (favoriteIds.includes(business._id)) {
+                        dispatch(removeFavorite(business._id));
+                      } else {
+                        dispatch(addFavorite(business._id));
+                      }
+                    }}
+                  >
+                    {favoriteIds.includes(business._id)
+                      ? <FavoriteIcon style={{ fontSize: 20, color: "#ef4444" }} />
+                      : <FavoriteBorderIcon style={{ fontSize: 20, color: "#ef4444" }} />}
+                  </button>
 
                   <span
                     className="business-CardDetails-iconBtn business-CardDetails-shareBtn"

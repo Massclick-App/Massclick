@@ -3,7 +3,26 @@ import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { logSearchActivity } from "../../../redux/actions/businessListAction";
 import { fetchServiceCards } from "../../../redux/actions/categoryAction";
+import { Skeleton } from "@mui/material";
 import "./serviceCard.css";
+
+const ServiceCardsSkeleton = () => (
+  <section className="service-cards-container">
+    {[...Array(3)].map((_, gi) => (
+      <article className="category-card" key={gi} style={{ minWidth: 300 }}>
+        <Skeleton variant="rounded" width="60%" height={22} animation="wave" sx={{ bgcolor: "rgba(255,107,44,0.055)", mb: 1.5 }} />
+        <div className="items-grid">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="item-card">
+              <Skeleton variant="circular" width={70} height={70} animation="wave" sx={{ bgcolor: "rgba(255,107,44,0.055)", mx: "auto", mb: 1 }} />
+              <Skeleton variant="rounded" width="80%" height={12} animation="wave" sx={{ bgcolor: "rgba(255,107,44,0.055)", mx: "auto" }} />
+            </div>
+          ))}
+        </div>
+      </article>
+    ))}
+  </section>
+);
 
 // ==============================
 // FIXED SECTION ORDER (VERY IMPORTANT)
@@ -111,13 +130,13 @@ const ServiceCardsGrid = () => {
 
   }, [serviceCards]);
 
+  if (loading) return <ServiceCardsSkeleton />;
+
   return (
 
     <section className="service-cards-container">
 
-      {loading && <p>Loading...</p>}
-
-      {!loading && serviceCards.length === 0 && (
+      {serviceCards.length === 0 && (
         <p>No services found</p>
       )}
 

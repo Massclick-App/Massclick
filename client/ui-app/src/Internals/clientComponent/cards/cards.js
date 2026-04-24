@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useSelector, useDispatch } from "react-redux";
 import { LazyLoadImage } from "react-lazy-load-image-component";
 import "react-lazy-load-image-component/src/effects/opacity.css";
 import "./cards.css";
@@ -10,10 +11,21 @@ import PhoneIcon from "@mui/icons-material/Phone";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import SendIcon from "@mui/icons-material/Send";
 import StarIcon from "@mui/icons-material/Star";
-import CategoryIcon from '@mui/icons-material/Category';
+import CategoryIcon from "@mui/icons-material/Category";
+import FavoriteIcon from "@mui/icons-material/Favorite";
+import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
+
+import {
+  addFavorite,
+  removeFavorite,
+  fetchFavorites,
+  getAuthUser,
+} from "../../../redux/actions/favoriteAction";
 
 const EMPTY_PIXEL =
   "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
+
+let favoritesInitialized = false;
 
 const Cards = ({
   imageSrc,
@@ -29,10 +41,26 @@ const Cards = ({
   priceType = "day",
   to,
   index = 0,
+  businessId,
   ...props
 }) => {
-
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+
+  const favoriteIds = useSelector((state) => state.favorites.favoriteIds);
+  const togglingIds = useSelector((state) => state.favorites.togglingIds);
+
+  const user = getAuthUser();
+  const isLoggedIn = !!user?._id;
+  const isFavorited = businessId ? favoriteIds.includes(businessId) : false;
+  const isToggling = businessId ? togglingIds.includes(businessId) : false;
+
+  useEffect(() => {
+    if (isLoggedIn && businessId && !favoritesInitialized) {
+      favoritesInitialized = true;
+      dispatch(fetchFavorites());
+    }
+  }, [isLoggedIn, businessId, dispatch]);
 
   const safeRating =
     typeof rating === "object"
@@ -56,12 +84,10 @@ const Cards = ({
   const handleWhatsAppClick = (e) => {
     e.preventDefault();
     e.stopPropagation();
-
     if (!whatsappNumber) {
       alert("WhatsApp number not available");
       return;
     }
-
     const cleanNumber = whatsappNumber.replace(/\D/g, "");
     window.open(`https://wa.me/${cleanNumber}`, "_blank");
   };
@@ -72,20 +98,49 @@ const Cards = ({
     navigate("/business-enquiry");
   };
 
+  const handleFavClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isLoggedIn) {
+      alert("Please login to add favorites");
+      return;
+    }
+    if (isToggling) return;
+    if (isFavorited) {
+      dispatch(removeFavorite(businessId));
+    } else {
+      dispatch(addFavorite(businessId));
+    }
+  };
+
   return (
     <Link to={to} state={props.state} className="card-link">
       <div className="base-card">
 
-        <div className="card-image-container">
-          <LazyLoadImage
-            src={imageSrc || EMPTY_PIXEL}
-            placeholderSrc={EMPTY_PIXEL}
-            alt={title}
-            decoding="async"
-            loading={index < 3 ? "eager" : "lazy"}
-            effect="opacity"
-            className="card-image"
-          />
+        <div className="card-image-wrapper">
+          <div className="card-image-container">
+            <LazyLoadImage
+              src={imageSrc || EMPTY_PIXEL}
+              placeholderSrc={EMPTY_PIXEL}
+              alt={title}
+              decoding="async"
+              loading={index < 3 ? "eager" : "lazy"}
+              effect="opacity"
+              className="card-image"
+            />
+          </div>
+
+          {businessId && (
+            <button
+              className={`fav-btn${isFavorited ? " fav-btn--active" : ""}${isToggling ? " fav-btn--loading" : ""}`}
+              onClick={handleFavClick}
+              title={isFavorited ? "Remove from favorites" : "Add to favorites"}
+            >
+              {isFavorited
+                ? <FavoriteIcon style={{ fontSize: 20, color: "#ef4444" }} />
+                : <FavoriteBorderIcon style={{ fontSize: 20, color: "#ef4444" }} />}
+            </button>
+          )}
         </div>
 
         <div className="card-content">
@@ -102,34 +157,26 @@ const Cards = ({
           </div>
 
           <div className="card-meta">
-
             <div className="rating-badge">
               <StarIcon style={{ fontSize: "16px" }} />
               {safeRating}
             </div>
-
-            <span className="reviews-text">
-              {safeReviews} Ratings
-            </span>
-
+            <span className="reviews-text">{safeReviews} Ratings</span>
           </div>
 
           <div className="card-row">
-
             {category && (
               <p className="card-category">
                 <CategoryIcon className="icon" />
                 {category}
               </p>
             )}
-
             {address && (
               <p className="card-address-inline">
                 <LocationOnIcon className="icon" />
                 {address}
               </p>
             )}
-
           </div>
 
           {details && (
@@ -140,7 +187,6 @@ const Cards = ({
           )}
 
           <div className="cardpage-actions">
-
             <button
               className="card-action-button phone-button"
               onClick={handlePhoneClick}
@@ -164,7 +210,6 @@ const Cards = ({
               <SendIcon />
               Enquiry
             </button>
-
           </div>
 
         </div>

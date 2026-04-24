@@ -4,6 +4,19 @@ import { fetchSeoPageContentBlogsMeta } from "../../../redux/actions/seoPageCont
 import "./relatedBlogs.css";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import ArrowBackIosIcon from "@mui/icons-material/ArrowBackIos";
+import { Skeleton } from "@mui/material";
+
+const BlogsSkeleton = () => (
+  <div style={{ display: "flex", gap: "1rem", overflow: "hidden", padding: "0 8px" }}>
+    {[...Array(4)].map((_, i) => (
+      <div key={i} style={{ width: 280, flexShrink: 0 }}>
+        <Skeleton variant="rounded" width={280} height={180} animation="wave" sx={{ bgcolor: "rgba(255,107,44,0.055)", borderRadius: 2 }} />
+        <Skeleton variant="rounded" width="70%" height={16} animation="wave" sx={{ bgcolor: "rgba(255,107,44,0.055)", mt: 1.5 }} />
+        <Skeleton variant="rounded" width="50%" height={13} animation="wave" sx={{ bgcolor: "rgba(255,107,44,0.055)", mt: 0.75 }} />
+      </div>
+    ))}
+  </div>
+);
 
 const RelatedBlogs = ({ location }) => {
   const dispatch = useDispatch();
@@ -62,7 +75,7 @@ const RelatedBlogs = ({ location }) => {
 
           <div className="carousel" ref={scrollRef}>
 
-            {loading && <p style={{ padding: 20 }}>Loading...</p>}
+            {loading && <BlogsSkeleton />}
 
             {!loading && error && (
               <p style={{ padding: 20, color: "red" }}>
