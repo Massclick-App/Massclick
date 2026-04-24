@@ -88,6 +88,23 @@ const semanticKey = (text) => {
   return core.join(" ");
 };
 
+const normalizeSlug = (slug) =>
+  (slug || "")
+    .toLowerCase()
+    .trim()
+    .replace(/-e?s$/, "")
+    .replace(/[-_]+/g, "-")
+    .replace(/^-|-$/g, "");
+
+const getCatKey = (text, mode) => {
+  if (mode === "slug") return (text || "").toLowerCase().trim();
+  if (mode === "similar-slug") return normalizeSlug(text);
+  if (mode === "semantic") return semanticKey(text);
+  if (mode === "similar")
+    return (text || "").toLowerCase().trim().replace(/e?s$/i, "").replace(/[^a-z0-9]+/g, " ").trim();
+  return (text || "").toLowerCase().trim();
+};
+
 export default function Category() {
   const dispatch = useDispatch();
   const { category = [], total = 0, loading, error } = useSelector(
@@ -122,6 +139,8 @@ export default function Category() {
   const [dupMode, setDupMode] = useState("exact");
   const [allCatsCache, setAllCatsCache] = useState([]);
   const [businessUsage, setBusinessUsage] = useState({});
+  const [createWarning, setCreateWarning] = useState({ open: false, matches: [] });
+  const [createWarningLoading, setCreateWarningLoading] = useState(false);
 
   const subCategories = [
     "Services",
@@ -250,34 +269,11 @@ export default function Category() {
   };
 
   const computeDupGroups = (cats, mode) => {
-    const normalizeSlug = (slug) =>
-      (slug || "")
-        .toLowerCase()
-        .trim()
-        .replace(/-e?s$/, "")
-        .replace(/[-_]+/g, "-")
-        .replace(/^-|-$/g, "");
-
-    const keyFn =
-      mode === "slug"
-        ? (cat) => (cat.slug || "").toLowerCase().trim()
-        : mode === "similar-slug"
-        ? (cat) => normalizeSlug(cat.slug)
-        : mode === "semantic"
-        ? (cat) => semanticKey(cat.category)
-        : mode === "similar"
-        ? (cat) =>
-            (cat.category || "")
-              .toLowerCase()
-              .trim()
-              .replace(/e?s$/i, "")
-              .replace(/[^a-z0-9]+/g, " ")
-              .trim()
-        : (cat) => (cat.category || "").toLowerCase().trim();
-
+    const isSlugMode = mode === "slug" || mode === "similar-slug";
     const groups = {};
     cats.forEach((cat) => {
-      const key = keyFn(cat);
+      const text = isSlugMode ? cat.slug : cat.category;
+      const key = getCatKey(text, mode);
       if (!key) return;
       if (!groups[key]) groups[key] = [];
       groups[key].push(cat);
@@ -368,45 +364,59 @@ export default function Category() {
     }
   };
 
-  const handleSubmit = (e) => {
+  const resetForm = () => {
+    setFormData({
+      _id: null, categoryImage: "", category: "", categoryType: "",
+      subCategoryType: "", parentCategoryId: "", title: "", keywords: [],
+      description: "", seoTitle: "", seoDescription: "", slug: "",
+    });
+    setPreview(null);
+    setEditMode(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const doSave = () => {
+    const action = editMode ? editCategory(formData._id, formData) : createCategory(formData);
+    dispatch(action)
+      .then(() => { resetForm(); dispatch(getAllCategory()); })
+      .catch((err) => console.error(editMode ? "Update failed:" : "Create failed:", err));
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
 
-    const action = editMode
-      ? editCategory(formData._id, formData)
-      : createCategory(formData);
-
-    dispatch(action)
-      .then(() => {
-        setFormData({
-          _id: null,
-          categoryImage: "",
-          category: "",
-          categoryType: "",
-          subCategoryType: "",
-          parentCategoryId: "",
-          title: "",
-          keywords: [],
-          description: "",
-          seoTitle: "",
-          seoDescription: "",
-          slug: "",
+    if (!editMode) {
+      setCreateWarningLoading(true);
+      try {
+        const token = localStorage.getItem("accessToken");
+        const res = await axios.get(
+          `${API_URL}/category/viewall?pageNo=1&pageSize=9999&status=active`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        const allCats = res.data.data || [];
+        const matchIds = new Set();
+        ["exact", "similar", "semantic"].forEach((mode) => {
+          const newKey = getCatKey(formData.category, mode);
+          if (!newKey) return;
+          allCats.forEach((cat) => {
+            if (getCatKey(cat.category, mode) === newKey) matchIds.add(cat._id);
+          });
         });
-        setPreview(null);
-        setEditMode(false);
-
-        if (fileInputRef.current) {
-          fileInputRef.current.value = "";
+        const matches = allCats.filter((c) => matchIds.has(c._id));
+        if (matches.length > 0) {
+          setCreateWarning({ open: true, matches });
+          fetchBusinessUsage(matches);
+          setCreateWarningLoading(false);
+          return;
         }
+      } catch (err) {
+        console.error("Duplicate pre-check failed:", err);
+      }
+      setCreateWarningLoading(false);
+    }
 
-        dispatch(getAllCategory());
-      })
-      .catch((err) =>
-        console.error(
-          editMode ? "Update category failed:" : "Create category failed:",
-          err
-        )
-      );
+    doSave();
   };
 
   const rows = category
@@ -667,7 +677,7 @@ export default function Category() {
                   className="category-submit-button"
                   disabled={loading}
                 >
-                  {loading ? (
+                  {loading || createWarningLoading ? (
                     <CircularProgress size={24} color="inherit" />
                   ) : editMode ? (
                     "Update Category"
@@ -833,7 +843,7 @@ export default function Category() {
             >
               Soft Delete ({selectedDups.length})
             </Button>
-            <Button
+            {/* <Button
               color="error"
               variant="contained"
               disabled={selectedDups.length === 0 || !!dupDeleting}
@@ -841,7 +851,7 @@ export default function Category() {
               startIcon={dupDeleting === "hard" ? <CircularProgress size={16} color="inherit" /> : null}
             >
               Hard Delete ({selectedDups.length})
-            </Button>
+            </Button> */}
           </Box>
         </DialogActions>
       </Dialog>
@@ -863,6 +873,69 @@ export default function Category() {
           </Button>
           <Button color="error" variant="contained" onClick={confirmDelete}>
             Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Create duplicate warning dialog */}
+      <Dialog
+        open={createWarning.open}
+        onClose={() => setCreateWarning({ open: false, matches: [] })}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ color: "warning.main" }}>
+          ⚠ Similar Categories Already Exist
+        </DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body2" sx={{ mb: 2 }}>
+            The category <strong>"{formData.category}"</strong> is similar to {createWarning.matches.length} existing {createWarning.matches.length === 1 ? "category" : "categories"}:
+          </Typography>
+          {createWarning.matches.map((cat) => {
+            const count = businessUsage[(cat.category || "").toLowerCase()];
+            return (
+              <Box
+                key={cat._id}
+                sx={{ display: "flex", alignItems: "center", gap: 1.5, py: 0.75, borderBottom: "1px solid", borderColor: "divider" }}
+              >
+                {cat.categoryImage ? (
+                  <Avatar src={cat.categoryImage} sx={{ width: 32, height: 32 }} />
+                ) : (
+                  <Avatar sx={{ width: 32, height: 32, fontSize: 14 }}>
+                    {(cat.category || "?")[0].toUpperCase()}
+                  </Avatar>
+                )}
+                <Box sx={{ flex: 1 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{cat.category}</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {cat.categoryType}{cat.subCategoryType ? ` › ${cat.subCategoryType}` : ""} &nbsp;|&nbsp; slug: {cat.slug || "—"}
+                  </Typography>
+                  <br />
+                  {count > 0 ? (
+                    <Typography variant="caption" sx={{ color: "warning.main", fontWeight: 600 }}>
+                      ⚠ {count} business{count !== 1 ? "es" : ""} using this category
+                    </Typography>
+                  ) : (
+                    <Typography variant="caption" sx={{ color: "success.main" }}>No businesses linked</Typography>
+                  )}
+                </Box>
+              </Box>
+            );
+          })}
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: "space-between", px: 3 }}>
+          <Button onClick={() => setCreateWarning({ open: false, matches: [] })}>
+            Cancel
+          </Button>
+          <Button
+            color="warning"
+            variant="contained"
+            onClick={() => {
+              setCreateWarning({ open: false, matches: [] });
+              doSave();
+            }}
+          >
+            Allow — Create Anyway
           </Button>
         </DialogActions>
       </Dialog>
