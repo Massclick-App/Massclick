@@ -254,8 +254,7 @@ export const getSubCategoriesAction = async (req, res) => {
         .trim()
         .replace(/[-_\s]+/g, " ")
         .replace(/\bcontractors\b/g, "contractor")
-        .replace(/\s+/g, " ")
-        .replace(/s\b/g, "");
+        .replace(/\s+/g, " ");
 
     const matchedKey = Object.keys(categoriesData).find((key) => {
       const current = normalize(key);
@@ -264,8 +263,7 @@ export const getSubCategoriesAction = async (req, res) => {
       return (
         current === incoming ||
         current === incoming + "s" ||
-        current + "s" === incoming ||
-        current.replace(/s$/, "") === incoming.replace(/s$/, "") 
+        current + "s" === incoming
       );
     });
 
@@ -274,7 +272,7 @@ export const getSubCategoriesAction = async (req, res) => {
       : [];
 
     const allowedNames = selectedCategories.map((i) =>
-      i.name.toLowerCase().trim()
+      cleanText(i.name)
     );
 
     const data = await categoryModel.find({
@@ -282,14 +280,24 @@ export const getSubCategoriesAction = async (req, res) => {
     }).lean();
 
     const filtered = data.filter((item) =>
-      allowedNames.some((name) =>
-        cleanText(name) === cleanText(item.category)
-      )
+      allowedNames.includes(cleanText(item.category))
     );
 
-    if (filtered.length > 0) {
+    const uniqueMap = new Map();
+
+    filtered.forEach((item) => {
+      const key = cleanText(item.category);
+
+      if (!uniqueMap.has(key)) {
+        uniqueMap.set(key, item);
+      }
+    });
+
+    const uniqueData = [...uniqueMap.values()];
+
+    if (uniqueData.length > 0) {
       return res.json(
-        filtered.map((item) => ({
+        uniqueData.map((item) => ({
           _id: item._id,
           name: item.category,
           slug: item.slug,
