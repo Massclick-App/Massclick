@@ -934,23 +934,7 @@ export default function BusinessList() {
               {errors.clientId && <p className="error-text">{errors.clientId}</p>}
 
               {showSuggestions && searchSuggestion?.length > 0 && (
-                <ul
-                  style={{
-                    position: "absolute",
-                    top: "80px",
-                    left: 0,
-                    width: "100%",
-                    background: "#fff",
-                    border: "1px solid #ccc",
-                    borderRadius: "6px",
-                    maxHeight: "200px",
-                    overflowY: "auto",
-                    padding: 0,
-                    margin: 0,
-                    zIndex: 2000,
-                    listStyle: "none",
-                  }}
-                >
+               <ul className="category-suggestion-box">
                   {searchSuggestion.map((client) => (
                     <li
                       key={client._id}
@@ -1374,22 +1358,7 @@ export default function BusinessList() {
               />
 
               {showCategorySuggest && searchCategory?.length > 0 && (
-                <ul
-                  style={{
-                    position: "absolute",
-                    top: "70px",
-                    width: "100%",
-                    background: "#fff",
-                    border: "1px solid #ccc",
-                    borderRadius: "6px",
-                    maxHeight: "240px",
-                    overflowY: "auto",
-                    padding: 0,
-                    margin: 0,
-                    zIndex: 2000,
-                    listStyle: "none",
-                  }}
-                >
+              <ul className="category-suggestion-box">
                   {searchCategory.map((cat) => (
                     <li
                       key={cat._id}
@@ -1397,12 +1366,12 @@ export default function BusinessList() {
                         setFormData((prev) => ({
                           ...prev,
                           category: cat.category,
-                          keywords: prev.keywords?.length ? prev.keywords : cat.keywords || [],
-                          slug: prev.slug || cat.slug || "",
-                          seoTitle: prev.seoTitle || cat.seoTitle || "",
-                          seoDescription: prev.seoDescription || cat.seoDescription || "",
-                          title: prev.title || cat.title || "",
-                          description: prev.description || cat.description || "",
+                          keywords: cat.keywords || [],
+                          slug: cat.slug || "",
+                          seoTitle: cat.seoTitle || "",
+                          seoDescription: cat.seoDescription || "",
+                          title: cat.title || "",
+                          description: cat.description || "",
                         }));
 
                         setShowCategorySuggest(false);

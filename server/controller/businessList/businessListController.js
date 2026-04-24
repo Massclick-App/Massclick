@@ -393,7 +393,7 @@ export const mainSearchController = async (req, res) => {
           // { seoDescription: regex },
           // { seoTitle: regex },
           // { title: regex },
-          // { slug: regex },
+           { slug: regex },
           { keywords: regex }
         ];
       });
