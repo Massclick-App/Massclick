@@ -101,6 +101,12 @@ export default function SideMenu({ onItemClick }) {
       path: "/dashboard/mni-data",
       roles: ["SuperAdmin"],
     },
+     {
+      text: "Terms & Conditions",
+      icon: CorporateFareIcon,
+      path: "/dashboard/terms-conditions-data",
+      roles: ["SuperAdmin"],
+    },
   ];
 
   const filteredListItems = mainListItems.filter((item) => {

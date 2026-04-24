@@ -31,6 +31,7 @@ import reviewRoutes from "./routes/reviewRoutes.js";
 import advertiseRoute from "./routes/advertiseRoute.js";
 import versionRoutes from "./routes/versionRoutes.js";
 import seoModel from "./model/seoModel/seoModel.js";
+import footerRoutes from "./routes/footerRoute.js";
 
 dotenv.config();
 
@@ -180,6 +181,7 @@ app.use("/", popularSearchRoutes);
 app.use("/", reviewRoutes);
 app.use("/", advertiseRoute);
 app.use("/", versionRoutes);
+app.use("/", footerRoutes);
 
 app.use(
   express.static(CLIENT_BUILD_PATH, {
