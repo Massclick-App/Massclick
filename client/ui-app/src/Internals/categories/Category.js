@@ -843,7 +843,7 @@ export default function Category() {
             >
               Soft Delete ({selectedDups.length})
             </Button>
-            <Button
+            {/* <Button
               color="error"
               variant="contained"
               disabled={selectedDups.length === 0 || !!dupDeleting}
@@ -851,7 +851,7 @@ export default function Category() {
               startIcon={dupDeleting === "hard" ? <CircularProgress size={16} color="inherit" /> : null}
             >
               Hard Delete ({selectedDups.length})
-            </Button>
+            </Button> */}
           </Box>
         </DialogActions>
       </Dialog>
