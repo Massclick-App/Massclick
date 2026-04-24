@@ -504,6 +504,7 @@ useEffect(() => {
               return (
                 <div className="business-card-wrapper" key={business._id}>
                   <CardDesign
+                    businessId={business._id}
                     title={business.businessName}
                     phone={business.contact}
                     whatsappNumber={business.whatsappNumber}

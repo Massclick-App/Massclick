@@ -213,6 +213,8 @@ const CategoryDynamicPage = () => {
 
               key={business._id}
 
+              businessId={business._id}
+
               title={business.businessName}
 
               phone={business.contact}

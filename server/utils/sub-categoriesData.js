@@ -97,9 +97,9 @@ export const categoriesData = {
 
   "packers-and-movers": [
     { name: "Packers And Movers" },
-    { name: "Packers And Movers (Within City)" },
-    { name: "Packers And Movers (All India)" },
-    { name: "Packers And Movers (Outside India)" },
+    { name: "Packers And Movers Within City" },
+    { name: "Packers And Movers All India" },
+    { name: "Packers And Movers Outside India" },
     { name: "Packers And Movers For Automobile" },
     { name: "Packers And Movers For Commercial" },
     { name: "Transporters" },

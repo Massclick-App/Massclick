@@ -26,6 +26,8 @@
   cursor: pointer;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   border: 1px solid #e0e0e0;
+  padding: 10px 8px;
+  overflow: hidden;
 }
 
 .service-card:hover {
@@ -35,17 +37,11 @@
 }
 
 .service-icons {
-  width: 100px;
-  height: 100px;
+  width: 55px;
+  height: 55px;
   object-fit: contain;
-  aspect-ratio: 1 / 1;
-  object-fit: contain;
-  margin-bottom: 12px;
-  border-radius: 50%;
-  padding: 10px;
-  background: #fff;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
-
+  margin-bottom: 8px;
+  flex-shrink: 0;
 }
 
 .service-name {
@@ -54,6 +50,7 @@
   color: #1a1a1a;
   text-align: center;
   line-height: 1.2;
+  text-transform: capitalize;
 }
 
 @media (max-width: 480px) {
@@ -66,12 +63,12 @@
   .service-card {
     width: 100px;
     height: 140px;
+    padding: 8px 6px;
   }
 
   .service-icons {
-    width: 55px;
-    height: 55px;
-    padding: 8px;
+    width: 42px;
+    height: 42px;
   }
 
   .service-name {
@@ -89,12 +86,12 @@
   .service-card {
     width: 115px;
     height: 150px;
+    padding: 8px 6px;
   }
 
   .service-icons {
-    width: 60px;
-    height: 60px;
-    padding: 9px;
+    width: 48px;
+    height: 48px;
   }
 
   .service-name {
@@ -112,12 +109,12 @@
   .service-card {
     width: 125px;
     height: 155px;
+    padding: 10px 8px;
   }
 
   .service-icons {
-    width: 65px;
-    height: 65px;
-    padding: 10px;
+    width: 52px;
+    height: 52px;
   }
 
   .service-name {
@@ -135,12 +132,12 @@
   .service-card {
     width: 140px;
     height: 160px;
+    padding: 10px 8px;
   }
 
   .service-icons {
-    width: 75px;
-    height: 75px;
-    padding: 12px;
+    width: 55px;
+    height: 55px;
   }
 
   .service-name {

@@ -25,6 +25,7 @@ const Business = lazy(() => import('./Internals/business/Business.js'));
 const Category = lazy(() => import('./Internals/categories/Category.js'));
 const Roles = lazy(() => import('./Internals/Roles/Roles.js'));
 const Location = lazy(() => import('./Internals/location/Location.js'));
+const TermsAndConditionsDatas = lazy(() => import('./Internals/footersContents/termsAndConditions/termsAndConditions.js'));
 const MainGrid = lazy(() => import('./components/MainGrid.js'));
 
 const BusinessListing = lazy(() => import('./Internals/clientComponent/home.js'));
@@ -202,6 +203,7 @@ function AppRoutes({
               <Route path="enquiry" element={<EnquiryPage />} />
               <Route path="advertisements" element={<AdvertisementPage />} />
               <Route path="mni-data" element={<MRPDatas />} />
+              <Route path="terms-conditions-data" element={<TermsAndConditionsDatas />} />
             </Route>
           </Route>
         </Routes>
