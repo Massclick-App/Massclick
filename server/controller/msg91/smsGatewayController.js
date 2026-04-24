@@ -1,4 +1,4 @@
-import { sendOtp, verifyOtp } from "../../helper/msg91/smsGatewayHelper.js";
+import { fakesendOtp, sendOtp, verifyOtp, fakeverifyOtp } from "../../helper/msg91/smsGatewayHelper.js";
 import jwt from "jsonwebtoken";
 import User from "../../model/msg91Model/usersModels.js";
 import { getSignedUrlByKey } from "../../s3Uploder.js";
@@ -53,6 +53,142 @@ export const verifyOtpAction = async (req, res) => {
     }
 
     await verifyOtp(phoneNumber.trim(), otp.trim());
+    const cleanNumber = phoneNumber.replace(/\D/g, "");
+
+    let user = await User.findOne({ mobileNumber1: cleanNumber });
+    let isNewUser = false;
+
+    if (!user) {
+
+      isNewUser = true;
+
+      user = new User({
+        userName: userName || `User_${cleanNumber}`,
+        mobileNumber1: cleanNumber
+      });
+
+    } else if (userName && userName !== user.userName) {
+
+      user.userName = userName;
+
+    }
+
+    const mobileRegex = new RegExp(`\\b${cleanNumber}\\b`);
+    const matchedBusiness = await businessListModel.findOne({
+      $or: [
+        { contact: cleanNumber },
+        { contactList: { $regex: mobileRegex } }
+      ]
+    }).lean();
+
+
+    if (matchedBusiness) {
+      user.businessName = matchedBusiness.businessName || "";
+      user.businessLocation = matchedBusiness.location || "";
+
+      user.businessCategory = {
+        category: matchedBusiness.category || "",
+        keywords: matchedBusiness.keywords || [],
+        slug: matchedBusiness.slug || "",
+        seoTitle: matchedBusiness.seoTitle || "",
+        seoDescription: matchedBusiness.seoDescription || "",
+        title: matchedBusiness.title || "",
+        description: matchedBusiness.description || ""
+      };
+      user.businessPeople = true;
+    }
+
+    await user.save();
+
+    if (isNewUser) {
+      try {
+        await sendLoginWelcomeMessage(user.mobileNumber1, user.userName);
+      } catch (err) {
+        console.error("WhatsApp welcome message failed:", err.message);
+      }
+    }
+
+    // try {
+    //   await sendLoginWelcomeMessage(user.mobileNumber1, user.userName);
+    // } catch (err) {
+    //   console.error("WhatsApp welcome message failed:", err.message);
+    // }
+
+    const token = jwt.sign(
+      { userId: user._id, mobile: user.mobileNumber1 },
+      process.env.JWT_SECRET,
+      { expiresIn: "999y" }
+    );
+
+    const userObj = user.toObject();
+    if (userObj.profileImageKey) {
+      userObj.profileImage = getSignedUrlByKey(userObj.profileImageKey);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "OTP verified successfully",
+      user: userObj,
+      token
+    });
+
+  } catch (error) {
+    console.error("verifyOtpAction Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "OTP verification failed.",
+      error: error.message
+    });
+  }
+};
+
+export const fakesendOtpAction = async (req, res) => {
+  const { phoneNumber } = req.body;
+
+  if (!phoneNumber) {
+    return res.status(400).json({
+      success: false,
+      message: "Missing phone number."
+    });
+  }
+
+  try {
+
+    const mobile = phoneNumber.trim();
+
+    const existingUser = await User.findOne({ mobileNumber1: mobile });
+
+    const result = await fakesendOtp(mobile);
+
+    return res.status(200).json({
+      success: true,
+      message: "OTP sent successfully",
+      data: result.apiResponse,
+      isNewUser: !existingUser
+    });
+
+  } catch (error) {
+
+    console.error("Controller Error (sendOtpAction):", error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to send OTP",
+      error: error.message
+    });
+
+  }
+};
+
+export const fakeverifyOtpAction = async (req, res) => {
+  try {
+    const { phoneNumber, otp, userName } = req.body;
+
+    if (!phoneNumber || !otp) {
+      return res.status(400).json({ success: false, message: "Missing phone number or OTP." });
+    }
+
+    await fakeverifyOtp(phoneNumber.trim(), otp.trim());
     const cleanNumber = phoneNumber.replace(/\D/g, "");
 
     let user = await User.findOne({ mobileNumber1: cleanNumber });

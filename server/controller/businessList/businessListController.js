@@ -2,6 +2,7 @@ import { createBusinessList, viewBusinessList, findBusinessBySlug,viewAllBusines
 import { BAD_REQUEST } from "../../errorCodes.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
 import { getSignedUrlByKey } from "../../s3Uploder.js";
+import categoryModel from "../../model/category/categoryModel.js";
 
 export const addBusinessListAction = async (req, res) => {
   try {
@@ -164,11 +165,13 @@ export const viewBusinessByCategory = async (req, res) => {
   }
 };
 
-
 export const getSuggestionsController = async (req, res) => {
   try {
     const search = (req.query.search || "").trim();
-    if (search.length < 2) return res.send([]);
+
+    if (search.length < 2) {
+      return res.send([]);
+    }
 
     const startsWithRegex = new RegExp(`^${search}`, "i");
     const containsRegex = new RegExp(search, "i");
@@ -180,11 +183,11 @@ export const getSuggestionsController = async (req, res) => {
           $or: [
             { category: containsRegex },
             { businessName: containsRegex },
-            { location: containsRegex },
-            { locationDetails: containsRegex }
+            { location: containsRegex }
           ]
         }
       },
+
       {
         $addFields: {
           priority: {
@@ -193,8 +196,18 @@ export const getSuggestionsController = async (req, res) => {
                 {
                   case: {
                     $or: [
-                      { $regexMatch: { input: "$category", regex: startsWithRegex } },
-                      { $regexMatch: { input: "$businessName", regex: startsWithRegex } }
+                      {
+                        $regexMatch: {
+                          input: "$category",
+                          regex: startsWithRegex
+                        }
+                      },
+                      {
+                        $regexMatch: {
+                          input: "$businessName",
+                          regex: startsWithRegex
+                        }
+                      }
                     ]
                   },
                   then: 1
@@ -202,8 +215,18 @@ export const getSuggestionsController = async (req, res) => {
                 {
                   case: {
                     $or: [
-                      { $regexMatch: { input: "$category", regex: containsRegex } },
-                      { $regexMatch: { input: "$businessName", regex: containsRegex } }
+                      {
+                        $regexMatch: {
+                          input: "$category",
+                          regex: containsRegex
+                        }
+                      },
+                      {
+                        $regexMatch: {
+                          input: "$businessName",
+                          regex: containsRegex
+                        }
+                      }
                     ]
                   },
                   then: 2
@@ -214,24 +237,77 @@ export const getSuggestionsController = async (req, res) => {
           }
         }
       },
-      { $sort: { priority: 1 } },
-      { $limit: 15 },
+
+      {
+        $sort: { priority: 1 }
+      },
+
+      {
+        $limit: 15
+      },
+
+      {
+        $lookup: {
+          from: "category",
+          localField: "category",
+          foreignField: "category",
+          as: "categoryData"
+        }
+      },
+
+      {
+        $unwind: {
+          path: "$categoryData",
+          preserveNullAndEmptyArrays: true
+        }
+      },
+
       {
         $project: {
-           _id: 0,   
+          _id: 0,
           businessName: 1,
           category: 1,
           location: 1,
-          locationDetails: 1,
-          priority: 1
+          priority: 1,
+
+          // business banner
+          bannerImageKey: { $ifNull: ["$bannerImageKey", ""] },
+
+          // category image
+          categoryImageKey: {
+            $ifNull: ["$categoryData.categoryImageKey", ""]
+          }
         }
       }
     ]);
 
-    res.send(suggestions);
+    const finalData = suggestions.map((item) => {
+      return {
+        businessName: item.businessName,
+        category: item.category,
+        location: item.location,
+        priority: item.priority,
+
+        bannerImageKey: item.bannerImageKey,
+        bannerImage: item.bannerImageKey
+          ? getSignedUrlByKey(item.bannerImageKey)
+          : "",
+
+        categoryImageKey: item.categoryImageKey,
+        categoryImage: item.categoryImageKey
+          ? getSignedUrlByKey(item.categoryImageKey)
+          : ""
+      };
+    });
+
+    return res.send(finalData);
+
   } catch (err) {
-    console.error(err);
-    res.status(400).send({ message: err.message });
+    console.log(err);
+    return res.status(400).send({
+      success: false,
+      message: err.message
+    });
   }
 };
 
@@ -289,29 +365,13 @@ export const mainSearchController = async (req, res) => {
     }
 
    
-   if (category) {
+ if (category) {
   const variations = getWordVariations(category);
 
-  const exactConditions = variations.map((val) => ({
-    category: new RegExp(`^${escapeRegex(val)}$`, "i")
-  }));
-
-  const partialConditions = variations.flatMap((val) => {
-    const regex = new RegExp(escapeRegex(val), "i");
-
-    return [
-      { category: regex },
-      { keywords: regex },
-      // { businessName: regex },
-      // { title: regex }
-    ];
-  });
-
   matchQuery.$and.push({
-    $or: [
-      ...exactConditions,   
-      ...partialConditions  
-    ]
+    $or: variations.map(val => ({
+      category: new RegExp(`^${escapeRegex(val)}$`, "i")
+    }))
   });
 }
 

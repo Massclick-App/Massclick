@@ -10,7 +10,7 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import PeopleIcon from '@mui/icons-material/People';
 import BusinessCenterIcon from '@mui/icons-material/BusinessCenter';
 import Footer from '../footer';
-import AboutUs from '../../../../assets/aboutUs.jpg'
+import AboutUs from '../../../../assets/aboutus.jpg'
 import CardsSearch from '../../CardsSearch/CardsSearch';
 import SeoMeta from "../../seo/seoMeta";
 import { fetchSeoMeta } from "../../../../redux/actions/seoAction";

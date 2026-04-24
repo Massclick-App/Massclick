@@ -80,7 +80,7 @@ export default function seoPageContentReducer(state = initialState, action) {
         ...state,
         loading: false,
         list: action.payload?.data || [],
-        total: action.payload?.total || 0,
+        
       };
 
     /* ================= SINGLE BLOG ================= */

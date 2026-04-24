@@ -18,7 +18,7 @@ import MicIcon from "@mui/icons-material/Mic";
 import SearchIcon from "@mui/icons-material/Search";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import HistoryToggleOffIcon from "@mui/icons-material/HistoryToggleOff";
-import MI from "../../../assets/Mi.png";
+import MI from "../../../assets/mi.png";
 import AddBusinessModel from "../AddBusinessModel";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import { useDrawer } from "../Drawer/drawerContext";
@@ -318,10 +318,10 @@ const CardsSearch = ({
 
           <div className="search-area">
 
-            <div className="input-group location-group" ref={locationRef}>
+            <div className="cards-input-group cards-location-group" ref={locationRef}>
               <LocationOnIcon className="input-adornment start" />
               <input
-                className="custom-input"
+                className="cards-custom-input"
                 placeholder="Enter location manually..."
                 value={locationName}
                 onChange={(e) => {
@@ -358,9 +358,9 @@ const CardsSearch = ({
                 )}
             </div>
 
-            <div className="input-group search-group" ref={categoryRef}>
+            <div className="cards-input-group cards-search-group" ref={categoryRef}>
               <input
-                className="custom-input"
+                className="cards-custom-input"
                 placeholder="Search for..."
                 value={searchTerm}
                 onChange={(e) => {
@@ -421,8 +421,7 @@ const CardsSearch = ({
             </div>
 
             <button className="search-btn" onClick={handleSearch}>
-              <span>Search</span>
-              <i className="fa-solid fa-magnifying-glass"></i>
+              <SearchIcon />
             </button>
           </div>
 

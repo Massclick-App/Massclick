@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchSeoBlogBySlug } from "../../../../redux/actions/seoPageContentBlogAction";
@@ -19,7 +19,149 @@ const BlogDetail = () => {
     }
   }, [dispatch, slug]);
 
-  /* ================= LINK CLICK HANDLER ================= */
+const normalizeMassclickUrl = (rawUrl = "") => {
+  try {
+    const urlObj = new URL(rawUrl);
+    const parts = urlObj.pathname.split("/").filter(Boolean);
+
+    if (parts.length >= 3) {
+      const last = parts[parts.length - 1];
+      const prev = parts[parts.length - 2];
+
+      if (last.toLowerCase() === prev.toLowerCase()) {
+        parts.pop();
+      }
+    }
+
+    urlObj.pathname = "/" + parts.join("/");
+    return urlObj.toString();
+  } catch (error) {
+    return rawUrl;
+  }
+};
+
+const linkifyText = (text = "") => {
+  return text.replace(
+    /(https?:\/\/[^\s]+)/g,
+    (url) => {
+      const cleanUrl = normalizeMassclickUrl(url);
+
+      return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer">${cleanUrl}</a>`;
+    }
+  );
+};
+
+  const makeSlug = (text = "") =>
+    text
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+
+  
+  const formattedContent = useMemo(() => {
+    if (!blog?.pageContent) return "";
+
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(blog.pageContent, "text/html");
+
+    const headings = doc.querySelectorAll("h2, h3");
+
+    headings.forEach((item) => {
+      const text = item.textContent.trim();
+      item.setAttribute("id", makeSlug(text));
+    });
+
+    const firstStrong = doc.querySelector("p strong");
+
+    if (firstStrong) {
+      const text = firstStrong.textContent.trim();
+
+      if (text.toLowerCase() === "introduction") {
+        const parent = firstStrong.closest("p");
+
+        if (parent) {
+          parent.innerHTML = `<h2 id="${makeSlug(text)}">${text}</h2>`;
+        }
+      }
+    }
+
+    return doc.body.innerHTML;
+  }, [blog]);
+
+  const tocItems = useMemo(() => {
+    if (!blog?.pageContent) return [];
+
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(blog.pageContent, "text/html");
+
+    const items = [];
+
+    const skipWords = [
+      "features",
+      "best for",
+      "price",
+      "includes",
+      "services include"
+    ];
+
+    const firstStrong = doc.querySelector("p strong");
+
+    if (firstStrong) {
+      const text = firstStrong.textContent.trim();
+
+      if (text.toLowerCase() === "introduction") {
+        items.push({
+          title: text,
+          id: makeSlug(text),
+        });
+      }
+    }
+
+    const headings = doc.querySelectorAll("h2, h3");
+
+    headings.forEach((item) => {
+      const text = item.textContent.trim();
+      const lower = text.toLowerCase();
+
+      const shouldSkip = skipWords.some((word) =>
+        lower === word || lower.startsWith(word)
+      );
+
+      if (!shouldSkip) {
+        items.push({
+          title: text,
+          id: makeSlug(text),
+        });
+      }
+    });
+
+    if (blog?.faq?.length > 0) {
+      items.push({
+        title: "Frequently Asked Questions",
+        id: "frequently-asked-questions",
+      });
+    }
+
+    return items;
+  }, [blog]);
+
+  const scrollToSection = (id) => {
+    const el = document.getElementById(id);
+
+    if (el) {
+      const top =
+        el.getBoundingClientRect().top +
+        window.pageYOffset -
+        90;
+
+      window.scrollTo({
+        top,
+        behavior: "smooth",
+      });
+    }
+  };
+
   const handleContentClick = (e) => {
     const link = e.target.closest("a");
     if (!link) return;
@@ -78,7 +220,6 @@ const BlogDetail = () => {
     window.open(url, "_blank");
   };
 
-  /* ================= STATES ================= */
   if (loading) return <div className="loader">Loading...</div>;
   if (error) return <div className="error">Error loading blog</div>;
   if (!blog) return null;
@@ -118,7 +259,7 @@ const BlogDetail = () => {
               className="blog-content"
               onClick={handleContentClick}
               dangerouslySetInnerHTML={{
-                __html: blog.pageContent || "<p>No content available</p>",
+                __html: formattedContent || "<p>No content available</p>",
               }}
             />
 
@@ -138,7 +279,6 @@ const BlogDetail = () => {
                 {blog.businessDetails.map((b, index) => (
                   <div className="business-card" key={index}>
 
-                    {/* HEADER */}
                     <div className="business-header">
                       <h3>{b.businessName}</h3>
 
@@ -152,18 +292,16 @@ const BlogDetail = () => {
 
                     {b.bannerImage && (
                       <img
-                        src={`https://your-s3-url/${b.bannerImage}`}
+                        src={b.bannerImage || "https://via.placeholder.com/300x200"}
                         alt={b.businessName}
                         className="business-img"
                       />
                     )}
 
-                    {/* DESCRIPTION */}
                     <p className="business-desc">
                       {b.businessName} is one of the best {b.category} in {b.location}.
                     </p>
 
-                    {/* DETAILS */}
                     <div className="business-info">
 
                       <div>
@@ -183,7 +321,6 @@ const BlogDetail = () => {
 
                     </div>
 
-                    {/* ADDRESS */}
                     <div className="business-address">
                       <strong>Address</strong>
                       <p>{b.street}</p>
@@ -195,7 +332,38 @@ const BlogDetail = () => {
               </div>
             )}
 
-            {/* ================= COMMENT BOX ================= */}
+            {blog.faq?.length > 0 && (
+              <div className="faq-section">
+
+                <h2
+                  className="faq-title"
+                  id="frequently-asked-questions"
+                >
+                  Frequently Asked Questions
+                </h2>
+
+                <div className="faq-wrapper">
+                  {blog.faq.map((item, index) => (
+                    <div className="faq-item" key={index}>
+
+                      <h3 className="faq-question">
+                        {item.question}
+                      </h3>
+
+                      <p
+                        className="faq-answer"
+                        dangerouslySetInnerHTML={{
+                          __html: linkifyText(item.answer),
+                        }}
+                      />
+
+                    </div>
+                  ))}
+                </div>
+
+              </div>
+            )}
+
             <div className="comment-box">
               <h3>Comments (0)</h3>
 
@@ -224,20 +392,52 @@ const BlogDetail = () => {
 
             <div className="toc">
               <h4>List of Contents</h4>
+
               <ul>
-                <li>Introduction</li>
-                <li>Overview</li>
-                <li>Top Picks</li>
+                {tocItems.map((item, index) => (
+                  <li
+                    key={index}
+                    onClick={() => scrollToSection(item.id)}
+                  >
+                    {item.title}
+                  </li>
+                ))}
               </ul>
             </div>
 
             <div className="tags">
               <h4>Related Tags</h4>
+
               <div className="tag-list">
-                <span>{blog.category}</span>
-                <span>{blog.location}</span>
-                <span>trending</span>
-                <span>popular</span>
+
+                {blog?.tags?.length > 0 ? (
+                  blog.tags.map((tag, index) => (
+                    <span
+                      key={index}
+                      onClick={() => {
+                        const locationSlug = (blog.location || "trichy")
+                          .toLowerCase()
+                          .trim()
+                          .replace(/\s+/g, "-");
+
+                        const categorySlug = (blog.category || tag)
+                          .toLowerCase()
+                          .trim()
+                          .replace(/\s+/g, "-");
+
+                        window.location.href = `https://massclick.in/${locationSlug}/${categorySlug}`;
+                      }}
+                    >
+                      {tag}
+                    </span>
+                  ))
+                ) : (
+                  <>
+                    <span>{blog.category}</span>
+                    <span>{blog.location}</span>
+                  </>
+                )}
+
               </div>
             </div>
 

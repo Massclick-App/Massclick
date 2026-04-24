@@ -143,6 +143,7 @@ const businessListSchema = new mongoose.Schema({
     views: { type: Number, default: 0 },
     clicks: { type: Number, default: 0 },
     leads: { type: Number, default: 0 },
+    favoritesCount: { type: Number, default: 0 },
     lastViewedAt: { type: Date, default: null },
   },
   payment: {

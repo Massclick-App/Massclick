@@ -94,6 +94,59 @@ export const verifyOtp = async (number, otp) => {
   }
 };
 
+export const fakesendOtp = async (number) => {
+  try {
+    const cleanNumber = number.replace(/\D/g, "");
+    if (cleanNumber.length !== 10) {
+      throw new Error("Invalid phone number. Must be 10 digits.");
+    }
+
+    console.log(`[DUMMY] OTP would be sent to ${cleanNumber}`);
+
+    // Simulate successful response
+    return {
+      success: true,
+      apiResponse: {
+        type: "success",
+        message: "OTP sent successfully (DUMMY MODE)",
+        mobile: `91${cleanNumber}`
+      }
+    };
+  } catch (error) {
+    console.error("Error sending OTP:", error.message);
+    throw error;
+  }
+};
+
+// Verify OTP (Dummy - accepts any OTP)
+export const fakeverifyOtp = async (number, otp) => {
+  try {
+    const cleanNumber = number.replace(/\D/g, "");
+    if (cleanNumber.length !== 10) {
+      throw new Error("Invalid phone number. Must be 10 digits.");
+    }
+
+    if (!otp) {
+      throw new Error("OTP is required for verification.");
+    }
+
+    console.log(`[DUMMY] Verifying OTP for ${cleanNumber} - OTP: ${otp} (ANY OTP ACCEPTED)`);
+
+    // Always succeed - accept any OTP
+    return {
+      success: true,
+      apiResponse: {
+        type: "success",
+        message: "OTP verified successfully (DUMMY MODE)",
+        mobile: `91${cleanNumber}`
+      }
+    };
+  } catch (error) {
+    console.error("Error verifying OTP:", error.message);
+    throw error;
+  }
+};
+
 export const sendWhatsAppMessage = async (ownerMobile, lead = {}) => {
   const cleanMobile = ownerMobile.replace(/\D/g, "");
   if (cleanMobile.length !== 10) {
@@ -290,15 +343,19 @@ export const sendBusinessesToCustomer = async (
         : biz.contactList || biz.whatsappNumber || "N/A";
 
       const name =
-        biz.businessName.length > 35
-          ? biz.businessName.slice(0, 35) + "..."
+        biz.businessName.length > 20
+          ? biz.businessName.slice(0, 20) + "..."
           : biz.businessName;
 
       const street = biz.street || "";
       const location = biz.location || "";
 
-      // ✅ FULL ADDRESS (NO TRIM)
       const fullAddress = `${street}, ${location}`.replace(/\s+/g, " ").trim();
+
+      const shortAddress =
+        fullAddress.length > 30
+          ? fullAddress.slice(0, 30) + "..."
+          : fullAddress;
 
       const review = reviewMap[biz._id.toString()] || {};
 
@@ -310,7 +367,7 @@ export const sendBusinessesToCustomer = async (
         ? `(${review.totalReviews})`
         : "";
 
-      return `${index + 1}. ${name} ${rating} ${reviews} | 📍 ${fullAddress} | 📞 ${contact}`;
+      return `${index + 1}. ${name} ${rating} ${reviews} | 📍 ${shortAddress} | 📞 ${contact}`;
     };
 
     const firstBatch = finalBusinesses.slice(0, 5);
@@ -347,7 +404,6 @@ export const sendBusinessesToCustomer = async (
               {
                 to: [cleanMobile],
                 components: {
-                  // ✅ FIRST 3 → STATIC CUSTOMER DATA
                   body_1: {
                     type: "text",
                     value: cleanValue(lead.customerName || "Customer")
@@ -361,7 +417,6 @@ export const sendBusinessesToCustomer = async (
                     value: cleanValue(lead.location || "your area")
                   },
 
-                  // ✅ BUSINESS LIST STARTS HERE
                   body_4: {
                     type: "text",
                     value: cleanValue(values1[0])
@@ -396,9 +451,6 @@ export const sendBusinessesToCustomer = async (
       }
     );
 
-   
-
-    // ✅ SECOND BATCH FIXED
     if (secondBatch.length > 0) {
       const values2 = prepareValues(secondBatch, 5);
 
@@ -412,7 +464,7 @@ export const sendBusinessesToCustomer = async (
             type: "template",
             template: {
               name: "customer_business_list_v1",
-              language: { code: "en", policy: "deterministic" }, // ✅ FIXED
+              language: { code: "en", policy: "deterministic" }, 
               namespace: process.env.MSG91_TEMPLATE_NAMESPACE,
               to_and_components: [
                 {

@@ -31,35 +31,6 @@ const getValidToken = async (dispatch) => {
   return token;
 };
 
-// export const getAllBusinessList = () => async (dispatch) => {
-//   dispatch({ type: FETCH_BUSINESS_REQUEST });
-
-//   try {
-//     const token = await getValidToken(dispatch);
-
-//     if (!token) {
-//       throw new Error("No valid access token found");
-//     }
-
-//     const response = await axios.get(`${API_URL}/businesslist/viewall`, {
-//       headers: { Authorization: `Bearer ${token}` },
-//     });
-
-//     const businessList =
-//       Array.isArray(response.data)
-//         ? response.data
-//         : response.data?.data || response.data?.clients || [];
-
-//     dispatch({ type: FETCH_BUSINESS_SUCCESS, payload: businessList });
-//   } catch (error) {
-//     console.error("getAllBusinessList error:", error);
-//     dispatch({
-//       type: FETCH_BUSINESS_FAILURE,
-//       payload: error.response?.data || error.message,
-//     });
-//   }
-// };
-
 export const trackQrDownload = (businessId) => async (dispatch) => {
   dispatch({ type: QR_DOWNLOAD_REQUEST });
 
@@ -305,32 +276,6 @@ export const deleteBusinessList = (id) => async (dispatch) => {
     throw error;
   }
 };
-
-// export const getTrendingSearches = (location) => async (dispatch) => {
-//   dispatch({ type: FETCH_TRENDING_REQUEST });
-//   try {
-//    const token = await dispatch(getClientToken());
-
-//     if (!token) {
-//       throw new Error("No valid access token found");
-//     }
-//     const url = location
-//       ? `${API_URL}/businesslist/trending-searches?location=${location}`
-//       : `${API_URL}/businesslist/trending-searches`;
-
-//     const response = await axios.get(url, {
-//       headers: { Authorization: `Bearer ${token}` },
-//     });
-//     dispatch({ type: FETCH_TRENDING_SUCCESS, payload: response.data });
-//   } catch (error) {
-//     console.error("Error fetching trending searches:", error);
-//     dispatch({
-//       type: FETCH_TRENDING_FAILURE,
-//       payload: error.response?.data || error.message,
-//     });
-//   }
-// };
-
 
 export const logSearchActivity = (categoryName, location, userDetails, searchedUserText = "") =>
   async (dispatch) => {

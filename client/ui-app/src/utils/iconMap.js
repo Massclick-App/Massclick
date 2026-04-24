@@ -1,53 +1,53 @@
 import astrologers from "../assets/features/astrologers.webp";
 import barbershop from "../assets/features/barbershop.webp";
 import bodymassage from "../assets/features/bodymassage.webp";
-import beautyParlour from "../assets/features/beauty-parlour.webp";
+import beautyparlour from "../assets/features/beauty-parlour.webp";
 import carhired from "../assets/features/carhired.webp";
 import spa from "../assets/features/spa.webp";
 import accountant from "../assets/features/accountant.webp";
-import computerCourse from "../assets/features/computer-course.webp";
+import computercourse from "../assets/features/computer-course.webp";
 import delivery from "../assets/features/delivery.webp";
 import electrician from "../assets/features/electrician.webp";
 import eventorgan from "../assets/features/eventorgan.webp";
-import realEstates from "../assets/features/real-estates.webp";
+import realestates from "../assets/features/real-estates.webp";
 import fabricator from "../assets/features/fabricator.webp";
 import hobby from "../assets/features/hobby.webp";
-import internetWeb from "../assets/features/internet-web.webp";
+import internetweb from "../assets/features/internet-web.webp";
 import jewelry from "../assets/features/jewelry.webp";
 import lawyer from "../assets/features/lawyer.webp";
-import nurseService from "../assets/features/nurse-service.webp";
+import nurseservice from "../assets/features/nurse-service.webp";
 import printer from "../assets/features/printer.webp";
 import hiring from "../assets/features/hiring.webp";
 import scrap from "../assets/features/scrap.webp";
 import registration from "../assets/features/registration.webp";
 import coaching from "../assets/features/coaching.webp";
-import vocationalTraining from "../assets/features/vocational-training.webp";
-import vastuConsultant from "../assets/features/vastu-consultant.webp";
+import vocationaltraining from "../assets/features/vocational-training.webp";
+import vastuconsultant from "../assets/features/vastu-consultant.webp";
 import numerology from "../assets/features/numerology.webp";
 import geologist from "../assets/features/geologist.webp";
 import textile from "../assets/features/textile.webp";
-import paintServices from "../assets/features/paint-services.webp";
+import paintservices from "../assets/features/paint-services.webp";
 import opticals from "../assets/features/opticals.webp";
 import tailoring from "../assets/features/tailoring.webp";
 import organics from "../assets/features/organics.webp";
-import kidsSchool from "../assets/features/kids-school.webp";
+import kidsschool from "../assets/features/kids-school.webp";
 import physiotherapy from "../assets/features/physiotherapy.webp";
-import clinicalLab from "../assets/features/clinicalLab.webp";
+import clinicallab from "../assets/features/clinicallab.webp";
 import architech from "../assets/features/architech.webp";
 import sports from "../assets/features/sports.webp";
 import tiles from "../assets/features/tiles.webp";
-import importExport from "../assets/features/import-export.webp";
+import importexport from "../assets/features/import-export.webp";
 import boutique from "../assets/features/boutique.webp";
-import bookShop from "../assets/features/book-shop.webp";
-import fancyStore from "../assets/features/fancy-store.webp";
+import bookshop from "../assets/features/book-shop.webp";
+import fancystore from "../assets/features/fancy-store.webp";
 import tatoo from "../assets/features/tatoo.webp";
 import nursery from "../assets/features/nursery.webp";
-import specialSchool from "../assets/features/special-school.webp";
-import mosquitoNet from "../assets/features/mosquito-net.webp";
-import footwearShop from "../assets/features/footwear-shop.webp";
+import specialschool from "../assets/features/special-school.webp";
+import mosquitonet from "../assets/features/mosquito-net.webp";
+import footwearshop from "../assets/features/footwear-shop.webp";
 import homieo from "../assets/features/homieo.webp";
-import hearingAid from "../assets/features/hearing-aid.webp";
-import autoMobiles from "../assets/features/auto-mobiles.webp";
+import hearingaid from "../assets/features/hearing-aid.webp";
+import automobiles from "../assets/features/auto-mobiles.webp";
 import cosmetics from "../assets/features/cosmetics.webp";
 import loans from "../assets/features/loans.webp";
 import restuarant from "../assets/features/restuarant.webp";
@@ -58,10 +58,10 @@ import hospital from "../assets/features/hospital.webp";
 import contractor from "../assets/features/contractor.webp";
 import housekeeper from "../assets/features/housekeeper.webp";
 import hostels from "../assets/features/hostels.webp";
-import securitySystem from "../assets/features/security-system.webp";
+import securitysystem from "../assets/features/security-system.webp";
 import dentist from "../assets/features/dentist.webp";
 import florist from "../assets/features/florist.webp";
-import weddingHall from "../assets/features/wedding-hall.webp";
+import weddinghall from "../assets/features/wedding-hall.webp";
 import photographer from "../assets/features/photographer.webp";
 import dermatologist from "../assets/features/dermatologist.webp";
 import packers from "../assets/features/packers.webp";
@@ -70,162 +70,162 @@ import popular from "../assets/features/popular.webp";
 import sexology from "../assets/features/sexology.webp";
 import gym from "../assets/features/gym.webp";
 import education from "../assets/features/education.webp";
-import tvService from "../assets/services/tv-service.webp";
-import pestService from "../assets/services/pestService.webp";
-import carService from "../assets/services/car-service.webp";
-import bikeService from "../assets/features/bike-service.webp";
-import computerService from "../assets/services/computer-services.webp";
+import tvservice from "../assets/services/tv-service.webp";
+import pestservice from "../assets/services/pestservice.webp";
+import carservice from "../assets/services/car-service.webp";
+import bikeservice from "../assets/features/bike-service.webp";
+import computerservice from "../assets/services/computer-services.webp";
 import catering from "../assets/features/caterors.webp";
 import fencing from "../assets/services/fencing.webp";
-import interlock from "../assets/services/interlockBricks.webp";
-import steelDealers from "../assets/services/steelDealers.webp";
+import interlock from "../assets/services/interlockbricks.webp";
+import steeldealers from "../assets/services/steeldealers.webp";
 import transports from "../assets/features/transportation.webp";
 import driving from "../assets/features/driving.webp";
-import acService from "../assets/features/acService.webp";
+import acservice from "../assets/features/acservice.webp";
 
 // ================= CONTRACTORS =================
-import carpenterIcon from "../assets/subCategories/carpenter.webp";
-import ceilingIcon from "../assets/subCategories/ceiling-lamp.webp";
-import constructionIcon from "../assets/subCategories/construction-site.webp";
-import consultationIcon from "../assets/subCategories/consultation.webp";
-import fabricationIcon from "../assets/subCategories/cutting.webp";
-import paintingIcon from "../assets/subCategories/paint.webp";
-import floorIcon from "../assets/subCategories/floor.webp";
-import roadIcon from "../assets/subCategories/road-map.webp";
-import labourIcon from "../assets/subCategories/labour-day.webp";
-import borewellIcon from "../assets/subCategories/pipeline.webp";
-import drainageIcon from "../assets/subCategories/water-pollution.webp";
-import pipelineIcon from "../assets/subCategories/water-resistant.webp";
-import roofingIcon from "../assets/subCategories/roof.webp";
-import tilesIcon from "../assets/subCategories/tile.webp";
-import weldingIcon from "../assets/subCategories/welding-mask.webp";
-import fireIcon from "../assets/subCategories/fight-spirit.webp";
+import carpentericon from "../assets/subcategories/carpenter.webp";
+import ceilingicon from "../assets/subcategories/ceiling-lamp.webp";
+import constructionicon from "../assets/subcategories/construction-site.webp";
+import consultationicon from "../assets/subcategories/consultation.webp";
+import fabricationicon from "../assets/subcategories/cutting.webp";
+import paintingicon from "../assets/subcategories/paint.webp";
+import flooricon from "../assets/subcategories/floor.webp";
+import roadicon from "../assets/subcategories/road-map.webp";
+import labouricon from "../assets/subcategories/labour-day.webp";
+import borewellicon from "../assets/subcategories/pipeline.webp";
+import drainageicon from "../assets/subcategories/water-pollution.webp";
+import pipelineicon from "../assets/subcategories/water-resistant.webp";
+import roofingicon from "../assets/subcategories/roof.webp";
+import tilesicon from "../assets/subcategories/tile.webp";
+import weldingicon from "../assets/subcategories/welding-mask.webp";
+import fireicon from "../assets/subcategories/fight-spirit.webp";
 
 // ================= EDUCATION =================
-import schoolIcon from "../assets/subCategories/school.webp";
-import collegeIcon from "../assets/subCategories/college.webp";
-import tutorialIcon from "../assets/subCategories/webinar.webp";
-import vocationalIcon from "../assets/subCategories/vocational.webp";
-import specialSchoolIcon from "../assets/subCategories/education.webp";
-import childrensIcon from "../assets/subCategories/students.webp";
-import playSchoolIcon from "../assets/subCategories/game.webp";
-import kindergartenIcon from "../assets/subCategories/kindergarten.webp";
-import coachingIcon from "../assets/subCategories/coaching.webp";
-import onlineEducationIcon from "../assets/subCategories/video-tutorials.webp";
-import skillDevelopmentIcon from "../assets/subCategories/soft-skills.webp";
-import languageTrainingIcon from "../assets/subCategories/advanced-training.webp";
+import schoolicon from "../assets/subcategories/school.webp";
+import collegeicon from "../assets/subcategories/college.webp";
+import tutorialicon from "../assets/subcategories/webinar.webp";
+import vocationalicon from "../assets/subcategories/vocational.webp";
+import specialschoolicon from "../assets/subcategories/education.webp";
+import childrensicon from "../assets/subcategories/students.webp";
+import playschoolicon from "../assets/subcategories/game.webp";
+import kindergartenicon from "../assets/subcategories/kindergarten.webp";
+import coachingicon from "../assets/subcategories/coaching.webp";
+import onlineeducationicon from "../assets/subcategories/video-tutorials.webp";
+import skilldevelopmenticon from "../assets/subcategories/soft-skills.webp";
+import languagetrainingicon from "../assets/subcategories/advanced-training.webp";
 
 // ================= RENT =================
-import carRentIcon from "../assets/subCategories/rent.webp";
-import acRentIcon from "../assets/subCategories/acService.webp";
-import bridalWearIcon from "../assets/subCategories/bridal-shower.webp";
-import cameraIcon from "../assets/subCategories/camera.webp";
-import cranesIcon from "../assets/subCategories/crane.webp";
-import farmHouseIcon from "../assets/subCategories/farmer.webp";
-import miniTrucksIcon from "../assets/subCategories/tour-bus.webp";
-import projectorsIcon from "../assets/subCategories/projector.webp";
-import tempoTravellersIcon from "../assets/subCategories/tempo.webp";
-import costumesIcon from "../assets/subCategories/suit.webp";
-import furnituresIcon from "../assets/subCategories/sofa.webp";
-import bungalowsIcon from "../assets/subCategories/bungalow.webp";
-import chairIcon from "../assets/subCategories/chair.webp";
-import djEquipmentsIcon from "../assets/subCategories/b2b.webp";
-import generatorsIcon from "../assets/subCategories/electric.webp";
-import bikeIcon from "../assets/subCategories/motorcycle.webp";
-import roomsIcon from "../assets/subCategories/rooms.webp";
-import trucksIcon from "../assets/subCategories/deliver.webp";
-import minibusIcon from "../assets/subCategories/tour-bus.webp";
-import airCoolersIcon from "../assets/subCategories/cooler.webp";
-import busIcon from "../assets/subCategories/travel.webp";
-import cooksIcon from "../assets/subCategories/cooking.webp";
-import deadBodyFreezerBoxIcon from "../assets/subCategories/coffin.webp";
-import laptopsIcon from "../assets/subCategories/login.webp";
-import passengerVanIcon from "../assets/subCategories/transport.webp";
-import soundSystemsIcon from "../assets/subCategories/sound-system.webp";
-import vansIcon from "../assets/subCategories/van.webp";
+import carrenticon from "../assets/subcategories/rent.webp";
+import acrenticon from "../assets/subcategories/acservice.webp";
+import bridalwearicon from "../assets/subcategories/bridal-shower.webp";
+import cameracon from "../assets/subcategories/camera.webp";
+import cranesicon from "../assets/subcategories/crane.webp";
+import farmhouseicon from "../assets/subcategories/farmer.webp";
+import minitrucksicon from "../assets/subcategories/tour-bus.webp";
+import projectorsicon from "../assets/subcategories/projector.webp";
+import tempotravellersicon from "../assets/subcategories/tempo.webp";
+import costumesicon from "../assets/subcategories/suit.webp";
+import furnituresicon from "../assets/subcategories/sofa.webp";
+import bungalowsicon from "../assets/subcategories/bungalow.webp";
+import chairicon from "../assets/subcategories/chair.webp";
+import djequipmentsicon from "../assets/subcategories/b2b.webp";
+import generatorsicon from "../assets/subcategories/electric.webp";
+import bikeicon from "../assets/subcategories/motorcycle.webp";
+import roomsicon from "../assets/subcategories/rooms.webp";
+import trucksicon from "../assets/subcategories/deliver.webp";
+import minibusicon from "../assets/subcategories/tour-bus.webp";
+import aircoolersicon from "../assets/subcategories/cooler.webp";
+import busicon from "../assets/subcategories/travel.webp";
+import cooksicon from "../assets/subcategories/cooking.webp";
+import deadbodyfreezerboxicon from "../assets/subcategories/coffin.webp";
+import laptopsicon from "../assets/subcategories/login.webp";
+import passengervanicon from "../assets/subcategories/transport.webp";
+import soundsystemsicon from "../assets/subcategories/sound-system.webp";
+import vansicon from "../assets/subcategories/van.webp";
 
 // ================= HOSPITAL =================
-import hospitalIcon from "../assets/subCategories/hospitals.webp";
-import eyeIcon from "../assets/subCategories/medical.webp";
-import privateIcon from "../assets/subCategories/hospital.webp";
-import ayurvedicIcon from "../assets/subCategories/drug.webp";
-import dentalIcon from "../assets/subCategories/dentist.webp";
-import kidneyIcon from "../assets/subCategories/dialysis.webp";
-import orthoIcon from "../assets/subCategories/orthopedics.webp";
-import childrenIcon from "../assets/subCategories/children-hospital.webp";
-import maternityIcon from "../assets/subCategories/generic.webp";
-import publicIcon from "../assets/subCategories/healthcare.webp";
-import cancerIcon from "../assets/subCategories/patient.webp";
-import diabeticIcon from "../assets/subCategories/diabetes-test.webp";
-import neuroIcon from "../assets/subCategories/people-activity.webp";
-import swineFluIcon from "../assets/subCategories/tag.webp";
-import entIcon from "../assets/subCategories/ent.webp";
-import multiIcon from "../assets/subCategories/hospital-bed.webp";
-import veterinaryIcon from "../assets/subCategories/veterinary.webp";
-import cardiacIcon from "../assets/subCategories/monitor.webp";
-import publicVetIcon from "../assets/subCategories/clinic.webp";
-import nursingIcon from "../assets/subCategories/caregiver.webp";
-import tbIcon from "../assets/subCategories/tuberculosis.webp";
+import hospitalicon from "../assets/subcategories/hospitals.webp";
+import eyeicon from "../assets/subcategories/medical.webp";
+import privateicon from "../assets/subcategories/hospital.webp";
+import ayurvedicicon from "../assets/subcategories/drug.webp";
+import dentalicon from "../assets/subcategories/dentist.webp";
+import kidneyicon from "../assets/subcategories/dialysis.webp";
+import orthoicon from "../assets/subcategories/orthopedics.webp";
+import childrenicon from "../assets/subcategories/children-hospital.webp";
+import maternityicon from "../assets/subcategories/generic.webp";
+import publicicon from "../assets/subcategories/healthcare.webp";
+import cancericon from "../assets/subcategories/patient.webp";
+import diabeticicon from "../assets/subcategories/diabetes-test.webp";
+import neuroicon from "../assets/subcategories/people-activity.webp";
+import swinefluicon from "../assets/subcategories/tag.webp";
+import enticon from "../assets/subcategories/ent.webp";
+import multiicon from "../assets/subcategories/hospital-bed.webp";
+import veterinaryicon from "../assets/subcategories/veterinary.webp";
+import cardiacicon from "../assets/subcategories/monitor.webp";
+import publicveticon from "../assets/subcategories/clinic.webp";
+import nursingicon from "../assets/subcategories/caregiver.webp";
+import tbicon from "../assets/subcategories/tuberculosis.webp";
 
 // ================= PACKERS =================
-import packersIcon from "../assets/subCategories/navigation.webp";
-import withinCityIcon from "../assets/subCategories/city.webp";
-import allIndiaIcon from "../assets/subCategories/india.webp";
-import outsideIndiaIcon from "../assets/subCategories/departure.webp";
-import automobileIcon from "../assets/subCategories/delivery.webp";
-import commercialIcon from "../assets/subCategories/delivery.webp";
-import transportIcon from "../assets/subCategories/delivery.webp";
+import packersicon from "../assets/subcategories/navigation.webp";
+import withincityicon from "../assets/subcategories/city.webp";
+import allindiaincon from "../assets/subcategories/india.webp";
+import outsideindiaincon from "../assets/subcategories/departure.webp";
+import automobileicon from "../assets/subcategories/delivery.webp";
+import commercialicon from "../assets/subcategories/delivery.webp";
+import transporticon from "../assets/subcategories/delivery.webp";
 
 export const iconMap = {
   barbershop,
   bodymassage,
-  "beauty-parlour": beautyParlour,
+  "beauty-parlour": beautyparlour,
   carhired,
   spa,
   accountant,
-  "computer-course": computerCourse,
+  "computer-course": computercourse,
   delivery,
   electrician,
   eventorgan,
-  "real-estates": realEstates,
+  "real-estates": realestates,
   fabricator,
   hobby,
-  "internet-web": internetWeb,
+  "internet-web": internetweb,
   jewelry,
   lawyer,
-  "nurse-service": nurseService,
+  "nurse-service": nurseservice,
   printer,
   hiring,
   scrap,
   registration,
   coaching,
-  "vocational-training": vocationalTraining,
-  "vastu-consultant": vastuConsultant,
+  "vocational-training": vocationaltraining,
+  "vastu-consultant": vastuconsultant,
   numerology,
   geologist,
   textile,
-  "paint-services": paintServices,
+  "paint-services": paintservices,
   opticals,
   tailoring,
   organics,
-  "kids-school": kidsSchool,
+  "kids-school": kidsschool,
   physiotherapy,
-  "clinical-lab": clinicalLab,
+  "clinical-lab": clinicallab,
   architech,
   sports,
   tiles,
-  "import-export": importExport,
+  "import-export": importexport,
   boutique,
-  "book-shop": bookShop,
-  "fancy-store": fancyStore,
+  "book-shop": bookshop,
+  "fancy-store": fancystore,
   tatoo,
   nursery,
-  "special-school": specialSchool,
-  "mosquito-net": mosquitoNet,
-  "footwear-shop": footwearShop,
+  "special-school": specialschool,
+  "mosquito-net": mosquitonet,
+  "footwear-shop": footwearshop,
   homieo,
-  "hearing-aid": hearingAid,
-  "auto-mobiles": autoMobiles,
+  "hearing-aid": hearingaid,
+  "auto-mobiles": automobiles,
   cosmetics,
   loans,
   hotel,
@@ -242,116 +242,116 @@ export const iconMap = {
   florist,
   packers,
   housekeeper,
-  "security-system": securitySystem,
-  "wedding-hall": weddingHall,
+  "security-system": securitysystem,
+  "wedding-hall": weddinghall,
   photographer,
   matrimony,
   hostels,
   popular,
-  "car-service": carService,
-  "tv-service": tvService,
-  "bike-service": bikeService,
-  "pest-control-service": pestService,
-  "ac-service": acService,
+  "car-service": carservice,
+  "tv-service": tvservice,
+  "bike-service": bikeservice,
+  "pest-control-service": pestservice,
+  "ac-service": acservice,
   transporter: transports,
   "driving-school": driving,
   fencing,
   "interlock-bricks": interlock,
-  "steel-dealer": steelDealers,
+  "steel-dealer": steeldealers,
   astrologers,
   // ================= SERVICE CARDS =================
-  "computer-laptop-service": computerService,
+  "computer-laptop-service": computerservice,
   "catering-services": catering,
 
-  // ================= SUB-CATEGORIES (NEW 🔥) =================
-  carpenter: carpenterIcon,
-  "ceiling-lamp": ceilingIcon,
-  construction: constructionIcon,
-  consultation: consultationIcon,
-  fabrication: fabricationIcon,
-  paint: paintingIcon,
-  floor: floorIcon,
-  road: roadIcon,
-  labour: labourIcon,
-  pipeline: borewellIcon,
-  drainage: drainageIcon,
-  "water-resistant": pipelineIcon,
-  roof: roofingIcon,
-  tile: tilesIcon,
-  welding: weldingIcon,
-  fire: fireIcon,
+  // ================= subcategories (NEW 🔥) =================
+  carpenter: carpentericon,
+  "ceiling-lamp": ceilingicon,
+  construction: constructionicon,
+  consultation: consultationicon,
+  fabrication: fabricationicon,
+  paint: paintingicon,
+  floor: flooricon,
+  road: roadicon,
+  labour: labouricon,
+  pipeline: borewellicon,
+  drainage: drainageicon,
+  "water-resistant": pipelineicon,
+  roof: roofingicon,
+  tile: tilesicon,
+  welding: weldingicon,
+  fire: fireicon,
 
   // EDUCATION SUB
-  school: schoolIcon,
-  college: collegeIcon,
-  tutorial: tutorialIcon,
-  vocational: vocationalIcon,
-  "special-school-sub": specialSchoolIcon,
-  childrens: childrensIcon,
-  "play-school": playSchoolIcon,
-  kindergarten: kindergartenIcon,
-  "coaching-center": coachingIcon,
-  "online-education": onlineEducationIcon,
-  "skill-development": skillDevelopmentIcon,
-  "language-training": languageTrainingIcon,
+  school: schoolicon,
+  college: collegeicon,
+  tutorial: tutorialicon,
+  vocational: vocationalicon,
+  "special-school-sub": specialschoolicon,
+  childrens: childrensicon,
+  "play-school": playschoolicon,
+  kindergarten: kindergartenicon,
+  "coaching-center": coachingicon,
+  "online-education": onlineeducationicon,
+  "skill-development": skilldevelopmenticon,
+  "language-training": languagetrainingicon,
 
   // RENT SUB
-  "car-rent": carRentIcon,
-  "ac-rent": acRentIcon,
-  "bridal-wear": bridalWearIcon,
-  camera: cameraIcon,
-  cranes: cranesIcon,
-  farmhouse: farmHouseIcon,
-  "mini-trucks": miniTrucksIcon,
-  projector: projectorsIcon,
-  "tempo-travellers": tempoTravellersIcon,
-  costumes: costumesIcon,
-  furnitures: furnituresIcon,
-  bungalow: bungalowsIcon,
-  chair: chairIcon,
-  "dj-equipments": djEquipmentsIcon,
-  generators: generatorsIcon,
-  bike: bikeIcon,
-  rooms: roomsIcon,
-  trucks: trucksIcon,
-  minibus: minibusIcon,
-  coolers: airCoolersIcon,
-  bus: busIcon,
-  cooks: cooksIcon,
-  freezer: deadBodyFreezerBoxIcon,
-  laptops: laptopsIcon,
-  "passenger-van": passengerVanIcon,
-  sound: soundSystemsIcon,
-  vans: vansIcon,
+  "car-rent": carrenticon,
+  "ac-rent": acrenticon,
+  "bridal-wear": bridalwearicon,
+  camera: cameracon,
+  cranes: cranesicon,
+  farmhouse: farmhouseicon,
+  "mini-trucks": minitrucksicon,
+  projector: projectorsicon,
+  "tempo-travellers": tempotravellersicon,
+  costumes: costumesicon,
+  furnitures: furnituresicon,
+  bungalow: bungalowsicon,
+  chair: chairicon,
+  "dj-equipments": djequipmentsicon,
+  generators: generatorsicon,
+  bike: bikeicon,
+  rooms: roomsicon,
+  trucks: trucksicon,
+  minibus: minibusicon,
+  coolers: aircoolersicon,
+  bus: busicon,
+  cooks: cooksicon,
+  freezer: deadbodyfreezerboxicon,
+  laptops: laptopsicon,
+  "passenger-van": passengervanicon,
+  sound: soundsystemsicon,
+  vans: vansicon,
 
   // HOSPITAL SUB
-  hospitalSub: hospitalIcon,
-  eye: eyeIcon,
-  private: privateIcon,
-  ayurvedic: ayurvedicIcon,
-  dentalSub: dentalIcon,
-  kidney: kidneyIcon,
-  ortho: orthoIcon,
-  children: childrenIcon,
-  maternity: maternityIcon,
-  public: publicIcon,
-  cancer: cancerIcon,
-  diabetic: diabeticIcon,
-  neuro: neuroIcon,
-  swine: swineFluIcon,
-  ent: entIcon,
-  multi: multiIcon,
-  veterinary: veterinaryIcon,
-  cardiac: cardiacIcon,
-  publicVet: publicVetIcon,
-  nursing: nursingIcon,
-  tb: tbIcon,
+  hospitalsub: hospitalicon,
+  eye: eyeicon,
+  private: privateicon,
+  ayurvedic: ayurvedicicon,
+  dentalsub: dentalicon,
+  kidney: kidneyicon,
+  ortho: orthoicon,
+  children: childrenicon,
+  maternity: maternityicon,
+  public: publicicon,
+  cancer: cancericon,
+  diabetic: diabeticicon,
+  neuro: neuroicon,
+  swine: swinefluicon,
+  ent: enticon,
+  multi: multiicon,
+  veterinary: veterinaryicon,
+  cardiac: cardiacicon,
+  publicvet: publicveticon,
+  nursing: nursingicon,
+  tb: tbicon,
 
-  "packers-main": packersIcon,
-  "within-city": withinCityIcon,
-  "all-india": allIndiaIcon,
-  "outside-india": outsideIndiaIcon,
-  automobile: automobileIcon,
-  commercial: commercialIcon,
-  transport: transportIcon,
+  "packers-main": packersicon,
+  "within-city": withincityicon,
+  "all-india": allindiaincon,
+  "outside-india": outsideindiaincon,
+  automobile: automobileicon,
+  commercial: commercialicon,
+  transport: transporticon,
 };

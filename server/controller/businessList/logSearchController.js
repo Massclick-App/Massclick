@@ -67,6 +67,59 @@ const cleanIndianMobile = (mobile) => {
   return null;
 };
 
+
+
+const escapeRegex = (text = "") =>
+  text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const getDynamicCategoryRegex = (value = "") => {
+  let text = value.toLowerCase().trim();
+
+  text = text.replace(/\s+/g, " ");
+
+
+  const spellingMap = {
+    "nursery garden": "nursary garden",
+    "nursery": "nursary"
+  };
+
+  if (spellingMap[text]) {
+    text = spellingMap[text];
+  }
+
+  let singular = text;
+
+  if (text.endsWith("ies")) {
+    singular = text.slice(0, -3) + "y";
+  } else if (
+    text.endsWith("ses") ||
+    text.endsWith("xes") ||
+    text.endsWith("zes") ||
+    text.endsWith("ches") ||
+    text.endsWith("shes")
+  ) {
+    singular = text.slice(0, -2);
+  } else if (text.endsWith("s") && !text.endsWith("ss")) {
+    singular = text.slice(0, -1);
+  }
+
+  const plural1 = singular + "s";
+  const plural2 = singular.endsWith("y")
+    ? singular.slice(0, -1) + "ies"
+    : singular + "es";
+
+  const words = [
+    escapeRegex(text),
+    escapeRegex(singular),
+    escapeRegex(plural1),
+    escapeRegex(plural2)
+  ];
+
+  const uniqueWords = [...new Set(words)];
+
+  return new RegExp(`^(${uniqueWords.join("|")})$`, "i");
+};
+
 export const logSearchAction = async (req, res) => {
   try {
     const { categoryName, location, searchedUserText, userDetails } = req.body;
@@ -124,7 +177,7 @@ export const logSearchAction = async (req, res) => {
 
         finalCategoryName = possibleCategory
           ? possibleCategory.categoryName
-          : "Other";
+          : searchedUserText;
       }
     }
 
@@ -144,17 +197,35 @@ export const logSearchAction = async (req, res) => {
       categoryName: finalCategoryName,
       location: normalizedLocation,
       "userDetails.mobileNumber1": userDetails.mobileNumber1,
+      searchedUserText: cleanSearchText,
       createdAt: { $gte: fiveMinutesAgo }
     });
 
     if (recentLog) {
+      console.log("⚠️ Duplicate request blocked");
 
       return res.status(200).json({
         success: true,
-        message: "Lead already sent recently (5 min protection)",
+        message: "Lead already sent recently",
         detectedCategory: finalCategoryName
       });
     }
+
+    // const recentLog = await searchLogModel.findOne({
+    //   categoryName: finalCategoryName,
+    //   location: normalizedLocation,
+    //   "userDetails.mobileNumber1": userDetails.mobileNumber1,
+    //   createdAt: { $gte: fiveMinutesAgo }
+    // });
+
+    // if (recentLog) {
+
+    //   return res.status(200).json({
+    //     success: true,
+    //     message: "Lead already sent recently (5 min protection)",
+    //     detectedCategory: finalCategoryName
+    //   });
+    // }
 
     const savedLog = await createSearchLog({
 
@@ -179,7 +250,6 @@ export const logSearchAction = async (req, res) => {
 
     });
 
-
     const locationGroups = {
       trichy: ["trichy", "tiruchirappalli"]
     };
@@ -193,12 +263,16 @@ export const logSearchAction = async (req, res) => {
       }
     }
 
+    const categoryRegex = getDynamicCategoryRegex(finalCategoryName);
+
     const businesses = await businessListModel.find(
       {
-        category: { $regex: `^${finalCategoryName}$`, $options: "i" },
-        location: {
-          $in: locationList.map(loc => new RegExp(loc, "i"))
-        },
+        category: categoryRegex,
+
+        $or: locationList.map(loc => ({
+          location: { $regex: loc, $options: "i" }
+        })),
+
         isActive: true,
         businessesLive: true
       },
@@ -246,7 +320,6 @@ export const logSearchAction = async (req, res) => {
     const notifiedBusinesses = [];
 
 
-    // SEND WHATSAPP TO BUSINESSES
 
     for (const business of businesses) {
 
@@ -257,13 +330,11 @@ export const logSearchAction = async (req, res) => {
 
       if (!cleanMobile) continue;
 
-
       try {
 
         await sendBusinessLead(cleanMobile, leadData);
 
         businessSendSuccess = true;
-
 
         notifiedBusinesses.push({
 
@@ -292,7 +363,6 @@ export const logSearchAction = async (req, res) => {
     const cleanCustomerMobile = cleanIndianMobile(
       userDetails.mobileNumber1
     );
-
 
     if (cleanCustomerMobile) {
 
@@ -326,19 +396,10 @@ export const logSearchAction = async (req, res) => {
 
     }
 
-    const updated = await searchLogModel.findOneAndUpdate(
-      { _id: savedLog._id, whatsapp: false },
-      { whatsapp: true },
-      { new: true }
+    await searchLogModel.updateOne(
+      { _id: savedLog._id },
+      { whatsapp: true }
     );
-
-    if (!updated) {
-      console.log("🚫 Duplicate WhatsApp prevented");
-      return res.status(200).json({
-        success: true,
-        message: "Duplicate blocked"
-      });
-    }
 
     return res.status(202).json({
 
@@ -355,7 +416,6 @@ export const logSearchAction = async (req, res) => {
       whatsappUpdated: businessSendSuccess && customerSendSuccess
 
     });
-
 
   }
 

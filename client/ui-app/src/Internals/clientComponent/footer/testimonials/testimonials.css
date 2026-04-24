@@ -9,9 +9,7 @@
     --font-family-primary: 'Inter', sans-serif;
 }
 
-/* ========================================================= */
-/* --- 1. Testimonials Section Layout --- */
-/* ========================================================= */
+
 
 .section-testimonials {
     padding: 80px 20px;
@@ -86,7 +84,6 @@
 .testimonial-quote::after {
     content: "”";
     color: var(--color-primary);
-    /* **HEIGHT REDUCTION CHANGE:** Slightly smaller quote icon size */
     font-size: 2rem; 
     line-height: 0;
     position: absolute;
@@ -106,7 +103,6 @@
 
 .testimonial-author-info {
     border-top: 1px solid #eee;
-    /* **HEIGHT REDUCTION CHANGE:** Reduced padding top */
     padding-top: 10px; 
 }
 
@@ -133,9 +129,7 @@
 }
 
 
-/* ========================================================= */
-/* --- 3. Navigation Controls & Indicators --- */
-/* ========================================================= */
+
 
 .slider-control {
     position: absolute;
@@ -197,9 +191,7 @@
 }
 
 
-/* ========================================================= */
-/* --- 4. RESPONSIVENESS --- */
-/* ========================================================= */
+
 
 /* Tablet (Screen width > 768px) */
 @media (min-width: 768px) {

@@ -4,232 +4,380 @@ import { slugify } from "../slugify.js";
 
 const router = express.Router();
 
+/* =========================================================
+   CONFIG
+========================================================= */
 const BASE_URL = "https://massclick.in";
-const LIMIT = 1000;
+const LIMIT = 1000; // safe internal chunk size
 
+/* =========================================================
+   HELPERS
+========================================================= */
+const xmlEscape = (value = "") =>
+  String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
 
-const normalizeWord = (word = "") => {
-  return word.replace(/s$/, "");
+const isoDate = (value) => {
+  try {
+    return value ? new Date(value).toISOString() : new Date().toISOString();
+  } catch {
+    return new Date().toISOString();
+  }
 };
 
+const safeSlug = (value = "") => slugify(String(value).trim());
+
+const createUrlNode = ({
+  loc,
+  lastmod,
+  changefreq = "daily",
+  priority = "0.8",
+}) => {
+  return `
+  <url>
+    <loc>${xmlEscape(loc)}</loc>
+    <lastmod>${lastmod}</lastmod>
+    <changefreq>${changefreq}</changefreq>
+    <priority>${priority}</priority>
+  </url>`;
+};
+
+const createSitemapNode = (loc) => {
+  return `
+  <sitemap>
+    <loc>${xmlEscape(loc)}</loc>
+  </sitemap>`;
+};
+
+const sendXml = (res, xml) => {
+  res.type("application/xml; charset=utf-8");
+  res.set("Cache-Control", "public, max-age=3600, s-maxage=3600");
+  res.status(200).send(xml);
+};
+
+/* =========================================================
+   CATEGORY MAPPING
+========================================================= */
+const categoryGroups = [
+  {
+    parent: "contractors",
+    exact: ["contractor", "contractors"],
+    keywords: [
+      "contractor",
+      "builder",
+      "construction",
+      "roofing",
+      "interior",
+      "fabrication",
+      "civil",
+      "tiles",
+      "painting",
+      "plumbing",
+      "electrical",
+    ],
+  },
+  {
+    parent: "education",
+    exact: ["education"],
+    keywords: [
+      "school",
+      "schools",
+      "college",
+      "colleges",
+      "academy",
+      "coaching",
+      "tuition",
+      "training",
+      "institute",
+      "play-school",
+      "kindergarten",
+    ],
+  },
+  {
+    parent: "hospitals",
+    exact: ["hospital", "hospitals"],
+    keywords: [
+      "hospital",
+      "hospitals",
+      "clinic",
+      "hearing",
+      "dental",
+      "dentist",
+      "ayurvedic",
+      "homeopathic",
+      "herbal",
+      "medical",
+    ],
+  },
+  {
+    parent: "restaurants",
+    exact: ["restaurant", "restaurants"],
+    keywords: [
+      "restaurant",
+      "restaurants",
+      "hotel",
+      "veg",
+      "non-veg",
+      "food",
+      "cafe",
+      "biryani",
+      "bakery",
+    ],
+  },
+  {
+    parent: "beauty-and-spa",
+    exact: ["salon", "salons"],
+    keywords: ["salon", "beauty", "spa", "hair", "makeup"],
+  },
+  {
+    parent: "electronics",
+    exact: ["electronics"],
+    keywords: [
+      "electronics",
+      "cctv",
+      "camera",
+      "computer",
+      "laptop",
+      "printer",
+      "mobile",
+    ],
+  },
+  {
+    parent: "rent-and-hire",
+    exact: ["rent-and-hire"],
+    keywords: ["rent", "rental", "hire", "car-rental", "van", "bus", "generator"],
+  },
+];
 
 const getCategoryHierarchy = (category = "") => {
-  const slug = slugify(category);
+  const slug = safeSlug(category);
 
-  // ✅ EXACT contractor (NO CHILD)
-  if (slug === "contractor" || slug === "contractors") {
-    return {
-      parent: "contractors",
-      child: null,
-    };
+  for (const group of categoryGroups) {
+    if (group.exact.includes(slug)) {
+      return { parent: group.parent, child: null };
+    }
+
+    const matched = group.keywords.some((word) => slug.includes(word));
+
+    if (matched) {
+      return { parent: group.parent, child: slug };
+    }
   }
 
-  // ✅ SUB TYPES ONLY
-  if (
-    (slug.includes("contractor") ||
-      slug.includes("builder") ||
-      slug.includes("construction")) &&
-    slug !== "contractor" &&
-    slug !== "contractors"
-  ) {
-    return {
-      parent: "contractors",
-      child: slug,
-    };
-  }
-
-  return {
-    parent: slug,
-    child: null,
-  };
+  return { parent: slug || "services", child: null };
 };
 
+/* =========================================================
+   DB FETCHERS
+========================================================= */
+const activeFilter = {
+  isActive: true,
+  businessesLive: true,
+};
 
+const getCategoryRows = async () => {
+  return businessListModel.aggregate([
+    {
+      $match: {
+        ...activeFilter,
+        location: { $exists: true, $ne: "" },
+        category: { $exists: true, $ne: "" },
+      },
+    },
+    {
+      $group: {
+        _id: {
+          location: "$location",
+          category: "$category",
+        },
+        updatedAt: { $max: "$updatedAt" },
+      },
+    },
+    {
+      $sort: {
+        "_id.location": 1,
+        "_id.category": 1,
+      },
+    },
+  ]);
+};
+
+const getBusinessCount = async () => {
+  return businessListModel.countDocuments(activeFilter);
+};
+
+/* =========================================================
+   URL BUILDERS
+========================================================= */
+const buildCategoryUrlRecords = async () => {
+  const rows = await getCategoryRows();
+
+  const map = new Map();
+
+  for (const row of rows) {
+    const location = safeSlug(row?._id?.location);
+    const category = row?._id?.category || "";
+
+    if (!location || !category) continue;
+
+    const { parent, child } = getCategoryHierarchy(category);
+    const lastmod = isoDate(row.updatedAt);
+
+    const parentUrl = `${BASE_URL}/${location}/${parent}`;
+
+    if (!map.has(parentUrl)) {
+      map.set(
+        parentUrl,
+        createUrlNode({
+          loc: parentUrl,
+          lastmod,
+          priority: "0.8",
+          changefreq: "daily",
+        })
+      );
+    }
+
+    if (child && child !== parent) {
+      const childUrl = `${BASE_URL}/${location}/${parent}/${child}`;
+
+      if (!map.has(childUrl)) {
+        map.set(
+          childUrl,
+          createUrlNode({
+            loc: childUrl,
+            lastmod,
+            priority: "0.9",
+            changefreq: "daily",
+          })
+        );
+      }
+    }
+  }
+
+  return Array.from(map.values());
+};
+
+/* =========================================================
+   CATEGORY SITEMAP
+========================================================= */
 router.get("/sitemap-category-city-:page.xml", async (req, res) => {
   try {
-    res.set("Content-Type", "application/xml");
-    res.set("Cache-Control", "public, max-age=86400");
+    const page = Math.max(Number(req.params.page) || 1, 1);
+    const start = (page - 1) * LIMIT;
+    const end = start + LIMIT;
 
-    const page = Number(req.params.page) || 1;
-    const skip = (page - 1) * LIMIT;
+    const urls = await buildCategoryUrlRecords();
+    const sliced = urls.slice(start, end);
 
-    const categoryData = await businessListModel.aggregate([
-      { $match: { isActive: true, businessesLive: true } },
-      {
-        $group: {
-          _id: {
-            location: {
-              $toLower: {
-                $trim: { input: "$location" }
-              }
-            },
-            category: {
-              $toLower: {
-                $trim: { input: "$category" }
-              }
-            }
-          },
-          updatedAt: { $max: "$updatedAt" },
-        },
-      },
-    ]);
-
-    let allUrls = [];
-    const uniqueUrls = new Set();
-
-    categoryData.forEach((item) => {
-      const location = slugify(item._id.location);
-      const { parent, child } = getCategoryHierarchy(item._id.category);
-
-      const lastmod = item.updatedAt
-        ? new Date(item.updatedAt).toISOString()
-        : new Date().toISOString();
-
-      // ✅ Parent URL
-      const parentUrl = `${BASE_URL}/${location}/${parent}`;
-
-      if (!uniqueUrls.has(parentUrl)) {
-        uniqueUrls.add(parentUrl);
-
-        allUrls.push(`
-        <url>
-          <loc>${parentUrl}</loc>
-          <lastmod>${lastmod}</lastmod>
-          <changefreq>daily</changefreq>
-          <priority>0.8</priority>
-        </url>`);
-      }
-
-      if (
-        child &&
-        normalizeWord(child) !== normalizeWord(parent) &&
-        child !== parent
-      ) {
-        const childUrl = `${BASE_URL}/${location}/${parent}/${child}`;
-
-        if (!uniqueUrls.has(childUrl)) {
-          uniqueUrls.add(childUrl);
-
-          allUrls.push(`
-          <url>
-            <loc>${childUrl}</loc>
-            <lastmod>${lastmod}</lastmod>
-            <changefreq>daily</changefreq>
-            <priority>0.9</priority>
-          </url>`);
-        }
-      }
-    });
-
-    const paginated = allUrls.slice(skip, skip + LIMIT).join("");
-
-    res.send(`<?xml version="1.0" encoding="UTF-8"?>
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${paginated}
-</urlset>`);
+${sliced.join("")}
+</urlset>`;
+
+    return sendXml(res, xml);
   } catch (error) {
-    console.error("❌ Category Sitemap Error:", error);
-    res.status(500).end();
+    console.error("CATEGORY_SITEMAP_ERROR:", error);
+    return res.status(500).end();
   }
 });
 
+/* =========================================================
+   BUSINESS SITEMAP
+========================================================= */
 router.get("/sitemap-business-:page.xml", async (req, res) => {
   try {
-    res.set("Content-Type", "application/xml");
-    res.set("Cache-Control", "public, max-age=86400");
-
-    const page = Number(req.params.page) || 1;
+    const page = Math.max(Number(req.params.page) || 1, 1);
     const skip = (page - 1) * LIMIT;
 
     const businesses = await businessListModel
       .find(
-        { isActive: true, businessesLive: true },
-        { businessName: 1, location: 1, updatedAt: 1 }
+        activeFilter,
+        {
+          _id: 1,
+          businessName: 1,
+          location: 1,
+          updatedAt: 1,
+        }
       )
+      .sort({ updatedAt: -1, _id: -1 })
       .skip(skip)
       .limit(LIMIT)
       .lean();
 
-    const urls = businesses
-      .map((b) => {
-        const location = slugify(b.location);
-        const business = slugify(b.businessName);
+    const nodes = businesses.map((item) => {
+      const location = safeSlug(item.location);
+      const businessSlug = safeSlug(item.businessName || "business");
+      const lastmod = isoDate(item.updatedAt);
 
-        const lastmod = b.updatedAt
-          ? new Date(b.updatedAt).toISOString()
-          : new Date().toISOString();
+      const loc = `${BASE_URL}/${location}/${businessSlug}/${item._id}`;
 
-        return `
-        <url>
-          <loc>${BASE_URL}/${location}/${business}/${b._id}</loc>
-          <lastmod>${lastmod}</lastmod>
-          <changefreq>weekly</changefreq>
-          <priority>0.8</priority>
-        </url>`;
-      })
-      .join("");
+      return createUrlNode({
+        loc,
+        lastmod,
+        changefreq: "weekly",
+        priority: "0.8",
+      });
+    });
 
-    res.send(`<?xml version="1.0" encoding="UTF-8"?>
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${urls}
-</urlset>`);
+${nodes.join("")}
+</urlset>`;
+
+    return sendXml(res, xml);
   } catch (error) {
-    console.error("❌ Business Sitemap Error:", error);
-    res.status(500).end();
+    console.error("BUSINESS_SITEMAP_ERROR:", error);
+    return res.status(500).end();
   }
 });
 
+/* =========================================================
+   MAIN INDEX SITEMAP
+========================================================= */
 router.get("/sitemap.xml", async (req, res) => {
   try {
-    res.set("Content-Type", "application/xml");
-    res.set("Cache-Control", "public, max-age=86400");
-
-    const totalBusinesses = await businessListModel.countDocuments({
-      isActive: true,
-      businessesLive: true,
-    });
-
-    const totalBusinessPages = Math.ceil(totalBusinesses / LIMIT);
-
-    const totalCategoryData = await businessListModel.aggregate([
-      { $match: { isActive: true, businessesLive: true } },
-      {
-        $group: {
-          _id: {
-            location: "$location",
-            category: "$category",
-          },
-        },
-      },
-      { $count: "total" },
+    const [categoryUrls, totalBusinesses] = await Promise.all([
+      buildCategoryUrlRecords(),
+      getBusinessCount(),
     ]);
 
-    const totalCategory = totalCategoryData[0]?.total || 0;
-    const totalCategoryPages = Math.ceil(totalCategory / LIMIT);
+    const totalCategoryPages = Math.max(
+      1,
+      Math.ceil(categoryUrls.length / LIMIT)
+    );
 
-    let links = "";
+    const totalBusinessPages = Math.max(
+      1,
+      Math.ceil(totalBusinesses / LIMIT)
+    );
+
+    const links = [];
 
     for (let i = 1; i <= totalCategoryPages; i++) {
-      links += `
-  <sitemap>
-    <loc>${BASE_URL}/sitemap-category-city-${i}.xml</loc>
-  </sitemap>`;
+      links.push(
+        createSitemapNode(`${BASE_URL}/sitemap-category-city-${i}.xml`)
+      );
     }
 
     for (let i = 1; i <= totalBusinessPages; i++) {
-      links += `
-  <sitemap>
-    <loc>${BASE_URL}/sitemap-business-${i}.xml</loc>
-  </sitemap>`;
+      links.push(
+        createSitemapNode(`${BASE_URL}/sitemap-business-${i}.xml`)
+      );
     }
 
-    res.send(`<?xml version="1.0" encoding="UTF-8"?>
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${links}
-</sitemapindex>`);
+${links.join("")}
+</sitemapindex>`;
+
+    return sendXml(res, xml);
   } catch (error) {
-    console.error("❌ Sitemap Index Error:", error);
-    res.status(500).end();
+    console.error("SITEMAP_INDEX_ERROR:", error);
+    return res.status(500).end();
   }
 });
 

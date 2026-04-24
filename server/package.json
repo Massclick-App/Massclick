@@ -23,6 +23,7 @@
     "mongodb": "^7.1.1",
     "mongoose": "^8.18.1",
     "node-fetch": "^2.7.0",
+    "nodeman": "^1.1.2",
     "oauth2-server": "^3.1.1",
     "pg-sdk-node": "https://phonepe.mycloudrepo.io/public/repositories/phonepe-pg-sdk-node/releases/v2/phonepe-pg-sdk-node.tgz",
     "prerender": "^5.21.6",

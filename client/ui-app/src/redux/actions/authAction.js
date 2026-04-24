@@ -48,7 +48,6 @@ export const login = (userName, password) => async (dispatch) => {
       payload: { user, accessToken, refreshToken },
     });
   } catch (error) {
-    console.error("Login error:", error.response?.data || error.message);
     dispatch({
       type: LOGIN_FAILURE,
       payload: error.response?.data?.error || error.message,
@@ -109,7 +108,7 @@ export const logout = () => async (dispatch) => {
       });
     }
   } catch (err) {
-    console.error("Logout error:", err);
+    // Error silently caught
   } finally {
     const keysToRemove = [
       "accessToken",

@@ -28,6 +28,7 @@
     "lucide-react": "^0.554.0",
     "mdb-react-ui-kit": "^9.0.0",
     "notistack": "^3.0.2",
+    "qs": "^6.15.1",
     "react": "^18.3.1",
     "react-chartjs-2": "^5.3.1",
     "react-dom": "^18.3.1",
@@ -38,16 +39,13 @@
     "react-redux": "^9.2.0",
     "react-router-dom": "^7.9.1",
     "react-scripts": "5.0.1",
-    "react-snap": "^1.23.0",
     "recharts": "^3.3.0",
-    "sharp": "^0.34.5",
     "styled-components": "^6.1.19",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
-    "postbuild": "react-snap",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
@@ -80,6 +78,8 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.35.0",
+    "ajv": "^8.12.0",
+    "ajv-keywords": "^5.1.0",
     "autoprefixer": "^10.4.21",
     "customize-cra": "^1.0.0",
     "eslint": "^8.57.1",

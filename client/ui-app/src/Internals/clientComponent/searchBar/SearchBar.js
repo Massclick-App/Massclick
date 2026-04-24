@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import "./searchBar.css";
-import MI from "../../../assets/Mi.png";
+import MI from "../../../assets/mi.png";
 import AddBusinessModel from "../AddBusinessModel.js";
 import {
     Box,

@@ -30,10 +30,19 @@ import CloseIcon from "@mui/icons-material/Close";
 import FacebookIcon from "@mui/icons-material/Facebook";
 import InstagramIcon from "@mui/icons-material/Instagram";
 import LinkIcon from "@mui/icons-material/Link";
+import FavoriteIcon from "@mui/icons-material/Favorite";
+import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import Tooltip from "@mui/material/Tooltip";
 import Footer from "../footer/footer";
 import ReviewList from "../rating/reviewList";
 import { getBusinessReviews } from "../../../redux/actions/reviewAction.js";
+import GlobalSkeleton from "../globalSkeleton.js";
+import {
+  addFavorite,
+  removeFavorite,
+  fetchFavorites,
+  getAuthUser,
+} from "../../../redux/actions/favoriteAction";
 
 const SimpleModal = ({ children, onClose, title }) => (
   <div
@@ -126,6 +135,19 @@ const BusinessDetail = () => {
 
   const reviewState = useSelector(state => state.reviews || {});
   const totalReview = reviewState.total || 0;
+
+  const favoriteIds = useSelector((state) => state.favorites.favoriteIds);
+  const togglingIds = useSelector((state) => state.favorites.togglingIds);
+  const favUser = getAuthUser();
+  const isFavLoggedIn = !!favUser?._id;
+  const business = businessDetails;
+
+  useEffect(() => {
+    if (isFavLoggedIn && business?._id && favoriteIds.length === 0) {
+      dispatch(fetchFavorites());
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFavLoggedIn, business?._id]);
   const [mainImage, setMainImage] = useState(null);
   const [showFullGallery, setShowFullGallery] = useState(false);
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
@@ -140,7 +162,6 @@ const BusinessDetail = () => {
   const servicesRef = useRef(null);
   const photosRef = useRef(null);
   const reviewsRef = useRef(null);
-  const business = businessDetails;
 
   useEffect(() => {
     if (id) {
@@ -166,9 +187,7 @@ const BusinessDetail = () => {
     return (
       <>
         <CardsSearch />
-        <div className="business-CardDetails-pageWrapper">
-          <p>Loading...</p>
-        </div>
+        <GlobalSkeleton type="details" />
         <Footer />
       </>
     );
@@ -574,6 +593,25 @@ const whatsappNumber =
                     <EditIcon style={{ fontSize: 20 }} />
                   </span>
 
+                  <button
+                    className={`business-CardDetails-iconBtn business-CardDetails-favBtn${favoriteIds.includes(business._id) ? " business-CardDetails-favBtn--active" : ""}${togglingIds.includes(business._id) ? " business-CardDetails-favBtn--loading" : ""}`}
+                    title={favoriteIds.includes(business._id) ? "Remove from favorites" : "Add to favorites"}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!isFavLoggedIn) { alert("Please login to add favorites"); return; }
+                      if (togglingIds.includes(business._id)) return;
+                      if (favoriteIds.includes(business._id)) {
+                        dispatch(removeFavorite(business._id));
+                      } else {
+                        dispatch(addFavorite(business._id));
+                      }
+                    }}
+                  >
+                    {favoriteIds.includes(business._id)
+                      ? <FavoriteIcon style={{ fontSize: 20, color: "#ef4444" }} />
+                      : <FavoriteBorderIcon style={{ fontSize: 20, color: "#ef4444" }} />}
+                  </button>
+
                   <span
                     className="business-CardDetails-iconBtn business-CardDetails-shareBtn"
                     title="Share"
@@ -776,185 +814,6 @@ const whatsappNumber =
 
                 <ReviewList businessId={business._id} />
               </section>
-
-              {/* <section
-                ref={reviewsRef}
-                className="business-CardDetails-reviewsSection"
-              >
-                <div className="business-CardDetails-ratingsSummary">
-                  <h2 className="business-CardDetails-sectionTitle">
-                    Reviews &amp; Ratings
-                  </h2>
-                  <div className="business-CardDetails-averageRating">
-                    <span className="business-CardDetails-averageScore">
-                      {displayedAverageRating}
-                    </span>
-                    <span className="business-CardDetails-averageCount">
-                      {totalRatings} Rating
-                      {totalRatings !== 1 ? "s" : ""}
-                    </span>
-                    <p className="business-CardDetails-ratingSource">
-                      MassClick rating index based on {totalRatings}{" "}
-                      ratings across the web
-                    </p>
-                  </div>
-                </div>
-                <div className="business-CardDetails-startReview">
-                  <h3>Start your Review</h3>
-                  <UserRatingWidget
-                    businessId={business._id}
-                    initialValue={business.averageRating || 0}
-                    currentRatings={business.ratings || []}
-                  />
-                </div>
-
-                <div className="business-CardDetails-ratingTrend">
-                  <h3>Recent rating trend</h3>
-                  <div className="business-CardDetails-ratingTrendBar" />
-                </div>
-
-                <div className="business-CardDetails-userReviews">
-                  <h3>User Reviews</h3>
-                  <div className="business-CardDetails-reviewFilters">
-                    <button className="business-CardDetails-filter business-CardDetails-filter--active">
-                      Relevant
-                    </button>
-                    <button className="business-CardDetails-filter">
-                      Latest
-                    </button>
-                    <button className="business-CardDetails-filter">
-                      High to Low
-                    </button>
-                  </div>
-
-                  {reviewsToDisplay.length > 0 ? (
-                    reviewsToDisplay.map((review, index) => (
-                      <div
-                        key={review._id || index}
-                        className="business-CardDetails-reviewCard"
-                      >
-                        <div className="business-CardDetails-reviewHeader">
-                          <img
-                            src={
-                              review.userProfileImage
-                                ? review.userProfileImage
-                                : "https://via.placeholder.com/40"
-                            }
-                            alt={
-                              review.userName || "Anonymous User"
-                            }
-                            className="business-CardDetails-reviewAvatar"
-                          />
-                          <div className="business-CardDetails-reviewUser">
-                            <p className="business-CardDetails-reviewName">
-                              {review.userName ||
-                                "Anonymous User"}
-                            </p>
-                          </div>
-                          <span className="business-CardDetails-reviewDate">
-                            {review.createdAt
-                              ? new Date(
-                                review.createdAt
-                              ).toLocaleDateString("en-GB", {
-                                year: "numeric",
-                                month: "short",
-                                day: "numeric",
-                              })
-                              : "N/A"}
-                          </span>
-                        </div>
-
-                        <div className="business-CardDetails-reviewStars">
-                          {Array.from({ length: 5 }).map(
-                            (_, starIndex) => (
-                              <StarIcon
-                                key={starIndex}
-                                style={{
-                                  fontSize: 20,
-                                  color:
-                                    starIndex < review.rating
-                                      ? "#ffb300"
-                                      : "#e0e0e0",
-                                }}
-                              />
-                            )
-                          )}
-                        </div>
-
-                        <p className="business-CardDetails-reviewText">
-                          {review.ratingExperience ||
-                            "No comment provided."}
-                        </p>
-
-                        <div className="business-CardDetails-reviewMeta">
-                          {review.ratingLove &&
-                            review.ratingLove.length > 0 && (
-                              <p>
-                                <strong>Likes:</strong>{" "}
-                                {review.ratingLove.join(", ")}
-                              </p>
-                            )}
-                          {review.ratingPhotos &&
-                            review.ratingPhotos.length > 0 && (
-                              <p>
-                                <strong>
-                                  Photos(
-                                  {review.ratingPhotos.length})
-                                </strong>{" "}
-                                – View Photos
-                              </p>
-                            )}
-                        </div>
-
-                        <div className="business-CardDetails-reviewActions">
-                          <span>
-                            <CheckCircleIcon
-                              style={{
-                                fontSize: 18,
-                                marginRight: 4,
-                              }}
-                            />
-                            Helpful (0)
-                          </span>
-                          <span>
-                            <NoteAltIcon
-                              style={{
-                                fontSize: 18,
-                                marginRight: 4,
-                              }}
-                            />
-                            Comment
-                          </span>
-                          <span>
-                            <ShareIcon
-                              style={{
-                                fontSize: 18,
-                                marginRight: 4,
-                              }}
-                            />
-                            Share
-                          </span>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p>Be the first to leave a review!</p>
-                  )}
-
-                  {hasMoreReviews && (
-                    <div className="business-CardDetails-viewMore">
-                      <button
-                        className="business-CardDetails-viewMoreBtn"
-                        onClick={handleViewMoreReviews}
-                      >
-                        View More Reviews (
-                        {allReviews.length - reviewLimit} remaining)
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </section> */}
-
             </div>
 
             {business.googleMap && (

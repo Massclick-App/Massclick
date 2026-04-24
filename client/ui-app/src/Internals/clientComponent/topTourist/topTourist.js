@@ -1,10 +1,9 @@
 import React, { useRef } from 'react';
 import { Link } from "react-router-dom";
-
-import Bangalore from "../../../assets/TopTourist/Bangalore.webp";
-import Chennai from "../../../assets/TopTourist/Chennai.webp";
-import Hyderabad from "../../../assets/TopTourist/Hyderabad.webp";
-import Ooty from "../../../assets/TopTourist/Ooty.webp";
+import Bangalore from "../../../assets/toptourist/bangalore.webp";
+import Chennai from "../../../assets/toptourist/chennai.webp";
+import Hyderabad from "../../../assets/toptourist/hyderabad.webp";
+import Ooty from "../../../assets/toptourist/ooty.webp";
 
 import KeyboardDoubleArrowRightIcon from '@mui/icons-material/KeyboardDoubleArrowRight';
 import KeyboardDoubleArrowLeftIcon from '@mui/icons-material/KeyboardDoubleArrowLeft';

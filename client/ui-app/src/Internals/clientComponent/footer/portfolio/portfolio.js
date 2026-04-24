@@ -4,10 +4,10 @@ import LaunchIcon from '@mui/icons-material/Launch';
 import CardsSearch from '../../CardsSearch/CardsSearch';
 import Footer from '../footer';
 import geoPark from "../../../../assets/portfolio/geopark.webp"
-import ginfraBricks from "../../../../assets/portfolio/ginfraBricks.webp"
-import vestleySchool from "../../../../assets/portfolio/vestleySchool.webp"
-import royalSathyam from "../../../../assets/portfolio/royalSathyam.webp"
-import varahaBoutique from "../../../../assets/portfolio/varahaBoutique.webp"
+import ginfraBricks from "../../../../assets/portfolio/ginfrabricks.webp"
+import vestleySchool from "../../../../assets/portfolio/vestleyschool.webp"
+import royalSathyam from "../../../../assets/portfolio/royalsathyam.webp"
+import varahaBoutique from "../../../../assets/portfolio/varahaboutique.webp"
 import meinfotech from "../../../../assets/portfolio/meinfotech.webp"
 import armSons from "../../../../assets/portfolio/arm-sons.webp"
 import abiramiTimbers from "../../../../assets/portfolio/abiramitimber.webp"

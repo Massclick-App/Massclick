@@ -4,10 +4,23 @@ import { fetchSeoPageContentBlogsMeta } from "../../../redux/actions/seoPageCont
 import "./relatedBlogs.css";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import ArrowBackIosIcon from "@mui/icons-material/ArrowBackIos";
+import { Skeleton } from "@mui/material";
+
+const BlogsSkeleton = () => (
+  <div style={{ display: "flex", gap: "1rem", overflow: "hidden", padding: "0 8px" }}>
+    {[...Array(4)].map((_, i) => (
+      <div key={i} style={{ width: 280, flexShrink: 0 }}>
+        <Skeleton variant="rounded" width={280} height={180} animation="wave" sx={{ bgcolor: "rgba(255,107,44,0.055)", borderRadius: 2 }} />
+        <Skeleton variant="rounded" width="70%" height={16} animation="wave" sx={{ bgcolor: "rgba(255,107,44,0.055)", mt: 1.5 }} />
+        <Skeleton variant="rounded" width="50%" height={13} animation="wave" sx={{ bgcolor: "rgba(255,107,44,0.055)", mt: 0.75 }} />
+      </div>
+    ))}
+  </div>
+);
 
 const RelatedBlogs = ({ location }) => {
-  const scrollRef = useRef(null);
   const dispatch = useDispatch();
+  const scrollRef = useRef(null);
 
   const {
     list = [],
@@ -16,42 +29,35 @@ const RelatedBlogs = ({ location }) => {
   } = useSelector((state) => state.seoPageContentBlogReducer);
 
   useEffect(() => {
+    const cleanLocation = (location || "").toLowerCase().trim();
 
-    if (!location) return;
+    if (!cleanLocation) return;
 
     dispatch(
       fetchSeoPageContentBlogsMeta({
         pageType: "category",
-        location: location,
+        location: cleanLocation,
       })
     );
   }, [dispatch, location]);
 
-  const scroll = (direction) => {
-    const container = scrollRef.current;
-    if (!container) return;
 
-    const cardWidth = container.firstChild?.offsetWidth || 320;
+  const scroll = (dir) => {
+    const box = scrollRef.current;
+    if (!box) return;
 
-    container.scrollBy({
-      left: direction === "left" ? -cardWidth : cardWidth,
+    const width = box.firstChild?.offsetWidth || 320;
+
+    box.scrollBy({
+      left: dir === "left" ? -width : width,
       behavior: "smooth",
     });
   };
 
   const createSlug = (text = "") =>
-    text
-      .toLowerCase()
-      .trim()
+    text.toLowerCase().trim()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "");
-
-  const handleClick = (item) => {
-    if (!item?.heading) return;
-
-    const slug = createSlug(item.heading);
-    window.open(`/blog/${slug}`, "_blank");
-  };
 
   return (
     <div className="related-wrapper">
@@ -69,28 +75,31 @@ const RelatedBlogs = ({ location }) => {
 
           <div className="carousel" ref={scrollRef}>
 
-            {loading && <p style={{ padding: "20px" }}>Loading...</p>}
+            {loading && <BlogsSkeleton />}
 
             {!loading && error && (
-              <p style={{ padding: "20px", color: "red" }}>
-                Error loading blogs
+              <p style={{ padding: 20, color: "red" }}>
+                {String(error)}
               </p>
             )}
 
-            {!loading && !error && list.length > 0 &&
+            {!loading && !error && list.length === 0 && (
+              <p style={{ padding: 20 }}>No blogs found</p>
+            )}
+
+            {!loading &&
+              !error &&
               list.map((item) => (
                 <div
                   className="card"
                   key={item._id}
-                  onClick={() => handleClick(item)}
+                  onClick={() =>
+                    window.open(`/blog/${item.slug || createSlug(item.heading)}`, "_blank")
+                  }
                 >
                   <img
-                    src={
-                      item.profileImage ||
-                      "https://via.placeholder.com/300x200"
-                    }
+                    src={item.profileImage || "https://via.placeholder.com/300x200"}
                     alt={item.heading}
-                    loading="lazy"
                   />
 
                   <div className="card-content">
@@ -98,14 +107,7 @@ const RelatedBlogs = ({ location }) => {
                     <span>Explore</span>
                   </div>
                 </div>
-              ))
-            }
-
-            {!loading && !error && list.length === 0 && (
-              <p style={{ padding: "20px" }}>
-                No blogs found
-              </p>
-            )}
+              ))}
 
           </div>
 
@@ -114,7 +116,6 @@ const RelatedBlogs = ({ location }) => {
           </button>
 
         </div>
-
       </div>
     </div>
   );

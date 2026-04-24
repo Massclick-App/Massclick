@@ -1,66 +1,98 @@
-import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import React, { useState, useEffect, lazy, Suspense, memo } from 'react';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { relogin } from './redux/actions/authAction.js';
+import { clientLogin } from './redux/actions/clientAuthAction.js';
+import { fetchMatchedLeads } from './redux/actions/leadsAction.js';
+
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-import theme from './Internals/clientComponent/theme.js';
-import Dashboard from './Dashboard';
-import Login from './Internals/Login/login.js';
-import User from './Internals/user/Users.js';
-import Clients from './Internals/clients/Client.js';
-import Business from './Internals/business/Business.js';
-import Category from './Internals/categories/Category.js';
-import Roles from './Internals/Roles/Roles.js';
-import Location from './Internals/location/Location.js';
-import MainGrid from './components/MainGrid.js';
-import PrivateRoute from './PrivateRoute';
-import BusinessListing from './Internals/clientComponent/home.js';
 import { SnackbarProvider } from 'notistack';
-import SearchResults from './Internals/clientComponent/SearchResult/SearchResult.js';
-import { categoriesServices } from './Internals/clientComponent/serviceCard/serviceCard.js';
-import BusinessDetails from './Internals/clientComponent/cards/cardDetails.js';
-import AboutUsPage from './Internals/clientComponent/footer/aboutUs/aboutUsPage.js';
-import Testimonials from './Internals/clientComponent/footer/testimonials/testimonials.js';
-import FeedbackComponent from './Internals/clientComponent/footer/feedback/feedback.js';
-import CustomerCareComponent from './Internals/clientComponent/footer/customerCare/customerCare.js';
-import Portfolio from './Internals/clientComponent/footer/portfolio/portfolio.js';
-import TermsAndConditions from './Internals/clientComponent/footer/termsAndConditions/termsAndCondition.js';
-import PrivacyPolicy from './Internals/clientComponent/footer/privacyPolicy/privacyPolicy.js';
-import RefundPolicy from './Internals/clientComponent/footer/refund/refundPolicy.js';
-import EnquiryNow from './Internals/clientComponent/footer/enquiry/enquiry.js';
-import WebDevSection from './Internals/clientComponent/footer/webDev/webDevSection.js';
-import DigitalMarketing from './Internals/clientComponent/footer/digitalMarketing/digitalMarketing.js';
-import GraphicDesign from './Internals/clientComponent/footer/graphicDesign/graphicDesign.js';
-import Seo from './Internals/clientComponent/footer/seo/seo.js';
-import WriteReviewPage from './Internals/clientComponent/rating/submitReviewPage.js';
-import { userMenuItems } from './Internals/clientComponent/categoryBar.js';
-import Profile from './Internals/Login/profile/profile.js';
-import { clientLogin } from './redux/actions/clientAuthAction.js';
-import PaymentStatus from './Internals/phonePay/paymentStatus.js';
+
+import theme from './Internals/clientComponent/theme.js';
+import PrivateRoute from './PrivateRoute';
 import ScrollToTop from './scrollTop.js';
-import LeadsPage from './Internals/clientComponent/LeadsPage/leadsPage.js';
-import AdvertisePage from './Internals/clientComponent/advertise/advertise.js';
-import FreeListingPage from './Internals/clientComponent/free-Listing/free-Listing.js';
-import MRPPage from './Internals/clientComponent/MRP/mrp.js';
-import LeadsCardHistory from './Internals/clientComponent/LeadsPage/leadsCards/leadsCards.js';
-import TokenExpiredModal from './Internals/tokenModel/tokenModel.js';
-import BusinessEnquiry from './Internals/clientComponent/businessEnquiry/businessEnquiry.js';
-import EnquiryPage from './Internals/enquiry-page/enquiry-page.js';
-import AdvertisementPage from './Internals/advertisement/advertisement.js';
-import GlobalDrawer from "./Internals/clientComponent/Drawer/globalDrawer.js";
-import { fetchMatchedLeads } from "./redux/actions/leadsAction.js";
-import SeoData from './Internals/seoData/seoData.js';
-import SeoPageContent from './Internals/seoData/seoPageContent/seoPageContent.js';
-import MRPDatas from './Internals/MRPDATA/mrpData.js';
 import RouteChangeTracker from './RouteChangeTracker.js';
-import FloatingButtons from './Internals/clientComponent/floating/floatingButtons.js';
-import FloatingAdCard from './Internals/clientComponent/floating/floatingAdCard.js';
-import OTPLoginModal from './Internals/clientComponent/AddBusinessModel.js';
-import CategoryRouter from './Internals/clientComponent/categories/categoryRouter.js';
-import BlogDetail from './Internals/clientComponent/relatedBlogs/blogDetails/blogDetails.js';
-import SeoPageContentBlogs from './Internals/seoData/seoPageContentBlog/seoPageContentBlog.js';
-import DeleteAccount from './Internals/clientComponent/footer/deleteAccount/deleteAccount.js';
+import { userMenuItems } from './Internals/clientComponent/categoryBar.js';
+
+import GlobalSkeleton from './Internals/clientComponent/globalSkeleton.js';
+
+const Dashboard = lazy(() => import('./Dashboard'));
+const Login = lazy(() => import('./Internals/Login/login.js'));
+const User = lazy(() => import('./Internals/user/Users.js'));
+const Clients = lazy(() => import('./Internals/clients/Client.js'));
+const Business = lazy(() => import('./Internals/business/Business.js'));
+const Category = lazy(() => import('./Internals/categories/Category.js'));
+const Roles = lazy(() => import('./Internals/Roles/Roles.js'));
+const Location = lazy(() => import('./Internals/location/Location.js'));
+const MainGrid = lazy(() => import('./components/MainGrid.js'));
+
+const BusinessListing = lazy(() => import('./Internals/clientComponent/home.js'));
+const SearchResults = lazy(() => import('./Internals/clientComponent/SearchResult/SearchResult.js'));
+const BusinessDetails = lazy(() => import('./Internals/clientComponent/cards/cardDetails.js'));
+
+const AboutUsPage = lazy(() => import('./Internals/clientComponent/footer/aboutUs/aboutUsPage.js'));
+const Testimonials = lazy(() => import('./Internals/clientComponent/footer/testimonials/testimonials.js'));
+const FeedbackComponent = lazy(() => import('./Internals/clientComponent/footer/feedback/feedback.js'));
+const CustomerCareComponent = lazy(() => import('./Internals/clientComponent/footer/customerCare/customerCare.js'));
+const Portfolio = lazy(() => import('./Internals/clientComponent/footer/portfolio/portfolio.js'));
+const TermsAndConditions = lazy(() => import('./Internals/clientComponent/footer/termsAndConditions/termsAndCondition.js'));
+const PrivacyPolicy = lazy(() => import('./Internals/clientComponent/footer/privacyPolicy/privacyPolicy.js'));
+const RefundPolicy = lazy(() => import('./Internals/clientComponent/footer/refund/refundPolicy.js'));
+const EnquiryNow = lazy(() => import('./Internals/clientComponent/footer/enquiry/enquiry.js'));
+const WebDevSection = lazy(() => import('./Internals/clientComponent/footer/webDev/webDevSection.js'));
+const DigitalMarketing = lazy(() => import('./Internals/clientComponent/footer/digitalMarketing/digitalMarketing.js'));
+const GraphicDesign = lazy(() => import('./Internals/clientComponent/footer/graphicDesign/graphicDesign.js'));
+const Seo = lazy(() => import('./Internals/clientComponent/footer/seo/seo.js'));
+const DeleteAccount = lazy(() => import('./Internals/clientComponent/footer/deleteAccount/deleteAccount.js'));
+
+const WriteReviewPage = lazy(() => import('./Internals/clientComponent/rating/submitReviewPage.js'));
+const Profile = lazy(() => import('./Internals/Login/profile/profile.js'));
+const PaymentStatus = lazy(() => import('./Internals/phonePay/paymentStatus.js'));
+const LeadsPage = lazy(() => import('./Internals/clientComponent/LeadsPage/leadsPage.js'));
+const AdvertisePage = lazy(() => import('./Internals/clientComponent/advertise/advertise.js'));
+const FreeListingPage = lazy(() => import('./Internals/clientComponent/free-Listing/free-Listing.js'));
+const LeadsCardHistory = lazy(() => import('./Internals/clientComponent/LeadsPage/leadsCards/leadsCards.js'));
+const BusinessEnquiry = lazy(() => import('./Internals/clientComponent/businessEnquiry/businessEnquiry.js'));
+
+const EnquiryPage = lazy(() => import('./Internals/enquiry-page/enquiry-page.js'));
+const AdvertisementPage = lazy(() => import('./Internals/advertisement/advertisement.js'));
+
+const GlobalDrawer = lazy(() => import('./Internals/clientComponent/Drawer/globalDrawer.js'));
+const SeoData = lazy(() => import('./Internals/seoData/seoData.js'));
+const SeoPageContent = lazy(() => import('./Internals/seoData/seoPageContent/seoPageContent.js'));
+const SeoPageContentBlogs = lazy(() => import('./Internals/seoData/seoPageContentBlog/seoPageContentBlog.js'));
+
+const MRPDatas = lazy(() => import('./Internals/MRPDATA/mrpData.js'));
+
+const FloatingButtons = lazy(() => import('./Internals/clientComponent/floating/floatingButtons.js'));
+const FloatingAdCard = lazy(() => import('./Internals/clientComponent/floating/floatingAdCard.js'));
+const OTPLoginModal = lazy(() => import('./Internals/clientComponent/AddBusinessModel.js'));
+
+const CategoryRouter = lazy(() => import('./Internals/clientComponent/categories/categoryRouter.js'));
+const BlogDetail = lazy(() => import('./Internals/clientComponent/relatedBlogs/blogDetails/blogDetails.js'));
+
+const DynamicLoader = memo(() => {
+  const { pathname } = useLocation();
+
+  if (pathname.startsWith('/business/')) {
+    return <GlobalSkeleton type="details" />;
+  }
+
+  if (
+    pathname.includes('/search') ||
+    pathname.includes('/category') ||
+    pathname.split('/').length >= 3
+  ) {
+    return <GlobalSkeleton type="list" />;
+  }
+
+  if (pathname.startsWith('/dashboard')) {
+    return <GlobalSkeleton type="dashboard" />;
+  }
+
+  return pathname === "/" ? <GlobalSkeleton type="landing" /> : <GlobalSkeleton type="cards" />;
+});
 
 const ComingSoon = ({ title }) => (
   <div style={{ textAlign: 'center', marginTop: '20%' }}>
@@ -68,39 +100,141 @@ const ComingSoon = ({ title }) => (
   </div>
 );
 
-const FooterRoutes = [
-  { path: 'aboutus', title: 'About Us', element: <AboutUsPage /> },
-  { path: 'testimonials', title: 'Testimonials', element: <Testimonials /> },
-  { path: 'feedbacks', title: 'Feedbacks', element: <FeedbackComponent /> },
-  { path: 'customercare', title: 'Customer Care', element: <CustomerCareComponent /> },
-  { path: 'portfolio', title: 'Portfolio', element: <Portfolio /> },
-  { path: 'terms', title: 'Terms and Conditions', element: <TermsAndConditions /> },
-  { path: 'privacy', title: 'Privacy Policy', element: <PrivacyPolicy /> },
-  { path: 'refund', title: 'Refund Policy', element: <RefundPolicy /> },
-  { path: 'enquiry', title: 'Enquiry Now', element: <EnquiryNow /> },
-  { path: 'deleteaccount', title: 'Delete Account', element: <DeleteAccount /> },
-  { path: 'web', title: 'Web Design & Development', element: <WebDevSection /> },
-  { path: 'digital', title: 'Digital Marketing', element: <DigitalMarketing /> },
-  { path: 'graphic', title: 'Graphic Design', element: <GraphicDesign /> },
-  { path: 'seo', title: 'SEO', element: <Seo /> },
-];
+function AppRoutes({
+  isAuthenticated,
+  setIsAuthenticated,
+  openLoginModal,
+  setOpenLoginModal,
+}) {
+  const footerRoutes = [
+    ['aboutus', <AboutUsPage />],
+    ['testimonials', <Testimonials />],
+    ['feedbacks', <FeedbackComponent />],
+    ['customercare', <CustomerCareComponent />],
+    ['portfolio', <Portfolio />],
+    ['terms', <TermsAndConditions />],
+    ['privacy', <PrivacyPolicy />],
+    ['refund', <RefundPolicy />],
+    ['enquiry', <EnquiryNow />],
+    ['deleteaccount', <DeleteAccount />],
+    ['web', <WebDevSection />],
+    ['digital', <DigitalMarketing />],
+    ['graphic', <GraphicDesign />],
+    ['seo', <Seo />],
+  ];
 
+  return (
+    <>
+      <Suspense fallback={<DynamicLoader />}>
+        <GlobalDrawer />
+        <FloatingAdCard />
+        <FloatingButtons onRequireLogin={() => setOpenLoginModal(true)} />
+      </Suspense>
+
+      <Suspense fallback={<DynamicLoader />}>
+        <Routes>
+          <Route path="/" element={<BusinessListing />} />
+          <Route
+            path="/admin"
+            element={
+              <Login
+                setIsAuthenticated={setIsAuthenticated}
+                isAuthenticated={isAuthenticated}
+              />
+            }
+          />
+
+          <Route path="/leads" element={<LeadsPage />} />
+          <Route path="/free-listing" element={<FreeListingPage />} />
+          <Route path="/advertise" element={<AdvertisePage />} />
+          <Route path="/user/search-history" element={<LeadsCardHistory />} />
+          <Route path="/business-enquiry" element={<BusinessEnquiry />} />
+          <Route path="/payment-status/:transactionId" element={<PaymentStatus />} />
+          <Route path="/write-review/:businessId/:ratingValue" element={<WriteReviewPage />} />
+          <Route path="/blog/:slug" element={<BlogDetail />} />
+
+          {userMenuItems.map((item) => {
+            const Component =
+              item.component || (() => <ComingSoon title={item.name} />);
+            return (
+              <Route
+                key={item.path}
+                path={item.path}
+                element={<Component />}
+              />
+            );
+          })}
+
+          {/* Footer Routes */}
+          {footerRoutes.map(([path, element]) => (
+            <Route key={path} path={path} element={element} />
+          ))}
+
+          {/* Search Routes */}
+          <Route path="/:location/:category" element={<CategoryRouter />} />
+          <Route
+            path="/:location/:category/:subcategory"
+            element={<SearchResults />}
+          />
+
+          {/* Business Details */}
+          <Route
+            path="/business/:location/:businessSlug/:id"
+            element={<BusinessDetails />}
+          />
+
+          {/* Protected Dashboard */}
+          <Route
+            element={<PrivateRoute isAuthenticated={isAuthenticated} />}
+          >
+            <Route path="/dashboard" element={<Dashboard />}>
+              <Route index element={<MainGrid />} />
+              <Route path="user" element={<User />} />
+              <Route path="profile" element={<Profile />} />
+              <Route path="clients" element={<Clients />} />
+              <Route path="business" element={<Business />} />
+              <Route path="category" element={<Category />} />
+              <Route path="location" element={<Location />} />
+              <Route path="seo" element={<SeoData />} />
+              <Route path="seopagecontent" element={<SeoPageContent />} />
+              <Route path="seopagecontentblogs" element={<SeoPageContentBlogs />} />
+              <Route path="roles" element={<Roles />} />
+              <Route path="enquiry" element={<EnquiryPage />} />
+              <Route path="advertisements" element={<AdvertisementPage />} />
+              <Route path="mni-data" element={<MRPDatas />} />
+            </Route>
+          </Route>
+        </Routes>
+
+        {/* Login Modal */}
+        <OTPLoginModal
+          open={openLoginModal}
+          handleClose={() => setOpenLoginModal(false)}
+        />
+      </Suspense>
+    </>
+  );
+}
+
+/* -------------------------------- App ------------------------------------ */
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
-  const [showTokenExpired, setShowTokenExpired] = useState(false);
   const [openLoginModal, setOpenLoginModal] = useState(false);
+
   const dispatch = useDispatch();
 
+  /* Initial Fast Fetch */
   useEffect(() => {
     dispatch(fetchMatchedLeads());
   }, [dispatch]);
 
+  /* Restore Login Session */
   useEffect(() => {
     const initAuth = async () => {
-      const accessToken = localStorage.getItem("accessToken");
-      const refreshToken = localStorage.getItem("refreshToken");
-      const clientAccessToken = localStorage.getItem("clientAccessToken");
+      const accessToken = localStorage.getItem('accessToken');
+      const refreshToken = localStorage.getItem('refreshToken');
+      const clientAccessToken = localStorage.getItem('clientAccessToken');
 
       try {
         if (clientAccessToken) {
@@ -108,19 +242,16 @@ function App() {
         }
 
         if (!accessToken || !refreshToken) {
-          setIsAuthenticated(false);
           setAuthChecked(true);
           return;
         }
 
         const result = await dispatch(relogin());
-        if (result && result.accessToken) {
+
+        if (result?.accessToken) {
           setIsAuthenticated(true);
-        } else {
-          throw new Error("Token refresh failed");
         }
-      } catch (err) {
-        console.warn("Invalid token, clearing storage");
+      } catch (error) {
         localStorage.clear();
         setIsAuthenticated(false);
       } finally {
@@ -131,94 +262,43 @@ function App() {
     initAuth();
   }, [dispatch]);
 
+  /* Global First Load */
   if (!authChecked) {
     return (
-      <div style={{ textAlign: 'center', marginTop: '20%' }}>
-        Loading...
-      </div>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <GlobalSkeleton type="cards" />
+      </ThemeProvider>
     );
   }
 
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
+
       <SnackbarProvider
         maxSnack={3}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-        autoHideDuration={5000}
+        anchorOrigin={{
+          vertical: 'top',
+          horizontal: 'center',
+        }}
+        autoHideDuration={4000}
         preventDuplicate
       >
         <Router>
           <RouteChangeTracker />
           <ScrollToTop />
-          <GlobalDrawer />
-          <FloatingAdCard />
-          <FloatingButtons onRequireLogin={() => setOpenLoginModal(true)} />
-          <Routes>
-            <Route path="/" element={<BusinessListing />} />
-            <Route path="/admin" element={<Login setIsAuthenticated={setIsAuthenticated} isAuthenticated={isAuthenticated} />} />
-            {userMenuItems.map((item) => {
-              const Component = item.component || (() => <ComingSoon title={item.name} />);
-              return <Route key={item.path} path={item.path} element={<Component />} />;
-            })}
 
-            {FooterRoutes.map((route) => (
-              <Route key={route.path} path={route.path} element={route.element} />
-            ))}
-
-            <Route path="/:location/:category" element={<CategoryRouter />} />
-
-            <Route path="/business/:location/:businessSlug/:id" element={<BusinessDetails />} />
-            <Route path="/:location/:category/:subcategory" element={<SearchResults />} />
-            <Route path="/blog/:slug" element={<BlogDetail />} />
-            <Route path="/payment-status/:transactionId" element={<PaymentStatus />} />
-            <Route path="/write-review/:businessId/:ratingValue" element={<WriteReviewPage />} />
-            <Route path="/leads" element={<LeadsPage />} />
-            <Route path="/free-listing" element={<FreeListingPage />} />
-            {/* <Route path="/user/mni" element={<MRPPage />} /> */}
-            <Route path="/advertise" element={<AdvertisePage />} />
-            <Route path="/user/search-history" element={<LeadsCardHistory />} />
-            <Route path="/business-enquiry" element={<BusinessEnquiry />} />
-
-            {categoriesServices.flatMap((category, categoryIndex) =>
-              category.items.map((item, itemIndex) => {
-                const path = item.path || item.route || `auto-path-${categoryIndex}-${itemIndex}`;
-                const Component = item.component || (() => <ComingSoon title={item.name} />);
-                return <Route key={path} path={path} element={<Component />} />;
-              })
-            )}
-
-            <Route element={<PrivateRoute isAuthenticated={isAuthenticated} />}>
-              <Route path="/dashboard" element={<Dashboard />}>
-                <Route index element={<MainGrid />} />
-                <Route path="user" element={<User />} />
-                <Route path="profile" element={<Profile />} />
-                <Route path="clients" element={<Clients />} />
-                <Route path="business" element={<Business />} />
-                <Route path="category" element={<Category />} />
-                <Route path="location" element={<Location />} />
-                <Route path="seo" element={<SeoData />} />
-                <Route path="seopagecontent" element={<SeoPageContent />} />
-                <Route path="seopagecontentblogs" element={<SeoPageContentBlogs />} />
-                <Route path="roles" element={<Roles />} />
-                <Route path="enquiry" element={<EnquiryPage />} />
-                <Route path="advertisements" element={<AdvertisementPage />} />
-                <Route path="mni-data" element={<MRPDatas />} />
-              </Route>
-            </Route>
-
-          </Routes>
-          
-          <OTPLoginModal
-            open={openLoginModal}
-            handleClose={() => setOpenLoginModal(false)}
+          <AppRoutes
+            isAuthenticated={isAuthenticated}
+            setIsAuthenticated={setIsAuthenticated}
+            openLoginModal={openLoginModal}
+            setOpenLoginModal={setOpenLoginModal}
           />
-
         </Router>
-        {showTokenExpired && <TokenExpiredModal onClose={() => setShowTokenExpired(false)} />}
       </SnackbarProvider>
     </ThemeProvider>
   );
 }
 
-export default App;
+export default memo(App);

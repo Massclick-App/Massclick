@@ -7,11 +7,10 @@ import { useSelector } from "react-redux";
 
 import KeyboardDoubleArrowRightIcon from "@mui/icons-material/KeyboardDoubleArrowRight";
 import KeyboardDoubleArrowLeftIcon from "@mui/icons-material/KeyboardDoubleArrowLeft";
-
-import Cctv from "../../../assets/Popular/CCTV.webp";
-import Education from "../../../assets/Popular/Education.webp";
-import HotelRoom from "../../../assets/Popular/HotelRoom.webp";
-import Photography from "../../../assets/Popular/Photography.webp";
+import Cctv from "../../../assets/popular/cctv.webp";
+import Education from "../../../assets/popular/education.webp";
+import HotelRoom from "../../../assets/popular/hotelroom.webp";
+import Photography from "../../../assets/popular/photography.webp";
 import { createEnquiryNow } from "../../../redux/actions/popularSearchesAction";
 import { logSearchActivity } from "../../../redux/actions/businessListAction";
 import OTPLoginModal from "../AddBusinessModel";

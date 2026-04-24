@@ -1,6 +1,6 @@
 import React from "react";
 import "./MassClickBanner.css";
-import MI from "../../../assets/Mi.png";
+import MI from "../../../assets/mi.png";
 
 const MassClickBanner = () => {
   return (

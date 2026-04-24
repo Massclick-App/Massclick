@@ -18,6 +18,7 @@ import { fetchSeoMeta } from "../../../redux/actions/seoAction.js";
 import { fetchSeoPageContentMeta } from "../../../redux/actions/seoPageContentAction.js";
 import { CLEAR_SEO_META } from "../../../redux/actions/userActionTypes.js";
 import TopBannerAds from "../banners/topBanner/topBanner.js";
+import GlobalSkeleton from "../globalSkeleton.js";
 import OTPLoginModal from "../AddBusinessModel.js";
 import { logUserSearch } from "../../../redux/actions/otpAction.js";
 
@@ -81,69 +82,56 @@ const SearchResults = () => {
     }
   }, []);
 
-  // const searchLoggedRef = useRef(false);
+ const searchLoggedRef = useRef(false);
 
-  // const logSearchIfLoggedIn = useCallback(() => {
+useEffect(() => {
+  searchLoggedRef.current = false;
+}, [searchText, locationText]);
 
-  //   if (searchLoggedRef.current) return;
+const logSearchIfLoggedIn = useCallback(() => {
+  if (searchLoggedRef.current) return;
 
-  //   const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
+  const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
 
-  //   if (!authUser?._id) return;
+  if (!authUser?._id) return;
 
-  //   const userDetails = {
-  //     userName: authUser?.userName,
-  //     mobileNumber1: authUser?.mobileNumber1,
-  //     mobileNumber2: authUser?.mobileNumber2,
-  //     email: authUser?.email,
-  //   };
+  const userDetails = {
+    userName: authUser?.userName,
+    mobileNumber1: authUser?.mobileNumber1,
+    mobileNumber2: authUser?.mobileNumber2,
+    email: authUser?.email,
+  };
 
-  //   const term = searchText;
-  //   const location = locationText;
-  //   const category = searchText;
+  dispatch(
+    logSearchActivity(
+      searchText || "All Categories",
+      locationText || "Global",
+      userDetails,
+      searchText
+    )
+  );
 
-  //   if (!term) return;
+  searchLoggedRef.current = true;
 
-  //   dispatch(
-  //     logUserSearch(
-  //       authUser._id,
-  //       term,
-  //       location || "Global",
-  //       category || "All Categories"
-  //     )
-  //   );
+}, [dispatch, searchText, locationText]);
 
-  //   dispatch(
-  //     logSearchActivity(
-  //       category || "All Categories",
-  //       location || "Global",
-  //       userDetails,
-  //       term
-  //     )
-  //   );
+useEffect(() => {
+  logSearchIfLoggedIn();
+}, [logSearchIfLoggedIn]);
 
-  //   searchLoggedRef.current = true;
+useEffect(() => {
+  const handleAuthChange = () => {
+    if (!searchLoggedRef.current) {
+      logSearchIfLoggedIn();
+    }
+  };
 
-  // }, [dispatch, searchText, locationText]);
+  window.addEventListener("authChange", handleAuthChange);
 
-
-  // useEffect(() => {
-  //   logSearchIfLoggedIn();
-  // }, [logSearchIfLoggedIn]);
-
-  // useEffect(() => {
-
-  //   const handleAuthChange = () => {
-  //     logSearchIfLoggedIn();
-  //   };
-
-  //   window.addEventListener("authChange", handleAuthChange);
-
-  //   return () => {
-  //     window.removeEventListener("authChange", handleAuthChange);
-  //   };
-
-  // }, [logSearchIfLoggedIn]);
+  return () => {
+    window.removeEventListener("authChange", handleAuthChange);
+  };
+}, [logSearchIfLoggedIn]);
 
   useEffect(() => {
 
@@ -482,11 +470,7 @@ const SearchResults = () => {
             </div>
 
           </div>
-          {loading && (
-            <div className="loading-wrapper">
-              Searching businesses...
-            </div>
-          )}
+          {loading && <GlobalSkeleton type="list" />}
 
           {!loading && results.length === 0 && (
             <div className="no-results-container">
@@ -520,6 +504,7 @@ const SearchResults = () => {
               return (
                 <div className="business-card-wrapper" key={business._id}>
                   <CardDesign
+                    businessId={business._id}
                     title={business.businessName}
                     phone={business.contact}
                     whatsappNumber={business.whatsappNumber}

@@ -12,8 +12,8 @@ import {
 
 import CardsSearch from "../CardsSearch/CardsSearch";
 import "./businessEnquiry.css";
-import businessImage from "../../../assets/businessImage.jpg";
-import businessChain from "../../../assets/businessChain.jpg";
+import businessImage from "../../../assets/businessimage.jpg";
+import businessChain from "../../../assets/businesschain.jpg";
 
 const BusinessEnquiry = () => {
     const dispatch = useDispatch();

@@ -1,5 +1,3 @@
-process.env.TZ = "Asia/Kolkata";
-
 import express from "express";
 import cors from "cors";
 import mongoose from "mongoose";
@@ -32,6 +30,7 @@ import sitemapRoutes from "./routes/sitemapRoutes.js";
 import reviewRoutes from "./routes/reviewRoutes.js";
 import advertiseRoute from "./routes/advertiseRoute.js";
 import versionRoutes from "./routes/versionRoutes.js";
+import favoriteRoute from "./routes/favoriteRoute.js";
 import seoModel from "./model/seoModel/seoModel.js";
 
 dotenv.config();
@@ -99,7 +98,6 @@ app.use(
 
 app.use(compression());
 
-// ? CORS CONFIG (FINAL FIX)
 
 const allowedOrigins = [
   "https://massclick.in",
@@ -110,21 +108,26 @@ const allowedOrigins = [
   "http://localhost:4000"
 ];
 
-app.use(
-  cors({
-    origin: function (origin, callback) {
+// app.use(
+//   cors({
+//     origin: function (origin, callback) {
 
-      if (!origin) return callback(null, true);
+//       if (!origin) return callback(null, true);
 
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
+//       if (allowedOrigins.includes(origin)) {
+//         return callback(null, true);
+//       }
 
-      return callback(null, false);
-    },
-    credentials: true,
-  })
-);
+//       return callback(null, false);
+//     },
+//     credentials: true,
+//   })
+// );
+
+app.use(cors({
+  origin: true,
+  credentials: true
+}));
 
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({
@@ -152,7 +155,7 @@ app.get("/health", (req, res) => {
     message: "Server is healthy",
     uptime: process.uptime(),
     timestamp: now.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
-    isoTime: now.toISOString() // Keep this for debugging
+    isoTime: now.toISOString() 
   });
 });
 
@@ -178,6 +181,7 @@ app.use("/", popularSearchRoutes);
 app.use("/", reviewRoutes);
 app.use("/", advertiseRoute);
 app.use("/", versionRoutes);
+app.use("/", favoriteRoute);
 
 app.use(
   express.static(CLIENT_BUILD_PATH, {

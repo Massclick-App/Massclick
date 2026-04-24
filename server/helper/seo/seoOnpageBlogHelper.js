@@ -1,362 +1,439 @@
 import seoPageContentBlogModel from "../../model/seoModel/seoPageContentBlogModel.js";
-import { uploadImageToS3, getSignedUrlByKey } from "../../s3Uploder.js";
+import {
+  uploadImageToS3,
+  getSignedUrlByKey,
+} from "../../s3Uploder.js";
 
-/* ================= CREATE ================= */
-export const createPageContentBlogSeo = async (reqBody = {}) => {
-  try {
-    let imageKeys = [];
-    let profileKey = "";
+/* =====================================
+   NORMALIZE
+===================================== */
+const normalizeText = (value = "") =>
+  value.toString().toLowerCase().trim();
 
-    /* ===== MULTIPLE IMAGES ===== */
-    if (Array.isArray(reqBody.pageImages)) {
-      for (const base64 of reqBody.pageImages) {
-        if (typeof base64 === "string" && base64.startsWith("data:image")) {
-          const uploadResult = await uploadImageToS3(
-            base64,
-            `seo/page-content-${Date.now()}`
-          );
-          imageKeys.push(uploadResult.key);
-        }
-      }
-    }
+const normalizeLocation = (value = "") => {
+  const v = normalizeText(value);
 
-    /* ===== PROFILE IMAGE ===== */
-    if (
-      reqBody.profileImage &&
-      typeof reqBody.profileImage === "string" &&
-      reqBody.profileImage.startsWith("data:image")
-    ) {
-      const uploadResult = await uploadImageToS3(
-        reqBody.profileImage,
-        `seo/profile-${Date.now()}`
-      );
-      profileKey = uploadResult.key;
-    }
+  const map = {
+    tiruchirappalli: "trichy",
+    tiruchy: "trichy",
+    trichi: "trichy",
+  };
 
-    reqBody.pageImageKey = imageKeys;
-    reqBody.profileImageKey = profileKey;
-
-    delete reqBody.pageImages;
-    delete reqBody.profileImage;
-
-    /* ===== BUSINESS DETAILS HANDLING ===== */
-    if (reqBody.selectedBusiness) {
-      const b = reqBody.selectedBusiness;
-
-      if (Array.isArray(reqBody.popularBusiness)) {
-        reqBody.businessDetails = reqBody.popularBusiness.map((b) => ({
-          businessName: b.businessName,
-          plotNumber: b.plotNumber,
-          street: b.street,
-          pincode: b.pincode,
-          email: b.email,
-          contact: b.contact,
-          contactList: b.contactList,
-          experience: b.experience,
-          bannerImage: b.bannerImageKey,
-          category: b.category,
-          location: b.location,
-        }));
-      }
-
-      delete reqBody.popularBusiness;
-
-      delete reqBody.selectedBusiness;
-    }
-
-    const seoDoc = new seoPageContentBlogModel(reqBody);
-    const result = await seoDoc.save();
-
-    /* ===== RETURN SIGNED URL ===== */
-    result.pageImages = imageKeys.map((key) => getSignedUrlByKey(key));
-    result.profileImage = profileKey
-      ? getSignedUrlByKey(profileKey)
-      : "";
-
-    return result;
-  } catch (error) {
-    console.error("SEO create error:", error);
-    throw error;
-  }
+  return map[v] || v;
 };
 
-/* ================= GET SINGLE ================= */
+const normalizeCategory = (value = "") => {
+  const v = normalizeText(value);
+
+  const map = {
+    hospital: "hospitals",
+    hostel: "hostels",
+    gym: "gyms",
+    salon: "salons",
+    school: "schools",
+  };
+
+  return map[v] || v;
+};
+
+const makeSlug = (text = "") =>
+  text
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+/* =====================================
+   IMAGE MAP
+===================================== */
+const mapSignedUrls = (doc = {}) => {
+  if (!doc) return doc;
+
+  // page images
+  doc.pageImages = Array.isArray(doc.pageImageKey)
+    ? doc.pageImageKey.map((key) => getSignedUrlByKey(key))
+    : [];
+
+  // profile image
+  doc.profileImage = doc.profileImageKey
+    ? getSignedUrlByKey(doc.profileImageKey)
+    : "";
+
+  // business images
+  if (Array.isArray(doc.businessDetails)) {
+    doc.businessDetails = doc.businessDetails.map((item) => ({
+      ...item,
+      bannerImage:
+        item.bannerImageKey || item.bannerImage
+          ? getSignedUrlByKey(
+              item.bannerImageKey || item.bannerImage
+            )
+          : "",
+    }));
+  }
+
+  return doc;
+};
+
+const uploadBase64Images = async (images = []) => {
+  const keys = [];
+
+  for (const item of images) {
+    if (
+      typeof item === "string" &&
+      item.startsWith("data:image")
+    ) {
+      const result = await uploadImageToS3(
+        item,
+        `seo/page-${Date.now()}`
+      );
+
+      keys.push(result.key);
+    }
+  }
+
+  return keys;
+};
+
+const mapBusinessDetails = (list = []) => {
+  if (!Array.isArray(list)) return [];
+
+  return list.map((b) => ({
+    businessName: b.businessName || "",
+    plotNumber: b.plotNumber || "",
+    street: b.street || "",
+    pincode: b.pincode || "",
+    email: b.email || "",
+    contact: b.contact || "",
+    contactList: b.contactList || "",
+    experience: b.experience || "",
+
+    bannerImageKey: b.bannerImageKey || b.bannerImage || "",
+
+    bannerImage:
+      b.bannerImageKey || b.bannerImage
+        ? getSignedUrlByKey(b.bannerImageKey || b.bannerImage)
+        : "",
+
+    category: b.category || "",
+    location: b.location || "",
+  }));
+};
+
+export const createPageContentBlogSeo = async (
+  data = {}
+) => {
+  data.pageType = normalizeText(data.pageType);
+  data.category = normalizeCategory(data.category);
+  data.location = normalizeLocation(data.location);
+
+  data.slug = data.slug
+    ? makeSlug(data.slug)
+    : makeSlug(data.heading);
+
+  const exists = await seoPageContentBlogModel.findOne({
+    pageType: data.pageType,
+    category: data.category,
+    location: data.location,
+    isActive: true,
+  });
+
+  if (exists) {
+    throw new Error(
+      "Page already exists for category/location"
+    );
+  }
+
+  data.pageImageKey = await uploadBase64Images(
+    data.pageImages || []
+  );
+
+  if (
+    data.profileImage &&
+    data.profileImage.startsWith("data:image")
+  ) {
+    const result = await uploadImageToS3(
+      data.profileImage,
+      `seo/profile-${Date.now()}`
+    );
+
+    data.profileImageKey = result.key;
+  }
+
+  data.businessDetails = mapBusinessDetails(
+    data.popularBusiness
+  );
+
+  delete data.pageImages;
+  delete data.profileImage;
+  delete data.popularBusiness;
+  delete data.selectedBusiness;
+
+  const created =
+    await seoPageContentBlogModel.create(data);
+
+  return mapSignedUrls(created.toObject());
+};
+
+/* =====================================
+   GET SINGLE
+===================================== */
 export const getSeoPageContentBlog = async ({
   pageType,
   category,
   location,
 }) => {
-  try {
-    const query = { pageType, isActive: true };
+  const query = { isActive: true };
 
-    if (category) query.category = category;
-    if (location) query.location = location;
+  if (pageType)
+    query.pageType = normalizeText(pageType);
 
-    const seo = await seoPageContentBlogModel.findOne(query).lean();
+  if (category)
+    query.category = normalizeCategory(category);
 
-    if (!seo) return null;
+  if (location)
+    query.location = normalizeLocation(location);
 
-    /* ===== FIX OLD + NEW DATA ===== */
-    if (seo.pageImageKey) {
-      if (Array.isArray(seo.pageImageKey)) {
-        seo.pageImages = seo.pageImageKey.map((key) =>
-          getSignedUrlByKey(key)
-        );
-      } else {
-        seo.pageImages = [getSignedUrlByKey(seo.pageImageKey)];
-      }
-    } else {
-      seo.pageImages = [];
-    }
+  const result =
+    await seoPageContentBlogModel.findOne(query).lean();
 
-    if (seo.profileImageKey) {
-      seo.profileImage = getSignedUrlByKey(seo.profileImageKey);
-    }
-
-    return seo;
-  } catch (error) {
-    console.error("SEOPageContent fetch error:", error);
-    throw error;
-  }
+  return result ? mapSignedUrls(result) : null;
 };
 
-/* ================= NORMALIZE ================= */
-export const normalizeSeoText = (v = "") =>
-  v.toString().toLowerCase().trim().replace(/[-_\s]+/g, " ");
-
-/* ================= META ================= */
-export const getSeoPageContentBlogMetaService = async ({
-  pageType,
-  category,
-  location,
-}) => {
-  try {
-    const safePageType = pageType?.toLowerCase();
-    const safeCategory = category?.toLowerCase();
-    const safeLocation = location?.toLowerCase();
-
+/* =====================================
+   META LIST
+===================================== */
+export const getSeoPageContentBlogMetaService =
+  async ({ pageType, category, location }) => {
     const query = {
-      pageType: safePageType,
       isActive: true,
+      pageType: normalizeText(pageType),
     };
 
-    if (safeCategory) {
-      query.category = { $regex: safeCategory, $options: "i" };
-    }
+    if (category)
+      query.category =
+        normalizeCategory(category);
 
-    if (safeLocation) {
-      query.location = { $regex: safeLocation, $options: "i" };
-    }
+    if (location)
+      query.location =
+        normalizeLocation(location);
 
-    const seoList = await seoPageContentBlogModel.find(query).lean();
+    const result =
+      await seoPageContentBlogModel
+        .find(query)
+        .sort({ updatedAt: -1 })
+        .select(
+          "metaTitle metaDescription metaKeywords slug heading category location profileImageKey pageImageKey updatedAt"
+        )
+        .lean();
 
-    const updatedList = seoList.map((seo) => {
-      if (seo.pageImageKey) {
-        seo.pageImages = Array.isArray(seo.pageImageKey)
-          ? seo.pageImageKey.map((key) => getSignedUrlByKey(key))
-          : [getSignedUrlByKey(seo.pageImageKey)];
-      }
+    return result.map(mapSignedUrls);
+  };
 
-      if (seo.profileImageKey) {
-        seo.profileImage = getSignedUrlByKey(seo.profileImageKey);
-      }
+export const viewAllSeoPageContentBlog =
+  async ({
+    pageNo = 1,
+    pageSize = 10,
+    search = "",
+    status = "active",
+    sortBy = "updatedAt",
+    sortOrder = "desc",
+  }) => {
+    const query = {};
 
-      return seo;
-    });
+    if (status === "active")
+      query.isActive = true;
 
-    return updatedList;
-  } catch (error) {
-    console.error("SEO META ERROR:", error);
-    return [];
-  }
-};
-
-/* ================= VIEW ALL ================= */
-export const viewAllSeoPageContentBlog = async ({
-  pageNo,
-  pageSize,
-  search,
-  status,
-  sortBy,
-  sortOrder,
-}) => {
-  try {
-    let query = {};
-
-    if (status === "active") query.isActive = true;
-    else if (status === "inactive") query.isActive = false;
+    if (status === "inactive")
+      query.isActive = false;
 
     if (search) {
-      const safeSearch = normalizeSeoText(search);
-
       query.$or = [
-        { pageType: { $regex: safeSearch, $options: "i" } },
-        { category: { $regex: safeSearch, $options: "i" } },
-        { location: { $regex: safeSearch, $options: "i" } },
+        {
+          heading: {
+            $regex: search,
+            $options: "i",
+          },
+        },
+        {
+          category: {
+            $regex: search,
+            $options: "i",
+          },
+        },
+        {
+          location: {
+            $regex: search,
+            $options: "i",
+          },
+        },
       ];
     }
 
-    const total = await seoPageContentBlogModel.countDocuments(query);
+    const total =
+      await seoPageContentBlogModel.countDocuments(
+        query
+      );
 
-    const list = await seoPageContentBlogModel
-      .find(query)
-      .sort({ [sortBy]: sortOrder })
-      .skip((pageNo - 1) * pageSize)
-      .limit(pageSize)
-      .lean();
+    const result =
+      await seoPageContentBlogModel
+        .find(query)
+        .sort({
+          [sortBy]:
+            sortOrder === "asc" ? 1 : -1,
+        })
+        .skip((pageNo - 1) * pageSize)
+        .limit(pageSize)
+        .lean();
 
-    const updatedList = list.map((item) => {
-      /* ===== MULTIPLE IMAGES FIX ===== */
-      if (item.pageImageKey) {
-        item.pageImages = Array.isArray(item.pageImageKey)
-          ? item.pageImageKey.map((key) => getSignedUrlByKey(key))
-          : [getSignedUrlByKey(item.pageImageKey)];
-      } else {
-        item.pageImages = [];
-      }
+    return {
+      data: result.map(mapSignedUrls),
+      total,
+      pageNo,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize),
+    };
+  };
 
-      /* ===== PROFILE IMAGE ===== */
-      if (item.profileImageKey) {
-        item.profileImage = getSignedUrlByKey(item.profileImageKey);
-      }
 
-      return item;
-    });
+export const updateSeoPageContentBlog =
+  async (id, data = {}) => {
+    if (data.pageType)
+      data.pageType = normalizeText(
+        data.pageType
+      );
 
-    return { list: updatedList, total };
-  } catch (error) {
-    console.error("viewAll error:", error);
-    throw error;
-  }
-};
+    if (data.category)
+      data.category = normalizeCategory(
+        data.category
+      );
 
-export const updateSeoPageContentBlog = async (id, data) => {
-  try {
-    let imageKeys = [];
+    if (data.location)
+      data.location = normalizeLocation(
+        data.location
+      );
 
-    /* ===== IMAGE UPLOAD ===== */
-    if (Array.isArray(data.pageImages)) {
-      for (const base64 of data.pageImages) {
-        if (typeof base64 === "string" && base64.startsWith("data:image")) {
-          const uploadResult = await uploadImageToS3(
-            base64,
-            `seo/page-content-${Date.now()}`
-          );
-          imageKeys.push(uploadResult.key);
-        }
-      }
-
-      // ✅ FIX: only update if new images exist
-      if (imageKeys.length > 0) {
-        data.pageImageKey = imageKeys;
-      } else {
-        delete data.pageImageKey; // keep old images
-      }
+    if (data.heading && !data.slug) {
+      data.slug = makeSlug(data.heading);
     }
 
-    /* ===== PROFILE IMAGE ===== */
+    const duplicate =
+      await seoPageContentBlogModel.findOne({
+        _id: { $ne: id },
+        pageType: data.pageType,
+        category: data.category,
+        location: data.location,
+        isActive: true,
+      });
+
+    if (duplicate) {
+      throw new Error(
+        "Another page already exists"
+      );
+    }
+
+    if (Array.isArray(data.pageImages)) {
+      data.pageImageKey =
+        await uploadBase64Images(
+          data.pageImages
+        );
+    }
+
     if (
       data.profileImage &&
-      typeof data.profileImage === "string" &&
-      data.profileImage.startsWith("data:image")
+      data.profileImage.startsWith(
+        "data:image"
+      )
     ) {
-      const uploadResult = await uploadImageToS3(
+      const result = await uploadImageToS3(
         data.profileImage,
         `seo/profile-${Date.now()}`
       );
 
-      data.profileImageKey = uploadResult.key;
+      data.profileImageKey = result.key;
     }
+
+    data.businessDetails =
+      mapBusinessDetails(
+        data.popularBusiness
+      );
 
     delete data.pageImages;
     delete data.profileImage;
-
-    /* ===== BUSINESS DETAILS (MULTI SELECT FIX) ===== */
-    if (Array.isArray(data.popularBusiness)) {
-      data.businessDetails = data.popularBusiness.map((b) => ({
-        businessName: b.businessName,
-        plotNumber: b.plotNumber,
-        street: b.street,
-        pincode: b.pincode,
-        email: b.email,
-        contact: b.contact,
-        contactList: b.contactList,
-        experience: b.experience,
-        bannerImage: b.bannerImageKey,
-        category: b.category,
-        location: b.location,
-      }));
-    }
-
-    // optional cleanup
     delete data.popularBusiness;
+    delete data.selectedBusiness;
 
-    const seo = await seoPageContentBlogModel.findByIdAndUpdate(id, data, {
-      new: true,
-    });
+    const updated =
+      await seoPageContentBlogModel.findByIdAndUpdate(
+        id,
+        data,
+        {
+          new: true,
+          runValidators: true,
+        }
+      );
 
-    if (!seo) throw new Error("SEOPageContentBlog not found");
-
-    /* ===== RETURN IMAGES ===== */
-    seo.pageImages = seo.pageImageKey
-      ? seo.pageImageKey.map((key) => getSignedUrlByKey(key))
-      : [];
-
-    if (seo.profileImageKey) {
-      seo.profileImage = getSignedUrlByKey(seo.profileImageKey);
+    if (!updated) {
+      throw new Error("Blog not found");
     }
 
-    return seo;
-  } catch (error) {
-    console.error("SEO update error:", error);
-    throw error;
-  }
-};
+    return mapSignedUrls(updated.toObject());
+  };
 
-export const deleteSeoPageContentBlog = async (id) => {
-  const seo = await seoPageContentBlogModel.findByIdAndUpdate(
-    id,
-    { isActive: false },
-    { new: true }
-  );
+/* =====================================
+   DELETE
+===================================== */
+export const deleteSeoPageContentBlog =
+  async (id) => {
+    const deleted =
+      await seoPageContentBlogModel.findByIdAndUpdate(
+        id,
+        { isActive: false },
+        { new: true }
+      );
 
-  if (!seo) throw new Error("SEOPageContentBlog not found");
+    if (!deleted) {
+      throw new Error("Blog not found");
+    }
 
-  return seo;
-};
+    return deleted;
+  };
 
 export const getSeoBlogBySlugService = async (slug) => {
-  try {
-    if (!slug) throw new Error("slug is required");
+  const cleanSlug = makeSlug(slug);
 
-    const formattedSlug = slug
-      .toLowerCase()
-      .replace(/-/g, " ")
-      .trim();
+  let result = await seoPageContentBlogModel
+    .findOneAndUpdate(
+      {
+        slug: cleanSlug,
+        isActive: true,
+      },
+      {
+        $inc: { views: 1 },
+      },
+      { new: true }
+    )
+    .lean();
 
-    const blog = await seoPageContentBlogModel.findOne({
-      heading: { $regex: formattedSlug, $options: "i" },
-      isActive: true,
-    }).lean();
+  if (!result) {
+    const allBlogs = await seoPageContentBlogModel
+      .find({ isActive: true })
+      .lean();
 
-    if (!blog) return null;
+    const matched = allBlogs.find(
+      (item) => makeSlug(item.heading) === cleanSlug
+    );
 
-    if (blog.pageImageKey) {
-      blog.pageImages = Array.isArray(blog.pageImageKey)
-        ? blog.pageImageKey.map((key) => getSignedUrlByKey(key))
-        : [getSignedUrlByKey(blog.pageImageKey)];
-    } else {
-      blog.pageImages = [];
+    if (matched) {
+      result = await seoPageContentBlogModel
+        .findByIdAndUpdate(
+          matched._id,
+          { $inc: { views: 1 } },
+          { new: true }
+        )
+        .lean();
     }
-
-    if (blog.profileImageKey) {
-      blog.profileImage = getSignedUrlByKey(blog.profileImageKey);
-    }
-
-    return blog;
-
-  } catch (error) {
-    console.error("SEO SLUG SERVICE ERROR:", error);
-    throw error;
   }
+
+  return result ? mapSignedUrls(result) : null;
 };

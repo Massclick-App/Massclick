@@ -16,6 +16,19 @@
 .page-spacing {
     margin-bottom: 90px;
 }
+.popular-icons {
+  width: 100px;
+  height: 100px;
+  object-fit: contain;
+  aspect-ratio: 1 / 1;
+  object-fit: contain;
+  margin-bottom: 12px;
+  border-radius: 50%;
+  padding: 10px;
+  background: #fff;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+
+}
 
 .loading-text {
     text-align: center;
@@ -117,8 +130,8 @@
 }
 
 .pc-item img {
-  width: 42px;
-  height: 42px;
+  width: 60px;   
+  height: 60px;
   object-fit: contain;
 }
 
