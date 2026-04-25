@@ -33,6 +33,8 @@ import versionRoutes from "./routes/versionRoutes.js";
 import favoriteRoute from "./routes/favoriteRoute.js";
 import seoModel from "./model/seoModel/seoModel.js";
 import footerRoutes from "./routes/footerRoute.js";
+import { register } from "./utils/metrics.js";
+import { metricsMiddleware } from "./utils/metricsMiddleware.js";
 
 dotenv.config();
 
@@ -135,6 +137,17 @@ app.use(express.urlencoded({
   extended: true,
   limit: "50mb"
 }));
+
+app.use(metricsMiddleware);
+
+app.get("/metrics", async (req, res) => {
+  try {
+    res.set("Content-Type", register.contentType);
+    res.end(await register.metrics());
+  } catch (err) {
+    res.status(500).end(err.message);
+  }
+});
 
 app.get("/robots.txt", (req, res) => {
 
