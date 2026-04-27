@@ -1,6 +1,7 @@
 import express from "express";
 import businessListModel from "../model/businessList/businessListModel.js";
 import { slugify } from "../slugify.js";
+import blogModel from "../model/seoModel/seoPageContentBlogModel.js";
 
 const router = express.Router();
 
@@ -368,6 +369,9 @@ router.get("/sitemap.xml", async (req, res) => {
         createSitemapNode(`${BASE_URL}/sitemap-business-${i}.xml`)
       );
     }
+    links.push(
+      createSitemapNode(`${BASE_URL}/sitemap-blog.xml`)
+    );
 
     const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -377,6 +381,34 @@ ${links.join("")}
     return sendXml(res, xml);
   } catch (error) {
     console.error("SITEMAP_INDEX_ERROR:", error);
+    return res.status(500).end();
+  }
+});
+
+router.get("/sitemap-blog.xml", async (req, res) => {
+  try {
+    const blogs = await blogModel.find(
+      { isActive: true },
+      { slug: 1, updatedAt: 1 }
+    ).lean();
+
+    const nodes = blogs.map((blog) => {
+      return createUrlNode({
+        loc: `${BASE_URL}/blog/${blog.slug}`,
+        lastmod: isoDate(blog.updatedAt),
+        changefreq: "weekly",
+        priority: "0.9",
+      });
+    });
+
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${nodes.join("")}
+</urlset>`;
+
+    return sendXml(res, xml);
+  } catch (error) {
+    console.error("BLOG_SITEMAP_ERROR:", error);
     return res.status(500).end();
   }
 });
