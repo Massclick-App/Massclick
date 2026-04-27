@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
+// import prerender from "prerender-node";
 import compression from "compression";
 import helmet from "helmet";
 import path from "path";
@@ -42,10 +43,48 @@ const app = express();
 app.set("trust proxy", true);
 const PORT = process.env.PORT || 4000;
 const MONGO_URI = process.env.MONGO_URL;
-const CLIENT_BUILD_PATH = process.env.REACT_BUILD_PATH;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+const CLIENT_BUILD_PATH = process.env.REACT_BUILD_PATH;
+
+// const CLIENT_BUILD_PATH = path.join(
+//   __dirname,
+//   "../client/ui-app/build"
+// );
+
+// app.use((req, res, next) => {
+
+//   const host = req.headers.host || "";
+
+//   if (
+//     host.includes("localhost") ||
+//     host.includes("127.0.0.1")
+//   ) {
+//     return next();
+//   }
+
+//   const protocol =
+//     req.headers["x-forwarded-proto"] || req.protocol;
+
+//   // ✅ FIX: only redirect when REALLY needed
+//   if (protocol !== "https") {
+//     return res.redirect(301, `https://${host}${req.originalUrl}`);
+//   }
+
+//   // ✅ FIX: avoid loop
+//   if (host === "www.massclick.in") {
+//     return res.redirect(
+//       301,
+//       `https://massclick.in${req.originalUrl}`
+//     );
+//   }
+
+//   next();
+
+// });
+
 
 app.use(
   helmet({
@@ -55,6 +94,7 @@ app.use(
 );
 
 app.use(compression());
+
 
 const allowedOrigins = [
   "https://massclick.in",
@@ -80,6 +120,11 @@ app.use(
     credentials: true,
   })
 );
+
+// app.use(cors({
+//   origin: true,
+//   credentials: true
+// }));
 
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({
