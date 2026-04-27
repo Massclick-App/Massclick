@@ -263,6 +263,38 @@ app.get(/.*/, async (req, res) => {
       }).lean();
     }
 
+    const locationLabel = locationSlug.replace(/-/g, " ");
+    const categoryLabel = (subcategorySlug || categorySlug).replace(/-/g, " ");
+
+    const fallbackTitle = locationSlug && categorySlug
+      ? `${categoryLabel} in ${locationLabel} | Best ${categoryLabel} Near You | Massclick`
+      : "Massclick - Find Trusted Local Businesses Near You";
+
+    const fallbackDescription = locationSlug && categorySlug
+      ? `Find trusted ${categoryLabel} in ${locationLabel}. View ratings, reviews, contact details and hire the best ${categoryLabel} near you.`
+      : "Find trusted local businesses near you on Massclick. Compare ratings, reviews and contact details.";
+
+    const fallbackKeywords = locationSlug && categorySlug
+      ? `${categoryLabel}, ${categoryLabel} in ${locationLabel}, best ${categoryLabel} ${locationLabel}, top ${categoryLabel} ${locationLabel}`
+      : "local businesses, find businesses near me, massclick";
+
+    const fallbackCanonical = locationSlug && categorySlug
+      ? `https://massclick.in/${locationSlug}/${subcategorySlug || categorySlug}`
+      : "https://massclick.in";
+
+    const injectMeta = (html, title, description, keywords, canonical) => {
+      return html
+        .replace(/<title>.*?<\/title>/, `<title>${title}</title>`)
+        .replace(/<meta name="description".*?>/, `<meta name="description" content="${description}" />`)
+        .replace(/<meta name="keywords".*?>/, `<meta name="keywords" content="${keywords}" />`)
+        .replace(/<link rel="canonical".*?>/, `<link rel="canonical" href="${canonical}" />`)
+        .replace(/<meta property="og:title".*?>/, `<meta property="og:title" content="${title}" />`)
+        .replace(/<meta property="og:description".*?>/, `<meta property="og:description" content="${description}" />`)
+        .replace(/<meta property="og:url".*?>/, `<meta property="og:url" content="${canonical}" />`)
+        .replace(/<meta name="twitter:title".*?>/, `<meta name="twitter:title" content="${title}" />`)
+        .replace(/<meta name="twitter:description".*?>/, `<meta name="twitter:description" content="${description}" />`);
+    };
+
     if (seo) {
 
       const title = seo.title;
@@ -270,50 +302,12 @@ app.get(/.*/, async (req, res) => {
       const keywords = seo.keywords;
       const canonical = seo.canonical;
 
-      html = html.replace(
-        /<title>.*<\/title>/,
-        `<title>${title}</title>`
-      );
+      html = injectMeta(html, title, description, keywords, canonical);
 
-      html = html.replace(
-        /<meta name="description".*?>/,
-        `<meta name="description" content="${description}" />`
-      );
+    } else {
 
-      html = html.replace(
-        /<meta name="keywords".*?>/,
-        `<meta name="keywords" content="${keywords}" />`
-      );
+      html = injectMeta(html, fallbackTitle, fallbackDescription, fallbackKeywords, fallbackCanonical);
 
-      html = html.replace(
-        /<link rel="canonical".*?>/,
-        `<link rel="canonical" href="${canonical}" />`
-      );
-
-      html = html.replace(
-        /<meta property="og:title".*?>/,
-        `<meta property="og:title" content="${title}" />`
-      );
-
-      html = html.replace(
-        /<meta property="og:description".*?>/,
-        `<meta property="og:description" content="${description}" />`
-      );
-
-      html = html.replace(
-        /<meta property="og:url".*?>/,
-        `<meta property="og:url" content="${canonical}" />`
-      );
-
-      html = html.replace(
-        /<meta name="twitter:title".*?>/,
-        `<meta name="twitter:title" content="${title}" />`
-      );
-
-      html = html.replace(
-        /<meta name="twitter:description".*?>/,
-        `<meta name="twitter:description" content="${description}" />`
-      );
     }
 
     res.send(html);
