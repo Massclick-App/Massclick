@@ -85,13 +85,6 @@ const CLIENT_BUILD_PATH =
 
 // });
 
-const slugify = (text = "") =>
-  text
-    .toLowerCase()
-    .trim()
-    .replace(/&/g, "and")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
 
 app.use(
   helmet({
@@ -245,71 +238,34 @@ app.get(/.*/, async (req, res) => {
 
     let seo = null;
 
-    if (locationSlug && categorySlug) {
-
+    if (!locationSlug) {
+      seo = await getSeoMeta({ pageType: "home" });
+    } else if (locationSlug && categorySlug) {
       const finalCategory = (subcategorySlug || categorySlug).replace(/-/g, " ");
       const finalLocation = locationSlug.replace(/-/g, " ");
-
-      seo = await getSeoMeta({
-        pageType: "category",
-        category: finalCategory,
-        location: finalLocation,
-      });
-
-      if (!seo?.title || seo.title === "Massclick - Local Business Search Platform") {
-        seo = null;
-      }
+      seo = await getSeoMeta({ pageType: "category", category: finalCategory, location: finalLocation });
     }
 
-    const locationLabel = locationSlug.replace(/-/g, " ");
-    const categoryLabel = (subcategorySlug || categorySlug).replace(/-/g, " ");
+    const knownFallbacks = [
+      "Massclick - Local Business Search Platform",
+      "Massclick",
+    ];
 
-    const fallbackTitle = locationSlug && categorySlug
-      ? `${categoryLabel} in ${locationLabel} | Best ${categoryLabel} Near You | Massclick`
-      : "Massclick - Find Trusted Local Businesses Near You";
-
-    const fallbackDescription = locationSlug && categorySlug
-      ? `Find trusted ${categoryLabel} in ${locationLabel}. View ratings, reviews, contact details and hire the best ${categoryLabel} near you.`
-      : "Find trusted local businesses near you on Massclick. Compare ratings, reviews and contact details.";
-
-    const fallbackKeywords = locationSlug && categorySlug
-      ? `${categoryLabel}, ${categoryLabel} in ${locationLabel}, best ${categoryLabel} ${locationLabel}, top ${categoryLabel} ${locationLabel}`
-      : "local businesses, find businesses near me, massclick";
-
-    const fallbackCanonical = locationSlug && categorySlug
-      ? `https://massclick.in/${locationSlug}/${subcategorySlug || categorySlug}`
-      : "https://massclick.in";
-
-    const injectMeta = (html, title, description, keywords, canonical) => {
-      return html
-        .replace(/<title>.*?<\/title>/, `<title>${title}</title>`)
-        .replace(/<meta[^>]*name="description"[^>]*\/?>/, `<meta data-rh="true" name="description" content="${description}" />`)
-        .replace(/<meta[^>]*name="keywords"[^>]*\/?>/, `<meta data-rh="true" name="keywords" content="${keywords}" />`)
-        .replace(/<link[^>]*rel="canonical"[^>]*\/?>/, `<link data-rh="true" rel="canonical" href="${canonical}" />`)
-        .replace(/<meta[^>]*property="og:title"[^>]*\/?>/, `<meta data-rh="true" property="og:title" content="${title}" />`)
-        .replace(/<meta[^>]*property="og:description"[^>]*\/?>/, `<meta data-rh="true" property="og:description" content="${description}" />`)
-        .replace(/<meta[^>]*property="og:url"[^>]*\/?>/, `<meta data-rh="true" property="og:url" content="${canonical}" />`)
-        .replace(/<meta[^>]*property="og:type"[^>]*\/?>/, `<meta data-rh="true" property="og:type" content="website" />`)
-        .replace(/<meta[^>]*property="og:image"[^>]*\/?>/, `<meta data-rh="true" property="og:image" content="https://massclick.in/mi.png" />`)
-        .replace(/<meta[^>]*name="twitter:card"[^>]*\/?>/, `<meta data-rh="true" name="twitter:card" content="summary_large_image" />`)
-        .replace(/<meta[^>]*name="twitter:title"[^>]*\/?>/, `<meta data-rh="true" name="twitter:title" content="${title}" />`)
-        .replace(/<meta[^>]*name="twitter:description"[^>]*\/?>/, `<meta data-rh="true" name="twitter:description" content="${description}" />`)
-        .replace(/<meta[^>]*name="twitter:image"[^>]*\/?>/, `<meta data-rh="true" name="twitter:image" content="https://massclick.in/mi.png" />`);
-    };
+    if (!seo?.title || knownFallbacks.includes(seo.title)) {
+      seo = null;
+    }
 
     if (seo) {
-
-      const title = seo.title;
-      const description = seo.description;
-      const keywords = seo.keywords;
-      const canonical = seo.canonical;
-
-      html = injectMeta(html, title, description, keywords, canonical);
-
-    } else {
-
-      html = injectMeta(html, fallbackTitle, fallbackDescription, fallbackKeywords, fallbackCanonical);
-
+      html = html
+        .replace(/<title>.*?<\/title>/, `<title>${seo.title}</title>`)
+        .replace(/<meta[^>]*name="description"[^>]*\/?>/, `<meta data-rh="true" name="description" content="${seo.description}" />`)
+        .replace(/<meta[^>]*name="keywords"[^>]*\/?>/, seo.keywords ? `<meta data-rh="true" name="keywords" content="${seo.keywords}" />` : "")
+        .replace(/<link[^>]*rel="canonical"[^>]*\/?>/, seo.canonical ? `<link data-rh="true" rel="canonical" href="${seo.canonical}" />` : "")
+        .replace(/<meta[^>]*property="og:title"[^>]*\/?>/, `<meta data-rh="true" property="og:title" content="${seo.title}" />`)
+        .replace(/<meta[^>]*property="og:description"[^>]*\/?>/, `<meta data-rh="true" property="og:description" content="${seo.description}" />`)
+        .replace(/<meta[^>]*property="og:url"[^>]*\/?>/, seo.canonical ? `<meta data-rh="true" property="og:url" content="${seo.canonical}" />` : "")
+        .replace(/<meta[^>]*name="twitter:title"[^>]*\/?>/, `<meta data-rh="true" name="twitter:title" content="${seo.title}" />`)
+        .replace(/<meta[^>]*name="twitter:description"[^>]*\/?>/, `<meta data-rh="true" name="twitter:description" content="${seo.description}" />`);
     }
 
     res.send(html);
