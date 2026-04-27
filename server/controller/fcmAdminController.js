@@ -156,6 +156,12 @@ export const sendMarketingNotificationAction = async (req, res) => {
     const messageBase = {
       notification: { title, body },
       data: dataPayload,
+      android: {
+        notification: {
+          channelId: 'massclick_marketing',
+          ...(imageUrl && { imageUrl }),
+        },
+      },
     };
 
     if (imageUrl) {
