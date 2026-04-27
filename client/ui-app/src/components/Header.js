@@ -19,7 +19,7 @@ useEffect(() => {
 
   const interval = setInterval(() => {
     dispatch(getPendingBusinessList());
-  }, 5000);
+  }, 60000);
 
   return () => clearInterval(interval);
 }, [dispatch]);

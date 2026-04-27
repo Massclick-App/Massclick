@@ -2,6 +2,7 @@ import admin from "../helper/firebaseInit.js";
 import userModel from "../model/msg91Model/usersModels.js";
 import fcmCampaignModel from "../model/fcmCampaignModel/fcmCampaignModel.js";
 import { BAD_REQUEST, INTERNAL_SERVER_ERROR, OK } from "../errorCodes.js";
+import { uploadImageToS3, getSignedUrlByKey } from "../s3Uploder.js";
 
 /**
  * GET /api/admin/fcm/users-with-tokens
@@ -232,6 +233,36 @@ export const getCampaignHistoryAction = async (req, res) => {
     return res.status(INTERNAL_SERVER_ERROR.code).json({
       success: false,
       message: "Failed to fetch campaign history",
+    });
+  }
+};
+
+/**
+ * POST /api/admin/fcm/upload-image
+ * Body: { image: "data:image/png;base64,..." }
+ * Uploads to S3 and returns the public URL.
+ */
+export const uploadFCMImageAction = async (req, res) => {
+  try {
+    const { image } = req.body;
+
+    if (!image || typeof image !== "string" || !image.startsWith("data:image")) {
+      return res.status(BAD_REQUEST.code).json({
+        success: false,
+        message: "A valid base64 image data URL is required",
+      });
+    }
+
+    const uniquePath = `fcm-images/${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const result = await uploadImageToS3(image, uniquePath);
+    const url = getSignedUrlByKey(result.key);
+
+    return res.status(OK.code).json({ success: true, url });
+  } catch (error) {
+    console.error("uploadFCMImageAction error:", error);
+    return res.status(INTERNAL_SERVER_ERROR.code).json({
+      success: false,
+      message: error.message || "Failed to upload image",
     });
   }
 };
