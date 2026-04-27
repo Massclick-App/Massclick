@@ -32,6 +32,7 @@ import versionRoutes from "./routes/versionRoutes.js";
 import favoriteRoute from "./routes/favoriteRoute.js";
 import fcmAdminRoutes from "./routes/fcmAdminRoutes.js";
 import footerRoutes from "./routes/footerRoute.js";
+import { startFCMScheduler } from "./scheduler/fcmScheduler.js";
 import { getSeoMeta } from "./helper/seo/seoHelper.js";
 import { register } from "./utils/metrics.js";
 import { metricsMiddleware } from "./utils/metricsMiddleware.js";
@@ -228,6 +229,7 @@ app.get(/.*/, async (req, res) => {
 
 mongoose.connect(MONGO_URI)
   .then(() => {
+    startFCMScheduler();
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
