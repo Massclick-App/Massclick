@@ -31,7 +31,7 @@ import reviewRoutes from "./routes/reviewRoutes.js";
 import advertiseRoute from "./routes/advertiseRoute.js";
 import versionRoutes from "./routes/versionRoutes.js";
 import favoriteRoute from "./routes/favoriteRoute.js";
-import seoModel from "./model/seoModel/seoModel.js";
+import { getSeoMeta } from "./helper/seo/seoHelper.js";
 import footerRoutes from "./routes/footerRoute.js";
 import { register } from "./utils/metrics.js";
 import { metricsMiddleware } from "./utils/metricsMiddleware.js";
@@ -247,20 +247,18 @@ app.get(/.*/, async (req, res) => {
 
     if (locationSlug && categorySlug) {
 
-      let finalCategory = categorySlug;
+      const finalCategory = (subcategorySlug || categorySlug).replace(/-/g, " ");
+      const finalLocation = locationSlug.replace(/-/g, " ");
 
-      if (subcategorySlug) {
-        finalCategory = slugify(subcategorySlug);
-      } else {
-        finalCategory = slugify(categorySlug);
-      }
-
-      seo = await seoModel.findOne({
+      seo = await getSeoMeta({
         pageType: "category",
-        isActive: true,
-        location: new RegExp(`^${locationSlug}$`, "i"),
-        category: new RegExp(`^${finalCategory}$`, "i"),
-      }).lean();
+        category: finalCategory,
+        location: finalLocation,
+      });
+
+      if (!seo?.title || seo.title === "Massclick - Local Business Search Platform") {
+        seo = null;
+      }
     }
 
     const locationLabel = locationSlug.replace(/-/g, " ");
