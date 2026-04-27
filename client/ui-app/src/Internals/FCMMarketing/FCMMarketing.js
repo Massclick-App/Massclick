@@ -1,9 +1,10 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   fetchFCMUsers,
   sendFCMMarketing,
   fetchFCMCampaigns,
+  uploadFCMImage,
 } from "../../redux/actions/fcmMarketingAction.js";
 import {
   Box,
@@ -12,6 +13,13 @@ import {
   IconButton,
   Chip,
   Tooltip,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
 } from "@mui/material";
 import NotificationsActiveIcon from "@mui/icons-material/NotificationsActive";
 import SendIcon from "@mui/icons-material/Send";
@@ -20,7 +28,9 @@ import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
-import CustomizedTable from "../../components/Table/CustomizedTable.js";
+import ImageOutlinedIcon from "@mui/icons-material/ImageOutlined";
+import CloseIcon from "@mui/icons-material/Close";
+import UploadIcon from "@mui/icons-material/Upload";
 import "./FCMMarketing.css";
 
 const PLATFORM_OPTIONS = [
@@ -47,23 +57,28 @@ const EMPTY_FORM = {
   customData: [],
 };
 
-function NotificationPreview({ title, body, imageUrl }) {
+function NotificationPreview({ title, body, imageUrl, clickAction }) {
   return (
     <div className="fcm-preview-card">
       <div className="fcm-preview-header">
-        <NotificationsActiveIcon sx={{ fontSize: 16, color: "#ff8c00" }} />
+        <NotificationsActiveIcon sx={{ fontSize: 14, color: "#ff8c00" }} />
         <span className="fcm-preview-app">MassClick</span>
         <span className="fcm-preview-time">now</span>
       </div>
-      {imageUrl && (
-        <div className="fcm-preview-image-wrap">
-          <img src={imageUrl} alt="notification" className="fcm-preview-image" />
-        </div>
-      )}
       <div className="fcm-preview-body">
         <p className="fcm-preview-title">{title || "Your notification title"}</p>
         <p className="fcm-preview-text">{body || "Your notification body text will appear here."}</p>
+        {clickAction && (
+          <p className="fcm-preview-action">
+            🔗 <span>{clickAction}</span>
+          </p>
+        )}
       </div>
+      {imageUrl && (
+        <div className="fcm-preview-image-wrap fcm-preview-image-wrap--bottom">
+          <img src={imageUrl} alt="notification" className="fcm-preview-image" onError={(e) => { e.target.style.display = "none"; }} />
+        </div>
+      )}
     </div>
   );
 }
@@ -71,8 +86,16 @@ function NotificationPreview({ title, body, imageUrl }) {
 export default function FCMMarketing() {
   const dispatch = useDispatch();
 
-  const { users, usersLoading, sending, lastSendResult, sendError, campaigns, campaignsTotal, campaignsLoading } =
-    useSelector((state) => state.fcmMarketing);
+  const {
+    users = [],
+    usersLoading = false,
+    sending = false,
+    lastSendResult = null,
+    sendError = null,
+    campaigns = [],
+    campaignsTotal = 0,
+    campaignsLoading = false,
+  } = useSelector((state) => state.fcmMarketing || {});
 
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
@@ -80,6 +103,9 @@ export default function FCMMarketing() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [successBanner, setSuccessBanner] = useState(null);
   const [page, setPage] = useState(1);
+  const [imageUploading, setImageUploading] = useState(false);
+  const [imageMode, setImageMode] = useState("upload"); // "upload" | "url"
+  const fileInputRef = useRef(null);
   const PAGE_SIZE = 20;
 
   useEffect(() => {
@@ -118,6 +144,37 @@ export default function FCMMarketing() {
       ...prev,
       customData: prev.customData.filter((_, i) => i !== idx),
     }));
+  };
+
+  const handleImageFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setErrors((prev) => ({ ...prev, imageUrl: "Please select an image file" }));
+      return;
+    }
+    if (file.size > 3 * 1024 * 1024) {
+      setErrors((prev) => ({ ...prev, imageUrl: "Image must be under 3 MB" }));
+      return;
+    }
+
+    setImageUploading(true);
+    setErrors((prev) => ({ ...prev, imageUrl: "" }));
+
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      try {
+        const url = await dispatch(uploadFCMImage(ev.target.result));
+        handleChange("imageUrl", url);
+      } catch {
+        setErrors((prev) => ({ ...prev, imageUrl: "Upload failed. Try pasting a URL instead." }));
+      } finally {
+        setImageUploading(false);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   const validate = () => {
@@ -347,15 +404,76 @@ export default function FCMMarketing() {
             {errors.body && <p className="fcm-error-msg">{errors.body}</p>}
           </div>
 
-          {/* Image URL */}
+          {/* Image */}
           <div className="fcm-field">
-            <label className="fcm-label">Image URL <span className="fcm-optional">(optional)</span></label>
+            <div className="fcm-label-row">
+              <label className="fcm-label">
+                Image <span className="fcm-optional">(optional)</span>
+              </label>
+              <div className="fcm-image-mode-toggle">
+                <button
+                  type="button"
+                  className={`fcm-mode-btn ${imageMode === "upload" ? "fcm-mode-btn-active" : ""}`}
+                  onClick={() => setImageMode("upload")}
+                >
+                  <UploadIcon sx={{ fontSize: 13, mr: 0.4 }} /> Upload
+                </button>
+                <button
+                  type="button"
+                  className={`fcm-mode-btn ${imageMode === "url" ? "fcm-mode-btn-active" : ""}`}
+                  onClick={() => setImageMode("url")}
+                >
+                  URL
+                </button>
+              </div>
+            </div>
+
+            {form.imageUrl ? (
+              <div className="fcm-image-preview-wrap">
+                <img src={form.imageUrl} alt="notification" className="fcm-image-preview" />
+                <button
+                  type="button"
+                  className="fcm-remove-image"
+                  onClick={() => handleChange("imageUrl", "")}
+                >
+                  <CloseIcon sx={{ fontSize: 14 }} /> Remove
+                </button>
+              </div>
+            ) : imageMode === "upload" ? (
+              <div
+                className={`fcm-upload-zone ${imageUploading ? "fcm-upload-zone-loading" : ""}`}
+                onClick={() => !imageUploading && fileInputRef.current?.click()}
+              >
+                {imageUploading ? (
+                  <>
+                    <CircularProgress size={22} sx={{ color: "#ff8c00", mb: 1 }} />
+                    <span className="fcm-upload-text">Uploading…</span>
+                  </>
+                ) : (
+                  <>
+                    <ImageOutlinedIcon sx={{ fontSize: 32, color: "#d1d5db", mb: 0.5 }} />
+                    <span className="fcm-upload-text">Click to upload image</span>
+                    <span className="fcm-upload-hint">PNG, JPG, WebP — max 3 MB</span>
+                  </>
+                )}
+              </div>
+            ) : (
+              <input
+                className={`fcm-input ${errors.imageUrl ? "fcm-input-error" : ""}`}
+                type="url"
+                value={form.imageUrl}
+                onChange={(e) => handleChange("imageUrl", e.target.value)}
+                placeholder="https://example.com/banner.png"
+                autoFocus
+              />
+            )}
+
             <input
-              className={`fcm-input ${errors.imageUrl ? "fcm-input-error" : ""}`}
-              type="url"
-              value={form.imageUrl}
-              onChange={(e) => handleChange("imageUrl", e.target.value)}
-              placeholder="https://example.com/image.png"
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              style={{ display: "none" }}
+              onChange={handleImageFileSelect}
             />
             {errors.imageUrl && <p className="fcm-error-msg">{errors.imageUrl}</p>}
           </div>
@@ -555,6 +673,7 @@ export default function FCMMarketing() {
               title={form.title}
               body={form.body}
               imageUrl={form.imageUrl}
+              clickAction={form.clickAction}
             />
             <div className="fcm-preview-meta">
               <p><span className="fcm-meta-label">Target:</span> {TARGET_TYPES.find((t) => t.value === form.targetType)?.label}</p>
@@ -620,11 +739,30 @@ export default function FCMMarketing() {
           </div>
         ) : (
           <>
-            <CustomizedTable
-              columns={campaignColumns}
-              rows={campaigns}
-              rowKey="_id"
-            />
+            <TableContainer component={Paper} elevation={0} sx={{ border: "1px solid #e5e7eb", borderRadius: "10px" }}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow sx={{ bgcolor: "#f8f9fb" }}>
+                    {campaignColumns.map((col) => (
+                      <TableCell key={col.id} sx={{ fontWeight: 700, fontSize: "0.82rem", color: "#1f2937", minWidth: col.minWidth }}>
+                        {col.label}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {campaigns.map((row) => (
+                    <TableRow key={row._id} hover>
+                      {campaignColumns.map((col) => (
+                        <TableCell key={col.id} sx={{ fontSize: "0.82rem", color: "#374151" }}>
+                          {col.renderCell ? col.renderCell(row) : (row[col.id] ?? "-")}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
             {campaignsTotal > PAGE_SIZE && (
               <div className="fcm-pagination">
                 <button

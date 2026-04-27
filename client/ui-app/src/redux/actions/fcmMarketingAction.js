@@ -14,7 +14,7 @@ const authHeaders = () => ({
 export const fetchFCMUsers = () => async (dispatch) => {
   dispatch({ type: FETCH_FCM_USERS_REQUEST });
   try {
-    const { data } = await axios.get(`${API_URL}/api/admin/fcm/users-with-tokens`, {
+    const { data } = await axios.get(`${API_URL}/admin/fcm/users-with-tokens`, {
       headers: authHeaders(),
     });
     dispatch({ type: FETCH_FCM_USERS_SUCCESS, payload: data.data });
@@ -29,7 +29,7 @@ export const fetchFCMUsers = () => async (dispatch) => {
 export const sendFCMMarketing = (payload) => async (dispatch) => {
   dispatch({ type: SEND_FCM_MARKETING_REQUEST });
   try {
-    const { data } = await axios.post(`${API_URL}/api/admin/fcm/send-marketing`, payload, {
+    const { data } = await axios.post(`${API_URL}/admin/fcm/send-marketing`, payload, {
       headers: authHeaders(),
     });
     dispatch({ type: SEND_FCM_MARKETING_SUCCESS, payload: data });
@@ -41,11 +41,20 @@ export const sendFCMMarketing = (payload) => async (dispatch) => {
   }
 };
 
+export const uploadFCMImage = (base64DataUrl) => async () => {
+  const { data } = await axios.post(
+    `${API_URL}/admin/fcm/upload-image`,
+    { image: base64DataUrl },
+    { headers: authHeaders() }
+  );
+  return data.url;
+};
+
 export const fetchFCMCampaigns = (page = 1, limit = 20) => async (dispatch) => {
   dispatch({ type: FETCH_FCM_CAMPAIGNS_REQUEST });
   try {
     const { data } = await axios.get(
-      `${API_URL}/api/admin/fcm/campaigns?page=${page}&limit=${limit}`,
+      `${API_URL}/admin/fcm/campaigns?page=${page}&limit=${limit}`,
       { headers: authHeaders() }
     );
     dispatch({ type: FETCH_FCM_CAMPAIGNS_SUCCESS, payload: data });

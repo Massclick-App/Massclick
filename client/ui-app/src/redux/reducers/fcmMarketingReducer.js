@@ -25,7 +25,7 @@ export default function fcmMarketingReducer(state = initialState, action) {
     case FETCH_FCM_USERS_REQUEST:
       return { ...state, usersLoading: true, usersError: null };
     case FETCH_FCM_USERS_SUCCESS:
-      return { ...state, usersLoading: false, users: action.payload };
+      return { ...state, usersLoading: false, users: Array.isArray(action.payload) ? action.payload : [] };
     case FETCH_FCM_USERS_FAILURE:
       return { ...state, usersLoading: false, usersError: action.payload };
 
@@ -42,9 +42,9 @@ export default function fcmMarketingReducer(state = initialState, action) {
       return {
         ...state,
         campaignsLoading: false,
-        campaigns: action.payload.data,
-        campaignsTotal: action.payload.total,
-        campaignsPage: action.payload.page,
+        campaigns: Array.isArray(action.payload.data) ? action.payload.data : [],
+        campaignsTotal: action.payload.total || 0,
+        campaignsPage: action.payload.page || 1,
       };
     case FETCH_FCM_CAMPAIGNS_FAILURE:
       return { ...state, campaignsLoading: false, campaignsError: action.payload };

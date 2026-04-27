@@ -575,6 +575,27 @@
   line-height: 1.4;
 }
 
+.fcm-preview-action {
+  font-size: 0.72rem;
+  color: #60a5fa;
+  margin: 6px 0 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fcm-preview-action span {
+  text-decoration: underline;
+}
+
+.fcm-preview-image-wrap--bottom {
+  border-top: 1px solid #2d2d2d;
+}
+
+.fcm-preview-image-wrap--bottom .fcm-preview-image {
+  max-height: 140px;
+}
+
 .fcm-preview-meta {
   font-size: 0.8rem;
   color: var(--fcm-text-secondary);
@@ -726,4 +747,111 @@
 .fcm-page-info {
   font-size: 0.85rem;
   color: var(--fcm-text-secondary);
+}
+
+/* ── Image mode toggle ── */
+.fcm-image-mode-toggle {
+  display: flex;
+  gap: 4px;
+}
+
+.fcm-mode-btn {
+  display: flex;
+  align-items: center;
+  padding: 3px 10px;
+  border: 1px solid var(--fcm-border);
+  border-radius: 6px;
+  background: #fafafa;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--fcm-text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.fcm-mode-btn:hover {
+  border-color: var(--fcm-orange);
+  color: var(--fcm-orange);
+}
+
+.fcm-mode-btn-active {
+  border-color: var(--fcm-orange) !important;
+  background: var(--fcm-orange-light) !important;
+  color: var(--fcm-orange) !important;
+}
+
+/* ── Image upload zone ── */
+.fcm-upload-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed var(--fcm-border);
+  border-radius: 10px;
+  padding: 28px 16px;
+  cursor: pointer;
+  background: #fafafa;
+  transition: border-color 0.2s, background 0.2s;
+  min-height: 100px;
+  gap: 4px;
+}
+
+.fcm-upload-zone:hover {
+  border-color: var(--fcm-orange);
+  background: var(--fcm-orange-light);
+}
+
+.fcm-upload-zone-loading {
+  cursor: default;
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.fcm-upload-text {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--fcm-text-secondary);
+}
+
+.fcm-upload-hint {
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+/* ── Image preview ── */
+.fcm-image-preview-wrap {
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1.5px solid var(--fcm-border);
+  background: #f3f4f6;
+}
+
+.fcm-image-preview {
+  width: 100%;
+  max-height: 160px;
+  object-fit: cover;
+  display: block;
+}
+
+.fcm-remove-image {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.fcm-remove-image:hover {
+  background: rgba(0, 0, 0, 0.85);
 }
