@@ -46,8 +46,7 @@ const MONGO_URI = process.env.MONGO_URL;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const CLIENT_BUILD_PATH =
-  "/var/www/massclickQA/client/ui-app/build";
+const CLIENT_BUILD_PATH = process.env.REACT_BUILD_PATH;
 
 // const CLIENT_BUILD_PATH = path.join(
 //   __dirname,
