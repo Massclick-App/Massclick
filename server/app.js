@@ -193,6 +193,7 @@ app.use("/", favoriteRoute);
 
 app.use(
   express.static(CLIENT_BUILD_PATH, {
+    index: false,
     maxAge: "365d",
     etag: true,
     lastModified: true,
