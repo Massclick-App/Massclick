@@ -88,6 +88,7 @@ const CLIENT_BUILD_PATH = process.env.REACT_BUILD_PATH;
 app.use(
   helmet({
     crossOriginResourcePolicy: false,
+    contentSecurityPolicy: false,
   })
 );
 
