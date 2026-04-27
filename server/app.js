@@ -285,18 +285,18 @@ app.get(/.*/, async (req, res) => {
     const injectMeta = (html, title, description, keywords, canonical) => {
       return html
         .replace(/<title>.*?<\/title>/, `<title>${title}</title>`)
-        .replace(/<meta name="description".*?\/?>/, `<meta data-rh="true" name="description" content="${description}" />`)
-        .replace(/<meta name="keywords".*?\/?>/, `<meta data-rh="true" name="keywords" content="${keywords}" />`)
-        .replace(/<link rel="canonical".*?\/?>/, `<link data-rh="true" rel="canonical" href="${canonical}" />`)
-        .replace(/<meta property="og:title".*?\/?>/, `<meta data-rh="true" property="og:title" content="${title}" />`)
-        .replace(/<meta property="og:description".*?\/?>/, `<meta data-rh="true" property="og:description" content="${description}" />`)
-        .replace(/<meta property="og:url".*?\/?>/, `<meta data-rh="true" property="og:url" content="${canonical}" />`)
-        .replace(/<meta property="og:type".*?\/?>/, `<meta data-rh="true" property="og:type" content="website" />`)
-        .replace(/<meta property="og:image".*?\/?>/, `<meta data-rh="true" property="og:image" content="https://massclick.in/mi.png" />`)
-        .replace(/<meta name="twitter:card".*?\/?>/, `<meta data-rh="true" name="twitter:card" content="summary_large_image" />`)
-        .replace(/<meta name="twitter:title".*?\/?>/, `<meta data-rh="true" name="twitter:title" content="${title}" />`)
-        .replace(/<meta name="twitter:description".*?\/?>/, `<meta data-rh="true" name="twitter:description" content="${description}" />`)
-        .replace(/<meta name="twitter:image".*?\/?>/, `<meta data-rh="true" name="twitter:image" content="https://massclick.in/mi.png" />`);
+        .replace(/<meta[^>]*name="description"[^>]*\/?>/, `<meta data-rh="true" name="description" content="${description}" />`)
+        .replace(/<meta[^>]*name="keywords"[^>]*\/?>/, `<meta data-rh="true" name="keywords" content="${keywords}" />`)
+        .replace(/<link[^>]*rel="canonical"[^>]*\/?>/, `<link data-rh="true" rel="canonical" href="${canonical}" />`)
+        .replace(/<meta[^>]*property="og:title"[^>]*\/?>/, `<meta data-rh="true" property="og:title" content="${title}" />`)
+        .replace(/<meta[^>]*property="og:description"[^>]*\/?>/, `<meta data-rh="true" property="og:description" content="${description}" />`)
+        .replace(/<meta[^>]*property="og:url"[^>]*\/?>/, `<meta data-rh="true" property="og:url" content="${canonical}" />`)
+        .replace(/<meta[^>]*property="og:type"[^>]*\/?>/, `<meta data-rh="true" property="og:type" content="website" />`)
+        .replace(/<meta[^>]*property="og:image"[^>]*\/?>/, `<meta data-rh="true" property="og:image" content="https://massclick.in/mi.png" />`)
+        .replace(/<meta[^>]*name="twitter:card"[^>]*\/?>/, `<meta data-rh="true" name="twitter:card" content="summary_large_image" />`)
+        .replace(/<meta[^>]*name="twitter:title"[^>]*\/?>/, `<meta data-rh="true" name="twitter:title" content="${title}" />`)
+        .replace(/<meta[^>]*name="twitter:description"[^>]*\/?>/, `<meta data-rh="true" name="twitter:description" content="${description}" />`)
+        .replace(/<meta[^>]*name="twitter:image"[^>]*\/?>/, `<meta data-rh="true" name="twitter:image" content="https://massclick.in/mi.png" />`);
     };
 
     if (seo) {
