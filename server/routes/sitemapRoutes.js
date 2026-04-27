@@ -1,7 +1,7 @@
 import express from "express";
 import businessListModel from "../model/businessList/businessListModel.js";
 import { slugify } from "../slugify.js";
-import blogModel from "../model/seoModel/seoPageContentBlogModel.js";
+import seoPageContentBlogs from "../model/seoModel/seoPageContentBlogModel.js";
 
 const router = express.Router();
 
@@ -9,7 +9,7 @@ const router = express.Router();
    CONFIG
 ========================================================= */
 const BASE_URL = "https://massclick.in";
-const LIMIT = 1000; // safe internal chunk size
+const LIMIT = 1000;
 
 /* =========================================================
    HELPERS
@@ -150,7 +150,15 @@ const categoryGroups = [
   {
     parent: "rent-and-hire",
     exact: ["rent-and-hire"],
-    keywords: ["rent", "rental", "hire", "car-rental", "van", "bus", "generator"],
+    keywords: [
+      "rent",
+      "rental",
+      "hire",
+      "car-rental",
+      "van",
+      "bus",
+      "generator",
+    ],
   },
 ];
 
@@ -173,13 +181,16 @@ const getCategoryHierarchy = (category = "") => {
 };
 
 /* =========================================================
-   DB FETCHERS
+   DB FILTERS
 ========================================================= */
 const activeFilter = {
   isActive: true,
   businessesLive: true,
 };
 
+/* =========================================================
+   DB FETCHERS
+========================================================= */
 const getCategoryRows = async () => {
   return businessListModel.aggregate([
     {
@@ -216,7 +227,6 @@ const getBusinessCount = async () => {
 ========================================================= */
 const buildCategoryUrlRecords = async () => {
   const rows = await getCategoryRows();
-
   const map = new Map();
 
   for (const row of rows) {
@@ -312,13 +322,10 @@ router.get("/sitemap-business-:page.xml", async (req, res) => {
     const nodes = businesses.map((item) => {
       const location = safeSlug(item.location);
       const businessSlug = safeSlug(item.businessName || "business");
-      const lastmod = isoDate(item.updatedAt);
-
-      const loc = `${BASE_URL}/${location}/${businessSlug}/${item._id}`;
 
       return createUrlNode({
-        loc,
-        lastmod,
+        loc: `${BASE_URL}/${location}/${businessSlug}/${item._id}`,
+        lastmod: isoDate(item.updatedAt),
         changefreq: "weekly",
         priority: "0.8",
       });
@@ -337,7 +344,50 @@ ${nodes.join("")}
 });
 
 /* =========================================================
-   MAIN INDEX SITEMAP
+   BLOG SITEMAP
+========================================================= */
+router.get("/sitemap-blog.xml", async (req, res) => {
+  try {
+    const blogs = await seoPageContentBlogs
+      .find(
+        {
+          isActive: true,
+          slug: { $exists: true, $ne: "" },
+        },
+        {
+          slug: 1,
+          updatedAt: 1,
+        }
+      )
+      .lean();
+
+    const validBlogs = blogs.filter(
+      (blog) => blog.slug && blog.slug.trim() !== ""
+    );
+
+    const nodes = validBlogs.map((blog) =>
+      createUrlNode({
+        loc: `${BASE_URL}/blog/${blog.slug}`,
+        lastmod: isoDate(blog.updatedAt),
+        changefreq: "weekly",
+        priority: "0.9",
+      })
+    );
+
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${nodes.join("")}
+</urlset>`;
+
+    return sendXml(res, xml);
+  } catch (error) {
+    console.error("BLOG_SITEMAP_ERROR:", error);
+    return res.status(500).end();
+  }
+});
+
+/* =========================================================
+   MAIN SITEMAP INDEX
 ========================================================= */
 router.get("/sitemap.xml", async (req, res) => {
   try {
@@ -360,15 +410,20 @@ router.get("/sitemap.xml", async (req, res) => {
 
     for (let i = 1; i <= totalCategoryPages; i++) {
       links.push(
-        createSitemapNode(`${BASE_URL}/sitemap-category-city-${i}.xml`)
+        createSitemapNode(
+          `${BASE_URL}/sitemap-category-city-${i}.xml`
+        )
       );
     }
 
     for (let i = 1; i <= totalBusinessPages; i++) {
       links.push(
-        createSitemapNode(`${BASE_URL}/sitemap-business-${i}.xml`)
+        createSitemapNode(
+          `${BASE_URL}/sitemap-business-${i}.xml`
+        )
       );
     }
+
     links.push(
       createSitemapNode(`${BASE_URL}/sitemap-blog.xml`)
     );
@@ -381,34 +436,6 @@ ${links.join("")}
     return sendXml(res, xml);
   } catch (error) {
     console.error("SITEMAP_INDEX_ERROR:", error);
-    return res.status(500).end();
-  }
-});
-
-router.get("/sitemap-blog.xml", async (req, res) => {
-  try {
-    const blogs = await blogModel.find(
-      { isActive: true },
-      { slug: 1, updatedAt: 1 }
-    ).lean();
-
-    const nodes = blogs.map((blog) => {
-      return createUrlNode({
-        loc: `${BASE_URL}/blog/${blog.slug}`,
-        lastmod: isoDate(blog.updatedAt),
-        changefreq: "weekly",
-        priority: "0.9",
-      });
-    });
-
-    const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${nodes.join("")}
-</urlset>`;
-
-    return sendXml(res, xml);
-  } catch (error) {
-    console.error("BLOG_SITEMAP_ERROR:", error);
     return res.status(500).end();
   }
 });
