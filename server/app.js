@@ -238,12 +238,17 @@ app.get(/.*/, async (req, res) => {
 
     let seo = null;
 
+    console.log(`[SEO] path=${req.path} parts=${JSON.stringify(parts)}`);
+
     if (!locationSlug) {
       seo = await getSeoMeta({ pageType: "home" });
+      console.log(`[SEO] home query result title="${seo?.title}"`);
     } else if (locationSlug && categorySlug) {
       const finalCategory = (subcategorySlug || categorySlug).replace(/-/g, " ");
       const finalLocation = locationSlug.replace(/-/g, " ");
+      console.log(`[SEO] category query: category="${finalCategory}" location="${finalLocation}"`);
       seo = await getSeoMeta({ pageType: "category", category: finalCategory, location: finalLocation });
+      console.log(`[SEO] category query result title="${seo?.title}"`);
     }
 
     const knownFallbacks = [
@@ -252,10 +257,12 @@ app.get(/.*/, async (req, res) => {
     ];
 
     if (!seo?.title || knownFallbacks.includes(seo.title)) {
+      console.log(`[SEO] no usable DB record found, serving index.html as-is`);
       seo = null;
     }
 
     if (seo) {
+      console.log(`[SEO] injecting: "${seo.title}"`);
       html = html
         .replace(/<title>.*?<\/title>/, `<title>${seo.title}</title>`)
         .replace(/<meta[^>]*name="description"[^>]*\/?>/, `<meta data-rh="true" name="description" content="${seo.description}" />`)
