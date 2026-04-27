@@ -111,26 +111,26 @@ const allowedOrigins = [
   "http://localhost:4000"
 ];
 
-// app.use(
-//   cors({
-//     origin: function (origin, callback) {
+app.use(
+  cors({
+    origin: function (origin, callback) {
 
-//       if (!origin) return callback(null, true);
+      if (!origin) return callback(null, true);
 
-//       if (allowedOrigins.includes(origin)) {
-//         return callback(null, true);
-//       }
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
 
-//       return callback(null, false);
-//     },
-//     credentials: true,
-//   })
-// );
+      return callback(null, false);
+    },
+    credentials: true,
+  })
+);
 
-app.use(cors({
-  origin: true,
-  credentials: true
-}));
+// app.use(cors({
+//   origin: true,
+//   credentials: true
+// }));
 
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({
