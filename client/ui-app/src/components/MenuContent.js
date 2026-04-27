@@ -22,6 +22,7 @@ import DatasetIcon from '@mui/icons-material/Dataset';
 import CorporateFareIcon from '@mui/icons-material/CorporateFare';
 import NewspaperIcon from '@mui/icons-material/Newspaper';
 import SourceIcon from '@mui/icons-material/Source';
+import CampaignIcon from '@mui/icons-material/Campaign';
 
 export default function SideMenu({ onItemClick }) {
   const navigate = useNavigate();
@@ -105,6 +106,12 @@ export default function SideMenu({ onItemClick }) {
       text: "Terms & Conditions",
       icon: CorporateFareIcon,
       path: "/dashboard/terms-conditions-data",
+      roles: ["SuperAdmin"],
+    },
+    {
+      text: "Push Notify",
+      icon: CampaignIcon,
+      path: "/dashboard/fcm-marketing",
       roles: ["SuperAdmin"],
     },
   ];

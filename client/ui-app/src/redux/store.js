@@ -23,6 +23,7 @@ import advertiseReducer from './reducers/advertiseReducer.js';
 import seoPageContentBlogReducer from './reducers/seoPageContentBlogReducer.js';
 import termsAndConditionReducer from './reducers/footerContents/termsAndConditionsReducer.js';
 import favoriteReducer from './reducers/favoriteReducer.js';
+import fcmMarketingReducer from './reducers/fcmMarketingReducer.js';
 
 const rootReducer = combineReducers({
   auth: authReducer,
@@ -48,6 +49,7 @@ const rootReducer = combineReducers({
   advertise: advertiseReducer, 
   termsAndConditions: termsAndConditionReducer,
   favorites: favoriteReducer,
+  fcmMarketing: fcmMarketingReducer,
 });
 
 export const store = createStore(rootReducer, applyMiddleware(thunk));

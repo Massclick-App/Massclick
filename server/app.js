@@ -31,6 +31,7 @@ import reviewRoutes from "./routes/reviewRoutes.js";
 import advertiseRoute from "./routes/advertiseRoute.js";
 import versionRoutes from "./routes/versionRoutes.js";
 import favoriteRoute from "./routes/favoriteRoute.js";
+import fcmAdminRoutes from "./routes/fcmAdminRoutes.js";
 import { getSeoMeta } from "./helper/seo/seoHelper.js";
 import footerRoutes from "./routes/footerRoute.js";
 import { register } from "./utils/metrics.js";
@@ -190,6 +191,7 @@ app.use("/", advertiseRoute);
 app.use("/", versionRoutes);
 app.use("/", footerRoutes);
 app.use("/", favoriteRoute);
+app.use("/", fcmAdminRoutes);
 
 app.use(
   express.static(CLIENT_BUILD_PATH, {

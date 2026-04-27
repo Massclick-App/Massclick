@@ -24,7 +24,8 @@ export const Collections = {
     LEADROTATION: 'leadsrotation',
     ADVERTISE: 'advertise',
     TERMSANDCONDITIONS: 'termsandconditions',
-    FAVORITES: 'favorites'
+    FAVORITES: 'favorites',
+    FCMCAMPAIGNS: 'fcmcampaigns'
 };
 
 export const {
@@ -53,5 +54,6 @@ export const {
     LEADROTATION,
     ADVERTISE,
     TERMSANDCONDITIONS,
-    FAVORITES
+    FAVORITES,
+    FCMCAMPAIGNS
 } = Collections;
