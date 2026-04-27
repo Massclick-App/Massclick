@@ -31,8 +31,8 @@ import advertiseRoute from "./routes/advertiseRoute.js";
 import versionRoutes from "./routes/versionRoutes.js";
 import favoriteRoute from "./routes/favoriteRoute.js";
 import fcmAdminRoutes from "./routes/fcmAdminRoutes.js";
-import footerRoutes from "./routes/footerRoute.js";
 import { getSeoMeta } from "./helper/seo/seoHelper.js";
+import footerRoutes from "./routes/footerRoute.js";
 import { register } from "./utils/metrics.js";
 import { metricsMiddleware } from "./utils/metricsMiddleware.js";
 
@@ -40,7 +40,6 @@ dotenv.config();
 
 const app = express();
 app.set("trust proxy", true);
-
 const PORT = process.env.PORT || 4000;
 const MONGO_URI = process.env.MONGO_URL;
 const CLIENT_BUILD_PATH = process.env.REACT_BUILD_PATH;
@@ -48,65 +47,82 @@ const CLIENT_BUILD_PATH = process.env.REACT_BUILD_PATH;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const escapeHtml = (value = "") => String(value)
-  .replace(/&/g, "&amp;")
-  .replace(/</g, "&lt;")
-  .replace(/>/g, "&gt;")
-  .replace(/\"/g, "&quot;")
-  .replace(/'/g, "&#39;");
-
-const slugToText = (value = "") => value.replace(/-/g, " ").trim();
-const titleCase = (value = "") => value.replace(/\b\w/g, s => s.toUpperCase());
-
-const toText = slugToText;
-const toTitle = titleCase;
-
-app.use((req, res, next) => {
-  const host = req.headers.host || "";
-  const protocol = req.headers["x-forwarded-proto"] || req.protocol;
-
-  if (!host.includes("localhost") && !host.includes("127.0.0.1")) {
-    if (protocol !== "https") {
-      return res.redirect(301, `https://${host}${req.originalUrl}`);
-    }
-    if (host === "www.massclick.in") {
-      return res.redirect(301, `https://massclick.in${req.originalUrl}`);
-    }
-  }
-  next();
-});
-
-app.use(helmet({
-  crossOriginResourcePolicy: false,
-  contentSecurityPolicy: false,
-  referrerPolicy: { policy: "strict-origin-when-cross-origin" }
-}));
+app.use(
+  helmet({
+    crossOriginResourcePolicy: false,
+    contentSecurityPolicy: false,
+  })
+);
 
 app.use(compression());
 
-app.use(cors({
-  origin: true,
-  credentials: true
-}));
+const allowedOrigins = [
+  "https://massclick.in",
+  "https://www.massclick.in",
+  "https://dev.massclick.in",
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+  "http://localhost:4000"
+];
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(null, false);
+    },
+    credentials: true,
+  })
+);
 
 app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+app.use(express.urlencoded({
+  extended: true,
+  limit: "50mb"
+}));
+
 app.use(metricsMiddleware);
 
 app.get("/metrics", async (req, res) => {
-  res.set("Content-Type", register.contentType);
-  res.end(await register.metrics());
+  try {
+    res.set("Content-Type", register.contentType);
+    res.end(await register.metrics());
+  } catch (err) {
+    res.status(500).end(err.message);
+  }
 });
 
 app.get("/robots.txt", (req, res) => {
+
   res.type("text/plain");
-  res.send(`User-agent: *\nAllow: /\nSitemap: https://massclick.in/sitemap.xml`);
+
+  res.send(`
+User-agent: *
+Allow: /
+
+Sitemap: https://massclick.in/sitemap.xml
+`);
+
 });
 
 app.get("/health", (req, res) => {
-  res.status(200).json({ success: true, uptime: process.uptime() });
+  const now = new Date();
+  res.status(200).json({
+    success: true,
+    message: "Server is healthy",
+    uptime: process.uptime(),
+    timestamp: now.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
+    isoTime: now.toISOString() 
+  });
 });
 
+// routes
 app.use("/", sitemapRoutes);
 app.use("/", userRoutes);
 app.use("/", fcmTokenRoutes);
@@ -132,104 +148,114 @@ app.use("/", footerRoutes);
 app.use("/", favoriteRoute);
 app.use("/", fcmAdminRoutes);
 
-app.use(express.static(CLIENT_BUILD_PATH, {
-  index: false,
-  maxAge: "365d",
-  etag: true,
-  setHeaders: (res, filePath) => {
-    if (filePath.endsWith(".html")) {
-      res.setHeader("Cache-Control", "no-cache");
-    } else {
-      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
-    }
-  }
-}));
+app.use(
+  express.static(CLIENT_BUILD_PATH, {
+    index: false,
+    maxAge: "365d",
+    etag: true,
+    lastModified: true,
+
+    setHeaders: (res, filePath) => {
+
+      if (filePath.endsWith(".html")) {
+
+        res.setHeader(
+          "Cache-Control",
+          "no-cache"
+        );
+
+      } else {
+
+        res.setHeader(
+          "Cache-Control",
+          "public, max-age=31536000, immutable"
+        );
+
+      }
+
+    },
+  })
+);
 
 app.get(/.*/, async (req, res) => {
+
   try {
+
     const indexPath = path.join(CLIENT_BUILD_PATH, "index.html");
+
     if (!fs.existsSync(indexPath)) {
       return res.status(404).send("Build not found");
     }
 
     let html = fs.readFileSync(indexPath, "utf8");
-    const parts = req.path.split("/").filter(Boolean);
 
+    const parts = req.path.split("/").filter(Boolean);
     const locationSlug = parts[0] || "";
     const categorySlug = parts[1] || "";
     const subcategorySlug = parts[2] || "";
 
     let seo = null;
 
+    console.log(`[SEO] path=${req.path} parts=${JSON.stringify(parts)}`);
+
     if (!locationSlug) {
       seo = await getSeoMeta({ pageType: "home" });
+      console.log(`[SEO] home query result title="${seo?.title}"`);
     } else if (locationSlug && categorySlug) {
-      seo = await getSeoMeta({
-        pageType: "category",
-        location: toText(locationSlug),
-        category: toText(subcategorySlug || categorySlug)
-      });
+      const finalCategory = (subcategorySlug || categorySlug).replace(/-/g, " ");
+      const finalLocation = locationSlug.replace(/-/g, " ");
+      console.log(`[SEO] category query: category="${finalCategory}" location="${finalLocation}"`);
+      seo = await getSeoMeta({ pageType: "category", category: finalCategory, location: finalLocation });
+      console.log(`[SEO] category query result title="${seo?.title}"`);
     }
 
-    const locationName = toTitle(toText(locationSlug || "trichy"));
-    const categoryName = toTitle(toText(subcategorySlug || categorySlug || "Local Services"));
+    const knownFallbacks = [
+      "Massclick - Local Business Search Platform",
+      "Massclick",
+    ];
 
-    const title = escapeHtml(seo?.title || `${categoryName} in ${locationName} | Massclick`);
-    const description = escapeHtml(seo?.description || `Find the best ${categoryName} in ${locationName}. Verified listings, reviews, phone numbers, address and more on Massclick.`);
-    const keywords = escapeHtml(seo?.keywords || `${categoryName}, ${locationName}, best ${categoryName} in ${locationName}`);
-    const canonical = escapeHtml(seo?.canonical || `https://massclick.in${req.path}`);
+    if (!seo?.title || knownFallbacks.includes(seo.title)) {
+      console.log(`[SEO] no usable DB record found, serving index.html as-is`);
+      seo = null;
+    }
 
-    const h1 = `${categoryName} in ${locationName}`;
+    if (seo) {
+      console.log(`[SEO] injecting: "${seo.title}"`);
+      html = html
+        .replace(/<title>.*?<\/title>/, `<title>${seo.title}</title>`)
+        .replace(/<meta[^>]*name="description"[^>]*\/?>/, `<meta data-rh="true" name="description" content="${seo.description}" />`)
+        .replace(/<meta[^>]*name="keywords"[^>]*\/?>/, seo.keywords ? `<meta data-rh="true" name="keywords" content="${seo.keywords}" />` : "")
+        .replace(/<link[^>]*rel="canonical"[^>]*\/?>/, seo.canonical ? `<link data-rh="true" rel="canonical" href="${seo.canonical}" />` : "")
+        .replace(/<meta[^>]*property="og:title"[^>]*\/?>/, `<meta data-rh="true" property="og:title" content="${seo.title}" />`)
+        .replace(/<meta[^>]*property="og:description"[^>]*\/?>/, `<meta data-rh="true" property="og:description" content="${seo.description}" />`)
+        .replace(/<meta[^>]*property="og:url"[^>]*\/?>/, seo.canonical ? `<meta data-rh="true" property="og:url" content="${seo.canonical}" />` : "")
+        .replace(/<meta[^>]*name="twitter:title"[^>]*\/?>/, `<meta data-rh="true" name="twitter:title" content="${seo.title}" />`)
+        .replace(/<meta[^>]*name="twitter:description"[^>]*\/?>/, `<meta data-rh="true" name="twitter:description" content="${seo.description}" />`);
+    }
 
-    const schema = {
-      "@context": "https://schema.org",
-      "@type": locationSlug ? "CollectionPage" : "WebSite",
-      name: h1,
-      url: canonical,
-      description,
-      publisher: {
-        "@type": "Organization",
-        name: "Massclick",
-        url: "https://massclick.in"
-      }
-    };
+    res.send(html);
 
-    const serverContent = `
-      <section style="padding:20px;font-family:Arial,sans-serif">
-        <h1>${escapeHtml(h1)}</h1>
-        <p>${description}</p>
-        <div>
-          <h2>Top ${escapeHtml(categoryName)}</h2>
-          <p>Explore verified businesses, ratings, contact details and addresses in ${escapeHtml(locationName)}.</p>
-        </div>
-      </section>
-    `;
+  } catch (err) {
 
-    html = html
-      .replace(/<title>.*?<\/title>/i, `<title>${title}</title>`)
-      .replace(/<meta[^>]*name="description"[^>]*>/i, `<meta name="description" content="${description}">`)
-      .replace(/<meta[^>]*name="keywords"[^>]*>/i, `<meta name="keywords" content="${keywords}">`)
-      .replace(/<link[^>]*rel="canonical"[^>]*>/i, `<link rel="canonical" href="${canonical}">`)
-      .replace(/<meta[^>]*property="og:title"[^>]*>/i, `<meta property="og:title" content="${title}">`)
-      .replace(/<meta[^>]*property="og:description"[^>]*>/i, `<meta property="og:description" content="${description}">`)
-      .replace(/<meta[^>]*property="og:url"[^>]*>/i, `<meta property="og:url" content="${canonical}">`)
-      .replace(/<meta[^>]*name="twitter:title"[^>]*>/i, `<meta name="twitter:title" content="${title}">`)
-      .replace(/<meta[^>]*name="twitter:description"[^>]*>/i, `<meta name="twitter:description" content="${description}">`)
-      .replace("</head>", `<script type="application/ld+json">${JSON.stringify(schema)}</script></head>`)
-      .replace('<div id="root"></div>', `<div id="root">${serverContent}</div>`);
+    console.error("SEO ERROR:", err);
+    res.status(500).send("Server error");
 
-    res.setHeader("X-Robots-Tag", "index, follow");
-    return res.status(200).send(html);
-  } catch (error) {
-    console.error("SSR Error:", error);
-    return res.status(500).send("Server Error");
   }
+
 });
 
 mongoose.connect(MONGO_URI)
   .then(() => {
+
+    console.log("MongoDB Connected");
+
     app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
+
+      console.log(
+        `Server running on port ${PORT}`
+      );
+
     });
+
   })
-  .catch(err => console.error(err));
+  .catch(console.error);
