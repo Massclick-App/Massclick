@@ -2,8 +2,9 @@ import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import "./categories.css";
-
+import { logSearchActivity } from "../../../redux/actions/businessListAction";
 import { fetchSubCategories } from "../../../redux/actions/categoryAction";
+import { shouldSendSearch } from "../../../utils/searchLock";
 
 const createSlug = (text = "") =>
   text.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-");
@@ -36,6 +37,26 @@ const CategoriesPage = () => {
   }, [search, subCategories]);
 
   const handleClick = (sub) => {
+    const authUser = JSON.parse(
+      localStorage.getItem("authUser") || "{}"
+    );
+
+    const userDetails = {
+      userName: authUser?.userName,
+      mobileNumber1: authUser?.mobileNumber1,
+      mobileNumber2: authUser?.mobileNumber2 || "",
+      email: authUser?.email || "",
+    };
+
+    dispatch(
+      logSearchActivity(
+        sub.name,
+        location || "Global",
+        userDetails,
+        sub.name
+      )
+    );
+
     navigate(`/${location}/${category}/${sub.slug}`);
   };
 

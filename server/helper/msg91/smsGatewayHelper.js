@@ -310,32 +310,32 @@ export const sendBusinessesToCustomer = async (
 
     const finalBusinesses = uniqueBusinesses.slice(0, 10);
 
-    const businessIds = finalBusinesses.map((b) => b._id);
+    // const businessIds = finalBusinesses.map((b) => b._id);
 
-    const reviews = await businessReviewModel.aggregate([
-      {
-        $match: {
-          businessId: { $in: businessIds },
-          status: "ACTIVE"
-        }
-      },
-      {
-        $group: {
-          _id: "$businessId",
-          avgRating: { $avg: "$rating" },
-          totalReviews: { $sum: 1 }
-        }
-      }
-    ]);
+    // const reviews = await businessReviewModel.aggregate([
+    //   {
+    //     $match: {
+    //       businessId: { $in: businessIds },
+    //       status: "ACTIVE"
+    //     }
+    //   },
+    //   {
+    //     $group: {
+    //       _id: "$businessId",
+    //       avgRating: { $avg: "$rating" },
+    //       totalReviews: { $sum: 1 }
+    //     }
+    //   }
+    // ]);
 
-    const reviewMap = {};
+    // const reviewMap = {};
 
-    reviews.forEach((r) => {
-      reviewMap[r._id.toString()] = {
-        avgRating: r.avgRating.toFixed(1),
-        totalReviews: r.totalReviews
-      };
-    });
+    // reviews.forEach((r) => {
+    //   reviewMap[r._id.toString()] = {
+    //     avgRating: r.avgRating.toFixed(1),
+    //     totalReviews: r.totalReviews
+    //   };
+    // });
 
     const formatBusiness = (biz, index) => {
       const contact = Array.isArray(biz.contactList)
@@ -352,22 +352,22 @@ export const sendBusinessesToCustomer = async (
 
       const fullAddress = `${street}, ${location}`.replace(/\s+/g, " ").trim();
 
-      const shortAddress =
-        fullAddress.length > 30
-          ? fullAddress.slice(0, 30) + "..."
-          : fullAddress;
+      // const shortAddress =
+      //   fullAddress.length > 30
+      //     ? fullAddress.slice(0, 30) + "..."
+      //     : fullAddress;
 
-      const review = reviewMap[biz._id.toString()] || {};
+      // const review = reviewMap[biz._id.toString()] || {};
 
-      const rating = review.avgRating
-        ? `⭐ ${review.avgRating}/5`
-        : "⭐ No ratings";
+      // const rating = review.avgRating
+      //   ? `⭐ ${review.avgRating}/5`
+      //   : "⭐ No ratings";
 
-      const reviews = review.totalReviews
-        ? `(${review.totalReviews})`
-        : "";
+      // const reviews = review.totalReviews
+      //   ? `(${review.totalReviews})`
+      //   : "";
 
-      return `${index + 1}. ${name} ${rating} ${reviews} | 📍 ${shortAddress} | 📞 ${contact}`;
+      return `${index + 1}. ${name}  | 📍 ${fullAddress} | 📞 ${contact}`;
     };
 
     const firstBatch = finalBusinesses.slice(0, 5);

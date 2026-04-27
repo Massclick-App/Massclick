@@ -3,53 +3,8 @@ import CategoryModel from "../../model/category/categoryModel.js";
 import { getSignedUrlByKey } from "../../s3Uploder.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
 import { sendBusinessesToCustomer, sendBusinessLead } from "../../helper/msg91/smsGatewayHelper.js";
-// import leadsRotationModel from "../../model/leadsData/leadsRotationalModel.js";
 import searchLogModel from "../../model/businessList/searchLogModel.js";
 
-// export const logSearchAction = async (req, res) => {
-//   try {
-//     const { categoryName, location, searchedUserText, userDetails } = req.body;
-
-//     const categorySlug = categoryName
-//       ?.toLowerCase()
-//       .replace(/[^a-z0-9]+/g, "-")
-//       .replace(/(^-|-$)+/g, "");
-
-//     const category = await CategoryModel.findOne(
-//       { slug: categorySlug },
-//       { categoryImageKey: 1 }
-//     ).lean();
-
-//     const filteredUser = [
-//       {
-//         userName: userDetails?.userName || "",
-//         mobileNumber1: userDetails?.mobileNumber1 || "",
-//         mobileNumber2: userDetails?.mobileNumber2 || "",
-//         email: userDetails?.email || ""
-//       }
-//     ];
-
-//     await createSearchLog({
-//       categoryName,
-//       categoryImage: category?.categoryImageKey || "",
-//       location,
-//       searchedUserText,
-//       userDetails: filteredUser
-//     });
-
-//     res.status(202).json({
-//       success: true,
-//       message: "Search logged successfully"
-//     });
-
-//   } catch (error) {
-//     console.error("Error logging search:", error);
-//     res.status(500).json({
-//       success: false,
-//       message: "Error logging search"
-//     });
-//   }
-// };
 
 const cleanIndianMobile = (mobile) => {
   if (!mobile) return null;
@@ -66,8 +21,6 @@ const cleanIndianMobile = (mobile) => {
 
   return null;
 };
-
-
 
 const escapeRegex = (text = "") =>
   text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -227,28 +180,21 @@ export const logSearchAction = async (req, res) => {
     //   });
     // }
 
-    const savedLog = await createSearchLog({
-
-      categoryName: finalCategoryName,
-
-      categoryImage: category?.categoryImageKey || "",
-
-      searchedUserText,
-
-      location: normalizedLocation,
-
-      userDetails: [
-        {
-          userName: userDetails.userName,
-          mobileNumber1: userDetails.mobileNumber1,
-          mobileNumber2: userDetails.mobileNumber2 || "",
-          email: userDetails.email || ""
-        }
-      ],
-
-      whatsapp: false
-
-    });
+   const savedLog = await createSearchLog({
+  categoryName: finalCategoryName,
+  categoryImage: category?.categoryImageKey || "",
+  searchedUserText: cleanSearchText,
+  location: normalizedLocation,
+  userDetails: [
+    {
+      userName: userDetails.userName,
+      mobileNumber1: userDetails.mobileNumber1,
+      mobileNumber2: userDetails.mobileNumber2 || "",
+      email: userDetails.email || ""
+    }
+  ],
+  whatsapp: false
+});
 
     const locationGroups = {
       trichy: ["trichy", "tiruchirappalli"]
