@@ -409,6 +409,21 @@ const linkifyText = (text = "") => {
               </div>
             </div>
 
+            <div className="author-card" style={{ marginTop: "24px" }}>
+              <img
+                src={blog.profileImage || "https://via.placeholder.com/80"}
+                alt={`${blog.author || "Massclick"} author profile`}
+              />
+              <div>
+                <h3>{blog.author || "Massclick Editorial Team"}</h3>
+                <p>
+                  {blog.author || "Massclick Editorial Team"} curates local business guides,
+                  service recommendations and city-focused insights to help readers make
+                  informed decisions faster.
+                </p>
+              </div>
+            </div>
+
           </div>
 
           <div className="sidebar">

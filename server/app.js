@@ -35,6 +35,8 @@ import footerRoutes from "./routes/footerRoute.js";
 import { startFCMScheduler } from "./scheduler/fcmScheduler.js";
 import { getSeoMeta } from "./helper/seo/seoHelper.js";
 import { getSeoBlogMetaBySlug } from "./helper/seo/seoOnpageBlogHelper.js";
+import { getSeoPageContentMetaService } from "./helper/seo/seoPageContentHelper.js";
+import { findBusinessesByCategory } from "./helper/businessList/businessListHelper.js";
 import { register } from "./utils/metrics.js";
 import { metricsMiddleware } from "./utils/metricsMiddleware.js";
 
@@ -59,6 +61,35 @@ const escapeHtml = (value = "") => String(value)
 
 const slugToText = (value = "") => value.replace(/-/g, " ").trim();
 const titleCase = (value = "") => value.replace(/\b\w/g, s => s.toUpperCase());
+const formatDisplayDate = (value) => {
+  if (!value) return "";
+
+  const parsedDate = new Date(value);
+  if (Number.isNaN(parsedDate.getTime())) return "";
+
+  return parsedDate.toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+};
+const sanitizeHtmlFragment = (value = "") => String(value)
+  .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+  .replace(/\son\w+="[^"]*"/gi, "")
+  .replace(/\son\w+='[^']*'/gi, "");
+const demoteH1Tags = (value = "") => String(value)
+  .replace(/<h1(\s[^>]*)?>/gi, "<h2>")
+  .replace(/<\/h1>/gi, "</h2>");
+const buildBreadcrumbSchema = (items = []) => ({
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: items.map((item, index) => ({
+    "@type": "ListItem",
+    position: index + 1,
+    name: item.name,
+    item: item.item
+  }))
+});
 
 const toText = slugToText;
 const toTitle = titleCase;
@@ -187,6 +218,8 @@ app.get(/.*/, async (req, res) => {
 
     let seo = null;
     let blogDoc = null;
+    let categoryContent = null;
+    let categoryBusinesses = [];
     let isCategoryPage = false;
     let isBlogPage = false;
 
@@ -233,6 +266,15 @@ app.get(/.*/, async (req, res) => {
         location: toText(firstSegment),
         category: toText(thirdSegment || secondSegment)
       });
+      categoryContent = await getSeoPageContentMetaService({
+        pageType: "category",
+        location: toText(firstSegment),
+        category: toText(thirdSegment || secondSegment)
+      });
+      categoryBusinesses = await findBusinessesByCategory(
+        toText(thirdSegment || secondSegment),
+        toText(firstSegment)
+      );
       isCategoryPage = true;
     }
     // SKIP_SEO_ROUTES → seo stays null, page uses its own client-side meta
@@ -254,10 +296,55 @@ app.get(/.*/, async (req, res) => {
     );
     const canonical = escapeHtml(seo?.canonical || `https://massclick.in${req.path}`);
 
-    const h1 = isCategoryPage ? `${categoryName} in ${locationName}` : (seo?.title || fallbackTitle);
+    const h1 = isBlogPage
+      ? (blogDoc?.heading || seo?.title || fallbackTitle)
+      : isCategoryPage
+        ? `${categoryName} in ${locationName}`
+        : (seo?.title || fallbackTitle);
 
-    const schema = isBlogPage
-      ? {
+    const breadcrumbItems = isBlogPage
+      ? [
+        { name: "Home", item: "https://massclick.in/" },
+        { name: "Blog", item: "https://massclick.in/blog" },
+        { name: blogDoc?.heading || h1, item: canonical }
+      ]
+      : isCategoryPage
+        ? [
+          { name: "Home", item: "https://massclick.in/" },
+          { name: locationName, item: `https://massclick.in/${firstSegment}` },
+          { name: categoryName, item: canonical }
+        ]
+        : [
+          { name: "Home", item: canonical }
+        ];
+
+    const basePublisher = {
+      "@type": "Organization",
+      name: "Massclick",
+      url: "https://massclick.in"
+    };
+
+    const schemaObjects = [];
+
+    if (!firstSegment) {
+      schemaObjects.push(
+        {
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          name: "Massclick",
+          url: "https://massclick.in",
+          logo: "https://massclick.in/mi.png"
+        },
+        {
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          name: "Massclick",
+          url: "https://massclick.in/",
+          publisher: basePublisher
+        }
+      );
+    } else if (isBlogPage) {
+      schemaObjects.push({
         "@context": "https://schema.org",
         "@type": "BlogPosting",
         headline: blogDoc?.heading || h1,
@@ -270,34 +357,134 @@ app.get(/.*/, async (req, res) => {
           "@type": "Person",
           name: blogDoc?.author || "Massclick"
         },
-        publisher: {
-          "@type": "Organization",
-          name: "Massclick",
-          url: "https://massclick.in"
-        }
+        publisher: basePublisher
+      });
+
+      if (Array.isArray(blogDoc?.faq) && blogDoc.faq.length > 0) {
+        schemaObjects.push({
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          mainEntity: blogDoc.faq.map((item) => ({
+            "@type": "Question",
+            name: item.question,
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: item.answer
+            }
+          }))
+        });
       }
-      : {
+    } else if (isCategoryPage) {
+      schemaObjects.push({
         "@context": "https://schema.org",
-        "@type": isCategoryPage ? "CollectionPage" : "WebSite",
+        "@type": "CollectionPage",
         name: h1,
         url: canonical,
         description,
-        publisher: {
-          "@type": "Organization",
-          name: "Massclick",
-          url: "https://massclick.in"
-        }
-      };
+        publisher: basePublisher
+      });
 
-    const serverContent = isCategoryPage
+      if (Array.isArray(categoryBusinesses) && categoryBusinesses.length > 0) {
+        schemaObjects.push({
+          "@context": "https://schema.org",
+          "@type": "ItemList",
+          name: `Best ${categoryName} in ${locationName}`,
+          itemListElement: categoryBusinesses.slice(0, 10).map((business, index) => ({
+            "@type": "ListItem",
+            position: index + 1,
+            url: `https://massclick.in/business/${String(business.location || "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-")}/${String(business.businessName || "business").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-")}/${business._id}`,
+            item: {
+              "@type": "LocalBusiness",
+              name: business.businessName,
+              address: business.street || business.location,
+              telephone: business.contact || undefined,
+              areaServed: business.location || locationName
+            }
+          }))
+        });
+
+        schemaObjects.push({
+          "@context": "https://schema.org",
+          "@type": "LocalBusiness",
+          name: `${categoryName} in ${locationName}`,
+          areaServed: {
+            "@type": "City",
+            name: locationName
+          },
+          provider: basePublisher
+        });
+      }
+    } else {
+      schemaObjects.push({
+        "@context": "https://schema.org",
+        "@type": "WebPage",
+        name: h1,
+        url: canonical,
+        description,
+        publisher: basePublisher
+      });
+    }
+
+    schemaObjects.push(buildBreadcrumbSchema(breadcrumbItems));
+
+    const categoryIntroHtml = categoryContent
+      ? `
+        ${categoryContent.headerContent ? `<section>${sanitizeHtmlFragment(demoteH1Tags(categoryContent.headerContent))}</section>` : ""}
+        ${categoryContent.pageContent ? `<article>${sanitizeHtmlFragment(demoteH1Tags(categoryContent.pageContent))}</article>` : ""}
+      `
+      : "";
+
+    const blogFaqHtml = Array.isArray(blogDoc?.faq) && blogDoc.faq.length > 0
+      ? `
+        <section>
+          <h2>Frequently Asked Questions</h2>
+          ${blogDoc.faq.map((item) => `
+            <div>
+              <h3>${escapeHtml(item.question)}</h3>
+              <p>${escapeHtml(item.answer)}</p>
+            </div>
+          `).join("")}
+        </section>
+      `
+      : "";
+
+    const blogContentHtml = blogDoc?.pageContent
+      ? sanitizeHtmlFragment(demoteH1Tags(blogDoc.pageContent))
+      : "";
+
+    const serverContent = isBlogPage
       ? `
         <section style="padding:20px;font-family:Arial,sans-serif">
+          <nav aria-label="Breadcrumb" style="margin-bottom:12px">
+            <a href="https://massclick.in/">Home</a> &gt;
+            <a href="https://massclick.in/blog"> Blog</a> &gt;
+            <span>${escapeHtml(blogDoc?.heading || h1)}</span>
+          </nav>
+          <h1>${escapeHtml(blogDoc?.heading || h1)}</h1>
+          <p>${description}</p>
+          <div style="margin-bottom:16px;color:#555">
+            ${blogDoc?.createdAt ? `<span>Published ${escapeHtml(formatDisplayDate(blogDoc.createdAt))}</span>` : ""}
+            ${blogDoc?.updatedAt ? `<span style="margin-left:12px">Updated ${escapeHtml(formatDisplayDate(blogDoc.updatedAt))}</span>` : ""}
+          </div>
+          ${blogContentHtml}
+          ${blogFaqHtml}
+        </section>
+      `
+      : isCategoryPage
+      ? `
+        <section style="padding:20px;font-family:Arial,sans-serif">
+          <nav aria-label="Breadcrumb" style="margin-bottom:12px">
+            <a href="https://massclick.in/">Home</a> &gt;
+            <a href="https://massclick.in/${firstSegment}"> ${escapeHtml(locationName)}</a> &gt;
+            <span>${escapeHtml(categoryName)}</span>
+          </nav>
           <h1>${escapeHtml(h1)}</h1>
           <p>${description}</p>
           <div>
             <h2>Top ${escapeHtml(categoryName)}</h2>
             <p>Explore verified businesses, ratings, contact details and addresses in ${escapeHtml(locationName)}.</p>
           </div>
+          ${categoryIntroHtml}
         </section>
       `
       : `
@@ -316,11 +503,13 @@ app.get(/.*/, async (req, res) => {
         const setContent = (val) => tag.replace(/(\bcontent\s*=\s*["'])([^"']*)/, `$1${val}`);
         if (nameVal === "description") return setContent(description);
         if (nameVal === "keywords") return setContent(keywords);
+        if (nameVal === "twitter:card") return setContent("summary_large_image");
         if (nameVal === "twitter:title") return setContent(title);
         if (nameVal === "twitter:description") return setContent(description);
         if (propVal === "og:title") return setContent(title);
         if (propVal === "og:description") return setContent(description);
         if (propVal === "og:url") return setContent(canonical);
+        if (propVal === "og:type") return setContent(isBlogPage ? "article" : "website");
         return tag;
       })
       .replace(/<link\b[^>]*>/gi, (tag) => {
@@ -332,8 +521,11 @@ app.get(/.*/, async (req, res) => {
     // Inject SEO data as a window variable — client reads this for instant correct hydration
     const ssrSeoJson = JSON.stringify({ title, description, keywords, canonical, robots: "index, follow" })
       .replace(/<\//g, "<\\/");
+    const schemaScripts = schemaObjects
+      .map((schema) => `<script type="application/ld+json">${JSON.stringify(schema)}</script>`)
+      .join("");
     html = html
-      .replace("</head>", `<script>window.__SSR_SEO__=${ssrSeoJson}</script><script type="application/ld+json">${JSON.stringify(schema)}</script></head>`)
+      .replace("</head>", `<script>window.__SSR_SEO__=${ssrSeoJson}</script>${schemaScripts}</head>`)
       .replace('<div id="root"></div>', `<div id="root">${serverContent}</div>`);
 
     res.setHeader("X-Robots-Tag", "index, follow");
