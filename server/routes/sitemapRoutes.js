@@ -65,141 +65,119 @@ const sendXml = (res, xml) => {
 ========================================================= */
 const categoryGroups = [
   {
-    parent: "contractor",
+    parent: "contractors",
     exact: ["contractor", "contractors"],
     keywords: [
-      "painting contractor",
-      "roofing contractors",
-      "civil contractors",
-      "plumbing contractor",
-      "flooring contractors",
-      "carpentry contractors",
-      "interior contractors",
-      "false ceiling contractors",
-      "road construction contractors",
-      "labour contractors",
-      "fabrication contractors",
-      "drainage contractors",
-      "pipeline contractors",
-      "waterproofing contractors",
-      "tiling contractors",
-      "welding contractors",
-      "fire fighting contractors",
-      "borewell contractors",
-      "electrical contractor",
-      "building contractors"
-    ]
+      "contractor",
+      "builder",
+      "construction",
+      "roofing",
+      "interior",
+      "fabrication",
+      "civil",
+      "tiles",
+      "painting",
+      "plumbing",
+      "electrical",
+    ],
   },
   {
     parent: "education",
     exact: ["education"],
     keywords: [
-      "Vocational Training",
+      "school",
       "schools",
-      "play schools",
-      "online education",
+      "college",
       "colleges",
-      "kindergartens",
-      "skill development institutes",
-      "tutorials",
-      "children schools",
-      "coaching centers",
-      "language training centers"
-    ]
+      "academy",
+      "coaching",
+      "tuition",
+      "training",
+      "institute",
+      "play-school",
+      "kindergarten",
+    ],
   },
   {
     parent: "hospitals",
     exact: ["hospital", "hospitals"],
     keywords: [
-      "Dentist",
-      "ayurvedic hospitals",
-      "orthopedic hospitals",
-      "public hospitals",
-      "neurological hospitals",
-      "multispeciality hospitals",
-      "public veterinary hospitals",
-      "eye hospitals",
-      "children hospitals",
-      "cancer hospitals",
-      "swine flu testing centres",
-      "veterinary hospitals",
-      "nursing homes",
-      "private hospitals",
-      "kidney hospitals",
-      "maternity hospitals",
-      "diabetic centres",
-      "cardiac hospitals",
-      "tuberculosis hospitals"
-    ]
+      "hospital",
+      "hospitals",
+      "clinic",
+      "hearing",
+      "dental",
+      "dentist",
+      "ayurvedic",
+      "homeopathic",
+      "herbal",
+      "medical",
+    ],
+  },
+  {
+    parent: "restaurants",
+    exact: ["restaurant", "restaurants"],
+    keywords: [
+      "restaurant",
+      "restaurants",
+      "hotel",
+      "veg",
+      "non-veg",
+      "food",
+      "cafe",
+      "biryani",
+      "bakery",
+    ],
+  },
+  {
+    parent: "beauty-and-spa",
+    exact: ["salon", "salons"],
+    keywords: ["salon", "beauty", "spa", "hair", "makeup"],
+  },
+  {
+    parent: "electronics",
+    exact: ["electronics"],
+    keywords: [
+      "electronics",
+      "cctv",
+      "camera",
+      "computer",
+      "laptop",
+      "printer",
+      "mobile",
+    ],
   },
   {
     parent: "rent-and-hire",
     exact: ["rent-and-hire"],
     keywords: [
-      "car rental",
-      "cranes on rent",
-      "mini trucks on rent",
-      "costumes on rent",
-      "bike on rent",
-      "chairs on rent",
-      "mini bus on rent",
-      "cooks on rent",
-      "passenger van on rent",
-      "ac on rent",
-      "cameras on rent",
-      "projectors on rent",
-      "furnitures on rent",
-      "dj equipments on rent",
-      "rooms on rent",
-      "air coolers on rent",
-      "Dead Body Freezer Box On Rent",
-      "sound systems on rent",
-      "bridal wear on rent",
-      "farm house on rent",
-      "tempo travellers on rent",
-      "bungalows on rent",
-      "generators on rent",
-      "trucks on rent",
-      "bus on rent",
-      "laptops on rent",
-      "vans on rent"
-    ]
+      "rent",
+      "rental",
+      "hire",
+      "car-rental",
+      "van",
+      "bus",
+      "generator",
+    ],
   },
-  {
-    parent: "packers-and-movers",
-    exact: ["packers-and-movers"],
-    keywords: [
-      "packers and movers outside india",
-      "packers and movers within city",
-      "Packers And Movers For Commercial",
-      "packers and movers all india"
-    ]
-  }
 ];
 
 const getCategoryHierarchy = (category = "") => {
   const slug = safeSlug(category);
 
   for (const group of categoryGroups) {
-    // parent direct match
     if (group.exact.includes(slug)) {
       return { parent: group.parent, child: null };
     }
 
-    // child exact slug match
-    for (const item of group.keywords) {
-      const childSlug = safeSlug(item);
+    const matched = group.keywords.some((word) => slug.includes(word));
 
-      if (slug === childSlug) {
-        return {
-          parent: group.parent,
-          child: childSlug,
-        };
-      }
+    if (matched) {
+      return { parent: group.parent, child: slug };
     }
   }
 
-  return null;
+  return { parent: slug || "services", child: null };
 };
 
 /* =========================================================
@@ -257,11 +235,7 @@ const buildCategoryUrlRecords = async () => {
 
     if (!location || !category) continue;
 
-    const result = getCategoryHierarchy(category);
-
-    if (!result) continue;
-
-    const { parent, child } = result;
+    const { parent, child } = getCategoryHierarchy(category);
     const lastmod = isoDate(row.updatedAt);
 
     const parentUrl = `${BASE_URL}/${location}/${parent}`;
@@ -278,7 +252,7 @@ const buildCategoryUrlRecords = async () => {
       );
     }
 
-    if (child) {
+    if (child && child !== parent) {
       const childUrl = `${BASE_URL}/${location}/${parent}/${child}`;
 
       if (!map.has(childUrl)) {
