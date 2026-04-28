@@ -273,6 +273,66 @@ const buildCategoryUrlRecords = async () => {
 };
 
 /* =========================================================
+   HTML SITEMAP
+========================================================= */
+router.get("/sitemap", async (req, res) => {
+  try {
+    const [categoryUrlNodes, blogs] = await Promise.all([
+      buildCategoryUrlRecords(),
+      seoPageContentBlogs
+        .find(
+          {
+            isActive: true,
+            slug: { $exists: true, $ne: "" },
+          },
+          {
+            slug: 1,
+            heading: 1,
+          }
+        )
+        .sort({ heading: 1 })
+        .lean()
+    ]);
+
+    const categoryLinks = categoryUrlNodes
+      .map((node) => (node.match(/<loc>(.*?)<\/loc>/i) || [])[1])
+      .filter(Boolean)
+      .slice(0, 200);
+
+    const blogLinks = blogs.map((blog) => ({
+      href: `${BASE_URL}/blog/${blog.slug}`,
+      label: blog.heading || blog.slug,
+    }));
+
+    res.type("text/html; charset=utf-8");
+    return res.status(200).send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HTML Sitemap | Massclick</title>
+  <meta name="description" content="Browse the Massclick HTML sitemap for blog posts and category listing pages." />
+</head>
+<body style="font-family: Arial, sans-serif; padding: 24px; line-height: 1.6;">
+  <h1>Massclick HTML Sitemap</h1>
+  <p>Browse important Massclick pages including category listings and blog posts.</p>
+  <h2>Category Pages</h2>
+  <ul>
+    ${categoryLinks.map((href) => `<li><a href="${href}">${href}</a></li>`).join("")}
+  </ul>
+  <h2>Blog Pages</h2>
+  <ul>
+    ${blogLinks.map((item) => `<li><a href="${item.href}">${xmlEscape(item.label)}</a></li>`).join("")}
+  </ul>
+</body>
+</html>`);
+  } catch (error) {
+    console.error("HTML_SITEMAP_ERROR:", error);
+    return res.status(500).end();
+  }
+});
+
+/* =========================================================
    CATEGORY SITEMAP
 ========================================================= */
 router.get("/sitemap-category-city-:page.xml", async (req, res) => {
