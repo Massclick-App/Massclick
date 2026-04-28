@@ -1,19 +1,15 @@
-import admin from 'firebase-admin';
+import admin from './firebaseInit.js';
 import userModel from '../model/msg91Model/usersModels.js';
-
-admin.initializeApp({
-  projectId: 'massclick-dc8f6'
-});
 
 export const sendFCMNotification = async (token, title, body, data = {}) => {
   try {
     const message = {
       token: token,
-      notification: {
-        title: title,
-        body: body,
-      },
+      notification: { title, body },
       data: data,
+      android: {
+        notification: { channelId: 'massclick_marketing' },
+      },
     };
 
     const response = await admin.messaging().send(message);

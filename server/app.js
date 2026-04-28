@@ -32,7 +32,9 @@ import versionRoutes from "./routes/versionRoutes.js";
 import favoriteRoute from "./routes/favoriteRoute.js";
 import fcmAdminRoutes from "./routes/fcmAdminRoutes.js";
 import footerRoutes from "./routes/footerRoute.js";
+import { startFCMScheduler } from "./scheduler/fcmScheduler.js";
 import { getSeoMeta } from "./helper/seo/seoHelper.js";
+import { getSeoBlogMetaBySlug } from "./helper/seo/seoOnpageBlogHelper.js";
 import { register } from "./utils/metrics.js";
 import { metricsMiddleware } from "./utils/metricsMiddleware.js";
 
@@ -145,6 +147,30 @@ app.use(express.static(CLIENT_BUILD_PATH, {
   }
 }));
 
+// Static page slug → { pageType, fallback title, fallback description, fallback keywords }
+const STATIC_PAGES = {
+  aboutus:      { pageType: "about",        title: "About Us | Massclick",                    description: "Learn about Massclick - India's trusted local business search platform.",         keywords: "massclick, about us, local business platform" },
+  testimonials: { pageType: "testimonial",  title: "Testimonials | Massclick",                description: "See what customers say about businesses listed on Massclick.",                    keywords: "massclick, testimonials, customer reviews" },
+  feedbacks:    { pageType: "feedback",     title: "Feedback | Massclick",                    description: "Share your feedback and help us improve Massclick for everyone.",                  keywords: "massclick, feedback, user reviews" },
+  customercare: { pageType: "customerCare", title: "Customer Care | Massclick",               description: "Contact Massclick customer support for help and assistance.",                      keywords: "massclick, customer care, support, help" },
+  portfolio:    { pageType: "portfolio",    title: "Portfolio | Massclick",                   description: "Explore the portfolio and work samples at Massclick.",                             keywords: "massclick, portfolio, projects" },
+  terms:        { pageType: "terms",        title: "Terms & Conditions | Massclick",          description: "Read the terms and conditions of using Massclick services.",                       keywords: "massclick, terms and conditions, usage policy" },
+  privacy:      { pageType: "privacy",      title: "Privacy Policy | Massclick",              description: "Learn how Massclick protects your privacy and handles your personal data.",        keywords: "massclick, privacy policy, data protection" },
+  refund:       { pageType: "refund",       title: "Refund Policy | Massclick",               description: "Understand Massclick's refund and cancellation policies.",                         keywords: "massclick, refund policy, cancellation" },
+  enquiry:      { pageType: "enquiry",      title: "Contact Us | Massclick",                  description: "Get in touch with the Massclick team for any queries or support.",                 keywords: "massclick, contact, enquiry, support" },
+  web:          { pageType: "web",          title: "Web Development Services | Massclick",    description: "Professional web development services to grow your business online.",              keywords: "massclick, web development, website design" },
+  digital:      { pageType: "digital",      title: "Digital Marketing Services | Massclick",  description: "Result-driven digital marketing services for local businesses.",                   keywords: "massclick, digital marketing, online marketing, SEO" },
+  graphic:      { pageType: "graphic",      title: "Graphic Design Services | Massclick",     description: "Creative graphic design services including logos, banners and branding.",          keywords: "massclick, graphic design, logo design, branding" },
+  seo:          { pageType: "seo",          title: "SEO Services | Massclick",                description: "Improve your search engine rankings with Massclick's professional SEO services.",  keywords: "massclick, SEO services, search engine optimisation" },
+};
+
+// Routes that are client-only and should not have SSR meta overridden
+const SKIP_SEO_ROUTES = new Set([
+  "business", "dashboard", "admin", "write-review",
+  "payment-status", "leads", "free-listing", "advertise",
+  "user", "deleteaccount",
+]);
+
 app.get(/.*/, async (req, res) => {
   try {
     const indexPath = path.join(CLIENT_BUILD_PATH, "index.html");
@@ -155,35 +181,84 @@ app.get(/.*/, async (req, res) => {
     let html = fs.readFileSync(indexPath, "utf8");
     const parts = req.path.split("/").filter(Boolean);
 
-    const locationSlug = parts[0] || "";
-    const categorySlug = parts[1] || "";
-    const subcategorySlug = parts[2] || "";
+    const firstSegment  = parts[0] || "";
+    const secondSegment = parts[1] || "";
+    const thirdSegment  = parts[2] || "";
 
     let seo = null;
+    let isCategoryPage = false;
+    let isBlogPage = false;
 
-    if (!locationSlug) {
+    // Per-page fallback meta (used when DB has no record for this pageType)
+    let fallbackTitle       = "Massclick - Local Business Search Platform";
+    let fallbackDescription = "Find trusted local businesses, services, and professionals near you on Massclick.";
+    let fallbackKeywords    = "massclick, local business search, business directory";
+
+    if (!firstSegment) {
+      // Home
       seo = await getSeoMeta({ pageType: "home" });
-    } else if (locationSlug && categorySlug) {
+      fallbackTitle       = "Massclick - India's Leading Local Search Platform";
+      fallbackDescription = "Find trusted local businesses, services, restaurants, hotels and professionals near you on Massclick.";
+      fallbackKeywords    = "massclick, local search, business directory india";
+
+    } else if (firstSegment === "blog" && secondSegment) {
+      // Blog detail pages: /blog/:slug
+      const blogDoc = await getSeoBlogMetaBySlug(secondSegment);
+      if (blogDoc) {
+        seo = {
+          title:       blogDoc.metaTitle,
+          description: blogDoc.metaDescription,
+          keywords:    blogDoc.metaKeywords,
+          canonical:   `https://massclick.in/blog/${secondSegment}`,
+        };
+      }
+      fallbackTitle       = "Massclick Blog - Local Business Guides & Tips";
+      fallbackDescription = "Read expert guides, tips and local business information on the Massclick blog.";
+      fallbackKeywords    = "massclick blog, local business tips, guides, how to";
+      isBlogPage = true;
+
+    } else if (STATIC_PAGES[firstSegment]) {
+      // Static pages: /aboutus, /terms, /privacy, /web, /digital, etc.
+      const pg = STATIC_PAGES[firstSegment];
+      seo = await getSeoMeta({ pageType: pg.pageType });
+      fallbackTitle       = pg.title;
+      fallbackDescription = pg.description;
+      fallbackKeywords    = pg.keywords;
+
+    } else if (!SKIP_SEO_ROUTES.has(firstSegment) && secondSegment) {
+      // Category/search pages: /:location/:category or /:location/:category/:subcategory
       seo = await getSeoMeta({
         pageType: "category",
-        location: toText(locationSlug),
-        category: toText(subcategorySlug || categorySlug)
+        location: toText(firstSegment),
+        category: toText(thirdSegment || secondSegment)
       });
+      isCategoryPage = true;
     }
+    // SKIP_SEO_ROUTES → seo stays null, page uses its own client-side meta
 
-    const locationName = toTitle(toText(locationSlug || "trichy"));
-    const categoryName = toTitle(toText(subcategorySlug || categorySlug || "Local Services"));
+    const locationName = isCategoryPage ? toTitle(toText(firstSegment || "trichy")) : "";
+    const categoryName = isCategoryPage ? toTitle(toText(thirdSegment || secondSegment || "Local Services")) : "";
 
-    const title = escapeHtml(seo?.title || `${categoryName} in ${locationName} | Massclick`);
-    const description = escapeHtml(seo?.description || `Find the best ${categoryName} in ${locationName}. Verified listings, reviews, phone numbers, address and more on Massclick.`);
-    const keywords = escapeHtml(seo?.keywords || `${categoryName}, ${locationName}, best ${categoryName} in ${locationName}`);
+    const title = escapeHtml(
+      seo?.title ||
+      (isCategoryPage ? `${categoryName} in ${locationName} | Massclick` : fallbackTitle)
+    );
+    const description = escapeHtml(
+      seo?.description ||
+      (isCategoryPage ? `Find the best ${categoryName} in ${locationName}. Verified listings, reviews, phone numbers, address and more on Massclick.` : fallbackDescription)
+    );
+    const keywords = escapeHtml(
+      seo?.keywords ||
+      (isCategoryPage ? `${categoryName}, ${locationName}, best ${categoryName} in ${locationName}` : fallbackKeywords)
+    );
     const canonical = escapeHtml(seo?.canonical || `https://massclick.in${req.path}`);
 
-    const h1 = `${categoryName} in ${locationName}`;
+    const h1 = isCategoryPage ? `${categoryName} in ${locationName}` : (seo?.title || fallbackTitle);
 
+    const schemaType = isCategoryPage ? "CollectionPage" : isBlogPage ? "Article" : "WebSite";
     const schema = {
       "@context": "https://schema.org",
-      "@type": locationSlug ? "CollectionPage" : "WebSite",
+      "@type": schemaType,
       name: h1,
       url: canonical,
       description,
@@ -194,28 +269,51 @@ app.get(/.*/, async (req, res) => {
       }
     };
 
-    const serverContent = `
-      <section style="padding:20px;font-family:Arial,sans-serif">
-        <h1>${escapeHtml(h1)}</h1>
-        <p>${description}</p>
-        <div>
-          <h2>Top ${escapeHtml(categoryName)}</h2>
-          <p>Explore verified businesses, ratings, contact details and addresses in ${escapeHtml(locationName)}.</p>
-        </div>
-      </section>
-    `;
+    const serverContent = isCategoryPage
+      ? `
+        <section style="padding:20px;font-family:Arial,sans-serif">
+          <h1>${escapeHtml(h1)}</h1>
+          <p>${description}</p>
+          <div>
+            <h2>Top ${escapeHtml(categoryName)}</h2>
+            <p>Explore verified businesses, ratings, contact details and addresses in ${escapeHtml(locationName)}.</p>
+          </div>
+        </section>
+      `
+      : `
+        <section style="padding:20px;font-family:Arial,sans-serif">
+          <h1>${escapeHtml(h1)}</h1>
+          <p>${description}</p>
+        </section>
+      `;
 
+    // Replace meta tag content values by processing each tag (robust against minified HTML)
     html = html
-      .replace(/<title>.*?<\/title>/i, `<title>${title}</title>`)
-      .replace(/<meta[^>]*name="description"[^>]*>/i, `<meta name="description" content="${description}">`)
-      .replace(/<meta[^>]*name="keywords"[^>]*>/i, `<meta name="keywords" content="${keywords}">`)
-      .replace(/<link[^>]*rel="canonical"[^>]*>/i, `<link rel="canonical" href="${canonical}">`)
-      .replace(/<meta[^>]*property="og:title"[^>]*>/i, `<meta property="og:title" content="${title}">`)
-      .replace(/<meta[^>]*property="og:description"[^>]*>/i, `<meta property="og:description" content="${description}">`)
-      .replace(/<meta[^>]*property="og:url"[^>]*>/i, `<meta property="og:url" content="${canonical}">`)
-      .replace(/<meta[^>]*name="twitter:title"[^>]*>/i, `<meta name="twitter:title" content="${title}">`)
-      .replace(/<meta[^>]*name="twitter:description"[^>]*>/i, `<meta name="twitter:description" content="${description}">`)
-      .replace("</head>", `<script type="application/ld+json">${JSON.stringify(schema)}</script></head>`)
+      .replace(/<title\b[^>]*>[^<]*<\/title>/i, `<title>${title}</title>`)
+      .replace(/<meta\b[^>]*>/gi, (tag) => {
+        const nameVal = (tag.match(/\bname\s*=\s*["']?([\w:.-]+)["']?/i) || [])[1]?.toLowerCase();
+        const propVal = (tag.match(/\bproperty\s*=\s*["']?([\w:.-]+)["']?/i) || [])[1]?.toLowerCase();
+        const setContent = (val) => tag.replace(/(\bcontent\s*=\s*["'])([^"']*)/, `$1${val}`);
+        if (nameVal === "description") return setContent(description);
+        if (nameVal === "keywords") return setContent(keywords);
+        if (nameVal === "twitter:title") return setContent(title);
+        if (nameVal === "twitter:description") return setContent(description);
+        if (propVal === "og:title") return setContent(title);
+        if (propVal === "og:description") return setContent(description);
+        if (propVal === "og:url") return setContent(canonical);
+        return tag;
+      })
+      .replace(/<link\b[^>]*>/gi, (tag) => {
+        if (/\brel\s*=\s*["']?canonical["']?/i.test(tag))
+          return tag.replace(/(\bhref\s*=\s*["'])([^"']*)/, `$1${canonical}`);
+        return tag;
+      });
+
+    // Inject SEO data as a window variable — client reads this for instant correct hydration
+    const ssrSeoJson = JSON.stringify({ title, description, keywords, canonical, robots: "index, follow" })
+      .replace(/<\//g, "<\\/");
+    html = html
+      .replace("</head>", `<script>window.__SSR_SEO__=${ssrSeoJson}</script><script type="application/ld+json">${JSON.stringify(schema)}</script></head>`)
       .replace('<div id="root"></div>', `<div id="root">${serverContent}</div>`);
 
     res.setHeader("X-Robots-Tag", "index, follow");
@@ -228,6 +326,7 @@ app.get(/.*/, async (req, res) => {
 
 mongoose.connect(MONGO_URI)
   .then(() => {
+    startFCMScheduler();
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });

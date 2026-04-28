@@ -28,6 +28,28 @@ import {
 
 
 
+const getSSRMeta = () => {
+  try {
+    // Primary: read from server-injected window variable (reliable across all HTML formats)
+    if (typeof window !== "undefined" && window.__SSR_SEO__) {
+      return window.__SSR_SEO__;
+    }
+    // Fallback: parse DOM meta tags (works in local dev without SSR injection)
+    if (typeof document === "undefined") return null;
+    const title = document.querySelector("title")?.textContent?.trim() || null;
+    const getAttr = (sel, attr = "content") =>
+      document.querySelector(sel)?.getAttribute(attr) || null;
+    const canonical = getAttr('link[rel="canonical"]', "href");
+    const description = getAttr('meta[name="description"]');
+    const keywords = getAttr('meta[name="keywords"]');
+    const robots = getAttr('meta[name="robots"]');
+    if (!title && !description) return null;
+    return { title, description, keywords, robots, canonical };
+  } catch {
+    return null;
+  }
+};
+
 /**
  * INITIAL STATE
  */
@@ -36,7 +58,7 @@ const initialState = {
   total: 0,
   pageNo: 1,
   pageSize: 10,
-  meta: null,
+  meta: getSSRMeta(),
   categorySuggestions: [],
   loading: false,
   error: null,
@@ -152,7 +174,7 @@ export default function seoReducer(state = initialState, action) {
     case CLEAR_SEO_META:
       return {
         ...state,
-        meta: null,
+        // keep previous meta until the next fetch completes to avoid flash
       };
 
 

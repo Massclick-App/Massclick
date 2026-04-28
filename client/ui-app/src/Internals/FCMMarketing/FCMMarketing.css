@@ -855,3 +855,131 @@
 .fcm-remove-image:hover {
   background: rgba(0, 0, 0, 0.85);
 }
+
+/* ── Send timing toggle ── */
+.fcm-send-toggle {
+  display: flex;
+  border: 1.5px solid var(--fcm-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.fcm-send-toggle-btn {
+  flex: 1;
+  padding: 9px 0;
+  background: #fafafa;
+  border: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--fcm-text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  transition: all 0.15s;
+}
+
+.fcm-send-toggle-btn:first-child {
+  border-right: 1.5px solid var(--fcm-border);
+}
+
+.fcm-send-toggle-btn:hover:not(.fcm-send-toggle-btn-active) {
+  background: #f3f4f6;
+}
+
+.fcm-send-toggle-btn-active {
+  background: var(--fcm-orange-light);
+  color: var(--fcm-orange);
+}
+
+.fcm-schedule-input-wrap {
+  margin-top: 10px;
+}
+
+/* ── Status badges ── */
+.fcm-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.fcm-status-sent {
+  background: #f0fdf4;
+  color: #16a34a;
+  border: 1px solid #bbf7d0;
+}
+
+.fcm-status-scheduled {
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+}
+
+.fcm-status-cancelled {
+  background: #f9fafb;
+  color: #9ca3af;
+  border: 1px solid #e5e7eb;
+}
+
+.fcm-status-failed {
+  background: #fef2f2;
+  color: var(--fcm-error);
+  border: 1px solid #fecaca;
+}
+
+/* ── Table action buttons ── */
+.fcm-table-actions {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.fcm-action-btn {
+  background: none;
+  border: 1px solid var(--fcm-border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+.fcm-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.fcm-action-btn-resend { color: var(--fcm-orange); }
+.fcm-action-btn-resend:hover:not(:disabled) { background: var(--fcm-orange-light); border-color: var(--fcm-orange); }
+
+.fcm-action-btn-repeat { color: #2563eb; }
+.fcm-action-btn-repeat:hover { background: #eff6ff; border-color: #2563eb; }
+
+.fcm-action-btn-cancel { color: var(--fcm-error); }
+.fcm-action-btn-cancel:hover { background: #fef2f2; border-color: var(--fcm-error); }
+
+/* ── Scheduled time cell ── */
+.fcm-table-scheduled-time {
+  color: #2563eb;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+/* ── Info banner (scheduled confirmation) ── */
+.fcm-banner-info {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #2563eb;
+}

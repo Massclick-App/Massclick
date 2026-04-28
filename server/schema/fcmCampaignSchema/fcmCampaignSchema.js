@@ -18,6 +18,12 @@ const fcmCampaignSchema = new mongoose.Schema({
   },
   targetUserId: { type: mongoose.Schema.Types.ObjectId, default: null },
   targetUserName: { type: String, default: "" },
+  status: {
+    type: String,
+    enum: ["sent", "scheduled", "cancelled", "failed"],
+    default: "sent",
+  },
+  scheduledAt: { type: Date, default: null },
   sentAt: { type: Date, default: Date.now },
   totalTargeted: { type: Number, default: 0 },
   successCount: { type: Number, default: 0 },

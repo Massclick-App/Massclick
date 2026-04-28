@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
+import { Helmet } from "react-helmet-async";
 import { fetchSeoBlogBySlug } from "../../../../redux/actions/seoPageContentBlogAction";
 import "./blogDetails.css";
 import Navbar from "../relatedBlogNavbar/relatedBlogNavbar";
@@ -220,12 +221,29 @@ const linkifyText = (text = "") => {
     window.open(url, "_blank");
   };
 
+  const ssrMeta = typeof window !== "undefined" ? window.__SSR_SEO__ : null;
+  const metaTitle       = blog?.metaTitle       || ssrMeta?.title       || "Massclick Blog";
+  const metaDescription = blog?.metaDescription || ssrMeta?.description || "Read expert guides and local business tips on the Massclick blog.";
+  const metaKeywords    = blog?.metaKeywords    || ssrMeta?.keywords    || "massclick blog, local business tips";
+  const canonical       = `https://massclick.in/blog/${slug}`;
+
   if (loading) return <div className="loader">Loading...</div>;
   if (error) return <div className="error">Error loading blog</div>;
   if (!blog) return null;
 
   return (
     <>
+      <Helmet>
+        <title>{metaTitle}</title>
+        <meta name="description"        content={metaDescription} />
+        <meta name="keywords"           content={metaKeywords} />
+        <link rel="canonical"           href={canonical} />
+        <meta property="og:title"       content={metaTitle} />
+        <meta property="og:description" content={metaDescription} />
+        <meta property="og:url"         content={canonical} />
+        <meta name="twitter:title"      content={metaTitle} />
+        <meta name="twitter:description" content={metaDescription} />
+      </Helmet>
       <Navbar />
 
       <div className="blog-container">

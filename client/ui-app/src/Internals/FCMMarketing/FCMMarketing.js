@@ -3,6 +3,9 @@ import { useDispatch, useSelector } from "react-redux";
 import {
   fetchFCMUsers,
   sendFCMMarketing,
+  scheduleFCMMarketing,
+  resendFCMCampaign,
+  cancelFCMCampaign,
   fetchFCMCampaigns,
   uploadFCMImage,
 } from "../../redux/actions/fcmMarketingAction.js";
@@ -31,6 +34,9 @@ import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
 import ImageOutlinedIcon from "@mui/icons-material/ImageOutlined";
 import CloseIcon from "@mui/icons-material/Close";
 import UploadIcon from "@mui/icons-material/Upload";
+import ScheduleIcon from "@mui/icons-material/Schedule";
+import ReplayIcon from "@mui/icons-material/Replay";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import "./FCMMarketing.css";
 
 const PLATFORM_OPTIONS = [
@@ -83,8 +89,25 @@ function NotificationPreview({ title, body, imageUrl, clickAction }) {
   );
 }
 
+function StatusBadge({ status }) {
+  const map = {
+    sent: { label: "Sent", cls: "fcm-status-sent" },
+    scheduled: { label: "Scheduled", cls: "fcm-status-scheduled" },
+    cancelled: { label: "Cancelled", cls: "fcm-status-cancelled" },
+    failed: { label: "Failed", cls: "fcm-status-failed" },
+  };
+  const s = map[status] || map.sent;
+  return <span className={`fcm-status-badge ${s.cls}`}>{s.label}</span>;
+}
+
+// Returns the minimum datetime string for the schedule input (5 min from now)
+function minScheduleDatetime() {
+  return new Date(Date.now() + 5 * 60 * 1000).toISOString().slice(0, 16);
+}
+
 export default function FCMMarketing() {
   const dispatch = useDispatch();
+  const composeRef = useRef(null);
 
   const {
     users = [],
@@ -92,6 +115,10 @@ export default function FCMMarketing() {
     sending = false,
     lastSendResult = null,
     sendError = null,
+    scheduling = false,
+    scheduleError = null,
+    resending = false,
+    resendError = null,
     campaigns = [],
     campaignsTotal = 0,
     campaignsLoading = false,
@@ -104,7 +131,10 @@ export default function FCMMarketing() {
   const [successBanner, setSuccessBanner] = useState(null);
   const [page, setPage] = useState(1);
   const [imageUploading, setImageUploading] = useState(false);
-  const [imageMode, setImageMode] = useState("upload"); // "upload" | "url"
+  const [imageMode, setImageMode] = useState("upload");
+  const [sendMode, setSendMode] = useState("now"); // "now" | "schedule"
+  const [scheduledAt, setScheduledAt] = useState("");
+  const [resendingId, setResendingId] = useState(null);
   const fileInputRef = useRef(null);
   const PAGE_SIZE = 20;
 
@@ -177,6 +207,15 @@ export default function FCMMarketing() {
     reader.readAsDataURL(file);
   };
 
+  const isValidUrl = (str) => {
+    try {
+      const url = new URL(str);
+      return url.protocol === "http:" || url.protocol === "https:";
+    } catch {
+      return false;
+    }
+  };
+
   const validate = () => {
     const errs = {};
 
@@ -198,6 +237,11 @@ export default function FCMMarketing() {
     if (form.targetType === "specific_user" && !form.targetUserId)
       errs.targetUserId = "Select a user";
 
+    if (sendMode === "schedule") {
+      if (!scheduledAt) errs.scheduledAt = "Pick a date and time";
+      else if (new Date(scheduledAt) <= new Date()) errs.scheduledAt = "Schedule time must be in the future";
+    }
+
     form.customData.forEach((row, idx) => {
       if (row.key || row.value) {
         if (!row.key.trim()) errs[`customData_${idx}`] = "Key is required";
@@ -210,31 +254,14 @@ export default function FCMMarketing() {
     return errs;
   };
 
-  const isValidUrl = (str) => {
-    try {
-      const url = new URL(str);
-      return url.protocol === "http:" || url.protocol === "https:";
-    } catch {
-      return false;
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const errs = validate();
-    if (Object.keys(errs).length > 0) {
-      setErrors(errs);
-      return;
-    }
-
+  const buildPayload = () => {
     const customDataObj = {};
     form.customData.forEach((row) => {
       if (row.key.trim() && row.value.trim()) {
         customDataObj[row.key.trim()] = row.value.trim();
       }
     });
-
-    const payload = {
+    return {
       title: form.title.trim(),
       body: form.body.trim(),
       imageUrl: form.imageUrl.trim(),
@@ -245,18 +272,91 @@ export default function FCMMarketing() {
       targetUserId: form.targetType === "specific_user" ? form.targetUserId : null,
       targetUserName: form.targetType === "specific_user" ? form.targetUserName : "",
     };
+  };
+
+  const resetForm = () => {
+    setForm(EMPTY_FORM);
+    setUserSearch("");
+    setErrors({});
+    setSendMode("now");
+    setScheduledAt("");
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const errs = validate();
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs);
+      return;
+    }
+
+    const payload = buildPayload();
 
     try {
-      const result = await dispatch(sendFCMMarketing(payload));
-      setSuccessBanner(result);
-      setForm(EMPTY_FORM);
-      setUserSearch("");
-      setErrors({});
+      if (sendMode === "schedule") {
+        const result = await dispatch(scheduleFCMMarketing({ ...payload, scheduledAt: new Date(scheduledAt).toISOString() }));
+        setSuccessBanner({ type: "schedule", scheduledAt: result.scheduledAt });
+        resetForm();
+        dispatch(fetchFCMCampaigns(1, PAGE_SIZE));
+        setPage(1);
+        setTimeout(() => setSuccessBanner(null), 7000);
+      } else {
+        const result = await dispatch(sendFCMMarketing(payload));
+        setSuccessBanner({ type: "send", ...result });
+        resetForm();
+        dispatch(fetchFCMCampaigns(1, PAGE_SIZE));
+        setPage(1);
+        setTimeout(() => setSuccessBanner(null), 6000);
+      }
+    } catch {
+      // error in Redux state via sendError / scheduleError
+    }
+  };
+
+  const handleResend = async (campaign) => {
+    if (!window.confirm(`Resend "${campaign.title}" now?`)) return;
+    setResendingId(campaign._id);
+    try {
+      const result = await dispatch(resendFCMCampaign(campaign._id));
+      setSuccessBanner({ type: "send", ...result });
       dispatch(fetchFCMCampaigns(1, PAGE_SIZE));
       setPage(1);
       setTimeout(() => setSuccessBanner(null), 6000);
     } catch {
-      // error is in Redux state via sendError
+      // resendError in Redux state
+    } finally {
+      setResendingId(null);
+    }
+  };
+
+  const handleRepeat = (campaign) => {
+    const customDataRows = campaign.customData
+      ? Object.entries(campaign.customData).map(([key, value]) => ({ key, value }))
+      : [];
+    setForm({
+      title: campaign.title,
+      body: campaign.body,
+      imageUrl: campaign.imageUrl || "",
+      clickAction: campaign.clickAction || "",
+      targetType: campaign.targetType,
+      targetPlatform: campaign.targetPlatform || "android",
+      targetUserId: campaign.targetUserId || "",
+      targetUserName: campaign.targetUserName || "",
+      customData: customDataRows,
+    });
+    setSendMode("now");
+    setScheduledAt("");
+    setErrors({});
+    setUserSearch("");
+    composeRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const handleCancelCampaign = async (campaign) => {
+    if (!window.confirm(`Cancel scheduled campaign "${campaign.title}"?`)) return;
+    try {
+      await dispatch(cancelFCMCampaign(campaign._id));
+    } catch {
+      // error handled in state
     }
   };
 
@@ -268,9 +368,18 @@ export default function FCMMarketing() {
     [dispatch]
   );
 
+  const isWorking = sending || scheduling;
+  const activeError = sendError || scheduleError;
+
   const campaignColumns = [
-    { id: "title", label: "Title", minWidth: 140 },
-    { id: "body", label: "Body", minWidth: 180 },
+    {
+      id: "status",
+      label: "Status",
+      minWidth: 90,
+      renderCell: (row) => <StatusBadge status={row.status || "sent"} />,
+    },
+    { id: "title", label: "Title", minWidth: 130 },
+    { id: "body", label: "Body", minWidth: 160 },
     {
       id: "targetType",
       label: "Target",
@@ -283,33 +392,79 @@ export default function FCMMarketing() {
     {
       id: "totalTargeted",
       label: "Targeted",
-      minWidth: 80,
-      renderCell: (row) => <span className="fcm-table-num">{row.totalTargeted}</span>,
+      minWidth: 70,
+      renderCell: (row) => <span className="fcm-table-num">{row.totalTargeted ?? "—"}</span>,
     },
     {
       id: "successCount",
       label: "Sent",
-      minWidth: 70,
-      renderCell: (row) => (
-        <span className="fcm-table-success">{row.successCount}</span>
-      ),
+      minWidth: 60,
+      renderCell: (row) => <span className="fcm-table-success">{row.successCount ?? "—"}</span>,
     },
     {
       id: "failureCount",
       label: "Failed",
-      minWidth: 70,
+      minWidth: 60,
       renderCell: (row) => (
         <span className={row.failureCount > 0 ? "fcm-table-fail" : "fcm-table-num"}>
-          {row.failureCount}
+          {row.failureCount ?? "—"}
         </span>
       ),
     },
     {
-      id: "sentAt",
-      label: "Sent At",
-      minWidth: 150,
-      renderCell: (row) =>
-        row.sentAt ? new Date(row.sentAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }) : "-",
+      id: "time",
+      label: "Time",
+      minWidth: 140,
+      renderCell: (row) => {
+        if (row.status === "scheduled" && row.scheduledAt) {
+          return (
+            <span className="fcm-table-scheduled-time">
+              {new Date(row.scheduledAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}
+            </span>
+          );
+        }
+        return row.sentAt
+          ? new Date(row.sentAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })
+          : "—";
+      },
+    },
+    {
+      id: "actions",
+      label: "Actions",
+      minWidth: 160,
+      renderCell: (row) => (
+        <div className="fcm-table-actions">
+          <button
+            className="fcm-action-btn fcm-action-btn-resend"
+            onClick={() => handleResend(row)}
+            disabled={resendingId === row._id}
+            title="Resend now"
+          >
+            {resendingId === row._id
+              ? <CircularProgress size={11} sx={{ color: "#ff8c00" }} />
+              : <ReplayIcon sx={{ fontSize: 13 }} />}
+            Resend
+          </button>
+          <button
+            className="fcm-action-btn fcm-action-btn-repeat"
+            onClick={() => handleRepeat(row)}
+            title="Load into form to edit and resend"
+          >
+            <ContentCopyIcon sx={{ fontSize: 13 }} />
+            Repeat
+          </button>
+          {row.status === "scheduled" && (
+            <button
+              className="fcm-action-btn fcm-action-btn-cancel"
+              onClick={() => handleCancelCampaign(row)}
+              title="Cancel scheduled campaign"
+            >
+              <CloseIcon sx={{ fontSize: 13 }} />
+              Cancel
+            </button>
+          )}
+        </div>
+      ),
     },
   ];
 
@@ -346,7 +501,7 @@ export default function FCMMarketing() {
       </div>
 
       {/* Success Banner */}
-      {successBanner && (
+      {successBanner && successBanner.type === "send" && (
         <div className="fcm-banner fcm-banner-success">
           <CheckCircleOutlineIcon sx={{ fontSize: 20, mr: 1 }} />
           <span>
@@ -356,18 +511,35 @@ export default function FCMMarketing() {
           </span>
         </div>
       )}
+      {successBanner && successBanner.type === "schedule" && (
+        <div className="fcm-banner fcm-banner-info">
+          <ScheduleIcon sx={{ fontSize: 20, mr: 1 }} />
+          <span>
+            Campaign scheduled for{" "}
+            <strong>
+              {new Date(successBanner.scheduledAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}
+            </strong>
+          </span>
+        </div>
+      )}
 
-      {/* Send Error Banner */}
-      {sendError && (
+      {/* Error Banners */}
+      {activeError && (
         <div className="fcm-banner fcm-banner-error">
           <ErrorOutlineIcon sx={{ fontSize: 20, mr: 1 }} />
-          <span>{sendError}</span>
+          <span>{activeError}</span>
+        </div>
+      )}
+      {resendError && (
+        <div className="fcm-banner fcm-banner-error">
+          <ErrorOutlineIcon sx={{ fontSize: 20, mr: 1 }} />
+          <span>Resend failed: {resendError}</span>
         </div>
       )}
 
       <div className="fcm-layout">
         {/* LEFT: Compose Form */}
-        <form className="fcm-card fcm-compose" onSubmit={handleSubmit} noValidate>
+        <form ref={composeRef} className="fcm-card fcm-compose" onSubmit={handleSubmit} noValidate>
           <h2 className="fcm-card-title">Compose Notification</h2>
 
           {/* Title */}
@@ -642,19 +814,65 @@ export default function FCMMarketing() {
           )}
           {form.targetType === "platform" && form.targetPlatform && !usersLoading && (
             <p className="fcm-audience-hint">
-              Users with active{" "}
-              <strong>{form.targetPlatform}</strong> tokens:{" "}
-              <strong>
-                {users.filter((u) => u.platforms.includes(form.targetPlatform)).length}
-              </strong>
+              Users with active <strong>{form.targetPlatform}</strong> tokens:{" "}
+              <strong>{users.filter((u) => u.platforms.includes(form.targetPlatform)).length}</strong>
             </p>
           )}
 
-          <button type="submit" className="fcm-send-btn" disabled={sending}>
-            {sending ? (
+          <hr className="fcm-divider" />
+
+          {/* Send Timing */}
+          <div className="fcm-field">
+            <label className="fcm-label">Send Timing</label>
+            <div className="fcm-send-toggle">
+              <button
+                type="button"
+                className={`fcm-send-toggle-btn ${sendMode === "now" ? "fcm-send-toggle-btn-active" : ""}`}
+                onClick={() => { setSendMode("now"); setScheduledAt(""); setErrors((p) => ({ ...p, scheduledAt: "" })); }}
+              >
+                <SendIcon sx={{ fontSize: 15 }} />
+                Send Now
+              </button>
+              <button
+                type="button"
+                className={`fcm-send-toggle-btn ${sendMode === "schedule" ? "fcm-send-toggle-btn-active" : ""}`}
+                onClick={() => setSendMode("schedule")}
+              >
+                <ScheduleIcon sx={{ fontSize: 15 }} />
+                Schedule
+              </button>
+            </div>
+
+            {sendMode === "schedule" && (
+              <div className="fcm-schedule-input-wrap">
+                <label className="fcm-label" style={{ marginTop: 10 }}>
+                  Date &amp; Time <span className="fcm-required">*</span>
+                </label>
+                <input
+                  className={`fcm-input ${errors.scheduledAt ? "fcm-input-error" : ""}`}
+                  type="datetime-local"
+                  value={scheduledAt}
+                  min={minScheduleDatetime()}
+                  onChange={(e) => {
+                    setScheduledAt(e.target.value);
+                    if (errors.scheduledAt) setErrors((p) => ({ ...p, scheduledAt: "" }));
+                  }}
+                />
+                {errors.scheduledAt && <p className="fcm-error-msg">{errors.scheduledAt}</p>}
+              </div>
+            )}
+          </div>
+
+          <button type="submit" className="fcm-send-btn" disabled={isWorking}>
+            {isWorking ? (
               <>
                 <CircularProgress size={16} sx={{ color: "#fff", mr: 1 }} />
-                Sending...
+                {scheduling ? "Scheduling..." : "Sending..."}
+              </>
+            ) : sendMode === "schedule" ? (
+              <>
+                <ScheduleIcon sx={{ fontSize: 18, mr: 0.8 }} />
+                Schedule Notification
               </>
             ) : (
               <>
@@ -682,6 +900,12 @@ export default function FCMMarketing() {
               )}
               {form.targetType === "specific_user" && (
                 <p><span className="fcm-meta-label">User:</span> {form.targetUserName || "—"}</p>
+              )}
+              {sendMode === "schedule" && scheduledAt && (
+                <p>
+                  <span className="fcm-meta-label">Scheduled:</span>{" "}
+                  {new Date(scheduledAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}
+                </p>
               )}
               {form.customData.filter((r) => r.key && r.value).length > 0 && (
                 <p><span className="fcm-meta-label">Custom data keys:</span> {form.customData.filter((r) => r.key).map((r) => r.key).join(", ")}</p>
@@ -734,7 +958,7 @@ export default function FCMMarketing() {
           <div className="fcm-empty-history">
             <NotificationsActiveIcon sx={{ fontSize: 40, color: "#d1d5db", mb: 1 }} />
             <Typography variant="body2" color="text.secondary">
-              No campaigns sent yet. Send your first notification above.
+              No campaigns yet. Send your first notification above.
             </Typography>
           </div>
         ) : (
@@ -755,7 +979,7 @@ export default function FCMMarketing() {
                     <TableRow key={row._id} hover>
                       {campaignColumns.map((col) => (
                         <TableCell key={col.id} sx={{ fontSize: "0.82rem", color: "#374151" }}>
-                          {col.renderCell ? col.renderCell(row) : (row[col.id] ?? "-")}
+                          {col.renderCell ? col.renderCell(row) : (row[col.id] ?? "—")}
                         </TableCell>
                       ))}
                     </TableRow>

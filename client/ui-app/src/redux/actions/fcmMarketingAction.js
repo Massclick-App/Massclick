@@ -2,6 +2,9 @@ import axios from "axios";
 import {
   FETCH_FCM_USERS_REQUEST, FETCH_FCM_USERS_SUCCESS, FETCH_FCM_USERS_FAILURE,
   SEND_FCM_MARKETING_REQUEST, SEND_FCM_MARKETING_SUCCESS, SEND_FCM_MARKETING_FAILURE,
+  SCHEDULE_FCM_MARKETING_REQUEST, SCHEDULE_FCM_MARKETING_SUCCESS, SCHEDULE_FCM_MARKETING_FAILURE,
+  RESEND_FCM_CAMPAIGN_REQUEST, RESEND_FCM_CAMPAIGN_SUCCESS, RESEND_FCM_CAMPAIGN_FAILURE,
+  CANCEL_FCM_CAMPAIGN_REQUEST, CANCEL_FCM_CAMPAIGN_SUCCESS, CANCEL_FCM_CAMPAIGN_FAILURE,
   FETCH_FCM_CAMPAIGNS_REQUEST, FETCH_FCM_CAMPAIGNS_SUCCESS, FETCH_FCM_CAMPAIGNS_FAILURE,
 } from "./fcmMarketingActionTypes";
 
@@ -14,29 +17,61 @@ const authHeaders = () => ({
 export const fetchFCMUsers = () => async (dispatch) => {
   dispatch({ type: FETCH_FCM_USERS_REQUEST });
   try {
-    const { data } = await axios.get(`${API_URL}/admin/fcm/users-with-tokens`, {
-      headers: authHeaders(),
-    });
+    const { data } = await axios.get(`${API_URL}/admin/fcm/users-with-tokens`, { headers: authHeaders() });
     dispatch({ type: FETCH_FCM_USERS_SUCCESS, payload: data.data });
   } catch (error) {
-    dispatch({
-      type: FETCH_FCM_USERS_FAILURE,
-      payload: error.response?.data?.message || error.message,
-    });
+    dispatch({ type: FETCH_FCM_USERS_FAILURE, payload: error.response?.data?.message || error.message });
   }
 };
 
 export const sendFCMMarketing = (payload) => async (dispatch) => {
   dispatch({ type: SEND_FCM_MARKETING_REQUEST });
   try {
-    const { data } = await axios.post(`${API_URL}/admin/fcm/send-marketing`, payload, {
-      headers: authHeaders(),
-    });
+    const { data } = await axios.post(`${API_URL}/admin/fcm/send-marketing`, payload, { headers: authHeaders() });
     dispatch({ type: SEND_FCM_MARKETING_SUCCESS, payload: data });
     return data;
   } catch (error) {
     const errMsg = error.response?.data?.message || error.message;
     dispatch({ type: SEND_FCM_MARKETING_FAILURE, payload: errMsg });
+    throw new Error(errMsg);
+  }
+};
+
+export const scheduleFCMMarketing = (payload) => async (dispatch) => {
+  dispatch({ type: SCHEDULE_FCM_MARKETING_REQUEST });
+  try {
+    const { data } = await axios.post(`${API_URL}/admin/fcm/schedule-marketing`, payload, { headers: authHeaders() });
+    dispatch({ type: SCHEDULE_FCM_MARKETING_SUCCESS, payload: data });
+    return data;
+  } catch (error) {
+    const errMsg = error.response?.data?.message || error.message;
+    dispatch({ type: SCHEDULE_FCM_MARKETING_FAILURE, payload: errMsg });
+    throw new Error(errMsg);
+  }
+};
+
+export const resendFCMCampaign = (campaignId) => async (dispatch) => {
+  dispatch({ type: RESEND_FCM_CAMPAIGN_REQUEST });
+  try {
+    const { data } = await axios.post(`${API_URL}/admin/fcm/campaigns/${campaignId}/resend`, {}, { headers: authHeaders() });
+    dispatch({ type: RESEND_FCM_CAMPAIGN_SUCCESS, payload: data });
+    return data;
+  } catch (error) {
+    const errMsg = error.response?.data?.message || error.message;
+    dispatch({ type: RESEND_FCM_CAMPAIGN_FAILURE, payload: errMsg });
+    throw new Error(errMsg);
+  }
+};
+
+export const cancelFCMCampaign = (campaignId) => async (dispatch) => {
+  dispatch({ type: CANCEL_FCM_CAMPAIGN_REQUEST });
+  try {
+    const { data } = await axios.delete(`${API_URL}/admin/fcm/campaigns/${campaignId}`, { headers: authHeaders() });
+    dispatch({ type: CANCEL_FCM_CAMPAIGN_SUCCESS, payload: campaignId });
+    return data;
+  } catch (error) {
+    const errMsg = error.response?.data?.message || error.message;
+    dispatch({ type: CANCEL_FCM_CAMPAIGN_FAILURE, payload: errMsg });
     throw new Error(errMsg);
   }
 };
@@ -53,15 +88,9 @@ export const uploadFCMImage = (base64DataUrl) => async () => {
 export const fetchFCMCampaigns = (page = 1, limit = 20) => async (dispatch) => {
   dispatch({ type: FETCH_FCM_CAMPAIGNS_REQUEST });
   try {
-    const { data } = await axios.get(
-      `${API_URL}/admin/fcm/campaigns?page=${page}&limit=${limit}`,
-      { headers: authHeaders() }
-    );
+    const { data } = await axios.get(`${API_URL}/admin/fcm/campaigns?page=${page}&limit=${limit}`, { headers: authHeaders() });
     dispatch({ type: FETCH_FCM_CAMPAIGNS_SUCCESS, payload: data });
   } catch (error) {
-    dispatch({
-      type: FETCH_FCM_CAMPAIGNS_FAILURE,
-      payload: error.response?.data?.message || error.message,
-    });
+    dispatch({ type: FETCH_FCM_CAMPAIGNS_FAILURE, payload: error.response?.data?.message || error.message });
   }
 };

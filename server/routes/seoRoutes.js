@@ -32,7 +32,7 @@ router.delete("/api/seopagecontent/delete/:id", oauthAuthentication, deleteSeoPa
 router.post("/api/seopagecontentblog/create", oauthAuthentication, addSeoPageContentBlogAction);
 router.get("/api/seopagecontentblog/get", getSeoPageContentBlogAction);
 router.get("/api/seopagecontentblog/meta", getSeoPageContentBlogMetaAction);
-router.get("/api/seopagecontentblog/viewall", oauthAuthentication, viewAllSeoPageContentBlogAction);
+router.get("/api/seopagecontentblog/viewall", viewAllSeoPageContentBlogAction);
 router.put("/api/seopagecontentblog/update/:id", oauthAuthentication, updateSeoPageContentBlogAction);
 router.delete("/api/seopagecontentblog/delete/:id", oauthAuthentication, deleteSeoPageContentBlogAction);
 router.get("/api/seopagecontentblog/blog/:slug", getSeoBlogBySlugAction);

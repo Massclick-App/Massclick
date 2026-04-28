@@ -437,3 +437,27 @@ export const getSeoBlogBySlugService = async (slug) => {
 
   return result ? mapSignedUrls(result) : null;
 };
+
+/* =====================================
+   SSR META LOOKUP (read-only, no view increment)
+===================================== */
+export const getSeoBlogMetaBySlug = async (slug) => {
+  const cleanSlug = makeSlug(slug);
+  const fields = "metaTitle metaDescription metaKeywords heading slug category location";
+
+  let result = await seoPageContentBlogModel
+    .findOne({ slug: cleanSlug, isActive: true })
+    .select(fields)
+    .lean();
+
+  if (!result) {
+    const allBlogs = await seoPageContentBlogModel
+      .find({ isActive: true })
+      .select(fields)
+      .lean();
+
+    result = allBlogs.find(b => makeSlug(b.heading) === cleanSlug) || null;
+  }
+
+  return result || null;
+};
