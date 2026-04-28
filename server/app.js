@@ -206,17 +206,33 @@ app.get(/.*/, async (req, res) => {
       </section>
     `;
 
+    // Replace meta tag content values by processing each tag (robust against minified HTML)
     html = html
-      .replace(/<title>.*?<\/title>/i, `<title>${title}</title>`)
-      .replace(/<meta[^>]*name="description"[^>]*>/i, `<meta name="description" content="${description}">`)
-      .replace(/<meta[^>]*name="keywords"[^>]*>/i, `<meta name="keywords" content="${keywords}">`)
-      .replace(/<link[^>]*rel="canonical"[^>]*>/i, `<link rel="canonical" href="${canonical}">`)
-      .replace(/<meta[^>]*property="og:title"[^>]*>/i, `<meta property="og:title" content="${title}">`)
-      .replace(/<meta[^>]*property="og:description"[^>]*>/i, `<meta property="og:description" content="${description}">`)
-      .replace(/<meta[^>]*property="og:url"[^>]*>/i, `<meta property="og:url" content="${canonical}">`)
-      .replace(/<meta[^>]*name="twitter:title"[^>]*>/i, `<meta name="twitter:title" content="${title}">`)
-      .replace(/<meta[^>]*name="twitter:description"[^>]*>/i, `<meta name="twitter:description" content="${description}">`)
-      .replace("</head>", `<script type="application/ld+json">${JSON.stringify(schema)}</script></head>`)
+      .replace(/<title\b[^>]*>[^<]*<\/title>/i, `<title>${title}</title>`)
+      .replace(/<meta\b[^>]*>/gi, (tag) => {
+        const nameVal = (tag.match(/\bname\s*=\s*["']?([\w:.-]+)["']?/i) || [])[1]?.toLowerCase();
+        const propVal = (tag.match(/\bproperty\s*=\s*["']?([\w:.-]+)["']?/i) || [])[1]?.toLowerCase();
+        const setContent = (val) => tag.replace(/(\bcontent\s*=\s*["'])([^"']*)/, `$1${val}`);
+        if (nameVal === "description") return setContent(description);
+        if (nameVal === "keywords") return setContent(keywords);
+        if (nameVal === "twitter:title") return setContent(title);
+        if (nameVal === "twitter:description") return setContent(description);
+        if (propVal === "og:title") return setContent(title);
+        if (propVal === "og:description") return setContent(description);
+        if (propVal === "og:url") return setContent(canonical);
+        return tag;
+      })
+      .replace(/<link\b[^>]*>/gi, (tag) => {
+        if (/\brel\s*=\s*["']?canonical["']?/i.test(tag))
+          return tag.replace(/(\bhref\s*=\s*["'])([^"']*)/, `$1${canonical}`);
+        return tag;
+      });
+
+    // Inject SEO data as a window variable — client reads this for instant correct hydration
+    const ssrSeoJson = JSON.stringify({ title, description, keywords, canonical, robots: "index, follow" })
+      .replace(/<\//g, "<\\/");
+    html = html
+      .replace("</head>", `<script>window.__SSR_SEO__=${ssrSeoJson}</script><script type="application/ld+json">${JSON.stringify(schema)}</script></head>`)
       .replace('<div id="root"></div>', `<div id="root">${serverContent}</div>`);
 
     res.setHeader("X-Robots-Tag", "index, follow");

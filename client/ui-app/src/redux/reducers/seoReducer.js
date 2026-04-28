@@ -30,6 +30,11 @@ import {
 
 const getSSRMeta = () => {
   try {
+    // Primary: read from server-injected window variable (reliable across all HTML formats)
+    if (typeof window !== "undefined" && window.__SSR_SEO__) {
+      return window.__SSR_SEO__;
+    }
+    // Fallback: parse DOM meta tags (works in local dev without SSR injection)
     if (typeof document === "undefined") return null;
     const title = document.querySelector("title")?.textContent?.trim() || null;
     const getAttr = (sel, attr = "content") =>
