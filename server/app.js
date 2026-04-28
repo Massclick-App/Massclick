@@ -186,6 +186,7 @@ app.get(/.*/, async (req, res) => {
     const thirdSegment  = parts[2] || "";
 
     let seo = null;
+    let blogDoc = null;
     let isCategoryPage = false;
     let isBlogPage = false;
 
@@ -203,7 +204,7 @@ app.get(/.*/, async (req, res) => {
 
     } else if (firstSegment === "blog" && secondSegment) {
       // Blog detail pages: /blog/:slug
-      const blogDoc = await getSeoBlogMetaBySlug(secondSegment);
+      blogDoc = await getSeoBlogMetaBySlug(secondSegment);
       if (blogDoc) {
         seo = {
           title:       blogDoc.metaTitle,
@@ -255,19 +256,38 @@ app.get(/.*/, async (req, res) => {
 
     const h1 = isCategoryPage ? `${categoryName} in ${locationName}` : (seo?.title || fallbackTitle);
 
-    const schemaType = isCategoryPage ? "CollectionPage" : isBlogPage ? "Article" : "WebSite";
-    const schema = {
-      "@context": "https://schema.org",
-      "@type": schemaType,
-      name: h1,
-      url: canonical,
-      description,
-      publisher: {
-        "@type": "Organization",
-        name: "Massclick",
-        url: "https://massclick.in"
+    const schema = isBlogPage
+      ? {
+        "@context": "https://schema.org",
+        "@type": "BlogPosting",
+        headline: blogDoc?.heading || h1,
+        description,
+        mainEntityOfPage: canonical,
+        url: canonical,
+        datePublished: blogDoc?.createdAt || undefined,
+        dateModified: blogDoc?.updatedAt || blogDoc?.createdAt || undefined,
+        author: {
+          "@type": "Person",
+          name: blogDoc?.author || "Massclick"
+        },
+        publisher: {
+          "@type": "Organization",
+          name: "Massclick",
+          url: "https://massclick.in"
+        }
       }
-    };
+      : {
+        "@context": "https://schema.org",
+        "@type": isCategoryPage ? "CollectionPage" : "WebSite",
+        name: h1,
+        url: canonical,
+        description,
+        publisher: {
+          "@type": "Organization",
+          name: "Massclick",
+          url: "https://massclick.in"
+        }
+      };
 
     const serverContent = isCategoryPage
       ? `

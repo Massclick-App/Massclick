@@ -443,7 +443,7 @@ export const getSeoBlogBySlugService = async (slug) => {
 ===================================== */
 export const getSeoBlogMetaBySlug = async (slug) => {
   const cleanSlug = makeSlug(slug);
-  const fields = "metaTitle metaDescription metaKeywords heading slug category location";
+  const fields = "metaTitle metaDescription metaKeywords heading slug category location author createdAt updatedAt";
 
   let result = await seoPageContentBlogModel
     .findOne({ slug: cleanSlug, isActive: true })
