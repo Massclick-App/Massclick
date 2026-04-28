@@ -34,6 +34,7 @@ import fcmAdminRoutes from "./routes/fcmAdminRoutes.js";
 import footerRoutes from "./routes/footerRoute.js";
 import { startFCMScheduler } from "./scheduler/fcmScheduler.js";
 import { getSeoMeta } from "./helper/seo/seoHelper.js";
+import { getSeoBlogMetaBySlug } from "./helper/seo/seoOnpageBlogHelper.js";
 import { register } from "./utils/metrics.js";
 import { metricsMiddleware } from "./utils/metricsMiddleware.js";
 
@@ -165,7 +166,7 @@ const STATIC_PAGES = {
 
 // Routes that are client-only and should not have SSR meta overridden
 const SKIP_SEO_ROUTES = new Set([
-  "business", "blog", "dashboard", "admin", "write-review",
+  "business", "dashboard", "admin", "write-review",
   "payment-status", "leads", "free-listing", "advertise",
   "user", "deleteaccount",
 ]);
@@ -186,6 +187,7 @@ app.get(/.*/, async (req, res) => {
 
     let seo = null;
     let isCategoryPage = false;
+    let isBlogPage = false;
 
     // Per-page fallback meta (used when DB has no record for this pageType)
     let fallbackTitle       = "Massclick - Local Business Search Platform";
@@ -198,6 +200,22 @@ app.get(/.*/, async (req, res) => {
       fallbackTitle       = "Massclick - India's Leading Local Search Platform";
       fallbackDescription = "Find trusted local businesses, services, restaurants, hotels and professionals near you on Massclick.";
       fallbackKeywords    = "massclick, local search, business directory india";
+
+    } else if (firstSegment === "blog" && secondSegment) {
+      // Blog detail pages: /blog/:slug
+      const blogDoc = await getSeoBlogMetaBySlug(secondSegment);
+      if (blogDoc) {
+        seo = {
+          title:       blogDoc.metaTitle,
+          description: blogDoc.metaDescription,
+          keywords:    blogDoc.metaKeywords,
+          canonical:   `https://massclick.in/blog/${secondSegment}`,
+        };
+      }
+      fallbackTitle       = "Massclick Blog - Local Business Guides & Tips";
+      fallbackDescription = "Read expert guides, tips and local business information on the Massclick blog.";
+      fallbackKeywords    = "massclick blog, local business tips, guides, how to";
+      isBlogPage = true;
 
     } else if (STATIC_PAGES[firstSegment]) {
       // Static pages: /aboutus, /terms, /privacy, /web, /digital, etc.
@@ -237,9 +255,10 @@ app.get(/.*/, async (req, res) => {
 
     const h1 = isCategoryPage ? `${categoryName} in ${locationName}` : (seo?.title || fallbackTitle);
 
+    const schemaType = isCategoryPage ? "CollectionPage" : isBlogPage ? "Article" : "WebSite";
     const schema = {
       "@context": "https://schema.org",
-      "@type": isCategoryPage ? "CollectionPage" : "WebSite",
+      "@type": schemaType,
       name: h1,
       url: canonical,
       description,
