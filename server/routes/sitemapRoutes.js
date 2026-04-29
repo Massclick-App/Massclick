@@ -243,10 +243,9 @@ router.get("/sitemap-citys-:cityslug.xml", async (req, res) => {
     ]);
 
     const nodes = [];
-    const seenCategoryUrls = new Set();
 
+    // Business pages for this city
     for (const biz of businesses) {
-      // individual business page
       const businessSlug = safeSlug(biz.businessName || "business");
       nodes.push(
         createUrlNode({
@@ -256,24 +255,20 @@ router.get("/sitemap-citys-:cityslug.xml", async (req, res) => {
           priority: "0.8",
         })
       );
+    }
 
-      // category page for this city (de-duped)
-      if (biz.category) {
-        const catPath = resolveCategoryPath(biz.category, categoryLookup);
-        const catUrl = `${BASE_URL}/${citySlug}/${catPath}`;
-
-        if (!seenCategoryUrls.has(catUrl)) {
-          seenCategoryUrls.add(catUrl);
-          nodes.push(
-            createUrlNode({
-              loc: catUrl,
-              lastmod: isoDate(biz.updatedAt),
-              changefreq: "daily",
-              priority: "0.9",
-            })
-          );
-        }
-      }
+    // All categories for this city (regardless of whether there are businesses here)
+    const today = new Date().toISOString();
+    for (const [, { slug, parentSlug }] of categoryLookup) {
+      const catPath = parentSlug ? `${parentSlug}/${slug}` : slug;
+      nodes.push(
+        createUrlNode({
+          loc: `${BASE_URL}/${citySlug}/${catPath}`,
+          lastmod: today,
+          changefreq: "daily",
+          priority: "0.9",
+        })
+      );
     }
 
     const xml = `<?xml version="1.0" encoding="UTF-8"?>
