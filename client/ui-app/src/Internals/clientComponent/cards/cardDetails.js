@@ -1,5 +1,6 @@
 // BusinessDetail.jsx
 import React, { useEffect, useState, useRef } from "react";
+import { Helmet } from "react-helmet-async";
 import { useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -459,8 +460,64 @@ const formattedWebsite =
 const whatsappNumber =
   business.whatsappNumber || business.contactList || business.contact;
 
+  const locationSlug = location || "";
+  const businessUrl = `https://massclick.in/business/${locationSlug}/${business.slug || businessSlug}/${business._id || id}`;
+
+  const localBusinessSchema = {
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    name: business.businessName,
+    image: business.bannerImage || (galleryImageSrcs[0] ?? undefined),
+    url: businessUrl,
+    telephone: business.contact || undefined,
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: [business.plotNumber, business.street].filter(Boolean).join(", ") || undefined,
+      addressLocality: business.location || undefined,
+      postalCode: business.pincode || undefined,
+      addressCountry: "IN",
+    },
+    ...(business.averageRating && totalReview > 0
+      ? {
+          aggregateRating: {
+            "@type": "AggregateRating",
+            ratingValue: Number(business.averageRating.toFixed(1)),
+            reviewCount: totalReview,
+            bestRating: 5,
+            worstRating: 1,
+          },
+        }
+      : {}),
+    ...(business.openingHours?.length > 0
+      ? {
+          openingHoursSpecification: business.openingHours
+            .filter((h) => !h.isClosed && h.open && h.close)
+            .map((h) => ({
+              "@type": "OpeningHoursSpecification",
+              dayOfWeek: `https://schema.org/${h.day}`,
+              opens: h.open,
+              closes: h.close,
+            })),
+        }
+      : {}),
+  };
+
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: "https://massclick.in" },
+      { "@type": "ListItem", position: 2, name: business.location || locationSlug, item: `https://massclick.in/${locationSlug}` },
+      { "@type": "ListItem", position: 3, name: business.businessName, item: businessUrl },
+    ],
+  };
+
   return (
     <>
+      <Helmet>
+        <script type="application/ld+json">{JSON.stringify(localBusinessSchema)}</script>
+        <script type="application/ld+json">{JSON.stringify(breadcrumbSchema)}</script>
+      </Helmet>
       <CardsSearch /><br /><br /><br /><br />
       <div className="business-CardDetails-pageWrapper">
         <section className="business-CardDetails-heroSection">

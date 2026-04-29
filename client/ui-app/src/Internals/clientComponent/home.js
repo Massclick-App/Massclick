@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import { useDispatch, useSelector } from "react-redux";
 import { Box, Drawer, Grid, List, ListItem, ListItemText, Skeleton } from '@mui/material';
+import { Helmet } from "react-helmet-async";
 import HeroSection from '../clientComponent/heroSection/heroSection.js';
 import CategoryBar from '../clientComponent/categoryBar';
 import CardsSearch from './CardsSearch/CardsSearch';
@@ -229,9 +230,41 @@ const LandingPage = () => {
         </Box>
     );
 
+    const websiteSchema = {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        name: "Massclick",
+        url: "https://massclick.in",
+        potentialAction: {
+            "@type": "SearchAction",
+            target: "https://massclick.in/{search_term_string}",
+            "query-input": "required name=search_term_string",
+        },
+    };
+
+    const webPageSchema = {
+        "@context": "https://schema.org",
+        "@type": "WebPage",
+        name: fallbackSeo.title,
+        description: fallbackSeo.description,
+        url: "https://massclick.in/",
+        publisher: {
+            "@type": "Organization",
+            name: "Massclick",
+            logo: {
+                "@type": "ImageObject",
+                url: "https://massclick.in/mi.png",
+            },
+        },
+    };
+
     return (
         <>
             <SeoMeta seoData={seoMetaData} fallback={fallbackSeo} />
+            <Helmet>
+                <script type="application/ld+json">{JSON.stringify(websiteSchema)}</script>
+                <script type="application/ld+json">{JSON.stringify(webPageSchema)}</script>
+            </Helmet>
 
             <Box sx={{ flexGrow: 1, bgcolor: 'background.default', width: '100%' }}>
 
