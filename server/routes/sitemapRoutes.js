@@ -90,9 +90,9 @@ const cleanText = (text = "") =>
 
 const buildCategoryLookup = async () => {
   const now = Date.now();
-  // if (_categoryLookupCache && now - _categoryLookupBuiltAt < CACHE_TTL_MS) {
-  //   return _categoryLookupCache;
-  // }
+  if (_categoryLookupCache && now - _categoryLookupBuiltAt < CACHE_TTL_MS) {
+    return _categoryLookupCache;
+  }
 
   const categories = await categoryModel.find({ isActive: true }).lean();
 
