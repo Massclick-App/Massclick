@@ -435,14 +435,14 @@ useEffect(() => {
 
         <div className="results-container content-section">
 
-          {!seoContentLoading && sanitizedHeaderContent && (
+          {/* {!seoContentLoading && sanitizedHeaderContent && (
             <section
               className="seo-header-content premium-section"
               dangerouslySetInnerHTML={{
                 __html: sanitizedHeaderContent,
               }}
             />
-          )}
+          )} */}
           <div className="results-heading">
             <h1 className="main-seo-heading">
               Best {searchText} in {locationText}

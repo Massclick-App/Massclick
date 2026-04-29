@@ -144,12 +144,11 @@ const TopBannerAds = ({ category }) => {
                 width="1200"
                 height="400"
                 loading="eager"
-                fetchpriority="high"
+                fetchPriority="high"
                 decoding="async"
                 style={{
                   width: "100%",
-                  height: "auto",
-                  objectFit: "cover"
+                  height: "auto"
                 }}
               />
 
