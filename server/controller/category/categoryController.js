@@ -328,7 +328,9 @@ export const getSubCategoriesAction = async (req, res) => {
       }
     });
 
-    const uniqueData = [...uniqueMap.values()];
+    const uniqueData = [...uniqueMap.values()].sort((a, b) =>
+      a.category.localeCompare(b.category)
+    );
 
     if (uniqueData.length > 0) {
       return res.json(
@@ -343,12 +345,14 @@ export const getSubCategoriesAction = async (req, res) => {
       );
     }
 
-    const fallback = selectedCategories.map((item, index) => ({
-      _id: index + 1,
-      name: item.name,
-      slug: item.name.toLowerCase().replace(/\s+/g, "-"),
-      icon: "/icons/default.webp",
-    }));
+    const fallback = selectedCategories
+      .map((item, index) => ({
+        _id: index + 1,
+        name: item.name,
+        slug: item.name.toLowerCase().replace(/\s+/g, "-"),
+        icon: "/icons/default.webp",
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
 
     return res.json(fallback);
   } catch (error) {
@@ -547,5 +551,86 @@ export const getServiceCardsAction = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(400).send({ message: error.message });
+  }
+};
+
+export const getAllUniqueCategoriesAction = async (req, res) => {
+  try {
+    const S3_BASE_URL = "https://massclickdev.s3.ap-southeast-2.amazonaws.com/";
+
+    const categories = await categoryModel.find({ isActive: true }).lean();
+
+    const normalize = (text = "") =>
+      text.toLowerCase().trim().replace(/[-_\s]+/g, " ");
+
+    const cleanText = (text = "") =>
+      text
+        .toLowerCase()
+        .trim()
+        .replace(/[-_\s]+/g, " ")
+        .replace(/\bcontractors\b/g, "contractor")
+        .replace(/\s+/g, " ");
+
+    const uniqueMap = new Map();
+    categories.forEach((item) => {
+      const key = normalize(item.category);
+      if (!uniqueMap.has(key)) uniqueMap.set(key, item);
+    });
+
+    const dbMap = new Map(
+      categories.map((cat) => [cleanText(cat.category), cat])
+    );
+
+    const result = [...uniqueMap.values()]
+      .sort((a, b) => a.category.localeCompare(b.category))
+      .map((item) => {
+        const parentKey = normalize(item.category);
+
+        const matchedKey = Object.keys(categoriesData).find((key) => {
+          const cur = normalize(key);
+          return (
+            cur === parentKey ||
+            cur === parentKey + "s" ||
+            cur + "s" === parentKey
+          );
+        });
+
+        const subNames = matchedKey ? categoriesData[matchedKey] : [];
+
+        const subs = subNames
+          .map(({ name }) => {
+            const found = dbMap.get(cleanText(name));
+            return found
+              ? {
+                  _id: found._id,
+                  name: found.category,
+                  slug: found.slug,
+                  icon: found.categoryImageKey
+                    ? `${S3_BASE_URL}${found.categoryImageKey}`
+                    : "/icons/default.webp",
+                }
+              : {
+                  name,
+                  slug: name.toLowerCase().replace(/\s+/g, "-"),
+                  icon: "/icons/default.webp",
+                };
+          })
+          .sort((a, b) => a.name.localeCompare(b.name));
+
+        return {
+          _id: item._id,
+          name: item.category,
+          slug: item.slug,
+          icon: item.categoryImageKey
+            ? `${S3_BASE_URL}${item.categoryImageKey}`
+            : "/icons/default.webp",
+          subs,
+        };
+      });
+
+    res.json(result);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: error.message });
   }
 };
