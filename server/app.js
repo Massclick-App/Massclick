@@ -93,6 +93,70 @@ const buildBreadcrumbSchema = (items = []) => ({
 
 const toText = slugToText;
 const toTitle = titleCase;
+const SITE_ORIGIN = "https://massclick.in";
+const API_CATALOG_PROFILE = "https://www.rfc-editor.org/info/rfc9727";
+const API_CATALOG_PATH = "/.well-known/api-catalog";
+const API_DOCS_PATH = "/docs/api";
+const discoveryLinks = [
+  `</.well-known/api-catalog>; rel="api-catalog"; type="application/linkset+json"; profile="${API_CATALOG_PROFILE}"`,
+  `</docs/api>; rel="service-doc"; type="text/html"`,
+];
+const publicApiCatalog = [
+  {
+    href: `${SITE_ORIGIN}/health`,
+    title: "Service health",
+    type: "application/json",
+  },
+  {
+    href: `${SITE_ORIGIN}/api/app/version`,
+    title: "App version",
+    type: "application/json",
+  },
+  {
+    href: `${SITE_ORIGIN}/api/businesslist/search`,
+    title: "Business search",
+    type: "application/json",
+  },
+  {
+    href: `${SITE_ORIGIN}/api/businesslist/suggestions`,
+    title: "Search suggestions",
+    type: "application/json",
+  },
+  {
+    href: `${SITE_ORIGIN}/api/category/home`,
+    title: "Homepage categories",
+    type: "application/json",
+  },
+  {
+    href: `${SITE_ORIGIN}/api/category/popular`,
+    title: "Popular categories",
+    type: "application/json",
+  },
+  {
+    href: `${SITE_ORIGIN}/api/seo/meta`,
+    title: "SEO metadata lookup",
+    type: "application/json",
+  },
+  {
+    href: `${SITE_ORIGIN}/api/seopagecontent/meta`,
+    title: "SEO page content metadata",
+    type: "application/json",
+  },
+  {
+    href: `${SITE_ORIGIN}/api/seopagecontentblog/blog/:slug`,
+    title: "Blog content by slug",
+    type: "application/json",
+  },
+  {
+    href: `${SITE_ORIGIN}/api/business/:businessId/reviews`,
+    title: "Business reviews",
+    type: "application/json",
+  },
+];
+
+const appendDiscoveryLinkHeaders = (res) => {
+  discoveryLinks.forEach((value) => res.append("Link", value));
+};
 
 app.use((req, res, next) => {
   const host = req.headers.host || "";
@@ -163,6 +227,50 @@ Sitemap: https://massclick.in/sitemap.xml`);
 
 app.get("/health", (req, res) => {
   res.status(200).json({ success: true, uptime: process.uptime() });
+});
+
+app.get(API_CATALOG_PATH, (req, res) => {
+  const body = {
+    linkset: [
+      {
+        anchor: `${SITE_ORIGIN}${API_CATALOG_PATH}`,
+        "service-doc": [
+          {
+            href: `${SITE_ORIGIN}${API_DOCS_PATH}`,
+            type: "text/html",
+          }
+        ],
+        item: publicApiCatalog,
+      }
+    ]
+  };
+
+  res.set("Content-Type", `application/linkset+json; profile="${API_CATALOG_PROFILE}"`);
+  return res.status(200).send(JSON.stringify(body));
+});
+
+app.get(API_DOCS_PATH, (req, res) => {
+  res.type("text/html; charset=utf-8");
+  return res.status(200).send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Massclick API Discovery</title>
+  <meta
+    name="description"
+    content="API discovery page for Massclick public endpoints, catalog, and health resources."
+  />
+</head>
+<body style="font-family: Arial, sans-serif; padding: 24px; line-height: 1.6;">
+  <h1>Massclick API Discovery</h1>
+  <p>This page lists public-facing API resources exposed by Massclick for agents, integrations, and developers.</p>
+  <p>Machine-readable catalog: <a href="${API_CATALOG_PATH}">${SITE_ORIGIN}${API_CATALOG_PATH}</a></p>
+  <ul>
+    ${publicApiCatalog.map((entry) => `<li><a href="${entry.href}">${entry.title}</a> <code>${entry.href}</code></li>`).join("")}
+  </ul>
+</body>
+</html>`);
 });
 
 app.use("/", sitemapRoutes);
@@ -552,6 +660,74 @@ app.get(/.*/, async (req, res) => {
     html = html
       .replace("</head>", `<script>window.__SSR_SEO__=${ssrSeoJson}</script>${schemaScripts}</head>`)
       .replace('<div id="root"></div>', `<div id="root">${serverContent}</div>`);
+
+    if (!firstSegment) {
+      appendDiscoveryLinkHeaders(res);
+    }
+
+    const acceptsMarkdown = (req.headers["accept"] || "").includes("text/markdown");
+    if (acceptsMarkdown) {
+      const mdLines = [];
+
+      // Breadcrumb
+      mdLines.push(`_${breadcrumbItems.map((b) => b.name).join(" > ")}_`, "");
+
+      // Title and description
+      mdLines.push(`# ${h1}`, "", description, "");
+
+      if (isBlogPage && blogDoc) {
+        if (blogDoc.createdAt) {
+          const dateParts = [`Published: ${formatDisplayDate(blogDoc.createdAt)}`];
+          if (blogDoc.updatedAt) dateParts.push(`Updated: ${formatDisplayDate(blogDoc.updatedAt)}`);
+          mdLines.push(dateParts.join(" · "), "");
+        }
+        if (blogDoc.pageContent) {
+          const plainContent = blogDoc.pageContent
+            .replace(/<h[1-6][^>]*>/gi, "\n\n## ").replace(/<\/h[1-6]>/gi, "\n\n")
+            .replace(/<p[^>]*>/gi, "\n").replace(/<\/p>/gi, "\n")
+            .replace(/<li[^>]*>/gi, "\n- ").replace(/<\/li>/gi, "")
+            .replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&lt;/g, "<")
+            .replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+            .replace(/\n{3,}/g, "\n\n").trim();
+          mdLines.push(plainContent, "");
+        }
+        if (Array.isArray(blogDoc.faq) && blogDoc.faq.length > 0) {
+          mdLines.push("## Frequently Asked Questions", "");
+          for (const item of blogDoc.faq) {
+            mdLines.push(`### ${item.question}`, "", item.answer, "");
+          }
+        }
+      } else if (isCategoryPage) {
+        if (categoryContent?.headerContent) {
+          const plain = categoryContent.headerContent
+            .replace(/<[^>]+>/g, " ").replace(/\s{2,}/g, " ").trim();
+          if (plain) mdLines.push(plain, "");
+        }
+        if (Array.isArray(categoryBusinesses) && categoryBusinesses.length > 0) {
+          mdLines.push(`## Top ${categoryName} in ${locationName}`, "");
+          categoryBusinesses.slice(0, 10).forEach((biz, i) => {
+            const bizSlug = `${String(biz.location || "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-")}/${String(biz.businessName || "business").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-")}/${biz._id}`;
+            mdLines.push(`${i + 1}. **[${biz.businessName}](https://massclick.in/business/${bizSlug})**`);
+            if (biz.street || biz.location) mdLines.push(`   - Address: ${biz.street || biz.location}`);
+            if (biz.contact) mdLines.push(`   - Phone: ${biz.contact}`);
+            mdLines.push("");
+          });
+        }
+        if (categoryContent?.pageContent) {
+          const plain = categoryContent.pageContent
+            .replace(/<[^>]+>/g, " ").replace(/\s{2,}/g, " ").trim();
+          if (plain) mdLines.push(plain, "");
+        }
+      }
+
+      mdLines.push("---", `Source: ${canonical}`);
+
+      const md = mdLines.join("\n");
+      res.setHeader("Content-Type", "text/markdown; charset=utf-8");
+      res.setHeader("x-markdown-tokens", String(Math.ceil(md.length / 4)));
+      res.setHeader("X-Robots-Tag", "index, follow");
+      return res.status(200).send(md);
+    }
 
     res.setHeader("X-Robots-Tag", "index, follow");
     return res.status(200).send(html);
