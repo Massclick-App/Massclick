@@ -1,7 +1,9 @@
 import express from "express";
 import businessListModel from "../model/businessList/businessListModel.js";
+import categoryModel from "../model/category/categoryModel.js";
 import { slugify } from "../slugify.js";
 import seoPageContentBlogs from "../model/seoModel/seoPageContentBlogModel.js";
+import { categoriesData } from "../utils/sub-categoriesData.js";
 
 const router = express.Router();
 
@@ -9,7 +11,6 @@ const router = express.Router();
    CONFIG
 ========================================================= */
 const BASE_URL = "https://massclick.in";
-const LIMIT = 1000;
 
 /* =========================================================
    HELPERS
@@ -32,27 +33,28 @@ const isoDate = (value) => {
 
 const safeSlug = (value = "") => slugify(String(value).trim());
 
+const normalize = (text = "") =>
+  text.toLowerCase().trim().replace(/[-_\s]+/g, " ");
+
 const createUrlNode = ({
   loc,
   lastmod,
   changefreq = "daily",
   priority = "0.8",
-}) => {
-  return `
+}) =>
+  `
   <url>
     <loc>${xmlEscape(loc)}</loc>
     <lastmod>${lastmod}</lastmod>
     <changefreq>${changefreq}</changefreq>
     <priority>${priority}</priority>
   </url>`;
-};
 
-const createSitemapNode = (loc) => {
-  return `
+const createSitemapNode = (loc) =>
+  `
   <sitemap>
     <loc>${xmlEscape(loc)}</loc>
   </sitemap>`;
-};
 
 const sendXml = (res, xml) => {
   res.type("application/xml; charset=utf-8");
@@ -61,335 +63,181 @@ const sendXml = (res, xml) => {
 };
 
 /* =========================================================
-   CATEGORY MAPPING
-========================================================= */
-const categoryGroups = [
-  {
-    parent: "contractors",
-    exact: ["contractor", "contractors"],
-    keywords: [
-      "contractor",
-      "builder",
-      "construction",
-      "roofing",
-      "interior",
-      "fabrication",
-      "civil",
-      "tiles",
-      "painting",
-      "plumbing",
-      "electrical",
-    ],
-  },
-  {
-    parent: "education",
-    exact: ["education"],
-    keywords: [
-      "school",
-      "schools",
-      "college",
-      "colleges",
-      "academy",
-      "coaching",
-      "tuition",
-      "training",
-      "institute",
-      "play-school",
-      "kindergarten",
-    ],
-  },
-  {
-    parent: "hospitals",
-    exact: ["hospital", "hospitals"],
-    keywords: [
-      "hospital",
-      "hospitals",
-      "clinic",
-      "hearing",
-      "dental",
-      "dentist",
-      "ayurvedic",
-      "homeopathic",
-      "herbal",
-      "medical",
-    ],
-  },
-  {
-    parent: "restaurants",
-    exact: ["restaurant", "restaurants"],
-    keywords: [
-      "restaurant",
-      "restaurants",
-      "hotel",
-      "veg",
-      "non-veg",
-      "food",
-      "cafe",
-      "biryani",
-      "bakery",
-    ],
-  },
-  {
-    parent: "beauty-and-spa",
-    exact: ["salon", "salons"],
-    keywords: ["salon", "beauty", "spa", "hair", "makeup"],
-  },
-  {
-    parent: "electronics",
-    exact: ["electronics"],
-    keywords: [
-      "electronics",
-      "cctv",
-      "camera",
-      "computer",
-      "laptop",
-      "printer",
-      "mobile",
-    ],
-  },
-  {
-    parent: "rent-and-hire",
-    exact: ["rent-and-hire"],
-    keywords: [
-      "rent",
-      "rental",
-      "hire",
-      "car-rental",
-      "van",
-      "bus",
-      "generator",
-    ],
-  },
-];
-
-const getCategoryHierarchy = (category = "") => {
-  const slug = safeSlug(category);
-
-  for (const group of categoryGroups) {
-    if (group.exact.includes(slug)) {
-      return { parent: group.parent, child: null };
-    }
-
-    const matched = group.keywords.some((word) => slug.includes(word));
-
-    if (matched) {
-      return { parent: group.parent, child: slug };
-    }
-  }
-
-  return { parent: slug || "services", child: null };
-};
-
-/* =========================================================
    DB FILTERS
 ========================================================= */
-const activeFilter = {
-  isActive: true,
-  businessesLive: true,
-};
+const activeFilter = { isActive: true, businessesLive: true };
 
 /* =========================================================
-   DB FETCHERS
+   CATEGORY LOOKUP FROM DB
+   Builds a map: normalize(categoryName) → { slug, parentSlug | null }
+   Uses categoryModel (same source as /api/category/all) + categoriesData
+   for parent-child relationships — no hardcoded keyword matching.
 ========================================================= */
-const getCategoryRows = async () => {
-  return businessListModel.aggregate([
-    {
-      $match: {
-        ...activeFilter,
-        location: { $exists: true, $ne: "" },
-        category: { $exists: true, $ne: "" },
-      },
-    },
-    {
-      $group: {
-        _id: {
-          location: "$location",
-          category: "$category",
-        },
-        updatedAt: { $max: "$updatedAt" },
-      },
-    },
-    {
-      $sort: {
-        "_id.location": 1,
-        "_id.category": 1,
-      },
-    },
-  ]);
-};
+let _categoryLookupCache = null;
+let _categoryLookupBuiltAt = 0;
+const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
-const getBusinessCount = async () => {
-  return businessListModel.countDocuments(activeFilter);
-};
+const buildCategoryLookup = async () => {
+  const now = Date.now();
+  if (_categoryLookupCache && now - _categoryLookupBuiltAt < CACHE_TTL_MS) {
+    return _categoryLookupCache;
+  }
 
-/* =========================================================
-   URL BUILDERS
-========================================================= */
-const buildCategoryUrlRecords = async () => {
-  const rows = await getCategoryRows();
-  const map = new Map();
+  const categories = await categoryModel.find({ isActive: true }).lean();
 
-  for (const row of rows) {
-    const location = safeSlug(row?._id?.location);
-    const category = row?._id?.category || "";
+  // parentSlug lookup: normalize(subCategoryName) → parentSlug
+  const subToParent = new Map();
 
-    if (!location || !category) continue;
+  for (const [parentKey, subs] of Object.entries(categoriesData)) {
+    // find the real slug for this parent from DB
+    const parentCat = categories.find((c) => {
+      const n = normalize(c.category);
+      const p = normalize(parentKey);
+      return n === p || n === p + "s" || n + "s" === p;
+    });
+    const parentSlug = parentCat?.slug || safeSlug(parentKey);
 
-    const { parent, child } = getCategoryHierarchy(category);
-    const lastmod = isoDate(row.updatedAt);
-
-    const parentUrl = `${BASE_URL}/${location}/${parent}`;
-
-    if (!map.has(parentUrl)) {
-      map.set(
-        parentUrl,
-        createUrlNode({
-          loc: parentUrl,
-          lastmod,
-          priority: "0.8",
-          changefreq: "daily",
-        })
-      );
-    }
-
-    if (child && child !== parent) {
-      const childUrl = `${BASE_URL}/${location}/${parent}/${child}`;
-
-      if (!map.has(childUrl)) {
-        map.set(
-          childUrl,
-          createUrlNode({
-            loc: childUrl,
-            lastmod,
-            priority: "0.9",
-            changefreq: "daily",
-          })
-        );
-      }
+    for (const { name } of subs) {
+      subToParent.set(normalize(name), parentSlug);
     }
   }
 
-  return Array.from(map.values());
+  // final lookup: normalize(businessCategory) → { slug, parentSlug }
+  const lookup = new Map();
+  for (const cat of categories) {
+    const key = normalize(cat.category);
+    const isPrimary = cat.categoryType === "Primary Category";
+    lookup.set(key, {
+      slug: cat.slug || safeSlug(cat.category),
+      parentSlug: isPrimary ? null : (subToParent.get(key) || null),
+    });
+  }
+
+  _categoryLookupCache = lookup;
+  _categoryLookupBuiltAt = now;
+  return lookup;
+};
+
+// Returns the URL path after the city: e.g. "hospitals/clinical-lab" or "clinical-lab"
+const resolveCategoryPath = (category, lookup) => {
+  const key = normalize(category);
+  const found = lookup.get(key);
+
+  if (!found) return safeSlug(category) || "services";
+  return found.parentSlug ? `${found.parentSlug}/${found.slug}` : found.slug;
 };
 
 /* =========================================================
-   HTML SITEMAP
+   GET ALL ACTIVE CITY SLUGS (distinct, de-duped)
 ========================================================= */
-router.get("/sitemap", async (req, res) => {
-  try {
-    const [categoryUrlNodes, blogs] = await Promise.all([
-      buildCategoryUrlRecords(),
-      seoPageContentBlogs
-        .find(
-          {
-            isActive: true,
-            slug: { $exists: true, $ne: "" },
-          },
-          {
-            slug: 1,
-            heading: 1,
-          }
-        )
-        .sort({ heading: 1 })
-        .lean()
-    ]);
+const getActiveCitySlugs = async () => {
+  const locations = await businessListModel.distinct("location", {
+    ...activeFilter,
+    location: { $exists: true, $ne: "" },
+  });
 
-    const categoryLinks = categoryUrlNodes
-      .map((node) => (node.match(/<loc>(.*?)<\/loc>/i) || [])[1])
-      .filter(Boolean)
-      .slice(0, 200);
-
-    const blogLinks = blogs.map((blog) => ({
-      href: `${BASE_URL}/blog/${blog.slug}`,
-      label: blog.heading || blog.slug,
-    }));
-
-    res.type("text/html; charset=utf-8");
-    return res.status(200).send(`<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>HTML Sitemap | Massclick</title>
-  <meta name="description" content="Browse the Massclick HTML sitemap for blog posts and category listing pages." />
-</head>
-<body style="font-family: Arial, sans-serif; padding: 24px; line-height: 1.6;">
-  <h1>Massclick HTML Sitemap</h1>
-  <p>Browse important Massclick pages including category listings and blog posts.</p>
-  <h2>Category Pages</h2>
-  <ul>
-    ${categoryLinks.map((href) => `<li><a href="${href}">${href}</a></li>`).join("")}
-  </ul>
-  <h2>Blog Pages</h2>
-  <ul>
-    ${blogLinks.map((item) => `<li><a href="${item.href}">${xmlEscape(item.label)}</a></li>`).join("")}
-  </ul>
-</body>
-</html>`);
-  } catch (error) {
-    console.error("HTML_SITEMAP_ERROR:", error);
-    return res.status(500).end();
+  const seen = new Set();
+  const result = [];
+  for (const loc of locations) {
+    const slug = safeSlug(loc);
+    if (slug && !seen.has(slug)) {
+      seen.add(slug);
+      result.push({ raw: loc, slug });
+    }
   }
-});
+  return result;
+};
 
 /* =========================================================
-   CATEGORY SITEMAP
+   SITEMAP INDEX  — /sitemap.xml
+   Lists one sitemap-city-{slug}.xml per active city + blog sitemap.
 ========================================================= */
-router.get("/sitemap-category-city-:page.xml", async (req, res) => {
+router.get("/sitemap.xml", async (req, res) => {
   try {
-    const page = Math.max(Number(req.params.page) || 1, 1);
-    const start = (page - 1) * LIMIT;
-    const end = start + LIMIT;
+    const cities = await getActiveCitySlugs();
 
-    const urls = await buildCategoryUrlRecords();
-    const sliced = urls.slice(start, end);
+    const links = cities.map((c) =>
+      createSitemapNode(`${BASE_URL}/sitemap-city-${c.slug}.xml`)
+    );
+
+    links.push(createSitemapNode(`${BASE_URL}/sitemap-blog.xml`));
 
     const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${sliced.join("")}
-</urlset>`;
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${links.join("")}
+</sitemapindex>`;
 
     return sendXml(res, xml);
   } catch (error) {
-    console.error("CATEGORY_SITEMAP_ERROR:", error);
+    console.error("SITEMAP_INDEX_ERROR:", error);
     return res.status(500).end();
   }
 });
 
 /* =========================================================
-   BUSINESS SITEMAP
+   PER-CITY SITEMAP  — /sitemap-city-{cityslug}.xml
+   Contains all category pages + all business pages for that city.
+   Category URLs use real slugs from categoryModel (no hardcoded mapping).
 ========================================================= */
-router.get("/sitemap-business-:page.xml", async (req, res) => {
+router.get("/sitemap-city-:cityslug.xml", async (req, res) => {
   try {
-    const page = Math.max(Number(req.params.page) || 1, 1);
-    const skip = (page - 1) * LIMIT;
+    const citySlug = req.params.cityslug;
 
-    const businesses = await businessListModel
-      .find(
-        activeFilter,
-        {
-          _id: 1,
-          businessName: 1,
-          location: 1,
-          updatedAt: 1,
-        }
-      )
-      .sort({ updatedAt: -1, _id: -1 })
-      .skip(skip)
-      .limit(LIMIT)
-      .lean();
-
-    const nodes = businesses.map((item) => {
-      const location = safeSlug(item.location);
-      const businessSlug = safeSlug(item.businessName || "business");
-
-      return createUrlNode({
-        loc: `${BASE_URL}/${location}/${businessSlug}/${item._id}`,
-        lastmod: isoDate(item.updatedAt),
-        changefreq: "weekly",
-        priority: "0.8",
-      });
+    // Resolve the raw DB location string that matches this slug
+    const locations = await businessListModel.distinct("location", {
+      ...activeFilter,
+      location: { $exists: true, $ne: "" },
     });
+
+    const matchedLocation = locations.find(
+      (loc) => safeSlug(loc) === citySlug
+    );
+
+    if (!matchedLocation) return res.status(404).end();
+
+    const [businesses, categoryLookup] = await Promise.all([
+      businessListModel
+        .find(
+          { ...activeFilter, location: matchedLocation },
+          { _id: 1, businessName: 1, category: 1, updatedAt: 1 }
+        )
+        .lean(),
+      buildCategoryLookup(),
+    ]);
+
+    const nodes = [];
+    const seenCategoryUrls = new Set();
+
+    for (const biz of businesses) {
+      // individual business page
+      const businessSlug = safeSlug(biz.businessName || "business");
+      nodes.push(
+        createUrlNode({
+          loc: `${BASE_URL}/${citySlug}/${businessSlug}/${biz._id}`,
+          lastmod: isoDate(biz.updatedAt),
+          changefreq: "weekly",
+          priority: "0.8",
+        })
+      );
+
+      // category page for this city (de-duped)
+      if (biz.category) {
+        const catPath = resolveCategoryPath(biz.category, categoryLookup);
+        const catUrl = `${BASE_URL}/${citySlug}/${catPath}`;
+
+        if (!seenCategoryUrls.has(catUrl)) {
+          seenCategoryUrls.add(catUrl);
+          nodes.push(
+            createUrlNode({
+              loc: catUrl,
+              lastmod: isoDate(biz.updatedAt),
+              changefreq: "daily",
+              priority: "0.9",
+            })
+          );
+        }
+      }
+    }
 
     const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -398,41 +246,33 @@ ${nodes.join("")}
 
     return sendXml(res, xml);
   } catch (error) {
-    console.error("BUSINESS_SITEMAP_ERROR:", error);
+    console.error("CITY_SITEMAP_ERROR:", error);
     return res.status(500).end();
   }
 });
 
 /* =========================================================
-   BLOG SITEMAP
+   BLOG SITEMAP  — /sitemap-blog.xml
 ========================================================= */
 router.get("/sitemap-blog.xml", async (req, res) => {
   try {
     const blogs = await seoPageContentBlogs
       .find(
-        {
-          isActive: true,
-          slug: { $exists: true, $ne: "" },
-        },
-        {
-          slug: 1,
-          updatedAt: 1,
-        }
+        { isActive: true, slug: { $exists: true, $ne: "" } },
+        { slug: 1, updatedAt: 1 }
       )
       .lean();
 
-    const validBlogs = blogs.filter(
-      (blog) => blog.slug && blog.slug.trim() !== ""
-    );
-
-    const nodes = validBlogs.map((blog) =>
-      createUrlNode({
-        loc: `${BASE_URL}/blog/${blog.slug}`,
-        lastmod: isoDate(blog.updatedAt),
-        changefreq: "weekly",
-        priority: "0.9",
-      })
-    );
+    const nodes = blogs
+      .filter((b) => b.slug?.trim())
+      .map((b) =>
+        createUrlNode({
+          loc: `${BASE_URL}/blog/${b.slug}`,
+          lastmod: isoDate(b.updatedAt),
+          changefreq: "weekly",
+          priority: "0.9",
+        })
+      );
 
     const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -447,55 +287,50 @@ ${nodes.join("")}
 });
 
 /* =========================================================
-   MAIN SITEMAP INDEX
+   HTML SITEMAP  — /sitemap
 ========================================================= */
-router.get("/sitemap.xml", async (req, res) => {
+router.get("/sitemap", async (req, res) => {
   try {
-    const [categoryUrls, totalBusinesses] = await Promise.all([
-      buildCategoryUrlRecords(),
-      getBusinessCount(),
+    const [cities, blogs] = await Promise.all([
+      getActiveCitySlugs(),
+      seoPageContentBlogs
+        .find(
+          { isActive: true, slug: { $exists: true, $ne: "" } },
+          { slug: 1, heading: 1 }
+        )
+        .sort({ heading: 1 })
+        .lean(),
     ]);
 
-    const totalCategoryPages = Math.max(
-      1,
-      Math.ceil(categoryUrls.length / LIMIT)
+    const cityLinks = cities.map(
+      (c) =>
+        `<li><a href="${BASE_URL}/sitemap-city-${c.slug}.xml">${xmlEscape(c.raw)}</a></li>`
     );
 
-    const totalBusinessPages = Math.max(
-      1,
-      Math.ceil(totalBusinesses / LIMIT)
+    const blogLinks = blogs.map(
+      (b) =>
+        `<li><a href="${BASE_URL}/blog/${b.slug}">${xmlEscape(b.heading || b.slug)}</a></li>`
     );
 
-    const links = [];
-
-    for (let i = 1; i <= totalCategoryPages; i++) {
-      links.push(
-        createSitemapNode(
-          `${BASE_URL}/sitemap-category-city-${i}.xml`
-        )
-      );
-    }
-
-    for (let i = 1; i <= totalBusinessPages; i++) {
-      links.push(
-        createSitemapNode(
-          `${BASE_URL}/sitemap-business-${i}.xml`
-        )
-      );
-    }
-
-    links.push(
-      createSitemapNode(`${BASE_URL}/sitemap-blog.xml`)
-    );
-
-    const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${links.join("")}
-</sitemapindex>`;
-
-    return sendXml(res, xml);
+    res.type("text/html; charset=utf-8");
+    return res.status(200).send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HTML Sitemap | Massclick</title>
+  <meta name="description" content="Browse the Massclick HTML sitemap for city listings and blog posts." />
+</head>
+<body style="font-family: Arial, sans-serif; padding: 24px; line-height: 1.6;">
+  <h1>Massclick HTML Sitemap</h1>
+  <h2>City Sitemaps</h2>
+  <ul>${cityLinks.join("")}</ul>
+  <h2>Blog Pages</h2>
+  <ul>${blogLinks.join("")}</ul>
+</body>
+</html>`);
   } catch (error) {
-    console.error("SITEMAP_INDEX_ERROR:", error);
+    console.error("HTML_SITEMAP_ERROR:", error);
     return res.status(500).end();
   }
 });
