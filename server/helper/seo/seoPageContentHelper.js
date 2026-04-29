@@ -35,18 +35,13 @@ export const getSeoPageContentMetaService = async ({
 }) => {
   try {
     const safePageType = normalizeSeoText(pageType);
-    const safeCategory = category
-      ? category.toLowerCase().replace(/[^a-z0-9]+/g, "-")
-      : null;
+    const safeCategory = category ? normalizeSeoText(category) : null;
     const safeLocation = location ? normalizeSeoText(location) : null;
 
     if (safeCategory && safeLocation) {
       return await seoPageContentModel.findOne({
         pageType: safePageType,
-        category: {
-          $regex: `^${safeCategory.replace(/-/g, " ")}$|^${safeCategory}$`,
-          $options: "i"
-        },
+        category: { $regex: `^${safeCategory}$`, $options: "i" },
         location: { $regex: `^${safeLocation}$`, $options: "i" },
         isActive: true,
       }).lean();
@@ -73,7 +68,8 @@ export const normalizeSeoText = (v = "") =>
     .toString()
     .toLowerCase()
     .trim()
-    .replace(/[-_\s]+/g, " ");
+    .replace(/[-_\s]+/g, " ")   // collapse spaces + dash/underscore
+    .replace(/\s+/g, " ");      // extra safety
 
 export const viewAllSeoPageContent = async ({
   pageNo,
