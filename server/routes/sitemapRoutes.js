@@ -89,7 +89,7 @@ const cleanText = (text = "") =>
 
 const buildCategoryLookup = async () => {
   const now = Date.now();
-  if (_categoryLookupCache && now - _categoryLookupBuiltAt < CACHE_TTL_MS) {
+  // if (_categoryLookupCache && now - _categoryLookupBuiltAt < CACHE_TTL_MS) {
     return _categoryLookupCache;
   }
 
@@ -216,7 +216,7 @@ ${links.join("")}
    Contains all category pages + all business pages for that city.
    Category URLs use real slugs from categoryModel (no hardcoded mapping).
 ========================================================= */
-router.get("/sitemap-citys-:cityslug.xml", async (req, res) => {
+router.get("/sitemap-city-:cityslug.xml", async (req, res) => {
   try {
     const citySlug = req.params.cityslug;
 
