@@ -72,7 +72,6 @@ const categoryGroups = [
       "builder",
       "construction",
       "roofing",
-      "interior",
       "fabrication",
       "civil",
       "tiles",
@@ -104,7 +103,6 @@ const categoryGroups = [
     keywords: [
       "hospital",
       "hospitals",
-      "clinic",
       "hearing",
       "dental",
       "dentist",
@@ -130,21 +128,14 @@ const categoryGroups = [
     ],
   },
   {
-    parent: "beauty-and-spa",
-    exact: ["salon", "salons"],
-    keywords: ["salon", "beauty", "spa", "hair", "makeup"],
-  },
-  {
     parent: "electronics",
     exact: ["electronics"],
     keywords: [
       "electronics",
       "cctv",
-      "camera",
       "computer",
       "laptop",
       "printer",
-      "mobile",
     ],
   },
   {
