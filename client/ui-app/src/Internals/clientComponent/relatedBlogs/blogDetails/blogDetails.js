@@ -226,6 +226,20 @@ const linkifyText = (text = "") => {
   const metaDescription = blog?.metaDescription || ssrMeta?.description || "Read expert guides and local business tips on the Massclick blog.";
   const metaKeywords    = blog?.metaKeywords    || ssrMeta?.keywords    || "massclick blog, local business tips";
   const canonical       = `https://massclick.in/blog/${slug}`;
+  const formatDate = (value) => {
+    if (!value) return null;
+
+    const parsedDate = new Date(value);
+    if (Number.isNaN(parsedDate.getTime())) return null;
+
+    return parsedDate.toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  };
+  const publishedDate = formatDate(blog?.createdAt);
+  const updatedDate = formatDate(blog?.updatedAt);
 
   if (loading) return <div className="loader">Loading...</div>;
   if (error) return <div className="error">Error loading blog</div>;
@@ -256,6 +270,8 @@ const linkifyText = (text = "") => {
           <h1>{blog.heading}</h1>
 
           <div className="blog-meta">
+            {publishedDate && <span>Published {publishedDate}</span>}
+            {updatedDate && <span>Updated {updatedDate}</span>}
             <span>{blog.views || 48} views</span>
             <span>• {blog.readTime || "5 min read"}</span>
           </div>
@@ -284,7 +300,7 @@ const linkifyText = (text = "") => {
             {blog.pageImages?.length > 1 && (
               <div className="image-grid">
                 {blog.pageImages.slice(1).map((img, i) => (
-                  <img key={i} src={img} alt="gallery" />
+                  <img key={i} src={img} alt={`${blog.heading} supporting image ${i + 2}`} />
                 ))}
               </div>
             )}
@@ -393,6 +409,21 @@ const linkifyText = (text = "") => {
               </div>
             </div>
 
+            <div className="author-card" style={{ marginTop: "24px" }}>
+              <img
+                src={blog.profileImage || "https://via.placeholder.com/80"}
+                alt={`${blog.author || "Massclick"} author profile`}
+              />
+              <div>
+                <h3>{blog.author || "Massclick Editorial Team"}</h3>
+                <p>
+                  {blog.author || "Massclick Editorial Team"} curates local business guides,
+                  service recommendations and city-focused insights to help readers make
+                  informed decisions faster.
+                </p>
+              </div>
+            </div>
+
           </div>
 
           <div className="sidebar">
@@ -400,7 +431,7 @@ const linkifyText = (text = "") => {
             <div className="author-card">
               <img
                 src={blog.profileImage || "https://via.placeholder.com/80"}
-                alt="author"
+                alt={`${blog.author || "Massclick"} author profile`}
               />
               <div>
                 <h4>{blog.author || "Admin"}</h4>
