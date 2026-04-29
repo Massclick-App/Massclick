@@ -133,7 +133,20 @@ app.get("/metrics", async (req, res) => {
 
 app.get("/robots.txt", (req, res) => {
   res.type("text/plain");
-  res.send(`User-agent: *\nAllow: /\nSitemap: https://massclick.in/sitemap.xml`);
+  res.send(`User-agent: *
+Content-Signal: search=yes, ai-input=yes, ai-train=no
+Allow: /
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Google-Extended
+Disallow: /
+
+Sitemap: https://massclick.in/sitemap.xml`);
 });
 
 app.get("/health", (req, res) => {

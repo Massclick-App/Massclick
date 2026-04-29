@@ -1,6 +1,16 @@
 # https://www.robotstxt.org/robotstxt.html
 
 User-agent: *
+Content-Signal: search=yes, ai-input=yes, ai-train=no
 Allow: /
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Google-Extended
+Disallow: /
 
 Sitemap: https://massclick.in/sitemap.xml
