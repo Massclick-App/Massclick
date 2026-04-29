@@ -33,9 +33,6 @@ const isoDate = (value) => {
 
 const safeSlug = (value = "") => slugify(String(value).trim());
 
-const normalize = (text = "") =>
-  text.toLowerCase().trim().replace(/[-_\s]+/g, " ");
-
 const createUrlNode = ({
   loc,
   lastmod,
@@ -69,13 +66,26 @@ const activeFilter = { isActive: true, businessesLive: true };
 
 /* =========================================================
    CATEGORY LOOKUP FROM DB
-   Builds a map: normalize(categoryName) → { slug, parentSlug | null }
-   Uses categoryModel (same source as /api/category/all) + categoriesData
-   for parent-child relationships — no hardcoded keyword matching.
+   Same logic as getAllUniqueCategoriesAction (/api/category/all):
+   - queries categoryModel directly
+   - uses categoriesData for parent-child mapping
+   Builds: normalize(businessCategory) → { slug, parentSlug | null }
 ========================================================= */
 let _categoryLookupCache = null;
 let _categoryLookupBuiltAt = 0;
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+// mirrors getAllUniqueCategoriesAction normalize helpers
+const normalizeKey = (text = "") =>
+  text.toLowerCase().trim().replace(/[-_\s]+/g, " ");
+
+const cleanText = (text = "") =>
+  text
+    .toLowerCase()
+    .trim()
+    .replace(/[-_\s]+/g, " ")
+    .replace(/\bcontractors\b/g, "contractor")
+    .replace(/\s+/g, " ");
 
 const buildCategoryLookup = async () => {
   const now = Date.now();
@@ -85,32 +95,48 @@ const buildCategoryLookup = async () => {
 
   const categories = await categoryModel.find({ isActive: true }).lean();
 
-  // parentSlug lookup: normalize(subCategoryName) → parentSlug
-  const subToParent = new Map();
+  // deduplicate — same as getAllUniqueCategoriesAction
+  const uniqueMap = new Map();
+  categories.forEach((item) => {
+    const key = normalizeKey(item.category);
+    if (!uniqueMap.has(key)) uniqueMap.set(key, item);
+  });
 
-  for (const [parentKey, subs] of Object.entries(categoriesData)) {
-    // find the real slug for this parent from DB
-    const parentCat = categories.find((c) => {
-      const n = normalize(c.category);
-      const p = normalize(parentKey);
-      return n === p || n === p + "s" || n + "s" === p;
-    });
-    const parentSlug = parentCat?.slug || safeSlug(parentKey);
+  const dbMap = new Map(
+    categories.map((cat) => [cleanText(cat.category), cat])
+  );
 
-    for (const { name } of subs) {
-      subToParent.set(normalize(name), parentSlug);
-    }
-  }
+  // set of category keys that are parents in categoriesData
+  const parentKeys = new Set(
+    Object.keys(categoriesData).map((k) => normalizeKey(k))
+  );
 
-  // final lookup: normalize(businessCategory) → { slug, parentSlug }
   const lookup = new Map();
-  for (const cat of categories) {
-    const key = normalize(cat.category);
-    const isPrimary = cat.categoryType === "Primary Category";
-    lookup.set(key, {
-      slug: cat.slug || safeSlug(cat.category),
-      parentSlug: isPrimary ? null : (subToParent.get(key) || null),
+
+  for (const [, parentItem] of uniqueMap) {
+    const pKey = normalizeKey(parentItem.category);
+    const parentSlug = parentItem.slug || safeSlug(parentItem.category);
+
+    // every DB category gets a primary entry (no parent)
+    lookup.set(pKey, { slug: parentSlug, parentSlug: null });
+
+    // if this category has subs in categoriesData, map each sub to it
+    const matchedKey = Object.keys(categoriesData).find((key) => {
+      const cur = normalizeKey(key);
+      return cur === pKey || cur === pKey + "s" || cur + "s" === pKey;
     });
+
+    if (!matchedKey) continue;
+
+    for (const { name } of categoriesData[matchedKey]) {
+      const subKey = normalizeKey(name);
+      // don't override a category that is itself a parent
+      if (lookup.has(subKey) && parentKeys.has(subKey)) continue;
+
+      const foundSub = dbMap.get(cleanText(name));
+      const subSlug = foundSub?.slug || safeSlug(name);
+      lookup.set(subKey, { slug: subSlug, parentSlug });
+    }
   }
 
   _categoryLookupCache = lookup;
@@ -120,7 +146,7 @@ const buildCategoryLookup = async () => {
 
 // Returns the URL path after the city: e.g. "hospitals/clinical-lab" or "clinical-lab"
 const resolveCategoryPath = (category, lookup) => {
-  const key = normalize(category);
+  const key = normalizeKey(category);
   const found = lookup.get(key);
 
   if (!found) return safeSlug(category) || "services";
@@ -130,6 +156,9 @@ const resolveCategoryPath = (category, lookup) => {
 /* =========================================================
    GET ALL ACTIVE CITY SLUGS (distinct, de-duped)
 ========================================================= */
+// reject slugs that are pure numbers (pincodes, phone numbers, test data)
+const isValidCitySlug = (slug) => slug.length >= 3 && !/^\d+$/.test(slug);
+
 const getActiveCitySlugs = async () => {
   const locations = await businessListModel.distinct("location", {
     ...activeFilter,
@@ -140,7 +169,7 @@ const getActiveCitySlugs = async () => {
   const result = [];
   for (const loc of locations) {
     const slug = safeSlug(loc);
-    if (slug && !seen.has(slug)) {
+    if (slug && isValidCitySlug(slug) && !seen.has(slug)) {
       seen.add(slug);
       result.push({ raw: loc, slug });
     }
