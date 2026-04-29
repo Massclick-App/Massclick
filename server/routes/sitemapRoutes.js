@@ -11,6 +11,7 @@ const router = express.Router();
    CONFIG
 ========================================================= */
 const BASE_URL = process.env.PUBLIC_BASE_URL || "https://massclick.in";
+const LIMIT = 1000;
 
 /* =========================================================
    HELPERS
@@ -187,15 +188,24 @@ const getActiveCitySlugs = async () => {
 
 /* =========================================================
    SITEMAP INDEX  — /sitemap.xml
-   Lists one sitemap-city-{slug}.xml per active city + blog sitemap.
+   Lists one sitemap-city-{slug}.xml per active city,
+   paginated business sitemaps, and blog sitemap.
 ========================================================= */
 router.get("/sitemap.xml", async (req, res) => {
   try {
-    const cities = await getActiveCitySlugs();
+    const [cities, totalBusinesses] = await Promise.all([
+      getActiveCitySlugs(),
+      businessListModel.countDocuments(activeFilter),
+    ]);
 
     const links = cities.map((c) =>
       createSitemapNode(`${BASE_URL}/sitemap-city-${c.slug}.xml`)
     );
+
+    const totalBusinessPages = Math.max(1, Math.ceil(totalBusinesses / LIMIT));
+    for (let i = 1; i <= totalBusinessPages; i++) {
+      links.push(createSitemapNode(`${BASE_URL}/sitemap-business-${i}.xml`));
+    }
 
     links.push(createSitemapNode(`${BASE_URL}/sitemap-blog.xml`));
 
@@ -232,32 +242,11 @@ router.get("/sitemap-city-:cityslug.xml", async (req, res) => {
 
     if (!matchedLocation) return res.status(404).end();
 
-    const [businesses, categoryLookup] = await Promise.all([
-      businessListModel
-        .find(
-          { ...activeFilter, location: matchedLocation },
-          { _id: 1, businessName: 1, category: 1, updatedAt: 1 }
-        )
-        .lean(),
-      buildCategoryLookup(),
-    ]);
+    const categoryLookup = await buildCategoryLookup();
 
     const nodes = [];
 
-    // Business pages for this city
-    for (const biz of businesses) {
-      const businessSlug = safeSlug(biz.businessName || "business");
-      nodes.push(
-        createUrlNode({
-          loc: `${BASE_URL}/${citySlug}/${businessSlug}/${biz._id}`,
-          lastmod: isoDate(biz.updatedAt),
-          changefreq: "weekly",
-          priority: "0.8",
-        })
-      );
-    }
-
-    // All categories for this city (regardless of whether there are businesses here)
+    // All categories for this city
     const today = new Date().toISOString();
     for (const [, { slug, parentSlug }] of categoryLookup) {
       const catPath = parentSlug ? `${parentSlug}/${slug}` : slug;
@@ -279,6 +268,44 @@ ${nodes.join("")}
     return sendXml(res, xml);
   } catch (error) {
     console.error("CITY_SITEMAP_ERROR:", error);
+    return res.status(500).end();
+  }
+});
+
+/* =========================================================
+   BUSINESS SITEMAP  — /sitemap-business-{page}.xml
+========================================================= */
+router.get("/sitemap-business-:page.xml", async (req, res) => {
+  try {
+    const page = Math.max(Number(req.params.page) || 1, 1);
+    const skip = (page - 1) * LIMIT;
+
+    const businesses = await businessListModel
+      .find(activeFilter, { _id: 1, businessName: 1, location: 1, updatedAt: 1 })
+      .sort({ updatedAt: -1, _id: -1 })
+      .skip(skip)
+      .limit(LIMIT)
+      .lean();
+
+    const nodes = businesses.map((biz) => {
+      const citySlug = safeSlug(biz.location);
+      const businessSlug = safeSlug(biz.businessName || "business");
+      return createUrlNode({
+        loc: `${BASE_URL}/${citySlug}/${businessSlug}/${biz._id}`,
+        lastmod: isoDate(biz.updatedAt),
+        changefreq: "weekly",
+        priority: "0.8",
+      });
+    });
+
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${nodes.join("")}
+</urlset>`;
+
+    return sendXml(res, xml);
+  } catch (error) {
+    console.error("BUSINESS_SITEMAP_ERROR:", error);
     return res.status(500).end();
   }
 });
