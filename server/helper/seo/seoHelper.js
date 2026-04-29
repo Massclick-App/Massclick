@@ -62,12 +62,6 @@ export const getSeoMeta = async ({ pageType, category, location }) => {
     const safeCategory = category ? normalize(category) : null;
     const safeLocation = location ? normalize(location) : null;
 
-    console.log("Fetching SEO for:", {
-      pageType: safePageType,
-      category: safeCategory,
-      location: safeLocation
-    });
-
     let seo = null;
 
     if (safeCategory && safeLocation) {

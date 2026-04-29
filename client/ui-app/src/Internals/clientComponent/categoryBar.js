@@ -27,6 +27,7 @@ import {
 } from "@mui/icons-material";
 import CorporateFareIcon from '@mui/icons-material/CorporateFare';
 import MI from "../../assets/mi.png";
+import MassclickIndiaLogo from "../../assets/Massclick-India.png";
 import AddBusinessModal from "./AddBusinessModel.js";
 import AppRegistrationIcon from '@mui/icons-material/AppRegistration';
 import LoginIcon from '@mui/icons-material/Login';
@@ -276,8 +277,7 @@ const CategoryBar = () => {
                         <img src={MI} alt="Massclick Logo" className="logoImage" />
                     </div>
                     <div className="brandingText">
-                        <h1 className="mainTitle">Mass<span>click</span></h1>
-                        <p className="subTitle">India's Leading Local Search Engine</p>
+                        <img src={MassclickIndiaLogo} alt="Massclick India" className="brandLogo" />
                     </div>
                 </div>
 
@@ -372,7 +372,7 @@ export default CategoryBar;
 
 
 export const categoryBarHelpers = {
-    
+
     checkLogin: () => {
         const token = localStorage.getItem("authToken");
         return !!token;

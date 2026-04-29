@@ -19,6 +19,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import HistoryToggleOffIcon from "@mui/icons-material/HistoryToggleOff";
 import MI from "../../../assets/mi.png";
+import MassclickIndiaLogo from "../../../assets/Massclick-India.png";
 import AddBusinessModel from "../AddBusinessModel";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import { useDrawer } from "../Drawer/drawerContext";
@@ -291,29 +292,9 @@ const CardsSearch = ({
                 />
               </Tooltip>
             </div>
-
-            <Box sx={{ display: "flex", flexDirection: "column" }}>
-              <Typography
-                variant="h5"
-                sx={{
-                  fontWeight: 800,
-                  background: "linear-gradient(45deg, #FF8C00, #FFA500)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                }}
-              >
-                Mass<span>click</span>
-              </Typography>
-
-              <Typography
-                sx={{
-                  color: "text.secondary",
-                  mt: 0.5,
-                  display: { xs: "none", sm: "block" },
-                }}              >
-                India's Leading Local Search Engine
-              </Typography>
-            </Box>
+            <div className="brandingText">
+              <img src={MassclickIndiaLogo} alt="Massclick India" className="brandLogo" />
+            </div>
           </div>
 
           <div className="search-area">

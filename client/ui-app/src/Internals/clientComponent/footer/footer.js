@@ -27,9 +27,10 @@ const Footer = () => {
                     <ul className="footer-link-list">
                         <FooterLink to="/aboutus">About MassClick</FooterLink>
                         <FooterLink to="/testimonials">Customer Stories</FooterLink>
-                        <FooterLink to="/feedbacks">User Feedback</FooterLink>
+                        {/* <FooterLink to="/feedbacks">User Feedback</FooterLink> */}
                         <FooterLink to="/customercare">Customer Support</FooterLink>
-                        <FooterLink to="/portfolio">Media & Gallery</FooterLink>
+                        {/* <FooterLink to="/refund">Refund Policy</FooterLink> */}
+                        {/* <FooterLink to="/portfolio">Media & Gallery</FooterLink> */}
                     </ul>
                 </div>
 
@@ -38,22 +39,10 @@ const Footer = () => {
                     <ul className="footer-link-list">
                         <FooterLink to="/terms">Terms & Conditions</FooterLink>
                         <FooterLink to="/privacy">Privacy Policy</FooterLink>
-                        <FooterLink to="/refund">Refund Policy</FooterLink>
                         <FooterLink to="/enquiry">Business Enquiries</FooterLink>
                         {/* <FooterLink to="/deleteaccount">Delete Account</FooterLink> */}
                     </ul>
                 </div>
-
-                <div className="footer-section">
-                    <h3 className="footer-heading">Services</h3>
-                    <ul className="footer-link-list">
-                        <FooterLink to="/web">Web Design & Development</FooterLink>
-                        <FooterLink to="/digital">Digital Marketing</FooterLink>
-                        <FooterLink to="/graphic">Graphic Design</FooterLink>
-                        <FooterLink to="/seo">Search Engine Optimisation</FooterLink>
-                    </ul>
-                </div>
-        
                 <div className="footer-section brand-section">
                     <h3 className="footer-heading">Connect with us</h3>
 
