@@ -10,7 +10,7 @@ const router = express.Router();
 /* =========================================================
    CONFIG
 ========================================================= */
-const BASE_URL = "https://massclick.in";
+const BASE_URL = process.env.PUBLIC_BASE_URL || "https://massclick.in";
 
 /* =========================================================
    HELPERS
