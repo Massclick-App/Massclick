@@ -55,7 +55,7 @@ const createSitemapNode = (loc) =>
 
 const sendXml = (res, xml) => {
   res.type("application/xml; charset=utf-8");
-  res.set("Cache-Control", "public, max-age=3600, s-maxage=3600");
+  res.set("Cache-Control", "no-cache, no-store, must-revalidate");
   res.status(200).send(xml);
 };
 
