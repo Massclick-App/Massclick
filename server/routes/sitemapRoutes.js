@@ -194,7 +194,7 @@ router.get("/sitemap.xml", async (req, res) => {
     const cities = await getActiveCitySlugs();
 
     const links = cities.map((c) =>
-      createSitemapNode(`${BASE_URL}/sitemap-citys-${c.slug}.xml`)
+      createSitemapNode(`${BASE_URL}/sitemap-city-${c.slug}.xml`)
     );
 
     links.push(createSitemapNode(`${BASE_URL}/sitemap-blog.xml`));
@@ -216,7 +216,7 @@ ${links.join("")}
    Contains all category pages + all business pages for that city.
    Category URLs use real slugs from categoryModel (no hardcoded mapping).
 ========================================================= */
-router.get("/sitemap-citys-:cityslug.xml", async (req, res) => {
+router.get("/sitemap-city-:cityslug.xml", async (req, res) => {
   try {
     const citySlug = req.params.cityslug;
 
@@ -336,7 +336,7 @@ router.get("/sitemap", async (req, res) => {
 
     const cityLinks = cities.map(
       (c) =>
-        `<li><a href="${BASE_URL}/sitemap-citys-${c.slug}.xml">${xmlEscape(c.raw)}</a></li>`
+        `<li><a href="${BASE_URL}/sitemap-city-${c.slug}.xml">${xmlEscape(c.raw)}</a></li>`
     );
 
     const blogLinks = blogs.map(
