@@ -91,9 +91,10 @@
   padding: 20px;
   width: 100%;
   align-items: flex-start;
-  /* background: #ffffff; */
+  background: #ffffff;
   border-radius: var(--radius-lg);
   border: 1px solid rgba(225, 225, 225, 0.7);
+  box-sizing: border-box;
 
   box-shadow: var(--shadow-soft);
 }
@@ -183,7 +184,9 @@
   font-weight: 700;
   margin-top: 6px;
   margin-bottom: 6px;
-  letter-spacing: 0.2px;
+  letter-spacing: 0;
+  color: #071832;
+  overflow-wrap: anywhere;
 }
 
 
@@ -321,7 +324,7 @@
   .base-card {
     flex-direction: column;
     gap: 14px;
-    padding: 14px;
+    padding: 12px;
 
     /* CRITICAL FIX */
     align-items: stretch;
@@ -331,12 +334,14 @@
   /* IMAGE FULL WIDTH */
   .card-image-wrapper {
     width: 100%;
-    height: 200px;
+    height: auto;
+    aspect-ratio: 16 / 9;
   }
 
   .card-image-container {
     width: 100%;
-    height: 200px;
+    height: 100%;
+    min-width: 0;
     border-radius: 12px;
   }
 
@@ -350,7 +355,7 @@
 
   /* TITLE */
   .card-title {
-    font-size: 1.2rem;
+    font-size: 1.15rem;
     font-weight: 700;
     text-align: left;
     margin-bottom: 4px;
@@ -381,18 +386,36 @@
   /* BUTTONS FULL WIDTH */
   .cardpage-actions {
     display: flex;
-    gap: 16px;
-    margin-top: 14px;
+    gap: 10px;
+    margin-top: 10px;
     flex-wrap: wrap;
   }
 
   .card-action-button {
     width: 100%;
-    padding: 14px;
-    font-size: 1rem;
+    min-width: 0;
+    min-height: 44px;
+    padding: 12px;
+    font-size: 0.95rem;
     border-radius: 10px;
   }
 
+}
+
+@media (max-width: 420px) {
+  .card-row {
+    gap: 6px;
+  }
+
+  .card-meta {
+    gap: 8px;
+  }
+
+  .card-category,
+  .card-address-inline,
+  .card-details {
+    font-size: 0.9rem;
+  }
 }
 
 @media (hover: hover) {

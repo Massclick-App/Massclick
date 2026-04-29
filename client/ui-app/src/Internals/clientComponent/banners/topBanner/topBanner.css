@@ -4,7 +4,7 @@
   margin: 0 auto;
   overflow: hidden;
   position: relative;
-  margin-bottom: 20px;
+  margin-bottom: 0;
 }
 
 /* Carousel track */
@@ -23,9 +23,9 @@
 /* Banner wrapper */
 .banner-image-wrapper {
   width: 100%;
-  max-width: 1320px;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 0 12px;
+  padding: 0;
   box-sizing: border-box;
 }
 
@@ -35,30 +35,35 @@
   height: auto;
   display: block;
   border-radius: 10px;
-  object-fit: cover;
+  object-fit: contain;
+  object-position: center;
+  background: #ffffff;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.1);
 }
 
 /* ===== Tablet ===== */
 @media (max-width: 1024px) {
-  .banner-image-wrapper {
-    padding: 0 10px;
+  .banner-image-wrapper img {
+    height: clamp(82px, 13vw, 128px) !important;
+    object-fit: fill;
+    border-radius: 9px;
   }
 }
 
 /* ===== Mobile ===== */
 @media (max-width: 768px) {
-  .banner-image-wrapper {
-    padding: 0;
-  }
-
   .banner-image-wrapper img {
-    border-radius: 6px;
+    height: clamp(72px, 21vw, 94px) !important;
+    object-fit: fill;
+    border-radius: 8px;
   }
 }
 
 /* ===== Small Mobile ===== */
 @media (max-width: 480px) {
   .banner-image-wrapper img {
-    border-radius: 4px;
+    height: clamp(70px, 22vw, 88px) !important;
+    object-fit: fill;
+    border-radius: 7px;
   }
 }
