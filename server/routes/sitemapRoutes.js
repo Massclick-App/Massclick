@@ -113,14 +113,22 @@ const buildCategoryLookup = async () => {
 
   const lookup = new Map();
 
+  // pass 1 — every DB category starts as a primary (no parent)
+  for (const [, item] of uniqueMap) {
+    const key = normalizeKey(item.category);
+    lookup.set(key, {
+      slug: item.slug || safeSlug(item.category),
+      parentSlug: null,
+    });
+  }
+
+  // pass 2 — re-map sub-categories with their real parent slug.
+  // Runs after pass 1 so subs always override the null set above,
+  // except for categories that are themselves a parent key in categoriesData.
   for (const [, parentItem] of uniqueMap) {
     const pKey = normalizeKey(parentItem.category);
     const parentSlug = parentItem.slug || safeSlug(parentItem.category);
 
-    // every DB category gets a primary entry (no parent)
-    lookup.set(pKey, { slug: parentSlug, parentSlug: null });
-
-    // if this category has subs in categoriesData, map each sub to it
     const matchedKey = Object.keys(categoriesData).find((key) => {
       const cur = normalizeKey(key);
       return cur === pKey || cur === pKey + "s" || cur + "s" === pKey;
@@ -130,8 +138,8 @@ const buildCategoryLookup = async () => {
 
     for (const { name } of categoriesData[matchedKey]) {
       const subKey = normalizeKey(name);
-      // don't override a category that is itself a parent
-      if (lookup.has(subKey) && parentKeys.has(subKey)) continue;
+      // keep primary URL if this sub is itself a parent (e.g. "hospitals" under hospitals)
+      if (parentKeys.has(subKey)) continue;
 
       const foundSub = dbMap.get(cleanText(name));
       const subSlug = foundSub?.slug || safeSlug(name);
@@ -208,7 +216,7 @@ ${links.join("")}
    Contains all category pages + all business pages for that city.
    Category URLs use real slugs from categoryModel (no hardcoded mapping).
 ========================================================= */
-router.get("/sitemap-city-:cityslug.xml", async (req, res) => {
+router.get("/sitemap-citys-:cityslug.xml", async (req, res) => {
   try {
     const citySlug = req.params.cityslug;
 
