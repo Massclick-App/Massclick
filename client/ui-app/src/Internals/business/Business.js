@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { getAllBusinessList, createBusinessList, editBusinessList, deleteBusinessList, trackQrDownload } from "../../redux/actions/businessListAction";
-import { getAllLocation } from "../../redux/actions/locationAction";
+import { getAllLocation, createLocation } from "../../redux/actions/locationAction";
 import { createCategory, editCategory, businessCategorySearch } from "../../redux/actions/categoryAction";
 import { getAllUsersClient, getUserClientSuggestion } from "../../redux/actions/userClientAction.js";
 import { getAllUsers } from "../../redux/actions/userAction.js";
@@ -140,11 +140,13 @@ export default function BusinessList() {
     (state) => state.userClientReducer || {}
   );
   const [showCategorySuggest, setShowCategorySuggest] = useState(false);
+  const [showLocationSuggest, setShowLocationSuggest] = useState(false);
+  const [locationSuggestions, setLocationSuggestions] = useState([]);
   const { searchCategory } = useSelector((state) => state.categoryReducer);
 
   const { users = [] } = useSelector((state) => state.userReducer || {});
 
-  // const { location = [] } = useSelector((state) => state.locationReducer || {});
+  const { location = [] } = useSelector((state) => state.locationReducer || {});
   const { category = [] } = useSelector((state) => state.categoryReducer || {});
   const fileInputRef = useRef();
 
@@ -488,7 +490,7 @@ export default function BusinessList() {
 
   useEffect(() => {
     dispatch(getAllBusinessList());
-    dispatch(getAllLocation());
+    dispatch(getAllLocation({ pageNo: 1, pageSize: 1000 }));
     dispatch(businessCategorySearch())
     dispatch(getAllUsersClient())
     dispatch(getAllUsers())
@@ -610,6 +612,20 @@ export default function BusinessList() {
           })
       )
     );
+
+    const locationExists = location.some(
+      (loc) => loc.city?.toLowerCase() === formData.location?.toLowerCase() ||
+               loc.district?.toLowerCase() === formData.location?.toLowerCase()
+    );
+
+    if (!locationExists && formData.location) {
+      await dispatch(createLocation({
+        city: formData.location,
+        district: formData.location,
+        state: "N/A",
+        country: "N/A",
+      }));
+    }
 
     const existingCategory = category.find(
       (cat) =>
@@ -1008,17 +1024,62 @@ export default function BusinessList() {
               {errors.pincode && <p className="error-text">{errors.pincode}</p>}
             </div>
 
-            <div className="form-input-group">
+            <div className="form-input-group" style={{ position: "relative" }}>
               <label htmlFor="location" className="input-label">Location</label>
               <input
                 type="text"
                 id="location"
                 name="location"
+                autoComplete="off"
                 className={`text-input ${errors.location ? "error" : ""}`}
                 value={formData.location}
-                onChange={handleChange}
+                placeholder="Type to search location..."
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setFormData((prev) => ({ ...prev, location: value }));
+                  if (value.length >= 1) {
+                    const filtered = location.filter((loc) =>
+                      loc.city?.toLowerCase().includes(value.toLowerCase()) ||
+                      loc.district?.toLowerCase().includes(value.toLowerCase())
+                    );
+                    setLocationSuggestions(filtered);
+                    setShowLocationSuggest(true);
+                  } else {
+                    setShowLocationSuggest(false);
+                    setLocationSuggestions([]);
+                  }
+                }}
+                onBlur={() => setTimeout(() => setShowLocationSuggest(false), 200)}
+                onFocus={() => {
+                  if (formData.location.length >= 1) {
+                    const filtered = location.filter((loc) =>
+                      loc.city?.toLowerCase().includes(formData.location.toLowerCase()) ||
+                      loc.district?.toLowerCase().includes(formData.location.toLowerCase())
+                    );
+                    setLocationSuggestions(filtered);
+                    setShowLocationSuggest(filtered.length > 0);
+                  }
+                }}
               />
               {errors.location && <p className="error-text">{errors.location}</p>}
+              {showLocationSuggest && locationSuggestions.length > 0 && (
+                <ul className="category-suggestion-box">
+                  {locationSuggestions.map((loc) => (
+                    <li
+                      key={loc._id}
+                      onClick={() => {
+                        setFormData((prev) => ({ ...prev, location: loc.city || loc.district }));
+                        setShowLocationSuggest(false);
+                        setLocationSuggestions([]);
+                      }}
+                      style={{ padding: "10px", cursor: "pointer", borderBottom: "1px solid #eee" }}
+                    >
+                      {loc.city}{loc.district && loc.district !== loc.city ? `, ${loc.district}` : ""}
+                      {loc.state ? ` — ${loc.state}` : ""}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
 
             <div className="form-input-group">
