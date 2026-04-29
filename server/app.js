@@ -137,10 +137,22 @@ app.get("/robots.txt", (req, res) => {
 Content-Signal: search=yes, ai-input=yes, ai-train=no
 Allow: /
 
+User-agent: OAI-SearchBot
+Allow: /
+
 User-agent: GPTBot
 Allow: /
 
+User-agent: ChatGPT-User
+Allow: /
+
 User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-SearchBot
+Allow: /
+
+User-agent: Claude-User
 Allow: /
 
 User-agent: Google-Extended
