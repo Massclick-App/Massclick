@@ -103,6 +103,17 @@ const PopularCategoriesDrawer = ({ openFromHome = false }) => {
     [selectedDistrict]
   );
 
+  useEffect(() => {
+    if (!popularCategories.length) return;
+
+    const popularCategoryUrls = popularCategories.map((cat) => {
+      const categorySlug = cat.slug || slugify(cat.name);
+      return `/${districtSlug}/${categorySlug}`;
+    });
+
+    console.log("Popular category URLs:", popularCategoryUrls);
+  }, [popularCategories, districtSlug]);
+
   const orderedCategories = useMemo(() => {
 
     if (!popularCategories.length) return [];
