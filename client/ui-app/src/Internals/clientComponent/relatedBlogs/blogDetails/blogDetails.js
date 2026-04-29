@@ -1,14 +1,30 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { Helmet } from "react-helmet-async";
 import { fetchSeoBlogBySlug } from "../../../../redux/actions/seoPageContentBlogAction";
 import "./blogDetails.css";
 import Navbar from "../relatedBlogNavbar/relatedBlogNavbar";
+import AccessTimeIcon from "@mui/icons-material/AccessTime";
+import ArticleIcon from "@mui/icons-material/Article";
+import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
+import CloseIcon from "@mui/icons-material/Close";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import DoneIcon from "@mui/icons-material/Done";
+import LocalOfferIcon from "@mui/icons-material/LocalOffer";
+import PhoneIcon from "@mui/icons-material/Phone";
+import PlaceIcon from "@mui/icons-material/Place";
+import ShareIcon from "@mui/icons-material/Share";
+import TrendingUpIcon from "@mui/icons-material/TrendingUp";
+import VisibilityIcon from "@mui/icons-material/Visibility";
 
 const BlogDetail = () => {
   const { slug } = useParams();
   const dispatch = useDispatch();
+  const [readingProgress, setReadingProgress] = useState(0);
+  const [copied, setCopied] = useState(false);
+  const [selectedContact, setSelectedContact] = useState(null);
+  const [copiedContact, setCopiedContact] = useState(false);
 
   const { blog, loading, error } = useSelector(
     (state) => state.seoPageContentBlogReducer
@@ -19,6 +35,26 @@ const BlogDetail = () => {
       dispatch(fetchSeoBlogBySlug(slug));
     }
   }, [dispatch, slug]);
+
+  useEffect(() => {
+    const updateReadingProgress = () => {
+      const scrollTop = window.scrollY || document.documentElement.scrollTop;
+      const scrollHeight =
+        document.documentElement.scrollHeight - window.innerHeight;
+
+      if (scrollHeight <= 0) {
+        setReadingProgress(0);
+        return;
+      }
+
+      setReadingProgress(Math.min(100, Math.round((scrollTop / scrollHeight) * 100)));
+    };
+
+    updateReadingProgress();
+    window.addEventListener("scroll", updateReadingProgress, { passive: true });
+
+    return () => window.removeEventListener("scroll", updateReadingProgress);
+  }, []);
 
 const normalizeMassclickUrl = (rawUrl = "") => {
   try {
@@ -240,6 +276,66 @@ const linkifyText = (text = "") => {
   };
   const publishedDate = formatDate(blog?.createdAt);
   const updatedDate = formatDate(blog?.updatedAt);
+  const plainContent = useMemo(() => {
+    if (!blog?.pageContent) return "";
+
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(blog.pageContent, "text/html");
+
+    return doc.body.textContent || "";
+  }, [blog?.pageContent]);
+  const wordCount = plainContent.trim().split(/\s+/).filter(Boolean).length;
+  const estimatedReadTime = blog?.readTime || `${Math.max(3, Math.ceil(wordCount / 220))} min read`;
+  const heroDescription =
+    blog?.metaDescription ||
+    "Explore a practical local guide from Massclick with helpful recommendations, business insights and decision-ready details.";
+  const articleUrl = canonical;
+  const shareTitle = blog?.heading || metaTitle;
+
+  const copyArticleLink = async () => {
+    try {
+      await navigator.clipboard.writeText(articleUrl);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch (error) {
+      window.prompt("Copy this article link", articleUrl);
+    }
+  };
+
+  const shareArticle = async () => {
+    if (navigator.share) {
+      await navigator.share({
+        title: shareTitle,
+        text: heroDescription,
+        url: articleUrl,
+      });
+      return;
+    }
+
+    copyArticleLink();
+  };
+
+  const openContactPopover = (business) => {
+    setSelectedContact(business);
+    setCopiedContact(false);
+  };
+
+  const closeContactPopover = () => {
+    setSelectedContact(null);
+    setCopiedContact(false);
+  };
+
+  const copyContactNumber = async () => {
+    if (!selectedContact?.contact) return;
+
+    try {
+      await navigator.clipboard.writeText(selectedContact.contact);
+      setCopiedContact(true);
+      window.setTimeout(() => setCopiedContact(false), 1600);
+    } catch (error) {
+      window.prompt("Copy this contact number", selectedContact.contact);
+    }
+  };
 
   if (loading) return <div className="loader">Loading...</div>;
   if (error) return <div className="error">Error loading blog</div>;
@@ -259,28 +355,76 @@ const linkifyText = (text = "") => {
         <meta name="twitter:description" content={metaDescription} />
       </Helmet>
       <Navbar />
+      <div className="reading-progress" aria-hidden="true">
+        <span style={{ width: `${readingProgress}%` }} />
+      </div>
 
       <div className="blog-container">
 
-        <div className="breadcrumb">
-          Home › {blog.category} › {blog.heading}
-        </div>
+        <section className="blog-hero">
+          <div className="blog-hero-copy">
+            <div className="breadcrumb">
+              <span>Home</span>
+              <span>&rsaquo;</span>
+              <span>{blog.category}</span>
+              <span>&rsaquo;</span>
+              <span>{blog.heading}</span>
+            </div>
 
-        <div className="blog-header">
-          <h1>{blog.heading}</h1>
+            <div className="blog-kicker">
+              <span>
+                <LocalOfferIcon />
+                {blog.category || "Guide"}
+              </span>
+              {blog.location && (
+                <span>
+                  <PlaceIcon />
+                  {blog.location}
+                </span>
+              )}
+            </div>
 
-          <div className="blog-meta">
-            {publishedDate && <span>Published {publishedDate}</span>}
-            {updatedDate && <span>Updated {updatedDate}</span>}
-            <span>{blog.views || 48} views</span>
-            <span>• {blog.readTime || "5 min read"}</span>
+            <div className="blog-header">
+              <h1>{blog.heading}</h1>
+              <p>{heroDescription}</p>
+
+              <div className="blog-meta">
+                {publishedDate && (
+                  <span>
+                    <CalendarTodayIcon />
+                    Published {publishedDate}
+                  </span>
+                )}
+                {updatedDate && (
+                  <span>
+                    <TrendingUpIcon />
+                    Updated {updatedDate}
+                  </span>
+                )}
+                <span>
+                  <VisibilityIcon />
+                  {blog.views || 48} views
+                </span>
+                <span>
+                  <AccessTimeIcon />
+                  {estimatedReadTime}
+                </span>
+              </div>
+            </div>
+
+            <div className="hero-actions">
+              <button type="button" className="share-btn primary-share" onClick={shareArticle}>
+                <ShareIcon />
+                Share Article
+              </button>
+              <button type="button" className="share-btn" onClick={copyArticleLink}>
+                {copied ? <DoneIcon /> : <ContentCopyIcon />}
+                {copied ? "Copied" : "Copy Link"}
+              </button>
+            </div>
           </div>
-        </div>
 
-        <div className="blog-grid">
-
-          <div className="blog-content-area">
-
+          <div className="blog-hero-media">
             {blog.pageImages?.[0] && (
               <img
                 src={blog.pageImages[0]}
@@ -288,6 +432,34 @@ const linkifyText = (text = "") => {
                 alt={blog.heading}
               />
             )}
+            <div className="hero-stat-card">
+              <span>Article depth</span>
+              <strong>{wordCount || "Fresh"} words</strong>
+            </div>
+          </div>
+        </section>
+
+        <div className="article-quick-stats">
+          <div>
+            <ArticleIcon />
+            <span>Guide Type</span>
+            <strong>{blog.category || "Local Guide"}</strong>
+          </div>
+          <div>
+            <AccessTimeIcon />
+            <span>Reading Time</span>
+            <strong>{estimatedReadTime}</strong>
+          </div>
+          <div>
+            <PlaceIcon />
+            <span>Focus Area</span>
+            <strong>{blog.location || "Massclick"}</strong>
+          </div>
+        </div>
+
+        <div className="blog-grid">
+
+          <div className="blog-content-area">
 
             <div
               className="blog-content"
@@ -300,7 +472,7 @@ const linkifyText = (text = "") => {
             {blog.pageImages?.length > 1 && (
               <div className="image-grid">
                 {blog.pageImages.slice(1).map((img, i) => (
-                  <img key={i} src={img} alt={`${blog.heading} supporting image ${i + 2}`} />
+                  <img key={i} src={img} alt={`${blog.heading} supporting visual ${i + 2}`} />
                 ))}
               </div>
             )}
@@ -316,12 +488,13 @@ const linkifyText = (text = "") => {
                     <div className="business-header">
                       <h3>{b.businessName}</h3>
 
-                      <a
-                        href={`tel:${b.contact}`}
+                      <button
+                        type="button"
                         className="call-btn"
+                        onClick={() => openContactPopover(b)}
                       >
                         Call Now
-                      </a>
+                      </button>
                     </div>
 
                     {b.bannerImage && (
@@ -409,7 +582,7 @@ const linkifyText = (text = "") => {
               </div>
             </div>
 
-            <div className="author-card" style={{ marginTop: "24px" }}>
+            <div className="author-card author-card-large">
               <img
                 src={blog.profileImage || "https://via.placeholder.com/80"}
                 alt={`${blog.author || "Massclick"} author profile`}
@@ -454,6 +627,32 @@ const linkifyText = (text = "") => {
               </ul>
             </div>
 
+            <div className="sidebar-cta">
+              <span>Need a quick shortlist?</span>
+              <h4>Find trusted {blog.category || "services"} near you</h4>
+              <p>
+                Use Massclick to compare local options faster and move from reading to action.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  const locationSlug = (blog.location || "trichy")
+                    .toLowerCase()
+                    .trim()
+                    .replace(/\s+/g, "-");
+
+                  const categorySlug = (blog.category || "services")
+                    .toLowerCase()
+                    .trim()
+                    .replace(/\s+/g, "-");
+
+                  window.open(`https://massclick.in/${locationSlug}/${categorySlug}`, "_blank");
+                }}
+              >
+                Explore Listings
+              </button>
+            </div>
+
             <div className="tags">
               <h4>Related Tags</h4>
 
@@ -494,6 +693,53 @@ const linkifyText = (text = "") => {
 
         </div>
       </div>
+
+      {selectedContact && (
+        <div className="contact-popover-backdrop" role="presentation" onClick={closeContactPopover}>
+          <div
+            className="contact-popover"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="contact-popover-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="contact-popover-close"
+              aria-label="Close contact details"
+              onClick={closeContactPopover}
+            >
+              <CloseIcon />
+            </button>
+
+            <div className="contact-popover-icon">
+              <PhoneIcon />
+            </div>
+
+            <span className="contact-popover-eyebrow">Contact number</span>
+            <h3 id="contact-popover-title">{selectedContact.businessName}</h3>
+            <p>{selectedContact.category} in {selectedContact.location}</p>
+
+            <div className="contact-number-box">
+              <span>{selectedContact.contact || "Not available"}</span>
+            </div>
+
+            <div className="contact-popover-actions">
+              {selectedContact.contact && (
+                <a href={`tel:${selectedContact.contact}`} className="contact-call-link">
+                  <PhoneIcon />
+                  Call Now
+                </a>
+              )}
+
+              <button type="button" className="contact-copy-btn" onClick={copyContactNumber}>
+                {copiedContact ? <DoneIcon /> : <ContentCopyIcon />}
+                {copiedContact ? "Copied" : "Copy Number"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };
