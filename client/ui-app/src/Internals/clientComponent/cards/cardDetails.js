@@ -157,7 +157,6 @@ const BusinessDetail = () => {
   const [showShareOptions, setShowShareOptions] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
   const [activeTab, setActiveTab] = useState("Overview");
-  const [reviewLimit, setReviewLimit] = useState(3);
   const [showLoginModal, setShowLoginModal] = useState(false);
 
   const overviewRef = useRef(null);
@@ -184,7 +183,6 @@ const BusinessDetail = () => {
       dispatch(getBusinessReviews(business._id));
     }
   }, [dispatch, business?._id]);
-
 
   if (businessDetailsLoading) {
     return (
@@ -312,6 +310,11 @@ const formattedWebsite =
     business.restaurantOptions || null,
   ];
   const quickFacts = quickFactsRaw.filter(Boolean);
+  const heroHighlights = [
+    business.category,
+    getTodayHours(),
+    business.experience ? `${business.experience}+ years experience` : null,
+  ].filter(Boolean);
 
   const getQuickFactIcon = (index) => {
     switch (index) {
@@ -432,17 +435,10 @@ const formattedWebsite =
     }
   };
 
-  const handleViewMoreReviews = () =>
-    setReviewLimit((prev) => prev + 3);
-
   const currentUrl = encodeURIComponent(window.location.href);
   const currentTitle = encodeURIComponent(
     `Check out ${business.businessName}`
   );
-
-  const allReviews = business.reviews || [];
-  const reviewsToDisplay = allReviews.slice(0, reviewLimit);
-  const hasMoreReviews = allReviews.length > reviewLimit;
 
   const overviewHtml = business.businessDetails;
 
@@ -532,11 +528,11 @@ const whatsappNumber =
           >
             <img
               key={business?._id || business?.bannerImage}
-              src={business?.bannerImage || "/placeholder.jpg"}
+              src={bannerImageSrc}
               alt={business?.businessName}
               className="business-CardDetails-bannerImage"
               loading="eager"
-              fetchpriority="high"
+              fetchPriority="high"
               width="1200"
               height="600"
             />
@@ -550,9 +546,7 @@ const whatsappNumber =
                   <span className="business-CardDetails-heroRatingScore">
                     {displayedAverageRating}
                   </span>
-                  <span className="business-CardDetails-heroRatingStar">
-                    ★
-                  </span>
+                  <StarIcon className="business-CardDetails-heroRatingStar" />
                   <span className="business-CardDetails-heroRatingCount">
                     {totalReview} rating
                     {totalReview !== 1 ? "s" : ""}
@@ -562,6 +556,18 @@ const whatsappNumber =
               <p className="business-CardDetails-heroAddress">
                 {fullAddress}
               </p>
+              {heroHighlights.length > 0 && (
+                <div className="business-CardDetails-heroHighlights">
+                  {heroHighlights.map((item, index) => (
+                    <span
+                      key={`${item}-${index}`}
+                      className="business-CardDetails-heroHighlight"
+                    >
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -601,13 +607,13 @@ const whatsappNumber =
 
               <div className="business-CardDetails-ratingRow">
                 <span className="business-CardDetails-ratingBadge">
-                  {displayedAverageRating} ★
+                  {displayedAverageRating} <StarIcon />
                 </span>
                 <span className="business-CardDetails-ratingText">
-                  {totalReview} ratings •{" "}
-                  <a href="#" onClick={(e) => e.preventDefault()}>
+                  {totalReview} ratings ·{" "}
+                  <button type="button">
                     Claim this business
-                  </a>
+                  </button>
                 </span>
               </div>
 
@@ -844,8 +850,7 @@ const whatsappNumber =
                           src ||
                           "https://via.placeholder.com/300x200?text=No+Image"
                         }
-                        alt={`${business.businessName} photo ${index + 1
-                          }`}
+                        alt={`${business.businessName} ${index + 1}`}
                         className="business-CardDetails-photoItem"
                         onClick={() => {
                           setCurrentSlideIndex(index);
@@ -893,6 +898,32 @@ const whatsappNumber =
 
           <aside className="business-CardDetails-rightSidebar">
             <div className="business-CardDetails-sidebarCard">
+              <div className="business-CardDetails-sidebarHero">
+                <span className="business-CardDetails-sidebarKicker">
+                  Business contact
+                </span>
+                <h3>{business.businessName}</h3>
+                <p>{business.category || "Local business"}</p>
+                <button
+                  onClick={handleShowNumberClick}
+                  className="business-CardDetails-sidebarPrimaryBtn"
+                >
+                  <PhoneIcon />
+                  Show Number
+                </button>
+                {whatsappNumber && (
+                  <a
+                    className="business-CardDetails-sidebarWhatsAppBtn"
+                    href={`https://wa.me/${whatsappNumber}?text=${currentTitle}%20${currentUrl}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <WhatsAppIcon />
+                    WhatsApp
+                  </a>
+                )}
+              </div>
+
               <h3 className="business-CardDetails-sidebarTitle">
                 Contact
               </h3>
