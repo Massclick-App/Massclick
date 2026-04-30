@@ -434,3 +434,12 @@
     grid-template-columns: 1fr;
   }
 }
+
+.base-card .card-content {
+  padding: 0 !important;
+  gap: 0 !important;
+  position: static !important;
+  min-height: auto !important;
+  flex: none !important;
+  background: none !important;
+}
