@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { LazyLoadImage } from "react-lazy-load-image-component";
@@ -130,6 +130,8 @@ const Cards = ({
               decoding="async"
               loading={index < 3 ? "eager" : "lazy"}
               effect="opacity"
+              width="100%"
+              height="100%"
               className="card-image"
             />
           </div>
