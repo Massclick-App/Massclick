@@ -38,6 +38,10 @@ const paymentSchema = new mongoose.Schema({
     enum: ["PENDING", "SUCCESS", "FAILED"],
     default: "PENDING",
   },
+  paid: {
+    type: Boolean,
+    default: false,
+  },
   paymentDate: {
     type: Date,
     default: null,
@@ -45,6 +49,28 @@ const paymentSchema = new mongoose.Schema({
   responseData: {
     type: Object,
     default: {},
+  },
+});
+
+const mniSchema = new mongoose.Schema({
+  categoryGroup: {
+    type: String,
+  },
+  categoryGroupLocation: {
+    type: String,
+  },
+  leadsCount: {
+    type: Number,
+    default: 0,
+  },
+   leadsCategory: [
+    {
+      type: String
+    }
+  ],
+  lastLeadsUpdate: {
+    type: Date,
+    default: null,
   },
 });
 
@@ -61,6 +87,9 @@ const businessListSchema = new mongoose.Schema({
   whatsappNumber: { type: String, default: '', required: true },
   experience: { type: String, default: '', required: true },
   businessesLive: { type: Boolean, default: false },
+  amountPaid: { type: Boolean, default: false },
+  paidDate: { type: Date, default: null },
+
   openingHours: [
     {
       day: { type: String, required: true },
@@ -148,6 +177,10 @@ const businessListSchema = new mongoose.Schema({
   },
   payment: {
     type: [paymentSchema],
+    default: []
+  },
+  mniDetails: {
+    type: [mniSchema],
     default: []
   },
   kycDocumentsKey: [{ type: String, default: '' }],

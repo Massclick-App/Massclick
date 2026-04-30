@@ -35,7 +35,7 @@ export const createBusinessList = async (reqBody = {}) => {
       delete reqBody.businessImages;
     }
 
-   
+
     if (Array.isArray(reqBody.kycDocuments) && reqBody.kycDocuments.length > 0) {
       const kycDocumentsKey = await Promise.all(
         reqBody.kycDocuments.map(async (doc, i) => {
@@ -54,7 +54,7 @@ export const createBusinessList = async (reqBody = {}) => {
     const businessListDocument = new businessListModel(reqBody);
     const savedBusiness = await businessListDocument.save();
 
-   
+
 
     const publicReviewUrl = `${process.env.PUBLIC_BASE_URL}/write-review/${savedBusiness._id}/0`;
 
@@ -66,7 +66,7 @@ export const createBusinessList = async (reqBody = {}) => {
       `businessList/qr/review-${savedBusiness._id}`
     );
 
- 
+
     savedBusiness.qrCode = {
       qrText: publicReviewUrl,
       qrImageKey: qrUploadResult.key,
@@ -75,7 +75,7 @@ export const createBusinessList = async (reqBody = {}) => {
 
     await savedBusiness.save();
 
- 
+
     const result = savedBusiness.toObject();
 
     result.qrCode.qrImage = getSignedUrlByKey(
@@ -124,27 +124,27 @@ export const findBusinessBySlug = async ({ location, slug }) => {
   }
 };
 export const viewBusinessList = async (id) => {
-    if (!ObjectId.isValid(id)) throw new Error("Invalid business ID");
+  if (!ObjectId.isValid(id)) throw new Error("Invalid business ID");
 
-    const business = await businessListModel.findById(id).lean();
-    if (!business) throw new Error("Business not found");
+  const business = await businessListModel.findById(id).lean();
+  if (!business) throw new Error("Business not found");
 
-    if (business.bannerImageKey) business.bannerImage = getSignedUrlByKey(business.bannerImageKey);
-    if (business.businessImagesKey?.length > 0) {
-        business.businessImages = business.businessImagesKey.map(key => getSignedUrlByKey(key));
-    }
-    if (business.kycDocumentsKey?.length > 0)
-        business.kycDocuments = business.kycDocumentsKey.map((key) => getSignedUrlByKey(key));
+  if (business.bannerImageKey) business.bannerImage = getSignedUrlByKey(business.bannerImageKey);
+  if (business.businessImagesKey?.length > 0) {
+    business.businessImages = business.businessImagesKey.map(key => getSignedUrlByKey(key));
+  }
+  if (business.kycDocumentsKey?.length > 0)
+    business.kycDocuments = business.kycDocumentsKey.map((key) => getSignedUrlByKey(key));
 
 
-    return business;
+  return business;
 };
 
 export const viewAllBusiness = async () => {
   const businesses = await businessListModel
     .find()
     .sort({ createdAt: -1 })
-    .limit(10)              
+    .limit(10)
     .lean();
 
   const updatedBusinesses = businesses.map((business) => {
@@ -202,7 +202,7 @@ export const findBusinessesByCategory = async (category, district) => {
 
     {
       $lookup: {
-        from: "businessreviews", 
+        from: "businessreviews",
         localField: "_id",
         foreignField: "businessId",
         as: "reviews"
@@ -244,18 +244,18 @@ export const findBusinessesByCategory = async (category, district) => {
 
 
 export const viewAllClientBusinessList = async () => {
-    const businessList = await businessListModel.find().lean();
-    if (!businessList || businessList.length === 0) throw new Error("No business found");
+  const businessList = await businessListModel.find().lean();
+  if (!businessList || businessList.length === 0) throw new Error("No business found");
 
-    return businessList.map(business => {
-        if (business.bannerImageKey) business.bannerImage = getSignedUrlByKey(business.bannerImageKey);
-        if (business.businessImagesKey?.length > 0) {
-            business.businessImages = business.businessImagesKey.map(key => getSignedUrlByKey(key));
-        }
-        if (business.kycDocumentsKey?.length > 0)
-            business.kycDocuments = business.kycDocumentsKey.map((key) => getSignedUrlByKey(key));
-        return business;
-    });
+  return businessList.map(business => {
+    if (business.bannerImageKey) business.bannerImage = getSignedUrlByKey(business.bannerImageKey);
+    if (business.businessImagesKey?.length > 0) {
+      business.businessImages = business.businessImagesKey.map(key => getSignedUrlByKey(key));
+    }
+    if (business.kycDocumentsKey?.length > 0)
+      business.kycDocuments = business.kycDocumentsKey.map((key) => getSignedUrlByKey(key));
+    return business;
+  });
 };
 
 function escapeRegex(text) {
@@ -319,15 +319,15 @@ export const viewAllBusinessList = async ({
     "keywords"
   ];
 
- if (search) {
-  const safeSearch = escapeRegex(search);
+  if (search) {
+    const safeSearch = escapeRegex(search);
 
-  const regexSearch = searchableFields.map((field) => ({
-    [field]: { $regex: safeSearch, $options: "i" }
-  }));
+    const regexSearch = searchableFields.map((field) => ({
+      [field]: { $regex: safeSearch, $options: "i" }
+    }));
 
-  query.$or = regexSearch;
-}
+    query.$or = regexSearch;
+  }
 
 
   const allowedSortFields = [
@@ -342,7 +342,7 @@ export const viewAllBusinessList = async ({
   if (allowedSortFields.includes(sortBy)) {
     sort[sortBy] = sortOrder === "asc" ? 1 : -1;
   } else {
-    sort.createdAt = -1; 
+    sort.createdAt = -1;
   }
 
 
@@ -390,6 +390,18 @@ export const viewAllBusinessList = async ({
   };
 };
 
+const getGroupLetter = (num) => {
+  const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+  const baseIndex = num % 26;
+  const cycle = Math.floor(num / 26);
+
+  if (cycle === 0) {
+    return letters[baseIndex];
+  } else {
+    return `${letters[baseIndex]}${cycle}`;
+  }
+};
 export const updateBusinessList = async (id, data) => {
   if (!ObjectId.isValid(id)) throw new Error("Invalid business ID");
 
@@ -487,9 +499,7 @@ export const updateBusinessList = async (id, data) => {
 
   delete data.businessImages;
 
-  /* ===============================
-     4️⃣ HANDLE KYC DOCUMENTS
-  =============================== */
+
   if (Array.isArray(data.kycDocuments)) {
     const oldKycKeys = Array.isArray(business.kycDocumentsKey)
       ? business.kycDocumentsKey
@@ -515,6 +525,58 @@ export const updateBusinessList = async (id, data) => {
   }
 
   delete data.kycDocuments;
+
+  if (Array.isArray(data.payment) && data.payment.length > 0) {
+
+    if (!business.amountPaid) {
+
+      // 1️⃣ ADD PAYMENT
+      business.payment = [
+        ...(business.payment || []),
+        ...data.payment.map((p) => ({
+          ...p,
+          userId: data.updatedBy || null,
+          businessId: business._id,
+          transactionId: `MANUAL-${Date.now()}`,
+          paid: true,
+          paymentStatus: "SUCCESS",
+          paymentDate: new Date(),
+        })),
+      ];
+
+      business.amountPaid = true;
+      business.paidDate = new Date();
+
+      const location = (business.location || "").toLowerCase().trim();
+
+      const paidCount = await businessListModel.countDocuments({
+        category: business.category,
+        amountPaid: true,
+        location: new RegExp(`^${location}$`, "i"),
+      });
+
+      const getGroupLetter = (num) => {
+        const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        const baseIndex = num % 26;
+        const cycle = Math.floor(num / 26);
+
+        if (cycle === 0) return letters[baseIndex];
+        return `${letters[baseIndex]}${cycle}`;
+      };
+
+      const groupLetter = getGroupLetter(paidCount);
+
+      business.mniDetails = [
+        {
+          categoryGroup: groupLetter,
+          categoryGroupLocation: location,
+          leadsCount: null,
+        }
+      ];
+    }
+  }
+
+  delete data.payment;
 
   /* ===============================
      5️⃣ UPDATE NORMAL FIELDS

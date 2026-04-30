@@ -3,10 +3,11 @@
 ================================ */
 
 .mrp-insights {
-  background: #ffffff;
-  border-radius: clamp(20px, 3vw, 28px);
-  padding: clamp(16px, 3vw, 24px);
-  box-shadow: 0 30px 70px rgba(0,0,0,.08);
+  background: linear-gradient(180deg, #ffffff, #f8fbff);
+  border-radius: 28px;
+  padding: 28px;
+  border: 1px solid rgba(15,23,42,.08);
+  box-shadow: 0 30px 70px rgba(15,23,42,.08);
   max-width: 100%;
 }
 
@@ -19,17 +20,18 @@
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  margin-bottom: 18px;
+  margin-bottom: 20px;
 }
 
 .mrp-insights-header h3 {
-  font-size: clamp(16px, 2.2vw, 18px);
+  font-size: 1.1rem;
   font-weight: 800;
   color: #0f172a;
+  margin: 0;
 }
 
 .mrp-insights-header span {
-  font-size: 13px;
+  font-size: 0.9rem;
   color: #64748b;
   white-space: nowrap;
 }
@@ -49,15 +51,16 @@
 ================================ */
 
 .mrp-insight-card {
-  border-radius: 20px !important;
-  border: 1px solid #e2e8f0;
+  border-radius: 22px !important;
+  border: 1px solid rgba(226,232,240,.95);
   overflow: hidden;
-  transition: box-shadow .25s ease, transform .25s ease;
+  transition: box-shadow .3s ease, transform .3s ease;
+  background: #ffffff;
 }
 
 .mrp-insight-card:hover {
-  box-shadow: 0 16px 40px rgba(0,0,0,.12);
-  transform: translateY(-1px);
+  box-shadow: 0 18px 46px rgba(15,23,42,.12);
+  transform: translateY(-2px);
 }
 
 /* ===============================
@@ -109,14 +112,14 @@
 
 
 .mrp-insight-details {
-  padding: 16px 20px 20px !important;
-  background: #fafafa;
+  padding: 18px 22px 22px !important;
+  background: rgba(248,250,255,.8);
 }
 
 .mrp-insight-description {
-  font-size: clamp(13px, 2vw, 14px);
+  font-size: 0.96rem;
   color: #334155;
-  line-height: 1.65;
+  line-height: 1.75;
 }
 
 .mrp-insight-contact {

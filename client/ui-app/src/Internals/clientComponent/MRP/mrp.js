@@ -45,6 +45,22 @@ export default function MRPPage() {
     details: ''
   });
 
+  const totalRequirements = mrpList.length;
+  const uniqueCategoryCount = new Set(
+    mrpList.map(item => item?.categoryId).filter(Boolean)
+  ).size;
+
+  const topCategories = Object.entries(
+    mrpList.reduce((acc, item) => {
+      if (item?.categoryId) {
+        acc[item.categoryId] = (acc[item.categoryId] || 0) + 1;
+      }
+      return acc;
+    }, {})
+  )
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3);
+
   useEffect(() => {
     try {
       const storedUser = localStorage.getItem("authUser");
@@ -72,60 +88,62 @@ export default function MRPPage() {
   }, []);
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  if (!formData.organizationId) {
-    enqueueSnackbar('Business not found', { variant: 'error' });
-    return;
-  }
-
-  if (!categorySelected) {
-    enqueueSnackbar('Please select category from suggestions', {
-      variant: 'warning'
-    });
-    return;
-  }
-
-  try {
-    const createdMRP = await dispatch(createMRP({
-      organizationId: formData.organizationId,
-      categoryId: formData.categoryId,
-      location: formData.location,
-      description: formData.details,
-      contactDetails: formData.contactDetails
-    }));
-
-    if (createdMRP?._id) {
-      await dispatch(sendMrpLeads(createdMRP._id));
+    if (!formData.organizationId) {
+      enqueueSnackbar('Business not found', { variant: 'error' });
+      return;
     }
 
-    dispatch(getAllMRP());
+    if (!categorySelected) {
+      enqueueSnackbar('Please select category from suggestions', {
+        variant: 'warning'
+      });
+      return;
+    }
 
-    enqueueSnackbar('Requirement published and leads sent successfully', {
-      variant: 'success'
-    });
+    try {
+      const createdMRP = await dispatch(createMRP({
+        categoryId: formData.categoryId,
+        location: formData.location,
+        description: formData.details,
+        contactDetails: formData.contactDetails
+      }));
 
-    setFormData({
-      organizationId: '',
-      categoryId: '',
-      location: '',
-      details: '',
-      contactDetails: ''
-    });
+      if (createdMRP?._id) {
+        await dispatch(sendMrpLeads(createdMRP._id));
+      }
 
-    setBusinessQuery('');
-    setCategoryQuery('');
-    setBusinessSelected(false);
-    setCategorySelected(false);
+      dispatch(getAllMRP());
 
-  } catch (err) {
-    console.error(err);
+      enqueueSnackbar('Requirement published and leads sent successfully', {
+        variant: 'success'
+      });
 
-    enqueueSnackbar('Failed to publish requirement', {
-      variant: 'error'
-    });
-  }
-};
+      setFormData({
+        organizationId: '',
+        categoryId: '',
+        location: '',
+        details: '',
+        contactDetails: ''
+      });
+
+      setBusinessQuery('');
+      setCategoryQuery('');
+      setBusinessSelected(false);
+      setCategorySelected(false);
+
+    } catch (err) {
+      console.error(err);
+
+      enqueueSnackbar(
+        typeof err === "string"
+          ? err
+          : err?.message || "Failed to publish requirement",
+        { variant: "error" }
+      );
+    }
+  };
 
   useEffect(() => {
     dispatch(getAllMRP());
@@ -167,15 +185,16 @@ export default function MRPPage() {
       <section className="mrp-container">
         <div className="mrp-layout-3">
 
-          <div className="mrp-card">
+          <div className="mrp-form-card mrp-card">
             <header className="mrp-header">
-              <h1>Create Business Requirement</h1>
+              <span className="mrp-badge">MRP Dashboard</span>
+              <h1>Create a modern business requirement</h1>
               <p>
-                Connect with the right organizations by publishing a clear,
-                targeted business requirement.
+                Publish a clear requirement, get faster responses, and track demand
+                across top categories with a polished interface.
               </p>
             </header>
-            .
+
             <form className="mrp-form" onSubmit={handleSubmit}>
 
               <div className="mrp-field async-search">
@@ -188,7 +207,9 @@ export default function MRPPage() {
 
                   <input
                     value={businessQuery}
-                    disabled
+                    onChange={(e) => handleBusinessSearch(e.target.value)}
+                    placeholder="Start typing to search organization"
+                    required
                   />
                 </div>
 
@@ -257,7 +278,6 @@ export default function MRPPage() {
                     placeholder="Phone / WhatsApp / Email"
                     required
                   />
-                  
                 </div>
               </div>
 
@@ -273,6 +293,7 @@ export default function MRPPage() {
                     value={categoryQuery}
                     placeholder="Search service category"
                     onChange={(e) => handleCategorySearch(e.target.value)}
+                    required
                   />
                 </div>
 
@@ -316,7 +337,13 @@ export default function MRPPage() {
                 />
               </div>
 
-              {error && <div className="mrp-error">{error}</div>}
+              {error && (
+                <div className="mrp-error">
+                  {typeof error === "string"
+                    ? error
+                    : error?.message || "Something went wrong"}
+                </div>
+              )}
 
               <div className="mrp-actions">
                 <button type="submit" disabled={loading}>
@@ -327,33 +354,50 @@ export default function MRPPage() {
             </form>
           </div>
 
-          {/* <div className="mrp-placeholder">
-            <MRPInsights data={mrpList} />
-          </div> */}
+          <div className="mrp-side-column">
+            {/* <div className="mrp-summary-grid">
+              <div className="mrp-summary-card">
+                <span>Total requirements</span>
+                <strong>{totalRequirements}</strong>
+              </div>
+              <div className="mrp-summary-card">
+                <span>Unique categories</span>
+                <strong>{uniqueCategoryCount}</strong>
+              </div>
+              <div className="mrp-summary-card">
+                <span>Top category</span>
+                <strong>{topCategories[0]?.[0] || 'No data'}</strong>
+              </div>
+            </div> */}
 
-          <div className="mrp-info-card">
-            <h3>Top Response Categories</h3>
-            <p className="mrp-info-sub">
-              Based on published requirements
-            </p>
+            {/* <MRPInsights data={mrpList} /> */}
 
-            {mrpList && mrpList.length > 0 && (
-              <>
-                <MRPCategoryChart data={mrpList} />
-                <MRPChartKPI data={mrpList} />
-              </>
-            )}
+            <div className="mrp-info-card">
+              <div className="mrp-info-card-header">
+                <div>
+                  <h3>Top Response Categories</h3>
+                  <p className="mrp-info-sub">
+                    Based on published requirements.
+                  </p>
+                </div>
+                <span className="mrp-live-pill">Live data</span>
+              </div>
 
-            <p className="mrp-chart-insight">
-              {mrpList.length
-                ? 'Restaurants and Gym services currently receive the highest demand.'
-                : 'Demand insights will appear as requirements are published.'}
-            </p>
+              {mrpList && mrpList.length > 0 ? (
+                <>
+                  <MRPCategoryChart data={mrpList} />
+                  <MRPChartKPI data={mrpList} />
+                </>
+              ) : (
+                <div className="mrp-empty-state">
+                  Demand insights will appear once requirements are added.
+                </div>
+              )}
 
-            <p className="mrp-chart-footnote">
-              Updated just now • Live data
-            </p>
-
+              <p className="mrp-chart-footnote">
+                Updated just now • Automatic response analysis
+              </p>
+            </div>
           </div>
 
         </div>
