@@ -148,17 +148,17 @@ export const logSearchAction = async (req, res) => {
       const fingerprint = anonFingerprint(req);
       const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
 
-      // Same dedup window as identified users, but keyed by IP+UA hash instead of mobile
-      const recentAnon = await searchLogModel.findOne({
-        categoryName: finalCategoryName,
-        location: normalizedLocation,
-        searchedUserText: cleanSearchText,
-        isAnonymous: true,
-        anonFingerprint: fingerprint,
-        createdAt: { $gte: fiveMinAgo }
-      });
+      // DEDUP DISABLED TEMPORARILY — remove comment to re-enable
+      // const recentAnon = await searchLogModel.findOne({
+      //   categoryName: finalCategoryName,
+      //   location: normalizedLocation,
+      //   searchedUserText: cleanSearchText,
+      //   isAnonymous: true,
+      //   anonFingerprint: fingerprint,
+      //   createdAt: { $gte: fiveMinAgo }
+      // });
 
-      if (!recentAnon) {
+      // if (!recentAnon) {
         await createSearchLog({
           categoryName: finalCategoryName,
           categoryImage: category?.categoryImageKey || "",
@@ -169,7 +169,7 @@ export const logSearchAction = async (req, res) => {
           isAnonymous: true,
           anonFingerprint: fingerprint,
         });
-      }
+      // } // end dedup guard
 
       return res.status(200).json({
         success: true,
@@ -180,23 +180,25 @@ export const logSearchAction = async (req, res) => {
     }
 
     // ── Identified user path ──────────────────────────────────────────────────
-    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+    const reqId = Math.random().toString(36).slice(2, 8);
+    console.log(`[SEARCH][${reqId}] user=${userDetails.mobileNumber1} text="${cleanSearchText}" loc=${normalizedLocation}`);
 
-    const recentLog = await searchLogModel.findOne({
-      categoryName: finalCategoryName,
-      location: normalizedLocation,
-      "userDetails.mobileNumber1": userDetails.mobileNumber1,
-      searchedUserText: cleanSearchText,
-      createdAt: { $gte: fiveMinutesAgo }
-    });
-
-    if (recentLog) {
-      return res.status(200).json({
-        success: true,
-        message: "Lead already sent recently",
-        detectedCategory: finalCategoryName
-      });
-    }
+    // DEDUP DISABLED TEMPORARILY — remove comment to re-enable
+    // const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+    // const recentLog = await searchLogModel.findOne({
+    //   categoryName: finalCategoryName,
+    //   location: normalizedLocation,
+    //   "userDetails.mobileNumber1": userDetails.mobileNumber1,
+    //   searchedUserText: cleanSearchText,
+    //   createdAt: { $gte: fiveMinutesAgo }
+    // });
+    // if (recentLog) {
+    //   return res.status(200).json({
+    //     success: true,
+    //     message: "Lead already sent recently",
+    //     detectedCategory: finalCategoryName
+    //   });
+    // }
 
     const savedLog = await createSearchLog({
       categoryName: finalCategoryName,
