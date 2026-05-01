@@ -291,11 +291,17 @@ export const logSearchAction = async (req, res) => {
 
     console.log("[FCM] businesses found:", businesses.length, "| owner mobiles resolved:", ownerMobiles.length, ownerMobiles);
 
+    // userModel stores mobileNumber1 as 10-digit (no 91 prefix); strip prefix for the DB query
+    const ownerMobilesForDB = ownerMobiles.map(m =>
+      m.startsWith("91") && m.length === 12 ? m.slice(2) : m
+    );
+    console.log("[FCM] querying userModel with 10-digit mobiles:", ownerMobilesForDB);
+
     const ownerUsersMap = new Map();
-    if (ownerMobiles.length > 0) {
+    if (ownerMobilesForDB.length > 0) {
       const now = new Date();
       const ownerUsers = await userModel.find(
-        { mobileNumber1: { $in: ownerMobiles }, "fcmTokens.isActive": true },
+        { mobileNumber1: { $in: ownerMobilesForDB }, "fcmTokens.isActive": true },
         { mobileNumber1: 1, fcmTokens: 1 }
       ).lean();
       console.log("[FCM] users with active fcmTokens found in DB:", ownerUsers.length);
@@ -305,7 +311,8 @@ export const logSearchAction = async (req, res) => {
         );
         console.log(`[FCM] user ${u.mobileNumber1}: total tokens=${u.fcmTokens.length}, active+valid=${activeTokens.length}`);
         if (activeTokens.length > 0) {
-          ownerUsersMap.set(u.mobileNumber1, activeTokens);
+          // Key by 12-digit (91-prefixed) to match what the business loop uses
+          ownerUsersMap.set("91" + u.mobileNumber1, activeTokens);
         }
       }
     } else {
