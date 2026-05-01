@@ -1,7 +1,9 @@
+import { createServer } from "http";
 import express from "express";
 import cors from "cors";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
+import { initWsServer } from "./websocket/wsServer.js";
 import compression from "compression";
 import helmet from "helmet";
 
@@ -38,6 +40,7 @@ import { startFCMScheduler } from "./scheduler/fcmScheduler.js";
 dotenv.config();
 
 const app = express();
+const httpServer = createServer(app);
 app.set("trust proxy", true);
 
 const PORT = process.env.PORT || 4000;
@@ -121,7 +124,8 @@ app.get(/.*/, ssrMiddleware);
 mongoose.connect(MONGO_URI)
   .then(() => {
     startFCMScheduler();
-    app.listen(PORT, () => {
+    initWsServer(httpServer);
+    httpServer.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
   })

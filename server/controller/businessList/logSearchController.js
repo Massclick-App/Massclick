@@ -7,6 +7,8 @@ import { sendBusinessesToCustomer, sendBusinessLead } from "../../helper/msg91/s
 import searchLogModel from "../../model/businessList/searchLogModel.js";
 import userModel from "../../model/msg91Model/usersModels.js";
 import { sendFCMNotification } from "../../helper/fcmHelper.js";
+import { emitToRoom } from "../../websocket/roomManager.js";
+import { buildRoom, WS_EVENTS } from "../../websocket/constants.js";
 
 // Short hash of IP + user-agent. 8 hex chars = 32-bit space, good enough for 5-min dedup.
 const anonFingerprint = (req) => {
@@ -282,7 +284,20 @@ export const logSearchAction = async (req, res) => {
 
     const notifiedBusinesses = [];
 
-
+    // ── WebSocket: instant update to each matching business owner's app ─────────
+    for (const business of businesses) {
+      const ownerMobile = cleanIndianMobile(business.contactList || business.whatsappNumber);
+      if (!ownerMobile) continue;
+      // Strip 91 prefix — room keys use 10-digit (matches userModel.mobileNumber1)
+      const mobile10 = ownerMobile.startsWith("91") && ownerMobile.length === 12
+        ? ownerMobile.slice(2)
+        : ownerMobile;
+      emitToRoom(buildRoom.business(mobile10), WS_EVENTS.LEAD_ANALYTICS_UPDATE, {
+        category: finalCategoryName,
+        location: normalizedLocation,
+        ts: new Date().toISOString(),
+      });
+    }
 
     // Collect mobile numbers for batch FCM lookup (avoid per-business DB query)
     const ownerMobiles = businesses
