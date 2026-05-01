@@ -35,6 +35,7 @@ import {
   InputAdornment,
   Chip,
 } from "@mui/material";
+import PaidIcon from '@mui/icons-material/Paid';
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import Autocomplete from "@mui/material/Autocomplete";
 import TextField from "@mui/material/TextField";
@@ -615,7 +616,7 @@ export default function BusinessList() {
 
     const locationExists = location.some(
       (loc) => loc.city?.toLowerCase() === formData.location?.toLowerCase() ||
-               loc.district?.toLowerCase() === formData.location?.toLowerCase()
+        loc.district?.toLowerCase() === formData.location?.toLowerCase()
     );
 
     if (!locationExists && formData.location) {
@@ -840,47 +841,100 @@ export default function BusinessList() {
       id: "payment",
       label: "Payment",
       renderCell: (value, row) => {
-        const paymentArray = Array.isArray(value) ? value : [];
-        const lastPayment = paymentArray[paymentArray.length - 1];
-        const status = lastPayment?.paymentStatus?.toLowerCase() || "pending";
 
-        let icon = <PaymentIcon />;
-        let color = "warning";
-        let isDisabled = false;
-        let tooltipText = "Click to make a payment";
+        const handleMarkPaid = async () => {
+          if (!row?._id) return;
 
-        if (status === "paid") {
-          icon = <CheckCircle />;
-          color = "success";
-          isDisabled = true;
-          tooltipText = "✅ Payment received — thank you for your purchase!";
-        } else if (status === "failed") {
-          icon = <Cancel />;
-          color = "error";
-          tooltipText = "❌ Payment failed — please try again.";
-        } else if (status === "pending") {
-          icon = <HourglassEmpty />;
-          color = "warning";
-          tooltipText = "⏳ Payment is pending — complete the process.";
-        }
+          try {
+            const payload = {
+              payment: [
+                {
+                  amount: row?.subscription?.price || 1,
+                }
+              ]
+            };
+
+            await dispatch(editBusinessList(row._id, payload));
+
+            enqueueSnackbar(`${row.businessName} marked as paid`, {
+              variant: "success",
+            });
+
+            dispatch(getAllBusinessList());
+
+          } catch (error) {
+            console.error(error);
+
+            enqueueSnackbar("Payment failed. Please try again!", {
+              variant: "error",
+            });
+          }
+        };
+
+        const formattedDate = row.paidDate
+          ? new Date(row.paidDate).toLocaleString("en-IN", {
+            timeZone: "Asia/Kolkata",
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true,
+          })
+          : null;
+
+        const isPaid = row.amountPaid;
 
         return (
-          <Tooltip title={tooltipText} arrow>
-            <span>
-              <IconButton
-                color={color}
-                onClick={!isDisabled ? () => handlePayNow(row) : undefined}
-                disabled={isDisabled}
-                sx={{
-                  cursor: isDisabled ? "not-allowed" : "pointer",
-                  transition: "transform 0.2s ease",
-                  "&:hover": { transform: !isDisabled ? "scale(1.1)" : "none" },
-                }}
+          <Box sx={{ textAlign: "center" }}>
+
+            <Tooltip
+              title={
+                isPaid
+                  ? `Paid on ${formattedDate}`
+                  : "Click to mark as paid"
+              }
+              arrow
+            >
+              <span>
+                <IconButton
+                  color={isPaid ? "success" : "warning"}
+                  onClick={!isPaid ? handleMarkPaid : undefined}
+                  disabled={isPaid}
+                  sx={{
+                    transition: "transform 0.2s ease",
+                    "&:hover": {
+                      transform: !isPaid ? "scale(1.15)" : "none",
+                    },
+                  }}
+                >
+                  <PaidIcon />
+                </IconButton>
+              </span>
+            </Tooltip>
+
+            <Typography
+              variant="caption"
+              display="block"
+              sx={{
+                color: isPaid ? "green" : "orange",
+                fontWeight: 600,
+              }}
+            >
+              {isPaid ? "Paid" : "Pending"}
+            </Typography>
+
+            {formattedDate && (
+              <Typography
+                variant="caption"
+                display="block"
+                sx={{ color: "#666" }}
               >
-                {icon}
-              </IconButton>
-            </span>
-          </Tooltip>
+                {formattedDate}
+              </Typography>
+            )}
+
+          </Box>
         );
       },
     },
@@ -950,7 +1004,7 @@ export default function BusinessList() {
               {errors.clientId && <p className="error-text">{errors.clientId}</p>}
 
               {showSuggestions && searchSuggestion?.length > 0 && (
-               <ul className="category-suggestion-box">
+                <ul className="category-suggestion-box">
                   {searchSuggestion.map((client) => (
                     <li
                       key={client._id}
@@ -1419,7 +1473,7 @@ export default function BusinessList() {
               />
 
               {showCategorySuggest && searchCategory?.length > 0 && (
-              <ul className="category-suggestion-box">
+                <ul className="category-suggestion-box">
                   {searchCategory.map((cat) => (
                     <li
                       key={cat._id}

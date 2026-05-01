@@ -3,6 +3,8 @@ import './customerCare.css';
 import LiveHelpIcon from '@mui/icons-material/LiveHelp';
 import SupportAgentIcon from '@mui/icons-material/SupportAgent';
 import ForumIcon from '@mui/icons-material/Forum';
+import CallIcon from '@mui/icons-material/Call';
+import BusinessCenterIcon from '@mui/icons-material/BusinessCenter';
 import CardsSearch from '../../CardsSearch/CardsSearch';
 import Footer from '../footer';
 import SeoMeta from "../../seo/seoMeta";
@@ -36,6 +38,23 @@ const carePillars = [
         icon: ForumIcon,
         buttonText: "Connect Now",
         link: "/community"
+    },
+];
+
+const contactLeads = [
+    {
+        id: 1,
+        role: "CEO Support",
+        phone: "+91 97891 04201",
+        icon: BusinessCenterIcon,
+        note: "Priority executive assistance"
+    },
+    {
+        id: 2,
+        role: "HR Contact",
+        phone: "+91 93454 98086",
+        icon: CallIcon,
+        note: "People operations and partnership support"
     },
 ];
 
@@ -84,8 +103,35 @@ const CustomerCareComponent = () => {
                 <div className="care-header-wrapper">
                     <h2 className="section-title-care">Dedicated Customer Care</h2>
                     <p className="section-subtitle-care">
-                        How can we help you today? Access instant support, speak to a specialist, or explore our knowledge base.
                     </p>
+                </div>
+
+                <div className="care-top-banner">
+                    <div className="banner-copy">
+                        <span className="care-badge">Global Service | Executive Access</span>
+                        <h3 className="banner-title">Your customer care team is ready to help, anytime.</h3>
+                        <p className="banner-copy-text">
+                            Speak directly with our leadership and support specialists for business strategy, HR queries, and premium assistance.
+                        </p>
+                    </div>
+
+                    <div className="banner-contact-cards">
+                        {contactLeads.map((lead) => {
+                            const IconComponent = lead.icon;
+                            return (
+                                <div key={lead.id} className="contact-card">
+                                    <div className="contact-icon">
+                                        <IconComponent />
+                                    </div>
+                                    <p className="contact-role">{lead.role}</p>
+                                    <a href={`tel:${lead.phone.replace(/[^0-9+]/g, '')}`} className="contact-phone">
+                                        {lead.phone}
+                                    </a>
+                                    <p className="contact-note">{lead.note}</p>
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
 
                 <div className="care-grid-container">

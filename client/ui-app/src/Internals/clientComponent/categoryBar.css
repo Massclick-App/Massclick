@@ -204,12 +204,6 @@
     transition: var(--transition);
 }
 
-.iconButtonPrimary:hover {
-    background: linear-gradient(45deg, var(--primary-dark), var(--primary-light));
-    color: white;
-    transform: scale(1.08);
-}
-
 
 button:active {
     transform: scale(.96);
