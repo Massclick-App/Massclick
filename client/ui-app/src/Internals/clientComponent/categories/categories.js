@@ -58,7 +58,7 @@ const CategoriesPage = () => {
       )
     );
 
-    navigate(`/${location}/${category}/${sub.slug}`);
+    navigate(`/${location}/${category}/${sub.slug}`, { state: { logAlreadySent: true } });
   };
 
   const locationSlug = location || "";

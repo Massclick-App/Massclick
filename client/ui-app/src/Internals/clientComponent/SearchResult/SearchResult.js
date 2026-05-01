@@ -14,7 +14,6 @@ import CardDesign from "../cards/cards.js";
 import SeoMeta from "../seo/seoMeta.js";
 
 import { backendMainSearch, logSearchActivity } from "../../../redux/actions/businessListAction";
-import { shouldSendSearch } from "../../../utils/searchLock";
 import { fetchSeoMeta } from "../../../redux/actions/seoAction.js";
 import { fetchSeoPageContentMeta } from "../../../redux/actions/seoPageContentAction.js";
 import { CLEAR_SEO_META } from "../../../redux/actions/userActionTypes.js";
@@ -92,6 +91,12 @@ useEffect(() => {
 const logSearch = useCallback(() => {
   if (searchLoggedRef.current) return;
 
+  // Skip if the search bar already fired logSearchActivity before navigating here
+  if (locationState.state?.logAlreadySent) {
+    searchLoggedRef.current = true;
+    return;
+  }
+
   const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
 
   const userDetails = {
@@ -100,10 +105,6 @@ const logSearch = useCallback(() => {
     mobileNumber2: authUser?.mobileNumber2,
     email: authUser?.email,
   };
-
-  // Same key + singleton as CardsSearch — blocks duplicate if search bar already fired within 2s
-  const key = `${searchText || "All Categories"}-${locationText || "Global"}-${authUser?.mobileNumber1}`;
-  if (!shouldSendSearch(key)) return;
 
   dispatch(
     logSearchActivity(
@@ -116,7 +117,7 @@ const logSearch = useCallback(() => {
 
   searchLoggedRef.current = true;
 
-}, [dispatch, searchText, locationText]);
+}, [dispatch, searchText, locationText, locationState.state?.logAlreadySent]);
 
 useEffect(() => {
   logSearch();

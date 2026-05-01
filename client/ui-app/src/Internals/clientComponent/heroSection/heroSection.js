@@ -368,7 +368,8 @@ const HeroSection = ({
 
     const key = `${category}-${location}-${userDetails.mobileNumber1}`;
 
-    if (shouldSendSearch(key)) {
+    const logSent = shouldSendSearch(key);
+    if (logSent) {
       dispatch(
         logSearchActivity(category, location, userDetails, term)
       );
@@ -380,7 +381,8 @@ const HeroSection = ({
     navigate(`/${slugLocation}/${slugCategory}`, {
       state: {
         results,
-        category: finalCategory
+        category: finalCategory,
+        logAlreadySent: logSent
       }
     });
 

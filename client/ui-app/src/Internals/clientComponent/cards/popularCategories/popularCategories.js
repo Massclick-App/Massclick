@@ -167,7 +167,7 @@ const handleClick = useCallback((cat) => {
     )
   );
 
-  navigate(`/${districtSlug}/${cat.slug}`);
+  navigate(`/${districtSlug}/${cat.slug}`, { state: { logAlreadySent: true } });
   setDrawerOpen(false);
 
 }, [dispatch, navigate, selectedDistrict, districtSlug]);

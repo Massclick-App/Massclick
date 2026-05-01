@@ -116,7 +116,7 @@ const ServiceCardsGrid = () => {
       )
     );
 
-    navigate(`/${districtSlug}/${service.slug}`);
+    navigate(`/${districtSlug}/${service.slug}`, { state: { logAlreadySent: true } });
   };
 
   const groupedData = useMemo(() => {

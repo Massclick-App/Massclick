@@ -256,7 +256,8 @@ const CardsSearch = ({
 
     const key = `${category}-${location}-${userDetails.mobileNumber1}`;
 
-    if (shouldSendSearch(key)) {
+    const logSent = shouldSendSearch(key);
+    if (logSent) {
       dispatch(
         logSearchActivity(category, location, userDetails, term)
       );
@@ -265,7 +266,7 @@ const CardsSearch = ({
     const slugLocation = toSlug(location || "All");
     const slugTerm = toSlug(term || "All");
 
-    navigate(`/${slugLocation}/${slugTerm}`, { state: { results } });
+    navigate(`/${slugLocation}/${slugTerm}`, { state: { results, logAlreadySent: logSent } });
   };
 
   const handleOpenModal = () => setIsModalOpen(true);
