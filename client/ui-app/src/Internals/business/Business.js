@@ -36,6 +36,7 @@ import {
   Chip,
 } from "@mui/material";
 import PaidIcon from '@mui/icons-material/Paid';
+import PendingIcon from '@mui/icons-material/Pending';
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import Autocomplete from "@mui/material/Autocomplete";
 import TextField from "@mui/material/TextField";
@@ -740,10 +741,12 @@ export default function BusinessList() {
       linkedin: bl.linkedin || "-",
       businessDetails: bl.businessDetails || "-",
       openingHours: bl.openingHours || defaultOpeningHours,
-      createdBy: bl.createdBy,
+      mniDetails: bl.mniDetails || [],
       payment: bl.payment || [],
       qrImage: bl.qrCode?.qrImage || null,
       qrDownloads: bl.qrDownloads || [],
+      amountPaid: bl.amountPaid || false,
+      paidDate: bl.paidDate || null,
 
     }));
 
@@ -759,21 +762,16 @@ export default function BusinessList() {
     { id: "location", label: "Location Name" },
     { id: "category", label: "Category" },
     {
-      id: "createdBy",
-      label: "Created By",
+      id: "mniDetails",
+      label: "Category Group",
       renderCell: (value) => {
-        if (!value) return "—";
+        if (!Array.isArray(value) || value.length === 0) return "—";
 
-        const createdById =
-          typeof value === "object" && value.$oid ? value.$oid : value;
+        const groups = value
+          .map((item) => item?.categoryGroup)
+          .filter(Boolean);
 
-        const user = users.find((u) => {
-          const userId =
-            typeof u._id === "object" && u._id.$oid ? u._id.$oid : u._id;
-          return userId === createdById;
-        });
-
-        return user ? user.userName : "—";
+        return groups.length > 0 ? groups.join(", ") : "—";
       },
     },
 
@@ -871,8 +869,9 @@ export default function BusinessList() {
           }
         };
 
-        const formattedDate = row.paidDate
-          ? new Date(row.paidDate).toLocaleString("en-IN", {
+        const paidDateValue = row.paidDate?.$date ? row.paidDate.$date : row.paidDate;
+        const formattedDate = paidDateValue
+          ? new Date(paidDateValue).toLocaleString("en-IN", {
             timeZone: "Asia/Kolkata",
             day: "2-digit",
             month: "short",
@@ -883,7 +882,7 @@ export default function BusinessList() {
           })
           : null;
 
-        const isPaid = row.amountPaid;
+        const isPaid = Boolean(row.amountPaid);
 
         return (
           <Box sx={{ textAlign: "center" }}>
@@ -908,7 +907,7 @@ export default function BusinessList() {
                     },
                   }}
                 >
-                  <PaidIcon />
+                  {isPaid ? <PaidIcon /> : <PendingIcon />}
                 </IconButton>
               </span>
             </Tooltip>
