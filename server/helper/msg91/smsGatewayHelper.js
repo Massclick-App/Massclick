@@ -464,7 +464,7 @@ export const sendBusinessesToCustomer = async (
             type: "template",
             template: {
               name: "customer_business_list_v1",
-              language: { code: "en", policy: "deterministic" }, 
+              language: { code: "en", policy: "deterministic" },
               namespace: process.env.MSG91_TEMPLATE_NAMESPACE,
               to_and_components: [
                 {
@@ -569,6 +569,18 @@ export const sendMniBusinessLead = async (cleanMobile, lead = {}) => {
   }
 };
 
+const getTodayHours = (openingHours = []) => {
+  const today = new Date().toLocaleString("en-US", { weekday: "long" });
+
+  const todayData = openingHours.find(d => d.day === today);
+
+  if (!todayData) return "Closed";
+  if (todayData.isClosed) return "Closed";
+  if (todayData.is24Hours) return "24 Hours";
+
+  return `${todayData.open} - ${todayData.close}`;
+};
+
 export const sendCustomerBusinessList = async (
   cleanMobile,
   customerName,
@@ -579,20 +591,25 @@ export const sendCustomerBusinessList = async (
 
   const mobile = cleanMobile.toString().replace(/\D/g, "").slice(-10);
 
-  let businessListText = "";
+  const biz = businesses?.[0];
 
-  businesses.forEach((biz, index) => {
+  if (!biz) {
+    throw new Error("No business found");
+  }
 
-    const contact = (biz.contactList || biz.whatsappNumber || "N/A")
-      .toString()
-      .replace(/\D/g, "")
-      .slice(-10);
+  const contact = (biz.contactList || biz.whatsappNumber || "N/A")
+    .toString()
+    .replace(/\D/g, "")
+    .slice(-10);
 
-    businessListText += `${index + 1}. ${biz.businessName} - ${contact} | `;
+  const group = biz?.mniDetails?.[0]?.categoryGroup || "-";
 
-  });
+  const todayHours = getTodayHours(biz.openingHours);
 
-  businessListText = businessListText.replace(/\|\s*$/, "");
+  let businessListText =
+    `*${biz.businessName}* - 📍 ${biz.street || ""}, ${biz.location || ""} - ${biz.pincode || ""} | 🕒 ${todayHours} | 🏷 Group ${group} | 📞 ${contact}`;
+
+  businessListText = businessListText.trim();
 
   const payload = {
     integrated_number: process.env.MSG91_WHATSAPP_SENDER_ID,
@@ -623,7 +640,6 @@ export const sendCustomerBusinessList = async (
   };
 
   try {
-
     const response = await axios.post(
       "https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/",
       payload,
@@ -638,12 +654,7 @@ export const sendCustomerBusinessList = async (
     return response.data;
 
   } catch (error) {
-
-    console.error(
-      "❌ MSG91 ERROR:",
-      error.response?.data || error.message
-    );
-
+    console.error("❌ MSG91 ERROR:", error.response?.data || error.message);
     throw error;
   }
 };

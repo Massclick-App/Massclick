@@ -5,7 +5,6 @@ import BusinessIcon from "@mui/icons-material/Business";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import PhoneIcon from "@mui/icons-material/Phone";
 import CategoryIcon from "@mui/icons-material/Category";
-
 import './mrp.css';
 import CardsSearch from '../CardsSearch/CardsSearch';
 import {
@@ -370,7 +369,7 @@ export default function MRPPage() {
               </div>
             </div> */}
 
-            {/* <MRPInsights data={mrpList} /> */}
+            <MRPInsights data={mrpList} />
 
             <div className="mrp-info-card">
               <div className="mrp-info-card-header">
