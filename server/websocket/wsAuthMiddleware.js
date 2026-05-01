@@ -1,4 +1,4 @@
-import oauthModel from "../model/oauthModel.js";
+import jwt from "jsonwebtoken";
 import userModel from "../model/msg91Model/usersModels.js";
 
 export const wsAuthMiddleware = async (socket, next) => {
@@ -6,27 +6,23 @@ export const wsAuthMiddleware = async (socket, next) => {
     const token = socket.handshake.auth?.token;
     if (!token) return next(new Error("AUTH_REQUIRED"));
 
-    const tokenDoc = await oauthModel.findOne({
-      accessToken: token,
-      isRevoked: false,
-    }).lean();
-
-    if (!tokenDoc) return next(new Error("INVALID_TOKEN"));
-
-    if (new Date(tokenDoc.accessTokenExpiresAt) < new Date()) {
-      return next(new Error("TOKEN_EXPIRED"));
+    let payload;
+    try {
+      payload = jwt.verify(token, process.env.JWT_SECRET);
+    } catch {
+      return next(new Error("INVALID_TOKEN"));
     }
 
-    // Fetch mobileNumber1 for room assignment — stored in userModel, not in oauthModel
     const user = await userModel.findById(
-      tokenDoc.user.userId,
+      payload.userId,
       { mobileNumber1: 1 }
     ).lean();
 
     if (!user) return next(new Error("USER_NOT_FOUND"));
 
     socket.data.user = {
-      ...tokenDoc.user,
+      userId: payload.userId,
+      mobile: payload.mobile,
       mobileNumber1: user.mobileNumber1,
     };
 
