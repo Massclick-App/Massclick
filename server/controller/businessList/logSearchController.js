@@ -183,22 +183,22 @@ export const logSearchAction = async (req, res) => {
     const reqId = Math.random().toString(36).slice(2, 8);
     console.log(`[SEARCH][${reqId}] user=${userDetails.mobileNumber1} text="${cleanSearchText}" loc=${normalizedLocation}`);
 
-    // const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-    // const recentLog = await searchLogModel.findOne({
-    //   categoryName: finalCategoryName,
-    //   location: normalizedLocation,
-    //   "userDetails.mobileNumber1": userDetails.mobileNumber1,
-    //   searchedUserText: cleanSearchText,
-    //   createdAt: { $gte: fiveMinutesAgo }
-    // });
-    // if (recentLog) {
-    //   console.log(`[SEARCH][${reqId}] DEDUP HIT — already sent within 5 min, skipping`);
-    //   return res.status(200).json({
-    //     success: true,
-    //     message: "Lead already sent recently",
-    //     detectedCategory: finalCategoryName
-    //   });
-    // }
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+    const recentLog = await searchLogModel.findOne({
+      categoryName: finalCategoryName,
+      location: normalizedLocation,
+      "userDetails.mobileNumber1": userDetails.mobileNumber1,
+      searchedUserText: cleanSearchText,
+      createdAt: { $gte: fiveMinutesAgo }
+    });
+    if (recentLog) {
+      console.log(`[SEARCH][${reqId}] DEDUP HIT — already sent within 5 min, skipping`);
+      return res.status(200).json({
+        success: true,
+        message: "Lead already sent recently",
+        detectedCategory: finalCategoryName
+      });
+    }
 
     const savedLog = await createSearchLog({
       categoryName: finalCategoryName,
