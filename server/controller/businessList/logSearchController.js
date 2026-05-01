@@ -289,6 +289,8 @@ export const logSearchAction = async (req, res) => {
       .map(b => cleanIndianMobile(b.contactList || b.whatsappNumber))
       .filter(Boolean);
 
+    console.log("[FCM] businesses found:", businesses.length, "| owner mobiles resolved:", ownerMobiles.length, ownerMobiles);
+
     const ownerUsersMap = new Map();
     if (ownerMobiles.length > 0) {
       const now = new Date();
@@ -296,14 +298,18 @@ export const logSearchAction = async (req, res) => {
         { mobileNumber1: { $in: ownerMobiles }, "fcmTokens.isActive": true },
         { mobileNumber1: 1, fcmTokens: 1 }
       ).lean();
+      console.log("[FCM] users with active fcmTokens found in DB:", ownerUsers.length);
       for (const u of ownerUsers) {
         const activeTokens = u.fcmTokens.filter(
           t => t.isActive && new Date(t.expiresAt) > now
         );
+        console.log(`[FCM] user ${u.mobileNumber1}: total tokens=${u.fcmTokens.length}, active+valid=${activeTokens.length}`);
         if (activeTokens.length > 0) {
           ownerUsersMap.set(u.mobileNumber1, activeTokens);
         }
       }
+    } else {
+      console.log("[FCM] no valid owner mobiles — skipping FCM lookup");
     }
 
     for (const business of businesses) {
@@ -345,6 +351,7 @@ export const logSearchAction = async (req, res) => {
 
       // Send FCM push to this business owner's active devices (fire-and-forget)
       const ownerTokens = ownerUsersMap.get(cleanMobile);
+      console.log(`[FCM] ${business.businessName} (${cleanMobile}): tokens to notify=${ownerTokens?.length ?? 0}`);
       if (ownerTokens && ownerTokens.length > 0) {
         const fcmTitle = "New Lead Alert 🔔";
         const fcmBody = `Someone searched "${searchedUserText}" in ${normalizedLocation}. Check your leads now!`;
@@ -354,10 +361,13 @@ export const logSearchAction = async (req, res) => {
           location: normalizedLocation,
         };
         for (const tokenObj of ownerTokens) {
-          sendFCMNotification(tokenObj.token, fcmTitle, fcmBody, fcmData).catch(
-            err => console.error("FCM lead push failed:", err.message)
-          );
+          console.log(`[FCM] sending to token ${tokenObj.token.slice(0, 20)}... (platform: ${tokenObj.platform})`);
+          sendFCMNotification(tokenObj.token, fcmTitle, fcmBody, fcmData)
+            .then(() => console.log(`[FCM] push sent OK → ${business.businessName}`))
+            .catch(err => console.error(`[FCM] push failed → ${business.businessName}:`, err.message));
         }
+      } else {
+        console.log(`[FCM] no tokens for ${business.businessName} — push skipped`);
       }
 
     }
