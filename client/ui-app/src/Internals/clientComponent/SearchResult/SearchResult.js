@@ -88,13 +88,12 @@ useEffect(() => {
   searchLoggedRef.current = false;
 }, [searchText, locationText]);
 
-const logSearchIfLoggedIn = useCallback(() => {
+const logSearch = useCallback(() => {
   if (searchLoggedRef.current) return;
 
   const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
 
-  if (!authUser?._id) return;
-
+  // Pass user details if logged in, null fields otherwise — server handles both
   const userDetails = {
     userName: authUser?.userName,
     mobileNumber1: authUser?.mobileNumber1,
@@ -116,13 +115,13 @@ const logSearchIfLoggedIn = useCallback(() => {
 }, [dispatch, searchText, locationText]);
 
 useEffect(() => {
-  logSearchIfLoggedIn();
-}, [logSearchIfLoggedIn]);
+  logSearch();
+}, [logSearch]);
 
 useEffect(() => {
   const handleAuthChange = () => {
     if (!searchLoggedRef.current) {
-      logSearchIfLoggedIn();
+      logSearch();
     }
   };
 
@@ -131,7 +130,7 @@ useEffect(() => {
   return () => {
     window.removeEventListener("authChange", handleAuthChange);
   };
-}, [logSearchIfLoggedIn]);
+}, [logSearch]);
 
   useEffect(() => {
 

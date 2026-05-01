@@ -1,9 +1,17 @@
+import { createHash } from "crypto";
 import { createSearchLog, getAllSearchLogs, getMatchedSearchLogs, updateSearchData, getTopTrendingCategories } from "../../helper/businessList/logSearchHelper.js";
 import CategoryModel from "../../model/category/categoryModel.js";
 import { getSignedUrlByKey } from "../../s3Uploder.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
 import { sendBusinessesToCustomer, sendBusinessLead } from "../../helper/msg91/smsGatewayHelper.js";
 import searchLogModel from "../../model/businessList/searchLogModel.js";
+
+// Short hash of IP + user-agent. 8 hex chars = 32-bit space, good enough for 5-min dedup.
+const anonFingerprint = (req) => {
+  const ip = req.ip || req.socket?.remoteAddress || "unknown";
+  const ua = req.headers["user-agent"] || "unknown";
+  return createHash("sha256").update(`${ip}:${ua}`).digest("hex").slice(0, 8);
+};
 
 
 const cleanIndianMobile = (mobile) => {
@@ -94,13 +102,7 @@ export const logSearchAction = async (req, res) => {
       userDetails.mobileNumber1 &&
       userDetails.mobileNumber1.trim();
 
-    if (!isValidUser) {
-      return res.status(200).json({
-        success: false,
-        message: "Valid name and mobile number required"
-      });
-    }
-
+    // ── Resolve category (runs for all users, logged in or not) ──────────────
     let finalCategoryName = "";
 
     if (
@@ -110,7 +112,6 @@ export const logSearchAction = async (req, res) => {
     ) {
       finalCategoryName = categoryName.trim();
     } else {
-
       const matchedCategory = await CategoryModel.findOne({
         categoryName: { $regex: cleanSearchText, $options: "i" }
       }).lean();
@@ -118,16 +119,10 @@ export const logSearchAction = async (req, res) => {
       if (matchedCategory) {
         finalCategoryName = matchedCategory.categoryName;
       } else {
-
         const searchWords = cleanSearchText.split(" ");
-
         const possibleCategory = await CategoryModel.findOne({
-          categoryName: {
-            $regex: searchWords.join("|"),
-            $options: "i"
-          }
+          categoryName: { $regex: searchWords.join("|"), $options: "i" }
         }).lean();
-
         finalCategoryName = possibleCategory
           ? possibleCategory.categoryName
           : searchedUserText;
@@ -144,6 +139,43 @@ export const logSearchAction = async (req, res) => {
       { categoryImageKey: 1 }
     ).lean();
 
+    // ── Anonymous path ────────────────────────────────────────────────────────
+    if (!isValidUser) {
+      const fingerprint = anonFingerprint(req);
+      const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
+
+      // Same dedup window as identified users, but keyed by IP+UA hash instead of mobile
+      const recentAnon = await searchLogModel.findOne({
+        categoryName: finalCategoryName,
+        location: normalizedLocation,
+        searchedUserText: cleanSearchText,
+        isAnonymous: true,
+        anonFingerprint: fingerprint,
+        createdAt: { $gte: fiveMinAgo }
+      });
+
+      if (!recentAnon) {
+        await createSearchLog({
+          categoryName: finalCategoryName,
+          categoryImage: category?.categoryImageKey || "",
+          searchedUserText: cleanSearchText,
+          location: normalizedLocation,
+          userDetails: [],
+          whatsapp: false,
+          isAnonymous: true,
+          anonFingerprint: fingerprint,
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        anonymous: true,
+        message: "Anonymous search logged",
+        detectedCategory: finalCategoryName
+      });
+    }
+
+    // ── Identified user path ──────────────────────────────────────────────────
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
 
     const recentLog = await searchLogModel.findOne({
@@ -155,8 +187,6 @@ export const logSearchAction = async (req, res) => {
     });
 
     if (recentLog) {
-      console.log("⚠️ Duplicate request blocked");
-
       return res.status(200).json({
         success: true,
         message: "Lead already sent recently",
@@ -164,37 +194,22 @@ export const logSearchAction = async (req, res) => {
       });
     }
 
-    // const recentLog = await searchLogModel.findOne({
-    //   categoryName: finalCategoryName,
-    //   location: normalizedLocation,
-    //   "userDetails.mobileNumber1": userDetails.mobileNumber1,
-    //   createdAt: { $gte: fiveMinutesAgo }
-    // });
-
-    // if (recentLog) {
-
-    //   return res.status(200).json({
-    //     success: true,
-    //     message: "Lead already sent recently (5 min protection)",
-    //     detectedCategory: finalCategoryName
-    //   });
-    // }
-
-   const savedLog = await createSearchLog({
-  categoryName: finalCategoryName,
-  categoryImage: category?.categoryImageKey || "",
-  searchedUserText: cleanSearchText,
-  location: normalizedLocation,
-  userDetails: [
-    {
-      userName: userDetails.userName,
-      mobileNumber1: userDetails.mobileNumber1,
-      mobileNumber2: userDetails.mobileNumber2 || "",
-      email: userDetails.email || ""
-    }
-  ],
-  whatsapp: false
-});
+    const savedLog = await createSearchLog({
+      categoryName: finalCategoryName,
+      categoryImage: category?.categoryImageKey || "",
+      searchedUserText: cleanSearchText,
+      location: normalizedLocation,
+      userDetails: [
+        {
+          userName: userDetails.userName,
+          mobileNumber1: userDetails.mobileNumber1,
+          mobileNumber2: userDetails.mobileNumber2 || "",
+          email: userDetails.email || ""
+        }
+      ],
+      whatsapp: false,
+      isAnonymous: false,
+    });
 
     const locationGroups = {
       trichy: ["trichy", "tiruchirappalli"]
