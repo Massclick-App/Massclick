@@ -122,9 +122,9 @@ app.use(express.static(CLIENT_BUILD_PATH, {
 app.get(/.*/, ssrMiddleware);
 
 mongoose.connect(MONGO_URI)
-  .then(() => {
+  .then(async () => {
     startFCMScheduler();
-    initWsServer(httpServer);
+    await initWsServer(httpServer);
     httpServer.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
