@@ -10,6 +10,29 @@ import { sendFCMNotification } from "../../helper/fcmHelper.js";
 import { emitToRoom } from "../../websocket/roomManager.js";
 import { buildRoom, WS_EVENTS } from "../../websocket/constants.js";
 
+// ── In-memory notification dedup ─────────────────────────────────────────────
+// Guards against rapid double-calls (race between concurrent requests that both
+// pass the DB findOne check before either commits to the DB).
+// Key: mobile|category|location|text  Value: timestamp of last send
+const _notifTracker = new Map();
+const NOTIF_DEDUP_MS = 15_000; // 15 s — well within the 5-min DB dedup window
+
+const _isDuplicateNotif = (mobile, category, location, text) => {
+  const key = `${mobile}|${category}|${location}|${text}`;
+  const last = _notifTracker.get(key);
+  const now = Date.now();
+  if (last && now - last < NOTIF_DEDUP_MS) return true;
+  _notifTracker.set(key, now);
+  // Prevent unbounded growth — purge stale entries when map gets large
+  if (_notifTracker.size > 500) {
+    const cutoff = now - NOTIF_DEDUP_MS;
+    for (const [k, v] of _notifTracker) {
+      if (v < cutoff) _notifTracker.delete(k);
+    }
+  }
+  return false;
+};
+
 // Short hash of IP + user-agent. 8 hex chars = 32-bit space, good enough for 5-min dedup.
 const anonFingerprint = (req) => {
   const ip = req.ip || req.socket?.remoteAddress || "unknown";
@@ -283,6 +306,20 @@ export const logSearchAction = async (req, res) => {
     let customerSendSuccess = false;
 
     const notifiedBusinesses = [];
+
+    // ── Dedup guard: stop here if this exact search just fired notifications ────
+    if (_isDuplicateNotif(
+      userDetails.mobileNumber1,
+      finalCategoryName,
+      normalizedLocation,
+      cleanSearchText
+    )) {
+      return res.status(200).json({
+        success: true,
+        message: "Lead logged, notifications suppressed (duplicate within 15s)",
+        detectedCategory: finalCategoryName,
+      });
+    }
 
     // ── WebSocket: instant update to each matching business owner's app ─────────
     for (const business of businesses) {
