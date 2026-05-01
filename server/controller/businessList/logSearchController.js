@@ -5,6 +5,8 @@ import { getSignedUrlByKey } from "../../s3Uploder.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
 import { sendBusinessesToCustomer, sendBusinessLead } from "../../helper/msg91/smsGatewayHelper.js";
 import searchLogModel from "../../model/businessList/searchLogModel.js";
+import userModel from "../../model/msg91Model/usersModels.js";
+import { sendFCMNotification } from "../../helper/fcmHelper.js";
 
 // Short hash of IP + user-agent. 8 hex chars = 32-bit space, good enough for 5-min dedup.
 const anonFingerprint = (req) => {
@@ -282,6 +284,28 @@ export const logSearchAction = async (req, res) => {
 
 
 
+    // Collect mobile numbers for batch FCM lookup (avoid per-business DB query)
+    const ownerMobiles = businesses
+      .map(b => cleanIndianMobile(b.contactList || b.whatsappNumber))
+      .filter(Boolean);
+
+    const ownerUsersMap = new Map();
+    if (ownerMobiles.length > 0) {
+      const now = new Date();
+      const ownerUsers = await userModel.find(
+        { mobileNumber1: { $in: ownerMobiles }, "fcmTokens.isActive": true },
+        { mobileNumber1: 1, fcmTokens: 1 }
+      ).lean();
+      for (const u of ownerUsers) {
+        const activeTokens = u.fcmTokens.filter(
+          t => t.isActive && new Date(t.expiresAt) > now
+        );
+        if (activeTokens.length > 0) {
+          ownerUsersMap.set(u.mobileNumber1, activeTokens);
+        }
+      }
+    }
+
     for (const business of businesses) {
 
       const ownerMobile =
@@ -317,6 +341,23 @@ export const logSearchAction = async (req, res) => {
 
         );
 
+      }
+
+      // Send FCM push to this business owner's active devices (fire-and-forget)
+      const ownerTokens = ownerUsersMap.get(cleanMobile);
+      if (ownerTokens && ownerTokens.length > 0) {
+        const fcmTitle = "New Lead Alert 🔔";
+        const fcmBody = `Someone searched "${searchedUserText}" in ${normalizedLocation}. Check your leads now!`;
+        const fcmData = {
+          type: "lead",
+          category: finalCategoryName,
+          location: normalizedLocation,
+        };
+        for (const tokenObj of ownerTokens) {
+          sendFCMNotification(tokenObj.token, fcmTitle, fcmBody, fcmData).catch(
+            err => console.error("FCM lead push failed:", err.message)
+          );
+        }
       }
 
     }
