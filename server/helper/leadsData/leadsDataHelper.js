@@ -82,9 +82,9 @@ export const getLeadsAnalyticsSummary = async (mobileNumber) => {
 
   const searchLogs = await getCategorySearchLogs(rawCategory);
 
-  const todaySearchLogs = searchLogs.filter(
-    (log) => new Date(log.createdAt) >= today
-  );
+  const todaySearchLogs = searchLogs.filter((log) => new Date(log.createdAt) >= today);
+  const identified = searchLogs.filter((log) => !log.isAnonymous && log.userDetails?.length > 0);
+  const anonymous = searchLogs.filter((log) => log.isAnonymous || !log.userDetails?.length);
 
   return {
     category: rawCategory || null,
@@ -97,6 +97,8 @@ export const getLeadsAnalyticsSummary = async (mobileNumber) => {
     searchMatches: {
       total: searchLogs.length,
       today: todaySearchLogs.length,
+      identified: identified.length,
+      anonymous: anonymous.length,
     },
   };
 };
