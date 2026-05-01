@@ -192,7 +192,7 @@ export const sendMrpLeads = async (mrpId) => {
   const businesses = await businessListModel.find({
     _id: { $ne: sourceBusiness._id },
     location: new RegExp(`^${location}$`, "i"),
-    category: mrp.categoryId, 
+    category: mrp.categoryId,
     "mniDetails.categoryGroup": group,
     amountPaid: true,
     isActive: true,
@@ -230,15 +230,25 @@ export const sendMrpLeads = async (mrpId) => {
 
       await businessListModel.updateOne(
         { _id: biz._id, "mniDetails.0": { $exists: true } },
-        {
-          $inc: { "mniDetails.0.leadsCount": 1 },
-          $push: {
-            "mniDetails.0.leadsCategory": mrp.categoryId
-          },
-          $set: {
-            "mniDetails.0.lastLeadsUpdate": new Date()
+        [
+          {
+            $set: {
+              "mniDetails.0.leadsCount": {
+                $add: [
+                  { $ifNull: ["$mniDetails.0.leadsCount", 0] },
+                  1
+                ]
+              },
+              "mniDetails.0.lastLeadsUpdate": new Date(),
+              "mniDetails.0.leadsCategory": {
+                $concatArrays: [
+                  { $ifNull: ["$mniDetails.0.leadsCategory", []] },
+                  [mrp.categoryId]
+                ]
+              }
+            }
           }
-        }
+        ]
       );
 
     } catch (err) {
@@ -266,5 +276,42 @@ export const sendMrpLeads = async (mrpId) => {
 
   return {
     totalBusinesses: businesses.length
+  };
+};
+
+export const fetchMniLeadsData = async ({ location, group }) => {
+
+  const normalizedLocation = location.toLowerCase().trim();
+
+  const businesses = await businessListModel.find({
+    location: new RegExp(`^${normalizedLocation}$`, "i"),
+    "mniDetails.categoryGroup": group,
+    amountPaid: true,
+    isActive: true,
+    businessesLive: true
+  })
+    .select("businessName category mniDetails")
+    .lean();
+
+  const formattedData = businesses.map(biz => {
+    const mni = biz.mniDetails?.[0] || {};
+
+    return {
+      businessId: biz._id,
+      businessName: biz.businessName,
+      category: biz.category,
+      leadsCount: mni.leadsCount || 0,
+      lastLeadsUpdate: mni.lastLeadsUpdate || null,
+      leadsCategory: mni.leadsCategory || []
+    };
+  });
+
+  formattedData.sort((a, b) => b.leadsCount - a.leadsCount);
+
+  return {
+    location: normalizedLocation,
+    group,
+    totalBusinesses: formattedData.length,
+    data: formattedData
   };
 };
