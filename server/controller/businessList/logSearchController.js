@@ -89,6 +89,16 @@ export const logSearchAction = async (req, res) => {
   try {
     const { categoryName, location, searchedUserText, userDetails } = req.body;
 
+    console.log("[LOG-SEARCH] call received", {
+      ts: new Date().toISOString(),
+      searchedUserText,
+      location,
+      mobile: userDetails?.mobileNumber1 || "anonymous",
+      ip: req.ip,
+      userAgent: req.headers["user-agent"]?.slice(0, 80),
+      origin: req.headers["origin"] || req.headers["referer"] || "no-origin",
+    });
+
     if (!searchedUserText || !searchedUserText.trim()) {
       return res.status(400).json({
         success: false,
