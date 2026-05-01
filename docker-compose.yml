@@ -1,0 +1,46 @@
+services:
+  massclick-api-prod-1:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    image: massclick-api-prod
+    container_name: massclick-api-prod-1
+    restart: unless-stopped
+    env_file:
+      - ./server/.env
+    environment:
+      - PORT=4000
+    volumes:
+      - /var/www/massclickQA/client/ui-app/build:/var/www/massclickQA/client/ui-app/build:ro
+    mem_limit: 350m
+    network_mode: host
+
+  massclick-api-prod-2:
+    image: massclick-api-prod
+    container_name: massclick-api-prod-2
+    restart: unless-stopped
+    env_file:
+      - ./server/.env
+    environment:
+      - PORT=4001
+    volumes:
+      - /var/www/massclickQA/client/ui-app/build:/var/www/massclickQA/client/ui-app/build:ro
+    mem_limit: 350m
+    network_mode: host
+    depends_on:
+      - massclick-api-prod-1
+
+  massclick-api-prod-3:
+    image: massclick-api-prod
+    container_name: massclick-api-prod-3
+    restart: unless-stopped
+    env_file:
+      - ./server/.env
+    environment:
+      - PORT=4002
+    volumes:
+      - /var/www/massclickQA/client/ui-app/build:/var/www/massclickQA/client/ui-app/build:ro
+    mem_limit: 350m
+    network_mode: host
+    depends_on:
+      - massclick-api-prod-1
