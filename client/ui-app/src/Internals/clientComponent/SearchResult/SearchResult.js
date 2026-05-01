@@ -14,6 +14,7 @@ import CardDesign from "../cards/cards.js";
 import SeoMeta from "../seo/seoMeta.js";
 
 import { backendMainSearch, logSearchActivity } from "../../../redux/actions/businessListAction";
+import { shouldSendSearch } from "../../../utils/searchLock";
 import { fetchSeoMeta } from "../../../redux/actions/seoAction.js";
 import { fetchSeoPageContentMeta } from "../../../redux/actions/seoPageContentAction.js";
 import { CLEAR_SEO_META } from "../../../redux/actions/userActionTypes.js";
@@ -93,13 +94,16 @@ const logSearch = useCallback(() => {
 
   const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
 
-  // Pass user details if logged in, null fields otherwise — server handles both
   const userDetails = {
     userName: authUser?.userName,
     mobileNumber1: authUser?.mobileNumber1,
     mobileNumber2: authUser?.mobileNumber2,
     email: authUser?.email,
   };
+
+  // Same key + singleton as CardsSearch — blocks duplicate if search bar already fired within 2s
+  const key = `${searchText || "All Categories"}-${locationText || "Global"}-${authUser?.mobileNumber1}`;
+  if (!shouldSendSearch(key)) return;
 
   dispatch(
     logSearchActivity(
