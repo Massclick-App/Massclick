@@ -75,7 +75,11 @@ export const getTopTrendingCategories = async (limit = 10) => {
     const result = await searchLogModel.aggregate([
       {
         $match: {
-          categoryName: { $exists: true, $ne: "" }
+          categoryName: {
+            $exists: true,
+            $ne: "",
+            $not: /^[a-f\d]{24}$/i
+          }
         }
       },
 

@@ -205,11 +205,13 @@ const HeroSection = ({
     }
   }, [debouncedLocation, dispatch]);
 
+  const isObjectId = (s) => /^[a-f\d]{24}$/i.test(s);
+
   const recentSearchOptions = [
     ...new Set(
       (searchLogs || [])
         .map((log) => (log.categoryName ? log.categoryName.trim() : ""))
-        .filter(Boolean)
+        .filter((name) => name && !isObjectId(name))
     ),
   ];
 

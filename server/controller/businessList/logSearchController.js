@@ -158,17 +158,16 @@ export const logSearchAction = async (req, res) => {
       const fingerprint = anonFingerprint(req);
       const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
 
-      // DEDUP DISABLED TEMPORARILY — remove comment to re-enable
-      // const recentAnon = await searchLogModel.findOne({
-      //   categoryName: finalCategoryName,
-      //   location: normalizedLocation,
-      //   searchedUserText: cleanSearchText,
-      //   isAnonymous: true,
-      //   anonFingerprint: fingerprint,
-      //   createdAt: { $gte: fiveMinAgo }
-      // });
+      const recentAnon = await searchLogModel.findOne({
+        categoryName: finalCategoryName,
+        location: normalizedLocation,
+        searchedUserText: cleanSearchText,
+        isAnonymous: true,
+        anonFingerprint: fingerprint,
+        createdAt: { $gte: fiveMinAgo }
+      });
 
-      // if (!recentAnon) {
+      if (!recentAnon) {
         await createSearchLog({
           categoryName: finalCategoryName,
           categoryImage: category?.categoryImageKey || "",
@@ -179,7 +178,7 @@ export const logSearchAction = async (req, res) => {
           isAnonymous: true,
           anonFingerprint: fingerprint,
         });
-      // } // end dedup guard
+      }
 
       return res.status(200).json({
         success: true,
