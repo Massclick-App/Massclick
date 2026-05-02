@@ -14,6 +14,9 @@ export const WS_EVENTS = {
   // ── Lead domain ───────────────────────────────────────────────────────────────
   LEAD_ANALYTICS_UPDATE: "lead:analytics:update",
 
+  // ── App-wide system events ────────────────────────────────────────────────────
+  APP_MAINTENANCE:       "app:maintenance",
+
   // ── Reserved for future domains ───────────────────────────────────────────────
   // NOTIFICATION:       "notification"
   // CHAT_MESSAGE:       "chat:message"

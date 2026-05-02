@@ -1,5 +1,7 @@
 import systemSettingsModel from "../../model/systemSettings/systemSettingsModel.js";
 import { invalidateCache } from "../../helper/systemSettings/settingsService.js";
+import { getIO } from "../../websocket/ioInstance.js";
+import { WS_EVENTS } from "../../websocket/constants.js";
 
 export const getSystemSettingsAction = async (req, res) => {
   try {
@@ -62,6 +64,14 @@ export const updateSystemSettingsAction = async (req, res) => {
     ).lean();
 
     invalidateCache();
+
+    if ("app_maintenance_mode" in updates) {
+      try {
+        getIO()?.emit(WS_EVENTS.APP_MAINTENANCE, { active: !!updates.app_maintenance_mode });
+      } catch (e) {
+        console.warn("[WS] Could not broadcast maintenance mode:", e.message);
+      }
+    }
 
     return res.status(200).json({ success: true, data: settings });
   } catch (error) {
