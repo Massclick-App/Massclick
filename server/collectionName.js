@@ -25,7 +25,8 @@ export const Collections = {
     ADVERTISE: 'advertise',
     TERMSANDCONDITIONS: 'termsandconditions',
     FAVORITES: 'favorites',
-    FCMCAMPAIGNS: 'fcmcampaigns'
+    FCMCAMPAIGNS: 'fcmcampaigns',
+    SYSTEMSETTINGS: 'systemsettings'
 };
 
 export const {
@@ -55,5 +56,6 @@ export const {
     ADVERTISE,
     TERMSANDCONDITIONS,
     FAVORITES,
-    FCMCAMPAIGNS
+    FCMCAMPAIGNS,
+    SYSTEMSETTINGS
 } = Collections;

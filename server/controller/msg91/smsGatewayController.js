@@ -5,6 +5,7 @@ import { getSignedUrlByKey } from "../../s3Uploder.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
 import searchLogModel from "../../model/businessList/searchLogModel.js";
 import { sendWhatsAppMessage, sendLoginWelcomeMessage } from "../../helper/msg91/smsGatewayHelper.js";
+import { getSettings } from "../../helper/systemSettings/settingsService.js";
 
 export const sendOtpAction = async (req, res) => {
   const { phoneNumber } = req.body;
@@ -22,7 +23,10 @@ export const sendOtpAction = async (req, res) => {
 
     const existingUser = await User.findOne({ mobileNumber1: mobile });
 
-    const result = await sendOtp(mobile);
+    const settings = await getSettings();
+    const result = settings.otp_real_enabled
+      ? await sendOtp(mobile)
+      : await fakesendOtp(mobile);
 
     return res.status(200).json({
       success: true,
@@ -52,7 +56,14 @@ export const verifyOtpAction = async (req, res) => {
       return res.status(400).json({ success: false, message: "Missing phone number or OTP." });
     }
 
-    await verifyOtp(phoneNumber.trim(), otp.trim());
+    const settings = await getSettings();
+
+    if (settings.otp_real_enabled) {
+      await verifyOtp(phoneNumber.trim(), otp.trim());
+    } else {
+      await fakeverifyOtp(phoneNumber.trim(), otp.trim());
+    }
+
     const cleanNumber = phoneNumber.replace(/\D/g, "");
 
     let user = await User.findOne({ mobileNumber1: cleanNumber });
@@ -100,19 +111,13 @@ export const verifyOtpAction = async (req, res) => {
 
     await user.save();
 
-    if (isNewUser) {
+    if (isNewUser && settings.whatsapp_login_welcome) {
       try {
         await sendLoginWelcomeMessage(user.mobileNumber1, user.userName);
       } catch (err) {
         console.error("WhatsApp welcome message failed:", err.message);
       }
     }
-
-    // try {
-    //   await sendLoginWelcomeMessage(user.mobileNumber1, user.userName);
-    // } catch (err) {
-    //   console.error("WhatsApp welcome message failed:", err.message);
-    // }
 
     const token = jwt.sign(
       { userId: user._id, mobile: user.mobileNumber1 },
@@ -237,18 +242,15 @@ export const fakeverifyOtpAction = async (req, res) => {
     await user.save();
 
     if (isNewUser) {
-      try {
-        await sendLoginWelcomeMessage(user.mobileNumber1, user.userName);
-      } catch (err) {
-        console.error("WhatsApp welcome message failed:", err.message);
+      const fakeSettings = await getSettings();
+      if (fakeSettings.whatsapp_login_welcome) {
+        try {
+          await sendLoginWelcomeMessage(user.mobileNumber1, user.userName);
+        } catch (err) {
+          console.error("WhatsApp welcome message failed:", err.message);
+        }
       }
     }
-
-    // try {
-    //   await sendLoginWelcomeMessage(user.mobileNumber1, user.userName);
-    // } catch (err) {
-    //   console.error("WhatsApp welcome message failed:", err.message);
-    // }
 
     const token = jwt.sign(
       { userId: user._id, mobile: user.mobileNumber1 },

@@ -4,6 +4,7 @@ import CategoryModel from "../../model/category/categoryModel.js";
 import { getSignedUrlByKey } from "../../s3Uploder.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
 import { sendBusinessesToCustomer, sendBusinessLead } from "../../helper/msg91/smsGatewayHelper.js";
+import { getSettings } from "../../helper/systemSettings/settingsService.js";
 import searchLogModel from "../../model/businessList/searchLogModel.js";
 import userModel from "../../model/msg91Model/usersModels.js";
 import { sendFCMNotification } from "../../helper/fcmHelper.js";
@@ -289,6 +290,8 @@ export const logSearchAction = async (req, res) => {
 
     };
 
+    const waSettings = await getSettings();
+
     let businessSendSuccess = false;
 
     let customerSendSuccess = false;
@@ -356,7 +359,9 @@ export const logSearchAction = async (req, res) => {
 
       try {
 
-        await sendBusinessLead(cleanMobile, leadData);
+        if (waSettings.whatsapp_business_lead_alert) {
+          await sendBusinessLead(cleanMobile, leadData);
+        }
 
         businessSendSuccess = true;
 
@@ -413,15 +418,17 @@ export const logSearchAction = async (req, res) => {
 
       try {
 
-        await sendBusinessesToCustomer(
+        if (waSettings.whatsapp_customer_business_list) {
+          await sendBusinessesToCustomer(
 
-          cleanCustomerMobile,
+            cleanCustomerMobile,
 
-          leadData,
+            leadData,
 
-          businesses
+            businesses
 
-        );
+          );
+        }
 
         customerSendSuccess = true;
 
