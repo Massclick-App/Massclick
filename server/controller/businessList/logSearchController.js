@@ -201,14 +201,14 @@ export const logSearchAction = async (req, res) => {
       searchedUserText: cleanSearchText,
       createdAt: { $gte: fiveMinutesAgo }
     });
-    // if (recentLog) {
-    //   console.log(`[SEARCH][${reqId}] DEDUP HIT — already sent within 5 min, skipping`);
-    //   return res.status(200).json({
-    //     success: true,
-    //     message: "Lead already sent recently",
-    //     detectedCategory: finalCategoryName
-    //   });
-    // }
+    if (recentLog) {
+      console.log(`[SEARCH][${reqId}] DEDUP HIT — already sent within 5 min, skipping`);
+      return res.status(200).json({
+        success: true,
+        message: "Lead already sent recently",
+        detectedCategory: finalCategoryName
+      });
+    }
 
     const savedLog = await createSearchLog({
       categoryName: finalCategoryName,
