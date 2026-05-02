@@ -124,7 +124,7 @@ export const logSearchAction = async (req, res) => {
       categoryName.trim() &&
       categoryName.toLowerCase() !== "all categories"
     ) {
-      finalCategoryName = categoryName.trim();
+      finalCategoryName = categoryName.trim().toLowerCase();
     } else {
       const matchedCategory = await CategoryModel.findOne({
         categoryName: { $regex: cleanSearchText, $options: "i" }
@@ -195,7 +195,7 @@ export const logSearchAction = async (req, res) => {
 
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
     const recentLog = await searchLogModel.findOne({
-      categoryName: finalCategoryName,
+      categoryName: { $regex: `^${finalCategoryName}$`, $options: "i" },
       location: normalizedLocation,
       "userDetails.mobileNumber1": userDetails.mobileNumber1,
       searchedUserText: cleanSearchText,
