@@ -15,12 +15,14 @@ import {
   Button,
   Alert,
   Snackbar,
+  TextField,
 } from "@mui/material";
 import SettingsIcon from "@mui/icons-material/Settings";
 import SmsIcon from "@mui/icons-material/Sms";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
+import SystemUpdateAltIcon from "@mui/icons-material/SystemUpdateAlt";
 
-const SETTING_GROUPS = [
+const BOOLEAN_GROUPS = [
   {
     label: "OTP / SMS",
     icon: <SmsIcon sx={{ color: "#e1580f" }} />,
@@ -65,6 +67,22 @@ const SETTING_GROUPS = [
   },
 ];
 
+const VERSION_STRING_FIELDS = [
+  { key: "app_android_latest_version", label: "Android Latest Version", placeholder: "e.g. 1.2.0" },
+  { key: "app_android_min_version", label: "Android Min Required Version", placeholder: "e.g. 1.0.0" },
+  { key: "app_android_update_url", label: "Android Update URL", placeholder: "Play Store URL" },
+  { key: "app_ios_latest_version", label: "iOS Latest Version", placeholder: "e.g. 1.2.0" },
+  { key: "app_ios_min_version", label: "iOS Min Required Version", placeholder: "e.g. 1.0.0" },
+  { key: "app_ios_update_url", label: "iOS Update URL", placeholder: "App Store URL" },
+  { key: "app_release_notes", label: "Release Notes", placeholder: "What's new in this version…", multiline: true },
+];
+
+const ALL_KEYS = [
+  ...BOOLEAN_GROUPS.flatMap((g) => g.items.map((i) => i.key)),
+  "app_maintenance_mode",
+  ...VERSION_STRING_FIELDS.map((f) => f.key),
+];
+
 export default function SystemSettings() {
   const dispatch = useDispatch();
   const { settings, loading, saving, error, saveError } = useSelector(
@@ -86,18 +104,18 @@ export default function SystemSettings() {
     setLocal((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
+  const handleText = (key, value) => {
+    setLocal((prev) => ({ ...prev, [key]: value }));
+  };
+
   const isDirty = () => {
     if (!settings || !local) return false;
-    return SETTING_GROUPS.flatMap((g) => g.items).some(
-      ({ key }) => local[key] !== settings[key]
-    );
+    return ALL_KEYS.some((key) => local[key] !== settings[key]);
   };
 
   const handleSave = async () => {
     const updates = {};
-    SETTING_GROUPS.flatMap((g) => g.items).forEach(({ key }) => {
-      updates[key] = local[key];
-    });
+    ALL_KEYS.forEach((key) => { updates[key] = local[key]; });
     try {
       await dispatch(updateSystemSettings(updates));
       setSnack({ open: true, message: "Settings saved successfully.", severity: "success" });
@@ -131,16 +149,12 @@ export default function SystemSettings() {
         </Typography>
       </Box>
 
-      {SETTING_GROUPS.map((group) => (
+      {/* Boolean toggle groups */}
+      {BOOLEAN_GROUPS.map((group) => (
         <Paper
           key={group.label}
           elevation={0}
-          sx={{
-            mb: 3,
-            border: "1px solid #ebebeb",
-            borderRadius: 3,
-            overflow: "hidden",
-          }}
+          sx={{ mb: 3, border: "1px solid #ebebeb", borderRadius: 3, overflow: "hidden" }}
         >
           <Box
             sx={{
@@ -206,6 +220,97 @@ export default function SystemSettings() {
           ))}
         </Paper>
       ))}
+
+      {/* Version Management */}
+      <Paper
+        elevation={0}
+        sx={{ mb: 3, border: "1px solid #ebebeb", borderRadius: 3, overflow: "hidden" }}
+      >
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 1.2,
+            px: 2.5,
+            py: 1.8,
+            bgcolor: "#fafafa",
+            borderBottom: "1px solid #ebebeb",
+          }}
+        >
+          <SystemUpdateAltIcon sx={{ color: "#e1580f" }} />
+          <Typography fontWeight={700} fontSize="0.95rem" color="#333">
+            Version Management
+          </Typography>
+        </Box>
+
+        {/* Maintenance mode toggle */}
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "flex-start",
+            justifyContent: "space-between",
+            px: 2.5,
+            py: 2,
+            gap: 2,
+          }}
+        >
+          <Box>
+            <Typography fontWeight={600} fontSize="0.9rem" color="#1a1a1a">
+              Maintenance Mode
+            </Typography>
+            <Typography fontSize="0.8rem" color="text.secondary" sx={{ mt: 0.3 }}>
+              When ON, the app will show a maintenance screen to all users.
+            </Typography>
+          </Box>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={!!local.app_maintenance_mode}
+                onChange={() => handleToggle("app_maintenance_mode")}
+                color="error"
+                size="small"
+              />
+            }
+            label={
+              <Typography
+                fontSize="0.78rem"
+                fontWeight={600}
+                color={local.app_maintenance_mode ? "#d32f2f" : "#888"}
+              >
+                {local.app_maintenance_mode ? "ON" : "OFF"}
+              </Typography>
+            }
+            labelPlacement="end"
+            sx={{ m: 0, flexShrink: 0 }}
+          />
+        </Box>
+
+        <Divider />
+
+        {/* Version string fields */}
+        <Box sx={{ px: 2.5, py: 2, display: "flex", flexDirection: "column", gap: 2 }}>
+          {VERSION_STRING_FIELDS.map(({ key, label, placeholder, multiline }) => (
+            <TextField
+              key={key}
+              label={label}
+              value={local[key] ?? ""}
+              onChange={(e) => handleText(key, e.target.value)}
+              placeholder={placeholder}
+              size="small"
+              fullWidth
+              multiline={!!multiline}
+              minRows={multiline ? 2 : undefined}
+              sx={{
+                "& .MuiOutlinedInput-root": { borderRadius: 2 },
+                "& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                  borderColor: "#e1580f",
+                },
+                "& .MuiInputLabel-root.Mui-focused": { color: "#e1580f" },
+              }}
+            />
+          ))}
+        </Box>
+      </Paper>
 
       <Box sx={{ display: "flex", gap: 1.5, justifyContent: "flex-end" }}>
         <Button

@@ -20,6 +20,16 @@ const systemSettingsSchema = new mongoose.Schema(
     // WhatsApp: send welcome message to new users on first login
     whatsapp_login_welcome: { type: Boolean, default: true },
 
+    // App Version Management
+    app_android_latest_version: { type: String, default: "1.0.0" },
+    app_android_min_version: { type: String, default: "1.0.0" },
+    app_android_update_url: { type: String, default: "https://play.google.com/store/apps/details?id=com.massclick.massclick" },
+    app_ios_latest_version: { type: String, default: "1.0.0" },
+    app_ios_min_version: { type: String, default: "1.0.0" },
+    app_ios_update_url: { type: String, default: "" },
+    app_maintenance_mode: { type: Boolean, default: false },
+    app_release_notes: { type: String, default: "Bug fixes and performance improvements." },
+
     updatedBy: { type: String, default: "admin" },
   },
   { timestamps: true }

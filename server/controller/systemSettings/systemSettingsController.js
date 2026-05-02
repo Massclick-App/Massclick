@@ -19,20 +19,34 @@ export const getSystemSettingsAction = async (req, res) => {
 
 export const updateSystemSettingsAction = async (req, res) => {
   try {
-    const allowed = [
+    const booleanFields = [
       "otp_real_enabled",
       "whatsapp_business_lead_alert",
       "whatsapp_customer_business_list",
       "whatsapp_mni_lead_alert",
       "whatsapp_mni_customer_list",
       "whatsapp_login_welcome",
+      "app_maintenance_mode",
+    ];
+
+    const stringFields = [
+      "app_android_latest_version",
+      "app_android_min_version",
+      "app_android_update_url",
+      "app_ios_latest_version",
+      "app_ios_min_version",
+      "app_ios_update_url",
+      "app_release_notes",
     ];
 
     const updates = {};
-    for (const key of allowed) {
-      if (key in req.body) {
-        updates[key] = Boolean(req.body[key]);
-      }
+
+    for (const key of booleanFields) {
+      if (key in req.body) updates[key] = Boolean(req.body[key]);
+    }
+
+    for (const key of stringFields) {
+      if (key in req.body) updates[key] = String(req.body[key]).trim();
     }
 
     if (!Object.keys(updates).length) {
