@@ -14,7 +14,7 @@ export const sendFCMNotification = async (token, title, body, data = {}) => {
       const sub = JSON.parse(token);
       if (sub.endpoint && sub.auth && sub.p256dh) {
         const payload = JSON.stringify({
-          notification: { title, body, icon: '/logo192.png', data },
+          notification: { title, body, icon: '/mi.png', data },
         });
         const response = await webpush.sendNotification(
           { endpoint: sub.endpoint, keys: { auth: sub.auth, p256dh: sub.p256dh } },

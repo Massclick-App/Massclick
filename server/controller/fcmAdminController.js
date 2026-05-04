@@ -78,7 +78,7 @@ export async function executeFCMSend({ title, body, imageUrl = "", clickAction =
 
   // Send to web push subscriptions
   const webPayload = JSON.stringify({
-    notification: { title, body, icon: '/logo192.png', data: dataPayload },
+    notification: { title, body, icon: '/mi.png', data: dataPayload },
   });
   for (const tokenStr of webTokens) {
     try {

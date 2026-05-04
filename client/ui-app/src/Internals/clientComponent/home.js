@@ -10,6 +10,7 @@ import { viewOtpUser } from '../../redux/actions/otpAction.js';
 import SeoMeta from "./seo/seoMeta";
 import { fetchSeoMeta } from "../../redux/actions/seoAction";
 import { messaging, onMessage } from '../../firebase';
+import miLogo from '../../assets/mi.png';
 
 const S = ({ variant = "rounded", w, h, r, sx, ...rest }) => (
   <Skeleton
@@ -423,7 +424,7 @@ const LandingPage = () => {
                             />
                         ) : (
                             <Avatar
-                                src="/logo192.png"
+                                src={miLogo}
                                 variant="rounded"
                                 sx={{ width: 48, height: 48, flexShrink: 0 }}
                             />

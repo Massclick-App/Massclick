@@ -9,7 +9,7 @@ async function dispatchToken(token, title, body, data = {}) {
   if (typeof token === 'string' && token.startsWith('{')) {
     const sub = JSON.parse(token);
     if (!sub.endpoint || !sub.auth || !sub.p256dh) throw new Error('Invalid web push subscription');
-    const payload = JSON.stringify({ notification: { title, body, icon: '/logo192.png', data } });
+    const payload = JSON.stringify({ notification: { title, body, icon: '/mi.png', data } });
     return webpush.sendNotification(
       { endpoint: sub.endpoint, keys: { auth: sub.auth, p256dh: sub.p256dh } },
       payload
@@ -58,7 +58,7 @@ export const sendBulkNotificationAction = async (req, res) => {
       failureCount += response.failureCount;
     }
 
-    const webPayload = JSON.stringify({ notification: { title, body, icon: '/logo192.png', data: data || {} } });
+    const webPayload = JSON.stringify({ notification: { title, body, icon: '/mi.png', data: data || {} } });
     for (const tokenStr of webTokens) {
       try {
         const sub = JSON.parse(tokenStr);
