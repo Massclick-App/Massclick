@@ -4,11 +4,16 @@ import { requestFCMToken } from '../firebase';
 const API_URL = process.env.REACT_APP_API_URL;
 
 export async function registerWebFCMToken(userId, authToken) {
+  console.log('[FCM] registerWebFCMToken called — userId:', userId, 'hasToken:', !!authToken);
   try {
     const token = await requestFCMToken();
-    if (!token) return;
+    if (!token) {
+      console.warn('[FCM] No FCM token returned — permission denied or service worker missing');
+      return;
+    }
 
-    await axios.post(
+    console.log('[FCM] Saving token to server...');
+    const res = await axios.post(
       `${API_URL}/api/fcm-token/save`,
       {
         userId,
@@ -18,7 +23,8 @@ export async function registerWebFCMToken(userId, authToken) {
       },
       { headers: { Authorization: `Bearer ${authToken}` } }
     );
-  } catch {
-    // non-critical — fail silently
+    console.log('[FCM] Token saved successfully:', res.data);
+  } catch (err) {
+    console.error('[FCM] Failed to save token:', err?.response?.data || err.message);
   }
 }

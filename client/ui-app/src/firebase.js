@@ -16,13 +16,23 @@ const app = initializeApp(firebaseConfig);
 export const messaging = getMessaging(app);
 
 export async function requestFCMToken() {
-  if (!('Notification' in window)) return null;
+  if (!('Notification' in window)) {
+    console.warn('[FCM] Notifications not supported in this browser');
+    return null;
+  }
 
   const permission = await Notification.requestPermission();
+  console.log('[FCM] Notification permission:', permission);
   if (permission !== 'granted') return null;
 
-  const token = await getToken(messaging, { vapidKey: VAPID_KEY });
-  return token || null;
+  try {
+    const token = await getToken(messaging, { vapidKey: VAPID_KEY });
+    console.log('[FCM] Token retrieved:', token ? token.slice(0, 20) + '...' : 'null');
+    return token || null;
+  } catch (err) {
+    console.error('[FCM] getToken failed:', err);
+    return null;
+  }
 }
 
 export { onMessage };
