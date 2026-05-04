@@ -9,6 +9,7 @@ import OTPLoginModel from './AddBusinessModel.js';
 import { viewOtpUser } from '../../redux/actions/otpAction.js';
 import SeoMeta from "./seo/seoMeta";
 import { fetchSeoMeta } from "../../redux/actions/seoAction";
+import { messaging, onMessage } from '../../firebase';
 
 const S = ({ variant = "rounded", w, h, r, sx, ...rest }) => (
   <Skeleton
@@ -130,6 +131,19 @@ const LandingPage = () => {
     useEffect(() => {
         dispatch(fetchSeoMeta({ pageType: "home" }));
     }, [dispatch]);
+
+    useEffect(() => {
+        const unsubscribe = onMessage(messaging, (payload) => {
+            const { title, body } = payload.notification || {};
+            if (Notification.permission === 'granted') {
+                new Notification(title || 'MassClick', {
+                    body: body || '',
+                    icon: '/logo192.png',
+                });
+            }
+        });
+        return unsubscribe;
+    }, []);
 
     const fallbackSeo = {
         title: "Massclick - India's Leading Local Search Platform",
