@@ -26,7 +26,11 @@ export async function requestFCMToken() {
   if (permission !== 'granted') return null;
 
   try {
-    const token = await getToken(messaging, { vapidKey: VAPID_KEY });
+    const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+    await navigator.serviceWorker.ready;
+    console.log('[FCM] Service worker active, scope:', registration.scope);
+
+    const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: registration });
     console.log('[FCM] Token retrieved:', token ? token.slice(0, 20) + '...' : 'null');
     return token || null;
   } catch (err) {
