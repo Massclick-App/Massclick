@@ -119,10 +119,6 @@ const SkeletonGrid = ({ type }) => {
   );
 };
 
-/* ──────────────────────────────────────────────────────────────
-   Main LandingPage
-────────────────────────────────────────────────────────────── */
-
 const LandingPage = () => {
 
     const dispatch = useDispatch();
