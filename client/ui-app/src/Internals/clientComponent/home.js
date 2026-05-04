@@ -1,14 +1,18 @@
 import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import { useDispatch, useSelector } from "react-redux";
-import { Box, Drawer, Grid, List, ListItem, ListItemText, Skeleton } from '@mui/material';
+import { Box, Drawer, Grid, List, ListItem, ListItemText, Skeleton, Snackbar, Alert, Avatar } from '@mui/material';
 import { Helmet } from "react-helmet-async";
 import HeroSection from '../clientComponent/heroSection/heroSection.js';
 import CategoryBar from '../clientComponent/categoryBar';
 import CardsSearch from './CardsSearch/CardsSearch';
 import OTPLoginModel from './AddBusinessModel.js';
 import { viewOtpUser } from '../../redux/actions/otpAction.js';
+import { fetchMatchedLeads } from '../../redux/actions/leadsAction.js';
 import SeoMeta from "./seo/seoMeta";
 import { fetchSeoMeta } from "../../redux/actions/seoAction";
+import { messaging, onMessage } from '../../firebase';
+import miLogo from '../../assets/mi.png';
+import { connectSocket, disconnectSocket } from '../../services/socketService.js';
 
 const S = ({ variant = "rounded", w, h, r, sx, ...rest }) => (
   <Skeleton
@@ -122,6 +126,7 @@ const SkeletonGrid = ({ type }) => {
 const LandingPage = () => {
 
     const dispatch = useDispatch();
+    const [fcmNotif, setFcmNotif] = useState(null);
 
     const { meta: seoMetaData } = useSelector(
         (state) => state.seoReducer
@@ -130,6 +135,17 @@ const LandingPage = () => {
     useEffect(() => {
         dispatch(fetchSeoMeta({ pageType: "home" }));
     }, [dispatch]);
+
+    useEffect(() => {
+        const unsubscribe = onMessage(messaging, (payload) => {
+            console.log('[FCM] Foreground message received:', payload);
+            const { title, body, image } = payload.notification || {};
+            const imageUrl = image || payload.data?.imageUrl || null;
+            console.log('[FCM] Showing in-app notification:', { title, body, imageUrl });
+            setFcmNotif({ title: title || 'MassClick', body: body || '', image: imageUrl });
+        });
+        return unsubscribe;
+    }, []);
 
     const fallbackSeo = {
         title: "Massclick - India's Leading Local Search Platform",
@@ -155,15 +171,25 @@ const LandingPage = () => {
 
     useEffect(() => {
         const mobile = localStorage.getItem("mobileNumber");
+        const token = localStorage.getItem("authToken");
         if (!mobile) return;
 
         dispatch(viewOtpUser(mobile));
 
-        const interval = setInterval(() => {
-            dispatch(viewOtpUser(mobile));
-        }, 20000);
+        if (!token) return;
 
-        return () => clearInterval(interval);
+        const ws = connectSocket(token);
+
+        const onLeadUpdate = () => {
+            dispatch(viewOtpUser(mobile));
+            dispatch(fetchMatchedLeads());
+        };
+
+        ws.on('lead:analytics:update', onLeadUpdate);
+
+        return () => {
+            ws.off('lead:analytics:update', onLeadUpdate);
+        };
     }, [dispatch]);
 
     const isUserLoggedIn = () => {
@@ -376,6 +402,56 @@ const LandingPage = () => {
                     handleClose={() => setShowLoginModal(false)}
                 />
             </Box>
+
+            <Snackbar
+                open={!!fcmNotif}
+                autoHideDuration={6000}
+                onClose={() => setFcmNotif(null)}
+                anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+            >
+                <Alert
+                    onClose={() => setFcmNotif(null)}
+                    severity="info"
+                    icon={false}
+                    sx={{
+                        width: '100%',
+                        maxWidth: 360,
+                        bgcolor: '#fff',
+                        color: '#333',
+                        boxShadow: 4,
+                        borderRadius: 2,
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: 1.5,
+                        p: 1.5,
+                    }}
+                >
+                    <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
+                        {fcmNotif?.image ? (
+                            <Avatar
+                                src={fcmNotif.image}
+                                variant="rounded"
+                                sx={{ width: 48, height: 48, flexShrink: 0 }}
+                                imgProps={{ onError: (e) => { e.target.style.display = 'none'; } }}
+                            />
+                        ) : (
+                            <Avatar
+                                src={miLogo}
+                                variant="rounded"
+                                sx={{ width: 48, height: 48, flexShrink: 0 }}
+                            />
+                        )}
+                        <Box>
+                            <Box sx={{ fontWeight: 700, fontSize: 14, mb: 0.25 }}>
+                                {fcmNotif?.title}
+                            </Box>
+                            <Box sx={{ fontSize: 13, color: '#555' }}>
+                                {fcmNotif?.body}
+                            </Box>
+                        </Box>
+                    </Box>
+                </Alert>
+            </Snackbar>
         </>
     );
 };

@@ -15,6 +15,7 @@ import {
     useTheme,
 } from "@mui/material";
 import { sendOtp, verifyOtp } from "../../redux/actions/otpAction";
+import { registerWebFCMToken } from "../../utils/registerFCMToken";
 import { useDispatch, useSelector } from "react-redux";
 import { Link as RouterLink } from 'react-router-dom';
 import { Link as MuiLink } from '@mui/material';
@@ -77,6 +78,10 @@ const OTPLoginModal = ({ open, handleClose }) => {
                     variant: "success",
                     autoHideDuration: 3000,
                 });
+
+                if (res.user?._id) {
+                    registerWebFCMToken(res.user._id, res.token);
+                }
             }
 
             handleClose();

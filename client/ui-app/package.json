@@ -25,6 +25,7 @@
     "axios": "^1.12.2",
     "chart.js": "^4.5.1",
     "dayjs": "^1.11.18",
+    "firebase": "^12.12.1",
     "lucide-react": "^0.554.0",
     "mdb-react-ui-kit": "^9.0.0",
     "notistack": "^3.0.2",
@@ -40,6 +41,7 @@
     "react-router-dom": "^7.9.1",
     "react-scripts": "5.0.1",
     "recharts": "^3.3.0",
+    "socket.io-client": "^4.8.3",
     "styled-components": "^6.1.19",
     "web-vitals": "^2.1.4"
   },

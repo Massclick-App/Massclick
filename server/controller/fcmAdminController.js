@@ -1,8 +1,13 @@
 import admin from "../helper/firebaseInit.js";
+import webpush from "web-push";
 import userModel from "../model/msg91Model/usersModels.js";
 import fcmCampaignModel from "../model/fcmCampaignModel/fcmCampaignModel.js";
 import { BAD_REQUEST, INTERNAL_SERVER_ERROR, NOT_FOUND, OK } from "../errorCodes.js";
 import { uploadImageToS3, getSignedUrlByKey } from "../s3Uploder.js";
+
+const VAPID_PUBLIC_KEY = 'BGQ0OCJil87bcnelmazt2Kh5HPivTIEsYuWSN1-9IxGYIjwqbjLVbn_9bnOfiG-Iv7y_ituUYV3v7QrydEyl2UE';
+const VAPID_PRIVATE_KEY = 'Jn4dwbWtoXCCm5ux-4_NUvdlmX8WDBiP5L13FYumzAs';
+webpush.setVapidDetails('mailto:admin@massclick.in', VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 
 // ─── Shared send logic ────────────────────────────────────────────────────────
 
@@ -44,6 +49,10 @@ export async function executeFCMSend({ title, body, imageUrl = "", clickAction =
     if (k && v !== undefined && v !== null) dataPayload[k] = String(v);
   });
 
+  // Split web push subscriptions (JSON strings) from native FCM tokens
+  const webTokens = tokens.filter(t => typeof t === 'string' && t.startsWith('{'));
+  const fcmTokens = tokens.filter(t => typeof t === 'string' && !t.startsWith('{'));
+
   const messageBase = {
     notification: { title, body, ...(imageUrl && { imageUrl }) },
     data: dataPayload,
@@ -59,11 +68,32 @@ export async function executeFCMSend({ title, body, imageUrl = "", clickAction =
   let totalSuccess = 0;
   let totalFailure = 0;
 
-  for (let i = 0; i < tokens.length; i += CHUNK_SIZE) {
-    const chunk = tokens.slice(i, i + CHUNK_SIZE);
+  // Send to native FCM tokens (Android/iOS)
+  for (let i = 0; i < fcmTokens.length; i += CHUNK_SIZE) {
+    const chunk = fcmTokens.slice(i, i + CHUNK_SIZE);
     const response = await admin.messaging().sendEachForMulticast({ ...messageBase, tokens: chunk });
     totalSuccess += response.successCount;
     totalFailure += response.failureCount;
+  }
+
+  // Send to web push subscriptions
+  const webPayload = JSON.stringify({
+    notification: { title, body, icon: '/mi.png', data: dataPayload },
+  });
+  for (const tokenStr of webTokens) {
+    try {
+      const sub = JSON.parse(tokenStr);
+      if (sub.endpoint && sub.auth && sub.p256dh) {
+        await webpush.sendNotification(
+          { endpoint: sub.endpoint, keys: { auth: sub.auth, p256dh: sub.p256dh } },
+          webPayload
+        );
+        totalSuccess++;
+      }
+    } catch (err) {
+      console.error('[FCM] Web push send error:', err.message);
+      totalFailure++;
+    }
   }
 
   return { totalTargeted: tokens.length, successCount: totalSuccess, failureCount: totalFailure };

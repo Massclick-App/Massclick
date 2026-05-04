@@ -9,6 +9,7 @@ import NavbarBreadcrumbs from "./NavbarBreadCrump.js";
 import MenuButton from "./MenuButton";
 import OptionsMenu from "./OptionsMenu.js";
 import NotificationModal from "./notificationModel.js";
+import { connectSocket } from "../services/socketService.js";
 
 export default function Header() {
   const dispatch = useDispatch();
@@ -17,11 +18,23 @@ export default function Header() {
 useEffect(() => {
   dispatch(getPendingBusinessList());
 
-  const interval = setInterval(() => {
-    dispatch(getPendingBusinessList());
-  }, 60000);
+  const token = localStorage.getItem("accessToken") || localStorage.getItem("authToken");
+  if (!token) return;
 
-  return () => clearInterval(interval);
+  const ws = connectSocket(token);
+
+  // Join the admin room so this client receives business:pending events
+  ws.emit("room:join", { room: "admin:global" });
+
+  const onBusinessPending = () => {
+    dispatch(getPendingBusinessList());
+  };
+
+  ws.on("business:pending", onBusinessPending);
+
+  return () => {
+    ws.off("business:pending", onBusinessPending);
+  };
 }, [dispatch]);
 
   const pendingCount = useSelector(
