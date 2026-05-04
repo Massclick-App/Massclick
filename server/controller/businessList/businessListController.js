@@ -3,6 +3,8 @@ import { BAD_REQUEST } from "../../errorCodes.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
 import { getSignedUrlByKey } from "../../s3Uploder.js";
 import categoryModel from "../../model/category/categoryModel.js";
+import { emitToRoom } from "../../websocket/roomManager.js";
+import { buildRoom, WS_EVENTS } from "../../websocket/constants.js";
 
 export const addBusinessListAction = async (req, res) => {
   try {
@@ -15,6 +17,14 @@ export const addBusinessListAction = async (req, res) => {
     }
 
     const result = await createBusinessList(reqBody);
+
+    emitToRoom(buildRoom.admin(), WS_EVENTS.BUSINESS_PENDING, {
+      businessName: result.businessName,
+      category: result.category,
+      location: result.location,
+      ts: new Date().toISOString(),
+    });
+
     res.send(result);
 
   } catch (error) {

@@ -14,6 +14,9 @@ export const WS_EVENTS = {
   // ── Lead domain ───────────────────────────────────────────────────────────────
   LEAD_ANALYTICS_UPDATE: "lead:analytics:update",
 
+  // ── Business domain ───────────────────────────────────────────────────────────
+  BUSINESS_PENDING:      "business:pending",
+
   // ── App-wide system events ────────────────────────────────────────────────────
   APP_MAINTENANCE:       "app:maintenance",
 
