@@ -5,7 +5,8 @@ import {
   DELETE_MRP_REQUEST, DELETE_MRP_SUCCESS, DELETE_MRP_FAILURE,
   SEARCH_MRP_BUSINESS_REQUEST, SEARCH_MRP_BUSINESS_SUCCESS, SEARCH_MRP_BUSINESS_FAILURE,
   SEARCH_MRP_CATEGORY_REQUEST, SEARCH_MRP_CATEGORY_SUCCESS, SEARCH_MRP_CATEGORY_FAILURE,
-  SEND_MRP_LEADS_REQUEST, SEND_MRP_LEADS_SUCCESS, SEND_MRP_LEADS_FAILURE
+  SEND_MRP_LEADS_REQUEST, SEND_MRP_LEADS_SUCCESS, SEND_MRP_LEADS_FAILURE,
+  FETCH_MNI_LEADS_REQUEST, FETCH_MNI_LEADS_SUCCESS, FETCH_MNI_LEADS_FAILURE
 } from '../actions/userActionTypes.js';
 
 const initialState = {
@@ -13,15 +14,25 @@ const initialState = {
   total: 0,
   pageNo: 1,
   pageSize: 10,
+
   loading: false,
-  leadSending: false,
   error: null,
+  leadSending: false,
+
   businessSearchResults: [],
-  categorySearchResults: []
+  categorySearchResults: [],
+
+  mniLeads: [],
+  mniLoading: false,
+  mniError: null,
 };
 
 export default function mrpReducer(state = initialState, action) {
   switch (action.type) {
+
+    /* ===============================
+       MRP CRUD
+    ============================== */
 
     case FETCH_MRP_REQUEST:
     case CREATE_MRP_REQUEST:
@@ -68,6 +79,20 @@ export default function mrpReducer(state = initialState, action) {
         )
       };
 
+    case FETCH_MRP_FAILURE:
+    case CREATE_MRP_FAILURE:
+    case EDIT_MRP_FAILURE:
+    case DELETE_MRP_FAILURE:
+      return {
+        ...state,
+        loading: false,
+        error: action.payload
+      };
+
+    /* ===============================
+       SEARCH
+    ============================== */
+
     case SEARCH_MRP_BUSINESS_REQUEST:
     case SEARCH_MRP_CATEGORY_REQUEST:
       return {
@@ -98,6 +123,9 @@ export default function mrpReducer(state = initialState, action) {
         error: action.payload
       };
 
+    /* ===============================
+       SEND LEADS
+    ============================== */
 
     case SEND_MRP_LEADS_REQUEST:
       return {
@@ -119,15 +147,34 @@ export default function mrpReducer(state = initialState, action) {
         error: action.payload
       };
 
-    case FETCH_MRP_FAILURE:
-    case CREATE_MRP_FAILURE:
-    case EDIT_MRP_FAILURE:
-    case DELETE_MRP_FAILURE:
+    /* ===============================
+       🔥 MNI LEADS (FIXED)
+    ============================== */
+
+    case FETCH_MNI_LEADS_REQUEST:
       return {
         ...state,
-        loading: false,
-        error: action.payload
+        mniLoading: true,
+        mniError: null
       };
+
+    case FETCH_MNI_LEADS_SUCCESS:
+      return {
+        ...state,
+        mniLoading: false,
+        mniLeads: action.payload.data
+      };
+
+    case FETCH_MNI_LEADS_FAILURE:
+      return {
+        ...state,
+        mniLoading: false,
+        mniError: action.payload
+      };
+
+    /* ===============================
+       DEFAULT
+    ============================== */
 
     default:
       return state;

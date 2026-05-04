@@ -23,6 +23,7 @@ import CorporateFareIcon from '@mui/icons-material/CorporateFare';
 import NewspaperIcon from '@mui/icons-material/Newspaper';
 import SourceIcon from '@mui/icons-material/Source';
 import CampaignIcon from '@mui/icons-material/Campaign';
+import TuneIcon from '@mui/icons-material/Tune';
 
 export default function SideMenu({ onItemClick }) {
   const navigate = useNavigate();
@@ -112,6 +113,12 @@ export default function SideMenu({ onItemClick }) {
       text: "Push Notify",
       icon: CampaignIcon,
       path: "/dashboard/fcm-marketing",
+      roles: ["SuperAdmin"],
+    },
+    {
+      text: "System Settings",
+      icon: TuneIcon,
+      path: "/dashboard/system-settings",
       roles: ["SuperAdmin"],
     },
   ];

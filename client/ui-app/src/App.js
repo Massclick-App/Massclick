@@ -66,6 +66,7 @@ const SeoPageContentBlogs = lazy(() => import('./Internals/seoData/seoPageConten
 
 const MRPDatas = lazy(() => import('./Internals/MRPDATA/mrpData.js'));
 const FCMMarketing = lazy(() => import('./Internals/FCMMarketing/FCMMarketing.js'));
+const SystemSettings = lazy(() => import('./Internals/SystemSettings/SystemSettings.js'));
 
 const FloatingButtons = lazy(() => import('./Internals/clientComponent/floating/floatingButtons.js'));
 const FloatingAdCard = lazy(() => import('./Internals/clientComponent/floating/floatingAdCard.js'));
@@ -206,6 +207,7 @@ function AppRoutes({
               <Route path="mni-data" element={<MRPDatas />} />
               <Route path="terms-conditions-data" element={<TermsAndConditionsDatas />} />
               <Route path="fcm-marketing" element={<FCMMarketing />} />
+              <Route path="system-settings" element={<SystemSettings />} />
             </Route>
           </Route>
         </Routes>

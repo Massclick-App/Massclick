@@ -4,6 +4,7 @@ import CategoryModel from "../../model/category/categoryModel.js";
 import { getSignedUrlByKey } from "../../s3Uploder.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
 import { sendBusinessesToCustomer, sendBusinessLead } from "../../helper/msg91/smsGatewayHelper.js";
+import { getSettings } from "../../helper/systemSettings/settingsService.js";
 import searchLogModel from "../../model/businessList/searchLogModel.js";
 import userModel from "../../model/msg91Model/usersModels.js";
 import { sendFCMNotification } from "../../helper/fcmHelper.js";
@@ -89,6 +90,16 @@ export const logSearchAction = async (req, res) => {
   try {
     const { categoryName, location, searchedUserText, userDetails } = req.body;
 
+    console.log("[LOG-SEARCH] call received", {
+      ts: new Date().toISOString(),
+      searchedUserText,
+      location,
+      mobile: userDetails?.mobileNumber1 || "anonymous",
+      ip: req.ip,
+      userAgent: req.headers["user-agent"]?.slice(0, 80),
+      origin: req.headers["origin"] || req.headers["referer"] || "no-origin",
+    });
+
     if (!searchedUserText || !searchedUserText.trim()) {
       return res.status(400).json({
         success: false,
@@ -114,7 +125,7 @@ export const logSearchAction = async (req, res) => {
       categoryName.trim() &&
       categoryName.toLowerCase() !== "all categories"
     ) {
-      finalCategoryName = categoryName.trim();
+      finalCategoryName = categoryName.trim().toLowerCase();
     } else {
       const matchedCategory = await CategoryModel.findOne({
         categoryName: { $regex: cleanSearchText, $options: "i" }
@@ -148,17 +159,16 @@ export const logSearchAction = async (req, res) => {
       const fingerprint = anonFingerprint(req);
       const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
 
-      // DEDUP DISABLED TEMPORARILY — remove comment to re-enable
-      // const recentAnon = await searchLogModel.findOne({
-      //   categoryName: finalCategoryName,
-      //   location: normalizedLocation,
-      //   searchedUserText: cleanSearchText,
-      //   isAnonymous: true,
-      //   anonFingerprint: fingerprint,
-      //   createdAt: { $gte: fiveMinAgo }
-      // });
+      const recentAnon = await searchLogModel.findOne({
+        categoryName: finalCategoryName,
+        location: normalizedLocation,
+        searchedUserText: cleanSearchText,
+        isAnonymous: true,
+        anonFingerprint: fingerprint,
+        createdAt: { $gte: fiveMinAgo }
+      });
 
-      // if (!recentAnon) {
+      if (!recentAnon) {
         await createSearchLog({
           categoryName: finalCategoryName,
           categoryImage: category?.categoryImageKey || "",
@@ -169,7 +179,7 @@ export const logSearchAction = async (req, res) => {
           isAnonymous: true,
           anonFingerprint: fingerprint,
         });
-      // } // end dedup guard
+      }
 
       return res.status(200).json({
         success: true,
@@ -185,7 +195,7 @@ export const logSearchAction = async (req, res) => {
 
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
     const recentLog = await searchLogModel.findOne({
-      categoryName: finalCategoryName,
+      categoryName: { $regex: `^${finalCategoryName}$`, $options: "i" },
       location: normalizedLocation,
       "userDetails.mobileNumber1": userDetails.mobileNumber1,
       searchedUserText: cleanSearchText,
@@ -280,6 +290,8 @@ export const logSearchAction = async (req, res) => {
 
     };
 
+    const waSettings = await getSettings();
+
     let businessSendSuccess = false;
 
     let customerSendSuccess = false;
@@ -347,7 +359,9 @@ export const logSearchAction = async (req, res) => {
 
       try {
 
-        await sendBusinessLead(cleanMobile, leadData);
+        if (waSettings.whatsapp_business_lead_alert) {
+          await sendBusinessLead(cleanMobile, leadData);
+        }
 
         businessSendSuccess = true;
 
@@ -404,15 +418,17 @@ export const logSearchAction = async (req, res) => {
 
       try {
 
-        await sendBusinessesToCustomer(
+        if (waSettings.whatsapp_customer_business_list) {
+          await sendBusinessesToCustomer(
 
-          cleanCustomerMobile,
+            cleanCustomerMobile,
 
-          leadData,
+            leadData,
 
-          businesses
+            businesses
 
-        );
+          );
+        }
 
         customerSendSuccess = true;
 

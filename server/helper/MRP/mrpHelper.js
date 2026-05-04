@@ -3,6 +3,7 @@ import mrpModel from "../../model/MRP/mrpModel.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
 import categoryModel from "../../model/category/categoryModel.js";
 import { sendMniBusinessLead, sendCustomerBusinessList } from "../msg91/smsGatewayHelper.js";
+import { getSettings } from "../systemSettings/settingsService.js";
 
 export const createMRP = async function (reqBody = {}) {
   try {
@@ -208,6 +209,8 @@ export const sendMrpLeads = async (mrpId) => {
     };
   }
 
+  const mrpSettings = await getSettings();
+
   const leadData = {
     businessName: sourceBusiness.businessName,
     location: location,
@@ -226,7 +229,9 @@ export const sendMrpLeads = async (mrpId) => {
     if (!mobile) continue;
 
     try {
-      await sendMniBusinessLead(mobile, leadData);
+      if (mrpSettings.whatsapp_mni_lead_alert) {
+        await sendMniBusinessLead(mobile, leadData);
+      }
 
       await businessListModel.updateOne(
         { _id: biz._id, "mniDetails.0": { $exists: true } },
@@ -256,22 +261,24 @@ export const sendMrpLeads = async (mrpId) => {
     }
   }
 
-  try {
-    const customerMobile = mrp.contactDetails
-      .toString()
-      .replace(/\D/g, "")
-      .slice(-10);
+  if (mrpSettings.whatsapp_mni_customer_list) {
+    try {
+      const customerMobile = mrp.contactDetails
+        .toString()
+        .replace(/\D/g, "")
+        .slice(-10);
 
-    await sendCustomerBusinessList(
-      customerMobile,
-      sourceBusiness.businessName,
-      location,
-      mrp.categoryId,
-      businesses
-    );
+      await sendCustomerBusinessList(
+        customerMobile,
+        sourceBusiness.businessName,
+        location,
+        mrp.categoryId,
+        businesses
+      );
 
-  } catch (err) {
-    console.error("❌ Customer WhatsApp failed:", err.message);
+    } catch (err) {
+      console.error("❌ Customer WhatsApp failed:", err.message);
+    }
   }
 
   return {

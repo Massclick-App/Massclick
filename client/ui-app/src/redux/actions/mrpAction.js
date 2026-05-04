@@ -6,7 +6,8 @@ import {
   DELETE_MRP_REQUEST, DELETE_MRP_SUCCESS, DELETE_MRP_FAILURE,
   SEARCH_MRP_BUSINESS_REQUEST, SEARCH_MRP_BUSINESS_SUCCESS, SEARCH_MRP_BUSINESS_FAILURE,
   SEARCH_MRP_CATEGORY_REQUEST, SEARCH_MRP_CATEGORY_SUCCESS, SEARCH_MRP_CATEGORY_FAILURE,
-  SEND_MRP_LEADS_REQUEST, SEND_MRP_LEADS_SUCCESS, SEND_MRP_LEADS_FAILURE
+  SEND_MRP_LEADS_REQUEST, SEND_MRP_LEADS_SUCCESS, SEND_MRP_LEADS_FAILURE,
+  FETCH_MNI_LEADS_REQUEST, FETCH_MNI_LEADS_SUCCESS, FETCH_MNI_LEADS_FAILURE
 } from "./userActionTypes.js";
 
 import { getClientToken } from "./clientAuthAction";
@@ -20,44 +21,73 @@ const getValidToken = async (dispatch) => {
   return token;
 };
 
+export const getMniLeads = (params = {}) => async (dispatch) => {
+
+  dispatch({ type: FETCH_MNI_LEADS_REQUEST });
+
+  try {
+    const { location = "", group = "" } = params;
+
+    const token = await getValidToken(dispatch);
+
+    const response = await axios.get(
+      `${API_URL}/mrpdata/get-mni-leads?location=${location}&group=${group}`,
+      {
+        headers: { Authorization: `Bearer ${token}` }
+      }
+    );
+
+    dispatch({
+      type: FETCH_MNI_LEADS_SUCCESS,
+      payload: response.data?.data || response.data
+    });
+
+  } catch (error) {
+    dispatch({
+      type: FETCH_MNI_LEADS_FAILURE,
+      payload: error.response?.data || error.message
+    });
+  }
+};
+
 export const getAllMRP =
   ({ pageNo = 1, pageSize = 10, options = {} } = {}) =>
-  async (dispatch) => {
+    async (dispatch) => {
 
-    dispatch({ type: FETCH_MRP_REQUEST });
+      dispatch({ type: FETCH_MRP_REQUEST });
 
-    try {
-      const token = await getValidToken(dispatch);
+      try {
+        const token = await getValidToken(dispatch);
 
-      const {
-        search = "",
-        status = "all",
-        sortBy = "",
-        sortOrder = ""
-      } = options;
+        const {
+          search = "",
+          status = "all",
+          sortBy = "",
+          sortOrder = ""
+        } = options;
 
-      const response = await axios.get(
-        `${API_URL}/mrpdata/viewall?pageNo=${pageNo}&pageSize=${pageSize}&search=${search}&status=${status}&sortBy=${sortBy}&sortOrder=${sortOrder}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+        const response = await axios.get(
+          `${API_URL}/mrpdata/viewall?pageNo=${pageNo}&pageSize=${pageSize}&search=${search}&status=${status}&sortBy=${sortBy}&sortOrder=${sortOrder}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
 
-      dispatch({
-        type: FETCH_MRP_SUCCESS,
-        payload: {
-          data: response.data.data,
-          total: response.data.total,
-          pageNo,
-          pageSize
-        }
-      });
+        dispatch({
+          type: FETCH_MRP_SUCCESS,
+          payload: {
+            data: response.data.data,
+            total: response.data.total,
+            pageNo,
+            pageSize
+          }
+        });
 
-    } catch (error) {
-      dispatch({
-        type: FETCH_MRP_FAILURE,
-        payload: error.response?.data || error.message
-      });
-    }
-  };
+      } catch (error) {
+        dispatch({
+          type: FETCH_MRP_FAILURE,
+          payload: error.response?.data || error.message
+        });
+      }
+    };
 
 export const createMRP = (mrpData) => async (dispatch) => {
   dispatch({ type: CREATE_MRP_REQUEST });

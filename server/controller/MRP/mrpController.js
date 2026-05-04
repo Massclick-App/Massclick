@@ -1,4 +1,4 @@
-import { createMRP, viewMRP, viewAllMRP, updateMRP, deleteMRP, searchMrpBusinesses, searchMrpCategories,sendMrpLeads } from "../../helper/MRP/mrpHelper.js";
+import { createMRP, viewMRP, viewAllMRP, updateMRP, deleteMRP, searchMrpBusinesses, searchMrpCategories,sendMrpLeads, fetchMniLeadsData } from "../../helper/MRP/mrpHelper.js";
 import { BAD_REQUEST } from "../../errorCodes.js";
 
 export const addMRPAction = async (req, res) => {
@@ -134,6 +134,30 @@ export const sendMrpLeadsAction = async (req, res) => {
 
     return res.status(BAD_REQUEST.code).send({
       message: error.message
+    });
+  }
+};
+
+export const getMniLeadsList = async (req, res) => {
+  try {
+    const { location, group } = req.query;
+
+    // ✅ validation
+    if (!location || !group) {
+      return res.status(400).json({
+        message: "location and group are required"
+      });
+    }
+
+    const result = await fetchMniLeadsData({ location, group });
+
+    return res.status(200).json(result);
+
+  } catch (error) {
+    console.error("❌ getMniLeadsList error:", error);
+
+    return res.status(500).json({
+      message: error.message || "Server error"
     });
   }
 };
