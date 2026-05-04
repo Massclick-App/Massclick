@@ -14,7 +14,7 @@ export async function registerWebFCMToken(userId, authToken) {
 
     console.log('[FCM] Sending subscription to server...');
     const res = await axios.post(
-      `${API_URL}/api/fcm-token/web-register`,
+      `${API_URL}/fcm-token/web-register`,
       { userId, ...subscription },
       { headers: { Authorization: `Bearer ${authToken}` } }
     );
