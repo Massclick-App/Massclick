@@ -389,10 +389,6 @@ export const mainSearchController = async (req, res) => {
         return [
           { businessName: regex },
           { category: regex },
-          // { description: regex },
-          // { seoDescription: regex },
-          // { seoTitle: regex },
-          // { title: regex },
            { slug: regex },
           { keywords: regex }
         ];

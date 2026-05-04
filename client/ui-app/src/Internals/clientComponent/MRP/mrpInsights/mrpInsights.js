@@ -1,79 +1,67 @@
-import Accordion from '@mui/material/Accordion';
-import AccordionSummary from '@mui/material/AccordionSummary';
-import AccordionDetails from '@mui/material/AccordionDetails';
-import Typography from '@mui/material/Typography';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import Chip from '@mui/material/Chip';
-import Box from '@mui/material/Box';
+import { getMniLeads } from "../../../../redux/actions/mrpAction.js";
+import { useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
 
-import './mrpInsights.css';
+import "./mrpInsights.css";
 
-export default function MRPInsights({ data = [] }) {
-  const safeData = Array.isArray(data)
-    ? data.filter(item => item && typeof item === 'object')
-    : [];
+export default function MNILeadsInsights() {
 
-  if (!safeData.length) {
-    return (
-      <div className="mrp-insights-empty">
-        <p>No requirements yet</p>
-        <span>Your published requirements will appear here</span>
-      </div>
-    );
-  }
+  const dispatch = useDispatch();
+
+  const {
+    mniLeads = [],
+    mniLoading,
+    mniError
+  } = useSelector(state => state.mrp || {});
+
+  console.log("mniLeads", mniLeads);
+
+
+  useEffect(() => {
+    try {
+      const storedUser = localStorage.getItem("authUser");
+
+      if (!storedUser) return;
+
+      const authUser = JSON.parse(storedUser);
+
+      const location = (
+        authUser?.businessLocation ||
+        localStorage.getItem("selectedLocation") ||
+        "trichy"
+      ).toLowerCase();
+
+      if (!location) {
+        console.warn("Location not found");
+        return;
+      }
+
+      dispatch(getMniLeads({ location, group: "mni" }));
+
+    } catch (err) {
+      console.error("Invalid authUser data", err);
+    }
+  }, [dispatch]);
+
+  if (mniLoading) return <div>Loading leads...</div>;
+
+  if (mniError) return <div>Error: {mniError}</div>;
 
   return (
-    <div className="mrp-insights">
-      <div className="mrp-insights-header">
-        <h3>Requirement Insights</h3>
-        <span>{safeData.length} active</span>
-      </div>
+    <div>
+      <h3>MNI Leads</h3>
 
-      <div className="mrp-insights-list">
-        {safeData.map(item => (
-          <Accordion
-            key={item._id}
-            disableGutters
-            elevation={0}
-            className="mrp-insight-card"
-          >
-            <AccordionSummary
-              expandIcon={<ExpandMoreIcon />}
-              className="mrp-insight-summary"
-            >
-              <Box className="mrp-insight-summary-content">
-                <div className="mrp-insight-main">
-                  <Typography className="mrp-insight-title">
-                    {item.categoryId || '—'}
-                  </Typography>
-
-                  <div className="mrp-insight-meta">
-                    <span>📍 {item.location || '—'}</span>
-                    {item.createdAt && (
-                      <span>
-                        {new Date(item.createdAt).toLocaleDateString()}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <Chip
-                  label="New"
-                  size="small"
-                  className="mrp-insight-chip"
-                />
-              </Box>
-            </AccordionSummary>
-
-            <AccordionDetails className="mrp-insight-details">
-              <Typography className="mrp-insight-description">
-                {item.description || 'No description provided'}
-              </Typography>
-
-            </AccordionDetails>
-          </Accordion>
-        ))}
-      </div>
+      {mniLeads.length === 0 ? (
+        <p>No leads found</p>
+      ) : (
+        <ul>
+          {mniLeads.map((lead, index) => (
+            <li key={lead?._id || index}>
+              {lead?.businessName || "No Name"} - {lead?.location || "No Location"}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
