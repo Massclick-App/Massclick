@@ -13,8 +13,8 @@ const tryConnectRedisAdapter = async (io) => {
     const pubClient = createClient({ url: REDIS_URL });
     const subClient = pubClient.duplicate();
 
-    pubClient.on("error", (err) => console.error("[Redis pub]", err.message));
-    subClient.on("error", (err) => console.error("[Redis sub]", err.message));
+    pubClient.once("error", (err) => console.error("[Redis pub]", err.message));
+    subClient.once("error", (err) => console.error("[Redis sub]", err.message));
 
     await Promise.all([pubClient.connect(), subClient.connect()]);
 
