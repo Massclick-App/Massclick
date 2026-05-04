@@ -27,22 +27,24 @@ export const registerWebPushTokenAction = async (req, res) => {
     const accessTokenResult = await admin.app().options.credential.getAccessToken();
     const accessToken = accessTokenResult.access_token;
 
+    const requestBody = { web: { endpoint, auth, p256dh, applicationPubKey: VAPID_PUBLIC_KEY } };
+    console.log('[FCM web-register] Sending to fcmregistrations:', JSON.stringify(requestBody));
+
     const fcmResponse = await axios.post(
       `https://fcmregistrations.googleapis.com/v1/projects/${FCM_PROJECT_ID}/registrations`,
-      {
-        web: { endpoint, auth, p256dh, applicationPubKey: VAPID_PUBLIC_KEY },
-      },
+      requestBody,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
           'x-goog-user-project': FCM_PROJECT_ID,
+          'x-goog-api-key': 'AIzaSyAq5epDWb5sBRDg8bfA_HLSF__3J1kW0xc',
         },
       }
     );
 
     const fcmToken = fcmResponse.data.token;
-    console.log('Web push FCM token registered:', fcmToken?.slice(0, 20) + '...');
+    console.log('[FCM web-register] Token registered:', fcmToken?.slice(0, 20) + '...');
 
     const result = await saveFCMToken(userId, {
       token: fcmToken,
@@ -52,8 +54,9 @@ export const registerWebPushTokenAction = async (req, res) => {
 
     res.status(200).json({ message: 'Web push token registered successfully', data: result });
   } catch (error) {
-    console.error('Error registering web push token:', error?.response?.data || error.message);
-    res.status(500).json({ message: error?.response?.data?.error?.message || error.message });
+    const errData = error?.response?.data;
+    console.error('[FCM web-register] Failed:', JSON.stringify(errData) || error.message);
+    res.status(500).json({ message: errData?.error?.message || error.message, detail: errData });
   }
 };
 
