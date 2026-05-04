@@ -11,11 +11,20 @@ import { SnackbarProvider } from 'notistack';
 
 import theme from './Internals/clientComponent/theme.js';
 import PrivateRoute from './PrivateRoute';
+import RoleBasedRoute from './RoleBasedRoute';
 import ScrollToTop from './scrollTop.js';
 import RouteChangeTracker from './RouteChangeTracker.js';
 import { userMenuItems } from './Internals/clientComponent/categoryBar.js';
 
 import GlobalSkeleton from './Internals/clientComponent/globalSkeleton.js';
+
+// ── Role constants ────────────────────────────────────────────────────────────
+export const ROLES = {
+  SUPERADMIN: 'SuperAdmin',
+  ADMIN: 'Admin',
+  MANAGER: 'Manager',
+};
+// ─────────────────────────────────────────────────────────────────────────────
 
 const Dashboard = lazy(() => import('./Dashboard'));
 const Login = lazy(() => import('./Internals/Login/login.js'));
@@ -186,30 +195,40 @@ function AppRoutes({
             element={<BusinessDetails />}
           />
 
-          {/* Protected Dashboard */}
-          <Route
-            element={<PrivateRoute isAuthenticated={isAuthenticated} />}
-          >
+          {/* ── Protected Dashboard (requires authentication) ──────────────── */}
+          <Route element={<PrivateRoute isAuthenticated={isAuthenticated} />}>
             <Route path="/dashboard" element={<Dashboard />}>
+
+              {/* All authenticated admin users */}
               <Route index element={<MainGrid />} />
-              <Route path="user" element={<User />} />
               <Route path="profile" element={<Profile />} />
-              <Route path="clients" element={<Clients />} />
-              <Route path="business" element={<Business />} />
-              <Route path="category" element={<Category />} />
-              <Route path="location" element={<Location />} />
-              <Route path="seo" element={<SeoData />} />
-              <Route path="seopagecontent" element={<SeoPageContent />} />
-              <Route path="seopagecontentblogs" element={<SeoPageContentBlogs />} />
-              <Route path="roles" element={<Roles />} />
-              <Route path="enquiry" element={<EnquiryPage />} />
-              <Route path="advertisements" element={<AdvertisementPage />} />
-              <Route path="mni-data" element={<MRPDatas />} />
-              <Route path="terms-conditions-data" element={<TermsAndConditionsDatas />} />
-              <Route path="fcm-marketing" element={<FCMMarketing />} />
-              <Route path="system-settings" element={<SystemSettings />} />
+
+              {/* ── Content & Operations — admin + superadmin ─────────────── */}
+              <Route element={<RoleBasedRoute allowedRoles={[ROLES.ADMIN, ROLES.SUPERADMIN]} />}>
+                <Route path="clients" element={<Clients />} />
+                <Route path="business" element={<Business />} />
+                <Route path="category" element={<Category />} />
+                <Route path="location" element={<Location />} />
+                <Route path="seo" element={<SeoData />} />
+                <Route path="seopagecontent" element={<SeoPageContent />} />
+                <Route path="seopagecontentblogs" element={<SeoPageContentBlogs />} />
+                <Route path="enquiry" element={<EnquiryPage />} />
+                <Route path="advertisements" element={<AdvertisementPage />} />
+                <Route path="mni-data" element={<MRPDatas />} />
+                <Route path="terms-conditions-data" element={<TermsAndConditionsDatas />} />
+                <Route path="fcm-marketing" element={<FCMMarketing />} />
+              </Route>
+
+              {/* ── Super-admin only ──────────────────────────────────────── */}
+              <Route element={<RoleBasedRoute allowedRoles={[ROLES.SUPERADMIN]} />}>
+                <Route path="user" element={<User />} />
+                <Route path="roles" element={<Roles />} />
+                <Route path="system-settings" element={<SystemSettings />} />
+              </Route>
+
             </Route>
           </Route>
+          {/* ─────────────────────────────────────────────────────────────── */}
         </Routes>
 
         {/* Login Modal */}
