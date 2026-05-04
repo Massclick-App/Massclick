@@ -11,16 +11,25 @@ import {
   sendBulkNotificationAction
 } from '../controller/fcmNotificationController.js';
 import { oauthAuthentication } from '../helper/oauthHelper.js';
+import jwt from 'jsonwebtoken';
 
 const router = express.Router();
 
-/**
- * FCM Token Management Routes
- * All routes require OAuth authentication
- */
+const jwtAuthentication = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Missing token' });
+  }
+  try {
+    req.authUser = jwt.verify(authHeader.slice(7), process.env.JWT_SECRET);
+    next();
+  } catch {
+    return res.status(401).json({ error: 'Invalid token' });
+  }
+};
 
-// Register web push subscription server-side (bypasses browser FCM SDK auth)
-router.post('/api/fcm-token/web-register', oauthAuthentication, registerWebPushTokenAction);
+// Register web push subscription server-side (uses JWT from OTP login)
+router.post('/api/fcm-token/web-register', jwtAuthentication, registerWebPushTokenAction);
 
 // Save new FCM token
 router.post('/api/fcm-token/save', oauthAuthentication, saveFCMTokenAction);
