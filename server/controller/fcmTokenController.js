@@ -1,14 +1,8 @@
 import { saveFCMToken, removeFCMToken, getActiveFCMTokens } from '../helper/fcmTokenHelper.js';
 import { BAD_REQUEST, OK } from '../errorCodes.js';
 import { ObjectId } from 'mongodb';
-import admin from '../helper/firebaseInit.js';
-import axios from 'axios';
-
-const VAPID_PUBLIC_KEY = 'BGQ0OCJil87bcnelmazt2Kh5HPivTIEsYuWSN1-9IxGYIjwqbjLVbn_9bnOfiG-Iv7y_ituUYV3v7QrydEyl2UE';
-const FCM_PROJECT_ID = 'massclick-dc8f6';
-
 /**
- * Register web push subscription via server-side OAuth
+ * Register web push subscription
  * POST /api/fcm-token/web-register
  * Body: { userId, endpoint, auth, p256dh }
  */
@@ -24,39 +18,19 @@ export const registerWebPushTokenAction = async (req, res) => {
       return res.status(BAD_REQUEST.code).json({ message: 'Invalid user ID format' });
     }
 
-    const accessTokenResult = await admin.app().options.credential.getAccessToken();
-    const accessToken = accessTokenResult.access_token;
-
-    const requestBody = { web: { endpoint, auth, p256dh, applicationPubKey: VAPID_PUBLIC_KEY } };
-    console.log('[FCM web-register] Sending to fcmregistrations:', JSON.stringify(requestBody));
-
-    const fcmResponse = await axios.post(
-      `https://fcmregistrations.googleapis.com/v1/projects/${FCM_PROJECT_ID}/registrations`,
-      requestBody,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-          'x-goog-user-project': FCM_PROJECT_ID,
-          'x-goog-api-key': 'AIzaSyAq5epDWb5sBRDg8bfA_HLSF__3J1kW0xc',
-        },
-      }
-    );
-
-    const fcmToken = fcmResponse.data.token;
-    console.log('[FCM web-register] Token registered:', fcmToken?.slice(0, 20) + '...');
+    const subscriptionToken = JSON.stringify({ endpoint, auth, p256dh });
 
     const result = await saveFCMToken(userId, {
-      token: fcmToken,
+      token: subscriptionToken,
       platform: 'web',
       deviceName: req.headers['user-agent']?.slice(0, 100) || 'Web Browser',
     });
 
-    res.status(200).json({ message: 'Web push token registered successfully', data: result });
+    console.log('[FCM web-register] Web push subscription saved for userId:', userId);
+    res.status(200).json({ message: 'Web push subscription registered', data: result });
   } catch (error) {
-    const errData = error?.response?.data;
-    console.error('[FCM web-register] Failed:', JSON.stringify(errData) || error.message);
-    res.status(500).json({ message: errData?.error?.message || error.message, detail: errData });
+    console.error('[FCM web-register] Failed:', error.message);
+    res.status(500).json({ message: error.message });
   }
 };
 
