@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import { useDispatch, useSelector } from "react-redux";
-import { Box, Drawer, Grid, List, ListItem, ListItemText, Skeleton } from '@mui/material';
+import { Box, Drawer, Grid, List, ListItem, ListItemText, Skeleton, Snackbar, Alert, Avatar } from '@mui/material';
 import { Helmet } from "react-helmet-async";
 import HeroSection from '../clientComponent/heroSection/heroSection.js';
 import CategoryBar from '../clientComponent/categoryBar';
@@ -123,6 +123,7 @@ const SkeletonGrid = ({ type }) => {
 const LandingPage = () => {
 
     const dispatch = useDispatch();
+    const [fcmNotif, setFcmNotif] = useState(null);
 
     const { meta: seoMetaData } = useSelector(
         (state) => state.seoReducer
@@ -134,13 +135,11 @@ const LandingPage = () => {
 
     useEffect(() => {
         const unsubscribe = onMessage(messaging, (payload) => {
-            const { title, body } = payload.notification || {};
-            if (Notification.permission === 'granted') {
-                new Notification(title || 'MassClick', {
-                    body: body || '',
-                    icon: '/logo192.png',
-                });
-            }
+            console.log('[FCM] Foreground message received:', payload);
+            const { title, body, image } = payload.notification || {};
+            const imageUrl = image || payload.data?.imageUrl || null;
+            console.log('[FCM] Showing in-app notification:', { title, body, imageUrl });
+            setFcmNotif({ title: title || 'MassClick', body: body || '', image: imageUrl });
         });
         return unsubscribe;
     }, []);
@@ -390,6 +389,56 @@ const LandingPage = () => {
                     handleClose={() => setShowLoginModal(false)}
                 />
             </Box>
+
+            <Snackbar
+                open={!!fcmNotif}
+                autoHideDuration={6000}
+                onClose={() => setFcmNotif(null)}
+                anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+            >
+                <Alert
+                    onClose={() => setFcmNotif(null)}
+                    severity="info"
+                    icon={false}
+                    sx={{
+                        width: '100%',
+                        maxWidth: 360,
+                        bgcolor: '#fff',
+                        color: '#333',
+                        boxShadow: 4,
+                        borderRadius: 2,
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: 1.5,
+                        p: 1.5,
+                    }}
+                >
+                    <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
+                        {fcmNotif?.image ? (
+                            <Avatar
+                                src={fcmNotif.image}
+                                variant="rounded"
+                                sx={{ width: 48, height: 48, flexShrink: 0 }}
+                                imgProps={{ onError: (e) => { e.target.style.display = 'none'; } }}
+                            />
+                        ) : (
+                            <Avatar
+                                src="/logo192.png"
+                                variant="rounded"
+                                sx={{ width: 48, height: 48, flexShrink: 0 }}
+                            />
+                        )}
+                        <Box>
+                            <Box sx={{ fontWeight: 700, fontSize: 14, mb: 0.25 }}>
+                                {fcmNotif?.title}
+                            </Box>
+                            <Box sx={{ fontSize: 13, color: '#555' }}>
+                                {fcmNotif?.body}
+                            </Box>
+                        </Box>
+                    </Box>
+                </Alert>
+            </Snackbar>
         </>
     );
 };

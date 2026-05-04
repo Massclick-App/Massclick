@@ -13,6 +13,7 @@ firebase.initializeApp({
 const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((payload) => {
+  console.log('[FCM SW] Background message received:', payload);
   const { title, body, image } = payload.notification || {};
   const data = payload.data || {};
 
