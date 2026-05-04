@@ -3,7 +3,8 @@ import {
   saveFCMTokenAction,
   refreshFCMTokenAction,
   removeFCMTokenAction,
-  getActiveFCMTokensAction
+  getActiveFCMTokensAction,
+  registerWebPushTokenAction
 } from '../controller/fcmTokenController.js';
 import {
   sendSingleNotificationAction,
@@ -17,6 +18,9 @@ const router = express.Router();
  * FCM Token Management Routes
  * All routes require OAuth authentication
  */
+
+// Register web push subscription server-side (bypasses browser FCM SDK auth)
+router.post('/api/fcm-token/web-register', oauthAuthentication, registerWebPushTokenAction);
 
 // Save new FCM token
 router.post('/api/fcm-token/save', oauthAuthentication, saveFCMTokenAction);

@@ -1,6 +1,61 @@
 import { saveFCMToken, removeFCMToken, getActiveFCMTokens } from '../helper/fcmTokenHelper.js';
 import { BAD_REQUEST, OK } from '../errorCodes.js';
-import { ObjectId } from 'mongodb'; // ✅ ADD THIS
+import { ObjectId } from 'mongodb';
+import admin from '../helper/firebaseInit.js';
+import axios from 'axios';
+
+const VAPID_PUBLIC_KEY = 'BGQ0OCJil87bcnelmazt2Kh5HPivTIEsYuWSN1-9IxGYIjwqbjLVbn_9bnOfiG-Iv7y_ituUYV3v7QrydEyl2UE';
+const FCM_PROJECT_ID = 'massclick-dc8f6';
+
+/**
+ * Register web push subscription via server-side OAuth
+ * POST /api/fcm-token/web-register
+ * Body: { userId, endpoint, auth, p256dh }
+ */
+export const registerWebPushTokenAction = async (req, res) => {
+  try {
+    const { userId, endpoint, auth, p256dh } = req.body;
+
+    if (!userId || !endpoint || !auth || !p256dh) {
+      return res.status(BAD_REQUEST.code).json({ message: 'Missing required fields: userId, endpoint, auth, p256dh' });
+    }
+
+    if (!ObjectId.isValid(userId)) {
+      return res.status(BAD_REQUEST.code).json({ message: 'Invalid user ID format' });
+    }
+
+    const accessTokenResult = await admin.app().options.credential.getAccessToken();
+    const accessToken = accessTokenResult.access_token;
+
+    const fcmResponse = await axios.post(
+      `https://fcmregistrations.googleapis.com/v1/projects/${FCM_PROJECT_ID}/registrations`,
+      {
+        web: { endpoint, auth, p256dh, applicationPubKey: VAPID_PUBLIC_KEY },
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          'x-goog-user-project': FCM_PROJECT_ID,
+        },
+      }
+    );
+
+    const fcmToken = fcmResponse.data.token;
+    console.log('Web push FCM token registered:', fcmToken?.slice(0, 20) + '...');
+
+    const result = await saveFCMToken(userId, {
+      token: fcmToken,
+      platform: 'web',
+      deviceName: req.headers['user-agent']?.slice(0, 100) || 'Web Browser',
+    });
+
+    res.status(200).json({ message: 'Web push token registered successfully', data: result });
+  } catch (error) {
+    console.error('Error registering web push token:', error?.response?.data || error.message);
+    res.status(500).json({ message: error?.response?.data?.error?.message || error.message });
+  }
+};
 
 /**
  * Save or update FCM token for a user

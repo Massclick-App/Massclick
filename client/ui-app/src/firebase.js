@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getMessaging, getToken, onMessage } from 'firebase/messaging';
+import { getMessaging, onMessage } from 'firebase/messaging';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAq5epDWb5sBRDg8bfA_HLSF__3J1kW0xc",
@@ -10,14 +10,25 @@ const firebaseConfig = {
   appId: "1:826490972673:web:ae6569eec4139c33922e00",
 };
 
-const VAPID_KEY = 'BFbI_Nnr4GrI8UwG_xxRLPc-vgrDsWeult6xk6XW2V-yc1jmDs6p1P5nBJ_PzQBLhTKSRTv4ThgvIDLU9fwEdek';
+const VAPID_KEY = 'BGQ0OCJil87bcnelmazt2Kh5HPivTIEsYuWSN1-9IxGYIjwqbjLVbn_9bnOfiG-Iv7y_ituUYV3v7QrydEyl2UE';
 
 const app = initializeApp(firebaseConfig);
 export const messaging = getMessaging(app);
 
-export async function requestFCMToken() {
-  if (!('Notification' in window)) {
-    console.warn('[FCM] Notifications not supported in this browser');
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; i++) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+export async function requestPushSubscription() {
+  if (!('Notification' in window) || !('PushManager' in window)) {
+    console.warn('[FCM] Push notifications not supported in this browser');
     return null;
   }
 
@@ -28,13 +39,22 @@ export async function requestFCMToken() {
   try {
     const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
     await navigator.serviceWorker.ready;
-    console.log('[FCM] Service worker active, scope:', registration.scope);
+    console.log('[FCM] Service worker ready');
 
-    const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: registration });
-    console.log('[FCM] Token retrieved:', token ? token.slice(0, 20) + '...' : 'null');
-    return token || null;
+    const subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_KEY),
+    });
+
+    const subJson = subscription.toJSON();
+    console.log('[FCM] Push subscription created');
+    return {
+      endpoint: subJson.endpoint,
+      auth: subJson.keys.auth,
+      p256dh: subJson.keys.p256dh,
+    };
   } catch (err) {
-    console.error('[FCM] getToken failed:', err);
+    console.error('[FCM] Push subscription failed:', err);
     return null;
   }
 }
