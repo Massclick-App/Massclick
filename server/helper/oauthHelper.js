@@ -53,7 +53,7 @@ const saveToken = async (token, client, user) => {
       userName: user?.userName || 'client_user',
       emailId: user?.emailId || null,
       userId: userId,
-      userRole: user?.role || 'client',
+      userRole: user?.role || user?.userRole || 'client',
       firstTimeUser: false,
       forgotPassword: false,
       ...(user?.deviceId && { deviceId: user.deviceId }),
