@@ -7,10 +7,12 @@ import CategoryBar from '../clientComponent/categoryBar';
 import CardsSearch from './CardsSearch/CardsSearch';
 import OTPLoginModel from './AddBusinessModel.js';
 import { viewOtpUser } from '../../redux/actions/otpAction.js';
+import { fetchMatchedLeads } from '../../redux/actions/leadsAction.js';
 import SeoMeta from "./seo/seoMeta";
 import { fetchSeoMeta } from "../../redux/actions/seoAction";
 import { messaging, onMessage } from '../../firebase';
 import miLogo from '../../assets/mi.png';
+import { connectSocket, disconnectSocket } from '../../services/socketService.js';
 
 const S = ({ variant = "rounded", w, h, r, sx, ...rest }) => (
   <Skeleton
@@ -169,15 +171,25 @@ const LandingPage = () => {
 
     useEffect(() => {
         const mobile = localStorage.getItem("mobileNumber");
+        const token = localStorage.getItem("authToken");
         if (!mobile) return;
 
         dispatch(viewOtpUser(mobile));
 
-        const interval = setInterval(() => {
-            dispatch(viewOtpUser(mobile));
-        }, 20000);
+        if (!token) return;
 
-        return () => clearInterval(interval);
+        const ws = connectSocket(token);
+
+        const onLeadUpdate = () => {
+            dispatch(viewOtpUser(mobile));
+            dispatch(fetchMatchedLeads());
+        };
+
+        ws.on('lead:analytics:update', onLeadUpdate);
+
+        return () => {
+            ws.off('lead:analytics:update', onLeadUpdate);
+        };
     }, [dispatch]);
 
     const isUserLoggedIn = () => {
