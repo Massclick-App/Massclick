@@ -55,7 +55,6 @@ export const getSeo = async ({ pageType, category, location }) => {
 
 export const getSeoMeta = async ({ pageType, category, location }) => {
   try {
-    // 🔹 Normalize input
     const normalize = (v = "") =>
       v.toLowerCase().trim().replace(/[-_\s]+/g, " ");
 
@@ -63,18 +62,25 @@ export const getSeoMeta = async ({ pageType, category, location }) => {
     const safeCategory = category ? normalize(category) : null;
     const safeLocation = location ? normalize(location) : null;
 
-    // 🔹 Escape regex special characters
     const escapeRegex = (str = "") =>
       str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-    // 🔹 Make spacing flexible (handles double spaces in DB)
+    // 🔥 allow space + hyphen
     const makeFlexible = (str = "") =>
-      escapeRegex(str).replace(/\s+/g, "\\s+");
+      escapeRegex(str).replace(/\s+/g, "[-\\s]+");
 
     let seo = null;
 
+    const flexibleCategory = safeCategory
+      ? `^${makeFlexible(safeCategory)}$`
+      : null;
+
+    const flexibleLocation = safeLocation
+      ? `^${makeFlexible(safeLocation)}$`
+      : null;
+
     // ===============================
-    // 🔥 1. EXACT MATCH (FASTEST)
+    // 🔥 1. EXACT MATCH (CATEGORY + LOCATION)
     // ===============================
     if (safeCategory && safeLocation) {
       seo = await seoModel.findOne({
@@ -88,29 +94,7 @@ export const getSeoMeta = async ({ pageType, category, location }) => {
     }
 
     // ===============================
-    // 🔥 2. EXACT CATEGORY ONLY
-    // ===============================
-    if (safeCategory) {
-      seo = await seoModel.findOne({
-        pageType: safePageType,
-        category: safeCategory,
-        isActive: true,
-      }).lean();
-
-      if (seo) return seo;
-    }
-
-    // Prepare flexible regex
-    const flexibleCategory = safeCategory
-      ? `^${makeFlexible(safeCategory)}$`
-      : null;
-
-    const flexibleLocation = safeLocation
-      ? `^${makeFlexible(safeLocation)}$`
-      : null;
-
-    // ===============================
-    // 🔥 3. FLEXIBLE STRICT MATCH (NO PARTIAL MATCH)
+    // 🔥 2. FLEXIBLE MATCH (CATEGORY + LOCATION)
     // ===============================
     if (safeCategory && safeLocation) {
       seo = await seoModel.findOne({
@@ -124,9 +108,22 @@ export const getSeoMeta = async ({ pageType, category, location }) => {
     }
 
     // ===============================
+    // 🔥 3. CATEGORY ONLY (ONLY if NO location given)
+    // ===============================
+    if (safeCategory && !safeLocation) {
+      seo = await seoModel.findOne({
+        pageType: safePageType,
+        category: safeCategory,
+        isActive: true,
+      }).lean();
+
+      if (seo) return seo;
+    }
+
+    // ===============================
     // 🔥 4. FLEXIBLE CATEGORY ONLY
     // ===============================
-    if (safeCategory) {
+    if (safeCategory && !safeLocation) {
       seo = await seoModel.findOne({
         pageType: safePageType,
         category: { $regex: flexibleCategory, $options: "i" },
@@ -147,7 +144,7 @@ export const getSeoMeta = async ({ pageType, category, location }) => {
     if (seo) return seo;
 
     // ===============================
-    // 🔥 6. DEFAULT META
+    // 🔥 DEFAULT
     // ===============================
     return {
       title: "Massclick - Local Business Search Platform",
