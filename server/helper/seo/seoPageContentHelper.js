@@ -39,73 +39,50 @@ export const getSeoPageContentMetaService = async ({
 
     const locationAliasMap = {
       trichy: ["trichy", "tiruchirappalli", "tiruchirapalli"],
-      tiruchirappalli: ["trichy", "tiruchirappalli", "tiruchirapalli"],
+      tiruchirappalli: ["tiruchirappalli", "trichy", "tiruchirapalli"],
     };
 
     const locKey = safeLocation?.toLowerCase().trim();
-    const locationAliases = locKey ? (locationAliasMap[locKey] || [locKey]) : [];
-    const fallbackLocationAliases = locationAliases.filter(
-      (alias) => alias !== safeLocation
-    );
+    const locationAliases = locKey
+      ? (locationAliasMap[locKey] || [locKey])
+      : [];
 
     const escapeRegex = (str = "") =>
       str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
     const makeFlexible = (str = "") =>
-      escapeRegex(str).replace(/\s+/g, "\\s+");
+      escapeRegex(str).replace(/\s+/g, "[-\\s]+");
 
-    const makeTrimmedExact = (str = "") => `^\\s*${makeFlexible(str)}\\s*$`;
+    const categoryRegex = safeCategory
+      ? `^${makeFlexible(safeCategory)}$`
+      : null;
 
     let seo = null;
 
+    // ===============================
+    // 🔥 1. EXACT LOCATION FIRST
+    // ===============================
     if (safeCategory && safeLocation) {
-      const strictCategory = makeTrimmedExact(safeCategory);
-      const strictLocation = makeTrimmedExact(safeLocation);
-
       seo = await seoPageContentModel.findOne({
         pageType: safePageType,
-        category: { $regex: strictCategory, $options: "i" },
-        location: { $regex: strictLocation, $options: "i" },
+        category: { $regex: categoryRegex, $options: "i" },
+        location: safeLocation, // exact first
         isActive: true,
       }).lean();
 
       if (seo) return seo;
     }
 
-    if (safeCategory && safeLocation) {
-      const flexibleCategory = makeTrimmedExact(safeCategory);
-      const flexibleLocation = makeTrimmedExact(safeLocation);
-
+    // ===============================
+    // 🔥 2. ALIAS LOCATION (fallback)
+    // ===============================
+    if (safeCategory && locationAliases.length > 0) {
       seo = await seoPageContentModel.findOne({
         pageType: safePageType,
-        category: { $regex: flexibleCategory, $options: "i" },
-        location: { $regex: flexibleLocation, $options: "i" },
-        isActive: true,
-      }).lean();
-
-      if (seo) return seo;
-    }
-
-    if (safeCategory && fallbackLocationAliases.length > 0) {
-      seo = await seoPageContentModel.findOne({
-        pageType: safePageType,
-        category: safeCategory,
-        location: { $in: fallbackLocationAliases },
-        isActive: true,
-      }).lean();
-
-      if (seo) return seo;
-    }
-
-    if (safeCategory && fallbackLocationAliases.length > 0) {
-      const flexibleCategory = `^${makeFlexible(safeCategory)}$`;
-
-      seo = await seoPageContentModel.findOne({
-        pageType: safePageType,
-        category: { $regex: flexibleCategory, $options: "i" },
+        category: { $regex: categoryRegex, $options: "i" },
         location: {
-          $in: fallbackLocationAliases.map(
-            (alias) => new RegExp(`^${makeFlexible(alias)}$`, "i")
+          $in: locationAliases.map(
+            (l) => new RegExp(`^${makeFlexible(l)}$`, "i")
           ),
         },
         isActive: true,
@@ -114,12 +91,13 @@ export const getSeoPageContentMetaService = async ({
       if (seo) return seo;
     }
 
+    // ===============================
+    // 🔥 3. CATEGORY ONLY (only if no location given)
+    // ===============================
     if (safeCategory && !safeLocation) {
-      const flexibleCategory = `^${makeFlexible(safeCategory)}$`;
-
       seo = await seoPageContentModel.findOne({
         pageType: safePageType,
-        category: { $regex: flexibleCategory, $options: "i" },
+        category: { $regex: categoryRegex, $options: "i" },
         isActive: true,
       }).lean();
 
@@ -127,6 +105,7 @@ export const getSeoPageContentMetaService = async ({
     }
 
     return null;
+
   } catch (error) {
     console.error("SEO PAGE CONTENT FETCH ERROR:", error);
     return null;
