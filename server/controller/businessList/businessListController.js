@@ -330,22 +330,26 @@ export const mainSearchController = async (req, res) => {
   try {
     let { term = "", location = "", category = "" } = req.query;
 
+    // 🔥 Improved normalize (handles &, -, _, spaces)
     const normalize = (text = "") =>
       text
+        .toLowerCase()
         .trim()
-        .replace(/-/g, " ")
+        .replace(/&/g, " and ")
+        .replace(/[-_]/g, " ")
         .replace(/\s+/g, " ");
 
     term = normalize(term);
     location = normalize(location);
     category = normalize(category);
 
+    // 🔹 Escape regex special chars
     const escapeRegex = (text = "") =>
       text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+    // 🔹 Handle singular/plural
     const getWordVariations = (word = "") => {
       const w = word.toLowerCase().trim();
-
       if (!w) return [];
 
       if (w.endsWith("s")) {
@@ -355,12 +359,18 @@ export const mainSearchController = async (req, res) => {
       }
     };
 
+    // 🔥 Flexible matcher (supports space, -, &, _)
+    const makeFlexible = (val = "") =>
+      escapeRegex(val).replace(/\s+/g, "[-\\s&]+");
+
     const matchQuery = {
       businessesLive: true,
       $and: []
     };
 
-
+    // ===============================
+    // 📍 LOCATION
+    // ===============================
     if (location) {
       const locKey = location.toLowerCase().trim();
       const aliases = districtAliasMap[locKey] || [locKey];
@@ -368,19 +378,21 @@ export const mainSearchController = async (req, res) => {
       matchQuery.$and.push({
         location: {
           $in: aliases.map(
-            (l) => new RegExp(`^${escapeRegex(l)}$`, "i")
+            (l) => new RegExp(`^${escapeRegex(normalize(l))}$`, "i")
           )
         }
       });
     }
 
-
+    // ===============================
+    // 🏷 CATEGORY
+    // ===============================
     if (category) {
       const variations = getWordVariations(category);
 
       matchQuery.$and.push({
         $or: variations.map((val) => {
-          const flexible = escapeRegex(val).replace(/\s+/g, "[-\\s]+");
+          const flexible = makeFlexible(val);
 
           return {
             category: new RegExp(`^${flexible}$`, "i")
@@ -389,17 +401,20 @@ export const mainSearchController = async (req, res) => {
       });
     }
 
+    // ===============================
+    // 🔍 TERM SEARCH
+    // ===============================
     if (term) {
       const variations = getWordVariations(term);
 
       const termConditions = variations.flatMap((val) => {
-        const flexible = escapeRegex(val).replace(/\s+/g, "[-\\s]+");
+        const flexible = makeFlexible(val);
         const regex = new RegExp(flexible, "i");
 
         return [
           { businessName: regex },
           { category: regex },
-           { slug: regex },
+          { slug: regex },
           { keywords: regex }
         ];
       });
@@ -438,6 +453,9 @@ export const mainSearchController = async (req, res) => {
       }
     ]);
 
+    // ===============================
+    // 🖼 IMAGE URL SIGNING
+    // ===============================
     results.forEach((b) => {
       if (b.bannerImageKey) {
         b.bannerImage = getSignedUrlByKey(b.bannerImageKey);
@@ -454,7 +472,6 @@ export const mainSearchController = async (req, res) => {
           getSignedUrlByKey(k)
         );
       }
-      
     });
 
     res.send(results);
