@@ -34,25 +34,82 @@ export const getSeoPageContentMetaService = async ({
   location,
 }) => {
   try {
+    // 🔹 Normalize
     const safePageType = normalizeSeoText(pageType);
     const safeCategory = category ? normalizeSeoText(category) : null;
     const safeLocation = location ? normalizeSeoText(location) : null;
 
+    // 🔹 Escape regex special chars
+    const escapeRegex = (str = "") =>
+      str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+    // 🔹 Flexible spacing (fix double-space issue)
+    const makeFlexible = (str = "") =>
+      escapeRegex(str).replace(/\s+/g, "\\s+");
+
+    let seo = null;
+
+    // ===============================
+    // 🔥 1. EXACT MATCH (FAST)
+    // ===============================
     if (safeCategory && safeLocation) {
-      return await seoPageContentModel.findOne({
+      seo = await seoPageContentModel.findOne({
         pageType: safePageType,
-        category: { $regex: `^${safeCategory}$`, $options: "i" },
-        location: { $regex: `^${safeLocation}$`, $options: "i" },
+        category: safeCategory,
+        location: safeLocation,
         isActive: true,
       }).lean();
+
+      if (seo) return seo;
     }
 
-    if (safeCategory && !safeLocation) {
-      return await seoPageContentModel.findOne({
+    // ===============================
+    // 🔥 2. EXACT CATEGORY ONLY
+    // ===============================
+    if (safeCategory) {
+      seo = await seoPageContentModel.findOne({
         pageType: safePageType,
-        category: { $regex: `^${safeCategory}$`, $options: "i" },
+        category: safeCategory,
         isActive: true,
       }).lean();
+
+      if (seo) return seo;
+    }
+
+    // Prepare flexible regex
+    const flexibleCategory = safeCategory
+      ? `^${makeFlexible(safeCategory)}$`
+      : null;
+
+    const flexibleLocation = safeLocation
+      ? `^${makeFlexible(safeLocation)}$`
+      : null;
+
+    // ===============================
+    // 🔥 3. FLEXIBLE STRICT MATCH
+    // ===============================
+    if (safeCategory && safeLocation) {
+      seo = await seoPageContentModel.findOne({
+        pageType: safePageType,
+        category: { $regex: flexibleCategory, $options: "i" },
+        location: { $regex: flexibleLocation, $options: "i" },
+        isActive: true,
+      }).lean();
+
+      if (seo) return seo;
+    }
+
+    // ===============================
+    // 🔥 4. FLEXIBLE CATEGORY ONLY
+    // ===============================
+    if (safeCategory) {
+      seo = await seoPageContentModel.findOne({
+        pageType: safePageType,
+        category: { $regex: flexibleCategory, $options: "i" },
+        isActive: true,
+      }).lean();
+
+      if (seo) return seo;
     }
 
     return null;
