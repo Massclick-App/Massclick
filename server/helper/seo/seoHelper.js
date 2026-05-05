@@ -64,27 +64,53 @@ export const getSeoMeta = async ({ pageType, category, location }) => {
 
     let seo = null;
 
+    // 🔥 1. EXACT MATCH (BEST & FASTEST)
     if (safeCategory && safeLocation) {
       seo = await seoModel.findOne({
         pageType: safePageType,
-        category: { $regex: safeCategory, $options: "i" },
-        location: { $regex: safeLocation, $options: "i" },
+        category: safeCategory,
+        location: safeLocation,
         isActive: true,
       }).lean();
 
       if (seo) return seo;
     }
 
+    // 🔥 2. EXACT CATEGORY ONLY
     if (safeCategory) {
       seo = await seoModel.findOne({
         pageType: safePageType,
-        category: { $regex: safeCategory, $options: "i" },
+        category: safeCategory,
         isActive: true,
       }).lean();
 
       if (seo) return seo;
     }
 
+    // 🔥 3. STRICT CASE-INSENSITIVE MATCH (NO PARTIAL MATCHES)
+    if (safeCategory && safeLocation) {
+      seo = await seoModel.findOne({
+        pageType: safePageType,
+        category: { $regex: `^${safeCategory}$`, $options: "i" },
+        location: { $regex: `^${safeLocation}$`, $options: "i" },
+        isActive: true,
+      }).lean();
+
+      if (seo) return seo;
+    }
+
+    // 🔥 4. STRICT CATEGORY ONLY
+    if (safeCategory) {
+      seo = await seoModel.findOne({
+        pageType: safePageType,
+        category: { $regex: `^${safeCategory}$`, $options: "i" },
+        isActive: true,
+      }).lean();
+
+      if (seo) return seo;
+    }
+
+    // 🔥 5. FALLBACK (PAGE TYPE ONLY)
     seo = await seoModel.findOne({
       pageType: safePageType,
       isActive: true,
@@ -92,6 +118,7 @@ export const getSeoMeta = async ({ pageType, category, location }) => {
 
     if (seo) return seo;
 
+    // 🔥 6. DEFAULT
     return {
       title: "Massclick - Local Business Search Platform",
       description:
@@ -102,6 +129,7 @@ export const getSeoMeta = async ({ pageType, category, location }) => {
 
   } catch (error) {
     console.error("SEO META FETCH ERROR:", error);
+
     return {
       title: "Massclick",
       description: "Massclick - India's local business search platform",
