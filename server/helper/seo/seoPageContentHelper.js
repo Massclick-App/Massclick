@@ -27,66 +27,81 @@ export const getSeoPageContent = async ({ pageType, category, location }) => {
   }
 };
 
-
 export const getSeoPageContentMetaService = async ({
   pageType,
   category,
   location,
 }) => {
   try {
-    // 🔹 Normalize
     const safePageType = normalizeSeoText(pageType);
     const safeCategory = category ? normalizeSeoText(category) : null;
     const safeLocation = location ? normalizeSeoText(location) : null;
 
-    // 🔹 Location alias map (🔥 important)
     const locationAliasMap = {
       trichy: ["trichy", "tiruchirappalli", "tiruchirapalli"],
       tiruchirappalli: ["trichy", "tiruchirappalli", "tiruchirapalli"],
     };
 
     const locKey = safeLocation?.toLowerCase().trim();
-    const locationAliases = locKey
-      ? (locationAliasMap[locKey] || [locKey])
-      : [];
+    const locationAliases = locKey ? (locationAliasMap[locKey] || [locKey]) : [];
+    const fallbackLocationAliases = locationAliases.filter(
+      (alias) => alias !== safeLocation
+    );
 
-    // 🔹 Escape regex
     const escapeRegex = (str = "") =>
       str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-    // 🔹 Flexible spacing
     const makeFlexible = (str = "") =>
       escapeRegex(str).replace(/\s+/g, "\\s+");
 
     let seo = null;
 
-    // ===============================
-    // 🔥 1. EXACT MATCH (CATEGORY + LOCATION ALIAS)
-    // ===============================
     if (safeCategory && safeLocation) {
       seo = await seoPageContentModel.findOne({
         pageType: safePageType,
         category: safeCategory,
-        location: { $in: locationAliases },
+        location: safeLocation,
         isActive: true,
       }).lean();
 
       if (seo) return seo;
     }
 
-    // ===============================
-    // 🔥 2. FLEXIBLE MATCH (CATEGORY + LOCATION ALIAS)
-    // ===============================
     if (safeCategory && safeLocation) {
+      const flexibleCategory = `^${makeFlexible(safeCategory)}$`;
+      const flexibleLocation = `^${makeFlexible(safeLocation)}$`;
+
+      seo = await seoPageContentModel.findOne({
+        pageType: safePageType,
+        category: { $regex: flexibleCategory, $options: "i" },
+        location: { $regex: flexibleLocation, $options: "i" },
+        isActive: true,
+      }).lean();
+
+      if (seo) return seo;
+    }
+
+    if (safeCategory && fallbackLocationAliases.length > 0) {
+      seo = await seoPageContentModel.findOne({
+        pageType: safePageType,
+        category: safeCategory,
+        location: { $in: fallbackLocationAliases },
+        isActive: true,
+      }).lean();
+
+      if (seo) return seo;
+    }
+
+    if (safeCategory && fallbackLocationAliases.length > 0) {
       const flexibleCategory = `^${makeFlexible(safeCategory)}$`;
 
       seo = await seoPageContentModel.findOne({
         pageType: safePageType,
         category: { $regex: flexibleCategory, $options: "i" },
         location: {
-          $in: locationAliases.map(
-            (l) => new RegExp(`^${makeFlexible(l)}$`, "i")
-          )
+          $in: fallbackLocationAliases.map(
+            (alias) => new RegExp(`^${makeFlexible(alias)}$`, "i")
+          ),
         },
         isActive: true,
       }).lean();
@@ -94,9 +109,6 @@ export const getSeoPageContentMetaService = async ({
       if (seo) return seo;
     }
 
-    // ===============================
-    // 🔥 3. CATEGORY ONLY (ONLY if NO location provided)
-    // ===============================
     if (safeCategory && !safeLocation) {
       const flexibleCategory = `^${makeFlexible(safeCategory)}$`;
 
@@ -109,23 +121,20 @@ export const getSeoPageContentMetaService = async ({
       if (seo) return seo;
     }
 
-    // ❌ NO WRONG FALLBACK (important)
     return null;
-
   } catch (error) {
     console.error("SEO PAGE CONTENT FETCH ERROR:", error);
     return null;
   }
 };
 
-
 export const normalizeSeoText = (v = "") =>
   v
     .toString()
     .toLowerCase()
     .trim()
-    .replace(/[-_\s]+/g, " ")   // collapse spaces + dash/underscore
-    .replace(/\s+/g, " ");      // extra safety
+    .replace(/[-_\s]+/g, " ")
+    .replace(/\s+/g, " ");
 
 export const viewAllSeoPageContent = async ({
   pageNo,
@@ -153,7 +162,7 @@ export const viewAllSeoPageContent = async ({
       ];
     }
 
-    let sortQuery = {};
+    const sortQuery = {};
     if (sortBy) {
       sortQuery[sortBy] = sortOrder;
     }
@@ -173,7 +182,6 @@ export const viewAllSeoPageContent = async ({
     throw error;
   }
 };
-
 
 export const updateSeoPageContent = async (id, data) => {
   const seo = await seoPageContentModel.findByIdAndUpdate(id, data, { new: true });
