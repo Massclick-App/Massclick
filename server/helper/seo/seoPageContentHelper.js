@@ -39,24 +39,35 @@ export const getSeoPageContentMetaService = async ({
     const safeCategory = category ? normalizeSeoText(category) : null;
     const safeLocation = location ? normalizeSeoText(location) : null;
 
-    // 🔹 Escape regex special chars
+    // 🔹 Location alias map (🔥 important)
+    const locationAliasMap = {
+      trichy: ["trichy", "tiruchirappalli", "tiruchirapalli"],
+      tiruchirappalli: ["trichy", "tiruchirappalli", "tiruchirapalli"],
+    };
+
+    const locKey = safeLocation?.toLowerCase().trim();
+    const locationAliases = locKey
+      ? (locationAliasMap[locKey] || [locKey])
+      : [];
+
+    // 🔹 Escape regex
     const escapeRegex = (str = "") =>
       str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-    // 🔹 Flexible spacing (fix double-space issue)
+    // 🔹 Flexible spacing
     const makeFlexible = (str = "") =>
       escapeRegex(str).replace(/\s+/g, "\\s+");
 
     let seo = null;
 
     // ===============================
-    // 🔥 1. EXACT MATCH (FAST)
+    // 🔥 1. EXACT MATCH (CATEGORY + LOCATION ALIAS)
     // ===============================
     if (safeCategory && safeLocation) {
       seo = await seoPageContentModel.findOne({
         pageType: safePageType,
         category: safeCategory,
-        location: safeLocation,
+        location: { $in: locationAliases },
         isActive: true,
       }).lean();
 
@@ -64,35 +75,19 @@ export const getSeoPageContentMetaService = async ({
     }
 
     // ===============================
-    // 🔥 2. EXACT CATEGORY ONLY
-    // ===============================
-    if (safeCategory) {
-      seo = await seoPageContentModel.findOne({
-        pageType: safePageType,
-        category: safeCategory,
-        isActive: true,
-      }).lean();
-
-      if (seo) return seo;
-    }
-
-    // Prepare flexible regex
-    const flexibleCategory = safeCategory
-      ? `^${makeFlexible(safeCategory)}$`
-      : null;
-
-    const flexibleLocation = safeLocation
-      ? `^${makeFlexible(safeLocation)}$`
-      : null;
-
-    // ===============================
-    // 🔥 3. FLEXIBLE STRICT MATCH
+    // 🔥 2. FLEXIBLE MATCH (CATEGORY + LOCATION ALIAS)
     // ===============================
     if (safeCategory && safeLocation) {
+      const flexibleCategory = `^${makeFlexible(safeCategory)}$`;
+
       seo = await seoPageContentModel.findOne({
         pageType: safePageType,
         category: { $regex: flexibleCategory, $options: "i" },
-        location: { $regex: flexibleLocation, $options: "i" },
+        location: {
+          $in: locationAliases.map(
+            (l) => new RegExp(`^${makeFlexible(l)}$`, "i")
+          )
+        },
         isActive: true,
       }).lean();
 
@@ -100,9 +95,11 @@ export const getSeoPageContentMetaService = async ({
     }
 
     // ===============================
-    // 🔥 4. FLEXIBLE CATEGORY ONLY
+    // 🔥 3. CATEGORY ONLY (ONLY if NO location provided)
     // ===============================
-    if (safeCategory) {
+    if (safeCategory && !safeLocation) {
+      const flexibleCategory = `^${makeFlexible(safeCategory)}$`;
+
       seo = await seoPageContentModel.findOne({
         pageType: safePageType,
         category: { $regex: flexibleCategory, $options: "i" },
@@ -112,7 +109,9 @@ export const getSeoPageContentMetaService = async ({
       if (seo) return seo;
     }
 
+    // ❌ NO WRONG FALLBACK (important)
     return null;
+
   } catch (error) {
     console.error("SEO PAGE CONTENT FETCH ERROR:", error);
     return null;
