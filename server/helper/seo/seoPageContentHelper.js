@@ -47,6 +47,11 @@ export const getSeoPageContentMetaService = async ({
       ? (locationAliasMap[locKey] || [locKey])
       : [];
 
+    // 🔥 remove exact location from fallback aliases
+    const fallbackAliases = locationAliases.filter(
+      (l) => l !== safeLocation
+    );
+
     const escapeRegex = (str = "") =>
       str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -60,13 +65,13 @@ export const getSeoPageContentMetaService = async ({
     let seo = null;
 
     // ===============================
-    // 🔥 1. EXACT LOCATION FIRST
+    // 🔥 1. EXACT LOCATION ONLY
     // ===============================
     if (safeCategory && safeLocation) {
       seo = await seoPageContentModel.findOne({
         pageType: safePageType,
         category: { $regex: categoryRegex, $options: "i" },
-        location: safeLocation, // exact first
+        location: new RegExp(`^${makeFlexible(safeLocation)}$`, "i"),
         isActive: true,
       }).lean();
 
@@ -74,14 +79,14 @@ export const getSeoPageContentMetaService = async ({
     }
 
     // ===============================
-    // 🔥 2. ALIAS LOCATION (fallback)
+    // 🔥 2. FALLBACK TO ALIASES (EXCLUDING ORIGINAL)
     // ===============================
-    if (safeCategory && locationAliases.length > 0) {
+    if (safeCategory && fallbackAliases.length > 0) {
       seo = await seoPageContentModel.findOne({
         pageType: safePageType,
         category: { $regex: categoryRegex, $options: "i" },
         location: {
-          $in: locationAliases.map(
+          $in: fallbackAliases.map(
             (l) => new RegExp(`^${makeFlexible(l)}$`, "i")
           ),
         },
@@ -92,7 +97,7 @@ export const getSeoPageContentMetaService = async ({
     }
 
     // ===============================
-    // 🔥 3. CATEGORY ONLY (only if no location given)
+    // 🔥 3. CATEGORY ONLY (NO LOCATION)
     // ===============================
     if (safeCategory && !safeLocation) {
       seo = await seoPageContentModel.findOne({
