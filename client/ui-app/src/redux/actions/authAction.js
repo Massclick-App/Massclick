@@ -40,9 +40,9 @@ export const login = (userName, password) => async (dispatch) => {
         console.log("result", response.data);
     localStorage.setItem('accessToken', accessToken);
     localStorage.setItem('refreshToken', refreshToken);
-    // localStorage.setItem('accessTokenExpiresAt', accessTokenExpiresAt);
     localStorage.setItem('userRole', user?.userRole || '');
     localStorage.setItem('userName', user?.userName || user?.email || '');
+    localStorage.setItem('allowedPages', JSON.stringify(user?.allowedPages || []));
 
     dispatch({
       type: LOGIN_SUCCESS,
@@ -79,6 +79,7 @@ export const relogin = () => async (dispatch) => {
     localStorage.setItem("refreshToken", newRefreshToken);
     localStorage.setItem("accessTokenExpiresAt", accessTokenExpiresAt);
     localStorage.setItem("userRole", user?.userRole || '');
+    localStorage.setItem("allowedPages", JSON.stringify(user?.allowedPages || []));
 
     dispatch({
       type: RELOGIN_SUCCESS,
@@ -119,6 +120,7 @@ export const logout = () => async (dispatch) => {
       "accessTokenExpiresAt",
       "userRole",
       "userName",
+      "allowedPages",
     ];
 
     keysToRemove.forEach((key) => localStorage.removeItem(key));

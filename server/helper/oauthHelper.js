@@ -6,6 +6,13 @@ import { userValidation } from '../helper/loginHelper.js';
 import mongoose from 'mongoose';
 import crypto from 'crypto';
 import userModel from '../model/userModel.js';
+import rolesModel from '../model/roles/rolesModel.js';
+
+const getAllowedPages = async (roleName) => {
+  if (!roleName || roleName === 'client') return [];
+  const roleDoc = await rolesModel.findOne({ roleName, isActive: true }).lean();
+  return Array.isArray(roleDoc?.permissions) ? roleDoc.permissions : [];
+};
 
 // ── Request context store ─────────────────────────────────────────────────────
 let _currentRequestBody = {};
@@ -41,6 +48,8 @@ const getUserFromClient = async (client) => {
 const saveToken = async (token, client, user) => {
   const userId = user?.userId || crypto.randomBytes(16).toString('hex');
   const isClientCredentials = !token.refreshToken;
+  const userRole = user?.role || user?.userRole || 'client';
+  const allowedPages = await getAllowedPages(userRole);
 
   const tokenData = {
     accessToken: token.accessToken,
@@ -53,7 +62,8 @@ const saveToken = async (token, client, user) => {
       userName: user?.userName || 'client_user',
       emailId: user?.emailId || null,
       userId: userId,
-      userRole: user?.role || user?.userRole || 'client',
+      userRole,
+      allowedPages,
       firstTimeUser: false,
       forgotPassword: false,
       ...(user?.deviceId && { deviceId: user.deviceId }),
@@ -138,7 +148,10 @@ export const oauthAuthentication = async (req, res, next) => {
     const userId = token.user?.userId;
     if (mongoose.Types.ObjectId.isValid(userId)) {
       const latestUser = await userModel.findById(userId).lean();
-      if (latestUser) token.user.userRole = latestUser.role;
+      if (latestUser) {
+      token.user.userRole = latestUser.role;
+      token.user.allowedPages = await getAllowedPages(latestUser.role);
+    }
     }
     req.authUser = token.user;
     next();

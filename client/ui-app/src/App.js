@@ -11,20 +11,13 @@ import { SnackbarProvider } from 'notistack';
 
 import theme from './Internals/clientComponent/theme.js';
 import PrivateRoute from './PrivateRoute';
-import RoleBasedRoute from './RoleBasedRoute';
+import PermissionRoute from './PermissionRoute';
 import ScrollToTop from './scrollTop.js';
 import RouteChangeTracker from './RouteChangeTracker.js';
 import { userMenuItems } from './Internals/clientComponent/categoryBar.js';
 
 import GlobalSkeleton from './Internals/clientComponent/globalSkeleton.js';
 
-// ── Role constants ────────────────────────────────────────────────────────────
-export const ROLES = {
-  SUPERADMIN: 'SuperAdmin',
-  ADMIN: 'Admin',
-  MANAGER: 'Manager',
-};
-// ─────────────────────────────────────────────────────────────────────────────
 
 const Dashboard = lazy(() => import('./Dashboard'));
 const Login = lazy(() => import('./Internals/Login/login.js'));
@@ -199,12 +192,12 @@ function AppRoutes({
           <Route element={<PrivateRoute isAuthenticated={isAuthenticated} />}>
             <Route path="/dashboard" element={<Dashboard />}>
 
-              {/* All authenticated admin users */}
+              {/* Always accessible to any authenticated user */}
               <Route index element={<MainGrid />} />
               <Route path="profile" element={<Profile />} />
 
-              {/* ── Content & Operations — admin + superadmin ─────────────── */}
-              <Route element={<RoleBasedRoute allowedRoles={[ROLES.ADMIN, ROLES.SUPERADMIN]} />}>
+              {/* ── Permission-gated routes (allowedPages controls access) ── */}
+              <Route element={<PermissionRoute />}>
                 <Route path="clients" element={<Clients />} />
                 <Route path="business" element={<Business />} />
                 <Route path="category" element={<Category />} />
@@ -217,10 +210,6 @@ function AppRoutes({
                 <Route path="mni-data" element={<MRPDatas />} />
                 <Route path="terms-conditions-data" element={<TermsAndConditionsDatas />} />
                 <Route path="fcm-marketing" element={<FCMMarketing />} />
-              </Route>
-
-              {/* ── Super-admin only ──────────────────────────────────────── */}
-              <Route element={<RoleBasedRoute allowedRoles={[ROLES.SUPERADMIN]} />}>
                 <Route path="user" element={<User />} />
                 <Route path="roles" element={<Roles />} />
                 <Route path="system-settings" element={<SystemSettings />} />

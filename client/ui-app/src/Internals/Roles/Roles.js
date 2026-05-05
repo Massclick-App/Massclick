@@ -15,11 +15,21 @@ import {
     DialogTitle,
     DialogContent,
     DialogActions,
+    Checkbox,
+    FormControlLabel,
+    Chip,
 } from "@mui/material";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
-import './roles.css'
+import './roles.css';
 import CustomizedTable from "../../components/Table/CustomizedTable";
+import { PAGE_REGISTRY } from "../../config/pageRegistry";
+
+const toArray = (val) => {
+    if (Array.isArray(val)) return val;
+    if (typeof val === 'string' && val.trim()) return val.split(',').map(s => s.trim()).filter(Boolean);
+    return [];
+};
 
 export default function Roles() {
     const dispatch = useDispatch();
@@ -28,16 +38,13 @@ export default function Roles() {
     );
 
     const [errors, setErrors] = useState({});
-
     const [formData, setFormData] = useState({
         roleName: "",
-        permissions: "",
+        permissions: [],
         description: "",
         createdBy: "",
     });
-
     const [editingId, setEditingId] = useState(null);
-
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [selectedRow, setSelectedRow] = useState(null);
 
@@ -50,10 +57,30 @@ export default function Roles() {
         setFormData((prev) => ({ ...prev, [name]: value }));
     };
 
+    const handlePageToggle = (path) => {
+        setFormData((prev) => {
+            const current = prev.permissions;
+            return {
+                ...prev,
+                permissions: current.includes(path)
+                    ? current.filter(p => p !== path)
+                    : [...current, path],
+            };
+        });
+    };
+
+    const handleSelectAll = () => {
+        const allPaths = PAGE_REGISTRY.map(p => p.path);
+        const allSelected = allPaths.every(p => formData.permissions.includes(p));
+        setFormData((prev) => ({
+            ...prev,
+            permissions: allSelected ? [] : allPaths,
+        }));
+    };
+
     const validateForm = () => {
-        let newErrors = {};
+        const newErrors = {};
         if (!formData.roleName.trim()) newErrors.roleName = "Role Name is required";
-        if (!formData.permissions.trim()) newErrors.permissions = "Permissions are required";
         if (!formData.description.trim()) newErrors.description = "Description is required";
         if (!formData.createdBy.trim()) newErrors.createdBy = "Created By is required";
         setErrors(newErrors);
@@ -61,85 +88,78 @@ export default function Roles() {
     };
 
     const resetForm = () => {
-        setFormData({
-            roleName: "",
-            permissions: "",
-            description: "",
-            createdBy: "",
-        });
+        setFormData({ roleName: "", permissions: [], description: "", createdBy: "" });
         setEditingId(null);
+        setErrors({});
     };
 
     const handleSubmit = (e) => {
         e.preventDefault();
         if (!validateForm()) return;
 
-        if (editingId) {
-            dispatch(editRoles(editingId, formData))
-                .then(() => {
-                    resetForm();
-                    dispatch(getAllRoles());
-                })
-                .catch((err) => console.error("Update roles failed:", err));
-        } else {
-            dispatch(createRoles(formData))
-                .then(() => {
-                    resetForm();
-                    dispatch(getAllRoles());
-                })
-                .catch((err) => console.error("Create roles failed:", err));
-        }
+        const action = editingId
+            ? editRoles(editingId, formData)
+            : createRoles(formData);
+
+        dispatch(action)
+            .then(() => { resetForm(); dispatch(getAllRoles()); })
+            .catch((err) => console.error("Role save failed:", err));
     };
 
     const handleEdit = (row) => {
         setEditingId(row.id);
         setFormData({
             roleName: row.roleName || "",
-            permissions: row.permissions || "",
+            permissions: toArray(row.permissions),
             description: row.description || "",
             createdBy: row.createdBy || "",
         });
     };
 
-    const handleDeleteClick = (row) => {
-        setSelectedRow(row);
-        setDeleteDialogOpen(true);
-    };
+    const handleDeleteClick = (row) => { setSelectedRow(row); setDeleteDialogOpen(true); };
 
     const confirmDelete = () => {
-        debugger
         if (selectedRow?.id) {
             dispatch(deleteRoles(selectedRow.id))
-                .then(() => {
-                    dispatch(getAllRoles());
-                    setDeleteDialogOpen(false);
-                    setSelectedRow(null);
-                })
+                .then(() => { dispatch(getAllRoles()); setDeleteDialogOpen(false); setSelectedRow(null); })
                 .catch((err) => console.error("Delete roles failed:", err));
         }
     };
 
-    const cancelDelete = () => {
-        setDeleteDialogOpen(false);
-        setSelectedRow(null);
-    };
+    const cancelDelete = () => { setDeleteDialogOpen(false); setSelectedRow(null); };
 
     const rows = roles
         .filter((rol) => rol.isActive)
-
         .map((rol, index) => ({
             id: rol._id || index,
             roleName: rol.roleName,
-            permissions: rol.permissions,
+            permissions: toArray(rol.permissions),
             description: rol.description,
             createdBy: rol.createdBy,
             isActive: rol.isActive,
-
         }));
 
     const rolesList = [
         { id: "roleName", label: "Role Name" },
-        { id: "permissions", label: "Permissions" },
+        {
+            id: "permissions",
+            label: "Pages",
+            renderCell: (_, row) => (
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, maxWidth: 340 }}>
+                    {toArray(row.permissions).map(path => {
+                        const page = PAGE_REGISTRY.find(p => p.path === path);
+                        return (
+                            <Chip
+                                key={path}
+                                label={page?.label || path}
+                                size="small"
+                                sx={{ fontSize: '0.7rem' }}
+                            />
+                        );
+                    })}
+                </Box>
+            ),
+        },
         { id: "description", label: "Description" },
         { id: "createdBy", label: "Created By" },
         {
@@ -158,23 +178,25 @@ export default function Roles() {
         },
     ];
 
-    const fields = [
-        { label: "RoleName", name: "roleName", required: true, type: "text" },
-        { label: "Permissions", name: "permissions", required: true, type: "text" },
-        { label: "Descriptions", name: "description", required: true, type: "text" },
-        { label: "CreatedBy", name: "createdBy", required: true, type: "text" },
+    const textFields = [
+        { label: "Role Name", name: "roleName", required: true },
+        { label: "Description", name: "description", required: true },
+        { label: "Created By", name: "createdBy", required: true },
     ];
+
+    const allPaths = PAGE_REGISTRY.map(p => p.path);
+    const allSelected = allPaths.every(p => formData.permissions.includes(p));
 
     return (
         <div className="role-page">
             <div className="role-card form-section">
-                <h2 className="role-card-title">{editingId ? "Edit Roles" : "Add New Roles"}</h2>
+                <h2 className="role-card-title">{editingId ? "Edit Role" : "Add New Role"}</h2>
                 <form onSubmit={handleSubmit} className="role-form-grid">
-                    {fields.map((field, i) => (
-                        <div key={i} className="role-form-input-group">
+                    {textFields.map((field) => (
+                        <div key={field.name} className="role-form-input-group">
                             <label htmlFor={field.name} className="role-input-label">{field.label}</label>
                             <input
-                                type={field.type}
+                                type="text"
                                 id={field.name}
                                 name={field.name}
                                 value={formData[field.name]}
@@ -187,9 +209,50 @@ export default function Roles() {
                         </div>
                     ))}
 
+                    {/* Page Permissions Picker */}
+                    <div className="role-form-input-group col-span-all">
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                            <label className="role-input-label" style={{ marginBottom: 0 }}>
+                                Page Access
+                            </label>
+                            <Button size="small" variant="text" onClick={handleSelectAll} sx={{ fontSize: '0.75rem' }}>
+                                {allSelected ? 'Deselect All' : 'Select All'}
+                            </Button>
+                        </Box>
+                        <Box
+                            sx={{
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+                                gap: 0.5,
+                                border: '1px solid #e0e0e0',
+                                borderRadius: 2,
+                                p: 1.5,
+                                bgcolor: '#fafafa',
+                            }}
+                        >
+                            {PAGE_REGISTRY.map(({ path, label }) => (
+                                <FormControlLabel
+                                    key={path}
+                                    control={
+                                        <Checkbox
+                                            size="small"
+                                            checked={formData.permissions.includes(path)}
+                                            onChange={() => handlePageToggle(path)}
+                                            sx={{ color: '#e1580f', '&.Mui-checked': { color: '#e1580f' } }}
+                                        />
+                                    }
+                                    label={<Typography sx={{ fontSize: '0.85rem' }}>{label}</Typography>}
+                                />
+                            ))}
+                        </Box>
+                        <Typography sx={{ fontSize: '0.75rem', color: '#888', mt: 0.5 }}>
+                            {formData.permissions.length} of {PAGE_REGISTRY.length} pages selected
+                        </Typography>
+                    </div>
+
                     <div className="role-button-group col-span-all">
                         <button type="submit" className="role-submit-button" disabled={loading}>
-                            {loading ? "Loading..." : editingId ? "Update Roles" : "Create Roles"}
+                            {loading ? "Loading..." : editingId ? "Update Role" : "Create Role"}
                         </button>
                         {editingId && (
                             <button type="button" className="role-cancel-button" onClick={resetForm}>
@@ -198,14 +261,12 @@ export default function Roles() {
                         )}
                     </div>
                 </form>
-                {error && <p className="role-error-text" style={{ marginTop: "16px" }}>
-                    {(() => {
-                        if (typeof error === "string") return error;
-                        if (error instanceof Error) return error.message;
-                        if (typeof error === "object") return JSON.stringify(error, null, 2);
-                        return String(error);
-                    })()}
-                </p>}
+
+                {error && (
+                    <p className="role-error-text" style={{ marginTop: "16px" }}>
+                        {typeof error === "string" ? error : JSON.stringify(error, null, 2)}
+                    </p>
+                )}
             </div>
 
             <Typography variant="h6" gutterBottom sx={{ textAlign: "center" }}>
@@ -233,6 +294,5 @@ export default function Roles() {
                 </DialogActions>
             </Dialog>
         </div>
-
     );
 }
