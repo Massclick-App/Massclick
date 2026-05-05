@@ -54,13 +54,18 @@ export const getSeoPageContentMetaService = async ({
     const makeFlexible = (str = "") =>
       escapeRegex(str).replace(/\s+/g, "\\s+");
 
+    const makeTrimmedExact = (str = "") => `^\\s*${makeFlexible(str)}\\s*$`;
+
     let seo = null;
 
     if (safeCategory && safeLocation) {
+      const strictCategory = makeTrimmedExact(safeCategory);
+      const strictLocation = makeTrimmedExact(safeLocation);
+
       seo = await seoPageContentModel.findOne({
         pageType: safePageType,
-        category: safeCategory,
-        location: safeLocation,
+        category: { $regex: strictCategory, $options: "i" },
+        location: { $regex: strictLocation, $options: "i" },
         isActive: true,
       }).lean();
 
@@ -68,8 +73,8 @@ export const getSeoPageContentMetaService = async ({
     }
 
     if (safeCategory && safeLocation) {
-      const flexibleCategory = `^${makeFlexible(safeCategory)}$`;
-      const flexibleLocation = `^${makeFlexible(safeLocation)}$`;
+      const flexibleCategory = makeTrimmedExact(safeCategory);
+      const flexibleLocation = makeTrimmedExact(safeLocation);
 
       seo = await seoPageContentModel.findOne({
         pageType: safePageType,
