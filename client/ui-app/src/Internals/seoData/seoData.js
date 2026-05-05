@@ -6,6 +6,10 @@ import {
   deleteSeo,
   getAllSeo,
 } from "../../redux/actions/seoAction.js";
+import {
+  getAllLocation,
+  createLocation,
+} from "../../redux/actions/locationAction.js";
 import { useSnackbar } from "notistack";
 import {
   Box,
@@ -35,6 +39,7 @@ export default function SeoData() {
     error = null,
     categorySuggestions = [],
   } = useSelector((state) => state.seoReducer || {});
+  const { location = [] } = useSelector((state) => state.locationReducer || {});
 
   const [formData, setFormData] = useState({
     pageType: "",
@@ -52,9 +57,12 @@ export default function SeoData() {
   const [selectedRow, setSelectedRow] = useState(null);
   const [categoryInput, setCategoryInput] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [showLocationSuggest, setShowLocationSuggest] = useState(false);
+  const [locationSuggestions, setLocationSuggestions] = useState([]);
 
   useEffect(() => {
     dispatch(getAllSeo());
+    dispatch(getAllLocation({ pageNo: 1, pageSize: 1000 }));
   }, [dispatch]);
 
   useEffect(() => {
@@ -75,6 +83,25 @@ export default function SeoData() {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const updateLocationSuggestions = (value) => {
+    const query = value.trim().toLowerCase();
+
+    if (!query) {
+      setLocationSuggestions([]);
+      setShowLocationSuggest(false);
+      return;
+    }
+
+    const filtered = location.filter(
+      (loc) =>
+        loc.city?.toLowerCase().includes(query) ||
+        loc.district?.toLowerCase().includes(query)
+    );
+
+    setLocationSuggestions(filtered);
+    setShowLocationSuggest(filtered.length > 0);
   };
 
   const validateForm = () => {
@@ -102,6 +129,8 @@ export default function SeoData() {
   });
 
   setCategoryInput("");
+  setShowLocationSuggest(false);
+  setLocationSuggestions([]);
   setEditingId(null);
   setErrors({});
 };
@@ -109,6 +138,12 @@ export default function SeoData() {
  const handleSubmit = async (e) => {
 
   e.preventDefault();
+
+  const locationExists = location.some(
+    (loc) =>
+      loc.city?.toLowerCase() === formData.location?.toLowerCase() ||
+      loc.district?.toLowerCase() === formData.location?.toLowerCase()
+  );
 
   const finalData = {
     ...formData,
@@ -120,6 +155,16 @@ export default function SeoData() {
   if (!validateForm()) return;
 
   try {
+    if (!locationExists && formData.location) {
+      await dispatch(
+        createLocation({
+          city: formData.location,
+          district: formData.location,
+          state: "N/A",
+          country: "N/A",
+        })
+      );
+    }
 
     if (editingId) {
       await dispatch(editSeo(editingId, finalData));
@@ -159,6 +204,8 @@ export default function SeoData() {
       robots: row.robots || "index, follow",
     });
     setCategoryInput(row.category || "");
+    setShowLocationSuggest(false);
+    setLocationSuggestions([]);
 
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -222,7 +269,6 @@ export default function SeoData() {
   const fields = [
     { label: "Page Type", name: "pageType" },
     // { label: "Category", name: "category" },
-    { label: "Location", name: "location" },
     { label: "Meta Title", name: "title" },
     { label: "Meta Description", name: "description" },
     { label: "Keywords", name: "keywords" },
@@ -280,6 +326,45 @@ export default function SeoData() {
                 ))}
               </ul>
             )}
+          </div>
+          <div className="seo-form-input-group category-search">
+            <label className="seo-input-label">Location</label>
+            <input
+              type="text"
+              name="location"
+              value={formData.location}
+              placeholder="Search location"
+              className={`seo-text-input ${errors.location ? "error" : ""}`}
+              onChange={(e) => {
+                handleChange(e);
+                updateLocationSuggestions(e.target.value);
+              }}
+              onFocus={() => updateLocationSuggestions(formData.location)}
+              onBlur={() => setTimeout(() => setShowLocationSuggest(false), 150)}
+            />
+            {showLocationSuggest && locationSuggestions.length > 0 && (
+              <ul className="category-suggestion-list">
+                {locationSuggestions.map((loc) => (
+                  <li
+                    key={loc._id}
+                    className="category-suggestion-item"
+                    onClick={() => {
+                      setFormData((prev) => ({
+                        ...prev,
+                        location: loc.city || loc.district || "",
+                      }));
+                      setShowLocationSuggest(false);
+                      setLocationSuggestions([]);
+                    }}
+                  >
+                    {loc.city}
+                    {loc.district && loc.district !== loc.city ? `, ${loc.district}` : ""}
+                    {loc.state ? ` - ${loc.state}` : ""}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {errors.location && <p className="seo-error-text">{errors.location}</p>}
           </div>
           {fields.map(({ label, name }) => (
             <div key={name} className="seo-form-input-group">

@@ -7,6 +7,10 @@ import {
     updateSeoPageContent,
     deleteSeoPageContent,
 } from "../../../redux/actions/seoPageContentAction.js";
+import {
+    getAllLocation,
+    createLocation,
+} from "../../../redux/actions/locationAction.js";
 
 import {
     Box,
@@ -39,6 +43,7 @@ export default function SeoPageContent() {
     const { categorySuggestions = [] } = useSelector(
         (state) => state.seoReducer || {}
     );
+    const { location = [] } = useSelector((state) => state.locationReducer || {});
 
 
     const {
@@ -62,6 +67,8 @@ export default function SeoPageContent() {
     const [selectedRow, setSelectedRow] = useState(null);
     const [categoryInput, setCategoryInput] = useState("");
     const [showSuggestions, setShowSuggestions] = useState(false);
+    const [showLocationSuggest, setShowLocationSuggest] = useState(false);
+    const [locationSuggestions, setLocationSuggestions] = useState([]);
 
     const modules = {
         toolbar: [
@@ -85,6 +92,7 @@ export default function SeoPageContent() {
 
     useEffect(() => {
         dispatch(viewAllSeoPageContent());
+        dispatch(getAllLocation({ pageNo: 1, pageSize: 1000 }));
     }, [dispatch]);
 
     const validateForm = () => {
@@ -113,10 +121,46 @@ export default function SeoPageContent() {
         return () => clearTimeout(delay);
     }, [categoryInput, dispatch]);
 
+    const updateLocationSuggestions = (value) => {
+        const query = value.trim().toLowerCase();
 
-    const handleSubmit = (e) => {
+        if (!query) {
+            setLocationSuggestions([]);
+            setShowLocationSuggest(false);
+            return;
+        }
+
+        const filtered = location.filter(
+            (loc) =>
+                loc.city?.toLowerCase().includes(query) ||
+                loc.district?.toLowerCase().includes(query)
+        );
+
+        setLocationSuggestions(filtered);
+        setShowLocationSuggest(filtered.length > 0);
+    };
+
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
         if (!validateForm()) return;
+
+        const locationExists = location.some(
+            (loc) =>
+                loc.city?.toLowerCase() === formData.location?.toLowerCase() ||
+                loc.district?.toLowerCase() === formData.location?.toLowerCase()
+        );
+
+        if (!locationExists && formData.location) {
+            await dispatch(
+                createLocation({
+                    city: formData.location,
+                    district: formData.location,
+                    state: "N/A",
+                    country: "N/A",
+                })
+            );
+        }
 
         const action = editingId
             ? updateSeoPageContent(editingId, formData)
@@ -130,8 +174,11 @@ export default function SeoPageContent() {
                 headerContent: "",
                 pageContent: "",
             });
+            setCategoryInput("");
             setEditingId(null);
             setErrors({});
+            setShowLocationSuggest(false);
+            setLocationSuggestions([]);
             dispatch(viewAllSeoPageContent());
         });
     };
@@ -159,6 +206,9 @@ export default function SeoPageContent() {
                         onClick={() => {
                             setEditingId(row.id);
                             setFormData(row);
+                            setCategoryInput(row.category || "");
+                            setShowLocationSuggest(false);
+                            setLocationSuggestions([]);
                             window.scrollTo({ top: 0, behavior: "smooth" });
                         }}
                     >
@@ -243,11 +293,36 @@ export default function SeoPageContent() {
                             <label>Location</label>
                             <input
                                 value={formData.location}
-                                onChange={(e) =>
-                                    setFormData((p) => ({ ...p, location: e.target.value }))
-                                }
+                                onChange={(e) => {
+                                    const value = e.target.value;
+                                    setFormData((p) => ({ ...p, location: value }));
+                                    updateLocationSuggestions(value);
+                                }}
+                                onFocus={() => updateLocationSuggestions(formData.location)}
+                                onBlur={() => setTimeout(() => setShowLocationSuggest(false), 150)}
                             />
                             {errors.location && <span>{errors.location}</span>}
+                            {showLocationSuggest && locationSuggestions.length > 0 && (
+                                <ul className="category-suggestion-list">
+                                    {locationSuggestions.map((loc) => (
+                                        <li
+                                            key={loc._id}
+                                            onClick={() => {
+                                                setFormData((p) => ({
+                                                    ...p,
+                                                    location: loc.city || loc.district || "",
+                                                }));
+                                                setShowLocationSuggest(false);
+                                                setLocationSuggestions([]);
+                                            }}
+                                        >
+                                            {loc.city}
+                                            {loc.district && loc.district !== loc.city ? `, ${loc.district}` : ""}
+                                            {loc.state ? ` - ${loc.state}` : ""}
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
                         </div>
                     </section>
 
