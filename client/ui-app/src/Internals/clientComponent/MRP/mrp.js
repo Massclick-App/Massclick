@@ -335,7 +335,9 @@ export default function MRPPage() {
                   required
                 />
               </div>
-
+              <div className="mrp-kpi-row">
+                <MRPChartKPI />
+              </div>
               {error && (
                 <div className="mrp-error">
                   {typeof error === "string"
@@ -385,7 +387,6 @@ export default function MRPPage() {
               {mrpList && mrpList.length > 0 ? (
                 <>
                   <MRPCategoryChart data={mrpList} />
-                  <MRPChartKPI data={mrpList} />
                 </>
               ) : (
                 <div className="mrp-empty-state">
