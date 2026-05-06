@@ -1,25 +1,21 @@
-.mrp-info-card {
-  background: #ffffff;
-  border-radius: 28px;
-  padding: 24px;
-  box-shadow: 0 30px 70px rgba(0,0,0,.08);
+.mrp-category-chart-wrapper {
+  background: linear-gradient(180deg, #fff9f0, #fff3ea);
+  border-radius: 26px;
+  padding: 22px;
+  min-height: 280px;
+  border: 1px solid rgba(255,124,0,.18);
+  box-shadow: 0 25px 55px rgba(15,23,42,.08);
 }
 
-.mrp-info-card h3 {
-  font-size: 18px;
-  font-weight: 800;
-  margin-bottom: 4px;
+.mrp-category-chart-inner {
+  width: 100%;
+  height: 100%;
+  position: relative;
 }
 
-.mrp-info-sub {
-  font-size: 13px;
-  color: #64748b;
-  margin-bottom: 16px;
-}
-
-/* Responsive spacing */
 @media (max-width: 768px) {
-  .mrp-info-card {
-    padding: 20px;
+  .mrp-category-chart-wrapper {
+    min-height: 240px;
+    padding: 18px;
   }
 }

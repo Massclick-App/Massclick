@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { getAllBusinessList, createBusinessList, editBusinessList, deleteBusinessList, trackQrDownload } from "../../redux/actions/businessListAction";
-import { getAllLocation } from "../../redux/actions/locationAction";
+import { getAllLocation, createLocation } from "../../redux/actions/locationAction";
 import { createCategory, editCategory, businessCategorySearch } from "../../redux/actions/categoryAction";
 import { getAllUsersClient, getUserClientSuggestion } from "../../redux/actions/userClientAction.js";
 import { getAllUsers } from "../../redux/actions/userAction.js";
@@ -35,6 +35,8 @@ import {
   InputAdornment,
   Chip,
 } from "@mui/material";
+import PaidIcon from '@mui/icons-material/Paid';
+import PendingIcon from '@mui/icons-material/Pending';
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import Autocomplete from "@mui/material/Autocomplete";
 import TextField from "@mui/material/TextField";
@@ -140,11 +142,13 @@ export default function BusinessList() {
     (state) => state.userClientReducer || {}
   );
   const [showCategorySuggest, setShowCategorySuggest] = useState(false);
+  const [showLocationSuggest, setShowLocationSuggest] = useState(false);
+  const [locationSuggestions, setLocationSuggestions] = useState([]);
   const { searchCategory } = useSelector((state) => state.categoryReducer);
 
   const { users = [] } = useSelector((state) => state.userReducer || {});
 
-  // const { location = [] } = useSelector((state) => state.locationReducer || {});
+  const { location = [] } = useSelector((state) => state.locationReducer || {});
   const { category = [] } = useSelector((state) => state.categoryReducer || {});
   const fileInputRef = useRef();
 
@@ -488,7 +492,7 @@ export default function BusinessList() {
 
   useEffect(() => {
     dispatch(getAllBusinessList());
-    dispatch(getAllLocation());
+    dispatch(getAllLocation({ pageNo: 1, pageSize: 1000 }));
     dispatch(businessCategorySearch())
     dispatch(getAllUsersClient())
     dispatch(getAllUsers())
@@ -611,6 +615,20 @@ export default function BusinessList() {
       )
     );
 
+    const locationExists = location.some(
+      (loc) => loc.city?.toLowerCase() === formData.location?.toLowerCase() ||
+        loc.district?.toLowerCase() === formData.location?.toLowerCase()
+    );
+
+    if (!locationExists && formData.location) {
+      await dispatch(createLocation({
+        city: formData.location,
+        district: formData.location,
+        state: "N/A",
+        country: "N/A",
+      }));
+    }
+
     const existingCategory = category.find(
       (cat) =>
         String(cat.category || "").toLowerCase() === String(formData.category || "").toLowerCase()
@@ -723,10 +741,12 @@ export default function BusinessList() {
       linkedin: bl.linkedin || "-",
       businessDetails: bl.businessDetails || "-",
       openingHours: bl.openingHours || defaultOpeningHours,
-      createdBy: bl.createdBy,
+      mniDetails: bl.mniDetails || [],
       payment: bl.payment || [],
       qrImage: bl.qrCode?.qrImage || null,
       qrDownloads: bl.qrDownloads || [],
+      amountPaid: bl.amountPaid || false,
+      paidDate: bl.paidDate || null,
 
     }));
 
@@ -742,21 +762,16 @@ export default function BusinessList() {
     { id: "location", label: "Location Name" },
     { id: "category", label: "Category" },
     {
-      id: "createdBy",
-      label: "Created By",
+      id: "mniDetails",
+      label: "Category Group",
       renderCell: (value) => {
-        if (!value) return "—";
+        if (!Array.isArray(value) || value.length === 0) return "—";
 
-        const createdById =
-          typeof value === "object" && value.$oid ? value.$oid : value;
+        const groups = value
+          .map((item) => item?.categoryGroup)
+          .filter(Boolean);
 
-        const user = users.find((u) => {
-          const userId =
-            typeof u._id === "object" && u._id.$oid ? u._id.$oid : u._id;
-          return userId === createdById;
-        });
-
-        return user ? user.userName : "—";
+        return groups.length > 0 ? groups.join(", ") : "—";
       },
     },
 
@@ -824,47 +839,101 @@ export default function BusinessList() {
       id: "payment",
       label: "Payment",
       renderCell: (value, row) => {
-        const paymentArray = Array.isArray(value) ? value : [];
-        const lastPayment = paymentArray[paymentArray.length - 1];
-        const status = lastPayment?.paymentStatus?.toLowerCase() || "pending";
 
-        let icon = <PaymentIcon />;
-        let color = "warning";
-        let isDisabled = false;
-        let tooltipText = "Click to make a payment";
+        const handleMarkPaid = async () => {
+          if (!row?._id) return;
 
-        if (status === "paid") {
-          icon = <CheckCircle />;
-          color = "success";
-          isDisabled = true;
-          tooltipText = "✅ Payment received — thank you for your purchase!";
-        } else if (status === "failed") {
-          icon = <Cancel />;
-          color = "error";
-          tooltipText = "❌ Payment failed — please try again.";
-        } else if (status === "pending") {
-          icon = <HourglassEmpty />;
-          color = "warning";
-          tooltipText = "⏳ Payment is pending — complete the process.";
-        }
+          try {
+            const payload = {
+              payment: [
+                {
+                  amount: row?.subscription?.price || 1,
+                }
+              ]
+            };
+
+            await dispatch(editBusinessList(row._id, payload));
+
+            enqueueSnackbar(`${row.businessName} marked as paid`, {
+              variant: "success",
+            });
+
+            dispatch(getAllBusinessList());
+
+          } catch (error) {
+            console.error(error);
+
+            enqueueSnackbar("Payment failed. Please try again!", {
+              variant: "error",
+            });
+          }
+        };
+
+        const paidDateValue = row.paidDate?.$date ? row.paidDate.$date : row.paidDate;
+        const formattedDate = paidDateValue
+          ? new Date(paidDateValue).toLocaleString("en-IN", {
+            timeZone: "Asia/Kolkata",
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true,
+          })
+          : null;
+
+        const isPaid = Boolean(row.amountPaid);
 
         return (
-          <Tooltip title={tooltipText} arrow>
-            <span>
-              <IconButton
-                color={color}
-                onClick={!isDisabled ? () => handlePayNow(row) : undefined}
-                disabled={isDisabled}
-                sx={{
-                  cursor: isDisabled ? "not-allowed" : "pointer",
-                  transition: "transform 0.2s ease",
-                  "&:hover": { transform: !isDisabled ? "scale(1.1)" : "none" },
-                }}
+          <Box sx={{ textAlign: "center" }}>
+
+            <Tooltip
+              title={
+                isPaid
+                  ? `Paid on ${formattedDate}`
+                  : "Click to mark as paid"
+              }
+              arrow
+            >
+              <span>
+                <IconButton
+                  color={isPaid ? "success" : "warning"}
+                  onClick={!isPaid ? handleMarkPaid : undefined}
+                  disabled={isPaid}
+                  sx={{
+                    transition: "transform 0.2s ease",
+                    "&:hover": {
+                      transform: !isPaid ? "scale(1.15)" : "none",
+                    },
+                  }}
+                >
+                  {isPaid ? <PaidIcon /> : <PendingIcon />}
+                </IconButton>
+              </span>
+            </Tooltip>
+
+            <Typography
+              variant="caption"
+              display="block"
+              sx={{
+                color: isPaid ? "green" : "orange",
+                fontWeight: 600,
+              }}
+            >
+              {isPaid ? "Paid" : "Pending"}
+            </Typography>
+
+            {formattedDate && (
+              <Typography
+                variant="caption"
+                display="block"
+                sx={{ color: "#666" }}
               >
-                {icon}
-              </IconButton>
-            </span>
-          </Tooltip>
+                {formattedDate}
+              </Typography>
+            )}
+
+          </Box>
         );
       },
     },
@@ -934,23 +1003,7 @@ export default function BusinessList() {
               {errors.clientId && <p className="error-text">{errors.clientId}</p>}
 
               {showSuggestions && searchSuggestion?.length > 0 && (
-                <ul
-                  style={{
-                    position: "absolute",
-                    top: "80px",
-                    left: 0,
-                    width: "100%",
-                    background: "#fff",
-                    border: "1px solid #ccc",
-                    borderRadius: "6px",
-                    maxHeight: "200px",
-                    overflowY: "auto",
-                    padding: 0,
-                    margin: 0,
-                    zIndex: 2000,
-                    listStyle: "none",
-                  }}
-                >
+                <ul className="category-suggestion-box">
                   {searchSuggestion.map((client) => (
                     <li
                       key={client._id}
@@ -1024,17 +1077,62 @@ export default function BusinessList() {
               {errors.pincode && <p className="error-text">{errors.pincode}</p>}
             </div>
 
-            <div className="form-input-group">
+            <div className="form-input-group" style={{ position: "relative" }}>
               <label htmlFor="location" className="input-label">Location</label>
               <input
                 type="text"
                 id="location"
                 name="location"
+                autoComplete="off"
                 className={`text-input ${errors.location ? "error" : ""}`}
                 value={formData.location}
-                onChange={handleChange}
+                placeholder="Type to search location..."
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setFormData((prev) => ({ ...prev, location: value }));
+                  if (value.length >= 1) {
+                    const filtered = location.filter((loc) =>
+                      loc.city?.toLowerCase().includes(value.toLowerCase()) ||
+                      loc.district?.toLowerCase().includes(value.toLowerCase())
+                    );
+                    setLocationSuggestions(filtered);
+                    setShowLocationSuggest(true);
+                  } else {
+                    setShowLocationSuggest(false);
+                    setLocationSuggestions([]);
+                  }
+                }}
+                onBlur={() => setTimeout(() => setShowLocationSuggest(false), 200)}
+                onFocus={() => {
+                  if (formData.location.length >= 1) {
+                    const filtered = location.filter((loc) =>
+                      loc.city?.toLowerCase().includes(formData.location.toLowerCase()) ||
+                      loc.district?.toLowerCase().includes(formData.location.toLowerCase())
+                    );
+                    setLocationSuggestions(filtered);
+                    setShowLocationSuggest(filtered.length > 0);
+                  }
+                }}
               />
               {errors.location && <p className="error-text">{errors.location}</p>}
+              {showLocationSuggest && locationSuggestions.length > 0 && (
+                <ul className="category-suggestion-box">
+                  {locationSuggestions.map((loc) => (
+                    <li
+                      key={loc._id}
+                      onClick={() => {
+                        setFormData((prev) => ({ ...prev, location: loc.city || loc.district }));
+                        setShowLocationSuggest(false);
+                        setLocationSuggestions([]);
+                      }}
+                      style={{ padding: "10px", cursor: "pointer", borderBottom: "1px solid #eee" }}
+                    >
+                      {loc.city}{loc.district && loc.district !== loc.city ? `, ${loc.district}` : ""}
+                      {loc.state ? ` — ${loc.state}` : ""}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
 
             <div className="form-input-group">
@@ -1374,22 +1472,7 @@ export default function BusinessList() {
               />
 
               {showCategorySuggest && searchCategory?.length > 0 && (
-                <ul
-                  style={{
-                    position: "absolute",
-                    top: "70px",
-                    width: "100%",
-                    background: "#fff",
-                    border: "1px solid #ccc",
-                    borderRadius: "6px",
-                    maxHeight: "240px",
-                    overflowY: "auto",
-                    padding: 0,
-                    margin: 0,
-                    zIndex: 2000,
-                    listStyle: "none",
-                  }}
-                >
+                <ul className="category-suggestion-box">
                   {searchCategory.map((cat) => (
                     <li
                       key={cat._id}
@@ -1397,12 +1480,12 @@ export default function BusinessList() {
                         setFormData((prev) => ({
                           ...prev,
                           category: cat.category,
-                          keywords: prev.keywords?.length ? prev.keywords : cat.keywords || [],
-                          slug: prev.slug || cat.slug || "",
-                          seoTitle: prev.seoTitle || cat.seoTitle || "",
-                          seoDescription: prev.seoDescription || cat.seoDescription || "",
-                          title: prev.title || cat.title || "",
-                          description: prev.description || cat.description || "",
+                          keywords: cat.keywords || [],
+                          slug: cat.slug || "",
+                          seoTitle: cat.seoTitle || "",
+                          seoDescription: cat.seoDescription || "",
+                          title: cat.title || "",
+                          description: cat.description || "",
                         }));
 
                         setShowCategorySuggest(false);

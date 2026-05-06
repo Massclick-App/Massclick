@@ -21,7 +21,10 @@ import enquiryNowReducer from './reducers/popularSearchesReducer.js';
 import reviewReducer from './reducers/reviewReducer.js';
 import advertiseReducer from './reducers/advertiseReducer.js';
 import seoPageContentBlogReducer from './reducers/seoPageContentBlogReducer.js';
+import termsAndConditionReducer from './reducers/footerContents/termsAndConditionsReducer.js';
 import favoriteReducer from './reducers/favoriteReducer.js';
+import fcmMarketingReducer from './reducers/fcmMarketingReducer.js';
+import systemSettingsReducer from './reducers/systemSettingsReducer.js';
 
 const rootReducer = combineReducers({
   auth: authReducer,
@@ -44,8 +47,11 @@ const rootReducer = combineReducers({
   mrp: mrpReducer,
   enquiryNow: enquiryNowReducer,
   reviews: reviewReducer,
-  advertise: advertiseReducer,
+  advertise: advertiseReducer, 
+  termsAndConditions: termsAndConditionReducer,
   favorites: favoriteReducer,
+  fcmMarketing: fcmMarketingReducer,
+  systemSettings: systemSettingsReducer,
 });
 
 export const store = createStore(rootReducer, applyMiddleware(thunk));

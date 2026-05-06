@@ -22,35 +22,126 @@
 
 .care-header-wrapper {
     max-width: 800px;
-    margin: 0 auto 50px auto;
+    margin: 0 auto 40px auto;
     text-align: center;
 }
 
 .section-title-care {
-    font-size: 3rem;
+    font-size: clamp(2.6rem, 4vw, 3.4rem);
     font-weight: 800;
     color: var(--color-text-dark);
-    margin-bottom: 10px;
+    margin-bottom: 12px;
 }
 
 .section-subtitle-care {
     font-size: 1.15rem;
     color: var(--color-text-grey);
+    line-height: 1.8;
+    max-width: 720px;
+    margin: 0 auto;
 }
 
-/* --- Responsive Grid Container --- */
+.care-top-banner {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 24px;
+    background-color: var(--color-background-white);
+    padding: 32px;
+    border-radius: 24px;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.08);
+    margin-bottom: 40px;
+}
+
+.banner-copy {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.care-badge {
+    display: inline-block;
+    background: rgba(255, 102, 0, 0.12);
+    color: var(--color-primary);
+    font-weight: 700;
+    padding: 10px 18px;
+    border-radius: 999px;
+    letter-spacing: 0.04em;
+    margin-bottom: 18px;
+    font-size: 0.95rem;
+}
+
+.banner-title {
+    font-size: clamp(2.2rem, 3.5vw, 3.2rem);
+    font-weight: 800;
+    color: var(--color-text-dark);
+    margin-bottom: 18px;
+}
+
+.banner-copy-text {
+    font-size: 1rem;
+    color: var(--color-text-grey);
+    max-width: 680px;
+    line-height: 1.9;
+}
+
+.banner-contact-cards {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+}
+
+.contact-card {
+    display: grid;
+    gap: 12px;
+    padding: 26px 24px;
+    background-color: #fdf7f0;
+    border-radius: 18px;
+    border: 1px solid rgba(255, 102, 0, 0.14);
+}
+
+.contact-icon {
+    width: 56px;
+    height: 56px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(255, 102, 0, 0.15), rgba(255, 102, 0, 0.5));
+    color: var(--color-primary);
+    font-size: 26px;
+}
+
+.contact-role {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--color-text-dark);
+    margin: 0;
+}
+
+.contact-phone {
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: var(--color-primary-dark);
+    text-decoration: none;
+}
+
+.contact-phone:hover {
+    text-decoration: underline;
+}
+
+.contact-note {
+    font-size: 0.95rem;
+    color: var(--color-text-grey);
+    margin: 0;
+}
+
 .care-grid-container {
     max-width: 1200px;
     margin: 0 auto;
     display: grid;
-    /* Default: Stack cards vertically on mobile */
     grid-template-columns: 1fr;
     gap: 30px;
 }
-
-/* ========================================================= */
-/* --- 2. Care Card Styling (Pillar Design) --- */
-/* ========================================================= */
 
 .care-card {
     background-color: var(--color-background-white);
@@ -63,7 +154,7 @@
 }
 
 .care-card:hover {
-    transform: translateY(-5px); /* Subtle lift on hover */
+    transform: translateY(-5px); 
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
 }
 
@@ -76,7 +167,7 @@
     background-color: var(--color-primary);
     border-radius: 50%;
     margin-bottom: 20px;
-    box-shadow: 0 0 0 8px rgba(255, 102, 0, 0.1); /* Soft glow effect */
+    box-shadow: 0 0 0 8px rgba(255, 102, 0, 0.1);
 }
 
 .care-icon {
@@ -95,7 +186,7 @@
     font-size: 1rem;
     color: var(--color-text-grey);
     line-height: 1.6;
-    min-height: 80px; /* Ensure visual stability across cards */
+    min-height: 80px;
     margin-bottom: 25px;
 }
 
@@ -116,6 +207,22 @@
     border-color: var(--color-primary);
 }
 
+@media (min-width: 900px) {
+    .care-top-banner {
+        grid-template-columns: 1.45fr 1fr;
+        align-items: center;
+    }
+
+    .banner-contact-cards {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (min-width: 1100px) {
+    .banner-contact-cards {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
 
 /* ========================================================= */
 /* --- 3. RESPONSIVENESS --- */

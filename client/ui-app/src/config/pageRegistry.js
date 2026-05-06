@@ -1,0 +1,17 @@
+export const PAGE_REGISTRY = [
+  { path: '/dashboard/clients',             label: 'Clients' },
+  { path: '/dashboard/business',            label: 'Business' },
+  { path: '/dashboard/category',            label: 'Category' },
+  { path: '/dashboard/location',            label: 'Location' },
+  { path: '/dashboard/seo',                 label: 'SEO Management' },
+  { path: '/dashboard/seopagecontent',      label: 'SEO Page Content' },
+  { path: '/dashboard/seopagecontentblogs', label: 'SEO Blogs' },
+  { path: '/dashboard/enquiry',             label: 'Enquiry' },
+  { path: '/dashboard/advertisements',      label: 'Advertisements' },
+  { path: '/dashboard/mni-data',            label: 'MNI Data' },
+  { path: '/dashboard/terms-conditions-data', label: 'Terms & Conditions' },
+  { path: '/dashboard/fcm-marketing',       label: 'Push Notify' },
+  { path: '/dashboard/user',                label: 'Users' },
+  { path: '/dashboard/roles',               label: 'Roles' },
+  { path: '/dashboard/system-settings',     label: 'System Settings' },
+];

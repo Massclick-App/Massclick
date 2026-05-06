@@ -1,8 +1,10 @@
-import { createBusinessList, viewBusinessList, findBusinessBySlug,viewAllBusiness, getDashboardChartsHelper, getPendingBusinessList, findBusinessesByCategory, getDashboardSummaryHelper, findBusinessByMobile, viewAllBusinessList, viewAllClientBusinessList, updateBusinessList, getTrendingSearches, deleteBusinessList, activeBusinessList } from "../../helper/businessList/businessListHelper.js";
+import { createBusinessList, viewBusinessList, findBusinessBySlug, viewAllBusiness, getDashboardChartsHelper, getPendingBusinessList, findBusinessesByCategory, getDashboardSummaryHelper, findBusinessByMobile, viewAllBusinessList, viewAllClientBusinessList, updateBusinessList, getTrendingSearches, deleteBusinessList, activeBusinessList } from "../../helper/businessList/businessListHelper.js";
 import { BAD_REQUEST } from "../../errorCodes.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
 import { getSignedUrlByKey } from "../../s3Uploder.js";
 import categoryModel from "../../model/category/categoryModel.js";
+import { emitToRoom } from "../../websocket/roomManager.js";
+import { buildRoom, WS_EVENTS } from "../../websocket/constants.js";
 
 export const addBusinessListAction = async (req, res) => {
   try {
@@ -15,6 +17,14 @@ export const addBusinessListAction = async (req, res) => {
     }
 
     const result = await createBusinessList(reqBody);
+
+    emitToRoom(buildRoom.admin(), WS_EVENTS.BUSINESS_PENDING, {
+      businessName: result.businessName,
+      category: result.category,
+      location: result.location,
+      ts: new Date().toISOString(),
+    });
+
     res.send(result);
 
   } catch (error) {
@@ -93,7 +103,7 @@ export const viewBusinessListAction = async (req, res) => {
   }
 };
 
-  export const viewAllBusinessAction = async (req, res) => {
+export const viewAllBusinessAction = async (req, res) => {
   try {
     const businesses = await viewAllBusiness();
     res.send(businesses);
@@ -320,37 +330,47 @@ export const mainSearchController = async (req, res) => {
   try {
     let { term = "", location = "", category = "" } = req.query;
 
+    // 🔥 Improved normalize (handles &, -, _, spaces)
     const normalize = (text = "") =>
       text
+        .toLowerCase()
         .trim()
-        .replace(/-/g, " ")
+        .replace(/&/g, " and ")
+        .replace(/[-_]/g, " ")
         .replace(/\s+/g, " ");
 
     term = normalize(term);
     location = normalize(location);
     category = normalize(category);
 
+    // 🔹 Escape regex special chars
     const escapeRegex = (text = "") =>
       text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+    // 🔹 Handle singular/plural
     const getWordVariations = (word = "") => {
       const w = word.toLowerCase().trim();
-
       if (!w) return [];
 
       if (w.endsWith("s")) {
         return [w, w.slice(0, -1)];
       } else {
-        return [w, w + "s"]; 
+        return [w, w + "s"];
       }
     };
+
+    // 🔥 Flexible matcher (supports space, -, &, _)
+    const makeFlexible = (val = "") =>
+      escapeRegex(val).replace(/\s+/g, "[-\\s&]+");
 
     const matchQuery = {
       businessesLive: true,
       $and: []
     };
 
-  
+    // ===============================
+    // 📍 LOCATION
+    // ===============================
     if (location) {
       const locKey = location.toLowerCase().trim();
       const aliases = districtAliasMap[locKey] || [locKey];
@@ -358,37 +378,43 @@ export const mainSearchController = async (req, res) => {
       matchQuery.$and.push({
         location: {
           $in: aliases.map(
-            (l) => new RegExp(`^${escapeRegex(l)}$`, "i")
+            (l) => new RegExp(`^${escapeRegex(normalize(l))}$`, "i")
           )
         }
       });
     }
 
-   
- if (category) {
-  const variations = getWordVariations(category);
+    // ===============================
+    // 🏷 CATEGORY
+    // ===============================
+    if (category) {
+      const variations = getWordVariations(category);
 
-  matchQuery.$and.push({
-    $or: variations.map(val => ({
-      category: new RegExp(`^${escapeRegex(val)}$`, "i")
-    }))
-  });
-}
+      matchQuery.$and.push({
+        $or: variations.map((val) => {
+          const flexible = makeFlexible(val);
 
+          return {
+            category: new RegExp(`^${flexible}$`, "i")
+          };
+        })
+      });
+    }
+
+    // ===============================
+    // 🔍 TERM SEARCH
+    // ===============================
     if (term) {
       const variations = getWordVariations(term);
 
       const termConditions = variations.flatMap((val) => {
-        const regex = new RegExp(escapeRegex(val), "i");
+        const flexible = makeFlexible(val);
+        const regex = new RegExp(flexible, "i");
 
         return [
           { businessName: regex },
           { category: regex },
-          // { description: regex },
-          // { seoDescription: regex },
-          // { seoTitle: regex },
-          // { title: regex },
-          // { slug: regex },
+          { slug: regex },
           { keywords: regex }
         ];
       });
@@ -427,6 +453,9 @@ export const mainSearchController = async (req, res) => {
       }
     ]);
 
+    // ===============================
+    // 🖼 IMAGE URL SIGNING
+    // ===============================
     results.forEach((b) => {
       if (b.bannerImageKey) {
         b.bannerImage = getSignedUrlByKey(b.bannerImageKey);

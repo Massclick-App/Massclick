@@ -1,5 +1,6 @@
 // BusinessDetail.jsx
 import React, { useEffect, useState, useRef } from "react";
+import { Helmet } from "react-helmet-async";
 import { useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -43,6 +44,7 @@ import {
   fetchFavorites,
   getAuthUser,
 } from "../../../redux/actions/favoriteAction";
+import OTPLoginModal from "../AddBusinessModel.js";
 
 const SimpleModal = ({ children, onClose, title }) => (
   <div
@@ -155,7 +157,7 @@ const BusinessDetail = () => {
   const [showShareOptions, setShowShareOptions] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
   const [activeTab, setActiveTab] = useState("Overview");
-  const [reviewLimit, setReviewLimit] = useState(3);
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   const overviewRef = useRef(null);
   const quickInfoRef = useRef(null);
@@ -181,7 +183,6 @@ const BusinessDetail = () => {
       dispatch(getBusinessReviews(business._id));
     }
   }, [dispatch, business?._id]);
-
 
   if (businessDetailsLoading) {
     return (
@@ -309,6 +310,11 @@ const formattedWebsite =
     business.restaurantOptions || null,
   ];
   const quickFacts = quickFactsRaw.filter(Boolean);
+  const heroHighlights = [
+    business.category,
+    getTodayHours(),
+    business.experience ? `${business.experience}+ years experience` : null,
+  ].filter(Boolean);
 
   const getQuickFactIcon = (index) => {
     switch (index) {
@@ -429,17 +435,10 @@ const formattedWebsite =
     }
   };
 
-  const handleViewMoreReviews = () =>
-    setReviewLimit((prev) => prev + 3);
-
   const currentUrl = encodeURIComponent(window.location.href);
   const currentTitle = encodeURIComponent(
     `Check out ${business.businessName}`
   );
-
-  const allReviews = business.reviews || [];
-  const reviewsToDisplay = allReviews.slice(0, reviewLimit);
-  const hasMoreReviews = allReviews.length > reviewLimit;
 
   const overviewHtml = business.businessDetails;
 
@@ -457,8 +456,64 @@ const formattedWebsite =
 const whatsappNumber =
   business.whatsappNumber || business.contactList || business.contact;
 
+  const locationSlug = location || "";
+  const businessUrl = `https://massclick.in/business/${locationSlug}/${business.slug || businessSlug}/${business._id || id}`;
+
+  const localBusinessSchema = {
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    name: business.businessName,
+    image: business.bannerImage || (galleryImageSrcs[0] ?? undefined),
+    url: businessUrl,
+    telephone: business.contact || undefined,
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: [business.plotNumber, business.street].filter(Boolean).join(", ") || undefined,
+      addressLocality: business.location || undefined,
+      postalCode: business.pincode || undefined,
+      addressCountry: "IN",
+    },
+    ...(business.averageRating && totalReview > 0
+      ? {
+          aggregateRating: {
+            "@type": "AggregateRating",
+            ratingValue: Number(business.averageRating.toFixed(1)),
+            reviewCount: totalReview,
+            bestRating: 5,
+            worstRating: 1,
+          },
+        }
+      : {}),
+    ...(business.openingHours?.length > 0
+      ? {
+          openingHoursSpecification: business.openingHours
+            .filter((h) => !h.isClosed && h.open && h.close)
+            .map((h) => ({
+              "@type": "OpeningHoursSpecification",
+              dayOfWeek: `https://schema.org/${h.day}`,
+              opens: h.open,
+              closes: h.close,
+            })),
+        }
+      : {}),
+  };
+
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: "https://massclick.in" },
+      { "@type": "ListItem", position: 2, name: business.location || locationSlug, item: `https://massclick.in/${locationSlug}` },
+      { "@type": "ListItem", position: 3, name: business.businessName, item: businessUrl },
+    ],
+  };
+
   return (
     <>
+      <Helmet>
+        <script type="application/ld+json">{JSON.stringify(localBusinessSchema)}</script>
+        <script type="application/ld+json">{JSON.stringify(breadcrumbSchema)}</script>
+      </Helmet>
       <CardsSearch /><br /><br /><br /><br />
       <div className="business-CardDetails-pageWrapper">
         <section className="business-CardDetails-heroSection">
@@ -473,11 +528,11 @@ const whatsappNumber =
           >
             <img
               key={business?._id || business?.bannerImage}
-              src={business?.bannerImage || "/placeholder.jpg"}
+              src={bannerImageSrc}
               alt={business?.businessName}
               className="business-CardDetails-bannerImage"
               loading="eager"
-              fetchpriority="high"
+              fetchPriority="high"
               width="1200"
               height="600"
             />
@@ -491,9 +546,7 @@ const whatsappNumber =
                   <span className="business-CardDetails-heroRatingScore">
                     {displayedAverageRating}
                   </span>
-                  <span className="business-CardDetails-heroRatingStar">
-                    ★
-                  </span>
+                  <StarIcon className="business-CardDetails-heroRatingStar" />
                   <span className="business-CardDetails-heroRatingCount">
                     {totalReview} rating
                     {totalReview !== 1 ? "s" : ""}
@@ -503,6 +556,18 @@ const whatsappNumber =
               <p className="business-CardDetails-heroAddress">
                 {fullAddress}
               </p>
+              {heroHighlights.length > 0 && (
+                <div className="business-CardDetails-heroHighlights">
+                  {heroHighlights.map((item, index) => (
+                    <span
+                      key={`${item}-${index}`}
+                      className="business-CardDetails-heroHighlight"
+                    >
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -542,13 +607,13 @@ const whatsappNumber =
 
               <div className="business-CardDetails-ratingRow">
                 <span className="business-CardDetails-ratingBadge">
-                  {displayedAverageRating} ★
+                  {displayedAverageRating} <StarIcon />
                 </span>
                 <span className="business-CardDetails-ratingText">
-                  {totalReview} ratings •{" "}
-                  <a href="#" onClick={(e) => e.preventDefault()}>
+                  {totalReview} ratings ·{" "}
+                  <button type="button">
                     Claim this business
-                  </a>
+                  </button>
                 </span>
               </div>
 
@@ -598,7 +663,7 @@ const whatsappNumber =
                     title={favoriteIds.includes(business._id) ? "Remove from favorites" : "Add to favorites"}
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (!isFavLoggedIn) { alert("Please login to add favorites"); return; }
+                      if (!isFavLoggedIn) { setShowLoginModal(true); return; }
                       if (togglingIds.includes(business._id)) return;
                       if (favoriteIds.includes(business._id)) {
                         dispatch(removeFavorite(business._id));
@@ -785,8 +850,7 @@ const whatsappNumber =
                           src ||
                           "https://via.placeholder.com/300x200?text=No+Image"
                         }
-                        alt={`${business.businessName} photo ${index + 1
-                          }`}
+                        alt={`${business.businessName} ${index + 1}`}
                         className="business-CardDetails-photoItem"
                         onClick={() => {
                           setCurrentSlideIndex(index);
@@ -834,6 +898,32 @@ const whatsappNumber =
 
           <aside className="business-CardDetails-rightSidebar">
             <div className="business-CardDetails-sidebarCard">
+              <div className="business-CardDetails-sidebarHero">
+                <span className="business-CardDetails-sidebarKicker">
+                  Business contact
+                </span>
+                <h3>{business.businessName}</h3>
+                <p>{business.category || "Local business"}</p>
+                <button
+                  onClick={handleShowNumberClick}
+                  className="business-CardDetails-sidebarPrimaryBtn"
+                >
+                  <PhoneIcon />
+                  Show Number
+                </button>
+                {whatsappNumber && (
+                  <a
+                    className="business-CardDetails-sidebarWhatsAppBtn"
+                    href={`https://wa.me/${whatsappNumber}?text=${currentTitle}%20${currentUrl}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <WhatsAppIcon />
+                    WhatsApp
+                  </a>
+                )}
+              </div>
+
               <h3 className="business-CardDetails-sidebarTitle">
                 Contact
               </h3>
@@ -1031,6 +1121,7 @@ const whatsappNumber =
       )}
 
       <Footer />
+      <OTPLoginModal open={showLoginModal} handleClose={() => setShowLoginModal(false)} />
     </>
   );
 };

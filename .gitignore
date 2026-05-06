@@ -73,3 +73,4 @@ server/package-lock.json
 client/ui-app/.env
 client/ui-app/build/ 
 client/ui-app/.env 
+docker-compose.yml

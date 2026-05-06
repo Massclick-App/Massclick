@@ -16,6 +16,7 @@ import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 
 import { useDispatch, useSelector } from "react-redux";
 import { fetchBusinessSuggestion } from "../../../redux/actions/seoPageContentBlogAction";
+import { getAllLocation } from "../../../redux/actions/locationAction.js";
 
 import "react-quill/dist/quill.snow.css";
 
@@ -34,10 +35,13 @@ export default function SeoPageContentForm({
   const { suggestions = [] } = useSelector(
     (state) => state.seoPageContentBlogReducer
   ) || {};
+  const { location = [] } = useSelector((state) => state.locationReducer || {});
 
   const [searchTerm, setSearchTerm] = useState("");
   const [preview, setPreview] = useState([]);
   const [profilePreview, setProfilePreview] = useState("");
+  const [showLocationSuggest, setShowLocationSuggest] = useState(false);
+  const [locationSuggestions, setLocationSuggestions] = useState([]);
 
   const slugPreview = useMemo(() => {
     return (formData.heading || "")
@@ -54,6 +58,25 @@ export default function SeoPageContentForm({
     }));
   };
 
+  const updateLocationSuggestions = (value) => {
+    const query = value.trim().toLowerCase();
+
+    if (!query) {
+      setLocationSuggestions([]);
+      setShowLocationSuggest(false);
+      return;
+    }
+
+    const filtered = location.filter(
+      (loc) =>
+        loc.city?.toLowerCase().includes(query) ||
+        loc.district?.toLowerCase().includes(query)
+    );
+
+    setLocationSuggestions(filtered);
+    setShowLocationSuggest(filtered.length > 0);
+  };
+
   /* ======================================
      BUSINESS SEARCH
   ====================================== */
@@ -66,6 +89,10 @@ export default function SeoPageContentForm({
 
     return () => clearTimeout(timer);
   }, [searchTerm, dispatch]);
+
+  useEffect(() => {
+    dispatch(getAllLocation({ pageNo: 1, pageSize: 1000 }));
+  }, [dispatch]);
 
   /* ======================================
      IMAGE PREVIEW SYNC
@@ -207,35 +234,72 @@ export default function SeoPageContentForm({
 
         {fields.map((field) => (
           <div className="floating-field" key={field.key}>
-            <input
-              value={formData[field.key] || ""}
-              onChange={(e) =>
-                updateField(field.key, e.target.value)
-              }
-              placeholder=" "
-              required={
-                ["metaTitle", "metaDescription", "pageType", "category", "heading"].includes(
-                  field.key
-                )
-              }
-            />
+            {field.key === "location" ? (
+              <>
+                <input
+                  value={formData[field.key] || ""}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    updateField(field.key, value);
+                    updateLocationSuggestions(value);
+                  }}
+                  onFocus={() => updateLocationSuggestions(formData[field.key] || "")}
+                  onBlur={() => setTimeout(() => setShowLocationSuggest(false), 150)}
+                  placeholder=" "
+                />
 
-            <label>{field.label}</label>
+                <label>{field.label}</label>
 
-            {field.limit && (
-              <span className="char-count">
-                {(formData[field.key] || "").length}/{field.limit}
-              </span>
+                {showLocationSuggest && locationSuggestions.length > 0 && (
+                  <ul className="category-suggestion-list">
+                    {locationSuggestions.map((loc) => (
+                      <li
+                        key={loc._id}
+                        onClick={() => {
+                          updateField("location", loc.city || loc.district || "");
+                          setShowLocationSuggest(false);
+                          setLocationSuggestions([]);
+                        }}
+                      >
+                        {loc.city}
+                        {loc.district && loc.district !== loc.city ? `, ${loc.district}` : ""}
+                        {loc.state ? ` - ${loc.state}` : ""}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            ) : (
+              <>
+                <input
+                  value={formData[field.key] || ""}
+                  onChange={(e) =>
+                    updateField(field.key, e.target.value)
+                  }
+                  placeholder=" "
+                  required={
+                    ["metaTitle", "metaDescription", "pageType", "category", "heading"].includes(
+                      field.key
+                    )
+                  }
+                />
+
+                <label>{field.label}</label>
+
+                {field.limit && (
+                  <span className="char-count">
+                    {(formData[field.key] || "").length}/{field.limit}
+                  </span>
+                )}
+              </>
             )}
           </div>
         ))}
 
-        {/* SLUG PREVIEW */}
         <div className="slug-preview full-row">
           <strong>Slug:</strong> {slugPreview || "-"}
         </div>
 
-        {/* BUSINESS SEARCH */}
         <div className="floating-field full-row">
           <div className="category-input-wrapper">
             <input
@@ -253,18 +317,14 @@ export default function SeoPageContentForm({
                     <span
                       className="remove"
                       onClick={() => {
-                        const updated =
-                          formData.popularBusiness.filter(
-                            (_, index) => index !== i
-                          );
-
-                        updateField(
-                          "popularBusiness",
-                          updated
+                        const updated = formData.popularBusiness.filter(
+                          (_, index) => index !== i
                         );
+
+                        updateField("popularBusiness", updated);
                       }}
                     >
-                      ×
+                      x
                     </span>
                   </span>
                 ))}
@@ -277,23 +337,15 @@ export default function SeoPageContentForm({
                   <li
                     key={i}
                     onClick={() => {
-                      const exists = (
-                        formData.popularBusiness || []
-                      ).some(
-                        (x) =>
-                          x.businessName ===
-                          b.businessName
+                      const exists = (formData.popularBusiness || []).some(
+                        (x) => x.businessName === b.businessName
                       );
 
                       if (!exists) {
-                        updateField(
-                          "popularBusiness",
-                          [
-                            ...(formData.popularBusiness ||
-                              []),
-                            b,
-                          ]
-                        );
+                        updateField("popularBusiness", [
+                          ...(formData.popularBusiness || []),
+                          b,
+                        ]);
                       }
 
                       setSearchTerm("");
@@ -307,7 +359,6 @@ export default function SeoPageContentForm({
           </div>
         </div>
 
-        {/* TAGS */}
         <div className="full-row">
           <div className="tags-box">
             <input
@@ -333,7 +384,6 @@ export default function SeoPageContentForm({
           </div>
         </div>
 
-        {/* IMAGES */}
         <div className="upload-row">
           <div className="upload-box">
             <Button
@@ -358,7 +408,7 @@ export default function SeoPageContentForm({
                 <div className="preview-item" key={i}>
                   <Avatar src={img} />
                   <span onClick={() => removeImage(i)}>
-                    ×
+                    x
                   </span>
                 </div>
               ))}
@@ -391,7 +441,6 @@ export default function SeoPageContentForm({
         </div>
       </section>
 
-      {/* HEADER CONTENT */}
       <section className="editor-card premium-card">
         <h2 className="section-title">
           Header Content
@@ -409,7 +458,6 @@ export default function SeoPageContentForm({
         </div>
       </section>
 
-      {/* PAGE CONTENT */}
       <section className="editor-card premium-card">
         <h2 className="section-title">
           Page Content
@@ -427,7 +475,6 @@ export default function SeoPageContentForm({
         </div>
       </section>
 
-      {/* FAQ */}
       <section className="editor-card premium-card">
         <div className="faq-head">
           <h2 className="section-title">FAQs</h2>
@@ -476,7 +523,6 @@ export default function SeoPageContentForm({
         ))}
       </section>
 
-      {/* SUBMIT */}
       <div className="action-bar">
         <button type="submit" disabled={loading}>
           {loading ? (

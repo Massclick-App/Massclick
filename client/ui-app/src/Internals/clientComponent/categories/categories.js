@@ -1,9 +1,11 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
+import { Helmet } from "react-helmet-async";
 import "./categories.css";
-
+import { logSearchActivity } from "../../../redux/actions/businessListAction";
 import { fetchSubCategories } from "../../../redux/actions/categoryAction";
+import { shouldSendSearch } from "../../../utils/searchLock";
 
 const createSlug = (text = "") =>
   text.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-");
@@ -36,10 +38,67 @@ const CategoriesPage = () => {
   }, [search, subCategories]);
 
   const handleClick = (sub) => {
-    navigate(`/${location}/${category}/${sub.slug}`);
+    const authUser = JSON.parse(
+      localStorage.getItem("authUser") || "{}"
+    );
+
+    const userDetails = {
+      userName: authUser?.userName,
+      mobileNumber1: authUser?.mobileNumber1,
+      mobileNumber2: authUser?.mobileNumber2 || "",
+      email: authUser?.email || "",
+    };
+
+    dispatch(
+      logSearchActivity(
+        sub.name,
+        location || "Global",
+        userDetails,
+        sub.name
+      )
+    );
+
+    navigate(`/${location}/${category}/${sub.slug}`, { state: { logAlreadySent: true } });
   };
 
+  const locationSlug = location || "";
+  const categorySlug = category || "";
+  const categoryPageUrl = `https://massclick.in/${locationSlug}/${categorySlug}`;
+  const locationLabel = formatText(locationSlug);
+  const categoryLabel = formatText(categorySlug);
+
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: "https://massclick.in" },
+      { "@type": "ListItem", position: 2, name: locationLabel, item: `https://massclick.in/${locationSlug}` },
+      { "@type": "ListItem", position: 3, name: categoryLabel, item: categoryPageUrl },
+    ],
+  };
+
+  const itemListSchema = filteredCategories.length > 0
+    ? {
+        "@context": "https://schema.org",
+        "@type": "ItemList",
+        name: `${categoryLabel} subcategories in ${locationLabel}`,
+        itemListElement: filteredCategories.map((item, index) => ({
+          "@type": "ListItem",
+          position: index + 1,
+          name: item.name,
+          url: `https://massclick.in/${locationSlug}/${categorySlug}/${item.slug}`,
+        })),
+      }
+    : null;
+
   return (
+    <>
+      <Helmet>
+        <script type="application/ld+json">{JSON.stringify(breadcrumbSchema)}</script>
+        {itemListSchema && (
+          <script type="application/ld+json">{JSON.stringify(itemListSchema)}</script>
+        )}
+      </Helmet>
     <div className="category-container">
 
       <h2 className="category-title">
@@ -97,6 +156,7 @@ const CategoriesPage = () => {
       </div>
 
     </div>
+    </>
   );
 };
 

@@ -1,13 +1,15 @@
+import { createServer } from "http";
 import express from "express";
 import cors from "cors";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
-// import prerender from "prerender-node";
+import { initWsServer } from "./websocket/wsServer.js";
 import compression from "compression";
 import helmet from "helmet";
-import path from "path";
-import fs from "fs";
-import { fileURLToPath } from "url";
+
+import { metricsMiddleware } from "./utils/metricsMiddleware.js";
+import wellKnownRoutes from "./routes/wellKnownRoutes.js";
+import { ssrMiddleware } from "./middleware/ssrMiddleware.js";
 
 import userRoutes from "./routes/userRoutes.js";
 import userClientRoutes from "./routes/userClientRoute.js";
@@ -31,98 +33,43 @@ import reviewRoutes from "./routes/reviewRoutes.js";
 import advertiseRoute from "./routes/advertiseRoute.js";
 import versionRoutes from "./routes/versionRoutes.js";
 import favoriteRoute from "./routes/favoriteRoute.js";
-import seoModel from "./model/seoModel/seoModel.js";
+import fcmAdminRoutes from "./routes/fcmAdminRoutes.js";
+import systemSettingsRoutes from "./routes/systemSettingsRoutes.js";
+import footerRoutes from "./routes/footerRoute.js";
+import { startFCMScheduler } from "./scheduler/fcmScheduler.js";
 
 dotenv.config();
 
 const app = express();
+const httpServer = createServer(app);
 app.set("trust proxy", true);
+
 const PORT = process.env.PORT || 4000;
 const MONGO_URI = process.env.MONGO_URL;
+const CLIENT_BUILD_PATH = process.env.REACT_BUILD_PATH;
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+app.use((req, res, next) => {
+  const host = req.headers.host || "";
+  const protocol = req.headers["x-forwarded-proto"] || req.protocol;
 
-const CLIENT_BUILD_PATH =
-  "/var/www/massclickQA/client/ui-app/build";
+  if (!host.includes("localhost") && !host.includes("127.0.0.1")) {
+    if (protocol !== "https") {
+      return res.redirect(301, `https://${host}${req.originalUrl}`);
+    }
+    if (host === "www.massclick.in") {
+      return res.redirect(301, `https://massclick.in${req.originalUrl}`);
+    }
+  }
+  next();
+});
 
-// const CLIENT_BUILD_PATH = path.join(
-//   __dirname,
-//   "../client/ui-app/build"
-// );
-
-// app.use((req, res, next) => {
-
-//   const host = req.headers.host || "";
-
-//   if (
-//     host.includes("localhost") ||
-//     host.includes("127.0.0.1")
-//   ) {
-//     return next();
-//   }
-
-//   const protocol =
-//     req.headers["x-forwarded-proto"] || req.protocol;
-
-//   // ✅ FIX: only redirect when REALLY needed
-//   if (protocol !== "https") {
-//     return res.redirect(301, `https://${host}${req.originalUrl}`);
-//   }
-
-//   // ✅ FIX: avoid loop
-//   if (host === "www.massclick.in") {
-//     return res.redirect(
-//       301,
-//       `https://massclick.in${req.originalUrl}`
-//     );
-//   }
-
-//   next();
-
-// });
-
-const slugify = (text = "") =>
-  text
-    .toLowerCase()
-    .trim()
-    .replace(/&/g, "and")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-
-app.use(
-  helmet({
-    crossOriginResourcePolicy: false,
-  })
-);
+app.use(helmet({
+  crossOriginResourcePolicy: false,
+  contentSecurityPolicy: false,
+  referrerPolicy: { policy: "strict-origin-when-cross-origin" }
+}));
 
 app.use(compression());
-
-
-const allowedOrigins = [
-  "https://massclick.in",
-  "https://www.massclick.in",
-  "https://dev.massclick.in",
-  "http://localhost:3000",
-  "http://127.0.0.1:3000",
-  "http://localhost:4000"
-];
-
-// app.use(
-//   cors({
-//     origin: function (origin, callback) {
-
-//       if (!origin) return callback(null, true);
-
-//       if (allowedOrigins.includes(origin)) {
-//         return callback(null, true);
-//       }
-
-//       return callback(null, false);
-//     },
-//     credentials: true,
-//   })
-// );
 
 app.use(cors({
   origin: true,
@@ -130,36 +77,11 @@ app.use(cors({
 }));
 
 app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({
-  extended: true,
-  limit: "50mb"
-}));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+app.use(metricsMiddleware);
 
-app.get("/robots.txt", (req, res) => {
+app.use(wellKnownRoutes);
 
-  res.type("text/plain");
-
-  res.send(`
-User-agent: *
-Allow: /
-
-Sitemap: https://massclick.in/sitemap.xml
-`);
-
-});
-
-app.get("/health", (req, res) => {
-  const now = new Date();
-  res.status(200).json({
-    success: true,
-    message: "Server is healthy",
-    uptime: process.uptime(),
-    timestamp: now.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
-    isoTime: now.toISOString() 
-  });
-});
-
-// routes
 app.use("/", sitemapRoutes);
 app.use("/", userRoutes);
 app.use("/", fcmTokenRoutes);
@@ -181,149 +103,32 @@ app.use("/", popularSearchRoutes);
 app.use("/", reviewRoutes);
 app.use("/", advertiseRoute);
 app.use("/", versionRoutes);
+app.use("/", footerRoutes);
 app.use("/", favoriteRoute);
+app.use("/", fcmAdminRoutes);
+app.use("/", systemSettingsRoutes);
 
-app.use(
-  express.static(CLIENT_BUILD_PATH, {
-    maxAge: "365d",
-    etag: true,
-    lastModified: true,
-
-    setHeaders: (res, filePath) => {
-
-      if (filePath.endsWith(".html")) {
-
-        res.setHeader(
-          "Cache-Control",
-          "no-cache"
-        );
-
-      } else {
-
-        res.setHeader(
-          "Cache-Control",
-          "public, max-age=31536000, immutable"
-        );
-
-      }
-
-    },
-  })
-);
-
-app.get(/.*/, async (req, res) => {
-
-  try {
-
-    const indexPath = path.join(CLIENT_BUILD_PATH, "index.html");
-
-    if (!fs.existsSync(indexPath)) {
-      return res.status(404).send("Build not found");
+app.use(express.static(CLIENT_BUILD_PATH, {
+  index: false,
+  maxAge: "365d",
+  etag: true,
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith(".html")) {
+      res.setHeader("Cache-Control", "no-cache");
+    } else {
+      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
     }
-
-    let html = fs.readFileSync(indexPath, "utf8");
-
-    const parts = req.path.split("/").filter(Boolean);
-    const locationSlug = parts[0] || "";
-    const categorySlug = parts[1] || "";
-    const subcategorySlug = parts[2] || "";
-
-    let seo = null;
-
-    if (locationSlug && categorySlug) {
-
-      let finalCategory = categorySlug;
-
-      if (subcategorySlug) {
-        finalCategory = slugify(subcategorySlug);
-      } else {
-        finalCategory = slugify(categorySlug);
-      }
-
-      seo = await seoModel.findOne({
-        pageType: "category",
-        isActive: true,
-        location: new RegExp(`^${locationSlug}$`, "i"),
-        category: new RegExp(`^${finalCategory}$`, "i"),
-      }).lean();
-    }
-
-    if (seo) {
-
-      const title = seo.title;
-      const description = seo.description;
-      const keywords = seo.keywords;
-      const canonical = seo.canonical;
-
-      html = html.replace(
-        /<title>.*<\/title>/,
-        `<title>${title}</title>`
-      );
-
-      html = html.replace(
-        /<meta name="description".*?>/,
-        `<meta name="description" content="${description}" />`
-      );
-
-      html = html.replace(
-        /<meta name="keywords".*?>/,
-        `<meta name="keywords" content="${keywords}" />`
-      );
-
-      html = html.replace(
-        /<link rel="canonical".*?>/,
-        `<link rel="canonical" href="${canonical}" />`
-      );
-
-      html = html.replace(
-        /<meta property="og:title".*?>/,
-        `<meta property="og:title" content="${title}" />`
-      );
-
-      html = html.replace(
-        /<meta property="og:description".*?>/,
-        `<meta property="og:description" content="${description}" />`
-      );
-
-      html = html.replace(
-        /<meta property="og:url".*?>/,
-        `<meta property="og:url" content="${canonical}" />`
-      );
-
-      html = html.replace(
-        /<meta name="twitter:title".*?>/,
-        `<meta name="twitter:title" content="${title}" />`
-      );
-
-      html = html.replace(
-        /<meta name="twitter:description".*?>/,
-        `<meta name="twitter:description" content="${description}" />`
-      );
-    }
-
-    res.send(html);
-
-  } catch (err) {
-
-    console.error("SEO ERROR:", err);
-    res.status(500).send("Server error");
-
   }
+}));
 
-});
+app.get(/.*/, ssrMiddleware);
 
 mongoose.connect(MONGO_URI)
-  .then(() => {
-
-    console.log("MongoDB Connected");
-
-    app.listen(PORT, () => {
-
-      console.log(
-        `Server running on port ${PORT}`
-      );
-
+  .then(async () => {
+    startFCMScheduler();
+    await initWsServer(httpServer);
+    httpServer.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
     });
-
   })
-  .catch(console.error);
+  .catch(err => console.error(err));

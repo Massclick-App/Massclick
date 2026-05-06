@@ -1,55 +1,23 @@
+import { createHash } from "crypto";
 import { createSearchLog, getAllSearchLogs, getMatchedSearchLogs, updateSearchData, getTopTrendingCategories } from "../../helper/businessList/logSearchHelper.js";
 import CategoryModel from "../../model/category/categoryModel.js";
 import { getSignedUrlByKey } from "../../s3Uploder.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
 import { sendBusinessesToCustomer, sendBusinessLead } from "../../helper/msg91/smsGatewayHelper.js";
-// import leadsRotationModel from "../../model/leadsData/leadsRotationalModel.js";
+import { getSettings } from "../../helper/systemSettings/settingsService.js";
 import searchLogModel from "../../model/businessList/searchLogModel.js";
+import userModel from "../../model/msg91Model/usersModels.js";
+import { sendFCMNotification } from "../../helper/fcmHelper.js";
+import { emitToRoom } from "../../websocket/roomManager.js";
+import { buildRoom, WS_EVENTS } from "../../websocket/constants.js";
 
-// export const logSearchAction = async (req, res) => {
-//   try {
-//     const { categoryName, location, searchedUserText, userDetails } = req.body;
+// Short hash of IP + user-agent. 8 hex chars = 32-bit space, good enough for 5-min dedup.
+const anonFingerprint = (req) => {
+  const ip = req.ip || req.socket?.remoteAddress || "unknown";
+  const ua = req.headers["user-agent"] || "unknown";
+  return createHash("sha256").update(`${ip}:${ua}`).digest("hex").slice(0, 8);
+};
 
-//     const categorySlug = categoryName
-//       ?.toLowerCase()
-//       .replace(/[^a-z0-9]+/g, "-")
-//       .replace(/(^-|-$)+/g, "");
-
-//     const category = await CategoryModel.findOne(
-//       { slug: categorySlug },
-//       { categoryImageKey: 1 }
-//     ).lean();
-
-//     const filteredUser = [
-//       {
-//         userName: userDetails?.userName || "",
-//         mobileNumber1: userDetails?.mobileNumber1 || "",
-//         mobileNumber2: userDetails?.mobileNumber2 || "",
-//         email: userDetails?.email || ""
-//       }
-//     ];
-
-//     await createSearchLog({
-//       categoryName,
-//       categoryImage: category?.categoryImageKey || "",
-//       location,
-//       searchedUserText,
-//       userDetails: filteredUser
-//     });
-
-//     res.status(202).json({
-//       success: true,
-//       message: "Search logged successfully"
-//     });
-
-//   } catch (error) {
-//     console.error("Error logging search:", error);
-//     res.status(500).json({
-//       success: false,
-//       message: "Error logging search"
-//     });
-//   }
-// };
 
 const cleanIndianMobile = (mobile) => {
   if (!mobile) return null;
@@ -66,8 +34,6 @@ const cleanIndianMobile = (mobile) => {
 
   return null;
 };
-
-
 
 const escapeRegex = (text = "") =>
   text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -141,13 +107,7 @@ export const logSearchAction = async (req, res) => {
       userDetails.mobileNumber1 &&
       userDetails.mobileNumber1.trim();
 
-    if (!isValidUser) {
-      return res.status(200).json({
-        success: false,
-        message: "Valid name and mobile number required"
-      });
-    }
-
+    // ── Resolve category (runs for all users, logged in or not) ──────────────
     let finalCategoryName = "";
 
     if (
@@ -155,9 +115,8 @@ export const logSearchAction = async (req, res) => {
       categoryName.trim() &&
       categoryName.toLowerCase() !== "all categories"
     ) {
-      finalCategoryName = categoryName.trim();
+      finalCategoryName = categoryName.trim().toLowerCase();
     } else {
-
       const matchedCategory = await CategoryModel.findOne({
         categoryName: { $regex: cleanSearchText, $options: "i" }
       }).lean();
@@ -165,16 +124,10 @@ export const logSearchAction = async (req, res) => {
       if (matchedCategory) {
         finalCategoryName = matchedCategory.categoryName;
       } else {
-
         const searchWords = cleanSearchText.split(" ");
-
         const possibleCategory = await CategoryModel.findOne({
-          categoryName: {
-            $regex: searchWords.join("|"),
-            $options: "i"
-          }
+          categoryName: { $regex: searchWords.join("|"), $options: "i" }
         }).lean();
-
         finalCategoryName = possibleCategory
           ? possibleCategory.categoryName
           : searchedUserText;
@@ -191,19 +144,55 @@ export const logSearchAction = async (req, res) => {
       { categoryImageKey: 1 }
     ).lean();
 
-    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+    // ── Anonymous path ────────────────────────────────────────────────────────
+    if (!isValidUser) {
+      const fingerprint = anonFingerprint(req);
+      const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
 
+      const recentAnon = await searchLogModel.findOne({
+        categoryName: finalCategoryName,
+        location: normalizedLocation,
+        searchedUserText: cleanSearchText,
+        isAnonymous: true,
+        anonFingerprint: fingerprint,
+        createdAt: { $gte: fiveMinAgo }
+      });
+
+      if (!recentAnon) {
+        await createSearchLog({
+          categoryName: finalCategoryName,
+          categoryImage: category?.categoryImageKey || "",
+          searchedUserText: cleanSearchText,
+          location: normalizedLocation,
+          userDetails: [],
+          whatsapp: false,
+          isAnonymous: true,
+          anonFingerprint: fingerprint,
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        anonymous: true,
+        message: "Anonymous search logged",
+        detectedCategory: finalCategoryName
+      });
+    }
+
+    // ── Identified user path ──────────────────────────────────────────────────
+    const reqId = Math.random().toString(36).slice(2, 8);
+    console.log(`[SEARCH][${reqId}] user=${userDetails.mobileNumber1} text="${cleanSearchText}" loc=${normalizedLocation}`);
+
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
     const recentLog = await searchLogModel.findOne({
-      categoryName: finalCategoryName,
+      categoryName: { $regex: `^${finalCategoryName}$`, $options: "i" },
       location: normalizedLocation,
       "userDetails.mobileNumber1": userDetails.mobileNumber1,
       searchedUserText: cleanSearchText,
       createdAt: { $gte: fiveMinutesAgo }
     });
-
     if (recentLog) {
-      console.log("⚠️ Duplicate request blocked");
-
+      console.log(`[SEARCH][${reqId}] DEDUP HIT — already sent within 5 min, skipping`);
       return res.status(200).json({
         success: true,
         message: "Lead already sent recently",
@@ -211,32 +200,11 @@ export const logSearchAction = async (req, res) => {
       });
     }
 
-    // const recentLog = await searchLogModel.findOne({
-    //   categoryName: finalCategoryName,
-    //   location: normalizedLocation,
-    //   "userDetails.mobileNumber1": userDetails.mobileNumber1,
-    //   createdAt: { $gte: fiveMinutesAgo }
-    // });
-
-    // if (recentLog) {
-
-    //   return res.status(200).json({
-    //     success: true,
-    //     message: "Lead already sent recently (5 min protection)",
-    //     detectedCategory: finalCategoryName
-    //   });
-    // }
-
     const savedLog = await createSearchLog({
-
       categoryName: finalCategoryName,
-
       categoryImage: category?.categoryImageKey || "",
-
-      searchedUserText,
-
+      searchedUserText: cleanSearchText,
       location: normalizedLocation,
-
       userDetails: [
         {
           userName: userDetails.userName,
@@ -245,9 +213,8 @@ export const logSearchAction = async (req, res) => {
           email: userDetails.email || ""
         }
       ],
-
-      whatsapp: false
-
+      whatsapp: false,
+      isAnonymous: false,
     });
 
     const locationGroups = {
@@ -313,13 +280,63 @@ export const logSearchAction = async (req, res) => {
 
     };
 
+    const waSettings = await getSettings();
+
     let businessSendSuccess = false;
 
     let customerSendSuccess = false;
 
     const notifiedBusinesses = [];
 
+    // ── WebSocket: instant update to each matching business owner's app ─────────
+    for (const business of businesses) {
+      const ownerMobile = cleanIndianMobile(business.contactList || business.whatsappNumber);
+      if (!ownerMobile) continue;
+      // Strip 91 prefix — room keys use 10-digit (matches userModel.mobileNumber1)
+      const mobile10 = ownerMobile.startsWith("91") && ownerMobile.length === 12
+        ? ownerMobile.slice(2)
+        : ownerMobile;
+      emitToRoom(buildRoom.business(mobile10), WS_EVENTS.LEAD_ANALYTICS_UPDATE, {
+        category: finalCategoryName,
+        location: normalizedLocation,
+        ts: new Date().toISOString(),
+      });
+    }
 
+    // Collect mobile numbers for batch FCM lookup (avoid per-business DB query)
+    const ownerMobiles = businesses
+      .map(b => cleanIndianMobile(b.contactList || b.whatsappNumber))
+      .filter(Boolean);
+
+    console.log("[FCM] businesses found:", businesses.length, "| owner mobiles resolved:", ownerMobiles.length, ownerMobiles);
+
+    // userModel stores mobileNumber1 as 10-digit (no 91 prefix); strip prefix for the DB query
+    const ownerMobilesForDB = ownerMobiles.map(m =>
+      m.startsWith("91") && m.length === 12 ? m.slice(2) : m
+    );
+    console.log("[FCM] querying userModel with 10-digit mobiles:", ownerMobilesForDB);
+
+    const ownerUsersMap = new Map();
+    if (ownerMobilesForDB.length > 0) {
+      const now = new Date();
+      const ownerUsers = await userModel.find(
+        { mobileNumber1: { $in: ownerMobilesForDB }, "fcmTokens.isActive": true },
+        { mobileNumber1: 1, fcmTokens: 1 }
+      ).lean();
+      console.log("[FCM] users with active fcmTokens found in DB:", ownerUsers.length);
+      for (const u of ownerUsers) {
+        const activeTokens = u.fcmTokens.filter(
+          t => t.isActive && new Date(t.expiresAt) > now
+        );
+        console.log(`[FCM] user ${u.mobileNumber1}: total tokens=${u.fcmTokens.length}, active+valid=${activeTokens.length}`);
+        if (activeTokens.length > 0) {
+          // Key by 12-digit (91-prefixed) to match what the business loop uses
+          ownerUsersMap.set("91" + u.mobileNumber1, activeTokens);
+        }
+      }
+    } else {
+      console.log("[FCM] no valid owner mobiles — skipping FCM lookup");
+    }
 
     for (const business of businesses) {
 
@@ -332,7 +349,9 @@ export const logSearchAction = async (req, res) => {
 
       try {
 
-        await sendBusinessLead(cleanMobile, leadData);
+        if (waSettings.whatsapp_business_lead_alert) {
+          await sendBusinessLead(cleanMobile, leadData);
+        }
 
         businessSendSuccess = true;
 
@@ -358,6 +377,27 @@ export const logSearchAction = async (req, res) => {
 
       }
 
+      // Send FCM push to this business owner's active devices (fire-and-forget)
+      const ownerTokens = ownerUsersMap.get(cleanMobile);
+      console.log(`[FCM] ${business.businessName} (${cleanMobile}): tokens to notify=${ownerTokens?.length ?? 0}`);
+      if (ownerTokens && ownerTokens.length > 0) {
+        const fcmTitle = "New Lead Alert 🔔";
+        const fcmBody = `Someone searched "${searchedUserText}" in ${normalizedLocation}. Check your leads now!`;
+        const fcmData = {
+          type: "lead",
+          category: finalCategoryName,
+          location: normalizedLocation,
+        };
+        for (const tokenObj of ownerTokens) {
+          console.log(`[FCM] sending to token ${tokenObj.token.slice(0, 20)}... (platform: ${tokenObj.platform})`);
+          sendFCMNotification(tokenObj.token, fcmTitle, fcmBody, fcmData)
+            .then(() => console.log(`[FCM] push sent OK → ${business.businessName}`))
+            .catch(err => console.error(`[FCM] push failed → ${business.businessName}:`, err.message));
+        }
+      } else {
+        console.log(`[FCM] no tokens for ${business.businessName} — push skipped`);
+      }
+
     }
 
     const cleanCustomerMobile = cleanIndianMobile(
@@ -368,15 +408,17 @@ export const logSearchAction = async (req, res) => {
 
       try {
 
-        await sendBusinessesToCustomer(
+        if (waSettings.whatsapp_customer_business_list) {
+          await sendBusinessesToCustomer(
 
-          cleanCustomerMobile,
+            cleanCustomerMobile,
 
-          leadData,
+            leadData,
 
-          businesses
+            businesses
 
-        );
+          );
+        }
 
         customerSendSuccess = true;
 

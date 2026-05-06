@@ -1,6 +1,6 @@
 import express from 'express'
 
-import { addMRPAction,viewMRPAction,viewAllMRPAction,updateMRPAction,deleteMRPAction, searchMrpBusinessAction, searchMrpCategoryAction,sendMrpLeadsAction } from "../controller/MRP/mrpController.js"
+import { addMRPAction,viewMRPAction,viewAllMRPAction,updateMRPAction,deleteMRPAction,getMniLeadsList, searchMrpBusinessAction, searchMrpCategoryAction,sendMrpLeadsAction, getBusinessProfileByPhoneAction, getGlobalLeadReportAction } from "../controller/MRP/mrpController.js"
 import { oauthAuthentication } from '../helper/oauthHelper.js';
 
 
@@ -14,5 +14,8 @@ router.delete('/api/mrpdata/delete/:id', oauthAuthentication, deleteMRPAction);
 router.get('/api/mrpdata/search/business', oauthAuthentication, searchMrpBusinessAction);
 router.get('/api/mrpdata/search/category', oauthAuthentication, searchMrpCategoryAction);
 router.post("/api/mrpdata/send-leads/:id", oauthAuthentication, sendMrpLeadsAction);
+router.get('/api/mrpdata/get-mni-leads', oauthAuthentication, getMniLeadsList);
+router.post('/api/mrpdata/get-business-profile', oauthAuthentication, getBusinessProfileByPhoneAction);
+router.get('/api/mrpdata/lead-report', oauthAuthentication, getGlobalLeadReportAction);
 
 export default router;

@@ -205,11 +205,13 @@ const HeroSection = ({
     }
   }, [debouncedLocation, dispatch]);
 
+  const isObjectId = (s) => /^[a-f\d]{24}$/i.test(s);
+
   const recentSearchOptions = [
     ...new Set(
       (searchLogs || [])
         .map((log) => (log.categoryName ? log.categoryName.trim() : ""))
-        .filter(Boolean)
+        .filter((name) => name && !isObjectId(name))
     ),
   ];
 
@@ -330,61 +332,81 @@ const HeroSection = ({
     return { category, location };
   };
 
-  const handleSearch = async (e) => {
-    e.preventDefault();
+const handleSearch = async (e) => {
+  e.preventDefault();
 
-    let term = searchTerm.toLowerCase().trim();
-    let location = locationName.toLowerCase().trim();
-    let category = categoryName.toLowerCase().trim();
+  const normalize = (text = "") =>
+    text
+      .toLowerCase()
+      .trim()
+      .replace(/&/g, " and ")   // 🔥 important
+      .replace(/[-_]/g, " ")
+      .replace(/\s+/g, " ");
 
-    if (location && term.includes(location)) {
-      term = term.replace(new RegExp(`\\b${location}\\b`, "gi"), "").trim();
-    }
+  let term = normalize(searchTerm);
+  let location = normalize(locationName);
+  let category = normalize(categoryName);
 
-    const stopWords = ["location", "near", "in", "around", "nearby"];
+  // 🔹 Remove location from term
+  if (location && term.includes(location)) {
+    term = term.replace(new RegExp(`\\b${location}\\b`, "gi"), "").trim();
+  }
 
-    let words = term.split(" ").filter(Boolean);
+  const stopWords = ["location", "near", "in", "around", "nearby"];
 
-    words = words.filter(word => !stopWords.includes(word));
+  let words = term.split(" ").filter(Boolean);
 
-    const finalCategory = term;
+  // 🔹 Remove stopwords
+  words = words.filter(word => !stopWords.includes(word));
 
-    const response = await dispatch(
-      backendMainSearch("", location, finalCategory)
-    );
+  // ✅ USE cleaned words
+  const finalCategory = words.join(" ");
 
-    const results = response?.payload || [];
+  const response = await dispatch(
+    backendMainSearch("", location, finalCategory)
+  );
 
-    if (setSearchResults) setSearchResults(results);
+  const results = response?.payload || [];
 
-    const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
+  if (setSearchResults) setSearchResults(results);
 
-    const userDetails = {
-      userName: authUser?.userName,
-      mobileNumber1: authUser?.mobileNumber1,
-      mobileNumber2: authUser?.mobileNumber2,
-      email: authUser?.email,
-    };
+  const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
 
-    const key = `${category}-${location}-${userDetails.mobileNumber1}`;
-
-    if (shouldSendSearch(key)) {
-      dispatch(
-        logSearchActivity(category, location, userDetails, term)
-      );
-    }
-
-    const slugLocation = toSlug(location || "all");
-    const slugCategory = toSlug(finalCategory || "all");
-
-    navigate(`/${slugLocation}/${slugCategory}`, {
-      state: {
-        results,
-        category: finalCategory
-      }
-    });
-
+  const userDetails = {
+    userName: authUser?.userName,
+    mobileNumber1: authUser?.mobileNumber1,
+    mobileNumber2: authUser?.mobileNumber2,
+    email: authUser?.email,
   };
+
+  const key = `${category}-${location}-${userDetails.mobileNumber1}`;
+
+  const logSent = shouldSendSearch(key);
+  if (logSent) {
+    dispatch(
+      logSearchActivity(category, location, userDetails, term)
+    );
+  }
+
+  // 🔥 Slug fix (consistent URL)
+  const toSlug = (str = "") =>
+    str
+      .toLowerCase()
+      .trim()
+      .replace(/&/g, "and")
+      .replace(/\s+/g, "-");
+
+  const slugLocation = toSlug(location || "all");
+  const slugCategory = toSlug(finalCategory || "all");
+
+  navigate(`/${slugLocation}/${slugCategory}`, {
+    state: {
+      results,
+      category: finalCategory,
+      logAlreadySent: logSent
+    }
+  });
+};
 
   const handleVoiceSearch = () => {
     const SpeechRecognition =

@@ -89,21 +89,24 @@
   margin-top: 14px;
   border: 1px solid var(--border);
   border-radius: 16px;
-  overflow: hidden;
 }
 
 .editor-wrapper .ql-toolbar {
   border: none;
   border-bottom: 1px solid var(--border);
   background: #f3f4f6;
+  border-radius: 16px 16px 0 0;
 }
 
 .editor-wrapper .ql-container {
   border: none;
+  border-radius: 0 0 16px 16px;
+  height: 320px;
+  overflow-y: auto;
 }
 
 .editor-wrapper .ql-editor {
-  min-height: 260px;
+  min-height: 100%;
   padding: 18px 20px;
   line-height: 1.75;
 }
@@ -130,8 +133,8 @@
     max-width: 100%;
   }
 
-  .editor-wrapper .ql-editor {
-    min-height: 220px;
+  .editor-wrapper .ql-container {
+    height: 260px;
   }
 }
 
@@ -149,8 +152,8 @@
     padding: 18px;
   }
 
-  .editor-wrapper .ql-editor {
-    min-height: 180px;
+  .editor-wrapper .ql-container {
+    height: 220px;
   }
 }
 

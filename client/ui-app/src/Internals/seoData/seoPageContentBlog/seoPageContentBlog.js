@@ -10,6 +10,10 @@ import {
   updateSeoPageContentBlogs,
   deleteSeoPageContentBlogs,
 } from "../../../redux/actions/seoPageContentBlogAction";
+import {
+  getAllLocation,
+  createLocation,
+} from "../../../redux/actions/locationAction.js";
 
 import {
   Box,
@@ -52,6 +56,7 @@ export default function SeoPageContentBlogs() {
 
   const { list = [], total = 0, loading = false } =
     useSelector((state) => state.seoPageContentBlogReducer) || {};
+  const { location = [] } = useSelector((state) => state.locationReducer || {});
 
   const [formData, setFormData] = useState(defaultForm);
   const [editingId, setEditingId] = useState(null);
@@ -87,6 +92,7 @@ export default function SeoPageContentBlogs() {
 
   useEffect(() => {
     dispatch(viewAllSeoPageContentBlogs());
+    dispatch(getAllLocation({ pageNo: 1, pageSize: 1000 }));
   }, [dispatch]);
 
   const resetForm = () => {
@@ -96,6 +102,23 @@ export default function SeoPageContentBlogs() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    const locationExists = location.some(
+      (loc) =>
+        loc.city?.toLowerCase() === formData.location?.toLowerCase() ||
+        loc.district?.toLowerCase() === formData.location?.toLowerCase()
+    );
+
+    if (!locationExists && formData.location) {
+      await dispatch(
+        createLocation({
+          city: formData.location,
+          district: formData.location,
+          state: "N/A",
+          country: "N/A",
+        })
+      );
+    }
 
     const action = editingId
       ? updateSeoPageContentBlogs(editingId, formData)

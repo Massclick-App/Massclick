@@ -68,8 +68,10 @@ export default function MRPCategoryChart({ data = [] }) {
   };
 
   return (
-    <div style={{ height: 260 }}>
-      <Doughnut data={chartData} options={options} />
+    <div className="mrp-category-chart-wrapper">
+      <div className="mrp-category-chart-inner">
+        <Doughnut data={chartData} options={options} />
+      </div>
     </div>
   );
 }

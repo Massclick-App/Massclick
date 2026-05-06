@@ -3,11 +3,21 @@
 ================================ */
 
 .mrp-insights {
-  background: #ffffff;
-  border-radius: clamp(20px, 3vw, 28px);
-  padding: clamp(16px, 3vw, 24px);
-  box-shadow: 0 30px 70px rgba(0,0,0,.08);
+  background: linear-gradient(180deg, #ffffff, #f8fbff);
+  border-radius: 28px;
+  padding: 28px;
+  border: 1px solid rgba(15,23,42,.08);
+  box-shadow: 0 30px 70px rgba(15,23,42,.08);
   max-width: 100%;
+}
+.mrp-insight-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #f1f5f9;
+  padding: 4px 8px;
+  border-radius: 10px;
+  font-weight: 500;
 }
 
 /* ===============================
@@ -19,17 +29,18 @@
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  margin-bottom: 18px;
+  margin-bottom: 20px;
 }
 
 .mrp-insights-header h3 {
-  font-size: clamp(16px, 2.2vw, 18px);
+  font-size: 1.1rem;
   font-weight: 800;
   color: #0f172a;
+  margin: 0;
 }
 
 .mrp-insights-header span {
-  font-size: 13px;
+  font-size: 0.9rem;
   color: #64748b;
   white-space: nowrap;
 }
@@ -49,15 +60,16 @@
 ================================ */
 
 .mrp-insight-card {
-  border-radius: 20px !important;
-  border: 1px solid #e2e8f0;
+  border-radius: 22px !important;
+  border: 1px solid rgba(226,232,240,.95);
   overflow: hidden;
-  transition: box-shadow .25s ease, transform .25s ease;
+  transition: box-shadow .3s ease, transform .3s ease;
+  background: #ffffff;
 }
 
 .mrp-insight-card:hover {
-  box-shadow: 0 16px 40px rgba(0,0,0,.12);
-  transform: translateY(-1px);
+  box-shadow: 0 18px 46px rgba(15,23,42,.12);
+  transform: translateY(-2px);
 }
 
 /* ===============================
@@ -109,14 +121,14 @@
 
 
 .mrp-insight-details {
-  padding: 16px 20px 20px !important;
-  background: #fafafa;
+  padding: 18px 22px 22px !important;
+  background: rgba(248,250,255,.8);
 }
 
 .mrp-insight-description {
-  font-size: clamp(13px, 2vw, 14px);
+  font-size: 0.96rem;
   color: #334155;
-  line-height: 1.65;
+  line-height: 1.75;
 }
 
 .mrp-insight-contact {
@@ -173,5 +185,544 @@
 
   .mrp-insight-summary {
     padding: 16px 22px !important;
+  }
+}
+
+/* ===============================
+   LOADING STATE
+================================ */
+
+.mrp-insights-loading {
+  background: #ffffff;
+  border-radius: 28px;
+  padding: 60px 28px;
+  text-align: center;
+  box-shadow: 0 30px 70px rgba(0,0,0,.08);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.mrp-insights-loading p {
+  font-size: 16px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #e2e8f0;
+  border-top: 4px solid #0f172a;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ===============================
+   ERROR STATE
+================================ */
+
+.mrp-insights-error {
+  background: #fee2e2;
+  border-radius: 28px;
+  padding: 20px 28px;
+  border: 1px solid #fecaca;
+  box-shadow: 0 30px 70px rgba(0,0,0,.08);
+}
+
+.mrp-insights-error p {
+  font-size: 14px;
+  color: #991b1b;
+  font-weight: 600;
+  margin: 0;
+}
+
+/* ===============================
+   BUSINESS PROFILE MAIN
+================================ */
+
+.business-profile-main {
+  background: #ffffff;
+  border-radius: 22px;
+  overflow: hidden;
+  box-shadow: 0 18px 46px rgba(15,23,42,.12);
+  margin-bottom: 24px;
+  border: 1px solid rgba(226,232,240,.95);
+}
+
+.business-banner {
+  width: 100%;
+  height: 240px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.business-banner img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.business-info-section {
+  padding: 28px;
+}
+
+/* ===== Business Header Info ===== */
+
+.business-header-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(226,232,240,.95);
+}
+
+.business-name {
+  font-size: clamp(24px, 5vw, 32px);
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 6px 0;
+  letter-spacing: -0.5px;
+}
+
+.business-category {
+  font-size: 15px;
+  color: #64748b;
+  margin: 0;
+  font-weight: 500;
+}
+
+.business-rating {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rating-stars {
+  background: #fef3c7;
+  padding: 8px 16px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #92400e;
+  white-space: nowrap;
+}
+
+/* ===== Quick Stats Grid ===== */
+
+.business-quick-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.stat-item {
+  background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(226,232,240,.95);
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.stat-item:hover {
+  box-shadow: 0 10px 25px rgba(15,23,42,.08);
+  transform: translateY(-4px);
+}
+
+.stat-label {
+  display: block;
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 600;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-value {
+  display: block;
+  font-size: clamp(18px, 4vw, 24px);
+  font-weight: 800;
+  color: #0f172a;
+}
+
+/* ===== Contact Information ===== */
+
+.business-contact-info {
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(226,232,240,.95);
+}
+
+.business-contact-info h4 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 16px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.contact-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.contact-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  background: #f8fafc;
+  border-radius: 14px;
+  border: 1px solid rgba(226,232,240,.95);
+}
+
+.contact-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.contact-label {
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 600;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.contact-value {
+  font-size: 14px;
+  color: #0f172a;
+  font-weight: 700;
+  margin: 4px 0 0 0;
+  word-break: break-word;
+}
+
+/* ===== MNI Details ===== */
+
+.business-mni-details {
+  background: linear-gradient(135deg, #f0fdf4, #f0fef4);
+  padding: 20px;
+  border-radius: 16px;
+  border: 1px solid rgba(34,197,94,.2);
+}
+
+.business-mni-details h4 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 16px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.mni-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.mni-stat {
+  background: #ffffff;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(34,197,94,.15);
+  text-align: center;
+}
+
+.mni-stat-label {
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 600;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.mni-stat-value {
+  font-size: clamp(16px, 3vw, 20px);
+  font-weight: 800;
+  color: #22c55e;
+  margin: 8px 0 0 0;
+}
+
+/* ===============================
+   SENT LEADS SECTION
+================================ */
+
+.sent-leads-section {
+  background: linear-gradient(135deg, #f5f3ff, #faf5ff);
+  border-radius: 22px;
+  padding: 24px;
+  border: 1px solid rgba(168,85,247,.15);
+}
+
+.sent-leads-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 20px 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sent-leads-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+/* ===== Sent Lead Card ===== */
+
+.sent-lead-card {
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid rgba(168,85,247,.2);
+  overflow: hidden;
+  transition: all 0.3s ease;
+  box-shadow: 0 10px 25px rgba(168,85,247,.08);
+}
+
+.sent-lead-card:hover {
+  box-shadow: 0 18px 46px rgba(168,85,247,.15);
+  transform: translateY(-4px);
+  border-color: rgba(168,85,247,.4);
+}
+
+.lead-card-header {
+  background: linear-gradient(135deg, #f5f3ff, #f3e8ff);
+  padding: 16px;
+  border-bottom: 1px solid rgba(168,85,247,.2);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.lead-business-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+  flex: 1;
+}
+
+.lead-category-badge {
+  display: inline-block;
+  background: #a855f7;
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 8px;
+  text-transform: capitalize;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.lead-card-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.lead-info-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.lead-label {
+  font-weight: 700;
+  color: #0f172a;
+  min-width: 100px;
+  flex-shrink: 0;
+}
+
+.lead-value {
+  color: #64748b;
+  word-break: break-word;
+  flex: 1;
+}
+
+/* ===== No Sent Leads ===== */
+
+.no-sent-leads {
+  background: #f8fafc;
+  border: 2px dashed rgba(168,85,247,.2);
+  border-radius: 20px;
+  padding: 52px 40px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.no-sent-leads-icon {
+  font-size: 2.5rem;
+  line-height: 1;
+}
+
+.no-sent-leads p {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+.no-sent-leads span {
+  font-size: 13px;
+  color: #64748b;
+}
+
+/* ===== Sent leads count badge ===== */
+
+.sent-leads-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #a855f7;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 9px;
+  border-radius: 999px;
+  margin-left: 10px;
+  vertical-align: middle;
+}
+
+/* ===== Profile view modifier ===== */
+
+.mrp-insights--profile .business-banner {
+  height: 190px;
+}
+
+/* ===== Leads view modifier ===== */
+
+.mrp-insights--leads {
+  height: 100%;
+}
+
+.mrp-insights--leads .sent-leads-section {
+  height: 100%;
+}
+
+.mrp-insights--leads .sent-leads-list {
+  grid-template-columns: 1fr;
+  max-height: 680px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.mrp-insights--leads .sent-leads-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.mrp-insights--leads .sent-leads-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.mrp-insights--leads .sent-leads-list::-webkit-scrollbar-thumb {
+  background: rgba(168,85,247,.3);
+  border-radius: 4px;
+}
+
+/* ===============================
+   RESPONSIVE DESIGN
+================================ */
+
+@media (max-width: 768px) {
+  .mrp-insights {
+    padding: 20px;
+    border-radius: 20px;
+  }
+
+  .business-info-section {
+    padding: 20px;
+  }
+
+  .business-header-info {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .business-quick-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .contact-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sent-leads-list {
+    grid-template-columns: 1fr;
+  }
+
+  .business-banner {
+    height: 180px;
+  }
+}
+
+@media (max-width: 480px) {
+  .mrp-insights {
+    padding: 16px;
+    border-radius: 16px;
+  }
+
+  .business-info-section {
+    padding: 16px;
+  }
+
+  .business-name {
+    font-size: 20px;
+  }
+
+  .business-quick-stats {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .stat-value {
+    font-size: 18px;
+  }
+
+  .sent-leads-section {
+    padding: 16px;
+  }
+
+  .sent-leads-title {
+    font-size: 16px;
+  }
+
+  .sent-lead-card {
+    border-radius: 12px;
+  }
+
+  .lead-info-item {
+    font-size: 12px;
+  }
+
+  .lead-label {
+    min-width: 80px;
   }
 }

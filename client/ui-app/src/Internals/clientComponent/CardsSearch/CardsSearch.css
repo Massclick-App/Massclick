@@ -19,6 +19,17 @@
     margin-left: 40px;
 }
 
+.brandingText {
+    display: flex;
+    align-items: center;
+}
+
+.brandLogo {
+    height: clamp(28px, 3.5vw, 44px);
+    width: auto;
+    object-fit: contain;
+}
+
 .cards-input-group {
     position: relative;
     display: flex;
@@ -35,33 +46,33 @@
 
 }
 
-.cards-input-group .category-custom-dropdown{
-  position:absolute;
-  top:calc(100% + 8px);
-  left:0;
-  width:100%;
-  background:#fff;
-  border-radius:14px;
-  box-shadow:0 12px 28px rgba(0,0,0,0.15);
-  z-index:5000;
-  overflow:hidden;
+.cards-input-group .category-custom-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    width: 100%;
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.15);
+    z-index: 5000;
+    overflow: hidden;
 }
 
-.cards-input-group .options-list-container{
-  max-height:260px;
-  overflow-y:auto;
+.cards-input-group .options-list-container {
+    max-height: 260px;
+    overflow-y: auto;
 }
 
-.cards-input-group .option-item{
-  padding:12px 16px;
-  display:flex;
-  align-items:center;
-  gap:10px;
-  cursor:pointer;
+.cards-input-group .option-item {
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
 }
 
-.cards-input-group .option-item:hover{
-  background:#f8f8f8;
+.cards-input-group .option-item:hover {
+    background: #f8f8f8;
 }
 
 .cards-input-group:hover {

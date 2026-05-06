@@ -4,15 +4,16 @@ import { fetchSeoPageContentBlogsMeta } from "../../../redux/actions/seoPageCont
 import "./relatedBlogs.css";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import ArrowBackIosIcon from "@mui/icons-material/ArrowBackIos";
+import ArrowOutwardIcon from "@mui/icons-material/ArrowOutward";
 import { Skeleton } from "@mui/material";
 
 const BlogsSkeleton = () => (
-  <div style={{ display: "flex", gap: "1rem", overflow: "hidden", padding: "0 8px" }}>
+  <div className="blogs-skeleton">
     {[...Array(4)].map((_, i) => (
-      <div key={i} style={{ width: 280, flexShrink: 0 }}>
-        <Skeleton variant="rounded" width={280} height={180} animation="wave" sx={{ bgcolor: "rgba(255,107,44,0.055)", borderRadius: 2 }} />
-        <Skeleton variant="rounded" width="70%" height={16} animation="wave" sx={{ bgcolor: "rgba(255,107,44,0.055)", mt: 1.5 }} />
-        <Skeleton variant="rounded" width="50%" height={13} animation="wave" sx={{ bgcolor: "rgba(255,107,44,0.055)", mt: 0.75 }} />
+      <div className="blog-skeleton-card" key={i}>
+        <Skeleton variant="rounded" width="100%" height={190} animation="wave" sx={{ bgcolor: "rgba(255,107,0,0.07)", borderRadius: 2 }} />
+        <Skeleton variant="rounded" width="78%" height={18} animation="wave" sx={{ bgcolor: "rgba(255,107,0,0.07)", mt: 1.5 }} />
+        <Skeleton variant="rounded" width="54%" height={14} animation="wave" sx={{ bgcolor: "rgba(255,107,0,0.07)", mt: 0.8 }} />
       </div>
     ))}
   </div>
@@ -64,7 +65,10 @@ const RelatedBlogs = ({ location }) => {
       <div className="related-container">
 
         <div className="related-header">
-          <h2>Related Articles</h2>
+          <div>
+            <span className="related-eyebrow">Curated reads</span>
+            <h2>Related Articles</h2>
+          </div>
         </div>
 
         <div className="carousel-container">
@@ -78,20 +82,20 @@ const RelatedBlogs = ({ location }) => {
             {loading && <BlogsSkeleton />}
 
             {!loading && error && (
-              <p style={{ padding: 20, color: "red" }}>
+              <p className="related-state related-state-error">
                 {String(error)}
               </p>
             )}
 
             {!loading && !error && list.length === 0 && (
-              <p style={{ padding: 20 }}>No blogs found</p>
+              <p className="related-state">No blogs found</p>
             )}
 
             {!loading &&
               !error &&
               list.map((item) => (
                 <div
-                  className="card"
+                  className="related-card"
                   key={item._id}
                   onClick={() =>
                     window.open(`/blog/${item.slug || createSlug(item.heading)}`, "_blank")
@@ -104,7 +108,10 @@ const RelatedBlogs = ({ location }) => {
 
                   <div className="card-content">
                     <h4>{item.heading}</h4>
-                    <span>Explore</span>
+                    <span>
+                      Explore
+                      <ArrowOutwardIcon />
+                    </span>
                   </div>
                 </div>
               ))}

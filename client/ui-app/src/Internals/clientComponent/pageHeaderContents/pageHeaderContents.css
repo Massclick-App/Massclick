@@ -1,7 +1,7 @@
 .phc-container {
     width: 100%;
     background: #f5f7fa;
-    padding: 35px 20px;   /* ↓ reduced from 60px */
+    padding: 0;
     display: flex;
     justify-content: center;
 }
@@ -10,38 +10,38 @@
     width: 100%;
     max-width: 1720px;
     background: #ffffff;
-    padding: 28px 40px;   /* ↓ reduced from 40px 50px */
-    border-radius: 12px;
+    padding: 26px 40px;
+    border-radius: 8px;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
 }
 
 .phc-header {
-    margin-bottom: 14px;  /* ↓ reduced */
+    margin-bottom: 14px;
 }
 
 .phc-title {
-    font-size: 22px;      /* ↓ reduced from 26px */
+    font-size: 22px;
     font-weight: 600;
     color: #1f2937;
-    margin-bottom: 6px;   /* ↓ reduced */
+    margin-bottom: 6px;
     line-height: 1.3;
 }
 
 .phc-subtitle {
-    font-size: 14px;      /* ↓ reduced */
+    font-size: 14px;
     color: #6b7280;
     line-height: 1.5;
 }
 
 .phc-content {
-    margin-top: 14px;     /* ↓ reduced */
+    margin-top: 14px;
 }
 
 .phc-content p {
-    font-size: 14px;      /* ↓ reduced from 15px */
+    font-size: 14px;
     color: #374151;
-    line-height: 1.6;     /* ↓ tighter */
-    margin-bottom: 12px;  /* ↓ reduced */
+    line-height: 1.6;
+    margin-bottom: 12px;
 }
 
 .phc-content strong {
@@ -49,9 +49,7 @@
     font-weight: 600;
 }
 
-/* Mobile */
 @media (max-width: 768px) {
-
     .phc-wrapper {
         padding: 20px;
     }

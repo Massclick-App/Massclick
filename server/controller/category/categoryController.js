@@ -4,10 +4,12 @@ import {
   viewAllCategory,
   updateCategory,
   deleteCategory,
+  hardDeleteCategory,
   businessSearchCategory
 } from "../../helper/category/categoryHelper.js";
 import { BAD_REQUEST } from "../../errorCodes.js";
 import categoryModel from "../../model/category/categoryModel.js";
+import businessListModel from "../../model/businessList/businessListModel.js";
 import { uploadImageToS3, getSignedUrlByKey } from "../../s3Uploder.js";
 import { categoriesData } from "../../utils/sub-categoriesData.js";
 
@@ -82,6 +84,39 @@ export const deleteCategoryAction = async (req, res) => {
     const categoryId = req.params.id;
     const category = await deleteCategory(categoryId);
     res.send({ message: "Category deleted successfully", category });
+  } catch (error) {
+    console.error(error);
+    return res.status(BAD_REQUEST.code).send({ message: error.message });
+  }
+};
+
+export const categoryBusinessUsageAction = async (req, res) => {
+  try {
+    const names = [].concat(req.query.names || []).flatMap((n) => n.split(",")).map((n) => n.trim()).filter(Boolean);
+    if (!names.length) return res.send([]);
+
+    const counts = await businessListModel.aggregate([
+      { $match: { category: { $in: names } } },
+      { $group: { _id: "$category", count: { $sum: 1 } } },
+    ]);
+
+    const result = names.map((name) => {
+      const found = counts.find((c) => c._id?.toLowerCase() === name.toLowerCase());
+      return { name, count: found ? found.count : 0 };
+    });
+
+    res.send(result);
+  } catch (error) {
+    console.error("categoryBusinessUsageAction error:", error);
+    return res.status(BAD_REQUEST.code).send({ message: error.message });
+  }
+};
+
+export const hardDeleteCategoryAction = async (req, res) => {
+  try {
+    const categoryId = req.params.id;
+    const category = await hardDeleteCategory(categoryId);
+    res.send({ message: "Category permanently deleted", category });
   } catch (error) {
     console.error(error);
     return res.status(BAD_REQUEST.code).send({ message: error.message });
@@ -254,8 +289,7 @@ export const getSubCategoriesAction = async (req, res) => {
         .trim()
         .replace(/[-_\s]+/g, " ")
         .replace(/\bcontractors\b/g, "contractor")
-        .replace(/\s+/g, " ")
-        .replace(/s\b/g, "");
+        .replace(/\s+/g, " ");
 
     const matchedKey = Object.keys(categoriesData).find((key) => {
       const current = normalize(key);
@@ -264,8 +298,7 @@ export const getSubCategoriesAction = async (req, res) => {
       return (
         current === incoming ||
         current === incoming + "s" ||
-        current + "s" === incoming ||
-        current.replace(/s$/, "") === incoming.replace(/s$/, "") 
+        current + "s" === incoming
       );
     });
 
@@ -274,7 +307,7 @@ export const getSubCategoriesAction = async (req, res) => {
       : [];
 
     const allowedNames = selectedCategories.map((i) =>
-      i.name.toLowerCase().trim()
+      cleanText(i.name)
     );
 
     const data = await categoryModel.find({
@@ -282,14 +315,26 @@ export const getSubCategoriesAction = async (req, res) => {
     }).lean();
 
     const filtered = data.filter((item) =>
-      allowedNames.some((name) =>
-        cleanText(name) === cleanText(item.category)
-      )
+      allowedNames.includes(cleanText(item.category))
     );
 
-    if (filtered.length > 0) {
+    const uniqueMap = new Map();
+
+    filtered.forEach((item) => {
+      const key = cleanText(item.category);
+
+      if (!uniqueMap.has(key)) {
+        uniqueMap.set(key, item);
+      }
+    });
+
+    const uniqueData = [...uniqueMap.values()].sort((a, b) =>
+      a.category.localeCompare(b.category)
+    );
+
+    if (uniqueData.length > 0) {
       return res.json(
-        filtered.map((item) => ({
+        uniqueData.map((item) => ({
           _id: item._id,
           name: item.category,
           slug: item.slug,
@@ -300,12 +345,14 @@ export const getSubCategoriesAction = async (req, res) => {
       );
     }
 
-    const fallback = selectedCategories.map((item, index) => ({
-      _id: index + 1,
-      name: item.name,
-      slug: item.name.toLowerCase().replace(/\s+/g, "-"),
-      icon: "/icons/default.webp",
-    }));
+    const fallback = selectedCategories
+      .map((item, index) => ({
+        _id: index + 1,
+        name: item.name,
+        slug: item.name.toLowerCase().replace(/\s+/g, "-"),
+        icon: "/icons/default.webp",
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
 
     return res.json(fallback);
   } catch (error) {
@@ -320,58 +367,58 @@ export const getPopularCategoriesAction = async (req, res) => {
   try {
 
     const POPULAR_ORDER = [
+      "Architect",
       "Astrology",
-      "Vastu Consultant",
-      "Numerology",
-      "Geologist",
-      "Chartered Accountant",
-      "Computer Training Institutes",
-      "Coaching",
-      "Vocational training",
-      "Lawyer",
-      "Registration Consultant",
-      "Placement Service",
-      "Kids School",
+      "Automobiles",
       "Beauty Parlour",
-      "Body Massage",
-      "Salon",
       "Beauty Spa",
+      "Body Massage",
+      "Book Shop",
+      "Boutique",
       "Car Hire",
+      "Ceramic",
+      "Chartered Accountant",
+      "Clinical Lab",
+      "Coaching",
+      "Computer Training Institutes",
+      "Cosmetics",
+      "Courier Services",
       "Electrician Services",
       "Event Organisers",
-      "Real Estate",
-      "Textile",
+      "Export & Import",
       "Fabricators",
-      "Jewellery Showroom",
-      "Tailoring",
-      "Painting Contractor",
-      "Nursing Service",
-      "Courier Services",
-      "Printing Publishing Service",
+      "Fancy Shop",
+      "Footwear Shop",
+      "Geologist",
+      "Hearing Aid",
       "Hobbies",
+      "Homeo Clinic",
       "Internet Website Designer",
+      "Jewellery Showroom",
+      "Kids School",
+      "Lawyer",
+      "Loans",
+      "Mosquito Net",
+      "Numerology",
+      "Nursery Garden",
+      "Nursing Service",
       "Opticals",
       "Organic Shop",
-      "Scrap Dealer",
-      "Automobiles",
-      "Export Import",
-      "Loans",
+      "Painting Contractor",
       "Physiotherapy",
-      "Clinical Lab",
-      "Homeo Clinic",
-      "Cosmetics",
-      "Architect",
-      "Sports",
-      "Ceramic",
-      "Book Shop",
-      "Fancy Shop",
-      "Tattoo Artist",
-      "Boutique",
-      "Footwear Shop",
-      "Nursery Garden",
+      "Placement Service",
+      "printing & publishing service",
+      "Real Estate",
+      "Registration Consultant",
+      "Salon",
+      "Scrap Dealer",
       "Special School",
-      "Mosquito Net",
-      "Hearing Aid"
+      "Sports",
+      "Tailoring",
+      "Tattoo Artist",
+      "Textile",
+      "Vastu Consultant",
+      "Vocational training",
     ];
 
     const categories = await categoryModel.find({
@@ -504,5 +551,86 @@ export const getServiceCardsAction = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(400).send({ message: error.message });
+  }
+};
+
+export const getAllUniqueCategoriesAction = async (req, res) => {
+  try {
+    const S3_BASE_URL = "https://massclickdev.s3.ap-southeast-2.amazonaws.com/";
+
+    const categories = await categoryModel.find({ isActive: true }).lean();
+
+    const normalize = (text = "") =>
+      text.toLowerCase().trim().replace(/[-_\s]+/g, " ");
+
+    const cleanText = (text = "") =>
+      text
+        .toLowerCase()
+        .trim()
+        .replace(/[-_\s]+/g, " ")
+        .replace(/\bcontractors\b/g, "contractor")
+        .replace(/\s+/g, " ");
+
+    const uniqueMap = new Map();
+    categories.forEach((item) => {
+      const key = normalize(item.category);
+      if (!uniqueMap.has(key)) uniqueMap.set(key, item);
+    });
+
+    const dbMap = new Map(
+      categories.map((cat) => [cleanText(cat.category), cat])
+    );
+
+    const result = [...uniqueMap.values()]
+      .sort((a, b) => a.category.localeCompare(b.category))
+      .map((item) => {
+        const parentKey = normalize(item.category);
+
+        const matchedKey = Object.keys(categoriesData).find((key) => {
+          const cur = normalize(key);
+          return (
+            cur === parentKey ||
+            cur === parentKey + "s" ||
+            cur + "s" === parentKey
+          );
+        });
+
+        const subNames = matchedKey ? categoriesData[matchedKey] : [];
+
+        const subs = subNames
+          .map(({ name }) => {
+            const found = dbMap.get(cleanText(name));
+            return found
+              ? {
+                  _id: found._id,
+                  name: found.category,
+                  slug: found.slug,
+                  icon: found.categoryImageKey
+                    ? `${S3_BASE_URL}${found.categoryImageKey}`
+                    : "/icons/default.webp",
+                }
+              : {
+                  name,
+                  slug: name.toLowerCase().replace(/\s+/g, "-"),
+                  icon: "/icons/default.webp",
+                };
+          })
+          .sort((a, b) => a.name.localeCompare(b.name));
+
+        return {
+          _id: item._id,
+          name: item.category,
+          slug: item.slug,
+          icon: item.categoryImageKey
+            ? `${S3_BASE_URL}${item.categoryImageKey}`
+            : "/icons/default.webp",
+          subs,
+        };
+      });
+
+    res.json(result);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: error.message });
   }
 };

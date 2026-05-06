@@ -18,24 +18,31 @@ export const saveFCMToken = async (userId, tokenData) => {
       throw new Error('User not found');
     }
 
-    // Check if token already exists
-    const existingTokenIndex = user.fcmTokens.findIndex(
+    // Match by exact token first, then fall back to same device (deviceName + platform)
+    let existingTokenIndex = user.fcmTokens.findIndex(
       t => t.token === tokenData.token
     );
 
+    if (existingTokenIndex === -1 && tokenData.deviceName) {
+      existingTokenIndex = user.fcmTokens.findIndex(
+        t => t.deviceName === tokenData.deviceName && t.platform === (tokenData.platform || 'android')
+      );
+    }
+
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
     if (existingTokenIndex !== -1) {
-      // Update existing token
+      // Update existing token (token string may have rotated on same device)
+      user.fcmTokens[existingTokenIndex].token = tokenData.token;
       user.fcmTokens[existingTokenIndex].lastRefreshedAt = new Date();
       user.fcmTokens[existingTokenIndex].isActive = true;
-      user.fcmTokens[existingTokenIndex].expiresAt = new Date(
-        Date.now() + 30 * 24 * 60 * 60 * 1000
-      ); // Extend expiry by 30 days
+      user.fcmTokens[existingTokenIndex].expiresAt = expiresAt;
       user.fcmTokens[existingTokenIndex].platform = tokenData.platform || user.fcmTokens[existingTokenIndex].platform;
       if (tokenData.deviceName) {
         user.fcmTokens[existingTokenIndex].deviceName = tokenData.deviceName;
       }
     } else {
-      // Add new token
+      // Genuinely new device — add token
       user.fcmTokens.push({
         token: tokenData.token,
         deviceName: tokenData.deviceName || 'Unknown Device',
@@ -43,7 +50,7 @@ export const saveFCMToken = async (userId, tokenData) => {
         isActive: true,
         registeredAt: new Date(),
         lastRefreshedAt: new Date(),
-        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+        expiresAt
       });
     }
 

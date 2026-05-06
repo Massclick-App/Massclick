@@ -13,6 +13,7 @@ import {
 
 const initialState = {
   user: null,
+  allowedPages: [],
   loading: false,
   error: null,
   accessToken: null,
@@ -33,6 +34,7 @@ export default function authReducer(state = initialState, action) {
         ...state,
         loading: false,
         user: action.payload.user,
+        allowedPages: action.payload.user?.allowedPages || [],
         accessToken: action.payload.accessToken,
         refreshToken: action.payload.refreshToken,
         error: null,

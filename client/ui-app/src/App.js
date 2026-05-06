@@ -11,11 +11,13 @@ import { SnackbarProvider } from 'notistack';
 
 import theme from './Internals/clientComponent/theme.js';
 import PrivateRoute from './PrivateRoute';
+import PermissionRoute from './PermissionRoute';
 import ScrollToTop from './scrollTop.js';
 import RouteChangeTracker from './RouteChangeTracker.js';
 import { userMenuItems } from './Internals/clientComponent/categoryBar.js';
 
 import GlobalSkeleton from './Internals/clientComponent/globalSkeleton.js';
+
 
 const Dashboard = lazy(() => import('./Dashboard'));
 const Login = lazy(() => import('./Internals/Login/login.js'));
@@ -25,6 +27,7 @@ const Business = lazy(() => import('./Internals/business/Business.js'));
 const Category = lazy(() => import('./Internals/categories/Category.js'));
 const Roles = lazy(() => import('./Internals/Roles/Roles.js'));
 const Location = lazy(() => import('./Internals/location/Location.js'));
+const TermsAndConditionsDatas = lazy(() => import('./Internals/footersContents/termsAndConditions/termsAndConditions.js'));
 const MainGrid = lazy(() => import('./components/MainGrid.js'));
 
 const BusinessListing = lazy(() => import('./Internals/clientComponent/home.js'));
@@ -64,6 +67,8 @@ const SeoPageContent = lazy(() => import('./Internals/seoData/seoPageContent/seo
 const SeoPageContentBlogs = lazy(() => import('./Internals/seoData/seoPageContentBlog/seoPageContentBlog.js'));
 
 const MRPDatas = lazy(() => import('./Internals/MRPDATA/mrpData.js'));
+const FCMMarketing = lazy(() => import('./Internals/FCMMarketing/FCMMarketing.js'));
+const SystemSettings = lazy(() => import('./Internals/SystemSettings/SystemSettings.js'));
 
 const FloatingButtons = lazy(() => import('./Internals/clientComponent/floating/floatingButtons.js'));
 const FloatingAdCard = lazy(() => import('./Internals/clientComponent/floating/floatingAdCard.js'));
@@ -183,27 +188,36 @@ function AppRoutes({
             element={<BusinessDetails />}
           />
 
-          {/* Protected Dashboard */}
-          <Route
-            element={<PrivateRoute isAuthenticated={isAuthenticated} />}
-          >
+          {/* ── Protected Dashboard (requires authentication) ──────────────── */}
+          <Route element={<PrivateRoute isAuthenticated={isAuthenticated} />}>
             <Route path="/dashboard" element={<Dashboard />}>
+
+              {/* Always accessible to any authenticated user */}
               <Route index element={<MainGrid />} />
-              <Route path="user" element={<User />} />
               <Route path="profile" element={<Profile />} />
-              <Route path="clients" element={<Clients />} />
-              <Route path="business" element={<Business />} />
-              <Route path="category" element={<Category />} />
-              <Route path="location" element={<Location />} />
-              <Route path="seo" element={<SeoData />} />
-              <Route path="seopagecontent" element={<SeoPageContent />} />
-              <Route path="seopagecontentblogs" element={<SeoPageContentBlogs />} />
-              <Route path="roles" element={<Roles />} />
-              <Route path="enquiry" element={<EnquiryPage />} />
-              <Route path="advertisements" element={<AdvertisementPage />} />
-              <Route path="mni-data" element={<MRPDatas />} />
+
+              {/* ── Permission-gated routes (allowedPages controls access) ── */}
+              <Route element={<PermissionRoute />}>
+                <Route path="clients" element={<Clients />} />
+                <Route path="business" element={<Business />} />
+                <Route path="category" element={<Category />} />
+                <Route path="location" element={<Location />} />
+                <Route path="seo" element={<SeoData />} />
+                <Route path="seopagecontent" element={<SeoPageContent />} />
+                <Route path="seopagecontentblogs" element={<SeoPageContentBlogs />} />
+                <Route path="enquiry" element={<EnquiryPage />} />
+                <Route path="advertisements" element={<AdvertisementPage />} />
+                <Route path="mni-data" element={<MRPDatas />} />
+                <Route path="terms-conditions-data" element={<TermsAndConditionsDatas />} />
+                <Route path="fcm-marketing" element={<FCMMarketing />} />
+                <Route path="user" element={<User />} />
+                <Route path="roles" element={<Roles />} />
+                <Route path="system-settings" element={<SystemSettings />} />
+              </Route>
+
             </Route>
           </Route>
+          {/* ─────────────────────────────────────────────────────────────── */}
         </Routes>
 
         {/* Login Modal */}

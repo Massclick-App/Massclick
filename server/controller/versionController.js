@@ -1,41 +1,32 @@
-import dotenv from 'dotenv';
-dotenv.config();
-
-const getAppVersionConfig = (platform = 'android') => {
-  const platformKey = platform.toLowerCase() === 'ios' ? 'IOS' : 'ANDROID';
-
-  const latestVersion =
-    process.env[`APP_${platformKey}_LATEST_VERSION`] ||
-    process.env.APP_LATEST_VERSION ||
-    '1.0.0';
-
-  const minRequiredVersion =
-    process.env[`APP_${platformKey}_MINIMUM_VERSION`] ||
-    process.env.APP_MINIMUM_VERSION ||
-    latestVersion;
-
-  const updateUrl =
-    process.env[`APP_${platformKey}_UPDATE_URL`] ||
-    process.env.APP_UPDATE_URL ||
-    'https://play.google.com/store/apps/details?id=com.massclick.massclick';
-
-  return {
-    latestVersion,
-    minRequiredVersion,
-    updateUrl,
-    isMaintenanceMode: process.env.APP_MAINTENANCE_MODE === 'true',
-    releaseNotes:
-      process.env.APP_RELEASE_NOTES ||
-      'Bug fixes and performance improvements.',
-    platform: platform.toLowerCase(),
-  };
-};
+import systemSettingsModel from '../model/systemSettings/systemSettingsModel.js';
 
 export const getAppVersionAction = async (req, res) => {
   try {
-    const platform = (req.query.platform || 'android').toString();
-    const versionConfig = getAppVersionConfig(platform);
-    return res.send(versionConfig);
+    const platform = (req.query.platform || 'android').toLowerCase();
+    const isIos = platform === 'ios';
+
+    const settings = await systemSettingsModel.findOne().lean();
+
+    const latestVersion = isIos
+      ? (settings?.app_ios_latest_version || '1.0.0')
+      : (settings?.app_android_latest_version || '1.0.0');
+
+    const minRequiredVersion = isIos
+      ? (settings?.app_ios_min_version || latestVersion)
+      : (settings?.app_android_min_version || latestVersion);
+
+    const updateUrl = isIos
+      ? (settings?.app_ios_update_url || '')
+      : (settings?.app_android_update_url || 'https://play.google.com/store/apps/details?id=com.massclick.massclick');
+
+    return res.send({
+      latestVersion,
+      minRequiredVersion,
+      updateUrl,
+      isMaintenanceMode: settings?.app_maintenance_mode ?? false,
+      releaseNotes: settings?.app_release_notes || 'Bug fixes and performance improvements.',
+      platform,
+    });
   } catch (error) {
     console.error('getAppVersionAction error:', error);
     return res.status(500).send({ message: 'Unable to fetch app version info' });

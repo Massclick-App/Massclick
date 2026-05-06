@@ -38,14 +38,14 @@ const POPULAR_ORDER = [
   "Painting Contractor",
   "Nursing Service",
   "Courier Services",
-  "Printing Publishing Service",
+  "printing & publishing service",
   "Hobbies",
   "Internet Website Designer",
   "Opticals",
   "Organic Shop",
   "Scrap Dealer",
   "Automobiles",
-  "Export Import",
+  "Export & Import",
   "Loans",
   "Physiotherapy",
   "Clinical Lab",
@@ -103,6 +103,17 @@ const PopularCategoriesDrawer = ({ openFromHome = false }) => {
     [selectedDistrict]
   );
 
+  useEffect(() => {
+    if (!popularCategories.length) return;
+
+    const popularCategoryUrls = popularCategories.map((cat) => {
+      const categorySlug = cat.slug || slugify(cat.name);
+      return `/${districtSlug}/${categorySlug}`;
+    });
+
+    console.log("Popular category URLs:", popularCategoryUrls);
+  }, [popularCategories, districtSlug]);
+
   const orderedCategories = useMemo(() => {
 
     if (!popularCategories.length) return [];
@@ -156,7 +167,7 @@ const handleClick = useCallback((cat) => {
     )
   );
 
-  navigate(`/${districtSlug}/${cat.slug}`);
+  navigate(`/${districtSlug}/${cat.slug}`, { state: { logAlreadySent: true } });
   setDrawerOpen(false);
 
 }, [dispatch, navigate, selectedDistrict, districtSlug]);

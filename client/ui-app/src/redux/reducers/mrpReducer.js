@@ -5,7 +5,10 @@ import {
   DELETE_MRP_REQUEST, DELETE_MRP_SUCCESS, DELETE_MRP_FAILURE,
   SEARCH_MRP_BUSINESS_REQUEST, SEARCH_MRP_BUSINESS_SUCCESS, SEARCH_MRP_BUSINESS_FAILURE,
   SEARCH_MRP_CATEGORY_REQUEST, SEARCH_MRP_CATEGORY_SUCCESS, SEARCH_MRP_CATEGORY_FAILURE,
-  SEND_MRP_LEADS_REQUEST, SEND_MRP_LEADS_SUCCESS, SEND_MRP_LEADS_FAILURE
+  SEND_MRP_LEADS_REQUEST, SEND_MRP_LEADS_SUCCESS, SEND_MRP_LEADS_FAILURE,
+  FETCH_MNI_LEADS_REQUEST, FETCH_MNI_LEADS_SUCCESS, FETCH_MNI_LEADS_FAILURE,
+  FETCH_BUSINESS_PROFILE_BY_PHONE_REQUEST, FETCH_BUSINESS_PROFILE_BY_PHONE_SUCCESS, FETCH_BUSINESS_PROFILE_BY_PHONE_FAILURE,
+  FETCH_LEAD_REPORT_REQUEST, FETCH_LEAD_REPORT_SUCCESS, FETCH_LEAD_REPORT_FAILURE
 } from '../actions/userActionTypes.js';
 
 const initialState = {
@@ -13,15 +16,33 @@ const initialState = {
   total: 0,
   pageNo: 1,
   pageSize: 10,
+
   loading: false,
-  leadSending: false,
   error: null,
+  leadSending: false,
+
   businessSearchResults: [],
-  categorySearchResults: []
+  categorySearchResults: [],
+
+  mniLeads: [],
+  mniLoading: false,
+  mniError: null,
+
+  leadReport: null,
+  leadReportLoading: false,
+  leadReportError: null,
+
+  businessProfile: null,
+  businessProfileLoading: false,
+  businessProfileError: null
 };
 
 export default function mrpReducer(state = initialState, action) {
   switch (action.type) {
+
+    /* ===============================
+       MRP CRUD
+    ============================== */
 
     case FETCH_MRP_REQUEST:
     case CREATE_MRP_REQUEST:
@@ -68,6 +89,20 @@ export default function mrpReducer(state = initialState, action) {
         )
       };
 
+    case FETCH_MRP_FAILURE:
+    case CREATE_MRP_FAILURE:
+    case EDIT_MRP_FAILURE:
+    case DELETE_MRP_FAILURE:
+      return {
+        ...state,
+        loading: false,
+        error: action.payload
+      };
+
+    /* ===============================
+       SEARCH
+    ============================== */
+
     case SEARCH_MRP_BUSINESS_REQUEST:
     case SEARCH_MRP_CATEGORY_REQUEST:
       return {
@@ -98,6 +133,9 @@ export default function mrpReducer(state = initialState, action) {
         error: action.payload
       };
 
+    /* ===============================
+       SEND LEADS
+    ============================== */
 
     case SEND_MRP_LEADS_REQUEST:
       return {
@@ -119,15 +157,84 @@ export default function mrpReducer(state = initialState, action) {
         error: action.payload
       };
 
-    case FETCH_MRP_FAILURE:
-    case CREATE_MRP_FAILURE:
-    case EDIT_MRP_FAILURE:
-    case DELETE_MRP_FAILURE:
+    /* ===============================
+       🔥 MNI LEADS (FIXED)
+    ============================== */
+
+    case FETCH_MNI_LEADS_REQUEST:
       return {
         ...state,
-        loading: false,
-        error: action.payload
+        mniLoading: true,
+        mniError: null
       };
+
+    case FETCH_MNI_LEADS_SUCCESS:
+      return {
+        ...state,
+        mniLoading: false,
+        mniLeads: action.payload.data
+      };
+
+    case FETCH_MNI_LEADS_FAILURE:
+      return {
+        ...state,
+        mniLoading: false,
+        mniError: action.payload
+      };
+
+    /* ===============================
+       LEAD REPORT
+    ============================== */
+
+    case FETCH_LEAD_REPORT_REQUEST:
+      return {
+        ...state,
+        leadReportLoading: true,
+        leadReportError: null
+      };
+
+    case FETCH_LEAD_REPORT_SUCCESS:
+      return {
+        ...state,
+        leadReportLoading: false,
+        leadReport: action.payload
+      };
+
+    case FETCH_LEAD_REPORT_FAILURE:
+      return {
+        ...state,
+        leadReportLoading: false,
+        leadReportError: action.payload
+      };
+
+    /* ===============================
+       BUSINESS PROFILE BY PHONE
+    ============================== */
+
+    case FETCH_BUSINESS_PROFILE_BY_PHONE_REQUEST:
+      return {
+        ...state,
+        businessProfileLoading: true,
+        businessProfileError: null
+      };
+
+    case FETCH_BUSINESS_PROFILE_BY_PHONE_SUCCESS:
+      return {
+        ...state,
+        businessProfileLoading: false,
+        businessProfile: action.payload
+      };
+
+    case FETCH_BUSINESS_PROFILE_BY_PHONE_FAILURE:
+      return {
+        ...state,
+        businessProfileLoading: false,
+        businessProfileError: action.payload
+      };
+
+    /* ===============================
+       DEFAULT
+    ============================== */
 
     default:
       return state;

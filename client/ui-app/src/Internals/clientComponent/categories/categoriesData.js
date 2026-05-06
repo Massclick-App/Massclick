@@ -1,4 +1,5 @@
 export const categoriesData = {
+  
   contractor: [
     { name: "Civil Contractors" },
     { name: "Electrical Contractors" },
@@ -104,4 +105,5 @@ export const categoriesData = {
     { name: "Packers And Movers For Commercial" },
     { name: "Transporters" },
   ],
+
 };

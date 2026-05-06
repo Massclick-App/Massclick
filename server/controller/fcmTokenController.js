@@ -1,6 +1,38 @@
 import { saveFCMToken, removeFCMToken, getActiveFCMTokens } from '../helper/fcmTokenHelper.js';
 import { BAD_REQUEST, OK } from '../errorCodes.js';
-import { ObjectId } from 'mongodb'; // ✅ ADD THIS
+import { ObjectId } from 'mongodb';
+/**
+ * Register web push subscription
+ * POST /api/fcm-token/web-register
+ * Body: { userId, endpoint, auth, p256dh }
+ */
+export const registerWebPushTokenAction = async (req, res) => {
+  try {
+    const { userId, endpoint, auth, p256dh } = req.body;
+
+    if (!userId || !endpoint || !auth || !p256dh) {
+      return res.status(BAD_REQUEST.code).json({ message: 'Missing required fields: userId, endpoint, auth, p256dh' });
+    }
+
+    if (!ObjectId.isValid(userId)) {
+      return res.status(BAD_REQUEST.code).json({ message: 'Invalid user ID format' });
+    }
+
+    const subscriptionToken = JSON.stringify({ endpoint, auth, p256dh });
+
+    const result = await saveFCMToken(userId, {
+      token: subscriptionToken,
+      platform: 'web',
+      deviceName: req.headers['user-agent']?.slice(0, 100) || 'Web Browser',
+    });
+
+    console.log('[FCM web-register] Web push subscription saved for userId:', userId);
+    res.status(200).json({ message: 'Web push subscription registered', data: result });
+  } catch (error) {
+    console.error('[FCM web-register] Failed:', error.message);
+    res.status(500).json({ message: error.message });
+  }
+};
 
 /**
  * Save or update FCM token for a user

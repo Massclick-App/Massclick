@@ -42,15 +42,15 @@ const CategoryRouter = () => {
           return;
         }
 
- 
+
         if (category && !subcategory && categoriesData[category]) {
           setResolvedCategory(formatText(category));
           return;
         }
 
-   
+
         if (subcategory) {
-          const searchValue = subcategory;
+          const searchValue = subcategory.replace(/-/g, " ");
 
           const response = await dispatch(
             backendMainSearch(
@@ -66,12 +66,12 @@ const CategoryRouter = () => {
             setResolvedCategory(results[0].category);
           } else {
             setResolvedCategory(formatText(subcategory));
-          }
+          } 
 
           return;
         }
 
-  
+
         if (category) {
           const response = await dispatch(
             backendMainSearch(

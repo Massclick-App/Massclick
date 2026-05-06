@@ -23,7 +23,10 @@ export const Collections = {
     BUSINESSREVIEW: 'businessreview',
     LEADROTATION: 'leadsrotation',
     ADVERTISE: 'advertise',
-    FAVORITES: 'favorites'
+    TERMSANDCONDITIONS: 'termsandconditions',
+    FAVORITES: 'favorites',
+    FCMCAMPAIGNS: 'fcmcampaigns',
+    SYSTEMSETTINGS: 'systemsettings'
 };
 
 export const {
@@ -51,5 +54,8 @@ export const {
     BUSINESSREVIEW,
     LEADROTATION,
     ADVERTISE,
-    FAVORITES
+    TERMSANDCONDITIONS,
+    FAVORITES,
+    FCMCAMPAIGNS,
+    SYSTEMSETTINGS
 } = Collections;

@@ -11,53 +11,34 @@ import { useDispatch, useSelector } from "react-redux";
 const clientTestimonials = [
     {
         id: 1,
-        name: "Sivakumar Veerabathiran",
-        company: "Seven Hills Technologies",
-        source: "Professional Services",
-        quote: "Seven Hills Technologies work are very professional & User friendly. His dedication and determination towards his profession is awesome. Congratulations 🥳",
+        name: "Sri Balaji",
+        quote: "Mr.Murugan and team have been very professional since day one, they answered all my queries. Every morning they share the report and the next plan to action without me following up shows their commitment and transparency. I wish him and his team all the best.",
     },
     {
         id: 2,
-        name: "Stephen",
-        company: "Construction Business Owner",
-        source: "Digital Marketing Client",
-        quote: "Hello everyone I am doing construction business and I want to advertise because my business is not progressing enough and I want to advertise with this company called seven hills digital market. Advertised through digital marketing and within a very short few days I started getting more clients and they were very patient with all our queries. We are thankful for where they have been as a huge pillar for them now moving towards the next phase and also I am suggest to my friends....",
+        name: "Raja Kumaran",
+        quote: "Service is good & customer care quick response to any queries",
     },
     {
         id: 3,
-        name: "Muthuraman M",
-        company: "Seven Hills Technologies",
-        source: "Web development company in South Tamil Nadu.",
-        quote: "Reasonable price and user friendly design. Seven Hills Technologies is one of the best web site development company in South Tamil Nadu.",
+        name: "Arifa Banu",
+        quote: "I searched for a special school on Google and found the MassClick website on the first page. I visited their service page, and the process was very simple. I was able to call directly and complete the school admission easily.",
     },
     {
         id: 4,
-        name: "A.Ashif Raja",
-        company: "Private Client",
-        source: "Personal Website/Business",
-        quote: "The service provided by the company is highly professional and ethical. They have designed my website to my expectations. Highly recommended. Every nook and corner of the website was carefully designed ensuring my utmost satisfaction. Staff members were helpful and friendly too. They were always in touch and very much easy to approach and contact.",
+        name: "Shiva G",
+        quote: "We are very grateful to massclick. Because of them we have good customers and reaching more customers. Our business is expanding than we think. Thank you",
     },
     {
         id: 5,
-        name: "Jeganath R",
-        company: "Freelance Client",
-        source: "Professional Services",
-        quote: "As per the customer requirements they are providing very flexible solutions and maintaining the professional services. Really we are very satisfied to work with you. Keep continue your good work. All the best :)",
+        name: "Don VJ",
+        quote: "Hi i am dr vijay karthick from HHH HERBAL HOSPITAL, THILLAINAGAR and kk nagar, Trichy.. We are getting gud reach to people because of mass click. Owner muruganantham brother and staffs are so cooperative and energetic 🙏",
     },
     {
         id: 6,
-        name: "Priya S.",
-        company: "Global E-Commerce",
-        source: "E-Commerce Strategy",
-        quote: "MassClick provided exceptional market insights that helped us scale our global operations faster than anticipated. Their strategy was smart, aggressive, and highly effective. A truly professional service.",
+        name: "Jaiganesh B",
+        quote: "Amazing nice excellent super support",
     },
-    {
-        id: 7,
-        name: "Vishal K.",
-        company: "Local Retail Chain",
-        source: "Business Listing Management",
-        quote: "We saw an immediate boost in local traffic and customer inquiries after using MassClick. The listing management is seamless and the transparency is appreciated. Highly recommend for any business looking to grow their local presence.",
-    }
 ];
 
 const TestimonialCard = ({ testimonial }) => (
@@ -86,7 +67,6 @@ const Testimonials = () => {
         dispatch(fetchSeoMeta({ pageType: "testimonial" }));
     }, [dispatch]);
 
-
     const fallbackSeo = {
         title: "Testimonials - Massclick",
         description:
@@ -98,7 +78,7 @@ const Testimonials = () => {
 
     const [currentIndex, setCurrentIndex] = useState(0);
     const sliderRef = useRef(null);
-    const autoScrollInterval = 20000; 
+    const autoScrollInterval = 20000;
 
     const handleNext = useCallback(() => {
         setCurrentIndex(prevIndex =>
@@ -130,7 +110,6 @@ const Testimonials = () => {
         }
     }, [currentIndex]);
 
-
     return (
         <>
             <SeoMeta seoData={seoMetaData} fallback={fallbackSeo} />
@@ -143,8 +122,8 @@ const Testimonials = () => {
                         className="slider-track"
                         ref={sliderRef}
                         style={{
-                            transform: `translateX(0)`, 
-                            transition: 'transform 1s ease-in-out' 
+                            transform: `translateX(0)`,
+                            transition: 'transform 1s ease-in-out'
                         }}
                     >
                         {clientTestimonials.map((testimonial, index) => (

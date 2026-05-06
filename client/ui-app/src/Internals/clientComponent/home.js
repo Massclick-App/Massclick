@@ -1,13 +1,19 @@
 import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import { useDispatch, useSelector } from "react-redux";
-import { Box, Drawer, Grid, List, ListItem, ListItemText, Skeleton } from '@mui/material';
+import { Box, Drawer, Grid, List, ListItem, ListItemText, Skeleton, Snackbar, Alert, Avatar } from '@mui/material';
+import { Helmet } from "react-helmet-async";
 import HeroSection from '../clientComponent/heroSection/heroSection.js';
 import CategoryBar from '../clientComponent/categoryBar';
 import CardsSearch from './CardsSearch/CardsSearch';
 import OTPLoginModel from './AddBusinessModel.js';
 import { viewOtpUser } from '../../redux/actions/otpAction.js';
+import { fetchMatchedLeads } from '../../redux/actions/leadsAction.js';
 import SeoMeta from "./seo/seoMeta";
 import { fetchSeoMeta } from "../../redux/actions/seoAction";
+import { messaging, onMessage } from '../../firebase';
+import miLogo from '../../assets/mi.png';
+import { connectSocket, disconnectSocket } from '../../services/socketService.js';
+import './homeLayout.css';
 
 const S = ({ variant = "rounded", w, h, r, sx, ...rest }) => (
   <Skeleton
@@ -30,12 +36,15 @@ const TrendingSearchesCarousel = lazy(() => import('./trendingSearch/trendingSea
 const CardCarousel = lazy(() => import('./popularSearch/popularSearch'));
 const TopTourist = lazy(() => import('./topTourist/topTourist'));
 const MassClickBanner = lazy(() => import('./massClickBanner/massClickBanner'));
+const PopularCategoriesLink = lazy(() => import('./popularCategories/popularCategories.js'));
 const SearchResults = lazy(() => import('./SearchResult/SearchResult'));
 const Footer = lazy(() => import('./footer/footer'));
 const PageHeaderContents = lazy(() => import('./pageHeaderContents/pageHeaderContents.js'));
 const RelatedBlogs = lazy(() => import('./relatedBlogs/relatedBlogs.js'));
 
 const STICKY_SEARCH_BAR_HEIGHT = 85;
+const HOME_SECTION_GAP = { xs: 2.5, sm: 3, md: 3.5 };
+const homeSectionSx = { mb: HOME_SECTION_GAP };
 
 /* ──────────────────────────────────────────────────────────────
    Per-section skeleton loaders
@@ -118,13 +127,10 @@ const SkeletonGrid = ({ type }) => {
   );
 };
 
-/* ──────────────────────────────────────────────────────────────
-   Main LandingPage
-────────────────────────────────────────────────────────────── */
-
 const LandingPage = () => {
 
     const dispatch = useDispatch();
+    const [fcmNotif, setFcmNotif] = useState(null);
 
     const { meta: seoMetaData } = useSelector(
         (state) => state.seoReducer
@@ -133,6 +139,17 @@ const LandingPage = () => {
     useEffect(() => {
         dispatch(fetchSeoMeta({ pageType: "home" }));
     }, [dispatch]);
+
+    useEffect(() => {
+        const unsubscribe = onMessage(messaging, (payload) => {
+            console.log('[FCM] Foreground message received:', payload);
+            const { title, body, image } = payload.notification || {};
+            const imageUrl = image || payload.data?.imageUrl || null;
+            console.log('[FCM] Showing in-app notification:', { title, body, imageUrl });
+            setFcmNotif({ title: title || 'MassClick', body: body || '', image: imageUrl });
+        });
+        return unsubscribe;
+    }, []);
 
     const fallbackSeo = {
         title: "Massclick - India's Leading Local Search Platform",
@@ -158,15 +175,25 @@ const LandingPage = () => {
 
     useEffect(() => {
         const mobile = localStorage.getItem("mobileNumber");
+        const token = localStorage.getItem("authToken");
         if (!mobile) return;
 
         dispatch(viewOtpUser(mobile));
 
-        const interval = setInterval(() => {
-            dispatch(viewOtpUser(mobile));
-        }, 20000);
+        if (!token) return;
 
-        return () => clearInterval(interval);
+        const ws = connectSocket(token);
+
+        const onLeadUpdate = () => {
+            dispatch(viewOtpUser(mobile));
+            dispatch(fetchMatchedLeads());
+        };
+
+        ws.on('lead:analytics:update', onLeadUpdate);
+
+        return () => {
+            ws.off('lead:analytics:update', onLeadUpdate);
+        };
     }, [dispatch]);
 
     const isUserLoggedIn = () => {
@@ -229,11 +256,43 @@ const LandingPage = () => {
         </Box>
     );
 
+    const websiteSchema = {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        name: "Massclick",
+        url: "https://massclick.in",
+        potentialAction: {
+            "@type": "SearchAction",
+            target: "https://massclick.in/{search_term_string}",
+            "query-input": "required name=search_term_string",
+        },
+    };
+
+    const webPageSchema = {
+        "@context": "https://schema.org",
+        "@type": "WebPage",
+        name: fallbackSeo.title,
+        description: fallbackSeo.description,
+        url: "https://massclick.in/",
+        publisher: {
+            "@type": "Organization",
+            name: "Massclick",
+            logo: {
+                "@type": "ImageObject",
+                url: "https://massclick.in/mi.png",
+            },
+        },
+    };
+
     return (
         <>
             <SeoMeta seoData={seoMetaData} fallback={fallbackSeo} />
+            <Helmet>
+                <script type="application/ld+json">{JSON.stringify(websiteSchema)}</script>
+                <script type="application/ld+json">{JSON.stringify(webPageSchema)}</script>
+            </Helmet>
 
-            <Box sx={{ flexGrow: 1, bgcolor: 'background.default', width: '100%' }}>
+            <Box className="home-page" sx={{ flexGrow: 1, bgcolor: 'background.default', width: '100%' }}>
 
                 <Drawer anchor="right" open={mobileMenuOpen} onClose={handleMobileMenuClose}>
                     {drawerContent}
@@ -288,51 +347,56 @@ const LandingPage = () => {
                         </Box>
                     ) : (
                         <>
-                            <Box sx={{ mb: { xs: 4, sm: 5, md: 6 } }}>
+                            <Box className="home-section home-section--flush" sx={homeSectionSx}>
                                 <Suspense fallback={<SkeletonCards type="featured" />}>
                                     <FeaturedServices />
                                 </Suspense>
                             </Box>
 
-                            <Box sx={{ mb: { xs: 4, sm: 5, md: 6 } }}>
+                            <Box className="home-section" sx={homeSectionSx}>
                                 <Suspense fallback={<SkeletonCards type="service" />}>
                                     <ServiceCardsGrid />
                                 </Suspense>
                             </Box>
 
-                            <Box sx={{ mb: { xs: 4, sm: 5, md: 6 } }}>
+                            <Box className="home-section" sx={homeSectionSx}>
                                 <Suspense fallback={<SkeletonBanner />}>
                                     <MassClickBanner />
                                 </Suspense>
                             </Box>
 
-                            <Box sx={{ mb: { xs: 4, sm: 5, md: 6 } }}>
+                            <Box className="home-section" sx={homeSectionSx}>
                                 <Suspense fallback={<SkeletonCarousel type="trending" />}>
                                     <TrendingSearchesCarousel />
                                 </Suspense>
                             </Box>
 
-                            <Box sx={{ mb: { xs: 4, sm: 5, md: 6 } }}>
+                            <Box className="home-section" sx={homeSectionSx}>
                                 <Suspense fallback={<SkeletonCarousel type="popular" />}>
                                     <CardCarousel />
                                 </Suspense>
                             </Box>
 
-                            <Box sx={{ mb: { xs: 4, sm: 5, md: 6 } }}>
+                            <Box className="home-section" sx={homeSectionSx}>
                                 <Suspense fallback={<SkeletonGrid type="tourist" />}>
                                     <TopTourist />
                                 </Suspense>
                             </Box>
 
-                            <Box sx={{ mb: { xs: 4, sm: 5, md: 6 } }}>
+                            <Box className="home-section" sx={homeSectionSx}>
                                 <Suspense fallback={<SkeletonGrid type="blogs" />}>
                                     <RelatedBlogs location={locationName} />
                                 </Suspense>
                             </Box>
 
-                            <Box sx={{ mb: { xs: 4, sm: 5, md: 6 } }}>
+                            <Box className="home-section" sx={homeSectionSx}>
                                 <Suspense fallback={<SkeletonCards type="pageheader" />}>
                                     <PageHeaderContents />
+                                </Suspense>
+                            </Box>
+                            <Box className="home-section" sx={homeSectionSx}>
+                                <Suspense fallback={null}>
+                                    <PopularCategoriesLink />
                                 </Suspense>
                             </Box>
 
@@ -347,6 +411,56 @@ const LandingPage = () => {
                     handleClose={() => setShowLoginModal(false)}
                 />
             </Box>
+
+            <Snackbar
+                open={!!fcmNotif}
+                autoHideDuration={6000}
+                onClose={() => setFcmNotif(null)}
+                anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+            >
+                <Alert
+                    onClose={() => setFcmNotif(null)}
+                    severity="info"
+                    icon={false}
+                    sx={{
+                        width: '100%',
+                        maxWidth: 360,
+                        bgcolor: '#fff',
+                        color: '#333',
+                        boxShadow: 4,
+                        borderRadius: 2,
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: 1.5,
+                        p: 1.5,
+                    }}
+                >
+                    <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
+                        {fcmNotif?.image ? (
+                            <Avatar
+                                src={fcmNotif.image}
+                                variant="rounded"
+                                sx={{ width: 48, height: 48, flexShrink: 0 }}
+                                imgProps={{ onError: (e) => { e.target.style.display = 'none'; } }}
+                            />
+                        ) : (
+                            <Avatar
+                                src={miLogo}
+                                variant="rounded"
+                                sx={{ width: 48, height: 48, flexShrink: 0 }}
+                            />
+                        )}
+                        <Box>
+                            <Box sx={{ fontWeight: 700, fontSize: 14, mb: 0.25 }}>
+                                {fcmNotif?.title}
+                            </Box>
+                            <Box sx={{ fontSize: 13, color: '#555' }}>
+                                {fcmNotif?.body}
+                            </Box>
+                        </Box>
+                    </Box>
+                </Alert>
+            </Snackbar>
         </>
     );
 };

@@ -65,7 +65,6 @@ export const viewAllUserClients = async ({
   try {
     let query = {};
 
-  
     if (role === "SuperAdmin") {
       query = {};
     }
@@ -87,13 +86,10 @@ export const viewAllUserClients = async ({
       query = { isActive: true };
     }
     else {
-      throw new Error("Unauthorized role");
+      query = {};
     }
-
-  
     if (status === "active") query.isActive = true;
     if (status === "inactive") query.isActive = false;
-
 
     if (search) {
       query.$or = [
@@ -106,7 +102,6 @@ export const viewAllUserClients = async ({
       ];
     }
 
- 
     const allowedSortFields = [
       "createdAt",
       "name",

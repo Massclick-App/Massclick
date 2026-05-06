@@ -17,11 +17,36 @@ import SupportAgentIcon from "@mui/icons-material/SupportAgent";
 import InterpreterModeIcon from "@mui/icons-material/InterpreterMode";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import TodayIcon from "@mui/icons-material/Today";
+import LocationOnIcon from "@mui/icons-material/LocationOn";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useSelector } from "react-redux";
 import DatasetIcon from '@mui/icons-material/Dataset';
 import CorporateFareIcon from '@mui/icons-material/CorporateFare';
 import NewspaperIcon from '@mui/icons-material/Newspaper';
 import SourceIcon from '@mui/icons-material/Source';
+import CampaignIcon from '@mui/icons-material/Campaign';
+import TuneIcon from '@mui/icons-material/Tune';
+
+const SUPERADMIN = 'SuperAdmin';
+
+const ALL_ITEMS = [
+  { text: "Home",                icon: HomeRoundedIcon,        path: "/dashboard" },
+  { text: "Clients",             icon: SupportAgentIcon,       path: "/dashboard/clients" },
+  { text: "Business",            icon: BusinessIcon,           path: "/dashboard/business" },
+  { text: "Category",            icon: CategoryIcon,           path: "/dashboard/category" },
+  { text: "Location",            icon: LocationOnIcon,         path: "/dashboard/location" },
+  { text: "SEO Management",      icon: SourceIcon,             path: "/dashboard/seo" },
+  { text: "SEO Page Content",    icon: DatasetIcon,            path: "/dashboard/seopagecontent" },
+  { text: "SEO Blogs",           icon: NewspaperIcon,          path: "/dashboard/seopagecontentblogs" },
+  { text: "Enquiry",             icon: TodayIcon,              path: "/dashboard/enquiry" },
+  { text: "Advertisements",      icon: CampaignIcon,           path: "/dashboard/advertisements" },
+  { text: "MNI Data",            icon: CorporateFareIcon,      path: "/dashboard/mni-data" },
+  { text: "Terms & Conditions",  icon: CorporateFareIcon,      path: "/dashboard/terms-conditions-data" },
+  { text: "Push Notify",         icon: CampaignIcon,           path: "/dashboard/fcm-marketing" },
+  { text: "Users",               icon: InterpreterModeIcon,    path: "/dashboard/user" },
+  { text: "Roles",               icon: AdminPanelSettingsIcon, path: "/dashboard/roles" },
+  { text: "System Settings",     icon: TuneIcon,               path: "/dashboard/system-settings" },
+];
 
 export default function SideMenu({ onItemClick }) {
   const navigate = useNavigate();
@@ -29,83 +54,21 @@ export default function SideMenu({ onItemClick }) {
   const theme = useTheme();
   const isTabletDown = useMediaQuery(theme.breakpoints.down("md"));
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-  const userRole = localStorage.getItem("userRole") || "Guest";
 
-  const mainListItems = [
-    {
-      text: "Home",
-      icon: HomeRoundedIcon,
-      path: "/dashboard",
-    },
-    {
-      text: "Clients",
-      icon: SupportAgentIcon,
-      path: "/dashboard/clients",
-    },
-    {
-      text: "Business",
-      icon: BusinessIcon,
-      path: "/dashboard/business",
-    },
-    {
-      text: "Category",
-      icon: CategoryIcon,
-      path: "/dashboard/category",
-      roles: ["SuperAdmin"],
-    },
-    {
-      text: "Seo Management",
-      icon: SourceIcon,
-      path: "/dashboard/seo",
-      roles: ["SuperAdmin"],
-    },
-    {
-      text: "Seo PageContent",
-      icon: DatasetIcon,
-      path: "/dashboard/seopagecontent",
-      roles: ["SuperAdmin"],
-    },
-    {
-      text: "Seo PageContent Blogs",
-      icon: NewspaperIcon,
-      path: "/dashboard/seopagecontentblogs",
-      roles: ["SuperAdmin"],
-    },
-    {
-      text: "Users",
-      icon: InterpreterModeIcon,
-      path: "/dashboard/user",
-      roles: ["SuperAdmin"],
-    },
-    {
-      text: "Role",
-      icon: AdminPanelSettingsIcon,
-      path: "/dashboard/roles",
-      roles: ["SuperAdmin"],
-    },
-    {
-      text: "EnquiryPage",
-      icon: TodayIcon,
-      path: "/dashboard/enquiry",
-      roles: ["SuperAdmin"],
-    },
-    {
-      text: "Advertisements",
-      icon: TodayIcon,
-      path: "/dashboard/advertisements",
-      roles: ["SuperAdmin"],
-    },
-    {
-      text: "MNI",
-      icon: CorporateFareIcon,
-      path: "/dashboard/mni-data",
-      roles: ["SuperAdmin"],
-    },
-  ];
+  const userRole =
+    useSelector((state) => state.auth?.user?.userRole) ||
+    localStorage.getItem("userRole") || "";
 
-  const filteredListItems = mainListItems.filter((item) => {
-    if (!item.roles) return true;
-    return item.roles.includes(userRole);
+  const allowedPages =
+    useSelector((state) => state.auth?.allowedPages) ||
+    JSON.parse(localStorage.getItem("allowedPages") || "[]");
+
+  const isSuperAdmin = userRole === SUPERADMIN;
+
+  const filteredListItems = ALL_ITEMS.filter((item) => {
+    if (item.path === "/dashboard") return true;
+    if (isSuperAdmin) return true;
+    return allowedPages.includes(item.path);
   });
 
   const iconSize = isMobile ? 30 : isTabletDown ? 34 : 38;

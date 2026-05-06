@@ -1,0 +1,159 @@
+:root {
+  --bg: #f8fafc;
+  --card: #ffffff;
+  --text: #111827;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --primary: #ff8c00;
+  --danger: #ef4444;
+  --shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.terms-page {
+  width: 100%;
+  min-height: 100vh;
+  padding: 24px;
+  background: var(--bg);
+}
+
+.terms-container {
+  max-width: 1320px;
+  margin: 0 auto;
+}
+
+.terms-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 28px;
+  box-shadow: var(--shadow);
+}
+
+.terms-header,
+.terms-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.terms-header {
+  margin-bottom: 24px;
+}
+
+.terms-header h1 {
+  margin: 0;
+  font-size: clamp(1.6rem, 2vw, 2.2rem);
+}
+
+.terms-header p {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+
+.terms-toolbar {
+  margin-bottom: 18px;
+}
+
+.terms-list {
+  display: grid;
+  gap: 16px;
+}
+
+.terms-item {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  background: #fff;
+}
+
+.terms-item-full {
+  display: grid;
+  gap: 14px;
+}
+
+.terms-input {
+  width: 100%;
+  height: 52px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  font-size: 15px;
+}
+
+.terms-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px rgba(255, 140, 0, 0.12);
+}
+
+.editor-wrapper .ql-container {
+  min-height: 220px;
+  border-bottom-left-radius: 12px;
+  border-bottom-right-radius: 12px;
+}
+
+.editor-wrapper .ql-toolbar {
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+}
+
+.editor-wrapper .ql-editor {
+  min-height: 180px;
+  font-size: 15px;
+}
+
+.terms-delete {
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 12px !important;
+  background: rgba(239, 68, 68, 0.08) !important;
+}
+
+.terms-actionbar {
+  margin-top: 24px;
+}
+
+.terms-submit {
+  border: none;
+  background: linear-gradient(135deg, #ff8c00, #ff6a00);
+  color: #fff;
+  padding: 14px 26px;
+  border-radius: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.terms-table {
+  margin-top: 28px;
+}
+
+.terms-table-actions {
+  display: flex;
+  gap: 6px;
+}
+
+@media (max-width: 768px) {
+  .terms-page {
+    padding: 16px;
+  }
+
+  .terms-card {
+    padding: 18px;
+  }
+
+  .terms-header,
+  .terms-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .terms-submit {
+    width: 100%;
+  }
+}

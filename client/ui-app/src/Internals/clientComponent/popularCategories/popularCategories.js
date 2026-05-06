@@ -1,202 +1,253 @@
-import React from "react";
+import React, { useMemo, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import {
+  BadgeIndianRupee,
+  BriefcaseBusiness,
+  Clapperboard,
+  Handshake,
+  MapPinned,
+  PackageCheck,
+  ReceiptText,
+  Sparkles,
+  Stethoscope,
+  Utensils,
+  Wrench,
+} from "lucide-react";
+import { logSearchActivity } from "../../../redux/actions/businessListAction";
+import popularCategoriesData from "./popularCategoriesData.json";
+import popularCategoriesLinkSections from "./popularCategoriesLinkSections.json";
+import popularCategoriesServices from "./popularCategoriesServices.json";
 import "./popularCategories.css";
 
-import { useNavigate } from "react-router-dom";
-import { useSelector } from "react-redux";
+const createSlug = (text = "") =>
+  String(text)
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
 
+const getDistrictSlug = (selectedDistrict) => {
+  if (selectedDistrict?.slug) return selectedDistrict.slug;
+  if (selectedDistrict?.name) return createSlug(selectedDistrict.name);
+  if (typeof selectedDistrict === "string") return createSlug(selectedDistrict);
 
-
-
-const createSlug = (text) => {
-
-    if (!text) return "unknown";
-
-    if (typeof text === "object") {
-
-        text =
-            text.slug ||
-            text.name ||
-            text.label ||
-            "";
-
-    }
-
-    if (typeof text !== "string") return "unknown";
-
-    return text
-        .toLowerCase()
-        .trim()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/(^-|-$)+/g, "");
-
+  return localStorage.getItem("selectedDistrictSlug") || "tiruchirappalli";
 };
 
+const serviceIcons = {
+  bill: ReceiptText,
+  doctor: Stethoscope,
+  food: Utensils,
+  handshake: Handshake,
+  jobs: BriefcaseBusiness,
+  map: MapPinned,
+  movies: Clapperboard,
+  package: PackageCheck,
+  realEstate: BadgeIndianRupee,
+  repair: Wrench,
+  spa: Sparkles,
+};
 
+const PopularCategoriesLink = () => {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const [activeCategory, setActiveCategory] = useState(
+    popularCategoriesData[0]?.category || ""
+  );
 
-/* ============================= */
-/* POPULAR SEARCH LIST */
-/* ============================= */
+  const selectedDistrict = useSelector(
+    (state) => state.locationReducer.selectedDistrict
+  );
 
-const popularSearches = [
+  const districtSlug = useMemo(
+    () => getDistrictSlug(selectedDistrict),
+    [selectedDistrict]
+  );
 
-    "Dealers",
-    "Gym",
-    "Mandapam",
-    "Pediatric Hospital",
-    "Color Therapy",
-    "Ultrasound Scan",
-    "Homeo Clinic",
-    "Interior Designer",
-    "Live Music Concert",
-    "Tattoo Shop",
-    "Boutique Halls",
-    "Catering Services",
-    "Women Beauty Salon",
-    "Naturopathy",
-    "Aariworks Services",
-    "Moles and Warts",
-    "Yenp",
-    "Visa Booking",
-    "Janavasam",
-    "Shop",
-    "Wholesale Dealers",
-    "Pre Wedding Photography",
-    "Interlock Bricks",
-    "Band Music",
-    "Acupuncture",
-    "Mosquito Net",
-    "Neurology and Neuro Surgery",
-    "M Sand",
-    "Events",
-    "Mixer Repair Services",
-    "Gas Cylinder Services",
-    "Health Check Up",
-    "Dental Care",
-    "Paediatric Ortho",
-    "GATE Coaching Center",
-    "Skin Discolouration",
-    "Mehendi Artist",
-    "Saree Polishing",
-    "Medical Lab",
-    "Air Therapy",
-    "Melam",
-    "Crane Service",
-    "Creative Photography Services",
-    "Multi Speciality Hospital",
-    "Granites Marbles",
-    "Steel Dealer",
-    "Air Travels",
-    "Bridal Hairstyles",
-    "Mammography",
-    "Bridal Jewels rental services",
-    "Hospital"
-
-];
-
-
-
-/* ============================= */
-/* COMPONENT */
-/* ============================= */
-
-const PopularCategories = () => {
-
-    const navigate = useNavigate();
-
-
-    /* GET DISTRICT FROM REDUX */
-
-    const selectedDistrict = useSelector(
-        (state) => state.locationReducer.selectedDistrict
+  const activeKeywords = useMemo(() => {
+    return (
+      popularCategoriesData.find((item) => item.category === activeCategory)
+        ?.keywords || []
     );
+  }, [activeCategory]);
 
+  const handleKeywordClick = (keyword) => {
+    const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
 
-    /* CREATE DISTRICT SLUG */
-
-    const districtSlug =
-
-        selectedDistrict?.slug ||
-
-        createSlug(selectedDistrict) ||
-
-        localStorage.getItem("selectedDistrictSlug") ||
-
-        "tiruchirappalli";
-
-
-
-    /* HANDLE CLICK */
-
-    const handleCategoryClick = (category) => {
-
-        const categorySlug =
-            createSlug(category);
-
-
-        /* NAVIGATE USING CORRECT ROUTE */
-
-        navigate(`/${districtSlug}/${categorySlug}`);
-
+    const userDetails = {
+      userName: authUser?.userName,
+      mobileNumber1: authUser?.mobileNumber1,
+      mobileNumber2: authUser?.mobileNumber2,
+      email: authUser?.email,
     };
 
+    dispatch(
+      logSearchActivity(
+        keyword,
+        selectedDistrict || "Global",
+        userDetails,
+        keyword
+      )
+    );  
 
+    navigate(`/${districtSlug}/${createSlug(keyword)}`, {
+      state: {
+        logAlreadySent: true,
+        category: keyword,
+        categoryName: keyword,
+      },
+    });
+  };
 
-    return (
+  const handleServiceClick = (service) => {
+    if (service.route) {
+      navigate(service.route);
+      return;
+    }
 
-        <div className="popular-categories-container-text">
+    const categoryName = service.searchName || service.title;
+    const routeSlug = service.routeSlug || createSlug(categoryName);
+    const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
 
-            <h2 className="popular-categories-heading-text">
+    const userDetails = {
+      userName: authUser?.userName,
+      mobileNumber1: authUser?.mobileNumber1,
+      mobileNumber2: authUser?.mobileNumber2,
+      email: authUser?.email,
+    };
 
-                Popular Search
-
-            </h2>
-
-
-            <div className="search-links-wrapper">
-
-                {popularSearches.map((link, index) => (
-
-                    <React.Fragment key={index}>
-
-                        <a
-                            href="#"
-                            onClick={(e) => {
-
-                                e.preventDefault();
-
-                                handleCategoryClick(link);
-
-                            }}
-                            className="search-link"
-                            title={`Search for ${link}`}
-                        >
-
-                            {link}
-
-                        </a>
-
-
-                        {index < popularSearches.length - 1 && (
-
-                            <span className="link-separator">
-
-                                {" | "}
-
-                            </span>
-
-                        )}
-
-                    </React.Fragment>
-
-                ))}
-
-            </div>
-
-        </div>
-
+    dispatch(
+      logSearchActivity(
+        categoryName,
+        selectedDistrict || "Global",
+        userDetails,
+        categoryName
+      )
     );
 
+    navigate(`/${districtSlug}/${routeSlug}`, {
+      state: {
+        logAlreadySent: true,
+        category: categoryName,
+        categoryName,
+      },
+    });
+  };
+
+  if (!popularCategoriesData.length) return null;
+
+  return (
+    <section className="popular-categories-links" aria-label="Popular Categories">
+      <div className="popular-categories-links__inner">
+        <div className="popular-categories-links__header">
+          <h2 className="popular-categories-links__title">Popular Categories</h2>
+          <span className="popular-categories-links__meta">
+            {activeKeywords.length} searches
+          </span>
+        </div>
+
+        <div className="popular-categories-links__tabs" role="tablist">
+          {popularCategoriesData.map((item) => {
+            const isActive = item.category === activeCategory;
+
+            return (
+              <button
+                key={item.category}
+                type="button"
+                className={`popular-categories-links__tab${
+                  isActive ? " popular-categories-links__tab--active" : ""
+                }`}
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => setActiveCategory(item.category)}
+              >
+                {item.category}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="popular-categories-links__keywords">
+          {activeKeywords.map((keyword, index) => (
+            <button
+              key={`${keyword}-${index}`}
+              type="button"
+              className="popular-categories-links__keyword"
+              onClick={() => handleKeywordClick(keyword)}
+            >
+              {keyword}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="popular-categories-links__services">
+        <h2 className="popular-categories-links__servicesTitle">
+          Some of our services that will prove useful to you on a day-to-day basis are :
+        </h2>
+
+        <div className="popular-categories-links__servicesGrid">
+          {popularCategoriesServices.map((service) => {
+            const Icon = serviceIcons[service.icon] || Sparkles;
+
+            return (
+              <article
+                className="popular-categories-links__service"
+                key={service.title}
+              >
+                <button
+                  type="button"
+                  className="popular-categories-links__serviceHead"
+                  onClick={() => handleServiceClick(service)}
+                >
+                  <span className="popular-categories-links__serviceIcon">
+                    <Icon size={24} strokeWidth={1.7} />
+                  </span>
+                  <span>{service.title}</span>
+                </button>
+
+                <p className="popular-categories-links__serviceText">
+                  {service.description}
+                </p>
+              </article>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="popular-categories-links__collections">
+        {popularCategoriesLinkSections.map((section) => (
+          <article
+            className="popular-categories-links__collection"
+            key={section.title}
+          >
+            <div className="popular-categories-links__collectionHeader">
+              <h3 className="popular-categories-links__collectionTitle">
+                {section.title}
+              </h3>
+              <span className="popular-categories-links__collectionCount">
+                {section.keywords.length}
+              </span>
+            </div>
+
+            <div className="popular-categories-links__inlineLinks">
+              {section.keywords.map((keyword, index) => (
+                <button
+                  key={`${section.title}-${keyword}-${index}`}
+                  type="button"
+                  className="popular-categories-links__inlineLink"
+                  onClick={() => handleKeywordClick(keyword)}
+                >
+                  {keyword}
+                </button>
+              ))}
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
 };
 
-
-export default PopularCategories;
+export default PopularCategoriesLink;

@@ -88,12 +88,16 @@ useEffect(() => {
   searchLoggedRef.current = false;
 }, [searchText, locationText]);
 
-const logSearchIfLoggedIn = useCallback(() => {
+const logSearch = useCallback(() => {
   if (searchLoggedRef.current) return;
 
-  const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
+  // Skip if the search bar already fired logSearchActivity before navigating here
+  if (locationState.state?.logAlreadySent) {
+    searchLoggedRef.current = true;
+    return;
+  }
 
-  if (!authUser?._id) return;
+  const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
 
   const userDetails = {
     userName: authUser?.userName,
@@ -113,16 +117,16 @@ const logSearchIfLoggedIn = useCallback(() => {
 
   searchLoggedRef.current = true;
 
-}, [dispatch, searchText, locationText]);
+}, [dispatch, searchText, locationText, locationState.state?.logAlreadySent]);
 
 useEffect(() => {
-  logSearchIfLoggedIn();
-}, [logSearchIfLoggedIn]);
+  logSearch();
+}, [logSearch]);
 
 useEffect(() => {
   const handleAuthChange = () => {
     if (!searchLoggedRef.current) {
-      logSearchIfLoggedIn();
+      logSearch();
     }
   };
 
@@ -131,7 +135,7 @@ useEffect(() => {
   return () => {
     window.removeEventListener("authChange", handleAuthChange);
   };
-}, [logSearchIfLoggedIn]);
+}, [logSearch]);
 
   useEffect(() => {
 
@@ -435,16 +439,18 @@ useEffect(() => {
 
         <div className="results-container content-section">
 
-          {!seoContentLoading && sanitizedHeaderContent && (
+          {/* {!seoContentLoading && sanitizedHeaderContent && (
             <section
               className="seo-header-content premium-section"
               dangerouslySetInnerHTML={{
                 __html: sanitizedHeaderContent,
               }}
             />
-          )}
+          )} */}
           <div className="results-heading">
-
+            <h1 className="main-seo-heading">
+              Best {searchText} in {locationText}
+            </h1>
             <h4 className="results-subheading">
               Discover trusted {searchText} in {locationText}. Compare ratings,
               reviews and contact details to find the best near you.

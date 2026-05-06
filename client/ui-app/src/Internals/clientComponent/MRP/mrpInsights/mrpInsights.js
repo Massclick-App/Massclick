@@ -1,79 +1,385 @@
-import Accordion from '@mui/material/Accordion';
-import AccordionSummary from '@mui/material/AccordionSummary';
-import AccordionDetails from '@mui/material/AccordionDetails';
-import Typography from '@mui/material/Typography';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import Chip from '@mui/material/Chip';
-import Box from '@mui/material/Box';
+import { getBusinessProfileByPhone } from "../../../../redux/actions/mrpAction.js";
+import { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import "./mrpInsights.css";
 
-import './mrpInsights.css';
+export default function MNILeadsInsights({ view }) {
+  const dispatch = useDispatch();
+  const [error, setError] = useState(null);
 
-export default function MRPInsights({ data = [] }) {
-  const safeData = Array.isArray(data)
-    ? data.filter(item => item && typeof item === 'object')
-    : [];
+  const {
+    businessProfile = null,
+    businessProfileLoading,
+    businessProfileError
+  } = useSelector(state => state.mrp || {});
 
-  if (!safeData.length) {
+  useEffect(() => {
+    // "leads" view piggybacks on data fetched by "profile" view
+    if (view === "leads") return;
+
+    try {
+      const phoneNumber = localStorage.getItem("mobileNumber");
+      if (!phoneNumber) {
+        setError("Phone number not found in localStorage");
+        return;
+      }
+      dispatch(getBusinessProfileByPhone(phoneNumber));
+    } catch (err) {
+      console.error("Error fetching business profile:", err);
+      setError(err.message);
+    }
+  }, [dispatch, view]);
+
+  const S3_URL = "https://massclickdev.s3.ap-southeast-2.amazonaws.com";
+
+  const formatPhone = (phone) => {
+    const clean = phone?.toString().replace(/\D/g, "").slice(-10) || "N/A";
+    return clean.replace(/(\d{5})(\d{5})/, "$1-$2");
+  };
+
+  const getTodayHours = (openingHours) => {
+    const today = new Date().toLocaleDateString("en-US", { weekday: "long" });
+    const todayHours = openingHours?.find(h => h.day === today);
+    if (!todayHours) return "N/A";
+    if (todayHours.isClosed) return "Closed";
+    if (todayHours.is24Hours) return "24 Hours";
+    return `${todayHours.open} - ${todayHours.close}`;
+  };
+
+  const formatDate = (date) => new Date(date).toLocaleDateString("en-US", {
+    year: "numeric", month: "short", day: "numeric"
+  });
+
+  // ── Shared loading / error / empty states ──
+
+  if (businessProfileLoading) {
     return (
-      <div className="mrp-insights-empty">
-        <p>No requirements yet</p>
-        <span>Your published requirements will appear here</span>
+      <div className="mrp-insights">
+        <div className="mrp-insights-loading">
+          <div className="spinner"></div>
+          <p>Loading business profile...</p>
+        </div>
       </div>
     );
   }
 
-  return (
-    <div className="mrp-insights">
-      <div className="mrp-insights-header">
-        <h3>Requirement Insights</h3>
-        <span>{safeData.length} active</span>
+  if (businessProfileError || error) {
+    return (
+      <div className="mrp-insights">
+        <div className="mrp-insights-error">
+          <p>⚠️ Error: {businessProfileError || error}</p>
+        </div>
       </div>
+    );
+  }
 
-      <div className="mrp-insights-list">
-        {safeData.map(item => (
-          <Accordion
-            key={item._id}
-            disableGutters
-            elevation={0}
-            className="mrp-insight-card"
-          >
-            <AccordionSummary
-              expandIcon={<ExpandMoreIcon />}
-              className="mrp-insight-summary"
-            >
-              <Box className="mrp-insight-summary-content">
-                <div className="mrp-insight-main">
-                  <Typography className="mrp-insight-title">
-                    {item.categoryId || '—'}
-                  </Typography>
+  if (!businessProfile) {
+    return (
+      <div className="mrp-insights">
+        <div className="mrp-insights-empty">
+          <p>No business profile found</p>
+        </div>
+      </div>
+    );
+  }
 
-                  <div className="mrp-insight-meta">
-                    <span>📍 {item.location || '—'}</span>
-                    {item.createdAt && (
-                      <span>
-                        {new Date(item.createdAt).toLocaleDateString()}
-                      </span>
+  const {
+    businessName,
+    location,
+    category,
+    contact,
+    whatsappNumber,
+    email,
+    bannerImageKey,
+    openingHours,
+    analytics,
+    averageRating,
+    mniDetails,
+    sentLeads = []
+  } = businessProfile;
+
+  // ── Profile view (row 1 right) ──
+  if (view === "profile") {
+    return (
+      <div className="mrp-insights mrp-insights--profile">
+        <div className="mrp-insights-header">
+          <h3>Business Profile</h3>
+          <span>{location?.toUpperCase()}</span>
+        </div>
+
+        <div className="business-profile-main">
+          {bannerImageKey && (
+            <div className="business-banner">
+              <img
+                src={`${S3_URL}/${bannerImageKey}`}
+                alt={businessName}
+                onError={(e) => { e.target.style.display = "none"; }}
+              />
+            </div>
+          )}
+
+          <div className="business-info-section">
+            <div className="business-header-info">
+              <div>
+                <h2 className="business-name">{businessName}</h2>
+                <p className="business-category">{category}</p>
+              </div>
+              <div className="business-rating">
+                <span className="rating-stars">⭐ {averageRating?.toFixed(1) || "N/A"}</span>
+              </div>
+            </div>
+
+            <div className="business-quick-stats">
+              <div className="stat-item">
+                <span className="stat-label">Today's Hours</span>
+                <span className="stat-value">{getTodayHours(openingHours)}</span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-label">Location</span>
+                <span className="stat-value">{location}</span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-label">Views</span>
+                <span className="stat-value">{analytics?.views || 0}</span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-label">Leads Received</span>
+                <span className="stat-value">{mniDetails?.leadsCount || 0}</span>
+              </div>
+            </div>
+
+            <div className="business-contact-info">
+              <h4>Contact Information</h4>
+              <div className="contact-grid">
+                <div className="contact-item">
+                  <span className="contact-icon">📱</span>
+                  <div>
+                    <p className="contact-label">Phone</p>
+                    <p className="contact-value">{formatPhone(contact)}</p>
+                  </div>
+                </div>
+                <div className="contact-item">
+                  <span className="contact-icon">💬</span>
+                  <div>
+                    <p className="contact-label">WhatsApp</p>
+                    <p className="contact-value">{formatPhone(whatsappNumber)}</p>
+                  </div>
+                </div>
+                <div className="contact-item">
+                  <span className="contact-icon">✉️</span>
+                  <div>
+                    <p className="contact-label">Email</p>
+                    <p className="contact-value">{email || "N/A"}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Leads view (row 2 right) ──
+  if (view === "leads") {
+    return (
+      <div className="mrp-insights mrp-insights--leads">
+        {sentLeads.length > 0 ? (
+          <div className="sent-leads-section">
+            <h3 className="sent-leads-title">Sent Leads
+              <span className="sent-leads-count">{sentLeads.length}</span>
+            </h3>
+
+            <div className="sent-leads-list">
+              {sentLeads.map((lead, index) => (
+                <div key={lead._id || index} className="sent-lead-card">
+                  <div className="lead-card-header">
+                    <h4 className="lead-business-name">{lead.businessName}</h4>
+                    <span className="lead-category-badge">{lead.category}</span>
+                  </div>
+
+                  <div className="lead-card-body">
+                    <div className="lead-info-item">
+                      <span className="lead-label">📍 Location</span>
+                      <span className="lead-value">{lead.location}</span>
+                    </div>
+                    <div className="lead-info-item">
+                      <span className="lead-label">📅 Sent</span>
+                      <span className="lead-value">{formatDate(lead.date)}</span>
+                    </div>
+                    {lead.receiverDetails && (
+                      <>
+                        <div className="lead-info-item">
+                          <span className="lead-label">📱 Contact</span>
+                          <span className="lead-value">{formatPhone(lead.receiverDetails.contact)}</span>
+                        </div>
+                        <div className="lead-info-item">
+                          <span className="lead-label">💬 WhatsApp</span>
+                          <span className="lead-value">{formatPhone(lead.receiverDetails.whatsappNumber)}</span>
+                        </div>
+                      </>
                     )}
                   </div>
                 </div>
-
-                <Chip
-                  label="New"
-                  size="small"
-                  className="mrp-insight-chip"
-                />
-              </Box>
-            </AccordionSummary>
-
-            <AccordionDetails className="mrp-insight-details">
-              <Typography className="mrp-insight-description">
-                {item.description || 'No description provided'}
-              </Typography>
-
-            </AccordionDetails>
-          </Accordion>
-        ))}
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="no-sent-leads">
+            <div className="no-sent-leads-icon">📤</div>
+            <p>No leads sent yet</p>
+            <span>Leads sent to businesses will appear here.</span>
+          </div>
+        )}
       </div>
+    );
+  }
+
+  // ── Default: full view ──
+  return (
+    <div className="mrp-insights">
+      <div className="mrp-insights-header">
+        <h3>📊 Business Profile</h3>
+        <span>{location?.toUpperCase()}</span>
+      </div>
+
+      <div className="business-profile-main">
+        {bannerImageKey && (
+          <div className="business-banner">
+            <img
+              src={`${S3_URL}/${bannerImageKey}`}
+              alt={businessName}
+              onError={(e) => { e.target.style.display = "none"; }}
+            />
+          </div>
+        )}
+
+        <div className="business-info-section">
+          <div className="business-header-info">
+            <div>
+              <h2 className="business-name">{businessName}</h2>
+              <p className="business-category">{category}</p>
+            </div>
+            <div className="business-rating">
+              <span className="rating-stars">⭐ {averageRating?.toFixed(1) || "N/A"}</span>
+            </div>
+          </div>
+
+          <div className="business-quick-stats">
+            <div className="stat-item">
+              <span className="stat-label">Today's Hours</span>
+              <span className="stat-value">{getTodayHours(openingHours)}</span>
+            </div>
+            <div className="stat-item">
+              <span className="stat-label">Location</span>
+              <span className="stat-value">{location}</span>
+            </div>
+            <div className="stat-item">
+              <span className="stat-label">Views</span>
+              <span className="stat-value">{analytics?.views || 0}</span>
+            </div>
+            <div className="stat-item">
+              <span className="stat-label">Leads Received</span>
+              <span className="stat-value">{mniDetails?.leadsCount || 0}</span>
+            </div>
+          </div>
+
+          <div className="business-contact-info">
+            <h4>Contact Information</h4>
+            <div className="contact-grid">
+              <div className="contact-item">
+                <span className="contact-icon">📱</span>
+                <div>
+                  <p className="contact-label">Phone</p>
+                  <p className="contact-value">{formatPhone(contact)}</p>
+                </div>
+              </div>
+              <div className="contact-item">
+                <span className="contact-icon">💬</span>
+                <div>
+                  <p className="contact-label">WhatsApp</p>
+                  <p className="contact-value">{formatPhone(whatsappNumber)}</p>
+                </div>
+              </div>
+              <div className="contact-item">
+                <span className="contact-icon">✉️</span>
+                <div>
+                  <p className="contact-label">Email</p>
+                  <p className="contact-value">{email || "N/A"}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {mniDetails && (
+            <div className="business-mni-details">
+              <h4>Lead Performance</h4>
+              <div className="mni-stats-grid">
+                <div className="mni-stat">
+                  <p className="mni-stat-label">Total Leads</p>
+                  <p className="mni-stat-value">{mniDetails?.leadsCount || 0}</p>
+                </div>
+                <div className="mni-stat">
+                  <p className="mni-stat-label">Categories</p>
+                  <p className="mni-stat-value">{mniDetails?.leadsCategory?.length || 0}</p>
+                </div>
+                <div className="mni-stat">
+                  <p className="mni-stat-label">Group</p>
+                  <p className="mni-stat-value">{mniDetails?.categoryGroup || "N/A"}</p>
+                </div>
+                {mniDetails?.lastLeadsUpdate && (
+                  <div className="mni-stat">
+                    <p className="mni-stat-label">Last Update</p>
+                    <p className="mni-stat-value">{formatDate(mniDetails.lastLeadsUpdate)}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {sentLeads.length > 0 ? (
+        <div className="sent-leads-section">
+          <h3 className="sent-leads-title">📤 Sent Leads ({sentLeads.length})</h3>
+          <div className="sent-leads-list">
+            {sentLeads.map((lead, index) => (
+              <div key={lead._id || index} className="sent-lead-card">
+                <div className="lead-card-header">
+                  <h4 className="lead-business-name">{lead.businessName}</h4>
+                  <span className="lead-category-badge">{lead.category}</span>
+                </div>
+                <div className="lead-card-body">
+                  <div className="lead-info-item">
+                    <span className="lead-label">📍 Location:</span>
+                    <span className="lead-value">{lead.location}</span>
+                  </div>
+                  <div className="lead-info-item">
+                    <span className="lead-label">📅 Sent Date:</span>
+                    <span className="lead-value">{formatDate(lead.date)}</span>
+                  </div>
+                  {lead.receiverDetails && (
+                    <>
+                      <div className="lead-info-item">
+                        <span className="lead-label">📱 Contact:</span>
+                        <span className="lead-value">{formatPhone(lead.receiverDetails.contact)}</span>
+                      </div>
+                      <div className="lead-info-item">
+                        <span className="lead-label">💬 WhatsApp:</span>
+                        <span className="lead-value">{formatPhone(lead.receiverDetails.whatsappNumber)}</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="no-sent-leads">
+          <p>📤 No leads sent yet</p>
+        </div>
+      )}
     </div>
   );
 }

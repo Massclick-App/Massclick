@@ -27,6 +27,7 @@ import {
 } from "@mui/icons-material";
 import CorporateFareIcon from '@mui/icons-material/CorporateFare';
 import MI from "../../assets/mi.png";
+import MassclickIndiaLogo from "../../assets/Massclick-India.png";
 import AddBusinessModal from "./AddBusinessModel.js";
 import AppRegistrationIcon from '@mui/icons-material/AppRegistration';
 import LoginIcon from '@mui/icons-material/Login';
@@ -85,15 +86,15 @@ export const userMenuItems = [
     // { name: "User Account", path: "/user_account", icon: <AccountBoxIcon color="action" />, component: AccountPage },
     { name: "MNI", path: "/user_mni", icon: <BusinessCenterIcon color="action" />, component: MRPPage },
     { name: "User Favorites", path: "/user_favorites", icon: <FavoriteBorderIcon color="action" />, component: FavoritesPage },
-    { name: "User Saved", path: "/user_saved", icon: <BookmarkBorderIcon color="action" />, component: SavedPage },
-    { name: "User My Transaction", path: "/user_my-transaction", icon: <AccountBalanceWalletIcon color="action" />, component: MyTransactionPage },
-    { name: "User Notifications", path: "/user_notifications", icon: <NotificationsActiveIcon color="action" />, component: NotificationsPage },
+    // { name: "User Saved", path: "/user_saved", icon: <BookmarkBorderIcon color="action" />, component: SavedPage },
+    // { name: "User My Transaction", path: "/user_my-transaction", icon: <AccountBalanceWalletIcon color="action" />, component: MyTransactionPage },
+    // { name: "User Notifications", path: "/user_notifications", icon: <NotificationsActiveIcon color="action" />, component: NotificationsPage },
     { name: "User Customer Service", path: "/user_customer-service", icon: <HeadsetMicIcon color="action" />, component: CustomerServicePage },
-    { name: "User Investor Relations", path: "/user_investor-relations", icon: <TrendingUpIcon color="action" />, component: InvestorRelationsPage },
+    // { name: "User Investor Relations", path: "/user_investor-relations", icon: <TrendingUpIcon color="action" />, component: InvestorRelationsPage },
     { name: "User Policy", path: "/user_policy", icon: <PolicyIcon color="action" />, component: PolicyPage },
     { name: "User Feedback", path: "/user_feedback", icon: <FeedbackIcon color="action" />, component: FeedbackPage },
     { name: "User Help", path: "/user_help", icon: <HelpOutlineIcon color="action" />, component: HelpPage },
-    { name: "Change Language", isLanguageSwitch: true, icon: <LanguageIcon color="action" /> },
+    // { name: "Change Language", isLanguageSwitch: true, icon: <LanguageIcon color="action" /> },
     { name: "Logout", isLogout: true, path: "/", icon: <ExitToAppIcon color="action" /> },
 ];
 
@@ -276,8 +277,7 @@ const CategoryBar = () => {
                         <img src={MI} alt="Massclick Logo" className="logoImage" />
                     </div>
                     <div className="brandingText">
-                        <h1 className="mainTitle">Mass<span>click</span></h1>
-                        <p className="subTitle">India's Leading Local Search Engine</p>
+                        <img src={MassclickIndiaLogo} alt="Massclick India" className="brandLogo" />
                     </div>
                 </div>
 
@@ -372,7 +372,7 @@ export default CategoryBar;
 
 
 export const categoryBarHelpers = {
-    
+
     checkLogin: () => {
         const token = localStorage.getItem("authToken");
         return !!token;

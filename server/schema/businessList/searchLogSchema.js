@@ -27,6 +27,9 @@ const searchLogSchema = new mongoose.Schema({
     ],
     isRead: { type: Boolean, default: false },
     whatsapp: { type: Boolean, default: false },
+    isAnonymous: { type: Boolean, default: false, index: true },
+    // Short hash of IP+UA — only used to dedup anonymous logs. Raw IP is never stored.
+    anonFingerprint: { type: String, default: '' },
     createdAt: {
         type: Date,
         default: Date.now,
