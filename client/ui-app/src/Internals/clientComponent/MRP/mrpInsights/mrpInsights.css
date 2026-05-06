@@ -569,12 +569,82 @@
 .no-sent-leads {
   background: #f8fafc;
   border: 2px dashed rgba(168,85,247,.2);
-  border-radius: 16px;
-  padding: 40px;
+  border-radius: 20px;
+  padding: 52px 40px;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.no-sent-leads-icon {
+  font-size: 2.5rem;
+  line-height: 1;
+}
+
+.no-sent-leads p {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+.no-sent-leads span {
+  font-size: 13px;
   color: #64748b;
-  font-weight: 600;
-  font-size: 15px;
+}
+
+/* ===== Sent leads count badge ===== */
+
+.sent-leads-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #a855f7;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 9px;
+  border-radius: 999px;
+  margin-left: 10px;
+  vertical-align: middle;
+}
+
+/* ===== Profile view modifier ===== */
+
+.mrp-insights--profile .business-banner {
+  height: 190px;
+}
+
+/* ===== Leads view modifier ===== */
+
+.mrp-insights--leads {
+  height: 100%;
+}
+
+.mrp-insights--leads .sent-leads-section {
+  height: 100%;
+}
+
+.mrp-insights--leads .sent-leads-list {
+  grid-template-columns: 1fr;
+  max-height: 680px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.mrp-insights--leads .sent-leads-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.mrp-insights--leads .sent-leads-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.mrp-insights--leads .sent-leads-list::-webkit-scrollbar-thumb {
+  background: rgba(168,85,247,.3);
+  border-radius: 4px;
 }
 
 /* ===============================

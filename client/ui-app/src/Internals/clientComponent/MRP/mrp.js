@@ -44,33 +44,13 @@ export default function MRPPage() {
     details: ''
   });
 
-  const totalRequirements = mrpList.length;
-  const uniqueCategoryCount = new Set(
-    mrpList.map(item => item?.categoryId).filter(Boolean)
-  ).size;
-
-  const topCategories = Object.entries(
-    mrpList.reduce((acc, item) => {
-      if (item?.categoryId) {
-        acc[item.categoryId] = (acc[item.categoryId] || 0) + 1;
-      }
-      return acc;
-    }, {})
-  )
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 3);
-
   useEffect(() => {
     try {
       const storedUser = localStorage.getItem("authUser");
-
       if (!storedUser) return;
-
       const authUser = JSON.parse(storedUser);
-
       setBusinessQuery(authUser.businessName || "");
       setBusinessSelected(true);
-
       setFormData(prev => ({
         ...prev,
         organizationId: authUser._id || "",
@@ -86,6 +66,10 @@ export default function MRPPage() {
     return () => clearTimeout(timerRef.current);
   }, []);
 
+  useEffect(() => {
+    dispatch(getAllMRP());
+  }, [dispatch]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -95,9 +79,7 @@ export default function MRPPage() {
     }
 
     if (!categorySelected) {
-      enqueueSnackbar('Please select category from suggestions', {
-        variant: 'warning'
-      });
+      enqueueSnackbar('Please select category from suggestions', { variant: 'warning' });
       return;
     }
 
@@ -115,18 +97,9 @@ export default function MRPPage() {
 
       dispatch(getAllMRP());
 
-      enqueueSnackbar('Requirement published and leads sent successfully', {
-        variant: 'success'
-      });
+      enqueueSnackbar('Requirement published and leads sent successfully', { variant: 'success' });
 
-      setFormData({
-        organizationId: '',
-        categoryId: '',
-        location: '',
-        details: '',
-        contactDetails: ''
-      });
-
+      setFormData({ organizationId: '', categoryId: '', location: '', details: '', contactDetails: '' });
       setBusinessQuery('');
       setCategoryQuery('');
       setBusinessSelected(false);
@@ -134,27 +107,18 @@ export default function MRPPage() {
 
     } catch (err) {
       console.error(err);
-
       enqueueSnackbar(
-        typeof err === "string"
-          ? err
-          : err?.message || "Failed to publish requirement",
+        typeof err === "string" ? err : err?.message || "Failed to publish requirement",
         { variant: "error" }
       );
     }
   };
 
-  useEffect(() => {
-    dispatch(getAllMRP());
-  }, [dispatch]);
-
   const handleBusinessSearch = (value) => {
     setBusinessQuery(value);
     setBusinessSelected(false);
     setFormData(prev => ({ ...prev, organizationId: '' }));
-
     clearTimeout(timerRef.current);
-
     if (value.trim().length >= 2) {
       timerRef.current = setTimeout(() => {
         dispatch(searchMrpBusiness(value.trim()));
@@ -166,9 +130,7 @@ export default function MRPPage() {
     setCategoryQuery(value);
     setCategorySelected(false);
     setFormData(prev => ({ ...prev, categoryId: '' }));
-
     clearTimeout(timerRef.current);
-
     if (value.trim().length >= 2) {
       timerRef.current = setTimeout(() => {
         dispatch(searchMrpCategory(value.trim()));
@@ -182,7 +144,9 @@ export default function MRPPage() {
       <div className="page-spacing-mrp" />
 
       <section className="mrp-container">
-        <div className="mrp-layout-3">
+
+        {/* ── ROW 1: Publish form (60%) + Business profile (40%) ── */}
+        <div className="mrp-row mrp-row-1">
 
           <div className="mrp-form-card mrp-card">
             <header className="mrp-header">
@@ -198,12 +162,8 @@ export default function MRPPage() {
 
               <div className="mrp-field async-search">
                 <label>Requesting Organization</label>
-
                 <div className="mrp-input">
-                  <span className="icon">
-                    <BusinessIcon fontSize="small" />
-                  </span>
-
+                  <span className="icon"><BusinessIcon fontSize="small" /></span>
                   <input
                     value={businessQuery}
                     onChange={(e) => handleBusinessSearch(e.target.value)}
@@ -211,47 +171,31 @@ export default function MRPPage() {
                     required
                   />
                 </div>
-
-                {!businessSelected &&
-                  businessQuery.length >= 2 &&
-                  businessSearchResults.length > 0 && (
-                    <ul className="async-dropdown">
-                      {businessSearchResults.map(biz => (
-                        <li
-                          key={biz._id}
-                          onClick={() => {
-                            setBusinessQuery(biz.businessName);
-                            setBusinessSelected(true);
-
-                            setFormData(prev => ({
-                              ...prev,
-                              organizationId: biz._id
-                            }));
-                          }}
-                        >
-                          {biz.businessName}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+                {!businessSelected && businessQuery.length >= 2 && businessSearchResults.length > 0 && (
+                  <ul className="async-dropdown">
+                    {businessSearchResults.map(biz => (
+                      <li
+                        key={biz._id}
+                        onClick={() => {
+                          setBusinessQuery(biz.businessName);
+                          setBusinessSelected(true);
+                          setFormData(prev => ({ ...prev, organizationId: biz._id }));
+                        }}
+                      >
+                        {biz.businessName}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
 
               <div className="mrp-field">
                 <label>Requirement Location</label>
-
                 <div className="mrp-input">
-                  <span className="icon">
-                    <LocationOnIcon fontSize="small" />
-                  </span>
-
+                  <span className="icon"><LocationOnIcon fontSize="small" /></span>
                   <input
                     value={formData.location}
-                    onChange={(e) =>
-                      setFormData(prev => ({
-                        ...prev,
-                        location: e.target.value
-                      }))
-                    }
+                    onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
                     placeholder="City / Region"
                     required
                   />
@@ -260,20 +204,11 @@ export default function MRPPage() {
 
               <div className="mrp-field">
                 <label>Contact Details</label>
-
                 <div className="mrp-input">
-                  <span className="icon">
-                    <PhoneIcon fontSize="small" />
-                  </span>
-
+                  <span className="icon"><PhoneIcon fontSize="small" /></span>
                   <input
                     value={formData.contactDetails}
-                    onChange={(e) =>
-                      setFormData(prev => ({
-                        ...prev,
-                        contactDetails: e.target.value
-                      }))
-                    }
+                    onChange={(e) => setFormData(prev => ({ ...prev, contactDetails: e.target.value }))}
                     placeholder="Phone / WhatsApp / Email"
                     required
                   />
@@ -282,12 +217,8 @@ export default function MRPPage() {
 
               <div className="mrp-field async-search">
                 <label>Requirement Category</label>
-
                 <div className="mrp-input">
-                  <span className="icon">
-                    <CategoryIcon fontSize="small" />
-                  </span>
-
+                  <span className="icon"><CategoryIcon fontSize="small" /></span>
                   <input
                     value={categoryQuery}
                     placeholder="Search service category"
@@ -295,54 +226,37 @@ export default function MRPPage() {
                     required
                   />
                 </div>
-
-                {!categorySelected &&
-                  categoryQuery.length >= 2 &&
-                  categorySearchResults.length > 0 && (
-                    <ul className="async-dropdown">
-                      {categorySearchResults.map(cat => (
-                        <li
-                          key={cat}
-                          onClick={() => {
-                            setCategoryQuery(cat);
-                            setCategorySelected(true);
-
-                            setFormData(prev => ({
-                              ...prev,
-                              categoryId: cat
-                            }));
-                          }}
-                        >
-                          {cat}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+                {!categorySelected && categoryQuery.length >= 2 && categorySearchResults.length > 0 && (
+                  <ul className="async-dropdown">
+                    {categorySearchResults.map(cat => (
+                      <li
+                        key={cat}
+                        onClick={() => {
+                          setCategoryQuery(cat);
+                          setCategorySelected(true);
+                          setFormData(prev => ({ ...prev, categoryId: cat }));
+                        }}
+                      >
+                        {cat}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
 
               <div className="mrp-field mrp-full">
                 <label>Requirement Details</label>
-
                 <textarea
                   value={formData.details}
-                  onChange={(e) =>
-                    setFormData(prev => ({
-                      ...prev,
-                      details: e.target.value
-                    }))
-                  }
+                  onChange={(e) => setFormData(prev => ({ ...prev, details: e.target.value }))}
                   placeholder="Describe your requirement clearly and professionally"
                   required
                 />
               </div>
-              <div className="mrp-kpi-row">
-                <MRPChartKPI />
-              </div>
+
               {error && (
                 <div className="mrp-error">
-                  {typeof error === "string"
-                    ? error
-                    : error?.message || "Something went wrong"}
+                  {typeof error === "string" ? error : error?.message || "Something went wrong"}
                 </div>
               )}
 
@@ -355,52 +269,49 @@ export default function MRPPage() {
             </form>
           </div>
 
-          <div className="mrp-side-column">
-            {/* <div className="mrp-summary-grid">
-              <div className="mrp-summary-card">
-                <span>Total requirements</span>
-                <strong>{totalRequirements}</strong>
-              </div>
-              <div className="mrp-summary-card">
-                <span>Unique categories</span>
-                <strong>{uniqueCategoryCount}</strong>
-              </div>
-              <div className="mrp-summary-card">
-                <span>Top category</span>
-                <strong>{topCategories[0]?.[0] || 'No data'}</strong>
-              </div>
-            </div> */}
+          {/* Business profile card */}
+          <MRPInsights view="profile" />
 
-            <MRPInsights data={mrpList} />
+        </div>
 
-            <div className="mrp-info-card">
-              <div className="mrp-info-card-header">
+        {/* ── ROW 2: Lead analytics (left) + Sent leads (right) ── */}
+        <div className="mrp-row mrp-row-2">
+
+          <div className="mrp-analytics-panel mrp-card">
+            <div className="mrp-panel-header">
+              <span className="mrp-badge">Analytics</span>
+              <h2>Lead Intelligence</h2>
+              <p>Real-time insights from published requirements across your region.</p>
+            </div>
+
+            <MRPChartKPI />
+
+            <div className="mrp-chart-section">
+              <div className="mrp-chart-section-header">
                 <div>
                   <h3>Top Response Categories</h3>
-                  <p className="mrp-info-sub">
-                    Based on published requirements.
-                  </p>
+                  <p className="mrp-info-sub">Based on published requirements.</p>
                 </div>
                 <span className="mrp-live-pill">Live data</span>
               </div>
 
-              {mrpList && mrpList.length > 0 ? (
-                <>
-                  <MRPCategoryChart data={mrpList} />
-                </>
+              {mrpList?.length > 0 ? (
+                <MRPCategoryChart data={mrpList} />
               ) : (
                 <div className="mrp-empty-state">
                   Demand insights will appear once requirements are added.
                 </div>
               )}
 
-              <p className="mrp-chart-footnote">
-                Updated just now • Automatic response analysis
-              </p>
+              <p className="mrp-chart-footnote">Updated just now • Automatic response analysis</p>
             </div>
           </div>
 
+          {/* Sent leads column */}
+          <MRPInsights view="leads" />
+
         </div>
+
       </section>
     </>
   );

@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import "./mrpInsights.css";
 
-export default function MNILeadsInsights() {
+export default function MNILeadsInsights({ view }) {
   const dispatch = useDispatch();
   const [error, setError] = useState(null);
 
@@ -14,43 +14,71 @@ export default function MNILeadsInsights() {
   } = useSelector(state => state.mrp || {});
 
   useEffect(() => {
+    // "leads" view piggybacks on data fetched by "profile" view
+    if (view === "leads") return;
+
     try {
       const phoneNumber = localStorage.getItem("mobileNumber");
-
       if (!phoneNumber) {
         setError("Phone number not found in localStorage");
         return;
       }
-
       dispatch(getBusinessProfileByPhone(phoneNumber));
-
     } catch (err) {
       console.error("Error fetching business profile:", err);
       setError(err.message);
     }
-  }, [dispatch]);
+  }, [dispatch, view]);
+
+  const S3_URL = "https://massclickdev.s3.ap-southeast-2.amazonaws.com";
+
+  const formatPhone = (phone) => {
+    const clean = phone?.toString().replace(/\D/g, "").slice(-10) || "N/A";
+    return clean.replace(/(\d{5})(\d{5})/, "$1-$2");
+  };
+
+  const getTodayHours = (openingHours) => {
+    const today = new Date().toLocaleDateString("en-US", { weekday: "long" });
+    const todayHours = openingHours?.find(h => h.day === today);
+    if (!todayHours) return "N/A";
+    if (todayHours.isClosed) return "Closed";
+    if (todayHours.is24Hours) return "24 Hours";
+    return `${todayHours.open} - ${todayHours.close}`;
+  };
+
+  const formatDate = (date) => new Date(date).toLocaleDateString("en-US", {
+    year: "numeric", month: "short", day: "numeric"
+  });
+
+  // ── Shared loading / error / empty states ──
 
   if (businessProfileLoading) {
     return (
-      <div className="mrp-insights-loading">
-        <div className="spinner"></div>
-        <p>Loading business profile...</p>
+      <div className="mrp-insights">
+        <div className="mrp-insights-loading">
+          <div className="spinner"></div>
+          <p>Loading business profile...</p>
+        </div>
       </div>
     );
   }
 
   if (businessProfileError || error) {
     return (
-      <div className="mrp-insights-error">
-        <p>⚠️ Error: {businessProfileError || error}</p>
+      <div className="mrp-insights">
+        <div className="mrp-insights-error">
+          <p>⚠️ Error: {businessProfileError || error}</p>
+        </div>
       </div>
     );
   }
 
   if (!businessProfile) {
     return (
-      <div className="mrp-insights-empty">
-        <p>No business profile found</p>
+      <div className="mrp-insights">
+        <div className="mrp-insights-empty">
+          <p>No business profile found</p>
+        </div>
       </div>
     );
   }
@@ -70,58 +98,162 @@ export default function MNILeadsInsights() {
     sentLeads = []
   } = businessProfile;
 
-  const S3_URL = "https://massclickdev.s3.ap-southeast-2.amazonaws.com";
+  // ── Profile view (row 1 right) ──
+  if (view === "profile") {
+    return (
+      <div className="mrp-insights mrp-insights--profile">
+        <div className="mrp-insights-header">
+          <h3>Business Profile</h3>
+          <span>{location?.toUpperCase()}</span>
+        </div>
 
-  // Format phone number
-  const formatPhone = (phone) => {
-    const cleanPhone = phone?.toString().replace(/\D/g, "").slice(-10) || "N/A";
-    return cleanPhone.replace(/(\d{5})(\d{5})/, "$1-$2");
-  };
+        <div className="business-profile-main">
+          {bannerImageKey && (
+            <div className="business-banner">
+              <img
+                src={`${S3_URL}/${bannerImageKey}`}
+                alt={businessName}
+                onError={(e) => { e.target.style.display = "none"; }}
+              />
+            </div>
+          )}
 
-  // Get today's opening hours
-  const getTodayHours = () => {
-    const today = new Date().toLocaleDateString("en-US", { weekday: "long" });
-    const todayHours = openingHours?.find(h => h.day === today);
-    
-    if (!todayHours) return "N/A";
-    if (todayHours.isClosed) return "Closed";
-    if (todayHours.is24Hours) return "24 Hours";
-    return `${todayHours.open} - ${todayHours.close}`;
-  };
+          <div className="business-info-section">
+            <div className="business-header-info">
+              <div>
+                <h2 className="business-name">{businessName}</h2>
+                <p className="business-category">{category}</p>
+              </div>
+              <div className="business-rating">
+                <span className="rating-stars">⭐ {averageRating?.toFixed(1) || "N/A"}</span>
+              </div>
+            </div>
 
-  // Format date
-  const formatDate = (date) => {
-    return new Date(date).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric"
-    });
-  };
+            <div className="business-quick-stats">
+              <div className="stat-item">
+                <span className="stat-label">Today's Hours</span>
+                <span className="stat-value">{getTodayHours(openingHours)}</span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-label">Location</span>
+                <span className="stat-value">{location}</span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-label">Views</span>
+                <span className="stat-value">{analytics?.views || 0}</span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-label">Leads Received</span>
+                <span className="stat-value">{mniDetails?.leadsCount || 0}</span>
+              </div>
+            </div>
 
+            <div className="business-contact-info">
+              <h4>Contact Information</h4>
+              <div className="contact-grid">
+                <div className="contact-item">
+                  <span className="contact-icon">📱</span>
+                  <div>
+                    <p className="contact-label">Phone</p>
+                    <p className="contact-value">{formatPhone(contact)}</p>
+                  </div>
+                </div>
+                <div className="contact-item">
+                  <span className="contact-icon">💬</span>
+                  <div>
+                    <p className="contact-label">WhatsApp</p>
+                    <p className="contact-value">{formatPhone(whatsappNumber)}</p>
+                  </div>
+                </div>
+                <div className="contact-item">
+                  <span className="contact-icon">✉️</span>
+                  <div>
+                    <p className="contact-label">Email</p>
+                    <p className="contact-value">{email || "N/A"}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Leads view (row 2 right) ──
+  if (view === "leads") {
+    return (
+      <div className="mrp-insights mrp-insights--leads">
+        {sentLeads.length > 0 ? (
+          <div className="sent-leads-section">
+            <h3 className="sent-leads-title">Sent Leads
+              <span className="sent-leads-count">{sentLeads.length}</span>
+            </h3>
+
+            <div className="sent-leads-list">
+              {sentLeads.map((lead, index) => (
+                <div key={lead._id || index} className="sent-lead-card">
+                  <div className="lead-card-header">
+                    <h4 className="lead-business-name">{lead.businessName}</h4>
+                    <span className="lead-category-badge">{lead.category}</span>
+                  </div>
+
+                  <div className="lead-card-body">
+                    <div className="lead-info-item">
+                      <span className="lead-label">📍 Location</span>
+                      <span className="lead-value">{lead.location}</span>
+                    </div>
+                    <div className="lead-info-item">
+                      <span className="lead-label">📅 Sent</span>
+                      <span className="lead-value">{formatDate(lead.date)}</span>
+                    </div>
+                    {lead.receiverDetails && (
+                      <>
+                        <div className="lead-info-item">
+                          <span className="lead-label">📱 Contact</span>
+                          <span className="lead-value">{formatPhone(lead.receiverDetails.contact)}</span>
+                        </div>
+                        <div className="lead-info-item">
+                          <span className="lead-label">💬 WhatsApp</span>
+                          <span className="lead-value">{formatPhone(lead.receiverDetails.whatsappNumber)}</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="no-sent-leads">
+            <div className="no-sent-leads-icon">📤</div>
+            <p>No leads sent yet</p>
+            <span>Leads sent to businesses will appear here.</span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── Default: full view ──
   return (
     <div className="mrp-insights">
-      {/* ===== HEADER ===== */}
       <div className="mrp-insights-header">
         <h3>📊 Business Profile</h3>
         <span>{location?.toUpperCase()}</span>
       </div>
 
-      {/* ===== MAIN PROFILE CARD ===== */}
       <div className="business-profile-main">
-        {/* Banner */}
         {bannerImageKey && (
           <div className="business-banner">
             <img
               src={`${S3_URL}/${bannerImageKey}`}
               alt={businessName}
-              onError={(e) => {
-                e.target.style.display = "none";
-              }}
+              onError={(e) => { e.target.style.display = "none"; }}
             />
           </div>
         )}
 
-        {/* Business Info Section */}
         <div className="business-info-section">
           <div className="business-header-info">
             <div>
@@ -133,11 +265,10 @@ export default function MNILeadsInsights() {
             </div>
           </div>
 
-          {/* Quick Stats */}
           <div className="business-quick-stats">
             <div className="stat-item">
               <span className="stat-label">Today's Hours</span>
-              <span className="stat-value">{getTodayHours()}</span>
+              <span className="stat-value">{getTodayHours(openingHours)}</span>
             </div>
             <div className="stat-item">
               <span className="stat-label">Location</span>
@@ -153,7 +284,6 @@ export default function MNILeadsInsights() {
             </div>
           </div>
 
-          {/* Contact Information */}
           <div className="business-contact-info">
             <h4>Contact Information</h4>
             <div className="contact-grid">
@@ -181,7 +311,6 @@ export default function MNILeadsInsights() {
             </div>
           </div>
 
-          {/* MNI Details */}
           {mniDetails && (
             <div className="business-mni-details">
               <h4>Lead Performance</h4>
@@ -210,11 +339,9 @@ export default function MNILeadsInsights() {
         </div>
       </div>
 
-      {/* ===== SENT LEADS SECTION ===== */}
-      {sentLeads && sentLeads.length > 0 && (
+      {sentLeads.length > 0 ? (
         <div className="sent-leads-section">
           <h3 className="sent-leads-title">📤 Sent Leads ({sentLeads.length})</h3>
-          
           <div className="sent-leads-list">
             {sentLeads.map((lead, index) => (
               <div key={lead._id || index} className="sent-lead-card">
@@ -222,18 +349,15 @@ export default function MNILeadsInsights() {
                   <h4 className="lead-business-name">{lead.businessName}</h4>
                   <span className="lead-category-badge">{lead.category}</span>
                 </div>
-
                 <div className="lead-card-body">
                   <div className="lead-info-item">
                     <span className="lead-label">📍 Location:</span>
                     <span className="lead-value">{lead.location}</span>
                   </div>
-
                   <div className="lead-info-item">
                     <span className="lead-label">📅 Sent Date:</span>
                     <span className="lead-value">{formatDate(lead.date)}</span>
                   </div>
-
                   {lead.receiverDetails && (
                     <>
                       <div className="lead-info-item">
@@ -251,10 +375,7 @@ export default function MNILeadsInsights() {
             ))}
           </div>
         </div>
-      )}
-
-      {/* Empty State for Sent Leads */}
-      {(!sentLeads || sentLeads.length === 0) && (
+      ) : (
         <div className="no-sent-leads">
           <p>📤 No leads sent yet</p>
         </div>
