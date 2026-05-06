@@ -100,6 +100,41 @@ const PopularCategoriesLink = () => {
     });
   };
 
+  const handleServiceClick = (service) => {
+    if (service.route) {
+      navigate(service.route);
+      return;
+    }
+
+    const categoryName = service.searchName || service.title;
+    const routeSlug = service.routeSlug || createSlug(categoryName);
+    const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
+
+    const userDetails = {
+      userName: authUser?.userName,
+      mobileNumber1: authUser?.mobileNumber1,
+      mobileNumber2: authUser?.mobileNumber2,
+      email: authUser?.email,
+    };
+
+    dispatch(
+      logSearchActivity(
+        categoryName,
+        selectedDistrict || "Global",
+        userDetails,
+        categoryName
+      )
+    );
+
+    navigate(`/${districtSlug}/${routeSlug}`, {
+      state: {
+        logAlreadySent: true,
+        category: categoryName,
+        categoryName,
+      },
+    });
+  };
+
   if (!popularCategoriesData.length) return null;
 
   return (
@@ -164,7 +199,7 @@ const PopularCategoriesLink = () => {
                 <button
                   type="button"
                   className="popular-categories-links__serviceHead"
-                  onClick={() => handleKeywordClick(service.title)}
+                  onClick={() => handleServiceClick(service)}
                 >
                   <span className="popular-categories-links__serviceIcon">
                     <Icon size={24} strokeWidth={1.7} />

@@ -2,42 +2,57 @@
   {
     "title": "MNI",
     "icon": "handshake",
+    "route": "/user_mni",
     "description": "Experience the ultimate MNI portal by MassClick. Explore diverse categories, connect with vendors, and discover wholesale opportunities through a simple local discovery experience."
   },
   
   {
     "title": "Packers and Movers",
     "icon": "package",
+    "routeSlug": "packers-and-movers",
+    "searchName": "Packers and Movers",
     "description": "Find reliable relocation partners, compare movers for your location, get quotes from providers, and check ratings before making your selection."
   },
   {
     "title": "Order Food Online",
     "icon": "food",
+    "routeSlug": "restaurants",
+    "searchName": "Restaurants",
     "description": "Find restaurants, explore cuisines, view reviews and ratings, discover offers, and get your favourite food delivered to your doorstep."
   },
   {
     "title": "Movies",
     "icon": "movies",
+    "routeSlug": "theaters",
+    "searchName": "Theaters",
     "description": "Access movie information, discover theatres, view show details, and make a better choice for the movie you would like to watch."
   },
   {
     "title": "Spa & Salon",
     "icon": "spa",
+    "routeSlug": "beauty-spa",
+    "searchName": "Beauty Spa",
     "description": "Find salons and spas near you, compare options, and book pampering, grooming, beauty, and wellness services with confidence."
   },
   {
     "title": "Repair & Services",
     "icon": "repair",
+    "routeSlug": "bike-service",
+    "searchName": "Bike Service",
     "description": "Find trusted help for appliance repair, car service, cleaning, water purifier service, utility maintenance, and daily home service needs."
   },
   {
     "title": "Doctor Appointment",
     "icon": "doctor",
+    "routeSlug": "hospitals",
+    "searchName": "Hospitals",
     "description": "Find suitable medical specialists near you and connect with healthcare providers for everyday health and well-being needs."
   },
   {
     "title": "Real Estate Agents",
     "icon": "realEstate",
+    "routeSlug": "real-estate",
+    "searchName": "Real Estate",
     "description": "Discover agents and developers for PG, rentals, buying, selling, and local property updates across residential and commercial projects."
   }
 ]
