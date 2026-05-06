@@ -9,7 +9,6 @@ export const createMRP = async function (reqBody = {}) {
   try {
     const { organizationId, contactDetails } = reqBody;
 
-
     const normalizeMobile = (num) =>
       num?.toString().replace(/\D/g, "").slice(-10);
 
@@ -199,7 +198,7 @@ export const sendMrpLeads = async (mrpId) => {
     isActive: true,
     businessesLive: true
   })
-    .limit(1)
+    .limit(2)
     .lean();
 
   if (!businesses.length) {
@@ -261,6 +260,26 @@ export const sendMrpLeads = async (mrpId) => {
     }
   }
 
+  // Update source business sentLeads
+  if (businesses.length > 0) {
+    await businessListModel.updateOne(
+      { _id: sourceBusiness._id, "mniDetails.0": { $exists: true } },
+      {
+        $push: {
+          "mniDetails.0.sentLeads": {
+            $each: businesses.map(biz => ({
+              to: biz._id,
+              businessName: biz.businessName,
+              location: biz.location,
+              category: mrp.categoryId,
+              date: new Date()
+            }))
+          }
+        }
+      }
+    );
+  }
+
   if (mrpSettings.whatsapp_mni_customer_list) {
     try {
       const customerMobile = mrp.contactDetails
@@ -282,7 +301,8 @@ export const sendMrpLeads = async (mrpId) => {
   }
 
   return {
-    totalBusinesses: businesses.length
+    totalBusinesses: businesses.length,
+    sentTo: businesses.map(biz => biz._id)
   };
 };
 
@@ -321,4 +341,199 @@ export const fetchMniLeadsData = async ({ location, group }) => {
     totalBusinesses: formattedData.length,
     data: formattedData
   };
+};
+
+export const fetchSentLeadsData = async ({ businessId }) => {
+  const business = await businessListModel.findById(businessId).select("businessName mniDetails").lean();
+
+  if (!business) throw new Error("Business not found");
+
+  const sentLeads = business.mniDetails?.[0]?.sentLeads || [];
+
+  // Enrich sentLeads with full business details
+  const enrichedSentLeads = await Promise.all(
+    sentLeads.map(async (lead) => {
+      const receivingBusiness = await businessListModel.findById(lead.to)
+        .select("businessName location contact whatsappNumber")
+        .lean();
+      
+      return {
+        to: lead.to,
+        businessName: lead.businessName || receivingBusiness?.businessName,
+        location: lead.location || receivingBusiness?.location,
+        category: lead.category,
+        date: lead.date,
+        receiverDetails: {
+          contact: receivingBusiness?.contact,
+          whatsappNumber: receivingBusiness?.whatsappNumber
+        }
+      };
+    })
+  );
+
+  return {
+    businessId,
+    businessName: business.businessName,
+    totalSentLeads: enrichedSentLeads.length,
+    sentLeads: enrichedSentLeads
+  };
+};
+
+export const getBusinessProfileByPhone = async (phoneNumber) => {
+  try {
+    if (!phoneNumber) {
+      throw new Error("Phone number is required");
+    }
+
+    const normalizeMobile = (num) =>
+      num?.toString().replace(/\D/g, "").slice(-10);
+
+    const mobile = normalizeMobile(phoneNumber);
+
+    const business = await businessListModel.findOne({
+      $or: [
+        { contactList: mobile },
+        { whatsappNumber: mobile }
+      ]
+    })
+      .select(
+        "businessName location category contact whatsappNumber email bannerImageKey businessImagesKey openingHours mniDetails analytics averageRating"
+      )
+      .lean();
+
+    if (!business) {
+      throw new Error("Business not found with this phone number");
+    }
+
+    // Get sentLeads data
+    const sentLeads = business.mniDetails?.[0]?.sentLeads || [];
+    const mniDetails = business.mniDetails?.[0] || {};
+
+    // Enrich sentLeads with full business details
+    const enrichedSentLeads = await Promise.all(
+      sentLeads.map(async (lead) => {
+        const receivingBusiness = await businessListModel.findById(lead.to)
+          .select("businessName location contact whatsappNumber")
+          .lean();
+
+        return {
+          to: lead.to,
+          businessName: lead.businessName || receivingBusiness?.businessName,
+          location: lead.location || receivingBusiness?.location,
+          category: lead.category,
+          date: lead.date,
+          receiverDetails: {
+            contact: receivingBusiness?.contact,
+            whatsappNumber: receivingBusiness?.whatsappNumber
+          }
+        };
+      })
+    );
+
+    return {
+      _id: business._id,
+      businessName: business.businessName,
+      location: business.location,
+      category: business.category,
+      contact: business.contact,
+      whatsappNumber: business.whatsappNumber,
+      email: business.email,
+      bannerImageKey: business.bannerImageKey,
+      businessImagesKey: business.businessImagesKey,
+      openingHours: business.openingHours,
+      analytics: business.analytics,
+      averageRating: business.averageRating,
+      mniDetails: {
+        categoryGroup: mniDetails.categoryGroup,
+        categoryGroupLocation: mniDetails.categoryGroupLocation,
+        leadsCount: mniDetails.leadsCount || 0,
+        leadsCategory: mniDetails.leadsCategory || []
+      },
+      sentLeads: enrichedSentLeads,
+      totalSentLeads: enrichedSentLeads.length
+    };
+  } catch (error) {
+    console.error("Error fetching business profile by phone:", error);
+    throw error;
+  }
+};
+
+export const getGlobalLeadReport = async ({ location, group, category }) => {
+  try {
+    if (!location || !group) {
+      throw new Error("location and group are required");
+    }
+
+    const normalizedLocation = location.toLowerCase().trim();
+
+    const query = {
+      location: new RegExp(`^${normalizedLocation}$`, "i"),
+      "mniDetails.categoryGroup": group,
+      amountPaid: true,
+      isActive: true,
+      businessesLive: true
+    };
+
+    if (category) {
+      query.category = category;
+    }
+
+    const businesses = await businessListModel.find(query)
+      .select("businessName location category contact whatsappNumber mniDetails")
+      .lean();
+
+    const data = await Promise.all(
+      businesses.map(async (biz) => {
+        const mni = biz.mniDetails?.[0] || {};
+        const sentLeads = mni.sentLeads || [];
+
+        const enrichedSentLeads = await Promise.all(
+          sentLeads.map(async (lead) => {
+            const receiver = lead.to
+              ? await businessListModel.findById(lead.to)
+                  .select("businessName location contact whatsappNumber category")
+                  .lean()
+              : null;
+
+            return {
+              to: lead.to,
+              senderBusinessId: biz._id,
+              senderBusinessName: biz.businessName,
+              senderCategory: biz.category,
+              senderLocation: biz.location,
+              receiverBusinessName: lead.businessName || receiver?.businessName,
+              receiverLocation: lead.location || receiver?.location,
+              receiverCategory: receiver?.category || lead.category,
+              receiverContact: receiver?.contact || null,
+              receiverWhatsapp: receiver?.whatsappNumber || null,
+              sentDate: lead.date,
+              leadCategory: lead.category
+            };
+          })
+        );
+
+        return {
+          senderBusinessId: biz._id,
+          senderBusinessName: biz.businessName,
+          senderCategory: biz.category,
+          senderLocation: biz.location,
+          group: mni.categoryGroup || group,
+          categoryGroupLocation: mni.categoryGroupLocation || normalizedLocation,
+          sentLeads: enrichedSentLeads,
+          totalSentLeads: enrichedSentLeads.length
+        };
+      })
+    );
+
+    return {
+      location: normalizedLocation,
+      group,
+      category: category || null,
+      totalSenders: data.length,
+      data
+    };
+  } catch (error) {
+    console.error("Error fetching global lead report:", error);
+    throw error;
+  }
 };

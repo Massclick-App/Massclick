@@ -6,7 +6,9 @@ import {
   SEARCH_MRP_BUSINESS_REQUEST, SEARCH_MRP_BUSINESS_SUCCESS, SEARCH_MRP_BUSINESS_FAILURE,
   SEARCH_MRP_CATEGORY_REQUEST, SEARCH_MRP_CATEGORY_SUCCESS, SEARCH_MRP_CATEGORY_FAILURE,
   SEND_MRP_LEADS_REQUEST, SEND_MRP_LEADS_SUCCESS, SEND_MRP_LEADS_FAILURE,
-  FETCH_MNI_LEADS_REQUEST, FETCH_MNI_LEADS_SUCCESS, FETCH_MNI_LEADS_FAILURE
+  FETCH_MNI_LEADS_REQUEST, FETCH_MNI_LEADS_SUCCESS, FETCH_MNI_LEADS_FAILURE,
+  FETCH_BUSINESS_PROFILE_BY_PHONE_REQUEST, FETCH_BUSINESS_PROFILE_BY_PHONE_SUCCESS, FETCH_BUSINESS_PROFILE_BY_PHONE_FAILURE,
+  FETCH_LEAD_REPORT_REQUEST, FETCH_LEAD_REPORT_SUCCESS, FETCH_LEAD_REPORT_FAILURE
 } from '../actions/userActionTypes.js';
 
 const initialState = {
@@ -25,6 +27,14 @@ const initialState = {
   mniLeads: [],
   mniLoading: false,
   mniError: null,
+
+  leadReport: null,
+  leadReportLoading: false,
+  leadReportError: null,
+
+  businessProfile: null,
+  businessProfileLoading: false,
+  businessProfileError: null
 };
 
 export default function mrpReducer(state = initialState, action) {
@@ -170,6 +180,56 @@ export default function mrpReducer(state = initialState, action) {
         ...state,
         mniLoading: false,
         mniError: action.payload
+      };
+
+    /* ===============================
+       LEAD REPORT
+    ============================== */
+
+    case FETCH_LEAD_REPORT_REQUEST:
+      return {
+        ...state,
+        leadReportLoading: true,
+        leadReportError: null
+      };
+
+    case FETCH_LEAD_REPORT_SUCCESS:
+      return {
+        ...state,
+        leadReportLoading: false,
+        leadReport: action.payload
+      };
+
+    case FETCH_LEAD_REPORT_FAILURE:
+      return {
+        ...state,
+        leadReportLoading: false,
+        leadReportError: action.payload
+      };
+
+    /* ===============================
+       BUSINESS PROFILE BY PHONE
+    ============================== */
+
+    case FETCH_BUSINESS_PROFILE_BY_PHONE_REQUEST:
+      return {
+        ...state,
+        businessProfileLoading: true,
+        businessProfileError: null
+      };
+
+    case FETCH_BUSINESS_PROFILE_BY_PHONE_SUCCESS:
+      return {
+        ...state,
+        businessProfileLoading: false,
+        businessProfile: action.payload
+      };
+
+    case FETCH_BUSINESS_PROFILE_BY_PHONE_FAILURE:
+      return {
+        ...state,
+        businessProfileLoading: false,
+        businessProfileError: action.payload
       };
 
     /* ===============================

@@ -1,4 +1,4 @@
-import { createMRP, viewMRP, viewAllMRP, updateMRP, deleteMRP, searchMrpBusinesses, searchMrpCategories,sendMrpLeads, fetchMniLeadsData } from "../../helper/MRP/mrpHelper.js";
+import { createMRP, viewMRP, viewAllMRP, updateMRP, deleteMRP, searchMrpBusinesses, searchMrpCategories, sendMrpLeads, fetchMniLeadsData, fetchSentLeadsData, getBusinessProfileByPhone, getGlobalLeadReport } from "../../helper/MRP/mrpHelper.js";
 import { BAD_REQUEST } from "../../errorCodes.js";
 
 export const addMRPAction = async (req, res) => {
@@ -157,6 +157,53 @@ export const getMniLeadsList = async (req, res) => {
     console.error("❌ getMniLeadsList error:", error);
 
     return res.status(500).json({
+      message: error.message || "Server error"
+    });
+  }
+};
+
+export const getBusinessProfileByPhoneAction = async (req, res) => {
+  try {
+    const { phoneNumber } = req.body;
+
+    if (!phoneNumber) {
+      return res.status(400).json({
+        message: "Phone number is required"
+      });
+    }
+
+    const result = await getBusinessProfileByPhone(phoneNumber);
+
+    return res.status(200).json({
+      message: "Business profile fetched successfully",
+      data: result
+    });
+
+  } catch (error) {
+    console.error("❌ getBusinessProfileByPhoneAction error:", error);
+
+    return res.status(400).json({
+      message: error.message || "Server error"
+    });
+  }
+};
+
+export const getGlobalLeadReportAction = async (req, res) => {
+  try {
+    const { location, group, category } = req.query;
+
+    if (!location || !group) {
+      return res.status(400).json({
+        message: "location and group are required"
+      });
+    }
+
+    const result = await getGlobalLeadReport({ location, group, category });
+
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error("❌ getGlobalLeadReportAction error:", error);
+    return res.status(400).json({
       message: error.message || "Server error"
     });
   }

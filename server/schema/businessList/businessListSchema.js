@@ -72,6 +72,21 @@ const mniSchema = new mongoose.Schema({
     type: Date,
     default: null,
   },
+  sentLeads: [
+    {
+      to: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "BusinessList"
+      },
+      businessName: String,
+      location: String,
+      category: String,
+      date: {
+        type: Date,
+        default: Date.now
+      }
+    }
+  ]
 });
 
 const businessListSchema = new mongoose.Schema({
