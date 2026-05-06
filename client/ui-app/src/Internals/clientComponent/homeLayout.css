@@ -19,21 +19,20 @@
   box-sizing: border-box;
 }
 
-.home-section > .mc-banner,
-.home-section > .ts,
-.home-section > .popular-search,
-.home-section > .related-wrapper,
-.home-section > .phc-container,
-.home-section > .popular-categories-links {
+.home-section > .related-wrapper {
   max-width: none;
   padding-inline: var(--home-edge);
 }
 
-.home-section > .tourist-section,
 .home-section > .service-cards-container,
 .home-section > .featured-services-container {
-  width: min(calc(100% - (var(--home-edge) * 2)), var(--home-max-width)) !important;
-  padding-inline: 30px;
+  width: min(100%, var(--home-max-width)) !important;
+  padding-inline: 0;
+}
+
+.home-section > .tourist-section {
+  width: min(100%, var(--home-max-width)) !important;
+  padding-inline: var(--home-edge);
 }
 
 .home-section > .featured-services-container {
@@ -94,11 +93,10 @@
     --home-edge: clamp(12px, 4vw, 24px);
   }
 
-  .home-section > .tourist-section,
   .home-section > .service-cards-container,
   .home-section > .featured-services-container {
-    width: min(calc(100% - (var(--home-edge) * 2)), var(--home-max-width)) !important;
-    padding-inline: 18px;
+    width: min(100%, var(--home-max-width)) !important;
+    padding-inline: 0;
   }
 
   .home-section .related-container {
@@ -107,9 +105,8 @@
 }
 
 @media (max-width: 560px) {
-  .home-section > .tourist-section,
   .home-section > .service-cards-container,
   .home-section > .featured-services-container {
-    padding-inline: 12px;
+    padding-inline: 0;
   }
 }

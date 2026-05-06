@@ -6,7 +6,6 @@
   width: 100%;
   max-width: 1720px;
   margin: 0 auto;
-  padding: 0 clamp(16px, 4vw, 48px);
   font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
