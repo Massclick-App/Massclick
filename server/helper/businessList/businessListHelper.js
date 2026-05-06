@@ -297,7 +297,7 @@ export const viewAllBusinessList = async ({
     query = { isActive: true };
   }
   else {
-    throw new Error("Unauthorized role");
+    query = {};
   }
 
 
@@ -744,7 +744,7 @@ export const getDashboardSummaryHelper = async ({ role, userId }) => {
     query = { isActive: true };
   }
   else {
-    throw new Error("Unauthorized role");
+    query = {};
   }
 
   // -------------------------
@@ -829,7 +829,7 @@ export const getDashboardChartsHelper = async ({ role, userId }) => {
     query = { isActive: true };
   }
   else {
-    throw new Error("Unauthorized role");
+    query = {};
   }
 
   const year = new Date().getFullYear();

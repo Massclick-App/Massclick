@@ -1,6 +1,5 @@
 import { ObjectId } from "mongodb";
 import rolesModel from "../../model/roles/rolesModel.js"
-
 export const createRoles = async function (reqBody = {}) {
     try {
 
