@@ -82,19 +82,48 @@ export const getTopTrendingCategories = async (limit = 10) => {
           }
         }
       },
-
       {
         $group: {
-          _id: { $toLower: "$categoryName" },
+          _id: { $toLower: { $trim: { input: "$categoryName" } } },
           totalSearches: { $sum: 1 },
-
-          categoryImage: { $first: "$categoryImage" }
+          categoryImage: { $max: "$categoryImage" }
         }
       },
-
       { $sort: { totalSearches: -1 } },
+      { $limit: limit * 3 },
+      {
+        $lookup: {
+          from: "category",
+          let: { catName: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: { $eq: [{ $toLower: "$categoryName" }, "$$catName"] }
+              }
+            },
+            { $project: { categoryImageKey: 1, _id: 0 } },
+            { $limit: 1 }
+          ],
+          as: "categoryDoc"
+        }
+      },
+      {
+        $addFields: {
+          categoryImage: {
+            $cond: {
+              if: { $gt: [{ $size: "$categoryDoc" }, 0] },
+              then: { $arrayElemAt: ["$categoryDoc.categoryImageKey", 0] },
+              else: "$categoryImage"
+            }
+          }
+        }
+      },
+      {
+        $match: {
+          categoryImage: { $exists: true, $nin: ["", null] }
+        }
+      },
       { $limit: limit },
-
       {
         $project: {
           _id: 0,
