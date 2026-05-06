@@ -1,6 +1,6 @@
 .related-wrapper {
   width: 100%;
-  padding: clamp(42px, 6vw, 76px) 0;
+  padding: 0;
   background:
     linear-gradient(180deg, #ffffff 0%, #f8fafc 42%, #ffffff 100%),
     #f8fafc;
@@ -245,7 +245,7 @@
 
 @media (max-width: 900px) {
   .related-wrapper {
-    padding: 38px 0;
+    padding: 0;
   }
 
   .carousel {

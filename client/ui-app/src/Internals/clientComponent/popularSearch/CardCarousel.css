@@ -12,19 +12,19 @@
 /* ROOT SECTION */
 .popular-search {
   width: 100%;
-  max-width: 1720px;
-  margin: 50px auto;
-  padding: 0 16px;
+  max-width: 1800px;
+  margin: 0 auto;
+  padding: 0 clamp(16px, 4vw, 48px);
   font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 /* INNER WRAPPER */
 .popular-search__inner {
   position: relative;
-  border-radius: var(--popular-radius-lg);
+  border-radius: 16px;
   background-color: var(--popular-bg-card);
-  box-shadow: var(--popular-shadow-soft);
-  padding: 24px 20px 26px;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.1);
+  padding: 22px 20px 22px;
   overflow: hidden;
 }
 
@@ -286,7 +286,7 @@
 /* tablets / small laptops */
 @media (min-width: 900px) {
   .popular-search__inner {
-    padding: 28px 28px 32px;
+    padding: 24px 28px 26px;
   }
 
   .popular-search__card {
@@ -297,7 +297,7 @@
 /* desktops */
 @media (min-width: 1200px) {
   .popular-search__inner {
-    padding: 30px 32px 36px;
+    padding: 26px 32px 28px;
   }
 
   .popular-search__title {
