@@ -123,13 +123,13 @@
 
 @media (min-width: 1200px) {
   .featured-services-container {
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    grid-template-columns: repeat(10, minmax(0, 1fr));
     gap: 18px;
     padding: 22px 48px;
   }
 
   .service-card {
-    width: 140px;
+    width: 100%;
     height: 160px;
     padding: 10px 8px;
   }
