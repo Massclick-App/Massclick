@@ -13,6 +13,7 @@ import { fetchSeoMeta } from "../../redux/actions/seoAction";
 import { messaging, onMessage } from '../../firebase';
 import miLogo from '../../assets/mi.png';
 import { connectSocket, disconnectSocket } from '../../services/socketService.js';
+import './homeLayout.css';
 
 const S = ({ variant = "rounded", w, h, r, sx, ...rest }) => (
   <Skeleton
@@ -35,12 +36,15 @@ const TrendingSearchesCarousel = lazy(() => import('./trendingSearch/trendingSea
 const CardCarousel = lazy(() => import('./popularSearch/popularSearch'));
 const TopTourist = lazy(() => import('./topTourist/topTourist'));
 const MassClickBanner = lazy(() => import('./massClickBanner/massClickBanner'));
+const PopularCategoriesLink = lazy(() => import('./popularCategories/popularCategories.js'));
 const SearchResults = lazy(() => import('./SearchResult/SearchResult'));
 const Footer = lazy(() => import('./footer/footer'));
 const PageHeaderContents = lazy(() => import('./pageHeaderContents/pageHeaderContents.js'));
 const RelatedBlogs = lazy(() => import('./relatedBlogs/relatedBlogs.js'));
 
 const STICKY_SEARCH_BAR_HEIGHT = 85;
+const HOME_SECTION_GAP = { xs: 2.5, sm: 3, md: 3.5 };
+const homeSectionSx = { mb: HOME_SECTION_GAP };
 
 /* ──────────────────────────────────────────────────────────────
    Per-section skeleton loaders
@@ -288,7 +292,7 @@ const LandingPage = () => {
                 <script type="application/ld+json">{JSON.stringify(webPageSchema)}</script>
             </Helmet>
 
-            <Box sx={{ flexGrow: 1, bgcolor: 'background.default', width: '100%' }}>
+            <Box className="home-page" sx={{ flexGrow: 1, bgcolor: 'background.default', width: '100%' }}>
 
                 <Drawer anchor="right" open={mobileMenuOpen} onClose={handleMobileMenuClose}>
                     {drawerContent}
@@ -343,51 +347,56 @@ const LandingPage = () => {
                         </Box>
                     ) : (
                         <>
-                            <Box sx={{ mb: { xs: 4, sm: 5, md: 6 } }}>
+                            <Box className="home-section home-section--flush" sx={homeSectionSx}>
                                 <Suspense fallback={<SkeletonCards type="featured" />}>
                                     <FeaturedServices />
                                 </Suspense>
                             </Box>
 
-                            <Box sx={{ mb: { xs: 4, sm: 5, md: 6 } }}>
+                            <Box className="home-section" sx={homeSectionSx}>
                                 <Suspense fallback={<SkeletonCards type="service" />}>
                                     <ServiceCardsGrid />
                                 </Suspense>
                             </Box>
 
-                            <Box sx={{ mb: { xs: 4, sm: 5, md: 6 } }}>
+                            <Box className="home-section" sx={homeSectionSx}>
                                 <Suspense fallback={<SkeletonBanner />}>
                                     <MassClickBanner />
                                 </Suspense>
                             </Box>
 
-                            <Box sx={{ mb: { xs: 4, sm: 5, md: 6 } }}>
+                            <Box className="home-section" sx={homeSectionSx}>
                                 <Suspense fallback={<SkeletonCarousel type="trending" />}>
                                     <TrendingSearchesCarousel />
                                 </Suspense>
                             </Box>
 
-                            <Box sx={{ mb: { xs: 4, sm: 5, md: 6 } }}>
+                            <Box className="home-section" sx={homeSectionSx}>
                                 <Suspense fallback={<SkeletonCarousel type="popular" />}>
                                     <CardCarousel />
                                 </Suspense>
                             </Box>
 
-                            <Box sx={{ mb: { xs: 4, sm: 5, md: 6 } }}>
+                            <Box className="home-section" sx={homeSectionSx}>
                                 <Suspense fallback={<SkeletonGrid type="tourist" />}>
                                     <TopTourist />
                                 </Suspense>
                             </Box>
 
-                            <Box sx={{ mb: { xs: 4, sm: 5, md: 6 } }}>
+                            <Box className="home-section" sx={homeSectionSx}>
                                 <Suspense fallback={<SkeletonGrid type="blogs" />}>
                                     <RelatedBlogs location={locationName} />
                                 </Suspense>
                             </Box>
 
-                            <Box sx={{ mb: { xs: 4, sm: 5, md: 6 } }}>
+                            <Box className="home-section" sx={homeSectionSx}>
                                 <Suspense fallback={<SkeletonCards type="pageheader" />}>
                                     <PageHeaderContents />
+                                </Suspense>
+                            </Box>
+                            <Box className="home-section" sx={homeSectionSx}>
+                                <Suspense fallback={null}>
+                                    <PopularCategoriesLink />
                                 </Suspense>
                             </Box>
 

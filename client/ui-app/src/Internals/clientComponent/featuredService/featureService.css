@@ -3,11 +3,11 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, 130px);
   justify-content: center;
-  gap: 20px;
-  padding: 25px;
+  gap: 18px;
+  padding: 22px clamp(16px, 4vw, 48px);
   max-width: 1750px;
   margin: 0 auto;
-  min-height: 420px;
+  min-height: 0;
 }
 
 
@@ -56,7 +56,7 @@
   .featured-services-container {
     grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
     gap: 12px;
-    padding: 15px;
+    padding: 16px 12px;
   }
 
   .service-card {
@@ -79,7 +79,7 @@
   .featured-services-container {
     grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
     gap: 16px;
-    padding: 18px;
+    padding: 18px 16px;
   }
 
   .service-card {
@@ -101,8 +101,8 @@
 @media (min-width: 769px) and (max-width: 1199px) {
   .featured-services-container {
     grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-    gap: 20px;
-    padding: 22px;
+    gap: 18px;
+    padding: 20px 32px;
   }
 
   .service-card {
@@ -124,8 +124,8 @@
 @media (min-width: 1200px) {
   .featured-services-container {
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 25px;
-    padding: 25px;
+    gap: 18px;
+    padding: 22px 48px;
   }
 
   .service-card {
