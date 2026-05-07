@@ -3,9 +3,11 @@ import React, { useEffect, useState, useRef } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
+import { useSnackbar } from "notistack";
 import {
   getBusinessDetailsById,
   getBusinessDetailsBySlug,
+  editBusinessList,
 } from "../../../redux/actions/businessListAction";
 import "./cardDetails.css";
 import UserRatingWidget from "../rating/rating";
@@ -78,7 +80,7 @@ const SimpleModal = ({ children, onClose, title }) => (
 );
 
 const FullScreenGallery = ({ images, initialIndex, onClose }) => {
-  
+
   const [index, setIndex] = useState(initialIndex || 0);
 
   useEffect(() => {
@@ -154,12 +156,30 @@ const BusinessDetail = () => {
   const favUser = getAuthUser();
   const isFavLoggedIn = !!favUser?._id;
   const business = businessDetails;
+  const { enqueueSnackbar } = useSnackbar();
+
+  const normalizePhone = (value) =>
+    String(value || "").replace(/\D/g, "");
+
+  const storedMobileNumber = localStorage.getItem("mobileNumber") || "";
+  const authUser = getAuthUser();
+  const currentUserPhone =
+    normalizePhone(storedMobileNumber) ||
+    normalizePhone(authUser?.mobileNumber1) ||
+    normalizePhone(authUser?.mobileNumber2);
+  const businessOwnerPhone = normalizePhone(
+    business?.contactList || business?.contact || ""
+  );
+  const isBusinessImageUploadAllowed =
+    !!authUser &&
+    !!currentUserPhone &&
+    currentUserPhone === businessOwnerPhone;
 
   useEffect(() => {
     if (isFavLoggedIn && business?._id && favoriteIds.length === 0) {
       dispatch(fetchFavorites());
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isFavLoggedIn, business?._id]);
   const [mainImage, setMainImage] = useState(null);
   const [showFullGallery, setShowFullGallery] = useState(false);
@@ -170,6 +190,10 @@ const BusinessDetail = () => {
   const [activeTab, setActiveTab] = useState("Overview");
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showAllKeywords, setShowAllKeywords] = useState(false);
+  const [newGalleryImages, setNewGalleryImages] = useState([]);
+  const [isUploadingImages, setIsUploadingImages] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const fileInputRef = useRef(null);
 
   const overviewRef = useRef(null);
   const quickInfoRef = useRef(null);
@@ -244,10 +268,10 @@ const BusinessDetail = () => {
 
   const website = business.website;
 
-const formattedWebsite =
-  website && website.startsWith("http")
-    ? website
-    : `https://${website}`;
+  const formattedWebsite =
+    website && website.startsWith("http")
+      ? website
+      : `https://${website}`;
 
   const addressParts = [
     business.plotNumber,
@@ -273,7 +297,7 @@ const formattedWebsite =
     "Friday",
     "Saturday",
   ];
-  
+
   const getTodayHours = () => {
     if (!business.openingHours || business.openingHours.length === 0)
       return "Open hours not available";
@@ -346,6 +370,99 @@ const formattedWebsite =
   const keywordLocationSlug = toSlug(business.location || location || "all");
   const keywordCategory = business.category || business.slug || "";
   const keywordCategorySlug = toSlug(keywordCategory);
+
+  const handleGalleryFileSelection = async (event) => {
+    if (!isBusinessImageUploadAllowed) {
+      enqueueSnackbar(
+        "You are not the owner of this business. Upload is not allowed.",
+        { variant: "error" }
+      );
+      if (event.target) event.target.value = "";
+      return;
+    }
+
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+
+    try {
+      const images = await Promise.all(
+        files.map((file) =>
+          new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          })
+        )
+      );
+
+      setNewGalleryImages((prev) => [...prev, ...images]);
+      setUploadError("");
+    } catch (error) {
+      console.error("Failed to read selected images:", error);
+      setUploadError("Unable to read selected images. Please try again.");
+    } finally {
+      if (event.target) {
+        event.target.value = "";
+      }
+    }
+  };
+
+  const openGalleryFileDialog = () => {
+    if (!isBusinessImageUploadAllowed) {
+      enqueueSnackbar(
+        "You are not the owner of this business. Upload is not allowed.",
+        { variant: "error" }
+      );
+      return;
+    }
+
+    fileInputRef.current?.click();
+  };
+
+  const handleUploadBusinessImages = async () => {
+    if (!isBusinessImageUploadAllowed) {
+      enqueueSnackbar(
+        "You are not the owner of this business. Upload is not allowed.",
+        { variant: "error" }
+      );
+      return;
+    }
+
+    if (!newGalleryImages.length || !business?._id) return;
+
+    setIsUploadingImages(true);
+    setUploadError("");
+
+    try {
+      await dispatch(
+        editBusinessList(business._id, {
+          businessImages: newGalleryImages,
+        })
+      );
+
+      setNewGalleryImages([]);
+      await dispatch(getBusinessDetailsById(business._id));
+      enqueueSnackbar("Images uploaded successfully", {
+        variant: "success",
+      });
+    } catch (error) {
+      console.error("Business image upload failed:", error);
+      setUploadError(
+        error?.response?.data?.message ||
+        error?.message ||
+        "Upload failed. Please try again."
+      );
+      enqueueSnackbar(
+        error?.response?.data?.message ||
+        error?.message ||
+        "Upload failed. Please try again.",
+        { variant: "error" }
+      );
+    } finally {
+      setIsUploadingImages(false);
+    }
+  };
 
   const getQuickFactIcon = (index) => {
     switch (index) {
@@ -473,19 +590,19 @@ const formattedWebsite =
 
   const overviewHtml = business.businessDetails;
 
- const normalizeOverviewHtml = (html = "") => {
-  return html
-    .replace(/<p>\s*(<br\s*\/?>|&nbsp;)?\s*<\/p>/gi, "")
-    .replace(/<div>\s*(<br\s*\/?>|&nbsp;)?\s*<\/div>/gi, "")
-    .replace(/(<br\s*\/?>\s*){2,}/gi, "<br>")
-    .replace(/ style="[^"]*"/gi, "")
-    .replace(/width="[^"]*"/gi, "")   
-    .replace(/height="[^"]*"/gi, "") 
-    .trim();
-};
-  
-const whatsappNumber =
-  business.whatsappNumber || business.contactList || business.contact;
+  const normalizeOverviewHtml = (html = "") => {
+    return html
+      .replace(/<p>\s*(<br\s*\/?>|&nbsp;)?\s*<\/p>/gi, "")
+      .replace(/<div>\s*(<br\s*\/?>|&nbsp;)?\s*<\/div>/gi, "")
+      .replace(/(<br\s*\/?>\s*){2,}/gi, "<br>")
+      .replace(/ style="[^"]*"/gi, "")
+      .replace(/width="[^"]*"/gi, "")
+      .replace(/height="[^"]*"/gi, "")
+      .trim();
+  };
+
+  const whatsappNumber =
+    business.whatsappNumber || business.contactList || business.contact;
 
   const locationSlug = location || "";
   const businessUrl = `https://massclick.in/business/${locationSlug}/${business.slug || businessSlug}/${business._id || id}`;
@@ -506,26 +623,26 @@ const whatsappNumber =
     },
     ...(business.averageRating && totalReview > 0
       ? {
-          aggregateRating: {
-            "@type": "AggregateRating",
-            ratingValue: Number(business.averageRating.toFixed(1)),
-            reviewCount: totalReview,
-            bestRating: 5,
-            worstRating: 1,
-          },
-        }
+        aggregateRating: {
+          "@type": "AggregateRating",
+          ratingValue: Number(business.averageRating.toFixed(1)),
+          reviewCount: totalReview,
+          bestRating: 5,
+          worstRating: 1,
+        },
+      }
       : {}),
     ...(business.openingHours?.length > 0
       ? {
-          openingHoursSpecification: business.openingHours
-            .filter((h) => !h.isClosed && h.open && h.close)
-            .map((h) => ({
-              "@type": "OpeningHoursSpecification",
-              dayOfWeek: `https://schema.org/${h.day}`,
-              opens: h.open,
-              closes: h.close,
-            })),
-        }
+        openingHoursSpecification: business.openingHours
+          .filter((h) => !h.isClosed && h.open && h.close)
+          .map((h) => ({
+            "@type": "OpeningHoursSpecification",
+            dayOfWeek: `https://schema.org/${h.day}`,
+            opens: h.open,
+            closes: h.close,
+          })),
+      }
       : {}),
   };
 
@@ -681,13 +798,6 @@ const whatsappNumber =
                       WhatsApp
                     </a>
                   )}
-
-                  <span
-                    className="business-CardDetails-iconBtn"
-                    title="Edit Business"
-                  >
-                    <EditIcon style={{ fontSize: 20 }} />
-                  </span>
 
                   <button
                     className={`business-CardDetails-iconBtn business-CardDetails-favBtn${favoriteIds.includes(business._id) ? " business-CardDetails-favBtn--active" : ""}${togglingIds.includes(business._id) ? " business-CardDetails-favBtn--loading" : ""}`}
@@ -872,6 +982,51 @@ const whatsappNumber =
                 className="business-CardDetails-photosSection"
               >
                 <h2>Photos</h2>
+                <div className="business-CardDetails-uploadSection">
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    multiple
+                    accept="image/*"
+                    style={{ display: "none" }}
+                    onChange={handleGalleryFileSelection}
+                  />
+                  <button
+                    type="button"
+                    className="business-CardDetails-btn business-CardDetails-btn--secondary"
+                    onClick={openGalleryFileDialog}
+                  >
+                    Select Images
+                  </button>
+                  <button
+                    type="button"
+                    className="business-CardDetails-btn business-CardDetails-btn--primary"
+                    onClick={handleUploadBusinessImages}
+                    disabled={newGalleryImages.length === 0 || isUploadingImages}
+                  >
+                    {isUploadingImages ? "Uploading..." : "Upload Images"}
+                  </button>
+                </div>
+                {!isBusinessImageUploadAllowed && (
+                  <p className="business-CardDetails-uploadNote">
+                    Upload allowed only if you are the owner of this business.
+                  </p>
+                )}
+                {newGalleryImages.length > 0 && (
+                  <div className="business-CardDetails-uploadPreview">
+                    {newGalleryImages.map((src, idx) => (
+                      <img
+                        key={idx}
+                        src={src}
+                        alt={`Selected upload ${idx + 1}`}
+                        className="business-CardDetails-uploadPreviewItem"
+                      />
+                    ))}
+                  </div>
+                )}
+                {uploadError && (
+                  <p className="business-CardDetails-uploadError">{uploadError}</p>
+                )}
                 {galleryImageSrcs.length > 0 ? (
                   <div className="business-CardDetails-photoGrid">
                     {galleryImageSrcs.map((src, index) => (
