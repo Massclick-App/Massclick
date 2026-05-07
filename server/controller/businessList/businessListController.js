@@ -266,7 +266,7 @@ export const getSuggestionsController = async (req, res) => {
 
       {
         $lookup: {
-          from: "category",
+          from: "categories",
           let: { businessCategory: "$category" },
           pipeline: [
             {
