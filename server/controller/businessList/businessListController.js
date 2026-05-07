@@ -299,7 +299,20 @@ export const getSuggestionsController = async (req, res) => {
       }
     ]);
 
-    const finalData = suggestions.map((item) => {
+    // 🔹 Deduplicate by category (show unique categories only)
+    const seen = new Set();
+    const uniqueSuggestions = [];
+
+    suggestions.forEach((item) => {
+      const categoryKey = (item.category || "").toLowerCase();
+
+      if (categoryKey && !seen.has(categoryKey)) {
+        seen.add(categoryKey);
+        uniqueSuggestions.push(item);
+      }
+    });
+
+    const finalData = uniqueSuggestions.map((item) => {
       return {
         businessName: item.businessName,
         category: item.category,
