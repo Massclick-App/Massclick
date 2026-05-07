@@ -359,6 +359,89 @@ const districtAliasMap = {
   trichy: ["tiruchirappalli", "trichy"],
 };
 
+export const getEnhancedSuggestionsController = async (req, res) => {
+  try {
+    const search = (req.query.search || "").trim();
+    const location = (req.query.location || "").trim();
+
+    if (search.length < 2) {
+      return res.send([]);
+    }
+
+    const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const containsPattern = escapedSearch;
+
+    // Get matching categories
+    const categoryCollection = require("../../model/category/categoryModel.js").default;
+
+    const categories = await categoryCollection.aggregate([
+      {
+        $match: {
+          isActive: true,
+          $or: [
+            { category: { $regex: containsPattern, $options: "i" } },
+            { keywords: { $regex: containsPattern, $options: "i" } },
+            { description: { $regex: containsPattern, $options: "i" } }
+          ]
+        }
+      },
+      { $limit: 10 }
+    ]);
+
+    // For each category, get business count
+    const suggestionsWithCount = await Promise.all(
+      categories.map(async (cat) => {
+        const matchQuery = {
+          businessesLive: true,
+          category: { $regex: `^${escapedSearch.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" }
+        };
+
+        if (location) {
+          const locKey = location.toLowerCase().trim();
+          const aliases = districtAliasMap[locKey] || [locKey];
+          matchQuery.location = {
+            $in: aliases.map(
+              (l) => new RegExp(`^${l}$`, "i")
+            )
+          };
+        }
+
+        const count = await businessListModel.countDocuments({
+          businessesLive: true,
+          category: cat.category,
+          ...(location && {
+            location: {
+              $in: (districtAliasMap[location.toLowerCase().trim()] || [location]).map(
+                (l) => new RegExp(`^${l}$`, "i")
+              )
+            }
+          })
+        });
+
+        return {
+          category: cat.category,
+          description: cat.description || cat.title || "",
+          categoryImage: cat.categoryImageKey
+            ? getSignedUrlByKey(cat.categoryImageKey)
+            : "",
+          categoryImageKey: cat.categoryImageKey,
+          count: count,
+          location: location || "All Districts",
+          slug: cat.slug
+        };
+      })
+    );
+
+    // Filter categories with at least 1 business
+    const filtered = suggestionsWithCount.filter((s) => s.count > 0);
+
+    return res.send(filtered);
+  } catch (err) {
+    console.error(err);
+    res.status(400).send({ message: err.message });
+  }
+};
+
 export const mainSearchController = async (req, res) => {
   try {
     let { term = "", location = "", category = "" } = req.query;
