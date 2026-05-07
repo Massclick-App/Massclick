@@ -249,6 +249,11 @@ export const getMobileHomeCategoriesAction = async (req, res) => {
 
       const found = map.get(normalize(name));
 
+      // Check if this category has subcategories
+      const categoryKey = name.toLowerCase().replace(/\s+/g, "-");
+      const hasSubcategories = !!categoriesData[categoryKey];
+      const subCategoryCount = categoriesData[categoryKey]?.length || 0;
+
       return found
         ? {
           _id: found._id,
@@ -256,12 +261,16 @@ export const getMobileHomeCategoriesAction = async (req, res) => {
           slug: found.slug,
           icon: found.categoryImageKey
             ? `${S3_BASE_URL}${found.categoryImageKey}`
-            : null
+            : null,
+          hasSubcategories,
+          subCategoryCount
         }
         : {
           name,
           slug: name.toLowerCase().replace(/ /g, "-"),
-          icon: null
+          icon: null,
+          hasSubcategories: !!categoriesData[categoryKey],
+          subCategoryCount: categoriesData[categoryKey]?.length || 0
         };
     });
 
@@ -441,6 +450,11 @@ export const getPopularCategoriesAction = async (req, res) => {
 
       const found = map.get(normalize(name));
 
+      // Check if this category has subcategories
+      const categoryKey = name.toLowerCase().replace(/\s+/g, "-");
+      const hasSubcategories = !!categoriesData[categoryKey];
+      const subCategoryCount = categoriesData[categoryKey]?.length || 0;
+
       return found
         ? {
           _id: found._id,
@@ -448,12 +462,16 @@ export const getPopularCategoriesAction = async (req, res) => {
           slug: found.slug,
           icon: found.categoryImageKey
             ? `${S3_BASE_URL}${found.categoryImageKey}`
-            : null
+            : null,
+          hasSubcategories,
+          subCategoryCount
         }
         : {
           name,
           slug: name.toLowerCase().replace(/ /g, "-"),
-          icon: null
+          icon: null,
+          hasSubcategories: !!categoriesData[categoryKey],
+          subCategoryCount: categoriesData[categoryKey]?.length || 0
         };
     });
 
