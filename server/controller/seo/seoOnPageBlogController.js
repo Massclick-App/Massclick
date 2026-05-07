@@ -10,6 +10,7 @@ import {
 
 import { BAD_REQUEST } from "../../errorCodes.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
+import { invalidateSeoCache } from "../../utils/cacheInvalidation.js";
 
 /* =====================================
    COMMON ERROR
@@ -27,6 +28,7 @@ const sendError = (res, error, code = 400) => {
 export const addSeoPageContentBlogAction = async (req, res) => {
   try {
     const result = await createPageContentBlogSeo(req.body);
+    await invalidateSeoCache();
 
     return res.send({
       success: true,
@@ -112,6 +114,7 @@ export const updateSeoPageContentBlogAction = async (req, res) => {
       req.params.id,
       req.body
     );
+    await invalidateSeoCache();
 
     return res.send({
       success: true,
@@ -129,6 +132,7 @@ export const updateSeoPageContentBlogAction = async (req, res) => {
 export const deleteSeoPageContentBlogAction = async (req, res) => {
   try {
     const result = await deleteSeoPageContentBlog(req.params.id);
+    await invalidateSeoCache();
 
     return res.send({
       success: true,

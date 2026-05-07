@@ -8,10 +8,12 @@ import {
   categorySuggestion
 } from "../../helper/seo/seoHelper.js";
 import { BAD_REQUEST } from "../../errorCodes.js";
+import { invalidateSeoCache } from "../../utils/cacheInvalidation.js";
 
 export const addSeoAction = async (req, res) => {
   try {
     const result = await createSeo(req.body);
+    await invalidateSeoCache();
     res.send(result);
   } catch (error) {
     return res.status(BAD_REQUEST.code).send({ message: error.message });
@@ -88,6 +90,7 @@ export const viewAllSeoAction = async (req, res) => {
 export const updateSeoAction = async (req, res) => {
   try {
     const seo = await updateSeo(req.params.id, req.body);
+    await invalidateSeoCache();
     res.send(seo);
   } catch (error) {
     return res.status(400).send({ message: error.message });
@@ -97,6 +100,7 @@ export const updateSeoAction = async (req, res) => {
 export const deleteSeoAction = async (req, res) => {
   try {
     const seo = await deleteSeo(req.params.id);
+    await invalidateSeoCache();
     res.send({ message: "SEO deleted", seo });
   } catch (error) {
     return res.status(400).send({ message: error.message });

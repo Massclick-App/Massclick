@@ -8,6 +8,7 @@ import compression from "compression";
 import helmet from "helmet";
 
 import { metricsMiddleware } from "./utils/metricsMiddleware.js";
+import { initRedis } from "./utils/redisClient.js";
 import wellKnownRoutes from "./routes/wellKnownRoutes.js";
 import { ssrMiddleware } from "./middleware/ssrMiddleware.js";
 
@@ -125,6 +126,7 @@ app.get(/.*/, ssrMiddleware);
 
 mongoose.connect(MONGO_URI)
   .then(async () => {
+    await initRedis();
     startFCMScheduler();
     await initWsServer(httpServer);
     httpServer.listen(PORT, () => {

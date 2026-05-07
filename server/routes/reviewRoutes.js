@@ -7,8 +7,11 @@ import {
   reportReviewAction
 } from "../controller/reviewController/reviewController.js";
 import { oauthAuthentication } from "../helper/oauthHelper.js";
+import { cacheMiddleware } from "../middleware/cacheMiddleware.js";
 
 const router = express.Router();
+
+const reviewCache = cacheMiddleware({ expirySeconds: 1800, keyPrefix: 'reviews' });
 
 router.post(
   "/api/business/:businessId/reviews",
@@ -17,6 +20,7 @@ router.post(
 
 router.get(
   "/api/business/:businessId/reviews",
+  reviewCache,
   getReviewsAction
 );
 

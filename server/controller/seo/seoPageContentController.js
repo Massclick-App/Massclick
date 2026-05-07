@@ -7,10 +7,12 @@ import {
   deleteSeoPageContent,
 } from "../../helper/seo/seoPageContentHelper.js";
 import { BAD_REQUEST } from "../../errorCodes.js";
+import { invalidateSeoCache } from "../../utils/cacheInvalidation.js";
 
 export const addSeoPageContentAction = async (req, res) => {
   try {
     const result = await createPageContentSeo(req.body);
+    await invalidateSeoCache();
     res.send(result);
   } catch (error) {
     return res.status(BAD_REQUEST.code).send({ message: error.message });
@@ -94,6 +96,7 @@ export const viewAllSeoPageContentAction = async (req, res) => {
 export const updateSeoPageContentAction = async (req, res) => {
   try {
     const seo = await updateSeoPageContent(req.params.id, req.body);
+    await invalidateSeoCache();
     res.send(seo);
   } catch (error) {
     return res.status(400).send({ message: error.message });
@@ -103,6 +106,7 @@ export const updateSeoPageContentAction = async (req, res) => {
 export const deleteSeoPageContentAction = async (req, res) => {
   try {
     const seo = await deleteSeoPageContent(req.params.id);
+    await invalidateSeoCache();
     res.send({ message: "SEO deleted", seo });
   } catch (error) {
     return res.status(400).send({ message: error.message });
