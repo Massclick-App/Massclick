@@ -11,6 +11,11 @@ import { sendFCMNotification } from "../../helper/fcmHelper.js";
 import { emitToRoom } from "../../websocket/roomManager.js";
 import { buildRoom, WS_EVENTS } from "../../websocket/constants.js";
 
+const districtAliasMap = {
+  tiruchirappalli: ["tiruchirappalli", "trichy"],
+  trichy: ["tiruchirappalli", "trichy"],
+};
+
 // Short hash of IP + user-agent. 8 hex chars = 32-bit space, good enough for 5-min dedup.
 const anonFingerprint = (req) => {
   const ip = req.ip || req.socket?.remoteAddress || "unknown";
