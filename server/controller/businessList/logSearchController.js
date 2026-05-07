@@ -113,7 +113,7 @@ export const logSearchAction = async (req, res) => {
       userDetails.mobileNumber1 &&
       userDetails.mobileNumber1.trim();
 
-    // ── Resolve category (runs for all users, logged in or not) ──────────────
+    // ── Resolve category using enhanced suggestions logic (top result only) ────
     let finalCategoryName = "";
     let matchedCategoryFromSearch = null;
 
@@ -135,53 +135,15 @@ export const logSearchAction = async (req, res) => {
       if (validCategory) {
         finalCategoryName = validCategory.categoryName;
         matchedCategoryFromSearch = validCategory;
-      } else {
-        // categoryName provided but doesn't match any real category, fall through to search-based matching
-        const escapedSearch = cleanSearchText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-        const categories = await CategoryModel.aggregate([
-          {
-            $match: {
-              isActive: true,
-              $or: [
-                { category: { $regex: escapedSearch, $options: "i" } },
-                { categoryName: { $regex: escapedSearch, $options: "i" } },
-                { keywords: { $regex: escapedSearch, $options: "i" } }
-              ]
-            }
-          },
-          { $limit: 1 }
-        ]);
-
-        if (categories.length > 0) {
-          finalCategoryName = categories[0].categoryName || categories[0].category;
-          matchedCategoryFromSearch = categories[0];
-        } else {
-          const searchWords = cleanSearchText.split(" ");
-          const possibleCategories = await CategoryModel.aggregate([
-            {
-              $match: {
-                isActive: true,
-                $or: [
-                  { category: { $regex: searchWords.join("|"), $options: "i" } },
-                  { categoryName: { $regex: searchWords.join("|"), $options: "i" } },
-                  { keywords: { $regex: searchWords.join("|"), $options: "i" } }
-                ]
-              }
-            },
-            { $limit: 1 }
-          ]);
-          if (possibleCategories.length > 0) {
-            finalCategoryName = possibleCategories[0].categoryName || possibleCategories[0].category;
-            matchedCategoryFromSearch = possibleCategories[0];
-          } else {
-            finalCategoryName = searchedUserText;
-          }
-        }
       }
-    } else {
-      // No categoryName provided, match based on searchedUserText using enhanced suggestions logic
+    }
+
+    // If no valid category from categoryName, search using the same logic as enhanced suggestions endpoint
+    if (!finalCategoryName) {
       const escapedSearch = cleanSearchText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const categories = await CategoryModel.aggregate([
+
+      // Use the exact same matching logic as getEnhancedSuggestionsController
+      const topMatches = await CategoryModel.aggregate([
         {
           $match: {
             isActive: true,
@@ -196,12 +158,14 @@ export const logSearchAction = async (req, res) => {
         { $limit: 1 }
       ]);
 
-      if (categories.length > 0) {
-        finalCategoryName = categories[0].categoryName || categories[0].category;
-        matchedCategoryFromSearch = categories[0];
+      if (topMatches.length > 0) {
+        finalCategoryName = topMatches[0].categoryName || topMatches[0].category;
+        matchedCategoryFromSearch = topMatches[0];
+        console.log(`[SEARCH][${reqId}] Matched category from suggestions: "${finalCategoryName}"`);
       } else {
+        // Fallback: try word-by-word matching
         const searchWords = cleanSearchText.split(" ");
-        const possibleCategories = await CategoryModel.aggregate([
+        const wordMatches = await CategoryModel.aggregate([
           {
             $match: {
               isActive: true,
@@ -214,11 +178,14 @@ export const logSearchAction = async (req, res) => {
           },
           { $limit: 1 }
         ]);
-        if (possibleCategories.length > 0) {
-          finalCategoryName = possibleCategories[0].categoryName || possibleCategories[0].category;
-          matchedCategoryFromSearch = possibleCategories[0];
+
+        if (wordMatches.length > 0) {
+          finalCategoryName = wordMatches[0].categoryName || wordMatches[0].category;
+          matchedCategoryFromSearch = wordMatches[0];
+          console.log(`[SEARCH][${reqId}] Matched category from word matching: "${finalCategoryName}"`);
         } else {
           finalCategoryName = searchedUserText;
+          console.log(`[SEARCH][${reqId}] No category match found, using search text: "${finalCategoryName}"`);
         }
       }
     }
@@ -318,7 +285,7 @@ export const logSearchAction = async (req, res) => {
       }
     }
 
-    // ── Find ALL matching businesses for the search term (not limited) ──────────────
+    // ── Find matching businesses for WhatsApp/FCM sending ──────────────────────
     const normalize = (text = "") =>
       text
         .toLowerCase()
@@ -386,39 +353,13 @@ export const logSearchAction = async (req, res) => {
       delete searchMatchQuery.$and;
     }
 
-    // Find all matching businesses and extract categories
-    const allMatchingBusinesses = await businessListModel.find(
+    // Find matching businesses (limit to top 10)
+    const businesses = await businessListModel.find(
       searchMatchQuery,
-      { category: 1, businessName: 1, contactList: 1, whatsappNumber: 1, location: 1, street: 1, plotNumber: 1, averageRating: 1 }
-    ).lean();
-
-    // Find the majority/most common category
-    let majorityCategory = finalCategoryName;
-    if (allMatchingBusinesses.length > 0) {
-      const categoryCount = {};
-      allMatchingBusinesses.forEach((b) => {
-        const cat = (b.category || "").toLowerCase();
-        if (cat) {
-          categoryCount[cat] = (categoryCount[cat] || 0) + 1;
-        }
-      });
-
-      if (Object.keys(categoryCount).length > 0) {
-        majorityCategory = Object.keys(categoryCount).reduce((a, b) =>
-          categoryCount[a] > categoryCount[b] ? a : b
-        );
-        // Capitalize the majority category properly
-        majorityCategory = majorityCategory
-          .split(" ")
-          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-          .join(" ");
-        console.log(`[SEARCH][${reqId}] Majority category detected: "${majorityCategory}" from ${allMatchingBusinesses.length} matching businesses`);
-        finalCategoryName = majorityCategory;
-      }
-    }
-
-    // Limit to top 10 businesses for WhatsApp sending
-    const businesses = allMatchingBusinesses.slice(0, 10);
+      { businessName: 1, contactList: 1, whatsappNumber: 1, location: 1, street: 1, plotNumber: 1, averageRating: 1 }
+    )
+      .limit(10)
+      .lean();
 
     if (!businesses.length) {
 
@@ -546,7 +487,7 @@ export const logSearchAction = async (req, res) => {
       console.log(`[FCM] ${business.businessName} (${cleanMobile}): tokens to notify=${ownerTokens?.length ?? 0}`);
       if (ownerTokens && ownerTokens.length > 0) {
         const fcmTitle = "New Lead Alert 🔔";
-        const fcmBody = `Someone searched "${searchedUserText}" in ${normalizedLocation}. Check your leads now!`;
+        const fcmBody = `Someone searched "${finalCategoryName}" in ${normalizedLocation}. Check your leads now!`;
         const fcmData = {
           type: "lead",
           category: finalCategoryName,
