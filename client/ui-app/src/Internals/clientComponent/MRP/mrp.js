@@ -269,12 +269,10 @@ export default function MRPPage() {
             </form>
           </div>
 
-          {/* Business profile card */}
           <MRPInsights view="profile" />
 
         </div>
 
-        {/* ── ROW 2: Lead analytics (left) + Sent leads (right) ── */}
         <div className="mrp-row mrp-row-2">
 
           <div className="mrp-analytics-panel mrp-card">
