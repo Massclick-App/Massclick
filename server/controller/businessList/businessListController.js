@@ -267,12 +267,16 @@ export const getSuggestionsController = async (req, res) => {
       {
         $lookup: {
           from: "category",
-          let: { cat: { $toLower: "$category" } },
+          let: { businessCategory: "$category" },
           pipeline: [
             {
               $match: {
                 $expr: {
-                  $eq: [{ $toLower: "$category" }, "$$cat"]
+                  $regexMatch: {
+                    input: "$category",
+                    regex: "$$businessCategory",
+                    options: "i"
+                  }
                 }
               }
             }
@@ -299,9 +303,12 @@ export const getSuggestionsController = async (req, res) => {
           // business banner
           bannerImageKey: { $ifNull: ["$bannerImageKey", ""] },
 
-          // category image
+          // category image (from matched category document)
           categoryImageKey: {
-            $ifNull: ["$categoryData.categoryImageKey", ""]
+            $ifNull: [
+              { $arrayElemAt: ["$categoryData.categoryImageKey", 0] },
+              ""
+            ]
           }
         }
       }
