@@ -339,13 +339,12 @@ const handleSearch = async (e) => {
     text
       .toLowerCase()
       .trim()
-      .replace(/&/g, " and ")   // 🔥 important
+      .replace(/&/g, " and ")
       .replace(/[-_]/g, " ")
       .replace(/\s+/g, " ");
 
   let term = normalize(searchTerm);
   let location = normalize(locationName);
-  let category = normalize(categoryName);
 
   // 🔹 Remove location from term
   if (location && term.includes(location)) {
@@ -359,11 +358,24 @@ const handleSearch = async (e) => {
   // 🔹 Remove stopwords
   words = words.filter(word => !stopWords.includes(word));
 
-  // ✅ USE cleaned words
-  const finalCategory = words.join(" ");
+  const cleanedTerm = words.join(" ");
+
+  // ✅ Determine if this looks like a category or a free-form search term
+  const isCategorySearch = isLikelyCategorySearch(cleanedTerm);
+
+  let finalTerm = "";
+  let finalCategory = "";
+
+  if (isCategorySearch) {
+    // Short/single word → treat as category
+    finalCategory = cleanedTerm;
+  } else {
+    // Multi-word/longer text → treat as search term
+    finalTerm = cleanedTerm;
+  }
 
   const response = await dispatch(
-    backendMainSearch("", location, finalCategory)
+    backendMainSearch(finalTerm, location, finalCategory)
   );
 
   const results = response?.payload || [];
@@ -379,12 +391,14 @@ const handleSearch = async (e) => {
     email: authUser?.email,
   };
 
-  const key = `${category}-${location}-${userDetails.mobileNumber1}`;
+  // Log using the appropriate value (category if category search, term if free-form)
+  const logCategory = finalCategory || finalTerm;
+  const key = `${logCategory}-${location}-${userDetails.mobileNumber1}`;
 
   const logSent = shouldSendSearch(key);
   if (logSent) {
     dispatch(
-      logSearchActivity(category, location, userDetails, term)
+      logSearchActivity(logCategory, location, userDetails, finalTerm || finalCategory)
     );
   }
 
@@ -397,12 +411,13 @@ const handleSearch = async (e) => {
       .replace(/\s+/g, "-");
 
   const slugLocation = toSlug(location || "all");
-  const slugCategory = toSlug(finalCategory || "all");
+  const slugCategory = toSlug(finalCategory || finalTerm || "all");
 
   navigate(`/${slugLocation}/${slugCategory}`, {
     state: {
       results,
-      category: finalCategory,
+      category: finalCategory || finalTerm,
+      term: finalTerm,
       logAlreadySent: logSent
     }
   });

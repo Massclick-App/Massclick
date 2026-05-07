@@ -228,11 +228,22 @@ const CardsSearch = ({
   const handleSearch = async (e) => {
     e?.preventDefault?.();
 
-    const term = searchTerm.trim();
+    const searchInput = searchTerm.trim();
     const location = locationName.trim();
-    const category = categoryName.trim();
 
-    const response = await dispatch(backendMainSearch(term, location, category));
+    // ✅ Determine if this looks like a category or a free-form search term
+    let finalTerm = "";
+    let finalCategory = "";
+
+    if (isLikelyCategorySearch(searchInput)) {
+      // Short/single word → treat as category
+      finalCategory = searchInput;
+    } else {
+      // Multi-word/longer text → treat as search term
+      finalTerm = searchInput;
+    }
+
+    const response = await dispatch(backendMainSearch(finalTerm, location, finalCategory));
     const results = response?.payload || [];
 
     setSearchResults?.(results);
@@ -248,23 +259,23 @@ const CardsSearch = ({
     };
 
     const logLocation = location || "Global";
-    const derivedCategory = category || term || "All Categories";
+    const logValue = finalCategory || finalTerm || "All Categories";
 
-    if (userId && term) {
-      dispatch(logUserSearch(userId, term, logLocation, derivedCategory));
+    if (userId && (finalTerm || finalCategory)) {
+      dispatch(logUserSearch(userId, finalTerm || finalCategory, logLocation, logValue));
     }
 
-    const key = `${category}-${location}-${userDetails.mobileNumber1}`;
+    const key = `${logValue}-${location}-${userDetails.mobileNumber1}`;
 
     const logSent = shouldSendSearch(key);
     if (logSent) {
       dispatch(
-        logSearchActivity(category, location, userDetails, term)
+        logSearchActivity(logValue, location, userDetails, finalTerm || finalCategory)
       );
     }
 
     const slugLocation = toSlug(location || "All");
-    const slugTerm = toSlug(term || "All");
+    const slugTerm = toSlug(finalCategory || finalTerm || "All");
 
     navigate(`/${slugLocation}/${slugTerm}`, { state: { results, logAlreadySent: logSent } });
   };
