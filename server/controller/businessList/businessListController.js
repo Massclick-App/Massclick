@@ -267,8 +267,16 @@ export const getSuggestionsController = async (req, res) => {
       {
         $lookup: {
           from: "category",
-          localField: "category",
-          foreignField: "category",
+          let: { cat: { $toLower: "$category" } },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $eq: [{ $toLower: "$category" }, "$$cat"]
+                }
+              }
+            }
+          ],
           as: "categoryData"
         }
       },
