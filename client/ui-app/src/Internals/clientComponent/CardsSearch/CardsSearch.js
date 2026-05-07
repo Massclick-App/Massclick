@@ -19,7 +19,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import HistoryToggleOffIcon from "@mui/icons-material/HistoryToggleOff";
 import MI from "../../../assets/mi.png";
-import MassclickIndiaLogo from "../../../assets/Massclick-India.png";
+import MassclickIndiaLogo from "../../../assets/Massclick-India.webp";
 import AddBusinessModel from "../AddBusinessModel";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import { useDrawer } from "../Drawer/drawerContext";

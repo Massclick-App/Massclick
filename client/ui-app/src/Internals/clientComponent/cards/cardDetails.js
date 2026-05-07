@@ -1,7 +1,7 @@
 // BusinessDetail.jsx
 import React, { useEffect, useState, useRef } from "react";
 import { Helmet } from "react-helmet-async";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import {
   getBusinessDetailsById,
@@ -31,6 +31,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import FacebookIcon from "@mui/icons-material/Facebook";
 import InstagramIcon from "@mui/icons-material/Instagram";
 import LinkIcon from "@mui/icons-material/Link";
+import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import Tooltip from "@mui/material/Tooltip";
@@ -45,6 +46,15 @@ import {
   getAuthUser,
 } from "../../../redux/actions/favoriteAction";
 import OTPLoginModal from "../AddBusinessModel.js";
+
+const toSlug = (text = "") =>
+  String(text)
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "");
 
 const SimpleModal = ({ children, onClose, title }) => (
   <div
@@ -68,6 +78,7 @@ const SimpleModal = ({ children, onClose, title }) => (
 );
 
 const FullScreenGallery = ({ images, initialIndex, onClose }) => {
+  
   const [index, setIndex] = useState(initialIndex || 0);
 
   useEffect(() => {
@@ -158,6 +169,7 @@ const BusinessDetail = () => {
   const [showContactModal, setShowContactModal] = useState(false);
   const [activeTab, setActiveTab] = useState("Overview");
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showAllKeywords, setShowAllKeywords] = useState(false);
 
   const overviewRef = useRef(null);
   const quickInfoRef = useRef(null);
@@ -315,6 +327,25 @@ const formattedWebsite =
     getTodayHours(),
     business.experience ? `${business.experience}+ years experience` : null,
   ].filter(Boolean);
+  const rawKeywords = Array.isArray(business.keywords)
+    ? business.keywords
+    : typeof business.keywords === "string"
+      ? business.keywords.split(",")
+      : [];
+  const businessKeywords = Array.from(
+    new Set(
+      rawKeywords
+        .map((keyword) => String(keyword).trim())
+        .filter(Boolean)
+    )
+  );
+  const visibleKeywords = showAllKeywords
+    ? businessKeywords
+    : businessKeywords.slice(0, 10);
+  const hasMoreKeywords = businessKeywords.length > visibleKeywords.length;
+  const keywordLocationSlug = toSlug(business.location || location || "all");
+  const keywordCategory = business.category || business.slug || "";
+  const keywordCategorySlug = toSlug(keywordCategory);
 
   const getQuickFactIcon = (index) => {
     switch (index) {
@@ -1081,6 +1112,46 @@ const whatsappNumber =
                 </li>
               </ul>
             </div>
+
+            {businessKeywords.length > 0 && (
+              <div className="business-CardDetails-keywordsCard">
+                <div className="business-CardDetails-keywordsHeader">
+                  <span className="business-CardDetails-keywordsIcon">
+                    <LocalOfferIcon />
+                  </span>
+                  <div>
+                    <h3 className="business-CardDetails-keywordsTitle">
+                      Also listed in
+                    </h3>
+                    <p className="business-CardDetails-keywordsSubtitle">
+                      Popular searches for this business
+                    </p>
+                  </div>
+                </div>
+
+                <div className="business-CardDetails-keywordPills">
+                  {visibleKeywords.map((keyword) => (
+                    <Link
+                      key={keyword}
+                      to={`/${keywordLocationSlug}/${keywordCategorySlug || toSlug(keyword)}`}
+                      state={{ category: keywordCategory || keyword }}
+                      className="business-CardDetails-keywordPill"
+                    >
+                      {keyword}
+                    </Link>
+                  ))}
+                  {hasMoreKeywords && (
+                    <button
+                      type="button"
+                      className="business-CardDetails-keywordMoreBtn"
+                      onClick={() => setShowAllKeywords(true)}
+                    >
+                      More
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
           </aside>
         </div>
       </div>
