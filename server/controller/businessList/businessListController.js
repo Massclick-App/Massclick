@@ -305,10 +305,7 @@ export const getSuggestionsController = async (req, res) => {
 
           // category image (from matched category document)
           categoryImageKey: {
-            $ifNull: [
-              { $arrayElemAt: ["$categoryData.categoryImageKey", 0] },
-              ""
-            ]
+            $ifNull: ["$categoryData.categoryImageKey", ""]
           }
         }
       }
