@@ -89,6 +89,7 @@ const getDynamicCategoryRegex = (value = "") => {
 export const logSearchAction = async (req, res) => {
   try {
     const { categoryName, location, searchedUserText, userDetails } = req.body;
+    const reqId = Math.random().toString(36).slice(2, 8);
 
     if (!searchedUserText || !searchedUserText.trim()) {
       return res.status(400).json({
@@ -263,7 +264,6 @@ export const logSearchAction = async (req, res) => {
     }
 
     // ── Identified user path ──────────────────────────────────────────────────
-    const reqId = Math.random().toString(36).slice(2, 8);
     console.log(`[SEARCH][${reqId}] user=${userDetails.mobileNumber1} text="${cleanSearchText}" loc=${normalizedLocation}`);
 
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
@@ -313,42 +313,107 @@ export const logSearchAction = async (req, res) => {
       }
     }
 
-    // Use the matched category if found; otherwise fall back to dynamic regex matching
-    let categoryMatchQuery;
-    if (matchedCategoryFromSearch) {
-      // Use exact category match from the search results
-      categoryMatchQuery = {
-        category: { $regex: `^${matchedCategoryFromSearch.categoryName || matchedCategoryFromSearch.category}$`, $options: "i" }
-      };
-    } else {
-      // Fall back to dynamic regex matching for category
-      const categoryRegex = getDynamicCategoryRegex(finalCategoryName);
-      categoryMatchQuery = { category: categoryRegex };
+    // ── Find ALL matching businesses for the search term (not limited) ──────────────
+    const normalize = (text = "") =>
+      text
+        .toLowerCase()
+        .trim()
+        .replace(/&/g, " and ")
+        .replace(/[-_]/g, " ")
+        .replace(/\s+/g, " ");
+
+    const escapeRegex = (text = "") =>
+      text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+    const getWordVariations = (word = "") => {
+      const w = word.toLowerCase().trim();
+      if (!w) return [];
+      if (w.endsWith("s")) {
+        return [w, w.slice(0, -1)];
+      } else {
+        return [w, w + "s"];
+      }
+    };
+
+    // Build search query (same logic as mainSearchController)
+    const searchMatchQuery = {
+      businessesLive: true,
+      $and: []
+    };
+
+    // Add location filter
+    if (normalizedLocation && normalizedLocation !== "global") {
+      const locKey = normalizedLocation.toLowerCase().trim();
+      const aliases = districtAliasMap[locKey] || [locKey];
+      searchMatchQuery.$and.push({
+        $or: aliases.map((l) => ({
+          location: { $regex: `^${escapeRegex(normalize(l))}$`, $options: "i" }
+        }))
+      });
     }
 
-    const businesses = await businessListModel.find(
-      {
-        ...categoryMatchQuery,
+    // Add term search filter
+    if (cleanSearchText) {
+      const words = cleanSearchText.split(/\s+/).filter(w => w.trim());
+      const termConditions = [];
 
-        $or: locationList.map(loc => ({
-          location: { $regex: loc, $options: "i" }
-        })),
+      words.forEach((word) => {
+        const variations = getWordVariations(word);
+        variations.forEach((val) => {
+          const escaped = escapeRegex(val);
+          termConditions.push(
+            { businessName: { $regex: escaped, $options: "i" } },
+            { category: { $regex: escaped, $options: "i" } },
+            { slug: { $regex: escaped, $options: "i" } },
+            { keywords: { $regex: escaped, $options: "i" } }
+          );
+        });
+      });
 
-        isActive: true,
-        businessesLive: true
-      },
-      {
-        businessName: 1,
-        contactList: 1,
-        whatsappNumber: 1,
-        location: 1,
-        street: 1,
-        plotNumber: 1,
-        averageRating: 1
+      if (termConditions.length > 0) {
+        searchMatchQuery.$and.push({
+          $or: termConditions
+        });
       }
-    )
-      .limit(10)
-      .lean();
+    }
+
+    if (searchMatchQuery.$and.length === 0) {
+      delete searchMatchQuery.$and;
+    }
+
+    // Find all matching businesses and extract categories
+    const allMatchingBusinesses = await businessListModel.find(
+      searchMatchQuery,
+      { category: 1, businessName: 1, contactList: 1, whatsappNumber: 1, location: 1, street: 1, plotNumber: 1, averageRating: 1 }
+    ).lean();
+
+    // Find the majority/most common category
+    let majorityCategory = finalCategoryName;
+    if (allMatchingBusinesses.length > 0) {
+      const categoryCount = {};
+      allMatchingBusinesses.forEach((b) => {
+        const cat = (b.category || "").toLowerCase();
+        if (cat) {
+          categoryCount[cat] = (categoryCount[cat] || 0) + 1;
+        }
+      });
+
+      if (Object.keys(categoryCount).length > 0) {
+        majorityCategory = Object.keys(categoryCount).reduce((a, b) =>
+          categoryCount[a] > categoryCount[b] ? a : b
+        );
+        // Capitalize the majority category properly
+        majorityCategory = majorityCategory
+          .split(" ")
+          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(" ");
+        console.log(`[SEARCH][${reqId}] Majority category detected: "${majorityCategory}" from ${allMatchingBusinesses.length} matching businesses`);
+        finalCategoryName = majorityCategory;
+      }
+    }
+
+    // Limit to top 10 businesses for WhatsApp sending
+    const businesses = allMatchingBusinesses.slice(0, 10);
 
     if (!businesses.length) {
 
