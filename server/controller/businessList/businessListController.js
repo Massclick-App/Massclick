@@ -393,14 +393,17 @@ export const mainSearchController = async (req, res) => {
     if (category) {
       const variations = getWordVariations(category);
 
-      matchQuery.$and.push({
-        $or: variations.map((val) => {
-          const flexible = makeFlexible(val);
+      const categoryConditions = variations.flatMap((val) => {
+        const escaped = escapeRegex(val);
 
-          return {
-            category: { $regex: `^${flexible}$`, $options: "i" }
-          };
-        })
+        return [
+          { category: { $regex: escaped, $options: "i" } },
+          { keywords: { $regex: escaped, $options: "i" } }
+        ];
+      });
+
+      matchQuery.$and.push({
+        $or: categoryConditions
       });
     }
 
@@ -408,22 +411,32 @@ export const mainSearchController = async (req, res) => {
     // 🔍 TERM SEARCH
     // ===============================
     if (term) {
-      const variations = getWordVariations(term);
+      // 🔹 Split multi-word searches into individual words
+      const words = term.split(/\s+/).filter(w => w.trim());
 
-      const termConditions = variations.flatMap((val) => {
-        const flexible = makeFlexible(val);
+      const termConditions = [];
 
-        return [
-          { businessName: { $regex: flexible, $options: "i" } },
-          { category: { $regex: flexible, $options: "i" } },
-          { slug: { $regex: flexible, $options: "i" } },
-          { keywords: { $regex: flexible, $options: "i" } }
-        ];
+      words.forEach((word) => {
+        const variations = getWordVariations(word);
+
+        variations.forEach((val) => {
+          const escaped = escapeRegex(val);
+
+          // For each word, create OR conditions across all fields
+          termConditions.push(
+            { businessName: { $regex: escaped, $options: "i" } },
+            { category: { $regex: escaped, $options: "i" } },
+            { slug: { $regex: escaped, $options: "i" } },
+            { keywords: { $regex: escaped, $options: "i" } }
+          );
+        });
       });
 
-      matchQuery.$and.push({
-        $or: termConditions
-      });
+      if (termConditions.length > 0) {
+        matchQuery.$and.push({
+          $or: termConditions
+        });
+      }
     }
 
     if (matchQuery.$and.length === 0) {
