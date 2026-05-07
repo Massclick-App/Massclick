@@ -432,7 +432,7 @@ export const logSearchAction = async (req, res) => {
 
     const leadData = {
 
-      searchText: searchedUserText,
+      searchText: finalCategoryName,
 
       location: normalizedLocation,
 
