@@ -6,6 +6,7 @@ import { useDispatch, useSelector } from "react-redux";
 import {
   getBusinessDetailsById,
   getBusinessDetailsBySlug,
+  editBusinessList,
 } from "../../../redux/actions/businessListAction";
 import "./cardDetails.css";
 import UserRatingWidget from "../rating/rating";
@@ -170,6 +171,10 @@ const BusinessDetail = () => {
   const [activeTab, setActiveTab] = useState("Overview");
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showAllKeywords, setShowAllKeywords] = useState(false);
+  const [newGalleryImages, setNewGalleryImages] = useState([]);
+  const [isUploadingImages, setIsUploadingImages] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const fileInputRef = useRef(null);
 
   const overviewRef = useRef(null);
   const quickInfoRef = useRef(null);
@@ -346,6 +351,65 @@ const formattedWebsite =
   const keywordLocationSlug = toSlug(business.location || location || "all");
   const keywordCategory = business.category || business.slug || "";
   const keywordCategorySlug = toSlug(keywordCategory);
+
+  const handleGalleryFileSelection = async (event) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+
+    try {
+      const images = await Promise.all(
+        files.map((file) =>
+          new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          })
+        )
+      );
+
+      setNewGalleryImages((prev) => [...prev, ...images]);
+      setUploadError("");
+    } catch (error) {
+      console.error("Failed to read selected images:", error);
+      setUploadError("Unable to read selected images. Please try again.");
+    } finally {
+      if (event.target) {
+        event.target.value = "";
+      }
+    }
+  };
+
+  const openGalleryFileDialog = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleUploadBusinessImages = async () => {
+    if (!newGalleryImages.length || !business?._id) return;
+
+    setIsUploadingImages(true);
+    setUploadError("");
+
+    try {
+      await dispatch(
+        editBusinessList(business._id, {
+          businessImages: newGalleryImages,
+        })
+      );
+
+      setNewGalleryImages([]);
+      await dispatch(getBusinessDetailsById(business._id));
+    } catch (error) {
+      console.error("Business image upload failed:", error);
+      setUploadError(
+        error?.response?.data?.message ||
+          error?.message ||
+          "Upload failed. Please try again."
+      );
+    } finally {
+      setIsUploadingImages(false);
+    }
+  };
 
   const getQuickFactIcon = (index) => {
     switch (index) {
@@ -682,13 +746,6 @@ const whatsappNumber =
                     </a>
                   )}
 
-                  <span
-                    className="business-CardDetails-iconBtn"
-                    title="Edit Business"
-                  >
-                    <EditIcon style={{ fontSize: 20 }} />
-                  </span>
-
                   <button
                     className={`business-CardDetails-iconBtn business-CardDetails-favBtn${favoriteIds.includes(business._id) ? " business-CardDetails-favBtn--active" : ""}${togglingIds.includes(business._id) ? " business-CardDetails-favBtn--loading" : ""}`}
                     title={favoriteIds.includes(business._id) ? "Remove from favorites" : "Add to favorites"}
@@ -845,7 +902,7 @@ const whatsappNumber =
                   </div>
                 </div>
               </section>
-
+              
               <section
                 ref={servicesRef}
                 className="business-CardDetails-infoBlock"
@@ -872,6 +929,46 @@ const whatsappNumber =
                 className="business-CardDetails-photosSection"
               >
                 <h2>Photos</h2>
+              <div className="business-CardDetails-uploadSection">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  multiple
+                  accept="image/*"
+                  style={{ display: "none" }}
+                  onChange={handleGalleryFileSelection}
+                />
+                <button
+                  type="button"
+                  className="business-CardDetails-btn business-CardDetails-btn--secondary"
+                  onClick={openGalleryFileDialog}
+                >
+                  Select Images
+                </button>
+                <button
+                  type="button"
+                  className="business-CardDetails-btn business-CardDetails-btn--primary"
+                  onClick={handleUploadBusinessImages}
+                  disabled={newGalleryImages.length === 0 || isUploadingImages}
+                >
+                  {isUploadingImages ? "Uploading..." : "Upload Images"}
+                </button>
+              </div>
+              {newGalleryImages.length > 0 && (
+                <div className="business-CardDetails-uploadPreview">
+                  {newGalleryImages.map((src, idx) => (
+                    <img
+                      key={idx}
+                      src={src}
+                      alt={`Selected upload ${idx + 1}`}
+                      className="business-CardDetails-uploadPreviewItem"
+                    />
+                  ))}
+                </div>
+              )}
+              {uploadError && (
+                <p className="business-CardDetails-uploadError">{uploadError}</p>
+              )}
                 {galleryImageSrcs.length > 0 ? (
                   <div className="business-CardDetails-photoGrid">
                     {galleryImageSrcs.map((src, index) => (

@@ -550,6 +550,34 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.business-CardDetails-uploadSection {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.business-CardDetails-uploadPreview {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.business-CardDetails-uploadPreviewItem {
+  aspect-ratio: 5 / 3.4;
+  border-radius: var(--bc-radius-md);
+  object-fit: cover;
+  width: 100%;
+}
+
+.business-CardDetails-uploadError {
+  color: #dc2626;
+  font-size: 0.95rem;
+  margin-top: 8px;
+}
+
 .business-CardDetails-photoItem {
   aspect-ratio: 5 / 3.4;
   border-radius: var(--bc-radius-md);
