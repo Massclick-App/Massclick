@@ -183,17 +183,19 @@ export const getSuggestionsController = async (req, res) => {
       return res.send([]);
     }
 
-    const startsWithRegex = new RegExp(`^${search}`, "i");
-    const containsRegex = new RegExp(search, "i");
+    const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const startsWithPattern = `^${escapedSearch}`;
+    const containsPattern = escapedSearch;
 
     const suggestions = await businessListModel.aggregate([
       {
         $match: {
           businessesLive: true,
           $or: [
-            { category: containsRegex },
-            { businessName: containsRegex },
-            { location: containsRegex }
+            { category: { $regex: containsPattern, $options: "i" } },
+            { businessName: { $regex: containsPattern, $options: "i" } },
+            { location: { $regex: containsPattern, $options: "i" } },
+            { keywords: { $regex: containsPattern, $options: "i" } }
           ]
         }
       },
@@ -203,38 +205,44 @@ export const getSuggestionsController = async (req, res) => {
           priority: {
             $switch: {
               branches: [
+                // Priority 1: Category or businessName starts with search term
                 {
                   case: {
                     $or: [
                       {
                         $regexMatch: {
                           input: "$category",
-                          regex: startsWithRegex
+                          regex: startsWithPattern,
+                          options: "i"
                         }
                       },
                       {
                         $regexMatch: {
                           input: "$businessName",
-                          regex: startsWithRegex
+                          regex: startsWithPattern,
+                          options: "i"
                         }
                       }
                     ]
                   },
                   then: 1
                 },
+                // Priority 2: Category or businessName contains search term
                 {
                   case: {
                     $or: [
                       {
                         $regexMatch: {
                           input: "$category",
-                          regex: containsRegex
+                          regex: containsPattern,
+                          options: "i"
                         }
                       },
                       {
                         $regexMatch: {
                           input: "$businessName",
-                          regex: containsRegex
+                          regex: containsPattern,
+                          options: "i"
                         }
                       }
                     ]
@@ -258,9 +266,21 @@ export const getSuggestionsController = async (req, res) => {
 
       {
         $lookup: {
-          from: "category",
-          localField: "category",
-          foreignField: "category",
+          from: "categories",
+          let: { businessCategory: "$category" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $regexMatch: {
+                    input: "$category",
+                    regex: "$$businessCategory",
+                    options: "i"
+                  }
+                }
+              }
+            }
+          ],
           as: "categoryData"
         }
       },
@@ -283,7 +303,7 @@ export const getSuggestionsController = async (req, res) => {
           // business banner
           bannerImageKey: { $ifNull: ["$bannerImageKey", ""] },
 
-          // category image
+          // category image (from matched category document)
           categoryImageKey: {
             $ifNull: ["$categoryData.categoryImageKey", ""]
           }
@@ -291,7 +311,20 @@ export const getSuggestionsController = async (req, res) => {
       }
     ]);
 
-    const finalData = suggestions.map((item) => {
+    // 🔹 Deduplicate by category (show unique categories only)
+    const seen = new Set();
+    const uniqueSuggestions = [];
+
+    suggestions.forEach((item) => {
+      const categoryKey = (item.category || "").toLowerCase();
+
+      if (categoryKey && !seen.has(categoryKey)) {
+        seen.add(categoryKey);
+        uniqueSuggestions.push(item);
+      }
+    });
+
+    const finalData = uniqueSuggestions.map((item) => {
       return {
         businessName: item.businessName,
         category: item.category,
@@ -324,6 +357,88 @@ export const getSuggestionsController = async (req, res) => {
 const districtAliasMap = {
   tiruchirappalli: ["tiruchirappalli", "trichy"],
   trichy: ["tiruchirappalli", "trichy"],
+};
+
+export const getEnhancedSuggestionsController = async (req, res) => {
+  try {
+    const search = (req.query.search || "").trim();
+    const location = (req.query.location || "").trim();
+
+    if (search.length < 2) {
+      return res.send([]);
+    }
+
+    const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const containsPattern = escapedSearch;
+
+    // Get matching categories
+    const categories = await categoryModel.aggregate([
+      {
+        $match: {
+          isActive: true,
+          $or: [
+            { category: { $regex: containsPattern, $options: "i" } },
+            { keywords: { $regex: containsPattern, $options: "i" } },
+            { description: { $regex: containsPattern, $options: "i" } }
+          ]
+        }
+      },
+      { $limit: 10 }
+    ]);
+
+    // For each category, get business count
+    const suggestionsWithCount = await Promise.all(
+      categories.map(async (cat) => {
+        const matchQuery = {
+          businessesLive: true,
+          category: { $regex: `^${escapedSearch.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" }
+        };
+
+        if (location) {
+          const locKey = location.toLowerCase().trim();
+          const aliases = districtAliasMap[locKey] || [locKey];
+          matchQuery.location = {
+            $in: aliases.map(
+              (l) => new RegExp(`^${l}$`, "i")
+            )
+          };
+        }
+
+        const count = await businessListModel.countDocuments({
+          businessesLive: true,
+          category: cat.category,
+          ...(location && {
+            location: {
+              $in: (districtAliasMap[location.toLowerCase().trim()] || [location]).map(
+                (l) => new RegExp(`^${l}$`, "i")
+              )
+            }
+          })
+        });
+
+        return {
+          category: cat.category,
+          description: cat.description || cat.title || "",
+          categoryImage: cat.categoryImageKey
+            ? getSignedUrlByKey(cat.categoryImageKey)
+            : "",
+          categoryImageKey: cat.categoryImageKey,
+          count: count,
+          location: location || "All Districts",
+          slug: cat.slug,
+          relatedKeywords: Array.isArray(cat.keywords) ? cat.keywords : []
+        };
+      })
+    );
+
+    // Filter categories with at least 1 business
+    const filtered = suggestionsWithCount.filter((s) => s.count > 0);
+
+    return res.send(filtered);
+  } catch (err) {
+    console.error(err);
+    res.status(400).send({ message: err.message });
+  }
 };
 
 export const mainSearchController = async (req, res) => {
@@ -376,11 +491,9 @@ export const mainSearchController = async (req, res) => {
       const aliases = districtAliasMap[locKey] || [locKey];
 
       matchQuery.$and.push({
-        location: {
-          $in: aliases.map(
-            (l) => new RegExp(`^${escapeRegex(normalize(l))}$`, "i")
-          )
-        }
+        $or: aliases.map((l) => ({
+          location: { $regex: `^${escapeRegex(normalize(l))}$`, $options: "i" }
+        }))
       });
     }
 
@@ -390,14 +503,17 @@ export const mainSearchController = async (req, res) => {
     if (category) {
       const variations = getWordVariations(category);
 
-      matchQuery.$and.push({
-        $or: variations.map((val) => {
-          const flexible = makeFlexible(val);
+      const categoryConditions = variations.flatMap((val) => {
+        const escaped = escapeRegex(val);
 
-          return {
-            category: new RegExp(`^${flexible}$`, "i")
-          };
-        })
+        return [
+          { category: { $regex: escaped, $options: "i" } },
+          { keywords: { $regex: escaped, $options: "i" } }
+        ];
+      });
+
+      matchQuery.$and.push({
+        $or: categoryConditions
       });
     }
 
@@ -405,23 +521,32 @@ export const mainSearchController = async (req, res) => {
     // 🔍 TERM SEARCH
     // ===============================
     if (term) {
-      const variations = getWordVariations(term);
+      // 🔹 Split multi-word searches into individual words
+      const words = term.split(/\s+/).filter(w => w.trim());
 
-      const termConditions = variations.flatMap((val) => {
-        const flexible = makeFlexible(val);
-        const regex = new RegExp(flexible, "i");
+      const termConditions = [];
 
-        return [
-          { businessName: regex },
-          { category: regex },
-          { slug: regex },
-          { keywords: regex }
-        ];
+      words.forEach((word) => {
+        const variations = getWordVariations(word);
+
+        variations.forEach((val) => {
+          const escaped = escapeRegex(val);
+
+          // For each word, create OR conditions across all fields
+          termConditions.push(
+            { businessName: { $regex: escaped, $options: "i" } },
+            { category: { $regex: escaped, $options: "i" } },
+            { slug: { $regex: escaped, $options: "i" } },
+            { keywords: { $regex: escaped, $options: "i" } }
+          );
+        });
       });
 
-      matchQuery.$and.push({
-        $or: termConditions
-      });
+      if (termConditions.length > 0) {
+        matchQuery.$and.push({
+          $or: termConditions
+        });
+      }
     }
 
     if (matchQuery.$and.length === 0) {

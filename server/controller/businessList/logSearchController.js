@@ -11,6 +11,11 @@ import { sendFCMNotification } from "../../helper/fcmHelper.js";
 import { emitToRoom } from "../../websocket/roomManager.js";
 import { buildRoom, WS_EVENTS } from "../../websocket/constants.js";
 
+const districtAliasMap = {
+  tiruchirappalli: ["tiruchirappalli", "trichy"],
+  trichy: ["tiruchirappalli", "trichy"],
+};
+
 // Short hash of IP + user-agent. 8 hex chars = 32-bit space, good enough for 5-min dedup.
 const anonFingerprint = (req) => {
   const ip = req.ip || req.socket?.remoteAddress || "unknown";
@@ -89,6 +94,7 @@ const getDynamicCategoryRegex = (value = "") => {
 export const logSearchAction = async (req, res) => {
   try {
     const { categoryName, location, searchedUserText, userDetails } = req.body;
+    const reqId = Math.random().toString(36).slice(2, 8);
 
     if (!searchedUserText || !searchedUserText.trim()) {
       return res.status(400).json({
@@ -107,30 +113,80 @@ export const logSearchAction = async (req, res) => {
       userDetails.mobileNumber1 &&
       userDetails.mobileNumber1.trim();
 
-    // ── Resolve category (runs for all users, logged in or not) ──────────────
+    // ── Resolve category using enhanced suggestions logic (top result only) ────
     let finalCategoryName = "";
+    let matchedCategoryFromSearch = null;
 
+    // First, try to match against categoryName if provided
     if (
       categoryName &&
       categoryName.trim() &&
       categoryName.toLowerCase() !== "all categories"
     ) {
-      finalCategoryName = categoryName.trim().toLowerCase();
-    } else {
-      const matchedCategory = await CategoryModel.findOne({
-        categoryName: { $regex: cleanSearchText, $options: "i" }
+      const categorySlugFromInput = categoryName
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)+/g, "");
+
+      const validCategory = await CategoryModel.findOne({
+        slug: categorySlugFromInput
       }).lean();
 
-      if (matchedCategory) {
-        finalCategoryName = matchedCategory.categoryName;
+      if (validCategory) {
+        finalCategoryName = validCategory.categoryName;
+        matchedCategoryFromSearch = validCategory;
+      }
+    }
+
+    // If no valid category from categoryName, search using the same logic as enhanced suggestions endpoint
+    if (!finalCategoryName) {
+      const escapedSearch = cleanSearchText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+      // Use the exact same matching logic as getEnhancedSuggestionsController
+      const topMatches = await CategoryModel.aggregate([
+        {
+          $match: {
+            isActive: true,
+            $or: [
+              { category: { $regex: escapedSearch, $options: "i" } },
+              { categoryName: { $regex: escapedSearch, $options: "i" } },
+              { keywords: { $regex: escapedSearch, $options: "i" } },
+              { description: { $regex: escapedSearch, $options: "i" } }
+            ]
+          }
+        },
+        { $limit: 1 }
+      ]);
+
+      if (topMatches.length > 0) {
+        finalCategoryName = topMatches[0].categoryName || topMatches[0].category;
+        matchedCategoryFromSearch = topMatches[0];
+        console.log(`[SEARCH][${reqId}] Matched category from suggestions: "${finalCategoryName}"`);
       } else {
+        // Fallback: try word-by-word matching
         const searchWords = cleanSearchText.split(" ");
-        const possibleCategory = await CategoryModel.findOne({
-          categoryName: { $regex: searchWords.join("|"), $options: "i" }
-        }).lean();
-        finalCategoryName = possibleCategory
-          ? possibleCategory.categoryName
-          : searchedUserText;
+        const wordMatches = await CategoryModel.aggregate([
+          {
+            $match: {
+              isActive: true,
+              $or: [
+                { category: { $regex: searchWords.join("|"), $options: "i" } },
+                { categoryName: { $regex: searchWords.join("|"), $options: "i" } },
+                { keywords: { $regex: searchWords.join("|"), $options: "i" } }
+              ]
+            }
+          },
+          { $limit: 1 }
+        ]);
+
+        if (wordMatches.length > 0) {
+          finalCategoryName = wordMatches[0].categoryName || wordMatches[0].category;
+          matchedCategoryFromSearch = wordMatches[0];
+          console.log(`[SEARCH][${reqId}] Matched category from word matching: "${finalCategoryName}"`);
+        } else {
+          finalCategoryName = searchedUserText;
+          console.log(`[SEARCH][${reqId}] No category match found, using search text: "${finalCategoryName}"`);
+        }
       }
     }
 
@@ -180,7 +236,6 @@ export const logSearchAction = async (req, res) => {
     }
 
     // ── Identified user path ──────────────────────────────────────────────────
-    const reqId = Math.random().toString(36).slice(2, 8);
     console.log(`[SEARCH][${reqId}] user=${userDetails.mobileNumber1} text="${cleanSearchText}" loc=${normalizedLocation}`);
 
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
@@ -230,28 +285,78 @@ export const logSearchAction = async (req, res) => {
       }
     }
 
-    const categoryRegex = getDynamicCategoryRegex(finalCategoryName);
+    // ── Find matching businesses for WhatsApp/FCM sending ──────────────────────
+    const normalize = (text = "") =>
+      text
+        .toLowerCase()
+        .trim()
+        .replace(/&/g, " and ")
+        .replace(/[-_]/g, " ")
+        .replace(/\s+/g, " ");
 
-    const businesses = await businessListModel.find(
-      {
-        category: categoryRegex,
+    const escapeRegex = (text = "") =>
+      text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-        $or: locationList.map(loc => ({
-          location: { $regex: loc, $options: "i" }
-        })),
-
-        isActive: true,
-        businessesLive: true
-      },
-      {
-        businessName: 1,
-        contactList: 1,
-        whatsappNumber: 1,
-        location: 1,
-        street: 1,
-        plotNumber: 1,
-        averageRating: 1
+    const getWordVariations = (word = "") => {
+      const w = word.toLowerCase().trim();
+      if (!w) return [];
+      if (w.endsWith("s")) {
+        return [w, w.slice(0, -1)];
+      } else {
+        return [w, w + "s"];
       }
+    };
+
+    // Build search query (same logic as mainSearchController)
+    const searchMatchQuery = {
+      businessesLive: true,
+      $and: []
+    };
+
+    // Add location filter
+    if (normalizedLocation && normalizedLocation !== "global") {
+      const locKey = normalizedLocation.toLowerCase().trim();
+      const aliases = districtAliasMap[locKey] || [locKey];
+      searchMatchQuery.$and.push({
+        $or: aliases.map((l) => ({
+          location: { $regex: `^${escapeRegex(normalize(l))}$`, $options: "i" }
+        }))
+      });
+    }
+
+    // Add term search filter
+    if (cleanSearchText) {
+      const words = cleanSearchText.split(/\s+/).filter(w => w.trim());
+      const termConditions = [];
+
+      words.forEach((word) => {
+        const variations = getWordVariations(word);
+        variations.forEach((val) => {
+          const escaped = escapeRegex(val);
+          termConditions.push(
+            { businessName: { $regex: escaped, $options: "i" } },
+            { category: { $regex: escaped, $options: "i" } },
+            { slug: { $regex: escaped, $options: "i" } },
+            { keywords: { $regex: escaped, $options: "i" } }
+          );
+        });
+      });
+
+      if (termConditions.length > 0) {
+        searchMatchQuery.$and.push({
+          $or: termConditions
+        });
+      }
+    }
+
+    if (searchMatchQuery.$and.length === 0) {
+      delete searchMatchQuery.$and;
+    }
+
+    // Find matching businesses (limit to top 10)
+    const businesses = await businessListModel.find(
+      searchMatchQuery,
+      { businessName: 1, contactList: 1, whatsappNumber: 1, location: 1, street: 1, plotNumber: 1, averageRating: 1 }
     )
       .limit(10)
       .lean();
@@ -268,7 +373,7 @@ export const logSearchAction = async (req, res) => {
 
     const leadData = {
 
-      searchText: searchedUserText,
+      searchText: finalCategoryName,
 
       location: normalizedLocation,
 
@@ -382,7 +487,7 @@ export const logSearchAction = async (req, res) => {
       console.log(`[FCM] ${business.businessName} (${cleanMobile}): tokens to notify=${ownerTokens?.length ?? 0}`);
       if (ownerTokens && ownerTokens.length > 0) {
         const fcmTitle = "New Lead Alert 🔔";
-        const fcmBody = `Someone searched "${searchedUserText}" in ${normalizedLocation}. Check your leads now!`;
+        const fcmBody = `Someone searched "${finalCategoryName}" in ${normalizedLocation}. Check your leads now!`;
         const fcmData = {
           type: "lead",
           category: finalCategoryName,
