@@ -109,28 +109,111 @@ export const logSearchAction = async (req, res) => {
 
     // ── Resolve category (runs for all users, logged in or not) ──────────────
     let finalCategoryName = "";
+    let matchedCategoryFromSearch = null;
 
+    // First, try to match against categoryName if provided
     if (
       categoryName &&
       categoryName.trim() &&
       categoryName.toLowerCase() !== "all categories"
     ) {
-      finalCategoryName = categoryName.trim().toLowerCase();
-    } else {
-      const matchedCategory = await CategoryModel.findOne({
-        categoryName: { $regex: cleanSearchText, $options: "i" }
+      const categorySlugFromInput = categoryName
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)+/g, "");
+
+      const validCategory = await CategoryModel.findOne({
+        slug: categorySlugFromInput
       }).lean();
 
-      if (matchedCategory) {
-        finalCategoryName = matchedCategory.categoryName;
+      if (validCategory) {
+        finalCategoryName = validCategory.categoryName;
+        matchedCategoryFromSearch = validCategory;
+      } else {
+        // categoryName provided but doesn't match any real category, fall through to search-based matching
+        const escapedSearch = cleanSearchText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const categories = await CategoryModel.aggregate([
+          {
+            $match: {
+              isActive: true,
+              $or: [
+                { category: { $regex: escapedSearch, $options: "i" } },
+                { categoryName: { $regex: escapedSearch, $options: "i" } },
+                { keywords: { $regex: escapedSearch, $options: "i" } }
+              ]
+            }
+          },
+          { $limit: 1 }
+        ]);
+
+        if (categories.length > 0) {
+          finalCategoryName = categories[0].categoryName || categories[0].category;
+          matchedCategoryFromSearch = categories[0];
+        } else {
+          const searchWords = cleanSearchText.split(" ");
+          const possibleCategories = await CategoryModel.aggregate([
+            {
+              $match: {
+                isActive: true,
+                $or: [
+                  { category: { $regex: searchWords.join("|"), $options: "i" } },
+                  { categoryName: { $regex: searchWords.join("|"), $options: "i" } },
+                  { keywords: { $regex: searchWords.join("|"), $options: "i" } }
+                ]
+              }
+            },
+            { $limit: 1 }
+          ]);
+          if (possibleCategories.length > 0) {
+            finalCategoryName = possibleCategories[0].categoryName || possibleCategories[0].category;
+            matchedCategoryFromSearch = possibleCategories[0];
+          } else {
+            finalCategoryName = searchedUserText;
+          }
+        }
+      }
+    } else {
+      // No categoryName provided, match based on searchedUserText using enhanced suggestions logic
+      const escapedSearch = cleanSearchText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const categories = await CategoryModel.aggregate([
+        {
+          $match: {
+            isActive: true,
+            $or: [
+              { category: { $regex: escapedSearch, $options: "i" } },
+              { categoryName: { $regex: escapedSearch, $options: "i" } },
+              { keywords: { $regex: escapedSearch, $options: "i" } },
+              { description: { $regex: escapedSearch, $options: "i" } }
+            ]
+          }
+        },
+        { $limit: 1 }
+      ]);
+
+      if (categories.length > 0) {
+        finalCategoryName = categories[0].categoryName || categories[0].category;
+        matchedCategoryFromSearch = categories[0];
       } else {
         const searchWords = cleanSearchText.split(" ");
-        const possibleCategory = await CategoryModel.findOne({
-          categoryName: { $regex: searchWords.join("|"), $options: "i" }
-        }).lean();
-        finalCategoryName = possibleCategory
-          ? possibleCategory.categoryName
-          : searchedUserText;
+        const possibleCategories = await CategoryModel.aggregate([
+          {
+            $match: {
+              isActive: true,
+              $or: [
+                { category: { $regex: searchWords.join("|"), $options: "i" } },
+                { categoryName: { $regex: searchWords.join("|"), $options: "i" } },
+                { keywords: { $regex: searchWords.join("|"), $options: "i" } }
+              ]
+            }
+          },
+          { $limit: 1 }
+        ]);
+        if (possibleCategories.length > 0) {
+          finalCategoryName = possibleCategories[0].categoryName || possibleCategories[0].category;
+          matchedCategoryFromSearch = possibleCategories[0];
+        } else {
+          finalCategoryName = searchedUserText;
+        }
       }
     }
 
@@ -230,11 +313,22 @@ export const logSearchAction = async (req, res) => {
       }
     }
 
-    const categoryRegex = getDynamicCategoryRegex(finalCategoryName);
+    // Use the matched category if found; otherwise fall back to dynamic regex matching
+    let categoryMatchQuery;
+    if (matchedCategoryFromSearch) {
+      // Use exact category match from the search results
+      categoryMatchQuery = {
+        category: { $regex: `^${matchedCategoryFromSearch.categoryName || matchedCategoryFromSearch.category}$`, $options: "i" }
+      };
+    } else {
+      // Fall back to dynamic regex matching for category
+      const categoryRegex = getDynamicCategoryRegex(finalCategoryName);
+      categoryMatchQuery = { category: categoryRegex };
+    }
 
     const businesses = await businessListModel.find(
       {
-        category: categoryRegex,
+        ...categoryMatchQuery,
 
         $or: locationList.map(loc => ({
           location: { $regex: loc, $options: "i" }
