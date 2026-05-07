@@ -372,9 +372,7 @@ export const getEnhancedSuggestionsController = async (req, res) => {
     const containsPattern = escapedSearch;
 
     // Get matching categories
-    const categoryCollection = require("../../model/category/categoryModel.js").default;
-
-    const categories = await categoryCollection.aggregate([
+    const categories = await categoryModel.aggregate([
       {
         $match: {
           isActive: true,
