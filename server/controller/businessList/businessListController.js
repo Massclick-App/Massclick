@@ -183,17 +183,18 @@ export const getSuggestionsController = async (req, res) => {
       return res.send([]);
     }
 
-    const startsWithRegex = new RegExp(`^${search}`, "i");
-    const containsRegex = new RegExp(search, "i");
+    const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const startsWithPattern = `^${escapedSearch}`;
+    const containsPattern = escapedSearch;
 
     const suggestions = await businessListModel.aggregate([
       {
         $match: {
           businessesLive: true,
           $or: [
-            { category: containsRegex },
-            { businessName: containsRegex },
-            { location: containsRegex }
+            { category: { $regex: containsPattern, $options: "i" } },
+            { businessName: { $regex: containsPattern, $options: "i" } },
+            { location: { $regex: containsPattern, $options: "i" } }
           ]
         }
       },
@@ -209,13 +210,15 @@ export const getSuggestionsController = async (req, res) => {
                       {
                         $regexMatch: {
                           input: "$category",
-                          regex: startsWithRegex
+                          regex: startsWithPattern,
+                          options: "i"
                         }
                       },
                       {
                         $regexMatch: {
                           input: "$businessName",
-                          regex: startsWithRegex
+                          regex: startsWithPattern,
+                          options: "i"
                         }
                       }
                     ]
@@ -228,13 +231,15 @@ export const getSuggestionsController = async (req, res) => {
                       {
                         $regexMatch: {
                           input: "$category",
-                          regex: containsRegex
+                          regex: containsPattern,
+                          options: "i"
                         }
                       },
                       {
                         $regexMatch: {
                           input: "$businessName",
-                          regex: containsRegex
+                          regex: containsPattern,
+                          options: "i"
                         }
                       }
                     ]
