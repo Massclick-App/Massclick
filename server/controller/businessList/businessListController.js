@@ -425,7 +425,8 @@ export const getEnhancedSuggestionsController = async (req, res) => {
           categoryImageKey: cat.categoryImageKey,
           count: count,
           location: location || "All Districts",
-          slug: cat.slug
+          slug: cat.slug,
+          relatedKeywords: Array.isArray(cat.keywords) ? cat.keywords : []
         };
       })
     );
