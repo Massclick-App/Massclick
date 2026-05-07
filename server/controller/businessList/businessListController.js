@@ -376,11 +376,9 @@ export const mainSearchController = async (req, res) => {
       const aliases = districtAliasMap[locKey] || [locKey];
 
       matchQuery.$and.push({
-        location: {
-          $in: aliases.map(
-            (l) => new RegExp(`^${escapeRegex(normalize(l))}$`, "i")
-          )
-        }
+        $or: aliases.map((l) => ({
+          location: { $regex: `^${escapeRegex(normalize(l))}$`, $options: "i" }
+        }))
       });
     }
 
@@ -395,7 +393,7 @@ export const mainSearchController = async (req, res) => {
           const flexible = makeFlexible(val);
 
           return {
-            category: new RegExp(`^${flexible}$`, "i")
+            category: { $regex: `^${flexible}$`, $options: "i" }
           };
         })
       });
@@ -409,13 +407,12 @@ export const mainSearchController = async (req, res) => {
 
       const termConditions = variations.flatMap((val) => {
         const flexible = makeFlexible(val);
-        const regex = new RegExp(flexible, "i");
 
         return [
-          { businessName: regex },
-          { category: regex },
-          { slug: regex },
-          { keywords: regex }
+          { businessName: { $regex: flexible, $options: "i" } },
+          { category: { $regex: flexible, $options: "i" } },
+          { slug: { $regex: flexible, $options: "i" } },
+          { keywords: { $regex: flexible, $options: "i" } }
         ];
       });
 
