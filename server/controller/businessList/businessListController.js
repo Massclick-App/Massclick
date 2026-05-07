@@ -194,7 +194,8 @@ export const getSuggestionsController = async (req, res) => {
           $or: [
             { category: { $regex: containsPattern, $options: "i" } },
             { businessName: { $regex: containsPattern, $options: "i" } },
-            { location: { $regex: containsPattern, $options: "i" } }
+            { location: { $regex: containsPattern, $options: "i" } },
+            { keywords: { $regex: containsPattern, $options: "i" } }
           ]
         }
       },
@@ -204,6 +205,7 @@ export const getSuggestionsController = async (req, res) => {
           priority: {
             $switch: {
               branches: [
+                // Priority 1: Category or businessName starts with search term
                 {
                   case: {
                     $or: [
@@ -225,6 +227,7 @@ export const getSuggestionsController = async (req, res) => {
                   },
                   then: 1
                 },
+                // Priority 2: Category or businessName contains search term
                 {
                   case: {
                     $or: [
