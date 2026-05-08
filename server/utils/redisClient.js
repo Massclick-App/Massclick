@@ -40,14 +40,14 @@ const attemptReconnect = () => {
   reconnectTimer = setTimeout(async () => {
     reconnectTimer = null;
     try {
-      console.log('[Cache] Attempting to reconnect to Redis...');
+      // console.log('[Cache] Attempting to reconnect to Redis...');
       if (redisClient && !isConnected) {
         await redisClient.connect();
         isConnected = true;
         console.log('[Cache] Reconnected successfully');
       }
     } catch (err) {
-      console.warn('[Cache] Reconnection failed:', err.message, ' — will retry');
+      // console.warn('[Cache] Reconnection failed:', err.message, ' — will retry');
       attemptReconnect();
     }
   }, RECONNECT_DELAY);
