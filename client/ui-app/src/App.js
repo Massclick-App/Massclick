@@ -148,7 +148,6 @@ function AppRoutes({
               />
             }
           />
-
           <Route path="/leads" element={<LeadsPage />} />
           <Route path="/free-listing" element={<FreeListingPage />} />
           <Route path="/advertise" element={<AdvertisePage />} />
@@ -170,33 +169,27 @@ function AppRoutes({
             );
           })}
 
-          {/* Footer Routes */}
           {footerRoutes.map(([path, element]) => (
             <Route key={path} path={path} element={element} />
           ))}
 
-          {/* Search Routes */}
           <Route path="/:location/:category" element={<CategoryRouter />} />
           <Route
             path="/:location/:category/:subcategory"
             element={<SearchResults />}
           />
 
-          {/* Business Details */}
           <Route
             path="/business/:location/:businessSlug/:id"
             element={<BusinessDetails />}
           />
 
-          {/* ── Protected Dashboard (requires authentication) ──────────────── */}
           <Route element={<PrivateRoute isAuthenticated={isAuthenticated} />}>
             <Route path="/dashboard" element={<Dashboard />}>
 
-              {/* Always accessible to any authenticated user */}
               <Route index element={<MainGrid />} />
               <Route path="profile" element={<Profile />} />
 
-              {/* ── Permission-gated routes (allowedPages controls access) ── */}
               <Route element={<PermissionRoute />}>
                 <Route path="clients" element={<Clients />} />
                 <Route path="business" element={<Business />} />

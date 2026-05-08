@@ -38,6 +38,7 @@ const Cards = ({
   phone,
   whatsappNumber,
   category,
+  contactList,
   price,
   priceType = "day",
   to,
@@ -175,6 +176,11 @@ const Cards = ({
               <p className="card-category">
                 <CategoryIcon className="icon" />
                 {category}
+              </p>
+            )}
+            {category?.toLowerCase().includes("bank") && contactList && (
+              <p className="card-ifsc">
+                IFSC: {contactList}
               </p>
             )}
             {address && (

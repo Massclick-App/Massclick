@@ -150,8 +150,6 @@ export default function SeoData() {
     category: categoryInput  
   };
 
-  console.log("Submitting finalData:", finalData);
-
   if (!validateForm()) return;
 
   try {

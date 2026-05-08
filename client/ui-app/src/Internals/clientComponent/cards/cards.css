@@ -225,6 +225,7 @@
 .card-category,
 .card-address,
 .card-address-inline,
+.card-ifsc,
 .card-details {
   align-items: center;
   color: var(--card-muted);
