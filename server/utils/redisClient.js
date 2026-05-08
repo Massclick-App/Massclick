@@ -11,7 +11,7 @@ const setupRedisErrorHandlers = () => {
   if (!redisClient) return;
 
   redisClient.on('error', (err) => {
-    console.warn('[Cache] Redis Error:', err.message);
+    // console.warn('[Cache] Redis Error:', err.message);
     isConnected = false;
     attemptReconnect();
   });
@@ -60,7 +60,7 @@ export const initRedis = async () => {
       socket: {
         reconnectStrategy: (retries) => {
           if (retries > 10) {
-            console.warn('[Cache] Max reconnection attempts reached, giving up');
+            // console.warn('[Cache] Max reconnection attempts reached, giving up');
             return false;
           }
           return Math.min(retries * 100, 3000);
