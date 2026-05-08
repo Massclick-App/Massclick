@@ -945,6 +945,16 @@ const BusinessDetail = () => {
                       {business.category || "N/A"}
                     </span>
                   </div>
+                  {business.category?.toLowerCase().includes("bank") && business.contactList && (
+                    <div className="business-CardDetails-infoItem">
+                      <span className="business-CardDetails-infoLabel">
+                        IFSC Code
+                      </span>
+                      <span className="business-CardDetails-infoValue">
+                        {business.contactList}
+                      </span>
+                    </div>
+                  )}
                   <div className="business-CardDetails-infoItem">
                     <span className="business-CardDetails-infoLabel">
                       Address

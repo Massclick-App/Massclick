@@ -155,7 +155,6 @@ export default function BusinessList() {
   const [businessvalue, setBusinessValue] = useState("");
   const [editMode, setEditMode] = useState(false);
   const [editId, setEditId] = useState(null);
-  const [errors, setErrors] = useState({});
   const [newGalleryImages, setNewGalleryImages] = useState([]);
   const [createdBusinessId, setCreatedBusinessId] = useState(null);
   const [createUserId, setCreateUserId] = useState(null)
@@ -213,53 +212,7 @@ export default function BusinessList() {
     });
   };
 
-  const FIELD_LABELS = {
-    clientId: "Client ID",
-    businessName: "Business Name",
-    experience: "Experience",
-    location: "Location",
-    category: "Category",
-  };
-
-  const validateStep = (step) => {
-    let newErrors = {};
-
-    if (step === 0) {
-      if (!formData.clientId) newErrors.clientId = "Client ID is required";
-      if (!formData.businessName) newErrors.businessName = "Business Name is required";
-      if (!formData.experience) newErrors.experience = "Experience is required";
-      if (!formData.location) newErrors.location = "Location is required";
-    }
-
-    if (step === 2) {
-      if (!formData.category) newErrors.category = "Category is required";
-    }
-
-    setErrors(newErrors);
-
-    if (Object.keys(newErrors).length > 0) {
-      const missingFields = Object.keys(newErrors)
-        .map((key) => FIELD_LABELS[key] || key)
-        .join(", ");
-
-      enqueueSnackbar(
-        `Please fill required fields: ${missingFields}`,
-        {
-          variant: "error",
-          autoHideDuration: 4000,
-        }
-      );
-
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      return false;
-    }
-
-    return true;
-  };
-
   const handleNext = () => {
-    if (!validateStep(activeStep)) return;
-
     setActiveStep((prevActiveStep) => prevActiveStep + 1);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -430,35 +383,6 @@ export default function BusinessList() {
     "video",
   ];
 
-  const validateForm = () => {
-    let newErrors = {};
-
-    if (!formData.clientId) newErrors.clientId = "Client ID is required";
-    if (!formData.businessName) newErrors.businessName = "Business Name is required";
-    if (!formData.experience) newErrors.experience = "Experience is required";
-    if (!formData.location) newErrors.location = "Location is required";
-    if (!formData.category) newErrors.category = "Category is required";
-
-    if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Invalid email format";
-    }
-
-    if (formData.contact && !/^\d{10}$/.test(formData.contact)) {
-      newErrors.contact = "Contact should be 10 digits";
-    }
-
-    if (formData.whatsappNumber && !/^\d{10}$/.test(formData.whatsappNumber)) {
-      newErrors.whatsappNumber = "Whatsapp number should be 10 digits";
-    }
-
-    if (formData.pincode && !/^\d{6}$/.test(formData.pincode)) {
-      newErrors.pincode = "Pincode should be 6 digits";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
   const handleBusinessChange = (content) => {
     setBusinessValue(content);
     setFormData((prev) => ({ ...prev, businessDetails: content }));
@@ -593,15 +517,6 @@ export default function BusinessList() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (!validateForm()) {
-      enqueueSnackbar("Please fill all required required fields before proceeding.", {
-        variant: "error",
-        autoHideDuration: 3000,
-      });
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      return;
-    }
 
     const kycBase64 = await Promise.all(
       kycFiles.map(
@@ -976,7 +891,7 @@ export default function BusinessList() {
                 type="text"
                 id="clientId"
                 name="clientId"
-                className={`text-input ${errors.clientId ? "error" : ""}`}
+                className="text-input"
                 value={formData.clientId}
                 placeholder="Type client ID or name..."
                 onChange={(e) => {
@@ -999,8 +914,6 @@ export default function BusinessList() {
                   }
                 }}
               />
-
-              {errors.clientId && <p className="error-text">{errors.clientId}</p>}
 
               {showSuggestions && searchSuggestion?.length > 0 && (
                 <ul className="category-suggestion-box">
@@ -1033,11 +946,10 @@ export default function BusinessList() {
                 type="text"
                 id="businessName"
                 name="businessName"
-                className={`text-input ${errors.businessName ? "error" : ""}`}
+                className="text-input"
                 value={formData.businessName}
                 onChange={handleChange}
               />
-              {errors.businessName && <p className="error-text">{errors.businessName}</p>}
             </div>
 
             <div className="form-input-group">
@@ -1070,11 +982,10 @@ export default function BusinessList() {
                 type="text"
                 id="pincode"
                 name="pincode"
-                className={`text-input ${errors.pincode ? "error" : ""}`}
+                className="text-input"
                 value={formData.pincode}
                 onChange={handleChange}
               />
-              {errors.pincode && <p className="error-text">{errors.pincode}</p>}
             </div>
 
             <div className="form-input-group" style={{ position: "relative" }}>
@@ -1084,7 +995,7 @@ export default function BusinessList() {
                 id="location"
                 name="location"
                 autoComplete="off"
-                className={`text-input ${errors.location ? "error" : ""}`}
+                className="text-input"
                 value={formData.location}
                 placeholder="Type to search location..."
                 onChange={(e) => {
@@ -1114,7 +1025,6 @@ export default function BusinessList() {
                   }
                 }}
               />
-              {errors.location && <p className="error-text">{errors.location}</p>}
               {showLocationSuggest && locationSuggestions.length > 0 && (
                 <ul className="category-suggestion-box">
                   {locationSuggestions.map((loc) => (
@@ -1141,11 +1051,10 @@ export default function BusinessList() {
                 type="text"
                 id="globalAddress"
                 name="globalAddress"
-                className={`text-input ${errors.globalAddress ? "error" : ""}`}
+                className="text-input"
                 value={formData.globalAddress}
                 onChange={handleChange}
               />
-              {errors.globalAddress && <p className="error-text">{errors.globalAddress}</p>}
             </div>
 
             <div className="form-input-group">
@@ -1154,11 +1063,10 @@ export default function BusinessList() {
                 type="email"
                 id="email"
                 name="email"
-                className={`text-input ${errors.email ? "error" : ""}`}
+                className="text-input"
                 value={formData.email}
                 onChange={handleChange}
               />
-              {errors.email && <p className="error-text">{errors.email}</p>}
             </div>
 
             <div className="form-input-group">
@@ -1167,11 +1075,10 @@ export default function BusinessList() {
                 type="text"
                 id="contact"
                 name="contact"
-                className={`text-input ${errors.contact ? "error" : ""}`}
+                className="text-input"
                 value={formData.contact}
                 onChange={handleChange}
               />
-              {errors.contact && <p className="error-text">{errors.contact}</p>}
             </div>
 
             <div className="form-input-group">
@@ -1192,7 +1099,7 @@ export default function BusinessList() {
                 type="text"
                 id="gstin"
                 name="gstin"
-                className={`text-input ${errors.gstin ? "error" : ""}`}
+                className="text-input"
                 value={formData.gstin}
                 onChange={handleChange}
               />
@@ -1204,11 +1111,10 @@ export default function BusinessList() {
                 type="text"
                 id="whatsappNumber"
                 name="whatsappNumber"
-                className={`text-input ${errors.whatsappNumber ? "error" : ""}`}
+                className="text-input"
                 value={formData.whatsappNumber}
                 onChange={handleChange}
               />
-              {errors.whatsappNumber && <p className="error-text">{errors.whatsappNumber}</p>}
             </div>
 
             <div className="form-input-group">
@@ -1217,11 +1123,10 @@ export default function BusinessList() {
                 type="text"
                 id="experience"
                 name="experience"
-                className={`text-input ${errors.experience ? "error" : ""}`}
+                className="text-input"
                 value={formData.experience}
                 onChange={handleChange}
               />
-              {errors.experience && <p className="error-text">{errors.experience}</p>}
             </div>
 
             <div className="form-input-group">
@@ -1449,7 +1354,7 @@ export default function BusinessList() {
 
               <input
                 type="text"
-                className={`text-input ${errors.category ? "error" : ""}`}
+                className="text-input"
                 placeholder="Search category..."
                 value={formData.category}
                 onChange={(e) => {

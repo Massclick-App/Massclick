@@ -514,6 +514,7 @@ useEffect(() => {
                     title={business.businessName}
                     phone={business.contact}
                     whatsappNumber={business.whatsappNumber}
+                    contactList={business.contactList}
                     // address={business.location}
                     rating={averageRating}
                     reviews={totalRatings}
