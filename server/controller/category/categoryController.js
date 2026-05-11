@@ -518,7 +518,7 @@ export const getServiceCardsAction = async (req, res) => {
       {
         section: "Hot Categories",
         items: [
-          "Catering Services",
+          "Catering",
           "Transporters",
           "Driving School"
         ]
