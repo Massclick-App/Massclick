@@ -55,13 +55,20 @@ const SkeletonCard = ({ w = 80, h = 80, r = 50, mb = 1.5, mt = 0.5 }) => (
 
 const SkeletonCards = ({ type }) => {
   const configs = {
-    featured: { count: 8, cardW: 130, cardH: 160, iconW: 80, iconH: 80 },
-    service: { count: 12, cardW: 80, cardH: 80, iconW: 70, iconH: 70 },
-    pageheader: { count: 4, cardW: 140, cardH: 80, iconW: 60, iconH: 60 },
+    featured: { count: 8, cardW: 130, cardH: 160, iconW: 80, iconH: 80, containerH: 220 },
+    service: { count: 12, cardW: 80, cardH: 80, iconW: 70, iconH: 70, containerH: 140 },
+    pageheader: { count: 4, cardW: 140, cardH: 80, iconW: 60, iconH: 60, containerH: 140 },
   };
   const c = configs[type] || configs.featured;
   return (
-    <div className="sk-hscroll" style={{ padding: "0 16px" }}>
+    <div
+      className="sk-hscroll"
+      style={{
+        padding: "0 16px",
+        minHeight: c.containerH,
+        contain: 'layout style paint',
+      }}
+    >
       {[...Array(c.count)].map((_, i) => (
         <div
           key={i}
@@ -78,7 +85,7 @@ const SkeletonCards = ({ type }) => {
 };
 
 const SkeletonBanner = () => (
-  <Box sx={{ px: { xs: 2, sm: 4, md: 6 } }}>
+  <Box sx={{ px: { xs: 2, sm: 4, md: 6 }, minHeight: 150, contain: 'layout style paint' }}>
     <S w="100%" h={110} r={18} />
   </Box>
 );
@@ -88,8 +95,9 @@ const SkeletonCarousel = ({ type }) => {
   const cardW = isTrending ? 240 : 280;
   const cardH = isTrending ? 150 : 180;
   const count = isTrending ? 5 : 4;
+  const containerH = isTrending ? 220 : 280;
   return (
-    <div style={{ px: { xs: 2, sm: 4, md: 6 } }}>
+    <div style={{ px: { xs: 2, sm: 4, md: 6 }, minHeight: containerH, contain: 'layout style paint' }}>
       <div
         className={isTrending ? "trending-search__track" : "popular-search__track"}
         style={{ display: "flex", gap: "1rem", overflow: "hidden" }}
@@ -115,7 +123,15 @@ const SkeletonGrid = ({ type }) => {
   const count = isTourist ? 4 : 3;
   const h = isTourist ? 200 : 170;
   return (
-    <Grid container spacing={2} sx={{ px: { xs: 2, sm: 4, md: 6 } }}>
+    <Grid
+      container
+      spacing={2}
+      sx={{
+        px: { xs: 2, sm: 4, md: 6 },
+        minHeight: isTourist ? 280 : 250,
+        contain: 'layout style paint',
+      }}
+    >
       {[...Array(count)].map((_, i) => (
         <Grid item xs={6} sm={isTourist ? 3 : 4} md={isTourist ? 3 : 4} key={i}>
           <S w="100%" h={h} r={12} />
@@ -212,22 +228,24 @@ const LandingPage = () => {
 
         const observer = new IntersectionObserver(
             ([entry]) => {
-                const heroVisible = entry.isIntersecting;
+                requestAnimationFrame(() => {
+                    const heroVisible = entry.isIntersecting;
 
-                if (!heroVisible) {
-                    setIsScrolled(true);
+                    if (!heroVisible) {
+                        setIsScrolled(true);
 
-                    if (!checkedLogin) {
-                        setCheckedLogin(true);
-                        if (!isUserLoggedIn()) {
-                            setShowLoginModal(true);
+                        if (!checkedLogin) {
+                            setCheckedLogin(true);
+                            if (!isUserLoggedIn()) {
+                                setShowLoginModal(true);
+                            }
                         }
+                    } else {
+                        setIsScrolled(false);
                     }
-                } else {
-                    setIsScrolled(false);
-                }
+                });
             },
-            
+
             {
                 root: null,
                 threshold: 0,
@@ -313,6 +331,8 @@ const LandingPage = () => {
                         opacity: isScrolled ? 1 : 0,
                         transition: 'transform 0.3s ease, opacity 0.3s ease',
                         pointerEvents: isScrolled ? 'auto' : 'none',
+                        willChange: 'transform, opacity',
+                        contain: 'layout style paint',
                     }}
                 >
                     <CardsSearch
@@ -325,7 +345,11 @@ const LandingPage = () => {
                     />
                 </Box>
 
-                <Box sx={{ height: isScrolled ? STICKY_SEARCH_BAR_HEIGHT : 0 }} />
+                <Box sx={{
+                    height: STICKY_SEARCH_BAR_HEIGHT,
+                    overflow: 'hidden',
+                    contain: 'layout style paint',
+                }} />
 
                 <Box ref={heroSectionRef}>
                     <HeroSection

@@ -8,6 +8,7 @@
   max-width: 1750px;
   margin: 0 auto;
   min-height: 0;
+  contain: layout style paint;
 }
 
 
@@ -27,6 +28,8 @@
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   border: 1px solid #e0e0e0;
   padding: 10px 8px;
+  contain: layout style paint;
+  will-change: transform, box-shadow;
 }
 
 .service-card:hover {

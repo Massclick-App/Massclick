@@ -42,6 +42,7 @@
       #f6f7f9 100%);
 
   overflow: visible !important;
+  contain: layout style paint;
 }
 
 .mic-listening {
@@ -172,6 +173,7 @@
     inset 0 1px 0 rgba(255,255,255,0.6);
 
   transition: all .25s ease;
+  will-change: transform, box-shadow;
 }
 
 .trust-card:hover {
@@ -317,6 +319,7 @@
 
   box-shadow: 0px 8px 20px rgba(255, 123, 0, 0.4);
   transition: transform 0.25s ease, box-shadow 0.25s ease;
+  will-change: transform, box-shadow;
 }
 
 .search-button:hover {

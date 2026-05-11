@@ -5,8 +5,9 @@
     justify-content: center;
     padding: 0 clamp(16px, 4vw, 48px);
     max-width: 1720px;
-    margin: 0 auto; 
-    gap: 24px; 
+    margin: 0 auto;
+    gap: 24px;
+    contain: layout style paint;
 }
 
 .category-card {
@@ -23,6 +24,8 @@
     transition: transform 0.3s ease, box-shadow 0.3s ease;
     border: 1.5px solid #f0f0f0;
     outline: 3px solid transparent;
+    contain: layout style paint;
+    will-change: transform, box-shadow;
 }
 
 .category-card:hover {
@@ -45,13 +48,11 @@
 }
 
 .items-grid {
-   
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-
     grid-auto-rows: 1fr;
-    gap: 16px 10px; 
-
+    gap: 16px 10px;
+    contain: layout style paint;
 }
 
 
@@ -62,11 +63,12 @@
     align-items: center;
     text-decoration: none;
     color: #4b5563;
-    padding: 8px 4px; /* Small padding inside the item card */
+    padding: 8px 4px;
     border-radius: 8px;
     transition: background-color 0.2s, transform 0.2s, color 0.2s;
-    width: 100%; /* Important for grid consistency */
-    text-align: center; /* Center text within the card */
+    width: 100%;
+    text-align: center;
+    will-change: transform, background-color;
 }
 
 .item-card:hover {
