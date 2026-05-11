@@ -181,7 +181,9 @@ const ServiceCardsGrid = () => {
                     alt={altText}
                     title={item.name}
                     className="item-icon"
-                    loading="lazy"
+                    width={90}
+                    height={90}
+                    loading="eager"
                     onError={(e) => {
                       e.target.onerror = null;
                       e.target.src = "/default.webp";

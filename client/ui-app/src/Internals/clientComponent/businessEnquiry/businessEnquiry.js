@@ -3,12 +3,12 @@ import { useDispatch } from "react-redux";
 import { createStartProject } from "../../../redux/actions/startProjectAction.js";
 
 import {
-    FaUserTie,
-    FaMobileAlt,
-    FaEnvelope,
-    FaBuilding,
-    FaGlobeAsia,
-} from "react-icons/fa";
+    User,
+    Phone,
+    Mail,
+    Building,
+    Globe,
+} from "lucide-react";
 
 import CardsSearch from "../CardsSearch/CardsSearch";
 import "./businessEnquiry.css";
@@ -90,23 +90,23 @@ const BusinessEnquiry = () => {
 
                     <div className="enquiry-grid">
                         <div className="enquiry-form-group">
-                            <label><FaUserTie /> Full Name</label>
+                            <label><User size={16} style={{display: 'inline', marginRight: '4px'}} /> Full Name</label>
                             <input type="text" name="fullName" value={formData.fullName} onChange={handleChange} />
                         </div>
                         <div className="enquiry-form-group">
-                            <label><FaMobileAlt /> Contact Number</label>
+                            <label><Phone size={16} style={{display: 'inline', marginRight: '4px'}} /> Contact Number</label>
                             <input type="text" name="contactNumber" value={formData.contactNumber} onChange={handleChange} />
                         </div>
                         <div className="enquiry-form-group full">
-                            <label><FaEnvelope /> Email</label>
+                            <label><Mail size={16} style={{display: 'inline', marginRight: '4px'}} /> Email</label>
                             <input type="email" name="email" value={formData.email} onChange={handleChange} />
                         </div>
                         <div className="enquiry-form-group full">
-                            <label><FaBuilding /> Business Name</label>
+                            <label><Building size={16} style={{display: 'inline', marginRight: '4px'}} /> Business Name</label>
                             <input type="text" name="businessName" value={formData.businessName} onChange={handleChange} />
                         </div>
                         <div className="enquiry-form-group">
-                            <label><FaGlobeAsia /> Location</label>
+                            <label><Globe size={16} style={{display: 'inline', marginRight: '4px'}} /> Location</label>
                             <input type="text" name="country" value={formData.country} onChange={handleChange} />
                         </div>
 
