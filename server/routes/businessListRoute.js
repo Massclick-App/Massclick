@@ -18,7 +18,7 @@ router.get('/api/businesslist/viewall', oauthAuthentication, viewAllBusinessList
 router.get('/api/businesslist/viewallbusiness', viewAllBusinessAction);
 router.get('/api/businesslist/clientview', oauthAuthentication, viewAllClientBusinessListAction);
 router.put('/api/businesslist/update/:id', oauthAuthentication, updateBusinessListAction);
-router.delete('/api/businesslist/delete/:id', oauthAuthentication, deleteBusinessListAction);cla
+router.delete('/api/businesslist/delete/:id', oauthAuthentication, deleteBusinessListAction);
 router.put('/api/businesslist/activate/:id', oauthAuthentication, activeBusinessListAction);
 router.post('/api/businesslist/log-search', logSearchAction);
 router.put('/api/businesslist/log-search/:id', updateSearchAction);
