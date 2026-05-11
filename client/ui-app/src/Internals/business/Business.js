@@ -5,13 +5,7 @@ import { getAllLocation, createLocation } from "../../redux/actions/locationActi
 import { createCategory, editCategory, businessCategorySearch } from "../../redux/actions/categoryAction";
 import { getAllUsersClient, getUserClientSuggestion } from "../../redux/actions/userClientAction.js";
 import { getAllUsers } from "../../redux/actions/userAction.js";
-
-const ReactQuill = lazy(() => import('react-quill').then(m => {
-  require('react-quill/dist/quill.snow.css');
-  return { default: m.default };
-}));
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
-import './business.css'
 import SkipNextIcon from '@mui/icons-material/SkipNext';
 import SkipPreviousIcon from '@mui/icons-material/SkipPrevious';
 import BusinessCenterIcon from '@mui/icons-material/BusinessCenter';
@@ -43,7 +37,6 @@ import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import Autocomplete from "@mui/material/Autocomplete";
 import TextField from "@mui/material/TextField";
 import { useSnackbar } from 'notistack';
-
 import PropTypes from 'prop-types';
 import { styled } from '@mui/material/styles';
 import StepConnector, { stepConnectorClasses } from '@mui/material/StepConnector';
@@ -53,6 +46,12 @@ import CollectionsBookmarkOutlinedIcon from '@mui/icons-material/CollectionsBook
 import { checkPhonePeStatus, createPhonePePayment } from "../../redux/actions/phonePayAction.js";
 import CustomizedTable from "../../components/Table/CustomizedTable.js";
 import Tooltip from "@mui/material/Tooltip";
+import './business.css';
+
+const ReactQuill = lazy(() => import('react-quill').then(m => {
+  require('react-quill/dist/quill.snow.css');
+  return { default: m.default };
+}));
 
 
 const ORANGE_PRIMARY = '#FF8C00';
