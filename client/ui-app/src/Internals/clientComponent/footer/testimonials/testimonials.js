@@ -78,6 +78,7 @@ const Testimonials = () => {
 
     const [currentIndex, setCurrentIndex] = useState(0);
     const sliderRef = useRef(null);
+    const cardDimensionsRef = useRef({ cardWidth: 0, gap: 0 });
     const autoScrollInterval = 20000;
 
     const handleNext = useCallback(() => {
@@ -98,12 +99,32 @@ const Testimonials = () => {
         return () => clearInterval(timer);
     }, [handleNext, autoScrollInterval]);
 
+    // Cache card dimensions to avoid forced reflows
     useEffect(() => {
-        if (sliderRef.current) {
-            const cardWidth = sliderRef.current.querySelector('.testimonial-card').offsetWidth;
-            const gap = parseFloat(getComputedStyle(sliderRef.current).gap);
+        const slider = sliderRef.current;
+        if (!slider) return;
 
+        const card = slider.querySelector('.testimonial-card');
+        if (!card) return;
 
+        const updateDimensions = () => {
+            cardDimensionsRef.current = {
+                cardWidth: card.offsetWidth,
+                gap: parseFloat(getComputedStyle(slider).gap) || 0
+            };
+        };
+
+        updateDimensions();
+
+        const observer = new ResizeObserver(updateDimensions);
+        observer.observe(card);
+
+        return () => observer.disconnect();
+    }, []);
+
+    useEffect(() => {
+        if (sliderRef.current && cardDimensionsRef.current.cardWidth > 0) {
+            const { cardWidth, gap } = cardDimensionsRef.current;
             const newTransformValue = `translateX(-${currentIndex * (cardWidth + gap)}px)`;
 
             sliderRef.current.style.transform = newTransformValue;

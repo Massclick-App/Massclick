@@ -22,6 +22,7 @@ const BlogsSkeleton = () => (
 const RelatedBlogs = ({ location }) => {
   const dispatch = useDispatch();
   const scrollRef = useRef(null);
+  const cardWidthRef = useRef(320);
 
   const {
     list = [],
@@ -42,15 +43,29 @@ const RelatedBlogs = ({ location }) => {
     );
   }, [dispatch, location]);
 
+  // Cache card width to avoid forced reflows
+  useEffect(() => {
+    const box = scrollRef.current;
+    if (!box?.firstChild) return;
+
+    const updateWidth = () => {
+      cardWidthRef.current = box.firstChild?.offsetWidth || 320;
+    };
+
+    updateWidth();
+
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(box.firstChild);
+
+    return () => observer.disconnect();
+  }, [list]);
 
   const scroll = (dir) => {
     const box = scrollRef.current;
     if (!box) return;
 
-    const width = box.firstChild?.offsetWidth || 320;
-
     box.scrollBy({
-      left: dir === "left" ? -width : width,
+      left: dir === "left" ? -cardWidthRef.current : cardWidthRef.current,
       behavior: "smooth",
     });
   };

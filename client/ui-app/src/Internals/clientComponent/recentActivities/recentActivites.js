@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import './recentActivities.css'; // Make sure this path is correct
 
 import KeyboardDoubleArrowRightIcon from '@mui/icons-material/KeyboardDoubleArrowRight';
@@ -61,18 +61,33 @@ const cardsData = [
 
 const RecentActivities = () => {
     const containerRef = useRef(null);
+    const cardWidthRef = useRef(370); // 350 + 20 gap
+
+    // Cache card width to avoid forced reflows
+    useEffect(() => {
+        const container = containerRef.current;
+        if (!container) return;
+
+        const card = container.querySelector('.activity-card');
+        if (!card) return;
+
+        const updateWidth = () => {
+            cardWidthRef.current = card.offsetWidth + 20;
+        };
+
+        updateWidth();
+
+        const observer = new ResizeObserver(updateWidth);
+        observer.observe(card);
+
+        return () => observer.disconnect();
+    }, []);
 
     // Functionality for left/right scroll remains the same
     const scroll = (direction) => {
         if (containerRef.current) {
-            // Find the width of the card element and a gap
-            const cardElement = containerRef.current.querySelector('.activity-card');
-            const cardWidth = cardElement ? cardElement.offsetWidth : 350;
-            const gap = 20; // Matches the CSS gap
-            const scrollAmount = cardWidth + gap;
-
             containerRef.current.scrollBy({
-                left: direction === 'right' ? scrollAmount : -scrollAmount,
+                left: direction === 'right' ? cardWidthRef.current : -cardWidthRef.current,
                 behavior: 'smooth'
             });
         }

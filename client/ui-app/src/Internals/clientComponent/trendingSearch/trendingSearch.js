@@ -35,6 +35,7 @@ const TrendingSearchesCarousel = () => {
 
   const carouselRef  = useRef(null);
   const autoScrollRef = useRef(null);
+  const cardWidthRef = useRef(210); // default value: card width + gap
   const dispatch = useDispatch();
 
   const [canScrollLeft,  setCanScrollLeft]  = useState(false);
@@ -55,6 +56,21 @@ const TrendingSearchesCarousel = () => {
     dispatch(getTrendingCategories());
   }, [dispatch]);
 
+  // Cache card width using ResizeObserver to avoid forced reflows
+  useEffect(() => {
+    const el = carouselRef.current;
+    if (!el) return;
+
+    const firstCard = el.querySelector(".trending-search__card");
+    if (!firstCard) return;
+
+    const observer = new ResizeObserver(() => {
+      cardWidthRef.current = firstCard.offsetWidth + 16;
+    });
+
+    observer.observe(firstCard);
+    return () => observer.disconnect();
+  }, [trendingList]);
 
   /* ── scroll-state tracker ── */
   const updateScrollState = useCallback(() => {
@@ -67,11 +83,7 @@ const TrendingSearchesCarousel = () => {
     setCanScrollLeft(!atStart);
     setCanScrollRight(!atEnd);
 
-    const firstCard = el.querySelector(".trending-search__card");
-    if (firstCard) {
-      const cardStep = firstCard.offsetWidth + 16; // gap = 16
-      setActiveIndex(Math.round(el.scrollLeft / cardStep));
-    }
+    setActiveIndex(Math.round(el.scrollLeft / cardWidthRef.current));
   }, []);
 
   useEffect(() => {

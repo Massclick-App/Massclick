@@ -26,6 +26,7 @@ const cardsData = [
 
 const CardCarousel = () => {
   const containerRef = useRef(null);
+  const cardWidthRef = useRef(300); // default value: 280 + 20 gap
   const dispatch = useDispatch();
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [pendingCard, setPendingCard] = useState(null);
@@ -37,12 +38,26 @@ const selectedDistrict = useSelector(
   (state) => state.locationReducer.selectedDistrict
 );
 
+  // Cache card width to avoid forced reflows on every scroll
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const card = container.querySelector(".popular-search__card");
+    if (!card) return;
+
+    const observer = new ResizeObserver(() => {
+      cardWidthRef.current = card.offsetWidth + 20;
+    });
+
+    observer.observe(card);
+    return () => observer.disconnect();
+  }, []);
+
   const scrollByCard = (direction) => {
     if (!containerRef.current) return;
-    const cardWidth = containerRef.current.querySelector(".popular-search__card")?.offsetWidth || 280;
-    const gap = 20;
     containerRef.current.scrollBy({
-      left: direction === "right" ? cardWidth + gap : -(cardWidth + gap),
+      left: direction === "right" ? cardWidthRef.current : -cardWidthRef.current,
       behavior: "smooth",
     });
   };
