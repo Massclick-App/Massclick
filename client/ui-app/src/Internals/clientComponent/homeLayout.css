@@ -9,12 +9,14 @@
   background: var(--home-page-bg);
   contain: layout style paint;
   display: flow-root;
+  font-display: swap;
 }
 
 .home-section {
   width: 100%;
   contain: layout style paint;
   display: flow-root;
+  overflow: hidden;
 }
 
 .home-section--flush {
@@ -118,4 +120,30 @@
   .home-section > .featured-services-container {
     padding-inline: 0;
   }
+}
+
+/* Prevent image-loading layout shifts */
+.home-section img {
+  display: block;
+  aspect-ratio: auto;
+}
+
+.home-section .item-icon,
+.home-section .service-card img {
+  aspect-ratio: 1 / 1;
+}
+
+/* Reserve space for content to prevent shifts */
+.home-section {
+  scroll-behavior: smooth;
+}
+
+/* Prevent text wrapping changes */
+.home-section h2,
+.home-section h3,
+.home-section .category-title,
+.home-section .item-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

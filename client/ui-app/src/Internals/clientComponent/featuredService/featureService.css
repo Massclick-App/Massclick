@@ -9,6 +9,7 @@
   margin: 0 auto;
   min-height: 0;
   contain: layout style paint;
+  overflow: hidden;
 }
 
 
@@ -16,6 +17,7 @@
 .service-card {
   width: 130px;
   height: 160px;
+  aspect-ratio: 130 / 160;
   background: linear-gradient(145deg, #ffffff, #f9f9f9);
   border-radius: 20px;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
@@ -30,6 +32,7 @@
   padding: 10px 8px;
   contain: layout style paint;
   will-change: transform, box-shadow;
+  box-sizing: border-box;
 }
 
 .service-card:hover {
@@ -41,9 +44,12 @@
 .service-icons {
   width: 55px;
   height: 55px;
+  aspect-ratio: 1 / 1;
   object-fit: contain;
   margin-bottom: 8px;
   flex-shrink: 0;
+  display: block;
+  background-color: #f5f5f5;
 }
 
 .service-name {

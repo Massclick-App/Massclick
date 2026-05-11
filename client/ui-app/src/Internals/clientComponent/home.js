@@ -48,14 +48,14 @@ const homeSectionSx = { mb: HOME_SECTION_GAP, contain: 'layout style paint' };
 
 // Reserve exact heights for each skeleton type to match actual content
 const SKELETON_HEIGHTS = {
-  featured: { skeleton: 260, actual: 260 },
-  service: { skeleton: 200, actual: 200 },
-  banner: { skeleton: 160, actual: 160 },
-  trending: { skeleton: 270, actual: 270 },
-  popular: { skeleton: 310, actual: 310 },
-  tourist: { skeleton: 330, actual: 330 },
-  blogs: { skeleton: 300, actual: 300 },
-  pageheader: { skeleton: 210, actual: 210 },
+  featured: { skeleton: 280, actual: 280 },
+  service: { skeleton: 420, actual: 420 },
+  banner: { skeleton: 180, actual: 180 },
+  trending: { skeleton: 290, actual: 290 },
+  popular: { skeleton: 330, actual: 330 },
+  tourist: { skeleton: 350, actual: 350 },
+  blogs: { skeleton: 320, actual: 320 },
+  pageheader: { skeleton: 230, actual: 230 },
 };
 
 /* ──────────────────────────────────────────────────────────────
@@ -388,8 +388,8 @@ const LandingPage = () => {
                         </Box>
                     ) : (
                         <>
-                            <Box className="home-section home-section--flush" sx={homeSectionSx}>
-                                <Suspense fallback={<SkeletonCards type="featured" />}>
+                            <Box className="home-section home-section--flush" sx={{ ...homeSectionSx, minHeight: 280, maxHeight: 280, overflow: 'hidden' }}>
+                                <Suspense fallback={null}>
                                     <FeaturedServices />
                                 </Suspense>
                             </Box>
@@ -412,7 +412,7 @@ const LandingPage = () => {
                                 </Suspense>
                             </Box>
 
-                            <Box className="home-section" sx={homeSectionSx}>
+                            <Box className="home-section" sx={homeSectionSx}> 
                                 <Suspense fallback={<SkeletonCarousel type="popular" />}>
                                     <CardCarousel />
                                 </Suspense>

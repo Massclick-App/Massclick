@@ -137,17 +137,19 @@ const LandingSkeleton = () => (
         <Txt w={180} h={22} r={2} />
       </Box>
       <div className="service-cards-container">
-        <Paper elevation={0} sx={{ p: 3, borderRadius: 4, border: "1px solid #f0ece8", maxWidth: 380 }}>
-          <Txt w={200} h={24} r={2} sx={{ mb: 2 }} />
-          <div className="items-grid">
-            {[...Array(12)].map((_, i) => (
-              <div key={i} className="item-card" style={{ width: "100%" }}>
-                <S w={70} h={70} r={35} sx={{ mx: "auto", mb: 1 }} />
-                <Txt w="80%" h={12} sx={{ mx: "auto" }} />
-              </div>
-            ))}
-          </div>
-        </Paper>
+        {[...Array(4)].map((_, sectionIdx) => (
+          <Paper key={sectionIdx} elevation={0} sx={{ p: 3, borderRadius: 4, border: "1px solid #f0ece8", width: "100%", flex: "1 1 300px" }}>
+            <Txt w={200} h={24} r={2} sx={{ mb: 2 }} />
+            <div className="items-grid">
+              {[...Array(8)].map((_, i) => (
+                <div key={i} className="item-card" style={{ width: "100%" }}>
+                  <S w={70} h={70} r={35} sx={{ mx: "auto", mb: 1 }} />
+                  <Txt w="80%" h={12} sx={{ mx: "auto" }} />
+                </div>
+              ))}
+            </div>
+          </Paper>
+        ))}
       </div>
 
       {/* ── MassClick banner ─────────────────── */}

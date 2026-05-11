@@ -16,7 +16,7 @@ import ScrollToTop from './scrollTop.js';
 import RouteChangeTracker from './RouteChangeTracker.js';
 import { userMenuItems } from './Internals/clientComponent/categoryBar.js';
 
-import GlobalSkeleton from './Internals/clientComponent/globalSkeleton.js';
+import ShimmerSkeleton from './Internals/clientComponent/shimmerSkeleton.js';
 
 
 const Dashboard = lazy(() => import('./Dashboard'));
@@ -80,23 +80,13 @@ const BlogDetail = lazy(() => import('./Internals/clientComponent/relatedBlogs/b
 const DynamicLoader = memo(() => {
   const { pathname } = useLocation();
 
-  if (pathname.startsWith('/business/')) {
-    return <GlobalSkeleton type="details" />;
+  // Don't show skeleton on home page - it causes layout shift
+  if (pathname === "/") {
+    return null;
   }
 
-  if (
-    pathname.includes('/search') ||
-    pathname.includes('/category') ||
-    pathname.split('/').length >= 3
-  ) {
-    return <GlobalSkeleton type="list" />;
-  }
-
-  if (pathname.startsWith('/dashboard')) {
-    return <GlobalSkeleton type="dashboard" />;
-  }
-
-  return pathname === "/" ? <GlobalSkeleton type="landing" /> : <GlobalSkeleton type="cards" />;
+  // Show minimal shimmer for other pages
+  return <ShimmerSkeleton />;
 });
 
 const ComingSoon = ({ title }) => (
@@ -274,7 +264,7 @@ function App() {
     return (
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        <GlobalSkeleton type="cards" />
+        <ShimmerSkeleton />
       </ThemeProvider>
     );
   }

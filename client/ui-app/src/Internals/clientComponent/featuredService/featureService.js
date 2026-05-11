@@ -192,11 +192,11 @@ const FeaturedServicesSection = () => {
                 alt={altText}
                 title={`${service.name} services in ${districtSlug}`}
                 className="service-icons"
-                width="80"
-                height="80"
-                loading="lazy"
+                width="55"
+                height="55"
+                loading="eager"
                 decoding="async"
-                fetchpriority={index < 2 ? "high" : "low"}
+                fetchpriority={index < 2 ? "high" : "auto"}
                 onError={(e) => {
                   e.target.onerror = null;
                   e.target.src = "/default.webp";

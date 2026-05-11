@@ -57,6 +57,14 @@
 
 
 /* --- Item Card (Individual Service Link) Improvements --- */
+.item-icon {
+  aspect-ratio: 1 / 1;
+  width: 90px;
+  height: 90px;
+  display: block;
+  object-fit: contain;
+}
+
 .item-card {
     display: flex;
     flex-direction: column;

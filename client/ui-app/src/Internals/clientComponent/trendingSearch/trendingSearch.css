@@ -77,6 +77,8 @@
 /* ── carousel wrapper ── */
 .ts__wrap {
   position: relative;
+  padding: 0 50px;
+  margin: 0 -50px;
 }
 
 /* ── arrow buttons ── */

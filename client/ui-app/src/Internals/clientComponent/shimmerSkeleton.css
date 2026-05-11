@@ -1,0 +1,81 @@
+/* Flutter-style shimmer skeleton loader */
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.shimmer-container {
+  width: 100%;
+  min-height: 100vh;
+  background-color: #f5f7fa;
+  padding: 16px;
+  contain: layout style paint;
+}
+
+.shimmer-header {
+  height: 56px;
+  background-color: #ffffff;
+  border-radius: 0;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  contain: layout style paint;
+}
+
+.shimmer-hero {
+  background-color: #ffffff;
+  border-radius: 8px;
+  padding: 32px 16px;
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  contain: layout style paint;
+}
+
+.shimmer-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 16px;
+  contain: layout style paint;
+}
+
+.shimmer-bar {
+  background: linear-gradient(
+    90deg,
+    #e8e8e8 0%,
+    #f0f0f0 10%,
+    #e8e8e8 20%,
+    #e8e8e8 100%
+  );
+  background-size: 1000px 100%;
+  animation: shimmer 2s infinite;
+  border-radius: 4px;
+  contain: paint;
+  display: block;
+}
+
+.shimmer-bar-lg {
+  height: 32px;
+}
+
+.shimmer-bar-md {
+  height: 24px;
+}
+
+.shimmer-bar-sm {
+  height: 16px;
+}
+
+/* Prevent layout shift */
+.shimmer-container,
+.shimmer-header,
+.shimmer-hero,
+.shimmer-content,
+.shimmer-bar {
+  box-sizing: border-box;
+}
