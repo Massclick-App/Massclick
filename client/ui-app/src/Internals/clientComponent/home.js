@@ -388,11 +388,11 @@ const LandingPage = () => {
                         </Box>
                     ) : (
                         <>
-                            {/* <Box className="home-section home-section--flush" sx={{ ...homeSectionSx, minHeight: 280, maxHeight: 'none', overflow: 'visible' }}>
+                            <Box className="home-section home-section--flush" sx={{ ...homeSectionSx, minHeight: 280, maxHeight: 'none', overflow: 'visible' }}>
                                 <Suspense fallback={null}>
                                     <FeaturedServices />
                                 </Suspense>
-                            </Box> */}
+                            </Box>
 
                             <Box className="home-section" sx={homeSectionSx}>
                                 <Suspense fallback={<SkeletonCards type="service" />}>
