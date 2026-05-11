@@ -16,7 +16,7 @@ import {
 } from "@mui/material";
 import { sendOtp, verifyOtp } from "../../redux/actions/otpAction";
 import { registerWebFCMToken } from "../../utils/registerFCMToken";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
 import { Link as RouterLink } from 'react-router-dom';
 import { Link as MuiLink } from '@mui/material';
 import { useSnackbar } from "notistack";

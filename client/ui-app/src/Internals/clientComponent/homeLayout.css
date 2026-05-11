@@ -17,6 +17,8 @@
   contain: layout style paint;
   display: flow-root;
   overflow: hidden;
+  position: relative;
+  z-index: 1;
 }
 
 .home-section--flush {
@@ -48,6 +50,8 @@
 
 .home-section > .featured-services-container {
   padding-block: 22px;
+  position: relative;
+  z-index: auto;
 }
 
 .home-section > .tourist-section,
@@ -141,9 +145,18 @@
 /* Prevent text wrapping changes */
 .home-section h2,
 .home-section h3,
-.home-section .category-title,
-.home-section .item-name {
+.home-section .category-title {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Allow multiline for service names */
+.home-section .item-name,
+.service-name {
+  white-space: normal;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  overflow: visible !important;
+  text-overflow: clip !important;
 }

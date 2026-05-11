@@ -2,8 +2,10 @@
 .featured-services-container {
   display: grid;
   grid-template-columns: repeat(10, 1fr);
-  justify-content: center;
-  gap: 22px 20px;
+  justify-items: center;
+  align-items: stretch;
+  column-gap: 28px;
+  row-gap: 32px;
   padding: 35px clamp(16px, 4vw, 48px) 20px;
   max-width: 1750px;
   margin: 0 auto;
@@ -13,16 +15,17 @@
 
 /* Card - Icon only */
 .service-card {
-  width: 100%;
+  width: 145px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   text-align: center;
   cursor: pointer;
   contain: layout style paint;
   will-change: transform;
   box-sizing: border-box;
+  gap: 12px;
 }
 
 .service-card:hover {
@@ -54,45 +57,65 @@
   font-size: 1.08rem;
   color: #1a1a1a;
   text-align: center;
-  line-height: 1.35;
+  line-height: 1.4;
   text-transform: capitalize;
   word-wrap: break-word;
   overflow-wrap: break-word;
   word-break: break-word;
   white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
   max-width: 100%;
-  margin-top: 14px;
-  padding: 0 3px;
-  min-height: 50px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  margin: 0;
+  padding: 0 4px;
+  display: block;
 }
 
 @media (max-width: 480px) {
   .featured-services-container {
-    grid-template-columns: repeat(5, 1fr);
-    gap: 18px 12px;
-    padding: 24px 12px 16px;
+    grid-template-columns: repeat(3, 1fr);
+    column-gap: 16px;
+    row-gap: 28px;
+    padding-top: 20px !important;
+    padding-right: 0px !important;
+    padding-bottom: 16px !important;
+    padding-left: 0px !important;
+    margin: 0 !important;
+    width: 100vw !important;
+    position: relative !important;
+    left: 50% !important;
+    right: 50% !important;
+    margin-left: -50vw !important;
+    margin-right: -50vw !important;
+  }
+
+  .service-card {
+    width: 100%;
   }
 
   .service-icons {
-    width: 65px;
-    height: 65px;
-    padding: 12px;
-    border-radius: 14px;
+    width: 60px;
+    height: 60px;
+    padding: 10px;
+    border-radius: 12px;
   }
 
   .service-name {
-    font-size: 0.85rem;
+    font-size: 0.82rem;
+    line-height: 1.35;
   }
 }
 
 @media (min-width: 481px) and (max-width: 768px) {
   .featured-services-container {
     grid-template-columns: repeat(6, 1fr);
-    gap: 20px 14px;
+    column-gap: 20px;
+    row-gap: 30px;
     padding: 28px 16px 18px;
+  }
+
+  .service-card {
+    width: 128px;
   }
 
   .service-icons {
@@ -110,8 +133,13 @@
 @media (min-width: 769px) and (max-width: 1199px) {
   .featured-services-container {
     grid-template-columns: repeat(8, 1fr);
-    gap: 21px 16px;
+    column-gap: 24px;
+    row-gap: 31px;
     padding: 32px 32px 20px;
+  }
+
+  .service-card {
+    width: 137px;
   }
 
   .service-icons {

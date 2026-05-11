@@ -46,7 +46,6 @@ const LeadsCardHistory = () => {
 
   const [searchText, setSearchText] = useState("");
   const [sortBy, setSortBy] = useState("latest");
-  const [syncingLeads, setSyncingLeads] = useState(false);
   const hasSyncedRef = useRef(false);
 
   const totalLeads = leadsUsers.length;
@@ -97,8 +96,6 @@ const LeadsCardHistory = () => {
 
     const syncLeads = async () => {
       try {
-        setSyncingLeads(true);
-
         for (const lead of leadsUsers) {
           const payload = {
             leadsData: {  
@@ -117,8 +114,8 @@ const LeadsCardHistory = () => {
             console.error("Error saving single lead:", lead, err);
           }
         }
-      } finally {
-        setSyncingLeads(false);
+      } catch (err) {
+        console.error("Error syncing leads:", err);
       }
     };
 

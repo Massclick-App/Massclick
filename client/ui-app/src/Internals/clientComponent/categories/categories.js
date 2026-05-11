@@ -5,10 +5,6 @@ import { Helmet } from "react-helmet-async";
 import "./categories.css";
 import { logSearchActivity } from "../../../redux/actions/businessListAction";
 import { fetchSubCategories } from "../../../redux/actions/categoryAction";
-import { shouldSendSearch } from "../../../utils/searchLock";
-
-const createSlug = (text = "") =>
-  text.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-");
 
 const formatText = (text = "") =>
   text.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());

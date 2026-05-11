@@ -17,10 +17,10 @@ import { backendMainSearch, logSearchActivity } from "../../../redux/actions/bus
 import { fetchSeoMeta } from "../../../redux/actions/seoAction.js";
 import { fetchSeoPageContentMeta } from "../../../redux/actions/seoPageContentAction.js";
 import { CLEAR_SEO_META } from "../../../redux/actions/userActionTypes.js";
+import { selectBusinessLoading, selectBusinessError } from "../../../redux/selectors";
 import TopBannerAds from "../banners/topBanner/topBanner.js";
 import GlobalSkeleton from "../globalSkeleton.js";
 import OTPLoginModal from "../AddBusinessModel.js";
-import { logUserSearch } from "../../../redux/actions/otpAction.js";
 
 const createSlug = (text = "") =>
   text
@@ -46,7 +46,6 @@ const SearchResults = () => {
   const locationState = useLocation();
   const [openLoginModal, setOpenLoginModal] = useState(false);
   const locationText = locParam?.trim() || "";
-  const stateResults = locationState.state?.results;
 
   const stateCategory = locationState.state?.category;
 
@@ -57,9 +56,8 @@ const SearchResults = () => {
 
   const canonicalUrl = `https://massclick.in/${locationSlug}/${searchSlug}`;
 
-  const { loading, error } = useSelector(
-    (state) => state.businessListReducer || {}
-  );
+  const loading = useSelector(selectBusinessLoading);
+  const error = useSelector(selectBusinessError);
 
   const { meta: seoMetaData } = useSelector(
     (state) => state.seoReducer || {}
@@ -274,8 +272,6 @@ useEffect(() => {
   };
 
   const seoContent = seoPageContents?.[0];
-
-  const sanitizedHeaderContent = seoContent?.headerContent || null;
 
   const sanitizedPageContent =
     seoContent?.pageContent

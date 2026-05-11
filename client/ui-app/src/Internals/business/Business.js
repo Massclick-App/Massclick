@@ -15,7 +15,6 @@ import BusinessCenterIcon from '@mui/icons-material/BusinessCenter';
 import PrivacyTipIcon from '@mui/icons-material/PrivacyTip';
 import CategoryIcon from '@mui/icons-material/Category';
 import VerifiedUserIcon from "@mui/icons-material/VerifiedUser";
-import { Payment as PaymentIcon, CheckCircle, HourglassEmpty, Cancel } from "@mui/icons-material";
 import {
   Box,
   Button,
@@ -146,7 +145,6 @@ export default function BusinessList() {
   const [locationSuggestions, setLocationSuggestions] = useState([]);
   const { searchCategory } = useSelector((state) => state.categoryReducer);
 
-  const { users = [] } = useSelector((state) => state.userReducer || {});
 
   const { location = [] } = useSelector((state) => state.locationReducer || {});
   const { category = [] } = useSelector((state) => state.categoryReducer || {});

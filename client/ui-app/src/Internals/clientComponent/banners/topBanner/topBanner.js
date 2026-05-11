@@ -22,6 +22,14 @@ const parseDate = (date) => {
 const normalizeCategory = (value = "") =>
   value.toString().trim().toLowerCase().replace(/[^a-z]/g, "");
 
+const DEFAULT_BANNER = {
+  _id: "default-banner",
+  title: "Default Banner",
+  redirectUrl: null,
+  image: defaultBanner,
+  isDefault: true
+};
+
 const TopBannerAds = ({ category }) => {
 
   const dispatch = useDispatch();
@@ -35,14 +43,6 @@ const TopBannerAds = ({ category }) => {
   const { categoryAdvertisements = [], loading } = useSelector(
     (state) => state.advertisement || {}
   );
-
-  const DEFAULT_BANNER = {
-    _id: "default-banner",
-    title: "Default Banner",
-    redirectUrl: null,
-    image: defaultBanner,
-    isDefault: true
-  };
 
   const bannerAds = useMemo(() => {
 

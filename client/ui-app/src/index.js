@@ -19,6 +19,16 @@ const theme = createTheme({
   },
 });
 
+// Load Google Analytics after first paint to unblock main thread
+const loadAnalytics = async () => {
+  try {
+    const { loadGoogleAnalytics } = await import('./services/analyticsLoader');
+    loadGoogleAnalytics();
+  } catch (err) {
+    console.warn('Analytics loader error:', err);
+  }
+};
+
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <Provider store={store}>
@@ -32,5 +42,8 @@ root.render(
     </ThemeProvider>
   </Provider>
 );
+
+// Schedule GA load after render cycle (3+ seconds delay to unblock main thread)
+setTimeout(loadAnalytics, 3000);
 
 reportWebVitals();

@@ -13,7 +13,8 @@ import {
 import { logUserSearch } from "../../../redux/actions/otpAction";
 import Tooltip from "@mui/material/Tooltip";
 import { categoryBarHelpers } from "../categoryBar";
-import { Box, Typography, Button, IconButton } from "@mui/material";
+import { Box, Button, IconButton } from "@mui/material";
+import { selectSearchLogs, selectBackendSuggestions } from "../../../redux/selectors";
 import MicIcon from "@mui/icons-material/Mic";
 import SearchIcon from "@mui/icons-material/Search";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
@@ -80,13 +81,12 @@ const CardsSearch = ({
   const navigate = useNavigate();
   const { openDrawer } = useDrawer();
 
-  const businessListState = useSelector((state) => state.businessListReducer || {});
-  const { searchLogs = [], backendSuggestions = [] } = businessListState;
+  const searchLogs = useSelector(selectSearchLogs);
+  const backendSuggestions = useSelector(selectBackendSuggestions);
 
   const [internalLocationName, setInternalLocationName] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [categoryName, setCategoryName] = useState("");
-  const [isVisible, setIsVisible] = useState(true);
+  const [isVisible] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const locationName = propLocationName ?? internalLocationName;
@@ -327,7 +327,7 @@ const CardsSearch = ({
               {isLocationDropdownOpen &&
                 parsedLocationSuggestions.length > 0 &&
                 locationName.trim().length >= 1 && (
-                  <div className="category-custom-dropdown" style={{ zIndex: 2000 }}>
+                  <div className="category-custom-dropdown" style={{ zIndex: 10000 }}>
                     <div className="trending-label">LOCATION SUGGESTIONS</div>
 
                     <div className="options-list-container">
@@ -358,7 +358,6 @@ const CardsSearch = ({
                 value={searchTerm}
                 onChange={(e) => {
                   setSearchTerm(e.target.value);
-                  setCategoryName(e.target.value);
                   setIsCategoryDropdownOpen(true);
                 }}
                 onFocus={() => setIsCategoryDropdownOpen(true)}
@@ -368,7 +367,6 @@ const CardsSearch = ({
                   options={categoryOptions}
                   setSearchTerm={(val) => {
                     setSearchTerm(val);
-                    setCategoryName(val);
                     setIsCategoryDropdownOpen(false);
                     document.activeElement.blur();
                   }}
@@ -380,7 +378,7 @@ const CardsSearch = ({
               )}
 
               {isCategoryDropdownOpen && searchTerm.trim().length >= 2 && (
-                <div className="category-custom-dropdown" style={{ zIndex: 2000 }}>
+                <div className="category-custom-dropdown" style={{ zIndex: 10000 }}>
                   <div className="trending-label">SUGGESTIONS</div>
 
                   <div className="options-list-container">
@@ -390,7 +388,6 @@ const CardsSearch = ({
                         className="option-item"
                         onClick={() => {
                           setSearchTerm(suggestion);
-                          setCategoryName(suggestion);
                           setIsCategoryDropdownOpen(false);
 
                           document.activeElement.blur();
