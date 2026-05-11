@@ -510,15 +510,15 @@ export const getServiceCardsAction = async (req, res) => {
       {
         section: "Services",
         items: [
-          "Pest Control",
+          "Pest Control Service",
           "AC Service",
-          "PC Service"
+          "Computer And Laptop Service"
         ]
       },
       {
         section: "Hot Categories",
         items: [
-          "Catering",
+          "Catering Services",
           "Transporters",
           "Driving School"
         ]
