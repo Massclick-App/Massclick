@@ -194,7 +194,7 @@ const FeaturedServicesSection = () => {
                 className="service-icons"
                 width="55"
                 height="55"
-                loading="eager"
+                loading={index < 2 ? "eager" : "lazy"}
                 decoding="async"
                 fetchpriority={index < 2 ? "high" : "auto"}
                 onError={(e) => {

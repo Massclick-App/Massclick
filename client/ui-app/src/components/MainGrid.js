@@ -1,7 +1,9 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, lazy, Suspense } from 'react';
 import Grid from '@mui/material/Grid';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import Skeleton from '@mui/material/Skeleton';
+import CircularProgress from '@mui/material/CircularProgress';
 
 import { useSelector, useDispatch } from "react-redux";
 import { getAllBusinessList, toggleBusinessStatus, trackQrDownload } from "../redux/actions/businessListAction";
@@ -17,7 +19,7 @@ import {
 } from "@mui/material";
 
 import BusinessCard from './businessCard/businessCard.js';
-import ChartUserByBusiness from '../components/homePageChart/ChartUserByCountry.js';
+const ChartUserByBusiness = lazy(() => import('../components/homePageChart/ChartUserByCountry.js'));
 import CustomizedTable from './Table/CustomizedTable.js';
 import { createPhonePePayment } from '../redux/actions/phonePayAction.js';
 
@@ -290,7 +292,9 @@ export default function MainGrid() {
       </Grid>
       <Grid container spacing={2} columns={12} sx={{ mb: 2 }}>
         <Grid item xs={12} md={12}>
-          <ChartUserByBusiness />
+          <Suspense fallback={<Skeleton variant="rectangular" height={400} />}>
+            <ChartUserByBusiness />
+          </Suspense>
         </Grid>
       </Grid><br />
       <Grid elevation={3} sx={{ p: 3, borderRadius: 2 }}>

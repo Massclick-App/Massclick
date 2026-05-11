@@ -10,7 +10,6 @@ import { viewOtpUser } from '../../redux/actions/otpAction.js';
 import { fetchMatchedLeads } from '../../redux/actions/leadsAction.js';
 import SeoMeta from "./seo/seoMeta";
 import { fetchSeoMeta } from "../../redux/actions/seoAction";
-import { messaging, onMessage } from '../../firebase';
 import miLogo from '../../assets/mi.png';
 import { connectSocket, disconnectSocket } from '../../services/socketService.js';
 import './homeLayout.css';
@@ -174,14 +173,16 @@ const LandingPage = () => {
     }, [dispatch]);
 
     useEffect(() => {
-        const unsubscribe = onMessage(messaging, (payload) => {
-            console.log('[FCM] Foreground message received:', payload);
-            const { title, body, image } = payload.notification || {};
-            const imageUrl = image || payload.data?.imageUrl || null;
-            console.log('[FCM] Showing in-app notification:', { title, body, imageUrl });
-            setFcmNotif({ title: title || 'MassClick', body: body || '', image: imageUrl });
-        });
-        return unsubscribe;
+        import('../../firebase').then(({ messaging, onMessage }) => {
+            const unsubscribe = onMessage(messaging, (payload) => {
+                console.log('[FCM] Foreground message received:', payload);
+                const { title, body, image } = payload.notification || {};
+                const imageUrl = image || payload.data?.imageUrl || null;
+                console.log('[FCM] Showing in-app notification:', { title, body, imageUrl });
+                setFcmNotif({ title: title || 'MassClick', body: body || '', image: imageUrl });
+            });
+            return unsubscribe;
+        }).catch(err => console.warn('[FCM] Failed to load Firebase:', err));
     }, []);
 
     const fallbackSeo = {

@@ -1,12 +1,15 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, lazy, Suspense } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { getAllBusinessList, createBusinessList, editBusinessList, deleteBusinessList, trackQrDownload } from "../../redux/actions/businessListAction";
 import { getAllLocation, createLocation } from "../../redux/actions/locationAction";
 import { createCategory, editCategory, businessCategorySearch } from "../../redux/actions/categoryAction";
 import { getAllUsersClient, getUserClientSuggestion } from "../../redux/actions/userClientAction.js";
 import { getAllUsers } from "../../redux/actions/userAction.js";
-import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
+
+const ReactQuill = lazy(() => import('react-quill').then(m => {
+  require('react-quill/dist/quill.snow.css');
+  return { default: m.default };
+}));
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import './business.css'
 import SkipNextIcon from '@mui/icons-material/SkipNext';
@@ -1188,15 +1191,17 @@ export default function BusinessList() {
 
             <div className="form-input-group col-span-all">
               <label className="input-label">Business Details</label>
-              <ReactQuill
-                theme="snow"
-                value={businessvalue}
-                onChange={handleBusinessChange}
-                modules={modules}
-                formats={formats}
-                placeholder="Type business details here..."
-                style={{ height: "200px" }}
-              />
+              <Suspense fallback={<CircularProgress />}>
+                <ReactQuill
+                  theme="snow"
+                  value={businessvalue}
+                  onChange={handleBusinessChange}
+                  modules={modules}
+                  formats={formats}
+                  placeholder="Type business details here..."
+                  style={{ height: "200px" }}
+                />
+              </Suspense>
             </div><br />
 
             <div className="form-input-group col-span-all"><br /><br />
