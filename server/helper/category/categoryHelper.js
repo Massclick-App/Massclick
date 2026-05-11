@@ -39,6 +39,14 @@ export const createCategory = async (reqBody = {}) => {
         updates.categoryImageKey = uploadResult.key;
       }
 
+      if (reqBody.liveImage) {
+        const uploadResult = await uploadImageToS3(
+          reqBody.liveImage,
+          `category/live-images/category-${Date.now()}`
+        );
+        updates.liveImageKey = uploadResult.key;
+      }
+
       await categoryModel.findByIdAndUpdate(existing._id, updates);
       return {
         message: "Category updated",
@@ -53,6 +61,15 @@ export const createCategory = async (reqBody = {}) => {
       );
       delete reqBody.categoryImage;
       reqBody.categoryImageKey = uploadResult.key;
+    }
+
+    if (reqBody.liveImage) {
+      const uploadResult = await uploadImageToS3(
+        reqBody.liveImage,
+        `category/live-images/category-${Date.now()}`
+      );
+      delete reqBody.liveImage;
+      reqBody.liveImageKey = uploadResult.key;
     }
 
     reqBody.category = categoryName;
@@ -82,6 +99,9 @@ export const viewCategory = async (id) => {
 
     if (category.categoryImageKey) {
       category.categoryImage = getSignedUrlByKey(category.categoryImageKey);
+    }
+    if (category.liveImageKey) {
+      category.liveImage = getSignedUrlByKey(category.liveImageKey);
     }
 
     return category;
@@ -128,6 +148,9 @@ export const viewAllCategory = async ({
       if (c.categoryImageKey) {
         c.categoryImage = getSignedUrlByKey(c.categoryImageKey);
       }
+      if (c.liveImageKey) {
+        c.liveImage = getSignedUrlByKey(c.liveImageKey);
+      }
       return c;
     });
 
@@ -169,11 +192,29 @@ export const updateCategory = async (id, data) => {
     }
     delete data.categoryImage;
 
+    if (
+      data.liveImage &&
+      typeof data.liveImage === "string" &&
+      data.liveImage.startsWith("data:image")
+    ) {
+      const uploadResult = await uploadImageToS3(
+        data.liveImage,
+        `category/live-images/category-${Date.now()}`
+      );
+      data.liveImageKey = uploadResult.key;
+    } else if (data.liveImage === null || data.liveImage === "") {
+      data.liveImageKey = "";
+    }
+    delete data.liveImage;
+
     const category = await categoryModel.findByIdAndUpdate(id, data, { new: true });
     if (!category) throw new Error("Category not found");
 
     if (category.categoryImageKey) {
       category.categoryImage = getSignedUrlByKey(category.categoryImageKey);
+    }
+    if (category.liveImageKey) {
+      category.liveImage = getSignedUrlByKey(category.liveImageKey);
     }
 
     return category;
@@ -243,6 +284,9 @@ export const businessSearchCategory = async (query, limit) => {
     return results.map((cat) => {
       if (cat.categoryImageKey) {
         cat.categoryImage = getSignedUrlByKey(cat.categoryImageKey);
+      }
+      if (cat.liveImageKey) {
+        cat.liveImage = getSignedUrlByKey(cat.liveImageKey);
       }
       return cat;
     });

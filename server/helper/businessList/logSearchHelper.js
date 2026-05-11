@@ -101,7 +101,7 @@ export const getTopTrendingCategories = async (limit = 10) => {
                 $expr: { $eq: [{ $toLower: "$categoryName" }, "$$catName"] }
               }
             },
-            { $project: { categoryImageKey: 1, _id: 0 } },
+            { $project: { categoryImageKey: 1, liveImageKey: 1, _id: 0 } },
             { $limit: 1 }
           ],
           as: "categoryDoc"
@@ -114,6 +114,13 @@ export const getTopTrendingCategories = async (limit = 10) => {
               if: { $gt: [{ $size: "$categoryDoc" }, 0] },
               then: { $arrayElemAt: ["$categoryDoc.categoryImageKey", 0] },
               else: "$categoryImage"
+            }
+          },
+          liveImageKey: {
+            $cond: {
+              if: { $gt: [{ $size: "$categoryDoc" }, 0] },
+              then: { $arrayElemAt: ["$categoryDoc.liveImageKey", 0] },
+              else: ""
             }
           }
         }
@@ -129,7 +136,8 @@ export const getTopTrendingCategories = async (limit = 10) => {
           _id: 0,
           categoryName: "$_id",
           totalSearches: 1,
-          categoryImage: 1
+          categoryImage: 1,
+          liveImageKey: 1
         }
       }
     ]);

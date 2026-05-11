@@ -194,12 +194,16 @@ export const getHomeCategoriesAction = async (req, res) => {
           slug: found.slug,
           icon: found.categoryImageKey
             ? `${S3_BASE_URL}${found.categoryImageKey}`
+            : null,
+          liveImage: found.liveImageKey
+            ? `${S3_BASE_URL}${found.liveImageKey}`
             : null
         }
         : {
           name,
           slug: name.toLowerCase().replace(/ /g, "-"),
-          icon: null
+          icon: null,
+          liveImage: null
         };
     });
 
@@ -262,6 +266,9 @@ export const getMobileHomeCategoriesAction = async (req, res) => {
           icon: found.categoryImageKey
             ? `${S3_BASE_URL}${found.categoryImageKey}`
             : null,
+          liveImage: found.liveImageKey
+            ? `${S3_BASE_URL}${found.liveImageKey}`
+            : null,
           hasSubcategories,
           subCategoryCount
         }
@@ -269,6 +276,7 @@ export const getMobileHomeCategoriesAction = async (req, res) => {
           name,
           slug: name.toLowerCase().replace(/ /g, "-"),
           icon: null,
+          liveImage: null,
           hasSubcategories: !!categoriesData[categoryKey],
           subCategoryCount: categoriesData[categoryKey]?.length || 0
         };
@@ -350,6 +358,9 @@ export const getSubCategoriesAction = async (req, res) => {
           icon: item.categoryImageKey
             ? `${BASE_URL}${item.categoryImageKey}`
             : "/icons/default.webp",
+          liveImage: item.liveImageKey
+            ? `${BASE_URL}${item.liveImageKey}`
+            : null,
         }))
       );
     }
@@ -360,6 +371,7 @@ export const getSubCategoriesAction = async (req, res) => {
         name: item.name,
         slug: item.name.toLowerCase().replace(/\s+/g, "-"),
         icon: "/icons/default.webp",
+        liveImage: null,
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
 
@@ -463,6 +475,9 @@ export const getPopularCategoriesAction = async (req, res) => {
           icon: found.categoryImageKey
             ? `${S3_BASE_URL}${found.categoryImageKey}`
             : null,
+          liveImage: found.liveImageKey
+            ? `${S3_BASE_URL}${found.liveImageKey}`
+            : null,
           hasSubcategories,
           subCategoryCount
         }
@@ -470,6 +485,7 @@ export const getPopularCategoriesAction = async (req, res) => {
           name,
           slug: name.toLowerCase().replace(/ /g, "-"),
           icon: null,
+          liveImage: null,
           hasSubcategories: !!categoriesData[categoryKey],
           subCategoryCount: categoriesData[categoryKey]?.length || 0
         };
@@ -547,16 +563,20 @@ export const getServiceCardsAction = async (req, res) => {
               _id: found._id,
               name: found.category,
               slug: found.slug,
-              section, 
+              section,
               icon: found.categoryImageKey
                 ? `${S3_BASE_URL}${found.categoryImageKey}`
+                : null,
+              liveImage: found.liveImageKey
+                ? `${S3_BASE_URL}${found.liveImageKey}`
                 : null
             }
             : {
               name,
               slug: name.toLowerCase().replace(/ /g, "-"),
-              section, 
-              icon: null
+              section,
+              icon: null,
+              liveImage: null
             }
         );
 
@@ -626,11 +646,15 @@ export const getAllUniqueCategoriesAction = async (req, res) => {
                   icon: found.categoryImageKey
                     ? `${S3_BASE_URL}${found.categoryImageKey}`
                     : "/icons/default.webp",
+                  liveImage: found.liveImageKey
+                    ? `${S3_BASE_URL}${found.liveImageKey}`
+                    : null,
                 }
               : {
                   name,
                   slug: name.toLowerCase().replace(/\s+/g, "-"),
                   icon: "/icons/default.webp",
+                  liveImage: null,
                 };
           })
           .sort((a, b) => a.name.localeCompare(b.name));
@@ -642,6 +666,9 @@ export const getAllUniqueCategoriesAction = async (req, res) => {
           icon: item.categoryImageKey
             ? `${S3_BASE_URL}${item.categoryImageKey}`
             : "/icons/default.webp",
+          liveImage: item.liveImageKey
+            ? `${S3_BASE_URL}${item.liveImageKey}`
+            : null,
           subs,
         };
       });

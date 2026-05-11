@@ -643,6 +643,9 @@ export const getTrendingSearchesAction = async (req, res) => {
       ...item,
       categoryImage: item.categoryImage
         ? getSignedUrlByKey(item.categoryImage)
+        : "",
+      liveImage: item.liveImageKey
+        ? getSignedUrlByKey(item.liveImageKey)
         : ""
     }));
 

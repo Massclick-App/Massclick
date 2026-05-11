@@ -111,11 +111,13 @@ export default function Category() {
     (state) => state.categoryReducer || {}
   );
   const fileInputRef = useRef();
+  const liveImageInputRef = useRef();
   const [errors, setErrors] = useState({});
 
   const [formData, setFormData] = useState({
     _id: null,
     categoryImage: "",
+    liveImage: "",
     category: "",
     categoryType: "",
     subCategoryType: "",
@@ -129,6 +131,7 @@ export default function Category() {
   });
 
   const [preview, setPreview] = useState(null);
+  const [liveImagePreview, setLiveImagePreview] = useState(null);
   const [editMode, setEditMode] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState({ open: false, id: null });
   const [inputKeyword, setInputKeyword] = useState("");
@@ -191,6 +194,7 @@ export default function Category() {
     setFormData({
       _id: row._id,
       categoryImage: row.categoryImage || "",
+      liveImage: row.liveImage || "",
       category: row.category,
       categoryType: row.categoryType,
       subCategoryType: row.subCategoryType,
@@ -205,6 +209,7 @@ export default function Category() {
       slug: row.slug || "",
     });
     setPreview(row.categoryImage || null);
+    setLiveImagePreview(row.liveImage || null);
   };
 
   const handleDelete = (row) => {
@@ -263,6 +268,18 @@ export default function Category() {
       reader.onloadend = () => {
         setFormData((prev) => ({ ...prev, categoryImage: reader.result }));
         setPreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleLiveImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData((prev) => ({ ...prev, liveImage: reader.result }));
+        setLiveImagePreview(reader.result);
       };
       reader.readAsDataURL(file);
     }
@@ -366,11 +383,12 @@ export default function Category() {
 
   const resetForm = () => {
     setFormData({
-      _id: null, categoryImage: "", category: "", categoryType: "",
+      _id: null, categoryImage: "", liveImage: "", category: "", categoryType: "",
       subCategoryType: "", parentCategoryId: "", title: "", keywords: [],
       description: "", seoTitle: "", seoDescription: "", slug: "",
     });
     setPreview(null);
+    setLiveImagePreview(null);
     setEditMode(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
@@ -425,6 +443,7 @@ export default function Category() {
       id: cat._id || index,
       _id: cat._id,
       categoryImage: cat.categoryImage,
+      liveImage: cat.liveImage,
       category: cat.category,
       categoryType: cat.categoryType,
       subCategoryType: cat.subCategoryType,
@@ -446,6 +465,12 @@ export default function Category() {
       label: "Image",
       renderCell: (value) =>
         value ? <Avatar src={value} alt="Category" /> : "-",
+    },
+    {
+      id: "liveImage",
+      label: "Live Image",
+      renderCell: (value) =>
+        value ? <Avatar src={value} alt="Live" variant="rounded" /> : "-",
     },
     { id: "category", label: "Category" },
     { id: "categoryType", label: "Type" },
@@ -668,6 +693,29 @@ export default function Category() {
                 <Avatar
                   src={preview}
                   sx={{ width: 56, height: 56 }}
+                  className="category-preview-avatar"
+                />
+              )}
+              <Button
+                variant="outlined"
+                startIcon={<CloudUploadIcon />}
+                component="label"
+                className="category-upload-button"
+              >
+                Upload Live Image
+                <input
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  ref={liveImageInputRef}
+                  onChange={handleLiveImageChange}
+                />
+              </Button>
+              {liveImagePreview && (
+                <Avatar
+                  src={liveImagePreview}
+                  sx={{ width: 56, height: 56 }}
+                  variant="rounded"
                   className="category-preview-avatar"
                 />
               )}
