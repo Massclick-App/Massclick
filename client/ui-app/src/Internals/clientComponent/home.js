@@ -48,14 +48,14 @@ const homeSectionSx = { mb: HOME_SECTION_GAP, contain: 'layout style paint' };
 
 // Reserve exact heights for each skeleton type to match actual content
 const SKELETON_HEIGHTS = {
-  featured: { skeleton: 240, actual: 240 },
-  service: { skeleton: 160, actual: 160 },
-  banner: { skeleton: 140, actual: 140 },
-  trending: { skeleton: 240, actual: 240 },
-  popular: { skeleton: 280, actual: 280 },
-  tourist: { skeleton: 300, actual: 300 },
-  blogs: { skeleton: 270, actual: 270 },
-  pageheader: { skeleton: 180, actual: 180 },
+  featured: { skeleton: 260, actual: 260 },
+  service: { skeleton: 200, actual: 200 },
+  banner: { skeleton: 160, actual: 160 },
+  trending: { skeleton: 270, actual: 270 },
+  popular: { skeleton: 310, actual: 310 },
+  tourist: { skeleton: 330, actual: 330 },
+  blogs: { skeleton: 300, actual: 300 },
+  pageheader: { skeleton: 210, actual: 210 },
 };
 
 /* ──────────────────────────────────────────────────────────────
@@ -67,9 +67,9 @@ const SkeletonCard = ({ w = 80, h = 80, r = 50, mb = 1.5, mt = 0.5 }) => (
 
 const SkeletonCards = ({ type }) => {
   const configs = {
-    featured: { count: 8, cardW: 130, cardH: 160, iconW: 80, iconH: 80, containerH: 240 },
-    service: { count: 12, cardW: 80, cardH: 80, iconW: 70, iconH: 70, containerH: 160 },
-    pageheader: { count: 4, cardW: 140, cardH: 80, iconW: 60, iconH: 60, containerH: 180 },
+    featured: { count: 8, cardW: 130, cardH: 160, iconW: 80, iconH: 80, containerH: SKELETON_HEIGHTS.featured.skeleton },
+    service: { count: 12, cardW: 80, cardH: 80, iconW: 70, iconH: 70, containerH: SKELETON_HEIGHTS.service.skeleton },
+    pageheader: { count: 4, cardW: 140, cardH: 80, iconW: 60, iconH: 60, containerH: SKELETON_HEIGHTS.pageheader.skeleton },
   };
   const c = configs[type] || configs.featured;
   return (
@@ -109,7 +109,7 @@ const SkeletonCarousel = ({ type }) => {
   const cardW = isTrending ? 240 : 280;
   const cardH = isTrending ? 150 : 180;
   const count = isTrending ? 5 : 4;
-  const containerH = isTrending ? 240 : 280;
+  const containerH = isTrending ? SKELETON_HEIGHTS.trending.skeleton : SKELETON_HEIGHTS.popular.skeleton;
   return (
     <div style={{ px: { xs: 2, sm: 4, md: 6 }, height: containerH, display: 'flex', alignItems: 'center', contain: 'layout style paint' }}>
       <div
@@ -136,13 +136,14 @@ const SkeletonGrid = ({ type }) => {
   const isTourist = type === "tourist";
   const count = isTourist ? 4 : 3;
   const h = isTourist ? 200 : 170;
+  const containerH = isTourist ? SKELETON_HEIGHTS.tourist.skeleton : SKELETON_HEIGHTS.blogs.skeleton;
   return (
     <Grid
       container
       spacing={2}
       sx={{
         px: { xs: 2, sm: 4, md: 6 },
-        height: isTourist ? 300 : 270,
+        height: containerH,
         display: 'flex',
         alignItems: 'center',
         contain: 'layout style paint',
