@@ -19,9 +19,10 @@ import {
 } from "@mui/material";
 
 import BusinessCard from './businessCard/businessCard.js';
-const ChartUserByBusiness = lazy(() => import('../components/homePageChart/ChartUserByCountry.js'));
 import CustomizedTable from './Table/CustomizedTable.js';
 import { createPhonePePayment } from '../redux/actions/phonePayAction.js';
+
+const ChartUserByBusiness = lazy(() => import('../components/homePageChart/ChartUserByCountry.js'));
 
 export default function MainGrid() {
   const { enqueueSnackbar } = useSnackbar();
