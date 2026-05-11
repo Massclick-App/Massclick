@@ -69,6 +69,11 @@ const mapSignedUrls = (doc = {}) => {
     }));
   }
 
+  // content blocks
+  if (Array.isArray(doc.contentBlocks)) {
+    doc.contentBlocks = unmapContentBlocks(doc.contentBlocks);
+  }
+
   return doc;
 };
 
@@ -110,6 +115,34 @@ const mapBusinessDetails = (list = []) => {
     category: b.category || "",
     location: b.location || "",
   }));
+};
+
+const mapContentBlocks = (blocks = []) => {
+  if (!Array.isArray(blocks)) return [];
+
+  return blocks.map((block) => {
+    const { id, type, ...data } = block;
+    return {
+      type,
+      data: {
+        id,
+        ...data,
+      },
+    };
+  });
+};
+
+const unmapContentBlocks = (blocks = []) => {
+  if (!Array.isArray(blocks)) return [];
+
+  return blocks.map((block) => {
+    if (!block.type) return block;
+    const { type, data = {} } = block;
+    return {
+      type,
+      ...data,
+    };
+  });
 };
 
 export const createPageContentBlogSeo = async (
@@ -154,6 +187,10 @@ export const createPageContentBlogSeo = async (
 
   data.businessDetails = mapBusinessDetails(
     data.popularBusiness
+  );
+
+  data.contentBlocks = mapContentBlocks(
+    data.contentBlocks
   );
 
   delete data.pageImages;
@@ -349,6 +386,10 @@ export const updateSeoPageContentBlog =
       mapBusinessDetails(
         data.popularBusiness
       );
+
+    data.contentBlocks = mapContentBlocks(
+      data.contentBlocks
+    );
 
     delete data.pageImages;
     delete data.profileImage;
