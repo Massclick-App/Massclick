@@ -63,12 +63,9 @@ const mapSignedUrls = (doc = {}) => {
   if (Array.isArray(doc.businessDetails)) {
     doc.businessDetails = doc.businessDetails.map((item) => ({
       ...item,
-      bannerImage:
-        item.bannerImageKey || item.bannerImage
-          ? getSignedUrlByKey(
-              item.bannerImageKey || item.bannerImage
-            )
-          : "",
+      bannerImage: item.bannerImageKey
+        ? getSignedUrlByKey(item.bannerImageKey)
+        : item.bannerImage || "",
     }));
   }
 
@@ -108,13 +105,8 @@ const mapBusinessDetails = (list = []) => {
     contactList: b.contactList || "",
     experience: b.experience || "",
 
-    bannerImageKey: b.bannerImageKey || b.bannerImage || "",
-
-    bannerImage:
-      b.bannerImageKey || b.bannerImage
-        ? getSignedUrlByKey(b.bannerImageKey || b.bannerImage)
-        : "",
-
+    bannerImageKey: b.bannerImageKey || "",
+    bannerImage: b.bannerImage || "",
     category: b.category || "",
     location: b.location || "",
   }));

@@ -56,37 +56,37 @@ const BlogDetail = () => {
     return () => window.removeEventListener("scroll", updateReadingProgress);
   }, []);
 
-const normalizeMassclickUrl = (rawUrl = "") => {
-  try {
-    const urlObj = new URL(rawUrl);
-    const parts = urlObj.pathname.split("/").filter(Boolean);
+  const normalizeMassclickUrl = (rawUrl = "") => {
+    try {
+      const urlObj = new URL(rawUrl);
+      const parts = urlObj.pathname.split("/").filter(Boolean);
 
-    if (parts.length >= 3) {
-      const last = parts[parts.length - 1];
-      const prev = parts[parts.length - 2];
+      if (parts.length >= 3) {
+        const last = parts[parts.length - 1];
+        const prev = parts[parts.length - 2];
 
-      if (last.toLowerCase() === prev.toLowerCase()) {
-        parts.pop();
+        if (last.toLowerCase() === prev.toLowerCase()) {
+          parts.pop();
+        }
       }
+
+      urlObj.pathname = "/" + parts.join("/");
+      return urlObj.toString();
+    } catch (error) {
+      return rawUrl;
     }
+  };
 
-    urlObj.pathname = "/" + parts.join("/");
-    return urlObj.toString();
-  } catch (error) {
-    return rawUrl;
-  }
-};
+  const linkifyText = (text = "") => {
+    return text.replace(
+      /(https?:\/\/[^\s]+)/g,
+      (url) => {
+        const cleanUrl = normalizeMassclickUrl(url);
 
-const linkifyText = (text = "") => {
-  return text.replace(
-    /(https?:\/\/[^\s]+)/g,
-    (url) => {
-      const cleanUrl = normalizeMassclickUrl(url);
-
-      return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer">${cleanUrl}</a>`;
-    }
-  );
-};
+        return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer">${cleanUrl}</a>`;
+      }
+    );
+  };
 
   const makeSlug = (text = "") =>
     text
@@ -258,10 +258,10 @@ const linkifyText = (text = "") => {
   };
 
   const ssrMeta = typeof window !== "undefined" ? window.__SSR_SEO__ : null;
-  const metaTitle       = blog?.metaTitle       || ssrMeta?.title       || "Massclick Blog";
+  const metaTitle = blog?.metaTitle || ssrMeta?.title || "Massclick Blog";
   const metaDescription = blog?.metaDescription || ssrMeta?.description || "Read expert guides and local business tips on the Massclick blog.";
-  const metaKeywords    = blog?.metaKeywords    || ssrMeta?.keywords    || "massclick blog, local business tips";
-  const canonical       = `https://massclick.in/blog/${slug}`;
+  const metaKeywords = blog?.metaKeywords || ssrMeta?.keywords || "massclick blog, local business tips";
+  const canonical = `https://massclick.in/blog/${slug}`;
   const formatDate = (value) => {
     if (!value) return null;
 
@@ -345,13 +345,13 @@ const linkifyText = (text = "") => {
     <>
       <Helmet>
         <title>{metaTitle}</title>
-        <meta name="description"        content={metaDescription} />
-        <meta name="keywords"           content={metaKeywords} />
-        <link rel="canonical"           href={canonical} />
-        <meta property="og:title"       content={metaTitle} />
+        <meta name="description" content={metaDescription} />
+        <meta name="keywords" content={metaKeywords} />
+        <link rel="canonical" href={canonical} />
+        <meta property="og:title" content={metaTitle} />
         <meta property="og:description" content={metaDescription} />
-        <meta property="og:url"         content={canonical} />
-        <meta name="twitter:title"      content={metaTitle} />
+        <meta property="og:url" content={canonical} />
+        <meta name="twitter:title" content={metaTitle} />
         <meta name="twitter:description" content={metaDescription} />
       </Helmet>
       <Navbar />
@@ -499,9 +499,19 @@ const linkifyText = (text = "") => {
 
                     {b.bannerImage && (
                       <img
-                        src={b.bannerImage || "https://via.placeholder.com/300x200"}
+                        src={
+                          b.bannerImage ||
+                          "https://dummyimage.com/600x400/e2e8f0/64748b&text=No+Image"
+                        }
                         alt={b.businessName}
                         className="business-img"
+                        loading="lazy"
+                        onError={(event) => {
+                          event.currentTarget.onerror = null;
+
+                          event.currentTarget.src =
+                            "https://dummyimage.com/600x400/e2e8f0/64748b&text=No+Image";
+                        }}
                       />
                     )}
 
