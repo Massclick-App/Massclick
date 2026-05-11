@@ -49,6 +49,7 @@ const defaultForm = {
   pageImages: [],
   popularBusiness: [],
   profileImage: "",
+  contentBlocks: [],
 };
 
 export default function SeoPageContentBlogs() {
@@ -144,6 +145,7 @@ export default function SeoPageContentBlogs() {
       popularBusiness: found.businessDetails || [],
       tags: found.tags || [],
       faq: found.faq || [],
+      contentBlocks: found.contentBlocks || [],
     });
 
     window.scrollTo({ top: 0, behavior: "smooth" });

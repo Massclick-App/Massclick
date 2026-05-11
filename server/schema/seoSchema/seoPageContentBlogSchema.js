@@ -25,6 +25,30 @@ const businessSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const contentBlockSchema = new mongoose.Schema(
+  {
+    type: {
+      type: String,
+      enum: [
+        "table",
+        "code",
+        "video",
+        "callout",
+        "statistics",
+        "testimonial",
+        "steps",
+        "accordion",
+        "button",
+        "features",
+        "prosCons",
+      ],
+      required: true,
+    },
+    data: mongoose.Schema.Types.Mixed,
+  },
+  { _id: true }
+);
+
 const seoPageContentBlogSchema = new mongoose.Schema(
   {
     slug: {
@@ -141,6 +165,11 @@ const seoPageContentBlogSchema = new mongoose.Schema(
 
     businessDetails: {
       type: [businessSchema],
+      default: [],
+    },
+
+    contentBlocks: {
+      type: [contentBlockSchema],
       default: [],
     },
 

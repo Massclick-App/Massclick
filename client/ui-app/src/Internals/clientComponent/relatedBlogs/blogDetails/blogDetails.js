@@ -315,6 +315,198 @@ const BlogDetail = () => {
     copyArticleLink();
   };
 
+  const renderContentBlock = (block) => {
+    switch (block.type) {
+      case "table":
+        return (
+          <div key={block.id} className="content-block table-block">
+            <div className="table-container">
+              <table className="data-table">
+                <tbody>
+                  {block.rows.map((row, rIdx) => (
+                    <tr key={rIdx}>
+                      {row.map((cell, cIdx) => (
+                        <td key={cIdx}>{cell}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+
+      case "code":
+        return (
+          <div key={block.id} className="content-block code-block">
+            <div className="code-block-display">
+              <div className="code-label">{block.language}</div>
+              <pre>
+                <code>{block.content}</code>
+              </pre>
+            </div>
+          </div>
+        );
+
+      case "video":
+        return (
+          <div key={block.id} className="content-block video-block">
+            <div className="video-embed">
+              <iframe
+                width="100%"
+                height="400"
+                src={block.url.includes("youtube.com") || block.url.includes("youtu.be")
+                  ? `https://www.youtube.com/embed/${block.url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/)?.[1]}`
+                  : block.url.includes("vimeo.com")
+                  ? `https://player.vimeo.com/video/${block.url.match(/vimeo\.com\/(\d+)/)?.[1]}`
+                  : block.url}
+                frameBorder="0"
+                allowFullScreen
+                title="Embedded Video"
+              ></iframe>
+            </div>
+          </div>
+        );
+
+      case "callout":
+        return (
+          <div key={block.id} className="content-block callout-block">
+            <div className={`callout callout-${block.calloutType}`}>
+              <span className="callout-icon">
+                {block.calloutType === "info" && "ℹ️"}
+                {block.calloutType === "warning" && "⚠️"}
+                {block.calloutType === "success" && "✅"}
+                {block.calloutType === "error" && "❌"}
+                {block.calloutType === "tip" && "💡"}
+              </span>
+              <p>{block.text}</p>
+            </div>
+          </div>
+        );
+
+      case "statistics":
+        return (
+          <div key={block.id} className="content-block statistics-block">
+            <div className="statistics-grid">
+              {block.items.map((stat, idx) => (
+                <div key={idx} className="stat-card">
+                  <div className="stat-value">{stat.value}</div>
+                  <div className="stat-label">{stat.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+
+      case "testimonial":
+        return (
+          <div key={block.id} className="content-block testimonial-block">
+            <div className="testimonial-card">
+              <div className="testimonial-text">"{block.text}"</div>
+              <div className="testimonial-author">
+                {block.image && <img src={block.image} alt={block.name} />}
+                <div>
+                  <div className="author-name">{block.name}</div>
+                  {block.role && <div className="author-role">{block.role}</div>}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
+      case "steps":
+        return (
+          <div key={block.id} className="content-block steps-block">
+            <div className="steps-container">
+              {block.items.map((step, idx) => (
+                <div key={idx} className="step-item">
+                  <div className="step-number">{idx + 1}</div>
+                  <div className="step-content">
+                    <h4>{step.title}</h4>
+                    {step.description && <p>{step.description}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+
+      case "accordion":
+        return (
+          <div key={block.id} className="content-block accordion-block">
+            <div className="accordion-container">
+              {block.items.map((item, idx) => (
+                <div key={idx} className="accordion-item">
+                  <div className="accordion-title">
+                    <span>{item.title}</span>
+                    <span>▼</span>
+                  </div>
+                  <div className="accordion-content">{item.content}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+
+      case "button":
+        return (
+          <div key={block.id} className="content-block button-block">
+            <div className="button-container">
+              {block.url ? (
+                <a href={block.url} target="_blank" rel="noopener noreferrer" className={`cta-button btn-${block.style}`}>
+                  {block.text}
+                </a>
+              ) : (
+                <button className={`cta-button btn-${block.style}`}>{block.text}</button>
+              )}
+            </div>
+          </div>
+        );
+
+      case "features":
+        return (
+          <div key={block.id} className="content-block features-block">
+            <div className="features-grid">
+              {block.items.map((feature, idx) => (
+                <div key={idx} className="feature-card">
+                  <div className="feature-icon">{feature.icon}</div>
+                  <h4>{feature.title}</h4>
+                  {feature.description && <p>{feature.description}</p>}
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+
+      case "prosCons":
+        return (
+          <div key={block.id} className="content-block proscons-block">
+            <div className="proscons-container">
+              <div className="pros-column">
+                <h4>✅ Pros</h4>
+                <ul>
+                  {block.pros.map((pro, idx) => (
+                    <li key={idx}>{pro}</li>
+                  ))}
+                </ul>
+              </div>
+              <div className="cons-column">
+                <h4>❌ Cons</h4>
+                <ul>
+                  {block.cons.map((con, idx) => (
+                    <li key={idx}>{con}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
   const openContactPopover = (business) => {
     setSelectedContact(business);
     setCopiedContact(false);
@@ -468,6 +660,12 @@ const BlogDetail = () => {
                 __html: formattedContent || "<p>No content available</p>",
               }}
             />
+
+            {blog.contentBlocks?.length > 0 && (
+              <div className="content-blocks-section">
+                {blog.contentBlocks.map((block) => renderContentBlock(block))}
+              </div>
+            )}
 
             {blog.pageImages?.length > 1 && (
               <div className="image-grid">
