@@ -44,7 +44,19 @@ const RelatedBlogs = lazy(() => import('./relatedBlogs/relatedBlogs.js'));
 
 const STICKY_SEARCH_BAR_HEIGHT = 85;
 const HOME_SECTION_GAP = { xs: 2.5, sm: 3, md: 3.5 };
-const homeSectionSx = { mb: HOME_SECTION_GAP };
+const homeSectionSx = { mb: HOME_SECTION_GAP, contain: 'layout style paint' };
+
+// Reserve exact heights for each skeleton type to match actual content
+const SKELETON_HEIGHTS = {
+  featured: { skeleton: 240, actual: 240 },
+  service: { skeleton: 160, actual: 160 },
+  banner: { skeleton: 140, actual: 140 },
+  trending: { skeleton: 240, actual: 240 },
+  popular: { skeleton: 280, actual: 280 },
+  tourist: { skeleton: 300, actual: 300 },
+  blogs: { skeleton: 270, actual: 270 },
+  pageheader: { skeleton: 180, actual: 180 },
+};
 
 /* ──────────────────────────────────────────────────────────────
    Per-section skeleton loaders
@@ -55,9 +67,9 @@ const SkeletonCard = ({ w = 80, h = 80, r = 50, mb = 1.5, mt = 0.5 }) => (
 
 const SkeletonCards = ({ type }) => {
   const configs = {
-    featured: { count: 8, cardW: 130, cardH: 160, iconW: 80, iconH: 80, containerH: 220 },
-    service: { count: 12, cardW: 80, cardH: 80, iconW: 70, iconH: 70, containerH: 140 },
-    pageheader: { count: 4, cardW: 140, cardH: 80, iconW: 60, iconH: 60, containerH: 140 },
+    featured: { count: 8, cardW: 130, cardH: 160, iconW: 80, iconH: 80, containerH: 240 },
+    service: { count: 12, cardW: 80, cardH: 80, iconW: 70, iconH: 70, containerH: 160 },
+    pageheader: { count: 4, cardW: 140, cardH: 80, iconW: 60, iconH: 60, containerH: 180 },
   };
   const c = configs[type] || configs.featured;
   return (
@@ -65,7 +77,9 @@ const SkeletonCards = ({ type }) => {
       className="sk-hscroll"
       style={{
         padding: "0 16px",
-        minHeight: c.containerH,
+        height: c.containerH,
+        display: 'flex',
+        alignItems: 'center',
         contain: 'layout style paint',
       }}
     >
@@ -85,7 +99,7 @@ const SkeletonCards = ({ type }) => {
 };
 
 const SkeletonBanner = () => (
-  <Box sx={{ px: { xs: 2, sm: 4, md: 6 }, minHeight: 150, contain: 'layout style paint' }}>
+  <Box sx={{ px: { xs: 2, sm: 4, md: 6 }, height: SKELETON_HEIGHTS.banner.skeleton, display: 'flex', alignItems: 'center', contain: 'layout style paint' }}>
     <S w="100%" h={110} r={18} />
   </Box>
 );
@@ -95,9 +109,9 @@ const SkeletonCarousel = ({ type }) => {
   const cardW = isTrending ? 240 : 280;
   const cardH = isTrending ? 150 : 180;
   const count = isTrending ? 5 : 4;
-  const containerH = isTrending ? 220 : 280;
+  const containerH = isTrending ? 240 : 280;
   return (
-    <div style={{ px: { xs: 2, sm: 4, md: 6 }, minHeight: containerH, contain: 'layout style paint' }}>
+    <div style={{ px: { xs: 2, sm: 4, md: 6 }, height: containerH, display: 'flex', alignItems: 'center', contain: 'layout style paint' }}>
       <div
         className={isTrending ? "trending-search__track" : "popular-search__track"}
         style={{ display: "flex", gap: "1rem", overflow: "hidden" }}
@@ -128,7 +142,9 @@ const SkeletonGrid = ({ type }) => {
       spacing={2}
       sx={{
         px: { xs: 2, sm: 4, md: 6 },
-        minHeight: isTourist ? 280 : 250,
+        height: isTourist ? 300 : 270,
+        display: 'flex',
+        alignItems: 'center',
         contain: 'layout style paint',
       }}
     >
