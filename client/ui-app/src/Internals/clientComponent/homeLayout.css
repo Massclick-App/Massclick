@@ -16,7 +16,7 @@
   width: 100%;
   contain: layout style paint;
   display: flow-root;
-  overflow: hidden;
+  overflow: visible;
   position: relative;
   z-index: 1;
 }
@@ -34,7 +34,6 @@
 
 .home-section > .related-wrapper {
   max-width: none;
-  padding-inline: var(--home-edge);
 }
 
 .home-section > .service-cards-container,
@@ -45,7 +44,6 @@
 
 .home-section > .tourist-section {
   width: min(100%, var(--home-max-width)) !important;
-  padding-inline: var(--home-edge);
 }
 
 .home-section > .featured-services-container {

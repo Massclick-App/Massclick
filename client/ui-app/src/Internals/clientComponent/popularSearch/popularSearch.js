@@ -160,8 +160,8 @@ const selectedDistrict = useSelector(
           </div>
 
           <div className="popular-search__viewport">
-            <div className="popular-search__fade popular-search__fade--left" />
-            <div className="popular-search__fade popular-search__fade--right" />
+            {/* <div className="popular-search__fade popular-search__fade--left" />
+            <div className="popular-search__fade popular-search__fade--right" /> */}
 
             <div className="popular-search__track" ref={containerRef}>
               {cardsData.map((card, index) => (

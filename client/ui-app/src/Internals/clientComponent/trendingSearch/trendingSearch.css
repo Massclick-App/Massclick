@@ -16,7 +16,8 @@
   box-shadow: 0 12px 32px rgba(15, 23, 42, 0.1);
   padding: 22px 20px 18px;
   position: relative;
-  overflow: hidden;
+  overflow-y: hidden;
+  overflow-x: visible;
 }
 
 .ts__inner::before {
@@ -107,8 +108,8 @@
   transition: opacity 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.ts__arrow--left  { left:  -14px; }
-.ts__arrow--right { right: -14px; }
+.ts__arrow--left  { left:  20px; }
+.ts__arrow--right { right: 20px; }
 
 .ts__arrow--visible {
   opacity: 1;
@@ -297,8 +298,8 @@
     width: 40px;
     height: 40px;
   }
-  .ts__arrow--left  { left:  -16px; }
-  .ts__arrow--right { right: -16px; }
+  .ts__arrow--left  { left:  20px; }
+  .ts__arrow--right { right: 20px; }
 }
 
 @media (min-width: 1200px) {

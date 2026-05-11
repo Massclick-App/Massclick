@@ -49,8 +49,8 @@ const TopTourist = () => {
       </div>
 
       <div className="tourist-carousel-wrapper">
-        <div className="tourist-fade-left"></div>
-        <div className="tourist-fade-right"></div>
+        {/* <div className="tourist-fade-left"></div> */}
+        {/* <div className="tourist-fade-right"></div> */}
 
         <div className="tourist-carousel" ref={carouselRef}>
           {trendingServices.map((service) => (

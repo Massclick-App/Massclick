@@ -363,12 +363,6 @@ const LandingPage = () => {
                     />
                 </Box>
 
-                <Box sx={{
-                    height: STICKY_SEARCH_BAR_HEIGHT,
-                    overflow: 'hidden',
-                    contain: 'layout style paint',
-                }} />
-
                 <Box ref={heroSectionRef}>
                     <HeroSection
                         locationName={locationName}
