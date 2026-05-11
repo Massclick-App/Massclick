@@ -1071,20 +1071,117 @@ export default function SeoPageContentForm({
       </Dialog>
 
       <Dialog open={showButtonDialog} onClose={() => setShowButtonDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Add Button/CTA</DialogTitle>
-        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, py: 2 }}>
-          <TextField label="Button Text *" value={buttonData.text} onChange={(e) => setButtonData({...buttonData, text: e.target.value})} fullWidth />
-          <TextField label="Button URL" value={buttonData.url} onChange={(e) => setButtonData({...buttonData, url: e.target.value})} placeholder="https://example.com" fullWidth />
-          <Select value={buttonData.style} onChange={(e) => setButtonData({...buttonData, style: e.target.value})}>
-            <MenuItem value="primary">🔵 Primary</MenuItem>
-            <MenuItem value="secondary">⚪ Secondary</MenuItem>
-            <MenuItem value="success">🟢 Success</MenuItem>
-            <MenuItem value="danger">🔴 Danger</MenuItem>
-          </Select>
+        <DialogTitle>Add Button / Call-to-Action</DialogTitle>
+        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2.5, py: 3 }}>
+          <Box>
+            <TextField
+              label="Button Text *"
+              value={buttonData.text}
+              onChange={(e) => setButtonData({...buttonData, text: e.target.value})}
+              fullWidth
+              placeholder="e.g., Learn More, Get Started"
+            />
+          </Box>
+
+          <Box>
+            <TextField
+              label="Button URL (Optional)"
+              value={buttonData.url}
+              onChange={(e) => setButtonData({...buttonData, url: e.target.value})}
+              fullWidth
+              placeholder="https://example.com"
+              helperText="Leave empty for button without link"
+            />
+          </Box>
+
+          <Box>
+            <Box sx={{ mb: 1.5 }}>
+              <label style={{ display: "block", fontWeight: 700, marginBottom: 8, fontSize: "14px", color: "#0f172a" }}>
+                Button Style
+              </label>
+            </Box>
+            <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 1.5 }}>
+              {[
+                { value: "primary", label: "🟠 Primary", desc: "Orange gradient - Main CTA" },
+                { value: "secondary", label: "⚪ Secondary", desc: "White with border" },
+                { value: "outline", label: "🟦 Outline", desc: "Transparent with border" },
+                { value: "success", label: "🟢 Success", desc: "Green - For positive actions" },
+              ].map((style) => (
+                <Box
+                  key={style.value}
+                  onClick={() => setButtonData({...buttonData, style: style.value})}
+                  sx={{
+                    padding: "12px 14px",
+                    border: buttonData.style === style.value ? "2px solid #ff6b00" : "2px solid #e2e8f0",
+                    borderRadius: "10px",
+                    cursor: "pointer",
+                    background: buttonData.style === style.value ? "#fff4ea" : "#f8fafc",
+                    transition: "all 0.2s",
+                    "&:hover": {
+                      borderColor: "#ff6b00",
+                      background: "#fff4ea",
+                    },
+                  }}
+                >
+                  <Box sx={{ fontWeight: 700, fontSize: "13px", marginBottom: "4px" }}>
+                    {style.label}
+                  </Box>
+                  <Box sx={{ fontSize: "12px", color: "#64748b" }}>
+                    {style.desc}
+                  </Box>
+                </Box>
+              ))}
+            </Box>
+          </Box>
+
+          {/* Live Preview */}
+          <Box sx={{
+            borderTop: "2px solid #e8ecf1",
+            paddingTop: 2.5,
+            backgroundColor: "#f8fafc",
+            padding: "16px",
+            borderRadius: "12px"
+          }}>
+            <Box sx={{ mb: 1.5, fontWeight: 700, fontSize: "13px", color: "#64748b", textTransform: "uppercase" }}>
+              Preview
+            </Box>
+            <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap" }}>
+              <button
+                className={`cta-button btn-${buttonData.style}`}
+                style={{
+                  padding: "12px 28px",
+                  border: "none",
+                  borderRadius: "10px",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  fontSize: "14px",
+                  ...(buttonData.style === "primary" && {
+                    background: "linear-gradient(135deg, #ff6b00, #ffad5e)",
+                    color: "#fff",
+                    boxShadow: "0 8px 24px rgba(255, 107, 0, 0.3)",
+                  }),
+                  ...(buttonData.style === "secondary" && {
+                    background: "#fff",
+                    color: "#ff6b00",
+                    border: "2px solid #ff6b00",
+                  }),
+                  ...(buttonData.style === "outline" && {
+                    background: "transparent",
+                    color: "#ff6b00",
+                    border: "2px solid #ff6b00",
+                  }),
+                }}
+              >
+                {buttonData.text || "Learn More"}
+              </button>
+            </Box>
+          </Box>
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ padding: 2 }}>
           <Button onClick={() => setShowButtonDialog(false)}>Cancel</Button>
-          <Button onClick={addButton} variant="contained" disabled={!buttonData.text}>Add Button</Button>
+          <Button onClick={addButton} variant="contained" disabled={!buttonData.text}>
+            Add Button
+          </Button>
         </DialogActions>
       </Dialog>
 
