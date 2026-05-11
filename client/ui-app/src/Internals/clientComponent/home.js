@@ -388,7 +388,7 @@ const LandingPage = () => {
                         </Box>
                     ) : (
                         <>
-                            <Box className="home-section home-section--flush" sx={{ ...homeSectionSx, minHeight: 280, maxHeight: 280, overflow: 'hidden' }}>
+                            <Box className="home-section home-section--flush" sx={{ ...homeSectionSx, minHeight: 280, maxHeight: 'none', overflow: 'visible' }}>
                                 <Suspense fallback={null}>
                                     <FeaturedServices />
                                 </Suspense>
