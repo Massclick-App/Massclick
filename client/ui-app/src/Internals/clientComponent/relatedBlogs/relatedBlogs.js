@@ -43,18 +43,19 @@ const RelatedBlogs = ({ location }) => {
     );
   }, [dispatch, location]);
 
-  // Cache card width to avoid forced reflows
+  // Cache card width using ResizeObserverEntry (no forced reflows)
   useEffect(() => {
     const box = scrollRef.current;
     if (!box?.firstChild) return;
 
-    const updateWidth = () => {
-      cardWidthRef.current = box.firstChild?.offsetWidth || 320;
+    const updateWidth = (entry) => {
+      cardWidthRef.current = entry.contentRect.width || 320;
     };
 
-    updateWidth();
+    const observer = new ResizeObserver((entries) => {
+      entries.forEach(entry => updateWidth(entry));
+    });
 
-    const observer = new ResizeObserver(updateWidth);
     observer.observe(box.firstChild);
 
     return () => observer.disconnect();

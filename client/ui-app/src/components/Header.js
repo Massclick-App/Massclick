@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Stack from "@mui/material/Stack";
 import NotificationsRoundedIcon from "@mui/icons-material/NotificationsRounded";
 import Badge from "@mui/material/Badge";
@@ -35,7 +35,7 @@ useEffect(() => {
   return () => {
     ws.off("business:pending", onBusinessPending);
   };
-}, [dispatch]);
+}, []);
 
   const pendingCount = useSelector(
     (state) => state.businessListReducer.pendingBusinessList?.length || 0
