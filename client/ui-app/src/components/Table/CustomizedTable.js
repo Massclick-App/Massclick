@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Table,
   TableBody,
@@ -13,6 +13,7 @@ import {
 } from "@mui/material";
 import "./CustomizedTable.css";
 import useDebounce from "./useDebounce.js";
+import { throttle } from "../../utils/throttle.js";
 
 const CustomizedTable = ({
   title = "Data Table",      
@@ -28,14 +29,22 @@ const CustomizedTable = ({
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [selected, setSelected] = useState([]);
-  
+
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearch = useDebounce(searchQuery, 400);
 
-  const [statusFilter, setStatusFilter] = useState("all"); 
+  const [statusFilter, setStatusFilter] = useState("all");
   const [sortConfig, setSortConfig] = useState({ orderBy: null, order: "asc" });
 
   const [isScrolled, setIsScrolled] = useState(false);
+  const throttledScrollRef = useRef(null);
+
+  // Create throttled scroll handler (60ms)
+  useEffect(() => {
+    throttledScrollRef.current = throttle((e) => {
+      setIsScrolled(e.target.scrollTop > 0);
+    }, 60);
+  }, []);
 
   useEffect(() => {
     const options = {
@@ -152,7 +161,7 @@ const CustomizedTable = ({
 
       <TableContainer
         className="table-wrapper"
-        onScroll={(e) => setIsScrolled(e.target.scrollTop > 0)}
+        onScroll={(e) => throttledScrollRef.current?.(e)}
       >
         <Table stickyHeader className="custom-table">
 

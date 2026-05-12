@@ -5,6 +5,7 @@ import { getSignedUrlByKey } from "../../s3Uploder.js";
 import categoryModel from "../../model/category/categoryModel.js";
 import { emitToRoom } from "../../websocket/roomManager.js";
 import { buildRoom, WS_EVENTS } from "../../websocket/constants.js";
+import { getCache, setCache } from "../../utils/redisClient.js";
 
 export const addBusinessListAction = async (req, res) => {
   try {
@@ -655,9 +656,19 @@ export const activeBusinessListAction = async (req, res) => {
 
 export const getTrendingSearchesAction = async (req, res) => {
   try {
-    const location = req.query.location;
+    const location = req.query.location || "all";
+    const cacheKey = `trending-categories:${location}`;
+
+    // Try to get from cache first
+    const cachedData = await getCache(cacheKey);
+    if (cachedData) {
+      return res.send(cachedData);
+    }
 
     const trendingList = await getTrendingSearches(4, location);
+
+    // Cache for 4 hours (trending data changes more frequently)
+    await setCache(cacheKey, trendingList, 14400);
 
     res.send(trendingList);
   } catch (error) {

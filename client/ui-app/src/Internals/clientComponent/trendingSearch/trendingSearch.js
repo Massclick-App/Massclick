@@ -35,7 +35,8 @@ const TrendingSearchesCarousel = () => {
 
   const carouselRef  = useRef(null);
   const autoScrollRef = useRef(null);
-  const cardWidthRef = useRef(210); // default value: card width + gap
+  const cardWidthRef = useRef(210);
+  const scrollDimensionsRef = useRef({ scrollLeft: 0, scrollWidth: 0, clientWidth: 0 });
   const dispatch = useDispatch();
 
   const [canScrollLeft,  setCanScrollLeft]  = useState(false);
@@ -56,7 +57,7 @@ const TrendingSearchesCarousel = () => {
     dispatch(getTrendingCategories());
   }, [dispatch]);
 
-  // Cache card width using ResizeObserver to avoid forced reflows
+  // Batch DOM reads: cache card width + scroll dimensions using ResizeObserver
   useEffect(() => {
     const el = carouselRef.current;
     if (!el) return;
@@ -64,22 +65,33 @@ const TrendingSearchesCarousel = () => {
     const firstCard = el.querySelector(".trending-search__card");
     if (!firstCard) return;
 
-    const observer = new ResizeObserver(() => {
+    const updateDimensions = () => {
       cardWidthRef.current = firstCard.offsetWidth + 16;
+      scrollDimensionsRef.current = {
+        scrollWidth: el.scrollWidth,
+        clientWidth: el.clientWidth,
+        scrollLeft: el.scrollLeft
+      };
+    };
+
+    updateDimensions();
+
+    const observer = new ResizeObserver(() => {
+      updateDimensions();
     });
 
     observer.observe(firstCard);
+    observer.observe(el);
     return () => observer.disconnect();
   }, [trendingList]);
 
-  /* ── scroll-state tracker ── */
+  /* ── scroll-state tracker (uses cached dimensions) ── */
   const updateScrollState = useCallback(() => {
     const el = carouselRef.current;
     if (!el) return;
 
     const scrollLeft = el.scrollLeft;
-    const scrollWidth = el.scrollWidth;
-    const clientWidth = el.clientWidth;
+    const { scrollWidth, clientWidth } = scrollDimensionsRef.current;
 
     const atStart = scrollLeft <= 8;
     const atEnd   = scrollLeft >= scrollWidth - clientWidth - 8;
@@ -99,19 +111,20 @@ const TrendingSearchesCarousel = () => {
   }, [updateScrollState, trendingList]);
 
 
-  /* ── auto-scroll ── */
+  /* ── auto-scroll (uses cached dimensions) ── */
   const startAutoScroll = useCallback(() => {
     stopAutoScroll();
     autoScrollRef.current = setInterval(() => {
       const el = carouselRef.current;
       if (!el) return;
-      if (el.scrollLeft >= el.scrollWidth - el.clientWidth - 8) {
+      const { scrollWidth, clientWidth } = scrollDimensionsRef.current;
+      if (el.scrollLeft >= scrollWidth - clientWidth - 8) {
         el.scrollTo({ left: 0, behavior: "smooth" });
       } else {
         el.scrollBy({ left: 210, behavior: "smooth" });
       }
     }, 3200);
-  }, []); // eslint-disable-line
+  }, []);
 
   function stopAutoScroll() {
     clearInterval(autoScrollRef.current);

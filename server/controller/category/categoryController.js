@@ -12,11 +12,14 @@ import categoryModel from "../../model/category/categoryModel.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
 import { uploadImageToS3, getSignedUrlByKey } from "../../s3Uploder.js";
 import { categoriesData } from "../../utils/sub-categoriesData.js";
+import { getCache, setCache } from "../../utils/redisClient.js";
+import { invalidateCategoryCache } from "../../utils/cacheInvalidation.js";
 
 export const addCategoryAction = async (req, res) => {
   try {
     const reqBody = req.body;
     const result = await createCategory(reqBody);
+    await invalidateCategoryCache();
     res.send(result);
   } catch (error) {
     console.error(error);
@@ -72,6 +75,7 @@ export const updateCategoryAction = async (req, res) => {
     const categoryId = req.params.id;
     const categoryData = req.body;
     const category = await updateCategory(categoryId, categoryData);
+    await invalidateCategoryCache();
     res.send(category);
   } catch (error) {
     console.error(error);
@@ -83,6 +87,7 @@ export const deleteCategoryAction = async (req, res) => {
   try {
     const categoryId = req.params.id;
     const category = await deleteCategory(categoryId);
+    await invalidateCategoryCache();
     res.send({ message: "Category deleted successfully", category });
   } catch (error) {
     console.error(error);
@@ -116,6 +121,7 @@ export const hardDeleteCategoryAction = async (req, res) => {
   try {
     const categoryId = req.params.id;
     const category = await hardDeleteCategory(categoryId);
+    await invalidateCategoryCache();
     res.send({ message: "Category permanently deleted", category });
   } catch (error) {
     console.error(error);
@@ -143,6 +149,13 @@ export const businessSearchCategoryAction = async (req, res) => {
 
 export const getHomeCategoriesAction = async (req, res) => {
   try {
+    const cacheKey = "home-categories:desktop";
+
+    // Try to get from cache first
+    const cachedData = await getCache(cacheKey);
+    if (cachedData) {
+      return res.send(cachedData);
+    }
 
     const FEATURED_ORDER = [
       "Hotels",
@@ -207,6 +220,9 @@ export const getHomeCategoriesAction = async (req, res) => {
         };
     });
 
+    // Cache for 24 hours
+    await setCache(cacheKey, ordered, 86400);
+
     res.send(ordered);
 
   } catch (error) {
@@ -217,6 +233,13 @@ export const getHomeCategoriesAction = async (req, res) => {
 
 export const getMobileHomeCategoriesAction = async (req, res) => {
   try {
+    const cacheKey = "home-categories:mobile";
+
+    // Try to get from cache first
+    const cachedData = await getCache(cacheKey);
+    if (cachedData) {
+      return res.send(cachedData);
+    }
 
     const FEATURED_ORDER = [
       "Hotels",
@@ -282,10 +305,13 @@ export const getMobileHomeCategoriesAction = async (req, res) => {
         };
     });
 
+    // Cache for 24 hours
+    await setCache(cacheKey, ordered, 86400);
+
     res.send(ordered);
 
   } catch (error) {
-    console.error("getHomeCategoriesAction error:", error);
+    console.error("getMobileHomeCategoriesAction error:", error);
     res.status(400).send({ message: error.message });
   }
 };
@@ -386,6 +412,13 @@ export const getSubCategoriesAction = async (req, res) => {
 
 export const getPopularCategoriesAction = async (req, res) => {
   try {
+    const cacheKey = "popular-categories:home";
+
+    // Try to get from cache first
+    const cachedData = await getCache(cacheKey);
+    if (cachedData) {
+      return res.send(cachedData);
+    }
 
     const POPULAR_ORDER = [
       "Architect",
@@ -491,6 +524,9 @@ export const getPopularCategoriesAction = async (req, res) => {
         };
     });
 
+    // Cache for 24 hours
+    await setCache(cacheKey, ordered, 86400);
+
     res.send(ordered);
 
   } catch (error) {
@@ -501,6 +537,13 @@ export const getPopularCategoriesAction = async (req, res) => {
 
 export const getServiceCardsAction = async (req, res) => {
   try {
+    const cacheKey = "service-cards:home";
+
+    // Try to get from cache first
+    const cachedData = await getCache(cacheKey);
+    if (cachedData) {
+      return res.send(cachedData);
+    }
 
     const SERVICE_SECTIONS = [
       {
@@ -583,6 +626,9 @@ export const getServiceCardsAction = async (req, res) => {
       });
 
     });
+
+    // Cache for 24 hours
+    await setCache(cacheKey, result, 86400);
 
     res.send(result);
 

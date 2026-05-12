@@ -99,7 +99,14 @@ const Testimonials = () => {
         return () => clearInterval(timer);
     }, [handleNext, autoScrollInterval]);
 
-    // Cache card dimensions to avoid forced reflows
+    const updateDimensions = useCallback((entry) => {
+        cardDimensionsRef.current = {
+            cardWidth: entry.contentRect.width,
+            gap: 16
+        };
+    }, []);
+
+    // Cache card dimensions using ResizeObserver (no forced reflows)
     useEffect(() => {
         const slider = sliderRef.current;
         if (!slider) return;
@@ -107,22 +114,14 @@ const Testimonials = () => {
         const card = slider.querySelector('.testimonial-card');
         if (!card) return;
 
-        const updateDimensions = () => {
-            const rect = card.getBoundingClientRect();
-            const sliderRect = slider.getBoundingClientRect();
-            cardDimensionsRef.current = {
-                cardWidth: rect.width,
-                gap: 16
-            };
-        };
+        const observer = new ResizeObserver((entries) => {
+            entries.forEach(entry => updateDimensions(entry));
+        });
 
-        updateDimensions();
-
-        const observer = new ResizeObserver(updateDimensions);
         observer.observe(card);
 
         return () => observer.disconnect();
-    }, []);
+    }, [updateDimensions]);
 
     useEffect(() => {
         if (sliderRef.current && cardDimensionsRef.current.cardWidth > 0) {

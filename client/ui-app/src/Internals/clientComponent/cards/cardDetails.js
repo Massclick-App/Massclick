@@ -494,6 +494,8 @@ const BusinessDetail = () => {
     } else {
       const textarea = document.createElement("textarea");
       textarea.value = fullAddress;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
       document.body.appendChild(textarea);
       textarea.select();
       document.execCommand("copy");
@@ -544,6 +546,8 @@ const BusinessDetail = () => {
     } else {
       const textarea = document.createElement("textarea");
       textarea.value = contact;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
       document.body.appendChild(textarea);
       textarea.select();
       document.execCommand("copy");

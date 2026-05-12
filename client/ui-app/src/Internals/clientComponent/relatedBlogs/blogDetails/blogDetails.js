@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { Helmet } from "react-helmet-async";
 import { fetchSeoBlogBySlug } from "../../../../redux/actions/seoPageContentBlogAction";
+import { throttle } from "../../../../utils/throttle";
 import "./blogDetails.css";
 import Navbar from "../relatedBlogNavbar/relatedBlogNavbar";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
@@ -50,10 +51,12 @@ const BlogDetail = () => {
       setReadingProgress(Math.min(100, Math.round((scrollTop / scrollHeight) * 100)));
     };
 
-    updateReadingProgress();
-    window.addEventListener("scroll", updateReadingProgress, { passive: true });
+    const throttledUpdate = throttle(updateReadingProgress, 60);
 
-    return () => window.removeEventListener("scroll", updateReadingProgress);
+    updateReadingProgress();
+    window.addEventListener("scroll", throttledUpdate, { passive: true });
+
+    return () => window.removeEventListener("scroll", throttledUpdate);
   }, []);
 
   const normalizeMassclickUrl = (rawUrl = "") => {
@@ -183,21 +186,21 @@ const BlogDetail = () => {
     return items;
   }, [blog]);
 
-  const scrollToSection = (id) => {
+  const scrollToSection = useCallback((id) => {
     const el = document.getElementById(id);
+    if (!el) return;
 
-    if (el) {
-      const top =
-        el.getBoundingClientRect().top +
-        window.pageYOffset -
-        90;
+    requestAnimationFrame(() => {
+      const elementTop = el.getBoundingClientRect().top;
+      const pageOffset = window.pageYOffset;
+      const offset = 90;
 
       window.scrollTo({
-        top,
+        top: elementTop + pageOffset - offset,
         behavior: "smooth",
       });
-    }
-  };
+    });
+  }, []);
 
   const handleContentClick = (e) => {
     const link = e.target.closest("a");

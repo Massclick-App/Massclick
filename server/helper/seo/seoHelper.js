@@ -1,6 +1,7 @@
 import seoModel from "../../model/seoModel/seoModel.js";
 import categoryModel from "../../model/category/categoryModel.js";
 import { getSignedUrlByKey } from "../../s3Uploder.js";
+import { getCache, setCache } from "../../utils/redisClient.js";
 
 export const createSeo = async (data) => {
   try {
@@ -62,6 +63,15 @@ export const getSeoMeta = async ({ pageType, category, location }) => {
     const safeCategory = category ? normalize(category) : null;
     const safeLocation = location ? normalize(location) : null;
 
+    // Generate cache key based on query parameters
+    const cacheKey = `seo-meta:${safePageType}${safeCategory ? `:${safeCategory}` : ""}${safeLocation ? `:${safeLocation}` : ""}`;
+
+    // Try to get from cache first
+    const cachedSeo = await getCache(cacheKey);
+    if (cachedSeo) {
+      return cachedSeo;
+    }
+
     const escapeRegex = (str = "") =>
       str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -90,7 +100,10 @@ export const getSeoMeta = async ({ pageType, category, location }) => {
         isActive: true,
       }).lean();
 
-      if (seo) return seo;
+      if (seo) {
+        await setCache(cacheKey, seo, 86400); // Cache for 24 hours
+        return seo;
+      }
     }
 
     // ===============================
@@ -104,7 +117,10 @@ export const getSeoMeta = async ({ pageType, category, location }) => {
         isActive: true,
       }).lean();
 
-      if (seo) return seo;
+      if (seo) {
+        await setCache(cacheKey, seo, 86400); // Cache for 24 hours
+        return seo;
+      }
     }
 
     // ===============================
@@ -117,7 +133,10 @@ export const getSeoMeta = async ({ pageType, category, location }) => {
         isActive: true,
       }).lean();
 
-      if (seo) return seo;
+      if (seo) {
+        await setCache(cacheKey, seo, 86400); // Cache for 24 hours
+        return seo;
+      }
     }
 
     // ===============================
@@ -130,7 +149,10 @@ export const getSeoMeta = async ({ pageType, category, location }) => {
         isActive: true,
       }).lean();
 
-      if (seo) return seo;
+      if (seo) {
+        await setCache(cacheKey, seo, 86400); // Cache for 24 hours
+        return seo;
+      }
     }
 
     // ===============================
@@ -141,18 +163,24 @@ export const getSeoMeta = async ({ pageType, category, location }) => {
       isActive: true,
     }).lean();
 
-    if (seo) return seo;
+    if (seo) {
+      await setCache(cacheKey, seo, 86400); // Cache for 24 hours
+      return seo;
+    }
 
     // ===============================
     // 🔥 DEFAULT
     // ===============================
-    return {
+    const defaultSeo = {
       title: "Massclick - Local Business Search Platform",
       description:
         "Find trusted local businesses, services, and professionals near you on Massclick.",
       canonical: "https://massclick.in",
       robots: "index, follow",
     };
+
+    await setCache(cacheKey, defaultSeo, 86400); // Cache for 24 hours
+    return defaultSeo;
 
   } catch (error) {
     console.error("SEO META FETCH ERROR:", error);
