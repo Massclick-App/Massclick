@@ -1,5 +1,6 @@
 import axios from 'axios';
 import qs from 'qs';
+import { getPendingBusinessList } from './businessListAction.js';
 
 export const LOGIN_REQUEST = 'LOGIN_REQUEST';
 export const LOGIN_SUCCESS = 'LOGIN_SUCCESS';
@@ -48,6 +49,9 @@ export const login = (userName, password) => async (dispatch) => {
       type: LOGIN_SUCCESS,
       payload: { user, accessToken, refreshToken },
     });
+
+    // Fetch pending businesses for the logged-in user
+    dispatch(getPendingBusinessList());
   } catch (error) {
     dispatch({
       type: LOGIN_FAILURE,
@@ -85,6 +89,9 @@ export const relogin = () => async (dispatch) => {
       type: RELOGIN_SUCCESS,
       payload: { accessToken, refreshToken: newRefreshToken, user },
     });
+
+    // Fetch pending businesses for the logged-in user
+    dispatch(getPendingBusinessList());
 
     return response.data;
   } catch (error) {
