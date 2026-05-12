@@ -86,7 +86,8 @@ export const getTopTrendingCategories = async (limit = 10) => {
         $group: {
           _id: { $toLower: { $trim: { input: "$categoryName" } } },
           totalSearches: { $sum: 1 },
-          categoryImage: { $max: "$categoryImage" }
+          categoryImage: { $max: "$categoryImage" },
+          liveImage: { $max: "$liveImage" }
         }
       },
       { $sort: { totalSearches: -1 } },
@@ -118,9 +119,15 @@ export const getTopTrendingCategories = async (limit = 10) => {
           },
           liveImageKey: {
             $cond: {
-              if: { $gt: [{ $size: "$categoryDoc" }, 0] },
-              then: { $arrayElemAt: ["$categoryDoc.liveImageKey", 0] },
-              else: ""
+              if: { $and: [{ $ne: ["$liveImage", ""] }, { $ne: ["$liveImage", null] }] },
+              then: "$liveImage",
+              else: {
+                $cond: {
+                  if: { $gt: [{ $size: "$categoryDoc" }, 0] },
+                  then: { $arrayElemAt: ["$categoryDoc.liveImageKey", 0] },
+                  else: ""
+                }
+              }
             }
           }
         }

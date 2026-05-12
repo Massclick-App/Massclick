@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { useNavigate, useParams, useLocation, Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import VerifiedIcon from "@mui/icons-material/Verified";
 import StarIcon from "@mui/icons-material/Star";
@@ -12,6 +12,7 @@ import "./SearchResult.css";
 import CardsSearch from "../CardsSearch/CardsSearch";
 import CardDesign from "../cards/cards.js";
 import SeoMeta from "../seo/seoMeta.js";
+import Breadcrumbs from "../Breadcrumbs/Breadcrumbs.js";
 
 import { backendMainSearch, logSearchActivity } from "../../../redux/actions/businessListAction";
 import { fetchSeoMeta } from "../../../redux/actions/seoAction.js";
@@ -434,15 +435,19 @@ useEffect(() => {
         </div>
 
         <div className="results-container content-section">
-
-          {/* {!seoContentLoading && sanitizedHeaderContent && (
-            <section
-              className="seo-header-content premium-section"
-              dangerouslySetInnerHTML={{
-                __html: sanitizedHeaderContent,
-              }}
-            />
-          )} */}
+          <Breadcrumbs
+            items={[
+              { label: "Home", link: "/" },
+              {
+                label: locationText,
+                onClick: () => {
+                  localStorage.setItem("selectedLocation", locationText);
+                  navigate("/");
+                },
+              },
+              { label: searchText },
+            ]}
+          />
           <div className="results-heading">
             <h1 className="main-seo-heading">
               Best {searchText} in {locationText}

@@ -9,6 +9,11 @@ const searchLogSchema = new mongoose.Schema({
         type: String,
         index: true
     },
+    liveImage: {
+        type: String,
+        index: true,
+        default: ''
+    },
     searchedUserText: {
         type: String,
         index: true

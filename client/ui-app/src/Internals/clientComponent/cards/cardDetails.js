@@ -1,7 +1,7 @@
 // BusinessDetail.jsx
 import React, { useEffect, useState, useRef } from "react";
 import { Helmet } from "react-helmet-async";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { useSnackbar } from "notistack";
 import {
@@ -12,6 +12,7 @@ import {
 import "./cardDetails.css";
 import UserRatingWidget from "../rating/rating";
 import CardsSearch from "../../clientComponent/CardsSearch/CardsSearch";
+import Breadcrumbs from "../Breadcrumbs/Breadcrumbs.js";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import SpaIcon from "@mui/icons-material/Spa";
@@ -142,6 +143,7 @@ const FullScreenGallery = ({ images, initialIndex, onClose }) => {
 
 const BusinessDetail = () => {
   const { location, businessSlug, id } = useParams();
+  const navigate = useNavigate();
 
   const dispatch = useDispatch();
 
@@ -666,8 +668,21 @@ const BusinessDetail = () => {
         <script type="application/ld+json">{JSON.stringify(localBusinessSchema)}</script>
         <script type="application/ld+json">{JSON.stringify(breadcrumbSchema)}</script>
       </Helmet>
-      <CardsSearch /><br /><br /><br /><br />
+      <CardsSearch />
       <div className="business-CardDetails-pageWrapper">
+        <Breadcrumbs
+          items={[
+            { label: "Home", link: "/" },
+            {
+              label: business.location || locationSlug,
+              onClick: () => {
+                localStorage.setItem("selectedLocation", business.location || locationSlug);
+                navigate("/");
+              },
+            },
+            { label: business.businessName },
+          ]}
+        />
         <section className="business-CardDetails-heroSection">
           <div
             className="business-CardDetails-mainImageContainer"
