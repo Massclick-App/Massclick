@@ -16,9 +16,12 @@
   box-shadow: 0 12px 32px rgba(15, 23, 42, 0.1);
   padding: 22px 20px 18px;
   position: relative;
-  overflow-y: hidden;
-  overflow-x: visible;
+  overflow: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
+
+.ts__inner::-webkit-scrollbar { display: none; }
 
 .ts__inner::before {
   content: "";
