@@ -1,0 +1,25 @@
+# Add this to your nginx server block for cache headers
+
+# Images - 30 days
+location ~* \.(jpg|jpeg|png|gif|webp|svg)$ {
+  expires 30d;
+  add_header Cache-Control "public, max-age=2592000, immutable";
+}
+
+# Fonts - 1 year
+location ~* \.(woff|woff2|ttf|otf|eot)$ {
+  expires 1y;
+  add_header Cache-Control "public, max-age=31536000, immutable";
+}
+
+# JS/CSS bundles with hash - 1 year
+location ~* \.[a-f0-9]{8,}\.(js|css)$ {
+  expires 1y;
+  add_header Cache-Control "public, max-age=31536000, immutable";
+}
+
+# HTML and service worker - always revalidate
+location ~* ^(index\.html|service-worker\.js|.*\.html)$ {
+  expires -1;
+  add_header Cache-Control "public, max-age=0, must-revalidate";
+}

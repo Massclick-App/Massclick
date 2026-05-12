@@ -108,9 +108,11 @@ const Testimonials = () => {
         if (!card) return;
 
         const updateDimensions = () => {
+            const rect = card.getBoundingClientRect();
+            const sliderRect = slider.getBoundingClientRect();
             cardDimensionsRef.current = {
-                cardWidth: card.offsetWidth,
-                gap: parseFloat(getComputedStyle(slider).gap) || 0
+                cardWidth: rect.width,
+                gap: 16
             };
         };
 

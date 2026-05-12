@@ -47,3 +47,11 @@ root.render(
 setTimeout(loadAnalytics, 3000);
 
 reportWebVitals();
+
+// Register service worker for image caching
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/service-worker.js')
+      .catch(err => console.warn('SW registration failed:', err));
+  });
+}

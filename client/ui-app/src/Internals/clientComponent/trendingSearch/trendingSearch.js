@@ -77,13 +77,17 @@ const TrendingSearchesCarousel = () => {
     const el = carouselRef.current;
     if (!el) return;
 
-    const atStart = el.scrollLeft <= 8;
-    const atEnd   = el.scrollLeft >= el.scrollWidth - el.clientWidth - 8;
+    const scrollLeft = el.scrollLeft;
+    const scrollWidth = el.scrollWidth;
+    const clientWidth = el.clientWidth;
+
+    const atStart = scrollLeft <= 8;
+    const atEnd   = scrollLeft >= scrollWidth - clientWidth - 8;
 
     setCanScrollLeft(!atStart);
     setCanScrollRight(!atEnd);
 
-    setActiveIndex(Math.round(el.scrollLeft / cardWidthRef.current));
+    setActiveIndex(Math.round(scrollLeft / cardWidthRef.current));
   }, []);
 
   useEffect(() => {
