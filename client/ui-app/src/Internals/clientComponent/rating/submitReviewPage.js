@@ -45,7 +45,6 @@ const WriteReviewPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
 
-
   useEffect(() => {
     dispatch(getBusinessDetailsById(businessId));
   }, [dispatch, businessId]);
@@ -100,7 +99,7 @@ const WriteReviewPage = () => {
 
     setShowSuccessModal(false);
 
-    navigate(`/${locationSlug}/${businessSlug}/${businessId}`);
+    navigate(`/business/${locationSlug}/${businessSlug}/${businessId}`);
   };
 
   const handlePhotoUpload = (event) => {
