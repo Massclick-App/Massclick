@@ -142,6 +142,8 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.6);
   overflow: visible !important;
   backdrop-filter: blur(8px);
+  position: relative;
+  z-index: 50;
 }
 
 .hero-trust {
@@ -232,6 +234,9 @@
   max-width: 820px;
   margin-top: 20px;
   gap: 12px;
+  overflow: visible !important;
+  position: relative;
+  z-index: 100;
 }
 
 .input-group {
@@ -243,6 +248,8 @@
   border: 1.5px solid #ececec;
   box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.06);
   transition: 0.25s ease;
+  overflow: visible !important;
+  z-index: 1;
 }
 
 .input-group:hover {
@@ -541,7 +548,7 @@
   width: 100%;
   max-width: 100%;
   background: #ffffff;
-  z-index: 3000 !important;
+  z-index: 10000 !important;
   border-radius: 12px;
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
 }

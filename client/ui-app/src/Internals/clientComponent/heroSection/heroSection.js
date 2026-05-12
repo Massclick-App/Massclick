@@ -32,7 +32,7 @@ const CategoryDropdown = ({ label, options, onSelect }) => {
   if (!options || options.length === 0) return null;
 
   return (
-    <div className="category-custom-dropdown" style={{ zIndex: 1200 }}>
+    <div className="category-custom-dropdown" style={{ zIndex: 10000 }}>
       <div className="trending-label">{label}</div>
       <div
         className="options-list-container"

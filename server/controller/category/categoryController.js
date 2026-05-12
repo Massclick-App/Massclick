@@ -161,7 +161,7 @@ export const getHomeCategoriesAction = async (req, res) => {
       "House Keeping Service",
       "Security System",
       "Wedding Mahal",
-      "Photographers",
+      "Photographer",
       "Matrimony",
       "Hostel",
       "Popular Categories",
@@ -229,7 +229,7 @@ export const getMobileHomeCategoriesAction = async (req, res) => {
       "Furnitures",
       "House Keeping Service",
       "Security System",
-      "Photographers",
+      "Photographer",
       "Popular Categories",
     ];
 

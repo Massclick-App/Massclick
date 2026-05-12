@@ -192,8 +192,8 @@ const FeaturedServicesSection = () => {
                 alt={altText}
                 title={`${service.name} services in ${districtSlug}`}
                 className="service-icons"
-                width="55"
-                height="55"
+                width="60"
+                height="60"
                 loading={index < 2 ? "eager" : "lazy"}
                 decoding="async"
                 fetchpriority={index < 2 ? "high" : "auto"}
