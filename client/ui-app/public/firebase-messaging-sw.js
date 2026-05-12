@@ -19,7 +19,7 @@ messaging.onBackgroundMessage((payload) => {
 
   self.registration.showNotification(title || 'MassClick', {
     body: body || '',
-    icon: '/mi.png',
+    icon: '/apple-touch-icon.png',
     image: image || data.imageUrl || undefined,
     data: { clickAction: data.clickAction || '/' },
   });

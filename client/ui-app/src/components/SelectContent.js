@@ -1,5 +1,4 @@
 import * as React from 'react';
-import MI from '../assets/mi.png';
 
 export default function SelectContent() {
   return (
@@ -16,7 +15,7 @@ export default function SelectContent() {
       }}
     >
       <img
-        src={MI}
+        src="/apple-touch-icon.png"
         alt="Logo"
         style={{
           width: '40px',
