@@ -76,6 +76,10 @@ const RelatedBlogs = ({ location }) => {
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "");
 
+  if (!loading && !error && list.length === 0) {
+    return null;
+  }
+
   return (
     <div className="related-wrapper">
       <div className="related-container">
@@ -101,10 +105,6 @@ const RelatedBlogs = ({ location }) => {
               <p className="related-state related-state-error">
                 {String(error)}
               </p>
-            )}
-
-            {!loading && !error && list.length === 0 && (
-              <p className="related-state">No blogs found</p>
             )}
 
             {!loading &&

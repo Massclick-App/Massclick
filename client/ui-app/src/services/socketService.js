@@ -25,9 +25,18 @@ export const connectSocket = (token) => {
     reconnectionDelayMax: 30000,
   });
 
-  socket.on('connect', () => console.log('[WS] connected'));
-  socket.on('disconnect', (reason) => console.log('[WS] disconnected:', reason));
-  socket.on('ws:error', (e) => console.error('[WS] server error:', e));
+  socket.on('connect', () => {
+    console.log('[WS] connected - socket.id:', socket.id);
+  });
+  socket.on('disconnect', (reason) => {
+    console.log('[WS] disconnected:', reason);
+  });
+  socket.on('ws:error', (e) => {
+    console.error('[WS] server error:', e);
+  });
+  socket.on('room:joined', ({ room }) => {
+    console.log('[WS] room:joined -', room);
+  });
 
   return socket;
 };

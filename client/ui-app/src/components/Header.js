@@ -23,12 +23,22 @@ useEffect(() => {
 
   const ws = connectSocket(token);
 
-  // Join the admin room so this client receives business:pending events
-  ws.emit("room:join", { room: "admin:global" });
-
-  const onBusinessPending = () => {
+  const onBusinessPending = (data) => {
+    console.log('[Header] business:pending event received:', data);
     dispatch(getPendingBusinessList());
   };
+
+  // Wait for socket connection before joining room
+  if (ws.connected) {
+    console.log('[Header] Socket already connected, joining admin:global room');
+    ws.emit("room:join", { room: "admin:global" });
+  } else {
+    console.log('[Header] Socket not connected yet, waiting for connection');
+    ws.once("connect", () => {
+      console.log('[Header] Socket connected, joining admin:global room');
+      ws.emit("room:join", { room: "admin:global" });
+    });
+  }
 
   ws.on("business:pending", onBusinessPending);
 

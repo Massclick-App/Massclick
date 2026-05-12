@@ -126,9 +126,9 @@ export default function businessListReducer(state = initialState, action) {
         businessList: state.businessList.map((b) =>
           b._id === action.payload._id ? action.payload : b
         ),
-        pendingBusinessList: state.pendingBusinessList.filter(
+        pendingBusinessList: state.pendingBusinessList ? state.pendingBusinessList.filter(
           (b) => b._id !== action.payload._id
-        ),
+        ) : [],
         error: null,
       };
 
