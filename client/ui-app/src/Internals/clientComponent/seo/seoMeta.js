@@ -74,7 +74,7 @@ const SeoMeta = ({ seoData, fallback }) => {
       <meta
         key="og:image"
         property="og:image"
-        content="https://massclick.in/mi.png"
+        content="https://massclick.in/apple-touch-icon.png"
       />
 
       <meta
@@ -98,7 +98,7 @@ const SeoMeta = ({ seoData, fallback }) => {
       <meta
         key="twitter:image"
         name="twitter:image"
-        content="https://massclick.in/mi.png"
+        content="https://massclick.in/apple-touch-icon.png"
       />
 
       <meta key="author" name="author" content="Massclick" />

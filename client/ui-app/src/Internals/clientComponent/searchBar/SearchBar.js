@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import "./searchBar.css";
-import MI from "../../../assets/mi.png";
 import AddBusinessModel from "../AddBusinessModel.js";
 import {
     Box,
@@ -40,7 +39,7 @@ const SearchBar = ({
                 {/* Logo Section - No change to structure */}
                 <div className="logo-section">
                     <div className="logo-circle">
-                        <img src={MI} alt="Logo" className="logo-image" />
+                        <img src="/apple-touch-icon.png" alt="Logo" className="logo-image" />
                     </div>
                     <Box sx={{ display: "flex", flexDirection: "column" }}>
                         <Typography

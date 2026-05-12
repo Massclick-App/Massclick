@@ -21,7 +21,6 @@ import {
     Close as CloseIcon,
     ExitToApp as ExitToAppIcon,
 } from "@mui/icons-material";
-import MI from "../../assets/mi.png";
 import MassclickIndiaLogo from "../../assets/Massclick-India.webp";
 import AddBusinessModal from "./AddBusinessModel.js";
 import AppRegistrationIcon from '@mui/icons-material/AppRegistration';
@@ -269,7 +268,7 @@ const CategoryBar = () => {
 
                 <div className="logoGroup">
                     <div className="logoWrapper">
-                        <img src={MI} alt="Massclick Logo" className="logoImage" />
+                        <img src="/apple-touch-icon.png" alt="Massclick Logo" className="logoImage" />
                     </div>
                     <div className="brandingText">
                         <img src={MassclickIndiaLogo} alt="Massclick India" className="brandLogo" />

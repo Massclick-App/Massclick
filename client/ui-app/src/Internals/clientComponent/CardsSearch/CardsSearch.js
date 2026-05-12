@@ -19,7 +19,6 @@ import MicIcon from "@mui/icons-material/Mic";
 import SearchIcon from "@mui/icons-material/Search";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import HistoryToggleOffIcon from "@mui/icons-material/HistoryToggleOff";
-import MI from "../../../assets/mi.png";
 import MassclickIndiaLogo from "../../../assets/Massclick-India.webp";
 import AddBusinessModel from "../AddBusinessModel";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
@@ -297,7 +296,7 @@ const CardsSearch = ({
             <div className="logo-circle">
               <Tooltip title="Go to Home Page" arrow>
                 <img
-                  src={MI}
+                  src="/apple-touch-icon.png"
                   alt="Logo"
                   className="logo-image"
                   onClick={() => (window.location.href = "/")}

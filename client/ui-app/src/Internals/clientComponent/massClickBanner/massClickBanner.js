@@ -1,7 +1,5 @@
 import React from "react";
 import "./MassClickBanner.css";
-import MI from "../../../assets/mi.png";
-
 const MassClickBanner = () => {
   return (
     <section className="mc-banner">
@@ -10,7 +8,7 @@ const MassClickBanner = () => {
         <div className="mc-left">
           <div className="mc-brand-row">
             <div className="mc-logo-pill">
-              <img src={MI} alt="MassClick Logo" className="mc-logo-img" />
+              <img src="/apple-touch-icon.png" alt="MassClick Logo" className="mc-logo-img" />
             </div>
 
             <div>

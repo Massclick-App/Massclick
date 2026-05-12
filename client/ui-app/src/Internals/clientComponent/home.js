@@ -10,7 +10,6 @@ import { viewOtpUser } from '../../redux/actions/otpAction.js';
 import { fetchMatchedLeads } from '../../redux/actions/leadsAction.js';
 import SeoMeta from "./seo/seoMeta";
 import { fetchSeoMeta } from "../../redux/actions/seoAction";
-import miLogo from '../../assets/mi.png';
 import { connectSocket, disconnectSocket } from '../../services/socketService.js';
 import './homeLayout.css';
 
@@ -319,7 +318,7 @@ const LandingPage = () => {
             name: "Massclick",
             logo: {
                 "@type": "ImageObject",
-                url: "https://massclick.in/mi.png",
+                url: "https://massclick.in/apple-touch-icon.png",
             },
         },
     };
@@ -485,7 +484,7 @@ const LandingPage = () => {
                             />
                         ) : (
                             <Avatar
-                                src={miLogo}
+                                src="/apple-touch-icon.png"
                                 variant="rounded"
                                 sx={{ width: 48, height: 48, flexShrink: 0 }}
                             />

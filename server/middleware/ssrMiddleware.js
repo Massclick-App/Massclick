@@ -143,7 +143,7 @@ export async function ssrMiddleware(req, res) {
           "@type": "Organization",
           name: "Massclick",
           url: "https://massclick.in",
-          logo: "https://massclick.in/mi.png"
+          logo: "https://massclick.in/apple-touch-icon.png"
         },
         {
           "@context": "https://schema.org",
