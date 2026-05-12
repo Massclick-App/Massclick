@@ -72,6 +72,7 @@ const CategoryDropdown = ({ options, setSearchTerm, closeDropdown }) => {
 };
 
 const CardsSearch = ({
+  isScrolled,
   locationName: propLocationName,
   setLocationName: propSetLocationName,
   setSearchResults,
@@ -85,7 +86,6 @@ const CardsSearch = ({
 
   const [internalLocationName, setInternalLocationName] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [isVisible] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const locationName = propLocationName ?? internalLocationName;
@@ -287,8 +287,12 @@ const CardsSearch = ({
   return (
     <>
       <header
-        className={`search-header ${isVisible ? "visible" : ""}`}
-        style={{ backdropFilter: "blur(8px)" }}
+        className="search-header"
+        style={{
+          backdropFilter: "blur(8px)",
+          visibility: isScrolled ? 'visible' : 'hidden',
+          display: isScrolled ? 'block' : 'none',
+        }}
       >
         <div className="search-header-content">
 

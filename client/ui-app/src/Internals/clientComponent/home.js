@@ -337,34 +337,17 @@ const LandingPage = () => {
                     {drawerContent}
                 </Drawer>
 
-                {!isScrolled && <CategoryBar />}
+                <CategoryBar />
 
-                <Box
-                    sx={{
-                        position: 'fixed',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        zIndex: 1000,
-                        bgcolor: 'background.paper',
-                        boxShadow: 3,
-                        transform: isScrolled ? 'translateY(0)' : 'translateY(-110%)',
-                        opacity: isScrolled ? 1 : 0,
-                        transition: 'transform 0.3s ease, opacity 0.3s ease',
-                        pointerEvents: isScrolled ? 'auto' : 'none',
-                        willChange: 'transform, opacity',
-                        contain: 'layout style paint',
-                    }}
-                >
-                    <CardsSearch
-                        locationName={locationName}
-                        setLocationName={setLocationName}
-                        searchTerm={searchTerm}
-                        setSearchTerm={setSearchTerm}
-                        categoryName={categoryName}
-                        setCategoryName={setCategoryName}
-                    />
-                </Box>
+                <CardsSearch
+                    isScrolled={isScrolled}
+                    locationName={locationName}
+                    setLocationName={setLocationName}
+                    searchTerm={searchTerm}
+                    setSearchTerm={setSearchTerm}
+                    categoryName={categoryName}
+                    setCategoryName={setCategoryName}
+                />
 
                 <Box ref={heroSectionRef}>
                     <HeroSection
