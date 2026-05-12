@@ -34,7 +34,11 @@ router.get('/api/businesslist/category', cacheMiddleware({ expirySeconds: 3600, 
 router.get("/api/businesslist/findByMobile/:mobile", cacheMiddleware({ expirySeconds: 1800, keyPrefix: 'mobile' }), findBusinessByMobileAction);
 router.get('/api/businesslist/dashboard-summary', oauthAuthentication, cacheMiddleware({ expirySeconds: 600, keyPrefix: 'dashboard-summary' }), dashboardSummaryAction);
 router.get('/api/businesslist/dashboard-charts', oauthAuthentication, cacheMiddleware({ expirySeconds: 600, keyPrefix: 'dashboard-charts' }), dashboardChartsAction);
-router.get('/api/businesslist/pendingbusiness', oauthAuthentication, dashboardSummaryAction);
+router.get(
+  '/api/businesslist/pendingbusiness',
+  oauthAuthentication,
+  getPendingBusinessAction
+);
 router.post("/api/businesslist/qr-download/:id", oauthAuthentication, trackQrDownload);
 router.get('/api/businesslist/trending-searches/viewall', trendsCache, viewLogSearchAction);
 
