@@ -168,6 +168,10 @@ const LandingPage = () => {
         (state) => state.seoReducer
     );
 
+    const { list: blogsList = [] } = useSelector(
+        (state) => state.seoPageContentBlogReducer || {}
+    );
+
     useEffect(() => {
         dispatch(fetchSeoMeta({ pageType: "home" }));
     }, [dispatch]);
@@ -419,11 +423,13 @@ const LandingPage = () => {
                                 </Suspense>
                             </Box>
 
-                            <Box className="home-section" sx={homeSectionSx}>
-                                <Suspense fallback={<SkeletonGrid type="blogs" />}>
-                                    <RelatedBlogs location={locationName} />
-                                </Suspense>
-                            </Box>
+                            {blogsList.length > 0 && (
+                                <Box className="home-section" sx={homeSectionSx}>
+                                    <Suspense fallback={<SkeletonGrid type="blogs" />}>
+                                        <RelatedBlogs location={locationName} />
+                                    </Suspense>
+                                </Box>
+                            )}
 
                             <Box className="home-section" sx={homeSectionSx}>
                                 <Suspense fallback={<SkeletonCards type="pageheader" />}>
