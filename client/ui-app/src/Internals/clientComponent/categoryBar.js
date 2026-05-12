@@ -268,7 +268,7 @@ const CategoryBar = () => {
 
                 <div className="logoGroup">
                     <div className="logoWrapper">
-                        <img src="/apple-touch-icon.png" alt="Massclick Logo" className="logoImage" />
+                        <img src="/header.png" alt="Massclick Logo" className="logoImage" />
                     </div>
                     <div className="brandingText">
                         <img src={MassclickIndiaLogo} alt="Massclick India" className="brandLogo" />

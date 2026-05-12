@@ -89,7 +89,7 @@ const Header = ({ }) => {
                             }}
                         >
                             <img
-                                src="/header.png"
+                                src="/apple-touch-icon.png"
                                 alt="Logo"
                                 style={{
                                     width: '40px',
@@ -102,7 +102,7 @@ const Header = ({ }) => {
 
                             {/* Text */}
                             <span>
-                                Masss<span style={{ color: '#ff9c3b' }}>click</span>
+                                Mass<span style={{ color: '#ff9c3b' }}>click</span>
                             </span>
                         </div>
 
