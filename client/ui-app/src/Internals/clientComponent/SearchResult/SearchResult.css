@@ -172,7 +172,27 @@ section.seo-header-content.premium-section {
   margin-top: var(--space-md);
 }
 
+.bottom-sections-wrapper {
+  width: 100%;
+  padding: 0 32px 40px;
+  box-sizing: border-box;
+}
 
+.bottom-sections-wrapper > * {
+  width: 100%;
+  max-width: 1720px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.bottom-sections-wrapper > *:not(:last-child) {
+  margin-bottom: 32px;
+}
+
+/* Footer special spacing */
+.bottom-sections-wrapper footer {
+  margin-top: 20px;
+}
 
 .seo-article {
   margin-top: var(--space-xl);
@@ -183,7 +203,18 @@ section.seo-header-content.premium-section {
   box-shadow: var(--shadow-soft);
   line-height: 1.75;
 }
+.seo-outer-wrapper {
+  width: 100%;
+  padding: 0 32px;
+  box-sizing: border-box;
+  margin-top: 48px;
+}
 
+.seo-article-wrapper {
+  width: 100%;
+  max-width: 1720px;
+  margin: 0 auto;
+}
 .seo-article h2 {
   font-size: 24px;
   margin-top: 40px;
@@ -194,8 +225,6 @@ section.seo-header-content.premium-section {
   font-size: 16px;
   color: #475569;
 }
-
-
 
 .category-trust-badges{
   display: flex;
