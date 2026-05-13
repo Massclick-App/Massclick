@@ -72,7 +72,7 @@ const CategoryDropdown = ({ options, setSearchTerm, closeDropdown }) => {
 };
 
 const CardsSearch = ({
-  isScrolled,
+  isScrolled = true,
   locationName: propLocationName,
   setLocationName: propSetLocationName,
   setSearchResults,

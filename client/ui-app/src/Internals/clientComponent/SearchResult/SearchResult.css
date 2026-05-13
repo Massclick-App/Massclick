@@ -40,7 +40,7 @@
   box-sizing: border-box;
 }
 .page-spacing {
-  height: clamp(76px, 9vw, 96px);
+  height: 12px;
 }
 
 /* Main SEO H1 Heading */
@@ -319,7 +319,7 @@ section.seo-header-content.premium-section {
   }
 
   .page-spacing {
-    height: 80px;
+    height: 12px;
   }
 
   .results-title {
@@ -382,7 +382,7 @@ section.seo-header-content.premium-section {
   }
 
   .page-spacing {
-    height: 78px;
+    height: 12px;
   }
 
   .banner-section {

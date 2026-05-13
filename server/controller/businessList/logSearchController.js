@@ -197,7 +197,7 @@ export const logSearchAction = async (req, res) => {
 
     const category = await CategoryModel.findOne(
       { slug: categorySlug },
-      { categoryImageKey: 1 }
+      { categoryImageKey: 1, liveImageKey: 1 }
     ).lean();
 
     // ── Anonymous path ────────────────────────────────────────────────────────
@@ -218,6 +218,7 @@ export const logSearchAction = async (req, res) => {
         await createSearchLog({
           categoryName: finalCategoryName,
           categoryImage: category?.categoryImageKey || "",
+          liveImage: category?.liveImageKey || "",
           searchedUserText: cleanSearchText,
           location: normalizedLocation,
           userDetails: [],
@@ -258,6 +259,7 @@ export const logSearchAction = async (req, res) => {
     const savedLog = await createSearchLog({
       categoryName: finalCategoryName,
       categoryImage: category?.categoryImageKey || "",
+      liveImage: category?.liveImageKey || "",
       searchedUserText: cleanSearchText,
       location: normalizedLocation,
       userDetails: [
