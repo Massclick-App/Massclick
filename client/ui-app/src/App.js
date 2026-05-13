@@ -224,9 +224,8 @@ function App() {
   /* Fast Auth Check - Synchronous, non-blocking */
   useEffect(() => {
     const accessToken = localStorage.getItem('accessToken');
-    const clientAccessToken = localStorage.getItem('clientAccessToken');
 
-    if (accessToken || clientAccessToken) {
+    if (accessToken) {
       setIsAuthenticated(true);
     }
 
