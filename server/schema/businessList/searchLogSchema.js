@@ -14,6 +14,14 @@ const searchLogSchema = new mongoose.Schema({
         index: true,
         default: ''
     },
+    categoryImages: {
+        webHero: { type: String, default: '' },
+        webCard: { type: String, default: '' },
+        webThumbnail: { type: String, default: '' },
+        mobileVertical: { type: String, default: '' },
+        mobileCard: { type: String, default: '' },
+        mobileThumbnail: { type: String, default: '' }
+    },
     searchedUserText: {
         type: String,
         index: true

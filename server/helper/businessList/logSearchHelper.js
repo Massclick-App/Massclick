@@ -102,7 +102,7 @@ export const getTopTrendingCategories = async (limit = 10) => {
                 $expr: { $eq: [{ $toLower: "$categoryName" }, "$$catName"] }
               }
             },
-            { $project: { categoryImages: 1, _id: 0 } },
+            { $project: { categoryImages: 1, categoryImageKey: 1, _id: 0 } },
             { $limit: 1 }
           ],
           as: "categoryDoc"
@@ -113,14 +113,26 @@ export const getTopTrendingCategories = async (limit = 10) => {
           categoryImage: {
             $cond: {
               if: { $gt: [{ $size: "$categoryDoc" }, 0] },
-              then: { $arrayElemAt: ["$categoryDoc.categoryImages.webHero", 0] },
+              then: {
+                $cond: {
+                  if: { $ne: [{ $arrayElemAt: ["$categoryDoc.categoryImages.webHero", 0] }, ""] },
+                  then: { $arrayElemAt: ["$categoryDoc.categoryImages.webHero", 0] },
+                  else: { $arrayElemAt: ["$categoryDoc.categoryImageKey", 0] }
+                }
+              },
               else: "$categoryImage"
             }
           },
           webHero: {
             $cond: {
               if: { $gt: [{ $size: "$categoryDoc" }, 0] },
-              then: { $arrayElemAt: ["$categoryDoc.categoryImages.webHero", 0] },
+              then: {
+                $cond: {
+                  if: { $ne: [{ $arrayElemAt: ["$categoryDoc.categoryImages.webHero", 0] }, ""] },
+                  then: { $arrayElemAt: ["$categoryDoc.categoryImages.webHero", 0] },
+                  else: { $arrayElemAt: ["$categoryDoc.categoryImageKey", 0] }
+                }
+              },
               else: "$categoryImage"
             }
           },

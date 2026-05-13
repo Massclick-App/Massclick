@@ -197,7 +197,7 @@ export const logSearchAction = async (req, res) => {
 
     const category = await CategoryModel.findOne(
       { slug: categorySlug },
-      { categoryImages: 1 }
+      { categoryImages: 1, categoryImageKey: 1, liveImageKey: 1 }
     ).lean();
 
     // ── Anonymous path ────────────────────────────────────────────────────────
@@ -215,10 +215,20 @@ export const logSearchAction = async (req, res) => {
       });
 
       if (!recentAnon) {
+        // Use new categoryImages if available, fallback to legacy categoryImageKey
+        const categoryImage = category?.categoryImages?.webHero || category?.categoryImageKey || "";
         await createSearchLog({
           categoryName: finalCategoryName,
-          categoryImage: category?.categoryImages?.webHero || "",
-          liveImage: category?.categoryImages?.webHero || "",
+          categoryImage: categoryImage,
+          liveImage: categoryImage,
+          categoryImages: category?.categoryImages || {
+            webHero: categoryImage,
+            webCard: "",
+            webThumbnail: "",
+            mobileVertical: "",
+            mobileCard: "",
+            mobileThumbnail: ""
+          },
           searchedUserText: cleanSearchText,
           location: normalizedLocation,
           userDetails: [],
@@ -256,10 +266,20 @@ export const logSearchAction = async (req, res) => {
       });
     }
 
+    // Use new categoryImages if available, fallback to legacy categoryImageKey
+    const categoryImage = category?.categoryImages?.webHero || category?.categoryImageKey || "";
     const savedLog = await createSearchLog({
       categoryName: finalCategoryName,
-      categoryImage: category?.categoryImages?.webHero || "",
-      liveImage: category?.categoryImages?.webHero || "",
+      categoryImage: categoryImage,
+      liveImage: categoryImage,
+      categoryImages: category?.categoryImages || {
+        webHero: categoryImage,
+        webCard: "",
+        webThumbnail: "",
+        mobileVertical: "",
+        mobileCard: "",
+        mobileThumbnail: ""
+      },
       searchedUserText: cleanSearchText,
       location: normalizedLocation,
       userDetails: [
