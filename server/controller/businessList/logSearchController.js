@@ -247,7 +247,6 @@ export const logSearchAction = async (req, res) => {
     }
 
     // ── Identified user path ──────────────────────────────────────────────────
-    console.log(`[SEARCH][${reqId}] user=${userDetails.mobileNumber1} text="${cleanSearchText}" loc=${normalizedLocation}`);
 
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
     const recentLog = await searchLogModel.findOne({

@@ -1380,7 +1380,6 @@ const BusinessDetail = React.memo(() => {
       )}
 
       <div className="bottom-sections-wrapper">
-        <PageHeaderContents />
         <PopularCategoriesLink />
         <Footer />
       </div>

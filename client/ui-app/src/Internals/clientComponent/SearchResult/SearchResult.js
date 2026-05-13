@@ -553,7 +553,6 @@ useEffect(() => {
           </div>
         )}<br/>
         <div className="bottom-sections-wrapper">
-          <PageHeaderContents />
           <PopularCategoriesLink />
           <Footer />
         </div>
