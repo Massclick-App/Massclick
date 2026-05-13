@@ -85,143 +85,51 @@ export const getTopTrendingCategories = async (limit = 10) => {
       {
         $group: {
           _id: { $toLower: { $trim: { input: "$categoryName" } } },
-          totalSearches: { $sum: 1 },
-          categoryImage: { $max: "$categoryImage" },
-          liveImage: { $max: "$liveImage" },
-          // Extract all 6 image variants from searchLog documents
-          webHero: { $max: "$categoryImages.webHero" },
-          webCard: { $max: "$categoryImages.webCard" },
-          webThumbnail: { $max: "$categoryImages.webThumbnail" },
-          mobileVertical: { $max: "$categoryImages.mobileVertical" },
-          mobileCard: { $max: "$categoryImages.mobileCard" },
-          mobileThumbnail: { $max: "$categoryImages.mobileThumbnail" }
+          totalSearches: { $sum: 1 }
         }
       },
       { $sort: { totalSearches: -1 } },
       { $limit: limit * 3 },
       {
         $lookup: {
-          from: "category",
+          from: "categories",
           let: { catName: "$_id" },
           pipeline: [
             {
               $match: {
-                $expr: { $eq: [{ $toLower: "$categoryName" }, "$$catName"] }
+                $expr: { $eq: [{ $toLower: "$category" }, "$$catName"] }
               }
             },
-            { $project: { categoryImages: 1, categoryImageKey: 1, _id: 0 } },
+            {
+              $project: {
+                categoryImageKey: 1,
+                liveImageKey: 1,
+                categoryImages: 1,
+                _id: 0
+              }
+            },
             { $limit: 1 }
           ],
-          as: "categoryDoc"
+          as: "categoryData"
         }
       },
       {
-        $addFields: {
-          // Use variants from searchLog. If empty, try category lookup, otherwise use categoryImage fallback
-          webHero: {
-            $cond: {
-              if: { $and: [{ $ne: ["$webHero", ""] }, { $ne: ["$webHero", null] }] },
-              then: "$webHero",
-              else: {
-                $cond: {
-                  if: { $gt: [{ $size: "$categoryDoc" }, 0] },
-                  then: { $arrayElemAt: ["$categoryDoc.categoryImages.webHero", 0] },
-                  else: "$categoryImage"
-                }
-              }
-            }
-          },
-          webCard: {
-            $cond: {
-              if: { $and: [{ $ne: ["$webCard", ""] }, { $ne: ["$webCard", null] }] },
-              then: "$webCard",
-              else: {
-                $cond: {
-                  if: { $gt: [{ $size: "$categoryDoc" }, 0] },
-                  then: { $arrayElemAt: ["$categoryDoc.categoryImages.webCard", 0] },
-                  else: ""
-                }
-              }
-            }
-          },
-          webThumbnail: {
-            $cond: {
-              if: { $and: [{ $ne: ["$webThumbnail", ""] }, { $ne: ["$webThumbnail", null] }] },
-              then: "$webThumbnail",
-              else: {
-                $cond: {
-                  if: { $gt: [{ $size: "$categoryDoc" }, 0] },
-                  then: { $arrayElemAt: ["$categoryDoc.categoryImages.webThumbnail", 0] },
-                  else: ""
-                }
-              }
-            }
-          },
-          mobileVertical: {
-            $cond: {
-              if: { $and: [{ $ne: ["$mobileVertical", ""] }, { $ne: ["$mobileVertical", null] }] },
-              then: "$mobileVertical",
-              else: {
-                $cond: {
-                  if: { $gt: [{ $size: "$categoryDoc" }, 0] },
-                  then: { $arrayElemAt: ["$categoryDoc.categoryImages.mobileVertical", 0] },
-                  else: ""
-                }
-              }
-            }
-          },
-          mobileCard: {
-            $cond: {
-              if: { $and: [{ $ne: ["$mobileCard", ""] }, { $ne: ["$mobileCard", null] }] },
-              then: "$mobileCard",
-              else: {
-                $cond: {
-                  if: { $gt: [{ $size: "$categoryDoc" }, 0] },
-                  then: { $arrayElemAt: ["$categoryDoc.categoryImages.mobileCard", 0] },
-                  else: ""
-                }
-              }
-            }
-          },
-          mobileThumbnail: {
-            $cond: {
-              if: { $and: [{ $ne: ["$mobileThumbnail", ""] }, { $ne: ["$mobileThumbnail", null] }] },
-              then: "$mobileThumbnail",
-              else: {
-                $cond: {
-                  if: { $gt: [{ $size: "$categoryDoc" }, 0] },
-                  then: { $arrayElemAt: ["$categoryDoc.categoryImages.mobileThumbnail", 0] },
-                  else: ""
-                }
-              }
-            }
-          },
-          // Keep legacy fields as-is (don't overwrite with new variants)
-          // categoryImage and liveImage come directly from searchLog
-          // They are only populated if actual legacy images were uploaded
+        $unwind: {
+          path: "$categoryData",
+          preserveNullAndEmptyArrays: false
         }
       },
-      {
-        $match: {
-          categoryImage: { $exists: true, $nin: ["", null] }
-        }
-      },
-      { $limit: limit },
       {
         $project: {
           _id: 0,
           categoryName: "$_id",
           totalSearches: 1,
-          categoryImage: 1,
-          liveImage: 1,
-          webHero: 1,
-          webCard: 1,
-          webThumbnail: 1,
-          mobileVertical: 1,
-          mobileCard: 1,
-          mobileThumbnail: 1
+          categoryImageKey: "$categoryData.categoryImageKey",
+          liveImageKey: "$categoryData.liveImageKey",
+          categoryImages: "$categoryData.categoryImages"
         }
-      }
+      },
+      { $limit: limit }
     ]);
 
     return result;
