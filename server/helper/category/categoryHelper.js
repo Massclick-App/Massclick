@@ -31,6 +31,31 @@ export const createCategory = async (reqBody = {}) => {
         }
       });
 
+      // Handle new categoryImages object (6 variants)
+      if (reqBody.categoryImages && typeof reqBody.categoryImages === "object") {
+        const categoryImages = {};
+        const timestamp = Date.now();
+
+        for (const [variant, data] of Object.entries(reqBody.categoryImages)) {
+          if (data && typeof data === "string" && data.startsWith("data:image")) {
+            try {
+              const uploadResult = await uploadImageToS3(
+                data,
+                `category/images/${variant}-${timestamp}`
+              );
+              categoryImages[variant] = uploadResult.key;
+            } catch (err) {
+              console.error(`Failed to upload ${variant}:`, err);
+            }
+          } else if (data && !data.startsWith("data:image")) {
+            // Keep existing S3 key if it's not a data URL
+            categoryImages[variant] = data;
+          }
+        }
+        updates.categoryImages = categoryImages;
+      }
+
+      // Legacy support: handle old categoryImage and liveImage fields
       if (reqBody.categoryImage) {
         const uploadResult = await uploadImageToS3(
           reqBody.categoryImage,
@@ -54,6 +79,34 @@ export const createCategory = async (reqBody = {}) => {
       };
     }
 
+    // Handle new categoryImages object (6 variants)
+    if (reqBody.categoryImages && typeof reqBody.categoryImages === "object") {
+      const categoryImages = {};
+      const timestamp = Date.now();
+
+      for (const [variant, data] of Object.entries(reqBody.categoryImages)) {
+        if (data && typeof data === "string" && data.startsWith("data:image")) {
+          try {
+            console.log(`[CreateCategory] Uploading ${variant} image...`);
+            const uploadResult = await uploadImageToS3(
+              data,
+              `category/images/${variant}-${timestamp}`
+            );
+            categoryImages[variant] = uploadResult.key;
+            console.log(`[CreateCategory] ✓ Uploaded ${variant}: ${uploadResult.key}`);
+          } catch (err) {
+            console.error(`[CreateCategory] ✗ Failed to upload ${variant}:`, err.message);
+          }
+        } else if (data && !data.startsWith("data:image")) {
+          // Keep existing S3 key if it's not a data URL
+          console.log(`[CreateCategory] Keeping existing ${variant} key: ${data.substring(0, 40)}...`);
+          categoryImages[variant] = data;
+        }
+      }
+      reqBody.categoryImages = categoryImages;
+    }
+
+    // Legacy support: handle old categoryImage and liveImage fields
     if (reqBody.categoryImage) {
       const uploadResult = await uploadImageToS3(
         reqBody.categoryImage,
@@ -96,6 +149,26 @@ export const viewCategory = async (id) => {
 
     const category = await categoryModel.findById(id).lean();
     if (!category) throw new Error("Category not found");
+
+    // Convert categoryImages S3 keys to signed URLs
+    if (category.categoryImages && typeof category.categoryImages === "object") {
+      const convertedImages = {};
+      for (const [variant, key] of Object.entries(category.categoryImages)) {
+        if (key && typeof key === "string") {
+          try {
+            const signedUrl = getSignedUrlByKey(key);
+            convertedImages[variant] = signedUrl;
+            console.log(`[ViewCategory] Converted ${variant}: ${key.substring(0, 30)}... → ${signedUrl.substring(0, 50)}...`);
+          } catch (err) {
+            console.error(`[ViewCategory] Failed to convert ${variant}:`, err.message);
+            convertedImages[variant] = key;
+          }
+        } else {
+          convertedImages[variant] = key;
+        }
+      }
+      category.categoryImages = convertedImages;
+    }
 
     if (category.categoryImageKey) {
       category.categoryImage = getSignedUrlByKey(category.categoryImageKey);
@@ -145,6 +218,26 @@ export const viewAllCategory = async ({
       .lean();
 
     const list = categories.map((c) => {
+      // Convert categoryImages S3 keys to signed URLs
+      if (c.categoryImages && typeof c.categoryImages === "object") {
+        const convertedImages = {};
+        for (const [variant, key] of Object.entries(c.categoryImages)) {
+          if (key && typeof key === "string") {
+            try {
+              const signedUrl = getSignedUrlByKey(key);
+              convertedImages[variant] = signedUrl;
+              console.log(`[CategoryHelper] Converted ${variant}: ${key.substring(0, 30)}... → ${signedUrl.substring(0, 50)}...`);
+            } catch (err) {
+              console.error(`[CategoryHelper] Failed to convert ${variant}:`, err.message);
+              convertedImages[variant] = key;
+            }
+          } else {
+            convertedImages[variant] = key;
+          }
+        }
+        c.categoryImages = convertedImages;
+      }
+
       if (c.categoryImageKey) {
         c.categoryImage = getSignedUrlByKey(c.categoryImageKey);
       }
@@ -177,6 +270,37 @@ export const updateCategory = async (id, data) => {
         .filter(Boolean);
     }
 
+    // Handle new categoryImages object (6 variants)
+    if (data.categoryImages && typeof data.categoryImages === "object") {
+      const categoryImages = {};
+      const timestamp = Date.now();
+
+      for (const [variant, imageData] of Object.entries(data.categoryImages)) {
+        if (imageData && typeof imageData === "string" && imageData.startsWith("data:image")) {
+          try {
+            console.log(`[UpdateCategory] Uploading ${variant} image...`);
+            const uploadResult = await uploadImageToS3(
+              imageData,
+              `category/images/${variant}-${timestamp}`
+            );
+            categoryImages[variant] = uploadResult.key;
+            console.log(`[UpdateCategory] ✓ Uploaded ${variant}: ${uploadResult.key}`);
+          } catch (err) {
+            console.error(`[UpdateCategory] ✗ Failed to upload ${variant}:`, err.message);
+          }
+        } else if (imageData && !imageData.startsWith("data:image")) {
+          // Keep existing S3 key if it's not a data URL
+          console.log(`[UpdateCategory] Keeping existing ${variant} key: ${imageData.substring(0, 40)}...`);
+          categoryImages[variant] = imageData;
+        } else if (imageData === null || imageData === "") {
+          // Clear if empty
+          categoryImages[variant] = "";
+        }
+      }
+      data.categoryImages = categoryImages;
+    }
+
+    // Legacy support: handle old categoryImage and liveImage fields
     if (
       data.categoryImage &&
       typeof data.categoryImage === "string" &&
@@ -209,6 +333,26 @@ export const updateCategory = async (id, data) => {
 
     const category = await categoryModel.findByIdAndUpdate(id, data, { new: true });
     if (!category) throw new Error("Category not found");
+
+    // Convert categoryImages S3 keys to signed URLs
+    if (category.categoryImages && typeof category.categoryImages === "object") {
+      const convertedImages = {};
+      for (const [variant, key] of Object.entries(category.categoryImages)) {
+        if (key && typeof key === "string") {
+          try {
+            const signedUrl = getSignedUrlByKey(key);
+            convertedImages[variant] = signedUrl;
+            console.log(`[UpdateCategory] Converted ${variant}: ${key.substring(0, 30)}... → ${signedUrl.substring(0, 50)}...`);
+          } catch (err) {
+            console.error(`[UpdateCategory] Failed to convert ${variant}:`, err.message);
+            convertedImages[variant] = key;
+          }
+        } else {
+          convertedImages[variant] = key;
+        }
+      }
+      category.categoryImages = convertedImages;
+    }
 
     if (category.categoryImageKey) {
       category.categoryImage = getSignedUrlByKey(category.categoryImageKey);

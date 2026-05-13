@@ -879,144 +879,86 @@ export default function Category() {
             />
           </div>
 
-          {/* Image Variants Upload Section */}
-          <div className="category-form-input-group category-col-span-all">
-            <label className="category-input-label">Image Variants</label>
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-              gap: "20px",
-              marginTop: "16px"
-            }}>
-              {Object.entries(IMAGE_VARIANTS).map(([key, variant]) => (
-                <div key={key} style={{
-                  border: "1px solid #ddd",
-                  borderRadius: "8px",
-                  padding: "16px",
-                  backgroundColor: imageErrors[key] ? "#ffebee" : "#fafafa"
-                }}>
-                  <div style={{ marginBottom: "12px" }}>
-                    <h4 style={{ margin: "0 0 4px 0", fontSize: "14px", fontWeight: "600" }}>
-                      {variant.name}
-                    </h4>
-                    <p style={{ margin: "0 0 4px 0", fontSize: "12px", color: "#666" }}>
-                      {variant.description}
-                    </p>
-                    <p style={{ margin: "0", fontSize: "11px", color: "#999" }}>
-                      Size: {variant.minWidth}x{variant.minHeight} - {variant.maxWidth}x{variant.maxHeight}px
-                    </p>
-                    <p style={{ margin: "4px 0 0 0", fontSize: "11px", color: "#999" }}>
-                      Max File: {variant.maxFileSize}MB | Aspect: {variant.aspectRatio}
-                    </p>
-                  </div>
-
-                  {/* Upload Button */}
-                  <Button
-                    variant="contained"
-                    size="small"
-                    startIcon={<CloudUploadIcon />}
-                    component="label"
-                    fullWidth
-                    sx={{ marginBottom: "8px" }}
-                  >
-                    Upload {variant.name}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      hidden
-                      ref={imageInputRefs[key]}
-                      onChange={(e) => handleImageChange(e, key)}
-                    />
-                  </Button>
-
-                  {/* Preview */}
-                  {imagePreviews[key] && (
-                    <div style={{ marginBottom: "8px", textAlign: "center" }}>
-                      <img
-                        src={imagePreviews[key]}
-                        alt={variant.name}
-                        style={{
-                          maxWidth: "100%",
-                          maxHeight: "150px",
-                          borderRadius: "4px",
-                          border: "1px solid #ddd"
-                        }}
-                      />
-                      {imageDimensions[key] && (
-                        <p style={{ margin: "4px 0 0 0", fontSize: "11px", color: "#666" }}>
-                          ✓ {imageDimensions[key].width}x{imageDimensions[key].height}px
-                        </p>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Error Message */}
-                  {imageErrors[key] && (
-                    <div style={{
-                      padding: "8px",
-                      backgroundColor: "#ffcdd2",
-                      borderRadius: "4px",
-                      fontSize: "12px",
-                      color: "#c62828",
-                      marginBottom: "8px"
-                    }}>
-                      ✗ {imageErrors[key]}
-                    </div>
-                  )}
-
-                  {/* Remove Button */}
-                  {imagePreviews[key] && (
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      color="error"
-                      fullWidth
-                      onClick={() => {
-                        setFormData((prev) => ({
-                          ...prev,
-                          categoryImages: {
-                            ...prev.categoryImages,
-                            [key]: ""
-                          }
-                        }));
-                        setImagePreviews((prev) => ({
-                          ...prev,
-                          [key]: null
-                        }));
-                        if (imageInputRefs[key].current) {
-                          imageInputRefs[key].current.value = "";
-                        }
-                      }}
-                    >
-                      Remove
-                    </Button>
+          <div className="category-form-input-group category-col-span-all category-upload-section">
+            <div className="category-upload-content">
+              <Button
+                variant="contained"
+                startIcon={<CloudUploadIcon />}
+                component="label"
+                className="category-upload-button"
+              >
+                Upload Web Hero Image (1200x400)
+                <input
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  ref={imageInputRefs.webHero}
+                  onChange={(e) => handleImageChange(e, "webHero")}
+                />
+              </Button>
+              {imagePreviews.webHero && (
+                <div style={{ textAlign: "center" }}>
+                  <img
+                    src={imagePreviews.webHero}
+                    alt="Web Hero"
+                    style={{ maxWidth: "200px", maxHeight: "80px", borderRadius: "4px" }}
+                  />
+                  {imageDimensions.webHero && (
+                    <p style={{ fontSize: "12px" }}>✓ {imageDimensions.webHero.width}x{imageDimensions.webHero.height}px</p>
                   )}
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Submit Button */}
-          <div className="category-form-input-group category-col-span-all">
-            <button
-              type="submit"
-              className="category-submit-button"
-              disabled={loading || Object.values(imageErrors).some(e => e !== null)}
-              style={{
-                width: "100%",
-                padding: "12px",
-                backgroundColor: Object.values(imageErrors).some(e => e !== null) ? "#ccc" : "var(--color-primary-orange)",
-                cursor: Object.values(imageErrors).some(e => e !== null) ? "not-allowed" : "pointer"
-              }}
-            >
-              {loading || createWarningLoading ? (
-                <CircularProgress size={24} color="inherit" />
-              ) : editMode ? (
-                "Update Category"
-              ) : (
-                "Create Category"
               )}
-            </button>
+              {imageErrors.webHero && (
+                <p style={{ color: "red", fontSize: "12px" }}>✗ {imageErrors.webHero}</p>
+              )}
+
+              <Button
+                variant="outlined"
+                startIcon={<CloudUploadIcon />}
+                component="label"
+                className="category-upload-button"
+              >
+                Upload Mobile Vertical (400x600)
+                <input
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  ref={imageInputRefs.mobileVertical}
+                  onChange={(e) => handleImageChange(e, "mobileVertical")}
+                />
+              </Button>
+              {imagePreviews.mobileVertical && (
+                <div style={{ textAlign: "center" }}>
+                  <img
+                    src={imagePreviews.mobileVertical}
+                    alt="Mobile Vertical"
+                    style={{ maxWidth: "100px", maxHeight: "150px", borderRadius: "4px" }}
+                  />
+                  {imageDimensions.mobileVertical && (
+                    <p style={{ fontSize: "12px" }}>✓ {imageDimensions.mobileVertical.width}x{imageDimensions.mobileVertical.height}px</p>
+                  )}
+                </div>
+              )}
+              {imageErrors.mobileVertical && (
+                <p style={{ color: "red", fontSize: "12px" }}>✗ {imageErrors.mobileVertical}</p>
+              )}
+
+              <div>
+                <button
+                  type="submit"
+                  className="category-submit-button"
+                  disabled={loading}
+                >
+                  {loading || createWarningLoading ? (
+                    <CircularProgress size={24} color="inherit" />
+                  ) : editMode ? (
+                    "Update Category"
+                  ) : (
+                    "Create Category"
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         </form>
 
