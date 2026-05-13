@@ -87,7 +87,14 @@ export const getTopTrendingCategories = async (limit = 10) => {
           _id: { $toLower: { $trim: { input: "$categoryName" } } },
           totalSearches: { $sum: 1 },
           categoryImage: { $max: "$categoryImage" },
-          liveImage: { $max: "$liveImage" }
+          liveImage: { $max: "$liveImage" },
+          // Extract all 6 image variants from searchLog documents
+          webHero: { $max: "$categoryImages.webHero" },
+          webCard: { $max: "$categoryImages.webCard" },
+          webThumbnail: { $max: "$categoryImages.webThumbnail" },
+          mobileVertical: { $max: "$categoryImages.mobileVertical" },
+          mobileCard: { $max: "$categoryImages.mobileCard" },
+          mobileThumbnail: { $max: "$categoryImages.mobileThumbnail" }
         }
       },
       { $sort: { totalSearches: -1 } },
@@ -110,78 +117,97 @@ export const getTopTrendingCategories = async (limit = 10) => {
       },
       {
         $addFields: {
-          categoryImage: {
-            $cond: {
-              if: { $gt: [{ $size: "$categoryDoc" }, 0] },
-              then: {
-                $cond: {
-                  if: { $ne: [{ $arrayElemAt: ["$categoryDoc.categoryImages.webHero", 0] }, ""] },
-                  then: { $arrayElemAt: ["$categoryDoc.categoryImages.webHero", 0] },
-                  else: { $arrayElemAt: ["$categoryDoc.categoryImageKey", 0] }
-                }
-              },
-              else: "$categoryImage"
-            }
-          },
+          // Use variants from searchLog. If empty, try category lookup, otherwise use categoryImage fallback
           webHero: {
             $cond: {
-              if: { $gt: [{ $size: "$categoryDoc" }, 0] },
-              then: {
+              if: { $and: [{ $ne: ["$webHero", ""] }, { $ne: ["$webHero", null] }] },
+              then: "$webHero",
+              else: {
                 $cond: {
-                  if: { $ne: [{ $arrayElemAt: ["$categoryDoc.categoryImages.webHero", 0] }, ""] },
+                  if: { $gt: [{ $size: "$categoryDoc" }, 0] },
                   then: { $arrayElemAt: ["$categoryDoc.categoryImages.webHero", 0] },
-                  else: { $arrayElemAt: ["$categoryDoc.categoryImageKey", 0] }
+                  else: "$categoryImage"
                 }
-              },
-              else: "$categoryImage"
+              }
             }
           },
           webCard: {
             $cond: {
-              if: { $gt: [{ $size: "$categoryDoc" }, 0] },
-              then: { $arrayElemAt: ["$categoryDoc.categoryImages.webCard", 0] },
-              else: ""
+              if: { $and: [{ $ne: ["$webCard", ""] }, { $ne: ["$webCard", null] }] },
+              then: "$webCard",
+              else: {
+                $cond: {
+                  if: { $gt: [{ $size: "$categoryDoc" }, 0] },
+                  then: { $arrayElemAt: ["$categoryDoc.categoryImages.webCard", 0] },
+                  else: ""
+                }
+              }
             }
           },
           webThumbnail: {
             $cond: {
-              if: { $gt: [{ $size: "$categoryDoc" }, 0] },
-              then: { $arrayElemAt: ["$categoryDoc.categoryImages.webThumbnail", 0] },
-              else: ""
+              if: { $and: [{ $ne: ["$webThumbnail", ""] }, { $ne: ["$webThumbnail", null] }] },
+              then: "$webThumbnail",
+              else: {
+                $cond: {
+                  if: { $gt: [{ $size: "$categoryDoc" }, 0] },
+                  then: { $arrayElemAt: ["$categoryDoc.categoryImages.webThumbnail", 0] },
+                  else: ""
+                }
+              }
             }
           },
           mobileVertical: {
             $cond: {
-              if: { $gt: [{ $size: "$categoryDoc" }, 0] },
-              then: { $arrayElemAt: ["$categoryDoc.categoryImages.mobileVertical", 0] },
-              else: ""
+              if: { $and: [{ $ne: ["$mobileVertical", ""] }, { $ne: ["$mobileVertical", null] }] },
+              then: "$mobileVertical",
+              else: {
+                $cond: {
+                  if: { $gt: [{ $size: "$categoryDoc" }, 0] },
+                  then: { $arrayElemAt: ["$categoryDoc.categoryImages.mobileVertical", 0] },
+                  else: ""
+                }
+              }
             }
           },
           mobileCard: {
             $cond: {
-              if: { $gt: [{ $size: "$categoryDoc" }, 0] },
-              then: { $arrayElemAt: ["$categoryDoc.categoryImages.mobileCard", 0] },
-              else: ""
+              if: { $and: [{ $ne: ["$mobileCard", ""] }, { $ne: ["$mobileCard", null] }] },
+              then: "$mobileCard",
+              else: {
+                $cond: {
+                  if: { $gt: [{ $size: "$categoryDoc" }, 0] },
+                  then: { $arrayElemAt: ["$categoryDoc.categoryImages.mobileCard", 0] },
+                  else: ""
+                }
+              }
             }
           },
           mobileThumbnail: {
             $cond: {
-              if: { $gt: [{ $size: "$categoryDoc" }, 0] },
-              then: { $arrayElemAt: ["$categoryDoc.categoryImages.mobileThumbnail", 0] },
-              else: ""
+              if: { $and: [{ $ne: ["$mobileThumbnail", ""] }, { $ne: ["$mobileThumbnail", null] }] },
+              then: "$mobileThumbnail",
+              else: {
+                $cond: {
+                  if: { $gt: [{ $size: "$categoryDoc" }, 0] },
+                  then: { $arrayElemAt: ["$categoryDoc.categoryImages.mobileThumbnail", 0] },
+                  else: ""
+                }
+              }
+            }
+          },
+          categoryImage: {
+            $cond: {
+              if: { $and: [{ $ne: ["$webHero", ""] }, { $ne: ["$webHero", null] }] },
+              then: "$webHero",
+              else: "$categoryImage"
             }
           },
           liveImage: {
             $cond: {
               if: { $and: [{ $ne: ["$liveImage", ""] }, { $ne: ["$liveImage", null] }] },
               then: "$liveImage",
-              else: {
-                $cond: {
-                  if: { $gt: [{ $size: "$categoryDoc" }, 0] },
-                  then: { $arrayElemAt: ["$categoryDoc.categoryImages.webHero", 0] },
-                  else: ""
-                }
-              }
+              else: "$webHero"
             }
           }
         }
