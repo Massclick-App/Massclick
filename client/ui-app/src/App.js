@@ -226,9 +226,8 @@ function App() {
     const accessToken = localStorage.getItem('accessToken');
     const clientAccessToken = localStorage.getItem('clientAccessToken');
 
-    if (!accessToken && !clientAccessToken) {
-      setAuthChecked(true);
-      return;
+    if (accessToken || clientAccessToken) {
+      setIsAuthenticated(true);
     }
 
     setAuthChecked(true);
