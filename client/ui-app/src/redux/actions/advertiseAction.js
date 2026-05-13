@@ -1,4 +1,4 @@
-import axios from "axios";
+import axiosInstance from '../../services/axiosInstance.js';
 import {
   FETCH_ADVERTISE_REQUEST,
   FETCH_ADVERTISE_SUCCESS,
@@ -30,7 +30,7 @@ export const getAllAdvertise = () => async (dispatch) => {
   try {
       const token = await getValidToken(dispatch);
 
-    const response = await axios.get(
+    const response = await axiosInstance.get(
       `${API_URL}/advertise/viewall`,
       {
         headers: { Authorization: `Bearer ${token}` },
@@ -55,7 +55,7 @@ export const createAdvertise = (advertiseData) => async (dispatch) => {
   try {
       const token = await getValidToken(dispatch);
 
-    const response = await axios.post(
+    const response = await axiosInstance.post(
       `${API_URL}/advertise/create`,
       advertiseData,
       {
@@ -87,7 +87,7 @@ export const editAdvertise = (id, advertiseData) => async (dispatch) => {
   try {
       const token = await getValidToken(dispatch);
 
-    const response = await axios.put(
+    const response = await axiosInstance.put(
       `${API_URL}/advertise/update/${id}`,
       advertiseData,
       {
@@ -118,7 +118,7 @@ export const deleteAdvertise = (id) => async (dispatch) => {
   try {
       const token = await getValidToken(dispatch);
 
-    const { data } = await axios.delete(
+    const { data } = await axiosInstance.delete(
       `${API_URL}/advertise/delete/${id}`,
       {
         headers: { Authorization: `Bearer ${token}` },

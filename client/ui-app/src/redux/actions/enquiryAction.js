@@ -1,6 +1,6 @@
 // src/redux/actions/enquiryActions.js (or wherever this file lives)
 
-import axios from "axios";
+import axiosInstance from '../../services/axiosInstance.js';
 import {
     FETCH_ENQUIRY_REQUEST, FETCH_ENQUIRY_SUCCESS, FETCH_ENQUIRY_FAILURE,
     CREATE_ENQUIRY_REQUEST, CREATE_ENQUIRY_SUCCESS, CREATE_ENQUIRY_FAILURE,
@@ -23,7 +23,7 @@ export const getAllEnquiry = () => async (dispatch) => {
     dispatch({ type: FETCH_ENQUIRY_REQUEST });
     try {
       const token = await getValidToken(dispatch);
-        const response = await axios.get(`${API_URL}/enquiry/viewall`, { 
+        const response = await axiosInstance.get(`${API_URL}/enquiry/viewall`, { 
             headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -45,7 +45,7 @@ export const createEnquiry = (enquiryData) => async (dispatch) => {
     
       const token = await getValidToken(dispatch);
         
-       const response = await axios.post(`${API_URL}/enquiry/create`, enquiryData, { 
+       const response = await axiosInstance.post(`${API_URL}/enquiry/create`, enquiryData, { 
             headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -66,7 +66,7 @@ export const editEnquiry = (id, enquiryData) => async (dispatch) => {
     dispatch({ type: EDIT_ENQUIRY_REQUEST });
     try {
       const token = await getValidToken(dispatch);
-        const response = await axios.put(`${API_URL}/enquiry/update/${id}`, enquiryData, { 
+        const response = await axiosInstance.put(`${API_URL}/enquiry/update/${id}`, enquiryData, { 
             headers: { Authorization: `Bearer ${token}` },
         });
         
@@ -85,7 +85,7 @@ export const deleteEnquiry = (id) => async (dispatch) => {
     dispatch({ type: DELETE_ENQUIRY_REQUEST }); 
     try {
       const token = await getValidToken(dispatch);
-        const { data } = await axios.delete(`${API_URL}/enquiry/delete/${id}`, { 
+        const { data } = await axiosInstance.delete(`${API_URL}/enquiry/delete/${id}`, { 
             headers: { Authorization: `Bearer ${token}` },
         });
         

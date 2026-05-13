@@ -1,4 +1,4 @@
-import axios from "axios";
+import axiosInstance from '../../services/axiosInstance.js';
 import {
   FETCH_SEOPAGECONTENT_REQUEST,
   FETCH_SEOPAGECONTENT_SUCCESS,
@@ -45,7 +45,7 @@ export const viewAllSeoPageContent =
         sortOrder = "desc"
       } = options;
 
-      const res = await axios.get(
+      const res = await axiosInstance.get(
         `${API}/seopagecontent/viewall`,
         {
           params: {
@@ -83,7 +83,7 @@ export const createSeoPageContent = (data) => async (dispatch) => {
   try {
     const token = await getToken(dispatch);
 
-    const res = await axios.post(
+    const res = await axiosInstance.post(
       `${API}/seopagecontent/create`,
       data,
       { headers: { Authorization: `Bearer ${token}` } }
@@ -104,7 +104,7 @@ export const updateSeoPageContent = (id, data) => async (dispatch) => {
   try {
     const token = await getToken(dispatch);
 
-    const res = await axios.put(
+    const res = await axiosInstance.put(
       `${API}/seopagecontent/update/${id}`,
       data,
       { headers: { Authorization: `Bearer ${token}` } }
@@ -125,7 +125,7 @@ export const deleteSeoPageContent = (id) => async (dispatch) => {
   try {
     const token = await getToken(dispatch);
 
-    const res = await axios.delete(
+    const res = await axiosInstance.delete(
       `${API}/seopagecontent/delete/${id}`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
@@ -146,7 +146,7 @@ export const fetchSeoPageContentMeta =
     dispatch({ type: FETCH_SEOPAGECONTENT_META_REQUEST });
 
     try {
-      const res = await axios.get(
+      const res = await axiosInstance.get(
         `${API}/seopagecontent/meta`,
         {
           params: { pageType, category, location },

@@ -1,4 +1,4 @@
-import axios from "axios";
+import axiosInstance from '../../services/axiosInstance.js';
 import {
   FETCH_LOCATION_REQUEST, FETCH_LOCATION_SUCCESS, FETCH_LOCATION_FAILURE,
   CREATE_LOCATION_REQUEST, CREATE_LOCATION_SUCCESS, CREATE_LOCATION_FAILURE,
@@ -34,7 +34,7 @@ export const getAllLocation =
           sortOrder = ""
         } = options;
 
-        const response = await axios.get(
+        const response = await axiosInstance.get(
           `${API_URL}/location/viewall?pageNo=${pageNo}&pageSize=${pageSize}&search=${search}&status=${status}&sortBy=${sortBy}&sortOrder=${sortOrder}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
@@ -62,7 +62,7 @@ export const createLocation = (userData) => async (dispatch) => {
   dispatch({ type: CREATE_LOCATION_REQUEST });
   try {
     const token = localStorage.getItem("accessToken");
-    const response = await axios.post(`${API_URL}/location/create`, userData, {
+    const response = await axiosInstance.post(`${API_URL}/location/create`, userData, {
       headers: { Authorization: `Bearer ${token}` },
     });
 
@@ -82,7 +82,7 @@ export const editLocation = (id, locationData) => async (dispatch) => {
   dispatch({ type: EDIT_LOCATION_REQUEST });
   try {
     const token = localStorage.getItem("accessToken");
-    const response = await axios.put(`${API_URL}/location/update/${id}`, locationData, {
+    const response = await axiosInstance.put(`${API_URL}/location/update/${id}`, locationData, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const updatedLocation = response.data;
@@ -99,7 +99,7 @@ export const deleteLocation = (id) => async (dispatch) => {
   dispatch({ type: DELETE_LOCATION_REQUEST });
   try {
     const token = localStorage.getItem("accessToken");
-    const { data } = await axios.delete(`${API_URL}/location/delete/${id}`, {
+    const { data } = await axiosInstance.delete(`${API_URL}/location/delete/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     dispatch({ type: DELETE_LOCATION_SUCCESS, payload: data.location });
@@ -118,7 +118,7 @@ export const getIpLocation = () => async (dispatch) => {
     const token = localStorage.getItem("clientAccessToken");
     if (!token) throw new Error("No valid access token found");
 
-    const response = await axios.get(`${API_URL}/location/getip`, {
+    const response = await axiosInstance.get(`${API_URL}/location/getip`, {
       headers: { Authorization: `Bearer ${token}` },
     });
 
@@ -148,7 +148,7 @@ export const detectDistrict =
           return null;
         }
 
-        const response = await axios.post(
+        const response = await axiosInstance.post(
           `${API_URL}/location/detect-district`,
           { latitude, longitude }
         );

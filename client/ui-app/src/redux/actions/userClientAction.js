@@ -1,4 +1,4 @@
-import axios from "axios";
+import axiosInstance from '../../services/axiosInstance.js';
 import {
   FETCH_USERSCLIENT_REQUEST, FETCH_USERSCLIENT_SUCCESS, FETCH_USERSCLIENT_FAILURE,
   CREATE_USERCLIENT_REQUEST, CREATE_USERCLIENT_SUCCESS, CREATE_USERCLIENT_FAILURE,
@@ -32,7 +32,7 @@ export const getAllUsersClient =
         sortOrder = ""
       } = options;
 
-      const response = await axios.get(
+      const response = await axiosInstance.get(
         `${API_URL}/userclient/viewall?pageNo=${pageNo}&pageSize=${pageSize}&search=${search}&status=${status}&sortBy=${sortBy}&sortOrder=${sortOrder}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -60,7 +60,7 @@ export const createUserClient = (userData) => async (dispatch) => {
   dispatch({ type: CREATE_USERCLIENT_REQUEST });
   try {
     const token = await getValidToken(dispatch);
-    const response = await axios.post(`${API_URL}/userclient/create`, userData, {
+    const response = await axiosInstance.post(`${API_URL}/userclient/create`, userData, {
       headers: { Authorization: `Bearer ${token}` },
     });
 
@@ -79,7 +79,7 @@ export const editUserClient = (id, userClientData) => async (dispatch) => {
   dispatch({ type: EDIT_USERCLIENT_REQUEST });
   try {
     const token = await getValidToken(dispatch);
-    const response = await axios.put(`${API_URL}/userclient/update/${id}`, userClientData, {
+    const response = await axiosInstance.put(`${API_URL}/userclient/update/${id}`, userClientData, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const updatedUserClient = response.data;
@@ -96,7 +96,7 @@ export const deleteUserClient = (id) => async (dispatch) => {
   dispatch({ type: DELETE_USERCLIENT_REQUEST });
   try {
     const token = await getValidToken(dispatch);
-    const { data } = await axios.delete(`${API_URL}/userclient/delete/${id}`, {
+    const { data } = await axiosInstance.delete(`${API_URL}/userclient/delete/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     dispatch({ type: DELETE_USERCLIENT_SUCCESS, payload: data.user  });
@@ -113,7 +113,7 @@ export const getUserClientSuggestion = (query) => async (dispatch) => {
 
     const token = await getValidToken(dispatch);
 
-    const response = await axios.get(
+    const response = await axiosInstance.get(
       `${API_URL}/userClient/search?query=${query}`,
       { headers: { Authorization: `Bearer ${token}` } }
     );

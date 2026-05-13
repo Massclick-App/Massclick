@@ -1,4 +1,4 @@
-import axios from "axios";
+import axiosInstance from '../../services/axiosInstance.js';
 import {
   CREATE_PAYMENT_REQUEST,
   CREATE_PAYMENT_SUCCESS,
@@ -15,7 +15,7 @@ export const createPhonePePayment = (amount, userId, businessId) => async (dispa
 
   try {
     const token = localStorage.getItem("accessToken");
-    const response = await axios.post(
+    const response = await axiosInstance.post(
       `${API_URL}/phonepe/create`,
   { amount, userId, businessId }, 
       {
@@ -49,7 +49,7 @@ export const checkPhonePeStatus = (transactionId) => async (dispatch) => {
 
   try {
     const token = localStorage.getItem("accessToken");
-    const response = await axios.get(`${API_URL}/phonepe/status/${transactionId}`, {
+    const response = await axiosInstance.get(`${API_URL}/phonepe/status/${transactionId}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },

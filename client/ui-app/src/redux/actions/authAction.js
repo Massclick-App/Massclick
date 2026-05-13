@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axiosInstance from '../../services/axiosInstance.js';
 import qs from 'qs';
 import { getPendingBusinessList } from './businessListAction.js';
 
@@ -32,7 +32,7 @@ export const login = (userName, password) => async (dispatch) => {
       password,
     });
 
-    const response = await axios.post(`${API_URL}/oauth/login`, data, {
+    const response = await axiosInstance.post(`${API_URL}/oauth/login`, data, {
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
     });
 
@@ -72,7 +72,7 @@ export const relogin = () => async (dispatch) => {
       refresh_token: refreshToken,
     });
 
-    const response = await axios.post(`${API_URL}/oauth/relogin`, data, {
+    const response = await axiosInstance.post(`${API_URL}/oauth/relogin`, data, {
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
     });
 
@@ -114,7 +114,7 @@ export const logout = () => async (dispatch) => {
   try {
     if (token) {
       const url = `${API_URL}/oauth/logout`;
-      await axios.delete(url, {
+      await axiosInstance.delete(url, {
         headers: { Authorization: `Bearer ${token}` },
       });
     }
@@ -135,7 +135,7 @@ export const logout = () => async (dispatch) => {
     localStorage.clear();
     sessionStorage.clear();
 
-    delete axios.defaults.headers.common["Authorization"];
+    delete axiosInstance.defaults.headers.common["Authorization"];
 
     dispatch({ type: LOGOUT });
 

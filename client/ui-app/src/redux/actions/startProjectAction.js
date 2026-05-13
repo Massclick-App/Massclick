@@ -1,4 +1,4 @@
-import axios from "axios";
+import axiosInstance from '../../services/axiosInstance.js';
 import {
     CREATE_STARTPROJECT_REQUEST, CREATE_STARTPROJECT_SUCCESS, CREATE_STARTPROJECT_FAILURE,
     FETCH_STARTPROJECT_REQUEST, FETCH_STARTPROJECT_SUCCESS, FETCH_STARTPROJECT_FAILURE,
@@ -21,7 +21,7 @@ export const createStartProject = (projectData) => async (dispatch) => {
     try {
         const token = await getValidToken(dispatch);
 
-        const response = await axios.post(`${API_URL}/startproject/create`, projectData, {
+        const response = await axiosInstance.post(`${API_URL}/startproject/create`, projectData, {
             headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -41,7 +41,7 @@ export const getAllStartProjects = () => async (dispatch) => {
     dispatch({ type: FETCH_STARTPROJECT_REQUEST });
     try {
         const token = await getValidToken(dispatch);
-        const response = await axios.get(`${API_URL}/startproject/viewall`, {
+        const response = await axiosInstance.get(`${API_URL}/startproject/viewall`, {
             headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -59,7 +59,7 @@ export const editStartProject = (id, projectData) => async (dispatch) => {
     dispatch({ type: EDIT_STARTPROJECT_REQUEST });
     try {
         const token = await getValidToken(dispatch);
-        const response = await axios.put(`${API_URL}/startproject/update/${id}`, projectData, {
+        const response = await axiosInstance.put(`${API_URL}/startproject/update/${id}`, projectData, {
             headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -77,7 +77,7 @@ export const deleteStartProject = (id) => async (dispatch) => {
     dispatch({ type: DELETE_STARTPROJECT_REQUEST });
     try {
         const token = await getValidToken(dispatch);
-        const { data } = await axios.delete(`${API_URL}/startproject/delete/${id}`, {
+        const { data } = await axiosInstance.delete(`${API_URL}/startproject/delete/${id}`, {
             headers: { Authorization: `Bearer ${token}` },
         });
 

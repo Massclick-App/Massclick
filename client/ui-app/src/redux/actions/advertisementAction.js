@@ -1,4 +1,4 @@
-import axios from "axios";
+import axiosInstance from '../../services/axiosInstance.js';
 import {
   FETCH_AD_REQUEST, FETCH_AD_SUCCESS, FETCH_AD_FAILURE,
   CREATE_AD_REQUEST, CREATE_AD_SUCCESS, CREATE_AD_FAILURE,
@@ -36,7 +36,7 @@ export const getAllAdvertisements =
         sortOrder = ""
       } = options;
 
-      const response = await axios.get(
+      const response = await axiosInstance.get(
         `${API_URL}/advertisment/viewall?pageNo=${pageNo}&pageSize=${pageSize}&search=${search}&status=${status}&category=${category}&sortBy=${sortBy}&sortOrder=${sortOrder}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -65,7 +65,7 @@ export const createAdvertisement = (adData) => async (dispatch) => {
   try {
       const token = await getValidToken(dispatch);
 
-    const response = await axios.post(
+    const response = await axiosInstance.post(
       `${API_URL}/advertisment/create`,
       adData,
       { headers: { Authorization: `Bearer ${token}` } }
@@ -90,7 +90,7 @@ export const getAdvertisementByCategory = (category) => async (dispatch) => {
   try {
       const token = await dispatch(getClientToken());
 
-    const response = await axios.get(
+    const response = await axiosInstance.get(
       `${API_URL}/advertisment/category?category=${encodeURIComponent(category)}`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
@@ -117,7 +117,7 @@ export const editAdvertisement = (id, adData) => async (dispatch) => {
   try {
       const token = await getValidToken(dispatch);
 
-    const response = await axios.put(
+    const response = await axiosInstance.put(
       `${API_URL}/advertisment/update/${id}`,
       adData,
       { headers: { Authorization: `Bearer ${token}` } }
@@ -144,7 +144,7 @@ export const deleteAdvertisement = (id) => async (dispatch) => {
   try {
       const token = await getValidToken(dispatch);
 
-    const { data } = await axios.delete(
+    const { data } = await axiosInstance.delete(
       `${API_URL}/advertisment/delete/${id}`,
       { headers: { Authorization: `Bearer ${token}` } }
     );

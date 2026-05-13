@@ -1,4 +1,4 @@
-import axios from "axios";
+import axiosInstance from '../../services/axiosInstance.js';
 import {
   FETCH_USERS_REQUEST, FETCH_USERS_SUCCESS, FETCH_USERS_FAILURE,
   CREATE_USER_REQUEST, CREATE_USER_SUCCESS, CREATE_USER_FAILURE,
@@ -31,7 +31,7 @@ export const getAllUsers =
         sortOrder = ""
       } = options;
 
-      const response = await axios.get(
+      const response = await axiosInstance.get(
         `${API_URL}/user/viewall?pageNo=${pageNo}&pageSize=${pageSize}&search=${search}&status=${status}&sortBy=${sortBy}&sortOrder=${sortOrder}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -59,7 +59,7 @@ export const createUser = (userData) => async (dispatch) => {
   dispatch({ type: CREATE_USER_REQUEST });
   try {
     const token = localStorage.getItem("accessToken");
-    const response = await axios.post(`${API_URL}/user/create`, userData, {
+    const response = await axiosInstance.post(`${API_URL}/user/create`, userData, {
       headers: { Authorization: `Bearer ${token}` },
     });
 
@@ -78,7 +78,7 @@ export const editUser = (id, userData) => async (dispatch) => {
   dispatch({ type: EDIT_USER_REQUEST });
   try {
     const token = localStorage.getItem("accessToken");
-    const response = await axios.put(`${API_URL}/user/update/${id}`, userData, {
+    const response = await axiosInstance.put(`${API_URL}/user/update/${id}`, userData, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const updatedUser = response.data;
@@ -95,7 +95,7 @@ export const deleteUser = (id) => async (dispatch) => {
   dispatch({ type: DELETE_USER_REQUEST });
   try {
     const token = localStorage.getItem("accessToken");
-    const { data } = await axios.delete(`${API_URL}/user/delete/${id}`, {
+    const { data } = await axiosInstance.delete(`${API_URL}/user/delete/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     dispatch({ type: DELETE_USER_SUCCESS, payload: data.user });

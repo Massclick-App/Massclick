@@ -1,4 +1,4 @@
-import axios from "axios";
+import axiosInstance from '../../services/axiosInstance.js';
 import {
   FETCH_SYSTEM_SETTINGS_REQUEST,
   FETCH_SYSTEM_SETTINGS_SUCCESS,
@@ -17,7 +17,7 @@ const authHeaders = () => ({
 export const fetchSystemSettings = () => async (dispatch) => {
   dispatch({ type: FETCH_SYSTEM_SETTINGS_REQUEST });
   try {
-    const { data } = await axios.get(`${API_URL}/admin/system-settings`, {
+    const { data } = await axiosInstance.get(`${API_URL}/admin/system-settings`, {
       headers: authHeaders(),
     });
     dispatch({ type: FETCH_SYSTEM_SETTINGS_SUCCESS, payload: data.data });
@@ -32,7 +32,7 @@ export const fetchSystemSettings = () => async (dispatch) => {
 export const updateSystemSettings = (updates) => async (dispatch) => {
   dispatch({ type: UPDATE_SYSTEM_SETTINGS_REQUEST });
   try {
-    const { data } = await axios.put(`${API_URL}/admin/system-settings`, updates, {
+    const { data } = await axiosInstance.put(`${API_URL}/admin/system-settings`, updates, {
       headers: authHeaders(),
     });
     dispatch({ type: UPDATE_SYSTEM_SETTINGS_SUCCESS, payload: data.data });

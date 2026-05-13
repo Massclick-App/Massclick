@@ -1,4 +1,4 @@
-import axios from "axios";
+import axiosInstance from '../../services/axiosInstance.js';
 import {
   FETCH_SEOPAGECONTENTBLOGS_REQUEST,
   FETCH_SEOPAGECONTENTBLOGS_SUCCESS,
@@ -54,7 +54,7 @@ export const viewAllSeoPageContentBlogs =
         sortOrder = "desc"
       } = options;
 
-      const res = await axios.get(
+      const res = await axiosInstance.get(
         `${API}/seopagecontentblog/viewall`,
         {
           params: {
@@ -92,7 +92,7 @@ export const createSeoPageContentBlogs = (data) => async (dispatch) => {
   try {
     const token = await getToken(dispatch);
 
-    const res = await axios.post(
+    const res = await axiosInstance.post(
       `${API}/seopagecontentblog/create`,
       data,
       { headers: { Authorization: `Bearer ${token}` } }
@@ -113,7 +113,7 @@ export const updateSeoPageContentBlogs = (id, data) => async (dispatch) => {
   try {
     const token = await getToken(dispatch);
 
-    const res = await axios.put(
+    const res = await axiosInstance.put(
       `${API}/seopagecontentblog/update/${id}`,
       data,
       { headers: { Authorization: `Bearer ${token}` } }
@@ -134,7 +134,7 @@ export const deleteSeoPageContentBlogs = (id) => async (dispatch) => {
   try {
     const token = await getToken(dispatch);
 
-    const res = await axios.delete(
+    const res = await axiosInstance.delete(
       `${API}/seopagecontentblog/delete/${id}`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
@@ -155,7 +155,7 @@ export const fetchSeoPageContentBlogsMeta = (params) => async (dispatch) => {
       type: FETCH_SEOPAGECONTENTBLOGS_META_REQUEST,
     });
 
-    const res = await axios.get(
+    const res = await axiosInstance.get(
       `${API}/seopagecontentblog/meta`,
       { params }
     );
@@ -179,7 +179,7 @@ export const fetchSeoPageContentBlogsMeta = (params) => async (dispatch) => {
   dispatch({ type: FETCH_SEOBLOG_BY_SLUG_REQUEST });
 
   try {
-    const res = await axios.get(
+    const res = await axiosInstance.get(
       `${API}/seopagecontentblog/blog/${slug}`
     );
 
@@ -200,7 +200,7 @@ export const fetchBusinessSuggestion = (search) => async (dispatch) => {
   dispatch({ type: FETCH_BUSINESS_SUGGESTION_REQUEST });
 
   try {
-    const res = await axios.get(
+    const res = await axiosInstance.get(
       `${API}/seopagecontentblog/suggestion`,
       {
         params: { search },

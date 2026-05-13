@@ -1,4 +1,4 @@
-import axios from "axios";
+import axiosInstance from '../../services/axiosInstance.js';
 import {
   FETCH_SEO_REQUEST, FETCH_SEO_SUCCESS, FETCH_SEO_FAILURE,
   CREATE_SEO_REQUEST, CREATE_SEO_SUCCESS, CREATE_SEO_FAILURE,
@@ -35,7 +35,7 @@ export const getAllSeo =
         sortOrder = ""
       } = options;
 
-      const response = await axios.get(
+      const response = await axiosInstance.get(
         `${API_URL}/seo/viewall?pageNo=${pageNo}&pageSize=${pageSize}&search=${search}&status=${status}&sortBy=${sortBy}&sortOrder=${sortOrder}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -67,7 +67,7 @@ export const createSeo = (seoData) => async (dispatch) => {
 
     const token = await getValidToken(dispatch);
 
-    const response = await axios.post(
+    const response = await axiosInstance.post(
       `${API_URL}/seo/create`,
       seoData,
       { headers: { Authorization: `Bearer ${token}` } }
@@ -103,7 +103,7 @@ export const editSeo = (id, seoData) => async (dispatch) => {
   try {
     const token = await getValidToken(dispatch);
 
-    const response = await axios.put(
+    const response = await axiosInstance.put(
       `${API_URL}/seo/update/${id}`,
       seoData,
       { headers: { Authorization: `Bearer ${token}` } }
@@ -125,7 +125,7 @@ export const deleteSeo = (id) => async (dispatch) => {
   try {
     const token = await getValidToken(dispatch);
 
-    const response = await axios.delete(
+    const response = await axiosInstance.delete(
       `${API_URL}/seo/delete/${id}`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
@@ -147,7 +147,7 @@ export const fetchSeoMeta =
       dispatch({ type: FETCH_SEO_META_REQUEST });
 
       try {
-        const response = await axios.get(`${API_URL}/seo/meta`, {
+        const response = await axiosInstance.get(`${API_URL}/seo/meta`, {
           params: { pageType, category, location },
         });
 
@@ -173,7 +173,7 @@ export const fetchSeoCategorySuggestions =
       try {
         const token = await getValidToken(dispatch);
 
-        const response = await axios.get(
+        const response = await axiosInstance.get(
           `${API_URL}/seo/category-suggestions`,
           {
             params: { q: query, limit },

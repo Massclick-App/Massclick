@@ -1,4 +1,4 @@
-import axios from "axios";
+import axiosInstance from '../../services/axiosInstance.js';
 import {
   FETCH_REVIEWS_REQUEST, FETCH_REVIEWS_SUCCESS, FETCH_REVIEWS_FAILURE,
   CREATE_REVIEW_REQUEST, CREATE_REVIEW_SUCCESS, CREATE_REVIEW_FAILURE,
@@ -25,7 +25,7 @@ export const getBusinessReviews =
       dispatch({ type: FETCH_REVIEWS_REQUEST });
 
       try {
-        const response = await axios.get(
+        const response = await axiosInstance.get(
           `${API_URL}/business/${businessId}/reviews?sort=${sort}`
         );
 
@@ -51,7 +51,7 @@ export const createReview =
       try {
         const token = await getValidToken(dispatch);
 
-        const response = await axios.post(
+        const response = await axiosInstance.post(
           `${API_URL}/business/${businessId}/reviews`,
           reviewData,
           { headers: { Authorization: `Bearer ${token}` } }
@@ -80,7 +80,7 @@ export const replyToReview =
     dispatch({ type: REPLY_REVIEW_REQUEST });
 
     try {
-      const response = await axios.post(
+      const response = await axiosInstance.post(
         `${API_URL}/business/${businessId}/reviews/${reviewId}/reply`,
         payload
       );
@@ -108,7 +108,7 @@ export const markReviewHelpful =
     dispatch({ type: HELPFUL_REVIEW_REQUEST });
 
     try {
-      const response = await axios.post(
+      const response = await axiosInstance.post(
         `${API_URL}/business/${businessId}/reviews/${reviewId}/helpful`,
         { userId }
       );
@@ -136,7 +136,7 @@ export const reportReview =
       try {
         const token = await getValidToken(dispatch);
 
-        await axios.post(
+        await axiosInstance.post(
           `${API_URL}/business/${businessId}/reviews/${reviewId}/report`,
           {},
           { headers: { Authorization: `Bearer ${token}` } }

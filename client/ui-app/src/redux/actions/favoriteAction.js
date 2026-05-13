@@ -1,4 +1,4 @@
-import axios from "axios";
+import axiosInstance from '../../services/axiosInstance.js';
 
 const API_URL = process.env.REACT_APP_API_URL;
 
@@ -31,7 +31,7 @@ export const fetchFavorites = (page = 1, limit = 50) => async (dispatch) => {
 
   dispatch({ type: FETCH_FAVORITES_REQUEST });
   try {
-    const { data } = await axios.get(`${API_URL}/favorites/list`, {
+    const { data } = await axiosInstance.get(`${API_URL}/favorites/list`, {
       params: { userId: user._id, page, limit },
       headers: getHeaders(),
     });
@@ -50,7 +50,7 @@ export const addFavorite = (businessId) => async (dispatch) => {
 
   dispatch({ type: ADD_FAVORITE_REQUEST, payload: businessId });
   try {
-    await axios.post(
+    await axiosInstance.post(
       `${API_URL}/favorites/add`,
       { userId: user._id, businessId },
       { headers: getHeaders() }
@@ -74,7 +74,7 @@ export const removeFavorite = (businessId) => async (dispatch) => {
 
   dispatch({ type: REMOVE_FAVORITE_REQUEST, payload: businessId });
   try {
-    await axios.post(
+    await axiosInstance.post(
       `${API_URL}/favorites/remove`,
       { userId: user._id, businessId },
       { headers: getHeaders() }

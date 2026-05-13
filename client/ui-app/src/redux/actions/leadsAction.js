@@ -1,4 +1,4 @@
-import axios from "axios";
+import axiosInstance from '../../services/axiosInstance.js';
 import {
   MATCH_LEADS_REQUEST,
   MATCH_LEADS_SUCCESS,
@@ -22,7 +22,7 @@ export const fetchMatchedLeads = () => async (dispatch) => {
       throw new Error("Access token missing");
     }
 
-    const response = await axios.get(
+    const response = await axiosInstance.get(
       `${API_URL}/leadsData/leads/${mobileNumber}`,
       {
         headers: {

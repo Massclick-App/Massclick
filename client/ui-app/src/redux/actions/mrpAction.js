@@ -1,4 +1,4 @@
-import axios from "axios";
+import axiosInstance from '../../services/axiosInstance.js';
 import {
   FETCH_MRP_REQUEST, FETCH_MRP_SUCCESS, FETCH_MRP_FAILURE,
   CREATE_MRP_REQUEST, CREATE_MRP_SUCCESS, CREATE_MRP_FAILURE,
@@ -32,7 +32,7 @@ export const getMniLeads = (params = {}) => async (dispatch) => {
 
     const token = await getValidToken(dispatch);
 
-    const response = await axios.get(
+    const response = await axiosInstance.get(
       `${API_URL}/mrpdata/get-mni-leads?location=${location}&group=${group}`,
       {
         headers: { Authorization: `Bearer ${token}` }
@@ -68,7 +68,7 @@ export const getAllMRP =
           sortOrder = ""
         } = options;
 
-        const response = await axios.get(
+        const response = await axiosInstance.get(
           `${API_URL}/mrpdata/viewall?pageNo=${pageNo}&pageSize=${pageSize}&search=${search}&status=${status}&sortBy=${sortBy}&sortOrder=${sortOrder}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
@@ -97,7 +97,7 @@ export const createMRP = (mrpData) => async (dispatch) => {
   try {
     const token = await dispatch(getClientToken());
 
-    const response = await axios.post(
+    const response = await axiosInstance.post(
       `${API_URL}/mrpdata/create`,
       mrpData,
       { headers: { Authorization: `Bearer ${token}` } }
@@ -125,7 +125,7 @@ export const editMRP = (id, mrpData) => async (dispatch) => {
   try {
     const token = await getValidToken(dispatch);
 
-    const response = await axios.put(
+    const response = await axiosInstance.put(
       `${API_URL}/mrpdata/update/${id}`,
       mrpData,
       { headers: { Authorization: `Bearer ${token}` } }
@@ -153,7 +153,7 @@ export const deleteMRP = (id) => async (dispatch) => {
   try {
     const token = await getValidToken(dispatch);
 
-    const { data } = await axios.delete(
+    const { data } = await axiosInstance.delete(
       `${API_URL}/mrpdata/delete/${id}`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
@@ -178,7 +178,7 @@ export const searchMrpBusiness = (searchText) => async (dispatch) => {
   try {
     const token = await dispatch(getClientToken());
 
-    const response = await axios.get(
+    const response = await axiosInstance.get(
       `${API_URL}/mrpdata/search/business?q=${searchText}`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
@@ -205,7 +205,7 @@ export const searchMrpCategory = (searchText) => async (dispatch) => {
   try {
     const token = await dispatch(getClientToken());
 
-    const response = await axios.get(
+    const response = await axiosInstance.get(
       `${API_URL}/mrpdata/search/category?q=${searchText}`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
@@ -233,7 +233,7 @@ export const sendMrpLeads = (mrpId) => async (dispatch) => {
   try {
     const token = await getValidToken(dispatch);
 
-    const response = await axios.post(
+    const response = await axiosInstance.post(
       `${API_URL}/mrpdata/send-leads/${mrpId}`,
       {},
       {
@@ -267,7 +267,7 @@ export const getBusinessProfileByPhone = (phoneNumber) => async (dispatch) => {
     // ✅ USE COMMON TOKEN FUNCTION
     const token = await getValidToken(dispatch);
 
-    const response = await axios.post(
+    const response = await axiosInstance.post(
       `${API_URL}/mrpdata/get-business-profile`,
       { phoneNumber },
       {
@@ -335,7 +335,7 @@ export const getLeadReport = ({ location, group = "A", category = "" } = {}) => 
       params.append("category", category);
     }
 
-    const response = await axios.get(
+    const response = await axiosInstance.get(
       `${API_URL}/mrpdata/lead-report?${params.toString()}`,
       {
         headers: {

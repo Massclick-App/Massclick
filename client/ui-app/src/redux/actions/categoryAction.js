@@ -1,4 +1,4 @@
-import axios from "axios";
+import axiosInstance from '../../services/axiosInstance.js';
 import {
   FETCH_CATEGORY_REQUEST, FETCH_CATEGORY_SUCCESS, FETCH_CATEGORY_FAILURE,
   CREATE_CATEGORY_REQUEST, CREATE_CATEGORY_SUCCESS, CREATE_CATEGORY_FAILURE,
@@ -32,7 +32,7 @@ export const getAllCategory =
 
       const { search = "", status = "all", sortBy = "", sortOrder = "" } = options;
 
-      const response = await axios.get(
+      const response = await axiosInstance.get(
         `${API_URL}/category/viewall?pageNo=${pageNo}&pageSize=${pageSize}&search=${search}&status=${status}&sortBy=${sortBy}&sortOrder=${sortOrder}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -60,7 +60,7 @@ export const createCategory = (categoryData) => async (dispatch) => {
   dispatch({ type: CREATE_CATEGORY_REQUEST });
   try {
     const token = localStorage.getItem("accessToken");
-    const response = await axios.post(`${API_URL}/category/create`, categoryData, {
+    const response = await axiosInstance.post(`${API_URL}/category/create`, categoryData, {
       headers: { Authorization: `Bearer ${token}` },
     });
 
@@ -80,7 +80,7 @@ export const editCategory = (id, categoryData) => async (dispatch) => {
   dispatch({ type: EDIT_CATEGORY_REQUEST });
   try {
     const token = localStorage.getItem("accessToken");
-    const response = await axios.put(`${API_URL}/category/update/${id}`, categoryData, {
+    const response = await axiosInstance.put(`${API_URL}/category/update/${id}`, categoryData, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const updatedCategory = response.data;
@@ -97,7 +97,7 @@ export const deleteCategory = (id) => async (dispatch) => {
   dispatch({ type: DELETE_CATEGORY_REQUEST });
   try {
     const token = localStorage.getItem("accessToken");
-    const { data } = await axios.delete(`${API_URL}/category/delete/${id}`, {
+    const { data } = await axiosInstance.delete(`${API_URL}/category/delete/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     dispatch({ type: DELETE_CATEGORY_SUCCESS, payload: data.category });
@@ -111,7 +111,7 @@ export const hardDeleteCategory = (id) => async (dispatch) => {
   dispatch({ type: DELETE_CATEGORY_REQUEST });
   try {
     const token = localStorage.getItem("accessToken");
-    const { data } = await axios.delete(`${API_URL}/category/hard-delete/${id}`, {
+    const { data } = await axiosInstance.delete(`${API_URL}/category/hard-delete/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     dispatch({ type: DELETE_CATEGORY_SUCCESS, payload: data.category });
@@ -127,7 +127,7 @@ export const businessCategorySearch = (query) => async (dispatch) => {
 
     const token = await getValidToken(dispatch);
 
-    const response = await axios.get(
+    const response = await axiosInstance.get(
       `${API_URL}/category/businesscategorysearch?query=${query}`,
       {
         headers: { Authorization: `Bearer ${token}` }
@@ -151,7 +151,7 @@ export const fetchHomeCategories = () => async (dispatch) => {
   try {
     dispatch({ type: FETCH_HOME_CATEGORY_REQUEST });
 
-    const response = await axios.get(`${API_URL}/category/home`);
+    const response = await axiosInstance.get(`${API_URL}/category/home`);
 
     dispatch({
       type: FETCH_HOME_CATEGORY_SUCCESS,
@@ -170,7 +170,7 @@ export const fetchSubCategories = (parentId) => async (dispatch) => {
   try {
     dispatch({ type: FETCH_SUB_CATEGORY_REQUEST });
 
-    const response = await axios.get(
+    const response = await axiosInstance.get(
       `${API_URL}/category/sub/${parentId}`
     );
 
@@ -191,7 +191,7 @@ export const fetchPopularCategories = () => async (dispatch) => {
   try {
     dispatch({ type: FETCH_POPULAR_CATEGORY_REQUEST });
 
-    const response = await axios.get(`${API_URL}/category/popular`);
+    const response = await axiosInstance.get(`${API_URL}/category/popular`);
 
     dispatch({
       type: FETCH_POPULAR_CATEGORY_SUCCESS,
@@ -210,7 +210,7 @@ export const fetchServiceCards = () => async (dispatch) => {
   try {
     dispatch({ type: FETCH_SERVICE_CARDS_REQUEST });
 
-    const response = await axios.get(`${API_URL}/category/service-cards`);
+    const response = await axiosInstance.get(`${API_URL}/category/service-cards`);
 
     dispatch({
       type: FETCH_SERVICE_CARDS_SUCCESS,

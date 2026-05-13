@@ -1,4 +1,4 @@
-import axios from "axios";
+import axiosInstance from '../../services/axiosInstance.js';
 import {
   FETCH_BUSINESS_REQUEST, FETCH_BUSINESS_SUCCESS, FETCH_BUSINESS_FAILURE,
   CREATE_BUSINESS_REQUEST, CREATE_BUSINESS_SUCCESS, CREATE_BUSINESS_FAILURE,
@@ -37,7 +37,7 @@ export const trackQrDownload = (businessId) => async (dispatch) => {
   try {
     const token = await getValidToken(dispatch);
 
-    const response = await axios.post(
+    const response = await axiosInstance.post(
       `${API_URL}/businesslist/qr-download/${businessId}`,
       {},
       {
@@ -69,7 +69,7 @@ export const getBusinessDetailsById = (id) => async (dispatch) => {
 
   try {
 
-    const response = await axios.get(
+    const response = await axiosInstance.get(
       `${API_URL}/businesslist/view/${id}`
     );
 
@@ -117,7 +117,7 @@ export const getAllBusinessList = ({
     if (sortBy) params.append("sortBy", sortBy);
     if (sortOrder) params.append("sortOrder", sortOrder);
 
-    const response = await axios.get(`${API_URL}/businesslist/viewall?${params.toString()}`, {
+    const response = await axiosInstance.get(`${API_URL}/businesslist/viewall?${params.toString()}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
 
@@ -145,7 +145,7 @@ export const getAllClientBusinessList = () => async (dispatch) => {
   try {
     const token = await dispatch(getClientToken());
 
-    const response = await axios.get(`${API_URL}/businesslist/clientview`, {
+    const response = await axiosInstance.get(`${API_URL}/businesslist/clientview`, {
       headers: { Authorization: `Bearer ${token}` },
     });
 
@@ -171,7 +171,7 @@ export const getBusinessByCategory = (category, district) => async (dispatch) =>
     const token = localStorage.getItem("clientAccessToken");
     if (!token) throw new Error("Client token not available");
 
-    const response = await axios.get(
+    const response = await axiosInstance.get(
       `${API_URL}/businesslist/category?category=${category}&district=${district}`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
@@ -199,7 +199,7 @@ export const createBusinessList = (businessListData) => async (dispatch) => {
   dispatch({ type: CREATE_BUSINESS_REQUEST });
   try {
     const token = localStorage.getItem("accessToken");
-    const response = await axios.post(`${API_URL}/businesslist/create`, businessListData, {
+    const response = await axiosInstance.post(`${API_URL}/businesslist/create`, businessListData, {
       headers: { Authorization: `Bearer ${token}` },
     });
 
@@ -225,7 +225,7 @@ export const toggleBusinessStatus = ({ id, newStatus }) => async (dispatch) => {
     if (!token) {
       throw new Error("No valid access token found");
     }
-    const response = await axios.put(
+    const response = await axiosInstance.put(
       `${API_URL}/businesslist/activate/${id}`,
       { activeBusinesses: newStatus },
       { headers: { Authorization: `Bearer ${token}` } }
@@ -248,7 +248,7 @@ export const editBusinessList = (id, businessData) => async (dispatch) => {
   try {
     const token = await getValidToken(dispatch);
 
-    const response = await axios.put(`${API_URL}/businesslist/update/${id}`, businessData, {
+    const response = await axiosInstance.put(`${API_URL}/businesslist/update/${id}`, businessData, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const updatedBusinessList = response.data;
@@ -267,7 +267,7 @@ export const deleteBusinessList = (id) => async (dispatch) => {
 
     if (!token) {
       throw new Error("No valid access token found");
-    } await axios.delete(`${API_URL}/businesslist/delete/${id}`, {
+    } await axiosInstance.delete(`${API_URL}/businesslist/delete/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     dispatch({ type: DELETE_BUSINESS_SUCCESS, payload: id });
@@ -282,7 +282,7 @@ export const logSearchActivity = (categoryName, location, userDetails, searchedU
     try {
       const token = await dispatch(getClientToken());
 
-      await axios.post(
+      await axiosInstance.post(
         `${API_URL}/businesslist/log-search`,
         { categoryName, location, searchedUserText, userDetails },
         { headers: { Authorization: `Bearer ${token}` } }
@@ -306,7 +306,7 @@ export const getAllSearchLogs = () => async (dispatch) => {
       });
     }
 
-    const response = await axios.get(
+    const response = await axiosInstance.get(
       `${API_URL}/businesslist/trending-searches/viewall`,
       {
         headers: {
@@ -337,7 +337,7 @@ export const getBackendSuggestions = (search) => async (dispatch) => {
   try {
     const token = await dispatch(getClientToken());
 
-    const response = await axios.get(
+    const response = await axiosInstance.get(
       `${API_URL}/businesslist/suggestions`,
       {
         headers: { Authorization: `Bearer ${token}` },
@@ -364,7 +364,7 @@ export const backendMainSearch = (term, location, category) => async (dispatch) 
   try {
     const token = await dispatch(getClientToken());
 
-    const response = await axios.get(
+    const response = await axiosInstance.get(
       `${API_URL}/businesslist/search`,
       {
         headers: { Authorization: `Bearer ${token}` },
@@ -394,7 +394,7 @@ export const viewSearchLogs = (category, keywords) => async (dispatch) => {
   try {
     const token = await dispatch(getClientToken());
 
-    const response = await axios.post(
+    const response = await axiosInstance.post(
       `${API_URL}/businesslist/trending-searches/view`,
       { category, keywords },
       { headers: { Authorization: `Bearer ${token}` } }
@@ -424,7 +424,7 @@ export const findBusinessByMobile = (mobile) => async (dispatch) => {
   try {
     const token = await getValidToken(dispatch);
 
-    const response = await axios.get(
+    const response = await axiosInstance.get(
       `${API_URL}/businesslist/findByMobile/${mobile}`,
       {
         headers: { Authorization: `Bearer ${token}` },
@@ -454,7 +454,7 @@ export const getDashboardSummary = () => async (dispatch) => {
   try {
     const token = await getValidToken(dispatch);
 
-    const response = await axios.get(
+    const response = await axiosInstance.get(
       `${API_URL}/businesslist/dashboard-summary`,
       {
         headers: { Authorization: `Bearer ${token}` }
@@ -480,7 +480,7 @@ export const getDashboardCharts = () => async (dispatch) => {
   try {
     const token = await getValidToken(dispatch);
 
-    const response = await axios.get(
+    const response = await axiosInstance.get(
       `${API_URL}/businesslist/dashboard-charts`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
@@ -504,7 +504,7 @@ export const getPendingBusinessList = () => async (dispatch) => {
   try {
     const token = await getValidToken(dispatch);
 
-    const response = await axios.get(
+    const response = await axiosInstance.get(
       `${API_URL}/businesslist/pendingbusiness`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
@@ -528,7 +528,7 @@ export const updateSearchLogRead = (searchLogId) => async (dispatch) => {
   try {
     const token = await getValidToken(dispatch);
 
-    const response = await axios.put(
+    const response = await axiosInstance.put(
       `${API_URL}/businesslist/log-search/${searchLogId}`,
       { isRead: true },
       {
@@ -557,7 +557,7 @@ export const getTrendingCategories = () => async (dispatch) => {
   try {
     const token = await dispatch(getClientToken());
 
-    const response = await axios.post(
+    const response = await axiosInstance.post(
       `${API_URL}/businesslist/trending-searches/trending-category`,
       {},
       {
@@ -584,7 +584,7 @@ export const getBusinessDetailsBySlug =
     dispatch({ type: FETCH_BUSINESS_BY_SLUG_REQUEST });
 
     try {
-      const response = await axios.get(
+      const response = await axiosInstance.get(
         `${API_URL}/business/by-slug`,
         {
           params: { location, slug },

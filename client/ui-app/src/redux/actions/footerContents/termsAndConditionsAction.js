@@ -1,6 +1,6 @@
 // src/redux/actions/termsAndConditionsActions.js
 
-import axios from "axios";
+import axiosInstance from '../../../services/axiosInstance.js';
 import {
   FETCH_TERMS_REQUEST,
   FETCH_TERMS_SUCCESS,
@@ -46,7 +46,7 @@ export const getAllTermsAndConditions = () => async (dispatch) => {
   try {
     const token = await getValidToken(dispatch);
 
-    const response = await axios.get(
+    const response = await axiosInstance.get(
       `${API_URL}/terms-and-conditions/viewall`,
       {
         headers: {
@@ -76,7 +76,7 @@ export const createTermsAndConditions = (payloadData) => async (dispatch) => {
   try {
     const token = await getValidToken(dispatch);
 
-    const response = await axios.post(
+    const response = await axiosInstance.post(
       `${API_URL}/terms-and-conditions/create`,
       payloadData,
       {
@@ -114,7 +114,7 @@ export const editTermsAndConditions =
     try {
       const token = await getValidToken(dispatch);
 
-      const response = await axios.put(
+      const response = await axiosInstance.put(
         `${API_URL}/terms-and-conditions/update/${id}`,
         payloadData,
         {
@@ -151,7 +151,7 @@ export const deleteTermsAndConditions = (id) => async (dispatch) => {
   try {
     const token = await getValidToken(dispatch);
 
-    const response = await axios.delete(
+    const response = await axiosInstance.delete(
       `${API_URL}/terms-and-conditions/delete/${id}`,
       {
         headers: {

@@ -1,4 +1,4 @@
-import axios from "axios";
+import axiosInstance from '../../services/axiosInstance.js';
 import {
   FETCH_ENQUIRYNOW_REQUEST,
   FETCH_ENQUIRYNOW_SUCCESS,
@@ -24,7 +24,7 @@ export const createEnquiryNow = (enquiryData) => async (dispatch) => {
   dispatch({ type: CREATE_ENQUIRYNOW_REQUEST });
 
   try {
-    const response = await axios.post(
+    const response = await axiosInstance.post(
       `${API_URL}/popular-search/enquiry-now/create`,
       enquiryData
     );
@@ -55,7 +55,7 @@ export const getAllEnquiryNow =
     try {
       const token = await getValidToken(dispatch);
 
-      const response = await axios.get(
+      const response = await axiosInstance.get(
         `${API_URL}/popular-search/enquiry-now/viewall?pageNo=${pageNo}&pageSize=${pageSize}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );

@@ -1,4 +1,4 @@
-import axios from "axios";
+import axiosInstance from '../../services/axiosInstance.js';
 import {
     FETCH_ROLES_REQUEST, FETCH_ROLES_SUCCESS, FETCH_ROLES_FAILURE,
     CREATE_ROLES_REQUEST, CREATE_ROLES_SUCCESS, CREATE_ROLES_FAILURE,
@@ -32,7 +32,7 @@ export const getAllRoles =
         sortOrder = ""
       } = options;
 
-      const response = await axios.get(
+      const response = await axiosInstance.get(
         `${API_URL}/roles/viewall?pageNo=${pageNo}&pageSize=${pageSize}&search=${search}&status=${status}&sortBy=${sortBy}&sortOrder=${sortOrder}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -61,7 +61,7 @@ export const createRoles = (rolesData) => async (dispatch) => {debugger
     dispatch({ type: CREATE_ROLES_REQUEST });
     try {
         const token = localStorage.getItem("accessToken");
-        const response = await axios.post(`${API_URL}/roles/create`, rolesData, {
+        const response = await axiosInstance.post(`${API_URL}/roles/create`, rolesData, {
             headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -81,7 +81,7 @@ export const editRoles = (id, rolesData) => async (dispatch) => {
     dispatch({ type: EDIT_ROLES_REQUEST });
     try {
         const token = localStorage.getItem("accessToken");
-        const response = await axios.put(`${API_URL}/roles/update/${id}`, rolesData, {
+        const response = await axiosInstance.put(`${API_URL}/roles/update/${id}`, rolesData, {
             headers: { Authorization: `Bearer ${token}` },
         });
         const updatedRoles = response.data;
@@ -98,7 +98,7 @@ export const deleteRoles = (id) => async (dispatch) => {
     dispatch({ type: DELETE_ROLES_REQUEST });
     try {
         const token = localStorage.getItem("accessToken");
-        const { data } = await axios.delete(`${API_URL}/roles/delete/${id}`, {
+        const { data } = await axiosInstance.delete(`${API_URL}/roles/delete/${id}`, {
             headers: { Authorization: `Bearer ${token}` },
         });
 

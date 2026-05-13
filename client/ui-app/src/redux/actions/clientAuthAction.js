@@ -1,5 +1,5 @@
 // clientAuthActions.js
-import axios from "axios";
+import axiosInstance from '../../services/axiosInstance.js';
 
 export const CLIENT_AUTH_REQUEST = "CLIENT_AUTH_REQUEST";
 export const CLIENT_AUTH_SUCCESS = "CLIENT_AUTH_SUCCESS";
@@ -26,7 +26,7 @@ export const clientLogin = () => async (dispatch) => {
     params.append("client_secret", CLIENT_SECRET);
     params.append("device_id", deviceId);
 
-    const response = await axios.post(
+    const response = await axiosInstance.post(
       `${API_URL}/oauth/client`,
       params,
       {

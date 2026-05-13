@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import axios from "axios";
+import axiosInstance from "../../services/axiosInstance.js";
+import { normalizeImageUrl } from "../../utils/imageUrlHelper.js";
 import Cropper from "react-easy-crop";
 import {
   getAllCategory,
@@ -226,6 +227,16 @@ export default function Category() {
 
   const [imageErrors, setImageErrors] = useState({});
 
+  // Cropper states
+  const [cropperOpen, setCropperOpen] = useState(false);
+  const [cropData, setCropData] = useState({
+    image: null,
+    variantKey: null,
+    crop: { x: 0, y: 0 },
+    zoom: 1,
+    aspect: 1
+  });
+
   // File input refs for all image types
   const imageInputRefs = {
     webHero: useRef(),
@@ -387,6 +398,106 @@ export default function Category() {
     return Object.keys(newErrors).length === 0;
   };
 
+  // Handle cropped image
+  const handleCropSave = async () => {
+    try {
+      if (!cropData.croppedAreaPixels) {
+        alert("Please adjust the crop area");
+        return;
+      }
+
+      const { variantKey, image, croppedAreaPixels } = cropData;
+
+      // Create canvas and crop the image
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+
+      img.onload = async () => {
+        try {
+          const canvas = document.createElement("canvas");
+          const ctx = canvas.getContext("2d");
+
+          const { x, y, width, height } = croppedAreaPixels;
+
+          canvas.width = width;
+          canvas.height = height;
+
+          ctx.drawImage(img, x, y, width, height, 0, 0, width, height);
+
+          // Convert to blob
+          canvas.toBlob(
+            async (blob) => {
+              try {
+                if (!blob) {
+                  alert("Failed to process image");
+                  return;
+                }
+
+                // Validate cropped image
+                const { errors, width: finalWidth, height: finalHeight } = await validateImageFile(blob, variantKey);
+
+                if (errors.length > 0) {
+                  setImageErrors((prev) => ({
+                    ...prev,
+                    [variantKey]: errors.join(", ")
+                  }));
+                  return;
+                }
+
+                // Clear errors
+                setImageErrors((prev) => ({
+                  ...prev,
+                  [variantKey]: null
+                }));
+
+                // Store dimensions
+                setImageDimensions((prev) => ({
+                  ...prev,
+                  [variantKey]: { width: finalWidth, height: finalHeight }
+                }));
+
+                // Convert blob to data URL and store
+                const reader = new FileReader();
+                reader.onload = () => {
+                  setFormData((prev) => ({
+                    ...prev,
+                    categoryImages: {
+                      ...prev.categoryImages,
+                      [variantKey]: reader.result
+                    }
+                  }));
+                  setImagePreviews((prev) => ({
+                    ...prev,
+                    [variantKey]: reader.result
+                  }));
+                  setCropperOpen(false);
+                };
+                reader.readAsDataURL(blob);
+              } catch (err) {
+                console.error("Error processing cropped image:", err);
+                alert("Error processing image: " + err.message);
+              }
+            },
+            "image/jpeg",
+            0.95
+          );
+        } catch (err) {
+          console.error("Error in crop processing:", err);
+          alert("Error: " + err.message);
+        }
+      };
+
+      img.onerror = () => {
+        alert("Failed to load image");
+      };
+
+      img.src = image;
+    } catch (err) {
+      console.error("Error in handleCropSave:", err);
+      alert("Error: " + err.message);
+    }
+  };
+
   // Validate image dimensions and file size
   const validateImageFile = (file, variantKey) => {
     const variant = IMAGE_VARIANTS[variantKey];
@@ -441,44 +552,24 @@ export default function Category() {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Validate image
-    const { errors, width, height } = await validateImageFile(file, variantKey);
+    const variant = IMAGE_VARIANTS[variantKey];
+    const [aspectW, aspectH] = variant.aspectRatio.split(":").map(Number);
+    const expectedRatio = aspectW / aspectH;
 
-    if (errors.length > 0) {
+    // Open cropper for any image upload
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setCropData({
+        image: event.target.result,
+        variantKey,
+        crop: { x: 0, y: 0 },
+        zoom: 1,
+        aspect: expectedRatio
+      });
+      setCropperOpen(true);
       setImageErrors((prev) => ({
         ...prev,
-        [variantKey]: errors.join(", ")
-      }));
-      // Reset the input
-      e.target.value = "";
-      return;
-    }
-
-    // Clear errors if validation passed
-    setImageErrors((prev) => ({
-      ...prev,
-      [variantKey]: null
-    }));
-
-    // Store dimensions
-    setImageDimensions((prev) => ({
-      ...prev,
-      [variantKey]: { width, height }
-    }));
-
-    // Read and store the image
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setFormData((prev) => ({
-        ...prev,
-        categoryImages: {
-          ...prev.categoryImages,
-          [variantKey]: reader.result
-        }
-      }));
-      setImagePreviews((prev) => ({
-        ...prev,
-        [variantKey]: reader.result
+        [variantKey]: null
       }));
     };
     reader.readAsDataURL(file);
@@ -503,7 +594,7 @@ export default function Category() {
       const names = cats.map((c) => c.category).filter(Boolean);
       if (!names.length) return;
       const params = names.map((n) => `names=${encodeURIComponent(n)}`).join("&");
-      const res = await axios.get(`${API_URL}/category/business-usage?${params}`, {
+      const res = await axiosInstance.get(`${API_URL}/category/business-usage?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const map = {};
@@ -520,7 +611,7 @@ export default function Category() {
     setDupLoading(true);
     try {
       const token = localStorage.getItem("accessToken");
-      const response = await axios.get(
+      const response = await axiosInstance.get(
         `${API_URL}/category/viewall?pageNo=1&pageSize=9999&status=active`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -607,7 +698,7 @@ export default function Category() {
       setCreateWarningLoading(true);
       try {
         const token = localStorage.getItem("accessToken");
-        const res = await axios.get(
+        const res = await axiosInstance.get(
           `${API_URL}/category/viewall?pageNo=1&pageSize=9999&status=active`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
@@ -673,10 +764,10 @@ export default function Category() {
       renderCell: (_, row) => (
         <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
           {row.categoryImages?.webHero ? (
-            <Avatar src={row.categoryImages.webHero} alt="Web Hero" title="Web Hero" sx={{ width: 36, height: 36 }} />
+            <Avatar src={normalizeImageUrl(row.categoryImages.webHero)} alt="Web Hero" title="Web Hero" sx={{ width: 36, height: 36 }} />
           ) : null}
           {row.categoryImages?.mobileVertical ? (
-            <Avatar src={row.categoryImages.mobileVertical} alt="Mobile" title="Mobile Vertical" sx={{ width: 36, height: 36 }} />
+            <Avatar src={normalizeImageUrl(row.categoryImages.mobileVertical)} alt="Mobile" title="Mobile Vertical" sx={{ width: 36, height: 36 }} />
           ) : null}
           {!row.categoryImages?.webHero && !row.categoryImages?.mobileVertical && "-"}
         </div>
@@ -1520,6 +1611,71 @@ export default function Category() {
             }}
           >
             Allow — Create Anyway
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Image Cropper Modal */}
+      <Dialog
+        open={cropperOpen}
+        onClose={() => setCropperOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span>Crop Image - {IMAGE_VARIANTS[cropData.variantKey]?.name}</span>
+          <IconButton size="small" onClick={() => setCropperOpen(false)}>×</IconButton>
+        </DialogTitle>
+        <DialogContent dividers sx={{ p: 2 }}>
+          {cropData.image && (
+            <>
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="caption" sx={{ color: "#666" }}>
+                  Drag to move • Scroll to zoom • Resize handles to adjust crop area
+                </Typography>
+              </Box>
+              <Box sx={{ position: "relative", width: "100%", height: "400px", backgroundColor: "#f0f0f0" }}>
+                <Cropper
+                  image={cropData.image}
+                  crop={cropData.crop}
+                  zoom={cropData.zoom}
+                  aspect={cropData.aspect}
+                  onCropChange={(crop) =>
+                    setCropData((prev) => ({ ...prev, crop }))
+                  }
+                  onCropComplete={(croppedArea, croppedAreaPixels) =>
+                    setCropData((prev) => ({ ...prev, croppedAreaPixels }))
+                  }
+                  onZoomChange={(zoom) =>
+                    setCropData((prev) => ({ ...prev, zoom }))
+                  }
+                />
+              </Box>
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="caption" sx={{ color: "#666", display: "block", mb: 1 }}>
+                  Zoom: {(cropData.zoom * 100).toFixed(0)}%
+                </Typography>
+                <Slider
+                  value={cropData.zoom}
+                  onChange={(e, zoom) =>
+                    setCropData((prev) => ({ ...prev, zoom }))
+                  }
+                  min={1}
+                  max={3}
+                  step={0.1}
+                  valueLabelDisplay="auto"
+                />
+              </Box>
+            </>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setCropperOpen(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={handleCropSave}
+          >
+            Save Crop
           </Button>
         </DialogActions>
       </Dialog>

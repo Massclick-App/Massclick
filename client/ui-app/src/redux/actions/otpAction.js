@@ -1,4 +1,4 @@
-import axios from "axios";
+import axiosInstance from '../../services/axiosInstance.js';
 import {
   SEND_OTP_REQUEST, SEND_OTP_SUCCESS, SEND_OTP_FAILURE,
   VERIFY_OTP_REQUEST, VERIFY_OTP_SUCCESS, VERIFY_OTP_FAILURE,
@@ -16,7 +16,7 @@ const API_URL = process.env.REACT_APP_API_URL;
 export const sendOtp = (phoneNumber) => async (dispatch) => {
   dispatch({ type: SEND_OTP_REQUEST });
   try {
-    const response = await axios.post(`${API_URL}/otp_user/send-otp`, { phoneNumber });
+    const response = await axiosInstance.post(`${API_URL}/otp_user/send-otp`, { phoneNumber });
 
     dispatch({ type: SEND_OTP_SUCCESS, payload: response.data });
 
@@ -32,7 +32,7 @@ export const verifyOtp = (mobile, otp, userName = "") => async (dispatch) => {
   dispatch({ type: VERIFY_OTP_REQUEST });
 
   try {
-    const response = await axios.post(
+    const response = await axiosInstance.post(
       `${API_URL}/otp_user/verify-otp`,
       { phoneNumber: mobile, otp, userName },
       { headers: { "Content-Type": "application/json" } }
@@ -43,7 +43,7 @@ export const verifyOtp = (mobile, otp, userName = "") => async (dispatch) => {
 
     if (token) {
       localStorage.setItem("authToken", token);
-      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+      axiosInstance.defaults.headers.common["Authorization"] = `Bearer ${token}`;
     }
 if (user) {
   localStorage.setItem("authUser", JSON.stringify(user));
@@ -62,7 +62,7 @@ export const updateOtpUser = (mobile, data) => async (dispatch) => {
   dispatch({ type: UPDATE_OTP_USER_REQUEST });
 
   try {
-    const response = await axios.put(
+    const response = await axiosInstance.put(
       `${API_URL}/otp_user_update/${mobile}`,   
       data,
       { headers: { "Content-Type": "application/json" } }
@@ -90,7 +90,7 @@ export const viewOtpUser = (mobile) => async (dispatch) => {
 
   try {
 
-    const response = await axios.get(`${API_URL}/otp_user/${mobile}`);
+    const response = await axiosInstance.get(`${API_URL}/otp_user/${mobile}`);
 
     dispatch({
       type: VIEW_OTP_USER_SUCCESS,
@@ -111,7 +111,7 @@ export const viewOtpUser = (mobile) => async (dispatch) => {
 export const viewAllOtpUsers = () => async (dispatch) => {
   dispatch({ type: VIEWALL_OTP_USER_REQUEST });
   try {
-    const response = await axios.get(`${API_URL}/otp_users`);
+    const response = await axiosInstance.get(`${API_URL}/otp_users`);
     dispatch({ type: VIEWALL_OTP_USER_SUCCESS, payload: response.data.users, });
     return response.data.users;
   } catch (error) {
@@ -123,7 +123,7 @@ export const viewAllOtpUsers = () => async (dispatch) => {
 
 export const userLogout = () => (dispatch) => {
   localStorage.removeItem("authToken");
-  delete axios.defaults.headers.common["Authorization"];
+  delete axiosInstance.defaults.headers.common["Authorization"];
   dispatch({ type: USER_LOGOUT });
 };
 
@@ -132,7 +132,7 @@ export const logUserSearch = (userId, query, location, category) => async (dispa
   dispatch({ type: LOG_USER_SEARCH_REQUEST });
 
   try {
-    const response = await axios.post(`${API_URL}/otp_user/log-search`, {
+    const response = await axiosInstance.post(`${API_URL}/otp_user/log-search`, {
       userId,
       query,
       location,
@@ -159,7 +159,7 @@ export const sendWhatsAppForLead = (leadId) => async (dispatch) => {
   dispatch({ type: SEND_WHATSAPP_REQUEST });
 
   try {
-    const res = await axios.post(
+    const res = await axiosInstance.post(
       `${API_URL}/leadssend/whatsapp`,
       { leadId },
       { headers: { "Content-Type": "application/json" } }
@@ -189,7 +189,7 @@ export const sendWhatsAppToLeadsBulk = (leadIds = []) => async (dispatch) => {
   dispatch({ type: SEND_WHATSAPP_ALL_REQUEST });
 
   try {
-    const res = await axios.post(
+    const res = await axiosInstance.post(
       `${API_URL}/leadssend/whatsappall`,
       { leadIds },
       { headers: { "Content-Type": "application/json" } }
