@@ -12,6 +12,9 @@ import "./SearchResult.css";
 import CardsSearch from "../CardsSearch/CardsSearch";
 import CardDesign from "../cards/cards.js";
 import SeoMeta from "../seo/seoMeta.js";
+import Footer from "../footer/footer.js";
+import PageHeaderContents from "../pageHeaderContents/pageHeaderContents.js";
+import PopularCategoriesLink from "../popularCategories/popularCategories.js";
 import Breadcrumbs from "../Breadcrumbs/Breadcrumbs.js";
 
 import { backendMainSearch, logSearchActivity } from "../../../redux/actions/businessListAction";
@@ -532,19 +535,27 @@ useEffect(() => {
               );
             })}
           </div>
+        </div><br />
+        {!seoContentLoading && sanitizedPageContent && (
+          <div className="seo-outer-wrapper">
+            <div className="seo-article-wrapper">
+              <article className="seo-article">
+                <div className="seo-divider" />
 
-          {!seoContentLoading && sanitizedPageContent && (
-            <article className="seo-article">
-              <div className="seo-divider" />
-              <section
-                className="seo-page-content"
-                dangerouslySetInnerHTML={{
-                  __html: sanitizedPageContent,
-                }}
-              />
-            </article>
-          )}
-
+                <section
+                  className="seo-page-content"
+                  dangerouslySetInnerHTML={{
+                    __html: sanitizedPageContent,
+                  }}
+                />
+              </article>
+            </div>
+          </div>
+        )}<br/>
+        <div className="bottom-sections-wrapper">
+          <PageHeaderContents />
+          <PopularCategoriesLink />
+          <Footer />
         </div>
       </div>
     </>
