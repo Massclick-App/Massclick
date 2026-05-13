@@ -6,6 +6,7 @@ import { getSeoPageContentMetaService } from "../helper/seo/seoPageContentHelper
 import { findBusinessesByCategory } from "../helper/businessList/businessListHelper.js";
 import { appendDiscoveryLinkHeaders } from "../config/apiCatalog.js";
 import { STATIC_PAGES, SKIP_SEO_ROUTES } from "../config/ssrConfig.js";
+import { getCache, setCache } from "../utils/redisClient.js";
 import {
   escapeHtml,
   slugToText,
@@ -17,6 +18,15 @@ import {
 } from "../utils/htmlUtils.js";
 
 const CLIENT_BUILD_PATH = process.env.REACT_BUILD_PATH;
+
+// Cache TTLs (in seconds)
+const CACHE_TTL = {
+  SEO_META: 3600,          // 1 hour
+  BLOG: 14400,             // 4 hours
+  PAGE_CONTENT: 7200,      // 2 hours
+  BUSINESSES: 1800,        // 30 minutes
+  STATIC_PAGE: 3600,       // 1 hour
+};
 
 export async function ssrMiddleware(req, res) {
   try {
@@ -44,13 +54,23 @@ export async function ssrMiddleware(req, res) {
     let fallbackKeywords = "massclick, local business search, business directory";
 
     if (!firstSegment) {
-      seo = await getSeoMeta({ pageType: "home" });
+      // Home page - cache SEO metadata
+      const cacheKey = "seo:home";
+      seo = await getCache(cacheKey) || await getSeoMeta({ pageType: "home" });
+      if (seo && !await getCache(cacheKey)) {
+        await setCache(cacheKey, seo, CACHE_TTL.SEO_META);
+      }
       fallbackTitle = "Massclick - India's Leading Local Search Platform";
       fallbackDescription = "Find trusted local businesses, services, restaurants, hotels and professionals near you on Massclick.";
       fallbackKeywords = "massclick, local search, business directory india";
 
     } else if (firstSegment === "blog" && secondSegment) {
-      blogDoc = await getSeoBlogMetaBySlug(secondSegment);
+      // Blog page - cache blog metadata
+      const cacheKey = `blog:${secondSegment}`;
+      blogDoc = await getCache(cacheKey) || await getSeoBlogMetaBySlug(secondSegment);
+      if (blogDoc && !await getCache(cacheKey)) {
+        await setCache(cacheKey, blogDoc, CACHE_TTL.BLOG);
+      }
       if (blogDoc) {
         seo = {
           title: blogDoc.metaTitle,
@@ -66,26 +86,55 @@ export async function ssrMiddleware(req, res) {
 
     } else if (STATIC_PAGES[firstSegment]) {
       const pg = STATIC_PAGES[firstSegment];
-      seo = await getSeoMeta({ pageType: pg.pageType });
+      const cacheKey = `seo:static:${firstSegment}`;
+      seo = await getCache(cacheKey) || await getSeoMeta({ pageType: pg.pageType });
+      if (seo && !await getCache(cacheKey)) {
+        await setCache(cacheKey, seo, CACHE_TTL.STATIC_PAGE);
+      }
       fallbackTitle = pg.title;
       fallbackDescription = pg.description;
       fallbackKeywords = pg.keywords;
 
     } else if (!SKIP_SEO_ROUTES.has(firstSegment) && secondSegment) {
-      seo = await getSeoMeta({
+      const location = slugToText(firstSegment);
+      const category = slugToText(thirdSegment || secondSegment);
+      const cacheKeyPrefix = `category:${location}:${category}`;
+
+      // Parallel cache lookups for better performance
+      const [cachedSeo, cachedContent, cachedBusinesses] = await Promise.all([
+        getCache(`${cacheKeyPrefix}:seo`),
+        getCache(`${cacheKeyPrefix}:content`),
+        getCache(`${cacheKeyPrefix}:businesses`)
+      ]);
+
+      // Use cached data or fetch from database
+      seo = cachedSeo || await getSeoMeta({
         pageType: "category",
-        location: slugToText(firstSegment),
-        category: slugToText(thirdSegment || secondSegment)
+        location: location,
+        category: category
       });
-      categoryContent = await getSeoPageContentMetaService({
+
+      categoryContent = cachedContent || await getSeoPageContentMetaService({
         pageType: "category",
-        location: slugToText(firstSegment),
-        category: slugToText(thirdSegment || secondSegment)
+        location: location,
+        category: category
       });
-      categoryBusinesses = await findBusinessesByCategory(
-        slugToText(thirdSegment || secondSegment),
-        slugToText(firstSegment)
+
+      categoryBusinesses = cachedBusinesses || await findBusinessesByCategory(
+        category,
+        location
       );
+
+      // Set cache for fetched data
+      if (seo && !cachedSeo) {
+        await setCache(`${cacheKeyPrefix}:seo`, seo, CACHE_TTL.SEO_META);
+      }
+      if (categoryContent && !cachedContent) {
+        await setCache(`${cacheKeyPrefix}:content`, categoryContent, CACHE_TTL.PAGE_CONTENT);
+      }
+      if (categoryBusinesses && !cachedBusinesses) {
+        await setCache(`${cacheKeyPrefix}:businesses`, categoryBusinesses, CACHE_TTL.BUSINESSES);
+      }
       isCategoryPage = true;
     }
 
