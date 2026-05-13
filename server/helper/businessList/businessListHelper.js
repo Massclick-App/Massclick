@@ -402,6 +402,47 @@ const getGroupLetter = (num) => {
     return `${letters[baseIndex]}${cycle}`;
   }
 };
+
+const normalizeMniLocation = (location = "") => {
+  const normalizedLocation = String(location).toLowerCase().trim();
+
+  if (["trichy", "tiruchirappalli"].includes(normalizedLocation)) {
+    return "tiruchirappalli";
+  }
+
+  return normalizedLocation;
+};
+
+const getMniLocationQuery = (location = "") => {
+  const normalizedLocation = normalizeMniLocation(location);
+
+  if (normalizedLocation === "tiruchirappalli") {
+    return {
+      $in: [
+        new RegExp(`^${escapeRegex("trichy")}$`, "i"),
+        new RegExp(`^${escapeRegex("tiruchirappalli")}$`, "i"),
+      ],
+    };
+  }
+
+  return new RegExp(`^${escapeRegex(normalizedLocation)}$`, "i");
+};
+
+const findExistingMniGroup = async ({ category, location }) => {
+  const existingBusiness = await businessListModel
+    .findOne({
+      category,
+      amountPaid: true,
+      location: getMniLocationQuery(location),
+      "mniDetails.categoryGroup": { $exists: true, $nin: [null, ""] },
+    })
+    .sort({ paidDate: 1, createdAt: 1 })
+    .select("mniDetails")
+    .lean();
+
+  return existingBusiness?.mniDetails?.[0]?.categoryGroup || null;
+};
+
 export const updateBusinessList = async (id, data) => {
   if (!ObjectId.isValid(id)) throw new Error("Invalid business ID");
 
@@ -547,24 +588,13 @@ export const updateBusinessList = async (id, data) => {
       business.amountPaid = true;
       business.paidDate = new Date();
 
-      const location = (business.location || "").toLowerCase().trim();
-
-      const paidCount = await businessListModel.countDocuments({
+      const location = normalizeMniLocation(business.location);
+      const existingGroup = await findExistingMniGroup({
         category: business.category,
-        amountPaid: true,
-        location: new RegExp(`^${location}$`, "i"),
+        location,
       });
 
-      const getGroupLetter = (num) => {
-        const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-        const baseIndex = num % 26;
-        const cycle = Math.floor(num / 26);
-
-        if (cycle === 0) return letters[baseIndex];
-        return `${letters[baseIndex]}${cycle}`;
-      };
-
-      const groupLetter = getGroupLetter(paidCount);
+      const groupLetter = existingGroup || getGroupLetter(0);
 
       business.mniDetails = [
         {
