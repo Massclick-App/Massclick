@@ -673,10 +673,14 @@ export const getTrendingSearchesAction = async (req, res) => {
         mobileThumbnail: item.mobileThumbnail ? getSignedUrlByKey(item.mobileThumbnail) : ""
       },
       // Legacy fields for backward compatibility
-      categoryImage: item.webHero
+      categoryImage: item.categoryImage
+        ? getSignedUrlByKey(item.categoryImage)
+        : item.webHero
         ? getSignedUrlByKey(item.webHero)
         : "",
-      liveImage: item.webHero
+      liveImage: item.liveImage
+        ? getSignedUrlByKey(item.liveImage)
+        : item.webHero
         ? getSignedUrlByKey(item.webHero)
         : ""
     }));

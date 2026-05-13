@@ -998,6 +998,165 @@ export default function Category() {
             </div>
           </div>
 
+          {/* Legacy Image Fields (for backward compatibility) */}
+          <div className="category-form-input-group category-col-span-all">
+            <label className="category-input-label">Legacy Images (Optional - for backward compatibility)</label>
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+              gap: "20px",
+              marginTop: "16px"
+            }}>
+              {/* Legacy Category Image */}
+              <div style={{
+                border: "1px solid #ddd",
+                borderRadius: "8px",
+                padding: "16px",
+                backgroundColor: "#f9f9f9"
+              }}>
+                <h4 style={{ margin: "0 0 4px 0", fontSize: "14px", fontWeight: "600" }}>
+                  Category Image (Legacy)
+                </h4>
+                <p style={{ margin: "0 0 4px 0", fontSize: "12px", color: "#666" }}>
+                  Old categoryImage field (deprecated)
+                </p>
+                <Button
+                  variant="contained"
+                  size="small"
+                  startIcon={<CloudUploadIcon />}
+                  component="label"
+                  fullWidth
+                  sx={{ marginBottom: "8px" }}
+                >
+                  Upload Category Image
+                  <input
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    ref={fileInputRef}
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            categoryImage: reader.result
+                          }));
+                          setPreview(reader.result);
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                  />
+                </Button>
+                {preview && (
+                  <div style={{ marginBottom: "8px", textAlign: "center" }}>
+                    <img
+                      src={preview}
+                      alt="Category Image"
+                      style={{
+                        maxWidth: "100%",
+                        maxHeight: "150px",
+                        borderRadius: "4px",
+                        border: "1px solid #ddd"
+                      }}
+                    />
+                  </div>
+                )}
+                {preview && (
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    color="error"
+                    fullWidth
+                    onClick={() => {
+                      setFormData((prev) => ({ ...prev, categoryImage: "" }));
+                      setPreview(null);
+                      if (fileInputRef.current) fileInputRef.current.value = "";
+                    }}
+                  >
+                    Remove
+                  </Button>
+                )}
+              </div>
+
+              {/* Legacy Live Image */}
+              <div style={{
+                border: "1px solid #ddd",
+                borderRadius: "8px",
+                padding: "16px",
+                backgroundColor: "#f9f9f9"
+              }}>
+                <h4 style={{ margin: "0 0 4px 0", fontSize: "14px", fontWeight: "600" }}>
+                  Live Image (Legacy)
+                </h4>
+                <p style={{ margin: "0 0 4px 0", fontSize: "12px", color: "#666" }}>
+                  Old liveImage field (deprecated)
+                </p>
+                <Button
+                  variant="contained"
+                  size="small"
+                  startIcon={<CloudUploadIcon />}
+                  component="label"
+                  fullWidth
+                  sx={{ marginBottom: "8px" }}
+                >
+                  Upload Live Image
+                  <input
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    ref={liveImageInputRef}
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            liveImage: reader.result
+                          }));
+                          setLiveImagePreview(reader.result);
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                  />
+                </Button>
+                {liveImagePreview && (
+                  <div style={{ marginBottom: "8px", textAlign: "center" }}>
+                    <img
+                      src={liveImagePreview}
+                      alt="Live Image"
+                      style={{
+                        maxWidth: "100%",
+                        maxHeight: "150px",
+                        borderRadius: "4px",
+                        border: "1px solid #ddd"
+                      }}
+                    />
+                  </div>
+                )}
+                {liveImagePreview && (
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    color="error"
+                    fullWidth
+                    onClick={() => {
+                      setFormData((prev) => ({ ...prev, liveImage: "" }));
+                      setLiveImagePreview(null);
+                      if (liveImageInputRef.current) liveImageInputRef.current.value = "";
+                    }}
+                  >
+                    Remove
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+
           {/* Submit Button */}
           <div className="category-form-input-group category-col-span-all">
             <button
