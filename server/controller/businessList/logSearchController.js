@@ -218,8 +218,8 @@ export const logSearchAction = async (req, res) => {
         // Save only actual legacy fields if they exist (no fallback to new variants)
         await createSearchLog({
           categoryName: finalCategoryName,
-          categoryImage: category?.categoryImageKey || "",
-          liveImage: category?.liveImageKey || "",
+          categoryImageKey: category?.categoryImageKey || "",
+          liveImageKey: category?.liveImageKey || "",
           categoryImages: category?.categoryImages || {
             webHero: "",
             webCard: "",
@@ -267,8 +267,8 @@ export const logSearchAction = async (req, res) => {
     // Save only actual legacy fields if they exist (no fallback to new variants)
     const savedLog = await createSearchLog({
       categoryName: finalCategoryName,
-      categoryImage: category?.categoryImageKey || "",
-      liveImage: category?.liveImageKey || "",
+      categoryImageKey: category?.categoryImageKey || "",
+      liveImageKey: category?.liveImageKey || "",
       categoryImages: category?.categoryImages || {
         webHero: "",
         webCard: "",
@@ -658,27 +658,21 @@ export const getTrendingSearchesAction = async (req, res) => {
   try {
     const trending = await getTopTrendingCategories(10);
 
-    const formatted = trending.map(item => {
-      // Only include needed fields, skip raw S3 keys
-      const { webHero, webCard, webThumbnail, mobileVertical, mobileCard, mobileThumbnail, ...rest } = item;
-
-      return {
-        ...rest,
-        // Map all image variants with signed URLs
-        categoryImages: {
-          webHero: webHero ? getSignedUrlByKey(webHero) : "",
-          webCard: webCard ? getSignedUrlByKey(webCard) : "",
-          webThumbnail: webThumbnail ? getSignedUrlByKey(webThumbnail) : "",
-          mobileVertical: mobileVertical ? getSignedUrlByKey(mobileVertical) : "",
-          mobileCard: mobileCard ? getSignedUrlByKey(mobileCard) : "",
-          mobileThumbnail: mobileThumbnail ? getSignedUrlByKey(mobileThumbnail) : ""
-        },
-        // Legacy fields - only return if actually set (no fallback to new variants)
-        // Handle both old field names (categoryImageKey, liveImageKey) and new names (categoryImage, liveImage)
-        categoryImage:item.categoryImageKey ? getSignedUrlByKey(item.categoryImageKey) : "",
-        liveImage: item.liveImageKey ? getSignedUrlByKey(item.liveImageKey) : ""
-      };
-    });
+    const formatted = trending.map(item => ({
+      _id: item._id,
+      categoryName: item.categoryName || item.category,
+      totalSearches: item.totalSearches,
+      categoryImageKey: item.categoryImageKey ? getSignedUrlByKey(item.categoryImageKey) : "",
+      liveImageKey: item.liveImageKey ? getSignedUrlByKey(item.liveImageKey) : "",
+      categoryImages: {
+        webHero: item.categoryImages?.webHero ? getSignedUrlByKey(item.categoryImages.webHero) : "",
+        webCard: item.categoryImages?.webCard ? getSignedUrlByKey(item.categoryImages.webCard) : "",
+        webThumbnail: item.categoryImages?.webThumbnail ? getSignedUrlByKey(item.categoryImages.webThumbnail) : "",
+        mobileVertical: item.categoryImages?.mobileVertical ? getSignedUrlByKey(item.categoryImages.mobileVertical) : "",
+        mobileCard: item.categoryImages?.mobileCard ? getSignedUrlByKey(item.categoryImages.mobileCard) : "",
+        mobileThumbnail: item.categoryImages?.mobileThumbnail ? getSignedUrlByKey(item.categoryImages.mobileThumbnail) : ""
+      }
+    }));
 
     return res.status(200).json({
       success: true,
