@@ -102,7 +102,7 @@ export const getTopTrendingCategories = async (limit = 10) => {
                 $expr: { $eq: [{ $toLower: "$categoryName" }, "$$catName"] }
               }
             },
-            { $project: { categoryImageKey: 1, liveImageKey: 1, _id: 0 } },
+            { $project: { categoryImages: 1, _id: 0 } },
             { $limit: 1 }
           ],
           as: "categoryDoc"
@@ -113,18 +113,60 @@ export const getTopTrendingCategories = async (limit = 10) => {
           categoryImage: {
             $cond: {
               if: { $gt: [{ $size: "$categoryDoc" }, 0] },
-              then: { $arrayElemAt: ["$categoryDoc.categoryImageKey", 0] },
+              then: { $arrayElemAt: ["$categoryDoc.categoryImages.webHero", 0] },
               else: "$categoryImage"
             }
           },
-          liveImageKey: {
+          webHero: {
+            $cond: {
+              if: { $gt: [{ $size: "$categoryDoc" }, 0] },
+              then: { $arrayElemAt: ["$categoryDoc.categoryImages.webHero", 0] },
+              else: "$categoryImage"
+            }
+          },
+          webCard: {
+            $cond: {
+              if: { $gt: [{ $size: "$categoryDoc" }, 0] },
+              then: { $arrayElemAt: ["$categoryDoc.categoryImages.webCard", 0] },
+              else: ""
+            }
+          },
+          webThumbnail: {
+            $cond: {
+              if: { $gt: [{ $size: "$categoryDoc" }, 0] },
+              then: { $arrayElemAt: ["$categoryDoc.categoryImages.webThumbnail", 0] },
+              else: ""
+            }
+          },
+          mobileVertical: {
+            $cond: {
+              if: { $gt: [{ $size: "$categoryDoc" }, 0] },
+              then: { $arrayElemAt: ["$categoryDoc.categoryImages.mobileVertical", 0] },
+              else: ""
+            }
+          },
+          mobileCard: {
+            $cond: {
+              if: { $gt: [{ $size: "$categoryDoc" }, 0] },
+              then: { $arrayElemAt: ["$categoryDoc.categoryImages.mobileCard", 0] },
+              else: ""
+            }
+          },
+          mobileThumbnail: {
+            $cond: {
+              if: { $gt: [{ $size: "$categoryDoc" }, 0] },
+              then: { $arrayElemAt: ["$categoryDoc.categoryImages.mobileThumbnail", 0] },
+              else: ""
+            }
+          },
+          liveImage: {
             $cond: {
               if: { $and: [{ $ne: ["$liveImage", ""] }, { $ne: ["$liveImage", null] }] },
               then: "$liveImage",
               else: {
                 $cond: {
                   if: { $gt: [{ $size: "$categoryDoc" }, 0] },
-                  then: { $arrayElemAt: ["$categoryDoc.liveImageKey", 0] },
+                  then: { $arrayElemAt: ["$categoryDoc.categoryImages.webHero", 0] },
                   else: ""
                 }
               }
@@ -144,7 +186,13 @@ export const getTopTrendingCategories = async (limit = 10) => {
           categoryName: "$_id",
           totalSearches: 1,
           categoryImage: 1,
-          liveImageKey: 1
+          liveImage: 1,
+          webHero: 1,
+          webCard: 1,
+          webThumbnail: 1,
+          mobileVertical: 1,
+          mobileCard: 1,
+          mobileThumbnail: 1
         }
       }
     ]);

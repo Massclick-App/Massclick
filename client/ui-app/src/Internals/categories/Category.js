@@ -39,6 +39,70 @@ import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
 
 const API_URL = process.env.REACT_APP_API_URL;
 
+// Image variant configuration with size constraints
+const IMAGE_VARIANTS = {
+  webHero: {
+    name: "Web Hero",
+    minWidth: 1000,
+    minHeight: 300,
+    maxWidth: 1600,
+    maxHeight: 600,
+    aspectRatio: "3:1",
+    description: "Landscape banner for web (1200x400px)",
+    maxFileSize: 2 // MB
+  },
+  webCard: {
+    name: "Web Card",
+    minWidth: 300,
+    minHeight: 300,
+    maxWidth: 600,
+    maxHeight: 600,
+    aspectRatio: "1:1",
+    description: "Square grid card for web (400x400px)",
+    maxFileSize: 1
+  },
+  webThumbnail: {
+    name: "Web Thumbnail",
+    minWidth: 150,
+    minHeight: 150,
+    maxWidth: 300,
+    maxHeight: 300,
+    aspectRatio: "1:1",
+    description: "Small thumbnail for web (200x200px)",
+    maxFileSize: 0.5
+  },
+  mobileVertical: {
+    name: "Mobile Vertical",
+    minWidth: 300,
+    minHeight: 450,
+    maxWidth: 600,
+    maxHeight: 900,
+    aspectRatio: "2:3",
+    description: "Portrait image for mobile (400x600px)",
+    maxFileSize: 1.5
+  },
+  mobileCard: {
+    name: "Mobile Card",
+    minWidth: 250,
+    minHeight: 250,
+    maxWidth: 450,
+    maxHeight: 450,
+    aspectRatio: "1:1",
+    description: "Square card for mobile (300x300px)",
+    maxFileSize: 1
+  },
+  mobileThumbnail: {
+    name: "Mobile Thumbnail",
+    minWidth: 100,
+    minHeight: 100,
+    maxWidth: 250,
+    maxHeight: 250,
+    aspectRatio: "1:1",
+    description: "Small thumbnail for mobile (150x150px)",
+    maxFileSize: 0.5
+  }
+};
+
 const NOISE_WORDS = new Set([
   "and", "the", "near", "me", "center", "centre",
   "service", "services", "solution", "solutions",
@@ -116,6 +180,15 @@ export default function Category() {
 
   const [formData, setFormData] = useState({
     _id: null,
+    categoryImages: {
+      webHero: "",
+      webCard: "",
+      webThumbnail: "",
+      mobileVertical: "",
+      mobileCard: "",
+      mobileThumbnail: ""
+    },
+    // Legacy fields for backward compatibility
     categoryImage: "",
     liveImage: "",
     category: "",
@@ -130,6 +203,38 @@ export default function Category() {
     slug: "",
   });
 
+  // Image previews and refs
+  const [imagePreviews, setImagePreviews] = useState({
+    webHero: null,
+    webCard: null,
+    webThumbnail: null,
+    mobileVertical: null,
+    mobileCard: null,
+    mobileThumbnail: null
+  });
+
+  const [imageDimensions, setImageDimensions] = useState({
+    webHero: null,
+    webCard: null,
+    webThumbnail: null,
+    mobileVertical: null,
+    mobileCard: null,
+    mobileThumbnail: null
+  });
+
+  const [imageErrors, setImageErrors] = useState({});
+
+  // File input refs for all image types
+  const imageInputRefs = {
+    webHero: useRef(),
+    webCard: useRef(),
+    webThumbnail: useRef(),
+    mobileVertical: useRef(),
+    mobileCard: useRef(),
+    mobileThumbnail: useRef()
+  };
+
+  // Legacy preview states
   const [preview, setPreview] = useState(null);
   const [liveImagePreview, setLiveImagePreview] = useState(null);
   const [editMode, setEditMode] = useState(false);
@@ -193,6 +298,14 @@ export default function Category() {
     setEditMode(true);
     setFormData({
       _id: row._id,
+      categoryImages: row.categoryImages || {
+        webHero: "",
+        webCard: "",
+        webThumbnail: "",
+        mobileVertical: "",
+        mobileCard: "",
+        mobileThumbnail: ""
+      },
       categoryImage: row.categoryImage || "",
       liveImage: row.liveImage || "",
       category: row.category,
@@ -208,6 +321,16 @@ export default function Category() {
       seoDescription: row.seoDescription || "",
       slug: row.slug || "",
     });
+    // Set previews for all image variants
+    setImagePreviews({
+      webHero: row.categoryImages?.webHero || null,
+      webCard: row.categoryImages?.webCard || null,
+      webThumbnail: row.categoryImages?.webThumbnail || null,
+      mobileVertical: row.categoryImages?.mobileVertical || null,
+      mobileCard: row.categoryImages?.mobileCard || null,
+      mobileThumbnail: row.categoryImages?.mobileThumbnail || null
+    });
+    // Legacy preview
     setPreview(row.categoryImage || null);
     setLiveImagePreview(row.liveImage || null);
   };
@@ -261,28 +384,101 @@ export default function Category() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
+  // Validate image dimensions and file size
+  const validateImageFile = (file, variantKey) => {
+    const variant = IMAGE_VARIANTS[variantKey];
+    const errors = [];
+
+    // Check file size
+    const fileSizeInMB = file.size / (1024 * 1024);
+    if (fileSizeInMB > variant.maxFileSize) {
+      errors.push(`File size exceeds ${variant.maxFileSize}MB limit`);
+    }
+
+    return new Promise((resolve) => {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData((prev) => ({ ...prev, categoryImage: reader.result }));
-        setPreview(reader.result);
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const width = img.width;
+          const height = img.height;
+
+          // Check minimum dimensions
+          if (width < variant.minWidth || height < variant.minHeight) {
+            errors.push(`Minimum resolution: ${variant.minWidth}x${variant.minHeight}px`);
+          }
+
+          // Check maximum dimensions
+          if (width > variant.maxWidth || height > variant.maxHeight) {
+            errors.push(`Maximum resolution: ${variant.maxWidth}x${variant.maxHeight}px`);
+          }
+
+          // Check aspect ratio (with 10% tolerance)
+          const [aspectW, aspectH] = variant.aspectRatio.split(":").map(Number);
+          const expectedRatio = aspectW / aspectH;
+          const actualRatio = width / height;
+          const tolerance = 0.1;
+          if (Math.abs(actualRatio - expectedRatio) / expectedRatio > tolerance) {
+            errors.push(`Aspect ratio should be ${variant.aspectRatio}`);
+          }
+
+          resolve({ errors, width, height });
+        };
+        img.onerror = () => {
+          errors.push("Failed to load image");
+          resolve({ errors, width: null, height: null });
+        };
+        img.src = e.target.result;
       };
       reader.readAsDataURL(file);
-    }
+    });
   };
 
-  const handleLiveImageChange = (e) => {
+  const handleImageChange = async (e, variantKey) => {
     const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData((prev) => ({ ...prev, liveImage: reader.result }));
-        setLiveImagePreview(reader.result);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    // Validate image
+    const { errors, width, height } = await validateImageFile(file, variantKey);
+
+    if (errors.length > 0) {
+      setImageErrors((prev) => ({
+        ...prev,
+        [variantKey]: errors.join(", ")
+      }));
+      // Reset the input
+      e.target.value = "";
+      return;
     }
+
+    // Clear errors if validation passed
+    setImageErrors((prev) => ({
+      ...prev,
+      [variantKey]: null
+    }));
+
+    // Store dimensions
+    setImageDimensions((prev) => ({
+      ...prev,
+      [variantKey]: { width, height }
+    }));
+
+    // Read and store the image
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setFormData((prev) => ({
+        ...prev,
+        categoryImages: {
+          ...prev.categoryImages,
+          [variantKey]: reader.result
+        }
+      }));
+      setImagePreviews((prev) => ({
+        ...prev,
+        [variantKey]: reader.result
+      }));
+    };
+    reader.readAsDataURL(file);
   };
 
   const computeDupGroups = (cats, mode) => {
@@ -442,6 +638,14 @@ export default function Category() {
     .map((cat, index) => ({
       id: cat._id || index,
       _id: cat._id,
+      categoryImages: cat.categoryImages || {
+        webHero: cat.categoryImage || "",
+        webCard: "",
+        webThumbnail: "",
+        mobileVertical: cat.liveImage || "",
+        mobileCard: "",
+        mobileThumbnail: ""
+      },
       categoryImage: cat.categoryImage,
       liveImage: cat.liveImage,
       category: cat.category,
@@ -461,16 +665,19 @@ export default function Category() {
 
   const categoryList = [
     {
-      id: "categoryImage",
-      label: "Image",
-      renderCell: (value) =>
-        value ? <Avatar src={value} alt="Category" /> : "-",
-    },
-    {
-      id: "liveImage",
-      label: "Live Image",
-      renderCell: (value) =>
-        value ? <Avatar src={value} alt="Live" variant="rounded" /> : "-",
+      id: "categoryImages",
+      label: "Images",
+      renderCell: (_, row) => (
+        <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
+          {row.categoryImages?.webHero ? (
+            <Avatar src={row.categoryImages.webHero} alt="Web Hero" title="Web Hero" sx={{ width: 36, height: 36 }} />
+          ) : null}
+          {row.categoryImages?.mobileVertical ? (
+            <Avatar src={row.categoryImages.mobileVertical} alt="Mobile" title="Mobile Vertical" sx={{ width: 36, height: 36 }} />
+          ) : null}
+          {!row.categoryImages?.webHero && !row.categoryImages?.mobileVertical && "-"}
+        </div>
+      ),
     },
     { id: "category", label: "Category" },
     { id: "categoryType", label: "Type" },
@@ -672,69 +879,144 @@ export default function Category() {
             />
           </div>
 
-          <div className="category-form-input-group category-col-span-all category-upload-section">
-            <div className="category-upload-content">
-              <Button
-                variant="contained"
-                startIcon={<CloudUploadIcon />}
-                component="label"
-                className="category-upload-button"
-              >
-                Upload Image
-                <input
-                  type="file"
-                  accept="image/*"
-                  hidden
-                  ref={fileInputRef}
-                  onChange={handleImageChange}
-                />
-              </Button>
-              {preview && (
-                <Avatar
-                  src={preview}
-                  sx={{ width: 56, height: 56 }}
-                  className="category-preview-avatar"
-                />
-              )}
-              <Button
-                variant="outlined"
-                startIcon={<CloudUploadIcon />}
-                component="label"
-                className="category-upload-button"
-              >
-                Upload Live Image
-                <input
-                  type="file"
-                  accept="image/*"
-                  hidden
-                  ref={liveImageInputRef}
-                  onChange={handleLiveImageChange}
-                />
-              </Button>
-              {liveImagePreview && (
-                <Avatar
-                  src={liveImagePreview}
-                  sx={{ width: 56, height: 56 }}
-                  variant="rounded"
-                  className="category-preview-avatar"
-                />
-              )}
-              <div>
-                <button
-                  type="submit"
-                  className="category-submit-button"
-                  disabled={loading}
-                >
-                  {loading || createWarningLoading ? (
-                    <CircularProgress size={24} color="inherit" />
-                  ) : editMode ? (
-                    "Update Category"
-                  ) : (
-                    "Create Category"
+          {/* Image Variants Upload Section */}
+          <div className="category-form-input-group category-col-span-all">
+            <label className="category-input-label">Image Variants</label>
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+              gap: "20px",
+              marginTop: "16px"
+            }}>
+              {Object.entries(IMAGE_VARIANTS).map(([key, variant]) => (
+                <div key={key} style={{
+                  border: "1px solid #ddd",
+                  borderRadius: "8px",
+                  padding: "16px",
+                  backgroundColor: imageErrors[key] ? "#ffebee" : "#fafafa"
+                }}>
+                  <div style={{ marginBottom: "12px" }}>
+                    <h4 style={{ margin: "0 0 4px 0", fontSize: "14px", fontWeight: "600" }}>
+                      {variant.name}
+                    </h4>
+                    <p style={{ margin: "0 0 4px 0", fontSize: "12px", color: "#666" }}>
+                      {variant.description}
+                    </p>
+                    <p style={{ margin: "0", fontSize: "11px", color: "#999" }}>
+                      Size: {variant.minWidth}x{variant.minHeight} - {variant.maxWidth}x{variant.maxHeight}px
+                    </p>
+                    <p style={{ margin: "4px 0 0 0", fontSize: "11px", color: "#999" }}>
+                      Max File: {variant.maxFileSize}MB | Aspect: {variant.aspectRatio}
+                    </p>
+                  </div>
+
+                  {/* Upload Button */}
+                  <Button
+                    variant="contained"
+                    size="small"
+                    startIcon={<CloudUploadIcon />}
+                    component="label"
+                    fullWidth
+                    sx={{ marginBottom: "8px" }}
+                  >
+                    Upload {variant.name}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      hidden
+                      ref={imageInputRefs[key]}
+                      onChange={(e) => handleImageChange(e, key)}
+                    />
+                  </Button>
+
+                  {/* Preview */}
+                  {imagePreviews[key] && (
+                    <div style={{ marginBottom: "8px", textAlign: "center" }}>
+                      <img
+                        src={imagePreviews[key]}
+                        alt={variant.name}
+                        style={{
+                          maxWidth: "100%",
+                          maxHeight: "150px",
+                          borderRadius: "4px",
+                          border: "1px solid #ddd"
+                        }}
+                      />
+                      {imageDimensions[key] && (
+                        <p style={{ margin: "4px 0 0 0", fontSize: "11px", color: "#666" }}>
+                          ✓ {imageDimensions[key].width}x{imageDimensions[key].height}px
+                        </p>
+                      )}
+                    </div>
                   )}
-                </button>
-              </div>
+
+                  {/* Error Message */}
+                  {imageErrors[key] && (
+                    <div style={{
+                      padding: "8px",
+                      backgroundColor: "#ffcdd2",
+                      borderRadius: "4px",
+                      fontSize: "12px",
+                      color: "#c62828",
+                      marginBottom: "8px"
+                    }}>
+                      ✗ {imageErrors[key]}
+                    </div>
+                  )}
+
+                  {/* Remove Button */}
+                  {imagePreviews[key] && (
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      color="error"
+                      fullWidth
+                      onClick={() => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          categoryImages: {
+                            ...prev.categoryImages,
+                            [key]: ""
+                          }
+                        }));
+                        setImagePreviews((prev) => ({
+                          ...prev,
+                          [key]: null
+                        }));
+                        if (imageInputRefs[key].current) {
+                          imageInputRefs[key].current.value = "";
+                        }
+                      }}
+                    >
+                      Remove
+                    </Button>
+                  )}
+                </div>
+              ))}
             </div>
+          </div>
+
+          {/* Submit Button */}
+          <div className="category-form-input-group category-col-span-all">
+            <button
+              type="submit"
+              className="category-submit-button"
+              disabled={loading || Object.values(imageErrors).some(e => e !== null)}
+              style={{
+                width: "100%",
+                padding: "12px",
+                backgroundColor: Object.values(imageErrors).some(e => e !== null) ? "#ccc" : "var(--color-primary-orange)",
+                cursor: Object.values(imageErrors).some(e => e !== null) ? "not-allowed" : "pointer"
+              }}
+            >
+              {loading || createWarningLoading ? (
+                <CircularProgress size={24} color="inherit" />
+              ) : editMode ? (
+                "Update Category"
+              ) : (
+                "Create Category"
+              )}
+            </button>
           </div>
         </form>
 

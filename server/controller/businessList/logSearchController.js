@@ -197,7 +197,7 @@ export const logSearchAction = async (req, res) => {
 
     const category = await CategoryModel.findOne(
       { slug: categorySlug },
-      { categoryImageKey: 1, liveImageKey: 1 }
+      { categoryImages: 1 }
     ).lean();
 
     // ── Anonymous path ────────────────────────────────────────────────────────
@@ -217,8 +217,8 @@ export const logSearchAction = async (req, res) => {
       if (!recentAnon) {
         await createSearchLog({
           categoryName: finalCategoryName,
-          categoryImage: category?.categoryImageKey || "",
-          liveImage: category?.liveImageKey || "",
+          categoryImage: category?.categoryImages?.webHero || "",
+          liveImage: category?.categoryImages?.webHero || "",
           searchedUserText: cleanSearchText,
           location: normalizedLocation,
           userDetails: [],
@@ -258,8 +258,8 @@ export const logSearchAction = async (req, res) => {
 
     const savedLog = await createSearchLog({
       categoryName: finalCategoryName,
-      categoryImage: category?.categoryImageKey || "",
-      liveImage: category?.liveImageKey || "",
+      categoryImage: category?.categoryImages?.webHero || "",
+      liveImage: category?.categoryImages?.webHero || "",
       searchedUserText: cleanSearchText,
       location: normalizedLocation,
       userDetails: [
@@ -643,11 +643,21 @@ export const getTrendingSearchesAction = async (req, res) => {
 
     const formatted = trending.map(item => ({
       ...item,
-      categoryImage: item.categoryImage
-        ? getSignedUrlByKey(item.categoryImage)
+      // Map all image variants with signed URLs
+      categoryImages: {
+        webHero: item.webHero ? getSignedUrlByKey(item.webHero) : "",
+        webCard: item.webCard ? getSignedUrlByKey(item.webCard) : "",
+        webThumbnail: item.webThumbnail ? getSignedUrlByKey(item.webThumbnail) : "",
+        mobileVertical: item.mobileVertical ? getSignedUrlByKey(item.mobileVertical) : "",
+        mobileCard: item.mobileCard ? getSignedUrlByKey(item.mobileCard) : "",
+        mobileThumbnail: item.mobileThumbnail ? getSignedUrlByKey(item.mobileThumbnail) : ""
+      },
+      // Legacy fields for backward compatibility
+      categoryImage: item.webHero
+        ? getSignedUrlByKey(item.webHero)
         : "",
-      liveImage: item.liveImageKey
-        ? getSignedUrlByKey(item.liveImageKey)
+      liveImage: item.webHero
+        ? getSignedUrlByKey(item.webHero)
         : ""
     }));
 

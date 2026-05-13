@@ -2,8 +2,14 @@ import mongoose from "mongoose"
 
 const categorySchema = new mongoose.Schema(
   {
-    categoryImageKey: { type: String, default: "" },
-    liveImageKey: { type: String, default: "" },
+    categoryImages: {
+      webHero: { type: String, default: "" },        // 1200x400 horizontal banner
+      webCard: { type: String, default: "" },        // 400x400 square for grid
+      webThumbnail: { type: String, default: "" },   // 200x200 small thumbnail
+      mobileVertical: { type: String, default: "" }, // 400x600 portrait
+      mobileCard: { type: String, default: "" },     // 300x300 square for mobile
+      mobileThumbnail: { type: String, default: "" } // 150x150 small thumbnail
+    },
     category: { type: String, trim: true },
     subcategory: { type: String, default: '' },
     categoryType: {

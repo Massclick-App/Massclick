@@ -209,7 +209,7 @@ const TrendingSearchesCarousel = () => {
 
                   <div className="ts__card-img-wrap">
                     <img
-                      src={service.liveImage || service.categoryImage}
+                      src={service.categoryImages?.webHero || service.liveImage || service.categoryImage}
                       alt={formatDisplayName(service.categoryName)}
                       className="ts__card-img"
                       loading="lazy"
