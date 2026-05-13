@@ -169,9 +169,9 @@ const TrendingSearchesCarousel = () => {
             </p>
           </div>
 
-          <Link to={`/${districtSlug}`} className="ts__view-all">
+          {/* <Link to={`/${districtSlug}`} className="ts__view-all">
             View All <ChevronRightIcon fontSize="small" />
-          </Link>
+          </Link> */}
 
         </div>
 
@@ -209,7 +209,7 @@ const TrendingSearchesCarousel = () => {
 
                   <div className="ts__card-img-wrap">
                     <img
-                      src={service.categoryImage || service.categoryImages?.webCard || service.categoryImages?.webHero || ""}
+                      src={service.categoryImageKey || service.categoryImages?.webCard || service.categoryImages?.webHero || ""}
                       alt={formatDisplayName(service.categoryName)}
                       className="ts__card-img"
                       loading="lazy"

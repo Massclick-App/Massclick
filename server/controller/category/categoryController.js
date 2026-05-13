@@ -607,19 +607,35 @@ export const getServiceCardsAction = async (req, res) => {
               name: found.category,
               slug: found.slug,
               section,
-              icon: found.categoryImageKey
-                ? `${S3_BASE_URL}${found.categoryImageKey}`
-                : null,
-              liveImage: found.liveImageKey
-                ? `${S3_BASE_URL}${found.liveImageKey}`
-                : null
+              categoryImageKey: found.categoryImageKey
+                ? getSignedUrlByKey(found.categoryImageKey)
+                : "",
+              liveImageKey: found.liveImageKey
+                ? getSignedUrlByKey(found.liveImageKey)
+                : "",
+              categoryImages: {
+                webHero: found.categoryImages?.webHero ? getSignedUrlByKey(found.categoryImages.webHero) : "",
+                webCard: found.categoryImages?.webCard ? getSignedUrlByKey(found.categoryImages.webCard) : "",
+                webThumbnail: found.categoryImages?.webThumbnail ? getSignedUrlByKey(found.categoryImages.webThumbnail) : "",
+                mobileVertical: found.categoryImages?.mobileVertical ? getSignedUrlByKey(found.categoryImages.mobileVertical) : "",
+                mobileCard: found.categoryImages?.mobileCard ? getSignedUrlByKey(found.categoryImages.mobileCard) : "",
+                mobileThumbnail: found.categoryImages?.mobileThumbnail ? getSignedUrlByKey(found.categoryImages.mobileThumbnail) : ""
+              }
             }
             : {
               name,
               slug: name.toLowerCase().replace(/ /g, "-"),
               section,
-              icon: null,
-              liveImage: null
+              categoryImageKey: "",
+              liveImageKey: "",
+              categoryImages: {
+                webHero: "",
+                webCard: "",
+                webThumbnail: "",
+                mobileVertical: "",
+                mobileCard: "",
+                mobileThumbnail: ""
+              }
             }
         );
 
