@@ -428,21 +428,6 @@ const getMniLocationQuery = (location = "") => {
   return new RegExp(`^${escapeRegex(normalizedLocation)}$`, "i");
 };
 
-const findExistingMniGroup = async ({ category, location }) => {
-  const existingBusiness = await businessListModel
-    .findOne({
-      category,
-      amountPaid: true,
-      location: getMniLocationQuery(location),
-      "mniDetails.categoryGroup": { $exists: true, $nin: [null, ""] },
-    })
-    .sort({ paidDate: 1, createdAt: 1 })
-    .select("mniDetails")
-    .lean();
-
-  return existingBusiness?.mniDetails?.[0]?.categoryGroup || null;
-};
-
 export const updateBusinessList = async (id, data) => {
   if (!ObjectId.isValid(id)) throw new Error("Invalid business ID");
 
@@ -589,12 +574,13 @@ export const updateBusinessList = async (id, data) => {
       business.paidDate = new Date();
 
       const location = normalizeMniLocation(business.location);
-      const existingGroup = await findExistingMniGroup({
+      const paidCount = await businessListModel.countDocuments({
         category: business.category,
-        location,
+        amountPaid: true,
+        location: getMniLocationQuery(location),
       });
 
-      const groupLetter = existingGroup || getGroupLetter(0);
+      const groupLetter = getGroupLetter(paidCount);
 
       business.mniDetails = [
         {
