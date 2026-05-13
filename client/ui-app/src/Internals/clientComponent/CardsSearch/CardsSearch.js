@@ -33,7 +33,6 @@ const toSlug = (text = "") =>
     .replace(/\s+/g, "-")
     .replace(/-+/g, "-");
 
-
 const CategoryDropdown = ({ options, setSearchTerm, closeDropdown }) => {
   const MAX_HEIGHT_PX = 200;
 
@@ -230,15 +229,12 @@ const CardsSearch = ({
     const searchInput = searchTerm.trim();
     const location = locationName.trim();
 
-    // ✅ Determine if this looks like a category or a free-form search term
     let finalTerm = "";
     let finalCategory = "";
 
     if (isLikelyCategorySearch(searchInput)) {
-      // Short/single word → treat as category
       finalCategory = searchInput;
     } else {
-      // Multi-word/longer text → treat as search term
       finalTerm = searchInput;
     }
 
