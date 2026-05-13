@@ -215,14 +215,13 @@ export const logSearchAction = async (req, res) => {
       });
 
       if (!recentAnon) {
-        // Use new categoryImages if available, fallback to legacy categoryImageKey
-        const categoryImage = category?.categoryImages?.webHero || category?.categoryImageKey || "";
+        // Save only actual legacy fields if they exist (no fallback to new variants)
         await createSearchLog({
           categoryName: finalCategoryName,
-          categoryImage: categoryImage,
-          liveImage: categoryImage,
+          categoryImage: category?.categoryImageKey || "",
+          liveImage: category?.liveImageKey || "",
           categoryImages: category?.categoryImages || {
-            webHero: categoryImage,
+            webHero: "",
             webCard: "",
             webThumbnail: "",
             mobileVertical: "",
@@ -265,14 +264,13 @@ export const logSearchAction = async (req, res) => {
       });
     }
 
-    // Use new categoryImages if available, fallback to legacy categoryImageKey
-    const categoryImage = category?.categoryImages?.webHero || category?.categoryImageKey || "";
+    // Save only actual legacy fields if they exist (no fallback to new variants)
     const savedLog = await createSearchLog({
       categoryName: finalCategoryName,
-      categoryImage: categoryImage,
-      liveImage: categoryImage,
+      categoryImage: category?.categoryImageKey || "",
+      liveImage: category?.liveImageKey || "",
       categoryImages: category?.categoryImages || {
-        webHero: categoryImage,
+        webHero: "",
         webCard: "",
         webThumbnail: "",
         mobileVertical: "",
@@ -677,8 +675,8 @@ export const getTrendingSearchesAction = async (req, res) => {
         },
         // Legacy fields - only return if actually set (no fallback to new variants)
         // Handle both old field names (categoryImageKey, liveImageKey) and new names (categoryImage, liveImage)
-        categoryImage: item.categoryImage || item.categoryImageKey ? getSignedUrlByKey(item.categoryImage || item.categoryImageKey) : "",
-        liveImage: item.liveImage || item.liveImageKey ? getSignedUrlByKey(item.liveImage || item.liveImageKey) : ""
+        categoryImage:item.categoryImageKey ? getSignedUrlByKey(item.categoryImageKey) : "",
+        liveImage: item.liveImageKey ? getSignedUrlByKey(item.liveImageKey) : ""
       };
     });
 

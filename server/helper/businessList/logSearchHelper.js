@@ -196,20 +196,9 @@ export const getTopTrendingCategories = async (limit = 10) => {
               }
             }
           },
-          categoryImage: {
-            $cond: {
-              if: { $and: [{ $ne: ["$webHero", ""] }, { $ne: ["$webHero", null] }] },
-              then: "$webHero",
-              else: "$categoryImage"
-            }
-          },
-          liveImage: {
-            $cond: {
-              if: { $and: [{ $ne: ["$liveImage", ""] }, { $ne: ["$liveImage", null] }] },
-              then: "$liveImage",
-              else: "$webHero"
-            }
-          }
+          // Keep legacy fields as-is (don't overwrite with new variants)
+          // categoryImage and liveImage come directly from searchLog
+          // They are only populated if actual legacy images were uploaded
         }
       },
       {
