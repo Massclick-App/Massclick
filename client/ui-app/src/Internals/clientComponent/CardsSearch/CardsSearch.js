@@ -169,19 +169,7 @@ const CardsSearch = ({
     const categoryOnly = isLikelyCategorySearch(userInput);
 
     backendSuggestions.forEach((item) => {
-      if (categoryOnly) {
-        const val = item.category;
-        if (!val) return;
-
-        const key = val.toLowerCase();
-        if (!seen.has(key)) {
-          seen.add(key);
-          list.push(val);
-        }
-        return;
-      }
-
-      const val = item.businessName || item.category;
+      const val = item.category;
       if (!val) return;
 
       const key = val.toLowerCase();

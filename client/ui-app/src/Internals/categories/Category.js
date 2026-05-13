@@ -251,6 +251,7 @@ export default function Category() {
   const [businessUsage, setBusinessUsage] = useState({});
   const [createWarning, setCreateWarning] = useState({ open: false, matches: [] });
   const [createWarningLoading, setCreateWarningLoading] = useState(false);
+  const [imageModalOpen, setImageModalOpen] = useState({ open: false, variantKey: null });
 
   const subCategories = [
     "Services",
@@ -881,117 +882,80 @@ export default function Category() {
             />
           </div>
 
-          {/* Image Variants Upload Section */}
+          {/* Image Variants Upload Section - Compact Grid */}
           <div className="category-form-input-group category-col-span-all">
             <label className="category-input-label">Image Variants</label>
             <div style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-              gap: "20px",
-              marginTop: "16px"
+              gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))",
+              gap: "12px",
+              marginTop: "12px"
             }}>
               {Object.entries(IMAGE_VARIANTS).map(([key, variant]) => (
-                <div key={key} style={{
-                  border: "1px solid #ddd",
-                  borderRadius: "8px",
-                  padding: "16px",
-                  backgroundColor: imageErrors[key] ? "#ffebee" : "#fafafa"
-                }}>
-                  <div style={{ marginBottom: "12px" }}>
-                    <h4 style={{ margin: "0 0 4px 0", fontSize: "14px", fontWeight: "600" }}>
-                      {variant.name}
-                    </h4>
-                    <p style={{ margin: "0 0 4px 0", fontSize: "12px", color: "#666" }}>
-                      {variant.description}
-                    </p>
-                    <p style={{ margin: "0", fontSize: "11px", color: "#999" }}>
-                      Size: {variant.minWidth}x{variant.minHeight} - {variant.maxWidth}x{variant.maxHeight}px
-                    </p>
-                    <p style={{ margin: "4px 0 0 0", fontSize: "11px", color: "#999" }}>
-                      Max File: {variant.maxFileSize}MB | Aspect: {variant.aspectRatio}
-                    </p>
-                  </div>
-
-                  {/* Upload Button */}
-                  <Button
-                    variant="contained"
-                    size="small"
-                    startIcon={<CloudUploadIcon />}
-                    component="label"
-                    fullWidth
-                    sx={{ marginBottom: "8px" }}
-                  >
-                    Upload {variant.name}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      hidden
-                      ref={imageInputRefs[key]}
-                      onChange={(e) => handleImageChange(e, key)}
-                    />
-                  </Button>
-
-                  {/* Preview */}
-                  {imagePreviews[key] && (
-                    <div style={{ marginBottom: "8px", textAlign: "center" }}>
+                <div
+                  key={key}
+                  onClick={() => setImageModalOpen({ open: true, variantKey: key })}
+                  style={{
+                    position: "relative",
+                    cursor: "pointer",
+                    borderRadius: "8px",
+                    overflow: "hidden",
+                    border: imageErrors[key] ? "2px solid #d32f2f" : imagePreviews[key] ? "2px solid #4caf50" : "2px dashed #bbb",
+                    backgroundColor: "#f5f5f5",
+                    aspectRatio: "1",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    transition: "all 0.2s ease",
+                    padding: "8px"
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = "var(--color-primary-orange)";
+                    e.currentTarget.style.backgroundColor = "#fff3e0";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = imageErrors[key] ? "#d32f2f" : imagePreviews[key] ? "#4caf50" : "#bbb";
+                    e.currentTarget.style.backgroundColor = "#f5f5f5";
+                  }}
+                >
+                  {imagePreviews[key] ? (
+                    <>
                       <img
                         src={imagePreviews[key]}
                         alt={variant.name}
                         style={{
-                          maxWidth: "100%",
-                          maxHeight: "150px",
-                          borderRadius: "4px",
-                          border: "1px solid #ddd"
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover"
                         }}
                       />
-                      {imageDimensions[key] && (
-                        <p style={{ margin: "4px 0 0 0", fontSize: "11px", color: "#666" }}>
-                          ✓ {imageDimensions[key].width}x{imageDimensions[key].height}px
-                        </p>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Error Message */}
-                  {imageErrors[key] && (
-                    <div style={{
-                      padding: "8px",
-                      backgroundColor: "#ffcdd2",
-                      borderRadius: "4px",
-                      fontSize: "12px",
-                      color: "#c62828",
-                      marginBottom: "8px"
-                    }}>
-                      ✗ {imageErrors[key]}
-                    </div>
-                  )}
-
-                  {/* Remove Button */}
-                  {imagePreviews[key] && (
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      color="error"
-                      fullWidth
-                      onClick={() => {
-                        setFormData((prev) => ({
-                          ...prev,
-                          categoryImages: {
-                            ...prev.categoryImages,
-                            [key]: ""
-                          }
-                        }));
-                        setImagePreviews((prev) => ({
-                          ...prev,
-                          [key]: null
-                        }));
-                        if (imageInputRefs[key].current) {
-                          imageInputRefs[key].current.value = "";
-                        }
+                      <div style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        backgroundColor: "rgba(0,0,0,0.4)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "white",
+                        opacity: 0,
+                        transition: "opacity 0.2s ease",
                       }}
-                    >
-                      Remove
-                    </Button>
+                        onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.opacity = "0"; }}
+                      >
+                        <span style={{ fontSize: "12px", fontWeight: "600", textAlign: "center" }}>Edit</span>
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ textAlign: "center" }}>
+                      <CloudUploadIcon sx={{ fontSize: "32px", color: "#999", mb: 1 }} />
+                      <p style={{ fontSize: "11px", fontWeight: "600", color: "#666", margin: "4px 0 0 0" }}>
+                        {variant.name}
+                      </p>
+                    </div>
                   )}
                 </div>
               ))}
@@ -1000,160 +964,160 @@ export default function Category() {
 
           {/* Legacy Image Fields (for backward compatibility) */}
           <div className="category-form-input-group category-col-span-all">
-            <label className="category-input-label">Legacy Images (Optional - for backward compatibility)</label>
+            <label className="category-input-label" style={{ fontSize: "12px", color: "#999" }}>
+              Legacy Images (Optional - for backward compatibility)
+            </label>
             <div style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-              gap: "20px",
-              marginTop: "16px"
+              gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))",
+              gap: "10px",
+              marginTop: "10px"
             }}>
               {/* Legacy Category Image */}
-              <div style={{
-                border: "1px solid #ddd",
-                borderRadius: "8px",
-                padding: "16px",
-                backgroundColor: "#f9f9f9"
-              }}>
-                <h4 style={{ margin: "0 0 4px 0", fontSize: "14px", fontWeight: "600" }}>
-                  Category Image (Legacy)
-                </h4>
-                <p style={{ margin: "0 0 4px 0", fontSize: "12px", color: "#666" }}>
-                  Old categoryImage field (deprecated)
-                </p>
-                <Button
-                  variant="contained"
-                  size="small"
-                  startIcon={<CloudUploadIcon />}
-                  component="label"
-                  fullWidth
-                  sx={{ marginBottom: "8px" }}
-                >
-                  Upload Category Image
-                  <input
-                    type="file"
-                    accept="image/*"
-                    hidden
-                    ref={fileInputRef}
-                    onChange={(e) => {
-                      const file = e.target.files[0];
-                      if (file) {
-                        const reader = new FileReader();
-                        reader.onloadend = () => {
-                          setFormData((prev) => ({
-                            ...prev,
-                            categoryImage: reader.result
-                          }));
-                          setPreview(reader.result);
-                        };
-                        reader.readAsDataURL(file);
-                      }
-                    }}
-                  />
-                </Button>
-                {preview && (
-                  <div style={{ marginBottom: "8px", textAlign: "center" }}>
-                    <img
-                      src={preview}
-                      alt="Category Image"
-                      style={{
-                        maxWidth: "100%",
-                        maxHeight: "150px",
-                        borderRadius: "4px",
-                        border: "1px solid #ddd"
-                      }}
-                    />
-                  </div>
-                )}
-                {preview && (
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    color="error"
-                    fullWidth
-                    onClick={() => {
-                      setFormData((prev) => ({ ...prev, categoryImage: "" }));
-                      setPreview(null);
-                      if (fileInputRef.current) fileInputRef.current.value = "";
-                    }}
-                  >
-                    Remove
-                  </Button>
+              <div
+                onClick={() => {
+                  if (fileInputRef.current) fileInputRef.current.click();
+                }}
+                style={{
+                  cursor: "pointer",
+                  borderRadius: "6px",
+                  overflow: "hidden",
+                  border: preview ? "2px solid #4caf50" : "2px dashed #ccc",
+                  backgroundColor: "#f9f9f9",
+                  aspectRatio: "1",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  transition: "all 0.2s ease",
+                  position: "relative",
+                  padding: "6px"
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = "var(--color-primary-orange)";
+                  e.currentTarget.style.backgroundColor = "#fff3e0";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = preview ? "#4caf50" : "#ccc";
+                  e.currentTarget.style.backgroundColor = "#f9f9f9";
+                }}
+              >
+                {preview ? (
+                  <>
+                    <img src={preview} alt="Category" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    <div style={{ position: "absolute", fontSize: "9px", color: "#666", fontWeight: "600", padding: "2px 4px", backgroundColor: "rgba(255,255,255,0.9)", borderRadius: "3px" }}>Category</div>
+                  </>
+                ) : (
+                  <Typography variant="caption" sx={{ fontSize: "10px", color: "#999", textAlign: "center" }}>Category Image</Typography>
                 )}
               </div>
+              <input
+                type="file"
+                accept="image/*"
+                hidden
+                ref={fileInputRef}
+                onChange={(e) => {
+                  const file = e.target.files[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                      setFormData((prev) => ({ ...prev, categoryImage: reader.result }));
+                      setPreview(reader.result);
+                    };
+                    reader.readAsDataURL(file);
+                  }
+                }}
+              />
 
               {/* Legacy Live Image */}
-              <div style={{
-                border: "1px solid #ddd",
-                borderRadius: "8px",
-                padding: "16px",
-                backgroundColor: "#f9f9f9"
-              }}>
-                <h4 style={{ margin: "0 0 4px 0", fontSize: "14px", fontWeight: "600" }}>
-                  Live Image (Legacy)
-                </h4>
-                <p style={{ margin: "0 0 4px 0", fontSize: "12px", color: "#666" }}>
-                  Old liveImage field (deprecated)
-                </p>
-                <Button
-                  variant="contained"
-                  size="small"
-                  startIcon={<CloudUploadIcon />}
-                  component="label"
-                  fullWidth
-                  sx={{ marginBottom: "8px" }}
-                >
-                  Upload Live Image
-                  <input
-                    type="file"
-                    accept="image/*"
-                    hidden
-                    ref={liveImageInputRef}
-                    onChange={(e) => {
-                      const file = e.target.files[0];
-                      if (file) {
-                        const reader = new FileReader();
-                        reader.onloadend = () => {
-                          setFormData((prev) => ({
-                            ...prev,
-                            liveImage: reader.result
-                          }));
-                          setLiveImagePreview(reader.result);
-                        };
-                        reader.readAsDataURL(file);
-                      }
-                    }}
-                  />
-                </Button>
-                {liveImagePreview && (
-                  <div style={{ marginBottom: "8px", textAlign: "center" }}>
-                    <img
-                      src={liveImagePreview}
-                      alt="Live Image"
-                      style={{
-                        maxWidth: "100%",
-                        maxHeight: "150px",
-                        borderRadius: "4px",
-                        border: "1px solid #ddd"
-                      }}
-                    />
-                  </div>
-                )}
-                {liveImagePreview && (
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    color="error"
-                    fullWidth
-                    onClick={() => {
-                      setFormData((prev) => ({ ...prev, liveImage: "" }));
-                      setLiveImagePreview(null);
-                      if (liveImageInputRef.current) liveImageInputRef.current.value = "";
-                    }}
-                  >
-                    Remove
-                  </Button>
+              <div
+                onClick={() => {
+                  if (liveImageInputRef.current) liveImageInputRef.current.click();
+                }}
+                style={{
+                  cursor: "pointer",
+                  borderRadius: "6px",
+                  overflow: "hidden",
+                  border: liveImagePreview ? "2px solid #4caf50" : "2px dashed #ccc",
+                  backgroundColor: "#f9f9f9",
+                  aspectRatio: "1",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  transition: "all 0.2s ease",
+                  position: "relative",
+                  padding: "6px"
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = "var(--color-primary-orange)";
+                  e.currentTarget.style.backgroundColor = "#fff3e0";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = liveImagePreview ? "#4caf50" : "#ccc";
+                  e.currentTarget.style.backgroundColor = "#f9f9f9";
+                }}
+              >
+                {liveImagePreview ? (
+                  <>
+                    <img src={liveImagePreview} alt="Live" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    <div style={{ position: "absolute", fontSize: "9px", color: "#666", fontWeight: "600", padding: "2px 4px", backgroundColor: "rgba(255,255,255,0.9)", borderRadius: "3px" }}>Live</div>
+                  </>
+                ) : (
+                  <Typography variant="caption" sx={{ fontSize: "10px", color: "#999", textAlign: "center" }}>Live Image</Typography>
                 )}
               </div>
+              <input
+                type="file"
+                accept="image/*"
+                hidden
+                ref={liveImageInputRef}
+                onChange={(e) => {
+                  const file = e.target.files[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                      setFormData((prev) => ({ ...prev, liveImage: reader.result }));
+                      setLiveImagePreview(reader.result);
+                    };
+                    reader.readAsDataURL(file);
+                  }
+                }}
+              />
+
+              {/* Remove buttons in compact form */}
+              {(preview || liveImagePreview) && (
+                <Box sx={{ display: "flex", gap: 1, mt: 1, gridColumn: "1 / -1" }}>
+                  {preview && (
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      color="error"
+                      sx={{ flex: 1 }}
+                      onClick={() => {
+                        setFormData((prev) => ({ ...prev, categoryImage: "" }));
+                        setPreview(null);
+                        if (fileInputRef.current) fileInputRef.current.value = "";
+                      }}
+                    >
+                      Remove Category
+                    </Button>
+                  )}
+                  {liveImagePreview && (
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      color="error"
+                      sx={{ flex: 1 }}
+                      onClick={() => {
+                        setFormData((prev) => ({ ...prev, liveImage: "" }));
+                        setLiveImagePreview(null);
+                        if (liveImageInputRef.current) liveImageInputRef.current.value = "";
+                      }}
+                    >
+                      Remove Live
+                    </Button>
+                  )}
+                </Box>
+              )}
             </div>
           </div>
 
@@ -1367,6 +1331,135 @@ export default function Category() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Image Variant Modal */}
+      {imageModalOpen.variantKey && (
+        <Dialog
+          open={imageModalOpen.open}
+          onClose={() => setImageModalOpen({ open: false, variantKey: null })}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle sx={{ pb: 1 }}>
+            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span>{IMAGE_VARIANTS[imageModalOpen.variantKey]?.name}</span>
+              <IconButton
+                size="small"
+                onClick={() => setImageModalOpen({ open: false, variantKey: null })}
+              >
+                ×
+              </IconButton>
+            </Box>
+          </DialogTitle>
+          <DialogContent dividers sx={{ py: 2 }}>
+            {/* Image Specs */}
+            <Box sx={{ mb: 2, p: 1.5, backgroundColor: "#f5f5f5", borderRadius: "6px" }}>
+              <Typography variant="caption" display="block" sx={{ color: "#666", mb: 0.5 }}>
+                {IMAGE_VARIANTS[imageModalOpen.variantKey]?.description}
+              </Typography>
+              <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, fontSize: "12px", color: "#888" }}>
+                <div>Size: {IMAGE_VARIANTS[imageModalOpen.variantKey]?.minWidth}x{IMAGE_VARIANTS[imageModalOpen.variantKey]?.minHeight} - {IMAGE_VARIANTS[imageModalOpen.variantKey]?.maxWidth}x{IMAGE_VARIANTS[imageModalOpen.variantKey]?.maxHeight}px</div>
+                <div>Aspect: {IMAGE_VARIANTS[imageModalOpen.variantKey]?.aspectRatio}</div>
+                <div>Max File: {IMAGE_VARIANTS[imageModalOpen.variantKey]?.maxFileSize}MB</div>
+              </Box>
+            </Box>
+
+            {/* Preview */}
+            {imagePreviews[imageModalOpen.variantKey] && (
+              <Box sx={{ mb: 2, textAlign: "center" }}>
+                <img
+                  src={imagePreviews[imageModalOpen.variantKey]}
+                  alt={IMAGE_VARIANTS[imageModalOpen.variantKey]?.name}
+                  style={{
+                    maxWidth: "100%",
+                    maxHeight: "300px",
+                    borderRadius: "6px",
+                    border: "1px solid #ddd"
+                  }}
+                />
+                {imageDimensions[imageModalOpen.variantKey] && (
+                  <Typography variant="caption" display="block" sx={{ mt: 1, color: "#666" }}>
+                    ✓ {imageDimensions[imageModalOpen.variantKey].width}x{imageDimensions[imageModalOpen.variantKey].height}px
+                  </Typography>
+                )}
+              </Box>
+            )}
+
+            {/* Error Message */}
+            {imageErrors[imageModalOpen.variantKey] && (
+              <Box sx={{
+                p: 1.5,
+                backgroundColor: "#ffebee",
+                borderRadius: "6px",
+                fontSize: "12px",
+                color: "#c62828",
+                mb: 2,
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 1
+              }}>
+                <span>✗</span>
+                <span>{imageErrors[imageModalOpen.variantKey]}</span>
+              </Box>
+            )}
+
+            {/* Upload Button */}
+            <Button
+              variant="contained"
+              component="label"
+              fullWidth
+              startIcon={<CloudUploadIcon />}
+              sx={{ mb: 2 }}
+            >
+              {imagePreviews[imageModalOpen.variantKey] ? "Replace Image" : "Upload Image"}
+              <input
+                type="file"
+                accept="image/*"
+                hidden
+                ref={imageInputRefs[imageModalOpen.variantKey]}
+                onChange={(e) => {
+                  handleImageChange(e, imageModalOpen.variantKey);
+                }}
+              />
+            </Button>
+          </DialogContent>
+          <DialogActions sx={{ p: 2 }}>
+            {imagePreviews[imageModalOpen.variantKey] && (
+              <Button
+                size="small"
+                variant="outlined"
+                color="error"
+                onClick={() => {
+                  setFormData((prev) => ({
+                    ...prev,
+                    categoryImages: {
+                      ...prev.categoryImages,
+                      [imageModalOpen.variantKey]: ""
+                    }
+                  }));
+                  setImagePreviews((prev) => ({
+                    ...prev,
+                    [imageModalOpen.variantKey]: null
+                  }));
+                  setImageErrors((prev) => ({
+                    ...prev,
+                    [imageModalOpen.variantKey]: null
+                  }));
+                  if (imageInputRefs[imageModalOpen.variantKey].current) {
+                    imageInputRefs[imageModalOpen.variantKey].current.value = "";
+                  }
+                }}
+              >
+                Remove
+              </Button>
+            )}
+            <Box sx={{ flex: 1 }} />
+            <Button onClick={() => setImageModalOpen({ open: false, variantKey: null })}>
+              Done
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
 
       {/* Create duplicate warning dialog */}
       <Dialog

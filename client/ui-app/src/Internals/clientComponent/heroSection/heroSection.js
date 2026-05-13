@@ -228,26 +228,8 @@ const HeroSection = React.memo(({
     const seen = new Set();
     const list = [];
 
-    const userInput = searchTerm.trim().toLowerCase();
-    const categoryOnly = isLikelyCategorySearch(userInput);
-
     backendSuggestions.forEach((item) => {
-      if (categoryOnly) {
-        const val = item.category;
-        if (!val) return;
-
-        const text = String(val).trim();
-        if (!text) return;
-
-        const key = text.toLowerCase();
-        if (!seen.has(key)) {
-          seen.add(key);
-          list.push(text);
-        }
-        return;
-      }
-
-      const val = item.businessName || item.category;
+      const val = item.category;
       if (!val) return;
 
       const text = String(val).trim();

@@ -74,7 +74,7 @@ const normalize = (text = "") =>
 const generateAltText = (label, districtSlug) =>
   `${label} services in ${districtSlug}`;
 
-const PopularCategoriesDrawer = ({ openFromHome = false }) => {
+const PopularCategoriesDrawer = ({ openFromHome = false, onClose }) => {
 
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -95,7 +95,7 @@ const PopularCategoriesDrawer = ({ openFromHome = false }) => {
   }, [dispatch]);
 
   useEffect(() => {
-    if (openFromHome) setDrawerOpen(true);
+    setDrawerOpen(openFromHome);
   }, [openFromHome]);
 
   const districtSlug = useMemo(
@@ -169,23 +169,29 @@ const handleClick = useCallback((cat) => {
 
   navigate(`/${districtSlug}/${cat.slug}`, { state: { logAlreadySent: true } });
   setDrawerOpen(false);
+  onClose?.();
 
-}, [dispatch, navigate, selectedDistrict, districtSlug]);
+}, [dispatch, navigate, selectedDistrict, districtSlug, onClose]);
+
+  const handleClose = () => {
+    setDrawerOpen(false);
+    onClose?.();
+  };
 
   return (
     <Drawer
       anchor="right"
       open={drawerOpen}
-      onClose={() => setDrawerOpen(false)}
+      onClose={handleClose}
       PaperProps={{
-        sx: { width: "70%", maxWidth: "900px", padding: "20px" },
+        sx: { width: { xs: "100%", sm: "70%", md: "70%" }, maxWidth: "900px", padding: { xs: "12px", sm: "20px" } },
       }}
     >
       <header className="pc-header">
         <h2>Popular Categories</h2>
         <CloseIcon
           className="pc-close"
-          onClick={() => setDrawerOpen(false)}
+          onClick={handleClose}
         />
       </header>
 

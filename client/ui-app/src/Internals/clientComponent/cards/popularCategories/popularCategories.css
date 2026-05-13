@@ -127,32 +127,141 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  transition: background-color 0.2s ease;
+}
+
+.pc-item:hover {
+  background-color: #f5f5f5;
 }
 
 .pc-item img {
-  width: 60px;   
+  width: 60px;
   height: 60px;
   object-fit: contain;
+  flex-shrink: 0;
 }
 
 .pc-item span {
   font-size: 15px;
   color: #333;
+  word-break: break-word;
 }
 
+.pc-header {
+  margin-bottom: 16px;
+}
+
+.pc-header h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.pc-close {
+  cursor: pointer;
+  font-size: 26px;
+  color: #666;
+  transition: color 0.2s ease;
+}
+
+.pc-close:hover {
+  color: #333;
+}
 
 @media (max-width: 992px) {
     .restaurants-list-wrapper {
-        max-width: 960px; /* Adjust max-width slightly for smaller tablets */
+        max-width: 960px;
         padding: 0 15px;
+    }
+
+    .pc-grid {
+      grid-template-columns: repeat(3, 1fr);
+      column-gap: 20px;
+      row-gap: 16px;
+    }
+
+    .pc-item img {
+      width: 50px;
+      height: 50px;
+    }
+
+    .pc-item span {
+      font-size: 13px;
     }
 }
 
-/* Mobile View (max-width: 600px) */
+@media (max-width: 768px) {
+    .pc-grid {
+      grid-template-columns: repeat(2, 1fr);
+      column-gap: 16px;
+      row-gap: 12px;
+    }
+
+    .pc-item {
+      gap: 10px;
+      padding: 6px;
+    }
+
+    .pc-item img {
+      width: 45px;
+      height: 45px;
+    }
+
+    .pc-item span {
+      font-size: 12px;
+    }
+
+    .pc-search {
+      margin: 14px 0;
+      padding: 8px 10px;
+    }
+
+    .pc-header h2 {
+      font-size: 18px;
+    }
+}
+
 @media (max-width: 600px) {
     .restaurants-list-wrapper {
-        /* On mobile, cards should be full width and use more vertical padding */
         margin: 10px auto;
-        padding: 0 10px; /* Reduced padding on very small screens */
+        padding: 0 10px;
+    }
+
+    .pc-grid {
+      grid-template-columns: 1fr;
+      column-gap: 8px;
+      row-gap: 8px;
+    }
+
+    .pc-item {
+      gap: 12px;
+      padding: 10px;
+      flex-direction: row;
+    }
+
+    .pc-item img {
+      width: 50px;
+      height: 50px;
+      flex-shrink: 0;
+    }
+
+    .pc-item span {
+      font-size: 13px;
+      flex: 1;
+    }
+
+    .pc-search {
+      margin: 12px 0;
+      padding: 8px 10px;
+    }
+
+    .pc-header {
+      margin-bottom: 12px;
+    }
+
+    .pc-header h2 {
+      font-size: 16px;
     }
 }
