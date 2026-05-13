@@ -19,63 +19,63 @@ import { userMenuItems } from './Internals/clientComponent/categoryBar.js';
 import ShimmerSkeleton from './Internals/clientComponent/shimmerSkeleton.js';
 
 
-const Dashboard = lazy(() => import('./Dashboard'));
-const Login = lazy(() => import('./Internals/Login/login.js'));
-const User = lazy(() => import('./Internals/user/Users.js'));
-const Clients = lazy(() => import('./Internals/clients/Client.js'));
-const Business = lazy(() => import('./Internals/business/Business.js'));
-const Category = lazy(() => import('./Internals/categories/Category.js'));
-const Roles = lazy(() => import('./Internals/Roles/Roles.js'));
-const Location = lazy(() => import('./Internals/location/Location.js'));
-const TermsAndConditionsDatas = lazy(() => import('./Internals/footersContents/termsAndConditions/termsAndConditions.js'));
-const MainGrid = lazy(() => import('./components/MainGrid.js'));
+const Dashboard = lazy(() => import(/* webpackChunkName: "admin-dashboard" */ './Dashboard'));
+const Login = lazy(() => import(/* webpackChunkName: "admin-login" */ './Internals/Login/login.js'));
+const User = lazy(() => import(/* webpackChunkName: "admin-users" */ './Internals/user/Users.js'));
+const Clients = lazy(() => import(/* webpackChunkName: "admin-clients" */ './Internals/clients/Client.js'));
+const Business = lazy(() => import(/* webpackChunkName: "admin-business" */ './Internals/business/Business.js'));
+const Category = lazy(() => import(/* webpackChunkName: "admin-category" */ './Internals/categories/Category.js'));
+const Roles = lazy(() => import(/* webpackChunkName: "admin-roles" */ './Internals/Roles/Roles.js'));
+const Location = lazy(() => import(/* webpackChunkName: "admin-location" */ './Internals/location/Location.js'));
+const TermsAndConditionsDatas = lazy(() => import(/* webpackChunkName: "admin-terms" */ './Internals/footersContents/termsAndConditions/termsAndConditions.js'));
+const MainGrid = lazy(() => import(/* webpackChunkName: "admin-maingrid" */ './components/MainGrid.js'));
 
-const BusinessListing = lazy(() => import('./Internals/clientComponent/home.js'));
-const SearchResults = lazy(() => import('./Internals/clientComponent/SearchResult/SearchResult.js'));
-const BusinessDetails = lazy(() => import('./Internals/clientComponent/cards/cardDetails.js'));
+const BusinessListing = lazy(() => import(/* webpackChunkName: "home" */ './Internals/clientComponent/home.js'));
+const SearchResults = lazy(() => import(/* webpackChunkName: "search" */ './Internals/clientComponent/SearchResult/SearchResult.js'));
+const BusinessDetails = lazy(() => import(/* webpackChunkName: "business-detail" */ './Internals/clientComponent/cards/cardDetails.js'));
 
-const AboutUsPage = lazy(() => import('./Internals/clientComponent/footer/aboutUs/aboutUsPage.js'));
-const Testimonials = lazy(() => import('./Internals/clientComponent/footer/testimonials/testimonials.js'));
-const FeedbackComponent = lazy(() => import('./Internals/clientComponent/footer/feedback/feedback.js'));
-const CustomerCareComponent = lazy(() => import('./Internals/clientComponent/footer/customerCare/customerCare.js'));
-const Portfolio = lazy(() => import('./Internals/clientComponent/footer/portfolio/portfolio.js'));
-const TermsAndConditions = lazy(() => import('./Internals/clientComponent/footer/termsAndConditions/termsAndCondition.js'));
-const PrivacyPolicy = lazy(() => import('./Internals/clientComponent/footer/privacyPolicy/privacyPolicy.js'));
-const RefundPolicy = lazy(() => import('./Internals/clientComponent/footer/refund/refundPolicy.js'));
-const EnquiryNow = lazy(() => import('./Internals/clientComponent/footer/enquiry/enquiry.js'));
-const WebDevSection = lazy(() => import('./Internals/clientComponent/footer/webDev/webDevSection.js'));
-const DigitalMarketing = lazy(() => import('./Internals/clientComponent/footer/digitalMarketing/digitalMarketing.js'));
-const GraphicDesign = lazy(() => import('./Internals/clientComponent/footer/graphicDesign/graphicDesign.js'));
-const Seo = lazy(() => import('./Internals/clientComponent/footer/seo/seo.js'));
-const DeleteAccount = lazy(() => import('./Internals/clientComponent/footer/deleteAccount/deleteAccount.js'));
+const AboutUsPage = lazy(() => import(/* webpackChunkName: "footer-aboutus" */ './Internals/clientComponent/footer/aboutUs/aboutUsPage.js'));
+const Testimonials = lazy(() => import(/* webpackChunkName: "footer-testimonials" */ './Internals/clientComponent/footer/testimonials/testimonials.js'));
+const FeedbackComponent = lazy(() => import(/* webpackChunkName: "footer-feedback" */ './Internals/clientComponent/footer/feedback/feedback.js'));
+const CustomerCareComponent = lazy(() => import(/* webpackChunkName: "footer-care" */ './Internals/clientComponent/footer/customerCare/customerCare.js'));
+const Portfolio = lazy(() => import(/* webpackChunkName: "footer-portfolio" */ './Internals/clientComponent/footer/portfolio/portfolio.js'));
+const TermsAndConditions = lazy(() => import(/* webpackChunkName: "footer-terms" */ './Internals/clientComponent/footer/termsAndConditions/termsAndCondition.js'));
+const PrivacyPolicy = lazy(() => import(/* webpackChunkName: "footer-privacy" */ './Internals/clientComponent/footer/privacyPolicy/privacyPolicy.js'));
+const RefundPolicy = lazy(() => import(/* webpackChunkName: "footer-refund" */ './Internals/clientComponent/footer/refund/refundPolicy.js'));
+const EnquiryNow = lazy(() => import(/* webpackChunkName: "footer-enquiry" */ './Internals/clientComponent/footer/enquiry/enquiry.js'));
+const WebDevSection = lazy(() => import(/* webpackChunkName: "footer-webdev" */ './Internals/clientComponent/footer/webDev/webDevSection.js'));
+const DigitalMarketing = lazy(() => import(/* webpackChunkName: "footer-digital" */ './Internals/clientComponent/footer/digitalMarketing/digitalMarketing.js'));
+const GraphicDesign = lazy(() => import(/* webpackChunkName: "footer-graphic" */ './Internals/clientComponent/footer/graphicDesign/graphicDesign.js'));
+const Seo = lazy(() => import(/* webpackChunkName: "footer-seo" */ './Internals/clientComponent/footer/seo/seo.js'));
+const DeleteAccount = lazy(() => import(/* webpackChunkName: "footer-delete" */ './Internals/clientComponent/footer/deleteAccount/deleteAccount.js'));
 
-const WriteReviewPage = lazy(() => import('./Internals/clientComponent/rating/submitReviewPage.js'));
-const Profile = lazy(() => import('./Internals/Login/profile/profile.js'));
-const PaymentStatus = lazy(() => import('./Internals/phonePay/paymentStatus.js'));
-const LeadsPage = lazy(() => import('./Internals/clientComponent/LeadsPage/leadsPage.js'));
-const AdvertisePage = lazy(() => import('./Internals/clientComponent/advertise/advertise.js'));
-const FreeListingPage = lazy(() => import('./Internals/clientComponent/free-Listing/free-Listing.js'));
-const LeadsCardHistory = lazy(() => import('./Internals/clientComponent/LeadsPage/leadsCards/leadsCards.js'));
-const BusinessEnquiry = lazy(() => import('./Internals/clientComponent/businessEnquiry/businessEnquiry.js'));
+const WriteReviewPage = lazy(() => import(/* webpackChunkName: "review" */ './Internals/clientComponent/rating/submitReviewPage.js'));
+const Profile = lazy(() => import(/* webpackChunkName: "profile" */ './Internals/Login/profile/profile.js'));
+const PaymentStatus = lazy(() => import(/* webpackChunkName: "payment" */ './Internals/phonePay/paymentStatus.js'));
+const LeadsPage = lazy(() => import(/* webpackChunkName: "leads" */ './Internals/clientComponent/LeadsPage/leadsPage.js'));
+const AdvertisePage = lazy(() => import(/* webpackChunkName: "advertise" */ './Internals/clientComponent/advertise/advertise.js'));
+const FreeListingPage = lazy(() => import(/* webpackChunkName: "free-listing" */ './Internals/clientComponent/free-Listing/free-Listing.js'));
+const LeadsCardHistory = lazy(() => import(/* webpackChunkName: "leads-history" */ './Internals/clientComponent/LeadsPage/leadsCards/leadsCards.js'));
+const BusinessEnquiry = lazy(() => import(/* webpackChunkName: "business-enquiry" */ './Internals/clientComponent/businessEnquiry/businessEnquiry.js'));
 
-const EnquiryPage = lazy(() => import('./Internals/enquiry-page/enquiry-page.js'));
-const AdvertisementPage = lazy(() => import('./Internals/advertisement/advertisement.js'));
+const EnquiryPage = lazy(() => import(/* webpackChunkName: "admin-enquiry" */ './Internals/enquiry-page/enquiry-page.js'));
+const AdvertisementPage = lazy(() => import(/* webpackChunkName: "admin-advertisement" */ './Internals/advertisement/advertisement.js'));
 
-const GlobalDrawer = lazy(() => import('./Internals/clientComponent/Drawer/globalDrawer.js'));
-const SeoData = lazy(() => import('./Internals/seoData/seoData.js'));
-const SeoPageContent = lazy(() => import('./Internals/seoData/seoPageContent/seoPageContent.js'));
-const SeoPageContentBlogs = lazy(() => import('./Internals/seoData/seoPageContentBlog/seoPageContentBlog.js'));
+const GlobalDrawer = lazy(() => import(/* webpackChunkName: "drawer" */ './Internals/clientComponent/Drawer/globalDrawer.js'));
+const SeoData = lazy(() => import(/* webpackChunkName: "admin-seo" */ './Internals/seoData/seoData.js'));
+const SeoPageContent = lazy(() => import(/* webpackChunkName: "admin-seo-content" */ './Internals/seoData/seoPageContent/seoPageContent.js'));
+const SeoPageContentBlogs = lazy(() => import(/* webpackChunkName: "admin-seo-blogs" */ './Internals/seoData/seoPageContentBlog/seoPageContentBlog.js'));
 
-const MRPDatas = lazy(() => import('./Internals/MRPDATA/mrpData.js'));
-const FCMMarketing = lazy(() => import('./Internals/FCMMarketing/FCMMarketing.js'));
-const SystemSettings = lazy(() => import('./Internals/SystemSettings/SystemSettings.js'));
+const MRPDatas = lazy(() => import(/* webpackChunkName: "admin-mrp" */ './Internals/MRPDATA/mrpData.js'));
+const FCMMarketing = lazy(() => import(/* webpackChunkName: "admin-fcm" */ './Internals/FCMMarketing/FCMMarketing.js'));
+const SystemSettings = lazy(() => import(/* webpackChunkName: "admin-settings" */ './Internals/SystemSettings/SystemSettings.js'));
 
-const FloatingButtons = lazy(() => import('./Internals/clientComponent/floating/floatingButtons.js'));
-const FloatingAdCard = lazy(() => import('./Internals/clientComponent/floating/floatingAdCard.js'));
-const OTPLoginModal = lazy(() => import('./Internals/clientComponent/AddBusinessModel.js'));
+const FloatingButtons = lazy(() => import(/* webpackChunkName: "floating-buttons" */ './Internals/clientComponent/floating/floatingButtons.js'));
+const FloatingAdCard = lazy(() => import(/* webpackChunkName: "floating-ad" */ './Internals/clientComponent/floating/floatingAdCard.js'));
+const OTPLoginModal = lazy(() => import(/* webpackChunkName: "otp-modal" */ './Internals/clientComponent/AddBusinessModel.js'));
 
-const CategoryRouter = lazy(() => import('./Internals/clientComponent/categories/categoryRouter.js'));
-const BlogDetail = lazy(() => import('./Internals/clientComponent/relatedBlogs/blogDetails/blogDetails.js'));
+const CategoryRouter = lazy(() => import(/* webpackChunkName: "category-router" */ './Internals/clientComponent/categories/categoryRouter.js'));
+const BlogDetail = lazy(() => import(/* webpackChunkName: "blog-detail" */ './Internals/clientComponent/relatedBlogs/blogDetails/blogDetails.js'));
 
 const DynamicLoader = memo(() => {
   const { pathname } = useLocation();
@@ -221,14 +221,22 @@ function App() {
 
   const dispatch = useDispatch();
 
-  /* Initial Fast Fetch */
+  /* Fast Auth Check - Synchronous, non-blocking */
   useEffect(() => {
-    dispatch(fetchMatchedLeads());
-  }, [dispatch]);
+    const accessToken = localStorage.getItem('accessToken');
+    const clientAccessToken = localStorage.getItem('clientAccessToken');
 
-  /* Restore Login Session */
+    if (!accessToken && !clientAccessToken) {
+      setAuthChecked(true);
+      return;
+    }
+
+    setAuthChecked(true);
+  }, []);
+
+  /* Deferred Auth & Data Loading - After first paint */
   useEffect(() => {
-    const initAuth = async () => {
+    const loadDataAfterPaint = async () => {
       const accessToken = localStorage.getItem('accessToken');
       const refreshToken = localStorage.getItem('refreshToken');
       const clientAccessToken = localStorage.getItem('clientAccessToken');
@@ -238,26 +246,24 @@ function App() {
           await dispatch(clientLogin());
         }
 
-        if (!accessToken || !refreshToken) {
-          setAuthChecked(true);
-          return;
-        }
-
-        const result = await dispatch(relogin());
-
-        if (result?.accessToken) {
-          setIsAuthenticated(true);
+        if (accessToken && refreshToken) {
+          const result = await dispatch(relogin());
+          if (result?.accessToken) {
+            setIsAuthenticated(true);
+          }
         }
       } catch (error) {
         localStorage.clear();
         setIsAuthenticated(false);
-      } finally {
-        setAuthChecked(true);
       }
+
+      dispatch(fetchMatchedLeads());
     };
 
-    initAuth();
-  }, [dispatch]);
+    if (authChecked) {
+      requestIdleCallback(loadDataAfterPaint, { timeout: 3000 });
+    }
+  }, [dispatch, authChecked]);
 
   /* Global First Load */
   if (!authChecked) {

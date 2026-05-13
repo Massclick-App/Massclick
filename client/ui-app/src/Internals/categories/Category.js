@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import axios from "axios";
+import Cropper from "react-easy-crop";
 import {
   getAllCategory,
   createCategory,
@@ -28,6 +29,7 @@ import {
   Divider,
   ToggleButton,
   ToggleButtonGroup,
+  Slider,
 } from "@mui/material";
 
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
@@ -223,6 +225,16 @@ export default function Category() {
   });
 
   const [imageErrors, setImageErrors] = useState({});
+
+  // Crop modal state
+  const [cropModal, setCropModal] = useState({
+    open: false,
+    variant: null,
+    imageSrc: null,
+    crop: { x: 0, y: 0 },
+    zoom: 1,
+    croppedAreaPixels: null
+  });
 
   // File input refs for all image types
   const imageInputRefs = {
@@ -434,51 +446,113 @@ export default function Category() {
     });
   };
 
-  const handleImageChange = async (e, variantKey) => {
+  const handleImageChange = (e, variantKey) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Validate image
-    const { errors, width, height } = await validateImageFile(file, variantKey);
-
-    if (errors.length > 0) {
-      setImageErrors((prev) => ({
-        ...prev,
-        [variantKey]: errors.join(", ")
-      }));
-      // Reset the input
-      e.target.value = "";
-      return;
-    }
-
-    // Clear errors if validation passed
-    setImageErrors((prev) => ({
-      ...prev,
-      [variantKey]: null
-    }));
-
-    // Store dimensions
-    setImageDimensions((prev) => ({
-      ...prev,
-      [variantKey]: { width, height }
-    }));
-
-    // Read and store the image
+    // Read file and open crop modal
     const reader = new FileReader();
     reader.onloadend = () => {
+      setCropModal({
+        open: true,
+        variant: variantKey,
+        imageSrc: reader.result,
+        crop: { x: 0, y: 0 },
+        zoom: 1,
+        croppedAreaPixels: null
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleCropComplete = (croppedArea, croppedAreaPixels) => {
+    setCropModal((prev) => ({
+      ...prev,
+      croppedAreaPixels
+    }));
+  };
+
+  const handleCropConfirm = async () => {
+    const { variant, imageSrc, croppedAreaPixels } = cropModal;
+    if (!variant || !imageSrc || !croppedAreaPixels) return;
+
+    // Create canvas and crop image
+    const image = new Image();
+    image.src = imageSrc;
+    image.onload = async () => {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+
+      canvas.width = croppedAreaPixels.width;
+      canvas.height = croppedAreaPixels.height;
+
+      ctx.drawImage(
+        image,
+        croppedAreaPixels.x,
+        croppedAreaPixels.y,
+        croppedAreaPixels.width,
+        croppedAreaPixels.height,
+        0,
+        0,
+        croppedAreaPixels.width,
+        croppedAreaPixels.height
+      );
+
+      // Get cropped image as data URL
+      const croppedImageUrl = canvas.toDataURL("image/jpeg");
+
+      // Validate the cropped image
+      const { errors, width, height } = await validateImageFile(
+        new File([croppedImageUrl], "cropped.jpg", { type: "image/jpeg" }),
+        variant
+      );
+
+      if (errors.length > 0) {
+        setImageErrors((prev) => ({
+          ...prev,
+          [variant]: errors.join(", ")
+        }));
+        setCropModal({ ...cropModal, open: false });
+        return;
+      }
+
+      // Clear errors if validation passed
+      setImageErrors((prev) => ({
+        ...prev,
+        [variant]: null
+      }));
+
+      // Store dimensions
+      setImageDimensions((prev) => ({
+        ...prev,
+        [variant]: { width, height }
+      }));
+
+      // Store the cropped image
       setFormData((prev) => ({
         ...prev,
         categoryImages: {
           ...prev.categoryImages,
-          [variantKey]: reader.result
+          [variant]: croppedImageUrl
         }
       }));
+
       setImagePreviews((prev) => ({
         ...prev,
-        [variantKey]: reader.result
+        [variant]: croppedImageUrl
       }));
+
+      // Close crop modal
+      setCropModal({ ...cropModal, open: false });
     };
-    reader.readAsDataURL(file);
+  };
+
+  const handleCropCancel = () => {
+    setCropModal({ ...cropModal, open: false });
+    // Reset the file input
+    if (cropModal.variant && imageInputRefs[cropModal.variant]) {
+      imageInputRefs[cropModal.variant].current.value = "";
+    }
   };
 
   const computeDupGroups = (cats, mode) => {
@@ -880,84 +954,158 @@ export default function Category() {
           </div>
 
           <div className="category-form-input-group category-col-span-all category-upload-section">
-            <div className="category-upload-content">
-              <Button
-                variant="contained"
-                startIcon={<CloudUploadIcon />}
-                component="label"
-                className="category-upload-button"
-              >
-                Upload Web Hero Image (1200x400)
-                <input
-                  type="file"
-                  accept="image/*"
-                  hidden
-                  ref={imageInputRefs.webHero}
-                  onChange={(e) => handleImageChange(e, "webHero")}
-                />
-              </Button>
-              {imagePreviews.webHero && (
-                <div style={{ textAlign: "center" }}>
-                  <img
-                    src={imagePreviews.webHero}
-                    alt="Web Hero"
-                    style={{ maxWidth: "200px", maxHeight: "80px", borderRadius: "4px" }}
-                  />
-                  {imageDimensions.webHero && (
-                    <p style={{ fontSize: "12px" }}>✓ {imageDimensions.webHero.width}x{imageDimensions.webHero.height}px</p>
-                  )}
-                </div>
-              )}
-              {imageErrors.webHero && (
-                <p style={{ color: "red", fontSize: "12px" }}>✗ {imageErrors.webHero}</p>
-              )}
+            <label className="category-input-label">Category Images (6 Variants)</label>
 
-              <Button
-                variant="outlined"
-                startIcon={<CloudUploadIcon />}
-                component="label"
-                className="category-upload-button"
-              >
-                Upload Mobile Vertical (400x600)
-                <input
-                  type="file"
-                  accept="image/*"
-                  hidden
-                  ref={imageInputRefs.mobileVertical}
-                  onChange={(e) => handleImageChange(e, "mobileVertical")}
-                />
-              </Button>
-              {imagePreviews.mobileVertical && (
-                <div style={{ textAlign: "center" }}>
-                  <img
-                    src={imagePreviews.mobileVertical}
-                    alt="Mobile Vertical"
-                    style={{ maxWidth: "100px", maxHeight: "150px", borderRadius: "4px" }}
-                  />
-                  {imageDimensions.mobileVertical && (
-                    <p style={{ fontSize: "12px" }}>✓ {imageDimensions.mobileVertical.width}x{imageDimensions.mobileVertical.height}px</p>
-                  )}
-                </div>
-              )}
-              {imageErrors.mobileVertical && (
-                <p style={{ color: "red", fontSize: "12px" }}>✗ {imageErrors.mobileVertical}</p>
-              )}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px", marginBottom: "24px" }}>
 
-              <div>
-                <button
-                  type="submit"
-                  className="category-submit-button"
-                  disabled={loading}
+              {/* WEB HERO */}
+              <div style={{ border: "1px solid #ddd", padding: "16px", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "12px" }}>
+                <h4 style={{ margin: "0 0 8px 0", fontSize: "14px", fontWeight: 600 }}>Web Hero (1200x400)</h4>
+                <Button
+                  variant="contained"
+                  startIcon={<CloudUploadIcon />}
+                  component="label"
+                  size="small"
+                  fullWidth
                 >
-                  {loading || createWarningLoading ? (
-                    <CircularProgress size={24} color="inherit" />
-                  ) : editMode ? (
-                    "Update Category"
-                  ) : (
-                    "Create Category"
-                  )}
-                </button>
+                  Upload
+                  <input type="file" accept="image/*" hidden ref={imageInputRefs.webHero} onChange={(e) => handleImageChange(e, "webHero")} />
+                </Button>
+                {imagePreviews.webHero && (
+                  <div style={{ textAlign: "center" }}>
+                    <img src={imagePreviews.webHero} alt="Web Hero" style={{ maxWidth: "100%", maxHeight: "80px", borderRadius: "4px" }} />
+                    {imageDimensions.webHero && <p style={{ fontSize: "12px", margin: "4px 0 0 0" }}>✓ {imageDimensions.webHero.width}x{imageDimensions.webHero.height}px</p>}
+                  </div>
+                )}
+                {imageErrors.webHero && <p style={{ color: "red", fontSize: "12px", margin: "0" }}>✗ {imageErrors.webHero}</p>}
               </div>
+
+              {/* WEB CARD */}
+              <div style={{ border: "1px solid #ddd", padding: "16px", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "12px" }}>
+                <h4 style={{ margin: "0 0 8px 0", fontSize: "14px", fontWeight: 600 }}>Web Card (400x400)</h4>
+                <Button
+                  variant="contained"
+                  startIcon={<CloudUploadIcon />}
+                  component="label"
+                  size="small"
+                  fullWidth
+                >
+                  Upload
+                  <input type="file" accept="image/*" hidden ref={imageInputRefs.webCard} onChange={(e) => handleImageChange(e, "webCard")} />
+                </Button>
+                {imagePreviews.webCard && (
+                  <div style={{ textAlign: "center" }}>
+                    <img src={imagePreviews.webCard} alt="Web Card" style={{ maxWidth: "100%", maxHeight: "80px", borderRadius: "4px" }} />
+                    {imageDimensions.webCard && <p style={{ fontSize: "12px", margin: "4px 0 0 0" }}>✓ {imageDimensions.webCard.width}x{imageDimensions.webCard.height}px</p>}
+                  </div>
+                )}
+                {imageErrors.webCard && <p style={{ color: "red", fontSize: "12px", margin: "0" }}>✗ {imageErrors.webCard}</p>}
+              </div>
+
+              {/* WEB THUMBNAIL */}
+              <div style={{ border: "1px solid #ddd", padding: "16px", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "12px" }}>
+                <h4 style={{ margin: "0 0 8px 0", fontSize: "14px", fontWeight: 600 }}>Web Thumbnail (200x200)</h4>
+                <Button
+                  variant="contained"
+                  startIcon={<CloudUploadIcon />}
+                  component="label"
+                  size="small"
+                  fullWidth
+                >
+                  Upload
+                  <input type="file" accept="image/*" hidden ref={imageInputRefs.webThumbnail} onChange={(e) => handleImageChange(e, "webThumbnail")} />
+                </Button>
+                {imagePreviews.webThumbnail && (
+                  <div style={{ textAlign: "center" }}>
+                    <img src={imagePreviews.webThumbnail} alt="Web Thumbnail" style={{ maxWidth: "100%", maxHeight: "60px", borderRadius: "4px" }} />
+                    {imageDimensions.webThumbnail && <p style={{ fontSize: "12px", margin: "4px 0 0 0" }}>✓ {imageDimensions.webThumbnail.width}x{imageDimensions.webThumbnail.height}px</p>}
+                  </div>
+                )}
+                {imageErrors.webThumbnail && <p style={{ color: "red", fontSize: "12px", margin: "0" }}>✗ {imageErrors.webThumbnail}</p>}
+              </div>
+
+              {/* MOBILE VERTICAL */}
+              <div style={{ border: "1px solid #ddd", padding: "16px", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "12px" }}>
+                <h4 style={{ margin: "0 0 8px 0", fontSize: "14px", fontWeight: 600 }}>Mobile Vertical (400x600)</h4>
+                <Button
+                  variant="contained"
+                  startIcon={<CloudUploadIcon />}
+                  component="label"
+                  size="small"
+                  fullWidth
+                >
+                  Upload
+                  <input type="file" accept="image/*" hidden ref={imageInputRefs.mobileVertical} onChange={(e) => handleImageChange(e, "mobileVertical")} />
+                </Button>
+                {imagePreviews.mobileVertical && (
+                  <div style={{ textAlign: "center" }}>
+                    <img src={imagePreviews.mobileVertical} alt="Mobile Vertical" style={{ maxWidth: "100%", maxHeight: "100px", borderRadius: "4px" }} />
+                    {imageDimensions.mobileVertical && <p style={{ fontSize: "12px", margin: "4px 0 0 0" }}>✓ {imageDimensions.mobileVertical.width}x{imageDimensions.mobileVertical.height}px</p>}
+                  </div>
+                )}
+                {imageErrors.mobileVertical && <p style={{ color: "red", fontSize: "12px", margin: "0" }}>✗ {imageErrors.mobileVertical}</p>}
+              </div>
+
+              {/* MOBILE CARD */}
+              <div style={{ border: "1px solid #ddd", padding: "16px", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "12px" }}>
+                <h4 style={{ margin: "0 0 8px 0", fontSize: "14px", fontWeight: 600 }}>Mobile Card (300x300)</h4>
+                <Button
+                  variant="contained"
+                  startIcon={<CloudUploadIcon />}
+                  component="label"
+                  size="small"
+                  fullWidth
+                >
+                  Upload
+                  <input type="file" accept="image/*" hidden ref={imageInputRefs.mobileCard} onChange={(e) => handleImageChange(e, "mobileCard")} />
+                </Button>
+                {imagePreviews.mobileCard && (
+                  <div style={{ textAlign: "center" }}>
+                    <img src={imagePreviews.mobileCard} alt="Mobile Card" style={{ maxWidth: "100%", maxHeight: "70px", borderRadius: "4px" }} />
+                    {imageDimensions.mobileCard && <p style={{ fontSize: "12px", margin: "4px 0 0 0" }}>✓ {imageDimensions.mobileCard.width}x{imageDimensions.mobileCard.height}px</p>}
+                  </div>
+                )}
+                {imageErrors.mobileCard && <p style={{ color: "red", fontSize: "12px", margin: "0" }}>✗ {imageErrors.mobileCard}</p>}
+              </div>
+
+              {/* MOBILE THUMBNAIL */}
+              <div style={{ border: "1px solid #ddd", padding: "16px", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "12px" }}>
+                <h4 style={{ margin: "0 0 8px 0", fontSize: "14px", fontWeight: 600 }}>Mobile Thumbnail (150x150)</h4>
+                <Button
+                  variant="contained"
+                  startIcon={<CloudUploadIcon />}
+                  component="label"
+                  size="small"
+                  fullWidth
+                >
+                  Upload
+                  <input type="file" accept="image/*" hidden ref={imageInputRefs.mobileThumbnail} onChange={(e) => handleImageChange(e, "mobileThumbnail")} />
+                </Button>
+                {imagePreviews.mobileThumbnail && (
+                  <div style={{ textAlign: "center" }}>
+                    <img src={imagePreviews.mobileThumbnail} alt="Mobile Thumbnail" style={{ maxWidth: "100%", maxHeight: "50px", borderRadius: "4px" }} />
+                    {imageDimensions.mobileThumbnail && <p style={{ fontSize: "12px", margin: "4px 0 0 0" }}>✓ {imageDimensions.mobileThumbnail.width}x{imageDimensions.mobileThumbnail.height}px</p>}
+                  </div>
+                )}
+                {imageErrors.mobileThumbnail && <p style={{ color: "red", fontSize: "12px", margin: "0" }}>✗ {imageErrors.mobileThumbnail}</p>}
+              </div>
+
+            </div>
+
+            <div style={{ display: "flex", gap: "12px" }}>
+              <button
+                type="submit"
+                className="category-submit-button"
+                disabled={loading}
+              >
+                {loading || createWarningLoading ? (
+                  <CircularProgress size={24} color="inherit" />
+                ) : editMode ? (
+                  "Update Category"
+                ) : (
+                  "Create Category"
+                )}
+              </button>
             </div>
           </div>
         </form>
@@ -973,6 +1121,64 @@ export default function Category() {
             })()}
           </p>
         )}
+
+        {/* Image Crop Modal */}
+        <Dialog
+          open={cropModal.open}
+          onClose={handleCropCancel}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle>
+            Crop {cropModal.variant && IMAGE_VARIANTS[cropModal.variant]?.name} Image
+          </DialogTitle>
+          <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, py: 2 }}>
+            {cropModal.imageSrc && (
+              <>
+                <div style={{ position: "relative", width: "100%", height: "300px", backgroundColor: "#f0f0f0" }}>
+                  <Cropper
+                    image={cropModal.imageSrc}
+                    crop={cropModal.crop}
+                    zoom={cropModal.zoom}
+                    aspect={cropModal.variant ? (() => {
+                      const [w, h] = IMAGE_VARIANTS[cropModal.variant].aspectRatio.split(":").map(Number);
+                      return w / h;
+                    })() : 1}
+                    onCropChange={(crop) => setCropModal((prev) => ({ ...prev, crop }))}
+                    onCropComplete={handleCropComplete}
+                    onZoomChange={(zoom) => setCropModal((prev) => ({ ...prev, zoom }))}
+                  />
+                </div>
+                <div>
+                  <Typography variant="caption" sx={{ display: "block", mb: 1 }}>Zoom</Typography>
+                  <Slider
+                    value={cropModal.zoom}
+                    min={1}
+                    max={3}
+                    step={0.1}
+                    onChange={(e, zoom) => setCropModal((prev) => ({ ...prev, zoom }))}
+                    valueLabelDisplay="auto"
+                  />
+                </div>
+                {cropModal.variant && (
+                  <Typography variant="caption" color="textSecondary">
+                    Aspect ratio: {IMAGE_VARIANTS[cropModal.variant].aspectRatio}
+                  </Typography>
+                )}
+              </>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCropCancel}>Cancel</Button>
+            <Button
+              onClick={handleCropConfirm}
+              variant="contained"
+              color="primary"
+            >
+              Apply Crop
+            </Button>
+          </DialogActions>
+        </Dialog>
       </div>
 
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 2, mb: 1 }}>

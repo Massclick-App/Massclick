@@ -47,11 +47,20 @@ const rootReducer = combineReducers({
   mrp: mrpReducer,
   enquiryNow: enquiryNowReducer,
   reviews: reviewReducer,
-  advertise: advertiseReducer, 
+  advertise: advertiseReducer,
   termsAndConditions: termsAndConditionReducer,
   favorites: favoriteReducer,
   fcmMarketing: fcmMarketingReducer,
   systemSettings: systemSettingsReducer,
 });
+
+let storeInstance = null;
+
+export const getStore = () => {
+  if (!storeInstance) {
+    storeInstance = createStore(rootReducer, applyMiddleware(thunk));
+  }
+  return storeInstance;
+};
 
 export const store = createStore(rootReducer, applyMiddleware(thunk));

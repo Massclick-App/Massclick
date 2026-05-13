@@ -133,7 +133,7 @@ const steps = [
   "Payment"
 ];
 
-export default function BusinessList() {
+const BusinessList = React.memo(() => {
   const dispatch = useDispatch();
   const { enqueueSnackbar } = useSnackbar();
   const { businessList = [], total = 0, loading } = useSelector(
@@ -1787,4 +1787,6 @@ export default function BusinessList() {
     </div>
 
   );
-}
+});
+
+export default BusinessList;

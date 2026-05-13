@@ -157,7 +157,7 @@ const SkeletonGrid = ({ type }) => {
     );
 };
 
-const LandingPage = () => {
+const LandingPage = React.memo(() => {
 
     const dispatch = useDispatch();
     const [fcmNotif, setFcmNotif] = useState(null);
@@ -480,6 +480,6 @@ const LandingPage = () => {
             </Snackbar>
         </>
     );
-};
+});
 
 export default LandingPage;

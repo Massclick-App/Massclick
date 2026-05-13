@@ -130,6 +130,8 @@ const FullScreenGallery = ({ images, initialIndex, onClose }) => {
             }
             alt={`Business Media ${index + 1}`}
             className="business-CardDetails-galleryImage"
+            loading="lazy"
+            decoding="async"
           />
           <button
             className="business-CardDetails-galleryNav business-CardDetails-galleryNav--next"
@@ -143,7 +145,7 @@ const FullScreenGallery = ({ images, initialIndex, onClose }) => {
   );
 };
 
-const BusinessDetail = () => {
+const BusinessDetail = React.memo(() => {
   const { location, businessSlug, id } = useParams();
   const navigate = useNavigate();
 
@@ -1385,6 +1387,6 @@ const BusinessDetail = () => {
       <OTPLoginModal open={showLoginModal} handleClose={() => setShowLoginModal(false)} />
     </>
   );
-};
+});
 
 export default BusinessDetail;

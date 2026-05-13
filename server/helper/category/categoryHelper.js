@@ -87,19 +87,16 @@ export const createCategory = async (reqBody = {}) => {
       for (const [variant, data] of Object.entries(reqBody.categoryImages)) {
         if (data && typeof data === "string" && data.startsWith("data:image")) {
           try {
-            console.log(`[CreateCategory] Uploading ${variant} image...`);
             const uploadResult = await uploadImageToS3(
               data,
               `category/images/${variant}-${timestamp}`
             );
             categoryImages[variant] = uploadResult.key;
-            console.log(`[CreateCategory] ✓ Uploaded ${variant}: ${uploadResult.key}`);
           } catch (err) {
-            console.error(`[CreateCategory] ✗ Failed to upload ${variant}:`, err.message);
+            console.error(`Failed to upload ${variant}:`, err);
           }
         } else if (data && !data.startsWith("data:image")) {
           // Keep existing S3 key if it's not a data URL
-          console.log(`[CreateCategory] Keeping existing ${variant} key: ${data.substring(0, 40)}...`);
           categoryImages[variant] = data;
         }
       }
@@ -155,14 +152,7 @@ export const viewCategory = async (id) => {
       const convertedImages = {};
       for (const [variant, key] of Object.entries(category.categoryImages)) {
         if (key && typeof key === "string") {
-          try {
-            const signedUrl = getSignedUrlByKey(key);
-            convertedImages[variant] = signedUrl;
-            console.log(`[ViewCategory] Converted ${variant}: ${key.substring(0, 30)}... → ${signedUrl.substring(0, 50)}...`);
-          } catch (err) {
-            console.error(`[ViewCategory] Failed to convert ${variant}:`, err.message);
-            convertedImages[variant] = key;
-          }
+          convertedImages[variant] = getSignedUrlByKey(key);
         } else {
           convertedImages[variant] = key;
         }
@@ -223,14 +213,7 @@ export const viewAllCategory = async ({
         const convertedImages = {};
         for (const [variant, key] of Object.entries(c.categoryImages)) {
           if (key && typeof key === "string") {
-            try {
-              const signedUrl = getSignedUrlByKey(key);
-              convertedImages[variant] = signedUrl;
-              console.log(`[CategoryHelper] Converted ${variant}: ${key.substring(0, 30)}... → ${signedUrl.substring(0, 50)}...`);
-            } catch (err) {
-              console.error(`[CategoryHelper] Failed to convert ${variant}:`, err.message);
-              convertedImages[variant] = key;
-            }
+            convertedImages[variant] = getSignedUrlByKey(key);
           } else {
             convertedImages[variant] = key;
           }
@@ -278,19 +261,16 @@ export const updateCategory = async (id, data) => {
       for (const [variant, imageData] of Object.entries(data.categoryImages)) {
         if (imageData && typeof imageData === "string" && imageData.startsWith("data:image")) {
           try {
-            console.log(`[UpdateCategory] Uploading ${variant} image...`);
             const uploadResult = await uploadImageToS3(
               imageData,
               `category/images/${variant}-${timestamp}`
             );
             categoryImages[variant] = uploadResult.key;
-            console.log(`[UpdateCategory] ✓ Uploaded ${variant}: ${uploadResult.key}`);
           } catch (err) {
-            console.error(`[UpdateCategory] ✗ Failed to upload ${variant}:`, err.message);
+            console.error(`Failed to upload ${variant}:`, err);
           }
         } else if (imageData && !imageData.startsWith("data:image")) {
           // Keep existing S3 key if it's not a data URL
-          console.log(`[UpdateCategory] Keeping existing ${variant} key: ${imageData.substring(0, 40)}...`);
           categoryImages[variant] = imageData;
         } else if (imageData === null || imageData === "") {
           // Clear if empty
@@ -339,14 +319,7 @@ export const updateCategory = async (id, data) => {
       const convertedImages = {};
       for (const [variant, key] of Object.entries(category.categoryImages)) {
         if (key && typeof key === "string") {
-          try {
-            const signedUrl = getSignedUrlByKey(key);
-            convertedImages[variant] = signedUrl;
-            console.log(`[UpdateCategory] Converted ${variant}: ${key.substring(0, 30)}... → ${signedUrl.substring(0, 50)}...`);
-          } catch (err) {
-            console.error(`[UpdateCategory] Failed to convert ${variant}:`, err.message);
-            convertedImages[variant] = key;
-          }
+          convertedImages[variant] = getSignedUrlByKey(key);
         } else {
           convertedImages[variant] = key;
         }

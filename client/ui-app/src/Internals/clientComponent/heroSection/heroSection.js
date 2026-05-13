@@ -27,7 +27,7 @@ const toSlug = (text = "") =>
     .replace(/-+/g, "-");
 
 
-const CategoryDropdown = ({ label, options, onSelect }) => {
+const CategoryDropdown = React.memo(({ label, options, onSelect }) => {
   const MAX_HEIGHT_PX = 220;
   if (!options || options.length === 0) return null;
 
@@ -79,9 +79,9 @@ const CategoryDropdown = ({ label, options, onSelect }) => {
       </div>
     </div>
   );
-};
+});
 
-const HeroSection = ({
+const HeroSection = React.memo(({
   searchTerm,
   setSearchTerm,
   locationName,
@@ -655,6 +655,6 @@ const handleSearch = async (e) => {
     </div>
 
   );
-};
+});
 
 export default HeroSection;

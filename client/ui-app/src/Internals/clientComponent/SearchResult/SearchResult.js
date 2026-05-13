@@ -40,7 +40,7 @@ const sanitizeSeoHtml = (html = "") => {
     .replace(/<\/h1>/gi, "</h2>");
 };
 
-const SearchResults = () => {
+const SearchResults = React.memo(() => {
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -561,6 +561,6 @@ useEffect(() => {
     </>
   );
 
-};
+});
 
 export default SearchResults;
