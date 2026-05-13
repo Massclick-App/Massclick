@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import {
-  BadgeIndianRupee,
+  IndianRupee,
   BriefcaseBusiness,
   Clapperboard,
   Handshake,
@@ -44,7 +44,7 @@ const serviceIcons = {
   map: MapPinned,
   movies: Clapperboard,
   package: PackageCheck,
-  realEstate: BadgeIndianRupee,
+  realEstate: IndianRupee,
   repair: Wrench,
   spa: Sparkles,
 };

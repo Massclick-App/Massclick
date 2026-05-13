@@ -49,6 +49,8 @@ import {
   getAuthUser,
 } from "../../../redux/actions/favoriteAction";
 import OTPLoginModal from "../AddBusinessModel.js";
+import PageHeaderContents from "../pageHeaderContents/pageHeaderContents.js";
+import PopularCategoriesLink from "../popularCategories/popularCategories.js";
 
 const toSlug = (text = "") =>
   String(text)
@@ -1375,7 +1377,11 @@ const BusinessDetail = () => {
         />
       )}
 
-      <Footer />
+      <div className="bottom-sections-wrapper">
+        <PageHeaderContents />
+        <PopularCategoriesLink />
+        <Footer />
+      </div>
       <OTPLoginModal open={showLoginModal} handleClose={() => setShowLoginModal(false)} />
     </>
   );

@@ -10,7 +10,7 @@ import { viewOtpUser } from '../../redux/actions/otpAction.js';
 import { fetchMatchedLeads } from '../../redux/actions/leadsAction.js';
 import SeoMeta from "./seo/seoMeta";
 import { fetchSeoMeta } from "../../redux/actions/seoAction";
-import { connectSocket, disconnectSocket } from '../../services/socketService.js';
+import { connectSocket } from '../../services/socketService.js';
 import './homeLayout.css';
 
 const S = ({ variant = "rounded", w, h, r, sx, ...rest }) => (
@@ -40,7 +40,6 @@ const Footer = lazy(() => import('./footer/footer'));
 const PageHeaderContents = lazy(() => import('./pageHeaderContents/pageHeaderContents.js'));
 const RelatedBlogs = lazy(() => import('./relatedBlogs/relatedBlogs.js'));
 
-const STICKY_SEARCH_BAR_HEIGHT = 85;
 const HOME_SECTION_GAP = { xs: 2.5, sm: 3, md: 3.5 };
 const homeSectionSx = { mb: HOME_SECTION_GAP, contain: 'layout style paint' };
 
@@ -165,10 +164,6 @@ const LandingPage = () => {
 
     const { meta: seoMetaData } = useSelector(
         (state) => state.seoReducer
-    );
-
-    const { list: blogsList = [] } = useSelector(
-        (state) => state.seoPageContentBlogReducer || {}
     );
 
     useEffect(() => {
