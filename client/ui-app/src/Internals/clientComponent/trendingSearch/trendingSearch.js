@@ -181,7 +181,7 @@ const TrendingSearchesCarousel = () => {
 
           {/* left arrow */}
           <button
-            className={`ts__arrow ts__arrow--left${canScrollLeft ? " ts__arrow--visible" : ""}`}
+            className="ts__arrow ts__arrow--left ts__arrow--visible"
             onClick={() => scrollBy(-1)}
             aria-label="Scroll left"
           >
@@ -209,7 +209,7 @@ const TrendingSearchesCarousel = () => {
 
                   <div className="ts__card-img-wrap">
                     <img
-                      src={service.categoryImages?.webHero || service.liveImage || service.categoryImage}
+                      src={service.categoryImage || service.categoryImages?.webCard || service.categoryImages?.webHero || ""}
                       alt={formatDisplayName(service.categoryName)}
                       className="ts__card-img"
                       loading="lazy"
@@ -233,7 +233,7 @@ const TrendingSearchesCarousel = () => {
 
           {/* right arrow */}
           <button
-            className={`ts__arrow ts__arrow--right${canScrollRight ? " ts__arrow--visible" : ""}`}
+            className="ts__arrow ts__arrow--right ts__arrow--visible"
             onClick={() => scrollBy(1)}
             aria-label="Scroll right"
           >

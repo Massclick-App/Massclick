@@ -660,25 +660,26 @@ export const getTrendingSearchesAction = async (req, res) => {
   try {
     const trending = await getTopTrendingCategories(10);
 
-    const formatted = trending.map(item => ({
-      ...item,
-      // Map all image variants with signed URLs
-      categoryImages: {
-        webHero: item.webHero ? getSignedUrlByKey(item.webHero) : "",
-        webCard: item.webCard ? getSignedUrlByKey(item.webCard) : "",
-        webThumbnail: item.webThumbnail ? getSignedUrlByKey(item.webThumbnail) : "",
-        mobileVertical: item.mobileVertical ? getSignedUrlByKey(item.mobileVertical) : "",
-        mobileCard: item.mobileCard ? getSignedUrlByKey(item.mobileCard) : "",
-        mobileThumbnail: item.mobileThumbnail ? getSignedUrlByKey(item.mobileThumbnail) : ""
-      },
-      // Legacy fields for backward compatibility
-      categoryImage: item.webHero
-        ? getSignedUrlByKey(item.webHero)
-        : "",
-      liveImage: item.webHero
-        ? getSignedUrlByKey(item.webHero)
-        : ""
-    }));
+    const formatted = trending.map(item => {
+      // Only include needed fields, skip raw S3 keys
+      const { webHero, webCard, webThumbnail, mobileVertical, mobileCard, mobileThumbnail, ...rest } = item;
+
+      return {
+        ...rest,
+        // Map all image variants with signed URLs
+        categoryImages: {
+          webHero: webHero ? getSignedUrlByKey(webHero) : "",
+          webCard: webCard ? getSignedUrlByKey(webCard) : "",
+          webThumbnail: webThumbnail ? getSignedUrlByKey(webThumbnail) : "",
+          mobileVertical: mobileVertical ? getSignedUrlByKey(mobileVertical) : "",
+          mobileCard: mobileCard ? getSignedUrlByKey(mobileCard) : "",
+          mobileThumbnail: mobileThumbnail ? getSignedUrlByKey(mobileThumbnail) : ""
+        },
+        // Legacy fields - only return if actually set (no fallback to new variants)
+        categoryImage: item.categoryImage ? getSignedUrlByKey(item.categoryImage) : "",
+        liveImage: item.liveImage ? getSignedUrlByKey(item.liveImage) : ""
+      };
+    });
 
     return res.status(200).json({
       success: true,
