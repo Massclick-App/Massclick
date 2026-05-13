@@ -2,6 +2,7 @@ import mongoose from "mongoose"
 
 const categorySchema = new mongoose.Schema(
   {
+    // New multi-variant images
     categoryImages: {
       webHero: { type: String, default: "" },        // 1200x400 horizontal banner
       webCard: { type: String, default: "" },        // 400x400 square for grid
@@ -10,6 +11,9 @@ const categorySchema = new mongoose.Schema(
       mobileCard: { type: String, default: "" },     // 300x300 square for mobile
       mobileThumbnail: { type: String, default: "" } // 150x150 small thumbnail
     },
+    // Legacy image fields (for backward compatibility with old documents)
+    categoryImageKey: { type: String, default: "" },
+    liveImageKey: { type: String, default: "" },
     category: { type: String, trim: true },
     subcategory: { type: String, default: '' },
     categoryType: {

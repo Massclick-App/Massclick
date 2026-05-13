@@ -676,8 +676,9 @@ export const getTrendingSearchesAction = async (req, res) => {
           mobileThumbnail: mobileThumbnail ? getSignedUrlByKey(mobileThumbnail) : ""
         },
         // Legacy fields - only return if actually set (no fallback to new variants)
-        categoryImage: item.categoryImage ? getSignedUrlByKey(item.categoryImage) : "",
-        liveImage: item.liveImage ? getSignedUrlByKey(item.liveImage) : ""
+        // Handle both old field names (categoryImageKey, liveImageKey) and new names (categoryImage, liveImage)
+        categoryImage: item.categoryImage || item.categoryImageKey ? getSignedUrlByKey(item.categoryImage || item.categoryImageKey) : "",
+        liveImage: item.liveImage || item.liveImageKey ? getSignedUrlByKey(item.liveImage || item.liveImageKey) : ""
       };
     });
 
