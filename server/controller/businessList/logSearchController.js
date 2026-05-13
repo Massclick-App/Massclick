@@ -93,7 +93,7 @@ const getDynamicCategoryRegex = (value = "") => {
 
 export const logSearchAction = async (req, res) => {
   try {
-    const { categoryName, location, searchedUserText, userDetails, liveImage } = req.body;
+    const { categoryName, location, searchedUserText, userDetails } = req.body;
     const reqId = Math.random().toString(36).slice(2, 8);
 
     if (!searchedUserText || !searchedUserText.trim()) {
@@ -197,7 +197,7 @@ export const logSearchAction = async (req, res) => {
 
     const category = await CategoryModel.findOne(
       { slug: categorySlug },
-      { categoryImageKey: 1 }
+      { categoryImageKey: 1, liveImageKey: 1 }
     ).lean();
 
     // ── Anonymous path ────────────────────────────────────────────────────────
@@ -218,7 +218,7 @@ export const logSearchAction = async (req, res) => {
         await createSearchLog({
           categoryName: finalCategoryName,
           categoryImage: category?.categoryImageKey || "",
-          liveImage: liveImage || "",
+          liveImage: category?.liveImageKey || "",
           searchedUserText: cleanSearchText,
           location: normalizedLocation,
           userDetails: [],
@@ -259,7 +259,7 @@ export const logSearchAction = async (req, res) => {
     const savedLog = await createSearchLog({
       categoryName: finalCategoryName,
       categoryImage: category?.categoryImageKey || "",
-      liveImage: liveImage || "",
+      liveImage: category?.liveImageKey || "",
       searchedUserText: cleanSearchText,
       location: normalizedLocation,
       userDetails: [
