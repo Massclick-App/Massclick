@@ -5,6 +5,33 @@ import categoryModel from "../../model/category/categoryModel.js";
 import { sendMniBusinessLead, sendCustomerBusinessList } from "../msg91/smsGatewayHelper.js";
 import { getSettings } from "../systemSettings/settingsService.js";
 
+const escapeRegex = (text) => String(text).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const normalizeMniLocation = (location = "") => {
+  const normalizedLocation = String(location).toLowerCase().trim();
+
+  if (["trichy", "tiruchirappalli"].includes(normalizedLocation)) {
+    return "tiruchirappalli";
+  }
+
+  return normalizedLocation;
+};
+
+const getMniLocationQuery = (location = "") => {
+  const normalizedLocation = normalizeMniLocation(location);
+
+  if (normalizedLocation === "tiruchirappalli") {
+    return {
+      $in: [
+        new RegExp(`^${escapeRegex("trichy")}$`, "i"),
+        new RegExp(`^${escapeRegex("tiruchirappalli")}$`, "i"),
+      ],
+    };
+  }
+
+  return new RegExp(`^${escapeRegex(normalizedLocation)}$`, "i");
+};
+
 export const createMRP = async function (reqBody = {}) {
   try {
     const { organizationId, contactDetails } = reqBody;
@@ -183,7 +210,7 @@ export const sendMrpLeads = async (mrpId) => {
   }
 
   const group = sourceBusiness?.mniDetails?.[0]?.categoryGroup;
-  const location = (sourceBusiness?.location || "").toLowerCase().trim();
+  const location = normalizeMniLocation(sourceBusiness?.location);
 
   if (!group) {
     throw new Error("No group assigned to business");
@@ -191,7 +218,7 @@ export const sendMrpLeads = async (mrpId) => {
 
   const businesses = await businessListModel.find({
     _id: { $ne: sourceBusiness._id },
-    location: new RegExp(`^${location}$`, "i"),
+    location: getMniLocationQuery(location),
     category: mrp.categoryId,
     "mniDetails.categoryGroup": group,
     amountPaid: true,
@@ -239,7 +266,18 @@ export const sendMrpLeads = async (mrpId) => {
             $set: {
               "mniDetails.0.leadsCount": {
                 $add: [
-                  { $ifNull: ["$mniDetails.0.leadsCount", 0] },
+                  {
+                    $cond: [
+                      {
+                        $in: [
+                          { $type: "$mniDetails.0.leadsCount" },
+                          ["int", "long", "double", "decimal"]
+                        ]
+                      },
+                      "$mniDetails.0.leadsCount",
+                      0
+                    ]
+                  },
                   1
                 ]
               },
@@ -308,10 +346,10 @@ export const sendMrpLeads = async (mrpId) => {
 
 export const fetchMniLeadsData = async ({ location, group }) => {
 
-  const normalizedLocation = location.toLowerCase().trim();
+  const normalizedLocation = normalizeMniLocation(location);
 
   const businesses = await businessListModel.find({
-    location: new RegExp(`^${normalizedLocation}$`, "i"),
+    location: getMniLocationQuery(normalizedLocation),
     "mniDetails.categoryGroup": group,
     amountPaid: true,
     isActive: true,
@@ -464,10 +502,10 @@ export const getGlobalLeadReport = async ({ location, group, category }) => {
       throw new Error("location and group are required");
     }
 
-    const normalizedLocation = location.toLowerCase().trim();
+    const normalizedLocation = normalizeMniLocation(location);
 
     const query = {
-      location: new RegExp(`^${normalizedLocation}$`, "i"),
+      location: getMniLocationQuery(normalizedLocation),
       "mniDetails.categoryGroup": group,
       amountPaid: true,
       isActive: true,
