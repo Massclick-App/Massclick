@@ -39,13 +39,13 @@ jobs:
       - name: Deploy to server
         run: |
           rsync -avz --delete \
-            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -p 2244" \
             client/ui-app/build/ \
             ${{ secrets.DEPLOY_USER }}@${{ secrets.SERVER_HOST }}:/var/www/massclickQA/client/ui-app/build/
 
       - name: Reload Nginx
         run: |
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -p 2244 \
             ${{ secrets.DEPLOY_USER }}@${{ secrets.SERVER_HOST }} \
             'sudo /bin/systemctl reload nginx'
 
