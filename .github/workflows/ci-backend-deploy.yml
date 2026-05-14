@@ -23,11 +23,23 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
 
+      - name: Check current backend status
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -p 2244 \
+            ${{ secrets.DEPLOY_USER }}@${{ secrets.SERVER_HOST }} \
+            'echo "Current commit:" && cd /home/admin/nodeapps/massclick-api && git rev-parse HEAD'
+
       - name: Deploy Backend
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -p 2244 \
             ${{ secrets.DEPLOY_USER }}@${{ secrets.SERVER_HOST }} \
             '/home/admin/scripts/backend.sh prod'
+
+      - name: Verify backend health
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -p 2244 \
+            ${{ secrets.DEPLOY_USER }}@${{ secrets.SERVER_HOST }} \
+            'sleep 3 && curl -f -s http://localhost:4000/health && echo "✅ Backend healthy"'
 
       - name: Discord notification on failure
         if: failure()
@@ -38,9 +50,11 @@ jobs:
               "content": "❌ **Backend Deployment Failed (Prod)**",
               "embeds": [{
                 "color": 16711680,
-                "title": "Deploy Failed",
-                "description": "Backend deployment failed. Check health check or docker status.",
+                "title": "Deployment Failed & Rolled Back",
+                "description": "Backend deployment failed. Previous version restored automatically.",
                 "fields": [
+                  {"name": "Status", "value": "🔄 Rolled back to previous commit", "inline": false},
+                  {"name": "Issue", "value": "Health check or Docker failure", "inline": false},
                   {"name": "Branch", "value": "prod", "inline": true},
                   {"name": "Commit", "value": "${{ github.sha }}", "inline": true},
                   {"name": "Action", "value": "[View Logs](https://github.com/Massclick-App/Massclick/actions/runs/${{ github.run_id }})", "inline": false}

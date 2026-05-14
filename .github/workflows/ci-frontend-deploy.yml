@@ -36,6 +36,12 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
 
+      - name: Backup current frontend
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -p 2244 \
+            ${{ secrets.DEPLOY_USER }}@${{ secrets.SERVER_HOST }} \
+            'cp -r /var/www/massclickQA/client/ui-app/build /var/www/massclickQA/client/ui-app/build.backup'
+
       - name: Deploy to server
         run: |
           rsync -avz --delete \
@@ -43,11 +49,28 @@ jobs:
             client/ui-app/build/ \
             ${{ secrets.DEPLOY_USER }}@${{ secrets.SERVER_HOST }}:/var/www/massclickQA/client/ui-app/build/
 
+      - name: Health check frontend
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -p 2244 \
+            ${{ secrets.DEPLOY_USER }}@${{ secrets.SERVER_HOST }} \
+            'sleep 2 && curl -f -s http://localhost/index.html > /dev/null && echo "✅ Frontend healthy" || exit 1'
+
       - name: Reload Nginx
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -p 2244 \
             ${{ secrets.DEPLOY_USER }}@${{ secrets.SERVER_HOST }} \
-            'sudo /bin/systemctl reload nginx'
+            'sudo /bin/systemctl reload nginx && echo "✅ Nginx reloaded"'
+
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          echo "❌ Deployment failed, rolling back..."
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -p 2244 \
+            ${{ secrets.DEPLOY_USER }}@${{ secrets.SERVER_HOST }} \
+            'rm -rf /var/www/massclickQA/client/ui-app/build && \
+             mv /var/www/massclickQA/client/ui-app/build.backup /var/www/massclickQA/client/ui-app/build && \
+             sudo /bin/systemctl reload nginx && \
+             echo "✅ Rollback completed"'
 
       - name: Discord notification on failure
         if: failure()
@@ -55,12 +78,13 @@ jobs:
           curl -X POST ${{ secrets.DISCORD_WEBHOOK }} \
             -H 'Content-Type: application/json' \
             -d '{
-              "content": "❌ **Frontend Build Failed (Prod)**",
+              "content": "❌ **Frontend Deployment Failed (Prod)**",
               "embeds": [{
                 "color": 16711680,
-                "title": "Build Failed",
-                "description": "Frontend build or deployment failed",
+                "title": "Deployment Failed & Rolled Back",
+                "description": "Frontend deployment failed. Previous version restored automatically.",
                 "fields": [
+                  {"name": "Status", "value": "🔄 Rolled back to previous version", "inline": false},
                   {"name": "Branch", "value": "prod", "inline": true},
                   {"name": "Commit", "value": "${{ github.sha }}", "inline": true},
                   {"name": "Action", "value": "[View Logs](https://github.com/Massclick-App/Massclick/actions/runs/${{ github.run_id }})", "inline": false}
