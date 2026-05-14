@@ -49,17 +49,39 @@ jobs:
             ${{ secrets.DEPLOY_USER }}@${{ secrets.SERVER_HOST }} \
             'sudo /bin/systemctl reload nginx'
 
-      - name: Send failure email
+      - name: Discord notification on failure
         if: failure()
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: ${{ secrets.EMAIL_SERVER }}
-          server_port: ${{ secrets.EMAIL_PORT }}
-          username: ${{ secrets.EMAIL_USER }}
-          password: ${{ secrets.EMAIL_PASSWORD }}
-          subject: '❌ Frontend Build Failed (Prod)'
-          to: ${{ secrets.NOTIFY_EMAIL }}
-          from: 'github-actions@massclick.app'
-          body: |
-            Build failed for prod branch.
-            Check: https://github.com/Massclick-App/Massclick/actions/runs/${{ github.run_id }}
+        run: |
+          curl -X POST ${{ secrets.DISCORD_WEBHOOK }} \
+            -H 'Content-Type: application/json' \
+            -d '{
+              "content": "❌ **Frontend Build Failed (Prod)**",
+              "embeds": [{
+                "color": 16711680,
+                "title": "Build Failed",
+                "description": "Frontend build or deployment failed",
+                "fields": [
+                  {"name": "Branch", "value": "prod", "inline": true},
+                  {"name": "Commit", "value": "${{ github.sha }}", "inline": true},
+                  {"name": "Action", "value": "[View Logs](https://github.com/Massclick-App/Massclick/actions/runs/${{ github.run_id }})", "inline": false}
+                ]
+              }]
+            }'
+
+      - name: Discord notification on success
+        if: success()
+        run: |
+          curl -X POST ${{ secrets.DISCORD_WEBHOOK }} \
+            -H 'Content-Type: application/json' \
+            -d '{
+              "content": "✅ **Frontend Deployed Successfully (Prod)**",
+              "embeds": [{
+                "color": 65280,
+                "title": "Deploy Success",
+                "description": "Frontend built and deployed to production",
+                "fields": [
+                  {"name": "Branch", "value": "prod", "inline": true},
+                  {"name": "Commit", "value": "${{ github.sha }}", "inline": true}
+                ]
+              }]
+            }'
