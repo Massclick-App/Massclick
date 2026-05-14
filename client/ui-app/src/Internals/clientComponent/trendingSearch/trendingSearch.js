@@ -158,7 +158,6 @@ const TrendingSearchesCarousel = () => {
 
       <div className="ts__inner">
 
-
         {/* ── header ── */}
         <div className="ts__header">
 
@@ -174,7 +173,6 @@ const TrendingSearchesCarousel = () => {
           </Link> */}
 
         </div>
-
 
         {/* ── carousel wrap ── */}
         <div className="ts__wrap">
@@ -230,7 +228,6 @@ const TrendingSearchesCarousel = () => {
             })}
           </div>
 
-
           {/* right arrow */}
           <button
             className="ts__arrow ts__arrow--right ts__arrow--visible"
@@ -256,7 +253,6 @@ const TrendingSearchesCarousel = () => {
             ))}
           </div>
         )}
-
 
       </div>
     </section>

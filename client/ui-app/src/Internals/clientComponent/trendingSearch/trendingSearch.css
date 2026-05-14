@@ -91,7 +91,6 @@
   top: 50%;
   transform: translateY(-50%);
   z-index: 10;
-
   width: 36px;
   height: 36px;
   border-radius: 50%;
@@ -100,12 +99,10 @@
   box-shadow: 0 4px 14px rgba(15, 23, 42, 0.14);
   cursor: pointer;
   padding: 0;
-
   display: inline-flex;
   align-items: center;
   justify-content: center;
   color: #374151;
-
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
