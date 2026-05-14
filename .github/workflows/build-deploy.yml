@@ -1,0 +1,64 @@
+name: Build & Deploy Frontend (Prod)
+
+  on:
+    push:
+      branches:
+        - prod
+      paths:
+        - 'client/ui-app/**'
+        - '.github/workflows/build-deploy.yml'
+
+  jobs:
+    build-and-deploy:
+      runs-on: ubuntu-latest
+
+      steps:
+        - name: Checkout code
+          uses: actions/checkout@v4
+
+        - name: Setup Node.js
+          uses: actions/setup-node@v4
+          with:
+            node-version: '18'
+
+        - name: Install dependencies
+          working-directory: client/ui-app
+          run: npm install --legacy-peer-deps
+
+        - name: Build project
+          working-directory: client/ui-app
+          run: npm run build
+
+        - name: Setup SSH key
+          run: |
+            mkdir -p ~/.ssh
+            echo "${{ secrets.DEPLOY_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+            chmod 600 ~/.ssh/deploy_key
+            ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
+
+        - name: Deploy to server
+          run: |
+              -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
+              client/ui-app/build/ \
+              ${{ secrets.DEPLOY_USER }}@${{ secrets.SERVER_HOST }}:/var/www/massclickQA/client/ui-app/build/
+
+        - name: Reload Nginx
+          run: |
+            ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+              ${{ secrets.DEPLOY_USER }}@${{ secrets.SERVER_HOST }} \
+              'sudo /bin/systemctl reload nginx'
+
+        - name: Send failure email
+          if: failure()
+          uses: dawidd6/action-send-mail@v3
+          with:
+            server_address: ${{ secrets.EMAIL_SERVER }}
+            server_port: ${{ secrets.EMAIL_PORT }}
+            username: ${{ secrets.EMAIL_USER }}
+            password: ${{ secrets.EMAIL_PASSWORD }}
+            subject: '❌ Frontend Build Failed (Prod)'
+            to: ${{ secrets.NOTIFY_EMAIL }}
+            from: 'github-actions@massclick.app'
+            body: |
+              Build failed for prod branch.
+              Check: https://github.com/Massclick-App/Massclick/actions/runs/${{ github.run_id }}
