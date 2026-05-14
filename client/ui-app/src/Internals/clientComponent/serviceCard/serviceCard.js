@@ -8,8 +8,8 @@ import "./serviceCard.css";
 
 const ServiceCardsSkeleton = () => (
   <section className="service-cards-container">
-    {[...Array(3)].map((_, gi) => (
-      <article className="category-card" key={gi} style={{ minWidth: 300 }}>
+    {[...Array(4)].map((_, gi) => (
+      <article className="category-card" key={gi}>
         <Skeleton variant="rounded" width="60%" height={22} animation="wave" sx={{ bgcolor: "rgba(255,107,44,0.055)", mb: 1.5 }} />
         <div className="items-grid">
           {[...Array(8)].map((_, i) => (

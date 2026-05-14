@@ -286,11 +286,9 @@ export default function MainGrid() {
 
   return (
     <Box sx={{ width: '100%', maxWidth: { sm: '100%', md: '1700px' } }}>
-      <Grid container spacing={2} columns={12} sx={{ mb: 2 }}>
-        <Grid xs={12} md={6}>
-          <BusinessCard />
-        </Grid>
-      </Grid>
+      <Box sx={{ width: '100%', mb: 2 }}>
+        <BusinessCard />
+      </Box>
       <Grid container spacing={2} columns={12} sx={{ mb: 2 }}>
         <Grid item xs={12} md={12}>
           <Suspense fallback={<Skeleton variant="rectangular" height={400} />}>

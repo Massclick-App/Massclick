@@ -161,7 +161,6 @@ export const logSearchAction = async (req, res) => {
       if (topMatches.length > 0) {
         finalCategoryName = topMatches[0].categoryName || topMatches[0].category;
         matchedCategoryFromSearch = topMatches[0];
-        console.log(`[SEARCH][${reqId}] Matched category from suggestions: "${finalCategoryName}"`);
       } else {
         // Fallback: try word-by-word matching
         const searchWords = cleanSearchText.split(" ");
@@ -182,10 +181,8 @@ export const logSearchAction = async (req, res) => {
         if (wordMatches.length > 0) {
           finalCategoryName = wordMatches[0].categoryName || wordMatches[0].category;
           matchedCategoryFromSearch = wordMatches[0];
-          console.log(`[SEARCH][${reqId}] Matched category from word matching: "${finalCategoryName}"`);
         } else {
           finalCategoryName = searchedUserText;
-          console.log(`[SEARCH][${reqId}] No category match found, using search text: "${finalCategoryName}"`);
         }
       }
     }
@@ -256,7 +253,6 @@ export const logSearchAction = async (req, res) => {
       createdAt: { $gte: fiveMinutesAgo }
     });
     if (recentLog) {
-      console.log(`[SEARCH][${reqId}] DEDUP HIT — already sent within 5 min, skipping`);
       return res.status(200).json({
         success: true,
         message: "Lead already sent recently",
