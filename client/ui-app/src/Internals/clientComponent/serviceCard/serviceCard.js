@@ -177,7 +177,7 @@ const ServiceCardsGrid = () => {
                   }}
                 >
                   <img
-                    src={item.icon || "/default.webp"}
+                    src={item.categoryImageKey || "/default.webp"}
                     alt={altText}
                     title={item.name}
                     className="item-icon"
