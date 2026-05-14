@@ -23,7 +23,7 @@ const MassClickBanner = () => {
 
           <h2 className="mc-heading">
             Your One-Stop Destination for{" "}
-            <span className="mc-highlight">Loca Business Listing</span>
+            <span className="mc-highlight">Local Business Listing</span>
           </h2>
 
           <p className="mc-description">
