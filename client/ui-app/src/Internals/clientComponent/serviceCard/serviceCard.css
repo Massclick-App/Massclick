@@ -1,63 +1,65 @@
 /* --- Global Container Enhancements --- */
 .service-cards-container {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    padding: 0 clamp(16px, 4vw, 48px);
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    align-items: stretch;
+    padding: 0 clamp(12px, 3vw, 40px);
     max-width: 1720px;
     margin: 0 auto;
-    gap: 24px;
+    gap: 16px;
     contain: layout style paint;
 }
 
-.category-card {
+.service-cards-container .category-card {
     background-color: #ffffff;
-    border-radius: 0;
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.07);
-    padding: 24px;
-    width: 100%;
-    flex: 1 1 300px;
-    max-width: none;
+    border-radius: 10px;
+    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.07);
+    padding: 18px;
+    width: auto;
+    max-width: 100%;
     min-width: 0;
     display: flex;
     flex-direction: column;
     transition: transform 0.3s ease, box-shadow 0.3s ease;
-    border: 1.5px solid #f0f0f0;
-    outline: 3px solid transparent;
+    border: 1px solid rgba(226, 232, 240, 0.95);
+    outline: 2px solid transparent;
     contain: layout style paint;
     will-change: transform, box-shadow;
 }
 
-.category-card:hover {
-    transform: translateY(-6px);
-    box-shadow: 0 12px 32px rgba(255, 122, 61, 0.15);
+.service-cards-container .category-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 36px rgba(15, 23, 42, 0.10);
     border-color: #ff7a3d;
-    outline-color: rgba(255, 122, 61, 0.12);
+    outline-color: rgba(255, 122, 61, 0.10);
 }
 
 /* --- Category Title Refinement --- */
-.category-title {
-    font-size: 1.75rem; /* Slightly larger title */
-    color: #E67E22; /* Darker, more professional title color */
-    font-weight: 700; /* Bold font weight */
-    text-align: left; /* Aligned left for better flow */
-    margin-bottom: 18px;
+.service-cards-container .category-title {
+    font-size: clamp(1rem, 0.75vw + 0.78rem, 1.35rem);
+    color: #d86413;
+    font-weight: 800;
+    text-align: left;
+    margin: 0 0 14px;
     font-family: 'Poppins', sans-serif;
-    border-bottom: 2px solid #ff7a3d; /* A color accent line */
+    border-bottom: 2px solid #ff7a3d;
     padding-bottom: 8px;
+    letter-spacing: 0;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
 }
 
-.items-grid {
+.service-cards-container .items-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     grid-auto-rows: 1fr;
-    gap: 16px 10px;
+    gap: 14px 8px;
     contain: layout style paint;
 }
 
-
 /* --- Item Card (Individual Service Link) Improvements --- */
-.item-icon {
+.service-cards-container .item-icon {
   aspect-ratio: 1 / 1;
   width: 90px;
   height: 90px;
@@ -65,7 +67,7 @@
   object-fit: contain;
 }
 
-.item-card {
+.service-cards-container .item-card {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -79,54 +81,118 @@
     will-change: transform, background-color;
 }
 
-.item-card:hover {
-    transform: scale(1.03);
-    background-color: #ffeee7; /* Light background on hover */
-    color: #ff7a3d; /* Accent color on hover */
+.service-cards-container .item-card:hover {
+    transform: scale(1.02);
+    background-color: #fff4ee;
+    color: #ff7a3d;
 }
 
 /* --- Item Image/Icon Styling --- */
-.item-icon {
-    width: 70px;
-    height: 70px;
+.service-cards-container .item-icon {
+    width: 64px;
+    height: 64px;
     aspect-ratio: 1;
     object-fit: contain;
     margin-bottom: 8px;
     content-visibility: auto;
-    contain-intrinsic-size: 70px;
+    contain-intrinsic-size: 64px;
 }
 
 /* --- Item Name Styling --- */
-.item-name {
-    font-size: 0.9rem;
-    font-weight: 600;
+.service-cards-container .item-name {
+    font-size: 0.78rem;
+    font-weight: 700;
     line-height: 1.3;
     font-family: 'Roboto', sans-serif;
-    color: #E67E22
+    color: #d86413;
+    margin: 0;
 }
 
 /* --- Responsive Adjustments --- */
 
+@media (max-width: 900px) {
+    .service-cards-container {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+        padding-inline: 10px;
+    }
+
+    .service-cards-container .category-card {
+        padding: 16px 14px;
+        border-radius: 8px;
+    }
+
+    .service-cards-container .category-title {
+        font-size: 1.05rem;
+        margin-bottom: 14px;
+        padding-bottom: 7px;
+    }
+
+    .service-cards-container .item-icon {
+        width: 54px;
+        height: 54px;
+        contain-intrinsic-size: 54px;
+        margin-bottom: 6px;
+    }
+
+    .service-cards-container .item-name {
+        font-size: 0.72rem;
+        line-height: 1.22;
+    }
+}
+
+@media (max-width: 560px) {
+    .service-cards-container {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        padding-inline: 8px;
+    }
+
+    .service-cards-container .category-card {
+        padding: 14px 10px;
+    }
+
+    .service-cards-container .category-title {
+        font-size: 0.92rem;
+        margin-bottom: 12px;
+    }
+
+    .service-cards-container .items-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px 5px;
+    }
+
+    .service-cards-container .item-icon {
+        width: 46px;
+        height: 46px;
+        contain-intrinsic-size: 46px;
+    }
+
+    .service-cards-container .item-name {
+        font-size: 0.65rem;
+    }
+}
+
 /* Tablet and larger phones */
-@media (min-width: 480px) {
-    .item-icon {
-        width: 80px;
-        height: 80px;
-        contain-intrinsic-size: 80px;
+@media (min-width: 561px) and (max-width: 899px) {
+    .service-cards-container .item-icon {
+        width: 60px;
+        height: 60px;
+        contain-intrinsic-size: 60px;
     }
 }
 
 /* Desktop screens */
 @media (min-width: 900px) {
-    .category-card {
-        padding: 28px;
+    .service-cards-container .category-card {
+        padding: 18px;
     }
-    .item-icon {
-        width: 90px;
-        height: 90px;
-        contain-intrinsic-size: 90px;
+    .service-cards-container .item-icon {
+        width: 68px;
+        height: 68px;
+        contain-intrinsic-size: 68px;
     }
-    .item-name {
-        font-size: 1rem;
+    .service-cards-container .item-name {
+        font-size: 0.82rem;
     }
 }
