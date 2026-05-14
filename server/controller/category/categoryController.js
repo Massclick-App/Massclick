@@ -540,10 +540,10 @@ export const getServiceCardsAction = async (req, res) => {
     const cacheKey = "service-cards:home";
 
     // Try to get from cache first
-    const cachedData = await getCache(cacheKey);
-    if (cachedData) {
-      return res.send(cachedData);
-    }
+    // const cachedData = await getCache(cacheKey);
+    // if (cachedData) {
+    //   return res.send(cachedData);
+    // }
 
     const SERVICE_SECTIONS = [
       {
