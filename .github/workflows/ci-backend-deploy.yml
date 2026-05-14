@@ -1,12 +1,12 @@
-name: Build & Deploy Frontend (Prod)
+name: Build & Deploy Backend (Prod)
 
 on:
   push:
     branches:
       - prod
     paths:
-      - 'client/ui-app/**'
-      - '.github/workflows/build-deploy.yml'
+      - 'server/**'
+      - '.github/workflows/backend-deploy.yml'
 
 jobs:
   build-and-deploy:
@@ -16,19 +16,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-
-      - name: Install dependencies
-        working-directory: client/ui-app
-        run: npm install --legacy-peer-deps
-
-      - name: Build project
-        working-directory: client/ui-app
-        run: CI=false npm run build
-
       - name: Setup SSH key
         run: |
           mkdir -p ~/.ssh
@@ -36,18 +23,11 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
 
-      - name: Deploy to server
+      - name: Deploy Backend
         run: |
-          rsync -avz --delete \
-            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
-            client/ui-app/build/ \
-            ${{ secrets.DEPLOY_USER }}@${{ secrets.SERVER_HOST }}:/var/www/massclickQA/client/ui-app/build/
-
-      - name: Reload Nginx
-        run: |
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -p 2244 \
             ${{ secrets.DEPLOY_USER }}@${{ secrets.SERVER_HOST }} \
-            'sudo /bin/systemctl reload nginx'
+            '/home/admin/scripts/backend.sh prod'
 
       - name: Discord notification on failure
         if: failure()
@@ -55,11 +35,11 @@ jobs:
           curl -X POST ${{ secrets.DISCORD_WEBHOOK }} \
             -H 'Content-Type: application/json' \
             -d '{
-              "content": "❌ **Frontend Build Failed (Prod)**",
+              "content": "❌ **Backend Deployment Failed (Prod)**",
               "embeds": [{
                 "color": 16711680,
-                "title": "Build Failed",
-                "description": "Frontend build or deployment failed",
+                "title": "Deploy Failed",
+                "description": "Backend deployment failed. Check health check or docker status.",
                 "fields": [
                   {"name": "Branch", "value": "prod", "inline": true},
                   {"name": "Commit", "value": "${{ github.sha }}", "inline": true},
@@ -74,11 +54,11 @@ jobs:
           curl -X POST ${{ secrets.DISCORD_WEBHOOK }} \
             -H 'Content-Type: application/json' \
             -d '{
-              "content": "✅ **Frontend Deployed Successfully (Prod)**",
+              "content": "✅ **Backend Deployed Successfully (Prod)**",
               "embeds": [{
                 "color": 65280,
                 "title": "Deploy Success",
-                "description": "Frontend built and deployed to production",
+                "description": "Backend deployed and health check passed",
                 "fields": [
                   {"name": "Branch", "value": "prod", "inline": true},
                   {"name": "Commit", "value": "${{ github.sha }}", "inline": true}
