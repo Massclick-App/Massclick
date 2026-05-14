@@ -64,7 +64,6 @@ app.use((req, res, next) => {
   next();
 });
 
-
 app.use(helmet({
   crossOriginResourcePolicy: false,
   contentSecurityPolicy: false,
