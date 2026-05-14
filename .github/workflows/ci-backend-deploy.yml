@@ -15,8 +15,22 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for backend changes
+        id: backend_changes
+        run: |
+          if git diff --quiet HEAD~1 HEAD -- server/; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "⏭️  No backend code changes detected, skipping deploy"
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "✅ Backend changes detected, proceeding with deploy"
+          fi
 
       - name: Setup SSH key
+        if: steps.backend_changes.outputs.changed == 'true'
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.DEPLOY_PRIVATE_KEY }}" > ~/.ssh/deploy_key
@@ -24,6 +38,7 @@ jobs:
           ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
 
       - name: Deploy Backend
+        if: steps.backend_changes.outputs.changed == 'true'
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -p 2244 \
             ${{ secrets.DEPLOY_USER }}@${{ secrets.SERVER_HOST }} \
