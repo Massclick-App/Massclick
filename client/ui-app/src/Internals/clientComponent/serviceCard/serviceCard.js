@@ -163,6 +163,17 @@ const ServiceCardsGrid = () => {
 
               const altText = generateAltText(item.name, districtSlug);
 
+              // Get image URL with fallback priority:
+              // 1. categoryImages.webCard (new structure)
+              // 2. categoryImageKey (legacy)
+              // 3. default.webp
+              const imageUrl = (() => {
+                if (item.categoryImages?.webCard) {
+                  return item.categoryImages.webCard;
+                }
+                return item.categoryImageKey || "/default.webp";
+              })();
+
               return (
                 <div
                   key={item.slug || index}
@@ -177,7 +188,7 @@ const ServiceCardsGrid = () => {
                   }}
                 >
                   <img
-                    src={item.categoryImageKey || "/default.webp"}
+                    src={imageUrl}
                     alt={altText}
                     title={item.name}
                     className="item-icon"
