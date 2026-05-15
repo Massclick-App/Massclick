@@ -34,7 +34,7 @@ const MassClickBanner = () => {
 
           <ul className="mc-points">
             <li>Appear in local search results instantly</li>
-            <li>Dedicated business profile with photo & contact details</li>
+            <li>Dedicated business profile with photos & contact details</li>
             <li>Priority placement in relevant categories</li>
           </ul>
         </div>
