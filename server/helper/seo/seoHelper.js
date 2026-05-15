@@ -156,7 +156,71 @@ export const getSeoMeta = async ({ pageType, category, location }) => {
     }
 
     // ===============================
-    // 🔥 5. FALLBACK (PAGE TYPE ONLY)
+    // 🔥 5. CATEGORY ONLY (ignore location if no match with both)
+    // ===============================
+    if (safeCategory && safeLocation) {
+      seo = await seoModel.findOne({
+        pageType: safePageType,
+        category: safeCategory,
+        isActive: true,
+      }).lean();
+
+      if (seo) {
+        await setCache(cacheKey, seo, 86400); // Cache for 24 hours
+        return seo;
+      }
+    }
+
+    // ===============================
+    // 🔥 6. FLEXIBLE CATEGORY ONLY (ignore location if no match with both)
+    // ===============================
+    if (safeCategory && safeLocation) {
+      seo = await seoModel.findOne({
+        pageType: safePageType,
+        category: { $regex: flexibleCategory, $options: "i" },
+        isActive: true,
+      }).lean();
+
+      if (seo) {
+        await setCache(cacheKey, seo, 86400); // Cache for 24 hours
+        return seo;
+      }
+    }
+
+    // ===============================
+    // 🔥 7. LOCATION ONLY (ignore category if no match with both)
+    // ===============================
+    if (safeCategory && safeLocation) {
+      seo = await seoModel.findOne({
+        pageType: safePageType,
+        location: safeLocation,
+        isActive: true,
+      }).lean();
+
+      if (seo) {
+        await setCache(cacheKey, seo, 86400); // Cache for 24 hours
+        return seo;
+      }
+    }
+
+    // ===============================
+    // 🔥 8. FLEXIBLE LOCATION ONLY (ignore category if no match with both)
+    // ===============================
+    if (safeCategory && safeLocation) {
+      seo = await seoModel.findOne({
+        pageType: safePageType,
+        location: { $regex: flexibleLocation, $options: "i" },
+        isActive: true,
+      }).lean();
+
+      if (seo) {
+        await setCache(cacheKey, seo, 86400); // Cache for 24 hours
+        return seo;
+      }
+    }
+
+    // ===============================
+    // 🔥 9. FALLBACK (PAGE TYPE ONLY)
     // ===============================
     seo = await seoModel.findOne({
       pageType: safePageType,

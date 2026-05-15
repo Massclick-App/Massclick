@@ -81,14 +81,28 @@ const BlogDetail = () => {
   };
 
   const linkifyText = (text = "") => {
-    return text.replace(
-      /(https?:\/\/[^\s]+)/g,
+    let result = text;
+
+    // Convert URLs to clickable links
+    result = result.replace(
+      /(https?:\/\/[^\s<]+)/g,
       (url) => {
         const cleanUrl = normalizeMassclickUrl(url);
-
         return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer">${cleanUrl}</a>`;
       }
     );
+
+    // Convert patterns like "services in location" or "best services in trichy" to internal links
+    result = result.replace(
+      /\b(best\s+)?(top\s+)?([a-zA-Z\s]+?)\s+in\s+([a-zA-Z\s]+?)(?=[.,;!?\s]|$)/gi,
+      (match, best, top, category, location) => {
+        const cleanCategory = category.trim().replace(/\s+/g, "-").toLowerCase();
+        const cleanLocation = location.trim().replace(/\s+/g, "-").toLowerCase();
+        return `<a href="https://massclick.in/${cleanLocation}/${cleanCategory}" target="_blank" rel="noopener noreferrer">${match}</a>`;
+      }
+    );
+
+    return result;
   };
 
   const makeSlug = (text = "") =>
