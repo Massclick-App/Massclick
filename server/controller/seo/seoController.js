@@ -9,6 +9,9 @@ import {
 } from "../../helper/seo/seoHelper.js";
 import { BAD_REQUEST } from "../../errorCodes.js";
 import { invalidateSeoCache } from "../../utils/cacheInvalidation.js";
+import { createLogger } from "../../utils/logger.js";
+
+const logger = createLogger("SEO");
 
 export const addSeoAction = async (req, res) => {
   try {
@@ -48,7 +51,7 @@ export const getSeoMetaAction = async (req, res) => {
 
     res.send(seoData);
   } catch (error) {
-    console.error("SEO META ERROR:", error);
+    await logger.error("SEO META ERROR", error);
     res.status(400).send({ message: error.message });
   }
 };

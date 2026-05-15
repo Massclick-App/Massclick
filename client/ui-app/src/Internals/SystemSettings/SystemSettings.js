@@ -20,8 +20,25 @@ const CheckCircleOutlineIcon = () => <span>✓</span>;
 const PowerSettingsNewIcon = () => <span>⏻</span>;
 const CloudSyncIcon = () => <span>☁️</span>;
 const WarningAmberIcon = () => <span>⚠️</span>;
+const DebugIcon = () => <span>🔍</span>;
+const DatabaseIcon = () => <span>🗄️</span>;
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
+
+const CACHE_TYPES = [
+  { value: 'seo-meta', label: 'SEO Meta Tags' },
+  { value: 'seo-page-content', label: 'SEO Page Content' },
+  { value: 'seo-blog', label: 'SEO Blog' },
+  { value: 'category', label: 'Categories' },
+  { value: 'home-category', label: 'Home Categories' },
+  { value: 'search', label: 'Search Results' },
+  { value: 'suggestions', label: 'Suggestions' },
+  { value: 'trends', label: 'Trending' },
+  { value: 'reviews', label: 'Reviews' },
+  { value: 'mobile', label: 'Mobile Lookup' },
+  { value: 'dashboard', label: 'Dashboard' },
+  { value: 'advertisement', label: 'Ads' }
+];
 
 const TOGGLE_GROUPS = [
   {
@@ -68,6 +85,38 @@ const TOGGLE_GROUPS = [
       },
     ],
   },
+  {
+    label: "Logging Controls",
+    icon: DebugIcon,
+    accentColor: "#7c3aed",
+    items: [
+      {
+        key: "logging_enabled",
+        label: "Enable Logging",
+        desc: "Master toggle to enable/disable all server logs.",
+      },
+      {
+        key: "logging_fcm_debug",
+        label: "FCM Debug",
+        desc: "Detailed FCM notification logs.",
+      },
+      {
+        key: "logging_sms_debug",
+        label: "SMS Debug",
+        desc: "Detailed SMS gateway logs.",
+      },
+      {
+        key: "logging_seo_debug",
+        label: "SEO Debug",
+        desc: "SEO metadata query logs.",
+      },
+      {
+        key: "logging_db_queries",
+        label: "Database Queries",
+        desc: "Log database operations.",
+      },
+    ],
+  },
 ];
 
 const PLATFORM_SECTIONS = [
@@ -104,6 +153,7 @@ const ALL_KEYS = [
   "app_ios_min_version",
   "app_ios_update_url",
   "app_release_notes",
+  "logging_level",
 ];
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -114,6 +164,9 @@ export default function SystemSettings() {
 
   const [local, setLocal] = useState(null);
   const [snack, setSnack] = useState({ open: false, message: "", severity: "success" });
+  const [selectedCache, setSelectedCache] = useState("seo-meta");
+  const [cacheClearing, setCacheClearing] = useState(false);
+  const [showClearAllConfirm, setShowClearAllConfirm] = useState(false);
 
   useEffect(() => { dispatch(fetchSystemSettings()); }, [dispatch]);
   useEffect(() => { if (settings) setLocal({ ...settings }); }, [settings]);
@@ -133,6 +186,72 @@ export default function SystemSettings() {
     } catch {
       setSnack({ open: true, message: "Failed to save settings.", severity: "error" });
       setTimeout(() => setSnack(s => ({ ...s, open: false })), 3000);
+    }
+  };
+
+  const handleClearCache = async () => {
+    if (!selectedCache) {
+      setSnack({ open: true, message: "Please select a cache type.", severity: "error" });
+      return;
+    }
+
+    // Show confirmation
+    if (!window.confirm(`Clear "${CACHE_TYPES.find(c => c.value === selectedCache)?.label}" cache? This action cannot be undone.`)) {
+      return;
+    }
+
+    setCacheClearing(true);
+    try {
+      const token = localStorage.getItem("accessToken");
+      const response = await fetch("/api/admin/cache/invalidate", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ cacheType: selectedCache })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setSnack({ open: true, message: data.message || "Cache cleared successfully.", severity: "success" });
+      } else {
+        setSnack({ open: true, message: data.message || "Failed to clear cache.", severity: "error" });
+      }
+    } catch (err) {
+      setSnack({ open: true, message: err.message || "Error clearing cache.", severity: "error" });
+    } finally {
+      setCacheClearing(false);
+    }
+  };
+
+  const handleClearAllCaches = async () => {
+    // Show confirmation dialog
+    if (!window.confirm("⚠️ Clear ALL caches? This will remove all cached data and may impact performance temporarily.")) {
+      return;
+    }
+
+    setCacheClearing(true);
+    try {
+      const token = localStorage.getItem("accessToken");
+      const response = await fetch("/api/admin/cache/clear-all", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        }
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setSnack({ open: true, message: "All caches cleared successfully.", severity: "success" });
+      } else {
+        setSnack({ open: true, message: data.message || "Failed to clear all caches.", severity: "error" });
+      }
+    } catch (err) {
+      setSnack({ open: true, message: err.message || "Error clearing caches.", severity: "error" });
+    } finally {
+      setCacheClearing(false);
     }
   };
 
@@ -303,6 +422,73 @@ export default function SystemSettings() {
                 placeholder="Bug fixes and performance improvements."
                 rows={2}
               />
+            </div>
+          </div>
+
+          <div className="divider"></div>
+          <div className="logging-config-section">
+            <div className="section-label">Log Level</div>
+            <div className="form-field w-100">
+              <label className="form-label">Global Log Verbosity</label>
+              <select
+                className="form-input w-100"
+                value={local.logging_level ?? "info"}
+                onChange={(e) => setText("logging_level", e.target.value)}
+              >
+                <option value="off">Off (No logs)</option>
+                <option value="error">Error (Only errors)</option>
+                <option value="warn">Warn (Errors + warnings)</option>
+                <option value="info">Info (Errors + warnings + info)</option>
+                <option value="debug">Debug (All logs)</option>
+              </select>
+            </div>
+            <div style={{ fontSize: "12px", color: "#64748b", marginTop: 8 }}>
+              Controls the verbosity of server logs. Module-specific toggles on the left override this setting.
+            </div>
+          </div>
+
+          <div className="divider"></div>
+          <div className="cache-management-section">
+            <div className="section-label">Cache Management</div>
+            <div className="form-field w-100">
+              <label className="form-label">Select Cache Type to Clear</label>
+              <select
+                className="form-input w-100"
+                value={selectedCache}
+                onChange={(e) => setSelectedCache(e.target.value)}
+                disabled={cacheClearing}
+              >
+                {CACHE_TYPES.map(cache => (
+                  <option key={cache.value} value={cache.value}>{cache.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ marginTop: 16, padding: "12px", backgroundColor: "#f0f9ff", borderRadius: "8px", fontSize: "12px", color: "#0369a1" }}>
+              <div style={{ marginBottom: 8 }}>
+                <strong>Cache Info:</strong>
+              </div>
+              <div>Clearing will remove cached data for this cache type.</div>
+              <div>API responses will be slower until cache rebuilds.</div>
+            </div>
+
+            <div style={{ marginTop: 16, display: "flex", gap: 8, flexDirection: "column" }}>
+              <button
+                className="btn btn-primary"
+                onClick={handleClearCache}
+                disabled={cacheClearing}
+                style={{ width: "100%" }}
+              >
+                {cacheClearing ? "Clearing..." : "Clear Selected Cache"}
+              </button>
+              <button
+                className="btn btn-text"
+                onClick={handleClearAllCaches}
+                disabled={cacheClearing}
+                style={{ width: "100%", color: "#dc2626" }}
+              >
+                {cacheClearing ? "Clearing..." : "⚠️ Clear ALL Caches"}
+              </button>
             </div>
           </div>
         </div>

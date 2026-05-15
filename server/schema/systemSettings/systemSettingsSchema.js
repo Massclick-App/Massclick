@@ -30,6 +30,14 @@ const systemSettingsSchema = new mongoose.Schema(
     app_maintenance_mode: { type: Boolean, default: false },
     app_release_notes: { type: String, default: "Bug fixes and performance improvements." },
 
+    // Logging Controls
+    logging_enabled: { type: Boolean, default: true },
+    logging_level: { type: String, enum: ['off', 'error', 'warn', 'info', 'debug'], default: 'info' },
+    logging_fcm_debug: { type: Boolean, default: false },
+    logging_sms_debug: { type: Boolean, default: false },
+    logging_seo_debug: { type: Boolean, default: false },
+    logging_db_queries: { type: Boolean, default: false },
+
     updatedBy: { type: String, default: "admin" },
   },
   { timestamps: true }

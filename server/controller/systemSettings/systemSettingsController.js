@@ -29,6 +29,11 @@ export const updateSystemSettingsAction = async (req, res) => {
       "whatsapp_mni_customer_list",
       "whatsapp_login_welcome",
       "app_maintenance_mode",
+      "logging_enabled",
+      "logging_fcm_debug",
+      "logging_sms_debug",
+      "logging_seo_debug",
+      "logging_db_queries",
     ];
 
     const stringFields = [
@@ -39,7 +44,17 @@ export const updateSystemSettingsAction = async (req, res) => {
       "app_ios_min_version",
       "app_ios_update_url",
       "app_release_notes",
+      "logging_level",
     ];
+
+    // Validate logging_level enum
+    const validLogLevels = ['off', 'error', 'warn', 'info', 'debug'];
+    if ('logging_level' in req.body && !validLogLevels.includes(req.body.logging_level)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid logging_level. Must be one of: ${validLogLevels.join(', ')}`
+      });
+    }
 
     const updates = {};
 
