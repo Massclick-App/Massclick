@@ -48,7 +48,7 @@ jobs:
 
       - name: Deploy to server
         run: |
-          rsync -avz --delete \
+          rsync -avz --delete --chown=deploy:deploy \
             -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -p 2244" \
             client/ui-app/build/ \
             ${{ secrets.DEPLOY_USER }}@${{ secrets.SERVER_HOST }}:/var/www/massclickQA/client/ui-app/build/
