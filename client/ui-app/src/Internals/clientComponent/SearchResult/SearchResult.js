@@ -76,6 +76,7 @@ const SearchResults = React.memo(() => {
 
   const [results, setResults] = useState([]);
   const stateAppliedRef = useRef(false);
+  const requestIdRef = useRef(0);
 
   useEffect(() => {
     const authUser = localStorage.getItem("authUser");
@@ -153,13 +154,18 @@ useEffect(() => {
       return;
     }
 
-    if (!resultsFromState || resultsFromState.length === 0) {
-      dispatch(
-        backendMainSearch(searchText, locationText, searchText)
-      ).then((action) => {
-        setResults(action?.payload || []);
-      });
-    }
+    if (resultsFromState && resultsFromState.length > 0) return;
+
+    if (!searchText || !locationText) return;
+
+    const requestId = ++requestIdRef.current;
+
+    dispatch(
+      backendMainSearch(searchText, locationText, searchText)
+    ).then((action) => {
+      if (requestId !== requestIdRef.current) return;
+      setResults(action?.payload || []);
+    });
 
   }, [searchText, locationText, dispatch]);
 
