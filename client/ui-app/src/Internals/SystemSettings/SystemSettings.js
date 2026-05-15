@@ -154,6 +154,7 @@ const ALL_KEYS = [
   "app_ios_update_url",
   "app_release_notes",
   "logging_level",
+  "redis_enabled",
 ];
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -167,9 +168,32 @@ export default function SystemSettings() {
   const [selectedCache, setSelectedCache] = useState("seo-meta");
   const [cacheClearing, setCacheClearing] = useState(false);
   const [showClearAllConfirm, setShowClearAllConfirm] = useState(false);
+  const [redisStatus, setRedisStatus] = useState(null);
+  const [loadingRedisStatus, setLoadingRedisStatus] = useState(false);
 
   useEffect(() => { dispatch(fetchSystemSettings()); }, [dispatch]);
   useEffect(() => { if (settings) setLocal({ ...settings }); }, [settings]);
+
+  useEffect(() => {
+    const fetchRedisStatus = async () => {
+      setLoadingRedisStatus(true);
+      try {
+        const token = localStorage.getItem("accessToken");
+        const response = await fetch("/api/admin/redis/status", {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (data.success) {
+          setRedisStatus(data.data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch Redis status:", err);
+      } finally {
+        setLoadingRedisStatus(false);
+      }
+    };
+    fetchRedisStatus();
+  }, []);
 
   const toggle = (key) => {
     setLocal((p) => {
@@ -467,6 +491,56 @@ export default function SystemSettings() {
             </div>
             <div style={{ fontSize: "12px", color: "#64748b", marginTop: 8 }}>
               Controls the verbosity of server logs. Module-specific toggles on the left override this setting.
+            </div>
+          </div>
+
+          <div className="divider"></div>
+          <div className="redis-status-section">
+            <div className="section-label">Redis Status</div>
+            <div style={{ padding: "12px", backgroundColor: redisStatus?.redis_connected ? "#dcfce7" : "#fee2e2", borderRadius: "8px", marginBottom: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{
+                  width: 12,
+                  height: 12,
+                  borderRadius: "50%",
+                  backgroundColor: redisStatus?.redis_connected ? "#22c55e" : "#ef4444"
+                }}></div>
+                <div>
+                  <div style={{ fontWeight: "600", color: redisStatus?.redis_connected ? "#166534" : "#991b1b" }}>
+                    {redisStatus?.status || "CHECKING..."}
+                  </div>
+                  <div style={{ fontSize: "12px", color: redisStatus?.redis_connected ? "#15803d" : "#dc2626", marginTop: 4 }}>
+                    {redisStatus?.message}
+                  </div>
+                  {redisStatus?.totalKeys > 0 && (
+                    <div style={{ fontSize: "12px", color: "#666", marginTop: 4 }}>
+                      Cache Keys: {redisStatus?.totalKeys}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="form-field w-100" style={{ marginBottom: 16 }}>
+              <label className="form-label" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span>Enable Redis Caching</span>
+                <span style={{ fontSize: "11px", color: "#999", fontWeight: "normal" }}>
+                  {local?.redis_enabled ? "(Enabled)" : "(Disabled)"}
+                </span>
+              </label>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <label className="custom-switch">
+                  <input
+                    type="checkbox"
+                    checked={!!local?.redis_enabled}
+                    onChange={() => toggle("redis_enabled")}
+                  />
+                  <span className="switch-slider"></span>
+                </label>
+                <span style={{ fontSize: "12px", color: "#666" }}>
+                  {local?.redis_enabled ? "Redis caching is active" : "Redis caching is disabled - using memory cache"}
+                </span>
+              </div>
             </div>
           </div>
 

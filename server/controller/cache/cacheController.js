@@ -9,8 +9,32 @@ import {
   deleteCachePattern
 } from "../../utils/cacheStats.js";
 import { createLogger } from "../../utils/logger.js";
+import { isRedisConnected } from "../../utils/redisClient.js";
 
 const logger = createLogger("CACHE");
+
+export const getRedisStatusAction = async (req, res) => {
+  try {
+    const redisConnected = isRedisConnected();
+    const stats = redisConnected ? await getCacheStats() : { totalKeys: 0, cacheKeys: 0 };
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        redis_connected: redisConnected,
+        status: redisConnected ? "CONNECTED" : "DISCONNECTED",
+        totalKeys: stats.totalKeys || 0,
+        message: redisConnected ? "Redis is working properly" : "Redis is unavailable - caching disabled"
+      }
+    });
+  } catch (error) {
+    await logger.error("getRedisStatusAction error", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
 
 const CACHE_TYPES = {
   'seo-meta': { label: 'SEO Meta Tags', pattern: 'seo-meta:*', invalidateFn: invalidateSeoCache },

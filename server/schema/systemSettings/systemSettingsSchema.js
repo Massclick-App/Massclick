@@ -38,6 +38,9 @@ const systemSettingsSchema = new mongoose.Schema(
     logging_seo_debug: { type: Boolean, default: false },
     logging_db_queries: { type: Boolean, default: false },
 
+    // Redis/Cache Controls
+    redis_enabled: { type: Boolean, default: true },
+
     updatedBy: { type: String, default: "admin" },
   },
   { timestamps: true }

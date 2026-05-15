@@ -1,4 +1,5 @@
 import { getCache, setCache, isRedisConnected } from '../utils/redisClient.js';
+import { getSettings } from '../helper/systemSettings/settingsService.js';
 
 export const cacheMiddleware = (options = {}) => {
   const {
@@ -8,9 +9,20 @@ export const cacheMiddleware = (options = {}) => {
   } = options;
 
   return async (req, res, next) => {
-    // Skip caching if: Redis is down OR not a GET request OR response already sent
+    // Skip caching if: Redis is down OR not a GET request OR response already sent OR redis_enabled is false
     if (!isRedisConnected() || req.method !== 'GET' || res.headersSent) {
       return next();
+    }
+
+    // Check if Redis caching is enabled in system settings
+    try {
+      const settings = await getSettings();
+      if (!settings.redis_enabled) {
+        return next();
+      }
+    } catch (err) {
+      // If we can't get settings, continue with caching
+      console.warn('[Cache] Could not fetch redis_enabled setting:', err.message);
     }
 
     try {

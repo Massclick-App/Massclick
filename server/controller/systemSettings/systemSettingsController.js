@@ -34,6 +34,7 @@ export const updateSystemSettingsAction = async (req, res) => {
       "logging_sms_debug",
       "logging_seo_debug",
       "logging_db_queries",
+      "redis_enabled",
     ];
 
     const stringFields = [
