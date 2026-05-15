@@ -171,7 +171,31 @@ export default function SystemSettings() {
   useEffect(() => { dispatch(fetchSystemSettings()); }, [dispatch]);
   useEffect(() => { if (settings) setLocal({ ...settings }); }, [settings]);
 
-  const toggle = (key) => setLocal((p) => ({ ...p, [key]: !p[key] }));
+  const toggle = (key) => {
+    setLocal((p) => {
+      const updated = { ...p, [key]: !p[key] };
+
+      // If toggling logging_enabled (master switch), control all other logging toggles
+      if (key === "logging_enabled") {
+        const isNowEnabled = !p[key];
+        if (isNowEnabled) {
+          // When master is ON, enable all logging toggles
+          updated.logging_fcm_debug = true;
+          updated.logging_sms_debug = true;
+          updated.logging_seo_debug = true;
+          updated.logging_db_queries = true;
+        } else {
+          // When master is OFF, disable all logging toggles
+          updated.logging_fcm_debug = false;
+          updated.logging_sms_debug = false;
+          updated.logging_seo_debug = false;
+          updated.logging_db_queries = false;
+        }
+      }
+
+      return updated;
+    });
+  };
   const setText = (key, val) => setLocal((p) => ({ ...p, [key]: val }));
 
   const dirty = settings && local ? ALL_KEYS.some((k) => local[k] !== settings[k]) : false;
@@ -364,7 +388,6 @@ export default function SystemSettings() {
                         type="checkbox"
                         checked={!!local[key]}
                         onChange={() => toggle(key)}
-                        onClick={(e) => e.stopPropagation()}
                       />
                       <span className="switch-slider" style={{ backgroundColor: local[key] ? group.accentColor : "#cbd5e1" }}></span>
                     </label>

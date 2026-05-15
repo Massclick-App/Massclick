@@ -14,7 +14,7 @@ export const createLogger = (moduleName = 'APP') => {
       try {
         const settings = await getSettings();
         if (!settings.logging_enabled) return;
-        const levelValue = LOG_LEVELS[settings.logging_level] || LOG_LEVELS.info;
+        const levelValue = LOG_LEVELS[settings.logging_level || 'info'];
         if (levelValue >= LOG_LEVELS.debug) {
           console.log(`[${moduleName}:DEBUG]`, message, data);
         }
@@ -27,7 +27,7 @@ export const createLogger = (moduleName = 'APP') => {
       try {
         const settings = await getSettings();
         if (!settings.logging_enabled) return;
-        const levelValue = LOG_LEVELS[settings.logging_level] || LOG_LEVELS.info;
+        const levelValue = LOG_LEVELS[settings.logging_level || 'info'];
         if (levelValue >= LOG_LEVELS.info) {
           console.log(`[${moduleName}:INFO]`, message, data);
         }
@@ -40,7 +40,7 @@ export const createLogger = (moduleName = 'APP') => {
       try {
         const settings = await getSettings();
         if (!settings.logging_enabled) return;
-        const levelValue = LOG_LEVELS[settings.logging_level] || LOG_LEVELS.info;
+        const levelValue = LOG_LEVELS[settings.logging_level || 'info'];
         if (levelValue >= LOG_LEVELS.warn) {
           console.warn(`[${moduleName}:WARN]`, message, data);
         }
@@ -53,7 +53,7 @@ export const createLogger = (moduleName = 'APP') => {
       try {
         const settings = await getSettings();
         if (!settings.logging_enabled) return;
-        const levelValue = LOG_LEVELS[settings.logging_level] || LOG_LEVELS.info;
+        const levelValue = LOG_LEVELS[settings.logging_level || 'info'];
         if (levelValue >= LOG_LEVELS.error) {
           console.error(`[${moduleName}:ERROR]`, message, error?.message || error);
         }
