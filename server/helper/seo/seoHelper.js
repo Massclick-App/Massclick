@@ -63,14 +63,18 @@ export const getSeoMeta = async ({ pageType, category, location }) => {
     const safeCategory = category ? normalize(category) : null;
     const safeLocation = location ? normalize(location) : null;
 
+    console.log('[SEO META DEBUG] Query:', { pageType, category, location, safePageType, safeCategory, safeLocation });
+
     // Generate cache key based on query parameters
     const cacheKey = `seo-meta:${safePageType}${safeCategory ? `:${safeCategory}` : ""}${safeLocation ? `:${safeLocation}` : ""}`;
 
     // Try to get from cache first
     const cachedSeo = await getCache(cacheKey);
     if (cachedSeo) {
+      console.log('[SEO META DEBUG] Cache HIT for key:', cacheKey);
       return cachedSeo;
     }
+    console.log('[SEO META DEBUG] Cache MISS for key:', cacheKey);
 
     const escapeRegex = (str = "") =>
       str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -93,6 +97,7 @@ export const getSeoMeta = async ({ pageType, category, location }) => {
     // 🔥 1. EXACT MATCH (CATEGORY + LOCATION)
     // ===============================
     if (safeCategory && safeLocation) {
+      console.log('[SEO META DEBUG] Step 1: Trying EXACT match', { pageType: safePageType, category: safeCategory, location: safeLocation });
       seo = await seoModel.findOne({
         pageType: safePageType,
         category: safeCategory,
@@ -101,15 +106,18 @@ export const getSeoMeta = async ({ pageType, category, location }) => {
       }).lean();
 
       if (seo) {
+        console.log('[SEO META DEBUG] Step 1: FOUND', { title: seo.title, category: seo.category, location: seo.location });
         await setCache(cacheKey, seo, 86400); // Cache for 24 hours
         return seo;
       }
+      console.log('[SEO META DEBUG] Step 1: NOT found');
     }
 
     // ===============================
     // 🔥 2. FLEXIBLE MATCH (CATEGORY + LOCATION)
     // ===============================
     if (safeCategory && safeLocation) {
+      console.log('[SEO META DEBUG] Step 2: Trying FLEXIBLE match', { pageType: safePageType, categoryRegex: flexibleCategory, locationRegex: flexibleLocation });
       seo = await seoModel.findOne({
         pageType: safePageType,
         category: { $regex: flexibleCategory, $options: "i" },
@@ -118,15 +126,18 @@ export const getSeoMeta = async ({ pageType, category, location }) => {
       }).lean();
 
       if (seo) {
+        console.log('[SEO META DEBUG] Step 2: FOUND', { title: seo.title, category: seo.category, location: seo.location });
         await setCache(cacheKey, seo, 86400); // Cache for 24 hours
         return seo;
       }
+      console.log('[SEO META DEBUG] Step 2: NOT found');
     }
 
     // ===============================
     // 🔥 3. CATEGORY ONLY (ONLY if NO location given)
     // ===============================
     if (safeCategory && !safeLocation) {
+      console.log('[SEO META DEBUG] Step 3: Trying CATEGORY ONLY (no location given)', { pageType: safePageType, category: safeCategory });
       seo = await seoModel.findOne({
         pageType: safePageType,
         category: safeCategory,
@@ -134,15 +145,18 @@ export const getSeoMeta = async ({ pageType, category, location }) => {
       }).lean();
 
       if (seo) {
+        console.log('[SEO META DEBUG] Step 3: FOUND', { title: seo.title, category: seo.category, location: seo.location });
         await setCache(cacheKey, seo, 86400); // Cache for 24 hours
         return seo;
       }
+      console.log('[SEO META DEBUG] Step 3: NOT found');
     }
 
     // ===============================
     // 🔥 4. FLEXIBLE CATEGORY ONLY
     // ===============================
     if (safeCategory && !safeLocation) {
+      console.log('[SEO META DEBUG] Step 4: Trying FLEXIBLE CATEGORY ONLY (no location given)', { pageType: safePageType, categoryRegex: flexibleCategory });
       seo = await seoModel.findOne({
         pageType: safePageType,
         category: { $regex: flexibleCategory, $options: "i" },
@@ -150,15 +164,18 @@ export const getSeoMeta = async ({ pageType, category, location }) => {
       }).lean();
 
       if (seo) {
+        console.log('[SEO META DEBUG] Step 4: FOUND', { title: seo.title, category: seo.category, location: seo.location });
         await setCache(cacheKey, seo, 86400); // Cache for 24 hours
         return seo;
       }
+      console.log('[SEO META DEBUG] Step 4: NOT found');
     }
 
     // ===============================
     // 🔥 5. CATEGORY ONLY (ignore location if no match with both)
     // ===============================
     if (safeCategory && safeLocation) {
+      console.log('[SEO META DEBUG] Step 5: Trying CATEGORY ONLY (ignoring location)', { pageType: safePageType, category: safeCategory });
       seo = await seoModel.findOne({
         pageType: safePageType,
         category: safeCategory,
@@ -166,15 +183,18 @@ export const getSeoMeta = async ({ pageType, category, location }) => {
       }).lean();
 
       if (seo) {
+        console.log('[SEO META DEBUG] Step 5: FOUND', { title: seo.title, category: seo.category, location: seo.location });
         await setCache(cacheKey, seo, 86400); // Cache for 24 hours
         return seo;
       }
+      console.log('[SEO META DEBUG] Step 5: NOT found');
     }
 
     // ===============================
     // 🔥 6. FLEXIBLE CATEGORY ONLY (ignore location if no match with both)
     // ===============================
     if (safeCategory && safeLocation) {
+      console.log('[SEO META DEBUG] Step 6: Trying FLEXIBLE CATEGORY ONLY (ignoring location)', { pageType: safePageType, categoryRegex: flexibleCategory });
       seo = await seoModel.findOne({
         pageType: safePageType,
         category: { $regex: flexibleCategory, $options: "i" },
@@ -182,15 +202,18 @@ export const getSeoMeta = async ({ pageType, category, location }) => {
       }).lean();
 
       if (seo) {
+        console.log('[SEO META DEBUG] Step 6: FOUND', { title: seo.title, category: seo.category, location: seo.location });
         await setCache(cacheKey, seo, 86400); // Cache for 24 hours
         return seo;
       }
+      console.log('[SEO META DEBUG] Step 6: NOT found');
     }
 
     // ===============================
     // 🔥 7. LOCATION ONLY (ignore category if no match with both)
     // ===============================
     if (safeCategory && safeLocation) {
+      console.log('[SEO META DEBUG] Step 7: Trying LOCATION ONLY (ignoring category)', { pageType: safePageType, location: safeLocation });
       seo = await seoModel.findOne({
         pageType: safePageType,
         location: safeLocation,
@@ -198,15 +221,18 @@ export const getSeoMeta = async ({ pageType, category, location }) => {
       }).lean();
 
       if (seo) {
+        console.log('[SEO META DEBUG] Step 7: FOUND', { title: seo.title, category: seo.category, location: seo.location });
         await setCache(cacheKey, seo, 86400); // Cache for 24 hours
         return seo;
       }
+      console.log('[SEO META DEBUG] Step 7: NOT found');
     }
 
     // ===============================
     // 🔥 8. FLEXIBLE LOCATION ONLY (ignore category if no match with both)
     // ===============================
     if (safeCategory && safeLocation) {
+      console.log('[SEO META DEBUG] Step 8: Trying FLEXIBLE LOCATION ONLY (ignoring category)', { pageType: safePageType, locationRegex: flexibleLocation });
       seo = await seoModel.findOne({
         pageType: safePageType,
         location: { $regex: flexibleLocation, $options: "i" },
@@ -214,20 +240,29 @@ export const getSeoMeta = async ({ pageType, category, location }) => {
       }).lean();
 
       if (seo) {
+        console.log('[SEO META DEBUG] Step 8: FOUND', { title: seo.title, category: seo.category, location: seo.location });
         await setCache(cacheKey, seo, 86400); // Cache for 24 hours
         return seo;
       }
+      console.log('[SEO META DEBUG] Step 8: NOT found');
     }
 
     // ===============================
     // 🔥 9. FALLBACK (PAGE TYPE ONLY)
     // ===============================
+    console.log('[SEO META DEBUG] Step 9: FALLBACK - Trying PAGE TYPE ONLY', { pageType: safePageType });
     seo = await seoModel.findOne({
       pageType: safePageType,
       isActive: true,
     }).lean();
+    if (seo) {
+      console.log('[SEO META DEBUG] Step 9: FOUND', { title: seo.title, category: seo.category, location: seo.location });
+    } else {
+      console.log('[SEO META DEBUG] Step 9: NOT found');
+    }
 
     if (seo) {
+      console.log('[SEO META DEBUG] Step 9: FOUND', { title: seo.title, category: seo.category, location: seo.location });
       await setCache(cacheKey, seo, 86400); // Cache for 24 hours
       return seo;
     }
@@ -235,6 +270,7 @@ export const getSeoMeta = async ({ pageType, category, location }) => {
     // ===============================
     // 🔥 DEFAULT
     // ===============================
+    console.log('[SEO META DEBUG] Step 10: FALLBACK - Returning DEFAULT SEO');
     const defaultSeo = {
       title: "Massclick - Local Business Search Platform",
       description:
@@ -247,7 +283,7 @@ export const getSeoMeta = async ({ pageType, category, location }) => {
     return defaultSeo;
 
   } catch (error) {
-    console.error("SEO META FETCH ERROR:", error);
+    console.error("[SEO META ERROR]", { pageType, category, location, error: error.message, stack: error.stack });
 
     return {
       title: "Massclick",
