@@ -342,28 +342,6 @@ const handleSearch = async (e) => {
 
   const cleanedTerm = words.join(" ");
 
-  // ✅ Determine if this looks like a category or a free-form search term
-  const isCategorySearch = isLikelyCategorySearch(cleanedTerm);
-
-  let finalTerm = "";
-  let finalCategory = "";
-
-  if (isCategorySearch) {
-    // Short/single word → treat as category
-    finalCategory = cleanedTerm;
-  } else {
-    // Multi-word/longer text → treat as search term
-    finalTerm = cleanedTerm;
-  }
-
-  const response = await dispatch(
-    backendMainSearch(finalTerm, location, finalCategory)
-  );
-
-  const results = response?.payload || [];
-
-  if (setSearchResults) setSearchResults(results);
-
   const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
 
   const userDetails = {
@@ -373,14 +351,12 @@ const handleSearch = async (e) => {
     email: authUser?.email,
   };
 
-  // Log using the appropriate value (category if category search, term if free-form)
-  const logCategory = finalCategory || finalTerm;
-  const key = `${logCategory}-${location}-${userDetails.mobileNumber1}`;
+  const key = `${cleanedTerm}-${location}-${userDetails.mobileNumber1}`;
 
   const logSent = shouldSendSearch(key);
   if (logSent) {
     dispatch(
-      logSearchActivity(logCategory, location, userDetails, finalTerm || finalCategory)
+      logSearchActivity(cleanedTerm, location, userDetails, cleanedTerm)
     );
   }
 
@@ -393,13 +369,11 @@ const handleSearch = async (e) => {
       .replace(/\s+/g, "-");
 
   const slugLocation = toSlug(location || "all");
-  const slugCategory = toSlug(finalCategory || finalTerm || "all");
+  const slugCategory = toSlug(cleanedTerm || "all");
 
   navigate(`/${slugLocation}/${slugCategory}`, {
     state: {
-      results,
-      category: finalCategory || finalTerm,
-      term: finalTerm,
+      category: cleanedTerm,
       logAlreadySent: logSent
     }
   });
