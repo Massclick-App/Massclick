@@ -1,4 +1,5 @@
-﻿import { createLogger } from "./logger.js";
+﻿import { getRedisClient, isRedisConnected } from "./redisClient.js";
+import { createLogger } from "./logger.js";
 
 const logger = createLogger("CACHE_STATS");
 
@@ -8,16 +9,32 @@ const logger = createLogger("CACHE_STATS");
  */
 export const getCacheStats = async () => {
   try {
-    // Placeholder implementation - integrate with actual cache backend
+    if (!isRedisConnected()) {
+      return {
+        totalKeys: 0,
+        cacheKeys: 0,
+        memoryUsage: "N/A (Redis unavailable)",
+        timestamp: new Date().toISOString()
+      };
+    }
+
+    const client = getRedisClient();
+    const dbSize = await client.dbSize();
+
     return {
-      totalKeys: 0,
-      cacheKeys: 0,
-      memoryUsage: "0 MB",
+      totalKeys: dbSize || 0,
+      cacheKeys: dbSize || 0,
+      memoryUsage: "N/A",
       timestamp: new Date().toISOString()
     };
   } catch (error) {
     await logger.error("Error getting cache stats", error);
-    throw error;
+    return {
+      totalKeys: 0,
+      cacheKeys: 0,
+      memoryUsage: "Error",
+      timestamp: new Date().toISOString()
+    };
   }
 };
 
@@ -27,9 +44,23 @@ export const getCacheStats = async () => {
  */
 export const clearCacheByPrefix = async (prefix) => {
   try {
-    await logger.info(`Clearing cache with prefix: ${prefix}`);
-    // Implementation would depend on cache backend (Redis, Memcached, etc.)
-    return { cleared: true, prefix };
+    if (!isRedisConnected()) {
+      await logger.warn(`Redis unavailable, cannot clear prefix: ${prefix}`);
+      return { cleared: false, prefix, reason: "Redis unavailable" };
+    }
+
+    const client = getRedisClient();
+    const pattern = `${prefix}:*`;
+    const keys = await client.keys(pattern);
+
+    if (keys.length > 0) {
+      await client.del(keys);
+      await logger.info(`Cleared ${keys.length} keys with prefix: ${prefix}`);
+    } else {
+      await logger.info(`No keys found with prefix: ${prefix}`);
+    }
+
+    return { cleared: true, prefix, keysDeleted: keys.length };
   } catch (error) {
     await logger.error(`Error clearing cache prefix: ${prefix}`, error);
     throw error;
@@ -42,9 +73,22 @@ export const clearCacheByPrefix = async (prefix) => {
  */
 export const deleteCachePattern = async (pattern) => {
   try {
-    await logger.info(`Deleting cache matching pattern: ${pattern}`);
-    // Implementation would depend on cache backend
-    return { deleted: true, pattern };
+    if (!isRedisConnected()) {
+      await logger.warn(`Redis unavailable, cannot delete pattern: ${pattern}`);
+      return { deleted: false, pattern, reason: "Redis unavailable" };
+    }
+
+    const client = getRedisClient();
+    const keys = await client.keys(pattern);
+
+    if (keys.length > 0) {
+      await client.del(keys);
+      await logger.info(`Deleted ${keys.length} keys matching pattern: ${pattern}`);
+    } else {
+      await logger.info(`No keys found matching pattern: ${pattern}`);
+    }
+
+    return { deleted: true, pattern, keysDeleted: keys.length };
   } catch (error) {
     await logger.error(`Error deleting cache pattern: ${pattern}`, error);
     throw error;
