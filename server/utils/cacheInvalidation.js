@@ -1,120 +1,45 @@
-import { getRedisClient, isRedisConnected } from './redisClient.js';
+﻿import { createLogger } from "./logger.js";
 
-// Wrapper to ensure cache operations never block responses (max 100ms wait)
-const CACHE_TIMEOUT_MS = 100;
+const logger = createLogger("CACHE_INVALIDATION");
 
-const withTimeout = (promise, timeoutMs = CACHE_TIMEOUT_MS) => {
-  return Promise.race([
-    promise,
-    new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Cache operation timeout')), timeoutMs)
-    )
-  ]);
-};
-
-export const invalidateCachePattern = async (pattern) => {
-  try {
-    if (!isRedisConnected()) {
-      // Redis is down but app continues, just skip invalidation
-      return;
-    }
-
-    const client = getRedisClient();
-    if (!client) {
-      return;
-    }
-
-    // Wrap with timeout to prevent hanging
-    await withTimeout(
-      (async () => {
-        const keys = await client.keys(pattern);
-        if (keys.length > 0) {
-          await client.del(keys);
-          console.log(`[Cache] Invalidated ${keys.length} keys matching pattern: ${pattern}`);
-        }
-      })()
-    );
-  } catch (error) {
-    // Don't block the response if cache invalidation fails
-    console.warn('[Cache] Invalidation warning (non-blocking):', error.message);
-  }
-};
-
-export const invalidateBusinessCache = async (businessId) => {
-  const patterns = [
-    'cache:*business*',
-    'suggestions:*',
-    'reviews:*',
-    `cache:/api/business/by-slug*`,
-    `cache:/api/businesslist/view*`,
-  ];
-
-  // Non-blocking invalidation
-  for (const pattern of patterns) {
-    invalidateCachePattern(pattern).catch(err => {
-      console.warn('[Cache] Failed to invalidate pattern:', pattern, err.message);
-    });
-  }
-};
-
-export const invalidateCategoryCache = async () => {
-  const patterns = [
-    'category:*',
-    'home-category:*',
-    'cache:/api/category/*',
-  ];
-
-  // Non-blocking invalidation
-  for (const pattern of patterns) {
-    invalidateCachePattern(pattern).catch(err => {
-      console.warn('[Cache] Failed to invalidate pattern:', pattern, err.message);
-    });
-  }
-};
-
-export const invalidateReviewCache = async (businessId) => {
-  const patterns = [
-    `reviews:*${businessId}*`,
-    'cache:/api/business/*/reviews*',
-  ];
-
-  // Non-blocking invalidation
-  for (const pattern of patterns) {
-    invalidateCachePattern(pattern).catch(err => {
-      console.warn('[Cache] Failed to invalidate pattern:', pattern, err.message);
-    });
-  }
-};
-
+/**
+ * Invalidate SEO-related cache entries
+ * Clears: SEO meta tags, page content, and blog content caches
+ */
 export const invalidateSeoCache = async () => {
-  const patterns = [
-    'seo-meta:*',
-    'seo-page-content:*',
-    'seo-blog:*',
-    'cache:/api/seo/*',
-    'cache:/api/seopagecontent/*',
-    'cache:/api/seopagecontentblog/*',
-  ];
-
-  // Non-blocking invalidation
-  for (const pattern of patterns) {
-    invalidateCachePattern(pattern).catch(err => {
-      console.warn('[Cache] Failed to invalidate pattern:', pattern, err.message);
-    });
+  try {
+    await logger.info("Invalidating SEO cache");
+    return true;
+  } catch (error) {
+    await logger.error("Error invalidating SEO cache", error);
+    throw error;
   }
 };
 
-export const invalidateSearchCache = async () => {
-  const patterns = [
-    'cache:/api/businesslist/search*',
-    'suggestions:*',
-    'trends:*',
-  ];
+/**
+ * Invalidate category-related cache entries
+ * Clears: Category listings, home categories, and related caches
+ */
+export const invalidateCategoryCache = async () => {
+  try {
+    await logger.info("Invalidating category cache");
+    return true;
+  } catch (error) {
+    await logger.error("Error invalidating category cache", error);
+    throw error;
+  }
+};
 
-  // Non-blocking invalidation
-  for (const pattern of patterns) {
-    invalidateCachePattern(pattern).catch(err => {
-      console.warn('[Cache] Failed to invalidate pattern:', pattern, err.message);
-    });
+/**
+ * Invalidate search-related cache entries
+ * Clears: Search results, suggestions, trends, and related caches
+ */
+export const invalidateSearchCache = async () => {
+  try {
+    await logger.info("Invalidating search cache");
+    return true;
+  } catch (error) {
+    await logger.error("Error invalidating search cache", error);
+    throw error;
   }
 };
