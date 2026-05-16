@@ -568,21 +568,37 @@ export const mainSearchController = async (req, res) => {
 
       {
         $addFields: {
-          totalReviews: { $size: "$reviews" }
+          totalReviews: { $size: "$reviews" },
+          // Calculate priority based on category match
+          categoryPriority: {
+            $cond: [
+              category ? {
+                $regexMatch: {
+                  input: "$category",
+                  regex: `^${escapeRegex(category)}$`,
+                  options: "i"
+                }
+              } : false,
+              0,  // Exact category match = highest priority (0)
+              1   // Other matches = lower priority (1)
+            ]
+          }
         }
       },
 
       {
         $sort: {
-          amountPaid: -1,
-          paidDate: -1,
-          createdAt: -1
+          categoryPriority: 1,   // Exact category matches first
+          amountPaid: -1,        // Then paid businesses
+          paidDate: -1,          // Then newest payments
+          createdAt: -1          // Then newest registrations
         }
       },
 
       {
         $project: {
-          reviews: 0
+          reviews: 0,
+          categoryPriority: 0    // Don't return this field
         }
       }
     ]);
