@@ -58,14 +58,21 @@ const CACHE_TYPES = {
   'seo-meta': { label: 'SEO Meta Tags', pattern: 'seo-meta:*', invalidateFn: invalidateSeoCache },
   'seo-page-content': { label: 'SEO Page Content', pattern: 'seo-page-content:*', invalidateFn: invalidateSeoCache },
   'seo-blog': { label: 'SEO Blog', pattern: 'seo-blog:*', invalidateFn: invalidateSeoCache },
+  'seo': { label: 'SEO Cache', pattern: 'seo:*', invalidateFn: invalidateSeoCache },
   'category': { label: 'Categories', pattern: 'category:*', invalidateFn: invalidateCategoryCache },
   'home-category': { label: 'Home Categories', pattern: 'home-category:*', invalidateFn: invalidateCategoryCache },
+  'home-categories': { label: 'Home Categories Data', pattern: 'home-categories:*', invalidateFn: invalidateCategoryCache },
+  'popular-categories': { label: 'Popular Categories', pattern: 'popular-categories:*', invalidateFn: invalidateCategoryCache },
+  'service-cards': { label: 'Service Cards', pattern: 'service-cards:*', invalidateFn: null },
   'search': { label: 'Search Results', pattern: 'cache:/api/businesslist/search*', invalidateFn: invalidateSearchCache },
   'suggestions': { label: 'Suggestions', pattern: 'suggestions:*', invalidateFn: invalidateSearchCache },
   'trends': { label: 'Trending', pattern: 'trends:*', invalidateFn: invalidateSearchCache },
   'reviews': { label: 'Reviews', pattern: 'reviews:*', invalidateFn: null },
+  'blog': { label: 'Blog Cache', pattern: 'blog:*', invalidateFn: null },
   'mobile': { label: 'Mobile Lookup', pattern: 'mobile:*', invalidateFn: null },
   'dashboard': { label: 'Dashboard', pattern: 'dashboard-*', invalidateFn: null },
+  'dashboard-summary': { label: 'Dashboard Summary', pattern: 'dashboard-summary:*', invalidateFn: null },
+  'dashboard-charts': { label: 'Dashboard Charts', pattern: 'dashboard-charts:*', invalidateFn: null },
   'advertisement': { label: 'Advertisement', pattern: 'advertisment:*', invalidateFn: null }
 };
 
