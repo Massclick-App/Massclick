@@ -11,7 +11,7 @@ import {
 } from "../../redux/actions/cacheActions.js";
 import "./SystemSettings.css";
 
-// Icons (using emoji or you can replace with any icon lib)
+// Icons
 const SettingsIcon = () => <span>⚙️</span>;
 const SmsIcon = () => <span>📱</span>;
 const WhatsAppIcon = () => <span>💬</span>;
@@ -27,8 +27,35 @@ const CloudSyncIcon = () => <span>☁️</span>;
 const WarningAmberIcon = () => <span>⚠️</span>;
 const DebugIcon = () => <span>🔍</span>;
 const DatabaseIcon = () => <span>🗄️</span>;
+const AlertIcon = () => <span>⚡</span>;
 
-// ─── Data ─────────────────────────────────────────────────────────────────────
+const validateVersionFormat = (version) => {
+  if (!version) return null;
+  const semverRegex = /^\d+\.\d+(\.\d+)?(-[a-zA-Z0-9]+)?(\+[a-zA-Z0-9]+)?$/;
+  return semverRegex.test(version) ? null : "Invalid version format (use X.Y or X.Y.Z)";
+};
+
+const validateUrl = (url) => {
+  if (!url) return null;
+  try {
+    new URL(url);
+    return null;
+  } catch {
+    return "Invalid URL format";
+  }
+};
+
+const validateLoggingLevel = (level) => {
+  const validLevels = ['off', 'error', 'warn', 'info', 'debug'];
+  return validLevels.includes(level) ? null : "Invalid logging level";
+};
+
+const getFieldValidationError = (key, value) => {
+  if (key.includes('_version') || key === 'app_release_notes') return validateVersionFormat(value);
+  if (key.includes('_url')) return validateUrl(value);
+  if (key === 'logging_level') return validateLoggingLevel(value);
+  return null;
+};
 
 const CACHE_TYPES = [
   { value: 'seo-meta', label: 'SEO Meta Tags' },
@@ -49,76 +76,76 @@ const TOGGLE_GROUPS = [
   {
     label: "OTP / SMS",
     icon: SmsIcon,
-    accentColor: "#e1580f",
+    color: "#f97316",
     items: [
       {
         key: "otp_real_enabled",
-        label: "Real OTP (MSG91)",
-        desc: "ON = real OTP via MSG91. OFF = bypass OTP (testing only).",
+        label: "Real OTP",
+        desc: "MSG91 gateway",
       },
     ],
   },
   {
-    label: "WhatsApp Notifications",
+    label: "WhatsApp",
     icon: WhatsAppIcon,
-    accentColor: "#25D366",
+    color: "#22c55e",
     items: [
       {
         key: "whatsapp_business_lead_alert",
         label: "Business Lead Alert",
-        desc: "Notify business owners when a customer searches.",
+        desc: "Notify on search",
       },
       {
         key: "whatsapp_customer_business_list",
-        label: "Customer Business List",
-        desc: "Send top‑10 matching businesses to the customer.",
+        label: "Customer List",
+        desc: "Top 10 matches",
       },
       {
         key: "whatsapp_mni_lead_alert",
         label: "MNI Lead Alert",
-        desc: "Notify MNI businesses on new requirements.",
+        desc: "New requirements",
       },
       {
         key: "whatsapp_mni_customer_list",
-        label: "MNI Customer Result",
-        desc: "Send matched MNI business to the customer.",
+        label: "MNI Customer",
+        desc: "Matched business",
       },
       {
         key: "whatsapp_login_welcome",
         label: "Login Welcome",
-        desc: "Welcome message on first login.",
+        desc: "First login message",
       },
     ],
   },
   {
-    label: "Logging Controls",
+    label: "Logging",
     icon: DebugIcon,
-    accentColor: "#7c3aed",
+    color: "#a855f7",
     items: [
       {
         key: "logging_enabled",
         label: "Enable Logging",
-        desc: "Master toggle to enable/disable all server logs.",
+        desc: "Master toggle",
       },
       {
         key: "logging_fcm_debug",
         label: "FCM Debug",
-        desc: "Detailed FCM notification logs.",
+        desc: "Notifications",
       },
       {
         key: "logging_sms_debug",
         label: "SMS Debug",
-        desc: "Detailed SMS gateway logs.",
+        desc: "Gateway logs",
       },
       {
         key: "logging_seo_debug",
         label: "SEO Debug",
-        desc: "SEO metadata query logs.",
+        desc: "Metadata logs",
       },
       {
         key: "logging_db_queries",
-        label: "Database Queries",
-        desc: "Log database operations.",
+        label: "DB Queries",
+        desc: "Database ops",
       },
     ],
   },
@@ -128,20 +155,20 @@ const PLATFORM_SECTIONS = [
   {
     platform: "Android",
     icon: AndroidIcon,
-    color: "#2e7d32",
+    color: "#22c55e",
     fields: [
       { key: "app_android_latest_version", label: "Latest Version", placeholder: "1.2.0", colSpan: 1 },
-      { key: "app_android_min_version", label: "Min Required", placeholder: "1.0.0", colSpan: 1 },
+      { key: "app_android_min_version", label: "Min Version", placeholder: "1.0.0", colSpan: 1 },
       { key: "app_android_update_url", label: "Play Store URL", placeholder: "https://play.google.com/…", colSpan: 2 },
     ],
   },
   {
     platform: "iOS",
     icon: PhoneIphoneIcon,
-    color: "#1565c0",
+    color: "#0ea5e9",
     fields: [
       { key: "app_ios_latest_version", label: "Latest Version", placeholder: "1.2.0", colSpan: 1 },
-      { key: "app_ios_min_version", label: "Min Required", placeholder: "1.0.0", colSpan: 1 },
+      { key: "app_ios_min_version", label: "Min Version", placeholder: "1.0.0", colSpan: 1 },
       { key: "app_ios_update_url", label: "App Store URL", placeholder: "https://apps.apple.com/…", colSpan: 2 },
     ],
   },
@@ -162,16 +189,15 @@ const ALL_KEYS = [
   "redis_enabled",
 ];
 
-// ─── Main component ───────────────────────────────────────────────────────────
-
 export default function SystemSettings() {
   const dispatch = useDispatch();
   const { settings, loading, saving, error } = useSelector((s) => s.systemSettings);
-  const { redisStatus, redisLoading, cacheClearing, cacheClearError, lastClearResult } = useSelector((s) => s.cache);
+  const { redisStatus, redisLoading, cacheClearing, cacheClearError } = useSelector((s) => s.cache);
 
   const [local, setLocal] = useState(null);
   const [snack, setSnack] = useState({ open: false, message: "", severity: "success" });
   const [selectedCache, setSelectedCache] = useState("seo-meta");
+  const [validationErrors, setValidationErrors] = useState({});
 
   useEffect(() => { dispatch(fetchSystemSettings()); }, [dispatch]);
   useEffect(() => { if (settings) setLocal({ ...settings }); }, [settings]);
@@ -180,75 +206,73 @@ export default function SystemSettings() {
   const toggle = (key) => {
     setLocal((p) => {
       const updated = { ...p, [key]: !p[key] };
-
-      // If toggling logging_enabled (master switch), control all other logging toggles
       if (key === "logging_enabled") {
         const isNowEnabled = !p[key];
-        if (isNowEnabled) {
-          // When master is ON, enable all logging toggles
-          updated.logging_fcm_debug = true;
-          updated.logging_sms_debug = true;
-          updated.logging_seo_debug = true;
-          updated.logging_db_queries = true;
-        } else {
-          // When master is OFF, disable all logging toggles
-          updated.logging_fcm_debug = false;
-          updated.logging_sms_debug = false;
-          updated.logging_seo_debug = false;
-          updated.logging_db_queries = false;
-        }
+        updated.logging_fcm_debug = isNowEnabled;
+        updated.logging_sms_debug = isNowEnabled;
+        updated.logging_seo_debug = isNowEnabled;
+        updated.logging_db_queries = isNowEnabled;
       }
-
       return updated;
     });
   };
-  const setText = (key, val) => setLocal((p) => ({ ...p, [key]: val }));
+
+  const setText = (key, val) => {
+    setLocal((p) => ({ ...p, [key]: val }));
+    const error = getFieldValidationError(key, val);
+    setValidationErrors((prev) => {
+      if (error) {
+        return { ...prev, [key]: error };
+      } else {
+        const newErrors = { ...prev };
+        delete newErrors[key];
+        return newErrors;
+      }
+    });
+  };
 
   const dirty = settings && local ? ALL_KEYS.some((k) => local[k] !== settings[k]) : false;
+  const hasValidationErrors = Object.keys(validationErrors).length > 0;
 
   const handleSave = async () => {
+    if (hasValidationErrors) {
+      setSnack({ open: true, message: "Fix validation errors", severity: "error" });
+      setTimeout(() => setSnack(s => ({ ...s, open: false })), 3000);
+      return;
+    }
     const updates = {};
     ALL_KEYS.forEach((k) => { updates[k] = local[k]; });
     try {
       await dispatch(updateSystemSettings(updates));
-      setSnack({ open: true, message: "Settings saved successfully.", severity: "success" });
+      setSnack({ open: true, message: "Settings saved", severity: "success" });
       setTimeout(() => setSnack(s => ({ ...s, open: false })), 3000);
     } catch {
-      setSnack({ open: true, message: "Failed to save settings.", severity: "error" });
+      setSnack({ open: true, message: "Save failed", severity: "error" });
       setTimeout(() => setSnack(s => ({ ...s, open: false })), 3000);
     }
   };
 
   const handleClearCache = async () => {
     if (!selectedCache) {
-      setSnack({ open: true, message: "Please select a cache type.", severity: "error" });
+      setSnack({ open: true, message: "Select a cache type", severity: "error" });
       return;
     }
-
-    // Show confirmation
-    if (!window.confirm(`Clear "${CACHE_TYPES.find(c => c.value === selectedCache)?.label}" cache? This action cannot be undone.`)) {
-      return;
-    }
-
+    if (!window.confirm(`Clear "${CACHE_TYPES.find(c => c.value === selectedCache)?.label}"?`)) return;
     try {
       await dispatch(invalidateCache(selectedCache));
-      setSnack({ open: true, message: "Cache cleared successfully.", severity: "success" });
+      setSnack({ open: true, message: "Cache cleared", severity: "success" });
     } catch (err) {
-      setSnack({ open: true, message: err.message || "Error clearing cache.", severity: "error" });
+      setSnack({ open: true, message: "Cache clear failed", severity: "error" });
     }
   };
 
   const handleClearAllCaches = async () => {
-    // Show confirmation dialog
-    if (!window.confirm("⚠️ Clear ALL caches? This will remove all cached data and may impact performance temporarily.")) {
-      return;
-    }
-
+    if (!window.confirm("Clear ALL caches? Performance may be affected.")) return;
     try {
       await dispatch(clearAllCaches());
-      setSnack({ open: true, message: "All caches cleared successfully.", severity: "success" });
+      setSnack({ open: true, message: "All caches cleared", severity: "success" });
     } catch (err) {
-      setSnack({ open: true, message: err.message || "Error clearing caches.", severity: "error" });
+      setSnack({ open: true, message: "Clear failed", severity: "error" });
     }
   };
 
@@ -256,320 +280,288 @@ export default function SystemSettings() {
     return (
       <div className="loading-container">
         <div className="loading-spinner"></div>
-        <span style={{ fontSize: "13px", color: "#64748b" }}>Loading system configuration...</span>
+        <span>Loading system configuration...</span>
       </div>
     );
   }
 
-  if (error) return <div className="card" style={{ margin: "40px auto", maxWidth: 500, padding: 24, textAlign: "center", color: "#dc2626" }}>{error}</div>;
+  if (error) return <div className="error-box">{error}</div>;
 
   const maintenanceOn = !!local.app_maintenance_mode;
   const enabledCount = ALL_BOOL_KEYS.filter((k) => !!local[k]).length;
 
   return (
     <div className="settings-container">
-      {/* Hero Section */}
-      <div className="hero-section">
-        <div className="hero-icon">
-          <SettingsIcon />
-        </div>
-        <h1 className="hero-title">System Settings</h1>
-        <p className="hero-description">Real-time configuration · Updates propagate instantly</p>
-        <div className="stats-row">
-          <div className="stat-chip">
-            <CheckCircleOutlineIcon /> {enabledCount} / {ALL_BOOL_KEYS.length} active features
-          </div>
-          <div className={`stat-chip ${maintenanceOn ? "maintenance" : ""}`}>
-            {maintenanceOn ? <WarningAmberIcon /> : <CloudSyncIcon />}
-            {maintenanceOn ? "Maintenance Mode: ACTIVE" : "System: OPERATIONAL"}
+      {/* Hero */}
+      <div className="hero">
+        <div className="hero-left">
+          <div className="hero-icon"><SettingsIcon /></div>
+          <div>
+            <h1 className="hero-title">System Settings</h1>
+            <p className="hero-subtitle">Real-time configuration · Instant updates</p>
           </div>
         </div>
-      </div>
-
-      {/* Maintenance Card */}
-      <div className={`maintenance-card ${maintenanceOn ? "active" : ""}`}>
-        <div className={`maintenance-header ${maintenanceOn ? "active" : ""}`}>
-          <div className={`maintenance-icon ${maintenanceOn ? "active" : ""}`}>
-            <ConstructionIcon />
+        <div className="hero-stats">
+          <div className="stat">
+            <div className="stat-value">{enabledCount}/{ALL_BOOL_KEYS.length}</div>
+            <div className="stat-label">Features Active</div>
           </div>
-          <div className={`maintenance-title ${maintenanceOn ? "active" : ""}`}>Maintenance Mode</div>
-          {maintenanceOn && <div className="maintenance-badge">● BLOCKING</div>}
-        </div>
-        <div className="maintenance-body">
-          <div className={`maintenance-status-box ${maintenanceOn ? "active" : ""}`}>
-            <div className={`status-circle ${maintenanceOn ? "active" : ""}`}>
-              {maintenanceOn ? <ConstructionIcon /> : <PowerSettingsNewIcon />}
-            </div>
-            <div className={`status-text ${maintenanceOn ? "active" : ""}`}>
-              {maintenanceOn ? "ALL USERS BLOCKED" : "FULLY OPERATIONAL"}
-            </div>
-          </div>
-          <div className="maintenance-content">
-            <div className="maintenance-headline">
-              {maintenanceOn ? "Service interruption is active" : "Application is live"}
-            </div>
-            <div className="maintenance-message">
-              {maintenanceOn
-                ? "A global maintenance overlay is being displayed across all active sessions via WebSocket. Disable to restore service immediately."
-                : "Enable maintenance mode to instantly push a system-wide overlay to all connected users — no app update required."}
-            </div>
-            <div className="maintenance-toggle">
-              <label className="custom-switch">
-                <input
-                  type="checkbox"
-                  checked={maintenanceOn}
-                  onChange={() => toggle("app_maintenance_mode")}
-                />
-                <span className="switch-slider"></span>
-              </label>
-              <div className={`maintenance-toggle-label ${maintenanceOn ? "active" : ""}`}>
-                {maintenanceOn ? "Maintenance is enabled · Tap to disable" : "Enable maintenance mode"}
+          <div className={`stat status ${maintenanceOn ? 'maintenance' : 'operational'}`}>
+            <div className="status-indicator"></div>
+            <div>
+              <div className="stat-value" style={{ fontSize: '12px', fontWeight: 700 }}>
+                {maintenanceOn ? 'MAINTENANCE' : 'OPERATIONAL'}
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Two Column Layout */}
-      <div className="two-column-layout">
-        {/* Left Column - Toggle Groups */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+      {/* Maintenance Alert */}
+      {maintenanceOn && (
+        <div className="maintenance-alert">
+          <div className="maintenance-alert-icon"><AlertIcon /></div>
+          <div className="maintenance-alert-content">
+            <div className="maintenance-alert-title">Maintenance Mode Active</div>
+            <div className="maintenance-alert-desc">All users are blocked. Disable to restore access.</div>
+          </div>
+          <button 
+            className="maintenance-btn-disable"
+            onClick={() => toggle("app_maintenance_mode")}
+          >
+            Disable
+          </button>
+        </div>
+      )}
+
+      {/* Main Grid */}
+      <div className="grid-layout">
+        {/* Left Column */}
+        <div className="left-column">
+          {/* Maintenance Card */}
+          <div className={`compact-card maintenance-card ${maintenanceOn ? 'active' : ''}`}>
+            <div className="compact-card-header">
+              <div className="compact-icon" style={{ background: maintenanceOn ? '#ef4444' : '#6b7280' }}>
+                <ConstructionIcon />
+              </div>
+              <div className="compact-header-text">
+                <div className="compact-title">Maintenance Mode</div>
+                <div className="compact-subtitle">{maintenanceOn ? 'BLOCKING USERS' : 'Disabled'}</div>
+              </div>
+            </div>
+            <div className="compact-card-body">
+              <label className="toggle-switch">
+                <input type="checkbox" checked={maintenanceOn} onChange={() => toggle("app_maintenance_mode")} />
+                <span className="toggle-switch-slider"></span>
+              </label>
+            </div>
+          </div>
+
+          {/* Toggle Groups */}
           {TOGGLE_GROUPS.map((group) => (
-            <div key={group.label} className="card">
-              <div className="card-header" style={{ background: `rgba(${group.accentColor === "#e1580f" ? "225,88,15" : "37,211,102"}, 0.05)` }}>
-                <div className="card-header-icon" style={{ background: group.accentColor }}>
+            <div key={group.label} className="compact-card">
+              <div className="compact-card-header">
+                <div className="compact-icon" style={{ background: group.color }}>
                   <group.icon />
                 </div>
-                <div className="card-header-title">{group.label}</div>
-              </div>
-              {group.items.map(({ key, label, desc }, i) => (
-                <div
-                  key={key}
-                  className="toggle-row"
-                  onClick={() => toggle(key)}
-                >
-                  <div className="toggle-info">
-                    <div className="toggle-label">{label}</div>
-                    <div className="toggle-desc">{desc}</div>
-                  </div>
-                  <div className="toggle-control">
-                    <div className="toggle-status" style={{ color: local[key] ? group.accentColor : "#bbb" }}>
-                      {local[key] ? "ON" : "OFF"}
-                    </div>
-                    <label className="custom-switch">
-                      <input
-                        type="checkbox"
-                        checked={!!local[key]}
-                        onChange={() => toggle(key)}
-                      />
-                      <span className="switch-slider" style={{ backgroundColor: local[key] ? group.accentColor : "#cbd5e1" }}></span>
-                    </label>
+                <div className="compact-header-text">
+                  <div className="compact-title">{group.label}</div>
+                  <div className="compact-subtitle">
+                    {group.items.filter(i => local[i.key]).length} of {group.items.length} enabled
                   </div>
                 </div>
-              ))}
+              </div>
+              <div className="compact-card-items">
+                {group.items.map(({ key, label, desc }) => (
+                  <div
+                    key={key}
+                    className="toggle-item"
+                    onClick={() => toggle(key)}
+                  >
+                    <div className="toggle-item-info">
+                      <div className="toggle-item-label">{label}</div>
+                      <div className="toggle-item-desc">{desc}</div>
+                    </div>
+                    <label className="toggle-switch">
+                      <input type="checkbox" checked={!!local[key]} onChange={() => toggle(key)} />
+                      <span className="toggle-switch-slider" style={{ '--color': group.color }}></span>
+                    </label>
+                  </div>
+                ))}
+              </div>
             </div>
           ))}
         </div>
 
-        {/* Right Column - Version Management */}
-        <div className="version-card">
-          <div className="version-header">
-            <div className="version-header-icon">
-              <SystemUpdateAltIcon />
+        {/* Right Column */}
+        <div className="right-column">
+          {/* Version Management */}
+          <div className="compact-card version-card">
+            <div className="compact-card-header">
+              <div className="compact-icon" style={{ background: '#f97316' }}>
+                <SystemUpdateAltIcon />
+              </div>
+              <div className="compact-header-text">
+                <div className="compact-title">Version Management</div>
+              </div>
             </div>
-            <div className="version-header-title">Version Management</div>
-          </div>
 
-          {PLATFORM_SECTIONS.map(({ platform, icon: PlatformIcon, color, fields }, idx) => (
-            <React.Fragment key={platform}>
-              <div className="platform-section">
-                <div className={`platform-badge ${platform.toLowerCase()}`}>
-                  <PlatformIcon />
-                  <span>{platform}</span>
+            {PLATFORM_SECTIONS.map(({ platform, icon: PlatformIcon, color, fields }, idx) => (
+              <React.Fragment key={platform}>
+                <div className="platform-group">
+                  <div className="platform-header">
+                    <PlatformIcon /> {platform}
+                  </div>
+                  <div className="form-grid">
+                    {fields.map(({ key, label, placeholder, colSpan }) => (
+                      <div key={key} className={`form-field ${colSpan === 2 ? 'span-2' : ''}`}>
+                        <label className="form-label">{label}</label>
+                        <input
+                          type="text"
+                          className={`form-input ${validationErrors[key] ? 'error' : ''}`}
+                          value={local[key] ?? ""}
+                          onChange={(e) => setText(key, e.target.value)}
+                          placeholder={placeholder}
+                        />
+                        {validationErrors[key] && (
+                          <div className="input-error">{validationErrors[key]}</div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="form-grid">
-                  {fields.map(({ key, label, placeholder, colSpan }) => (
-                    <div key={key} className="form-field" style={{ gridColumn: colSpan === 2 ? "span 2" : "auto" }}>
-                      <label className="form-label">{label}</label>
-                      <input
-                        type="text"
-                        className="form-input"
-                        value={local[key] ?? ""}
-                        onChange={(e) => setText(key, e.target.value)}
-                        placeholder={placeholder}
-                      />
-                    </div>
+              </React.Fragment>
+            ))}
+
+            {/* Release Notes */}
+            <div className="section-divider"></div>
+            <div className="section-group">
+              <div className="section-label">Release Notes</div>
+              <div className="form-field">
+                <label className="form-label">What's new</label>
+                <textarea
+                  className={`form-input ${validationErrors.app_release_notes ? 'error' : ''}`}
+                  value={local.app_release_notes ?? ""}
+                  onChange={(e) => setText("app_release_notes", e.target.value)}
+                  placeholder="Bug fixes and improvements..."
+                  rows={3}
+                />
+                {validationErrors.app_release_notes && (
+                  <div className="input-error">{validationErrors.app_release_notes}</div>
+                )}
+              </div>
+            </div>
+
+            {/* Logging */}
+            <div className="section-divider"></div>
+            <div className="section-group">
+              <div className="section-label">Logging</div>
+              <div className="form-field">
+                <label className="form-label">Log Level</label>
+                <select
+                  className="form-input"
+                  value={local.logging_level ?? "info"}
+                  onChange={(e) => setText("logging_level", e.target.value)}
+                >
+                  <option value="off">Off</option>
+                  <option value="error">Error</option>
+                  <option value="warn">Warn</option>
+                  <option value="info">Info</option>
+                  <option value="debug">Debug</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Redis */}
+            <div className="section-divider"></div>
+            <div className="section-group">
+              <div className="section-label">Cache</div>
+              <div className="redis-status">
+                <div className="redis-indicator" style={{ background: redisStatus?.redis_connected ? '#10b981' : '#ef4444' }}></div>
+                <div className="redis-info">
+                  <div className="redis-status-text">{redisStatus?.status || "CHECKING"}</div>
+                  <div className="redis-message">{redisStatus?.message}</div>
+                </div>
+              </div>
+              <div className="form-field" style={{ marginTop: 12 }}>
+                <label className="form-label">Redis Enabled</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <label className="toggle-switch">
+                    <input type="checkbox" checked={!!local?.redis_enabled} onChange={() => toggle("redis_enabled")} />
+                    <span className="toggle-switch-slider"></span>
+                  </label>
+                  <span className="redis-toggle-text">{local?.redis_enabled ? 'Active' : 'Disabled'}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Cache Management */}
+            <div className="section-divider"></div>
+            <div className="section-group">
+              <div className="section-label">Clear Cache</div>
+              <div className="form-field">
+                <label className="form-label">Cache Type</label>
+                <select
+                  className="form-input"
+                  value={selectedCache}
+                  onChange={(e) => setSelectedCache(e.target.value)}
+                  disabled={cacheClearing}
+                >
+                  {CACHE_TYPES.map(cache => (
+                    <option key={cache.value} value={cache.value}>{cache.label}</option>
                   ))}
-                </div>
+                </select>
               </div>
-              {idx < PLATFORM_SECTIONS.length - 1 && <div className="divider"></div>}
-            </React.Fragment>
-          ))}
-
-          <div className="divider"></div>
-          <div className="release-notes-section">
-            <div className="section-label">Release Notes</div>
-            <div className="form-field w-100">
-              <label className="form-label">What's new in this version</label>
-              <textarea
-                className="form-input w-100"
-                value={local.app_release_notes ?? ""}
-                onChange={(e) => setText("app_release_notes", e.target.value)}
-                placeholder="Bug fixes and performance improvements."
-                rows={2}
-              />
-            </div>
-          </div>
-
-          <div className="divider"></div>
-          <div className="logging-config-section">
-            <div className="section-label">Log Level</div>
-            <div className="form-field w-100">
-              <label className="form-label">Global Log Verbosity</label>
-              <select
-                className="form-input w-100"
-                value={local.logging_level ?? "info"}
-                onChange={(e) => setText("logging_level", e.target.value)}
-              >
-                <option value="off">Off (No logs)</option>
-                <option value="error">Error (Only errors)</option>
-                <option value="warn">Warn (Errors + warnings)</option>
-                <option value="info">Info (Errors + warnings + info)</option>
-                <option value="debug">Debug (All logs)</option>
-              </select>
-            </div>
-            <div style={{ fontSize: "12px", color: "#64748b", marginTop: 8 }}>
-              Controls the verbosity of server logs. Module-specific toggles on the left override this setting.
-            </div>
-          </div>
-
-          <div className="divider"></div>
-          <div className="redis-status-section">
-            <div className="section-label">Redis Status</div>
-            <div style={{ padding: "12px", backgroundColor: redisStatus?.redis_connected ? "#dcfce7" : "#fee2e2", borderRadius: "8px", marginBottom: 16 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <div style={{
-                  width: 12,
-                  height: 12,
-                  borderRadius: "50%",
-                  backgroundColor: redisStatus?.redis_connected ? "#22c55e" : "#ef4444"
-                }}></div>
-                <div>
-                  <div style={{ fontWeight: "600", color: redisStatus?.redis_connected ? "#166534" : "#991b1b" }}>
-                    {redisStatus?.status || "CHECKING..."}
-                  </div>
-                  <div style={{ fontSize: "12px", color: redisStatus?.redis_connected ? "#15803d" : "#dc2626", marginTop: 4 }}>
-                    {redisStatus?.message}
-                  </div>
-                  {redisStatus?.totalKeys > 0 && (
-                    <div style={{ fontSize: "12px", color: "#666", marginTop: 4 }}>
-                      Cache Keys: {redisStatus?.totalKeys}
-                    </div>
-                  )}
-                </div>
+              <div className="button-group">
+                <button
+                  className="btn btn-primary btn-sm"
+                  onClick={handleClearCache}
+                  disabled={cacheClearing}
+                >
+                  {cacheClearing ? "Clearing..." : "Clear Selected"}
+                </button>
+                <button
+                  className="btn btn-secondary btn-sm"
+                  onClick={handleClearAllCaches}
+                  disabled={cacheClearing}
+                >
+                  {cacheClearing ? "Clearing..." : "⚠️ Clear All"}
+                </button>
               </div>
-            </div>
-
-            <div className="form-field w-100" style={{ marginBottom: 16 }}>
-              <label className="form-label" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span>Enable Redis Caching</span>
-                <span style={{ fontSize: "11px", color: "#999", fontWeight: "normal" }}>
-                  {local?.redis_enabled ? "(Enabled)" : "(Disabled)"}
-                </span>
-              </label>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <label className="custom-switch">
-                  <input
-                    type="checkbox"
-                    checked={!!local?.redis_enabled}
-                    onChange={() => toggle("redis_enabled")}
-                  />
-                  <span className="switch-slider"></span>
-                </label>
-                <span style={{ fontSize: "12px", color: "#666" }}>
-                  {local?.redis_enabled ? "Redis caching is active" : "Redis caching is disabled - using memory cache"}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="divider"></div>
-          <div className="cache-management-section">
-            <div className="section-label">Cache Management</div>
-            <div className="form-field w-100">
-              <label className="form-label">Select Cache Type to Clear</label>
-              <select
-                className="form-input w-100"
-                value={selectedCache}
-                onChange={(e) => setSelectedCache(e.target.value)}
-                disabled={cacheClearing}
-              >
-                {CACHE_TYPES.map(cache => (
-                  <option key={cache.value} value={cache.value}>{cache.label}</option>
-                ))}
-              </select>
-            </div>
-
-            <div style={{ marginTop: 16, padding: "12px", backgroundColor: "#f0f9ff", borderRadius: "8px", fontSize: "12px", color: "#0369a1" }}>
-              <div style={{ marginBottom: 8 }}>
-                <strong>Cache Info:</strong>
-              </div>
-              <div>Clearing will remove cached data for this cache type.</div>
-              <div>API responses will be slower until cache rebuilds.</div>
-            </div>
-
-            <div style={{ marginTop: 16, display: "flex", gap: 8, flexDirection: "column" }}>
-              <button
-                className="btn btn-primary"
-                onClick={handleClearCache}
-                disabled={cacheClearing}
-                style={{ width: "100%" }}
-              >
-                {cacheClearing ? "Clearing..." : "Clear Selected Cache"}
-              </button>
-              <button
-                className="btn btn-text"
-                onClick={handleClearAllCaches}
-                disabled={cacheClearing}
-                style={{ width: "100%", color: "#dc2626" }}
-              >
-                {cacheClearing ? "Clearing..." : "⚠️ Clear ALL Caches"}
-              </button>
             </div>
           </div>
         </div>
       </div>
 
       {/* Sticky Footer */}
-      <div className={`sticky-footer ${dirty ? "visible" : ""}`}>
-        <div className="footer-indicator">
-          <div className="pulse-dot"></div>
-          <div className="footer-text">You have unsaved changes</div>
+      <div className={`sticky-footer ${dirty ? 'visible' : ''}`}>
+        <div className="footer-left">
+          <div className="footer-pulse"></div>
+          <span className="footer-text">Unsaved changes</span>
         </div>
-        <div className="footer-actions">
+        <div className="footer-right">
           <button
-            className="btn btn-text"
+            className="btn btn-ghost"
             onClick={() => setLocal({ ...settings })}
             disabled={saving}
           >
-            <RestartAltIcon /> Reset
+            Reset
           </button>
           <button
             className="btn btn-primary"
             onClick={handleSave}
-            disabled={saving}
+            disabled={saving || hasValidationErrors}
           >
-            {saving ? <div className="loading-spinner" style={{ width: 14, height: 14, borderWidth: 2 }}></div> : <SaveOutlinedIcon />}
-            {saving ? "Saving…" : "Save Changes"}
+            {saving ? "Saving..." : "Save"}
           </button>
         </div>
       </div>
 
       {/* Snackbar */}
-      <div className={`snackbar ${snack.open ? "show" : ""} ${snack.severity}`}>
-        <span className="snackbar-message">{snack.message}</span>
+      <div className={`snackbar ${snack.open ? 'show' : ''} ${snack.severity}`}>
+        {snack.message}
         <button className="snackbar-close" onClick={() => setSnack(s => ({ ...s, open: false }))}>✕</button>
       </div>
     </div>
   );
-}
+}   

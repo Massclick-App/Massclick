@@ -2,6 +2,9 @@ import axios from "axios";
 import dotenv from "dotenv";
 dotenv.config();
 import businessReviewModel from "../../model/businessReview/businessReviewModel.js";
+import { createLogger } from "../../utils/logger.js";
+
+const logger = createLogger('SMS');
 
 // const MSG91_AUTHKEY = process.env.MSG91_AUTHKEY;
 // const MSG91_FLOW_ID = process.env.MSG91_WHATSAPP_FLOW_ID; 
@@ -41,8 +44,10 @@ export const sendOtp = async (number) => {
       throw new Error(response.data.message || "Failed to send OTP.");
     }
 
+    await logger.smsDebug("OTP sent successfully", { phoneNumber: cleanNumber, response: response.data });
     return { success: true, apiResponse: response.data };
   } catch (error) {
+    await logger.warn("Error sending OTP", { phoneNumber: number, error: error.message });
     console.error("Error sending OTP:", error.response?.data || error.message);
     throw error;
   }
@@ -84,11 +89,13 @@ export const verifyOtp = async (number, otp) => {
     const { type, message } = response.data;
 
     if (type === "success" || message === "Mobile no. already verified") {
+      await logger.smsDebug("OTP verified successfully", { phoneNumber: cleanNumber });
       return { success: true, apiResponse: response.data };
     }
 
     throw new Error(message || "OTP verification failed.");
   } catch (error) {
+    await logger.warn("Error verifying OTP", { phoneNumber: number, error: error.message });
     console.error("Error verifying OTP:", error.response?.data || error.message);
     throw error;
   }
@@ -503,10 +510,20 @@ export const sendBusinessesToCustomer = async (
       );
     }
 
+    await logger.smsDebug("WhatsApp business list sent to customer", {
+      phoneNumber: cleanMobile,
+      businessCount: finalBusinesses.length,
+      customerName: lead.customerName,
+      searchText: lead.searchText
+    });
 
     return { success: true };
 
   } catch (error) {
+    await logger.warn("Error sending WhatsApp business list", {
+      phoneNumber: cleanMobile,
+      error: error.message
+    });
     console.error(
       "Error sending WhatsApp message:",
       error?.response?.data || error.message

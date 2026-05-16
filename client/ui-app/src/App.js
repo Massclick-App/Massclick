@@ -4,6 +4,8 @@ import { useDispatch } from 'react-redux';
 import { relogin } from './redux/actions/authAction.js';
 import { clientLogin } from './redux/actions/clientAuthAction.js';
 import { fetchMatchedLeads } from './redux/actions/leadsAction.js';
+import { setMaintenanceModeOn, setMaintenanceModeOff } from './redux/reducers/maintenanceReducer.js';
+import { connectSocket } from './services/socketService.js';
 
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -76,6 +78,7 @@ const OTPLoginModal = lazy(() => import(/* webpackChunkName: "otp-modal" */ './I
 
 const CategoryRouter = lazy(() => import(/* webpackChunkName: "category-router" */ './Internals/clientComponent/categories/categoryRouter.js'));
 const BlogDetail = lazy(() => import(/* webpackChunkName: "blog-detail" */ './Internals/clientComponent/relatedBlogs/blogDetails/blogDetails.js'));
+const MaintenanceOverlay = lazy(() => import(/* webpackChunkName: "maintenance" */ './components/MaintenanceOverlay.js'));
 
 const DynamicLoader = memo(() => {
   const { pathname } = useLocation();
@@ -263,6 +266,38 @@ function App() {
     }
   }, [dispatch, authChecked]);
 
+  /* WebSocket Listener for Maintenance Mode */
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const token = localStorage.getItem('accessToken');
+    if (!token) return;
+
+    try {
+      const ws = connectSocket(token);
+
+      const handleMaintenanceMode = (data) => {
+        if (data?.active) {
+          dispatch(setMaintenanceModeOn());
+        } else {
+          dispatch(setMaintenanceModeOff());
+        }
+      };
+
+      if (ws) {
+        ws.on('app:maintenance', handleMaintenanceMode);
+
+        return () => {
+          if (ws) {
+            ws.off('app:maintenance', handleMaintenanceMode);
+          }
+        };
+      }
+    } catch (error) {
+      console.warn('Failed to set up maintenance mode listener:', error);
+    }
+  }, [isAuthenticated, dispatch]);
+
   /* Global First Load */
   if (!authChecked) {
     return (
@@ -289,6 +324,10 @@ function App() {
         <Router>
           <RouteChangeTracker />
           <ScrollToTop />
+
+          <Suspense fallback={null}>
+            <MaintenanceOverlay />
+          </Suspense>
 
           <AppRoutes
             isAuthenticated={isAuthenticated}

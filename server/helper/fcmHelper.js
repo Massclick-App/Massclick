@@ -1,6 +1,9 @@
 import admin from './firebaseInit.js';
 import userModel from '../model/msg91Model/usersModels.js';
 import webpush from 'web-push';
+import { createLogger } from '../utils/logger.js';
+
+const logger = createLogger('FCM');
 
 const VAPID_PUBLIC_KEY = 'BGQ0OCJil87bcnelmazt2Kh5HPivTIEsYuWSN1-9IxGYIjwqbjLVbn_9bnOfiG-Iv7y_ituUYV3v7QrydEyl2UE';
 const VAPID_PRIVATE_KEY = 'Jn4dwbWtoXCCm5ux-4_NUvdlmX8WDBiP5L13FYumzAs';
@@ -20,11 +23,11 @@ export const sendFCMNotification = async (token, title, body, data = {}) => {
           { endpoint: sub.endpoint, keys: { auth: sub.auth, p256dh: sub.p256dh } },
           payload
         );
-        console.log('Web push sent:', response.statusCode);
+        await logger.fcmDebug('Web push sent', { statusCode: response.statusCode, title, body });
         return response;
       }
     } catch (err) {
-      console.error('Web push send error:', err.message);
+      await logger.warn('Web push send error', { error: err.message });
       throw err;
     }
   }
@@ -38,10 +41,10 @@ export const sendFCMNotification = async (token, title, body, data = {}) => {
       android: { notification: { channelId: 'massclick_marketing' } },
     };
     const response = await admin.messaging().send(message);
-    console.log('FCM message sent:', response);
+    await logger.fcmDebug('FCM message sent successfully', { messageId: response, title, body });
     return response;
   } catch (error) {
-    console.error('Error sending FCM message:', error);
+    await logger.warn('Error sending FCM message', { error: error.message });
     throw error;
   }
 };
