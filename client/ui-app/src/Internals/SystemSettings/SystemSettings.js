@@ -4,6 +4,11 @@ import {
   fetchSystemSettings,
   updateSystemSettings,
 } from "../../redux/actions/systemSettingsAction.js";
+import {
+  fetchRedisStatus,
+  invalidateCache,
+  clearAllCaches,
+} from "../../redux/actions/cacheActions.js";
 import "./SystemSettings.css";
 
 // Icons (using emoji or you can replace with any icon lib)
@@ -162,38 +167,15 @@ const ALL_KEYS = [
 export default function SystemSettings() {
   const dispatch = useDispatch();
   const { settings, loading, saving, error } = useSelector((s) => s.systemSettings);
+  const { redisStatus, redisLoading, cacheClearing, cacheClearError, lastClearResult } = useSelector((s) => s.cache);
 
   const [local, setLocal] = useState(null);
   const [snack, setSnack] = useState({ open: false, message: "", severity: "success" });
   const [selectedCache, setSelectedCache] = useState("seo-meta");
-  const [cacheClearing, setCacheClearing] = useState(false);
-  const [showClearAllConfirm, setShowClearAllConfirm] = useState(false);
-  const [redisStatus, setRedisStatus] = useState(null);
-  const [loadingRedisStatus, setLoadingRedisStatus] = useState(false);
 
   useEffect(() => { dispatch(fetchSystemSettings()); }, [dispatch]);
   useEffect(() => { if (settings) setLocal({ ...settings }); }, [settings]);
-
-  useEffect(() => {
-    const fetchRedisStatus = async () => {
-      setLoadingRedisStatus(true);
-      try {
-        const token = localStorage.getItem("accessToken");
-        const response = await fetch("/api/admin/redis/status", {
-          headers: { "Authorization": `Bearer ${token}` }
-        });
-        const data = await response.json();
-        if (data.success) {
-          setRedisStatus(data.data);
-        }
-      } catch (err) {
-        console.error("Failed to fetch Redis status:", err);
-      } finally {
-        setLoadingRedisStatus(false);
-      }
-    };
-    fetchRedisStatus();
-  }, []);
+  useEffect(() => { dispatch(fetchRedisStatus()); }, [dispatch]);
 
   const toggle = (key) => {
     setLocal((p) => {
@@ -248,28 +230,11 @@ export default function SystemSettings() {
       return;
     }
 
-    setCacheClearing(true);
     try {
-      const token = localStorage.getItem("accessToken");
-      const response = await fetch("/api/admin/cache/invalidate", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ cacheType: selectedCache })
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        setSnack({ open: true, message: data.message || "Cache cleared successfully.", severity: "success" });
-      } else {
-        setSnack({ open: true, message: data.message || "Failed to clear cache.", severity: "error" });
-      }
+      await dispatch(invalidateCache(selectedCache));
+      setSnack({ open: true, message: "Cache cleared successfully.", severity: "success" });
     } catch (err) {
       setSnack({ open: true, message: err.message || "Error clearing cache.", severity: "error" });
-    } finally {
-      setCacheClearing(false);
     }
   };
 
@@ -279,27 +244,11 @@ export default function SystemSettings() {
       return;
     }
 
-    setCacheClearing(true);
     try {
-      const token = localStorage.getItem("accessToken");
-      const response = await fetch("/api/admin/cache/clear-all", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
-        }
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        setSnack({ open: true, message: "All caches cleared successfully.", severity: "success" });
-      } else {
-        setSnack({ open: true, message: data.message || "Failed to clear all caches.", severity: "error" });
-      }
+      await dispatch(clearAllCaches());
+      setSnack({ open: true, message: "All caches cleared successfully.", severity: "success" });
     } catch (err) {
       setSnack({ open: true, message: err.message || "Error clearing caches.", severity: "error" });
-    } finally {
-      setCacheClearing(false);
     }
   };
 

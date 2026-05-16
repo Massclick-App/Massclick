@@ -25,6 +25,7 @@ import termsAndConditionReducer from './reducers/footerContents/termsAndConditio
 import favoriteReducer from './reducers/favoriteReducer.js';
 import fcmMarketingReducer from './reducers/fcmMarketingReducer.js';
 import systemSettingsReducer from './reducers/systemSettingsReducer.js';
+import cacheReducer from './reducers/cacheReducer.js';
 
 const rootReducer = combineReducers({
   auth: authReducer,
@@ -52,6 +53,7 @@ const rootReducer = combineReducers({
   favorites: favoriteReducer,
   fcmMarketing: fcmMarketingReducer,
   systemSettings: systemSettingsReducer,
+  cache: cacheReducer,
 });
 
 let storeInstance = null;
