@@ -573,6 +573,14 @@ export const mainSearchController = async (req, res) => {
       },
 
       {
+        $sort: {
+          amountPaid: -1,
+          paidDate: -1,
+          createdAt: -1
+        }
+      },
+
+      {
         $project: {
           reviews: 0
         }
