@@ -679,10 +679,7 @@ const BusinessDetail = React.memo(() => {
             { label: "Home", link: "/" },
             {
               label: business.location || locationSlug,
-              onClick: () => {
-                localStorage.setItem("selectedLocation", business.location || locationSlug);
-                navigate("/");
-              },
+              onClick: () => navigate(-1),
             },
             { label: business.businessName },
           ]}
