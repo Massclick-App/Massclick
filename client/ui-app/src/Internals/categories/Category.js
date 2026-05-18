@@ -226,6 +226,7 @@ export default function Category() {
   });
 
   const [imageErrors, setImageErrors] = useState({});
+  const [uploadingImageVariant, setUploadingImageVariant] = useState(null);
 
   // Cropper states
   const [cropperOpen, setCropperOpen] = useState(false);
@@ -468,49 +469,58 @@ export default function Category() {
                   const finalHeight = height;
                   const base64Data = reader.result;
 
-                  // Upload to backend (auto-updates category if editing)
-                  const token = localStorage.getItem("accessToken");
-                  const response = await axiosInstance.post(
-                    `${API_URL}/category/upload-images`,
-                    {
-                      variant: variantKey,
-                      imageData: base64Data,
-                      categoryId: formData._id || null // Auto-update if editing existing category
-                    },
-                    { headers: { Authorization: `Bearer ${token}` } }
-                  );
+                  try {
+                    setUploadingImageVariant(variantKey);
 
-                  if (response.data.success && response.data.imageKey) {
-                    const imageKey = response.data.imageKey;
+                    // Upload to backend (auto-updates category if editing)
+                    const token = localStorage.getItem("accessToken");
+                    const response = await axiosInstance.post(
+                      `${API_URL}/category/upload-images`,
+                      {
+                        variant: variantKey,
+                        imageData: base64Data,
+                        categoryId: formData._id || null // Auto-update if editing existing category
+                      },
+                      { headers: { Authorization: `Bearer ${token}` } }
+                    );
 
-                    // Store S3 key, not base64
-                    setFormData((prev) => ({
-                      ...prev,
-                      categoryImages: {
-                        ...prev.categoryImages,
-                        [variantKey]: imageKey
-                      }
-                    }));
+                    if (response.data.success && response.data.imageKey) {
+                      const imageKey = response.data.imageKey;
 
-                    // Store preview as data URL for display only
-                    setImagePreviews((prev) => ({
-                      ...prev,
-                      [variantKey]: base64Data
-                    }));
+                      // Store S3 key, not base64
+                      setFormData((prev) => ({
+                        ...prev,
+                        categoryImages: {
+                          ...prev.categoryImages,
+                          [variantKey]: imageKey
+                        }
+                      }));
 
-                    setImageDimensions((prev) => ({
-                      ...prev,
-                      [variantKey]: { width: finalWidth, height: finalHeight }
-                    }));
+                      // Store preview as data URL for display only
+                      setImagePreviews((prev) => ({
+                        ...prev,
+                        [variantKey]: base64Data
+                      }));
 
-                    setImageErrors((prev) => ({
-                      ...prev,
-                      [variantKey]: null
-                    }));
+                      setImageDimensions((prev) => ({
+                        ...prev,
+                        [variantKey]: { width: finalWidth, height: finalHeight }
+                      }));
 
-                    setCropperOpen(false);
-                  } else {
-                    alert("Failed to upload image");
+                      setImageErrors((prev) => ({
+                        ...prev,
+                        [variantKey]: null
+                      }));
+
+                      setCropperOpen(false);
+                    } else {
+                      alert("Failed to upload image");
+                    }
+                  } catch (err) {
+                    console.error("Upload error:", err);
+                    alert("Upload failed: " + err.message);
+                  } finally {
+                    setUploadingImageVariant(null);
                   }
                 };
                 reader.readAsDataURL(blob);
@@ -1532,10 +1542,15 @@ export default function Category() {
               variant="contained"
               component="label"
               fullWidth
-              startIcon={<CloudUploadIcon />}
+              startIcon={uploadingImageVariant === imageModalOpen.variantKey ? <CircularProgress size={20} /> : <CloudUploadIcon />}
               sx={{ mb: 2 }}
+              disabled={uploadingImageVariant === imageModalOpen.variantKey}
             >
-              {imagePreviews[imageModalOpen.variantKey] ? "Replace Image" : "Upload Image"}
+              {uploadingImageVariant === imageModalOpen.variantKey
+                ? "Uploading..."
+                : imagePreviews[imageModalOpen.variantKey]
+                ? "Replace Image"
+                : "Upload Image"}
               <input
                 type="file"
                 accept="image/*"
@@ -1544,6 +1559,7 @@ export default function Category() {
                 onChange={(e) => {
                   handleImageChange(e, imageModalOpen.variantKey);
                 }}
+                disabled={uploadingImageVariant === imageModalOpen.variantKey}
               />
             </Button>
           </DialogContent>
@@ -1703,12 +1719,14 @@ export default function Category() {
           )}
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setCropperOpen(false)}>Cancel</Button>
+          <Button onClick={() => setCropperOpen(false)} disabled={uploadingImageVariant}>Cancel</Button>
           <Button
             variant="contained"
             onClick={handleCropSave}
+            disabled={uploadingImageVariant}
+            startIcon={uploadingImageVariant ? <CircularProgress size={20} /> : null}
           >
-            Save Crop
+            {uploadingImageVariant ? "Uploading..." : "Save Crop"}
           </Button>
         </DialogActions>
       </Dialog>
