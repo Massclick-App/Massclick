@@ -530,7 +530,7 @@ useEffect(() => {
                     category={business.category} price={business.category === "Hotels" ? business.price : null}
                     imageSrc={
                       business.bannerImage ||
-                      "https://via.placeholder.com/120"
+                      "/header.png"
                     }
                     to={businessUrl}
                   />
