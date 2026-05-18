@@ -176,12 +176,17 @@ export const viewCategory = async (id) => {
       category.categoryImages = convertedImages;
     }
 
+    // Legacy support: convert keys to signed URLs
     if (category.categoryImageKey) {
       category.categoryImage = getSignedUrlByKey(category.categoryImageKey);
     }
     if (category.liveImageKey) {
       category.liveImage = getSignedUrlByKey(category.liveImageKey);
     }
+
+    // Remove internal key fields (frontend doesn't use them)
+    delete category.categoryImageKey;
+    delete category.liveImageKey;
 
     return category;
   } catch (error) {
@@ -339,12 +344,17 @@ export const updateCategory = async (id, data) => {
       category.categoryImages = convertedImages;
     }
 
+    // Legacy support: convert keys to signed URLs
     if (category.categoryImageKey) {
       category.categoryImage = getSignedUrlByKey(category.categoryImageKey);
     }
     if (category.liveImageKey) {
       category.liveImage = getSignedUrlByKey(category.liveImageKey);
     }
+
+    // Remove internal key fields (frontend doesn't use them)
+    delete category.categoryImageKey;
+    delete category.liveImageKey;
 
     return category;
   } catch (error) {

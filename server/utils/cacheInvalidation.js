@@ -27,7 +27,7 @@ export const invalidateSeoCache = async () => {
  */
 export const invalidateCategoryCache = async () => {
   try {
-    const patterns = ['category:*', 'categories:*'];
+    const patterns = ['category:*', 'categories:*', 'home-category:*'];
     const results = await Promise.all(
       patterns.map(pattern => deleteCachePattern(pattern))
     );

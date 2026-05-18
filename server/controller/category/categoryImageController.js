@@ -1,5 +1,6 @@
 import { uploadImageToS3 } from "../../s3Uploder.js";
 import { BAD_REQUEST } from "../../errorCodes.js";
+import { invalidateCategoryCache } from "../../utils/cacheInvalidation.js";
 
 export const uploadCategoryImagesAction = async (req, res) => {
   try {
@@ -17,6 +18,9 @@ export const uploadCategoryImagesAction = async (req, res) => {
       imageData,
       `category/images/${variant}-${Date.now()}`
     );
+
+    // Invalidate category caches in case this image is used immediately
+    await invalidateCategoryCache();
 
     res.send({
       success: true,
