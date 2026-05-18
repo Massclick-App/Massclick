@@ -308,15 +308,24 @@ export default function Category() {
     setFormData((prev) => ({ ...prev, keywords: newValue }));
   };
 
-  // Extract S3 key from signed URL
+  // Extract S3 key from signed URL (handles malformed double-signed URLs too)
   const extractS3KeyFromUrl = (url) => {
     if (!url || typeof url !== "string") return "";
     if (!url.startsWith("http")) return url; // Already a key
+
     try {
+      // Handle malformed double-signed URLs like: https://bucket.com/https://bucket.com/path/key
+      if (url.includes("/https://")) {
+        const match = url.match(/\/https:\/\/[^/]+\/(.+?)(?:\?|$)/);
+        if (match && match[1]) return match[1];
+      }
+
+      // Handle normal signed URLs: https://bucket.com/path/key?signature...
       const urlObj = new URL(url);
       let path = urlObj.pathname.startsWith("/") ? urlObj.pathname.slice(1) : urlObj.pathname;
       return path;
-    } catch {
+    } catch (err) {
+      console.error("Failed to extract key from URL:", url, err);
       return url;
     }
   };

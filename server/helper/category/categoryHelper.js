@@ -2,6 +2,28 @@ import { ObjectId } from "mongodb";
 import categoryModel from "../../model/category/categoryModel.js";
 import { uploadImageToS3, getSignedUrlByKey } from "../../s3Uploder.js";
 
+// Extract S3 key from signed URL or malformed double-signed URL
+const extractS3Key = (value) => {
+  if (!value || typeof value !== "string") return "";
+  if (!value.startsWith("http")) return value; // Already a key
+
+  try {
+    // Handle malformed double-signed URLs
+    if (value.includes("/https://")) {
+      const match = value.match(/\/https:\/\/[^/]+\/(.+?)(?:\?|$)/);
+      if (match?.[1]) return match[1];
+    }
+
+    // Handle normal signed URLs: extract path after domain
+    const urlObj = new URL(value);
+    let path = urlObj.pathname.startsWith("/") ? urlObj.pathname.slice(1) : urlObj.pathname;
+    return path || "";
+  } catch (err) {
+    console.error("Failed to extract S3 key from:", value);
+    return "";
+  }
+};
+
 
 export const createCategory = async (reqBody = {}) => {
   try {
@@ -31,8 +53,7 @@ export const createCategory = async (reqBody = {}) => {
         }
       });
 
-      // Handle new categoryImages object (6 variants)
-      // Frontend should send S3 keys only (no data URLs, no signed URLs)
+      // Handle new categoryImages object (6 variants) - always extract S3 keys
       if (reqBody.categoryImages && typeof reqBody.categoryImages === "object") {
         const categoryImages = {};
 
@@ -41,13 +62,12 @@ export const createCategory = async (reqBody = {}) => {
             categoryImages[variant] = "";
           } else if (typeof imageData === "string") {
             if (imageData.startsWith("data:image")) {
-              console.error(`${variant}: Data URLs should be uploaded via /api/category/upload-images first`);
-              categoryImages[variant] = "";
-            } else if (imageData.startsWith("http")) {
-              console.error(`${variant}: Cannot store full URLs, must be S3 keys`);
+              console.warn(`${variant}: Received base64 instead of S3 key. Should use /api/category/upload-images`);
               categoryImages[variant] = "";
             } else {
-              categoryImages[variant] = imageData;
+              // Extract S3 key from any URL format (signed, unsigned, or malformed)
+              const key = extractS3Key(imageData);
+              categoryImages[variant] = key;
             }
           }
         }
@@ -78,8 +98,7 @@ export const createCategory = async (reqBody = {}) => {
       };
     }
 
-    // Handle new categoryImages object (6 variants)
-    // Frontend should send S3 keys only (no data URLs, no signed URLs)
+    // Handle new categoryImages object (6 variants) - always extract S3 keys
     if (reqBody.categoryImages && typeof reqBody.categoryImages === "object") {
       const categoryImages = {};
 
@@ -88,13 +107,12 @@ export const createCategory = async (reqBody = {}) => {
           categoryImages[variant] = "";
         } else if (typeof imageData === "string") {
           if (imageData.startsWith("data:image")) {
-            console.error(`${variant}: Data URLs should be uploaded via /api/category/upload-images first`);
-            categoryImages[variant] = "";
-          } else if (imageData.startsWith("http")) {
-            console.error(`${variant}: Cannot store full URLs, must be S3 keys`);
+            console.warn(`${variant}: Received base64 instead of S3 key. Should use /api/category/upload-images`);
             categoryImages[variant] = "";
           } else {
-            categoryImages[variant] = imageData;
+            // Extract S3 key from any URL format (signed, unsigned, or malformed)
+            const key = extractS3Key(imageData);
+            categoryImages[variant] = key;
           }
         }
       }
@@ -261,18 +279,13 @@ export const updateCategory = async (id, data) => {
           // Clear if empty
           categoryImages[variant] = "";
         } else if (typeof imageData === "string") {
-          // Should be S3 key (e.g., "category/images/variant-123.webp")
-          // Reject data URLs and full URLs
           if (imageData.startsWith("data:image")) {
-            console.error(`${variant}: Data URLs should be uploaded via /api/category/upload-images first`);
-            categoryImages[variant] = "";
-          } else if (imageData.startsWith("http")) {
-            // Reject full URLs (signed or unsigned)
-            console.error(`${variant}: Cannot store full URLs, must be S3 keys`);
+            console.warn(`${variant}: Received base64 instead of S3 key. Should use /api/category/upload-images`);
             categoryImages[variant] = "";
           } else {
-            // Store S3 key as-is
-            categoryImages[variant] = imageData;
+            // Extract S3 key from any URL format (signed, unsigned, or malformed)
+            const key = extractS3Key(imageData);
+            categoryImages[variant] = key;
           }
         }
       }

@@ -560,8 +560,16 @@ const BlogDetail = () => {
         <meta property="og:title" content={metaTitle} />
         <meta property="og:description" content={metaDescription} />
         <meta property="og:url" content={canonical} />
+        <meta property="og:type" content="article" />
+        {blog?.ogImage && (
+          <meta property="og:image" content={blog.ogImage} />
+        )}
+        <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={metaTitle} />
         <meta name="twitter:description" content={metaDescription} />
+        {blog?.ogImage && (
+          <meta name="twitter:image" content={blog.ogImage} />
+        )}
       </Helmet>
       <Navbar />
       <div className="reading-progress" aria-hidden="true">
