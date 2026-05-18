@@ -447,6 +447,10 @@ useEffect(() => {
           <Breadcrumbs
             items={[
               { label: "Home", link: "/" },
+               {
+                label: locationText,
+                onClick: () => window.location.reload(),
+              },
               { label: searchText },
             ]}
           />
