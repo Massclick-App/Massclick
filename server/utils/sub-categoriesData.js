@@ -70,7 +70,7 @@ export const categoriesData = {
   ],
 
   hospitals: [
-    { name: "Hospitals" },
+    // { name: "Hospitals" },
     { name: "Eye Hospitals" },
     { name: "Private Hospitals" },
     { name: "Ayurvedic Hospitals" },
