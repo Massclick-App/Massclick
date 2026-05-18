@@ -9,6 +9,14 @@ import { fetchSubCategories } from "../../../redux/actions/categoryAction";
 const formatText = (text = "") =>
   text.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
+const createSlug = (text = "") => {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+};
+
 const CategoriesPage = () => {
 
   const { location, category } = useParams();
@@ -54,7 +62,8 @@ const CategoriesPage = () => {
       )
     );
 
-    navigate(`/${location}/${category}/${sub.slug}`, { state: { logAlreadySent: true } });
+    const subSlug = sub.slug || createSlug(sub.name);
+    navigate(`/${location}/${category}/${subSlug}`, { state: { logAlreadySent: true } });
   };
 
   const locationSlug = location || "";

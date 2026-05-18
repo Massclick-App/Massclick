@@ -90,7 +90,7 @@ const FeaturedServicesSection = () => {
 
   const orderedCategories = useMemo(() => {
 
-    if (!homeCategories.length) return [];
+    if (!Array.isArray(homeCategories) || !homeCategories.length) return [];
 
     const map = new Map(
       homeCategories.map((cat) => [
@@ -98,6 +98,8 @@ const FeaturedServicesSection = () => {
         cat
       ])
     );
+
+    const seenSlugs = new Set();
 
     return FEATURED_ORDER.map((name) => {
 
@@ -119,14 +121,22 @@ const FeaturedServicesSection = () => {
       }
 
       const found = map.get(normalize(name));
-
-      return found || {
+      const category = found || {
         name,
         slug: createSlug(name),
         icon: "/default.webp"
       };
 
-    });
+      const slug = category.slug || createSlug(category.name);
+
+      if (seenSlugs.has(slug)) {
+        return null;
+      }
+
+      seenSlugs.add(slug);
+      return category;
+
+    }).filter(Boolean);
 
   }, [homeCategories]);
 
