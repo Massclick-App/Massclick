@@ -156,26 +156,6 @@ export const createPageContentBlogSeo = async (
     ? makeSlug(data.slug)
     : makeSlug(data.heading);
 
-  const exists = await seoPageContentBlogModel.findOne({
-    pageType: data.pageType,
-    category: data.category,
-    location: data.location,
-    isActive: true,
-  });
-
-  console.log("Duplicate Check:", {
-    pageType: data.pageType,
-    category: data.category,
-    location: data.location,
-    exists: !!exists,
-  });
-  
-  if (exists) {
-    throw new Error(
-      "Page already exists for category/location"
-    );
-  }
-
   data.pageImageKey = await uploadBase64Images(
     data.pageImages || []
   );
@@ -351,21 +331,6 @@ export const updateSeoPageContentBlog =
 
     if (data.heading && !data.slug) {
       data.slug = makeSlug(data.heading);
-    }
-
-    const duplicate =
-      await seoPageContentBlogModel.findOne({
-        _id: { $ne: id },
-        pageType: data.pageType,
-        category: data.category,
-        location: data.location,
-        isActive: true,
-      });
-
-    if (duplicate) {
-      throw new Error(
-        "Another page already exists"
-      );
     }
 
     if (Array.isArray(data.pageImages)) {
