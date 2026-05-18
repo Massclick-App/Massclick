@@ -26,10 +26,9 @@ export const uploadCategoryImagesAction = async (req, res) => {
 
     // Auto-update category if categoryId is provided
     if (categoryId && ObjectId.isValid(categoryId)) {
-      const updateData = {
-        categoryImages: {}
-      };
-      updateData.categoryImages[variant] = imageKey;
+      // Use dot notation to update only this variant, not replace entire categoryImages
+      const updateData = {};
+      updateData[`categoryImages.${variant}`] = imageKey;
 
       await categoryModel.findByIdAndUpdate(
         categoryId,
