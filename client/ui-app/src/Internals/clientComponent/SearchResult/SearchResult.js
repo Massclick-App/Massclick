@@ -447,12 +447,9 @@ useEffect(() => {
           <Breadcrumbs
             items={[
               { label: "Home", link: "/" },
-              {
+               {
                 label: locationText,
-                onClick: () => {
-                  localStorage.setItem("selectedLocation", locationText);
-                  navigate("/");
-                },
+                onClick: () => window.location.reload(),
               },
               { label: searchText },
             ]}

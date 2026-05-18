@@ -9,11 +9,13 @@ import {
 } from "../../helper/advertistment/advertismentHelper.js";
 
 import { BAD_REQUEST } from "../../errorCodes.js";
+import { invalidateAdvertisementCache } from "../../utils/cacheInvalidation.js";
 
 
 export const addAdvertisementAction = async (req, res) => {
   try {
     const result = await createAdvertisement(req.body);
+    await invalidateAdvertisementCache();
     res.send(result);
   } catch (error) {
     console.error(error);
@@ -94,6 +96,7 @@ export const updateAdvertisementAction = async (req, res) => {
   try {
     const adId = req.params.id;
     const result = await updateAdvertisement(adId, req.body);
+    await invalidateAdvertisementCache();
     res.send(result);
   } catch (error) {
     console.error(error);
@@ -108,6 +111,7 @@ export const deleteAdvertisementAction = async (req, res) => {
   try {
     const adId = req.params.id;
     const result = await deleteAdvertisement(adId);
+    await invalidateAdvertisementCache();
     res.send({ message: "Advertisement deleted successfully", result });
   } catch (error) {
     console.error(error);

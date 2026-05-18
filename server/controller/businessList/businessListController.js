@@ -6,6 +6,7 @@ import categoryModel from "../../model/category/categoryModel.js";
 import { emitToRoom } from "../../websocket/roomManager.js";
 import { buildRoom, WS_EVENTS } from "../../websocket/constants.js";
 import { getCache, setCache } from "../../utils/redisClient.js";
+import { invalidateSearchCache, invalidateDashboardCache, invalidateCategoryCache } from "../../utils/cacheInvalidation.js";
 
 export const addBusinessListAction = async (req, res) => {
   try {
@@ -25,6 +26,10 @@ export const addBusinessListAction = async (req, res) => {
       location: result.location,
       ts: new Date().toISOString(),
     });
+
+    await invalidateSearchCache();
+    await invalidateDashboardCache();
+    await invalidateCategoryCache();
 
     res.send(result);
 
@@ -643,6 +648,10 @@ export const updateBusinessListAction = async (req, res) => {
 
     const business = await updateBusinessList(businessId, businessData);
 
+    await invalidateSearchCache();
+    await invalidateDashboardCache();
+    await invalidateCategoryCache();
+
     res.send(business);
   } catch (error) {
     console.error(error);
@@ -654,6 +663,11 @@ export const deleteBusinessListAction = async (req, res) => {
   try {
     const businessId = req.params.id;
     const business = await deleteBusinessList(businessId);
+
+    await invalidateSearchCache();
+    await invalidateDashboardCache();
+    await invalidateCategoryCache();
+
     res.send({ message: "business deleted successfully", business });
   } catch (error) {
     console.error(error);
@@ -667,6 +681,10 @@ export const activeBusinessListAction = async (req, res) => {
     const { activeBusinesses } = req.body;
 
     const business = await activeBusinessList(businessId, activeBusinesses);
+
+    await invalidateSearchCache();
+    await invalidateDashboardCache();
+    await invalidateCategoryCache();
 
     res.send({
       message: `Business ${business.activeBusinesses ? "activated" : "deactivated"} successfully`,

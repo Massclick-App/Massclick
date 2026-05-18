@@ -1,4 +1,5 @@
 ﻿import { createLogger } from "./logger.js";
+import { deleteCachePattern } from "./redisClient.js";
 
 const logger = createLogger("CACHE_INVALIDATION");
 
@@ -8,11 +9,15 @@ const logger = createLogger("CACHE_INVALIDATION");
  */
 export const invalidateSeoCache = async () => {
   try {
-    await logger.info("Invalidating SEO cache");
-    return true;
+    const patterns = ['seo-meta:*', 'seo-page-content:*', 'seo-blog:*'];
+    const results = await Promise.all(
+      patterns.map(pattern => deleteCachePattern(pattern))
+    );
+    await logger.info(`Invalidated SEO cache - patterns: ${patterns.join(', ')}`);
+    return results.every(r => r === true);
   } catch (error) {
     await logger.error("Error invalidating SEO cache", error);
-    throw error;
+    return false;
   }
 };
 
@@ -22,11 +27,15 @@ export const invalidateSeoCache = async () => {
  */
 export const invalidateCategoryCache = async () => {
   try {
-    await logger.info("Invalidating category cache");
-    return true;
+    const patterns = ['category:*', 'categories:*'];
+    const results = await Promise.all(
+      patterns.map(pattern => deleteCachePattern(pattern))
+    );
+    await logger.info(`Invalidated category cache - patterns: ${patterns.join(', ')}`);
+    return results.every(r => r === true);
   } catch (error) {
     await logger.error("Error invalidating category cache", error);
-    throw error;
+    return false;
   }
 };
 
@@ -36,10 +45,68 @@ export const invalidateCategoryCache = async () => {
  */
 export const invalidateSearchCache = async () => {
   try {
-    await logger.info("Invalidating search cache");
-    return true;
+    const patterns = ['suggestions:*', 'trends:*', 'trending-categories:*', 'cache:*'];
+    const results = await Promise.all(
+      patterns.map(pattern => deleteCachePattern(pattern))
+    );
+    await logger.info(`Invalidated search cache - patterns: ${patterns.join(', ')}`);
+    return results.every(r => r === true);
   } catch (error) {
     await logger.error("Error invalidating search cache", error);
-    throw error;
+    return false;
+  }
+};
+
+/**
+ * Invalidate advertisement-related cache entries
+ * Clears: Advertisement listings and category-based advertisements
+ */
+export const invalidateAdvertisementCache = async () => {
+  try {
+    const patterns = ['advertisment:*'];
+    const results = await Promise.all(
+      patterns.map(pattern => deleteCachePattern(pattern))
+    );
+    await logger.info(`Invalidated advertisement cache - patterns: ${patterns.join(', ')}`);
+    return results.every(r => r === true);
+  } catch (error) {
+    await logger.error("Error invalidating advertisement cache", error);
+    return false;
+  }
+};
+
+/**
+ * Invalidate review-related cache entries
+ * Clears: Review listings for businesses
+ */
+export const invalidateReviewCache = async () => {
+  try {
+    const patterns = ['reviews:*'];
+    const results = await Promise.all(
+      patterns.map(pattern => deleteCachePattern(pattern))
+    );
+    await logger.info(`Invalidated review cache - patterns: ${patterns.join(', ')}`);
+    return results.every(r => r === true);
+  } catch (error) {
+    await logger.error("Error invalidating review cache", error);
+    return false;
+  }
+};
+
+/**
+ * Invalidate dashboard-related cache entries
+ * Clears: Dashboard summary and charts
+ */
+export const invalidateDashboardCache = async () => {
+  try {
+    const patterns = ['dashboard-summary:*', 'dashboard-charts:*'];
+    const results = await Promise.all(
+      patterns.map(pattern => deleteCachePattern(pattern))
+    );
+    await logger.info(`Invalidated dashboard cache - patterns: ${patterns.join(', ')}`);
+    return results.every(r => r === true);
+  } catch (error) {
+    await logger.error("Error invalidating dashboard cache", error);
+    return false;
   }
 };
