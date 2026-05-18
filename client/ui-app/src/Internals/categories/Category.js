@@ -468,13 +468,14 @@ export default function Category() {
                   const finalHeight = height;
                   const base64Data = reader.result;
 
-                  // Upload to backend
+                  // Upload to backend (auto-updates category if editing)
                   const token = localStorage.getItem("accessToken");
                   const response = await axiosInstance.post(
                     `${API_URL}/category/upload-images`,
                     {
                       variant: variantKey,
-                      imageData: base64Data
+                      imageData: base64Data,
+                      categoryId: formData._id || null // Auto-update if editing existing category
                     },
                     { headers: { Authorization: `Bearer ${token}` } }
                   );

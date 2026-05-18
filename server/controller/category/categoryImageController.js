@@ -1,10 +1,13 @@
 import { uploadImageToS3 } from "../../s3Uploder.js";
 import { BAD_REQUEST } from "../../errorCodes.js";
 import { invalidateCategoryCache } from "../../utils/cacheInvalidation.js";
+import { ObjectId } from "mongodb";
+import categoryModel from "../../model/category/categoryModel.js";
+import { getSignedUrlByKey } from "../../s3Uploder.js";
 
 export const uploadCategoryImagesAction = async (req, res) => {
   try {
-    const { variant, imageData } = req.body;
+    const { variant, imageData, categoryId } = req.body;
 
     if (!variant || !imageData) {
       return res.status(BAD_REQUEST.code).send({ message: "variant and imageData are required" });
@@ -19,13 +22,30 @@ export const uploadCategoryImagesAction = async (req, res) => {
       `category/images/${variant}-${Date.now()}`
     );
 
-    // Invalidate category caches in case this image is used immediately
+    const imageKey = uploadResult.key;
+
+    // Auto-update category if categoryId is provided
+    if (categoryId && ObjectId.isValid(categoryId)) {
+      const updateData = {
+        categoryImages: {}
+      };
+      updateData.categoryImages[variant] = imageKey;
+
+      await categoryModel.findByIdAndUpdate(
+        categoryId,
+        { $set: updateData },
+        { new: true }
+      );
+    }
+
+    // Invalidate category caches
     await invalidateCategoryCache();
 
     res.send({
       success: true,
-      imageKey: uploadResult.key,
-      variant
+      imageKey,
+      variant,
+      imageUrl: getSignedUrlByKey(imageKey)
     });
   } catch (error) {
     console.error("Image upload error:", error);
