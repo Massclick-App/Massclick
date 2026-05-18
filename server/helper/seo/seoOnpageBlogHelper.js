@@ -158,8 +158,6 @@ export const createPageContentBlogSeo = async (
 
   const exists = await seoPageContentBlogModel.findOne({
     pageType: data.pageType,
-    category: data.category,
-    location: data.location,
     isActive: true,
   });
 
