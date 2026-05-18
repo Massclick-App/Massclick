@@ -1,6 +1,7 @@
 import express from 'express'
 
 import { getMobileHomeCategoriesAction, addCategoryAction, viewCategoryAction,businessSearchCategoryAction, viewAllCategoryAction, updateCategoryAction, deleteCategoryAction, hardDeleteCategoryAction, categoryBusinessUsageAction, getHomeCategoriesAction,getSubCategoriesAction, getPopularCategoriesAction, getServiceCardsAction, getAllUniqueCategoriesAction } from "../controller/category/categoryController.js"
+import { uploadCategoryImagesAction } from "../controller/category/categoryImageController.js"
 import { oauthAuthentication } from '../helper/oauthHelper.js';
 import { cacheMiddleware } from '../middleware/cacheMiddleware.js';
 
@@ -10,6 +11,7 @@ const categoryCache = cacheMiddleware({ expirySeconds: 3600, keyPrefix: 'categor
 const homeCategoryCache = cacheMiddleware({ expirySeconds: 7200, keyPrefix: 'home-category' });
 
 router.post('/api/category/create', oauthAuthentication, addCategoryAction);
+router.post('/api/category/upload-images', oauthAuthentication, uploadCategoryImagesAction);
 router.get('/api/category/view/:id', oauthAuthentication, viewCategoryAction);
 router.get('/api/category/viewall', oauthAuthentication, viewAllCategoryAction);
 router.put('/api/category/update/:id', oauthAuthentication, updateCategoryAction);

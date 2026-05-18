@@ -308,18 +308,42 @@ export default function Category() {
     setFormData((prev) => ({ ...prev, keywords: newValue }));
   };
 
+  // Extract S3 key from signed URL
+  const extractS3KeyFromUrl = (url) => {
+    if (!url || typeof url !== "string") return "";
+    if (!url.startsWith("http")) return url; // Already a key
+    try {
+      const urlObj = new URL(url);
+      let path = urlObj.pathname.startsWith("/") ? urlObj.pathname.slice(1) : urlObj.pathname;
+      return path;
+    } catch {
+      return url;
+    }
+  };
+
   const handleEdit = (row) => {
     setEditMode(true);
-    setFormData({
-      _id: row._id,
-      categoryImages: row.categoryImages || {
+
+    // Extract S3 keys from signed URLs for categoryImages
+    const categoryImagesKeys = {};
+    if (row.categoryImages && typeof row.categoryImages === "object") {
+      for (const [variant, url] of Object.entries(row.categoryImages)) {
+        categoryImagesKeys[variant] = extractS3KeyFromUrl(url) || "";
+      }
+    } else {
+      categoryImagesKeys = {
         webHero: "",
         webCard: "",
         webThumbnail: "",
         mobileVertical: "",
         mobileCard: "",
         mobileThumbnail: ""
-      },
+      };
+    }
+
+    setFormData({
+      _id: row._id,
+      categoryImages: categoryImagesKeys,
       categoryImage: row.categoryImage || "",
       liveImage: row.liveImage || "",
       category: row.category,
@@ -335,7 +359,7 @@ export default function Category() {
       seoDescription: row.seoDescription || "",
       slug: row.slug || "",
     });
-    // Set previews for all image variants
+    // Set previews using signed URLs (for display)
     setImagePreviews({
       webHero: row.categoryImages?.webHero || null,
       webCard: row.categoryImages?.webCard || null,
@@ -398,7 +422,7 @@ export default function Category() {
     return Object.keys(newErrors).length === 0;
   };
 
-  // Handle cropped image
+  // Handle cropped image - upload to backend
   const handleCropSave = async () => {
     try {
       if (!cropData.croppedAreaPixels) {
@@ -408,74 +432,81 @@ export default function Category() {
 
       const { variantKey, image, croppedAreaPixels } = cropData;
 
-      // Create canvas and crop the image
       const img = new Image();
       img.crossOrigin = "anonymous";
 
-      img.onload = async () => {
+      img.onload = () => {
         try {
           const canvas = document.createElement("canvas");
           const ctx = canvas.getContext("2d");
-
           const { x, y, width, height } = croppedAreaPixels;
 
           canvas.width = width;
           canvas.height = height;
-
           ctx.drawImage(img, x, y, width, height, 0, 0, width, height);
 
-          // Convert to blob
           canvas.toBlob(
             async (blob) => {
+              if (!blob) {
+                alert("Failed to process image");
+                return;
+              }
+
               try {
-                if (!blob) {
-                  alert("Failed to process image");
-                  return;
-                }
-
-                // Validate cropped image
-                const { errors, width: finalWidth, height: finalHeight } = await validateImageFile(blob, variantKey);
-
-                if (errors.length > 0) {
-                  setImageErrors((prev) => ({
-                    ...prev,
-                    [variantKey]: errors.join(", ")
-                  }));
-                  return;
-                }
-
-                // Clear errors
-                setImageErrors((prev) => ({
-                  ...prev,
-                  [variantKey]: null
-                }));
-
-                // Store dimensions
-                setImageDimensions((prev) => ({
-                  ...prev,
-                  [variantKey]: { width: finalWidth, height: finalHeight }
-                }));
-
-                // Convert blob to data URL and store
                 const reader = new FileReader();
-                reader.onload = () => {
-                  setFormData((prev) => ({
-                    ...prev,
-                    categoryImages: {
-                      ...prev.categoryImages,
-                      [variantKey]: reader.result
-                    }
-                  }));
-                  setImagePreviews((prev) => ({
-                    ...prev,
-                    [variantKey]: reader.result
-                  }));
-                  setCropperOpen(false);
+                reader.onload = async () => {
+                  const finalWidth = width;
+                  const finalHeight = height;
+                  const base64Data = reader.result;
+
+                  // Upload to backend
+                  const token = localStorage.getItem("accessToken");
+                  const response = await axiosInstance.post(
+                    `${API_URL}/category/upload-images`,
+                    {
+                      variant: variantKey,
+                      imageData: base64Data
+                    },
+                    { headers: { Authorization: `Bearer ${token}` } }
+                  );
+
+                  if (response.data.success && response.data.imageKey) {
+                    const imageKey = response.data.imageKey;
+
+                    // Store S3 key, not base64
+                    setFormData((prev) => ({
+                      ...prev,
+                      categoryImages: {
+                        ...prev.categoryImages,
+                        [variantKey]: imageKey
+                      }
+                    }));
+
+                    // Store preview as data URL for display only
+                    setImagePreviews((prev) => ({
+                      ...prev,
+                      [variantKey]: base64Data
+                    }));
+
+                    setImageDimensions((prev) => ({
+                      ...prev,
+                      [variantKey]: { width: finalWidth, height: finalHeight }
+                    }));
+
+                    setImageErrors((prev) => ({
+                      ...prev,
+                      [variantKey]: null
+                    }));
+
+                    setCropperOpen(false);
+                  } else {
+                    alert("Failed to upload image");
+                  }
                 };
                 reader.readAsDataURL(blob);
               } catch (err) {
-                console.error("Error processing cropped image:", err);
-                alert("Error processing image: " + err.message);
+                console.error("Error uploading image:", err);
+                alert("Upload failed: " + err.message);
               }
             },
             "image/jpeg",
@@ -487,10 +518,7 @@ export default function Category() {
         }
       };
 
-      img.onerror = () => {
-        alert("Failed to load image");
-      };
-
+      img.onerror = () => alert("Failed to load image");
       img.src = image;
     } catch (err) {
       console.error("Error in handleCropSave:", err);
@@ -498,50 +526,59 @@ export default function Category() {
     }
   };
 
-  // Validate image dimensions and file size
-  const validateImageFile = (file, variantKey) => {
+  // Auto-fit image to variant constraints (no validation, just resize)
+  const autoFitImage = (file, variantKey) => {
     const variant = IMAGE_VARIANTS[variantKey];
-    const errors = [];
-
-    // Check file size
-    const fileSizeInMB = file.size / (1024 * 1024);
-    if (fileSizeInMB > variant.maxFileSize) {
-      errors.push(`File size exceeds ${variant.maxFileSize}MB limit`);
-    }
 
     return new Promise((resolve) => {
       const reader = new FileReader();
       reader.onload = (e) => {
         const img = new Image();
         img.onload = () => {
-          const width = img.width;
-          const height = img.height;
-
-          // Check minimum dimensions
-          if (width < variant.minWidth || height < variant.minHeight) {
-            errors.push(`Minimum resolution: ${variant.minWidth}x${variant.minHeight}px`);
-          }
-
-          // Check maximum dimensions
-          if (width > variant.maxWidth || height > variant.maxHeight) {
-            errors.push(`Maximum resolution: ${variant.maxWidth}x${variant.maxHeight}px`);
-          }
-
-          // Check aspect ratio (with 10% tolerance)
+          const originalWidth = img.width;
+          const originalHeight = img.height;
           const [aspectW, aspectH] = variant.aspectRatio.split(":").map(Number);
-          const expectedRatio = aspectW / aspectH;
-          const actualRatio = width / height;
-          const tolerance = 0.1;
-          if (Math.abs(actualRatio - expectedRatio) / expectedRatio > tolerance) {
-            errors.push(`Aspect ratio should be ${variant.aspectRatio}`);
+          const targetAspect = aspectW / aspectH;
+          const originalAspect = originalWidth / originalHeight;
+
+          let cropWidth = originalWidth;
+          let cropHeight = originalHeight;
+
+          // Auto-crop to match target aspect ratio
+          if (originalAspect > targetAspect) {
+            cropWidth = originalHeight * targetAspect;
+          } else {
+            cropHeight = originalWidth / targetAspect;
           }
 
-          resolve({ errors, width, height });
+          const cropX = (originalWidth - cropWidth) / 2;
+          const cropY = (originalHeight - cropHeight) / 2;
+
+          // Scale down to max dimensions if needed
+          let finalWidth = cropWidth;
+          let finalHeight = cropHeight;
+
+          if (finalWidth > variant.maxWidth || finalHeight > variant.maxHeight) {
+            const scaleW = variant.maxWidth / finalWidth;
+            const scaleH = variant.maxHeight / finalHeight;
+            const scale = Math.min(scaleW, scaleH);
+            finalWidth = finalWidth * scale;
+            finalHeight = finalHeight * scale;
+          }
+
+          resolve({
+            originalWidth,
+            originalHeight,
+            cropX,
+            cropY,
+            cropWidth,
+            cropHeight,
+            targetWidth: finalWidth,
+            targetHeight: finalHeight,
+            aspect: targetAspect
+          });
         };
-        img.onerror = () => {
-          errors.push("Failed to load image");
-          resolve({ errors, width: null, height: null });
-        };
+        img.onerror = () => resolve(null);
         img.src = e.target.result;
       };
       reader.readAsDataURL(file);
@@ -552,11 +589,9 @@ export default function Category() {
     const file = e.target.files[0];
     if (!file) return;
 
-    const variant = IMAGE_VARIANTS[variantKey];
-    const [aspectW, aspectH] = variant.aspectRatio.split(":").map(Number);
-    const expectedRatio = aspectW / aspectH;
+    const fitData = await autoFitImage(file, variantKey);
+    if (!fitData) return;
 
-    // Open cropper for any image upload
     const reader = new FileReader();
     reader.onload = (event) => {
       setCropData({
@@ -564,7 +599,8 @@ export default function Category() {
         variantKey,
         crop: { x: 0, y: 0 },
         zoom: 1,
-        aspect: expectedRatio
+        aspect: fitData.aspect,
+        fitData
       });
       setCropperOpen(true);
       setImageErrors((prev) => ({
@@ -991,7 +1027,7 @@ export default function Category() {
                     cursor: "pointer",
                     borderRadius: "8px",
                     overflow: "hidden",
-                    border: imageErrors[key] ? "2px solid #d32f2f" : imagePreviews[key] ? "2px solid #4caf50" : "2px dashed #bbb",
+                    border: imagePreviews[key] ? "2px solid #4caf50" : "2px dashed #bbb",
                     backgroundColor: "#f5f5f5",
                     aspectRatio: "1",
                     display: "flex",
@@ -1005,7 +1041,7 @@ export default function Category() {
                     e.currentTarget.style.backgroundColor = "#fff3e0";
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = imageErrors[key] ? "#d32f2f" : imagePreviews[key] ? "#4caf50" : "#bbb";
+                    e.currentTarget.style.borderColor = imagePreviews[key] ? "#4caf50" : "#bbb";
                     e.currentTarget.style.backgroundColor = "#f5f5f5";
                   }}
                 >
@@ -1110,9 +1146,11 @@ export default function Category() {
                   const file = e.target.files[0];
                   if (file) {
                     const reader = new FileReader();
-                    reader.onloadend = () => {
-                      setFormData((prev) => ({ ...prev, categoryImage: reader.result }));
-                      setPreview(reader.result);
+                    reader.onload = async () => {
+                      const base64Data = reader.result;
+                      // For legacy images, store base64 in form (will be handled by backend on submit)
+                      setFormData((prev) => ({ ...prev, categoryImage: base64Data }));
+                      setPreview(base64Data);
                     };
                     reader.readAsDataURL(file);
                   }
@@ -1165,9 +1203,11 @@ export default function Category() {
                   const file = e.target.files[0];
                   if (file) {
                     const reader = new FileReader();
-                    reader.onloadend = () => {
-                      setFormData((prev) => ({ ...prev, liveImage: reader.result }));
-                      setLiveImagePreview(reader.result);
+                    reader.onload = async () => {
+                      const base64Data = reader.result;
+                      // For legacy images, store base64 in form (will be handled by backend on submit)
+                      setFormData((prev) => ({ ...prev, liveImage: base64Data }));
+                      setLiveImagePreview(base64Data);
                     };
                     reader.readAsDataURL(file);
                   }
@@ -1217,12 +1257,12 @@ export default function Category() {
             <button
               type="submit"
               className="category-submit-button"
-              disabled={loading || Object.values(imageErrors).some(e => e !== null)}
+              disabled={loading}
               style={{
                 width: "100%",
                 padding: "12px",
-                backgroundColor: Object.values(imageErrors).some(e => e !== null) ? "#ccc" : "var(--color-primary-orange)",
-                cursor: Object.values(imageErrors).some(e => e !== null) ? "not-allowed" : "pointer"
+                backgroundColor: loading ? "#ccc" : "var(--color-primary-orange)",
+                cursor: loading ? "not-allowed" : "pointer"
               }}
             >
               {loading || createWarningLoading ? (
@@ -1476,23 +1516,6 @@ export default function Category() {
               </Box>
             )}
 
-            {/* Error Message */}
-            {imageErrors[imageModalOpen.variantKey] && (
-              <Box sx={{
-                p: 1.5,
-                backgroundColor: "#ffebee",
-                borderRadius: "6px",
-                fontSize: "12px",
-                color: "#c62828",
-                mb: 2,
-                display: "flex",
-                alignItems: "flex-start",
-                gap: 1
-              }}>
-                <span>✗</span>
-                <span>{imageErrors[imageModalOpen.variantKey]}</span>
-              </Box>
-            )}
 
             {/* Upload Button */}
             <Button

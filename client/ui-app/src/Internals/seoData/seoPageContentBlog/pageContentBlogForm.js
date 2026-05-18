@@ -56,6 +56,7 @@ export default function SeoPageContentForm({
   const [searchTerm, setSearchTerm] = useState("");
   const [preview, setPreview] = useState([]);
   const [profilePreview, setProfilePreview] = useState("");
+  const [ogImagePreview, setOgImagePreview] = useState("");
   const [showLocationSuggest, setShowLocationSuggest] = useState(false);
   const [locationSuggestions, setLocationSuggestions] = useState([]);
   const [categoryInput, setCategoryInput] = useState("");
@@ -168,6 +169,10 @@ export default function SeoPageContentForm({
     setProfilePreview(formData.profileImage || "");
   }, [formData.profileImage]);
 
+  useEffect(() => {
+    setOgImagePreview(formData.ogImage || "");
+  }, [formData.ogImage]);
+
   /* ======================================
      PROFILE IMAGE
   ====================================== */
@@ -181,6 +186,23 @@ export default function SeoPageContentForm({
     const reader = new FileReader();
     reader.onloadend = () => {
       updateField("profileImage", reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  /* ======================================
+     OG IMAGE
+  ====================================== */
+  const handleOgImage = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const previewUrl = URL.createObjectURL(file);
+    setOgImagePreview(previewUrl);
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      updateField("ogImage", reader.result);
     };
     reader.readAsDataURL(file);
   };
@@ -751,6 +773,32 @@ export default function SeoPageContentForm({
             {profilePreview && (
               <Avatar
                 src={profilePreview}
+                className="profile-avatar"
+              />
+            )}
+          </div>
+
+          <div className="upload-box">
+            <Tooltip title="Recommended size: 1200x630px for social media sharing">
+              <Button
+                variant="contained"
+                component="label"
+                startIcon={<CloudUploadIcon />}
+                className="upload-btn secondary"
+              >
+                Upload OG Image
+                <input
+                  hidden
+                  type="file"
+                  accept="image/*"
+                  onChange={handleOgImage}
+                />
+              </Button>
+            </Tooltip>
+
+            {ogImagePreview && (
+              <Avatar
+                src={ogImagePreview}
                 className="profile-avatar"
               />
             )}

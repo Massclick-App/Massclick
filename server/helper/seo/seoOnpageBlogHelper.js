@@ -59,6 +59,11 @@ const mapSignedUrls = (doc = {}) => {
     ? getSignedUrlByKey(doc.profileImageKey)
     : "";
 
+  // og image
+  doc.ogImage = doc.ogImageKey
+    ? getSignedUrlByKey(doc.ogImageKey)
+    : "";
+
   // business images
   if (Array.isArray(doc.businessDetails)) {
     doc.businessDetails = doc.businessDetails.map((item) => ({
@@ -172,6 +177,18 @@ export const createPageContentBlogSeo = async (
     data.profileImageKey = result.key;
   }
 
+  if (
+    data.ogImage &&
+    data.ogImage.startsWith("data:image")
+  ) {
+    const result = await uploadImageToS3(
+      data.ogImage,
+      `seo/og-image-${Date.now()}`
+    );
+
+    data.ogImageKey = result.key;
+  }
+
   data.businessDetails = mapBusinessDetails(
     data.popularBusiness
   );
@@ -182,6 +199,7 @@ export const createPageContentBlogSeo = async (
 
   delete data.pageImages;
   delete data.profileImage;
+  delete data.ogImage;
   delete data.popularBusiness;
   delete data.selectedBusiness;
 
@@ -354,6 +372,18 @@ export const updateSeoPageContentBlog =
       data.profileImageKey = result.key;
     }
 
+    if (
+      data.ogImage &&
+      data.ogImage.startsWith("data:image")
+    ) {
+      const result = await uploadImageToS3(
+        data.ogImage,
+        `seo/og-image-${Date.now()}`
+      );
+
+      data.ogImageKey = result.key;
+    }
+
     data.businessDetails =
       mapBusinessDetails(
         data.popularBusiness
@@ -365,6 +395,7 @@ export const updateSeoPageContentBlog =
 
     delete data.pageImages;
     delete data.profileImage;
+    delete data.ogImage;
     delete data.popularBusiness;
     delete data.selectedBusiness;
 

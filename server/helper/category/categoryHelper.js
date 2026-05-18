@@ -32,24 +32,23 @@ export const createCategory = async (reqBody = {}) => {
       });
 
       // Handle new categoryImages object (6 variants)
+      // Frontend should send S3 keys only (no data URLs, no signed URLs)
       if (reqBody.categoryImages && typeof reqBody.categoryImages === "object") {
         const categoryImages = {};
-        const timestamp = Date.now();
 
-        for (const [variant, data] of Object.entries(reqBody.categoryImages)) {
-          if (data && typeof data === "string" && data.startsWith("data:image")) {
-            try {
-              const uploadResult = await uploadImageToS3(
-                data,
-                `category/images/${variant}-${timestamp}`
-              );
-              categoryImages[variant] = uploadResult.key;
-            } catch (err) {
-              console.error(`Failed to upload ${variant}:`, err);
+        for (const [variant, imageData] of Object.entries(reqBody.categoryImages)) {
+          if (!imageData || imageData === "" || imageData === null) {
+            categoryImages[variant] = "";
+          } else if (typeof imageData === "string") {
+            if (imageData.startsWith("data:image")) {
+              console.error(`${variant}: Data URLs should be uploaded via /api/category/upload-images first`);
+              categoryImages[variant] = "";
+            } else if (imageData.startsWith("http")) {
+              console.error(`${variant}: Cannot store full URLs, must be S3 keys`);
+              categoryImages[variant] = "";
+            } else {
+              categoryImages[variant] = imageData;
             }
-          } else if (data && !data.startsWith("data:image")) {
-            // Keep existing S3 key if it's not a data URL
-            categoryImages[variant] = data;
           }
         }
         updates.categoryImages = categoryImages;
@@ -80,24 +79,23 @@ export const createCategory = async (reqBody = {}) => {
     }
 
     // Handle new categoryImages object (6 variants)
+    // Frontend should send S3 keys only (no data URLs, no signed URLs)
     if (reqBody.categoryImages && typeof reqBody.categoryImages === "object") {
       const categoryImages = {};
-      const timestamp = Date.now();
 
-      for (const [variant, data] of Object.entries(reqBody.categoryImages)) {
-        if (data && typeof data === "string" && data.startsWith("data:image")) {
-          try {
-            const uploadResult = await uploadImageToS3(
-              data,
-              `category/images/${variant}-${timestamp}`
-            );
-            categoryImages[variant] = uploadResult.key;
-          } catch (err) {
-            console.error(`Failed to upload ${variant}:`, err);
+      for (const [variant, imageData] of Object.entries(reqBody.categoryImages)) {
+        if (!imageData || imageData === "" || imageData === null) {
+          categoryImages[variant] = "";
+        } else if (typeof imageData === "string") {
+          if (imageData.startsWith("data:image")) {
+            console.error(`${variant}: Data URLs should be uploaded via /api/category/upload-images first`);
+            categoryImages[variant] = "";
+          } else if (imageData.startsWith("http")) {
+            console.error(`${variant}: Cannot store full URLs, must be S3 keys`);
+            categoryImages[variant] = "";
+          } else {
+            categoryImages[variant] = imageData;
           }
-        } else if (data && !data.startsWith("data:image")) {
-          // Keep existing S3 key if it's not a data URL
-          categoryImages[variant] = data;
         }
       }
       reqBody.categoryImages = categoryImages;
@@ -254,27 +252,28 @@ export const updateCategory = async (id, data) => {
     }
 
     // Handle new categoryImages object (6 variants)
+    // Frontend should send S3 keys only (no data URLs, no signed URLs)
     if (data.categoryImages && typeof data.categoryImages === "object") {
       const categoryImages = {};
-      const timestamp = Date.now();
 
       for (const [variant, imageData] of Object.entries(data.categoryImages)) {
-        if (imageData && typeof imageData === "string" && imageData.startsWith("data:image")) {
-          try {
-            const uploadResult = await uploadImageToS3(
-              imageData,
-              `category/images/${variant}-${timestamp}`
-            );
-            categoryImages[variant] = uploadResult.key;
-          } catch (err) {
-            console.error(`Failed to upload ${variant}:`, err);
-          }
-        } else if (imageData && !imageData.startsWith("data:image")) {
-          // Keep existing S3 key if it's not a data URL
-          categoryImages[variant] = imageData;
-        } else if (imageData === null || imageData === "") {
+        if (!imageData || imageData === "" || imageData === null) {
           // Clear if empty
           categoryImages[variant] = "";
+        } else if (typeof imageData === "string") {
+          // Should be S3 key (e.g., "category/images/variant-123.webp")
+          // Reject data URLs and full URLs
+          if (imageData.startsWith("data:image")) {
+            console.error(`${variant}: Data URLs should be uploaded via /api/category/upload-images first`);
+            categoryImages[variant] = "";
+          } else if (imageData.startsWith("http")) {
+            // Reject full URLs (signed or unsigned)
+            console.error(`${variant}: Cannot store full URLs, must be S3 keys`);
+            categoryImages[variant] = "";
+          } else {
+            // Store S3 key as-is
+            categoryImages[variant] = imageData;
+          }
         }
       }
       data.categoryImages = categoryImages;
