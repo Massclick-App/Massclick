@@ -74,7 +74,25 @@ const SeoMeta = ({ seoData, fallback }) => {
       <meta
         key="og:image"
         property="og:image"
-        content="https://massclick.in/apple-touch-icon.png"
+        content="https://massclick.in/og-image.png"
+      />
+
+      <meta
+        key="og:image:width"
+        property="og:image:width"
+        content="1200"
+      />
+
+      <meta
+        key="og:image:height"
+        property="og:image:height"
+        content="630"
+      />
+
+      <meta
+        key="og:image:type"
+        property="og:image:type"
+        content="image/png"
       />
 
       <meta
@@ -98,7 +116,7 @@ const SeoMeta = ({ seoData, fallback }) => {
       <meta
         key="twitter:image"
         name="twitter:image"
-        content="https://massclick.in/apple-touch-icon.png"
+        content="https://massclick.in/og-image.png"
       />
 
       <meta key="author" name="author" content="Massclick" />
