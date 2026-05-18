@@ -158,9 +158,18 @@ export const createPageContentBlogSeo = async (
 
   const exists = await seoPageContentBlogModel.findOne({
     pageType: data.pageType,
+    category: data.category,
+    location: data.location,
     isActive: true,
   });
 
+  console.log("Duplicate Check:", {
+    pageType: data.pageType,
+    category: data.category,
+    location: data.location,
+    exists: !!exists,
+  });
+  
   if (exists) {
     throw new Error(
       "Page already exists for category/location"
