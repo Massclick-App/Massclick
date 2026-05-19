@@ -1,6 +1,6 @@
 import express from 'express'
 
-import { getMobileHomeCategoriesAction, addCategoryAction, viewCategoryAction,businessSearchCategoryAction, viewAllCategoryAction, updateCategoryAction, deleteCategoryAction, hardDeleteCategoryAction, categoryBusinessUsageAction, getHomeCategoriesAction,getSubCategoriesAction, getPopularCategoriesAction, getServiceCardsAction, getAllUniqueCategoriesAction } from "../controller/category/categoryController.js"
+import { getMobileServiceCardsAction, getMobileHomeCategoriesAction, addCategoryAction, viewCategoryAction,businessSearchCategoryAction, viewAllCategoryAction, updateCategoryAction, deleteCategoryAction, hardDeleteCategoryAction, categoryBusinessUsageAction, getHomeCategoriesAction,getSubCategoriesAction, getPopularCategoriesAction, getServiceCardsAction, getAllUniqueCategoriesAction } from "../controller/category/categoryController.js"
 import { uploadCategoryImagesAction } from "../controller/category/categoryImageController.js"
 import { oauthAuthentication } from '../helper/oauthHelper.js';
 import { cacheMiddleware } from '../middleware/cacheMiddleware.js';
@@ -26,5 +26,6 @@ router.get("/api/category/home-mobile", homeCategoryCache, getMobileHomeCategori
 router.get("/api/category/sub/:parentId", categoryCache, getSubCategoriesAction);
 router.get("/api/category/popular", homeCategoryCache, getPopularCategoriesAction);
 router.get("/api/category/service-cards", homeCategoryCache, getServiceCardsAction);
+router.get("/api/category/mobile-service-cards", homeCategoryCache, getMobileServiceCardsAction);
 
 export default router; 

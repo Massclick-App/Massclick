@@ -783,6 +783,26 @@ export default function Category() {
     doSave();
   };
 
+  const mobilePreviewSource =
+    imagePreviews.mobileVertical ||
+    imagePreviews.mobileCard ||
+    preview ||
+    liveImagePreview ||
+    null;
+  const mobilePreviewImage = mobilePreviewSource
+    ? mobilePreviewSource.startsWith("data:")
+      ? mobilePreviewSource
+      : normalizeImageUrl(mobilePreviewSource)
+    : null;
+  const mobilePreviewTitle = (formData.category || "Category Name").trim();
+  const mobilePreviewHint = imagePreviews.mobileVertical
+    ? "Showing Mobile Vertical"
+    : imagePreviews.mobileCard
+      ? "Showing Mobile Card fallback"
+      : preview || liveImagePreview
+        ? "Showing legacy image fallback"
+        : "Upload Mobile Vertical to preview the final mobile look";
+
   const rows = category
     .filter((c) => c.isActive)
     .map((cat, index) => ({
@@ -1033,79 +1053,185 @@ export default function Category() {
           <div className="category-form-input-group category-col-span-all">
             <label className="category-input-label">Image Variants</label>
             <div style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))",
-              gap: "12px",
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "flex-start",
+              gap: "18px",
               marginTop: "12px"
             }}>
-              {Object.entries(IMAGE_VARIANTS).map(([key, variant]) => (
-                <div
-                  key={key}
-                  onClick={() => setImageModalOpen({ open: true, variantKey: key })}
-                  style={{
-                    position: "relative",
-                    cursor: "pointer",
-                    borderRadius: "8px",
-                    overflow: "hidden",
-                    border: imagePreviews[key] ? "2px solid #4caf50" : "2px dashed #bbb",
-                    backgroundColor: "#f5f5f5",
-                    aspectRatio: "1",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    transition: "all 0.2s ease",
-                    padding: "8px"
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = "var(--color-primary-orange)";
-                    e.currentTarget.style.backgroundColor = "#fff3e0";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = imagePreviews[key] ? "#4caf50" : "#bbb";
-                    e.currentTarget.style.backgroundColor = "#f5f5f5";
-                  }}
-                >
-                  {imagePreviews[key] ? (
-                    <>
-                      <img
-                        src={imagePreviews[key]}
-                        alt={variant.name}
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover"
-                        }}
-                      />
-                      <div style={{
-                        position: "absolute",
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        backgroundColor: "rgba(0,0,0,0.4)",
+              <div style={{ flex: "1 1 420px", minWidth: "320px" }}>
+                <div style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))",
+                  gap: "12px",
+                }}>
+                  {Object.entries(IMAGE_VARIANTS).map(([key, variant]) => (
+                    <div
+                      key={key}
+                      onClick={() => setImageModalOpen({ open: true, variantKey: key })}
+                      style={{
+                        position: "relative",
+                        cursor: "pointer",
+                        borderRadius: "8px",
+                        overflow: "hidden",
+                        border: imagePreviews[key] ? "2px solid #4caf50" : "2px dashed #bbb",
+                        backgroundColor: "#f5f5f5",
+                        aspectRatio: "1",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        color: "white",
-                        opacity: 0,
-                        transition: "opacity 0.2s ease",
+                        transition: "all 0.2s ease",
+                        padding: "8px"
                       }}
-                        onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.opacity = "0"; }}
-                      >
-                        <span style={{ fontSize: "12px", fontWeight: "600", textAlign: "center" }}>Edit</span>
-                      </div>
-                    </>
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = "var(--color-primary-orange)";
+                        e.currentTarget.style.backgroundColor = "#fff3e0";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = imagePreviews[key] ? "#4caf50" : "#bbb";
+                        e.currentTarget.style.backgroundColor = "#f5f5f5";
+                      }}
+                    >
+                      {imagePreviews[key] ? (
+                        <>
+                          <img
+                            src={imagePreviews[key]}
+                            alt={variant.name}
+                            style={{
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "cover"
+                            }}
+                          />
+                          <div style={{
+                            position: "absolute",
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            backgroundColor: "rgba(0,0,0,0.4)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            color: "white",
+                            opacity: 0,
+                            transition: "opacity 0.2s ease",
+                          }}
+                            onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.opacity = "0"; }}
+                          >
+                            <span style={{ fontSize: "12px", fontWeight: "600", textAlign: "center" }}>Edit</span>
+                          </div>
+                        </>
+                      ) : (
+                        <div style={{ textAlign: "center" }}>
+                          <CloudUploadIcon sx={{ fontSize: "32px", color: "#999", mb: 1 }} />
+                          <p style={{ fontSize: "11px", fontWeight: "600", color: "#666", margin: "4px 0 0 0" }}>
+                            {variant.name}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{
+                flex: "0 0 240px",
+                width: "240px",
+                maxWidth: "100%",
+                padding: "14px",
+                borderRadius: "14px",
+                border: "1px solid #e2e2e2",
+                background: "linear-gradient(180deg, #fffaf5 0%, #ffffff 100%)",
+                boxShadow: "0 8px 24px rgba(0,0,0,0.06)"
+              }}>
+                <div style={{ fontSize: "13px", fontWeight: "700", color: "#222" }}>
+                  Mobile Trending Preview
+                </div>
+                <div style={{ fontSize: "11px", color: "#777", marginTop: "4px", marginBottom: "12px", lineHeight: 1.4 }}>
+                  {mobilePreviewHint}
+                </div>
+
+                <div style={{
+                  width: "140px",
+                  height: "180px",
+                  margin: "0 auto",
+                  borderRadius: "16px",
+                  overflow: "hidden",
+                  position: "relative",
+                  background: "linear-gradient(135deg, rgba(255,145,77,0.22) 0%, rgba(255,145,77,0.08) 100%)",
+                  boxShadow: "0 10px 24px rgba(0,0,0,0.14)"
+                }}>
+                  {mobilePreviewImage ? (
+                    <img
+                      src={mobilePreviewImage}
+                      alt="Mobile trending preview"
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover"
+                      }}
+                    />
                   ) : (
-                    <div style={{ textAlign: "center" }}>
-                      <CloudUploadIcon sx={{ fontSize: "32px", color: "#999", mb: 1 }} />
-                      <p style={{ fontSize: "11px", fontWeight: "600", color: "#666", margin: "4px 0 0 0" }}>
-                        {variant.name}
-                      </p>
+                    <div style={{
+                      width: "100%",
+                      height: "100%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "#c07d41",
+                      fontSize: "12px",
+                      fontWeight: "600",
+                      textAlign: "center",
+                      padding: "16px"
+                    }}>
+                      No mobile image yet
                     </div>
                   )}
+
+                  <div style={{
+                    position: "absolute",
+                    inset: 0,
+                    background: "linear-gradient(180deg, rgba(0,0,0,0) 28%, rgba(0,0,0,0.82) 100%)"
+                  }} />
+
+                  <div style={{
+                    position: "absolute",
+                    left: "12px",
+                    right: "12px",
+                    bottom: "12px",
+                    color: "#fff"
+                  }}>
+                    <div style={{
+                      fontSize: "13px",
+                      fontWeight: "700",
+                      lineHeight: 1.2,
+                      display: "-webkit-box",
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: "vertical",
+                      overflow: "hidden"
+                    }}>
+                      {mobilePreviewTitle}
+                    </div>
+                    <div style={{
+                      marginTop: "4px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px",
+                      fontSize: "10px",
+                      color: "rgba(255,255,255,0.72)"
+                    }}>
+                      <span>Explore</span>
+                      <span aria-hidden="true">&gt;</span>
+                    </div>
+                  </div>
                 </div>
-              ))}
+
+                <div style={{ fontSize: "11px", color: "#666", marginTop: "10px", lineHeight: 1.45 }}>
+                  Best result: keep faces, logos, and text away from the top and bottom edges because the mobile card uses cover cropping.
+                </div>
+              </div>
             </div>
           </div>
 

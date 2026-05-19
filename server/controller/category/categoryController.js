@@ -654,6 +654,125 @@ export const getServiceCardsAction = async (req, res) => {
   }
 };
 
+export const getMobileServiceCardsAction = async (req, res) => {
+  try {
+    const cacheKey = "service-cards:home";
+
+    // Try to get from cache first
+    const cachedData = await getCache(cacheKey);
+    if (cachedData) {
+      return res.send(cachedData);
+    }
+
+    const SERVICE_SECTIONS = [
+      {
+        section: "Repair and Services",
+        items: ["Car Service", "TV Service", "Bike Service"]
+      },
+      {
+        section: "Services",
+        items: [
+          "Pest Control Service",
+          "AC Service",
+          "Computer And Laptop Service"
+        ]
+      },
+      {
+        section: "Hot Categories",
+        items: [
+          "Catering Services",
+          "Transporters",
+          "Driving School"
+        ]
+      },
+      {
+        section: "Building Materials",
+        items: [
+          "Fencing",
+          "Interlock Bricks",
+          "Steel Dealers"
+        ]
+      }
+    ];
+
+    const categories = await categoryModel.find({
+      isActive: true
+    }).lean();
+
+    const normalize = (name) =>
+      name.toLowerCase().replace(/s$/, "").trim();
+
+    const map = new Map(
+      categories.map(cat => [
+        normalize(cat.category),
+        cat
+      ])
+    );
+
+    const S3_BASE_URL = "https://massclickdev.s3.ap-southeast-2.amazonaws.com/";
+
+    const result = [];
+
+    SERVICE_SECTIONS.forEach(({ section, items }) => {
+
+      items.forEach((name) => {
+
+        const found = map.get(normalize(name));
+
+        result.push(
+          found
+            ? {
+              _id: found._id,
+              name: found.category,
+              slug: found.slug,
+              section,
+              categoryImageKey: found.categoryImageKey
+                ? getSignedUrlByKey(found.categoryImageKey)
+                : "",
+              liveImageKey: found.liveImageKey
+                ? getSignedUrlByKey(found.liveImageKey)
+                : "",
+              categoryImages: {
+                webHero: found.categoryImages?.webHero ? getSignedUrlByKey(found.categoryImages.webHero) : "",
+                webCard: found.categoryImages?.webCard ? getSignedUrlByKey(found.categoryImages.webCard) : "",
+                webThumbnail: found.categoryImages?.webThumbnail ? getSignedUrlByKey(found.categoryImages.webThumbnail) : "",
+                mobileVertical: found.categoryImages?.mobileVertical ? getSignedUrlByKey(found.categoryImages.mobileVertical) : "",
+                mobileCard: found.categoryImages?.mobileCard ? getSignedUrlByKey(found.categoryImages.mobileCard) : "",
+                mobileThumbnail: found.categoryImages?.mobileThumbnail ? getSignedUrlByKey(found.categoryImages.mobileThumbnail) : ""
+              }
+            }
+            : {
+              name,
+              slug: name.toLowerCase().replace(/ /g, "-"),
+              section,
+              categoryImageKey: "",
+              liveImageKey: "",
+              categoryImages: {
+                webHero: "",
+                webCard: "",
+                webThumbnail: "",
+                mobileVertical: "",
+                mobileCard: "",
+                mobileThumbnail: ""
+              }
+            }
+        );
+
+      });
+
+    });
+
+    // Cache for 24 hours
+    await setCache(cacheKey, result, 86400);
+
+    res.send(result);
+
+  } catch (error) {
+    console.error(error);
+    res.status(400).send({ message: error.message });
+  }
+};
+
 export const getAllUniqueCategoriesAction = async (req, res) => {
   try {
     const S3_BASE_URL = "https://massclickdev.s3.ap-southeast-2.amazonaws.com/";
