@@ -262,7 +262,7 @@ const CategoriesPage = () => {
           </div>
         </div>
       )}
-
+      <br />
       {/* Bottom Sections */}
       <div className="bottom-sections-wrapper">
         <PopularCategoriesLink />

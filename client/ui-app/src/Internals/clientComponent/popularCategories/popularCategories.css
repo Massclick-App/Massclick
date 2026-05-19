@@ -15,7 +15,7 @@
 }
 
 .popular-categories-links__inner {
-  width: min(100%, 1400px);
+  width: 100%;
   margin: 0 auto;
   padding: clamp(18px, 2.5vw, 30px);
   border: 1px solid rgba(231, 234, 240, 0.9);
@@ -136,7 +136,7 @@
 }
 
 .popular-categories-links__collections {
-  width: min(100%, 1720px);
+  width: 100%;
   margin: 18px auto 0;
   display: grid;
   gap: 14px;
@@ -232,7 +232,7 @@
 }
 
 .popular-categories-links__services {
-  width: min(100%, 1720px);
+  width: 100%;
   margin: 20px auto 0;
   padding: clamp(20px, 3vw, 34px);
   border: 1px solid rgba(231, 234, 240, 0.86);
