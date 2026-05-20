@@ -11,6 +11,10 @@ import { CLEAR_SEO_META } from "../../../redux/actions/userActionTypes.js";
 import SeoMeta from "../seo/seoMeta.js";
 import Footer from "../footer/footer.js";
 import PopularCategoriesLink from "../popularCategories/popularCategories.js";
+import {
+  generateBreadcrumbSchema,
+  generateItemListSchema,
+} from "../../../utils/seoSchemaGenerators";
 
 const createSlug = (text = "") => {
   return text
@@ -134,29 +138,25 @@ const CategoriesPage = () => {
       ? sanitizeSeoHtml(seoContent.pageContent)
       : null;
 
-  const breadcrumbSchema = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Home", item: "https://massclick.in" },
-      { "@type": "ListItem", position: 2, name: locationLabel, item: `https://massclick.in/${locationSlug}` },
-      { "@type": "ListItem", position: 3, name: categoryLabel, item: categoryPageUrl },
-    ],
-  };
+  // Generate Breadcrumb schema
+  const breadcrumbSchema = generateBreadcrumbSchema([
+    { name: "Home", url: "https://massclick.in" },
+    { name: locationLabel, url: `https://massclick.in/${locationSlug}` },
+    { name: categoryLabel, url: categoryPageUrl }
+  ]);
 
-  const itemListSchema = filteredCategories.length > 0
-    ? {
-        "@context": "https://schema.org",
-        "@type": "ItemList",
-        name: `${categoryLabel} subcategories in ${locationLabel}`,
-        itemListElement: filteredCategories.map((item, index) => ({
-          "@type": "ListItem",
-          position: index + 1,
-          name: item.name,
-          url: `https://massclick.in/${locationSlug}/${categorySlug}/${item.slug}`,
-        })),
-      }
-    : null;
+  // Generate ItemList schema for subcategories
+  const itemListSchema = generateItemListSchema(
+    filteredCategories.map((item, index) => ({
+      position: index + 1,
+      name: item.name,
+      url: `https://massclick.in/${locationSlug}/${categorySlug}/${item.slug}`,
+      description: item.description,
+      image: item.categoryImageKey || item.categoryImages?.webCard
+    })),
+    `${categoryLabel} subcategories in ${locationLabel}`,
+    seoContent?.excerpt || `Browse ${categoryLabel} options in ${locationLabel}`
+  );
 
   return (
     <>

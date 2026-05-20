@@ -25,6 +25,14 @@ import { selectBusinessLoading, selectBusinessError } from "../../../redux/selec
 import TopBannerAds from "../banners/topBanner/topBanner.js";
 import GlobalSkeleton from "../globalSkeleton.js";
 import OTPLoginModal from "../AddBusinessModel.js";
+import {
+  generateItemListSchema,
+  generateBreadcrumbSchema,
+  generateSearchResultsPageSchema,
+  generateOrganizationSchema,
+  generateWebsiteSchema,
+  generateFAQSchema,
+} from "../../../utils/seoSchemaGenerators";
 
 const createSlug = (text = "") =>
   text
@@ -228,42 +236,6 @@ useEffect(() => {
     );
   }
 
-  const extractFaqFromHtml = (html = "") => {
-    if (!html) return [];
-
-    const faqSectionMatch = html.split("Frequently Asked Questions - (FAQs)");
-    if (faqSectionMatch.length < 2) return [];
-
-    const faqHtml = faqSectionMatch[1];
-
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(faqHtml, "text/html");
-
-    const strongTags = doc.querySelectorAll("strong");
-
-    const faqs = [];
-
-    strongTags.forEach((strongTag) => {
-      const question = strongTag.textContent?.trim();
-
-      const answerElement = strongTag.parentElement?.nextElementSibling;
-      const answer = answerElement?.textContent?.trim();
-
-      if (question && answer) {
-        faqs.push({
-          "@type": "Question",
-          name: question,
-          acceptedAnswer: {
-            "@type": "Answer",
-            text: answer,
-          },
-        });
-      }
-    });
-
-    return faqs;
-  };
-
   const fallbackSeo = {
 
     title:
@@ -288,73 +260,7 @@ useEffect(() => {
       ? sanitizeSeoHtml(seoContent.pageContent)
       : null;
 
-  const itemListSchema =
-    results.length > 0
-      ? {
-        "@context": "https://schema.org",
-        "@type": "ItemList",
-        name: `Best ${searchText} in ${locationText}`,
-        itemListElement: results.map((business, index) => ({
-          "@type": "ListItem",
-          position: index + 1,
-          name: business.businessName,
-          url:
-            `https://www.massclick.in/${createSlug(business.location)}/${createSlug(business.businessName)}/${business._id}`
-        })),
-      }
-      : null;
-
-  const breadcrumbSchema = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      {
-        "@type": "ListItem",
-        position: 1,
-        name: "Home",
-        item: "https://www.massclick.in"
-      },
-      {
-        "@type": "ListItem",
-        position: 2,
-        name: locationText,
-        item: `https://www.massclick.in/${locationSlug}`
-      },
-      {
-        "@type": "ListItem",
-        position: 3,
-        name: searchText,
-        item: canonicalUrl,
-      },
-    ],
-  };
-
-  const websiteSchema = {
-    "@context": "https://schema.org",
-    "@type": "WebSite",
-    name: "Massclick",
-    url: "https://massclick.in",
-  };
-
-  const organizationSchema = {
-    "@context": "https://schema.org",
-    "@type": "Organization",
-    name: "Massclick",
-    url: "https://massclick.in",
-    logo: "https://massclick.in/logo.png"
-  };
-
-  const extractedFaqs = extractFaqFromHtml(seoContent?.pageContent || "");
-
-  const faqSchema =
-    extractedFaqs.length > 0
-      ? {
-        "@context": "https://schema.org",
-        "@type": "FAQPage",
-        mainEntity: extractedFaqs,
-      }
-      : null;
-
+  // Calculate total reviews and ratings for search results
   const totalReviewCount = results.reduce(
     (acc, curr) => acc + (curr.totalReviews || 0),
     0
@@ -376,31 +282,50 @@ useEffect(() => {
       ? Math.max(1, Math.min(5, Number(calculatedRating.toFixed(1))))
       : null;
 
-  const serviceSchema = {
-    "@context": "https://schema.org",
-    "@type": "LocalBusiness",
-    name: `${searchText} in ${locationText}`,
-    areaServed: {
-      "@type": "City",
-      name: locationText,
-    },
-    provider: {
-      "@type": "Organization",
-      name: "Massclick",
-      url: "https://www.massclick.in",
-    },
-    ...(overallRating && totalReviewCount > 0
-      ? {
-        aggregateRating: {
-          "@type": "AggregateRating",
-          ratingValue: Number(overallRating),
-          reviewCount: totalReviewCount,
-          bestRating: 5,
-          worstRating: 1
-        },
-      }
-      : {}),
-  };
+  // Generate ItemList schema with enhanced data
+  const itemListSchema = generateItemListSchema(
+    results.map((business, index) => ({
+      position: index + 1,
+      name: business.businessName,
+      url: `https://www.massclick.in/${createSlug(business.location)}/${createSlug(business.businessName)}/${business._id}`,
+      description: business.description || seoContent?.excerpt,
+      image: business.bannerImage,
+      aggregateRating: business.averageRating && business.totalReviews > 0
+        ? {
+            ratingValue: business.averageRating,
+            reviewCount: business.totalReviews
+          }
+        : null
+    })),
+    `Best ${searchText} in ${locationText}`,
+    seoContent?.excerpt || `Find best ${searchText} in ${locationText}`
+  );
+
+  // Generate Breadcrumb schema
+  const breadcrumbSchema = generateBreadcrumbSchema([
+    { name: "Home", url: "https://www.massclick.in" },
+    { name: locationText, url: `https://www.massclick.in/${locationSlug}` },
+    { name: searchText, url: canonicalUrl }
+  ]);
+
+  // Generate WebSite schema
+  const websiteSchema = generateWebsiteSchema();
+
+  // Generate Organization schema
+  const organizationSchema = generateOrganizationSchema();
+
+  // Generate FAQ schema (if structured FAQs available from seoContent)
+  const faqSchema = seoContent?.faqs && seoContent.faqs.length > 0
+    ? generateFAQSchema(seoContent.faqs)
+    : null;
+
+  // Generate SearchResultsPage schema (replaces LocalBusiness for category pages)
+  const searchResultsSchema = generateSearchResultsPageSchema(
+    searchText,
+    locationText,
+    results.length,
+    overallRating
+  );
 
   return (
     <>
@@ -416,24 +341,31 @@ useEffect(() => {
             {JSON.stringify(itemListSchema)}
           </script>
         )}
-        <script type="application/ld+json">
-          {JSON.stringify(breadcrumbSchema)}
-        </script>
-        <script type="application/ld+json">
-          {JSON.stringify(websiteSchema)}
-        </script>
-
-        <script type="application/ld+json">
-          {JSON.stringify(organizationSchema)}
-        </script>
+        {breadcrumbSchema && (
+          <script type="application/ld+json">
+            {JSON.stringify(breadcrumbSchema)}
+          </script>
+        )}
+        {websiteSchema && (
+          <script type="application/ld+json">
+            {JSON.stringify(websiteSchema)}
+          </script>
+        )}
+        {organizationSchema && (
+          <script type="application/ld+json">
+            {JSON.stringify(organizationSchema)}
+          </script>
+        )}
+        {searchResultsSchema && (
+          <script type="application/ld+json">
+            {JSON.stringify(searchResultsSchema)}
+          </script>
+        )}
         {faqSchema && (
           <script type="application/ld+json">
             {JSON.stringify(faqSchema)}
           </script>
         )}
-        <script type="application/ld+json">
-          {JSON.stringify(serviceSchema)}
-        </script>
       </Helmet>
 
       <div className="results-page">

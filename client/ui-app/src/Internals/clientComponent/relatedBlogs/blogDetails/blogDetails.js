@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { Helmet } from "react-helmet-async";
 import { fetchSeoBlogBySlug } from "../../../../redux/actions/seoPageContentBlogAction";
 import { throttle } from "../../../../utils/throttle";
+import { generateArticleSchema, generateBreadcrumbSchema } from "../../../../utils/seoSchemaGenerators";
 import "./blogDetails.css";
 import Navbar from "../relatedBlogNavbar/relatedBlogNavbar";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
@@ -550,6 +551,23 @@ const BlogDetail = () => {
   if (error) return <div className="error">Error loading blog</div>;
   if (!blog) return null;
 
+  // Generate Article schema for blog post
+  const articleSchema = generateArticleSchema({
+    headline: blog.metaTitle || blog.heading,
+    description: blog.metaDescription || blog.excerpt,
+    image: blog.ogImageKey,
+    datePublished: blog.createdAt,
+    dateModified: blog.updatedAt,
+    author: blog.author
+  });
+
+  // Generate Breadcrumb schema
+  const breadcrumbSchema = generateBreadcrumbSchema([
+    { name: "Home", url: "https://massclick.in" },
+    { name: blog.category, url: `https://massclick.in/${blog.location}/${blog.category}` },
+    { name: blog.heading, url: canonical }
+  ]);
+
   return (
     <>
       <Helmet>
@@ -569,6 +587,12 @@ const BlogDetail = () => {
         <meta name="twitter:description" content={metaDescription} />
         {blog?.ogImage && (
           <meta name="twitter:image" content={blog.ogImage} />
+        )}
+        {articleSchema && (
+          <script type="application/ld+json">{JSON.stringify(articleSchema)}</script>
+        )}
+        {breadcrumbSchema && (
+          <script type="application/ld+json">{JSON.stringify(breadcrumbSchema)}</script>
         )}
       </Helmet>
       <Navbar />

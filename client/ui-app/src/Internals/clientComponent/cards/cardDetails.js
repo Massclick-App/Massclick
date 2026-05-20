@@ -48,6 +48,10 @@ import {
   fetchFavorites,
   getAuthUser,
 } from "../../../redux/actions/favoriteAction";
+import {
+  generateLocalBusinessSchema,
+  generateBreadcrumbSchema,
+} from "../../../utils/seoSchemaGenerators";
 import OTPLoginModal from "../AddBusinessModel.js";
 import PageHeaderContents from "../pageHeaderContents/pageHeaderContents.js";
 import PopularCategoriesLink from "../popularCategories/popularCategories.js";
@@ -617,60 +621,58 @@ const BusinessDetail = React.memo(() => {
   const locationSlug = location || "";
   const businessUrl = `https://massclick.in/business/${locationSlug}/${business.slug || businessSlug}/${business._id || id}`;
 
-  const localBusinessSchema = {
-    "@context": "https://schema.org",
-    "@type": "LocalBusiness",
-    name: business.businessName,
-    image: business.bannerImage || (galleryImageSrcs[0] ?? undefined),
-    url: businessUrl,
-    telephone: business.contact || undefined,
+  // Generate LocalBusiness schema with all available data
+  const localBusinessSchema = generateLocalBusinessSchema({
+    _id: business._id,
+    businessName: business.businessName,
+    description: business.description || business.businessDetails,
+    images: [
+      business.bannerImage,
+      ...(galleryImageSrcs || [])
+    ].filter(Boolean),
+    telephone: business.contact,
+    email: business.email,
+    website: business.website,
     address: {
-      "@type": "PostalAddress",
-      streetAddress: [business.plotNumber, business.street].filter(Boolean).join(", ") || undefined,
-      addressLocality: business.location || undefined,
-      postalCode: business.pincode || undefined,
-      addressCountry: "IN",
+      street: [business.plotNumber, business.street].filter(Boolean).join(", "),
+      locality: business.location,
+      postalCode: business.pincode,
+      country: "IN"
     },
-    ...(business.averageRating && totalReview > 0
-      ? {
-        aggregateRating: {
-          "@type": "AggregateRating",
-          ratingValue: Number(business.averageRating.toFixed(1)),
-          reviewCount: totalReview,
-          bestRating: 5,
-          worstRating: 1,
-        },
-      }
-      : {}),
-    ...(business.openingHours?.length > 0
-      ? {
-        openingHoursSpecification: business.openingHours
-          .filter((h) => !h.isClosed && h.open && h.close)
-          .map((h) => ({
-            "@type": "OpeningHoursSpecification",
-            dayOfWeek: `https://schema.org/${h.day}`,
-            opens: h.open,
-            closes: h.close,
-          })),
-      }
-      : {}),
-  };
+    category: business.category,
+    averageRating: business.averageRating,
+    totalReviews: totalReview,
+    openingHours: business.openingHours,
+    socialProfiles: {
+      facebook: business.facebook,
+      instagram: business.instagram,
+      youtube: business.youtube,
+      twitter: business.twitter,
+      linkedin: business.linkedin
+    },
+    geo: business.geoLocation?.coordinates ? {
+      latitude: business.geoLocation.coordinates[1],
+      longitude: business.geoLocation.coordinates[0]
+    } : null,
+    areaServed: business.location
+  });
 
-  const breadcrumbSchema = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Home", item: "https://massclick.in" },
-      { "@type": "ListItem", position: 2, name: business.location || locationSlug, item: `https://massclick.in/${locationSlug}` },
-      { "@type": "ListItem", position: 3, name: business.businessName, item: businessUrl },
-    ],
-  };
+  // Generate Breadcrumb schema
+  const breadcrumbSchema = generateBreadcrumbSchema([
+    { name: "Home", url: "https://massclick.in" },
+    { name: business.location || locationSlug, url: `https://massclick.in/${locationSlug}` },
+    { name: business.businessName, url: businessUrl }
+  ]);
 
   return (
     <>
       <Helmet>
-        <script type="application/ld+json">{JSON.stringify(localBusinessSchema)}</script>
-        <script type="application/ld+json">{JSON.stringify(breadcrumbSchema)}</script>
+        {localBusinessSchema && (
+          <script type="application/ld+json">{JSON.stringify(localBusinessSchema)}</script>
+        )}
+        {breadcrumbSchema && (
+          <script type="application/ld+json">{JSON.stringify(breadcrumbSchema)}</script>
+        )}
       </Helmet>
       <CardsSearch />
       <div className="business-CardDetails-pageWrapper">
