@@ -26,7 +26,7 @@ import TopBannerAds from "../banners/topBanner/topBanner.js";
 import GlobalSkeleton from "../globalSkeleton.js";
 import OTPLoginModal from "../AddBusinessModel.js";
 import {
-  generateItemListSchema,
+  generateSearchResultsPageSchema,
   generateBreadcrumbSchema,
   generateOrganizationSchema,
   generateWebsiteSchema,
@@ -281,23 +281,12 @@ useEffect(() => {
       ? Math.max(1, Math.min(5, Number(calculatedRating.toFixed(1))))
       : null;
 
-  // Generate ItemList schema with enhanced data
-  const itemListSchema = generateItemListSchema(
-    results.map((business, index) => ({
-      position: index + 1,
-      name: business.businessName,
-      url: `https://www.massclick.in/${createSlug(business.location)}/${createSlug(business.businessName)}/${business._id}`,
-      description: business.description || seoContent?.excerpt,
-      image: business.bannerImage,
-      aggregateRating: business.averageRating && business.totalReviews > 0
-        ? {
-            ratingValue: business.averageRating,
-            reviewCount: business.totalReviews
-          }
-        : null
-    })),
-    `Best ${searchText} in ${locationText}`,
-    seoContent?.excerpt || `Find best ${searchText} in ${locationText}`
+  // Generate SearchResultsPage schema (semantically correct for category/search pages)
+  const searchResultsSchema = generateSearchResultsPageSchema(
+    searchText,
+    locationText,
+    results.length,
+    overallRating
   );
 
   // Generate Breadcrumb schema
@@ -328,9 +317,9 @@ useEffect(() => {
       <SeoMeta seoData={seoMetaData} fallback={fallbackSeo} />
 
       <Helmet>
-        {itemListSchema && (
+        {searchResultsSchema && (
           <script type="application/ld+json">
-            {JSON.stringify(itemListSchema)}
+            {JSON.stringify(searchResultsSchema)}
           </script>
         )}
         {breadcrumbSchema && (

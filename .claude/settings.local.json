@@ -11,7 +11,8 @@
       "WebFetch(domain:massclick.in)",
       "Bash(git add *)",
       "Bash(git commit -m 'Fix ItemList schema structure: move aggregateRating into item object *)",
-      "Bash(git commit -m 'Fix ItemList item type: use LocalBusiness instead of Thing for rating support *)"
+      "Bash(git commit -m 'Fix ItemList item type: use LocalBusiness instead of Thing for rating support *)",
+      "Bash(git commit -m 'Fix schema architecture: use SearchResultsPage instead of ItemList for category pages *)"
     ]
   }
 }
