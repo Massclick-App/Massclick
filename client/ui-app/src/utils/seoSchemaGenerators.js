@@ -212,23 +212,21 @@ export const generateItemListSchema = (items, listName, listDescription) => {
     ...(listDescription && { description: listDescription }),
     numberOfItems: items.length,
     itemListElement: items.map((item, index) => {
-      const listItem = {
-        "@type": "ListItem",
-        position: index + 1,
+      const itemObject = {
+        "@type": "Thing",
         name: item.name,
-        url: item.url,
       };
 
       if (item.description) {
-        listItem.description = item.description;
+        itemObject.description = item.description;
       }
 
       if (item.image) {
-        listItem.image = item.image;
+        itemObject.image = item.image;
       }
 
       if (item.aggregateRating) {
-        listItem.aggregateRating = {
+        itemObject.aggregateRating = {
           "@type": "AggregateRating",
           ratingValue: Math.round(Number(item.aggregateRating.ratingValue) * 10) / 10,
           reviewCount: Number(item.aggregateRating.reviewCount),
@@ -237,7 +235,12 @@ export const generateItemListSchema = (items, listName, listDescription) => {
         };
       }
 
-      return listItem;
+      return {
+        "@type": "ListItem",
+        position: index + 1,
+        url: item.url,
+        item: itemObject,
+      };
     }),
   };
 };
