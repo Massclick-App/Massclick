@@ -145,7 +145,10 @@ export const generateOrganizationSchema = () => {
       "https://instagram.com/massclick",
       "https://twitter.com/massclick",
     ],
-    areaServed: "IN",
+    areaServed: {
+      "@type": "Country",
+      name: "IN",
+    },
   };
 };
 
@@ -229,6 +232,8 @@ export const generateItemListSchema = (items, listName, listDescription) => {
           "@type": "AggregateRating",
           ratingValue: Math.round(Number(item.aggregateRating.ratingValue) * 10) / 10,
           reviewCount: Number(item.aggregateRating.reviewCount),
+          bestRating: 5,
+          worstRating: 1,
         };
       }
 

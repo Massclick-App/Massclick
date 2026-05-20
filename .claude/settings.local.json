@@ -4,7 +4,11 @@
       "Bash(Get-ChildItem -Path \"D:\\\\dev_abishek\\\\massclick\\\\client\\\\ui-app\\\\src\" -Recurse -Name)",
       "Bash(Select-Object -First 30)",
       "Bash(npx eslint *)",
-      "Bash(node --check \"D:/dev_abishek/massclick/client/ui-app/src/utils/seoSchemaGenerators.js\")"
+      "Bash(node --check \"D:/dev_abishek/massclick/client/ui-app/src/utils/seoSchemaGenerators.js\")",
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "mcp__Claude_in_Chrome__switch_browser",
+      "mcp__Claude_in_Chrome__list_connected_browsers",
+      "WebFetch(domain:massclick.in)"
     ]
   }
 }
