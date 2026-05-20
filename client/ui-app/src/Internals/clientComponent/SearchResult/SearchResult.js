@@ -28,7 +28,6 @@ import OTPLoginModal from "../AddBusinessModel.js";
 import {
   generateItemListSchema,
   generateBreadcrumbSchema,
-  generateSearchResultsPageSchema,
   generateOrganizationSchema,
   generateWebsiteSchema,
   generateFAQSchema,
@@ -319,13 +318,6 @@ useEffect(() => {
     ? generateFAQSchema(seoContent.faqs)
     : null;
 
-  // Generate SearchResultsPage schema (replaces LocalBusiness for category pages)
-  const searchResultsSchema = generateSearchResultsPageSchema(
-    searchText,
-    locationText,
-    results.length,
-    overallRating
-  );
 
   return (
     <>
@@ -354,11 +346,6 @@ useEffect(() => {
         {organizationSchema && (
           <script type="application/ld+json">
             {JSON.stringify(organizationSchema)}
-          </script>
-        )}
-        {searchResultsSchema && (
-          <script type="application/ld+json">
-            {JSON.stringify(searchResultsSchema)}
           </script>
         )}
         {faqSchema && (
