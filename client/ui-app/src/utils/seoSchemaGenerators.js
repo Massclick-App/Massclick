@@ -213,8 +213,9 @@ export const generateItemListSchema = (items, listName, listDescription) => {
     numberOfItems: items.length,
     itemListElement: items.map((item, index) => {
       const itemObject = {
-        "@type": "Thing",
+        "@type": "LocalBusiness",
         name: item.name,
+        url: item.url,
       };
 
       if (item.description) {
