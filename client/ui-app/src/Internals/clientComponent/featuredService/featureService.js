@@ -79,7 +79,7 @@ const FeaturedServicesSection = () => {
         if (seenSlugs.has(slug)) return null;
         seenSlugs.add(slug);
 
-        if (cat.name === "Popular Categories") {
+        if (cat.name?.toLowerCase() === "popular categories") {
           return { ...cat, isDrawer: true };
         }
 
