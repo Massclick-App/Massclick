@@ -10,28 +10,8 @@ const PopularCategoriesDrawer = React.lazy(() =>
   import("../cards/popularCategories/popularCategories.js")
 );
 
-const FEATURED_ORDER = [
-  "Hotels",
-  "Rent And Hire",
-  "Restaurants",
-  "Education",
-  "Hospitals",
-  "Dentist",
-  "Dermatologist",
-  "Sexologist",
-  "Contractors",
-  "Gym",
-  "Furnitures",
-  "Florists",
-  "Packers and Movers",
-  "House Keeping Service",
-  "Security System",
-  "Wedding Mahal",
-  "photographers",
-  "Matrimony",
-  "Hostel",
-  "Popular Categories"
-];
+// Order is now controlled via the admin Category Display Settings page.
+// The v2 API returns items pre-sorted; no client-side reorder needed.
 
 const toPascalCase = (str) => {
   if (!str || typeof str !== "string") return str;
@@ -85,59 +65,24 @@ const FeaturedServicesSection = () => {
     );
   }, [selectedDistrict]);
 
-  const normalize = (name) =>
-    name.toLowerCase().replace(/s$/, "").trim();
-
+  // v2 API returns items in admin-configured order — just use them directly.
+  // Only enhancement: flag "Popular Categories" to open the drawer instead of navigating.
   const orderedCategories = useMemo(() => {
-
     if (!Array.isArray(homeCategories) || !homeCategories.length) return [];
-
-    const map = new Map(
-      homeCategories.map((cat) => [
-        normalize(cat.name),
-        cat
-      ])
-    );
 
     const seenSlugs = new Set();
 
-    return FEATURED_ORDER.map((name) => {
+    return homeCategories
+      .map((cat) => {
+        const slug = cat.slug || createSlug(cat.name);
+        if (seenSlugs.has(slug)) return null;
+        seenSlugs.add(slug);
 
-      if (name === "Popular Categories") {
+        const isPopular = cat.name === "Popular Categories";
 
-        const found = map.get(normalize(name));
-
-        return found
-          ? {
-            ...found,
-            isDrawer: true
-          }
-          : {
-            name,
-            slug: "popular",
-            icon: "/default.webp",
-            isDrawer: true
-          };
-      }
-
-      const found = map.get(normalize(name));
-      const category = found || {
-        name,
-        slug: createSlug(name),
-        icon: "/default.webp"
-      };
-
-      const slug = category.slug || createSlug(category.name);
-
-      if (seenSlugs.has(slug)) {
-        return null;
-      }
-
-      seenSlugs.add(slug);
-      return category;
-
-    }).filter(Boolean);
-
+        return isPopular ? { ...cat, isDrawer: true } : cat;
+      })
+      .filter(Boolean);
   }, [homeCategories]);
 
   const handleClick = (service) => {

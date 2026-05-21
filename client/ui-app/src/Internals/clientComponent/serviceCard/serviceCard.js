@@ -24,15 +24,8 @@ const ServiceCardsSkeleton = () => (
   </section>
 );
 
-// ==============================
-// FIXED SECTION ORDER (VERY IMPORTANT)
-// ==============================
-const SECTION_ORDER = [
-  "Repair and Services",
-  "Services",
-  "Hot Categories",
-  "Building Materials"
-];
+// Section order is now driven by the v2 API response (admin-configurable).
+// Sections appear in the order items are returned from the server.
 
 const toPascalCase = (str) => {
   if (!str || typeof str !== "string") return str;
@@ -119,24 +112,24 @@ const ServiceCardsGrid = () => {
     navigate(`/${districtSlug}/${service.slug}`, { state: { logAlreadySent: true } });
   };
 
+  // Build sections preserving the order they first appear in the API response.
   const groupedData = useMemo(() => {
     const map = {};
+    const sectionOrder = [];
 
     serviceCards.forEach((item) => {
       const section = item.section;
-
       if (!map[section]) {
         map[section] = [];
+        sectionOrder.push(section);
       }
-
       map[section].push(item);
     });
 
-    return SECTION_ORDER.map((section) => ({
+    return sectionOrder.map((section) => ({
       title: section,
-      items: map[section] || []
+      items: map[section],
     }));
-
   }, [serviceCards]);
 
   if (loading) return <ServiceCardsSkeleton />;
