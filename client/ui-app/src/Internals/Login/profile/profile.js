@@ -47,7 +47,7 @@ export default function Profile() {
     : "https://via.placeholder.com/150/007bff/ffffff?text=U";
 
   if (loading) {
-    return <div className="loading">Loading profile…</div>;
+    return null;
   }
 
   if (!user) {

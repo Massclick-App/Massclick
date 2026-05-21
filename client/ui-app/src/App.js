@@ -6,6 +6,7 @@ import { clientLogin } from './redux/actions/clientAuthAction.js';
 import { fetchMatchedLeads } from './redux/actions/leadsAction.js';
 import { setMaintenanceModeOn, setMaintenanceModeOff } from './redux/reducers/maintenanceReducer.js';
 import { connectSocket } from './services/socketService.js';
+import { setAxiosStore } from './services/axiosInstance.js';
 
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -19,6 +20,7 @@ import RouteChangeTracker from './RouteChangeTracker.js';
 import { userMenuItems } from './Internals/clientComponent/categoryBar.js';
 
 import ShimmerSkeleton from './Internals/clientComponent/shimmerSkeleton.js';
+import GlobalLoaderWrapper from './Internals/clientComponent/common/GlobalLoaderWrapper.js';
 
 
 const Dashboard = lazy(() => import(/* webpackChunkName: "admin-dashboard" */ './Dashboard'));
@@ -314,31 +316,33 @@ function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
 
-      <SnackbarProvider
-        maxSnack={3}
-        anchorOrigin={{
-          vertical: 'top',
-          horizontal: 'center',
-        }}
-        autoHideDuration={4000}
-        preventDuplicate
-      >
-        <Router>
-          <RouteChangeTracker />
-          <ScrollToTop />
+      <GlobalLoaderWrapper>
+        <SnackbarProvider
+          maxSnack={3}
+          anchorOrigin={{
+            vertical: 'top',
+            horizontal: 'center',
+          }}
+          autoHideDuration={4000}
+          preventDuplicate
+        >
+          <Router>
+            <RouteChangeTracker />
+            <ScrollToTop />
 
-          <Suspense fallback={null}>
-            <MaintenanceOverlay />
-          </Suspense>
+            <Suspense fallback={null}>
+              <MaintenanceOverlay />
+            </Suspense>
 
-          <AppRoutes
-            isAuthenticated={isAuthenticated}
-            setIsAuthenticated={setIsAuthenticated}
-            openLoginModal={openLoginModal}
-            setOpenLoginModal={setOpenLoginModal}
-          />
-        </Router>
-      </SnackbarProvider>
+            <AppRoutes
+              isAuthenticated={isAuthenticated}
+              setIsAuthenticated={setIsAuthenticated}
+              openLoginModal={openLoginModal}
+              setOpenLoginModal={setOpenLoginModal}
+            />
+          </Router>
+        </SnackbarProvider>
+      </GlobalLoaderWrapper>
     </ThemeProvider>
   );
 }

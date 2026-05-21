@@ -19,7 +19,6 @@ const PaymentStatus = () => {
     }
   }, [transactionId, dispatch]);
 
-  if (loading) return <p>Checking Payment Status...</p>;
 
   return (
     <div style={{ textAlign: "center", marginTop: "100px" }}>

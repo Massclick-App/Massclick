@@ -547,7 +547,7 @@ const BlogDetail = () => {
     }
   };
 
-  if (loading) return <div className="loader">Loading...</div>;
+  if (loading) return null;
   if (error) return <div className="error">Error loading blog</div>;
   if (!blog) return null;
 

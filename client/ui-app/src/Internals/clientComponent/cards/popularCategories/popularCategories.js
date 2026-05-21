@@ -129,8 +129,6 @@ const handleClick = useCallback((cat) => {
 
       <section className="pc-grid">
 
-        {loading && <p>Loading...</p>}
-
         {!loading && filtered.length === 0 && (
           <p style={{ textAlign: "center" }}>No categories found</p>
         )}

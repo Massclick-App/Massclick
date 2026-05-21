@@ -124,8 +124,6 @@ const FeaturedServicesSection = () => {
     <>
       <section className="featured-services-container">
 
-        {loading && <p>Loading...</p>}
-
         {orderedCategories.map((service, index) => {
 
           const altText = generateAltText(service.name, districtSlug);

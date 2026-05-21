@@ -6,7 +6,10 @@ import reportWebVitals from './reportWebVitals';
 import { Provider } from 'react-redux';
 import { DrawerProvider } from './Internals/clientComponent/Drawer/drawerContext.js';
 import { HelmetProvider } from "react-helmet-async";
-import './services/axiosInstance'; // Initialize axios interceptors
+import { setAxiosStore } from './services/axiosInstance.js'; // Initialize axios store reference
+
+// Set the store reference for axios global loader
+setAxiosStore(store);
 
 // Load Google Analytics after first paint to unblock main thread
 const loadAnalytics = async () => {

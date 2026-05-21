@@ -19,6 +19,7 @@
     "chart.js": "^4.5.1",
     "dayjs": "^1.11.18",
     "firebase": "^12.12.1",
+    "lottie-react": "^2.4.1",
     "lucide-react": "^0.554.0",
     "notistack": "^3.0.2",
     "qs": "^6.15.1",
