@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import "./CategoryDisplaySettings.css";
 import {
   fetchCategoryDisplaySettings,
   updateCategoryDisplaySettings,
@@ -80,7 +81,7 @@ function moveItem(arr, from, to) {
 }
 
 // ── Picker ───────────────────────────────────────────────────────────────────
-function Picker({ items, allCategories, onAdd, pickerLoading, freeText, placeholder }) {
+function Picker({ items, allCategories, onAdd, pickerLoading, freeText, useCategories, placeholder }) {
   const [val, setVal] = useState("");
 
   const submit = (name) => {
@@ -90,7 +91,7 @@ function Picker({ items, allCategories, onAdd, pickerLoading, freeText, placehol
     setVal("");
   };
 
-  if (freeText) {
+  if (freeText && !useCategories) {
     return (
       <TextField
         size="small"
@@ -189,7 +190,7 @@ function Picker({ items, allCategories, onAdd, pickerLoading, freeText, placehol
 }
 
 // ── Ordered list ─────────────────────────────────────────────────────────────
-function OrderedList({ items, onAdd, onRemove, onMove, allCategories, pickerLoading, maxItems, freeText, placeholder }) {
+function OrderedList({ items, onAdd, onRemove, onMove, allCategories, pickerLoading, maxItems, freeText, useCategories, placeholder }) {
   const dragIdx = useRef(null);
   const [overIdx, setOverIdx] = useState(null);
   const canAdd = !maxItems || items.length < maxItems;
@@ -351,6 +352,7 @@ function OrderedList({ items, onAdd, onRemove, onMove, allCategories, pickerLoad
           onAdd={onAdd}
           pickerLoading={pickerLoading}
           freeText={freeText}
+          useCategories={useCategories}
           placeholder={placeholder}
         />
       )}
@@ -525,35 +527,16 @@ function MappingAccordion({ entry, defaultOpen, allCategories, pickerLoading, on
   return (
     <Card
       variant="outlined"
-      sx={{
-        mb: 1.25,
-        borderColor: T.line,
-        borderRadius: 2,
-        overflow: "hidden",
-        boxShadow: "0 1px 0 rgba(20,17,15,0.04)",
-      }}
+      className="mapping-accordion"
     >
       <Box
         onClick={() => setOpen((o) => !o)}
-        sx={{
-          px: 1.75,
-          py: 1.25,
-          display: "flex",
-          alignItems: "center",
-          gap: 1.25,
-          cursor: "pointer",
-          "&:hover": { bgcolor: T.surface2 },
-        }}
+        className="mapping-accordion__header"
       >
         <ChevronRightIcon
-          sx={{
-            fontSize: 18,
-            color: T.ink3,
-            transition: "transform .18s",
-            transform: open ? "rotate(90deg)" : "none",
-          }}
+          className={`mapping-accordion__chevron ${open ? "mapping-accordion__chevron--open" : ""}`}
         />
-        <Typography sx={{ fontFamily: T.mono, fontSize: 12, color: T.ink4, mr: -0.5 }}>/sub/</Typography>
+        <Typography className="mapping-accordion__slug-prefix">/sub/</Typography>
         <TextField
           size="small"
           value={entry.parentSlug}
@@ -590,13 +573,13 @@ function MappingAccordion({ entry, defaultOpen, allCategories, pickerLoading, on
         </Tooltip>
       </Box>
       <Collapse in={open}>
-        <Box sx={{ px: 2.25, py: 2, borderTop: `1px solid ${T.line}`, bgcolor: T.surface2 }}>
+        <Box className="mapping-accordion__body">
           <OrderedList
             items={entry.subCategoryNames || []}
-            freeText
+            useCategories
             allCategories={allCategories}
             pickerLoading={pickerLoading}
-            placeholder="Type a sub-category name and press Enter…"
+            placeholder="Search and select categories…"
             onAdd={(n) => onUpdate("subCategoryNames", [...(entry.subCategoryNames || []), n])}
             onRemove={(i) =>
               onUpdate(
@@ -619,61 +602,36 @@ function OverviewCard({ icon, label, desc, stat, statLabel, detail, accent, acce
   return (
     <Box
       onClick={onClick}
+      className={`overview-card ${active ? "overview-card--active" : ""}`}
       sx={{
-        bgcolor: T.surface,
-        border: `1px solid ${active ? accent : T.line}`,
-        borderRadius: 2,
-        p: 2,
-        cursor: "pointer",
+        borderColor: active ? accent : undefined,
         boxShadow: active
           ? `0 0 0 3px ${accentTint}, 0 1px 0 rgba(20,17,15,0.04)`
           : "0 1px 0 rgba(20,17,15,0.04)",
-        transition: "all .12s",
-        position: "relative",
-        overflow: "hidden",
-        "&:hover": { borderColor: active ? accent : T.line2, bgcolor: active ? T.surface : T.surface2 },
+        "&:hover": { borderColor: active ? accent : undefined },
       }}
     >
       <Stack direction="row" spacing={1.25} alignItems="flex-start">
         <Box
+          className="overview-card__icon"
           sx={{
-            width: 32,
-            height: 32,
-            borderRadius: 1.5,
-            bgcolor: active ? accent : T.surface2,
-            color: active ? "#fff" : T.ink2,
-            border: `1px solid ${active ? accent : T.line}`,
-            display: "grid",
-            placeItems: "center",
-            flexShrink: 0,
+            bgcolor: active ? accent : undefined,
+            color: active ? "#fff" : undefined,
+            borderColor: active ? accent : undefined,
           }}
         >
           {icon}
         </Box>
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography sx={{ fontSize: 13, fontWeight: 600, color: T.ink }}>{label}</Typography>
-          <Typography sx={{ fontSize: 11.5, color: T.ink3 }}>{desc}</Typography>
+          <Typography className="overview-card__label">{label}</Typography>
+          <Typography className="overview-card__desc">{desc}</Typography>
         </Box>
       </Stack>
       <Stack direction="row" alignItems="baseline" spacing={0.75} sx={{ mt: 1.75 }}>
-        <Typography
-          sx={{
-            fontSize: 26,
-            fontWeight: 700,
-            color: T.ink,
-            letterSpacing: "-0.02em",
-            fontVariantNumeric: "tabular-nums",
-            lineHeight: 1,
-          }}
-        >
-          {stat}
-        </Typography>
-        <Typography sx={{ fontSize: 11.5, color: T.ink3 }}>{statLabel}</Typography>
+        <Typography className="overview-card__stat">{stat}</Typography>
+        <Typography className="overview-card__stat-label">{statLabel}</Typography>
       </Stack>
-      <Typography sx={{ fontSize: 11, color: T.ink3, mt: 0.5, fontFamily: T.mono }}>{detail}</Typography>
-      {active && (
-        <Box sx={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, bgcolor: accent }} />
-      )}
+      <Typography className="overview-card__detail">{detail}</Typography>
     </Box>
   );
 }
@@ -917,27 +875,14 @@ export default function CategoryDisplaySettings() {
   const activeCard = cards.find((c) => c.id === open);
 
   return (
-    <Box sx={{ bgcolor: T.bg, minHeight: "100%", fontFamily: "'Inter', system-ui, sans-serif" }}>
+    <Box className="category-display-settings">
       {/* Sticky topbar */}
-      <Box
-        sx={{
-          bgcolor: T.surface,
-          borderBottom: `1px solid ${T.line}`,
-          px: { xs: 2, md: 4 },
-          py: 1.75,
-          display: "flex",
-          alignItems: "center",
-          gap: 1.5,
-          position: "sticky",
-          top: 0,
-          zIndex: 20,
-        }}
-      >
+      <Box className="category-display-topbar">
         <Box>
-          <Typography sx={{ fontSize: 16, fontWeight: 700, color: T.ink, letterSpacing: "-0.01em" }}>
+          <Typography className="category-display-topbar__title">
             Category Display Settings
           </Typography>
-          <Typography sx={{ fontSize: 12, color: T.ink3, mt: "1px" }}>
+          <Typography className="category-display-topbar__subtitle">
             Configure what shows on the home page · clears v2 cache on save
           </Typography>
         </Box>
@@ -945,25 +890,17 @@ export default function CategoryDisplaySettings() {
         <Chip
           size="small"
           label={dirty ? "Unsaved changes" : "All changes saved"}
-          sx={{
-            ml: 1,
-            fontSize: 11,
-            fontWeight: 500,
-            bgcolor: dirty ? T.amberTint : T.greenTint,
-            color: dirty ? T.amber : T.green,
-            height: 22,
-            "& .MuiChip-label": { px: 1.25 },
-          }}
+          className={`category-display-topbar__status ${dirty ? "category-display-topbar__status--dirty" : "category-display-topbar__status--clean"}`}
         />
 
-        <Box sx={{ ml: "auto", display: "flex", gap: 1 }}>
+        <Box className="category-display-topbar__actions">
           <Button
             size="small"
             variant="text"
             startIcon={<RestartAltIcon />}
             onClick={handleReset}
             disabled={!dirty}
-            sx={{ color: T.ink2, textTransform: "none", "&:hover": { bgcolor: T.surface2 } }}
+            className="btn-reset"
           >
             Reset
           </Button>
@@ -973,13 +910,7 @@ export default function CategoryDisplaySettings() {
             startIcon={saving ? <CircularProgress size={14} sx={{ color: "#fff" }} /> : <SaveIcon />}
             onClick={handleSave}
             disabled={!dirty || saving}
-            sx={{
-              bgcolor: T.accent,
-              textTransform: "none",
-              fontWeight: 500,
-              boxShadow: "0 1px 0 rgba(0,0,0,0.04), inset 0 -1px 0 rgba(0,0,0,0.12)",
-              "&:hover": { bgcolor: T.accentDeep },
-            }}
+            className="btn-save"
           >
             {saving ? "Saving…" : "Save all"}
           </Button>
@@ -987,7 +918,7 @@ export default function CategoryDisplaySettings() {
       </Box>
 
       {/* Page */}
-      <Box sx={{ p: { xs: 2, md: 3.5 }, pb: 10, maxWidth: 1180, mx: "auto" }}>
+      <Box className="category-display-content">
         {saveError && (
           <Alert severity="error" sx={{ mb: 2 }}>
             {saveError}
@@ -995,14 +926,7 @@ export default function CategoryDisplaySettings() {
         )}
 
         {/* Overview grid */}
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: { xs: "1fr 1fr", md: "repeat(4, 1fr)" },
-            gap: 1.5,
-            mb: 3,
-          }}
-        >
+        <Box className="category-overview-grid">
           {cards.map((c) => (
             <OverviewCard
               key={c.id}
@@ -1021,28 +945,11 @@ export default function CategoryDisplaySettings() {
         </Box>
 
         {/* Active panel */}
-        <Paper
-          variant="outlined"
-          sx={{
-            borderColor: T.line,
-            borderRadius: 2,
-            overflow: "hidden",
-            boxShadow: "0 1px 0 rgba(20,17,15,0.04)",
-          }}
-        >
-          <Box
-            sx={{
-              px: 2.25,
-              py: 1.75,
-              borderBottom: `1px solid ${T.line}`,
-              display: "flex",
-              alignItems: "center",
-              gap: 1.5,
-            }}
-          >
+        <Paper className="category-panel">
+          <Box className="category-panel__header">
             <Box>
-              <Typography sx={{ fontWeight: 600, fontSize: 14 }}>{activeCard.label}</Typography>
-              <Typography sx={{ fontSize: 12, color: T.ink3 }}>{activeCard.desc}</Typography>
+              <Typography className="category-panel__header-title">{activeCard.label}</Typography>
+              <Typography className="category-panel__header-desc">{activeCard.desc}</Typography>
             </Box>
             {open === "home" && (
               <Box sx={{ ml: "auto" }}>
@@ -1068,7 +975,7 @@ export default function CategoryDisplaySettings() {
             )}
           </Box>
 
-          <Box sx={{ p: 2.25 }}>
+          <Box className="category-panel__body">
             {/* Home featured */}
             {open === "home" &&
               (homeView === "desktop" ? (
