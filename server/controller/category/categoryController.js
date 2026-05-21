@@ -667,14 +667,16 @@ export const getMobileServiceCardsAction = async (req, res) => {
     const SERVICE_SECTIONS = [
       {
         section: "Repair and Services",
-        items: ["Car Service", "TV Service", "Bike Service"]
+        items: ["Car Service", "TV Service", "Bike Service", "Crane Service", "Electrician Services"]
       },
       {
         section: "Services",
         items: [
           "Pest Control Service",
           "AC Service",
-          "Computer And Laptop Service"
+          "Computer And Laptop Service",
+          "Courier Services",
+          "Mobile Service"
         ]
       },
       {
@@ -821,22 +823,22 @@ export const getAllUniqueCategoriesAction = async (req, res) => {
             const found = dbMap.get(cleanText(name));
             return found
               ? {
-                  _id: found._id,
-                  name: found.category,
-                  slug: found.slug,
-                  icon: found.categoryImageKey
-                    ? `${S3_BASE_URL}${found.categoryImageKey}`
-                    : "/icons/default.webp",
-                  liveImage: found.liveImageKey
-                    ? `${S3_BASE_URL}${found.liveImageKey}`
-                    : null,
-                }
+                _id: found._id,
+                name: found.category,
+                slug: found.slug,
+                icon: found.categoryImageKey
+                  ? `${S3_BASE_URL}${found.categoryImageKey}`
+                  : "/icons/default.webp",
+                liveImage: found.liveImageKey
+                  ? `${S3_BASE_URL}${found.liveImageKey}`
+                  : null,
+              }
               : {
-                  name,
-                  slug: name.toLowerCase().replace(/\s+/g, "-"),
-                  icon: "/icons/default.webp",
-                  liveImage: null,
-                };
+                name,
+                slug: name.toLowerCase().replace(/\s+/g, "-"),
+                icon: "/icons/default.webp",
+                liveImage: null,
+              };
           })
           .sort((a, b) => a.name.localeCompare(b.name));
 
