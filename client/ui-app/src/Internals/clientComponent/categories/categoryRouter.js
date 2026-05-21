@@ -4,11 +4,13 @@ import { useDispatch } from "react-redux";
 
 import CategoriesPage from "./categories.js";
 import SearchResults from "../SearchResult/SearchResult";
-import { categoriesData } from "./categoriesData";
 
 import {
   backendMainSearch,
 } from "../../../redux/actions/businessListAction";
+import {
+  fetchSubCategoryMapping,
+} from "../../../redux/actions/categoryAction";
 
 const formatText = (text = "") =>
   text
@@ -21,9 +23,25 @@ const CategoryRouter = () => {
   const dispatch = useDispatch();
 
   const [resolvedCategory, setResolvedCategory] = useState(null);
+  const [subCategoryMapping, setSubCategoryMapping] = useState({});
 
   const isSearchFlow = routerLocation.state?.isSearch;
   const searchText = routerLocation.state?.searchText;
+
+  // Fetch the sub-category mapping on mount
+  useEffect(() => {
+    const fetchMapping = async () => {
+      const mapping = await dispatch(fetchSubCategoryMapping());
+      setSubCategoryMapping(mapping);
+    };
+    fetchMapping();
+  }, [dispatch]);
+
+  const hasSubcategories = (cat) => {
+    if (!cat) return false;
+    const normalized = cat.toLowerCase().replace(/\s+/g, "-");
+    return !!subCategoryMapping[normalized];
+  };
 
   useEffect(() => {
     const loadCategory = async () => {
@@ -42,8 +60,8 @@ const CategoryRouter = () => {
           return;
         }
 
-
-        if (category && !subcategory && categoriesData[category]) {
+        // Check if category has subcategories using API data
+        if (category && !subcategory && hasSubcategories(category)) {
           setResolvedCategory(formatText(category));
           return;
         }
@@ -66,7 +84,7 @@ const CategoryRouter = () => {
             setResolvedCategory(results[0].category);
           } else {
             setResolvedCategory(formatText(subcategory));
-          } 
+          }
 
           return;
         }
@@ -108,7 +126,8 @@ const CategoryRouter = () => {
     subcategory,
     isSearchFlow,
     searchText,
-    dispatch
+    dispatch,
+    subCategoryMapping
   ]);
 
   if (!resolvedCategory) return null;
@@ -117,7 +136,7 @@ const CategoryRouter = () => {
     !isSearchFlow &&
     category &&
     !subcategory &&
-    categoriesData[category]
+    hasSubcategories(category)
   ) {
     return <CategoriesPage />;
   }

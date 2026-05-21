@@ -407,6 +407,33 @@ export const getV2MobileServiceCardsAction = async (req, res) => {
 
 // ─── V2: Sub-Categories ───────────────────────────────────────────────────────
 
+// ─── V2: Sub-category Mapping (for routing decisions) ──────────────────────
+
+export const getV2SubCategoryMappingAction = async (req, res) => {
+  try {
+    const cacheKey = "sub-category-mapping:v2";
+    const cached = await getCache(cacheKey);
+    if (cached) return res.send(cached);
+
+    const settings = await categoryDisplaySettingsModel.findOne().lean();
+    const subCatLookup = buildSubCatLookup(settings);
+
+    // Return a simple object mapping parent slugs to subcategory counts
+    const mapping = {};
+    Object.entries(subCatLookup).forEach(([slug, subs]) => {
+      mapping[slug] = subs.length;
+    });
+
+    await setCache(cacheKey, mapping, 3600);
+    return res.json(mapping);
+  } catch (error) {
+    console.error("getV2SubCategoryMappingAction error:", error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+// ─── V2: Sub-Categories ───────────────────────────────────────────────────
+
 export const getV2SubCategoriesAction = async (req, res) => {
   try {
     const { parentSlug } = req.params;
