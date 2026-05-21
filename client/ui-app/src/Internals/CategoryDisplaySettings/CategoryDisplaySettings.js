@@ -22,10 +22,7 @@ import {
   Alert,
   Snackbar,
   Card,
-  CardContent,
-  Divider,
   Collapse,
-  Avatar,
 } from "@mui/material";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
@@ -66,6 +63,10 @@ const T = {
   amberTint: "#FCF3DD",
   red: "#B9261E",
   redTint: "#FBE9E7",
+  purple: "#7E59C7",
+  purpleTint: "#F1ECFB",
+  blue: "#1E6FBA",
+  blueTint: "#E8F1FA",
   mono: "'JetBrains Mono', ui-monospace, monospace",
 };
 
@@ -78,7 +79,7 @@ function moveItem(arr, from, to) {
   return next;
 }
 
-// ── Picker (Autocomplete styled) ─────────────────────────────────────────────
+// ── Picker ───────────────────────────────────────────────────────────────────
 function Picker({ items, allCategories, onAdd, pickerLoading, freeText, placeholder }) {
   const [val, setVal] = useState("");
 
@@ -138,7 +139,7 @@ function Picker({ items, allCategories, onAdd, pickerLoading, freeText, placehol
     <Autocomplete
       size="small"
       sx={{ mt: 1 }}
-      options={allCategories.filter((c) => !items.includes(c.name))}
+      options={(allCategories || []).filter((c) => !items.includes(c.name))}
       getOptionLabel={(o) => (typeof o === "string" ? o : o.name)}
       isOptionEqualToValue={(o, v) => o.name === v.name}
       loading={pickerLoading}
@@ -153,7 +154,11 @@ function Picker({ items, allCategories, onAdd, pickerLoading, freeText, placehol
       }}
       blurOnSelect
       renderOption={(props, option) => (
-        <Box component="li" {...props} sx={{ display: "flex", justifyContent: "space-between", gap: 1, fontSize: 13 }}>
+        <Box
+          component="li"
+          {...props}
+          sx={{ display: "flex", justifyContent: "space-between", gap: 1, fontSize: 13 }}
+        >
           <span>{option.name}</span>
           <Typography sx={{ fontFamily: T.mono, fontSize: 11, color: T.ink3 }}>{option.slug || ""}</Typography>
         </Box>
@@ -224,7 +229,9 @@ function OrderedList({ items, onAdd, onRemove, onMove, allCategories, pickerLoad
           }}
         >
           <Typography sx={{ color: T.ink2, fontWeight: 500, fontSize: 13 }}>No items yet</Typography>
-          <Typography sx={{ color: T.ink3, fontSize: 12.5 }}>Use the picker below to add your first item.</Typography>
+          <Typography sx={{ color: T.ink3, fontSize: 12.5 }}>
+            Use the picker below to add your first item.
+          </Typography>
         </Box>
       ) : (
         <Stack spacing={0.5}>
@@ -266,7 +273,11 @@ function OrderedList({ items, onAdd, onRemove, onMove, allCategories, pickerLoad
                   border: `1px solid ${isOver ? T.accent : T.line}`,
                   borderRadius: 1.25,
                   transition: "border-color .12s, background .12s",
-                  "&:hover": { borderColor: T.line2, bgcolor: T.surface2, "& .row-actions": { opacity: 1 } },
+                  "&:hover": {
+                    borderColor: T.line2,
+                    bgcolor: T.surface2,
+                    "& .row-actions": { opacity: 1 },
+                  },
                   "& .row-actions": { opacity: 0, transition: "opacity .12s" },
                 }}
               >
@@ -290,7 +301,12 @@ function OrderedList({ items, onAdd, onRemove, onMove, allCategories, pickerLoad
                 <Box className="row-actions" sx={{ display: "flex", gap: 0.25 }}>
                   <Tooltip title="Move up">
                     <span>
-                      <IconButton size="small" disabled={i === 0} onClick={() => onMove(i, i - 1)} sx={{ width: 26, height: 26 }}>
+                      <IconButton
+                        size="small"
+                        disabled={i === 0}
+                        onClick={() => onMove(i, i - 1)}
+                        sx={{ width: 26, height: 26 }}
+                      >
                         <ArrowUpwardIcon sx={{ fontSize: 14 }} />
                       </IconButton>
                     </span>
@@ -311,7 +327,12 @@ function OrderedList({ items, onAdd, onRemove, onMove, allCategories, pickerLoad
                     <IconButton
                       size="small"
                       onClick={() => onRemove(i)}
-                      sx={{ width: 26, height: 26, color: T.ink3, "&:hover": { color: T.red, bgcolor: T.redTint } }}
+                      sx={{
+                        width: 26,
+                        height: 26,
+                        color: T.ink3,
+                        "&:hover": { color: T.red, bgcolor: T.redTint },
+                      }}
                     >
                       <CloseIcon sx={{ fontSize: 14 }} />
                     </IconButton>
@@ -346,10 +367,18 @@ function OrderedList({ items, onAdd, onRemove, onMove, allCategories, pickerLoad
   );
 }
 
-// ── Section card (service cards) ─────────────────────────────────────────────
+// ── Service card section ─────────────────────────────────────────────────────
 function SectionCard({ section, allCategories, pickerLoading, onUpdate, onRemove }) {
   return (
-    <Card variant="outlined" sx={{ mb: 2, borderColor: T.line, borderRadius: 2, boxShadow: "0 1px 0 rgba(20,17,15,0.04)" }}>
+    <Card
+      variant="outlined"
+      sx={{
+        mb: 2,
+        borderColor: T.line,
+        borderRadius: 2,
+        boxShadow: "0 1px 0 rgba(20,17,15,0.04)",
+      }}
+    >
       <Box
         sx={{
           px: 2,
@@ -375,7 +404,10 @@ function SectionCard({ section, allCategories, pickerLoading, onUpdate, onRemove
               bgcolor: "transparent",
               "& fieldset": { borderColor: "transparent" },
               "&:hover": { bgcolor: T.surface, "& fieldset": { borderColor: T.line } },
-              "&.Mui-focused": { bgcolor: T.surface, "& fieldset": { borderColor: T.accent + " !important" } },
+              "&.Mui-focused": {
+                bgcolor: T.surface,
+                "& fieldset": { borderColor: T.accent + " !important" },
+              },
             },
           }}
         />
@@ -395,14 +427,24 @@ function SectionCard({ section, allCategories, pickerLoading, onUpdate, onRemove
             sx={{ borderColor: T.line, color: T.ink2, fontSize: 11, height: 24 }}
           />
           <Tooltip title="Remove section">
-            <IconButton size="small" onClick={onRemove} sx={{ color: T.ink3, "&:hover": { color: T.red, bgcolor: T.redTint } }}>
+            <IconButton
+              size="small"
+              onClick={onRemove}
+              sx={{ color: T.ink3, "&:hover": { color: T.red, bgcolor: T.redTint } }}
+            >
               <DeleteOutlineIcon sx={{ fontSize: 18 }} />
             </IconButton>
           </Tooltip>
         </Stack>
       </Box>
       <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" } }}>
-        <Box sx={{ p: 2.25, borderRight: { md: `1px solid ${T.line}` }, borderBottom: { xs: `1px solid ${T.line}`, md: "none" } }}>
+        <Box
+          sx={{
+            p: 2.25,
+            borderRight: { md: `1px solid ${T.line}` },
+            borderBottom: { xs: `1px solid ${T.line}`, md: "none" },
+          }}
+        >
           <Stack direction="row" alignItems="center" spacing={1.25} sx={{ mb: 1.5 }}>
             <Box
               sx={{
@@ -428,7 +470,12 @@ function SectionCard({ section, allCategories, pickerLoading, onUpdate, onRemove
             allCategories={allCategories}
             pickerLoading={pickerLoading}
             onAdd={(n) => onUpdate("desktopItems", [...(section.desktopItems || []), n])}
-            onRemove={(i) => onUpdate("desktopItems", (section.desktopItems || []).filter((_, j) => j !== i))}
+            onRemove={(i) =>
+              onUpdate(
+                "desktopItems",
+                (section.desktopItems || []).filter((_, j) => j !== i)
+              )
+            }
             onMove={(f, t) => onUpdate("desktopItems", moveItem(section.desktopItems || [], f, t))}
           />
         </Box>
@@ -458,7 +505,12 @@ function SectionCard({ section, allCategories, pickerLoading, onUpdate, onRemove
             allCategories={allCategories}
             pickerLoading={pickerLoading}
             onAdd={(n) => onUpdate("mobileItems", [...(section.mobileItems || []), n])}
-            onRemove={(i) => onUpdate("mobileItems", (section.mobileItems || []).filter((_, j) => j !== i))}
+            onRemove={(i) =>
+              onUpdate(
+                "mobileItems",
+                (section.mobileItems || []).filter((_, j) => j !== i)
+              )
+            }
             onMove={(f, t) => onUpdate("mobileItems", moveItem(section.mobileItems || [], f, t))}
           />
         </Box>
@@ -467,13 +519,19 @@ function SectionCard({ section, allCategories, pickerLoading, onUpdate, onRemove
   );
 }
 
-// ── Sub-category mapping accordion ───────────────────────────────────────────
+// ── Sub-category mapping ─────────────────────────────────────────────────────
 function MappingAccordion({ entry, defaultOpen, allCategories, pickerLoading, onUpdate, onRemove }) {
   const [open, setOpen] = useState(!!defaultOpen);
   return (
     <Card
       variant="outlined"
-      sx={{ mb: 1.25, borderColor: T.line, borderRadius: 2, overflow: "hidden", boxShadow: "0 1px 0 rgba(20,17,15,0.04)" }}
+      sx={{
+        mb: 1.25,
+        borderColor: T.line,
+        borderRadius: 2,
+        overflow: "hidden",
+        boxShadow: "0 1px 0 rgba(20,17,15,0.04)",
+      }}
     >
       <Box
         onClick={() => setOpen((o) => !o)}
@@ -488,7 +546,12 @@ function MappingAccordion({ entry, defaultOpen, allCategories, pickerLoading, on
         }}
       >
         <ChevronRightIcon
-          sx={{ fontSize: 18, color: T.ink3, transition: "transform .18s", transform: open ? "rotate(90deg)" : "none" }}
+          sx={{
+            fontSize: 18,
+            color: T.ink3,
+            transition: "transform .18s",
+            transform: open ? "rotate(90deg)" : "none",
+          }}
         />
         <Typography sx={{ fontFamily: T.mono, fontSize: 12, color: T.ink4, mr: -0.5 }}>/sub/</Typography>
         <TextField
@@ -535,8 +598,15 @@ function MappingAccordion({ entry, defaultOpen, allCategories, pickerLoading, on
             pickerLoading={pickerLoading}
             placeholder="Type a sub-category name and press Enter…"
             onAdd={(n) => onUpdate("subCategoryNames", [...(entry.subCategoryNames || []), n])}
-            onRemove={(i) => onUpdate("subCategoryNames", (entry.subCategoryNames || []).filter((_, j) => j !== i))}
-            onMove={(f, t) => onUpdate("subCategoryNames", moveItem(entry.subCategoryNames || [], f, t))}
+            onRemove={(i) =>
+              onUpdate(
+                "subCategoryNames",
+                (entry.subCategoryNames || []).filter((_, j) => j !== i)
+              )
+            }
+            onMove={(f, t) =>
+              onUpdate("subCategoryNames", moveItem(entry.subCategoryNames || [], f, t))
+            }
           />
         </Box>
       </Collapse>
@@ -544,45 +614,123 @@ function MappingAccordion({ entry, defaultOpen, allCategories, pickerLoading, on
   );
 }
 
-// ── Sidebar nav item ─────────────────────────────────────────────────────────
-function NavItem({ active, icon, label, count, onClick }) {
+// ── Overview card ────────────────────────────────────────────────────────────
+function OverviewCard({ icon, label, desc, stat, statLabel, detail, accent, accentTint, active, onClick }) {
   return (
     <Box
       onClick={onClick}
       sx={{
-        display: "flex",
-        alignItems: "center",
-        gap: 1.25,
-        px: 1.25,
-        py: 1,
-        borderRadius: 1.25,
+        bgcolor: T.surface,
+        border: `1px solid ${active ? accent : T.line}`,
+        borderRadius: 2,
+        p: 2,
         cursor: "pointer",
-        color: active ? "#FFFFFF" : "#BAB5AD",
-        bgcolor: active ? "rgba(225,88,15,0.13)" : "transparent",
-        fontSize: 13.5,
-        fontWeight: 500,
-        userSelect: "none",
-        transition: "background .12s, color .12s",
-        "&:hover": { bgcolor: active ? "rgba(225,88,15,0.18)" : "rgba(255,255,255,0.04)", color: "#F2EFE8" },
+        boxShadow: active
+          ? `0 0 0 3px ${accentTint}, 0 1px 0 rgba(20,17,15,0.04)`
+          : "0 1px 0 rgba(20,17,15,0.04)",
+        transition: "all .12s",
+        position: "relative",
+        overflow: "hidden",
+        "&:hover": { borderColor: active ? accent : T.line2, bgcolor: active ? T.surface : T.surface2 },
       }}
     >
-      <Box sx={{ display: "grid", placeItems: "center", opacity: 0.85 }}>{icon}</Box>
-      <Box sx={{ flex: 1 }}>{label}</Box>
-      {count !== undefined && (
+      <Stack direction="row" spacing={1.25} alignItems="flex-start">
         <Box
           sx={{
-            fontSize: 11,
-            color: active ? "#F2EFE8" : "#8A857E",
-            fontVariantNumeric: "tabular-nums",
-            bgcolor: active ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.05)",
-            px: 0.875,
-            py: "1px",
-            borderRadius: 5,
+            width: 32,
+            height: 32,
+            borderRadius: 1.5,
+            bgcolor: active ? accent : T.surface2,
+            color: active ? "#fff" : T.ink2,
+            border: `1px solid ${active ? accent : T.line}`,
+            display: "grid",
+            placeItems: "center",
+            flexShrink: 0,
           }}
         >
-          {count}
+          {icon}
         </Box>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography sx={{ fontSize: 13, fontWeight: 600, color: T.ink }}>{label}</Typography>
+          <Typography sx={{ fontSize: 11.5, color: T.ink3 }}>{desc}</Typography>
+        </Box>
+      </Stack>
+      <Stack direction="row" alignItems="baseline" spacing={0.75} sx={{ mt: 1.75 }}>
+        <Typography
+          sx={{
+            fontSize: 26,
+            fontWeight: 700,
+            color: T.ink,
+            letterSpacing: "-0.02em",
+            fontVariantNumeric: "tabular-nums",
+            lineHeight: 1,
+          }}
+        >
+          {stat}
+        </Typography>
+        <Typography sx={{ fontSize: 11.5, color: T.ink3 }}>{statLabel}</Typography>
+      </Stack>
+      <Typography sx={{ fontSize: 11, color: T.ink3, mt: 0.5, fontFamily: T.mono }}>{detail}</Typography>
+      {active && (
+        <Box sx={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, bgcolor: accent }} />
       )}
+    </Box>
+  );
+}
+
+// ── Segmented toggle (Desktop / Mobile) ──────────────────────────────────────
+function ViewToggle({ value, onChange, options }) {
+  return (
+    <Box
+      sx={{
+        display: "inline-flex",
+        bgcolor: T.surface2,
+        border: `1px solid ${T.line}`,
+        borderRadius: 1.25,
+        p: 0.375,
+        gap: 0.25,
+      }}
+    >
+      {options.map((opt) => {
+        const active = value === opt.id;
+        return (
+          <Box
+            key={opt.id}
+            onClick={() => onChange(opt.id)}
+            sx={{
+              px: 1.5,
+              py: 0.625,
+              fontSize: 12.5,
+              fontWeight: 500,
+              color: active ? T.ink : T.ink3,
+              bgcolor: active ? T.surface : "transparent",
+              borderRadius: 0.75,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 0.75,
+              boxShadow: active
+                ? "0 1px 0 rgba(20,17,15,0.04), 0 1px 2px rgba(20,17,15,0.04)"
+                : "none",
+            }}
+          >
+            {opt.icon}
+            {opt.label}
+            <Box
+              sx={{
+                fontSize: 11,
+                fontVariantNumeric: "tabular-nums",
+                px: 0.75,
+                borderRadius: 5,
+                bgcolor: active ? T.accentTint : T.line,
+                color: active ? T.accentDeep : T.ink3,
+              }}
+            >
+              {opt.count}
+            </Box>
+          </Box>
+        );
+      })}
     </Box>
   );
 }
@@ -594,7 +742,7 @@ export default function CategoryDisplaySettings() {
     (state) => state.categoryDisplaySettings
   );
 
-  const [tab, setTab] = useState("home");
+  const [open, setOpen] = useState("home");
   const [homeView, setHomeView] = useState("desktop");
   const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
 
@@ -668,7 +816,6 @@ export default function CategoryDisplaySettings() {
     setSubCategoryMapping(s.subCategoryMapping);
   };
 
-  // Keyboard save shortcut
   useEffect(() => {
     const onKey = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "s") {
@@ -681,7 +828,6 @@ export default function CategoryDisplaySettings() {
     // eslint-disable-next-line
   }, [dirty, saving, current]);
 
-  // Section helpers
   const updateSection = useCallback((index, field, value) => {
     setServiceCardSections((prev) => {
       const next = [...prev];
@@ -693,7 +839,6 @@ export default function CategoryDisplaySettings() {
     setServiceCardSections((p) => [...p, { section: "New Section", desktopItems: [], mobileItems: [] }]);
   const removeSection = (i) => setServiceCardSections((p) => p.filter((_, j) => j !== i));
 
-  // Mapping helpers
   const updateMapping = useCallback((index, field, value) => {
     setSubCategoryMapping((prev) => {
       const next = [...prev];
@@ -712,448 +857,403 @@ export default function CategoryDisplaySettings() {
     );
   }
 
-  const navItems = [
+  // ── Overview cards data ─────────────────────────────────────────────────
+  const totalServiceItems = serviceCardSections.reduce(
+    (a, x) => a + (x.desktopItems?.length || 0) + (x.mobileItems?.length || 0),
+    0
+  );
+  const totalSubItems = subCategoryMapping.reduce(
+    (a, x) => a + (x.subCategoryNames?.length || 0),
+    0
+  );
+
+  const cards = [
     {
       id: "home",
       label: "Home featured",
+      desc: "Hero carousel",
       icon: <HomeOutlinedIcon sx={{ fontSize: 18 }} />,
-      count: `${homeFeaturedDesktop.length}+${homeFeaturedMobile.length}`,
+      stat: homeFeaturedDesktop.length + homeFeaturedMobile.length,
+      statLabel: "categories",
+      detail: `${homeFeaturedDesktop.length}/20 desktop · ${homeFeaturedMobile.length}/12 mobile`,
+      accent: T.accent,
+      accentTint: T.accentTint,
     },
-    { id: "popular", label: "Popular", icon: <StarBorderRoundedIcon sx={{ fontSize: 18 }} />, count: popularCategories.length },
-    { id: "service", label: "Service cards", icon: <GridViewOutlinedIcon sx={{ fontSize: 18 }} />, count: serviceCardSections.length },
-    { id: "sub", label: "Sub-categories", icon: <FolderOutlinedIcon sx={{ fontSize: 18 }} />, count: subCategoryMapping.length },
+    {
+      id: "popular",
+      label: "Popular",
+      desc: "Quick links drawer",
+      icon: <StarBorderRoundedIcon sx={{ fontSize: 18 }} />,
+      stat: popularCategories.length,
+      statLabel: "categories",
+      detail: "Unlimited slots",
+      accent: T.purple,
+      accentTint: T.purpleTint,
+    },
+    {
+      id: "service",
+      label: "Service cards",
+      desc: "Home page grids",
+      icon: <GridViewOutlinedIcon sx={{ fontSize: 18 }} />,
+      stat: serviceCardSections.length,
+      statLabel: "sections",
+      detail: `${totalServiceItems} total items`,
+      accent: T.green,
+      accentTint: T.greenTint,
+    },
+    {
+      id: "sub",
+      label: "Sub-categories",
+      desc: "/sub/:slug endpoint",
+      icon: <FolderOutlinedIcon sx={{ fontSize: 18 }} />,
+      stat: subCategoryMapping.length,
+      statLabel: "parent slugs",
+      detail: `${totalSubItems} sub-items`,
+      accent: T.blue,
+      accentTint: T.blueTint,
+    },
   ];
-  const activeNav = navItems.find((n) => n.id === tab);
 
-  const pageDesc = {
-    home: (
-      <>
-        Configures what shows in the home-page hero carousel. Saving here clears the{" "}
-        <Box component="code" sx={{ fontFamily: T.mono, fontSize: 12, px: 0.5, bgcolor: T.surface, border: `1px solid ${T.line}`, borderRadius: 0.5 }}>
-          /api/v2/home/featured
-        </Box>{" "}
-        cache.
-      </>
-    ),
-    popular: (
-      <>
-        The list backing the "Popular" drawer and quick links across the app. Saving clears the{" "}
-        <Box component="code" sx={{ fontFamily: T.mono, fontSize: 12, px: 0.5, bgcolor: T.surface, border: `1px solid ${T.line}`, borderRadius: 0.5 }}>
-          /api/v2/categories/popular
-        </Box>{" "}
-        cache.
-      </>
-    ),
-    service: <>Titled service-card grids on the home page. Edit, reorder, or add new sections. Each has independent desktop and mobile lists.</>,
-    sub: (
-      <>
-        Sub-categories for the{" "}
-        <Box component="code" sx={{ fontFamily: T.mono, fontSize: 12, px: 0.5, bgcolor: T.surface, border: `1px solid ${T.line}`, borderRadius: 0.5 }}>
-          /api/v2/category/sub/:parentSlug
-        </Box>{" "}
-        endpoint. Free-form names; no master-list constraint.
-      </>
-    ),
-  };
+  const activeCard = cards.find((c) => c.id === open);
 
   return (
-    <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "260px 1fr" }, minHeight: "100vh", bgcolor: T.bg }}>
-      {/* Sidebar */}
+    <Box sx={{ bgcolor: T.bg, minHeight: "100%", fontFamily: "'Inter', system-ui, sans-serif" }}>
+      {/* Sticky topbar */}
       <Box
         sx={{
-          bgcolor: "#14110F",
-          color: "#E8E4DC",
-          p: 2.25,
-          position: { md: "sticky" },
-          top: 0,
-          height: { md: "100vh" },
+          bgcolor: T.surface,
+          borderBottom: `1px solid ${T.line}`,
+          px: { xs: 2, md: 4 },
+          py: 1.75,
           display: "flex",
-          flexDirection: "column",
+          alignItems: "center",
+          gap: 1.5,
+          position: "sticky",
+          top: 0,
+          zIndex: 20,
         }}
       >
-        <Stack direction="row" alignItems="center" spacing={1.25} sx={{ mb: 3.5, px: 0.5 }}>
-          <Box
+        <Box>
+          <Typography sx={{ fontSize: 16, fontWeight: 700, color: T.ink, letterSpacing: "-0.01em" }}>
+            Category Display Settings
+          </Typography>
+          <Typography sx={{ fontSize: 12, color: T.ink3, mt: "1px" }}>
+            Configure what shows on the home page · clears v2 cache on save
+          </Typography>
+        </Box>
+
+        <Chip
+          size="small"
+          label={dirty ? "Unsaved changes" : "All changes saved"}
+          sx={{
+            ml: 1,
+            fontSize: 11,
+            fontWeight: 500,
+            bgcolor: dirty ? T.amberTint : T.greenTint,
+            color: dirty ? T.amber : T.green,
+            height: 22,
+            "& .MuiChip-label": { px: 1.25 },
+          }}
+        />
+
+        <Box sx={{ ml: "auto", display: "flex", gap: 1 }}>
+          <Button
+            size="small"
+            variant="text"
+            startIcon={<RestartAltIcon />}
+            onClick={handleReset}
+            disabled={!dirty}
+            sx={{ color: T.ink2, textTransform: "none", "&:hover": { bgcolor: T.surface2 } }}
+          >
+            Reset
+          </Button>
+          <Button
+            size="small"
+            variant="contained"
+            startIcon={saving ? <CircularProgress size={14} sx={{ color: "#fff" }} /> : <SaveIcon />}
+            onClick={handleSave}
+            disabled={!dirty || saving}
             sx={{
-              width: 28,
-              height: 28,
-              borderRadius: 1,
               bgcolor: T.accent,
-              display: "grid",
-              placeItems: "center",
-              color: "#fff",
-              fontWeight: 700,
-              fontSize: 14,
-              boxShadow: "inset 0 -2px 0 rgba(0,0,0,0.18)",
+              textTransform: "none",
+              fontWeight: 500,
+              boxShadow: "0 1px 0 rgba(0,0,0,0.04), inset 0 -1px 0 rgba(0,0,0,0.12)",
+              "&:hover": { bgcolor: T.accentDeep },
             }}
           >
-            M
-          </Box>
-          <Box>
-            <Typography sx={{ fontWeight: 700, fontSize: 15, color: "#fff" }}>Mass Click</Typography>
-            <Typography sx={{ fontSize: 11, color: "#8A857E" }}>Admin · Display settings</Typography>
-          </Box>
-        </Stack>
-
-        <Typography
-          sx={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.09em", color: "#6E6962", px: 1, mb: 0.75, fontWeight: 600 }}
-        >
-          Categories
-        </Typography>
-        <Stack spacing={0.25}>
-          {navItems.map((n) => (
-            <NavItem
-              key={n.id}
-              active={tab === n.id}
-              icon={n.icon}
-              label={n.label}
-              count={n.count}
-              onClick={() => setTab(n.id)}
-            />
-          ))}
-        </Stack>
-
-        <Box sx={{ mt: "auto", pt: 1.5, borderTop: "1px solid #2A2522", display: "flex", alignItems: "center", gap: 1.25 }}>
-          <Avatar sx={{ width: 28, height: 28, bgcolor: T.accent, fontSize: 11, fontWeight: 600 }}>A</Avatar>
-          <Box sx={{ fontSize: 12, color: "#8A857E" }}>
-            <Box sx={{ color: "#E8E4DC", fontWeight: 500 }}>Admin</Box>
-            <Box>Signed in</Box>
-          </Box>
+            {saving ? "Saving…" : "Save all"}
+          </Button>
         </Box>
       </Box>
 
-      {/* Main */}
-      <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
-        {/* Topbar */}
+      {/* Page */}
+      <Box sx={{ p: { xs: 2, md: 3.5 }, pb: 10, maxWidth: 1180, mx: "auto" }}>
+        {saveError && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {saveError}
+          </Alert>
+        )}
+
+        {/* Overview grid */}
         <Box
           sx={{
-            bgcolor: T.surface,
-            borderBottom: `1px solid ${T.line}`,
-            px: { xs: 2, md: 4 },
-            py: 1.75,
-            display: "flex",
-            alignItems: "center",
+            display: "grid",
+            gridTemplateColumns: { xs: "1fr 1fr", md: "repeat(4, 1fr)" },
             gap: 1.5,
-            position: "sticky",
-            top: 0,
-            zIndex: 20,
+            mb: 3,
           }}
         >
-          <Stack direction="row" alignItems="center" spacing={1} sx={{ fontSize: 13, color: T.ink3 }}>
-            <Box>Admin</Box>
-            <Box sx={{ color: T.ink4 }}>/</Box>
-            <Box>Category Display</Box>
-            <Box sx={{ color: T.ink4 }}>/</Box>
-            <Box sx={{ color: T.ink, fontWeight: 600 }}>{activeNav.label}</Box>
-          </Stack>
-
-          <Chip
-            size="small"
-            label={dirty ? "Unsaved changes" : "All changes saved"}
-            sx={{
-              ml: 1,
-              fontSize: 11,
-              fontWeight: 500,
-              bgcolor: dirty ? T.amberTint : T.greenTint,
-              color: dirty ? T.amber : T.green,
-              height: 22,
-              "& .MuiChip-label": { px: 1.25 },
-            }}
-          />
-
-          <Box sx={{ ml: "auto", display: "flex", gap: 1 }}>
-            <Button
-              size="small"
-              variant="text"
-              startIcon={<RestartAltIcon />}
-              onClick={handleReset}
-              disabled={!dirty}
-              sx={{ color: T.ink2, textTransform: "none", "&:hover": { bgcolor: T.surface2 } }}
-            >
-              Reset
-            </Button>
-            <Button
-              size="small"
-              variant="contained"
-              startIcon={saving ? <CircularProgress size={14} sx={{ color: "#fff" }} /> : <SaveIcon />}
-              onClick={handleSave}
-              disabled={!dirty || saving}
-              sx={{
-                bgcolor: T.accent,
-                textTransform: "none",
-                fontWeight: 500,
-                boxShadow: "0 1px 0 rgba(0,0,0,0.04), inset 0 -1px 0 rgba(0,0,0,0.12)",
-                "&:hover": { bgcolor: T.accentDeep },
-              }}
-            >
-              {saving ? "Saving…" : "Save all"}
-            </Button>
-          </Box>
+          {cards.map((c) => (
+            <OverviewCard
+              key={c.id}
+              icon={c.icon}
+              label={c.label}
+              desc={c.desc}
+              stat={c.stat}
+              statLabel={c.statLabel}
+              detail={c.detail}
+              accent={c.accent}
+              accentTint={c.accentTint}
+              active={open === c.id}
+              onClick={() => setOpen(c.id)}
+            />
+          ))}
         </Box>
 
-        {/* Page */}
-        <Box sx={{ p: { xs: 2, md: 4 }, pb: 10, maxWidth: 1100, width: "100%", mx: "auto" }}>
-          <Box sx={{ mb: 3 }}>
-            <Typography sx={{ fontSize: 24, fontWeight: 700, letterSpacing: "-0.015em", color: T.ink, mb: 0.5 }}>
-              {activeNav.label}
-            </Typography>
-            <Typography sx={{ color: T.ink3, fontSize: 13.5, maxWidth: 640 }}>{pageDesc[tab]}</Typography>
+        {/* Active panel */}
+        <Paper
+          variant="outlined"
+          sx={{
+            borderColor: T.line,
+            borderRadius: 2,
+            overflow: "hidden",
+            boxShadow: "0 1px 0 rgba(20,17,15,0.04)",
+          }}
+        >
+          <Box
+            sx={{
+              px: 2.25,
+              py: 1.75,
+              borderBottom: `1px solid ${T.line}`,
+              display: "flex",
+              alignItems: "center",
+              gap: 1.5,
+            }}
+          >
+            <Box>
+              <Typography sx={{ fontWeight: 600, fontSize: 14 }}>{activeCard.label}</Typography>
+              <Typography sx={{ fontSize: 12, color: T.ink3 }}>{activeCard.desc}</Typography>
+            </Box>
+            {open === "home" && (
+              <Box sx={{ ml: "auto" }}>
+                <ViewToggle
+                  value={homeView}
+                  onChange={setHomeView}
+                  options={[
+                    {
+                      id: "desktop",
+                      label: "Desktop",
+                      icon: <DesktopWindowsOutlinedIcon sx={{ fontSize: 14 }} />,
+                      count: `${homeFeaturedDesktop.length}/20`,
+                    },
+                    {
+                      id: "mobile",
+                      label: "Mobile",
+                      icon: <PhoneIphoneOutlinedIcon sx={{ fontSize: 14 }} />,
+                      count: `${homeFeaturedMobile.length}/12`,
+                    },
+                  ]}
+                />
+              </Box>
+            )}
           </Box>
 
-          {saveError && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {saveError}
-            </Alert>
-          )}
+          <Box sx={{ p: 2.25 }}>
+            {/* Home featured */}
+            {open === "home" &&
+              (homeView === "desktop" ? (
+                <OrderedList
+                  items={homeFeaturedDesktop}
+                  maxItems={20}
+                  allCategories={allCategories}
+                  pickerLoading={pickerLoading}
+                  onAdd={(n) => setHomeFeaturedDesktop((p) => [...p, n])}
+                  onRemove={(i) => setHomeFeaturedDesktop((p) => p.filter((_, j) => j !== i))}
+                  onMove={(f, t) => setHomeFeaturedDesktop((p) => moveItem(p, f, t))}
+                />
+              ) : (
+                <OrderedList
+                  items={homeFeaturedMobile}
+                  maxItems={12}
+                  allCategories={allCategories}
+                  pickerLoading={pickerLoading}
+                  onAdd={(n) => setHomeFeaturedMobile((p) => [...p, n])}
+                  onRemove={(i) => setHomeFeaturedMobile((p) => p.filter((_, j) => j !== i))}
+                  onMove={(f, t) => setHomeFeaturedMobile((p) => moveItem(p, f, t))}
+                />
+              ))}
 
-          {/* Home featured */}
-          {tab === "home" && (
-            <Paper variant="outlined" sx={{ borderColor: T.line, borderRadius: 2, boxShadow: "0 1px 0 rgba(20,17,15,0.04)" }}>
-              <Box sx={{ px: 2.25, py: 1.75, borderBottom: `1px solid ${T.line}`, display: "flex", alignItems: "center", gap: 1.5 }}>
-                <Box>
-                  <Typography sx={{ fontWeight: 600, fontSize: 14 }}>Home featured carousel</Typography>
-                  <Typography sx={{ fontSize: 12, color: T.ink3 }}>
-                    Top categories shown in the hero section on the home page.
-                  </Typography>
-                </Box>
-                <Box sx={{ ml: "auto" }}>
+            {/* Popular */}
+            {open === "popular" && (
+              <OrderedList
+                items={popularCategories}
+                allCategories={allCategories}
+                pickerLoading={pickerLoading}
+                onAdd={(n) => setPopularCategories((p) => [...p, n])}
+                onRemove={(i) => setPopularCategories((p) => p.filter((_, j) => j !== i))}
+                onMove={(f, t) => setPopularCategories((p) => moveItem(p, f, t))}
+              />
+            )}
+
+            {/* Service cards */}
+            {open === "service" && (
+              <Box>
+                <Stack
+                  direction="row"
+                  spacing={1.5}
+                  sx={{
+                    p: 1.5,
+                    bgcolor: T.surface2,
+                    border: `1px solid ${T.line}`,
+                    borderRadius: 1.25,
+                    mb: 2.25,
+                    fontSize: 12.5,
+                    color: T.ink2,
+                    alignItems: "flex-start",
+                  }}
+                >
                   <Box
                     sx={{
-                      display: "inline-flex",
-                      bgcolor: T.surface2,
-                      border: `1px solid ${T.line}`,
-                      borderRadius: 1.25,
-                      p: 0.375,
-                      gap: 0.25,
+                      width: 22,
+                      height: 22,
+                      borderRadius: 0.75,
+                      bgcolor: T.accentTint,
+                      color: T.accentDeep,
+                      display: "grid",
+                      placeItems: "center",
+                      flexShrink: 0,
                     }}
                   >
-                    {[
-                      { id: "desktop", label: "Desktop", icon: <DesktopWindowsOutlinedIcon sx={{ fontSize: 14 }} />, count: `${homeFeaturedDesktop.length}/20` },
-                      { id: "mobile", label: "Mobile", icon: <PhoneIphoneOutlinedIcon sx={{ fontSize: 14 }} />, count: `${homeFeaturedMobile.length}/12` },
-                    ].map((v) => {
-                      const active = homeView === v.id;
-                      return (
-                        <Box
-                          key={v.id}
-                          onClick={() => setHomeView(v.id)}
-                          sx={{
-                            px: 1.5,
-                            py: 0.625,
-                            fontSize: 12.5,
-                            fontWeight: 500,
-                            color: active ? T.ink : T.ink3,
-                            bgcolor: active ? T.surface : "transparent",
-                            borderRadius: 0.75,
-                            cursor: "pointer",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 0.75,
-                            boxShadow: active ? "0 1px 0 rgba(20,17,15,0.04), 0 1px 2px rgba(20,17,15,0.04)" : "none",
-                          }}
-                        >
-                          {v.icon}
-                          {v.label}
-                          <Box
-                            sx={{
-                              fontSize: 11,
-                              fontVariantNumeric: "tabular-nums",
-                              px: 0.75,
-                              borderRadius: 5,
-                              bgcolor: active ? T.accentTint : T.line,
-                              color: active ? T.accentDeep : T.ink3,
-                            }}
-                          >
-                            {v.count}
-                          </Box>
-                        </Box>
-                      );
-                    })}
+                    <InfoOutlinedIcon sx={{ fontSize: 14 }} />
                   </Box>
-                </Box>
-              </Box>
-              <Box sx={{ p: 2.25 }}>
-                {homeView === "desktop" ? (
-                  <OrderedList
-                    items={homeFeaturedDesktop}
-                    maxItems={20}
+                  <Box>
+                    <Box component="b" sx={{ color: T.ink }}>
+                      Service cards
+                    </Box>{" "}
+                    appear as titled grid sections on the home page. Each has separate lists for desktop and mobile.
+                  </Box>
+                </Stack>
+
+                {serviceCardSections.map((sec, i) => (
+                  <SectionCard
+                    key={i}
+                    section={sec}
                     allCategories={allCategories}
                     pickerLoading={pickerLoading}
-                    onAdd={(n) => setHomeFeaturedDesktop((p) => [...p, n])}
-                    onRemove={(i) => setHomeFeaturedDesktop((p) => p.filter((_, j) => j !== i))}
-                    onMove={(f, t) => setHomeFeaturedDesktop((p) => moveItem(p, f, t))}
+                    onUpdate={(field, val) => updateSection(i, field, val)}
+                    onRemove={() => removeSection(i)}
                   />
-                ) : (
-                  <OrderedList
-                    items={homeFeaturedMobile}
-                    maxItems={12}
+                ))}
+
+                <Button
+                  variant="outlined"
+                  startIcon={<AddIcon />}
+                  onClick={addSection}
+                  sx={{
+                    textTransform: "none",
+                    borderColor: T.line2,
+                    color: T.ink2,
+                    "&:hover": { bgcolor: T.surface2, borderColor: T.line2 },
+                  }}
+                >
+                  Add section
+                </Button>
+              </Box>
+            )}
+
+            {/* Sub-categories */}
+            {open === "sub" && (
+              <Box>
+                <Stack
+                  direction="row"
+                  spacing={1.5}
+                  sx={{
+                    p: 1.5,
+                    bgcolor: T.surface2,
+                    border: `1px solid ${T.line}`,
+                    borderRadius: 1.25,
+                    mb: 2.25,
+                    fontSize: 12.5,
+                    color: T.ink2,
+                    alignItems: "flex-start",
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: 22,
+                      height: 22,
+                      borderRadius: 0.75,
+                      bgcolor: T.blueTint,
+                      color: T.blue,
+                      display: "grid",
+                      placeItems: "center",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <InfoOutlinedIcon sx={{ fontSize: 14 }} />
+                  </Box>
+                  <Box>
+                    Maps a{" "}
+                    <Box component="b" sx={{ color: T.ink }}>
+                      parent slug
+                    </Box>{" "}
+                    to the list of sub-categories shown beneath it. Used by{" "}
+                    <Box
+                      component="code"
+                      sx={{
+                        fontFamily: T.mono,
+                        fontSize: 11.5,
+                        px: 0.5,
+                        bgcolor: T.surface,
+                        border: `1px solid ${T.line}`,
+                        borderRadius: 0.5,
+                      }}
+                    >
+                      /api/v2/category/sub/:parentSlug
+                    </Box>
+                    . Names are free-form.
+                  </Box>
+                </Stack>
+
+                {subCategoryMapping.map((entry, i) => (
+                  <MappingAccordion
+                    key={i}
+                    entry={entry}
+                    defaultOpen={i === 0}
                     allCategories={allCategories}
                     pickerLoading={pickerLoading}
-                    onAdd={(n) => setHomeFeaturedMobile((p) => [...p, n])}
-                    onRemove={(i) => setHomeFeaturedMobile((p) => p.filter((_, j) => j !== i))}
-                    onMove={(f, t) => setHomeFeaturedMobile((p) => moveItem(p, f, t))}
+                    onUpdate={(field, val) => updateMapping(i, field, val)}
+                    onRemove={() => removeMapping(i)}
                   />
-                )}
-              </Box>
-            </Paper>
-          )}
+                ))}
 
-          {/* Popular */}
-          {tab === "popular" && (
-            <Paper variant="outlined" sx={{ borderColor: T.line, borderRadius: 2, boxShadow: "0 1px 0 rgba(20,17,15,0.04)" }}>
-              <Box sx={{ px: 2.25, py: 1.75, borderBottom: `1px solid ${T.line}` }}>
-                <Typography sx={{ fontWeight: 600, fontSize: 14 }}>Popular categories</Typography>
-                <Typography sx={{ fontSize: 12, color: T.ink3 }}>
-                  Shown in the "Popular" drawer and as quick links across the app.
-                </Typography>
-              </Box>
-              <Box sx={{ p: 2.25 }}>
-                <OrderedList
-                  items={popularCategories}
-                  allCategories={allCategories}
-                  pickerLoading={pickerLoading}
-                  onAdd={(n) => setPopularCategories((p) => [...p, n])}
-                  onRemove={(i) => setPopularCategories((p) => p.filter((_, j) => j !== i))}
-                  onMove={(f, t) => setPopularCategories((p) => moveItem(p, f, t))}
-                />
-              </Box>
-            </Paper>
-          )}
-
-          {/* Service Cards */}
-          {tab === "service" && (
-            <Box>
-              <Stack
-                direction="row"
-                spacing={1.5}
-                sx={{
-                  p: 1.5,
-                  bgcolor: T.surface,
-                  border: `1px solid ${T.line}`,
-                  borderRadius: 1.25,
-                  mb: 2.25,
-                  fontSize: 12.5,
-                  color: T.ink2,
-                  alignItems: "flex-start",
-                }}
-              >
-                <Box
+                <Button
+                  variant="outlined"
+                  startIcon={<AddIcon />}
+                  onClick={addMapping}
                   sx={{
-                    width: 22,
-                    height: 22,
-                    borderRadius: 0.75,
-                    bgcolor: T.accentTint,
-                    color: T.accentDeep,
-                    display: "grid",
-                    placeItems: "center",
-                    flexShrink: 0,
+                    textTransform: "none",
+                    borderColor: T.line2,
+                    color: T.ink2,
+                    "&:hover": { bgcolor: T.surface2, borderColor: T.line2 },
                   }}
                 >
-                  <InfoOutlinedIcon sx={{ fontSize: 14 }} />
-                </Box>
-                <Box>
-                  <Box component="b" sx={{ color: T.ink }}>
-                    Service cards
-                  </Box>{" "}
-                  appear as titled grid sections on the home page. Each section has separate lists for desktop and mobile, so
-                  you can show a tighter selection on small screens.
-                </Box>
-              </Stack>
-
-              {serviceCardSections.map((sec, i) => (
-                <SectionCard
-                  key={i}
-                  section={sec}
-                  allCategories={allCategories}
-                  pickerLoading={pickerLoading}
-                  onUpdate={(field, val) => updateSection(i, field, val)}
-                  onRemove={() => removeSection(i)}
-                />
-              ))}
-
-              <Button
-                variant="outlined"
-                startIcon={<AddIcon />}
-                onClick={addSection}
-                sx={{
-                  textTransform: "none",
-                  borderColor: T.line2,
-                  color: T.ink2,
-                  "&:hover": { bgcolor: T.surface2, borderColor: T.line2 },
-                }}
-              >
-                Add section
-              </Button>
-            </Box>
-          )}
-
-          {/* Sub-categories */}
-          {tab === "sub" && (
-            <Box>
-              <Stack
-                direction="row"
-                spacing={1.5}
-                sx={{
-                  p: 1.5,
-                  bgcolor: T.surface,
-                  border: `1px solid ${T.line}`,
-                  borderRadius: 1.25,
-                  mb: 2.25,
-                  fontSize: 12.5,
-                  color: T.ink2,
-                  alignItems: "flex-start",
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 22,
-                    height: 22,
-                    borderRadius: 0.75,
-                    bgcolor: T.accentTint,
-                    color: T.accentDeep,
-                    display: "grid",
-                    placeItems: "center",
-                    flexShrink: 0,
-                  }}
-                >
-                  <InfoOutlinedIcon sx={{ fontSize: 14 }} />
-                </Box>
-                <Box>
-                  Maps a <Box component="b" sx={{ color: T.ink }}>parent slug</Box> to the list of sub-categories shown
-                  beneath it. Used by{" "}
-                  <Box component="code" sx={{ fontFamily: T.mono, fontSize: 11.5, px: 0.5, bgcolor: T.surface2, border: `1px solid ${T.line}`, borderRadius: 0.5 }}>
-                    /api/v2/category/sub/:parentSlug
-                  </Box>
-                  . Names are free-form — they don't have to match a category in the master list.
-                </Box>
-              </Stack>
-
-              {subCategoryMapping.map((entry, i) => (
-                <MappingAccordion
-                  key={i}
-                  entry={entry}
-                  defaultOpen={i === 0}
-                  allCategories={allCategories}
-                  pickerLoading={pickerLoading}
-                  onUpdate={(field, val) => updateMapping(i, field, val)}
-                  onRemove={() => removeMapping(i)}
-                />
-              ))}
-
-              <Button
-                variant="outlined"
-                startIcon={<AddIcon />}
-                onClick={addMapping}
-                sx={{
-                  textTransform: "none",
-                  borderColor: T.line2,
-                  color: T.ink2,
-                  "&:hover": { bgcolor: T.surface2, borderColor: T.line2 },
-                }}
-              >
-                Add parent slug
-              </Button>
-            </Box>
-          )}
-        </Box>
+                  Add parent slug
+                </Button>
+              </Box>
+            )}
+          </Box>
+        </Paper>
       </Box>
 
       <Snackbar

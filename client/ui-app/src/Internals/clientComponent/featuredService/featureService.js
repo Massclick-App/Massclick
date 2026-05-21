@@ -65,8 +65,9 @@ const FeaturedServicesSection = () => {
     );
   }, [selectedDistrict]);
 
-  // v2 API returns items in admin-configured order — just use them directly.
-  // Only enhancement: flag "Popular Categories" to open the drawer instead of navigating.
+  // v2 API returns items in admin-configured order — use them directly.
+  // "Popular Categories" is a real DB category; clicking it opens the drawer
+  // instead of navigating to a search result.
   const orderedCategories = useMemo(() => {
     if (!Array.isArray(homeCategories) || !homeCategories.length) return [];
 
@@ -78,9 +79,11 @@ const FeaturedServicesSection = () => {
         if (seenSlugs.has(slug)) return null;
         seenSlugs.add(slug);
 
-        const isPopular = cat.name === "Popular Categories";
+        if (cat.name === "Popular Categories") {
+          return { ...cat, isDrawer: true };
+        }
 
-        return isPopular ? { ...cat, isDrawer: true } : cat;
+        return cat;
       })
       .filter(Boolean);
   }, [homeCategories]);
