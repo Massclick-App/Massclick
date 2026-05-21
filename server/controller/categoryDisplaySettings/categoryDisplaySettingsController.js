@@ -169,7 +169,7 @@ export const getV2HomeCategoriesAction = async (req, res) => {
 
     const ordered = order.map((name) => {
       const found = map.get(normalize(name));
-      const categoryKey = name.toLowerCase().replace(/\s+/g, "-");
+      const categoryKey = normalize(name).toLowerCase().replace(/\s+/g, "-");
       const hasSubcategories = !!subCatLookup[categoryKey];
       const subCategoryCount = subCatLookup[categoryKey]?.length || 0;
 
@@ -213,7 +213,7 @@ export const getV2MobileHomeCategoriesAction = async (req, res) => {
 
     const ordered = order.map((name) => {
       const found = map.get(normalize(name));
-      const categoryKey = name.toLowerCase().replace(/\s+/g, "-");
+      const categoryKey = normalize(name).toLowerCase().replace(/\s+/g, "-");
       const hasSubcategories = !!subCatLookup[categoryKey];
       const subCategoryCount = subCatLookup[categoryKey]?.length || 0;
 
@@ -264,7 +264,7 @@ export const getV2PopularCategoriesAction = async (req, res) => {
 
     const ordered = order.map((name) => {
       const found = map.get(normalize(name));
-      const categoryKey = name.toLowerCase().replace(/\s+/g, "-");
+      const categoryKey = normalize(name).toLowerCase().replace(/\s+/g, "-");
       const hasSubcategories = !!subCatLookup[categoryKey];
       const subCategoryCount = subCatLookup[categoryKey]?.length || 0;
 
