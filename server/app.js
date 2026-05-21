@@ -36,6 +36,7 @@ import versionRoutes from "./routes/versionRoutes.js";
 import favoriteRoute from "./routes/favoriteRoute.js";
 import fcmAdminRoutes from "./routes/fcmAdminRoutes.js";
 import systemSettingsRoutes from "./routes/systemSettingsRoutes.js";
+import categoryDisplaySettingsRoutes from "./routes/categoryDisplaySettingsRoutes.js";
 import cacheRoutes from "./routes/cacheRoutes.js";
 import footerRoutes from "./routes/footerRoute.js";
 import { startFCMScheduler } from "./scheduler/fcmScheduler.js";
@@ -109,6 +110,7 @@ app.use("/", footerRoutes);
 app.use("/", favoriteRoute);
 app.use("/", fcmAdminRoutes);
 app.use("/", systemSettingsRoutes);
+app.use("/", categoryDisplaySettingsRoutes);
 app.use("/", cacheRoutes);
 
 app.use(express.static(CLIENT_BUILD_PATH, {

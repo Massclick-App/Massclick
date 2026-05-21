@@ -1,5 +1,5 @@
 ﻿import { createLogger } from "./logger.js";
-import { deleteCachePattern } from "./redisClient.js";
+import { deleteCachePattern, deleteCache } from "./redisClient.js";
 
 const logger = createLogger("CACHE_INVALIDATION");
 
@@ -89,6 +89,35 @@ export const invalidateReviewCache = async () => {
     return results.every(r => r === true);
   } catch (error) {
     await logger.error("Error invalidating review cache", error);
+    return false;
+  }
+};
+
+/**
+ * Invalidate category display settings cache entries (v2 public endpoints)
+ */
+export const invalidateCategoryDisplaySettingsCache = async () => {
+  try {
+    const patterns = [
+      'home-category:*',
+      'home-mobile-category:*',
+      'category:*',
+    ];
+    const directKeys = [
+      'home-categories:desktop:v2',
+      'home-categories:mobile:v2',
+      'popular-categories:home:v2',
+      'service-cards:home:v2',
+      'service-cards:mobile:v2',
+    ];
+    const patternResults = await Promise.all(
+      patterns.map(pattern => deleteCachePattern(pattern))
+    );
+    await Promise.all(directKeys.map(key => deleteCache(key)));
+    await logger.info(`Invalidated category display settings cache`);
+    return patternResults.every(r => r === true);
+  } catch (error) {
+    await logger.error("Error invalidating category display settings cache", error);
     return false;
   }
 };

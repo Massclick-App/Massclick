@@ -46,6 +46,7 @@ const ALL_ITEMS = [
   { text: "Users",               icon: InterpreterModeIcon,    path: "/dashboard/user" },
   { text: "Roles",               icon: AdminPanelSettingsIcon, path: "/dashboard/roles" },
   { text: "System Settings",     icon: TuneIcon,               path: "/dashboard/system-settings" },
+  { text: "Category Display",   icon: CategoryIcon,           path: "/dashboard/category-display" },
 ];
 
 export default function SideMenu({ onItemClick }) {
