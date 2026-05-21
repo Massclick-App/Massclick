@@ -23,7 +23,7 @@ router.get('/api/category/business-usage', oauthAuthentication, categoryBusiness
 
 router.get("/api/category/all", categoryCache, getAllUniqueCategoriesAction);
 router.get("/api/category/home", homeCategoryCache, getHomeCategoriesAction);
-router.get("/api/category/home-mobile", homeCategoryCache, getMobileHomeCategoriesAction);
+router.get("/api/category/home-mobile", homeMobileCategoryCache, getMobileHomeCategoriesAction);
 router.get("/api/category/sub/:parentId", categoryCache, getSubCategoriesAction);
 router.get("/api/category/popular", homeCategoryCache, getPopularCategoriesAction);
 router.get("/api/category/service-cards", homeCategoryCache, getServiceCardsAction);

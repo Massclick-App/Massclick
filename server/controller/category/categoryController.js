@@ -656,7 +656,7 @@ export const getServiceCardsAction = async (req, res) => {
 
 export const getMobileServiceCardsAction = async (req, res) => {
   try {
-    const cacheKey = "service-cards:home";
+    const cacheKey = "service-cards:mobile";
 
     // Try to get from cache first
     const cachedData = await getCache(cacheKey);
