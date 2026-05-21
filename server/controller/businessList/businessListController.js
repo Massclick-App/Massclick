@@ -539,11 +539,12 @@ export const mainSearchController = async (req, res) => {
           const escaped = escapeRegex(val);
 
           // For each word, create OR conditions across all fields
+          const withBoundaries = `\\b${escaped}\\b`;
           termConditions.push(
-            { businessName: { $regex: escaped, $options: "i" } },
-            { category: { $regex: escaped, $options: "i" } },
-            { slug: { $regex: escaped, $options: "i" } },
-            { keywords: { $regex: escaped, $options: "i" } }
+            { businessName: { $regex: withBoundaries, $options: "i" } },
+            { category: { $regex: withBoundaries, $options: "i" } },
+            { slug: { $regex: withBoundaries, $options: "i" } },
+            { keywords: { $regex: withBoundaries, $options: "i" } }
           );
         });
       });
