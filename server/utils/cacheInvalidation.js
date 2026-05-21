@@ -98,11 +98,13 @@ export const invalidateReviewCache = async () => {
  */
 export const invalidateCategoryDisplaySettingsCache = async () => {
   try {
+    // Middleware-level cache keys (keyPrefix:path-hash format)
     const patterns = [
-      'home-category:*',
-      'home-mobile-category:*',
-      'category:*',
+      'home-category-v2:*',        // GET /api/v2/category/home
+      'home-mobile-category-v2:*', // GET /api/v2/category/home-mobile + mobile-service-cards
+      'category-v2:*',             // GET /api/v2/category/sub/:parentSlug
     ];
+    // Controller-level explicit cache keys
     const directKeys = [
       'home-categories:desktop:v2',
       'home-categories:mobile:v2',
