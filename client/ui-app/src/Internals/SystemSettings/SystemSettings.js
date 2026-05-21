@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   fetchSystemSettings,
@@ -8,6 +8,11 @@ import {
   fetchRedisStatus,
   invalidateCache,
   clearAllCaches,
+  fetchRedisKeys,
+  deleteRedisKeys,
+  fetchRedisInfo,
+  flushRedisDb,
+  deleteRedisPattern,
 } from "../../redux/actions/cacheActions.js";
 import "./SystemSettings.css";
 
@@ -28,6 +33,29 @@ const WarningAmberIcon = () => <span>⚠️</span>;
 const DebugIcon = () => <span>🔍</span>;
 const DatabaseIcon = () => <span>🗄️</span>;
 const AlertIcon = () => <span>⚡</span>;
+
+const formatUptime = (seconds) => {
+  if (!seconds) return '—';
+  const d = Math.floor(seconds / 86400);
+  const h = Math.floor((seconds % 86400) / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  if (d > 0) return `${d}d ${h}h`;
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
+};
+
+const globToRegex = (pattern) => {
+  const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+  return new RegExp('^' + escaped.replace(/\*/g, '.*').replace(/\?/g, '.') + '$');
+};
+
+const TtlBadge = ({ ttl }) => {
+  if (ttl === -2) return <span className="ttl-badge ttl-expired">expired</span>;
+  if (ttl === -1) return <span className="ttl-badge ttl-forever">∞</span>;
+  if (ttl < 60) return <span className="ttl-badge ttl-soon">{ttl}s</span>;
+  if (ttl < 3600) return <span className="ttl-badge ttl-medium">{Math.floor(ttl / 60)}m</span>;
+  return <span className="ttl-badge ttl-long">{Math.floor(ttl / 3600)}h</span>;
+};
 
 const validateVersionFormat = (version) => {
   if (!version) return null;
@@ -192,16 +220,25 @@ const ALL_KEYS = [
 export default function SystemSettings() {
   const dispatch = useDispatch();
   const { settings, loading, saving, error } = useSelector((s) => s.systemSettings);
-  const { redisStatus, redisLoading, cacheClearing, cacheClearError } = useSelector((s) => s.cache);
+  const {
+    redisStatus, redisLoading, cacheClearing,
+    redisKeys, keysLoading, keysDeleting,
+    redisInfo, infoLoading, flushing, patternDeleting,
+  } = useSelector((s) => s.cache);
 
   const [local, setLocal] = useState(null);
   const [snack, setSnack] = useState({ open: false, message: "", severity: "success" });
   const [selectedCache, setSelectedCache] = useState("seo-meta");
   const [validationErrors, setValidationErrors] = useState({});
+  const [selectedKeys, setSelectedKeys] = useState(new Set());
+  const [keyFilter, setKeyFilter] = useState("");
+  const [patternInput, setPatternInput] = useState("");
 
   useEffect(() => { dispatch(fetchSystemSettings()); }, [dispatch]);
   useEffect(() => { if (settings) setLocal({ ...settings }); }, [settings]);
   useEffect(() => { dispatch(fetchRedisStatus()); }, [dispatch]);
+  useEffect(() => { dispatch(fetchRedisKeys()); }, [dispatch]);
+  useEffect(() => { dispatch(fetchRedisInfo()); }, [dispatch]);
 
   const toggle = (key) => {
     setLocal((p) => {
@@ -229,6 +266,90 @@ export default function SystemSettings() {
         return newErrors;
       }
     });
+  };
+
+  const filteredKeys = redisKeys.filter(({ key }) =>
+    !keyFilter || key.toLowerCase().includes(keyFilter.toLowerCase())
+  );
+
+  const toggleKey = (key) => {
+    setSelectedKeys((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (filteredKeys.every(({ key }) => selectedKeys.has(key))) {
+      setSelectedKeys((prev) => {
+        const next = new Set(prev);
+        filteredKeys.forEach(({ key }) => next.delete(key));
+        return next;
+      });
+    } else {
+      setSelectedKeys((prev) => {
+        const next = new Set(prev);
+        filteredKeys.forEach(({ key }) => next.add(key));
+        return next;
+      });
+    }
+  };
+
+  const patternMatchCount = useMemo(() => {
+    if (!patternInput) return 0;
+    try {
+      const re = globToRegex(patternInput);
+      return redisKeys.filter(({ key }) => re.test(key)).length;
+    } catch {
+      return 0;
+    }
+  }, [patternInput, redisKeys]);
+
+  const handleFlushDb = async () => {
+    if (!window.confirm('⚠️ FLUSH ENTIRE REDIS DATABASE?\n\nThis permanently deletes ALL keys and cannot be undone.')) return;
+    if (!window.confirm('Second confirmation: Wipe all Redis data right now?')) return;
+    try {
+      const result = await dispatch(flushRedisDb());
+      setSelectedKeys(new Set());
+      dispatch(fetchRedisInfo());
+      setSnack({ open: true, message: result?.message || 'Redis database flushed', severity: 'success' });
+      setTimeout(() => setSnack(s => ({ ...s, open: false })), 4000);
+    } catch {
+      setSnack({ open: true, message: 'Flush failed', severity: 'error' });
+      setTimeout(() => setSnack(s => ({ ...s, open: false })), 3000);
+    }
+  };
+
+  const handleDeletePattern = async () => {
+    if (!patternInput || patternMatchCount === 0) return;
+    if (!window.confirm(`Delete ${patternMatchCount} key(s) matching "${patternInput}"?`)) return;
+    try {
+      const result = await dispatch(deleteRedisPattern(patternInput));
+      setPatternInput('');
+      dispatch(fetchRedisKeys());
+      dispatch(fetchRedisInfo());
+      setSnack({ open: true, message: result?.message || `${patternMatchCount} key(s) deleted`, severity: 'success' });
+      setTimeout(() => setSnack(s => ({ ...s, open: false })), 3000);
+    } catch {
+      setSnack({ open: true, message: 'Pattern delete failed', severity: 'error' });
+      setTimeout(() => setSnack(s => ({ ...s, open: false })), 3000);
+    }
+  };
+
+  const handleDeleteSelectedKeys = async () => {
+    const keys = [...selectedKeys];
+    if (!window.confirm(`Delete ${keys.length} key(s) from Redis? This cannot be undone.`)) return;
+    try {
+      await dispatch(deleteRedisKeys(keys));
+      setSelectedKeys(new Set());
+      dispatch(fetchRedisKeys());
+      setSnack({ open: true, message: `${keys.length} key(s) deleted`, severity: "success" });
+      setTimeout(() => setSnack(s => ({ ...s, open: false })), 3000);
+    } catch {
+      setSnack({ open: true, message: "Delete failed", severity: "error" });
+      setTimeout(() => setSnack(s => ({ ...s, open: false })), 3000);
+    }
   };
 
   const dirty = settings && local ? ALL_KEYS.some((k) => local[k] !== settings[k]) : false;
@@ -530,6 +651,199 @@ export default function SystemSettings() {
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Redis Server Stats */}
+      <div className="compact-card redis-stats-card">
+        <div className="compact-card-header" style={{ cursor: 'default' }}>
+          <div className="compact-icon" style={{ background: '#10b981' }}><CloudSyncIcon /></div>
+          <div className="compact-header-text">
+            <div className="compact-title">Redis Server Stats</div>
+            <div className="compact-subtitle">
+              {redisInfo?.connected ? `v${redisInfo.version} · ${redisInfo.mode}` : 'Server info unavailable'}
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={() => { dispatch(fetchRedisInfo()); dispatch(fetchRedisKeys()); }}
+              disabled={infoLoading || keysLoading}
+            >
+              {infoLoading ? '…' : '↻ Refresh'}
+            </button>
+            <button
+              className="btn btn-sm btn-danger"
+              onClick={handleFlushDb}
+              disabled={flushing || !redisInfo?.connected}
+              title="Wipe all Redis keys"
+            >
+              {flushing ? 'Flushing…' : '⚠ Flush DB'}
+            </button>
+          </div>
+        </div>
+
+        {redisInfo?.connected ? (
+          <div className="redis-stats-grid">
+            <div className="redis-stat-item">
+              <div className="redis-stat-label">Memory Used</div>
+              <div className="redis-stat-value">{redisInfo.used_memory_human ?? '—'}</div>
+            </div>
+            <div className="redis-stat-item">
+              <div className="redis-stat-label">Peak Memory</div>
+              <div className="redis-stat-value">{redisInfo.used_memory_peak_human ?? '—'}</div>
+            </div>
+            <div className="redis-stat-item">
+              <div className="redis-stat-label">Connected Clients</div>
+              <div className="redis-stat-value">{redisInfo.connected_clients ?? '—'}</div>
+            </div>
+            <div className="redis-stat-item">
+              <div className="redis-stat-label">Uptime</div>
+              <div className="redis-stat-value">{formatUptime(redisInfo.uptime_seconds)}</div>
+            </div>
+            <div className="redis-stat-item">
+              <div className="redis-stat-label">Total Keys</div>
+              <div className="redis-stat-value">{redisKeys.length}</div>
+            </div>
+            <div className="redis-stat-item">
+              <div className="redis-stat-label">Cache Hit Rate</div>
+              <div className="redis-stat-value">
+                {redisInfo.hit_rate !== null ? `${redisInfo.hit_rate}%` : '—'}
+              </div>
+            </div>
+            <div className="redis-stat-item">
+              <div className="redis-stat-label">Commands Processed</div>
+              <div className="redis-stat-value">{redisInfo.total_commands_processed?.toLocaleString() ?? '—'}</div>
+            </div>
+            <div className="redis-stat-item">
+              <div className="redis-stat-label">Keyspace Hits</div>
+              <div className="redis-stat-value">{redisInfo.keyspace_hits?.toLocaleString() ?? '—'}</div>
+            </div>
+            <div className="redis-stat-item">
+              <div className="redis-stat-label">Keyspace Misses</div>
+              <div className="redis-stat-value">{redisInfo.keyspace_misses?.toLocaleString() ?? '—'}</div>
+            </div>
+          </div>
+        ) : (
+          <div className="redis-stats-unavailable">
+            {infoLoading ? 'Loading server info…' : 'Redis not connected — stats unavailable'}
+          </div>
+        )}
+      </div>
+
+      {/* Redis Key Browser */}
+      <div className="compact-card redis-key-browser-card">
+        <div className="compact-card-header" style={{ cursor: 'default', flexWrap: 'wrap', gap: 12 }}>
+          <div className="compact-icon" style={{ background: '#6366f1' }}><DatabaseIcon /></div>
+          <div className="compact-header-text">
+            <div className="compact-title">Redis Key Browser</div>
+            <div className="compact-subtitle">
+              {keysLoading ? 'Loading...' : `${redisKeys.length} keys in database`}
+            </div>
+          </div>
+          <div className="key-browser-toolbar">
+            <input
+              type="text"
+              className="form-input key-filter-input"
+              placeholder="Filter keys…"
+              value={keyFilter}
+              onChange={(e) => setKeyFilter(e.target.value)}
+            />
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={() => dispatch(fetchRedisKeys())}
+              disabled={keysLoading}
+            >
+              {keysLoading ? '…' : '↻ Refresh'}
+            </button>
+          </div>
+        </div>
+
+        {/* Pattern Delete Row */}
+        <div className="pattern-delete-row">
+          <span className="pattern-delete-label">Pattern delete</span>
+          <input
+            type="text"
+            className="form-input pattern-delete-input"
+            placeholder="e.g.  seo:*  or  cache:/api/*"
+            value={patternInput}
+            onChange={(e) => setPatternInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleDeletePattern()}
+          />
+          {patternInput && (
+            <span className="pattern-match-count">
+              {patternMatchCount} match{patternMatchCount !== 1 ? 'es' : ''}
+            </span>
+          )}
+          <button
+            className="btn btn-sm btn-danger"
+            onClick={handleDeletePattern}
+            disabled={!patternInput || patternMatchCount === 0 || patternDeleting}
+          >
+            {patternDeleting ? 'Deleting…' : 'Delete Matching'}
+          </button>
+        </div>
+
+        {selectedKeys.size > 0 && (
+          <div className="key-selection-bar">
+            <span className="key-selection-count">{selectedKeys.size} selected</span>
+            <button
+              className="btn btn-sm btn-danger"
+              onClick={handleDeleteSelectedKeys}
+              disabled={keysDeleting}
+            >
+              {keysDeleting ? 'Deleting…' : '🗑 Delete Selected'}
+            </button>
+          </div>
+        )}
+
+        <div className="key-browser-table-wrap">
+          {keysLoading ? (
+            <div className="key-browser-empty">Loading keys…</div>
+          ) : filteredKeys.length === 0 ? (
+            <div className="key-browser-empty">
+              {keyFilter ? 'No keys match your filter' : 'No keys in Redis'}
+            </div>
+          ) : (
+            <table className="key-browser-table">
+              <thead>
+                <tr>
+                  <th className="key-col-check">
+                    <input
+                      type="checkbox"
+                      checked={filteredKeys.length > 0 && filteredKeys.every(({ key }) => selectedKeys.has(key))}
+                      onChange={toggleSelectAll}
+                    />
+                  </th>
+                  <th className="key-col-name">Key</th>
+                  <th className="key-col-ttl">TTL</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredKeys.map(({ key, ttl }) => (
+                  <tr
+                    key={key}
+                    className={selectedKeys.has(key) ? 'key-row selected' : 'key-row'}
+                    onClick={() => toggleKey(key)}
+                  >
+                    <td className="key-col-check" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selectedKeys.has(key)}
+                        onChange={() => toggleKey(key)}
+                      />
+                    </td>
+                    <td className="key-col-name">
+                      <span className="key-name">{key}</span>
+                    </td>
+                    <td className="key-col-ttl">
+                      <TtlBadge ttl={ttl} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
 
