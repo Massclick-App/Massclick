@@ -7,7 +7,6 @@ import {
   getV2PopularCategoriesAction,
   getV2ServiceCardsAction,
   getV2MobileServiceCardsAction,
-  getV2SubCategoryMappingAction,
   getV2SubCategoriesAction,
 } from "../controller/categoryDisplaySettings/categoryDisplaySettingsController.js";
 import { oauthAuthentication } from "../helper/oauthHelper.js";
@@ -29,7 +28,6 @@ router.get("/api/v2/category/home-mobile", homeMobileCategoryCache, getV2MobileH
 router.get("/api/v2/category/popular", homeCategoryCache, getV2PopularCategoriesAction);
 router.get("/api/v2/category/service-cards", homeCategoryCache, getV2ServiceCardsAction);
 router.get("/api/v2/category/mobile-service-cards", homeMobileCategoryCache, getV2MobileServiceCardsAction);
-router.get("/api/v2/category/sub-mapping", categoryCache, getV2SubCategoryMappingAction);
 router.get("/api/v2/category/sub/:parentSlug", categoryCache, getV2SubCategoriesAction);
 
 export default router;

@@ -163,11 +163,16 @@ export const getV2HomeCategoriesAction = async (req, res) => {
       ? settings.homeFeaturedDesktop
       : FALLBACK_HOME_DESKTOP;
 
+    const subCatLookup = buildSubCatLookup(settings);
     const categories = await categoryModel.find({ isActive: true }).lean();
     const map = new Map(categories.map((cat) => [normalize(cat.category), cat]));
 
     const ordered = order.map((name) => {
       const found = map.get(normalize(name));
+      const categoryKey = name.toLowerCase().replace(/\s+/g, "-");
+      const hasSubcategories = !!subCatLookup[categoryKey];
+      const subCategoryCount = subCatLookup[categoryKey]?.length || 0;
+
       return found
         ? {
             _id: found._id,
@@ -175,8 +180,10 @@ export const getV2HomeCategoriesAction = async (req, res) => {
             slug: found.slug,
             icon: found.categoryImageKey ? `${S3_BASE_URL}${found.categoryImageKey}` : null,
             liveImage: found.liveImageKey ? `${S3_BASE_URL}${found.liveImageKey}` : null,
+            hasSubcategories,
+            subCategoryCount,
           }
-        : { name, slug: name.toLowerCase().replace(/ /g, "-"), icon: null, liveImage: null };
+        : { name, slug: name.toLowerCase().replace(/ /g, "-"), icon: null, liveImage: null, hasSubcategories, subCategoryCount };
     });
 
     await setCache(cacheKey, ordered, 86400);
@@ -405,34 +412,7 @@ export const getV2MobileServiceCardsAction = async (req, res) => {
   }
 };
 
-// ─── V2: Sub-Categories ───────────────────────────────────────────────────────
-
-// ─── V2: Sub-category Mapping (for routing decisions) ──────────────────────
-
-export const getV2SubCategoryMappingAction = async (req, res) => {
-  try {
-    const cacheKey = "sub-category-mapping:v2";
-    const cached = await getCache(cacheKey);
-    if (cached) return res.send(cached);
-
-    const settings = await categoryDisplaySettingsModel.findOne().lean();
-    const subCatLookup = buildSubCatLookup(settings);
-
-    // Return a simple object mapping parent slugs to subcategory counts
-    const mapping = {};
-    Object.entries(subCatLookup).forEach(([slug, subs]) => {
-      mapping[slug] = subs.length;
-    });
-
-    await setCache(cacheKey, mapping, 3600);
-    return res.json(mapping);
-  } catch (error) {
-    console.error("getV2SubCategoryMappingAction error:", error);
-    return res.status(500).json({ message: error.message });
-  }
-};
-
-// ─── V2: Sub-Categories ───────────────────────────────────────────────────
+// ─── V2: Sub-Categories ───────────────────────────────────────────────────────────
 
 export const getV2SubCategoriesAction = async (req, res) => {
   try {

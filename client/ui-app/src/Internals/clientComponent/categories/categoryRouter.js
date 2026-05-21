@@ -8,9 +8,7 @@ import SearchResults from "../SearchResult/SearchResult";
 import {
   backendMainSearch,
 } from "../../../redux/actions/businessListAction";
-import {
-  fetchSubCategoryMapping,
-} from "../../../redux/actions/categoryAction";
+import axiosInstance from "../../../services/axiosInstance.js";
 
 const formatText = (text = "") =>
   text
@@ -23,24 +21,33 @@ const CategoryRouter = () => {
   const dispatch = useDispatch();
 
   const [resolvedCategory, setResolvedCategory] = useState(null);
-  const [subCategoryMapping, setSubCategoryMapping] = useState({});
+  const [categories, setCategories] = useState([]);
 
   const isSearchFlow = routerLocation.state?.isSearch;
   const searchText = routerLocation.state?.searchText;
 
-  // Fetch the sub-category mapping on mount
+  const API_URL = process.env.REACT_APP_API_URL;
+
+  // Fetch home categories on mount
   useEffect(() => {
-    const fetchMapping = async () => {
-      const mapping = await dispatch(fetchSubCategoryMapping());
-      setSubCategoryMapping(mapping);
+    const fetchCategories = async () => {
+      try {
+        const response = await axiosInstance.get(`${API_URL}/v2/category/home`);
+        setCategories(response.data || []);
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+        setCategories([]);
+      }
     };
-    fetchMapping();
-  }, [dispatch]);
+    fetchCategories();
+  }, []);
 
   const hasSubcategories = (cat) => {
     if (!cat) return false;
-    const normalized = cat.toLowerCase().replace(/\s+/g, "-");
-    return !!subCategoryMapping[normalized];
+    const categoryObj = categories.find(
+      (c) => c.slug === cat.toLowerCase().replace(/\s+/g, "-")
+    );
+    return categoryObj?.hasSubcategories || false;
   };
 
   useEffect(() => {
@@ -127,7 +134,7 @@ const CategoryRouter = () => {
     isSearchFlow,
     searchText,
     dispatch,
-    subCategoryMapping
+    categories
   ]);
 
   if (!resolvedCategory) return null;

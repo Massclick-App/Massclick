@@ -225,12 +225,3 @@ export const fetchServiceCards = () => async (dispatch) => {
   }
 };
 
-export const fetchSubCategoryMapping = () => async (dispatch) => {
-  try {
-    const response = await axiosInstance.get(`${API_URL}/v2/category/sub-mapping`);
-    return response.data;
-  } catch (error) {
-    console.error("Error fetching sub-category mapping:", error);
-    return {};
-  }
-};
