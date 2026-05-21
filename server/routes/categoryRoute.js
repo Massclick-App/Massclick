@@ -9,6 +9,7 @@ const router = express.Router();
 
 const categoryCache = cacheMiddleware({ expirySeconds: 3600, keyPrefix: 'category' });
 const homeCategoryCache = cacheMiddleware({ expirySeconds: 7200, keyPrefix: 'home-category' });
+const homeMobileCategoryCache = cacheMiddleware({ expirySeconds: 7200, keyPrefix: 'home-mobile-category' });
 
 router.post('/api/category/create', oauthAuthentication, addCategoryAction);
 router.post('/api/category/upload-images', oauthAuthentication, uploadCategoryImagesAction);
@@ -26,6 +27,6 @@ router.get("/api/category/home-mobile", homeCategoryCache, getMobileHomeCategori
 router.get("/api/category/sub/:parentId", categoryCache, getSubCategoriesAction);
 router.get("/api/category/popular", homeCategoryCache, getPopularCategoriesAction);
 router.get("/api/category/service-cards", homeCategoryCache, getServiceCardsAction);
-router.get("/api/category/mobile-service-cards", homeCategoryCache, getMobileServiceCardsAction);
+router.get("/api/category/mobile-service-cards", homeMobileCategoryCache, getMobileServiceCardsAction);
 
 export default router; 
