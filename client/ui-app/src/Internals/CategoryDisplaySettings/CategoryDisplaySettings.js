@@ -876,45 +876,14 @@ export default function CategoryDisplaySettings() {
 
   return (
     <Box className="category-display-settings">
-      {/* Sticky topbar */}
-      <Box className="category-display-topbar">
-        <Box>
-          <Typography className="category-display-topbar__title">
-            Category Display Settings
-          </Typography>
-          <Typography className="category-display-topbar__subtitle">
-            Configure what shows on the home page · clears v2 cache on save
-          </Typography>
-        </Box>
-
-        <Chip
-          size="small"
-          label={dirty ? "Unsaved changes" : "All changes saved"}
-          className={`category-display-topbar__status ${dirty ? "category-display-topbar__status--dirty" : "category-display-topbar__status--clean"}`}
-        />
-
-        <Box className="category-display-topbar__actions">
-          <Button
-            size="small"
-            variant="text"
-            startIcon={<RestartAltIcon />}
-            onClick={handleReset}
-            disabled={!dirty}
-            className="btn-reset"
-          >
-            Reset
-          </Button>
-          <Button
-            size="small"
-            variant="contained"
-            startIcon={saving ? <CircularProgress size={14} sx={{ color: "#fff" }} /> : <SaveIcon />}
-            onClick={handleSave}
-            disabled={!dirty || saving}
-            className="btn-save"
-          >
-            {saving ? "Saving…" : "Save all"}
-          </Button>
-        </Box>
+      {/* Header */}
+      <Box sx={{ px: 3, py: 3, borderBottom: `1px solid ${T.line}` }}>
+        <Typography sx={{ fontSize: 24, fontWeight: 700, color: T.ink, mb: 0.5 }}>
+          Category Display Settings
+        </Typography>
+        <Typography sx={{ fontSize: 13.5, color: T.ink3 }}>
+          Configure what shows on the home page · clears v2 cache on save
+        </Typography>
       </Box>
 
       {/* Page */}
@@ -1162,6 +1131,62 @@ export default function CategoryDisplaySettings() {
           </Box>
         </Paper>
       </Box>
+
+      {/* Sticky footer bar */}
+      <Box
+        sx={{
+          position: "fixed",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          px: 3,
+          py: 1.75,
+          bgcolor: T.surface,
+          borderTop: `1px solid ${T.line}`,
+          boxShadow: "0 -2px 8px rgba(20, 17, 15, 0.08)",
+          zIndex: 100,
+        }}
+      >
+        <Chip
+          size="small"
+          label={dirty ? "Unsaved changes" : "All changes saved"}
+          sx={{
+            bgcolor: dirty ? T.redTint : T.greenTint,
+            color: dirty ? T.red : T.green,
+            fontWeight: 500,
+            fontSize: 12,
+          }}
+        />
+
+        <Stack direction="row" spacing={1}>
+          <Button
+            size="small"
+            variant="text"
+            startIcon={<RestartAltIcon />}
+            onClick={handleReset}
+            disabled={!dirty}
+            sx={{ textTransform: "none", color: T.ink2 }}
+          >
+            Reset
+          </Button>
+          <Button
+            size="small"
+            variant="contained"
+            startIcon={saving ? <CircularProgress size={14} sx={{ color: "#fff" }} /> : <SaveIcon />}
+            onClick={handleSave}
+            disabled={!dirty || saving}
+            sx={{ textTransform: "none" }}
+          >
+            {saving ? "Saving…" : "Save all"}
+          </Button>
+        </Stack>
+      </Box>
+
+      {/* Spacer for fixed footer */}
+      <Box sx={{ height: 68 }} />
 
       <Snackbar
         open={snackbar.open}

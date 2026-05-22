@@ -17,6 +17,13 @@ import { fetchPopularCategories } from "../../../../redux/actions/categoryAction
 const slugify = (text = "") =>
   text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 
+const formatUiName = (name) => {
+  if (!name) return "";
+  return name
+    .replace(/[-_]/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase())
+    .trim();
+};
 
 const generateAltText = (label, districtSlug) =>
   `${label} services in ${districtSlug}`;
@@ -159,7 +166,7 @@ const handleClick = useCallback((cat) => {
                   handleImageError(e);
                 }}
               />
-              <span>{cat.name}</span>
+              <span>{formatUiName(cat.name)}</span>
             </article>
           );
         })}
