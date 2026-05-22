@@ -289,6 +289,24 @@ useEffect(() => {
     overallRating
   );
 
+  // Add LocalBusiness schema for the category
+  const categoryBusinessSchema = {
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    "name": `${searchText} in ${locationText}`,
+    "url": canonicalUrl,
+    "description": description,
+    ...(overallRating && {
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": overallRating,
+        "reviewCount": results.length,
+        "bestRating": 5,
+        "worstRating": 1
+      }
+    })
+  };
+
   // Generate Breadcrumb schema
   const breadcrumbSchema = generateBreadcrumbSchema([
     { name: "Home", url: "https://www.massclick.in" },
@@ -340,6 +358,11 @@ useEffect(() => {
         {faqSchema && (
           <script type="application/ld+json">
             {JSON.stringify(faqSchema)}
+          </script>
+        )}
+        {categoryBusinessSchema && (
+          <script type="application/ld+json">
+            {JSON.stringify(categoryBusinessSchema)}
           </script>
         )}
       </Helmet>
