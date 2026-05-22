@@ -6,58 +6,45 @@ const MassClickBanner = () => {
       <div className="mc-banner-inner">
         {/* LEFT */}
         <div className="mc-left">
-          <div className="mc-brand-row">
-            <div className="mc-logo-pill">
-              <img src="/apple-touch-icon.png" alt="MassClick Logo" className="mc-logo-img" />
-            </div>
-
-            <div>
-              <h1 className="mc-logo-text">
-                <span className="mc-logo-mass">Mass</span>
-                <span className="mc-logo-click">Click</span>
-                <sup className="mc-logo-tm">™</sup>
-              </h1>
-              <p className="mc-tagline">India&apos;s Leading Local Search Engine</p>
-            </div>
-          </div>
+          <span className="mc-offer-label">LIST YOUR BUSINESS — LAUNCH OFFER</span>
 
           <h2 className="mc-heading">
-            Your One-Stop Destination for{" "}
-            <span className="mc-highlight">Local Business Listing</span>
+            50,000 customers are already searching.<br />
+            <span className="mc-highlight">Be there when they look.</span>
           </h2>
 
           <p className="mc-description">
-            Help customers discover you instantly on MassClick. Improve visibility,
-            build trust and grow enquiries across your city – all with a single
-            listing.
+            Join thousands of local businesses getting discovered by customers actively searching for your services on India's most trusted local search engine.
           </p>
 
           <ul className="mc-points">
-            <li>Appear in local search results instantly</li>
-            <li>Dedicated business profile with photos & contact details</li>
-            <li>Priority placement in relevant categories</li>
+            <li>Live in 24 hours</li>
+            <li>Photos + maps + reviews</li>
+            <li>Priority placement</li>
           </ul>
         </div>
 
         {/* RIGHT */}
         <div className="mc-right">
           <div className="mc-price-card">
-            <span className="mc-offer-label">Launch Offer</span>
-
-            <p className="mc-price-title">List Your Business on MassClick</p>
+            <p className="mc-price-title">Starting at</p>
 
             <div className="mc-price-row">
               <span className="mc-price-currency">₹</span>
-              <span className="mc-price-main"></span>
-              <span className="mc-price-sub">/ listing</span>
+              <span className="mc-price-main">0</span>
+              <span className="mc-price-sub">/listing</span>
             </div>
 
+            <p className="mc-subtext">Limited time launch offer</p>
+
             <button className="mc-cta-btn">
-              Get Started Now
+              Get started now →
             </button>
 
-            <p className="mc-note">
-              No hidden charges • Go live within 24 hours
+            <p className="mc-guarantee">
+              ✓ No credit card required<br/>
+              ✓ Verified by MassClick<br/>
+              ✓ 24-hour setup
             </p>
           </div>
         </div>
