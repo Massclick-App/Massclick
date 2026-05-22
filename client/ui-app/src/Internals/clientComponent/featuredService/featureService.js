@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { logSearchActivity } from "../../../redux/actions/businessListAction";
 import { fetchHomeCategories } from "../../../redux/actions/categoryAction";
+import { getPlaceholderImage, handleImageError } from "../../../utils/placeholderImage";
 
 import "./featureService.css";
 
@@ -144,7 +145,8 @@ const FeaturedServicesSection = () => {
             >
 
               <img
-                src={service.icon ? service.icon : "/default.webp"}
+                src={service.icon ? service.icon : getPlaceholderImage()}
+                onError={(e) => handleImageError(e)}
                 alt={altText}
                 title={`${service.name} services in ${districtSlug}`}
                 className="service-icons"
@@ -155,7 +157,7 @@ const FeaturedServicesSection = () => {
                 fetchpriority={index < 2 ? "high" : "auto"}
                 onError={(e) => {
                   e.target.onerror = null;
-                  e.target.src = "/default.webp";
+                  handleImageError(e);
                 }}
               />
 

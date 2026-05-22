@@ -151,7 +151,7 @@ const SkeletonGrid = ({ type }) => {
             }}
         >
             {[...Array(count)].map((_, i) => (
-                <Grid item xs={6} sm={isTourist ? 3 : 4} md={isTourist ? 3 : 4} key={i}>
+                <Grid size={{ xs: 6, sm: isTourist ? 3 : 4, md: isTourist ? 3 : 4 }} key={i}>
                     <S w="100%" h={h} r={12} />
                     <Txt w="60%" h={14} sx={{ mt: 1.5 }} />
                     {isTourist && <Txt w="40%" h={11} sx={{ mt: 0.5 }} />}

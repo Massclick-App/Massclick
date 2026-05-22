@@ -62,7 +62,7 @@ export default function GlobalDrawer() {
   const userName = authUser?.userName || "Guest User";
   const userEmail = authUser?.email || "No Email";
 
-  const otpState = useSelector((state) => state.otp || {});
+  const otpState = useSelector((state) => state.otp) || {};
   const allUsers = Array.isArray(otpState.viewAllResponse)
     ? otpState.viewAllResponse
     : [];
@@ -169,7 +169,6 @@ export default function GlobalDrawer() {
             {userMenuItems.map((item, index) => (
               <ListItem
                 key={index}
-                button
                 onClick={() => handleItemClick(item)}
                 sx={{
                   mx: 1.5,

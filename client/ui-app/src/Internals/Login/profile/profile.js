@@ -1,6 +1,7 @@
 // Profile.js
 import React, { useEffect } from "react";
 import "./profile.css";
+import { getPlaceholderImage } from "../../../utils/placeholderImage";
 
 import EmailRoundedIcon from "@mui/icons-material/EmailRounded";
 import PhoneRoundedIcon from "@mui/icons-material/PhoneRounded";
@@ -44,7 +45,7 @@ export default function Profile() {
 
   const profileImageUrl = user?.userProfile
     ? user.userProfile
-    : "https://via.placeholder.com/150/007bff/ffffff?text=U";
+    : getPlaceholderImage();
 
   if (loading) {
     return null;

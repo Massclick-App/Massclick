@@ -139,7 +139,7 @@ const WebDevSection = () => {
                     }}
                 >
                     <Grid container spacing={4} alignItems="center">
-                        <Grid item xs={12} md={6}>
+                        <Grid size={{ xs: 12, md: 6 }}>
                             <Typography
                                 variant="h1"
                                 sx={{
@@ -185,7 +185,7 @@ const WebDevSection = () => {
                                 Start Your Project Today
                             </Button>
                         </Grid>
-                        <Grid item md={6} sx={{ display: { xs: 'none', md: 'block' } }}>
+                        <Grid size={{ md: 6 }} sx={{ display: { xs: 'none', md: 'block' } }}>
                             {/* Placeholder for the large image */}
                         </Grid>
                     </Grid>
@@ -211,7 +211,7 @@ const WebDevSection = () => {
                         {featuresData.map((feature, index) => {
                             const IconComponent = feature.icon;
                             return (
-                                <Grid item xs={12} sm={6} md={4} key={index}>
+                                <Grid size={{ xs: 12, sm: 6, md: 4 }} key={index}>
                                     <Card
                                         elevation={3}
                                         sx={{

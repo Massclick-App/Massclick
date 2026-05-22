@@ -4,6 +4,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { logSearchActivity } from "../../../redux/actions/businessListAction";
 import { fetchServiceCards } from "../../../redux/actions/categoryAction";
 import { Skeleton } from "@mui/material";
+import { getPlaceholderImage, handleImageError } from "../../../utils/placeholderImage";
 import "./serviceCard.css";
 
 const ServiceCardsSkeleton = () => (
@@ -159,12 +160,12 @@ const ServiceCardsGrid = () => {
               // Get image URL with fallback priority:
               // 1. categoryImages.webCard (new structure)
               // 2. categoryImageKey (legacy)
-              // 3. default.webp
+              // 3. empty
               const imageUrl = (() => {
                 if (item.categoryImages?.webCard) {
                   return item.categoryImages.webCard;
                 }
-                return item.categoryImageKey || "/default.webp";
+                return item.categoryImageKey || getPlaceholderImage();
               })();
 
               return (
@@ -190,7 +191,7 @@ const ServiceCardsGrid = () => {
                     loading="eager"
                     onError={(e) => {
                       e.target.onerror = null;
-                      e.target.src = "/default.webp";
+                      handleImageError(e);
                     }}
                   />
 

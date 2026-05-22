@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link, useParams, useNavigate } from "react-router-dom";
+import { getPlaceholderImage } from "../../../utils/placeholderImage";
 import { useDispatch, useSelector } from "react-redux";
 import { useSnackbar } from "notistack";
 import {
@@ -130,7 +131,7 @@ const FullScreenGallery = ({ images, initialIndex, onClose }) => {
           <img
             src={
               currentImage ||
-              "https://via.placeholder.com/1200x600?text=No+Image"
+              getPlaceholderImage()
             }
             alt={`Business Media ${index + 1}`}
             className="business-CardDetails-galleryImage"
@@ -266,7 +267,7 @@ const BusinessDetail = React.memo(() => {
 
   const galleryImageSrcs = business.businessImages || [];
   const fallbackImage =
-    "https://via.placeholder.com/1200x400?text=Business+Image";
+    getPlaceholderImage();
 
   const firstImage =
     business.bannerImage || galleryImageSrcs[0] || null;
@@ -702,7 +703,7 @@ const BusinessDetail = React.memo(() => {
               alt={business?.businessName}
               className="business-CardDetails-bannerImage"
               loading="eager"
-              fetchPriority="high"
+              fetchpriority="high"
               width="1200"
               height="600"
             />
@@ -748,7 +749,7 @@ const BusinessDetail = React.memo(() => {
                   key={index}
                   src={
                     src ||
-                    "https://via.placeholder.com/80x80?text=No+Image"
+                    getPlaceholderImage()
                   }
                   alt={`${business.businessName} ${index + 1}`}
                   className={
@@ -1066,7 +1067,7 @@ const BusinessDetail = React.memo(() => {
                         key={index}
                         src={
                           src ||
-                          "https://via.placeholder.com/300x200?text=No+Image"
+                          getPlaceholderImage()
                         }
                         alt={`${business.businessName} ${index + 1}`}
                         className="business-CardDetails-photoItem"

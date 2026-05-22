@@ -169,7 +169,7 @@ export const getV2HomeCategoriesAction = async (req, res) => {
 
     const ordered = order.map((name) => {
       const found = map.get(normalize(name));
-      const categoryKey = normalize(name).toLowerCase().replace(/\s+/g, "-");
+      const categoryKey = found?.slug || normalize(name).toLowerCase().replace(/\s+/g, "-");
       const hasSubcategories = !!subCatLookup[categoryKey];
       const subCategoryCount = subCatLookup[categoryKey]?.length || 0;
 
@@ -213,7 +213,7 @@ export const getV2MobileHomeCategoriesAction = async (req, res) => {
 
     const ordered = order.map((name) => {
       const found = map.get(normalize(name));
-      const categoryKey = normalize(name).toLowerCase().replace(/\s+/g, "-");
+      const categoryKey = found?.slug || normalize(name).toLowerCase().replace(/\s+/g, "-");
       const hasSubcategories = !!subCatLookup[categoryKey];
       const subCategoryCount = subCatLookup[categoryKey]?.length || 0;
 
@@ -264,7 +264,7 @@ export const getV2PopularCategoriesAction = async (req, res) => {
 
     const ordered = order.map((name) => {
       const found = map.get(normalize(name));
-      const categoryKey = normalize(name).toLowerCase().replace(/\s+/g, "-");
+      const categoryKey = found?.slug || normalize(name).toLowerCase().replace(/\s+/g, "-");
       const hasSubcategories = !!subCatLookup[categoryKey];
       const subCategoryCount = subCatLookup[categoryKey]?.length || 0;
 
@@ -460,7 +460,7 @@ export const getV2SubCategoriesAction = async (req, res) => {
           _id: item._id,
           name: item.category,
           slug: item.slug,
-          icon: item.categoryImageKey ? `${BASE_URL}${item.categoryImageKey}` : "/icons/default.webp",
+          icon: item.categoryImageKey ? `${BASE_URL}${item.categoryImageKey}` : "",
           liveImage: item.liveImageKey ? `${BASE_URL}${item.liveImageKey}` : null,
         }))
       );
@@ -471,7 +471,7 @@ export const getV2SubCategoriesAction = async (req, res) => {
         _id: index + 1,
         name: item.name,
         slug: item.name.toLowerCase().replace(/\s+/g, "-"),
-        icon: "/icons/default.webp",
+        icon: "",
         liveImage: null,
       }))
       .sort((a, b) => a.name.localeCompare(b.name));

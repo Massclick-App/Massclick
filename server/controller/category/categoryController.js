@@ -383,7 +383,7 @@ export const getSubCategoriesAction = async (req, res) => {
           slug: item.slug,
           icon: item.categoryImageKey
             ? `${BASE_URL}${item.categoryImageKey}`
-            : "/icons/default.webp",
+            : "",
           liveImage: item.liveImageKey
             ? `${BASE_URL}${item.liveImageKey}`
             : null,
@@ -396,7 +396,7 @@ export const getSubCategoriesAction = async (req, res) => {
         _id: index + 1,
         name: item.name,
         slug: item.name.toLowerCase().replace(/\s+/g, "-"),
-        icon: "/icons/default.webp",
+        icon: "",
         liveImage: null,
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
@@ -828,7 +828,7 @@ export const getAllUniqueCategoriesAction = async (req, res) => {
                 slug: found.slug,
                 icon: found.categoryImageKey
                   ? `${S3_BASE_URL}${found.categoryImageKey}`
-                  : "/icons/default.webp",
+                  : "",
                 liveImage: found.liveImageKey
                   ? `${S3_BASE_URL}${found.liveImageKey}`
                   : null,
@@ -836,7 +836,7 @@ export const getAllUniqueCategoriesAction = async (req, res) => {
               : {
                 name,
                 slug: name.toLowerCase().replace(/\s+/g, "-"),
-                icon: "/icons/default.webp",
+                icon: "",
                 liveImage: null,
               };
           })
@@ -848,7 +848,7 @@ export const getAllUniqueCategoriesAction = async (req, res) => {
           slug: item.slug,
           icon: item.categoryImageKey
             ? `${S3_BASE_URL}${item.categoryImageKey}`
-            : "/icons/default.webp",
+            : "",
           liveImage: item.liveImageKey
             ? `${S3_BASE_URL}${item.liveImageKey}`
             : null,

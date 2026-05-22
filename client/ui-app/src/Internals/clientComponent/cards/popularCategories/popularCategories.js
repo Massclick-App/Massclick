@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo, useCallback } from "react";
 import "./popularCategories.css";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
+import { getPlaceholderImage, handleImageError } from "../../../../utils/placeholderImage";
 
 import Drawer from "@mui/material/Drawer";
 import CloseIcon from "@mui/icons-material/Close";
@@ -144,7 +145,8 @@ const handleClick = useCallback((cat) => {
               onClick={() => handleClick(cat)}
             >
               <img
-                src={cat.icon || "/default.webp"}
+                src={cat.icon || getPlaceholderImage()}
+                onError={(e) => handleImageError(e)}
                 className="popular-icons"
                 alt={altText}
                 width="70"
@@ -154,7 +156,7 @@ const handleClick = useCallback((cat) => {
                 style={{ objectFit: "contain" }}
                 onError={(e) => {
                   e.target.onerror = null;
-                  e.target.src = "/default.webp";
+                  handleImageError(e);
                 }}
               />
               <span>{cat.name}</span>

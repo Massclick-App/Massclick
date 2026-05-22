@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { Helmet } from "react-helmet-async";
 import { fetchSeoBlogBySlug } from "../../../../redux/actions/seoPageContentBlogAction";
 import { throttle } from "../../../../utils/throttle";
+import { getPlaceholderImage } from "../../../../utils/placeholderImage";
 import { generateArticleSchema, generateBreadcrumbSchema } from "../../../../utils/seoSchemaGenerators";
 import "./blogDetails.css";
 import Navbar from "../relatedBlogNavbar/relatedBlogNavbar";
@@ -841,7 +842,7 @@ const BlogDetail = () => {
 
             <div className="author-card author-card-large">
               <img
-                src={blog.profileImage || "https://via.placeholder.com/80"}
+                src={blog.profileImage || getPlaceholderImage()}
                 alt={`${blog.author || "Massclick"} author profile`}
               />
               <div>
@@ -860,7 +861,7 @@ const BlogDetail = () => {
 
             <div className="author-card">
               <img
-                src={blog.profileImage || "https://via.placeholder.com/80"}
+                src={blog.profileImage || getPlaceholderImage()}
                 alt={`${blog.author || "Massclick"} author profile`}
               />
               <div>

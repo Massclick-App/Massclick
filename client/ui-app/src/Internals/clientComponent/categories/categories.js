@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { Helmet } from "react-helmet-async";
+import { handleImageError } from "../../../utils/placeholderImage";
 import "./categories.css";
 import { logSearchActivity } from "../../../redux/actions/businessListAction";
 import { fetchSubCategories } from "../../../redux/actions/categoryAction";
@@ -231,7 +232,7 @@ const CategoriesPage = () => {
                       decoding="async"
                       onError={(e) => {
                         e.target.onerror = null;
-                        e.target.src = "/icons/default.webp";
+                        handleImageError(e);
                       }}
                     />
                     <span className="category-text">
