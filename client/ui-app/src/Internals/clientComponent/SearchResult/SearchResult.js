@@ -295,7 +295,7 @@ useEffect(() => {
     "@type": "LocalBusiness",
     "name": `${searchText} in ${locationText}`,
     "url": canonicalUrl,
-    "description": description,
+    "description": fallbackSeo.description,
     ...(overallRating && {
       "aggregateRating": {
         "@type": "AggregateRating",
