@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { Helmet } from 'react-helmet-async';
 import { createStartProject } from '../../../../redux/actions/startProjectAction';
 
 import {
@@ -8,6 +9,7 @@ import {
 } from '@mui/material';
 import SeoMeta from "../../seo/seoMeta";
 import { fetchSeoMeta } from "../../../../redux/actions/seoAction";
+import { generateServiceSchema, generateBreadcrumbSchema } from "../../../../utils/seoSchemaGenerators";
 
 // Import specific icons
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
@@ -118,8 +120,29 @@ const WebDevSection = () => {
         outline: 'none',
     };
 
+    const serviceSchema = generateServiceSchema({
+        name: "Web Development",
+        title: "Professional Web Development Services",
+        description: "Custom web design and development services for your business. Responsive, mobile-first websites with cutting-edge technologies.",
+        location: "India",
+        category: "Web Development"
+    });
+
+    const breadcrumbSchema = generateBreadcrumbSchema([
+        { name: "Home", url: "https://massclick.in" },
+        { name: "Web Development", url: "https://massclick.in/web" }
+    ]);
+
     return (
         <>
+            <Helmet>
+                {serviceSchema && (
+                    <script type="application/ld+json">{JSON.stringify(serviceSchema)}</script>
+                )}
+                {breadcrumbSchema && (
+                    <script type="application/ld+json">{JSON.stringify(breadcrumbSchema)}</script>
+                )}
+            </Helmet>
             <SeoMeta seoData={seoMetaData} fallback={fallbackSeo} />
 
             <CardsSearch /><br /><br /><br />

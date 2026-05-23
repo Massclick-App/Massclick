@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
+import { Helmet } from "react-helmet-async";
 
-import './enquiry.css'; 
+import './enquiry.css';
 import Alert from '@mui/material/Alert';
-import SendIcon from '@mui/icons-material/Send'; 
+import SendIcon from '@mui/icons-material/Send';
 
 import EnquiryImage from '../../../../assets/enquiry.png';
 import CardsSearch from '../../CardsSearch/CardsSearch';
@@ -11,6 +12,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { createEnquiry } from "../../../../redux/actions/enquiryAction";
 import SeoMeta from "../../seo/seoMeta";
 import { fetchSeoMeta } from "../../../../redux/actions/seoAction";
+import { generateContactPageSchema, generateBreadcrumbSchema } from "../../../../utils/seoSchemaGenerators";
 
 
 const serviceInterests = [
@@ -106,8 +108,26 @@ const EnquiryNow = () => {
         }
     };
 
+    const contactPageSchema = generateContactPageSchema({
+        title: "Contact Massclick",
+        description: "Get in touch with Massclick. Send us your enquiry and our team will respond shortly."
+    });
+
+    const breadcrumbSchema = generateBreadcrumbSchema([
+        { name: "Home", url: "https://massclick.in" },
+        { name: "Enquiry", url: "https://massclick.in/enquiry" }
+    ]);
+
     return (
         <>
+            <Helmet>
+                {contactPageSchema && (
+                    <script type="application/ld+json">{JSON.stringify(contactPageSchema)}</script>
+                )}
+                {breadcrumbSchema && (
+                    <script type="application/ld+json">{JSON.stringify(breadcrumbSchema)}</script>
+                )}
+            </Helmet>
             <SeoMeta seoData={seoMetaData} fallback={fallbackSeo} />
             <CardsSearch /><br /><br /><br />
             <section

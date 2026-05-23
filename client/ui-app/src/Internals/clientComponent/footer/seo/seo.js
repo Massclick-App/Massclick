@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import { Helmet } from "react-helmet-async";
 import './seo.css';
 import SeoImage from '../../../../assets/seo1.jpg';
 import searchGraphic from '../../../../assets/seo.jpg';
@@ -7,6 +8,7 @@ import CardsSearch from '../../CardsSearch/CardsSearch';
 import SeoMeta from "../../seo/seoMeta";
 import { fetchSeoMeta } from "../../../../redux/actions/seoAction";
 import { useDispatch, useSelector } from "react-redux";
+import { generateServiceSchema, generateBreadcrumbSchema } from "../../../../utils/seoSchemaGenerators";
 
 
 
@@ -31,8 +33,29 @@ const Seo = () => {
         robots: "index, follow",
     };
 
+    const serviceSchema = generateServiceSchema({
+        name: "Search Engine Optimization",
+        title: "SEO Services for Local Businesses",
+        description: "Improve your online visibility with professional SEO services including keyword optimization, technical SEO, link building, and content strategy.",
+        location: "India",
+        category: "Search Engine Optimization"
+    });
+
+    const breadcrumbSchema = generateBreadcrumbSchema([
+        { name: "Home", url: "https://massclick.in" },
+        { name: "SEO", url: "https://massclick.in/seo" }
+    ]);
+
     return (
         <>
+            <Helmet>
+                {serviceSchema && (
+                    <script type="application/ld+json">{JSON.stringify(serviceSchema)}</script>
+                )}
+                {breadcrumbSchema && (
+                    <script type="application/ld+json">{JSON.stringify(breadcrumbSchema)}</script>
+                )}
+            </Helmet>
 
             <SeoMeta seoData={seoMetaData} fallback={fallbackSeo} />
 

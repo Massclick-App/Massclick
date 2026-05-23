@@ -119,6 +119,21 @@ export const generateLocalBusinessSchema = (business) => {
     }
   }
 
+  // Keywords as knowsAbout
+  if (business.keywords?.length > 0) {
+    schema.knowsAbout = business.keywords.filter(Boolean);
+  }
+
+  // Verification badge
+  if (business.verification?.isVerified) {
+    schema.award = `Verified on Massclick (${business.verification.verificationType || 'ADMIN'})`;
+  }
+
+  // Subscription tier as price indicator
+  if (business.subscription?.plan && business.subscription.plan !== 'FREE') {
+    schema.priceRange = business.subscription.plan === 'PREMIUM' ? '$$' : '$$$';
+  }
+
   return schema;
 };
 
@@ -308,6 +323,108 @@ export const generateFAQSchema = (faqs) => {
         text: faq.answer,
       },
     })),
+  };
+};
+
+/**
+ * Generate Service schema for service landing pages
+ * @param {Object} service - Service data with name, description, category, location
+ * @returns {Object} Valid Service schema or null
+ */
+export const generateServiceSchema = (service) => {
+  if (!service?.name && !service?.title) return null;
+
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "Service",
+    name: service.name || service.title,
+  };
+
+  if (service.description) {
+    schema.description = service.description;
+  }
+
+  if (service.image) {
+    schema.image = service.image;
+  }
+
+  schema.provider = {
+    "@type": "Organization",
+    name: "Massclick",
+    url: "https://massclick.in",
+  };
+
+  if (service.location) {
+    schema.areaServed = {
+      "@type": "City",
+      name: service.location,
+    };
+  }
+
+  if (service.category) {
+    schema.serviceType = service.category;
+  }
+
+  return schema;
+};
+
+/**
+ * Generate AboutPage schema for about pages
+ * @param {Object} pageData - About page data with title, description
+ * @returns {Object} Valid AboutPage schema
+ */
+export const generateAboutPageSchema = (pageData = {}) => {
+  return {
+    "@context": "https://schema.org",
+    "@type": "AboutPage",
+    name: pageData.title || "About Massclick",
+    description: pageData.description || "Learn about Massclick - your trusted platform for discovering local businesses",
+    url: "https://massclick.in/aboutus",
+    mainEntity: {
+      "@type": "Organization",
+      name: "Massclick",
+      description: "Find trusted local businesses near you with reviews, ratings, and contact details",
+      url: "https://massclick.in",
+      logo: "https://massclick.in/logo.png",
+      sameAs: [
+        "https://facebook.com/massclick",
+        "https://instagram.com/massclick",
+        "https://twitter.com/massclick",
+      ],
+      areaServed: {
+        "@type": "Country",
+        name: "IN",
+      },
+    },
+  };
+};
+
+/**
+ * Generate ContactPage schema for contact/enquiry pages
+ * @param {Object} pageData - Contact page data
+ * @returns {Object} Valid ContactPage schema
+ */
+export const generateContactPageSchema = (pageData = {}) => {
+  return {
+    "@context": "https://schema.org",
+    "@type": "ContactPage",
+    name: pageData.title || "Contact Massclick",
+    description: pageData.description || "Get in touch with Massclick support",
+    url: "https://massclick.in/enquiry",
+    mainEntity: {
+      "@type": "LocalBusiness",
+      name: "Massclick",
+      contactPoint: {
+        "@type": "ContactPoint",
+        contactType: "Customer Service",
+        telephone: pageData.telephone || "+91-XXXXXXXXXX",
+        email: "support@massclick.in",
+        areaServed: {
+          "@type": "Country",
+          name: "IN",
+        },
+      },
+    },
   };
 };
 

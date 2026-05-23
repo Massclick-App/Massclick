@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import { Helmet } from "react-helmet-async";
 import './aboutUspage.css';
 import { useDispatch, useSelector } from "react-redux";
 
@@ -14,6 +15,7 @@ import AboutUs from '../../../../assets/aboutus.jpg'
 import CardsSearch from '../../CardsSearch/CardsSearch';
 import SeoMeta from "../../seo/seoMeta";
 import { fetchSeoMeta } from "../../../../redux/actions/seoAction";
+import { generateAboutPageSchema, generateBreadcrumbSchema } from "../../../../utils/seoSchemaGenerators";
 
 const Card = ({ Icon, title, description }) => (
     <div className="card-item">
@@ -90,8 +92,26 @@ const AboutUsPage = () => {
         { Icon: BusinessCenterIcon, number: "15+", label: "Talented Employees" },
     ];
 
+    const aboutPageSchema = generateAboutPageSchema({
+        title: "About Massclick",
+        description: "Learn about Massclick - your trusted platform for discovering local businesses with verified reviews and ratings."
+    });
+
+    const breadcrumbSchema = generateBreadcrumbSchema([
+        { name: "Home", url: "https://massclick.in" },
+        { name: "About Us", url: "https://massclick.in/aboutus" }
+    ]);
+
     return (
         <>
+            <Helmet>
+                {aboutPageSchema && (
+                    <script type="application/ld+json">{JSON.stringify(aboutPageSchema)}</script>
+                )}
+                {breadcrumbSchema && (
+                    <script type="application/ld+json">{JSON.stringify(breadcrumbSchema)}</script>
+                )}
+            </Helmet>
             <SeoMeta seoData={seoMetaData} fallback={fallbackSeo} />
             <CardsSearch /><br /><br /><br />
 
