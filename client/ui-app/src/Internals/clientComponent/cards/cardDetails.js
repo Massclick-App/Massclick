@@ -687,6 +687,7 @@ const BusinessDetail = React.memo(() => {
             { label: business.businessName },
           ]}
         />
+        <main>
         <section className="business-CardDetails-heroSection">
           <div
             className="business-CardDetails-mainImageContainer"
@@ -1342,6 +1343,7 @@ const BusinessDetail = React.memo(() => {
             )}
           </aside>
         </div>
+        </main>
       </div>
 
       {showContactModal && (

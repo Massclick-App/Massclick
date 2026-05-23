@@ -37,7 +37,17 @@
   </FilesMatch>
 
   # HTML & main JS: revalidate always
-  <FilesMatch "^index\.html$|\.html$|^service-worker\.js$">>
+  <FilesMatch "^index\.html$|\.html$|^service-worker\.js$">
     Header set Cache-Control "public, max-age=0, must-revalidate"
   </FilesMatch>
+
+  # Enable gzip compression
+  <IfModule mod_gzip.c>
+    mod_gzip_on On
+    mod_gzip_dechunk On
+    mod_gzip_item_include file \.(html?|text|xml|js|css|svg)$
+    mod_gzip_item_include handler ^cgi-script$
+    mod_gzip_item_exclude mime ^image/
+    mod_gzip_item_exclude rn ^Content-Encoding:.*gzip
+  </IfModule>
 </IfModule>

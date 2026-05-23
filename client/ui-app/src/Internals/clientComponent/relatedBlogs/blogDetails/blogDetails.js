@@ -597,6 +597,7 @@ const BlogDetail = () => {
         )}
       </Helmet>
       <Navbar />
+      <main>
       <div className="reading-progress" aria-hidden="true">
         <span style={{ width: `${readingProgress}%` }} />
       </div>
@@ -951,6 +952,7 @@ const BlogDetail = () => {
 
         </div>
       </div>
+      </main>
 
       {selectedContact && (
         <div className="contact-popover-backdrop" role="presentation" onClick={closeContactPopover}>

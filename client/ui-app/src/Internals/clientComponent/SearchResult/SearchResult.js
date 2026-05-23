@@ -369,6 +369,7 @@ useEffect(() => {
 
       <div className="results-page">
         <CardsSearch />
+        <main>
         <div className="page-spacing" />
         <div className="results-container banner-section">
           <TopBannerAds category={searchText} />
@@ -389,10 +390,10 @@ useEffect(() => {
             <h1 className="main-seo-heading">
               Best {searchText} in {locationText}
             </h1>
-            <h4 className="results-subheading">
+            <h2 className="results-subheading">
               Discover trusted {searchText} in {locationText}. Compare ratings,
               reviews and contact details to find the best near you.
-            </h4>
+            </h2>
 
             <div className="category-trust-badges">
 
@@ -486,6 +487,7 @@ useEffect(() => {
             </div>
           </div>
         )}<br/>
+        </main>
         <div className="bottom-sections-wrapper">
           <PopularCategoriesLink />
           <Footer />

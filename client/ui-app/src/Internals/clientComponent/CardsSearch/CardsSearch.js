@@ -397,7 +397,7 @@ const CardsSearch = ({
               <MicIcon className="input-adornment end" />
             </div>
 
-            <button className="search-btn" onClick={handleSearch}>
+            <button className="search-btn" onClick={handleSearch} aria-label="Search">
               <SearchIcon />
             </button>
           </div>
@@ -436,7 +436,7 @@ const CardsSearch = ({
                 </Box>
               </Button>
             ) : (
-              <IconButton onClick={openDrawer}>
+              <IconButton onClick={openDrawer} aria-label="Open user menu">
                 <AccountCircleIcon sx={{ fontSize: 28 }} />
               </IconButton>
             )}

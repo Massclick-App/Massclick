@@ -347,6 +347,7 @@ const LandingPage = React.memo(() => {
                     setCategoryName={setCategoryName}
                 />
 
+                <main>
                 <Box ref={heroSectionRef}>
                     <HeroSection
                         locationName={locationName}
@@ -425,6 +426,7 @@ const LandingPage = React.memo(() => {
                     )}
 
                 </Suspense>
+                </main>
 
                 <OTPLoginModel
                     open={showLoginModal}
