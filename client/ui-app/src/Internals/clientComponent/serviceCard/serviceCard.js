@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { logSearchActivity } from "../../../redux/actions/businessListAction";
 import { fetchServiceCards } from "../../../redux/actions/categoryAction";
+import { navigateToSearchResult } from "../../../utils/searchResultNavigation";
 import { Skeleton } from "@mui/material";
 import { getPlaceholderImage, handleImageError } from "../../../utils/placeholderImage";
 import "./serviceCard.css";
@@ -110,7 +111,15 @@ const ServiceCardsGrid = () => {
       )
     );
 
-    navigate(`/${districtSlug}/${service.slug}`, { state: { logAlreadySent: true } });
+    navigateToSearchResult({
+      searchTerm: categoryName,
+      location: locationName,
+      navigate,
+      dispatch,
+      isKnownCategory: true, // Service card - known category
+      logAlreadySent: true,
+      userDetails,
+    });
   };
 
   // Build sections preserving the order they first appear in the API response.

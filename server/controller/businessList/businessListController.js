@@ -515,42 +515,10 @@ export const mainSearchController = async (req, res) => {
     }
 
     // ===============================
-    // 🔍 TERM SEARCH
+    // 🔍 TERM SEARCH (using MongoDB text search)
     // ===============================
     if (term) {
-      // 🔹 Split multi-word searches into individual words
-      const words = term.split(/\s+/).filter(w => w.trim());
-
-      const termConditions = [];
-
-      words.forEach((word) => {
-        const variations = getWordVariations(word);
-
-        variations.forEach((val) => {
-          const escaped = escapeRegex(val);
-
-          // For each word, create OR conditions across fields
-          const withBoundaries = `\\b${escaped}\\b`;
-          termConditions.push(
-            { businessName: { $regex: withBoundaries, $options: "i" } },
-            { slug: { $regex: withBoundaries, $options: "i" } },
-            { keywords: { $regex: withBoundaries, $options: "i" } }
-          );
-
-          // Only search category field if category filter wasn't explicitly provided
-          if (!category) {
-            termConditions.push(
-              { category: { $regex: withBoundaries, $options: "i" } }
-            );
-          }
-        });
-      });
-
-      if (termConditions.length > 0) {
-        matchQuery.$and.push({
-          $or: termConditions
-        });
-      }
+      matchQuery.$text = { $search: term };
     }
 
     if (matchQuery.$and.length === 0) {
@@ -559,6 +527,9 @@ export const mainSearchController = async (req, res) => {
 
     const results = await businessListModel.aggregate([
       { $match: matchQuery },
+
+      // Add text score if doing text search
+      ...(term ? [{ $addFields: { textScore: { $meta: "textScore" } } }] : []),
 
       {
         $lookup: {
@@ -572,7 +543,6 @@ export const mainSearchController = async (req, res) => {
       {
         $addFields: {
           totalReviews: { $size: "$reviews" },
-          // Calculate priority based on category match
           categoryPriority: {
             $cond: [
               category ? {
@@ -582,8 +552,8 @@ export const mainSearchController = async (req, res) => {
                   options: "i"
                 }
               } : false,
-              0,  // Exact category match = highest priority (0)
-              1   // Other matches = lower priority (1)
+              0,
+              1
             ]
           }
         }
@@ -591,17 +561,19 @@ export const mainSearchController = async (req, res) => {
 
       {
         $sort: {
-          categoryPriority: 1,   // Exact category matches first
-          amountPaid: -1,        // Then paid businesses
-          paidDate: -1,          // Then newest payments
-          createdAt: -1          // Then newest registrations
+          ...(term ? { textScore: -1 } : {}),  // Text relevance first if searching
+          categoryPriority: 1,
+          amountPaid: -1,
+          paidDate: -1,
+          createdAt: -1
         }
       },
 
       {
         $project: {
           reviews: 0,
-          categoryPriority: 0    // Don't return this field
+          categoryPriority: 0,
+          textScore: 0  // Don't return text score to frontend
         }
       }
     ]);

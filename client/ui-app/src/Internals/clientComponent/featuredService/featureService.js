@@ -4,6 +4,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { logSearchActivity } from "../../../redux/actions/businessListAction";
 import { fetchHomeCategories } from "../../../redux/actions/categoryAction";
 import { getPlaceholderImage, handleImageError } from "../../../utils/placeholderImage";
+import { navigateToSearchResult } from "../../../utils/searchResultNavigation";
 
 import "./featureService.css";
 
@@ -109,6 +110,7 @@ const FeaturedServicesSection = () => {
       email: authUser?.email,
     };
 
+    // Log the search activity
     dispatch(
       logSearchActivity(
         categoryName,
@@ -118,7 +120,16 @@ const FeaturedServicesSection = () => {
       )
     );
 
-    navigate(`/${districtSlug}/${service.slug}`);
+    // Use centralized navigation
+    navigateToSearchResult({
+      searchTerm: categoryName,
+      location: locationName,
+      navigate,
+      dispatch,
+      isKnownCategory: true, // This is a known category from featured services
+      logAlreadySent: true,
+      userDetails,
+    });
   };
 
   return (

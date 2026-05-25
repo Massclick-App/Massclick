@@ -10,6 +10,7 @@ import SearchIcon from "@mui/icons-material/Search";
 
 import { logSearchActivity } from "../../../../redux/actions/businessListAction";
 import { fetchPopularCategories } from "../../../../redux/actions/categoryAction";
+import { navigateToSearchResult } from "../../../../utils/searchResultNavigation";
 
 // Order is controlled via admin Category Display Settings → Popular tab.
 // The v2 API returns items pre-sorted; no client-side reorder needed.
@@ -98,11 +99,20 @@ const handleClick = useCallback((cat) => {
     )
   );
 
-  navigate(`/${districtSlug}/${cat.slug}`, { state: { logAlreadySent: true } });
+  navigateToSearchResult({
+    searchTerm: cat.name,
+    location: selectedDistrict || "Global",
+    navigate,
+    dispatch,
+    isKnownCategory: true, // Popular category drawer - known category
+    logAlreadySent: true,
+    userDetails,
+  });
+
   setDrawerOpen(false);
   onClose?.();
 
-}, [dispatch, navigate, selectedDistrict, districtSlug, onClose]);
+}, [dispatch, navigate, selectedDistrict, onClose]);
 
   const handleClose = () => {
     setDrawerOpen(false);

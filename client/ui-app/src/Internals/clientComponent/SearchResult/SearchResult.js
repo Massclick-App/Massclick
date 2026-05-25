@@ -17,7 +17,8 @@ import PageHeaderContents from "../pageHeaderContents/pageHeaderContents.js";
 import PopularCategoriesLink from "../popularCategories/popularCategories.js";
 import Breadcrumbs from "../Breadcrumbs/Breadcrumbs.js";
 
-import { backendMainSearch, logSearchActivity } from "../../../redux/actions/businessListAction";
+import { performSearch, logSearchActivity } from "../../../redux/actions/businessListAction";
+import { extractSearchResultData } from "../../../utils/searchResultNavigation";
 import { fetchSeoMeta } from "../../../redux/actions/seoAction.js";
 import { fetchSeoPageContentMeta } from "../../../redux/actions/seoPageContentAction.js";
 import { CLEAR_SEO_META } from "../../../redux/actions/userActionTypes.js";
@@ -52,18 +53,29 @@ const SearchResults = React.memo(() => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const { location: locParam, category, subcategory } = useParams();
-
+  const urlParams = useParams();
   const locationState = useLocation();
   const [openLoginModal, setOpenLoginModal] = useState(false);
-  const locationText = locParam?.trim() || "";
 
-  const stateCategory = locationState.state?.category;
+  // Extract and normalize search data from all possible sources
+  const {
+    searchTerm,
+    location: locationText,
+    displayName,
+    isKnownCategory,
+    results: stateResults,
+    logAlreadySent: stateLogSent,
+    userDetails: stateUserDetails
+  } = extractSearchResultData(
+    locationState.state,
+    urlParams
+  );
 
-  const searchText = stateCategory || subcategory || category || "";
+  const searchText = displayName; // Use display name for UI
+  const normalizedSearchTerm = searchTerm; // Use normalized for API calls
 
-  const locationSlug = createSlug(locParam);
-  const searchSlug = createSlug(searchText);
+  const locationSlug = createSlug(locationText);
+  const searchSlug = createSlug(normalizedSearchTerm);
 
   const canonicalUrl = `https://massclick.in/${locationSlug}/${searchSlug}`;
 
@@ -96,13 +108,13 @@ const SearchResults = React.memo(() => {
 
 useEffect(() => {
   searchLoggedRef.current = false;
-}, [searchText, locationText]);
+}, [normalizedSearchTerm, locationText]);
 
 const logSearch = useCallback(() => {
   if (searchLoggedRef.current) return;
 
   // Skip if the search bar already fired logSearchActivity before navigating here
-  if (locationState.state?.logAlreadySent) {
+  if (stateLogSent) {
     searchLoggedRef.current = true;
     return;
   }
@@ -118,16 +130,16 @@ const logSearch = useCallback(() => {
 
   dispatch(
     logSearchActivity(
-      searchText || "All Categories",
+      normalizedSearchTerm || "All Categories",
       locationText || "Global",
       userDetails,
-      searchText
+      normalizedSearchTerm
     )
   );
 
   searchLoggedRef.current = true;
 
-}, [dispatch, searchText, locationText, locationState.state?.logAlreadySent]);
+}, [dispatch, normalizedSearchTerm, locationText, stateLogSent]);
 
 useEffect(() => {
   logSearch();
@@ -149,64 +161,62 @@ useEffect(() => {
 
   useEffect(() => {
 
-    const resultsFromState = locationState.state?.results;
-
     if (
-      Array.isArray(resultsFromState) &&
-      resultsFromState.length > 0 &&
+      Array.isArray(stateResults) &&
+      stateResults.length > 0 &&
       !stateAppliedRef.current
     ) {
-      setResults(resultsFromState);
+      setResults(stateResults);
       stateAppliedRef.current = true;
       return;
     }
 
-    if (resultsFromState && resultsFromState.length > 0) return;
+    if (stateResults && stateResults.length > 0) return;
 
-    if (!searchText || !locationText) return;
+    if (!normalizedSearchTerm || !locationText) return;
 
     const requestId = ++requestIdRef.current;
 
     dispatch(
-      backendMainSearch(searchText, locationText, searchText)
+      performSearch(normalizedSearchTerm, locationText, isKnownCategory)
     ).then((action) => {
       if (requestId !== requestIdRef.current) return;
       setResults(action?.payload || []);
     });
 
-  }, [searchText, locationText, dispatch]);
+  }, [normalizedSearchTerm, locationText, isKnownCategory, dispatch]);
 
   useEffect(() => {
-    if (!searchText || !locationText) return;
+    if (!normalizedSearchTerm || !locationText) return;
 
     dispatch({ type: CLEAR_SEO_META });
 
     dispatch(
       fetchSeoMeta({
         pageType: "category",
-        category: searchText.toLowerCase(),
+        category: normalizedSearchTerm.toLowerCase(),
         location: locationText.toLowerCase(),
       })
     );
-  }, [dispatch, searchText, locationText]);
+  }, [dispatch, normalizedSearchTerm, locationText]);
 
   useEffect(() => {
-    if (!searchText) return;
+    if (!normalizedSearchTerm) return;
 
     dispatch(
       fetchSeoPageContentMeta({
         pageType: "category",
-        category: searchText.replace(/-/g, " "),
+        category: normalizedSearchTerm.replace(/-/g, " "),
         ...(locationText ? { location: locationText } : {}),
       })
     );
 
-  }, [dispatch, searchText, locationText]);
+  }, [dispatch, normalizedSearchTerm, locationText]);
 
   const handleRetry = useCallback(() => {
 
     dispatch(
-      backendMainSearch(searchText, locationText, searchText)
+      performSearch(searchText, locationText)
     );
 
   }, [dispatch, searchText, locationText]);

@@ -388,6 +388,19 @@ export const backendMainSearch = (term, location, category) => async (dispatch) 
   }
 };
 
+// Centralized search function - intelligently routes to category or term search
+// If isKnownCategory: sends as category parameter (exact match)
+// If !isKnownCategory: sends as term parameter (flexible search)
+export const performSearch = (searchInput, location, isKnownCategory = false) => async (dispatch) => {
+  if (isKnownCategory) {
+    // Known category: send as category parameter for exact match
+    return dispatch(backendMainSearch("", location, searchInput));
+  } else {
+    // User search: send as term parameter for flexible search
+    return dispatch(backendMainSearch(searchInput, location, ""));
+  }
+};
+
 export const viewSearchLogs = (category, keywords) => async (dispatch) => {
   dispatch({ type: FETCH_LOGS_REQUEST });
 

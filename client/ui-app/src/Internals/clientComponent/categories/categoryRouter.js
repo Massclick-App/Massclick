@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useLocation } from "react-router-dom";
+import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 
 import CategoriesPage from "./categories.js";
 import SearchResults from "../SearchResult/SearchResult";
 
 import {
-  backendMainSearch,
+  performSearch,
 } from "../../../redux/actions/businessListAction";
+import { navigateToSearchResult } from "../../../utils/searchResultNavigation";
 import axiosInstance from "../../../services/axiosInstance.js";
 
 const formatText = (text = "") =>
@@ -18,6 +19,7 @@ const formatText = (text = "") =>
 const CategoryRouter = () => {
   const { location, category, subcategory } = useParams();
   const routerLocation = useLocation();
+  const navigate = useNavigate();
   const dispatch = useDispatch();
 
   const [resolvedCategory, setResolvedCategory] = useState(null);
@@ -25,6 +27,7 @@ const CategoryRouter = () => {
 
   const isSearchFlow = routerLocation.state?.isSearch;
   const searchText = routerLocation.state?.searchText;
+  const passedCategoryName = routerLocation.state?.categoryName;
 
   const API_URL = process.env.REACT_APP_API_URL;
 
@@ -53,14 +56,19 @@ const CategoryRouter = () => {
   useEffect(() => {
     const loadCategory = async () => {
       try {
+        // If category name was passed directly from featured service, use it
+        if (passedCategoryName) {
+          setResolvedCategory(passedCategoryName);
+          return;
+        }
+
         if (isSearchFlow && searchText) {
           setResolvedCategory(searchText);
 
           await dispatch(
-            backendMainSearch(
+            performSearch(
               searchText,
-              location,
-              searchText
+              location
             )
           );
 
@@ -78,10 +86,9 @@ const CategoryRouter = () => {
           const searchValue = subcategory.replace(/-/g, " ");
 
           const response = await dispatch(
-            backendMainSearch(
+            performSearch(
               searchValue,
-              location,
-              searchValue
+              location
             )
           );
 
@@ -99,10 +106,9 @@ const CategoryRouter = () => {
 
         if (category) {
           const response = await dispatch(
-            backendMainSearch(
+            performSearch(
               category,
-              location,
-              category
+              location
             )
           );
 
@@ -133,6 +139,7 @@ const CategoryRouter = () => {
     subcategory,
     isSearchFlow,
     searchText,
+    passedCategoryName,
     dispatch,
     categories
   ]);

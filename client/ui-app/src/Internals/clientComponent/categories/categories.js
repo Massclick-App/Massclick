@@ -6,6 +6,7 @@ import { handleImageError } from "../../../utils/placeholderImage";
 import "./categories.css";
 import { logSearchActivity } from "../../../redux/actions/businessListAction";
 import { fetchSubCategories } from "../../../redux/actions/categoryAction";
+import { navigateToSearchResult } from "../../../utils/searchResultNavigation";
 import { fetchSeoMeta } from "../../../redux/actions/seoAction.js";
 import { fetchSeoPageContentMeta } from "../../../redux/actions/seoPageContentAction.js";
 import { CLEAR_SEO_META } from "../../../redux/actions/userActionTypes.js";
@@ -115,8 +116,15 @@ const CategoriesPage = () => {
       )
     );
 
-    const subSlug = sub.slug || createSlug(sub.name);
-    navigate(`/${location}/${category}/${subSlug}`, { state: { logAlreadySent: true } });
+    navigateToSearchResult({
+      searchTerm: sub.name,
+      location: location || "Global",
+      navigate,
+      dispatch,
+      isKnownCategory: true, // Subcategory selection - known category
+      logAlreadySent: true,
+      userDetails,
+    });
   };
 
   const locationSlug = location || "";
