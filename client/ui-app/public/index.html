@@ -40,15 +40,91 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
+  <!-- Optimized font loading: preload critical weights, load async with swap fallback -->
+  <link rel="preload" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"></noscript>
 
   <!-- DNS Prefetch for critical services -->
   <link rel="dns-prefetch" href="//www.googletagmanager.com" />
   <link rel="dns-prefetch" href="//firebase.googleapis.com" />
   <link rel="dns-prefetch" href="//firestore.googleapis.com" />
 
-  <!-- Preload critical assets -->
-  <!-- Preload removed - CSS is referenced directly in build output -->
+  <!-- Inline critical CSS for above-the-fold content -->
+  <style>
+    :root {
+      --primary-color: #2196F3;
+      --primary-dark: #1976D2;
+      --secondary-color: #FF5722;
+      --text-primary: #333333;
+      --text-secondary: #666666;
+      --bg-default: #F5F5F5;
+      --bg-paper: #FFFFFF;
+      --border-color: #e0e0e0;
+      --border-radius: 8px;
+      --shadow-sm: 0px 2px 8px rgba(0, 0, 0, 0.08);
+    }
+    html, body {
+      font-family: "Poppins", "Helvetica", "Arial", sans-serif;
+      margin: 0;
+      padding: 0;
+      color: var(--text-primary);
+      background-color: var(--bg-default);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    #root {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      width: 100%;
+    }
+    button {
+      font-family: inherit;
+      border-radius: var(--border-radius);
+      border: none;
+      cursor: pointer;
+      outline: none;
+    }
+    input, textarea, select {
+      font-family: inherit;
+      border-radius: var(--border-radius);
+      border: 1px solid var(--border-color);
+    }
+    img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+    }
+    a {
+      color: var(--primary-color);
+      text-decoration: none;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin: 0;
+      line-height: 1.2;
+      color: var(--text-primary);
+    }
+    h1 { font-size: 2.5rem; font-weight: 700; }
+    h2 { font-size: 2rem; font-weight: 600; }
+    h3 { font-size: 1.75rem; font-weight: 600; }
+    p {
+      margin: 0;
+      line-height: 1.5;
+    }
+    html {
+      overflow-y: scroll;
+    }
+    .shimmer {
+      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+    }
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+  </style>
 
 </head>
 
