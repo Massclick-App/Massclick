@@ -97,7 +97,7 @@ const PopularCategoriesLink = () => {
       location: selectedDistrict || "Global",
       navigate,
       dispatch,
-      isKnownCategory: true, // Popular category - known category
+      isKnownCategory: false, // Popular category - known category
       logAlreadySent: true,
       userDetails,
     });
@@ -200,16 +200,16 @@ const PopularCategoriesLink = () => {
                 className="popular-categories-links__service"
                 key={service.title}
               >
-                <button
+                {/* <button
                   type="button"
                   className="popular-categories-links__serviceHead"
                   onClick={() => handleServiceClick(service)}
-                >
+                > */}
                   <span className="popular-categories-links__serviceIcon">
                     <Icon size={24} strokeWidth={1.7} />
                   </span>
                   <span>{service.title}</span>
-                </button>
+                {/* </button> */}
 
                 <p className="popular-categories-links__serviceText">
                   {service.description}
