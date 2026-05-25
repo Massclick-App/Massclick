@@ -507,19 +507,10 @@ export const mainSearchController = async (req, res) => {
     // 🏷 CATEGORY
     // ===============================
     if (category) {
-      const variations = getWordVariations(category);
-
-      const categoryConditions = variations.flatMap((val) => {
-        const escaped = escapeRegex(val);
-
-        return [
-          { category: { $regex: escaped, $options: "i" } },
-          { keywords: { $regex: escaped, $options: "i" } }
-        ];
-      });
-
+      // EXACT: Match the full normalized category string (anchored at start/end)
+      const escaped = escapeRegex(category);
       matchQuery.$and.push({
-        $or: categoryConditions
+        category: { $regex: `^${escaped}$`, $options: "i" }
       });
     }
 
@@ -538,14 +529,20 @@ export const mainSearchController = async (req, res) => {
         variations.forEach((val) => {
           const escaped = escapeRegex(val);
 
-          // For each word, create OR conditions across all fields
+          // For each word, create OR conditions across fields
           const withBoundaries = `\\b${escaped}\\b`;
           termConditions.push(
             { businessName: { $regex: withBoundaries, $options: "i" } },
-            { category: { $regex: withBoundaries, $options: "i" } },
             { slug: { $regex: withBoundaries, $options: "i" } },
             { keywords: { $regex: withBoundaries, $options: "i" } }
           );
+
+          // Only search category field if category filter wasn't explicitly provided
+          if (!category) {
+            termConditions.push(
+              { category: { $regex: withBoundaries, $options: "i" } }
+            );
+          }
         });
       });
 
