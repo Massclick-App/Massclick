@@ -68,7 +68,8 @@ const CategoryRouter = () => {
           await dispatch(
             performSearch(
               searchText,
-              location
+              location,
+              false  // isKnownCategory: user search flow
             )
           );
 
@@ -88,7 +89,8 @@ const CategoryRouter = () => {
           const response = await dispatch(
             performSearch(
               searchValue,
-              location
+              location,
+              false  // isKnownCategory: subcategory is flexible search
             )
           );
 
@@ -108,7 +110,8 @@ const CategoryRouter = () => {
           const response = await dispatch(
             performSearch(
               category,
-              location
+              location,
+              true  // isKnownCategory: category from URL is always a known category
             )
           );
 

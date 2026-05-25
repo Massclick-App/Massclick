@@ -58,6 +58,7 @@ const SearchResults = React.memo(() => {
   const [openLoginModal, setOpenLoginModal] = useState(false);
 
   // Extract and normalize search data from all possible sources
+  // Handle direct URL navigation (locationState.state will be null)
   const {
     searchTerm,
     location: locationText,
@@ -67,7 +68,7 @@ const SearchResults = React.memo(() => {
     logAlreadySent: stateLogSent,
     userDetails: stateUserDetails
   } = extractSearchResultData(
-    locationState.state,
+    locationState.state || {},
     urlParams
   );
 
