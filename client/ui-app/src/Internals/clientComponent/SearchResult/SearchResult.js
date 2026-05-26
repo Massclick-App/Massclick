@@ -72,6 +72,9 @@ const SearchResults = React.memo(() => {
     urlParams
   );
 
+  // Ensure results is always an array, never null
+  const safeStateResults = Array.isArray(stateResults) ? stateResults : null;
+
   const searchText = displayName; // Use display name for UI
   const normalizedSearchTerm = searchTerm; // Use normalized for API calls
 
@@ -163,16 +166,16 @@ useEffect(() => {
   useEffect(() => {
 
     if (
-      Array.isArray(stateResults) &&
-      stateResults.length > 0 &&
+      Array.isArray(safeStateResults) &&
+      safeStateResults.length > 0 &&
       !stateAppliedRef.current
     ) {
-      setResults(stateResults);
+      setResults(safeStateResults);
       stateAppliedRef.current = true;
       return;
     }
 
-    if (stateResults && stateResults.length > 0) return;
+    if (safeStateResults && safeStateResults.length > 0) return;
 
     if (!normalizedSearchTerm || !locationText) return;
 
