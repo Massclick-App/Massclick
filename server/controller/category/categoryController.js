@@ -14,6 +14,7 @@ import { uploadImageToS3, getSignedUrlByKey } from "../../s3Uploder.js";
 import { categoriesData } from "../../utils/sub-categoriesData.js";
 import { getCache, setCache } from "../../utils/redisClient.js";
 import { invalidateCategoryCache } from "../../utils/cacheInvalidation.js";
+import { suggestKeywordsForCategory } from "../../helper/category/keywordSuggestHelper.js";
 
 export const addCategoryAction = async (req, res) => {
   try {
@@ -860,5 +861,26 @@ export const getAllUniqueCategoriesAction = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: error.message });
+  }
+};
+
+/**
+ * GET /api/category/suggest-keywords?category=AC+Repair+Service
+ * Returns SEO keyword suggestions from Google Autocomplete
+ */
+export const suggestKeywordsAction = async (req, res) => {
+  try {
+    const category = (req.query.category || "").trim();
+
+    if (!category || category.length < 2) {
+      return res.status(400).json({ message: "Category name is required" });
+    }
+
+    const keywords = await suggestKeywordsForCategory(category);
+
+    res.json({ keywords });
+  } catch (error) {
+    console.error("suggestKeywordsAction error:", error);
+    res.status(500).json({ message: "Could not fetch suggestions", keywords: [] });
   }
 };

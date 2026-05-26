@@ -255,6 +255,9 @@ export default function Category() {
   const [editMode, setEditMode] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState({ open: false, id: null });
   const [inputKeyword, setInputKeyword] = useState("");
+  const [keywordInputError, setKeywordInputError] = useState("");
+  const [suggestedKeywords, setSuggestedKeywords] = useState([]);
+  const [suggestLoading, setSuggestLoading] = useState(false);
   const [dupDialog, setDupDialog] = useState({ open: false, groups: [] });
   const [selectedDups, setSelectedDups] = useState([]);
   const [dupLoading, setDupLoading] = useState(false);
@@ -307,7 +310,30 @@ export default function Category() {
   };
 
   const handleKeywordChange = (event, newValue) => {
-    setFormData((prev) => ({ ...prev, keywords: newValue }));
+    // freeSolo adds raw string on Enter — validate before accepting it
+    const validated = [];
+    let lastError = "";
+
+    for (const kw of newValue) {
+      const trimmed = typeof kw === "string" ? kw.trim().toLowerCase() : kw;
+      if (!trimmed) continue;
+
+      if (trimmed.split(/\s+/).length < 2) {
+        lastError = `"${trimmed}" is too generic. Use a descriptive phrase, e.g. "${trimmed} service"`;
+        continue;
+      }
+
+      try {
+        InputValidator.validateAndCleanKeywords([trimmed]);
+        validated.push(trimmed);
+      } catch (err) {
+        lastError = err.message;
+      }
+    }
+
+    setKeywordInputError(lastError);
+    setInputKeyword("");
+    setFormData((prev) => ({ ...prev, keywords: validated }));
   };
 
   // Extract S3 key from signed URL (handles malformed double-signed URLs too)
@@ -398,14 +424,41 @@ export default function Category() {
   };
 
   const handleAddKeyword = () => {
-    const trimmed = inputKeyword.trim();
-    if (trimmed && !formData.keywords.includes(trimmed)) {
-      setFormData((prev) => ({
-        ...prev,
-        keywords: [...prev.keywords, trimmed],
-      }));
-      setInputKeyword("");
+    const trimmed = inputKeyword.trim().toLowerCase();
+    if (!trimmed) return;
+
+    // Reject single-word keywords — they are too generic for search
+    if (trimmed.split(/\s+/).length < 2) {
+      setKeywordInputError(`"${trimmed}" is too generic. Use a descriptive phrase, e.g. "${trimmed} service" or "${trimmed} provider"`);
+      return;
     }
+
+    // Run full InputValidator rules on this single keyword
+    try {
+      InputValidator.validateAndCleanKeywords([trimmed]);
+    } catch (err) {
+      setKeywordInputError(err.message);
+      return;
+    }
+
+    // Check duplicate
+    if (formData.keywords.map(k => k.toLowerCase()).includes(trimmed)) {
+      setKeywordInputError(`"${trimmed}" is already added`);
+      return;
+    }
+
+    // Max 50 keywords
+    if (formData.keywords.length >= 50) {
+      setKeywordInputError("Maximum 50 keywords allowed");
+      return;
+    }
+
+    setKeywordInputError("");
+    setFormData((prev) => ({
+      ...prev,
+      keywords: [...prev.keywords, trimmed],
+    }));
+    setInputKeyword("");
   };
 
   const handleKeywordDelete = (keywordToDelete) => {
@@ -413,6 +466,54 @@ export default function Category() {
       ...prev,
       keywords: prev.keywords.filter((k) => k !== keywordToDelete),
     }));
+  };
+
+  const handleSuggestKeywords = async () => {
+    const categoryName = formData.category?.trim();
+    if (!categoryName) {
+      setKeywordInputError("Enter a category name first to get suggestions");
+      return;
+    }
+
+    setSuggestLoading(true);
+    setSuggestedKeywords([]);
+    setKeywordInputError("");
+
+    try {
+      const token = localStorage.getItem("accessToken");
+      const res = await axiosInstance.get(
+        `${API_URL}/category/suggest-keywords`,
+        {
+          params: { category: categoryName },
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      const suggestions = res.data?.keywords || [];
+      // Filter out already-added keywords
+      const existing = new Set(formData.keywords.map((k) => k.toLowerCase()));
+      setSuggestedKeywords(suggestions.filter((k) => !existing.has(k)));
+    } catch (err) {
+      setKeywordInputError("Could not fetch suggestions. Try again.");
+    } finally {
+      setSuggestLoading(false);
+    }
+  };
+
+  const handleAddSuggestion = (kw) => {
+    if (formData.keywords.length >= 50) {
+      setKeywordInputError("Maximum 50 keywords allowed");
+      return;
+    }
+    setFormData((prev) => ({ ...prev, keywords: [...prev.keywords, kw] }));
+    setSuggestedKeywords((prev) => prev.filter((s) => s !== kw));
+  };
+
+  const handleAddAllSuggestions = () => {
+    const slots = 50 - formData.keywords.length;
+    const toAdd = suggestedKeywords.slice(0, slots);
+    setFormData((prev) => ({ ...prev, keywords: [...prev.keywords, ...toAdd] }));
+    setSuggestedKeywords([]);
   };
 
   const validateForm = () => {
@@ -1007,7 +1108,29 @@ export default function Category() {
           </div>
 
           <div className="category-form-input-group">
-            <label className="category-input-label">Keywords</label>
+            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 0.5 }}>
+              <label className="category-input-label">Keywords</label>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={handleSuggestKeywords}
+                disabled={suggestLoading || !formData.category?.trim()}
+                sx={{
+                  fontSize: "0.75rem",
+                  borderColor: "#ff8c00",
+                  color: "#ff8c00",
+                  "&:hover": { borderColor: "#D97800", color: "#D97800", backgroundColor: "rgba(255,140,0,0.05)" },
+                  textTransform: "none",
+                }}
+              >
+                {suggestLoading ? (
+                  <><CircularProgress size={12} sx={{ mr: 0.5, color: "#ff8c00" }} /> Fetching…</>
+                ) : (
+                  "✨ Suggest Keywords"
+                )}
+              </Button>
+            </Box>
+
             <Autocomplete
               multiple
               freeSolo
@@ -1034,11 +1157,20 @@ export default function Category() {
                 <TextField
                   {...params}
                   variant="outlined"
-                  placeholder="Add keywords"
+                  placeholder='e.g. "ac repair service", "split ac installation" — min 2 words'
                   value={inputKeyword}
-                  onChange={(e) => setInputKeyword(e.target.value)}
-                  error={!!errors.keywords}
-                  helperText={errors.keywords}
+                  onChange={(e) => {
+                    setInputKeyword(e.target.value);
+                    setKeywordInputError("");
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAddKeyword();
+                    }
+                  }}
+                  error={!!keywordInputError || !!errors.keywords}
+                  helperText={keywordInputError || errors.keywords}
                   InputProps={{
                     ...params.InputProps,
                     endAdornment: (
@@ -1059,6 +1191,42 @@ export default function Category() {
                 />
               )}
             />
+
+            {/* Keyword Suggestions Panel */}
+            {suggestedKeywords.length > 0 && (
+              <Box sx={{ mt: 1.5, p: 1.5, border: "1px dashed #ff8c00", borderRadius: 2, backgroundColor: "rgba(255,140,0,0.03)" }}>
+                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
+                  <Typography variant="caption" sx={{ color: "#666", fontWeight: 600 }}>
+                    ✨ Suggested — click to add
+                  </Typography>
+                  <Button
+                    size="small"
+                    onClick={handleAddAllSuggestions}
+                    sx={{ fontSize: "0.7rem", color: "#ff8c00", textTransform: "none", p: "2px 8px" }}
+                  >
+                    Add All ({suggestedKeywords.length})
+                  </Button>
+                </Box>
+                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75 }}>
+                  {suggestedKeywords.map((kw) => (
+                    <Chip
+                      key={kw}
+                      label={kw}
+                      size="small"
+                      onClick={() => handleAddSuggestion(kw)}
+                      sx={{
+                        cursor: "pointer",
+                        backgroundColor: "white",
+                        border: "1px solid #ff8c00",
+                        color: "#ff8c00",
+                        fontWeight: 500,
+                        "&:hover": { backgroundColor: "#ff8c00", color: "white" },
+                      }}
+                    />
+                  ))}
+                </Box>
+              </Box>
+            )}
           </div>
           <div className="category-form-input-group">
             <label className="category-input-label">SEO Description</label>

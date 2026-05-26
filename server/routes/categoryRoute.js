@@ -1,6 +1,6 @@
 import express from 'express'
 
-import { getMobileServiceCardsAction, getMobileHomeCategoriesAction, addCategoryAction, viewCategoryAction,businessSearchCategoryAction, viewAllCategoryAction, updateCategoryAction, deleteCategoryAction, hardDeleteCategoryAction, categoryBusinessUsageAction, getHomeCategoriesAction,getSubCategoriesAction, getPopularCategoriesAction, getServiceCardsAction, getAllUniqueCategoriesAction } from "../controller/category/categoryController.js"
+import { getMobileServiceCardsAction, getMobileHomeCategoriesAction, addCategoryAction, viewCategoryAction,businessSearchCategoryAction, viewAllCategoryAction, updateCategoryAction, deleteCategoryAction, hardDeleteCategoryAction, categoryBusinessUsageAction, getHomeCategoriesAction,getSubCategoriesAction, getPopularCategoriesAction, getServiceCardsAction, getAllUniqueCategoriesAction, suggestKeywordsAction } from "../controller/category/categoryController.js"
 import { uploadCategoryImagesAction } from "../controller/category/categoryImageController.js"
 import { oauthAuthentication } from '../helper/oauthHelper.js';
 import { cacheMiddleware } from '../middleware/cacheMiddleware.js';
@@ -20,6 +20,7 @@ router.put('/api/category/update/:id', oauthAuthentication, validateCategory, up
 router.delete('/api/category/delete/:id', oauthAuthentication, deleteCategoryAction);
 router.delete('/api/category/hard-delete/:id', oauthAuthentication, hardDeleteCategoryAction);
 router.get('/api/category/businesscategorysearch', businessSearchCategoryAction);
+router.get('/api/category/suggest-keywords', oauthAuthentication, suggestKeywordsAction);
 router.get('/api/category/business-usage', oauthAuthentication, categoryBusinessUsageAction);
 
 router.get("/api/category/all", categoryCache, getAllUniqueCategoriesAction);
