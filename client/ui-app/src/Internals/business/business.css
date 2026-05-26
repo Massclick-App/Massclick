@@ -270,6 +270,51 @@
   padding-bottom: 8px;
 }
 
+/* --- Section Styling --- */
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+  margin-top: 12px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--color-primary-orange);
+}
+
+.section-icon {
+  font-size: 1.8rem;
+  color: var(--color-primary-orange);
+  min-width: 32px;
+  text-align: center;
+}
+
+.section-title-group {
+  flex: 1;
+}
+
+.section-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 0;
+  padding: 0;
+}
+
+.section-subtitle {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  margin: 4px 0 0 0;
+  padding: 0;
+  font-weight: 400;
+}
+
+.form-divider {
+  grid-column: 1 / -1;
+  height: 1px;
+  background: linear-gradient(to right, var(--color-border), var(--color-border) 50%, transparent 100%);
+  margin: 16px 0 8px 0;
+}
+
 /* --- Form Grid Layout --- */
 .form-grid {
   display: grid;
@@ -277,6 +322,14 @@
    gap: 24px;
   align-items: start;
 
+}
+
+/* --- Social Media Grid --- */
+.social-media-grid {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
 }
 
 /* Helper classes */
@@ -763,5 +816,48 @@ textarea:focus,
 
   .business-card {
     padding: 16px;
+  }
+}
+
+/* Category form styling */
+.category-form-input-group {
+  position: relative;
+  border: 1.5px solid var(--color-border);
+  border-radius: 12px;
+  padding: 12px;
+  background-color: white;
+  cursor: text;
+  transition: all 0.2s ease-in-out;
+  grid-column: 1 / -1;
+}
+
+.category-form-input-group:focus-within {
+  border-color: var(--color-primary-orange);
+  box-shadow: 0 0 0 3px rgba(255, 140, 0, 0.1);
+}
+
+.category-input-label {
+  font-size: 0.95rem;
+  color: var(--color-text-secondary);
+  margin-bottom: 8px;
+  font-weight: 600;
+  display: block;
+}
+
+/* Social media grid responsive */
+@media (max-width: 1024px) {
+  .social-media-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .social-media-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
