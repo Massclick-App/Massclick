@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import axiosInstance from "../../services/axiosInstance.js";
 import { normalizeImageUrl } from "../../utils/imageUrlHelper.js";
 import Cropper from "react-easy-crop";
+import InputValidator from "../validators/inputValidator.js";
 import {
   getAllCategory,
   createCategory,
@@ -417,7 +418,32 @@ export default function Category() {
   const validateForm = () => {
     let newErrors = {};
 
-    if (!formData.category.trim()) newErrors.category = "Category is required";
+    // Use InputValidator for comprehensive validation
+    try {
+      const categoryData = {
+        name: formData.category.trim(),
+        description: formData.description.trim(),
+        keywords: formData.keywords || []
+      };
+
+      // This will throw if validation fails
+      InputValidator.validateCategory(categoryData);
+    } catch (error) {
+      // Parse InputValidator error message into field errors
+      const errorLines = error.message.split('\n').filter(line => line.trim());
+      errorLines.forEach(line => {
+        let cleanedError = line
+          .replace(/^Category validation failed:\s*/, '')
+          .trim();
+
+        if (cleanedError.includes('name')) newErrors.category = cleanedError;
+        else if (cleanedError.includes('Description')) newErrors.description = cleanedError;
+        else if (cleanedError.includes('keyword')) newErrors.keywords = cleanedError;
+        else if (cleanedError.includes('required')) newErrors.category = cleanedError;
+      });
+    }
+
+    // Additional MassClick-specific validations
     if (!formData.categoryType)
       newErrors.categoryType = "Category Type is required";
     if (formData.categoryType === "Sub Category" && !formData.subCategoryType)
@@ -425,8 +451,6 @@ export default function Category() {
     if (!formData.title.trim()) newErrors.title = "Title is required";
     if (!formData.keywords.length)
       newErrors.keywords = "At least one keyword is required";
-    if (!formData.description.trim())
-      newErrors.description = "Description is required";
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -740,10 +764,33 @@ export default function Category() {
   };
 
   const doSave = () => {
-    const action = editMode ? editCategory(formData._id, formData) : createCategory(formData);
+    // Prepare data to send (use cleaned keywords from InputValidator)
+    const saveData = {
+      ...formData,
+      // Ensure keywords are properly formatted
+      keywords: Array.isArray(formData.keywords) ? formData.keywords : []
+    };
+
+    const action = editMode
+      ? editCategory(formData._id, saveData)
+      : createCategory(saveData);
+
     dispatch(action)
-      .then(() => { resetForm(); dispatch(getAllCategory()); })
-      .catch((err) => console.error(editMode ? "Update failed:" : "Create failed:", err));
+      .then(() => {
+        resetForm();
+        dispatch(getAllCategory());
+      })
+      .catch((err) => {
+        console.error(editMode ? "Update failed:" : "Create failed:", err);
+        // Show error from backend if available
+        if (err.response?.data?.errors) {
+          const backendErrors = {};
+          err.response.data.errors.forEach(e => {
+            backendErrors[e.field] = e.message;
+          });
+          setErrors(backendErrors);
+        }
+      });
   };
 
   const handleSubmit = async (e) => {
