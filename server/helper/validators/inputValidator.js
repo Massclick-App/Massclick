@@ -156,11 +156,6 @@ class InputValidator {
     if (data.keywords && Array.isArray(data.keywords)) {
       try {
         validated.keywords = this.validateAndCleanKeywords(data.keywords);
-
-        // Keywords must be relevant to category
-        if (validated.keywords.length > 0 && !this.areKeywordsRelevant(validated.keywords, validated.category)) {
-          errors.push('Some keywords do not match the business category');
-        }
       } catch (err) {
         errors.push(`Keywords error: ${err.message}`);
       }
@@ -335,43 +330,6 @@ class InputValidator {
     return Array.from(cleaned).sort();
   }
 
-  /**
-   * Check if keywords are relevant to category
-   * (Basic check - you can enhance this with ML/similarity)
-   */
-  static areKeywordsRelevant(keywords, category) {
-    const categoryWords = category.toLowerCase().split(' ');
-
-    // At least some keywords should contain a word from category
-    const hasRelevant = keywords.some(keyword =>
-      categoryWords.some(catWord => keyword.includes(catWord))
-    );
-
-    return hasRelevant || keywords.length === 0;
-  }
-
-  /**
-   * Validate entire business object (all fields together)
-   */
-  static validateBusinessComplete(data) {
-    const business = this.validateBusiness(data);
-
-    // Cross-field validation
-    if (business.keywords.length === 0 && !data.skipKeywords) {
-      console.warn('Warning: Business has no keywords for better discoverability');
-    }
-
-    // Location should match category somewhat
-    const isCategoryLocation = ['hotel', 'restaurant', 'shop', 'salon'].some(
-      cat => business.category.toLowerCase().includes(cat)
-    );
-
-    if (isCategoryLocation && !business.location) {
-      throw new Error('Location is required for this category');
-    }
-
-    return business;
-  }
 }
 
 export default InputValidator;
