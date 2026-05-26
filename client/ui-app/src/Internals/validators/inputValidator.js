@@ -198,16 +198,20 @@ class InputValidator {
       errors.push('Email is required');
     } else {
       const email = data.email.trim().toLowerCase();
-      const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      const emailRegex = /^[a-zA-Z0-9._\-+]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
 
       if (!emailRegex.test(email)) {
         errors.push('Invalid email format');
       }
 
-      // Check for disposable emails
-      const disposableDomains = ['tempmail', '10minutemail', 'guerrillamail', 'mailinator'];
+      // Check for disposable/temporary email services only
+      // Allow personal emails (gmail, yahoo, outlook, etc.) and company emails
+      const disposableDomains = [
+        'tempmail', '10minutemail', 'guerrillamail', 'mailinator',
+        'temp-mail', 'throwaway', 'trashmail', 'yopmail', 'sharklasers'
+      ];
       if (disposableDomains.some(d => email.includes(d))) {
-        errors.push('Temporary email addresses are not allowed');
+        errors.push('Temporary email addresses are not allowed. Please use a personal or company email');
       }
 
       validated.email = email;

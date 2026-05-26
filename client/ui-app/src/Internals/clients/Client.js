@@ -121,12 +121,46 @@ export default function UserClients() {
   };
 
 
+  const parseBackendErrors = (err) => {
+    const fieldNameMap = {
+      'email': 'emailId',
+      'phone': 'contact',
+      'name': 'name',
+      'businessName': 'businessName',
+      'businessAddress': 'businessAddress',
+    };
+
+    const backendErrors = {};
+
+    if (err.response?.data?.errors && Array.isArray(err.response.data.errors)) {
+      err.response.data.errors.forEach(e => {
+        const mappedField = fieldNameMap[e.field] || e.field;
+        backendErrors[mappedField] = e.message;
+      });
+    }
+
+    return backendErrors;
+  };
+
+  const transformFormDataForBackend = (data) => {
+    return {
+      clientId: data.clientId,
+      name: data.name,
+      email: data.emailId,
+      phone: data.contact,
+      businessName: data.businessName,
+      businessAddress: data.businessAddress,
+    };
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!validateForm()) return;
 
+    const backendData = transformFormDataForBackend(formData);
+
     if (isEditMode && editUserId) {
-      dispatch(editUserClient(editUserId, formData))
+      dispatch(editUserClient(editUserId, backendData))
         .then(() => {
           setSuccessMessage("✓ Client updated successfully!");
           setTimeout(() => setSuccessMessage(""), 3000);
@@ -135,16 +169,13 @@ export default function UserClients() {
         })
         .catch((err) => {
           console.error("Update client failed:", err);
-          if (err.response?.data?.errors) {
-            const backendErrors = {};
-            err.response.data.errors.forEach(e => {
-              backendErrors[e.field] = e.message;
-            });
+          const backendErrors = parseBackendErrors(err);
+          if (Object.keys(backendErrors).length > 0) {
             setErrors(backendErrors);
           }
         });
     } else {
-      dispatch(createUserClient(formData))
+      dispatch(createUserClient(backendData))
         .then(() => {
           setSuccessMessage("✓ Client created successfully!");
           setTimeout(() => setSuccessMessage(""), 3000);
@@ -153,11 +184,8 @@ export default function UserClients() {
         })
         .catch((err) => {
           console.error("Create client failed:", err);
-          if (err.response?.data?.errors) {
-            const backendErrors = {};
-            err.response.data.errors.forEach(e => {
-              backendErrors[e.field] = e.message;
-            });
+          const backendErrors = parseBackendErrors(err);
+          if (Object.keys(backendErrors).length > 0) {
             setErrors(backendErrors);
           }
         });
@@ -260,8 +288,8 @@ export default function UserClients() {
       name: "emailId",
       required: true,
       type: "email",
-      placeholder: "E.g., john@company.com",
-      helper: "Valid email address for communication"
+      placeholder: "E.g., john@company.com or john@gmail.com",
+      helper: "Company email preferred, but personal email (Gmail, Yahoo, etc.) is also accepted"
     },
     {
       label: "Business Name",
@@ -298,9 +326,23 @@ export default function UserClients() {
           <Alert severity="error" sx={{ marginBottom: "20px" }}>
             <AlertTitle>Error</AlertTitle>
             {(() => {
-              if (typeof error === "string") return error;
-              if (error instanceof Error) return error.message;
-              if (typeof error === "object") return JSON.stringify(error, null, 2);
+              if (typeof error === "string") {
+                return error;
+              }
+              if (error instanceof Error) {
+                return error.message;
+              }
+              if (typeof error === "object") {
+                // Try to extract a user-friendly message from backend response
+                if (error.message && typeof error.message === "string") {
+                  return error.message;
+                }
+                if (error.data?.message) {
+                  return error.data.message;
+                }
+                // Fallback for raw JSON - don't show it
+                return "An error occurred while processing your request. Please check the fields above and try again.";
+              }
               return String(error);
             })()}
           </Alert>
