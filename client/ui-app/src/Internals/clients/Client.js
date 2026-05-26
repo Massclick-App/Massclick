@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import InputValidator from "../validators/inputValidator.js";
 import {
   getAllUsersClient,
   createUserClient,
@@ -50,11 +51,34 @@ export default function UserClients() {
   const validateForm = () => {
     let newErrors = {};
 
-    if (!formData.name.trim()) newErrors.name = "Name is required";
-    if (!formData.contact.trim()) newErrors.contact = "Contact is required";
+    // Use InputValidator for comprehensive validation
+    try {
+      const clientData = {
+        name: formData.name.trim(),
+        email: formData.emailId.trim(),
+        phone: formData.contact.trim(),
+        location: ''
+      };
 
+      // This will throw if validation fails
+      InputValidator.validateClient(clientData);
+    } catch (error) {
+      // Parse InputValidator error message into field errors
+      const errorLines = error.message.split('\n').filter(line => line.trim());
+      errorLines.forEach(line => {
+        let cleanedError = line
+          .replace(/^Client validation failed:\s*/, '')
+          .trim();
 
+        if (cleanedError.includes('name')) newErrors.name = cleanedError;
+        else if (cleanedError.includes('Email') || cleanedError.includes('email'))
+          newErrors.emailId = cleanedError;
+        else if (cleanedError.includes('Phone') || cleanedError.includes('phone'))
+          newErrors.contact = cleanedError;
+      });
+    }
 
+    // Additional MassClick-specific validations
     if (!formData.businessName.trim())
       newErrors.businessName = "Business Name is required";
     if (!formData.businessAddress.trim())
@@ -95,14 +119,34 @@ export default function UserClients() {
           resetForm();
           dispatch(getAllUsersClient());
         })
-        .catch((err) => console.error("Update client failed:", err));
+        .catch((err) => {
+          console.error("Update client failed:", err);
+          // Handle backend validation errors
+          if (err.response?.data?.errors) {
+            const backendErrors = {};
+            err.response.data.errors.forEach(e => {
+              backendErrors[e.field] = e.message;
+            });
+            setErrors(backendErrors);
+          }
+        });
     } else {
       dispatch(createUserClient(formData))
         .then(() => {
           resetForm();
           dispatch(getAllUsersClient());
         })
-        .catch((err) => console.error("Create client failed:", err));
+        .catch((err) => {
+          console.error("Create client failed:", err);
+          // Handle backend validation errors
+          if (err.response?.data?.errors) {
+            const backendErrors = {};
+            err.response.data.errors.forEach(e => {
+              backendErrors[e.field] = e.message;
+            });
+            setErrors(backendErrors);
+          }
+        });
     }
   };
 

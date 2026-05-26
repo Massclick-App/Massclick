@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef, lazy, Suspense } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import InputValidator from "../validators/inputValidator.js";
 import { getAllBusinessList, createBusinessList, editBusinessList, deleteBusinessList, trackQrDownload } from "../../redux/actions/businessListAction";
 import { getAllLocation, createLocation } from "../../redux/actions/locationAction";
 import { createCategory, editCategory, businessCategorySearch } from "../../redux/actions/categoryAction";
@@ -518,6 +519,26 @@ const BusinessList = React.memo(() => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Validate business data using InputValidator
+    try {
+      const businessData = {
+        businessName: formData.businessName || '',
+        category: formData.category || '',
+        location: formData.location || '',
+        contact: formData.phoneNumber || '',
+        keywords: formData.keywords || []
+      };
+
+      InputValidator.validateBusiness(businessData);
+    } catch (error) {
+      // Show validation error to user
+      const errorMessage = error.message.split('\n').filter(line => line.trim()).join('\n');
+      enqueueSnackbar(`Validation error: ${errorMessage}`, {
+        variant: "error",
+      });
+      return;
+    }
+
     const kycBase64 = await Promise.all(
       kycFiles.map(
         (file) =>
@@ -615,6 +636,24 @@ const BusinessList = React.memo(() => {
       setActiveStep(3);
     } catch (err) {
       console.error("Error saving business:", err);
+
+      // Handle backend validation errors
+      if (err.response?.data?.errors) {
+        const errorMessages = err.response.data.errors
+          .map(e => `${e.field}: ${e.message}`)
+          .join('\n');
+        enqueueSnackbar(`Validation errors:\n${errorMessages}`, {
+          variant: "error",
+        });
+      } else if (err.response?.data?.message) {
+        enqueueSnackbar(err.response.data.message, {
+          variant: "error",
+        });
+      } else {
+        enqueueSnackbar("Error saving business. Please try again.", {
+          variant: "error",
+        });
+      }
     }
   };
 
