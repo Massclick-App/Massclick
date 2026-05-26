@@ -59,7 +59,12 @@ export default function NotificationDropdown({ open, handleClose }) {
       setLoadingId(business._id);
 
       await dispatch(
-        editBusinessList(business._id, { businessesLive: true })
+        editBusinessList(business._id, {
+          businessName: business.businessName,
+          category: business.category,
+          location: business.location,
+          businessesLive: true
+        })
       );
 
       setToastMessage(
