@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
+import { Helmet } from "react-helmet-async";
 import { logSearchActivity } from "../../../redux/actions/businessListAction";
 import { fetchServiceCards } from "../../../redux/actions/categoryAction";
 import { navigateToSearchResult } from "../../../utils/searchResultNavigation";
 import { Skeleton } from "@mui/material";
 import { getPlaceholderImage, handleImageError } from "../../../utils/placeholderImage";
+import { generateItemListSchema } from "../../../utils/seoSchemaGenerators";
 import "./serviceCard.css";
 
 const ServiceCardsSkeleton = () => (
@@ -142,11 +144,35 @@ const ServiceCardsGrid = () => {
     }));
   }, [serviceCards]);
 
+  // Generate ItemList schema for all services
+  const itemListSchema = useMemo(() => {
+    if (serviceCards.length === 0) return null;
+
+    const allItems = serviceCards.map((item) => ({
+      name: item.name,
+      url: `https://massclick.in/search/${item.slug || item.name.toLowerCase().replace(/\s+/g, '-')}?location=${districtSlug}`,
+      description: item.description || `Find ${item.name} services in ${districtSlug}`,
+      image: item.categoryImages?.webCard || item.categoryImageKey || getPlaceholderImage(),
+    }));
+
+    return generateItemListSchema(
+      allItems,
+      `Services in ${districtSlug}`,
+      `Browse all service categories available in ${districtSlug} on Massclick`
+    );
+  }, [serviceCards, districtSlug]);
+
   if (loading) return <ServiceCardsSkeleton />;
 
   return (
+    <>
+      <Helmet>
+        {itemListSchema && (
+          <script type="application/ld+json">{JSON.stringify(itemListSchema)}</script>
+        )}
+      </Helmet>
 
-    <section className="service-cards-container">
+      <section className="service-cards-container">
 
       {serviceCards.length === 0 && (
         <p>No services found</p>
@@ -218,7 +244,8 @@ const ServiceCardsGrid = () => {
 
       ))}
 
-    </section>
+      </section>
+    </>
 
   );
 };

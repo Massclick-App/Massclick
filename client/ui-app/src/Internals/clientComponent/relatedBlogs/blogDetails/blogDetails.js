@@ -819,7 +819,7 @@ const BlogDetail = () => {
                       <p
                         className="faq-answer"
                         dangerouslySetInnerHTML={{
-                          __html: linkifyText(item.answer),
+                          __html: item.linkify ? linkifyText(item.answer) : item.answer,
                         }}
                       />
 

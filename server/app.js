@@ -11,6 +11,7 @@ import { metricsMiddleware } from "./utils/metricsMiddleware.js";
 import { initRedis } from "./utils/redisClient.js";
 import wellKnownRoutes from "./routes/wellKnownRoutes.js";
 import { ssrMiddleware } from "./middleware/ssrMiddleware.js";
+import { maintenanceModeMiddleware } from "./middleware/maintenanceModeMiddleware.js";
 
 import userRoutes from "./routes/userRoutes.js";
 import userClientRoutes from "./routes/userClientRoute.js";
@@ -84,6 +85,8 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(metricsMiddleware);
 
 app.use(wellKnownRoutes);
+
+app.use(maintenanceModeMiddleware);
 
 app.use("/", sitemapRoutes);
 app.use("/", userRoutes);

@@ -275,7 +275,7 @@ export default function SeoPageContentForm({
   const addFaq = () => {
     updateField("faq", [
       ...(formData.faq || []),
-      { question: "", answer: "" },
+      { question: "", answer: "", linkify: false },
     ]);
   };
 
@@ -1039,6 +1039,23 @@ export default function SeoPageContentForm({
                 )
               }
             />
+
+            <div className="faq-linkify-option">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={item.linkify || false}
+                  onChange={(e) =>
+                    updateFaq(
+                      index,
+                      "linkify",
+                      e.target.checked
+                    )
+                  }
+                />
+                Convert patterns to links (e.g., "service in location")
+              </label>
+            </div>
 
             <IconButton
               color="error"
