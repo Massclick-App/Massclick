@@ -7,10 +7,11 @@ import LoginIcon from "@mui/icons-material/Login";
 import {
   getAllSearchLogs,
   getBackendSuggestions,
-  backendMainSearch,
+  performSearch,
   logSearchActivity,
 } from "../../../redux/actions/businessListAction";
 import { logUserSearch } from "../../../redux/actions/otpAction";
+import { navigateToSearchResult } from "../../../utils/searchResultNavigation";
 import Tooltip from "@mui/material/Tooltip";
 import { categoryBarHelpers } from "../categoryBar";
 import { Box, Button, IconButton } from "@mui/material";
@@ -217,16 +218,9 @@ const CardsSearch = ({
     const searchInput = searchTerm.trim();
     const location = locationName.trim();
 
-    let finalTerm = "";
-    let finalCategory = "";
-
-    if (isLikelyCategorySearch(searchInput)) {
-      finalCategory = searchInput;
-    } else {
-      finalTerm = searchInput;
-    }
-
-    const response = await dispatch(backendMainSearch(finalTerm, location, finalCategory));
+    // Always send user input as term, not category
+    // Category should only be sent if explicitly selected from dropdown
+    const response = await dispatch(performSearch(searchInput, location));
     const results = response?.payload || [];
 
     setSearchResults?.(results);
@@ -242,10 +236,10 @@ const CardsSearch = ({
     };
 
     const logLocation = location || "Global";
-    const logValue = finalCategory || finalTerm || "All Categories";
+    const logValue = searchInput || "All Categories";
 
-    if (userId && (finalTerm || finalCategory)) {
-      dispatch(logUserSearch(userId, finalTerm || finalCategory, logLocation, logValue));
+    if (userId && searchInput) {
+      dispatch(logUserSearch(userId, searchInput, logLocation, logValue));
     }
 
     const key = `${logValue}-${location}-${userDetails.mobileNumber1}`;
@@ -253,14 +247,21 @@ const CardsSearch = ({
     const logSent = shouldSendSearch(key);
     if (logSent) {
       dispatch(
-        logSearchActivity(logValue, location, userDetails, finalTerm || finalCategory)
+        logSearchActivity(logValue, location, userDetails, searchInput)
       );
     }
 
-    const slugLocation = toSlug(location || "All");
-    const slugTerm = toSlug(finalCategory || finalTerm || "All");
-
-    navigate(`/${slugLocation}/${slugTerm}`, { state: { results, logAlreadySent: logSent } });
+    // Use centralized navigation with normalized data
+    navigateToSearchResult({
+      searchTerm: searchInput,
+      location: location,
+      navigate,
+      dispatch,
+      isKnownCategory: false, // User typed search - use flexible term search
+      results,
+      logAlreadySent: logSent,
+      userDetails,
+    });
   };
 
   const handleOpenModal = () => setIsModalOpen(true);
@@ -397,7 +398,7 @@ const CardsSearch = ({
               <MicIcon className="input-adornment end" />
             </div>
 
-            <button className="search-btn" onClick={handleSearch}>
+            <button className="search-btn" onClick={handleSearch} aria-label="Search">
               <SearchIcon />
             </button>
           </div>
@@ -436,7 +437,7 @@ const CardsSearch = ({
                 </Box>
               </Button>
             ) : (
-              <IconButton onClick={openDrawer}>
+              <IconButton onClick={openDrawer} aria-label="Open user menu">
                 <AccountCircleIcon sx={{ fontSize: 28 }} />
               </IconButton>
             )}

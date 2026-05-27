@@ -17,7 +17,8 @@ import PageHeaderContents from "../pageHeaderContents/pageHeaderContents.js";
 import PopularCategoriesLink from "../popularCategories/popularCategories.js";
 import Breadcrumbs from "../Breadcrumbs/Breadcrumbs.js";
 
-import { backendMainSearch, logSearchActivity } from "../../../redux/actions/businessListAction";
+import { performSearch, logSearchActivity } from "../../../redux/actions/businessListAction";
+import { extractSearchResultData } from "../../../utils/searchResultNavigation";
 import { fetchSeoMeta } from "../../../redux/actions/seoAction.js";
 import { fetchSeoPageContentMeta } from "../../../redux/actions/seoPageContentAction.js";
 import { CLEAR_SEO_META } from "../../../redux/actions/userActionTypes.js";
@@ -25,6 +26,13 @@ import { selectBusinessLoading, selectBusinessError } from "../../../redux/selec
 import TopBannerAds from "../banners/topBanner/topBanner.js";
 import GlobalSkeleton from "../globalSkeleton.js";
 import OTPLoginModal from "../AddBusinessModel.js";
+import {
+  generateSearchResultsPageSchema,
+  generateBreadcrumbSchema,
+  generateOrganizationSchema,
+  generateWebsiteSchema,
+  generateFAQSchema,
+} from "../../../utils/seoSchemaGenerators";
 
 const createSlug = (text = "") =>
   text
@@ -45,18 +53,33 @@ const SearchResults = React.memo(() => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const { location: locParam, category, subcategory } = useParams();
-
+  const urlParams = useParams();
   const locationState = useLocation();
   const [openLoginModal, setOpenLoginModal] = useState(false);
-  const locationText = locParam?.trim() || "";
 
-  const stateCategory = locationState.state?.category;
+  // Extract and normalize search data from all possible sources
+  // Handle direct URL navigation (locationState.state will be null)
+  const {
+    searchTerm,
+    location: locationText,
+    displayName,
+    isKnownCategory,
+    results: stateResults,
+    logAlreadySent: stateLogSent,
+    userDetails: stateUserDetails
+  } = extractSearchResultData(
+    locationState.state || {},
+    urlParams
+  );
 
-  const searchText = stateCategory || subcategory || category || "";
+  // Ensure results is always an array, never null
+  const safeStateResults = Array.isArray(stateResults) ? stateResults : null;
 
-  const locationSlug = createSlug(locParam);
-  const searchSlug = createSlug(searchText);
+  const searchText = displayName; // Use display name for UI
+  const normalizedSearchTerm = searchTerm; // Use normalized for API calls
+
+  const locationSlug = createSlug(locationText);
+  const searchSlug = createSlug(normalizedSearchTerm);
 
   const canonicalUrl = `https://massclick.in/${locationSlug}/${searchSlug}`;
 
@@ -89,13 +112,13 @@ const SearchResults = React.memo(() => {
 
 useEffect(() => {
   searchLoggedRef.current = false;
-}, [searchText, locationText]);
+}, [normalizedSearchTerm, locationText]);
 
 const logSearch = useCallback(() => {
   if (searchLoggedRef.current) return;
 
   // Skip if the search bar already fired logSearchActivity before navigating here
-  if (locationState.state?.logAlreadySent) {
+  if (stateLogSent) {
     searchLoggedRef.current = true;
     return;
   }
@@ -111,16 +134,16 @@ const logSearch = useCallback(() => {
 
   dispatch(
     logSearchActivity(
-      searchText || "All Categories",
+      normalizedSearchTerm || "All Categories",
       locationText || "Global",
       userDetails,
-      searchText
+      normalizedSearchTerm
     )
   );
 
   searchLoggedRef.current = true;
 
-}, [dispatch, searchText, locationText, locationState.state?.logAlreadySent]);
+}, [dispatch, normalizedSearchTerm, locationText, stateLogSent]);
 
 useEffect(() => {
   logSearch();
@@ -142,64 +165,62 @@ useEffect(() => {
 
   useEffect(() => {
 
-    const resultsFromState = locationState.state?.results;
-
     if (
-      Array.isArray(resultsFromState) &&
-      resultsFromState.length > 0 &&
+      Array.isArray(safeStateResults) &&
+      safeStateResults.length > 0 &&
       !stateAppliedRef.current
     ) {
-      setResults(resultsFromState);
+      setResults(safeStateResults);
       stateAppliedRef.current = true;
       return;
     }
 
-    if (resultsFromState && resultsFromState.length > 0) return;
+    if (safeStateResults && safeStateResults.length > 0) return;
 
-    if (!searchText || !locationText) return;
+    if (!normalizedSearchTerm || !locationText) return;
 
     const requestId = ++requestIdRef.current;
 
     dispatch(
-      backendMainSearch(searchText, locationText, searchText)
+      performSearch(normalizedSearchTerm, locationText, isKnownCategory)
     ).then((action) => {
       if (requestId !== requestIdRef.current) return;
       setResults(action?.payload || []);
     });
 
-  }, [searchText, locationText, dispatch]);
+  }, [normalizedSearchTerm, locationText, isKnownCategory, dispatch]);
 
   useEffect(() => {
-    if (!searchText || !locationText) return;
+    if (!normalizedSearchTerm || !locationText) return;
 
     dispatch({ type: CLEAR_SEO_META });
 
     dispatch(
       fetchSeoMeta({
         pageType: "category",
-        category: searchText.toLowerCase(),
+        category: normalizedSearchTerm.toLowerCase(),
         location: locationText.toLowerCase(),
       })
     );
-  }, [dispatch, searchText, locationText]);
+  }, [dispatch, normalizedSearchTerm, locationText]);
 
   useEffect(() => {
-    if (!searchText) return;
+    if (!normalizedSearchTerm) return;
 
     dispatch(
       fetchSeoPageContentMeta({
         pageType: "category",
-        category: searchText.replace(/-/g, " "),
+        category: normalizedSearchTerm.replace(/-/g, " "),
         ...(locationText ? { location: locationText } : {}),
       })
     );
 
-  }, [dispatch, searchText, locationText]);
+  }, [dispatch, normalizedSearchTerm, locationText]);
 
   const handleRetry = useCallback(() => {
 
     dispatch(
-      backendMainSearch(searchText, locationText, searchText)
+      performSearch(searchText, locationText)
     );
 
   }, [dispatch, searchText, locationText]);
@@ -228,42 +249,6 @@ useEffect(() => {
     );
   }
 
-  const extractFaqFromHtml = (html = "") => {
-    if (!html) return [];
-
-    const faqSectionMatch = html.split("Frequently Asked Questions - (FAQs)");
-    if (faqSectionMatch.length < 2) return [];
-
-    const faqHtml = faqSectionMatch[1];
-
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(faqHtml, "text/html");
-
-    const strongTags = doc.querySelectorAll("strong");
-
-    const faqs = [];
-
-    strongTags.forEach((strongTag) => {
-      const question = strongTag.textContent?.trim();
-
-      const answerElement = strongTag.parentElement?.nextElementSibling;
-      const answer = answerElement?.textContent?.trim();
-
-      if (question && answer) {
-        faqs.push({
-          "@type": "Question",
-          name: question,
-          acceptedAnswer: {
-            "@type": "Answer",
-            text: answer,
-          },
-        });
-      }
-    });
-
-    return faqs;
-  };
-
   const fallbackSeo = {
 
     title:
@@ -288,73 +273,7 @@ useEffect(() => {
       ? sanitizeSeoHtml(seoContent.pageContent)
       : null;
 
-  const itemListSchema =
-    results.length > 0
-      ? {
-        "@context": "https://schema.org",
-        "@type": "ItemList",
-        name: `Best ${searchText} in ${locationText}`,
-        itemListElement: results.map((business, index) => ({
-          "@type": "ListItem",
-          position: index + 1,
-          name: business.businessName,
-          url:
-            `https://www.massclick.in/${createSlug(business.location)}/${createSlug(business.businessName)}/${business._id}`
-        })),
-      }
-      : null;
-
-  const breadcrumbSchema = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      {
-        "@type": "ListItem",
-        position: 1,
-        name: "Home",
-        item: "https://www.massclick.in"
-      },
-      {
-        "@type": "ListItem",
-        position: 2,
-        name: locationText,
-        item: `https://www.massclick.in/${locationSlug}`
-      },
-      {
-        "@type": "ListItem",
-        position: 3,
-        name: searchText,
-        item: canonicalUrl,
-      },
-    ],
-  };
-
-  const websiteSchema = {
-    "@context": "https://schema.org",
-    "@type": "WebSite",
-    name: "Massclick",
-    url: "https://massclick.in",
-  };
-
-  const organizationSchema = {
-    "@context": "https://schema.org",
-    "@type": "Organization",
-    name: "Massclick",
-    url: "https://massclick.in",
-    logo: "https://massclick.in/logo.png"
-  };
-
-  const extractedFaqs = extractFaqFromHtml(seoContent?.pageContent || "");
-
-  const faqSchema =
-    extractedFaqs.length > 0
-      ? {
-        "@context": "https://schema.org",
-        "@type": "FAQPage",
-        mainEntity: extractedFaqs,
-      }
-      : null;
-
+  // Calculate total reviews and ratings for search results
   const totalReviewCount = results.reduce(
     (acc, curr) => acc + (curr.totalReviews || 0),
     0
@@ -376,31 +295,50 @@ useEffect(() => {
       ? Math.max(1, Math.min(5, Number(calculatedRating.toFixed(1))))
       : null;
 
-  const serviceSchema = {
+  // Generate SearchResultsPage schema (semantically correct for category/search pages)
+  const searchResultsSchema = generateSearchResultsPageSchema(
+    searchText,
+    locationText,
+    results.length,
+    overallRating
+  );
+
+  // Add LocalBusiness schema for the category
+  const categoryBusinessSchema = {
     "@context": "https://schema.org",
     "@type": "LocalBusiness",
-    name: `${searchText} in ${locationText}`,
-    areaServed: {
-      "@type": "City",
-      name: locationText,
-    },
-    provider: {
-      "@type": "Organization",
-      name: "Massclick",
-      url: "https://www.massclick.in",
-    },
-    ...(overallRating && totalReviewCount > 0
-      ? {
-        aggregateRating: {
-          "@type": "AggregateRating",
-          ratingValue: Number(overallRating),
-          reviewCount: totalReviewCount,
-          bestRating: 5,
-          worstRating: 1
-        },
+    "name": `${searchText} in ${locationText}`,
+    "url": canonicalUrl,
+    "description": fallbackSeo.description,
+    ...(overallRating && {
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": overallRating,
+        "reviewCount": results.length,
+        "bestRating": 5,
+        "worstRating": 1
       }
-      : {}),
+    })
   };
+
+  // Generate Breadcrumb schema
+  const breadcrumbSchema = generateBreadcrumbSchema([
+    { name: "Home", url: "https://www.massclick.in" },
+    { name: locationText, url: `https://www.massclick.in/${locationSlug}` },
+    { name: searchText, url: canonicalUrl }
+  ]);
+
+  // Generate WebSite schema
+  const websiteSchema = generateWebsiteSchema();
+
+  // Generate Organization schema
+  const organizationSchema = generateOrganizationSchema();
+
+  // Generate FAQ schema (if structured FAQs available from seoContent)
+  const faqSchema = seoContent?.faqs && seoContent.faqs.length > 0
+    ? generateFAQSchema(seoContent.faqs)
+    : null;
+
 
   return (
     <>
@@ -411,33 +349,41 @@ useEffect(() => {
       <SeoMeta seoData={seoMetaData} fallback={fallbackSeo} />
 
       <Helmet>
-        {itemListSchema && (
+        {searchResultsSchema && (
           <script type="application/ld+json">
-            {JSON.stringify(itemListSchema)}
+            {JSON.stringify(searchResultsSchema)}
           </script>
         )}
-        <script type="application/ld+json">
-          {JSON.stringify(breadcrumbSchema)}
-        </script>
-        <script type="application/ld+json">
-          {JSON.stringify(websiteSchema)}
-        </script>
-
-        <script type="application/ld+json">
-          {JSON.stringify(organizationSchema)}
-        </script>
+        {breadcrumbSchema && (
+          <script type="application/ld+json">
+            {JSON.stringify(breadcrumbSchema)}
+          </script>
+        )}
+        {websiteSchema && (
+          <script type="application/ld+json">
+            {JSON.stringify(websiteSchema)}
+          </script>
+        )}
+        {organizationSchema && (
+          <script type="application/ld+json">
+            {JSON.stringify(organizationSchema)}
+          </script>
+        )}
         {faqSchema && (
           <script type="application/ld+json">
             {JSON.stringify(faqSchema)}
           </script>
         )}
-        <script type="application/ld+json">
-          {JSON.stringify(serviceSchema)}
-        </script>
+        {categoryBusinessSchema && (
+          <script type="application/ld+json">
+            {JSON.stringify(categoryBusinessSchema)}
+          </script>
+        )}
       </Helmet>
 
       <div className="results-page">
         <CardsSearch />
+        <main>
         <div className="page-spacing" />
         <div className="results-container banner-section">
           <TopBannerAds category={searchText} />
@@ -447,12 +393,9 @@ useEffect(() => {
           <Breadcrumbs
             items={[
               { label: "Home", link: "/" },
-              {
+               {
                 label: locationText,
-                onClick: () => {
-                  localStorage.setItem("selectedLocation", locationText);
-                  navigate("/");
-                },
+                onClick: () => window.location.reload(),
               },
               { label: searchText },
             ]}
@@ -461,10 +404,10 @@ useEffect(() => {
             <h1 className="main-seo-heading">
               Best {searchText} in {locationText}
             </h1>
-            <h4 className="results-subheading">
+            <h2 className="results-subheading">
               Discover trusted {searchText} in {locationText}. Compare ratings,
               reviews and contact details to find the best near you.
-            </h4>
+            </h2>
 
             <div className="category-trust-badges">
 
@@ -533,7 +476,7 @@ useEffect(() => {
                     category={business.category} price={business.category === "Hotels" ? business.price : null}
                     imageSrc={
                       business.bannerImage ||
-                      "https://via.placeholder.com/120"
+                      "/header.png"
                     }
                     to={businessUrl}
                   />
@@ -558,6 +501,7 @@ useEffect(() => {
             </div>
           </div>
         )}<br/>
+        </main>
         <div className="bottom-sections-wrapper">
           <PopularCategoriesLink />
           <Footer />

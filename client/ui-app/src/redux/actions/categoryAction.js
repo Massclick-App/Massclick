@@ -151,7 +151,7 @@ export const fetchHomeCategories = () => async (dispatch) => {
   try {
     dispatch({ type: FETCH_HOME_CATEGORY_REQUEST });
 
-    const response = await axiosInstance.get(`${API_URL}/category/home`);
+    const response = await axiosInstance.get(`${API_URL}/v2/category/home`);
 
     dispatch({
       type: FETCH_HOME_CATEGORY_SUCCESS,
@@ -171,7 +171,7 @@ export const fetchSubCategories = (parentId) => async (dispatch) => {
     dispatch({ type: FETCH_SUB_CATEGORY_REQUEST });
 
     const response = await axiosInstance.get(
-      `${API_URL}/category/sub/${parentId}`
+      `${API_URL}/v2/category/sub/${parentId}`
     );
 
     dispatch({
@@ -191,7 +191,7 @@ export const fetchPopularCategories = () => async (dispatch) => {
   try {
     dispatch({ type: FETCH_POPULAR_CATEGORY_REQUEST });
 
-    const response = await axiosInstance.get(`${API_URL}/category/popular`);
+    const response = await axiosInstance.get(`${API_URL}/v2/category/popular`);
 
     dispatch({
       type: FETCH_POPULAR_CATEGORY_SUCCESS,
@@ -210,7 +210,7 @@ export const fetchServiceCards = () => async (dispatch) => {
   try {
     dispatch({ type: FETCH_SERVICE_CARDS_REQUEST });
 
-    const response = await axiosInstance.get(`${API_URL}/category/service-cards`);
+    const response = await axiosInstance.get(`${API_URL}/v2/category/service-cards`);
 
     dispatch({
       type: FETCH_SERVICE_CARDS_SUCCESS,
@@ -224,3 +224,4 @@ export const fetchServiceCards = () => async (dispatch) => {
     });
   }
 };
+

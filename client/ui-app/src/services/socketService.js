@@ -31,6 +31,9 @@ export const connectSocket = (token) => {
   socket.on('disconnect', (reason) => {
     console.log('[WS] disconnected:', reason);
   });
+  socket.on('connect_error', (error) => {
+    console.warn('[WS] connection error:', error.message);
+  });
   socket.on('ws:error', (e) => {
     console.error('[WS] server error:', e);
   });

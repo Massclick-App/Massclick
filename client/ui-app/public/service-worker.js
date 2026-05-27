@@ -70,14 +70,18 @@ function cacheFirstStrategy(request, cacheName) {
           const responseToCache = response.clone();
           caches.open(cacheName)
             .then((cache) => {
-              cache.put(request, responseToCache);
-            });
+              cache.put(request, responseToCache).catch(() => {});
+            })
+            .catch(() => {});
 
           return response;
         })
         .catch(() => {
-          return caches.match(request);
+          return caches.match(request) || new Response('Image not available', { status: 404 });
         });
+    })
+    .catch(() => {
+      return new Response('Cache error', { status: 500 });
     });
 }
 

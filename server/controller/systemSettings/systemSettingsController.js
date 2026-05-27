@@ -3,6 +3,7 @@ import { invalidateCache } from "../../helper/systemSettings/settingsService.js"
 import { getIO } from "../../websocket/ioInstance.js";
 import { WS_EVENTS } from "../../websocket/constants.js";
 import { createLogger } from "../../utils/logger.js";
+import { invalidateMaintenanceCache } from "../../middleware/maintenanceModeMiddleware.js";
 
 const logger = createLogger("SYSTEM_SETTINGS");
 
@@ -167,6 +168,7 @@ export const updateSystemSettingsAction = async (req, res) => {
     });
 
     invalidateCache();
+    invalidateMaintenanceCache();
 
     if ("app_maintenance_mode" in updates) {
       const isActive = !!updates.app_maintenance_mode;

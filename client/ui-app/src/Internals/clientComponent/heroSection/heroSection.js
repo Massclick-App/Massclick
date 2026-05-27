@@ -7,9 +7,9 @@ import { useDispatch, useSelector } from "react-redux";
 import {
   getAllSearchLogs,
   getBackendSuggestions,
-  backendMainSearch,
   logSearchActivity,
 } from "../../../redux/actions/businessListAction";
+import { navigateToSearchResult } from "../../../utils/searchResultNavigation";
 import { logUserSearch } from "../../../redux/actions/otpAction";
 import { detectDistrict } from "../../../redux/actions/locationAction";
 // import backgroundImage from "../../../assets/background9.jpg";
@@ -360,22 +360,15 @@ const handleSearch = async (e) => {
     );
   }
 
-  // 🔥 Slug fix (consistent URL)
-  const toSlug = (str = "") =>
-    str
-      .toLowerCase()
-      .trim()
-      .replace(/&/g, "and")
-      .replace(/\s+/g, "-");
-
-  const slugLocation = toSlug(location || "all");
-  const slugCategory = toSlug(cleanedTerm || "all");
-
-  navigate(`/${slugLocation}/${slugCategory}`, {
-    state: {
-      category: cleanedTerm,
-      logAlreadySent: logSent
-    }
+  // Use centralized navigation with normalized data
+  navigateToSearchResult({
+    searchTerm: cleanedTerm,
+    location: location,
+    navigate,
+    dispatch,
+    isKnownCategory: false, // User typed search - use flexible term search
+    logAlreadySent: logSent,
+    userDetails,
   });
 };
 

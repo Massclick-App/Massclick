@@ -179,7 +179,7 @@ const OTPLoginModal = ({ open, handleClose }) => {
                         </Typography>
 
                         <Grid container justifyContent="space-between" alignItems="center" sx={{ mb: 4, width: '100%' }}>
-                            <Grid item>
+                            <Box>
                                 <FormControlLabel
                                     control={
                                         <Checkbox
@@ -208,12 +208,12 @@ const OTPLoginModal = ({ open, handleClose }) => {
                                     }
                                     sx={{ mr: 0 }}
                                 />
-                            </Grid>
-                            <Grid item>
+                            </Box>
+                            <Box>
                                 <Link href="#" underline="hover" variant="body2" sx={{ color: theme.palette.text.secondary }}>
                                     T&C's Privacy Policy
                                 </Link>
-                            </Grid>
+                            </Box>
                         </Grid>
 
                         <Button

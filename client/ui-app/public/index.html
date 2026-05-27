@@ -21,35 +21,127 @@
   <meta data-rh="true" property="og:description" content="Find trusted local businesses near you on Massclick. Compare ratings, reviews and contact details." />
   <meta data-rh="true" property="og:url" content="https://massclick.in" />
   <meta data-rh="true" property="og:type" content="website" />
-  <meta data-rh="true" property="og:image" content="https://massclick.in/apple-touch-icon.png" />
+  <meta data-rh="true" property="og:image" content="https://massclick.in/og-image.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:type" content="image/png" />
 
   <meta data-rh="true" name="twitter:card" content="summary_large_image" />
   <meta data-rh="true" name="twitter:title" content="Massclick - Find Trusted Local Businesses Near You" />
   <meta data-rh="true" name="twitter:description" content="Find trusted local businesses near you on Massclick. Compare ratings, reviews and contact details." />
-  <meta data-rh="true" name="twitter:image" content="https://massclick.in/apple-touch-icon.png" />
+  <meta data-rh="true" name="twitter:image" content="https://massclick.in/og-image.png" />
 
   <link rel="icon" type="image/x-icon" href="%PUBLIC_URL%/favicon.ico" />
+  <link rel="icon" type="image/png" sizes="32x32" href="%PUBLIC_URL%/favicon-32x32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="%PUBLIC_URL%/favicon-16x16.png" />
   <link rel="apple-touch-icon" href="%PUBLIC_URL%/apple-touch-icon.png" />
   <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
+  <!-- Optimized font loading: preload critical weights, load async with swap fallback -->
+  <link rel="preload" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" media="print" onload="this.media='all'">
-
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"></noscript>
 
   <!-- DNS Prefetch for critical services -->
   <link rel="dns-prefetch" href="//www.googletagmanager.com" />
   <link rel="dns-prefetch" href="//firebase.googleapis.com" />
   <link rel="dns-prefetch" href="//firestore.googleapis.com" />
 
-  <!-- Preload critical assets -->
-  <link rel="preload" as="style" href="/static/css/main.css" />
+  <!-- Google Tag Manager -->
+  <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+  new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+  j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+  'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+  })(window,document,'script','dataLayer','GTM-KB44T7MH');</script>
+  <!-- End Google Tag Manager -->
+
+  <!-- Inline critical CSS for above-the-fold content -->
+  <style>
+    :root {
+      --primary-color: #2196F3;
+      --primary-dark: #1976D2;
+      --secondary-color: #FF5722;
+      --text-primary: #333333;
+      --text-secondary: #666666;
+      --bg-default: #F5F5F5;
+      --bg-paper: #FFFFFF;
+      --border-color: #e0e0e0;
+      --border-radius: 8px;
+      --shadow-sm: 0px 2px 8px rgba(0, 0, 0, 0.08);
+    }
+    html, body {
+      font-family: "Poppins", "Helvetica", "Arial", sans-serif;
+      margin: 0;
+      padding: 0;
+      color: var(--text-primary);
+      background-color: var(--bg-default);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    #root {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      width: 100%;
+    }
+    button {
+      font-family: inherit;
+      border-radius: var(--border-radius);
+      border: none;
+      cursor: pointer;
+      outline: none;
+    }
+    input, textarea, select {
+      font-family: inherit;
+      border-radius: var(--border-radius);
+      border: 1px solid var(--border-color);
+    }
+    img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+    }
+    a {
+      color: var(--primary-color);
+      text-decoration: none;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin: 0;
+      line-height: 1.2;
+      color: var(--text-primary);
+    }
+    h1 { font-size: 2.5rem; font-weight: 700; }
+    h2 { font-size: 2rem; font-weight: 600; }
+    h3 { font-size: 1.75rem; font-weight: 600; }
+    p {
+      margin: 0;
+      line-height: 1.5;
+    }
+    html {
+      overflow-y: scroll;
+    }
+    .shimmer {
+      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+    }
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+  </style>
 
 </head>
 
 <body>
+
+  <!-- Google Tag Manager (noscript) -->
+  <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-KB44T7MH"
+  height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+  <!-- End Google Tag Manager (noscript) -->
 
   <noscript>You need to enable JavaScript to run this app.</noscript>
 

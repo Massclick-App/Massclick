@@ -290,7 +290,7 @@ export default function MainGrid() {
         <BusinessCard />
       </Box>
       <Grid container spacing={2} columns={12} sx={{ mb: 2 }}>
-        <Grid item xs={12} md={12}>
+        <Grid size={{ xs: 12, md: 12 }}>
           <Suspense fallback={<Skeleton variant="rectangular" height={400} />}>
             <ChartUserByBusiness />
           </Suspense>

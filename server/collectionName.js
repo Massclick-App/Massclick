@@ -26,7 +26,8 @@ export const Collections = {
     TERMSANDCONDITIONS: 'termsandconditions',
     FAVORITES: 'favorites',
     FCMCAMPAIGNS: 'fcmcampaigns',
-    SYSTEMSETTINGS: 'systemsettings'
+    SYSTEMSETTINGS: 'systemsettings',
+    CATEGORYDISPLAYSETTINGS: 'categorydisplaysettings'
 };
 
 export const {
@@ -57,5 +58,6 @@ export const {
     TERMSANDCONDITIONS,
     FAVORITES,
     FCMCAMPAIGNS,
-    SYSTEMSETTINGS
+    SYSTEMSETTINGS,
+    CATEGORYDISPLAYSETTINGS
 } = Collections;

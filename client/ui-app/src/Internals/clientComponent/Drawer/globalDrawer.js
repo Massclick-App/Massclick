@@ -18,6 +18,15 @@ import { styled } from "@mui/material/styles";
 import { useDispatch, useSelector } from "react-redux";
 import { viewAllOtpUsers } from "../../../redux/actions/otpAction";
 
+const formatUiName = (name) => {
+  if (!name) return "";
+  return name
+    .replace(/^User\s+/i, "")
+    .replace(/[-_]/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase())
+    .trim();
+};
+
 
 const DrawerContainer = styled("div")(({ theme }) => ({
   width: "100%",
@@ -62,7 +71,7 @@ export default function GlobalDrawer() {
   const userName = authUser?.userName || "Guest User";
   const userEmail = authUser?.email || "No Email";
 
-  const otpState = useSelector((state) => state.otp || {});
+  const otpState = useSelector((state) => state.otp) || {};
   const allUsers = Array.isArray(otpState.viewAllResponse)
     ? otpState.viewAllResponse
     : [];
@@ -169,7 +178,6 @@ export default function GlobalDrawer() {
             {userMenuItems.map((item, index) => (
               <ListItem
                 key={index}
-                button
                 onClick={() => handleItemClick(item)}
                 sx={{
                   mx: 1.5,
@@ -191,7 +199,7 @@ export default function GlobalDrawer() {
                   {item.icon}
                 </ListItemIcon>
                 <ListItemText
-                  primary={item.name.replace("User ", "")}
+                  primary={formatUiName(item.name)}
                   primaryTypographyProps={{
                     fontSize: "0.95rem",
                     fontWeight: 600,

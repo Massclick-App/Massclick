@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { Helmet } from "react-helmet-async";
 import './graphicDesign.css';
 import graphic1 from '../../../../assets/graphic.jpg';
 import graphic2 from '../../../../assets/graphic1.jpg';
@@ -8,6 +9,7 @@ import CardsSearch from '../../CardsSearch/CardsSearch';
 import height from '../../../../assets/height.jpg'
 import SeoMeta from "../../seo/seoMeta";
 import { fetchSeoMeta } from "../../../../redux/actions/seoAction";
+import { generateServiceSchema, generateBreadcrumbSchema } from "../../../../utils/seoSchemaGenerators";
 
 
 const GraphicDesign = () => {
@@ -30,8 +32,29 @@ const GraphicDesign = () => {
         robots: "index, follow",
     };
 
+    const serviceSchema = generateServiceSchema({
+        name: "Graphic Design",
+        title: "Professional Graphic Design Services",
+        description: "Create stunning visual designs for your brand including logos, marketing materials, branding, and creative collateral.",
+        location: "India",
+        category: "Graphic Design"
+    });
+
+    const breadcrumbSchema = generateBreadcrumbSchema([
+        { name: "Home", url: "https://massclick.in" },
+        { name: "Graphic Design", url: "https://massclick.in/graphic" }
+    ]);
+
     return (
         <>
+            <Helmet>
+                {serviceSchema && (
+                    <script type="application/ld+json">{JSON.stringify(serviceSchema)}</script>
+                )}
+                {breadcrumbSchema && (
+                    <script type="application/ld+json">{JSON.stringify(breadcrumbSchema)}</script>
+                )}
+            </Helmet>
             <SeoMeta seoData={seoMetaData} fallback={fallbackSeo} />
             <CardsSearch /><br /><br /><br />
             <div className="graphic-design-container">

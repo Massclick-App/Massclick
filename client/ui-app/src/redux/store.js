@@ -27,6 +27,8 @@ import fcmMarketingReducer from './reducers/fcmMarketingReducer.js';
 import systemSettingsReducer from './reducers/systemSettingsReducer.js';
 import cacheReducer from './reducers/cacheReducer.js';
 import { maintenanceReducer } from './reducers/maintenanceReducer.js';
+import categoryDisplaySettingsReducer from './reducers/categoryDisplaySettingsReducer.js';
+import globalLoaderReducer from './reducers/globalLoaderReducer.js';
 
 const rootReducer = combineReducers({
   auth: authReducer,
@@ -56,6 +58,8 @@ const rootReducer = combineReducers({
   systemSettings: systemSettingsReducer,
   cache: cacheReducer,
   maintenance: maintenanceReducer,
+  categoryDisplaySettings: categoryDisplaySettingsReducer,
+  globalLoader: globalLoaderReducer,
 });
 
 let storeInstance = null;

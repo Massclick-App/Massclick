@@ -11,6 +11,10 @@ import { fetchMatchedLeads } from '../../redux/actions/leadsAction.js';
 import SeoMeta from "./seo/seoMeta";
 import { fetchSeoMeta } from "../../redux/actions/seoAction";
 import { connectSocket } from '../../services/socketService.js';
+import {
+  generateWebsiteSchema,
+  generateOrganizationSchema,
+} from '../../utils/seoSchemaGenerators';
 import './homeLayout.css';
 
 const S = ({ variant = "rounded", w, h, r, sx, ...rest }) => (
@@ -147,7 +151,7 @@ const SkeletonGrid = ({ type }) => {
             }}
         >
             {[...Array(count)].map((_, i) => (
-                <Grid item xs={6} sm={isTourist ? 3 : 4} md={isTourist ? 3 : 4} key={i}>
+                <Grid size={{ xs: 6, sm: isTourist ? 3 : 4, md: isTourist ? 3 : 4 }} key={i}>
                     <S w="100%" h={h} r={12} />
                     <Txt w="60%" h={14} sx={{ mt: 1.5 }} />
                     {isTourist && <Txt w="40%" h={11} sx={{ mt: 0.5 }} />}
@@ -290,40 +294,39 @@ const LandingPage = React.memo(() => {
         </Box>
     );
 
-    const websiteSchema = {
-        "@context": "https://schema.org",
-        "@type": "WebSite",
-        name: "Massclick",
-        url: "https://massclick.in",
-        potentialAction: {
-            "@type": "SearchAction",
-            target: "https://massclick.in/{search_term_string}",
-            "query-input": "required name=search_term_string",
-        },
-    };
+    // Generate WebSite schema (includes SearchAction for search box in Google)
+    const websiteSchema = generateWebsiteSchema();
 
+    // Generate Organization schema
+    const organizationSchema = generateOrganizationSchema();
+
+    // WebPage schema for homepage
     const webPageSchema = {
         "@context": "https://schema.org",
         "@type": "WebPage",
         name: fallbackSeo.title,
         description: fallbackSeo.description,
         url: "https://massclick.in/",
-        publisher: {
-            "@type": "Organization",
+        isPartOf: {
+            "@type": "WebSite",
             name: "Massclick",
-            logo: {
-                "@type": "ImageObject",
-                url: "https://massclick.in/apple-touch-icon.png",
-            },
-        },
+            url: "https://massclick.in"
+        }
     };
 
     return (
         <>
             <SeoMeta seoData={seoMetaData} fallback={fallbackSeo} />
             <Helmet>
-                <script type="application/ld+json">{JSON.stringify(websiteSchema)}</script>
-                <script type="application/ld+json">{JSON.stringify(webPageSchema)}</script>
+                {websiteSchema && (
+                    <script type="application/ld+json">{JSON.stringify(websiteSchema)}</script>
+                )}
+                {organizationSchema && (
+                    <script type="application/ld+json">{JSON.stringify(organizationSchema)}</script>
+                )}
+                {webPageSchema && (
+                    <script type="application/ld+json">{JSON.stringify(webPageSchema)}</script>
+                )}
             </Helmet>
 
             <Box className="home-page" sx={{ flexGrow: 1, bgcolor: 'background.default', width: '100%' }}>
@@ -344,6 +347,7 @@ const LandingPage = React.memo(() => {
                     setCategoryName={setCategoryName}
                 />
 
+                <main>
                 <Box ref={heroSectionRef}>
                     <HeroSection
                         locationName={locationName}
@@ -422,6 +426,7 @@ const LandingPage = React.memo(() => {
                     )}
 
                 </Suspense>
+                </main>
 
                 <OTPLoginModel
                     open={showLoginModal}

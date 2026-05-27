@@ -4,6 +4,7 @@ import { addBusinessListAction, viewBusinessListAction,getBusinessBySlugAction, 
 import { oauthAuthentication } from '../helper/oauthHelper.js';
 import { logSearchAction, viewLogSearchAction, viewSearchAction, updateSearchAction, getTrendingSearchesAction } from "../controller/businessList/logSearchController.js"
 import { cacheMiddleware } from '../middleware/cacheMiddleware.js';
+import { validateBusiness } from '../middleware/validationMiddleware.js';
 
 const router = express.Router();
 
@@ -11,13 +12,13 @@ const searchCache = cacheMiddleware({ expirySeconds: 1800 }); // 30 min cache
 const suggestionsCache = cacheMiddleware({ expirySeconds: 3600, keyPrefix: 'suggestions' }); // 1 hour cache
 const trendsCache = cacheMiddleware({ expirySeconds: 7200, keyPrefix: 'trends' }); // 2 hours cache
 
-router.post('/api/businesslist/create', oauthAuthentication, addBusinessListAction);
+router.post('/api/businesslist/create', oauthAuthentication, validateBusiness, addBusinessListAction);
 router.get("/api/business/by-slug", getBusinessBySlugAction);
 router.get('/api/businesslist/view/:id', viewBusinessListAction);
 router.get('/api/businesslist/viewall', oauthAuthentication, viewAllBusinessListAction);
 router.get('/api/businesslist/viewallbusiness', viewAllBusinessAction);
 router.get('/api/businesslist/clientview', oauthAuthentication, viewAllClientBusinessListAction);
-router.put('/api/businesslist/update/:id', oauthAuthentication, updateBusinessListAction);
+router.put('/api/businesslist/update/:id', oauthAuthentication, validateBusiness, updateBusinessListAction);
 router.delete('/api/businesslist/delete/:id', oauthAuthentication, deleteBusinessListAction);
 router.put('/api/businesslist/activate/:id', oauthAuthentication, activeBusinessListAction);
 router.post('/api/businesslist/log-search', logSearchAction);

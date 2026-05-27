@@ -212,19 +212,8 @@ export const logSearchAction = async (req, res) => {
       });
 
       if (!recentAnon) {
-        // Save only actual legacy fields if they exist (no fallback to new variants)
         await createSearchLog({
           categoryName: finalCategoryName,
-          categoryImageKey: category?.categoryImageKey || "",
-          liveImageKey: category?.liveImageKey || "",
-          categoryImages: category?.categoryImages || {
-            webHero: "",
-            webCard: "",
-            webThumbnail: "",
-            mobileVertical: "",
-            mobileCard: "",
-            mobileThumbnail: ""
-          },
           searchedUserText: cleanSearchText,
           location: normalizedLocation,
           userDetails: [],
@@ -260,19 +249,8 @@ export const logSearchAction = async (req, res) => {
       });
     }
 
-    // Save only actual legacy fields if they exist (no fallback to new variants)
     const savedLog = await createSearchLog({
       categoryName: finalCategoryName,
-      categoryImageKey: category?.categoryImageKey || "",
-      liveImageKey: category?.liveImageKey || "",
-      categoryImages: category?.categoryImages || {
-        webHero: "",
-        webCard: "",
-        webThumbnail: "",
-        mobileVertical: "",
-        mobileCard: "",
-        mobileThumbnail: ""
-      },
       searchedUserText: cleanSearchText,
       location: normalizedLocation,
       userDetails: [

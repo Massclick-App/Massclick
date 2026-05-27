@@ -1,6 +1,7 @@
 import React, { useEffect, useCallback } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
+import { getPlaceholderImage } from "../../../../utils/placeholderImage";
 
 import "./popularCategories.css";
 
@@ -227,7 +228,7 @@ const CategoryDynamicPage = () => {
 
               imageSrc={
                 business.bannerImage ||
-                "https://via.placeholder.com/120x100?text=Logo"
+                getPlaceholderImage()
               }
 
               rating={averageRating}

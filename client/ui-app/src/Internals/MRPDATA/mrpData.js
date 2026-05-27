@@ -46,7 +46,6 @@ export default function MRPDatas() {
         <p>All published business requirements</p>
       </div>
 
-      {loading && <p style={{ textAlign: "center" }}>Loading...</p>}
 
       <div className="mrp-response-grid">
         {mrpList.map(item => {

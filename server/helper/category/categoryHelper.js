@@ -2,6 +2,28 @@ import { ObjectId } from "mongodb";
 import categoryModel from "../../model/category/categoryModel.js";
 import { uploadImageToS3, getSignedUrlByKey } from "../../s3Uploder.js";
 
+// Extract S3 key from signed URL or malformed double-signed URL
+const extractS3Key = (value) => {
+  if (!value || typeof value !== "string") return "";
+  if (!value.startsWith("http")) return value; // Already a key
+
+  try {
+    // Handle malformed double-signed URLs
+    if (value.includes("/https://")) {
+      const match = value.match(/\/https:\/\/[^/]+\/(.+?)(?:\?|$)/);
+      if (match?.[1]) return match[1];
+    }
+
+    // Handle normal signed URLs: extract path after domain
+    const urlObj = new URL(value);
+    let path = urlObj.pathname.startsWith("/") ? urlObj.pathname.slice(1) : urlObj.pathname;
+    return path || "";
+  } catch (err) {
+    console.error("Failed to extract S3 key from:", value);
+    return "";
+  }
+};
+
 
 export const createCategory = async (reqBody = {}) => {
   try {
@@ -31,25 +53,22 @@ export const createCategory = async (reqBody = {}) => {
         }
       });
 
-      // Handle new categoryImages object (6 variants)
+      // Handle new categoryImages object (6 variants) - always extract S3 keys
       if (reqBody.categoryImages && typeof reqBody.categoryImages === "object") {
         const categoryImages = {};
-        const timestamp = Date.now();
 
-        for (const [variant, data] of Object.entries(reqBody.categoryImages)) {
-          if (data && typeof data === "string" && data.startsWith("data:image")) {
-            try {
-              const uploadResult = await uploadImageToS3(
-                data,
-                `category/images/${variant}-${timestamp}`
-              );
-              categoryImages[variant] = uploadResult.key;
-            } catch (err) {
-              console.error(`Failed to upload ${variant}:`, err);
+        for (const [variant, imageData] of Object.entries(reqBody.categoryImages)) {
+          if (!imageData || imageData === "" || imageData === null) {
+            categoryImages[variant] = "";
+          } else if (typeof imageData === "string") {
+            if (imageData.startsWith("data:image")) {
+              console.warn(`${variant}: Received base64 instead of S3 key. Should use /api/category/upload-images`);
+              categoryImages[variant] = "";
+            } else {
+              // Extract S3 key from any URL format (signed, unsigned, or malformed)
+              const key = extractS3Key(imageData);
+              categoryImages[variant] = key;
             }
-          } else if (data && !data.startsWith("data:image")) {
-            // Keep existing S3 key if it's not a data URL
-            categoryImages[variant] = data;
           }
         }
         updates.categoryImages = categoryImages;
@@ -79,25 +98,22 @@ export const createCategory = async (reqBody = {}) => {
       };
     }
 
-    // Handle new categoryImages object (6 variants)
+    // Handle new categoryImages object (6 variants) - always extract S3 keys
     if (reqBody.categoryImages && typeof reqBody.categoryImages === "object") {
       const categoryImages = {};
-      const timestamp = Date.now();
 
-      for (const [variant, data] of Object.entries(reqBody.categoryImages)) {
-        if (data && typeof data === "string" && data.startsWith("data:image")) {
-          try {
-            const uploadResult = await uploadImageToS3(
-              data,
-              `category/images/${variant}-${timestamp}`
-            );
-            categoryImages[variant] = uploadResult.key;
-          } catch (err) {
-            console.error(`Failed to upload ${variant}:`, err);
+      for (const [variant, imageData] of Object.entries(reqBody.categoryImages)) {
+        if (!imageData || imageData === "" || imageData === null) {
+          categoryImages[variant] = "";
+        } else if (typeof imageData === "string") {
+          if (imageData.startsWith("data:image")) {
+            console.warn(`${variant}: Received base64 instead of S3 key. Should use /api/category/upload-images`);
+            categoryImages[variant] = "";
+          } else {
+            // Extract S3 key from any URL format (signed, unsigned, or malformed)
+            const key = extractS3Key(imageData);
+            categoryImages[variant] = key;
           }
-        } else if (data && !data.startsWith("data:image")) {
-          // Keep existing S3 key if it's not a data URL
-          categoryImages[variant] = data;
         }
       }
       reqBody.categoryImages = categoryImages;
@@ -160,12 +176,17 @@ export const viewCategory = async (id) => {
       category.categoryImages = convertedImages;
     }
 
+    // Legacy support: convert keys to signed URLs
     if (category.categoryImageKey) {
       category.categoryImage = getSignedUrlByKey(category.categoryImageKey);
     }
     if (category.liveImageKey) {
       category.liveImage = getSignedUrlByKey(category.liveImageKey);
     }
+
+    // Remove internal key fields (frontend doesn't use them)
+    delete category.categoryImageKey;
+    delete category.liveImageKey;
 
     return category;
   } catch (error) {
@@ -254,27 +275,23 @@ export const updateCategory = async (id, data) => {
     }
 
     // Handle new categoryImages object (6 variants)
+    // Frontend should send S3 keys only (no data URLs, no signed URLs)
     if (data.categoryImages && typeof data.categoryImages === "object") {
       const categoryImages = {};
-      const timestamp = Date.now();
 
       for (const [variant, imageData] of Object.entries(data.categoryImages)) {
-        if (imageData && typeof imageData === "string" && imageData.startsWith("data:image")) {
-          try {
-            const uploadResult = await uploadImageToS3(
-              imageData,
-              `category/images/${variant}-${timestamp}`
-            );
-            categoryImages[variant] = uploadResult.key;
-          } catch (err) {
-            console.error(`Failed to upload ${variant}:`, err);
-          }
-        } else if (imageData && !imageData.startsWith("data:image")) {
-          // Keep existing S3 key if it's not a data URL
-          categoryImages[variant] = imageData;
-        } else if (imageData === null || imageData === "") {
+        if (!imageData || imageData === "" || imageData === null) {
           // Clear if empty
           categoryImages[variant] = "";
+        } else if (typeof imageData === "string") {
+          if (imageData.startsWith("data:image")) {
+            console.warn(`${variant}: Received base64 instead of S3 key. Should use /api/category/upload-images`);
+            categoryImages[variant] = "";
+          } else {
+            // Extract S3 key from any URL format (signed, unsigned, or malformed)
+            const key = extractS3Key(imageData);
+            categoryImages[variant] = key;
+          }
         }
       }
       data.categoryImages = categoryImages;
@@ -327,12 +344,17 @@ export const updateCategory = async (id, data) => {
       category.categoryImages = convertedImages;
     }
 
+    // Legacy support: convert keys to signed URLs
     if (category.categoryImageKey) {
       category.categoryImage = getSignedUrlByKey(category.categoryImageKey);
     }
     if (category.liveImageKey) {
       category.liveImage = getSignedUrlByKey(category.liveImageKey);
     }
+
+    // Remove internal key fields (frontend doesn't use them)
+    delete category.categoryImageKey;
+    delete category.liveImageKey;
 
     return category;
   } catch (error) {

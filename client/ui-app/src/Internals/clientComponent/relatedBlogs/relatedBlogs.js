@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchSeoPageContentBlogsMeta } from "../../../redux/actions/seoPageContentBlogAction";
+import { getPlaceholderImage } from "../../../utils/placeholderImage";
 import "./relatedBlogs.css";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import ArrowBackIosIcon from "@mui/icons-material/ArrowBackIos";
@@ -118,7 +119,7 @@ const RelatedBlogs = ({ location }) => {
                   }
                 >
                   <img
-                    src={item.profileImage || "https://via.placeholder.com/300x200"}
+                    src={item.profileImage || getPlaceholderImage()}
                     alt={item.heading}
                   />
 

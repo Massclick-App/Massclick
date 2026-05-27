@@ -29,6 +29,7 @@ import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchBusinessSuggestion } from "../../../redux/actions/seoPageContentBlogAction";
 import { getAllLocation } from "../../../redux/actions/locationAction.js";
+import { fetchSeoCategorySuggestions } from "../../../redux/actions/seoAction.js";
 
 import "react-quill/dist/quill.snow.css";
 
@@ -48,12 +49,19 @@ export default function SeoPageContentForm({
     (state) => state.seoPageContentBlogReducer
   ) || {};
   const { location = [] } = useSelector((state) => state.locationReducer || {});
+  const { categorySuggestions: seoCategorySuggestions = [] } = useSelector(
+    (state) => state.seoReducer || {}
+  ) || {};
 
   const [searchTerm, setSearchTerm] = useState("");
   const [preview, setPreview] = useState([]);
   const [profilePreview, setProfilePreview] = useState("");
+  const [ogImagePreview, setOgImagePreview] = useState("");
   const [showLocationSuggest, setShowLocationSuggest] = useState(false);
   const [locationSuggestions, setLocationSuggestions] = useState([]);
+  const [categoryInput, setCategoryInput] = useState("");
+  const [showCategorySuggestions, setShowCategorySuggestions] = useState(false);
+  const [categorySuggestions, setCategorySuggestions] = useState([]);
 
   // Content Blocks State
   const [contentBlocks, setContentBlocks] = useState(formData.contentBlocks || []);
@@ -135,6 +143,21 @@ export default function SeoPageContentForm({
     dispatch(getAllLocation({ pageNo: 1, pageSize: 1000 }));
   }, [dispatch]);
 
+  useEffect(() => {
+    if (!categoryInput || categoryInput.length < 1) return;
+
+    const delay = setTimeout(() => {
+      dispatch(
+        fetchSeoCategorySuggestions({
+          query: categoryInput,
+          limit: 10,
+        })
+      );
+    }, 300);
+
+    return () => clearTimeout(delay);
+  }, [categoryInput, dispatch]);
+
   /* ======================================
      IMAGE PREVIEW SYNC
   ====================================== */
@@ -145,6 +168,10 @@ export default function SeoPageContentForm({
   useEffect(() => {
     setProfilePreview(formData.profileImage || "");
   }, [formData.profileImage]);
+
+  useEffect(() => {
+    setOgImagePreview(formData.ogImage || "");
+  }, [formData.ogImage]);
 
   /* ======================================
      PROFILE IMAGE
@@ -159,6 +186,23 @@ export default function SeoPageContentForm({
     const reader = new FileReader();
     reader.onloadend = () => {
       updateField("profileImage", reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  /* ======================================
+     OG IMAGE
+  ====================================== */
+  const handleOgImage = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const previewUrl = URL.createObjectURL(file);
+    setOgImagePreview(previewUrl);
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      updateField("ogImage", reader.result);
     };
     reader.readAsDataURL(file);
   };
@@ -231,7 +275,7 @@ export default function SeoPageContentForm({
   const addFaq = () => {
     updateField("faq", [
       ...(formData.faq || []),
-      { question: "", answer: "" },
+      { question: "", answer: "", linkify: false },
     ]);
   };
 
@@ -254,6 +298,11 @@ export default function SeoPageContentForm({
       setContentBlocks(formData.contentBlocks);
     }
   }, [editingId]);
+
+  // Sync category input when editing or form data changes
+  useEffect(() => {
+    setCategoryInput(formData.category || "");
+  }, [editingId, formData.category]);
 
   const addStatistics = () => {
     const newStats = {
@@ -487,7 +536,44 @@ export default function SeoPageContentForm({
 
         {fields.map((field) => (
           <div className="floating-field" key={field.key}>
-            {field.key === "location" ? (
+            {field.key === "category" ? (
+              <>
+                <input
+                  value={categoryInput}
+                  placeholder=" "
+                  className="seo-text-input"
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setCategoryInput(value);
+                    setShowCategorySuggestions(true);
+                    updateField(field.key, value);
+                  }}
+                  onFocus={() => setShowCategorySuggestions(true)}
+                  onBlur={() => {
+                    setTimeout(() => setShowCategorySuggestions(false), 150);
+                  }}
+                  required
+                />
+                <label>{field.label}</label>
+                {showCategorySuggestions && seoCategorySuggestions.length > 0 && (
+                  <ul className="category-suggestion-list">
+                    {seoCategorySuggestions.map((item) => (
+                      <li
+                        key={item._id}
+                        className="category-suggestion-item"
+                        onClick={() => {
+                          setCategoryInput(item.category);
+                          updateField("category", item.category);
+                          setShowCategorySuggestions(false);
+                        }}
+                      >
+                        {item.category}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            ) : field.key === "location" ? (
               <>
                 <input
                   value={formData[field.key] || ""}
@@ -531,7 +617,7 @@ export default function SeoPageContentForm({
                   }
                   placeholder=" "
                   required={
-                    ["metaTitle", "metaDescription", "pageType", "category", "heading"].includes(
+                    ["metaTitle", "metaDescription", "pageType", "heading"].includes(
                       field.key
                     )
                   }
@@ -687,6 +773,32 @@ export default function SeoPageContentForm({
             {profilePreview && (
               <Avatar
                 src={profilePreview}
+                className="profile-avatar"
+              />
+            )}
+          </div>
+
+          <div className="upload-box">
+            <Tooltip title="Recommended size: 1200x630px for social media sharing">
+              <Button
+                variant="contained"
+                component="label"
+                startIcon={<CloudUploadIcon />}
+                className="upload-btn secondary"
+              >
+                Upload OG Image
+                <input
+                  hidden
+                  type="file"
+                  accept="image/*"
+                  onChange={handleOgImage}
+                />
+              </Button>
+            </Tooltip>
+
+            {ogImagePreview && (
+              <Avatar
+                src={ogImagePreview}
                 className="profile-avatar"
               />
             )}
@@ -927,6 +1039,23 @@ export default function SeoPageContentForm({
                 )
               }
             />
+
+            <div className="faq-linkify-option">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={item.linkify || false}
+                  onChange={(e) =>
+                    updateFaq(
+                      index,
+                      "linkify",
+                      e.target.checked
+                    )
+                  }
+                />
+                Convert patterns to links (e.g., "service in location")
+              </label>
+            </div>
 
             <IconButton
               color="error"

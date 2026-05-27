@@ -59,6 +59,11 @@ const mapSignedUrls = (doc = {}) => {
     ? getSignedUrlByKey(doc.profileImageKey)
     : "";
 
+  // og image
+  doc.ogImage = doc.ogImageKey
+    ? getSignedUrlByKey(doc.ogImageKey)
+    : "";
+
   // business images
   if (Array.isArray(doc.businessDetails)) {
     doc.businessDetails = doc.businessDetails.map((item) => ({
@@ -156,19 +161,6 @@ export const createPageContentBlogSeo = async (
     ? makeSlug(data.slug)
     : makeSlug(data.heading);
 
-  const exists = await seoPageContentBlogModel.findOne({
-    pageType: data.pageType,
-    category: data.category,
-    location: data.location,
-    isActive: true,
-  });
-
-  if (exists) {
-    throw new Error(
-      "Page already exists for category/location"
-    );
-  }
-
   data.pageImageKey = await uploadBase64Images(
     data.pageImages || []
   );
@@ -185,6 +177,18 @@ export const createPageContentBlogSeo = async (
     data.profileImageKey = result.key;
   }
 
+  if (
+    data.ogImage &&
+    data.ogImage.startsWith("data:image")
+  ) {
+    const result = await uploadImageToS3(
+      data.ogImage,
+      `seo/og-image-${Date.now()}`
+    );
+
+    data.ogImageKey = result.key;
+  }
+
   data.businessDetails = mapBusinessDetails(
     data.popularBusiness
   );
@@ -195,6 +199,7 @@ export const createPageContentBlogSeo = async (
 
   delete data.pageImages;
   delete data.profileImage;
+  delete data.ogImage;
   delete data.popularBusiness;
   delete data.selectedBusiness;
 
@@ -346,21 +351,6 @@ export const updateSeoPageContentBlog =
       data.slug = makeSlug(data.heading);
     }
 
-    const duplicate =
-      await seoPageContentBlogModel.findOne({
-        _id: { $ne: id },
-        pageType: data.pageType,
-        category: data.category,
-        location: data.location,
-        isActive: true,
-      });
-
-    if (duplicate) {
-      throw new Error(
-        "Another page already exists"
-      );
-    }
-
     if (Array.isArray(data.pageImages)) {
       data.pageImageKey =
         await uploadBase64Images(
@@ -382,6 +372,18 @@ export const updateSeoPageContentBlog =
       data.profileImageKey = result.key;
     }
 
+    if (
+      data.ogImage &&
+      data.ogImage.startsWith("data:image")
+    ) {
+      const result = await uploadImageToS3(
+        data.ogImage,
+        `seo/og-image-${Date.now()}`
+      );
+
+      data.ogImageKey = result.key;
+    }
+
     data.businessDetails =
       mapBusinessDetails(
         data.popularBusiness
@@ -393,6 +395,7 @@ export const updateSeoPageContentBlog =
 
     delete data.pageImages;
     delete data.profileImage;
+    delete data.ogImage;
     delete data.popularBusiness;
     delete data.selectedBusiness;
 

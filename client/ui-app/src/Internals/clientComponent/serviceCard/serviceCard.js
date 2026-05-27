@@ -1,9 +1,13 @@
 import React, { useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
+import { Helmet } from "react-helmet-async";
 import { logSearchActivity } from "../../../redux/actions/businessListAction";
 import { fetchServiceCards } from "../../../redux/actions/categoryAction";
+import { navigateToSearchResult } from "../../../utils/searchResultNavigation";
 import { Skeleton } from "@mui/material";
+import { getPlaceholderImage, handleImageError } from "../../../utils/placeholderImage";
+import { generateItemListSchema } from "../../../utils/seoSchemaGenerators";
 import "./serviceCard.css";
 
 const ServiceCardsSkeleton = () => (
@@ -24,15 +28,8 @@ const ServiceCardsSkeleton = () => (
   </section>
 );
 
-// ==============================
-// FIXED SECTION ORDER (VERY IMPORTANT)
-// ==============================
-const SECTION_ORDER = [
-  "Repair and Services",
-  "Services",
-  "Hot Categories",
-  "Building Materials"
-];
+// Section order is now driven by the v2 API response (admin-configurable).
+// Sections appear in the order items are returned from the server.
 
 const toPascalCase = (str) => {
   if (!str || typeof str !== "string") return str;
@@ -116,34 +113,66 @@ const ServiceCardsGrid = () => {
       )
     );
 
-    navigate(`/${districtSlug}/${service.slug}`, { state: { logAlreadySent: true } });
+    navigateToSearchResult({
+      searchTerm: categoryName,
+      location: locationName,
+      navigate,
+      dispatch,
+      isKnownCategory: true, // Service card - known category
+      logAlreadySent: true,
+      userDetails,
+    });
   };
 
+  // Build sections preserving the order they first appear in the API response.
   const groupedData = useMemo(() => {
     const map = {};
+    const sectionOrder = [];
 
     serviceCards.forEach((item) => {
       const section = item.section;
-
       if (!map[section]) {
         map[section] = [];
+        sectionOrder.push(section);
       }
-
       map[section].push(item);
     });
 
-    return SECTION_ORDER.map((section) => ({
+    return sectionOrder.map((section) => ({
       title: section,
-      items: map[section] || []
+      items: map[section],
+    }));
+  }, [serviceCards]);
+
+  // Generate ItemList schema for all services
+  const itemListSchema = useMemo(() => {
+    if (serviceCards.length === 0) return null;
+
+    const allItems = serviceCards.map((item) => ({
+      name: item.name,
+      url: `https://massclick.in/search/${item.slug || item.name.toLowerCase().replace(/\s+/g, '-')}?location=${districtSlug}`,
+      description: item.description || `Find ${item.name} services in ${districtSlug}`,
+      image: item.categoryImages?.webCard || item.categoryImageKey || getPlaceholderImage(),
     }));
 
-  }, [serviceCards]);
+    return generateItemListSchema(
+      allItems,
+      `Services in ${districtSlug}`,
+      `Browse all service categories available in ${districtSlug} on Massclick`
+    );
+  }, [serviceCards, districtSlug]);
 
   if (loading) return <ServiceCardsSkeleton />;
 
   return (
+    <>
+      <Helmet>
+        {itemListSchema && (
+          <script type="application/ld+json">{JSON.stringify(itemListSchema)}</script>
+        )}
+      </Helmet>
 
-    <section className="service-cards-container">
+      <section className="service-cards-container">
 
       {serviceCards.length === 0 && (
         <p>No services found</p>
@@ -166,12 +195,12 @@ const ServiceCardsGrid = () => {
               // Get image URL with fallback priority:
               // 1. categoryImages.webCard (new structure)
               // 2. categoryImageKey (legacy)
-              // 3. default.webp
+              // 3. empty
               const imageUrl = (() => {
                 if (item.categoryImages?.webCard) {
                   return item.categoryImages.webCard;
                 }
-                return item.categoryImageKey || "/default.webp";
+                return item.categoryImageKey || getPlaceholderImage();
               })();
 
               return (
@@ -197,7 +226,7 @@ const ServiceCardsGrid = () => {
                     loading="eager"
                     onError={(e) => {
                       e.target.onerror = null;
-                      e.target.src = "/default.webp";
+                      handleImageError(e);
                     }}
                   />
 
@@ -215,7 +244,8 @@ const ServiceCardsGrid = () => {
 
       ))}
 
-    </section>
+      </section>
+    </>
 
   );
 };
