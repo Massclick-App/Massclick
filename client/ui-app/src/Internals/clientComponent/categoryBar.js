@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { viewOtpUser } from "../../redux/actions/otpAction.js";
@@ -105,7 +105,7 @@ const CategoryBar = () => {
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
 
-    const otpState = useSelector((state) => state.otpReducer || {});
+    const otpState = useSelector((state) => state.otpReducer) || {};
     const { viewResponse } = otpState;
     const userName = viewResponse?.user?.userName || '';
     const authUser = useSelector((state) => state.otp?.viewResponse) || {};

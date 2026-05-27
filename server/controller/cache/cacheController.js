@@ -9,7 +9,7 @@ import {
   deleteCachePattern
 } from "../../utils/cacheStats.js";
 import { createLogger } from "../../utils/logger.js";
-import { isRedisConnected } from "../../utils/redisClient.js";
+import { isRedisConnected, getRedisClient } from "../../utils/redisClient.js";
 
 const logger = createLogger("CACHE");
 
@@ -320,5 +320,183 @@ export const invalidateAllCachesAction = async (req, res) => {
       success: false,
       message: error.message
     });
+  }
+};
+
+export const getRedisInfoAction = async (req, res) => {
+  try {
+    if (!isRedisConnected()) {
+      return res.status(200).json({ success: true, data: { connected: false } });
+    }
+
+    const client = getRedisClient();
+    const raw = await client.info();
+
+    const parsed = {};
+    raw.split('\r\n').forEach(line => {
+      if (line && !line.startsWith('#')) {
+        const idx = line.indexOf(':');
+        if (idx !== -1) {
+          parsed[line.slice(0, idx).trim()] = line.slice(idx + 1).trim();
+        }
+      }
+    });
+
+    const hits = parseInt(parsed.keyspace_hits) || 0;
+    const misses = parseInt(parsed.keyspace_misses) || 0;
+    const hitRate = hits + misses > 0 ? Math.round((hits / (hits + misses)) * 100) : null;
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        connected: true,
+        version: parsed.redis_version,
+        mode: parsed.redis_mode || 'standalone',
+        os: parsed.os,
+        tcp_port: parseInt(parsed.tcp_port) || 6379,
+        uptime_seconds: parseInt(parsed.uptime_in_seconds) || 0,
+        connected_clients: parseInt(parsed.connected_clients) || 0,
+        used_memory_human: parsed.used_memory_human,
+        used_memory_peak_human: parsed.used_memory_peak_human,
+        mem_fragmentation_ratio: parseFloat(parsed.mem_fragmentation_ratio) || 0,
+        total_commands_processed: parseInt(parsed.total_commands_processed) || 0,
+        keyspace_hits: hits,
+        keyspace_misses: misses,
+        hit_rate: hitRate,
+      }
+    });
+  } catch (error) {
+    await logger.error("getRedisInfoAction error", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const flushRedisDbAction = async (req, res) => {
+  try {
+    const adminEmail = req.authUser?.email || "admin";
+
+    if (!isRedisConnected()) {
+      return res.status(503).json({ success: false, message: "Redis unavailable" });
+    }
+
+    const client = getRedisClient();
+    const totalBefore = await client.dbSize();
+    await client.flushDb();
+
+    await logger.warn(`REDIS DB FLUSHED`, {
+      admin: adminEmail,
+      keysFlushed: totalBefore,
+      timestamp: new Date().toISOString()
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: `Redis database flushed — ${totalBefore} key(s) removed`,
+      data: { keysFlushed: totalBefore }
+    });
+  } catch (error) {
+    await logger.error("flushRedisDbAction error", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const deleteRedisPatternAction = async (req, res) => {
+  try {
+    const { pattern } = req.body;
+    const adminEmail = req.authUser?.email || "admin";
+
+    if (!pattern) {
+      return res.status(400).json({ success: false, message: "pattern is required" });
+    }
+
+    if (!isRedisConnected()) {
+      return res.status(503).json({ success: false, message: "Redis unavailable" });
+    }
+
+    const client = getRedisClient();
+    const keys = await client.keys(pattern);
+    let deleted = 0;
+    if (keys.length > 0) {
+      deleted = await client.del(keys);
+    }
+
+    await logger.warn(`Redis pattern deleted`, {
+      admin: adminEmail,
+      pattern,
+      deleted,
+      timestamp: new Date().toISOString()
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: `${deleted} key(s) deleted matching "${pattern}"`,
+      data: { deleted, pattern }
+    });
+  } catch (error) {
+    await logger.error("deleteRedisPatternAction error", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const getRedisKeysAction = async (req, res) => {
+  try {
+    if (!isRedisConnected()) {
+      return res.status(200).json({
+        success: true,
+        data: { keys: [], totalKeys: 0, connected: false }
+      });
+    }
+
+    const client = getRedisClient();
+    const pattern = req.query.pattern || '*';
+    const allKeys = await client.keys(pattern);
+
+    const ttls = await Promise.all(allKeys.map(k => client.ttl(k)));
+
+    const keys = allKeys
+      .map((key, i) => ({ key, ttl: ttls[i] }))
+      .sort((a, b) => a.key.localeCompare(b.key));
+
+    return res.status(200).json({
+      success: true,
+      data: { keys, totalKeys: keys.length, connected: true }
+    });
+  } catch (error) {
+    await logger.error("getRedisKeysAction error", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const deleteRedisKeysAction = async (req, res) => {
+  try {
+    const { keys } = req.body;
+    const adminEmail = req.authUser?.email || "admin";
+
+    if (!Array.isArray(keys) || keys.length === 0) {
+      return res.status(400).json({ success: false, message: "keys must be a non-empty array" });
+    }
+
+    if (!isRedisConnected()) {
+      return res.status(503).json({ success: false, message: "Redis unavailable" });
+    }
+
+    const client = getRedisClient();
+    const deleted = await client.del(keys);
+
+    await logger.warn(`Redis keys manually deleted`, {
+      admin: adminEmail,
+      keys,
+      deleted,
+      timestamp: new Date().toISOString()
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: `${deleted} key(s) deleted`,
+      data: { deleted, keys }
+    });
+  } catch (error) {
+    await logger.error("deleteRedisKeysAction error", error);
+    return res.status(500).json({ success: false, message: error.message });
   }
 };

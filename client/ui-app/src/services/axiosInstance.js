@@ -8,6 +8,35 @@ export const axiosInstance = axios.create({
   baseURL: API_URL,
 });
 
+// Track number of active requests
+let activeRequests = 0;
+let store = null;
+
+// Set store reference after it's initialized (called from App.js)
+export const setAxiosStore = (reduxStore) => {
+  store = reduxStore;
+};
+
+const showGlobalLoader = () => {
+  try {
+    if (store && activeRequests === 0) {
+      store.dispatch({ type: 'SHOW_GLOBAL_LOADER', payload: { message: 'Loading...' } });
+    }
+  } catch (error) {
+    console.warn('Error showing global loader:', error);
+  }
+};
+
+const hideGlobalLoader = () => {
+  try {
+    if (store && activeRequests === 0) {
+      store.dispatch({ type: 'HIDE_GLOBAL_LOADER' });
+    }
+  } catch (error) {
+    console.warn('Error hiding global loader:', error);
+  }
+};
+
 let isRefreshing = false;
 let failedQueue = [];
 
@@ -23,9 +52,12 @@ const processQueue = (error, token = null) => {
   failedQueue = [];
 };
 
-// Request interceptor - add token to headers
+// Request interceptor - add token to headers and show loader
 axiosInstance.interceptors.request.use(
   (config) => {
+    activeRequests++;
+    showGlobalLoader();
+
     // Don't add token to relogin endpoint (it uses refresh token)
     if (config.url !== '/oauth/relogin') {
       const accessToken = localStorage.getItem('accessToken');
@@ -35,13 +67,24 @@ axiosInstance.interceptors.request.use(
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    activeRequests = Math.max(0, activeRequests - 1);
+    hideGlobalLoader();
+    return Promise.reject(error);
+  }
 );
 
-// Response interceptor - handle 401 and refresh token
+// Response interceptor - handle 401 and refresh token, hide loader
 axiosInstance.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    activeRequests = Math.max(0, activeRequests - 1);
+    hideGlobalLoader();
+    return response;
+  },
   (error) => {
+    activeRequests = Math.max(0, activeRequests - 1);
+    hideGlobalLoader();
+
     const originalRequest = error.config;
 
     // Only retry once and if it's a 401

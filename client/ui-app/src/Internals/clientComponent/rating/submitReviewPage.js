@@ -52,7 +52,6 @@ const WriteReviewPage = () => {
   if (businessDetailsLoading) {
     return <>
       <CardsSearch />
-      <p style={{ textAlign: "center", marginTop: "50px" }}>Loading...</p>
       <Footer />
     </>;
   }

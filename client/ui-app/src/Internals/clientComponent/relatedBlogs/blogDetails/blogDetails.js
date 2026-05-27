@@ -4,6 +4,8 @@ import { useDispatch, useSelector } from "react-redux";
 import { Helmet } from "react-helmet-async";
 import { fetchSeoBlogBySlug } from "../../../../redux/actions/seoPageContentBlogAction";
 import { throttle } from "../../../../utils/throttle";
+import { getPlaceholderImage } from "../../../../utils/placeholderImage";
+import { generateArticleSchema, generateBreadcrumbSchema } from "../../../../utils/seoSchemaGenerators";
 import "./blogDetails.css";
 import Navbar from "../relatedBlogNavbar/relatedBlogNavbar";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
@@ -546,9 +548,26 @@ const BlogDetail = () => {
     }
   };
 
-  if (loading) return <div className="loader">Loading...</div>;
+  if (loading) return null;
   if (error) return <div className="error">Error loading blog</div>;
   if (!blog) return null;
+
+  // Generate Article schema for blog post
+  const articleSchema = generateArticleSchema({
+    headline: blog.metaTitle || blog.heading,
+    description: blog.metaDescription || blog.excerpt,
+    image: blog.ogImageKey,
+    datePublished: blog.createdAt,
+    dateModified: blog.updatedAt,
+    author: blog.author
+  });
+
+  // Generate Breadcrumb schema
+  const breadcrumbSchema = generateBreadcrumbSchema([
+    { name: "Home", url: "https://massclick.in" },
+    { name: blog.category, url: `https://massclick.in/${blog.location}/${blog.category}` },
+    { name: blog.heading, url: canonical }
+  ]);
 
   return (
     <>
@@ -560,10 +579,25 @@ const BlogDetail = () => {
         <meta property="og:title" content={metaTitle} />
         <meta property="og:description" content={metaDescription} />
         <meta property="og:url" content={canonical} />
+        <meta property="og:type" content="article" />
+        {blog?.ogImage && (
+          <meta property="og:image" content={blog.ogImage} />
+        )}
+        <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={metaTitle} />
         <meta name="twitter:description" content={metaDescription} />
+        {blog?.ogImage && (
+          <meta name="twitter:image" content={blog.ogImage} />
+        )}
+        {articleSchema && (
+          <script type="application/ld+json">{JSON.stringify(articleSchema)}</script>
+        )}
+        {breadcrumbSchema && (
+          <script type="application/ld+json">{JSON.stringify(breadcrumbSchema)}</script>
+        )}
       </Helmet>
       <Navbar />
+      <main>
       <div className="reading-progress" aria-hidden="true">
         <span style={{ width: `${readingProgress}%` }} />
       </div>
@@ -785,7 +819,7 @@ const BlogDetail = () => {
                       <p
                         className="faq-answer"
                         dangerouslySetInnerHTML={{
-                          __html: linkifyText(item.answer),
+                          __html: item.linkify ? linkifyText(item.answer) : item.answer,
                         }}
                       />
 
@@ -809,7 +843,7 @@ const BlogDetail = () => {
 
             <div className="author-card author-card-large">
               <img
-                src={blog.profileImage || "https://via.placeholder.com/80"}
+                src={blog.profileImage || getPlaceholderImage()}
                 alt={`${blog.author || "Massclick"} author profile`}
               />
               <div>
@@ -828,7 +862,7 @@ const BlogDetail = () => {
 
             <div className="author-card">
               <img
-                src={blog.profileImage || "https://via.placeholder.com/80"}
+                src={blog.profileImage || getPlaceholderImage()}
                 alt={`${blog.author || "Massclick"} author profile`}
               />
               <div>
@@ -918,6 +952,7 @@ const BlogDetail = () => {
 
         </div>
       </div>
+      </main>
 
       {selectedContact && (
         <div className="contact-popover-backdrop" role="presentation" onClick={closeContactPopover}>

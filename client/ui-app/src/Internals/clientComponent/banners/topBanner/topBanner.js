@@ -144,7 +144,7 @@ const TopBannerAds = ({ category }) => {
                 width="1200"
                 height="400"
                 loading="eager"
-                fetchPriority="high"
+                fetchpriority="high"
                 decoding="async"
                 style={{
                   width: "100%",

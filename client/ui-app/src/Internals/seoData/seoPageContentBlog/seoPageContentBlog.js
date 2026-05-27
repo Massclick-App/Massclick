@@ -49,6 +49,7 @@ const defaultForm = {
   pageImages: [],
   popularBusiness: [],
   profileImage: "",
+  ogImage: "",
   contentBlocks: [],
 };
 
@@ -142,6 +143,7 @@ export default function SeoPageContentBlogs() {
       ...found,
       pageImages: found.pageImages || [],
       profileImage: found.profileImage || "",
+      ogImage: found.ogImage || "",
       popularBusiness: found.businessDetails || [],
       tags: found.tags || [],
       faq: found.faq || [],

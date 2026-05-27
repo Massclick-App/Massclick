@@ -8,13 +8,13 @@
 
 .mc-banner-inner {
   position: relative;
-  border-radius: 16px;
-  background: #ffffff;
-  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
-  padding: 26px 32px;
+  border-radius: 24px;
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d1f0f 100%) !important;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+  padding: 40px 40px;
   display: flex;
-  align-items: stretch;
-  gap: 28px;
+  align-items: center;
+  gap: 48px;
   overflow: hidden;
 }
 
@@ -22,9 +22,8 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 0% 0%, #ffe4c2 0, transparent 45%),
-              radial-gradient(circle at 100% 100%, #ffd1b0 0, transparent 45%);
-  opacity: 0.65;
+  background: radial-gradient(circle at 100% 50%, rgba(255, 152, 0, 0.15) 0%, transparent 60%);
+  opacity: 1;
   pointer-events: none;
 }
 
@@ -37,34 +36,31 @@
 
 /* LEFT SIDE */
 .mc-left {
-  flex: 1.2;
+  flex: 1.3;
   min-width: 0;
 }
 
 /* Brand Row */
 .mc-brand-row {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin-bottom: 18px;
+  display: none;
 }
 
 .mc-logo-pill {
   width: 45px;
   height: 45px;
   border-radius: 999px;
-  overflow: hidden;       
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #fff;        
+  background: #fff;
   box-shadow: 0 6px 14px rgba(0, 0, 0, 0.15);
 }
 
 .mc-logo-img {
   width: 100%;
   height: 100%;
-  object-fit: cover;      
+  object-fit: cover;
 }
 
 
@@ -106,152 +102,172 @@
 
 /* Main heading */
 .mc-heading {
-  font-size: 28px;
+  font-size: 36px;
   line-height: 1.3;
-  color: #0f172a;
-  margin: 8px 0 12px;
-  max-width: 520px;
+  color: #ffffff;
+  margin: 12px 0 8px;
+  max-width: 100%;
+  font-weight: 700;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .mc-highlight {
-  color: #0d47a1;
+  color: #ff9800;
 }
 
 /* Description text */
 .mc-description {
   font-size: 14px;
   line-height: 1.6;
-  color: #4b5563;
+  color: #ffffff;
   margin-bottom: 16px;
   max-width: 540px;
+  opacity: 0.9;
 }
 
 /* Bullet points */
 .mc-points {
   list-style: none;
   padding: 0;
-  margin: 0;
-  display: grid;
-  gap: 6px;
+  margin: 16px 0 0;
+  display: flex;
+  gap: 24px;
 }
 
 .mc-points li {
   font-size: 13px;
-  color: #374151;
+  color: #ffffff;
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
 .mc-points li::before {
-  content: "";
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: linear-gradient(135deg, #ff9800, #ff7043);
+  content: "✓";
+  color: #ff9800;
+  font-weight: 700;
+  font-size: 14px;
 }
 
 /* RIGHT SIDE - PRICE CARD */
 .mc-right {
-  flex: 0.9;
+  flex: 0.7;
   display: flex;
-  align-items: center;
-  justify-content: flex-end;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 20px;
 }
 
 .mc-price-card {
   width: 100%;
-  max-width: 320px;
-  border-radius: 20px;
-  background: linear-gradient(135deg, #ffb95e, #ff8a4a);
-  padding: 22px 20px 20px;
+  max-width: 100%;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
   color: #ffffff;
-  box-shadow: 0 16px 30px rgba(255, 138, 74, 0.4);
+  box-shadow: none;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
 }
 
 /* subtle glass stripe */
 .mc-price-card::after {
-  content: "";
-  position: absolute;
-  inset: -40%;
-  background: linear-gradient(120deg, rgba(255, 255, 255, 0.4), transparent 55%);
-  opacity: 0.4;
-  transform: translateX(-40%);
-  pointer-events: none;
+  display: none;
 }
 
 /* top label */
 .mc-offer-label {
   display: inline-flex;
   align-items: center;
-  padding: 3px 10px;
+  padding: 6px 14px;
   border-radius: 999px;
-  font-size: 11px;
-  font-weight: 600;
-  background: rgba(255, 255, 255, 0.18);
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  backdrop-filter: blur(6px);
+  font-size: 10px;
+  font-weight: 700;
+  background: rgba(255, 152, 0, 0.15);
+  border: 1px solid rgba(255, 152, 0, 0.4);
+  color: #ff9800;
+  letter-spacing: 0.5px;
 }
 
 .mc-price-title {
-  margin: 10px 0 12px;
-  font-size: 16px;
-  font-weight: 600;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: #ffffff;
+  opacity: 0.8;
 }
 
 /* price row */
 .mc-price-row {
   display: flex;
-  align-items: flex-end;
-  gap: 4px;
-  margin-bottom: 16px;
+  align-items: baseline;
+  gap: 6px;
+  margin: 8px 0 24px;
 }
 
 .mc-price-currency {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 600;
+  color: #ff9800;
 }
 
 .mc-price-main {
-  font-size: 34px;
+  font-size: 48px;
   font-weight: 800;
-  letter-spacing: -0.5px;
+  letter-spacing: -1px;
+  color: #ff9800;
 }
 
 .mc-price-sub {
   font-size: 13px;
-  opacity: 0.9;
+  opacity: 0.7;
+  color: #ffffff;
 }
 
 /* CTA button */
 .mc-cta-btn {
-  width: 100%;
+  width: 85%;
   border: none;
-  border-radius: 999px;
-  padding: 10px 18px;
-  font-size: 15px;
+  border-radius: 12px;
+  padding: 14px 24px;
+  font-size: 16px;
   font-weight: 600;
-  background: #ffffff;
-  color: #f97316;
+  background: #ff9800;
+  color: #ffffff;
   cursor: pointer;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 8px 20px rgba(255, 152, 0, 0.3);
   transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
   position: relative;
   z-index: 1;
+  align-self: flex-end;
+  margin-left: auto;
 }
 
 .mc-cta-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.22);
-  background: #fef4eb;
+  box-shadow: 0 10px 28px rgba(255, 152, 0, 0.4);
+  background: #ffb039;
 }
 
 .mc-note {
-  margin-top: 10px;
-  font-size: 11px;
-  opacity: 0.95;
+  display: none;
+}
+
+.mc-subtext {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: #ffb039;
+  font-weight: 500;
+}
+
+.mc-guarantee {
+  margin-top: 12px;
+  font-size: 12px;
+  color: #ffffff;
+  line-height: 1.8;
+  opacity: 0.85;
 }
 
 /* ========================= */
@@ -261,8 +277,52 @@
 /* large tablets / small laptops */
 @media (max-width: 1024px) {
   .mc-banner-inner {
-    padding: 28px 24px;
+    padding: 32px 28px;
+    gap: 32px;
+  }
+
+  .mc-heading {
+    font-size: 32px;
+  }
+
+  .mc-price-main {
+    font-size: 40px;
+  }
+}
+
+/* tablets & below – stack layout */
+@media (max-width: 768px) {
+  .mc-banner-inner {
+    flex-direction: column;
+    padding: 32px 24px;
     gap: 24px;
+  }
+
+  .mc-left,
+  .mc-right {
+    width: 100%;
+  }
+
+  .mc-right {
+    align-items: stretch;
+  }
+
+  .mc-heading {
+    font-size: 28px;
+  }
+
+  .mc-points {
+    flex-direction: column;
+    gap: 12px;
+  }
+}
+
+/* phones */
+@media (max-width: 480px) {
+  .mc-banner-inner {
+    border-radius: 20px;
+    padding: 24px 16px;
+    gap: 20px;
   }
 
   .mc-heading {
@@ -273,65 +333,16 @@
     font-size: 13px;
   }
 
-  .mc-price-card {
-    max-width: 280px;
-  }
-}
-
-/* tablets & below – stack layout */
-@media (max-width: 768px) {
-  .mc-banner-inner {
-    flex-direction: column;
-    padding: 24px 20px 26px;
-  }
-
-  .mc-left,
-  .mc-right {
-    width: 100%;
-  }
-
-  .mc-right {
-    justify-content: flex-start;
-  }
-
-  .mc-price-card {
-    max-width: 100%;
-  }
-
-  .mc-heading {
-    max-width: 100%;
-  }
-}
-
-/* phones */
-@media (max-width: 480px) {
-  .mc-banner-inner {
-    border-radius: 18px;
-    padding: 20px 16px 22px;
-  }
-
-  .mc-logo-text {
-    font-size: 22px;
-  }
-
-  .mc-heading {
-    font-size: 21px;
-  }
-
-  .mc-description {
-    font-size: 12px;
+  .mc-points {
+    gap: 10px;
   }
 
   .mc-points li {
     font-size: 12px;
   }
 
-  .mc-price-row {
-    margin-bottom: 12px;
-  }
-
   .mc-price-main {
-    font-size: 30px;
+    font-size: 36px;
   }
 
   .mc-cta-btn {

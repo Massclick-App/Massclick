@@ -6,6 +6,27 @@ import { uploadImageToS3, getSignedUrlByKey } from "../../s3Uploder.js";
 import locationModel from "../../model/locationModel/locationModel.js";
 import userModel from "../../model/userModel.js";
 import QRCode from "qrcode";
+import categoryModel from "../../model/category/categoryModel.js";
+
+// Auto-copy keywords from category when business is created
+export const copyKeywordsFromCategory = async (categoryName) => {
+  try {
+    if (!categoryName) return [];
+
+    const category = await categoryModel.findOne({
+      category: new RegExp(`^${categoryName}$`, "i")
+    }).lean();
+
+    if (!category || !Array.isArray(category.keywords)) {
+      return [];
+    }
+
+    return category.keywords;
+  } catch (err) {
+    console.error("Error copying keywords from category:", err.message);
+    return [];
+  }
+};
 
 export const createBusinessList = async (reqBody = {}) => {
   try {
@@ -56,6 +77,14 @@ export const createBusinessList = async (reqBody = {}) => {
 
       reqBody.kycDocumentsKey = kycDocumentsKey;
       delete reqBody.kycDocuments;
+    }
+
+    // Auto-copy keywords from category if not provided
+    if (!reqBody.keywords || reqBody.keywords.length === 0) {
+      const categoryKeywords = await copyKeywordsFromCategory(reqBody.category);
+      if (categoryKeywords.length > 0) {
+        reqBody.keywords = categoryKeywords;
+      }
     }
 
     const businessListDocument = new businessListModel(reqBody);

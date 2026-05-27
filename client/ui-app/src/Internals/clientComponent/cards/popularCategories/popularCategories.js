@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo, useCallback } from "react";
 import "./popularCategories.css";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
+import { getPlaceholderImage, handleImageError } from "../../../../utils/placeholderImage";
 
 import Drawer from "@mui/material/Drawer";
 import CloseIcon from "@mui/icons-material/Close";
@@ -9,67 +10,21 @@ import SearchIcon from "@mui/icons-material/Search";
 
 import { logSearchActivity } from "../../../../redux/actions/businessListAction";
 import { fetchPopularCategories } from "../../../../redux/actions/categoryAction";
+import { navigateToSearchResult } from "../../../../utils/searchResultNavigation";
 
-const POPULAR_ORDER = [
-  "Astrology",
-  "Vastu Consultant",
-  "Numerology",
-  "Geologist",
-  "Chartered Accountant",
-  "Computer Training Institutes",
-  "Coaching",
-  "Vocational training",
-  "Lawyer",
-  "Registration Consultant",
-  "Placement Service",
-  "Kids School",
-  "Beauty Parlour",
-  "Body Massage",
-  "Salon",
-  "Beauty Spa",
-  "Car Hire",
-  "Electrician Services",
-  "Event Organisers",
-  "Real Estate",
-  "Textile",
-  "Fabricators",
-  "Jewellery Showroom",
-  "Tailoring",
-  "Painting Contractor",
-  "Nursing Service",
-  "Courier Services",
-  "printing & publishing service",
-  "Hobbies",
-  "Internet Website Designer",
-  "Opticals",
-  "Organic Shop",
-  "Scrap Dealer",
-  "Automobiles",
-  "Export & Import",
-  "Loans",
-  "Physiotherapy",
-  "Clinical Lab",
-  "Homeo Clinic",
-  "Cosmetics",
-  "Architect",
-  "Sports",
-  "Ceramic",
-  "Book Shop",
-  "Fancy Shop",
-  "Tattoo Artist",
-  "Boutique",
-  "Footwear Shop",
-  "Nursery Garden",
-  "Special School",
-  "Mosquito Net",
-  "Hearing Aid"
-];
+// Order is controlled via admin Category Display Settings → Popular tab.
+// The v2 API returns items pre-sorted; no client-side reorder needed.
 
 const slugify = (text = "") =>
   text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 
-const normalize = (text = "") =>
-  text.toLowerCase().replace(/s$/, "").trim();
+const formatUiName = (name) => {
+  if (!name) return "";
+  return name
+    .replace(/[-_]/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase())
+    .trim();
+};
 
 const generateAltText = (label, districtSlug) =>
   `${label} services in ${districtSlug}`;
@@ -114,31 +69,8 @@ const PopularCategoriesDrawer = ({ openFromHome = false, onClose }) => {
     console.log("Popular category URLs:", popularCategoryUrls);
   }, [popularCategories, districtSlug]);
 
-  const orderedCategories = useMemo(() => {
-
-    if (!popularCategories.length) return [];
-
-    const map = new Map(
-      popularCategories.map(cat => [
-        normalize(cat.name),
-        cat
-      ])
-    );
-
-    return POPULAR_ORDER.map((name) => {
-
-      const found = map.get(normalize(name));
-
-      return found
-        ? found
-        : {
-          name,
-          slug: slugify(name),
-          icon: null
-        };
-    });
-
-  }, [popularCategories]);
+  // v2 API returns categories in admin-configured order — use directly.
+  const orderedCategories = useMemo(() => popularCategories, [popularCategories]);
 
   const filtered = useMemo(() => {
     return orderedCategories.filter(cat =>
@@ -167,11 +99,20 @@ const handleClick = useCallback((cat) => {
     )
   );
 
-  navigate(`/${districtSlug}/${cat.slug}`, { state: { logAlreadySent: true } });
+  navigateToSearchResult({
+    searchTerm: cat.name,
+    location: selectedDistrict || "Global",
+    navigate,
+    dispatch,
+    isKnownCategory: true, // Popular category drawer - known category
+    logAlreadySent: true,
+    userDetails,
+  });
+
   setDrawerOpen(false);
   onClose?.();
 
-}, [dispatch, navigate, selectedDistrict, districtSlug, onClose]);
+}, [dispatch, navigate, selectedDistrict, onClose]);
 
   const handleClose = () => {
     setDrawerOpen(false);
@@ -206,8 +147,6 @@ const handleClick = useCallback((cat) => {
 
       <section className="pc-grid">
 
-        {loading && <p>Loading...</p>}
-
         {!loading && filtered.length === 0 && (
           <p style={{ textAlign: "center" }}>No categories found</p>
         )}
@@ -223,7 +162,8 @@ const handleClick = useCallback((cat) => {
               onClick={() => handleClick(cat)}
             >
               <img
-                src={cat.icon || "/default.webp"}
+                src={cat.icon || getPlaceholderImage()}
+                onError={(e) => handleImageError(e)}
                 className="popular-icons"
                 alt={altText}
                 width="70"
@@ -233,10 +173,10 @@ const handleClick = useCallback((cat) => {
                 style={{ objectFit: "contain" }}
                 onError={(e) => {
                   e.target.onerror = null;
-                  e.target.src = "/default.webp";
+                  handleImageError(e);
                 }}
               />
-              <span>{cat.name}</span>
+              <span>{formatUiName(cat.name)}</span>
             </article>
           );
         })}

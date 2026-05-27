@@ -11,6 +11,7 @@ import { metricsMiddleware } from "./utils/metricsMiddleware.js";
 import { initRedis } from "./utils/redisClient.js";
 import wellKnownRoutes from "./routes/wellKnownRoutes.js";
 import { ssrMiddleware } from "./middleware/ssrMiddleware.js";
+import { maintenanceModeMiddleware } from "./middleware/maintenanceModeMiddleware.js";
 
 import userRoutes from "./routes/userRoutes.js";
 import userClientRoutes from "./routes/userClientRoute.js";
@@ -36,6 +37,7 @@ import versionRoutes from "./routes/versionRoutes.js";
 import favoriteRoute from "./routes/favoriteRoute.js";
 import fcmAdminRoutes from "./routes/fcmAdminRoutes.js";
 import systemSettingsRoutes from "./routes/systemSettingsRoutes.js";
+import categoryDisplaySettingsRoutes from "./routes/categoryDisplaySettingsRoutes.js";
 import cacheRoutes from "./routes/cacheRoutes.js";
 import footerRoutes from "./routes/footerRoute.js";
 import { startFCMScheduler } from "./scheduler/fcmScheduler.js";
@@ -84,6 +86,8 @@ app.use(metricsMiddleware);
 
 app.use(wellKnownRoutes);
 
+app.use(maintenanceModeMiddleware);
+
 app.use("/", sitemapRoutes);
 app.use("/", userRoutes);
 app.use("/", fcmTokenRoutes);
@@ -109,6 +113,7 @@ app.use("/", footerRoutes);
 app.use("/", favoriteRoute);
 app.use("/", fcmAdminRoutes);
 app.use("/", systemSettingsRoutes);
+app.use("/", categoryDisplaySettingsRoutes);
 app.use("/", cacheRoutes);
 
 app.use(express.static(CLIENT_BUILD_PATH, {

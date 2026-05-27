@@ -9,6 +9,21 @@ import {
   CLEAR_ALL_CACHES_REQUEST,
   CLEAR_ALL_CACHES_SUCCESS,
   CLEAR_ALL_CACHES_FAILURE,
+  FETCH_REDIS_KEYS_REQUEST,
+  FETCH_REDIS_KEYS_SUCCESS,
+  FETCH_REDIS_KEYS_FAILURE,
+  DELETE_REDIS_KEYS_REQUEST,
+  DELETE_REDIS_KEYS_SUCCESS,
+  DELETE_REDIS_KEYS_FAILURE,
+  FETCH_REDIS_INFO_REQUEST,
+  FETCH_REDIS_INFO_SUCCESS,
+  FETCH_REDIS_INFO_FAILURE,
+  FLUSH_REDIS_DB_REQUEST,
+  FLUSH_REDIS_DB_SUCCESS,
+  FLUSH_REDIS_DB_FAILURE,
+  DELETE_REDIS_PATTERN_REQUEST,
+  DELETE_REDIS_PATTERN_SUCCESS,
+  DELETE_REDIS_PATTERN_FAILURE,
 } from "./cacheActionTypes";
 
 const API_URL = process.env.REACT_APP_API_URL;
@@ -45,6 +60,86 @@ export const invalidateCache = (cacheType) => async (dispatch) => {
   } catch (error) {
     const msg = error.response?.data?.message || error.message;
     dispatch({ type: INVALIDATE_CACHE_FAILURE, payload: msg });
+    throw new Error(msg);
+  }
+};
+
+export const fetchRedisKeys = (pattern = '*') => async (dispatch) => {
+  dispatch({ type: FETCH_REDIS_KEYS_REQUEST });
+  try {
+    const { data } = await axiosInstance.get(`${API_URL}/admin/redis/keys`, {
+      headers: authHeaders(),
+      params: { pattern },
+    });
+    dispatch({ type: FETCH_REDIS_KEYS_SUCCESS, payload: data.data });
+  } catch (error) {
+    dispatch({
+      type: FETCH_REDIS_KEYS_FAILURE,
+      payload: error.response?.data?.message || error.message,
+    });
+  }
+};
+
+export const deleteRedisKeys = (keys) => async (dispatch) => {
+  dispatch({ type: DELETE_REDIS_KEYS_REQUEST });
+  try {
+    const { data } = await axiosInstance.delete(`${API_URL}/admin/redis/keys`, {
+      headers: authHeaders(),
+      data: { keys },
+    });
+    dispatch({ type: DELETE_REDIS_KEYS_SUCCESS, payload: data.data });
+    return data;
+  } catch (error) {
+    const msg = error.response?.data?.message || error.message;
+    dispatch({ type: DELETE_REDIS_KEYS_FAILURE, payload: msg });
+    throw new Error(msg);
+  }
+};
+
+export const fetchRedisInfo = () => async (dispatch) => {
+  dispatch({ type: FETCH_REDIS_INFO_REQUEST });
+  try {
+    const { data } = await axiosInstance.get(`${API_URL}/admin/redis/info`, {
+      headers: authHeaders(),
+    });
+    dispatch({ type: FETCH_REDIS_INFO_SUCCESS, payload: data.data });
+  } catch (error) {
+    dispatch({
+      type: FETCH_REDIS_INFO_FAILURE,
+      payload: error.response?.data?.message || error.message,
+    });
+  }
+};
+
+export const flushRedisDb = () => async (dispatch) => {
+  dispatch({ type: FLUSH_REDIS_DB_REQUEST });
+  try {
+    const { data } = await axiosInstance.post(
+      `${API_URL}/admin/redis/flush`,
+      {},
+      { headers: authHeaders() }
+    );
+    dispatch({ type: FLUSH_REDIS_DB_SUCCESS, payload: data });
+    return data;
+  } catch (error) {
+    const msg = error.response?.data?.message || error.message;
+    dispatch({ type: FLUSH_REDIS_DB_FAILURE, payload: msg });
+    throw new Error(msg);
+  }
+};
+
+export const deleteRedisPattern = (pattern) => async (dispatch) => {
+  dispatch({ type: DELETE_REDIS_PATTERN_REQUEST });
+  try {
+    const { data } = await axiosInstance.delete(
+      `${API_URL}/admin/redis/pattern`,
+      { headers: authHeaders(), data: { pattern } }
+    );
+    dispatch({ type: DELETE_REDIS_PATTERN_SUCCESS, payload: data.data });
+    return data;
+  } catch (error) {
+    const msg = error.response?.data?.message || error.message;
+    dispatch({ type: DELETE_REDIS_PATTERN_FAILURE, payload: msg });
     throw new Error(msg);
   }
 };

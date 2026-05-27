@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { Helmet } from 'react-helmet-async';
 import { createStartProject } from '../../../../redux/actions/startProjectAction';
 import './digitalMarketing.css';
 import Footer from '../footer';
 import CardsSearch from '../../CardsSearch/CardsSearch';
 import SeoMeta from "../../seo/seoMeta";
 import { fetchSeoMeta } from "../../../../redux/actions/seoAction";
+import { generateServiceSchema, generateBreadcrumbSchema } from "../../../../utils/seoSchemaGenerators";
 
 import EnquiryImage from '../../../../assets/enquiry.png';
 import digitmarketing from '../../../../assets/digitalmarketing.jpg'
@@ -106,8 +108,29 @@ const DigitalMarketing = () => {
         overflowY: 'auto',
     };
 
+    const serviceSchema = generateServiceSchema({
+        name: "Digital Marketing",
+        title: "Digital Marketing Services",
+        description: "Comprehensive digital marketing services including SEO, social media, content marketing, and online advertising.",
+        location: "India",
+        category: "Digital Marketing"
+    });
+
+    const breadcrumbSchema = generateBreadcrumbSchema([
+        { name: "Home", url: "https://massclick.in" },
+        { name: "Digital Marketing", url: "https://massclick.in/digital" }
+    ]);
+
     return (
         <>
+            <Helmet>
+                {serviceSchema && (
+                    <script type="application/ld+json">{JSON.stringify(serviceSchema)}</script>
+                )}
+                {breadcrumbSchema && (
+                    <script type="application/ld+json">{JSON.stringify(breadcrumbSchema)}</script>
+                )}
+            </Helmet>
 
             <SeoMeta seoData={seoMetaData} fallback={fallbackSeo} />
 

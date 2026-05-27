@@ -1,0 +1,136 @@
+/* Critical CSS - Inline in <head> for above-the-fold content */
+/* This prevents render-blocking and enables early paint */
+
+:root {
+  --primary-color: #2196F3;
+  --primary-dark: #1976D2;
+  --secondary-color: #FF5722;
+  --text-primary: #333333;
+  --text-secondary: #666666;
+  --bg-default: #F5F5F5;
+  --bg-paper: #FFFFFF;
+  --border-color: #e0e0e0;
+  --border-radius: 8px;
+  --shadow-sm: 0px 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* System font stack for immediate render */
+html, body {
+  font-family: "Poppins", "Helvetica", "Arial", sans-serif;
+  margin: 0;
+  padding: 0;
+  color: var(--text-primary);
+  background-color: var(--bg-default);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Root container - prevent layout shift */
+#root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  width: 100%;
+}
+
+/* Prevent FOUT/FOIT */
+body {
+  font-display: swap;
+}
+
+/* Button base styles - prevent CLS */
+button {
+  font-family: inherit;
+  border-radius: var(--border-radius);
+  border: none;
+  cursor: pointer;
+  outline: none;
+}
+
+button:hover {
+  box-shadow: none;
+}
+
+/* Input base styles */
+input, textarea, select {
+  font-family: inherit;
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+}
+
+/* Card base styles */
+.card, [class*="Card"] {
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-sm);
+  background-color: var(--bg-paper);
+}
+
+/* Prevent image-induced CLS */
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Link styles */
+a {
+  color: var(--primary-color);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* Typography hierarchy - prevent shift */
+h1, h2, h3, h4, h5, h6 {
+  margin: 0;
+  line-height: 1.2;
+  color: var(--text-primary);
+}
+
+h1 { font-size: 2.5rem; font-weight: 700; }
+h2 { font-size: 2rem; font-weight: 600; }
+h3 { font-size: 1.75rem; font-weight: 600; }
+h4 { font-size: 1.5rem; font-weight: 500; }
+h5 { font-size: 1.25rem; font-weight: 500; }
+h6 { font-size: 1rem; font-weight: 500; }
+
+p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Ensure no layout shift on scrollbar appearance */
+html {
+  overflow-y: scroll;
+}
+
+/* Skeleton/loading state - prevent CLS */
+.shimmer {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Responsive viewport */
+@media (max-width: 768px) {
+  h1 { font-size: 1.75rem; }
+  h2 { font-size: 1.5rem; }
+  h3 { font-size: 1.25rem; }
+}
+
+/* Print styles */
+@media print {
+  * {
+    background: transparent !important;
+    color: #000 !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+}

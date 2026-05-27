@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import InputValidator from "../validators/inputValidator.js";
 import {
   getAllUsersClient,
   createUserClient,
@@ -16,9 +17,12 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Alert,
+  AlertTitle,
 } from "@mui/material";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import CheckCircleOutlineRoundedIcon from "@mui/icons-material/CheckCircleOutlineRounded";
 import './clients.css'
 import CustomizedTable from "../../components/Table/CustomizedTable.js";
 
@@ -31,6 +35,7 @@ export default function UserClients() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editUserId, setEditUserId] = useState(null);
   const [errors, setErrors] = useState({});
+  const [successMessage, setSuccessMessage] = useState("");
 
   const [formData, setFormData] = useState({
     clientId: "",
@@ -47,18 +52,49 @@ export default function UserClients() {
     dispatch(getAllUsersClient());
   }, [dispatch]);
 
+  const mapErrorToField = (errorMessage) => {
+    const lowerError = errorMessage.toLowerCase();
+    if (lowerError.includes('name') && !lowerError.includes('business')) return 'name';
+    if (lowerError.includes('email')) return 'emailId';
+    if (lowerError.includes('phone') || lowerError.includes('contact')) return 'contact';
+    if (lowerError.includes('business name')) return 'businessName';
+    if (lowerError.includes('business address') || lowerError.includes('address')) return 'businessAddress';
+    return null;
+  };
+
   const validateForm = () => {
     let newErrors = {};
 
-    if (!formData.name.trim()) newErrors.name = "Name is required";
-    if (!formData.contact.trim()) newErrors.contact = "Contact is required";
+    // Use InputValidator for comprehensive validation
+    try {
+      const clientData = {
+        name: formData.name.trim(),
+        email: formData.emailId.trim(),
+        phone: formData.contact.trim(),
+        location: ''
+      };
 
+      InputValidator.validateClient(clientData);
+    } catch (error) {
+      const errorLines = error.message.split('\n').filter(line => line.trim());
+      errorLines.forEach(line => {
+        let cleanedError = line.replace(/^Client validation failed:\s*/, '').trim();
+        if (cleanedError) {
+          const field = mapErrorToField(cleanedError);
+          if (field) {
+            newErrors[field] = cleanedError;
+          }
+        }
+      });
+    }
 
-
-    if (!formData.businessName.trim())
+    // Additional MassClick-specific validations
+    if (!formData.businessName.trim()) {
       newErrors.businessName = "Business Name is required";
-    if (!formData.businessAddress.trim())
+    }
+    if (!formData.businessAddress.trim()) {
       newErrors.businessAddress = "Business Address is required";
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -85,24 +121,74 @@ export default function UserClients() {
   };
 
 
+  const parseBackendErrors = (err) => {
+    const fieldNameMap = {
+      'email': 'emailId',
+      'phone': 'contact',
+      'name': 'name',
+      'businessName': 'businessName',
+      'businessAddress': 'businessAddress',
+    };
+
+    const backendErrors = {};
+
+    if (err.response?.data?.errors && Array.isArray(err.response.data.errors)) {
+      err.response.data.errors.forEach(e => {
+        const mappedField = fieldNameMap[e.field] || e.field;
+        backendErrors[mappedField] = e.message;
+      });
+    }
+
+    return backendErrors;
+  };
+
+  const transformFormDataForBackend = (data) => {
+    return {
+      clientId: data.clientId,
+      name: data.name,
+      email: data.emailId,
+      phone: data.contact,
+      businessName: data.businessName,
+      businessAddress: data.businessAddress,
+    };
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!validateForm()) return;
 
+    const backendData = transformFormDataForBackend(formData);
+
     if (isEditMode && editUserId) {
-      dispatch(editUserClient(editUserId, formData))
+      dispatch(editUserClient(editUserId, backendData))
         .then(() => {
+          setSuccessMessage("✓ Client updated successfully!");
+          setTimeout(() => setSuccessMessage(""), 3000);
           resetForm();
           dispatch(getAllUsersClient());
         })
-        .catch((err) => console.error("Update client failed:", err));
+        .catch((err) => {
+          console.error("Update client failed:", err);
+          const backendErrors = parseBackendErrors(err);
+          if (Object.keys(backendErrors).length > 0) {
+            setErrors(backendErrors);
+          }
+        });
     } else {
-      dispatch(createUserClient(formData))
+      dispatch(createUserClient(backendData))
         .then(() => {
+          setSuccessMessage("✓ Client created successfully!");
+          setTimeout(() => setSuccessMessage(""), 3000);
           resetForm();
           dispatch(getAllUsersClient());
         })
-        .catch((err) => console.error("Create client failed:", err));
+        .catch((err) => {
+          console.error("Create client failed:", err);
+          const backendErrors = parseBackendErrors(err);
+          if (Object.keys(backendErrors).length > 0) {
+            setErrors(backendErrors);
+          }
+        });
     }
   };
 
@@ -181,11 +267,46 @@ export default function UserClients() {
 
 
   const fields = [
-    { label: "Name", name: "name", required: true, type: "text" },
-    { label: "Contact", name: "contact", required: true, type: "text" },
-    { label: "Email", name: "emailId", required: true, type: "email" },
-    { label: "Business Name", name: "businessName", required: true, type: "text" },
-    { label: "Business Address", name: "businessAddress", required: true, type: "text" },
+    {
+      label: "Name",
+      name: "name",
+      required: true,
+      type: "text",
+      placeholder: "E.g., John Doe",
+      helper: "Full name of the client contact person"
+    },
+    {
+      label: "Contact",
+      name: "contact",
+      required: true,
+      type: "text",
+      placeholder: "E.g., +91 98765 43210 or 9876543210",
+      helper: "10-digit mobile number or international format"
+    },
+    {
+      label: "Email",
+      name: "emailId",
+      required: true,
+      type: "email",
+      placeholder: "E.g., john@company.com or john@gmail.com",
+      helper: "Company email preferred, but personal email (Gmail, Yahoo, etc.) is also accepted"
+    },
+    {
+      label: "Business Name",
+      name: "businessName",
+      required: true,
+      type: "text",
+      placeholder: "E.g., ABC Corporation",
+      helper: "Official name of the business"
+    },
+    {
+      label: "Business Address",
+      name: "businessAddress",
+      required: true,
+      type: "text",
+      placeholder: "E.g., 123 Business Street, City, State 12345",
+      helper: "Complete business address including city and state"
+    },
   ];
 
   return (
@@ -195,22 +316,65 @@ export default function UserClients() {
           {isEditMode ? "Edit Client" : "Add New Client"}
         </h2>
 
+        {successMessage && (
+          <Alert severity="success" sx={{ marginBottom: "20px" }} icon={<CheckCircleOutlineRoundedIcon />}>
+            {successMessage}
+          </Alert>
+        )}
+
+        {error && (
+          <Alert severity="error" sx={{ marginBottom: "20px" }}>
+            <AlertTitle>Error</AlertTitle>
+            {(() => {
+              if (typeof error === "string") {
+                return error;
+              }
+              if (error instanceof Error) {
+                return error.message;
+              }
+              if (typeof error === "object") {
+                // Try to extract a user-friendly message from backend response
+                if (error.message && typeof error.message === "string") {
+                  return error.message;
+                }
+                if (error.data?.message) {
+                  return error.data.message;
+                }
+                // Fallback for raw JSON - don't show it
+                return "An error occurred while processing your request. Please check the fields above and try again.";
+              }
+              return String(error);
+            })()}
+          </Alert>
+        )}
+
         <form onSubmit={handleSubmit} className="client-form-grid">
           {fields.map((field, i) => (
             <div key={i} className="client-form-input-group">
               <label htmlFor={field.name} className="client-input-label">
                 {field.label}
+                {field.required && <span className="client-required-indicator">*</span>}
               </label>
               <input
                 type={field.type}
                 id={field.name}
                 name={field.name}
+                placeholder={field.placeholder}
                 className={`client-text-input ${errors[field.name] ? "error" : ""}`}
                 value={formData[field.name]}
                 onChange={handleChange}
+                aria-invalid={!!errors[field.name]}
+                aria-describedby={errors[field.name] ? `${field.name}-error` : `${field.name}-helper`}
               />
               {errors[field.name] && (
-                <p className="client-error-text">{errors[field.name]}</p>
+                <p id={`${field.name}-error`} className="client-error-text">
+                  ✗ {errors[field.name]}
+                </p>
+              )}
+              {!errors[field.name] && field.helper && (
+                <p id={`${field.name}-helper`} className="client-helper-text">
+                  {field.helper}
+                </p>
               )}
             </div>
           ))}
@@ -241,17 +405,6 @@ export default function UserClients() {
             )}
           </div>
         </form>
-
-        {error && (
-          <p className="client-error-text" style={{ marginTop: "16px" }}>
-            {(() => {
-              if (typeof error === "string") return error;
-              if (error instanceof Error) return error.message;
-              if (typeof error === "object") return JSON.stringify(error, null, 2);
-              return String(error);
-            })()}
-          </p>
-        )}
       </div>
 
       <Typography variant="h6" gutterBottom sx={{ textAlign: "center" }}>

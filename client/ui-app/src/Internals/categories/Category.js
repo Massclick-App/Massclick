@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import axiosInstance from "../../services/axiosInstance.js";
 import { normalizeImageUrl } from "../../utils/imageUrlHelper.js";
 import Cropper from "react-easy-crop";
+import InputValidator from "../validators/inputValidator.js";
 import {
   getAllCategory,
   createCategory,
@@ -226,6 +227,7 @@ export default function Category() {
   });
 
   const [imageErrors, setImageErrors] = useState({});
+  const [uploadingImageVariant, setUploadingImageVariant] = useState(null);
 
   // Cropper states
   const [cropperOpen, setCropperOpen] = useState(false);
@@ -253,6 +255,9 @@ export default function Category() {
   const [editMode, setEditMode] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState({ open: false, id: null });
   const [inputKeyword, setInputKeyword] = useState("");
+  const [keywordInputError, setKeywordInputError] = useState("");
+  const [suggestedKeywords, setSuggestedKeywords] = useState([]);
+  const [suggestLoading, setSuggestLoading] = useState(false);
   const [dupDialog, setDupDialog] = useState({ open: false, groups: [] });
   const [selectedDups, setSelectedDups] = useState([]);
   const [dupLoading, setDupLoading] = useState(false);
@@ -305,21 +310,77 @@ export default function Category() {
   };
 
   const handleKeywordChange = (event, newValue) => {
-    setFormData((prev) => ({ ...prev, keywords: newValue }));
+    // freeSolo adds raw string on Enter — validate before accepting it
+    const validated = [];
+    let lastError = "";
+
+    for (const kw of newValue) {
+      const trimmed = typeof kw === "string" ? kw.trim().toLowerCase() : kw;
+      if (!trimmed) continue;
+
+      if (trimmed.split(/\s+/).length < 2) {
+        lastError = `"${trimmed}" is too generic. Use a descriptive phrase, e.g. "${trimmed} service"`;
+        continue;
+      }
+
+      try {
+        InputValidator.validateAndCleanKeywords([trimmed]);
+        validated.push(trimmed);
+      } catch (err) {
+        lastError = err.message;
+      }
+    }
+
+    setKeywordInputError(lastError);
+    setInputKeyword("");
+    setFormData((prev) => ({ ...prev, keywords: validated }));
+  };
+
+  // Extract S3 key from signed URL (handles malformed double-signed URLs too)
+  const extractS3KeyFromUrl = (url) => {
+    if (!url || typeof url !== "string") return "";
+    if (!url.startsWith("http")) return url; // Already a key
+
+    try {
+      // Handle malformed double-signed URLs like: https://bucket.com/https://bucket.com/path/key
+      if (url.includes("/https://")) {
+        const match = url.match(/\/https:\/\/[^/]+\/(.+?)(?:\?|$)/);
+        if (match && match[1]) return match[1];
+      }
+
+      // Handle normal signed URLs: https://bucket.com/path/key?signature...
+      const urlObj = new URL(url);
+      let path = urlObj.pathname.startsWith("/") ? urlObj.pathname.slice(1) : urlObj.pathname;
+      return path;
+    } catch (err) {
+      console.error("Failed to extract key from URL:", url, err);
+      return url;
+    }
   };
 
   const handleEdit = (row) => {
     setEditMode(true);
-    setFormData({
-      _id: row._id,
-      categoryImages: row.categoryImages || {
+
+    // Extract S3 keys from signed URLs for categoryImages
+    const categoryImagesKeys = {};
+    if (row.categoryImages && typeof row.categoryImages === "object") {
+      for (const [variant, url] of Object.entries(row.categoryImages)) {
+        categoryImagesKeys[variant] = extractS3KeyFromUrl(url) || "";
+      }
+    } else {
+      categoryImagesKeys = {
         webHero: "",
         webCard: "",
         webThumbnail: "",
         mobileVertical: "",
         mobileCard: "",
         mobileThumbnail: ""
-      },
+      };
+    }
+
+    setFormData({
+      _id: row._id,
+      categoryImages: categoryImagesKeys,
       categoryImage: row.categoryImage || "",
       liveImage: row.liveImage || "",
       category: row.category,
@@ -335,7 +396,7 @@ export default function Category() {
       seoDescription: row.seoDescription || "",
       slug: row.slug || "",
     });
-    // Set previews for all image variants
+    // Set previews using signed URLs (for display)
     setImagePreviews({
       webHero: row.categoryImages?.webHero || null,
       webCard: row.categoryImages?.webCard || null,
@@ -363,14 +424,41 @@ export default function Category() {
   };
 
   const handleAddKeyword = () => {
-    const trimmed = inputKeyword.trim();
-    if (trimmed && !formData.keywords.includes(trimmed)) {
-      setFormData((prev) => ({
-        ...prev,
-        keywords: [...prev.keywords, trimmed],
-      }));
-      setInputKeyword("");
+    const trimmed = inputKeyword.trim().toLowerCase();
+    if (!trimmed) return;
+
+    // Reject single-word keywords — they are too generic for search
+    if (trimmed.split(/\s+/).length < 2) {
+      setKeywordInputError(`"${trimmed}" is too generic. Use a descriptive phrase, e.g. "${trimmed} service" or "${trimmed} provider"`);
+      return;
     }
+
+    // Run full InputValidator rules on this single keyword
+    try {
+      InputValidator.validateAndCleanKeywords([trimmed]);
+    } catch (err) {
+      setKeywordInputError(err.message);
+      return;
+    }
+
+    // Check duplicate
+    if (formData.keywords.map(k => k.toLowerCase()).includes(trimmed)) {
+      setKeywordInputError(`"${trimmed}" is already added`);
+      return;
+    }
+
+    // Max 50 keywords
+    if (formData.keywords.length >= 50) {
+      setKeywordInputError("Maximum 50 keywords allowed");
+      return;
+    }
+
+    setKeywordInputError("");
+    setFormData((prev) => ({
+      ...prev,
+      keywords: [...prev.keywords, trimmed],
+    }));
+    setInputKeyword("");
   };
 
   const handleKeywordDelete = (keywordToDelete) => {
@@ -380,10 +468,83 @@ export default function Category() {
     }));
   };
 
+  const handleSuggestKeywords = async () => {
+    const categoryName = formData.category?.trim();
+    if (!categoryName) {
+      setKeywordInputError("Enter a category name first to get suggestions");
+      return;
+    }
+
+    setSuggestLoading(true);
+    setSuggestedKeywords([]);
+    setKeywordInputError("");
+
+    try {
+      const token = localStorage.getItem("accessToken");
+      const res = await axiosInstance.get(
+        `${API_URL}/category/suggest-keywords`,
+        {
+          params: { category: categoryName },
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      const suggestions = res.data?.keywords || [];
+      // Filter out already-added keywords
+      const existing = new Set(formData.keywords.map((k) => k.toLowerCase()));
+      setSuggestedKeywords(suggestions.filter((k) => !existing.has(k)));
+    } catch (err) {
+      setKeywordInputError("Could not fetch suggestions. Try again.");
+    } finally {
+      setSuggestLoading(false);
+    }
+  };
+
+  const handleAddSuggestion = (kw) => {
+    if (formData.keywords.length >= 50) {
+      setKeywordInputError("Maximum 50 keywords allowed");
+      return;
+    }
+    setFormData((prev) => ({ ...prev, keywords: [...prev.keywords, kw] }));
+    setSuggestedKeywords((prev) => prev.filter((s) => s !== kw));
+  };
+
+  const handleAddAllSuggestions = () => {
+    const slots = 50 - formData.keywords.length;
+    const toAdd = suggestedKeywords.slice(0, slots);
+    setFormData((prev) => ({ ...prev, keywords: [...prev.keywords, ...toAdd] }));
+    setSuggestedKeywords([]);
+  };
+
   const validateForm = () => {
     let newErrors = {};
 
-    if (!formData.category.trim()) newErrors.category = "Category is required";
+    // Use InputValidator for comprehensive validation
+    try {
+      const categoryData = {
+        name: formData.category.trim(),
+        description: formData.description.trim(),
+        keywords: formData.keywords || []
+      };
+
+      // This will throw if validation fails
+      InputValidator.validateCategory(categoryData);
+    } catch (error) {
+      // Parse InputValidator error message into field errors
+      const errorLines = error.message.split('\n').filter(line => line.trim());
+      errorLines.forEach(line => {
+        let cleanedError = line
+          .replace(/^Category validation failed:\s*/, '')
+          .trim();
+
+        if (cleanedError.includes('name')) newErrors.category = cleanedError;
+        else if (cleanedError.includes('Description')) newErrors.description = cleanedError;
+        else if (cleanedError.includes('keyword')) newErrors.keywords = cleanedError;
+        else if (cleanedError.includes('required')) newErrors.category = cleanedError;
+      });
+    }
+
+    // Additional MassClick-specific validations
     if (!formData.categoryType)
       newErrors.categoryType = "Category Type is required";
     if (formData.categoryType === "Sub Category" && !formData.subCategoryType)
@@ -391,14 +552,12 @@ export default function Category() {
     if (!formData.title.trim()) newErrors.title = "Title is required";
     if (!formData.keywords.length)
       newErrors.keywords = "At least one keyword is required";
-    if (!formData.description.trim())
-      newErrors.description = "Description is required";
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  // Handle cropped image
+  // Handle cropped image - upload to backend
   const handleCropSave = async () => {
     try {
       if (!cropData.croppedAreaPixels) {
@@ -408,74 +567,91 @@ export default function Category() {
 
       const { variantKey, image, croppedAreaPixels } = cropData;
 
-      // Create canvas and crop the image
       const img = new Image();
       img.crossOrigin = "anonymous";
 
-      img.onload = async () => {
+      img.onload = () => {
         try {
           const canvas = document.createElement("canvas");
           const ctx = canvas.getContext("2d");
-
           const { x, y, width, height } = croppedAreaPixels;
 
           canvas.width = width;
           canvas.height = height;
-
           ctx.drawImage(img, x, y, width, height, 0, 0, width, height);
 
-          // Convert to blob
           canvas.toBlob(
             async (blob) => {
+              if (!blob) {
+                alert("Failed to process image");
+                return;
+              }
+
               try {
-                if (!blob) {
-                  alert("Failed to process image");
-                  return;
-                }
-
-                // Validate cropped image
-                const { errors, width: finalWidth, height: finalHeight } = await validateImageFile(blob, variantKey);
-
-                if (errors.length > 0) {
-                  setImageErrors((prev) => ({
-                    ...prev,
-                    [variantKey]: errors.join(", ")
-                  }));
-                  return;
-                }
-
-                // Clear errors
-                setImageErrors((prev) => ({
-                  ...prev,
-                  [variantKey]: null
-                }));
-
-                // Store dimensions
-                setImageDimensions((prev) => ({
-                  ...prev,
-                  [variantKey]: { width: finalWidth, height: finalHeight }
-                }));
-
-                // Convert blob to data URL and store
                 const reader = new FileReader();
-                reader.onload = () => {
-                  setFormData((prev) => ({
-                    ...prev,
-                    categoryImages: {
-                      ...prev.categoryImages,
-                      [variantKey]: reader.result
+                reader.onload = async () => {
+                  const finalWidth = width;
+                  const finalHeight = height;
+                  const base64Data = reader.result;
+
+                  try {
+                    setUploadingImageVariant(variantKey);
+
+                    // Upload to backend (auto-updates category if editing)
+                    const token = localStorage.getItem("accessToken");
+                    const response = await axiosInstance.post(
+                      `${API_URL}/category/upload-images`,
+                      {
+                        variant: variantKey,
+                        imageData: base64Data,
+                        categoryId: formData._id || null // Auto-update if editing existing category
+                      },
+                      { headers: { Authorization: `Bearer ${token}` } }
+                    );
+
+                    if (response.data.success && response.data.imageKey) {
+                      const imageKey = response.data.imageKey;
+
+                      // Store S3 key, not base64
+                      setFormData((prev) => ({
+                        ...prev,
+                        categoryImages: {
+                          ...prev.categoryImages,
+                          [variantKey]: imageKey
+                        }
+                      }));
+
+                      // Store preview as data URL for display only
+                      setImagePreviews((prev) => ({
+                        ...prev,
+                        [variantKey]: base64Data
+                      }));
+
+                      setImageDimensions((prev) => ({
+                        ...prev,
+                        [variantKey]: { width: finalWidth, height: finalHeight }
+                      }));
+
+                      setImageErrors((prev) => ({
+                        ...prev,
+                        [variantKey]: null
+                      }));
+
+                      setCropperOpen(false);
+                    } else {
+                      alert("Failed to upload image");
                     }
-                  }));
-                  setImagePreviews((prev) => ({
-                    ...prev,
-                    [variantKey]: reader.result
-                  }));
-                  setCropperOpen(false);
+                  } catch (err) {
+                    console.error("Upload error:", err);
+                    alert("Upload failed: " + err.message);
+                  } finally {
+                    setUploadingImageVariant(null);
+                  }
                 };
                 reader.readAsDataURL(blob);
               } catch (err) {
-                console.error("Error processing cropped image:", err);
-                alert("Error processing image: " + err.message);
+                console.error("Error uploading image:", err);
+                alert("Upload failed: " + err.message);
               }
             },
             "image/jpeg",
@@ -487,10 +663,7 @@ export default function Category() {
         }
       };
 
-      img.onerror = () => {
-        alert("Failed to load image");
-      };
-
+      img.onerror = () => alert("Failed to load image");
       img.src = image;
     } catch (err) {
       console.error("Error in handleCropSave:", err);
@@ -498,50 +671,59 @@ export default function Category() {
     }
   };
 
-  // Validate image dimensions and file size
-  const validateImageFile = (file, variantKey) => {
+  // Auto-fit image to variant constraints (no validation, just resize)
+  const autoFitImage = (file, variantKey) => {
     const variant = IMAGE_VARIANTS[variantKey];
-    const errors = [];
-
-    // Check file size
-    const fileSizeInMB = file.size / (1024 * 1024);
-    if (fileSizeInMB > variant.maxFileSize) {
-      errors.push(`File size exceeds ${variant.maxFileSize}MB limit`);
-    }
 
     return new Promise((resolve) => {
       const reader = new FileReader();
       reader.onload = (e) => {
         const img = new Image();
         img.onload = () => {
-          const width = img.width;
-          const height = img.height;
-
-          // Check minimum dimensions
-          if (width < variant.minWidth || height < variant.minHeight) {
-            errors.push(`Minimum resolution: ${variant.minWidth}x${variant.minHeight}px`);
-          }
-
-          // Check maximum dimensions
-          if (width > variant.maxWidth || height > variant.maxHeight) {
-            errors.push(`Maximum resolution: ${variant.maxWidth}x${variant.maxHeight}px`);
-          }
-
-          // Check aspect ratio (with 10% tolerance)
+          const originalWidth = img.width;
+          const originalHeight = img.height;
           const [aspectW, aspectH] = variant.aspectRatio.split(":").map(Number);
-          const expectedRatio = aspectW / aspectH;
-          const actualRatio = width / height;
-          const tolerance = 0.1;
-          if (Math.abs(actualRatio - expectedRatio) / expectedRatio > tolerance) {
-            errors.push(`Aspect ratio should be ${variant.aspectRatio}`);
+          const targetAspect = aspectW / aspectH;
+          const originalAspect = originalWidth / originalHeight;
+
+          let cropWidth = originalWidth;
+          let cropHeight = originalHeight;
+
+          // Auto-crop to match target aspect ratio
+          if (originalAspect > targetAspect) {
+            cropWidth = originalHeight * targetAspect;
+          } else {
+            cropHeight = originalWidth / targetAspect;
           }
 
-          resolve({ errors, width, height });
+          const cropX = (originalWidth - cropWidth) / 2;
+          const cropY = (originalHeight - cropHeight) / 2;
+
+          // Scale down to max dimensions if needed
+          let finalWidth = cropWidth;
+          let finalHeight = cropHeight;
+
+          if (finalWidth > variant.maxWidth || finalHeight > variant.maxHeight) {
+            const scaleW = variant.maxWidth / finalWidth;
+            const scaleH = variant.maxHeight / finalHeight;
+            const scale = Math.min(scaleW, scaleH);
+            finalWidth = finalWidth * scale;
+            finalHeight = finalHeight * scale;
+          }
+
+          resolve({
+            originalWidth,
+            originalHeight,
+            cropX,
+            cropY,
+            cropWidth,
+            cropHeight,
+            targetWidth: finalWidth,
+            targetHeight: finalHeight,
+            aspect: targetAspect
+          });
         };
-        img.onerror = () => {
-          errors.push("Failed to load image");
-          resolve({ errors, width: null, height: null });
-        };
+        img.onerror = () => resolve(null);
         img.src = e.target.result;
       };
       reader.readAsDataURL(file);
@@ -552,11 +734,9 @@ export default function Category() {
     const file = e.target.files[0];
     if (!file) return;
 
-    const variant = IMAGE_VARIANTS[variantKey];
-    const [aspectW, aspectH] = variant.aspectRatio.split(":").map(Number);
-    const expectedRatio = aspectW / aspectH;
+    const fitData = await autoFitImage(file, variantKey);
+    if (!fitData) return;
 
-    // Open cropper for any image upload
     const reader = new FileReader();
     reader.onload = (event) => {
       setCropData({
@@ -564,7 +744,8 @@ export default function Category() {
         variantKey,
         crop: { x: 0, y: 0 },
         zoom: 1,
-        aspect: expectedRatio
+        aspect: fitData.aspect,
+        fitData
       });
       setCropperOpen(true);
       setImageErrors((prev) => ({
@@ -684,10 +865,33 @@ export default function Category() {
   };
 
   const doSave = () => {
-    const action = editMode ? editCategory(formData._id, formData) : createCategory(formData);
+    // Prepare data to send (use cleaned keywords from InputValidator)
+    const saveData = {
+      ...formData,
+      // Ensure keywords are properly formatted
+      keywords: Array.isArray(formData.keywords) ? formData.keywords : []
+    };
+
+    const action = editMode
+      ? editCategory(formData._id, saveData)
+      : createCategory(saveData);
+
     dispatch(action)
-      .then(() => { resetForm(); dispatch(getAllCategory()); })
-      .catch((err) => console.error(editMode ? "Update failed:" : "Create failed:", err));
+      .then(() => {
+        resetForm();
+        dispatch(getAllCategory());
+      })
+      .catch((err) => {
+        console.error(editMode ? "Update failed:" : "Create failed:", err);
+        // Show error from backend if available
+        if (err.response?.data?.errors) {
+          const backendErrors = {};
+          err.response.data.errors.forEach(e => {
+            backendErrors[e.field] = e.message;
+          });
+          setErrors(backendErrors);
+        }
+      });
   };
 
   const handleSubmit = async (e) => {
@@ -726,6 +930,26 @@ export default function Category() {
 
     doSave();
   };
+
+  const mobilePreviewSource =
+    imagePreviews.mobileVertical ||
+    imagePreviews.mobileCard ||
+    preview ||
+    liveImagePreview ||
+    null;
+  const mobilePreviewImage = mobilePreviewSource
+    ? mobilePreviewSource.startsWith("data:")
+      ? mobilePreviewSource
+      : normalizeImageUrl(mobilePreviewSource)
+    : null;
+  const mobilePreviewTitle = (formData.category || "Category Name").trim();
+  const mobilePreviewHint = imagePreviews.mobileVertical
+    ? "Showing Mobile Vertical"
+    : imagePreviews.mobileCard
+      ? "Showing Mobile Card fallback"
+      : preview || liveImagePreview
+        ? "Showing legacy image fallback"
+        : "Upload Mobile Vertical to preview the final mobile look";
 
   const rows = category
     .filter((c) => c.isActive)
@@ -884,7 +1108,29 @@ export default function Category() {
           </div>
 
           <div className="category-form-input-group">
-            <label className="category-input-label">Keywords</label>
+            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 0.5 }}>
+              <label className="category-input-label">Keywords</label>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={handleSuggestKeywords}
+                disabled={suggestLoading || !formData.category?.trim()}
+                sx={{
+                  fontSize: "0.75rem",
+                  borderColor: "#ff8c00",
+                  color: "#ff8c00",
+                  "&:hover": { borderColor: "#D97800", color: "#D97800", backgroundColor: "rgba(255,140,0,0.05)" },
+                  textTransform: "none",
+                }}
+              >
+                {suggestLoading ? (
+                  <><CircularProgress size={12} sx={{ mr: 0.5, color: "#ff8c00" }} /> Fetching…</>
+                ) : (
+                  "✨ Suggest Keywords"
+                )}
+              </Button>
+            </Box>
+
             <Autocomplete
               multiple
               freeSolo
@@ -911,11 +1157,20 @@ export default function Category() {
                 <TextField
                   {...params}
                   variant="outlined"
-                  placeholder="Add keywords"
+                  placeholder='e.g. "ac repair service", "split ac installation" — min 2 words'
                   value={inputKeyword}
-                  onChange={(e) => setInputKeyword(e.target.value)}
-                  error={!!errors.keywords}
-                  helperText={errors.keywords}
+                  onChange={(e) => {
+                    setInputKeyword(e.target.value);
+                    setKeywordInputError("");
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAddKeyword();
+                    }
+                  }}
+                  error={!!keywordInputError || !!errors.keywords}
+                  helperText={keywordInputError || errors.keywords}
                   InputProps={{
                     ...params.InputProps,
                     endAdornment: (
@@ -936,6 +1191,42 @@ export default function Category() {
                 />
               )}
             />
+
+            {/* Keyword Suggestions Panel */}
+            {suggestedKeywords.length > 0 && (
+              <Box sx={{ mt: 1.5, p: 1.5, border: "1px dashed #ff8c00", borderRadius: 2, backgroundColor: "rgba(255,140,0,0.03)" }}>
+                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
+                  <Typography variant="caption" sx={{ color: "#666", fontWeight: 600 }}>
+                    ✨ Suggested — click to add
+                  </Typography>
+                  <Button
+                    size="small"
+                    onClick={handleAddAllSuggestions}
+                    sx={{ fontSize: "0.7rem", color: "#ff8c00", textTransform: "none", p: "2px 8px" }}
+                  >
+                    Add All ({suggestedKeywords.length})
+                  </Button>
+                </Box>
+                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75 }}>
+                  {suggestedKeywords.map((kw) => (
+                    <Chip
+                      key={kw}
+                      label={kw}
+                      size="small"
+                      onClick={() => handleAddSuggestion(kw)}
+                      sx={{
+                        cursor: "pointer",
+                        backgroundColor: "white",
+                        border: "1px solid #ff8c00",
+                        color: "#ff8c00",
+                        fontWeight: 500,
+                        "&:hover": { backgroundColor: "#ff8c00", color: "white" },
+                      }}
+                    />
+                  ))}
+                </Box>
+              </Box>
+            )}
           </div>
           <div className="category-form-input-group">
             <label className="category-input-label">SEO Description</label>
@@ -977,79 +1268,185 @@ export default function Category() {
           <div className="category-form-input-group category-col-span-all">
             <label className="category-input-label">Image Variants</label>
             <div style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))",
-              gap: "12px",
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "flex-start",
+              gap: "18px",
               marginTop: "12px"
             }}>
-              {Object.entries(IMAGE_VARIANTS).map(([key, variant]) => (
-                <div
-                  key={key}
-                  onClick={() => setImageModalOpen({ open: true, variantKey: key })}
-                  style={{
-                    position: "relative",
-                    cursor: "pointer",
-                    borderRadius: "8px",
-                    overflow: "hidden",
-                    border: imageErrors[key] ? "2px solid #d32f2f" : imagePreviews[key] ? "2px solid #4caf50" : "2px dashed #bbb",
-                    backgroundColor: "#f5f5f5",
-                    aspectRatio: "1",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    transition: "all 0.2s ease",
-                    padding: "8px"
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = "var(--color-primary-orange)";
-                    e.currentTarget.style.backgroundColor = "#fff3e0";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = imageErrors[key] ? "#d32f2f" : imagePreviews[key] ? "#4caf50" : "#bbb";
-                    e.currentTarget.style.backgroundColor = "#f5f5f5";
-                  }}
-                >
-                  {imagePreviews[key] ? (
-                    <>
-                      <img
-                        src={imagePreviews[key]}
-                        alt={variant.name}
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover"
-                        }}
-                      />
-                      <div style={{
-                        position: "absolute",
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        backgroundColor: "rgba(0,0,0,0.4)",
+              <div style={{ flex: "1 1 420px", minWidth: "320px" }}>
+                <div style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))",
+                  gap: "12px",
+                }}>
+                  {Object.entries(IMAGE_VARIANTS).map(([key, variant]) => (
+                    <div
+                      key={key}
+                      onClick={() => setImageModalOpen({ open: true, variantKey: key })}
+                      style={{
+                        position: "relative",
+                        cursor: "pointer",
+                        borderRadius: "8px",
+                        overflow: "hidden",
+                        border: imagePreviews[key] ? "2px solid #4caf50" : "2px dashed #bbb",
+                        backgroundColor: "#f5f5f5",
+                        aspectRatio: "1",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        color: "white",
-                        opacity: 0,
-                        transition: "opacity 0.2s ease",
+                        transition: "all 0.2s ease",
+                        padding: "8px"
                       }}
-                        onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.opacity = "0"; }}
-                      >
-                        <span style={{ fontSize: "12px", fontWeight: "600", textAlign: "center" }}>Edit</span>
-                      </div>
-                    </>
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = "var(--color-primary-orange)";
+                        e.currentTarget.style.backgroundColor = "#fff3e0";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = imagePreviews[key] ? "#4caf50" : "#bbb";
+                        e.currentTarget.style.backgroundColor = "#f5f5f5";
+                      }}
+                    >
+                      {imagePreviews[key] ? (
+                        <>
+                          <img
+                            src={imagePreviews[key]}
+                            alt={variant.name}
+                            style={{
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "cover"
+                            }}
+                          />
+                          <div style={{
+                            position: "absolute",
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            backgroundColor: "rgba(0,0,0,0.4)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            color: "white",
+                            opacity: 0,
+                            transition: "opacity 0.2s ease",
+                          }}
+                            onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.opacity = "0"; }}
+                          >
+                            <span style={{ fontSize: "12px", fontWeight: "600", textAlign: "center" }}>Edit</span>
+                          </div>
+                        </>
+                      ) : (
+                        <div style={{ textAlign: "center" }}>
+                          <CloudUploadIcon sx={{ fontSize: "32px", color: "#999", mb: 1 }} />
+                          <p style={{ fontSize: "11px", fontWeight: "600", color: "#666", margin: "4px 0 0 0" }}>
+                            {variant.name}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{
+                flex: "0 0 240px",
+                width: "240px",
+                maxWidth: "100%",
+                padding: "14px",
+                borderRadius: "14px",
+                border: "1px solid #e2e2e2",
+                background: "linear-gradient(180deg, #fffaf5 0%, #ffffff 100%)",
+                boxShadow: "0 8px 24px rgba(0,0,0,0.06)"
+              }}>
+                <div style={{ fontSize: "13px", fontWeight: "700", color: "#222" }}>
+                  Mobile Trending Preview
+                </div>
+                <div style={{ fontSize: "11px", color: "#777", marginTop: "4px", marginBottom: "12px", lineHeight: 1.4 }}>
+                  {mobilePreviewHint}
+                </div>
+
+                <div style={{
+                  width: "140px",
+                  height: "180px",
+                  margin: "0 auto",
+                  borderRadius: "16px",
+                  overflow: "hidden",
+                  position: "relative",
+                  background: "linear-gradient(135deg, rgba(255,145,77,0.22) 0%, rgba(255,145,77,0.08) 100%)",
+                  boxShadow: "0 10px 24px rgba(0,0,0,0.14)"
+                }}>
+                  {mobilePreviewImage ? (
+                    <img
+                      src={mobilePreviewImage}
+                      alt="Mobile trending preview"
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover"
+                      }}
+                    />
                   ) : (
-                    <div style={{ textAlign: "center" }}>
-                      <CloudUploadIcon sx={{ fontSize: "32px", color: "#999", mb: 1 }} />
-                      <p style={{ fontSize: "11px", fontWeight: "600", color: "#666", margin: "4px 0 0 0" }}>
-                        {variant.name}
-                      </p>
+                    <div style={{
+                      width: "100%",
+                      height: "100%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "#c07d41",
+                      fontSize: "12px",
+                      fontWeight: "600",
+                      textAlign: "center",
+                      padding: "16px"
+                    }}>
+                      No mobile image yet
                     </div>
                   )}
+
+                  <div style={{
+                    position: "absolute",
+                    inset: 0,
+                    background: "linear-gradient(180deg, rgba(0,0,0,0) 28%, rgba(0,0,0,0.82) 100%)"
+                  }} />
+
+                  <div style={{
+                    position: "absolute",
+                    left: "12px",
+                    right: "12px",
+                    bottom: "12px",
+                    color: "#fff"
+                  }}>
+                    <div style={{
+                      fontSize: "13px",
+                      fontWeight: "700",
+                      lineHeight: 1.2,
+                      display: "-webkit-box",
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: "vertical",
+                      overflow: "hidden"
+                    }}>
+                      {mobilePreviewTitle}
+                    </div>
+                    <div style={{
+                      marginTop: "4px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px",
+                      fontSize: "10px",
+                      color: "rgba(255,255,255,0.72)"
+                    }}>
+                      <span>Explore</span>
+                      <span aria-hidden="true">&gt;</span>
+                    </div>
+                  </div>
                 </div>
-              ))}
+
+                <div style={{ fontSize: "11px", color: "#666", marginTop: "10px", lineHeight: 1.45 }}>
+                  Best result: keep faces, logos, and text away from the top and bottom edges because the mobile card uses cover cropping.
+                </div>
+              </div>
             </div>
           </div>
 
@@ -1110,9 +1507,11 @@ export default function Category() {
                   const file = e.target.files[0];
                   if (file) {
                     const reader = new FileReader();
-                    reader.onloadend = () => {
-                      setFormData((prev) => ({ ...prev, categoryImage: reader.result }));
-                      setPreview(reader.result);
+                    reader.onload = async () => {
+                      const base64Data = reader.result;
+                      // For legacy images, store base64 in form (will be handled by backend on submit)
+                      setFormData((prev) => ({ ...prev, categoryImage: base64Data }));
+                      setPreview(base64Data);
                     };
                     reader.readAsDataURL(file);
                   }
@@ -1165,9 +1564,11 @@ export default function Category() {
                   const file = e.target.files[0];
                   if (file) {
                     const reader = new FileReader();
-                    reader.onloadend = () => {
-                      setFormData((prev) => ({ ...prev, liveImage: reader.result }));
-                      setLiveImagePreview(reader.result);
+                    reader.onload = async () => {
+                      const base64Data = reader.result;
+                      // For legacy images, store base64 in form (will be handled by backend on submit)
+                      setFormData((prev) => ({ ...prev, liveImage: base64Data }));
+                      setLiveImagePreview(base64Data);
                     };
                     reader.readAsDataURL(file);
                   }
@@ -1217,12 +1618,12 @@ export default function Category() {
             <button
               type="submit"
               className="category-submit-button"
-              disabled={loading || Object.values(imageErrors).some(e => e !== null)}
+              disabled={loading}
               style={{
                 width: "100%",
                 padding: "12px",
-                backgroundColor: Object.values(imageErrors).some(e => e !== null) ? "#ccc" : "var(--color-primary-orange)",
-                cursor: Object.values(imageErrors).some(e => e !== null) ? "not-allowed" : "pointer"
+                backgroundColor: loading ? "#ccc" : "var(--color-primary-orange)",
+                cursor: loading ? "not-allowed" : "pointer"
               }}
             >
               {loading || createWarningLoading ? (
@@ -1476,33 +1877,21 @@ export default function Category() {
               </Box>
             )}
 
-            {/* Error Message */}
-            {imageErrors[imageModalOpen.variantKey] && (
-              <Box sx={{
-                p: 1.5,
-                backgroundColor: "#ffebee",
-                borderRadius: "6px",
-                fontSize: "12px",
-                color: "#c62828",
-                mb: 2,
-                display: "flex",
-                alignItems: "flex-start",
-                gap: 1
-              }}>
-                <span>✗</span>
-                <span>{imageErrors[imageModalOpen.variantKey]}</span>
-              </Box>
-            )}
 
             {/* Upload Button */}
             <Button
               variant="contained"
               component="label"
               fullWidth
-              startIcon={<CloudUploadIcon />}
+              startIcon={uploadingImageVariant === imageModalOpen.variantKey ? <CircularProgress size={20} /> : <CloudUploadIcon />}
               sx={{ mb: 2 }}
+              disabled={uploadingImageVariant === imageModalOpen.variantKey}
             >
-              {imagePreviews[imageModalOpen.variantKey] ? "Replace Image" : "Upload Image"}
+              {uploadingImageVariant === imageModalOpen.variantKey
+                ? "Uploading..."
+                : imagePreviews[imageModalOpen.variantKey]
+                ? "Replace Image"
+                : "Upload Image"}
               <input
                 type="file"
                 accept="image/*"
@@ -1511,6 +1900,7 @@ export default function Category() {
                 onChange={(e) => {
                   handleImageChange(e, imageModalOpen.variantKey);
                 }}
+                disabled={uploadingImageVariant === imageModalOpen.variantKey}
               />
             </Button>
           </DialogContent>
@@ -1670,12 +2060,14 @@ export default function Category() {
           )}
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setCropperOpen(false)}>Cancel</Button>
+          <Button onClick={() => setCropperOpen(false)} disabled={uploadingImageVariant}>Cancel</Button>
           <Button
             variant="contained"
             onClick={handleCropSave}
+            disabled={uploadingImageVariant}
+            startIcon={uploadingImageVariant ? <CircularProgress size={20} /> : null}
           >
-            Save Crop
+            {uploadingImageVariant ? "Uploading..." : "Save Crop"}
           </Button>
         </DialogActions>
       </Dialog>

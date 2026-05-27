@@ -195,7 +195,7 @@ const LandingSkeleton = () => (
       </Box>
       <Grid container spacing={2} sx={{ mb: 5 }}>
         {[...Array(4)].map((_, i) => (
-          <Grid item xs={6} sm={3} key={i}>
+          <Grid size={{ xs: 6, sm: 3 }} key={i}>
             <S w="100%" h={200} r={12} />
             <Txt w="60%" h={14} sx={{ mt: 1.5 }} />
             <Txt w="40%" h={12} sx={{ mt: 0.5 }} />
@@ -210,7 +210,7 @@ const LandingSkeleton = () => (
       </Box>
       <Grid container spacing={3}>
         {[...Array(3)].map((_, i) => (
-          <Grid item xs={12} sm={6} md={4} key={i}>
+          <Grid size={{ xs: 12, sm: 6, md: 4 }} key={i}>
             <Paper
               elevation={0}
               sx={{
@@ -349,7 +349,7 @@ const DetailsSkeleton = () => (
   <div className="sk-root">
     <Container maxWidth="xl" sx={{ py: 3, px: { xs: 2, md: 3.5 } }}>
       {/* Hero banner */}
-      <S w="100%" h={{ xs: 200, sm: 260, md: 310 }} r={20} />
+      <S w="100%" h={200} r={20} sx={{ height: { xs: 200, sm: 260, md: 310 } }} />
 
       {/* Thumbnail strip */}
       <div className="sk-thumbstrip">
@@ -531,7 +531,7 @@ const CardsSkeleton = () => (
     <Container maxWidth="xl" sx={{ py: 4 }}>
       <Grid container spacing={3}>
         {[...Array(8)].map((_, i) => (
-          <Grid item xs={6} sm={4} md={3} lg={2} key={i}>
+          <Grid size={{ xs: 6, sm: 4, md: 3, lg: 2 }} key={i}>
             <Paper
               elevation={0}
               sx={{
@@ -560,7 +560,7 @@ const DashboardSkeleton = () => (
     <Container maxWidth="xl" sx={{ py: 4 }}>
       <Grid container spacing={3}>
         {[...Array(6)].map((_, i) => (
-          <Grid item xs={12} sm={6} md={4} key={i}>
+          <Grid size={{ xs: 12, sm: 6, md: 4 }} key={i}>
             <S variant="rounded" w="100%" h={180} r={16} />
           </Grid>
         ))}

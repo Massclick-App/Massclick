@@ -70,7 +70,7 @@ export const categoriesData = {
   ],
 
   hospitals: [
-    { name: "Hospitals" },
+    // { name: "Hospitals" },
     { name: "Eye Hospitals" },
     { name: "Private Hospitals" },
     { name: "Ayurvedic Hospitals" },
@@ -96,7 +96,7 @@ export const categoriesData = {
   ],
 
   "packers-and-movers": [
-    { name: "Packers And Movers" },
+    // { name: "Packers And Movers" },
     { name: "Packers And Movers Within City" },
     { name: "Packers And Movers All India" },
     { name: "Packers And Movers Outside India" },

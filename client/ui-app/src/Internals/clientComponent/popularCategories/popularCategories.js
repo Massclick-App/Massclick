@@ -15,6 +15,7 @@ import {
   Wrench,
 } from "lucide-react";
 import { logSearchActivity } from "../../../redux/actions/businessListAction";
+import { navigateToSearchResult } from "../../../utils/searchResultNavigation";
 import popularCategoriesData from "./popularCategoriesData.json";
 import popularCategoriesLinkSections from "./popularCategoriesLinkSections.json";
 import popularCategoriesServices from "./popularCategoriesServices.json";
@@ -89,14 +90,16 @@ const PopularCategoriesLink = () => {
         userDetails,
         keyword
       )
-    );  
+    );
 
-    navigate(`/${districtSlug}/${createSlug(keyword)}`, {
-      state: {
-        logAlreadySent: true,
-        category: keyword,
-        categoryName: keyword,
-      },
+    navigateToSearchResult({
+      searchTerm: keyword,
+      location: selectedDistrict || "Global",
+      navigate,
+      dispatch,
+      isKnownCategory: false, // Popular category - known category
+      logAlreadySent: true,
+      userDetails,
     });
   };
 
@@ -126,12 +129,13 @@ const PopularCategoriesLink = () => {
       )
     );
 
-    navigate(`/${districtSlug}/${routeSlug}`, {
-      state: {
-        logAlreadySent: true,
-        category: categoryName,
-        categoryName,
-      },
+    navigateToSearchResult({
+      searchTerm: categoryName,
+      location: selectedDistrict || "Global",
+      navigate,
+      dispatch,
+      logAlreadySent: true,
+      userDetails,
     });
   };
 
@@ -196,16 +200,16 @@ const PopularCategoriesLink = () => {
                 className="popular-categories-links__service"
                 key={service.title}
               >
-                <button
+                {/* <button
                   type="button"
                   className="popular-categories-links__serviceHead"
                   onClick={() => handleServiceClick(service)}
-                >
+                > */}
                   <span className="popular-categories-links__serviceIcon">
                     <Icon size={24} strokeWidth={1.7} />
                   </span>
                   <span>{service.title}</span>
-                </button>
+                {/* </button> */}
 
                 <p className="popular-categories-links__serviceText">
                   {service.description}

@@ -163,6 +163,11 @@ const seoPageContentBlogSchema = new mongoose.Schema(
       default: [],
     },
 
+    ogImageKey: {
+      type: String,
+      default: "",
+    },
+
     businessDetails: {
       type: [businessSchema],
       default: [],

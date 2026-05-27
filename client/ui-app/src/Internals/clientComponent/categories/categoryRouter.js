@@ -1,14 +1,15 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useLocation } from "react-router-dom";
+import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 
 import CategoriesPage from "./categories.js";
 import SearchResults from "../SearchResult/SearchResult";
-import { categoriesData } from "./categoriesData";
 
 import {
-  backendMainSearch,
+  performSearch,
 } from "../../../redux/actions/businessListAction";
+import { navigateToSearchResult } from "../../../utils/searchResultNavigation";
+import axiosInstance from "../../../services/axiosInstance.js";
 
 const formatText = (text = "") =>
   text
@@ -18,32 +19,65 @@ const formatText = (text = "") =>
 const CategoryRouter = () => {
   const { location, category, subcategory } = useParams();
   const routerLocation = useLocation();
+  const navigate = useNavigate();
   const dispatch = useDispatch();
 
   const [resolvedCategory, setResolvedCategory] = useState(null);
+  const [categories, setCategories] = useState([]);
 
   const isSearchFlow = routerLocation.state?.isSearch;
   const searchText = routerLocation.state?.searchText;
+  const passedCategoryName = routerLocation.state?.categoryName;
+
+  const API_URL = process.env.REACT_APP_API_URL;
+
+  // Fetch home categories on mount
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await axiosInstance.get(`${API_URL}/v2/category/home`);
+        setCategories(response.data || []);
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+        setCategories([]);
+      }
+    };
+    fetchCategories();
+  }, []);
+
+  const hasSubcategories = (cat) => {
+    if (!cat) return false;
+    const categoryObj = categories.find(
+      (c) => c.slug === cat.toLowerCase().replace(/\s+/g, "-")
+    );
+    return categoryObj?.hasSubcategories || false;
+  };
 
   useEffect(() => {
     const loadCategory = async () => {
       try {
+        // If category name was passed directly from featured service, use it
+        if (passedCategoryName) {
+          setResolvedCategory(passedCategoryName);
+          return;
+        }
+
         if (isSearchFlow && searchText) {
           setResolvedCategory(searchText);
 
           await dispatch(
-            backendMainSearch(
+            performSearch(
               searchText,
               location,
-              searchText
+              false  // isKnownCategory: user search flow
             )
           );
 
           return;
         }
 
-
-        if (category && !subcategory && categoriesData[category]) {
+        // Check if category has subcategories using API data
+        if (category && !subcategory && hasSubcategories(category)) {
           setResolvedCategory(formatText(category));
           return;
         }
@@ -53,10 +87,10 @@ const CategoryRouter = () => {
           const searchValue = subcategory.replace(/-/g, " ");
 
           const response = await dispatch(
-            backendMainSearch(
+            performSearch(
               searchValue,
               location,
-              searchValue
+              false  // isKnownCategory: subcategory is flexible search
             )
           );
 
@@ -66,7 +100,7 @@ const CategoryRouter = () => {
             setResolvedCategory(results[0].category);
           } else {
             setResolvedCategory(formatText(subcategory));
-          } 
+          }
 
           return;
         }
@@ -74,10 +108,10 @@ const CategoryRouter = () => {
 
         if (category) {
           const response = await dispatch(
-            backendMainSearch(
+            performSearch(
               category,
               location,
-              category
+              true  // isKnownCategory: category from URL is always a known category
             )
           );
 
@@ -108,7 +142,9 @@ const CategoryRouter = () => {
     subcategory,
     isSearchFlow,
     searchText,
-    dispatch
+    passedCategoryName,
+    dispatch,
+    categories
   ]);
 
   if (!resolvedCategory) return null;
@@ -117,7 +153,7 @@ const CategoryRouter = () => {
     !isSearchFlow &&
     category &&
     !subcategory &&
-    categoriesData[category]
+    hasSubcategories(category)
   ) {
     return <CategoriesPage />;
   }

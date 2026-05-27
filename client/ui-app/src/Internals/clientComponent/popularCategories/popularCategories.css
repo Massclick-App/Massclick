@@ -15,7 +15,7 @@
 }
 
 .popular-categories-links__inner {
-  width: min(100%, 1720px);
+  width: 100%;
   margin: 0 auto;
   padding: clamp(18px, 2.5vw, 30px);
   border: 1px solid rgba(231, 234, 240, 0.9);
@@ -76,26 +76,18 @@
 }
 
 .popular-categories-links__tab {
-  min-height: 48px;
-  padding: 0 14px;
+  min-height: 36px;
+  padding: 0 12px;
   border: 1px solid var(--pc-border);
-  border-radius: 8px;
+  border-radius: 6px;
   background: rgba(255, 255, 255, 0.82);
   color: var(--pc-blue);
   font: inherit;
-  font-size: 14px;
-  font-weight: 750;
-  line-height: 1.18;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.1;
   cursor: pointer;
   box-shadow: 0 1px 0 rgba(15, 23, 42, 0.04);
-  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease, color 0.18s ease;
-}
-
-.popular-categories-links__tab:hover {
-  transform: translateY(-1px);
-  border-color: rgba(255, 107, 0, 0.38);
-  background: #ffffff;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
 }
 
 .popular-categories-links__tab--active {
@@ -127,11 +119,9 @@
   text-align: left;
   cursor: pointer;
   box-shadow: 0 6px 16px rgba(15, 23, 42, 0.04);
-  transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
 }
 
 .popular-categories-links__keyword:hover {
-  transform: translateY(-1px);
   border-color: #ffd2ad;
   background: var(--pc-orange-soft);
   color: var(--pc-orange-dark);
@@ -146,7 +136,7 @@
 }
 
 .popular-categories-links__collections {
-  width: min(100%, 1720px);
+  width: 100%;
   margin: 18px auto 0;
   display: grid;
   gap: 14px;
@@ -225,7 +215,6 @@
   line-height: 1.42;
   text-align: left;
   cursor: pointer;
-  transition: color 0.18s ease;
 }
 
 .popular-categories-links__inlineLink::after {
@@ -243,7 +232,7 @@
 }
 
 .popular-categories-links__services {
-  width: min(100%, 1720px);
+  width: 100%;
   margin: 20px auto 0;
   padding: clamp(20px, 3vw, 34px);
   border: 1px solid rgba(231, 234, 240, 0.86);
@@ -299,7 +288,6 @@
   align-items: center;
   justify-content: center;
   color: #1f2937;
-  transition: color 0.18s ease, transform 0.18s ease;
 }
 
 .popular-categories-links__serviceHead:hover {
@@ -308,7 +296,6 @@
 
 .popular-categories-links__serviceHead:hover .popular-categories-links__serviceIcon {
   color: var(--pc-orange);
-  transform: translateY(-1px);
 }
 
 .popular-categories-links__serviceText {

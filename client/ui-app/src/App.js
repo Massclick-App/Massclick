@@ -6,6 +6,7 @@ import { clientLogin } from './redux/actions/clientAuthAction.js';
 import { fetchMatchedLeads } from './redux/actions/leadsAction.js';
 import { setMaintenanceModeOn, setMaintenanceModeOff } from './redux/reducers/maintenanceReducer.js';
 import { connectSocket } from './services/socketService.js';
+import { setAxiosStore } from './services/axiosInstance.js';
 
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -19,6 +20,8 @@ import RouteChangeTracker from './RouteChangeTracker.js';
 import { userMenuItems } from './Internals/clientComponent/categoryBar.js';
 
 import ShimmerSkeleton from './Internals/clientComponent/shimmerSkeleton.js';
+import GlobalLoaderWrapper from './Internals/clientComponent/common/GlobalLoaderWrapper.js';
+import VideoPreloader from './components/VideoPreloader.js';
 
 
 const Dashboard = lazy(() => import(/* webpackChunkName: "admin-dashboard" */ './Dashboard'));
@@ -71,6 +74,7 @@ const SeoPageContentBlogs = lazy(() => import(/* webpackChunkName: "admin-seo-bl
 const MRPDatas = lazy(() => import(/* webpackChunkName: "admin-mrp" */ './Internals/MRPDATA/mrpData.js'));
 const FCMMarketing = lazy(() => import(/* webpackChunkName: "admin-fcm" */ './Internals/FCMMarketing/FCMMarketing.js'));
 const SystemSettings = lazy(() => import(/* webpackChunkName: "admin-settings" */ './Internals/SystemSettings/SystemSettings.js'));
+const CategoryDisplaySettings = lazy(() => import(/* webpackChunkName: "admin-cat-display" */ './Internals/CategoryDisplaySettings/CategoryDisplaySettings.js'));
 
 const FloatingButtons = lazy(() => import(/* webpackChunkName: "floating-buttons" */ './Internals/clientComponent/floating/floatingButtons.js'));
 const FloatingAdCard = lazy(() => import(/* webpackChunkName: "floating-ad" */ './Internals/clientComponent/floating/floatingAdCard.js'));
@@ -199,6 +203,7 @@ function AppRoutes({
                 <Route path="user" element={<User />} />
                 <Route path="roles" element={<Roles />} />
                 <Route path="system-settings" element={<SystemSettings />} />
+                <Route path="category-display" element={<CategoryDisplaySettings />} />
               </Route>
 
             </Route>
@@ -298,45 +303,39 @@ function App() {
     }
   }, [isAuthenticated, dispatch]);
 
-  /* Global First Load */
-  if (!authChecked) {
-    return (
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        <ShimmerSkeleton />
-      </ThemeProvider>
-    );
-  }
-
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
 
-      <SnackbarProvider
-        maxSnack={3}
-        anchorOrigin={{
-          vertical: 'top',
-          horizontal: 'center',
-        }}
-        autoHideDuration={4000}
-        preventDuplicate
-      >
-        <Router>
-          <RouteChangeTracker />
-          <ScrollToTop />
+      {/* <VideoPreloader /> */}
 
-          <Suspense fallback={null}>
-            <MaintenanceOverlay />
-          </Suspense>
+      <GlobalLoaderWrapper>
+        <SnackbarProvider
+          maxSnack={3}
+          anchorOrigin={{
+            vertical: 'top',
+            horizontal: 'center',
+          }}
+          autoHideDuration={4000}
+          preventDuplicate
+        >
+          <Router>
+            <RouteChangeTracker />
+            <ScrollToTop />
 
-          <AppRoutes
-            isAuthenticated={isAuthenticated}
-            setIsAuthenticated={setIsAuthenticated}
-            openLoginModal={openLoginModal}
-            setOpenLoginModal={setOpenLoginModal}
-          />
-        </Router>
-      </SnackbarProvider>
+            <Suspense fallback={null}>
+              <MaintenanceOverlay />
+            </Suspense>
+
+            <AppRoutes
+              isAuthenticated={isAuthenticated}
+              setIsAuthenticated={setIsAuthenticated}
+              openLoginModal={openLoginModal}
+              setOpenLoginModal={setOpenLoginModal}
+            />
+          </Router>
+        </SnackbarProvider>
+      </GlobalLoaderWrapper>
     </ThemeProvider>
   );
 }

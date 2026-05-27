@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef, lazy, Suspense } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import InputValidator from "../validators/inputValidator.js";
 import { getAllBusinessList, createBusinessList, editBusinessList, deleteBusinessList, trackQrDownload } from "../../redux/actions/businessListAction";
 import { getAllLocation, createLocation } from "../../redux/actions/locationAction";
 import { createCategory, editCategory, businessCategorySearch } from "../../redux/actions/categoryAction";
@@ -518,6 +519,26 @@ const BusinessList = React.memo(() => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Validate business data using InputValidator
+    try {
+      const businessData = {
+        businessName: formData.businessName || '',
+        category: formData.category || '',
+        location: formData.location || '',
+        contact: formData.phoneNumber || '',
+        keywords: formData.keywords || []
+      };
+
+      InputValidator.validateBusiness(businessData);
+    } catch (error) {
+      // Show validation error to user
+      const errorMessage = error.message.split('\n').filter(line => line.trim()).join('\n');
+      enqueueSnackbar(`Validation error: ${errorMessage}`, {
+        variant: "error",
+      });
+      return;
+    }
+
     const kycBase64 = await Promise.all(
       kycFiles.map(
         (file) =>
@@ -616,6 +637,24 @@ const BusinessList = React.memo(() => {
       setActiveStep(3);
     } catch (err) {
       console.error("Error saving business:", err);
+
+      // Handle backend validation errors
+      if (err.response?.data?.errors) {
+        const errorMessages = err.response.data.errors
+          .map(e => `${e.field}: ${e.message}`)
+          .join('\n');
+        enqueueSnackbar(`Validation errors:\n${errorMessages}`, {
+          variant: "error",
+        });
+      } else if (err.response?.data?.message) {
+        enqueueSnackbar(err.response.data.message, {
+          variant: "error",
+        });
+      } else {
+        enqueueSnackbar("Error saving business. Please try again.", {
+          variant: "error",
+        });
+      }
     }
   };
 
@@ -884,13 +923,25 @@ const BusinessList = React.memo(() => {
     },
   ];
 
+  const SectionHeader = ({ icon: Icon, title, subtitle }) => (
+    <div className="section-header">
+      {Icon && <Icon className="section-icon" />}
+      <div className="section-title-group">
+        <h3 className="section-title">{title}</h3>
+        {subtitle && <p className="section-subtitle">{subtitle}</p>}
+      </div>
+    </div>
+  );
+
   const renderStepContent = (step) => {
     switch (step) {
       case 0:
         return (
           <>
+            <SectionHeader title="Client & Business Information" subtitle="Basic details about your business" />
+
             <div className="form-input-group" style={{ position: "relative" }}>
-              <label htmlFor="clientId" className="input-label">Client ID</label>
+              <label htmlFor="clientId" className="input-label">🔍 Client ID</label>
 
               <input
                 type="text"
@@ -946,7 +997,7 @@ const BusinessList = React.memo(() => {
             </div>
 
             <div className="form-input-group">
-              <label htmlFor="businessName" className="input-label">Business Name</label>
+              <label htmlFor="businessName" className="input-label">🏢 Business Name</label>
               <input
                 type="text"
                 id="businessName"
@@ -957,8 +1008,11 @@ const BusinessList = React.memo(() => {
               />
             </div>
 
+            <div className="form-divider"></div>
+            <SectionHeader title="Address Details" subtitle="Business location information" />
+
             <div className="form-input-group">
-              <label htmlFor="plotNumber" className="input-label">Plot Number</label>
+              <label htmlFor="plotNumber" className="input-label">📍 Plot Number</label>
               <input
                 type="text"
                 id="plotNumber"
@@ -970,7 +1024,7 @@ const BusinessList = React.memo(() => {
             </div>
 
             <div className="form-input-group">
-              <label htmlFor="street" className="input-label">Street</label>
+              <label htmlFor="street" className="input-label">🛣️ Street</label>
               <input
                 type="text"
                 id="street"
@@ -978,11 +1032,12 @@ const BusinessList = React.memo(() => {
                 className="text-input"
                 value={formData.street}
                 onChange={handleChange}
+                placeholder="Enter street address"
               />
             </div>
 
             <div className="form-input-group">
-              <label htmlFor="pincode" className="input-label">Pincode</label>
+              <label htmlFor="pincode" className="input-label">📮 Pincode</label>
               <input
                 type="text"
                 id="pincode"
@@ -1062,8 +1117,11 @@ const BusinessList = React.memo(() => {
               />
             </div>
 
+            <div className="form-divider"></div>
+            <SectionHeader title="Contact Information" subtitle="How customers can reach you" />
+
             <div className="form-input-group">
-              <label htmlFor="email" className="input-label">Email</label>
+              <label htmlFor="email" className="input-label">📧 Email</label>
               <input
                 type="email"
                 id="email"
@@ -1071,11 +1129,12 @@ const BusinessList = React.memo(() => {
                 className="text-input"
                 value={formData.email}
                 onChange={handleChange}
+                placeholder="business@example.com"
               />
             </div>
 
             <div className="form-input-group">
-              <label htmlFor="contact" className="input-label">Contact</label>
+              <label htmlFor="contact" className="input-label">📞 Phone</label>
               <input
                 type="text"
                 id="contact"
@@ -1087,7 +1146,7 @@ const BusinessList = React.memo(() => {
             </div>
 
             <div className="form-input-group">
-              <label htmlFor="contactList" className="input-label">Enquiry Number</label>
+              <label htmlFor="contactList" className="input-label">☎️ Enquiry Number</label>
               <input
                 type="text"
                 id="contactList"
@@ -1095,23 +1154,12 @@ const BusinessList = React.memo(() => {
                 className="text-input"
                 value={formData.contactList}
                 onChange={handleChange}
+                placeholder="Alternate contact number"
               />
             </div>
 
             <div className="form-input-group">
-              <label htmlFor="gstin" className="input-label">GSTIN</label>
-              <input
-                type="text"
-                id="gstin"
-                name="gstin"
-                className="text-input"
-                value={formData.gstin}
-                onChange={handleChange}
-              />
-            </div>
-
-            <div className="form-input-group">
-              <label htmlFor="whatsappNumber" className="input-label">Whatsapp Number</label>
+              <label htmlFor="whatsappNumber" className="input-label">💬 WhatsApp Number</label>
               <input
                 type="text"
                 id="whatsappNumber"
@@ -1119,11 +1167,28 @@ const BusinessList = React.memo(() => {
                 className="text-input"
                 value={formData.whatsappNumber}
                 onChange={handleChange}
+                placeholder="Business WhatsApp number"
+              />
+            </div>
+
+            <div className="form-divider"></div>
+            <SectionHeader title="Business Information" subtitle="Additional business details" />
+
+            <div className="form-input-group">
+              <label htmlFor="gstin" className="input-label">🏛️ GSTIN</label>
+              <input
+                type="text"
+                id="gstin"
+                name="gstin"
+                className="text-input"
+                value={formData.gstin}
+                onChange={handleChange}
+                placeholder="Enter GST registration number"
               />
             </div>
 
             <div className="form-input-group">
-              <label htmlFor="experience" className="input-label">Experience</label>
+              <label htmlFor="experience" className="input-label">⭐ Experience (Years)</label>
               <input
                 type="text"
                 id="experience"
@@ -1134,8 +1199,11 @@ const BusinessList = React.memo(() => {
               />
             </div>
 
+            <div className="form-divider"></div>
+            <SectionHeader title="Location & Web Presence" subtitle="Map and website links" />
+
             <div className="form-input-group">
-              <label htmlFor="googleMap" className="input-label">Google Map</label>
+              <label htmlFor="googleMap" className="input-label">🗺️ Google Map Link</label>
               <input
                 type="text"
                 id="googleMap"
@@ -1143,11 +1211,12 @@ const BusinessList = React.memo(() => {
                 className="text-input"
                 value={formData.googleMap}
                 onChange={handleChange}
+                placeholder="https://maps.google.com/..."
               />
             </div>
 
             <div className="form-input-group">
-              <label htmlFor="website" className="input-label">Website</label>
+              <label htmlFor="website" className="input-label">🌐 Website</label>
               <input
                 type="text"
                 id="website"
@@ -1155,24 +1224,42 @@ const BusinessList = React.memo(() => {
                 className="text-input"
                 value={formData.website}
                 onChange={handleChange}
+                placeholder="https://example.com"
               />
             </div>
 
-            {["facebook", "instagram", "youtube", "pinterest", "twitter", "linkedin"].map((field) => (
-              <div className="form-input-group" key={field}>
-                <label htmlFor={field} className="input-label">{field.charAt(0).toUpperCase() + field.slice(1)}</label>
-                <input
-                  type="text"
-                  id={field}
-                  name={field}
-                  className="text-input"
-                  value={formData[field]}
-                  onChange={handleChange}
-                />
-              </div>
-            ))}
+            <div className="form-divider"></div>
+            <SectionHeader title="Social Media" subtitle="Connect your social profiles" />
+
+            <div className="social-media-grid">
+              {[
+                { field: "facebook", icon: "f", label: "Facebook" },
+                { field: "instagram", icon: "📷", label: "Instagram" },
+                { field: "youtube", icon: "▶️", label: "YouTube" },
+                { field: "pinterest", icon: "📌", label: "Pinterest" },
+                { field: "twitter", icon: "𝕏", label: "Twitter" },
+                { field: "linkedin", icon: "in", label: "LinkedIn" }
+              ].map(({ field, icon, label }) => (
+                <div className="form-input-group" key={field}>
+                  <label htmlFor={field} className="input-label">{icon} {label}</label>
+                  <input
+                    type="text"
+                    id={field}
+                    name={field}
+                    className="text-input"
+                    value={formData[field]}
+                    onChange={handleChange}
+                    placeholder={`Your ${label} profile URL`}
+                  />
+                </div>
+              ))}
+            </div>
+
+            <div className="form-divider"></div>
+            <SectionHeader title="Business Banner & Details" subtitle="Upload banner image and describe your business" />
 
             <div className="form-input-group col-span-all upload-section">
+              <label className="input-label">🖼️ Banner Image</label>
               <div className="upload-content">
                 <Button
                   variant="contained"
@@ -1194,7 +1281,7 @@ const BusinessList = React.memo(() => {
             </div>
 
             <div className="form-input-group col-span-all">
-              <label className="input-label">Business Details</label>
+              <label className="input-label">📝 Business Details</label>
               <Suspense fallback={<CircularProgress />}>
                 <ReactQuill
                   theme="snow"
@@ -1208,8 +1295,8 @@ const BusinessList = React.memo(() => {
               </Suspense>
             </div><br />
 
-            <div className="form-input-group col-span-all"><br /><br />
-              <h3 style={{ marginBottom: "15px" }}>Opening Hours</h3>
+            <div className="form-input-group col-span-all">
+              <SectionHeader title="Opening Hours" subtitle="Set business hours for each day" />
               <div className="opening-hours-container">
                 {formData.openingHours.map((hour, index) => (
                   <div
@@ -1280,8 +1367,10 @@ const BusinessList = React.memo(() => {
 
       case 1:
         return (
-          <div className="form-input-group">
-            <label className="input-label">Upload KYC Documents</label>
+          <>
+            <SectionHeader title="KYC Documents" subtitle="Upload identity proof and business documents" />
+            <div className="form-input-group col-span-all">
+              <label className="input-label">📄 Upload Documents (PDF, PNG, JPG)</label>
 
             <Button
               variant="contained"
@@ -1299,65 +1388,68 @@ const BusinessList = React.memo(() => {
               />
             </Button>
 
-            <div className="kyc-file-list">
-              {kycFiles.map((file, index) => (
-                <div key={index} className="kyc-file-item">
-                  <Typography variant="body2">
-                    {file.name || `Document ${index + 1}`}
-                  </Typography>
-                  <IconButton color="error" onClick={() => handleRemoveFile(index)}>
-                    <DeleteOutlineRoundedIcon fontSize="small" />
-                  </IconButton>
+              <div className="kyc-file-list">
+                {kycFiles.map((file, index) => (
+                  <div key={index} className="kyc-file-item">
+                    <Typography variant="body2">
+                      {file.name || `Document ${index + 1}`}
+                    </Typography>
+                    <IconButton color="error" onClick={() => handleRemoveFile(index)}>
+                      <DeleteOutlineRoundedIcon fontSize="small" />
+                    </IconButton>
 
-                  <div style={{ marginTop: "5px" }}>
-                    {file.type?.includes("image") ? (
-                      <img
-                        src={file.preview}
-                        alt={file.name}
-                        style={{
-                          width: "100px",
-                          height: "100px",
-                          borderRadius: "8px",
-                          objectFit: "cover",
-                        }}
-                      />
-                    ) : file.type?.includes("pdf") ? (
-                      <iframe
-                        src={file.preview}
-                        title={file.name}
-                        width="100%"
-                        height="150px"
-                        style={{
-                          border: "1px solid #ccc",
-                          borderRadius: "8px",
-                        }}
-                      />
-                    ) : null}
+                    <div style={{ marginTop: "5px" }}>
+                      {file.type?.includes("image") ? (
+                        <img
+                          src={file.preview}
+                          alt={file.name}
+                          style={{
+                            width: "100px",
+                            height: "100px",
+                            borderRadius: "8px",
+                            objectFit: "cover",
+                          }}
+                        />
+                      ) : file.type?.includes("pdf") ? (
+                        <iframe
+                          src={file.preview}
+                          title={file.name}
+                          width="100%"
+                          height="150px"
+                          style={{
+                            border: "1px solid #ccc",
+                            borderRadius: "8px",
+                          }}
+                        />
+                      ) : null}
 
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        onClick={() => window.open(file.preview, "_blank")}
-                      >
-                        View Full
-                      </Button>
-                      <IconButton color="error" onClick={() => handleRemoveFile(index)}>
-                        <DeleteOutlineRoundedIcon fontSize="small" />
-                      </IconButton>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={() => window.open(file.preview, "_blank")}
+                        >
+                          View Full
+                        </Button>
+                        <IconButton color="error" onClick={() => handleRemoveFile(index)}>
+                          <DeleteOutlineRoundedIcon fontSize="small" />
+                        </IconButton>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+          </>
         );
 
       case 2:
         return (
           <>
+            <SectionHeader title="Category & SEO" subtitle="Categorize your business and optimize for search" />
+
             <div className="form-input-group" style={{ position: "relative" }}>
-              <label className="input-label">Category</label>
+              <label className="input-label">🏷️ Category</label>
 
               <input
                 type="text"
@@ -1415,8 +1507,11 @@ const BusinessList = React.memo(() => {
               )}
             </div>
 
-            <div className="category-form-input-group" style={{ marginTop: "25px" }}>
-              <label className="category-input-label">Keywords</label>
+            <div className="form-divider"></div>
+            <SectionHeader title="Keywords & Tags" subtitle="Help customers find you with relevant keywords" />
+
+            <div className="category-form-input-group" style={{ marginTop: "0px" }}>
+              <label className="category-input-label">🔑 Keywords</label>
 
               <Autocomplete
                 multiple
@@ -1488,74 +1583,88 @@ const BusinessList = React.memo(() => {
               />
             </div>
 
-            <div className="form-input-group">
-              <label className="input-label">SEO Title</label>
-              <input
-                type="text"
-                name="seoTitle"
-                className="text-input"
-                value={formData.seoTitle}
-                onChange={handleChange}
-              />
-            </div>
+            <div className="form-divider"></div>
+            <SectionHeader title="Display & SEO" subtitle="How your business appears online" />
 
             <div className="form-input-group">
-              <label className="input-label">SEO Description</label>
-              <textarea
-                name="seoDescription"
-                className="textarea-input"
-                value={formData.seoDescription}
-                rows={3}
-                onChange={handleChange}
-              />
-            </div>
-
-            <div className="form-input-group">
-              <label className="input-label">Title</label>
+              <label className="input-label">👁️ Display Title</label>
               <input
                 type="text"
                 name="title"
                 className="text-input"
                 value={formData.title}
                 onChange={handleChange}
+                placeholder="How your business appears to customers"
               />
             </div>
 
-            <div className="form-input-group">
-              <label className="input-label">Description</label>
+            <div className="form-input-group col-span-all">
+              <label className="input-label">📖 Display Description</label>
               <textarea
                 name="description"
                 className="textarea-input"
                 value={formData.description}
-                rows={4}
+                rows={3}
                 onChange={handleChange}
+                placeholder="A brief description of your business"
+              />
+            </div>
+
+            <div className="form-divider"></div>
+            <SectionHeader title="Search Engine Optimization" subtitle="Improve your search visibility" />
+
+            <div className="form-input-group col-span-all">
+              <label className="input-label">🔍 SEO Title</label>
+              <input
+                type="text"
+                name="seoTitle"
+                className="text-input"
+                value={formData.seoTitle}
+                onChange={handleChange}
+                placeholder="Meta title for search engines (50-60 characters)"
+              />
+            </div>
+
+            <div className="form-input-group col-span-all">
+              <label className="input-label">📝 SEO Description</label>
+              <textarea
+                name="seoDescription"
+                className="textarea-input"
+                value={formData.seoDescription}
+                rows={2}
+                onChange={handleChange}
+                placeholder="Meta description for search engines (150-160 characters)"
               />
             </div>
 
             {["restaurants", "hotels"].includes(formData.category?.toLowerCase()) && (
-              <div className="form-input-group">
-                <label className="input-label">Restaurant Options</label>
-                <select
-                  className="select-input"
-                  name="restaurantOptions"
-                  value={formData.restaurantOptions || ""}
-                  onChange={handleChange}
-                >
-                  <option value="">-- Select Option --</option>
-                  <option value="Veg">Veg</option>
-                  <option value="Non-Veg">Non-Veg</option>
-                  <option value="Both">Both</option>
-                </select>
-              </div>
+              <>
+                <div className="form-divider"></div>
+                <div className="form-input-group">
+                  <label className="input-label">🍽️ Cuisine Type</label>
+                  <select
+                    className="select-input"
+                    name="restaurantOptions"
+                    value={formData.restaurantOptions || ""}
+                    onChange={handleChange}
+                  >
+                    <option value="">-- Select Option --</option>
+                    <option value="Veg">Vegetarian Only</option>
+                    <option value="Non-Veg">Non-Vegetarian</option>
+                    <option value="Both">Both Veg & Non-Veg</option>
+                  </select>
+                </div>
+              </>
             )}
-            <div className="form-input-group">
-              <label className="input-label">Slug</label>
+            <div className="form-input-group col-span-all">
+              <label className="input-label">📍 Slug (URL-friendly name)</label>
               <input
                 type="text"
                 name="slug"
                 className="text-input"
                 value={formData.slug}
                 onChange={handleChange}
+                placeholder="business-name-here"
               />
             </div>
           </>

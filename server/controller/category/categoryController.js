@@ -14,6 +14,7 @@ import { uploadImageToS3, getSignedUrlByKey } from "../../s3Uploder.js";
 import { categoriesData } from "../../utils/sub-categoriesData.js";
 import { getCache, setCache } from "../../utils/redisClient.js";
 import { invalidateCategoryCache } from "../../utils/cacheInvalidation.js";
+import { suggestKeywordsForCategory } from "../../helper/category/keywordSuggestHelper.js";
 
 export const addCategoryAction = async (req, res) => {
   try {
@@ -383,7 +384,7 @@ export const getSubCategoriesAction = async (req, res) => {
           slug: item.slug,
           icon: item.categoryImageKey
             ? `${BASE_URL}${item.categoryImageKey}`
-            : "/icons/default.webp",
+            : "",
           liveImage: item.liveImageKey
             ? `${BASE_URL}${item.liveImageKey}`
             : null,
@@ -396,7 +397,7 @@ export const getSubCategoriesAction = async (req, res) => {
         _id: index + 1,
         name: item.name,
         slug: item.name.toLowerCase().replace(/\s+/g, "-"),
-        icon: "/icons/default.webp",
+        icon: "",
         liveImage: null,
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
@@ -654,6 +655,127 @@ export const getServiceCardsAction = async (req, res) => {
   }
 };
 
+export const getMobileServiceCardsAction = async (req, res) => {
+  try {
+    const cacheKey = "service-cards:mobile";
+
+    // Try to get from cache first
+    const cachedData = await getCache(cacheKey);
+    if (cachedData) {
+      return res.send(cachedData);
+    }
+
+    const SERVICE_SECTIONS = [
+      {
+        section: "Repair and Services",
+        items: ["Car Service", "TV Service", "Bike Service", "Crane Service", "Electrician Services"]
+      },
+      {
+        section: "Services",
+        items: [
+          "Pest Control Service",
+          "AC Service",
+          "Computer And Laptop Service",
+          "Courier Services",
+          "Mobile Service"
+        ]
+      },
+      {
+        section: "Hot Categories",
+        items: [
+          "Catering Services",
+          "Transporters",
+          "Driving School"
+        ]
+      },
+      {
+        section: "Building Materials",
+        items: [
+          "Fencing",
+          "Interlock Bricks",
+          "Steel Dealers"
+        ]
+      }
+    ];
+
+    const categories = await categoryModel.find({
+      isActive: true
+    }).lean();
+
+    const normalize = (name) =>
+      name.toLowerCase().replace(/s$/, "").trim();
+
+    const map = new Map(
+      categories.map(cat => [
+        normalize(cat.category),
+        cat
+      ])
+    );
+
+    const S3_BASE_URL = "https://massclickdev.s3.ap-southeast-2.amazonaws.com/";
+
+    const result = [];
+
+    SERVICE_SECTIONS.forEach(({ section, items }) => {
+
+      items.forEach((name) => {
+
+        const found = map.get(normalize(name));
+
+        result.push(
+          found
+            ? {
+              _id: found._id,
+              name: found.category,
+              slug: found.slug,
+              section,
+              categoryImageKey: found.categoryImageKey
+                ? getSignedUrlByKey(found.categoryImageKey)
+                : "",
+              liveImageKey: found.liveImageKey
+                ? getSignedUrlByKey(found.liveImageKey)
+                : "",
+              categoryImages: {
+                webHero: found.categoryImages?.webHero ? getSignedUrlByKey(found.categoryImages.webHero) : "",
+                webCard: found.categoryImages?.webCard ? getSignedUrlByKey(found.categoryImages.webCard) : "",
+                webThumbnail: found.categoryImages?.webThumbnail ? getSignedUrlByKey(found.categoryImages.webThumbnail) : "",
+                mobileVertical: found.categoryImages?.mobileVertical ? getSignedUrlByKey(found.categoryImages.mobileVertical) : "",
+                mobileCard: found.categoryImages?.mobileCard ? getSignedUrlByKey(found.categoryImages.mobileCard) : "",
+                mobileThumbnail: found.categoryImages?.mobileThumbnail ? getSignedUrlByKey(found.categoryImages.mobileThumbnail) : ""
+              }
+            }
+            : {
+              name,
+              slug: name.toLowerCase().replace(/ /g, "-"),
+              section,
+              categoryImageKey: "",
+              liveImageKey: "",
+              categoryImages: {
+                webHero: "",
+                webCard: "",
+                webThumbnail: "",
+                mobileVertical: "",
+                mobileCard: "",
+                mobileThumbnail: ""
+              }
+            }
+        );
+
+      });
+
+    });
+
+    // Cache for 24 hours
+    await setCache(cacheKey, result, 86400);
+
+    res.send(result);
+
+  } catch (error) {
+    console.error(error);
+    res.status(400).send({ message: error.message });
+  }
+};
+
 export const getAllUniqueCategoriesAction = async (req, res) => {
   try {
     const S3_BASE_URL = "https://massclickdev.s3.ap-southeast-2.amazonaws.com/";
@@ -702,22 +824,22 @@ export const getAllUniqueCategoriesAction = async (req, res) => {
             const found = dbMap.get(cleanText(name));
             return found
               ? {
-                  _id: found._id,
-                  name: found.category,
-                  slug: found.slug,
-                  icon: found.categoryImageKey
-                    ? `${S3_BASE_URL}${found.categoryImageKey}`
-                    : "/icons/default.webp",
-                  liveImage: found.liveImageKey
-                    ? `${S3_BASE_URL}${found.liveImageKey}`
-                    : null,
-                }
+                _id: found._id,
+                name: found.category,
+                slug: found.slug,
+                icon: found.categoryImageKey
+                  ? `${S3_BASE_URL}${found.categoryImageKey}`
+                  : "",
+                liveImage: found.liveImageKey
+                  ? `${S3_BASE_URL}${found.liveImageKey}`
+                  : null,
+              }
               : {
-                  name,
-                  slug: name.toLowerCase().replace(/\s+/g, "-"),
-                  icon: "/icons/default.webp",
-                  liveImage: null,
-                };
+                name,
+                slug: name.toLowerCase().replace(/\s+/g, "-"),
+                icon: "",
+                liveImage: null,
+              };
           })
           .sort((a, b) => a.name.localeCompare(b.name));
 
@@ -727,7 +849,7 @@ export const getAllUniqueCategoriesAction = async (req, res) => {
           slug: item.slug,
           icon: item.categoryImageKey
             ? `${S3_BASE_URL}${item.categoryImageKey}`
-            : "/icons/default.webp",
+            : "",
           liveImage: item.liveImageKey
             ? `${S3_BASE_URL}${item.liveImageKey}`
             : null,
@@ -739,5 +861,26 @@ export const getAllUniqueCategoriesAction = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: error.message });
+  }
+};
+
+/**
+ * GET /api/category/suggest-keywords?category=AC+Repair+Service
+ * Returns SEO keyword suggestions from Google Autocomplete
+ */
+export const suggestKeywordsAction = async (req, res) => {
+  try {
+    const category = (req.query.category || "").trim();
+
+    if (!category || category.length < 2) {
+      return res.status(400).json({ message: "Category name is required" });
+    }
+
+    const keywords = await suggestKeywordsForCategory(category);
+
+    res.json({ keywords });
+  } catch (error) {
+    console.error("suggestKeywordsAction error:", error);
+    res.status(500).json({ message: "Could not fetch suggestions", keywords: [] });
   }
 };

@@ -195,12 +195,6 @@ export default function EnquiryPage() {
       </div>
 
       {/* List / loader / empty states */}
-      {loading && (
-        <div className="be-loading-row">
-          <div className="be-loading-spinner" />
-          <span>Loading enquiries...</span>
-        </div>
-      )}
 
       {!loading && filteredEnquiries.length === 0 && (
         <div className="be-empty-state">

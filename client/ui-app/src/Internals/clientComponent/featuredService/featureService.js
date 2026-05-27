@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { logSearchActivity } from "../../../redux/actions/businessListAction";
 import { fetchHomeCategories } from "../../../redux/actions/categoryAction";
+import { getPlaceholderImage, handleImageError } from "../../../utils/placeholderImage";
+import { navigateToSearchResult } from "../../../utils/searchResultNavigation";
 
 import "./featureService.css";
 
@@ -10,28 +12,8 @@ const PopularCategoriesDrawer = React.lazy(() =>
   import("../cards/popularCategories/popularCategories.js")
 );
 
-const FEATURED_ORDER = [
-  "Hotels",
-  "Rent And Hire",
-  "Restaurants",
-  "Education",
-  "Hospitals",
-  "Dentist",
-  "Dermatologist",
-  "Sexologist",
-  "Contractors",
-  "Gym",
-  "Furnitures",
-  "Florists",
-  "Packers and Movers",
-  "House Keeping Service",
-  "Security System",
-  "Wedding Mahal",
-  "photographers",
-  "Matrimony",
-  "Hostel",
-  "Popular Categories"
-];
+// Order is now controlled via the admin Category Display Settings page.
+// The v2 API returns items pre-sorted; no client-side reorder needed.
 
 const toPascalCase = (str) => {
   if (!str || typeof str !== "string") return str;
@@ -85,49 +67,27 @@ const FeaturedServicesSection = () => {
     );
   }, [selectedDistrict]);
 
-  const normalize = (name) =>
-    name.toLowerCase().replace(/s$/, "").trim();
-
+  // v2 API returns items in admin-configured order — use them directly.
+  // "Popular Categories" is a real DB category; clicking it opens the drawer
+  // instead of navigating to a search result.
   const orderedCategories = useMemo(() => {
+    if (!Array.isArray(homeCategories) || !homeCategories.length) return [];
 
-    if (!homeCategories.length) return [];
+    const seenSlugs = new Set();
 
-    const map = new Map(
-      homeCategories.map((cat) => [
-        normalize(cat.name),
-        cat
-      ])
-    );
+    return homeCategories
+      .map((cat) => {
+        const slug = cat.slug || createSlug(cat.name);
+        if (seenSlugs.has(slug)) return null;
+        seenSlugs.add(slug);
 
-    return FEATURED_ORDER.map((name) => {
+        if (cat.name?.toLowerCase() === "popular categories") {
+          return { ...cat, isDrawer: true };
+        }
 
-      if (name === "Popular Categories") {
-
-        const found = map.get(normalize(name));
-
-        return found
-          ? {
-            ...found,
-            isDrawer: true
-          }
-          : {
-            name,
-            slug: "popular",
-            icon: "/default.webp",
-            isDrawer: true
-          };
-      }
-
-      const found = map.get(normalize(name));
-
-      return found || {
-        name,
-        slug: createSlug(name),
-        icon: "/default.webp"
-      };
-
-    });
-
+        return cat;
+      })
+      .filter(Boolean);
   }, [homeCategories]);
 
   const handleClick = (service) => {
@@ -150,6 +110,7 @@ const FeaturedServicesSection = () => {
       email: authUser?.email,
     };
 
+    // Log the search activity
     dispatch(
       logSearchActivity(
         categoryName,
@@ -159,14 +120,21 @@ const FeaturedServicesSection = () => {
       )
     );
 
-    navigate(`/${districtSlug}/${service.slug}`);
+    // Use centralized navigation
+    navigateToSearchResult({
+      searchTerm: categoryName,
+      location: locationName,
+      navigate,
+      dispatch,
+      isKnownCategory: true, // This is a known category from featured services
+      logAlreadySent: true,
+      userDetails,
+    });
   };
 
   return (
     <>
       <section className="featured-services-container">
-
-        {loading && <p>Loading...</p>}
 
         {orderedCategories.map((service, index) => {
 
@@ -188,7 +156,8 @@ const FeaturedServicesSection = () => {
             >
 
               <img
-                src={service.icon ? service.icon : "/default.webp"}
+                src={service.icon ? service.icon : getPlaceholderImage()}
+                onError={(e) => handleImageError(e)}
                 alt={altText}
                 title={`${service.name} services in ${districtSlug}`}
                 className="service-icons"
@@ -199,7 +168,7 @@ const FeaturedServicesSection = () => {
                 fetchpriority={index < 2 ? "high" : "auto"}
                 onError={(e) => {
                   e.target.onerror = null;
-                  e.target.src = "/default.webp";
+                  handleImageError(e);
                 }}
               />
 

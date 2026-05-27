@@ -6,6 +6,7 @@ import categoryModel from "../../model/category/categoryModel.js";
 import { emitToRoom } from "../../websocket/roomManager.js";
 import { buildRoom, WS_EVENTS } from "../../websocket/constants.js";
 import { getCache, setCache } from "../../utils/redisClient.js";
+import { invalidateSearchCache, invalidateDashboardCache, invalidateCategoryCache } from "../../utils/cacheInvalidation.js";
 
 export const addBusinessListAction = async (req, res) => {
   try {
@@ -25,6 +26,10 @@ export const addBusinessListAction = async (req, res) => {
       location: result.location,
       ts: new Date().toISOString(),
     });
+
+    await invalidateSearchCache();
+    await invalidateDashboardCache();
+    await invalidateCategoryCache();
 
     res.send(result);
 
@@ -502,52 +507,18 @@ export const mainSearchController = async (req, res) => {
     // 🏷 CATEGORY
     // ===============================
     if (category) {
-      const variations = getWordVariations(category);
-
-      const categoryConditions = variations.flatMap((val) => {
-        const escaped = escapeRegex(val);
-
-        return [
-          { category: { $regex: escaped, $options: "i" } },
-          { keywords: { $regex: escaped, $options: "i" } }
-        ];
-      });
-
+      // EXACT: Match the full normalized category string (anchored at start/end)
+      const escaped = escapeRegex(category);
       matchQuery.$and.push({
-        $or: categoryConditions
+        category: { $regex: `^${escaped}$`, $options: "i" }
       });
     }
 
     // ===============================
-    // 🔍 TERM SEARCH
+    // 🔍 TERM SEARCH (using MongoDB text search)
     // ===============================
     if (term) {
-      // 🔹 Split multi-word searches into individual words
-      const words = term.split(/\s+/).filter(w => w.trim());
-
-      const termConditions = [];
-
-      words.forEach((word) => {
-        const variations = getWordVariations(word);
-
-        variations.forEach((val) => {
-          const escaped = escapeRegex(val);
-
-          // For each word, create OR conditions across all fields
-          termConditions.push(
-            { businessName: { $regex: escaped, $options: "i" } },
-            { category: { $regex: escaped, $options: "i" } },
-            { slug: { $regex: escaped, $options: "i" } },
-            { keywords: { $regex: escaped, $options: "i" } }
-          );
-        });
-      });
-
-      if (termConditions.length > 0) {
-        matchQuery.$and.push({
-          $or: termConditions
-        });
-      }
+      matchQuery.$text = { $search: term };
     }
 
     if (matchQuery.$and.length === 0) {
@@ -556,6 +527,9 @@ export const mainSearchController = async (req, res) => {
 
     const results = await businessListModel.aggregate([
       { $match: matchQuery },
+
+      // Add text score if doing text search
+      ...(term ? [{ $addFields: { textScore: { $meta: "textScore" } } }] : []),
 
       {
         $lookup: {
@@ -568,13 +542,38 @@ export const mainSearchController = async (req, res) => {
 
       {
         $addFields: {
-          totalReviews: { $size: "$reviews" }
+          totalReviews: { $size: "$reviews" },
+          categoryPriority: {
+            $cond: [
+              category ? {
+                $regexMatch: {
+                  input: "$category",
+                  regex: `^${escapeRegex(category)}$`,
+                  options: "i"
+                }
+              } : false,
+              0,
+              1
+            ]
+          }
+        }
+      },
+
+      {
+        $sort: {
+          ...(term ? { textScore: -1 } : {}),  // Text relevance first if searching
+          categoryPriority: 1,
+          amountPaid: -1,
+          paidDate: -1,
+          createdAt: -1
         }
       },
 
       {
         $project: {
-          reviews: 0
+          reviews: 0,
+          categoryPriority: 0,
+          textScore: 0  // Don't return text score to frontend
         }
       }
     ]);
@@ -619,6 +618,10 @@ export const updateBusinessListAction = async (req, res) => {
 
     const business = await updateBusinessList(businessId, businessData);
 
+    await invalidateSearchCache();
+    await invalidateDashboardCache();
+    await invalidateCategoryCache();
+
     res.send(business);
   } catch (error) {
     console.error(error);
@@ -630,6 +633,11 @@ export const deleteBusinessListAction = async (req, res) => {
   try {
     const businessId = req.params.id;
     const business = await deleteBusinessList(businessId);
+
+    await invalidateSearchCache();
+    await invalidateDashboardCache();
+    await invalidateCategoryCache();
+
     res.send({ message: "business deleted successfully", business });
   } catch (error) {
     console.error(error);
@@ -643,6 +651,10 @@ export const activeBusinessListAction = async (req, res) => {
     const { activeBusinesses } = req.body;
 
     const business = await activeBusinessList(businessId, activeBusinesses);
+
+    await invalidateSearchCache();
+    await invalidateDashboardCache();
+    await invalidateCategoryCache();
 
     res.send({
       message: `Business ${business.activeBusinesses ? "activated" : "deactivated"} successfully`,
