@@ -573,6 +573,7 @@ const BusinessList = React.memo(() => {
 
     const payload = {
       ...formData,
+      name: formData.businessName,
       businessDetails: businessvalue,
       kycDocuments: kycBase64,
     };
@@ -760,6 +761,8 @@ const BusinessList = React.memo(() => {
 
           try {
             const payload = {
+              name: row.businessName,
+              businessName: row.businessName,
               payment: [
                 {
                   amount: row?.subscription?.price || 1,

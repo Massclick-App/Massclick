@@ -91,6 +91,7 @@ const mniSchema = new mongoose.Schema({
 
 const businessListSchema = new mongoose.Schema({
   clientId: { type: String, default: '', },
+  name: { type: String, default: '', },
   businessName: { type: String, default: '', },
   plotNumber: { type: String, default: '', },
   street: { type: String, default: '', },
@@ -211,6 +212,18 @@ const businessListSchema = new mongoose.Schema({
     ref: 'User',
   },
   isActive: { type: Boolean, default: true },
+});
+
+businessListSchema.pre("validate", function syncBusinessName(next) {
+  if (!this.businessName && this.name) {
+    this.businessName = this.name;
+  }
+
+  if (!this.name && this.businessName) {
+    this.name = this.businessName;
+  }
+
+  next();
 });
 
 export default businessListSchema;

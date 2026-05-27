@@ -9,6 +9,13 @@ import QRCode from "qrcode";
 
 export const createBusinessList = async (reqBody = {}) => {
   try {
+    if (!reqBody.businessName && reqBody.name) {
+      reqBody.businessName = reqBody.name;
+    }
+
+    if (!reqBody.name && reqBody.businessName) {
+      reqBody.name = reqBody.businessName;
+    }
 
     if (reqBody.bannerImage) {
       const uploadResult = await uploadImageToS3(
@@ -434,6 +441,14 @@ export const updateBusinessList = async (id, data) => {
   const business = await businessListModel.findById(id);
   if (!business) throw new Error("Business not found");
 
+  if (!data.businessName && data.name) {
+    data.businessName = data.name;
+  }
+
+  if (!data.name && data.businessName) {
+    data.name = data.businessName;
+  }
+
   if (data.reviewData) {
     const { reviewData } = data;
 
@@ -602,6 +617,14 @@ export const updateBusinessList = async (id, data) => {
       business[key] = data[key];
     }
   });
+
+  if (!business.name && business.businessName) {
+    business.name = business.businessName;
+  }
+
+  if (!business.businessName && business.name) {
+    business.businessName = business.name;
+  }
 
   await business.save();
 
