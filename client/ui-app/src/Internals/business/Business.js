@@ -763,6 +763,8 @@ const BusinessList = React.memo(() => {
             const payload = {
               name: row.businessName,
               businessName: row.businessName,
+              category: row.category,
+              location: row.location,
               payment: [
                 {
                   amount: row?.subscription?.price || 1,
