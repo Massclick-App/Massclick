@@ -40,6 +40,43 @@ const cleanIndianMobile = (mobile) => {
   return null;
 };
 
+const extractIndianMobiles = (value) => {
+  if (!value) return [];
+
+  const rawValues = Array.isArray(value) ? value : [value];
+  const mobiles = rawValues.flatMap((raw) => {
+    const text = raw?.toString() || "";
+    const matches = text.match(/(?:\+?91[\s-]?)?[6-9]\d{9}/g) || [];
+    return matches.map(cleanIndianMobile).filter(Boolean);
+  });
+
+  return [...new Set(mobiles)];
+};
+
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const withRetry = async (fn, label, attempts = 3) => {
+  let lastError;
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      console.error(
+        `${label} failed attempt ${attempt}/${attempts}:`,
+        error.response?.data || error.message
+      );
+
+      if (attempt < attempts) {
+        await wait(1000 * attempt);
+      }
+    }
+  }
+
+  throw lastError;
+};
+
 const escapeRegex = (text = "") =>
   text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -133,7 +170,7 @@ export const logSearchAction = async (req, res) => {
       }).lean();
 
       if (validCategory) {
-        finalCategoryName = validCategory.categoryName;
+        finalCategoryName = validCategory.categoryName || validCategory.category;
         matchedCategoryFromSearch = validCategory;
       }
     }
@@ -151,7 +188,6 @@ export const logSearchAction = async (req, res) => {
               { category: { $regex: escapedSearch, $options: "i" } },
               { categoryName: { $regex: escapedSearch, $options: "i" } },
               { keywords: { $regex: escapedSearch, $options: "i" } },
-              { description: { $regex: escapedSearch, $options: "i" } }
             ]
           }
         },
@@ -194,7 +230,7 @@ export const logSearchAction = async (req, res) => {
 
     const category = await CategoryModel.findOne(
       { slug: categorySlug },
-      { categoryImages: 1, categoryImageKey: 1, liveImageKey: 1 }
+      { category: 1, categoryName: 1, categoryImages: 1, categoryImageKey: 1, liveImageKey: 1 }
     ).lean();
 
     // ── Anonymous path ────────────────────────────────────────────────────────
@@ -241,7 +277,7 @@ export const logSearchAction = async (req, res) => {
       searchedUserText: cleanSearchText,
       createdAt: { $gte: fiveMinutesAgo }
     });
-    if (recentLog) {
+    if (recentLog?.whatsapp) {
       return res.status(200).json({
         success: true,
         message: "Lead already sent recently",
@@ -249,7 +285,7 @@ export const logSearchAction = async (req, res) => {
       });
     }
 
-    const savedLog = await createSearchLog({
+    const savedLog = recentLog || await createSearchLog({
       categoryName: finalCategoryName,
       searchedUserText: cleanSearchText,
       location: normalizedLocation,
@@ -290,17 +326,18 @@ export const logSearchAction = async (req, res) => {
     const escapeRegex = (text = "") =>
       text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-    const getWordVariations = (word = "") => {
-      const w = word.toLowerCase().trim();
-      if (!w) return [];
-      if (w.endsWith("s")) {
-        return [w, w.slice(0, -1)];
-      } else {
-        return [w, w + "s"];
-      }
-    };
+    const categoryMatchValues = [
+      finalCategoryName,
+      matchedCategoryFromSearch?.category,
+      matchedCategoryFromSearch?.categoryName,
+      category?.category,
+      category?.categoryName,
+    ]
+      .filter(Boolean)
+      .map(normalize);
 
-    // Build search query (same logic as mainSearchController)
+    const uniqueCategoryMatchValues = [...new Set(categoryMatchValues)];
+
     const searchMatchQuery = {
       businessesLive: true,
       $and: []
@@ -317,29 +354,16 @@ export const logSearchAction = async (req, res) => {
       });
     }
 
-    // Add term search filter
-    if (cleanSearchText) {
-      const words = cleanSearchText.split(/\s+/).filter(w => w.trim());
-      const termConditions = [];
-
-      words.forEach((word) => {
-        const variations = getWordVariations(word);
-        variations.forEach((val) => {
-          const escaped = escapeRegex(val);
-          termConditions.push(
-            { businessName: { $regex: escaped, $options: "i" } },
-            { category: { $regex: escaped, $options: "i" } },
-            { slug: { $regex: escaped, $options: "i" } },
-            { keywords: { $regex: escaped, $options: "i" } }
-          );
-        });
+    if (uniqueCategoryMatchValues.length > 0) {
+      searchMatchQuery.$and.push({
+        $or: uniqueCategoryMatchValues.flatMap((value) => {
+          const categoryRegex = getDynamicCategoryRegex(value);
+          return [
+            { category: categoryRegex },
+            { keywords: categoryRegex }
+          ];
+        })
       });
-
-      if (termConditions.length > 0) {
-        searchMatchQuery.$and.push({
-          $or: termConditions
-        });
-      }
     }
 
     if (searchMatchQuery.$and.length === 0) {
@@ -349,8 +373,9 @@ export const logSearchAction = async (req, res) => {
     // Find matching businesses (limit to top 10)
     const businesses = await businessListModel.find(
       searchMatchQuery,
-      { businessName: 1, contactList: 1, whatsappNumber: 1, location: 1, street: 1, plotNumber: 1, averageRating: 1 }
+      { businessName: 1, category: 1, keywords: 1, contactList: 1, whatsappNumber: 1, location: 1, street: 1, plotNumber: 1, averageRating: 1 }
     )
+      .sort({ amountPaid: -1, paidDate: -1, averageRating: -1, createdAt: -1 })
       .limit(10)
       .lean();
 
@@ -388,7 +413,7 @@ export const logSearchAction = async (req, res) => {
 
     // ── WebSocket: instant update to each matching business owner's app ─────────
     for (const business of businesses) {
-      const ownerMobile = cleanIndianMobile(business.contactList || business.whatsappNumber);
+      const ownerMobile = extractIndianMobiles([business.contactList, business.whatsappNumber])[0];
       if (!ownerMobile) continue;
       // Strip 91 prefix — room keys use 10-digit (matches userModel.mobileNumber1)
       const mobile10 = ownerMobile.startsWith("91") && ownerMobile.length === 12
@@ -403,7 +428,7 @@ export const logSearchAction = async (req, res) => {
 
     // Collect mobile numbers for batch FCM lookup (avoid per-business DB query)
     const ownerMobiles = businesses
-      .map(b => cleanIndianMobile(b.contactList || b.whatsappNumber))
+      .flatMap(b => extractIndianMobiles([b.contactList, b.whatsappNumber]))
       .filter(Boolean);
 
     console.log("[FCM] businesses found:", businesses.length, "| owner mobiles resolved:", ownerMobiles.length, ownerMobiles);
@@ -438,17 +463,25 @@ export const logSearchAction = async (req, res) => {
 
     for (const business of businesses) {
 
-      const ownerMobile =
-        business.contactList || business.whatsappNumber;
+      const businessMobiles = extractIndianMobiles([business.contactList, business.whatsappNumber]);
 
-      const cleanMobile = cleanIndianMobile(ownerMobile);
+      if (!businessMobiles.length) {
+        console.warn("[WhatsApp] no valid business mobile:", business.businessName);
+        continue;
+      }
 
-      if (!cleanMobile) continue;
+      for (const cleanMobile of businessMobiles) {
 
       try {
 
         if (waSettings.whatsapp_business_lead_alert) {
-          await sendBusinessLead(cleanMobile, leadData);
+          await withRetry(
+            () => sendBusinessLead(cleanMobile, leadData),
+            `Business WhatsApp ${business.businessName} ${cleanMobile}`
+          );
+        } else {
+          console.warn("[WhatsApp] business lead alert disabled in settings");
+          continue;
         }
 
         businessSendSuccess = true;
@@ -461,13 +494,13 @@ export const logSearchAction = async (req, res) => {
 
         });
 
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await wait(500);
 
       } catch (err) {
 
         console.error(
 
-          "Business WhatsApp failed:",
+          "Business WhatsApp failed after retries:",
 
           err.response?.data || err.message
 
@@ -498,24 +531,28 @@ export const logSearchAction = async (req, res) => {
 
     }
 
-    const cleanCustomerMobile = cleanIndianMobile(
-      userDetails.mobileNumber1
-    );
+    }
+    const cleanCustomerMobile = extractIndianMobiles(userDetails.mobileNumber1)[0];
 
     if (cleanCustomerMobile) {
 
       try {
 
         if (waSettings.whatsapp_customer_business_list) {
-          await sendBusinessesToCustomer(
-
-            cleanCustomerMobile,
-
-            leadData,
-
-            businesses
-
+          await withRetry(
+            () => sendBusinessesToCustomer(cleanCustomerMobile, leadData, businesses),
+            `Customer WhatsApp ${cleanCustomerMobile}`
           );
+        } else {
+          console.warn("[WhatsApp] customer business list disabled in settings");
+          return res.status(202).json({
+            success: true,
+            message: "Lead stored but customer WhatsApp is disabled",
+            detectedCategory: finalCategoryName,
+            totalBusinesses: businesses.length,
+            notifiedBusinesses,
+            whatsappUpdated: false
+          });
         }
 
         customerSendSuccess = true;
@@ -536,16 +573,20 @@ export const logSearchAction = async (req, res) => {
 
     }
 
+    const whatsappUpdated = businessSendSuccess && customerSendSuccess;
+
     await searchLogModel.updateOne(
       { _id: savedLog._id },
-      { whatsapp: true }
+      { whatsapp: whatsappUpdated }
     );
 
     return res.status(202).json({
 
       success: true,
 
-      message: "Lead stored & WhatsApp sent",
+      message: whatsappUpdated
+        ? "Lead stored & WhatsApp sent"
+        : "Lead stored but WhatsApp delivery failed",
 
       detectedCategory: finalCategoryName,
 
@@ -553,7 +594,7 @@ export const logSearchAction = async (req, res) => {
 
       notifiedBusinesses,
 
-      whatsappUpdated: businessSendSuccess && customerSendSuccess
+      whatsappUpdated
 
     });
 

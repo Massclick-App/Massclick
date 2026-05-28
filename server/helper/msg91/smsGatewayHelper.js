@@ -6,6 +6,18 @@ import { createLogger } from "../../utils/logger.js";
 
 const logger = createLogger('SMS');
 
+const assertMsg91Success = (response, context = "MSG91 WhatsApp") => {
+  const data = response?.data;
+  const type = data?.type?.toString().toLowerCase();
+  const status = data?.status?.toString().toLowerCase();
+
+  if (type === "error" || status === "error" || data?.hasError) {
+    throw new Error(data?.message || `${context} failed`);
+  }
+
+  return data;
+};
+
 // const MSG91_AUTHKEY = process.env.MSG91_AUTHKEY;
 // const MSG91_FLOW_ID = process.env.MSG91_WHATSAPP_FLOW_ID; 
 // const MSG91_SENDER = process.env.MSG91_WHATSAPP_SENDER; 
@@ -234,7 +246,7 @@ export const sendBusinessLead = async (cleanMobile, lead = {}) => {
     }
   };
 
-  return axios.post(
+  const response = await axios.post(
     "https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/",
     payload,
     {
@@ -244,6 +256,8 @@ export const sendBusinessLead = async (cleanMobile, lead = {}) => {
       }
     }
   );
+
+  return assertMsg91Success(response, "business lead alert");
 };
 
 const cleanValue = (val) => {
@@ -395,7 +409,7 @@ export const sendBusinessesToCustomer = async (
 
     const values1 = prepareValues(firstBatch, 0);
 
-    await axios.post(
+    const firstResponse = await axios.post(
       "https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/",
       {
         integrated_number: process.env.MSG91_WHATSAPP_SENDER_ID,
@@ -458,10 +472,12 @@ export const sendBusinessesToCustomer = async (
       }
     );
 
+    assertMsg91Success(firstResponse, "customer business list first batch");
+
     if (secondBatch.length > 0) {
       const values2 = prepareValues(secondBatch, 5);
 
-      await axios.post(
+      const secondResponse = await axios.post(
         "https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/",
         {
           integrated_number: process.env.MSG91_WHATSAPP_SENDER_ID,
@@ -508,6 +524,8 @@ export const sendBusinessesToCustomer = async (
           }
         }
       );
+
+      assertMsg91Success(secondResponse, "customer business list second batch");
     }
 
     await logger.smsDebug("WhatsApp business list sent to customer", {
