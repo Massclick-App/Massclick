@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchSeoPageContentBlogsMeta } from "../../../redux/actions/seoPageContentBlogAction";
 import { getPlaceholderImage } from "../../../utils/placeholderImage";
@@ -12,13 +12,80 @@ const BlogsSkeleton = () => (
   <div className="blogs-skeleton">
     {[...Array(4)].map((_, i) => (
       <div className="blog-skeleton-card" key={i}>
-        <Skeleton variant="rounded" width="100%" height={190} animation="wave" sx={{ bgcolor: "rgba(255,107,0,0.07)", borderRadius: 2 }} />
-        <Skeleton variant="rounded" width="78%" height={18} animation="wave" sx={{ bgcolor: "rgba(255,107,0,0.07)", mt: 1.5 }} />
-        <Skeleton variant="rounded" width="54%" height={14} animation="wave" sx={{ bgcolor: "rgba(255,107,0,0.07)", mt: 0.8 }} />
+        <Skeleton variant="rounded" width="100%" height={260} animation="wave" sx={{ bgcolor: "rgba(255,107,0,0.08)", borderRadius: "14px 14px 0 0" }} />
+        <div className="skeleton-content">
+          <Skeleton variant="rounded" width="85%" height={20} animation="wave" sx={{ bgcolor: "rgba(255,107,0,0.08)" }} />
+          <Skeleton variant="rounded" width="60%" height={16} animation="wave" sx={{ bgcolor: "rgba(255,107,0,0.08)", mt: 1 }} />
+          <Skeleton variant="rounded" width="40%" height={14} animation="wave" sx={{ bgcolor: "rgba(255,107,0,0.08)", mt: 1.2 }} />
+        </div>
       </div>
     ))}
   </div>
 );
+
+const BlogCard = ({ item, createSlug }) => {
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
+  const imageSrc = item.profileImage || getPlaceholderImage();
+
+  const handleImageLoad = () => {
+    setImageLoaded(true);
+  };
+
+  const handleImageError = () => {
+    setImageError(true);
+    setImageLoaded(true);
+  };
+
+  return (
+    <div
+      className="related-card"
+      onClick={() =>
+        window.open(`/blog/${item.slug || createSlug(item.heading)}`, "_blank")
+      }
+      role="button"
+      tabIndex={0}
+      onKeyPress={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          window.open(`/blog/${item.slug || createSlug(item.heading)}`, "_blank");
+        }
+      }}
+      aria-label={`Read article: ${item.heading}`}
+    >
+      <div className="card-image-wrapper">
+        <img
+          src={imageSrc}
+          alt={item.heading}
+          className={`card-image ${imageLoaded ? "loaded" : "loading"}`}
+          onLoad={handleImageLoad}
+          onError={handleImageError}
+          loading="lazy"
+          decoding="async"
+          width="600"
+          height="400"
+        />
+        {!imageLoaded && (
+          <div className="image-placeholder">
+            <div className="placeholder-shimmer"></div>
+          </div>
+        )}
+      </div>
+
+      <div className="card-content">
+        <div className="content-top">
+          <h4 className="card-title">{item.heading}</h4>
+          {item.description && <p className="card-description">{item.description}</p>}
+        </div>
+        <div className="card-footer">
+          <span className="explore-link">
+            <span>Explore Article</span>
+            <ArrowOutwardIcon className="arrow-icon" />
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const RelatedBlogs = ({ location }) => {
   const dispatch = useDispatch();
@@ -111,26 +178,7 @@ const RelatedBlogs = ({ location }) => {
             {!loading &&
               !error &&
               list.map((item) => (
-                <div
-                  className="related-card"
-                  key={item._id}
-                  onClick={() =>
-                    window.open(`/blog/${item.slug || createSlug(item.heading)}`, "_blank")
-                  }
-                >
-                  <img
-                    src={item.profileImage || getPlaceholderImage()}
-                    alt={item.heading}
-                  />
-
-                  <div className="card-content">
-                    <h4>{item.heading}</h4>
-                    <span>
-                      Explore
-                      <ArrowOutwardIcon />
-                    </span>
-                  </div>
-                </div>
+                <BlogCard key={item._id} item={item} createSlug={createSlug} />
               ))}
 
           </div>

@@ -268,10 +268,10 @@ const CategoryBar = () => {
 
                 <div className="logoGroup">
                     <div className="logoWrapper">
-                        <img src="/header.png" alt="Massclick Logo" className="logoImage" />
+                        <img src="/header.png" alt="Massclick Logo" className="logoImage"  onClick={() => (window.location.href = "/")}/>
                     </div>
                     <div className="brandingText">
-                        <img src={MassclickIndiaLogo} alt="Massclick India" className="brandLogo" />
+                        <img src={MassclickIndiaLogo} alt="Massclick India" className="brandLogo"  onClick={() => (window.location.href = "/")} />
                     </div>
                 </div>
 

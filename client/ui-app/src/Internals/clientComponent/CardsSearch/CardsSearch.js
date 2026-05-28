@@ -293,7 +293,7 @@ const CardsSearch = ({
               </Tooltip>
             </div>
             <div className="brandingText">
-              <img src={MassclickIndiaLogo} alt="Massclick India" className="brandLogo" />
+              <img src={MassclickIndiaLogo} alt="Massclick India" className="brandLogo"  onClick={() => (window.location.href = "/")}/>
             </div>
           </div>
 

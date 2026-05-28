@@ -94,6 +94,7 @@
 .brandingText {
     display: flex;
     align-items: center;
+     cursor: pointer;
 }
 .brandLogo {
     height: clamp(28px, 3.5vw, 44px);  
