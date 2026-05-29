@@ -398,6 +398,48 @@
 }
 
 /* =========================
+   FAQ LINKS SECTION
+========================= */
+.faq-links-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  background: #f9fafb;
+  border-radius: 10px;
+  border: 1px dashed var(--border);
+  margin-top: 12px;
+}
+
+.faq-links-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.faq-link-row {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr auto;
+  gap: 12px;
+  padding: 12px;
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  align-items: flex-start;
+}
+
+.faq-no-links {
+  padding: 12px;
+  color: #94a3b8;
+  font-size: 13px;
+  font-style: italic;
+  text-align: center;
+}
+
+/* =========================
    ACTION BUTTON
 ========================= */
 .action-bar {
