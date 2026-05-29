@@ -464,6 +464,28 @@ export const mainSearchController = async (req, res) => {
     location = normalize(location);
     category = normalize(category);
 
+    // 🔥 RESOLVE CATEGORY: If category is not provided, try to find it from the term
+    if (!category && term) {
+      const escapeRegex = (text = "") =>
+        text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+      const matchedCategory = await categoryModel.findOne(
+        {
+          $or: [
+            { category: { $regex: `^${escapeRegex(term)}$`, $options: "i" } },
+            { keywords: { $regex: `^${escapeRegex(term)}$`, $options: "i" } }
+          ],
+          isActive: true
+        },
+        { category: 1 }
+      );
+
+      if (matchedCategory) {
+        category = matchedCategory.category;
+        term = ""; // Clear term since we found the category
+      }
+    }
+
     // 🔹 Escape regex special chars
     const escapeRegex = (text = "") =>
       text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
