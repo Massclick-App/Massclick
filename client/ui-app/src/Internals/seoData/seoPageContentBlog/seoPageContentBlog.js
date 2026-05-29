@@ -211,7 +211,7 @@ export default function SeoPageContentBlogs() {
                 ? "Edit SEO Blog Content"
                 : "Create SEO Blog Content"}
             </h1>
-            <p>Premium SEO content management dashboar</p>
+            <p>Premium SEO content management dashboard</p>
           </div>
 
           <Button
