@@ -380,11 +380,11 @@ const LandingPage = React.memo(() => {
                                 </Suspense>
                             </Box>
 
-                            <Box className="home-section" sx={homeSectionSx}>
+                            {/* <Box className="home-section" sx={homeSectionSx}>
                                 <Suspense fallback={<SkeletonBanner />}>
                                     <MassClickBanner />
                                 </Suspense>
-                            </Box>
+                            </Box> */}
 
                             <Box className="home-section" sx={homeSectionSx}>
                                 <Suspense fallback={<SkeletonCarousel type="trending" />}>
