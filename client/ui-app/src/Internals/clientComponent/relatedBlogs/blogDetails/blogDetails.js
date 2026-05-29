@@ -62,50 +62,33 @@ const BlogDetail = () => {
     return () => window.removeEventListener("scroll", throttledUpdate);
   }, []);
 
-  const normalizeMassclickUrl = (rawUrl = "") => {
-    try {
-      const urlObj = new URL(rawUrl);
-      const parts = urlObj.pathname.split("/").filter(Boolean);
+  const renderFaqAnswer = (answer = "", links = []) => {
+    if (!answer) return "";
+    if (!links || links.length === 0) return answer;
 
-      if (parts.length >= 3) {
-        const last = parts[parts.length - 1];
-        const prev = parts[parts.length - 2];
+    let html = answer;
 
-        if (last.toLowerCase() === prev.toLowerCase()) {
-          parts.pop();
-        }
-      }
+    // Sort by position/index to replace from end to start (prevents offset issues)
+    const sortedLinks = [...links]
+      .filter(link => link.linkText && link.url)
+      .sort((a, b) => {
+        const posA = answer.indexOf(a.linkText);
+        const posB = answer.indexOf(b.linkText);
+        return posB - posA;
+      });
 
-      urlObj.pathname = "/" + parts.join("/");
-      return urlObj.toString();
-    } catch (error) {
-      return rawUrl;
-    }
-  };
+    if (sortedLinks.length === 0) return answer;
 
-  const linkifyText = (text = "") => {
-    let result = text;
+    sortedLinks.forEach((link) => {
+      const escapedText = link.linkText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`\\b${escapedText}\\b`, 'gi');
 
-    // Convert URLs to clickable links
-    result = result.replace(
-      /(https?:\/\/[^\s<]+)/g,
-      (url) => {
-        const cleanUrl = normalizeMassclickUrl(url);
-        return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer">${cleanUrl}</a>`;
-      }
-    );
+      html = html.replace(regex,
+        `<a href="${link.url}" target="_blank" rel="noopener noreferrer" class="faq-link">${link.linkText}</a>`
+      );
+    });
 
-    // Convert patterns like "services in location" or "best services in trichy" to internal links
-    result = result.replace(
-      /\b(best\s+)?(top\s+)?([a-zA-Z\s]+?)\s+in\s+([a-zA-Z\s]+?)(?=[.,;!?\s]|$)/gi,
-      (match, best, top, category, location) => {
-        const cleanCategory = category.trim().replace(/\s+/g, "-").toLowerCase();
-        const cleanLocation = location.trim().replace(/\s+/g, "-").toLowerCase();
-        return `<a href="https://massclick.in/${cleanLocation}/${cleanCategory}" target="_blank" rel="noopener noreferrer">${match}</a>`;
-      }
-    );
-
-    return result;
+    return html;
   };
 
   const makeSlug = (text = "") =>
@@ -823,7 +806,7 @@ const BlogDetail = () => {
                       <p
                         className="faq-answer"
                         dangerouslySetInnerHTML={{
-                          __html: item.linkify ? linkifyText(item.answer) : item.answer,
+                          __html: renderFaqAnswer(item.answer, item.links),
                         }}
                       />
 

@@ -1188,6 +1188,19 @@ html {
   text-decoration: underline;
 }
 
+.faq-link {
+  color: var(--primary);
+  font-weight: 800;
+  text-decoration: none;
+  text-underline-offset: 4px;
+  transition: color 180ms ease, text-decoration 180ms ease;
+}
+
+.faq-link:hover {
+  color: var(--primary-dark);
+  text-decoration: underline;
+}
+
 .image-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

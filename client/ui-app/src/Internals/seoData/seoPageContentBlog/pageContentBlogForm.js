@@ -275,13 +275,34 @@ export default function SeoPageContentForm({
   const addFaq = () => {
     updateField("faq", [
       ...(formData.faq || []),
-      { question: "", answer: "", linkify: false },
+      { question: "", answer: "", links: [] },
     ]);
   };
 
   const updateFaq = (index, key, value) => {
     const updated = [...(formData.faq || [])];
     updated[index][key] = value;
+    updateField("faq", updated);
+  };
+
+  const addFaqLink = (faqIndex) => {
+    const updated = [...(formData.faq || [])];
+    if (!updated[faqIndex].links) {
+      updated[faqIndex].links = [];
+    }
+    updated[faqIndex].links.push({ linkText: "", url: "" });
+    updateField("faq", updated);
+  };
+
+  const updateFaqLink = (faqIndex, linkIndex, key, value) => {
+    const updated = [...(formData.faq || [])];
+    updated[faqIndex].links[linkIndex][key] = value;
+    updateField("faq", updated);
+  };
+
+  const removeFaqLink = (faqIndex, linkIndex) => {
+    const updated = [...(formData.faq || [])];
+    updated[faqIndex].links.splice(linkIndex, 1);
     updateField("faq", updated);
   };
 
@@ -1014,14 +1035,14 @@ export default function SeoPageContentForm({
           </Button>
         </div>
 
-        {(formData.faq || []).map((item, index) => (
-          <div className="faq-item" key={index}>
+        {(formData.faq || []).map((item, faqIndex) => (
+          <div className="faq-item" key={faqIndex}>
             <input
               placeholder="Question"
               value={item.question}
               onChange={(e) =>
                 updateFaq(
-                  index,
+                  faqIndex,
                   "question",
                   e.target.value
                 )
@@ -1029,37 +1050,81 @@ export default function SeoPageContentForm({
             />
 
             <textarea
-              placeholder="Answer"
+              placeholder="Answer (plain text)"
               value={item.answer}
               onChange={(e) =>
                 updateFaq(
-                  index,
+                  faqIndex,
                   "answer",
                   e.target.value
                 )
               }
             />
 
-            <div className="faq-linkify-option">
-              <label>
-                <input
-                  type="checkbox"
-                  checked={item.linkify || false}
-                  onChange={(e) =>
-                    updateFaq(
-                      index,
-                      "linkify",
-                      e.target.checked
-                    )
-                  }
-                />
-                Convert patterns to links (e.g., "service in location")
-              </label>
+            {/* Links Section */}
+            <div className="faq-links-section">
+              <div className="faq-links-header">
+                <label style={{ fontSize: "13px", fontWeight: 700, color: "#0f172a" }}>
+                  🔗 Add Links in Answer
+                </label>
+                <Button
+                  size="small"
+                  startIcon={<AddIcon />}
+                  onClick={() => addFaqLink(faqIndex)}
+                  sx={{ fontSize: "12px" }}
+                >
+                  Add Link
+                </Button>
+              </div>
+
+              {(item.links || []).map((link, linkIndex) => (
+                <div
+                  key={linkIndex}
+                  className="faq-link-row"
+                >
+                  <TextField
+                    size="small"
+                    placeholder="Link text (exact match)"
+                    value={link.linkText}
+                    onChange={(e) =>
+                      updateFaqLink(faqIndex, linkIndex, "linkText", e.target.value)
+                    }
+                    helperText="Text to make clickable"
+                    fullWidth
+                  />
+
+                  <TextField
+                    size="small"
+                    placeholder="URL"
+                    value={link.url}
+                    onChange={(e) =>
+                      updateFaqLink(faqIndex, linkIndex, "url", e.target.value)
+                    }
+                    helperText="https://massclick.in/..."
+                    fullWidth
+                  />
+
+                  <IconButton
+                    size="small"
+                    color="error"
+                    onClick={() => removeFaqLink(faqIndex, linkIndex)}
+                  >
+                    <DeleteOutlineIcon fontSize="small" />
+                  </IconButton>
+                </div>
+              ))}
+
+              {(!item.links || item.links.length === 0) && (
+                <div className="faq-no-links">
+                  No links added. Click "Add Link" to make words in the answer clickable.
+                </div>
+              )}
             </div>
 
             <IconButton
               color="error"
-              onClick={() => removeFaq(index)}
+              onClick={() => removeFaq(faqIndex)}
+              sx={{ mt: 1 }}
             >
               <DeleteOutlineIcon />
             </IconButton>
