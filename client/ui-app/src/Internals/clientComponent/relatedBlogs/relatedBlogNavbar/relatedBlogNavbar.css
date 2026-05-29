@@ -50,10 +50,6 @@ body {
   cursor: pointer;
   font-size: 12px;
   font-weight: 800;
-  transition:
-    transform 180ms ease,
-    box-shadow 180ms ease,
-    background 180ms ease;
 }
 
 .explore-btn:hover {
@@ -109,10 +105,6 @@ body {
   font: inherit;
   font-size: 14px;
   font-weight: 600;
-  transition:
-    border-color 180ms ease,
-    box-shadow 180ms ease,
-    background 180ms ease;
 }
 
 .search-wrapper input::placeholder {
@@ -137,6 +129,7 @@ body {
   pointer-events: none;
 }
 
+
 .nav-right {
   display: flex;
   align-items: center;
@@ -150,7 +143,6 @@ body {
   text-decoration: none;
   font-size: 14px;
   font-weight: 800;
-  transition: color 180ms ease;
 }
 
 .nav-link::after {
@@ -164,9 +156,6 @@ body {
   background: var(--mc-orange);
   opacity: 0;
   transform: scaleX(0.45);
-  transition:
-    opacity 180ms ease,
-    transform 180ms ease;
 }
 
 .nav-link:hover,
@@ -193,10 +182,6 @@ body {
   font-size: 14px;
   font-weight: 900;
   box-shadow: 0 12px 28px rgba(255, 107, 0, 0.28);
-  transition:
-    transform 180ms ease,
-    box-shadow 180ms ease,
-    filter 180ms ease;
 }
 
 .login-btn:hover,
@@ -242,19 +227,12 @@ body {
   font-weight: 800;
   white-space: nowrap;
   box-shadow: 0 8px 22px rgba(15, 23, 42, 0.045);
-  transition:
-    transform 180ms ease,
-    border-color 180ms ease,
-    box-shadow 180ms ease,
-    color 180ms ease,
-    background 180ms ease;
 }
 
 .category-icon {
   width: 18px !important;
   height: 18px !important;
   color: var(--mc-orange);
-  transition: color 180ms ease;
 }
 
 .category-pill:hover {

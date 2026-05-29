@@ -8,6 +8,7 @@ import { getPlaceholderImage } from "../../../../utils/placeholderImage";
 import { generateArticleSchema, generateBreadcrumbSchema } from "../../../../utils/seoSchemaGenerators";
 import "./blogDetails.css";
 import Navbar from "../relatedBlogNavbar/relatedBlogNavbar";
+import Breadcrumbs from "../../Breadcrumbs/Breadcrumbs";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import ArticleIcon from "@mui/icons-material/Article";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
@@ -596,7 +597,7 @@ const BlogDetail = () => {
           <script type="application/ld+json">{JSON.stringify(breadcrumbSchema)}</script>
         )}
       </Helmet>
-      <Navbar />
+      <Navbar tags={blog?.tags} location={blog?.location} />
       <main>
       <div className="reading-progress" aria-hidden="true">
         <span style={{ width: `${readingProgress}%` }} />
@@ -606,13 +607,16 @@ const BlogDetail = () => {
 
         <section className="blog-hero">
           <div className="blog-hero-copy">
-            <div className="breadcrumb">
-              <span>Home</span>
-              <span>&rsaquo;</span>
-              <span>{blog.category}</span>
-              <span>&rsaquo;</span>
-              <span>{blog.heading}</span>
-            </div>
+            <Breadcrumbs
+              items={[
+                { label: "Home", link: "/" },
+                {
+                  label: blog.category,
+                  link: `/${(blog.location || "trichy").toLowerCase().replace(/\s+/g, "-")}/${(blog.category || "services").toLowerCase().replace(/\s+/g, "-")}`
+                },
+                { label: blog.heading }
+              ]}
+            />
 
             <div className="blog-kicker">
               <span>
