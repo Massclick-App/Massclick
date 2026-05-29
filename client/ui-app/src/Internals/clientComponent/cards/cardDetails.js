@@ -704,7 +704,7 @@ const BusinessDetail = React.memo(() => {
               alt={business?.businessName}
               className="business-CardDetails-bannerImage"
               loading="eager"
-              fetchpriority="high"
+              fetchPriority="high"
               width="1200"
               height="600"
             />

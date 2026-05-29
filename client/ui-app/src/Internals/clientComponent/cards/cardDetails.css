@@ -1,15 +1,15 @@
 :root {
-  --bc-primary: #f97316;
-  --bc-primary-dark: #d85b08;
+  --bc-primary: #ff6b1a;
+  --bc-primary-dark: #c2410c;
   --bc-primary-soft: #fff4ec;
-  --bc-secondary: #1769e0;
-  --bc-whatsapp: #16b85f;
-  --bc-ink: #101828;
-  --bc-muted: #667085;
+  --bc-secondary: #0f5fd7;
+  --bc-whatsapp: #18b866;
+  --bc-ink: #111827;
+  --bc-muted: #5f6b7a;
   --bc-soft-text: #98a2b3;
-  --bc-page: #f3f6fa;
+  --bc-page: #f6f8fb;
   --bc-card-bg: #fff;
-  --bc-border: #e4e7ec;
+  --bc-border: #dde4ee;
   --bc-radius-lg: 14px;
   --bc-radius-md: 10px;
   --bc-radius-pill: 999px;
@@ -20,9 +20,9 @@
 
 .business-CardDetails-pageWrapper {
   background:
-    radial-gradient(circle at 12% 8%, rgba(249, 115, 22, 0.1), transparent 30%),
-    radial-gradient(circle at 86% 4%, rgba(23, 105, 224, 0.1), transparent 28%),
-    linear-gradient(180deg, #fff 0, #f7f9fd 210px, var(--bc-page) 100%);
+    linear-gradient(120deg, rgba(255, 107, 26, 0.08), transparent 28%),
+    linear-gradient(240deg, rgba(15, 95, 215, 0.08), transparent 30%),
+    linear-gradient(180deg, #ffffff 0, #f8fafc 230px, var(--bc-page) 100%);
   box-sizing: border-box;
   padding: 22px max(22px, calc((100% - var(--bc-max-width)) / 2)) 52px;
   width: 100%;
@@ -39,14 +39,15 @@
 }
 
 .business-CardDetails-mainImageContainer {
-  aspect-ratio: 16 / 6.2;
-  background: #101828;
-  border: 1px solid rgba(255, 255, 255, 0.86);
-  border-radius: 20px;
-  box-shadow: var(--bc-shadow-strong);
+  aspect-ratio: 16 / 7.1;
+  background:
+    linear-gradient(135deg, #172033 0%, #eef4fb 48%, #182033 100%);
+  border: 1px solid rgba(255, 255, 255, 0.92);
+  border-radius: 18px;
+  box-shadow: 0 24px 68px rgba(17, 24, 39, 0.16);
   cursor: zoom-in;
-  max-height: 400px;
-  min-height: 260px;
+  max-height: 540px;
+  min-height: 360px;
   overflow: hidden;
   position: relative;
   width: 100%;
@@ -54,31 +55,31 @@
 
 .business-CardDetails-bannerImage {
   display: block;
-  filter: saturate(1.08) contrast(1.02);
+  filter: saturate(1.05) contrast(1.02);
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   object-position: center;
   width: 100%;
 }
 
 .business-CardDetails-heroGradient {
   background:
-    linear-gradient(90deg, rgba(8, 13, 23, 0.82) 0%, rgba(8, 13, 23, 0.48) 42%, rgba(8, 13, 23, 0.1) 100%),
-    linear-gradient(0deg, rgba(8, 13, 23, 0.78) 0%, rgba(8, 13, 23, 0.08) 68%);
+    linear-gradient(90deg, rgba(6, 11, 22, 0.72) 0%, rgba(6, 11, 22, 0.38) 42%, rgba(6, 11, 22, 0.08) 100%),
+    linear-gradient(0deg, rgba(6, 11, 22, 0.74) 0%, rgba(6, 11, 22, 0.16) 58%, rgba(6, 11, 22, 0.02) 100%);
   inset: 0;
   position: absolute;
 }
 
 .business-CardDetails-heroMeta {
-  bottom: 24px;
+  bottom: 30px;
   color: #fff;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  left: 28px;
+  left: 32px;
   max-width: 860px;
   position: absolute;
-  right: 28px;
+  right: 32px;
 }
 
 .business-CardDetails-heroMetaPrimary {
@@ -89,13 +90,14 @@
 }
 
 .business-CardDetails-heroName {
-  font-size: 2.35rem;
+  color: #ffffff;
+  font-size: clamp(1.85rem, 3vw, 3.15rem);
   font-weight: 800;
   letter-spacing: 0;
   line-height: 1.08;
   margin: 0;
   max-width: 840px;
-  text-shadow: 0 10px 30px rgba(0, 0, 0, 0.42);
+  text-shadow: 0 10px 32px rgba(0, 0, 0, 0.48);
 }
 
 .business-CardDetails-heroRatingChip {
@@ -117,8 +119,8 @@
 }
 
 .business-CardDetails-heroAddress {
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 0.98rem;
+  color: rgba(255, 255, 255, 0.94);
+  font-size: 1rem;
   line-height: 1.45;
   margin: 0;
   max-width: 780px;
@@ -137,8 +139,8 @@
 }
 
 .business-CardDetails-heroHighlight {
-  background: rgba(255, 255, 255, 0.18);
-  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.34);
   border-radius: 999px;
   color: #fff;
   font-size: 0.74rem;
@@ -178,7 +180,7 @@
   align-items: start;
   display: grid;
   gap: 22px;
-  grid-template-columns: minmax(0, 1fr) 360px;
+  grid-template-columns: minmax(0, 1fr) 380px;
 }
 
 .business-CardDetails-leftColumn {
@@ -205,10 +207,10 @@
 .business-CardDetails-mapWrapper,
 .business-CardDetails-sidebarCard,
 .business-CardDetails-keywordsCard {
-  background: rgba(255, 255, 255, 0.97);
+  background: rgba(255, 255, 255, 0.99);
   border: 1px solid var(--bc-border);
-  border-radius: 18px;
-  box-shadow: var(--bc-shadow);
+  border-radius: 16px;
+  box-shadow: 0 14px 34px rgba(17, 24, 39, 0.08);
   overflow: hidden;
   padding: 22px 24px;
   position: relative;
@@ -597,10 +599,11 @@
 
 .business-CardDetails-photoItem {
   aspect-ratio: 5 / 3.4;
+  background: #f1f5f9;
   border-radius: var(--bc-radius-md);
   cursor: zoom-in;
   height: auto;
-  object-fit: cover;
+  object-fit: contain;
   transition: box-shadow 0.2s ease, transform 0.2s ease;
   width: 100%;
 }
@@ -637,14 +640,14 @@
 
 .business-CardDetails-sidebarHero {
   background:
-    radial-gradient(circle at top right, rgba(249, 115, 22, 0.42), transparent 38%),
-    linear-gradient(145deg, #101828, #182230 62%, #111827);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
+    linear-gradient(135deg, rgba(255, 107, 26, 0.92), rgba(255, 139, 52, 0.9) 0 34%, transparent 34%),
+    linear-gradient(145deg, #101828, #172033 62%, #0f172a);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
   color: #fff;
   box-shadow: 0 18px 42px rgba(16, 24, 40, 0.2);
   margin-bottom: 18px;
-  padding: 18px;
+  padding: 20px;
 }
 
 .business-CardDetails-sidebarKicker {
@@ -658,24 +661,36 @@
 }
 
 .business-CardDetails-sidebarHero h3 {
+  color: #ffffff;
   font-size: 1.12rem;
+  font-weight: 850;
   line-height: 1.3;
   margin: 0;
 }
 
 .business-CardDetails-sidebarHero p {
-  color: rgba(255, 255, 255, 0.72);
+  color: rgba(255, 255, 255, 0.84);
   font-size: 0.88rem;
   margin: 6px 0 14px;
 }
 
 .business-CardDetails-sidebarPrimaryBtn,
 .business-CardDetails-sidebarWhatsAppBtn {
+  border-radius: 12px;
+  font-size: 0.96rem;
+  min-height: 46px;
   width: 100%;
 }
 
 .business-CardDetails-sidebarWhatsAppBtn {
   margin-top: 9px;
+}
+
+.business-CardDetails-sidebarPrimaryBtn:hover,
+.business-CardDetails-sidebarWhatsAppBtn:hover,
+.business-CardDetails-btn:hover,
+.business-CardDetails-addressBtn:hover {
+  transform: translateY(-1px);
 }
 
 .business-CardDetails-sidebarTitle {
@@ -1341,8 +1356,8 @@
   }
 
   .business-CardDetails-mainImageContainer {
-    min-height: 380px;
-    max-height: 500px;
+    min-height: 430px;
+    max-height: 560px;
   }
 }
 
@@ -1357,8 +1372,8 @@
   }
 
   .business-CardDetails-mainImageContainer {
-    aspect-ratio: 16 / 6.2;
-    min-height: 300px;
+    aspect-ratio: 16 / 7.4;
+    min-height: 340px;
   }
 }
 
@@ -1376,9 +1391,9 @@
   }
 
   .business-CardDetails-mainImageContainer {
-    aspect-ratio: 16 / 6.8;
-    max-height: 320px;
-    min-height: 240px;
+    aspect-ratio: 16 / 8;
+    max-height: 440px;
+    min-height: 300px;
   }
 
   .business-CardDetails-sidebarCard {
@@ -1399,20 +1414,20 @@
   }
 
   .business-CardDetails-mainImageContainer {
-    aspect-ratio: 16 / 9;
+    aspect-ratio: 4 / 3;
     border-radius: var(--bc-radius-lg);
     max-height: none;
     min-height: 0;
   }
 
   .business-CardDetails-heroMeta {
-    bottom: 14px;
+    bottom: 16px;
     left: 14px;
     right: 14px;
   }
 
   .business-CardDetails-heroName {
-    font-size: 1.45rem;
+    font-size: 1.42rem;
     max-width: 100%;
   }
 
@@ -1495,7 +1510,7 @@
   }
 
   .business-CardDetails-mainImageContainer {
-    aspect-ratio: 4 / 3;
+    aspect-ratio: 3 / 4;
   }
 
   .business-CardDetails-heroMetaPrimary {
@@ -1505,7 +1520,7 @@
   }
 
   .business-CardDetails-heroName {
-    font-size: 1.32rem;
+    font-size: 1.22rem;
   }
 
   .business-CardDetails-actionLeft,
