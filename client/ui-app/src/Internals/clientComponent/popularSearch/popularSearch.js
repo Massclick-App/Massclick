@@ -71,6 +71,7 @@ const CardCarousel = () => {
   const dispatch = useDispatch();
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [pendingCard, setPendingCard] = useState(null);
+  const [submittingCard, setSubmittingCard] = useState(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [showError, setShowError] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -80,9 +81,6 @@ const CardCarousel = () => {
   );
   const popularSearchCards = useSelector(
     (state) => state.categoryReducer.popularSearchCards || []
-  );
-  const sendEnquiryLoading = useSelector(
-    (state) => state.businessListReducer.sendEnquiryLoading
   );
   const sendEnquiryError = useSelector(
     (state) => state.businessListReducer.sendEnquiryError
@@ -150,6 +148,8 @@ const CardCarousel = () => {
     try {
       if (!user?._id) return;
 
+      setSubmittingCard(card.title);
+
       const categoryName = card.title;
       const locationName = selectedDistrict || "Global";
 
@@ -197,6 +197,8 @@ const CardCarousel = () => {
       console.error("Enquiry failed:", error);
       setErrorMessage(getErrorMessage(error));
       setShowError(true);
+    } finally {
+      setSubmittingCard(null);
     }
   };
 
@@ -274,9 +276,9 @@ const CardCarousel = () => {
                       type="button"
                       className="popular-search__card-button"
                       onClick={() => handleEnquireClick(card)}
-                      disabled={sendEnquiryLoading}
+                      disabled={submittingCard === card.title}
                     >
-                      {sendEnquiryLoading ? "Sending..." : card.buttonText}
+                      {submittingCard === card.title ? "Sending..." : card.buttonText}
                     </button>
                   </div>
                 </article>
