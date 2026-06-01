@@ -8,6 +8,9 @@ import {
   getV2ServiceCardsAction,
   getV2MobileServiceCardsAction,
   getV2SubCategoriesAction,
+  getV2PopularSearchesAction,
+  getV2TopTouristAction,
+  getV2PopularCategoryContentAction,
 } from "../controller/categoryDisplaySettings/categoryDisplaySettingsController.js";
 import { oauthAuthentication } from "../helper/oauthHelper.js";
 import { cacheMiddleware } from "../middleware/cacheMiddleware.js";
@@ -29,5 +32,9 @@ router.get("/api/v2/category/popular", homeCategoryCache, getV2PopularCategories
 router.get("/api/v2/category/service-cards", homeCategoryCache, getV2ServiceCardsAction);
 router.get("/api/v2/category/mobile-service-cards", homeMobileCategoryCache, getV2MobileServiceCardsAction);
 router.get("/api/v2/category/sub/:parentSlug", categoryCache, getV2SubCategoriesAction);
+
+router.get("/api/v2/home/popular-searches",         homeCategoryCache, getV2PopularSearchesAction);
+router.get("/api/v2/home/top-tourist",              homeCategoryCache, getV2TopTouristAction);
+router.get("/api/v2/home/popular-category-content", homeCategoryCache, getV2PopularCategoryContentAction);
 
 export default router;

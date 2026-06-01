@@ -709,6 +709,11 @@ export default function CategoryDisplaySettings() {
   const [popularCategories, setPopularCategories] = useState([]);
   const [serviceCardSections, setServiceCardSections] = useState([]);
   const [subCategoryMapping, setSubCategoryMapping] = useState([]);
+  const [popularSearchCards, setPopularSearchCards] = useState([]);
+  const [topTouristPlaces, setTopTouristPlaces] = useState([]);
+  const [popularCategoryTabs, setPopularCategoryTabs] = useState([]);
+  const [popularCategoryServices, setPopularCategoryServices] = useState([]);
+  const [popularCategoryLinkSections, setPopularCategoryLinkSections] = useState([]);
   const [snapshot, setSnapshot] = useState(null);
 
   useEffect(() => {
@@ -732,12 +737,22 @@ export default function CategoryDisplaySettings() {
               { section: "Building Materials", desktopItems: [], mobileItems: [] },
             ],
       subCategoryMapping: settings.subCategoryMapping || [],
+      popularSearchCards: settings.popularSearchCards || [],
+      topTouristPlaces: settings.topTouristPlaces || [],
+      popularCategoryTabs: settings.popularCategoryTabs || [],
+      popularCategoryServices: settings.popularCategoryServices || [],
+      popularCategoryLinkSections: settings.popularCategoryLinkSections || [],
     };
     setHomeFeaturedDesktop(next.homeFeaturedDesktop);
     setHomeFeaturedMobile(next.homeFeaturedMobile);
     setPopularCategories(next.popularCategories);
     setServiceCardSections(next.serviceCardSections);
     setSubCategoryMapping(next.subCategoryMapping);
+    setPopularSearchCards(next.popularSearchCards);
+    setTopTouristPlaces(next.topTouristPlaces);
+    setPopularCategoryTabs(next.popularCategoryTabs);
+    setPopularCategoryServices(next.popularCategoryServices);
+    setPopularCategoryLinkSections(next.popularCategoryLinkSections);
     setSnapshot(JSON.stringify(next));
   }, [settings]);
 
@@ -748,8 +763,13 @@ export default function CategoryDisplaySettings() {
       popularCategories,
       serviceCardSections,
       subCategoryMapping,
+      popularSearchCards,
+      topTouristPlaces,
+      popularCategoryTabs,
+      popularCategoryServices,
+      popularCategoryLinkSections,
     }),
-    [homeFeaturedDesktop, homeFeaturedMobile, popularCategories, serviceCardSections, subCategoryMapping]
+    [homeFeaturedDesktop, homeFeaturedMobile, popularCategories, serviceCardSections, subCategoryMapping, popularSearchCards, topTouristPlaces, popularCategoryTabs, popularCategoryServices, popularCategoryLinkSections]
   );
 
   const dirty = snapshot !== null && JSON.stringify(current) !== snapshot;
@@ -772,6 +792,11 @@ export default function CategoryDisplaySettings() {
     setPopularCategories(s.popularCategories);
     setServiceCardSections(s.serviceCardSections);
     setSubCategoryMapping(s.subCategoryMapping);
+    setPopularSearchCards(s.popularSearchCards);
+    setTopTouristPlaces(s.topTouristPlaces);
+    setPopularCategoryTabs(s.popularCategoryTabs);
+    setPopularCategoryServices(s.popularCategoryServices);
+    setPopularCategoryLinkSections(s.popularCategoryLinkSections);
   };
 
   useEffect(() => {
@@ -869,6 +894,39 @@ export default function CategoryDisplaySettings() {
       detail: `${totalSubItems} sub-items`,
       accent: T.blue,
       accentTint: T.blueTint,
+    },
+    {
+      id: "popularSearchCards",
+      label: "Popular Searches",
+      desc: "Home enquiry cards",
+      icon: <StarBorderRoundedIcon sx={{ fontSize: 18 }} />,
+      stat: popularSearchCards.length,
+      statLabel: "cards",
+      detail: "Title, image key, button text, accent",
+      accent: T.amber,
+      accentTint: T.amberTint,
+    },
+    {
+      id: "topTourist",
+      label: "Top Tourist",
+      desc: "Destination cards",
+      icon: <HomeOutlinedIcon sx={{ fontSize: 18 }} />,
+      stat: topTouristPlaces.length,
+      statLabel: "places",
+      detail: "Name, image key, link path",
+      accent: T.green,
+      accentTint: T.greenTint,
+    },
+    {
+      id: "popularCategoryContent",
+      label: "Popular Categories",
+      desc: "Tabs · services · links",
+      icon: <GridViewOutlinedIcon sx={{ fontSize: 18 }} />,
+      stat: popularCategoryTabs.length,
+      statLabel: "tabs",
+      detail: `${popularCategoryServices.length} services · ${popularCategoryLinkSections.length} link sections`,
+      accent: T.purple,
+      accentTint: T.purpleTint,
     },
   ];
 
@@ -1125,6 +1183,163 @@ export default function CategoryDisplaySettings() {
                   }}
                 >
                   Add parent slug
+                </Button>
+              </Box>
+            )}
+
+            {/* Popular Search Cards */}
+            {open === "popularSearchCards" && (
+              <Box>
+                {popularSearchCards.map((card, i) => (
+                  <Card key={i} variant="outlined" sx={{ mb: 1.5, borderColor: T.line, borderRadius: 1.5 }}>
+                    <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 1.5, p: 2 }}>
+                      {[["title", "Title"], ["imageKey", "Image key (S3)"], ["buttonText", "Button text"], ["accent", "Accent colour"], ["alt", "Alt text"]].map(([field, label]) => (
+                        <TextField
+                          key={field}
+                          size="small"
+                          label={label}
+                          value={card[field] || ""}
+                          onChange={(e) => setPopularSearchCards((p) => {
+                            const next = [...p];
+                            next[i] = { ...next[i], [field]: e.target.value };
+                            return next;
+                          })}
+                          sx={{ "& .MuiOutlinedInput-root": { fontSize: 13, "& fieldset": { borderColor: T.line2 } } }}
+                        />
+                      ))}
+                      <Box sx={{ display: "flex", alignItems: "center" }}>
+                        <Tooltip title="Remove card">
+                          <IconButton size="small" onClick={() => setPopularSearchCards((p) => p.filter((_, j) => j !== i))} sx={{ color: T.ink3, "&:hover": { color: T.red, bgcolor: T.redTint } }}>
+                            <DeleteOutlineIcon sx={{ fontSize: 18 }} />
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
+                    </Box>
+                  </Card>
+                ))}
+                <Button variant="outlined" startIcon={<AddIcon />} onClick={() => setPopularSearchCards((p) => [...p, { title: "", imageKey: "", buttonText: "Enquire Now", accent: "#e67e22", alt: "" }])} sx={{ textTransform: "none", borderColor: T.line2, color: T.ink2, "&:hover": { bgcolor: T.surface2 } }}>
+                  Add card
+                </Button>
+              </Box>
+            )}
+
+            {/* Top Tourist Places */}
+            {open === "topTourist" && (
+              <Box>
+                {topTouristPlaces.map((place, i) => (
+                  <Card key={i} variant="outlined" sx={{ mb: 1.5, borderColor: T.line, borderRadius: 1.5 }}>
+                    <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 1.5, p: 2 }}>
+                      {[["name", "City name"], ["imageKey", "Image key (S3)"], ["alt", "Alt text"], ["path", "Link path"]].map(([field, label]) => (
+                        <TextField
+                          key={field}
+                          size="small"
+                          label={label}
+                          value={place[field] || ""}
+                          onChange={(e) => setTopTouristPlaces((p) => {
+                            const next = [...p];
+                            next[i] = { ...next[i], [field]: e.target.value };
+                            return next;
+                          })}
+                          sx={{ "& .MuiOutlinedInput-root": { fontSize: 13, "& fieldset": { borderColor: T.line2 } } }}
+                        />
+                      ))}
+                      <Box sx={{ display: "flex", alignItems: "center" }}>
+                        <Tooltip title="Remove place">
+                          <IconButton size="small" onClick={() => setTopTouristPlaces((p) => p.filter((_, j) => j !== i))} sx={{ color: T.ink3, "&:hover": { color: T.red, bgcolor: T.redTint } }}>
+                            <DeleteOutlineIcon sx={{ fontSize: 18 }} />
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
+                    </Box>
+                  </Card>
+                ))}
+                <Button variant="outlined" startIcon={<AddIcon />} onClick={() => setTopTouristPlaces((p) => [...p, { name: "", imageKey: "", alt: "", path: "" }])} sx={{ textTransform: "none", borderColor: T.line2, color: T.ink2, "&:hover": { bgcolor: T.surface2 } }}>
+                  Add place
+                </Button>
+              </Box>
+            )}
+
+            {/* Popular Category Content */}
+            {open === "popularCategoryContent" && (
+              <Box>
+                {/* Tabs */}
+                <Typography sx={{ fontWeight: 700, fontSize: 14, mb: 1.5, color: T.ink }}>Category Tabs</Typography>
+                {popularCategoryTabs.map((tab, i) => (
+                  <Card key={i} variant="outlined" sx={{ mb: 1.5, borderColor: T.line, borderRadius: 1.5 }}>
+                    <Box sx={{ p: 2 }}>
+                      <Stack direction="row" spacing={1.5} alignItems="flex-start">
+                        <TextField
+                          size="small"
+                          label="Category name"
+                          value={tab.category || ""}
+                          onChange={(e) => setPopularCategoryTabs((p) => { const n = [...p]; n[i] = { ...n[i], category: e.target.value }; return n; })}
+                          sx={{ minWidth: 200, "& .MuiOutlinedInput-root": { fontSize: 13, "& fieldset": { borderColor: T.line2 } } }}
+                        />
+                        <TextField
+                          size="small"
+                          label={`Keywords (${(tab.keywords || []).length}) — comma-separated`}
+                          multiline
+                          minRows={3}
+                          fullWidth
+                          value={(tab.keywords || []).join(", ")}
+                          onChange={(e) => setPopularCategoryTabs((p) => { const n = [...p]; n[i] = { ...n[i], keywords: e.target.value.split(",").map((k) => k.trim()).filter(Boolean) }; return n; })}
+                          sx={{ "& .MuiOutlinedInput-root": { fontSize: 12, "& fieldset": { borderColor: T.line2 } } }}
+                        />
+                        <Tooltip title="Remove tab">
+                          <IconButton size="small" onClick={() => setPopularCategoryTabs((p) => p.filter((_, j) => j !== i))} sx={{ color: T.ink3, mt: 0.5, "&:hover": { color: T.red, bgcolor: T.redTint } }}>
+                            <DeleteOutlineIcon sx={{ fontSize: 18 }} />
+                          </IconButton>
+                        </Tooltip>
+                      </Stack>
+                    </Box>
+                  </Card>
+                ))}
+                <Button variant="outlined" startIcon={<AddIcon />} onClick={() => setPopularCategoryTabs((p) => [...p, { category: "", keywords: [] }])} sx={{ textTransform: "none", borderColor: T.line2, color: T.ink2, mb: 3, "&:hover": { bgcolor: T.surface2 } }}>
+                  Add tab
+                </Button>
+
+                {/* Services */}
+                <Typography sx={{ fontWeight: 700, fontSize: 14, mb: 1.5, color: T.ink }}>Services</Typography>
+                {popularCategoryServices.map((svc, i) => (
+                  <Card key={i} variant="outlined" sx={{ mb: 1.5, borderColor: T.line, borderRadius: 1.5 }}>
+                    <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 1.5, p: 2 }}>
+                      {[["title", "Title"], ["icon", "Icon key"], ["route", "Route (optional)"], ["searchName", "Search name"], ["routeSlug", "Route slug"]].map(([field, label]) => (
+                        <TextField key={field} size="small" label={label} value={svc[field] || ""} onChange={(e) => setPopularCategoryServices((p) => { const n = [...p]; n[i] = { ...n[i], [field]: e.target.value }; return n; })} sx={{ "& .MuiOutlinedInput-root": { fontSize: 13, "& fieldset": { borderColor: T.line2 } } }} />
+                      ))}
+                      <TextField size="small" label="Description" multiline minRows={2} value={svc.description || ""} onChange={(e) => setPopularCategoryServices((p) => { const n = [...p]; n[i] = { ...n[i], description: e.target.value }; return n; })} sx={{ gridColumn: "1 / -1", "& .MuiOutlinedInput-root": { fontSize: 13, "& fieldset": { borderColor: T.line2 } } }} />
+                      <Box sx={{ display: "flex", alignItems: "center" }}>
+                        <Tooltip title="Remove service">
+                          <IconButton size="small" onClick={() => setPopularCategoryServices((p) => p.filter((_, j) => j !== i))} sx={{ color: T.ink3, "&:hover": { color: T.red, bgcolor: T.redTint } }}>
+                            <DeleteOutlineIcon sx={{ fontSize: 18 }} />
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
+                    </Box>
+                  </Card>
+                ))}
+                <Button variant="outlined" startIcon={<AddIcon />} onClick={() => setPopularCategoryServices((p) => [...p, { title: "", icon: "", description: "", route: "", searchName: "", routeSlug: "" }])} sx={{ textTransform: "none", borderColor: T.line2, color: T.ink2, mb: 3, "&:hover": { bgcolor: T.surface2 } }}>
+                  Add service
+                </Button>
+
+                {/* Link Sections */}
+                <Typography sx={{ fontWeight: 700, fontSize: 14, mb: 1.5, color: T.ink }}>Link Sections</Typography>
+                {popularCategoryLinkSections.map((sec, i) => (
+                  <Card key={i} variant="outlined" sx={{ mb: 1.5, borderColor: T.line, borderRadius: 1.5 }}>
+                    <Box sx={{ p: 2 }}>
+                      <Stack direction="row" spacing={1.5} alignItems="flex-start">
+                        <TextField size="small" label="Section title" value={sec.title || ""} onChange={(e) => setPopularCategoryLinkSections((p) => { const n = [...p]; n[i] = { ...n[i], title: e.target.value }; return n; })} sx={{ minWidth: 200, "& .MuiOutlinedInput-root": { fontSize: 13, "& fieldset": { borderColor: T.line2 } } }} />
+                        <TextField size="small" label={`Keywords (${(sec.keywords || []).length}) — comma-separated`} multiline minRows={3} fullWidth value={(sec.keywords || []).join(", ")} onChange={(e) => setPopularCategoryLinkSections((p) => { const n = [...p]; n[i] = { ...n[i], keywords: e.target.value.split(",").map((k) => k.trim()).filter(Boolean) }; return n; })} sx={{ "& .MuiOutlinedInput-root": { fontSize: 12, "& fieldset": { borderColor: T.line2 } } }} />
+                        <Tooltip title="Remove section">
+                          <IconButton size="small" onClick={() => setPopularCategoryLinkSections((p) => p.filter((_, j) => j !== i))} sx={{ color: T.ink3, mt: 0.5, "&:hover": { color: T.red, bgcolor: T.redTint } }}>
+                            <DeleteOutlineIcon sx={{ fontSize: 18 }} />
+                          </IconButton>
+                        </Tooltip>
+                      </Stack>
+                    </Box>
+                  </Card>
+                ))}
+                <Button variant="outlined" startIcon={<AddIcon />} onClick={() => setPopularCategoryLinkSections((p) => [...p, { title: "", keywords: [] }])} sx={{ textTransform: "none", borderColor: T.line2, color: T.ink2, "&:hover": { bgcolor: T.surface2 } }}>
+                  Add link section
                 </Button>
               </Box>
             )}

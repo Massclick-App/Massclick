@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import {
@@ -16,9 +16,7 @@ import {
 } from "lucide-react";
 import { logSearchActivity } from "../../../redux/actions/businessListAction";
 import { navigateToSearchResult } from "../../../utils/searchResultNavigation";
-import popularCategoriesData from "./popularCategoriesData.json";
-import popularCategoriesLinkSections from "./popularCategoriesLinkSections.json";
-import popularCategoriesServices from "./popularCategoriesServices.json";
+import { fetchPopularCategoryContent } from "../../../redux/actions/categoryAction";
 import "./popularCategories.css";
 
 const createSlug = (text = "") =>
@@ -53,9 +51,22 @@ const serviceIcons = {
 const PopularCategoriesLink = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const [activeCategory, setActiveCategory] = useState(
-    popularCategoriesData[0]?.category || ""
+
+  const { tabs = [], services: popularCategoriesServices = [], linkSections: popularCategoriesLinkSections = [] } = useSelector(
+    (state) => state.categoryReducer.popularCategoryContent || {}
   );
+
+  const [activeCategory, setActiveCategory] = useState("");
+
+  useEffect(() => {
+    dispatch(fetchPopularCategoryContent());
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (tabs.length > 0 && !activeCategory) {
+      setActiveCategory(tabs[0].category);
+    }
+  }, [tabs, activeCategory]);
 
   const selectedDistrict = useSelector(
     (state) => state.locationReducer.selectedDistrict
@@ -68,10 +79,10 @@ const PopularCategoriesLink = () => {
 
   const activeKeywords = useMemo(() => {
     return (
-      popularCategoriesData.find((item) => item.category === activeCategory)
+      tabs.find((item) => item.category === activeCategory)
         ?.keywords || []
     );
-  }, [activeCategory]);
+  }, [activeCategory, tabs]);
 
   const handleKeywordClick = (keyword) => {
     const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
@@ -139,7 +150,7 @@ const PopularCategoriesLink = () => {
     });
   };
 
-  if (!popularCategoriesData.length) return null;
+  if (!tabs.length) return null;
 
   return (
     <section className="popular-categories-links" aria-label="Popular Categories">
@@ -152,7 +163,7 @@ const PopularCategoriesLink = () => {
         </div>
 
         <div className="popular-categories-links__tabs" role="tablist">
-          {popularCategoriesData.map((item) => {
+          {tabs.map((item) => {
             const isActive = item.category === activeCategory;
 
             return (

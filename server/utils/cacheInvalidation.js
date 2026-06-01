@@ -111,6 +111,9 @@ export const invalidateCategoryDisplaySettingsCache = async () => {
       'popular-categories:home:v2',
       'service-cards:home:v2',
       'service-cards:mobile:v2',
+      'popular-searches:home:v2',
+      'top-tourist:home:v2',
+      'popular-category-content:home:v2',
     ];
     const patternResults = await Promise.all(
       patterns.map(pattern => deleteCachePattern(pattern))

@@ -1,5 +1,6 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { Link } from "react-router-dom";
+import { useDispatch, useSelector } from 'react-redux';
 import Bangalore from "../../../assets/toptourist/bangalore.webp";
 import Chennai from "../../../assets/toptourist/chennai.webp";
 import Hyderabad from "../../../assets/toptourist/hyderabad.webp";
@@ -10,16 +11,23 @@ import KeyboardDoubleArrowLeftIcon from '@mui/icons-material/KeyboardDoubleArrow
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 
 import './topTourist.css';
+import { fetchTopTouristPlaces } from '../../../redux/actions/categoryAction';
 
-const trendingServices = [
-  { id: 1, name: "Ooty", image: Ooty, alt: "Ooty Hills", path: "/trending/ooty" },
-  { id: 2, name: "Bangalore", image: Bangalore, alt: "Bangalore City", path: "/trending/bangalore" },
-  { id: 3, name: "Chennai", image: Chennai, alt: "Chennai City", path: "/trending/chennai" },
-  { id: 4, name: "Hyderabad", image: Hyderabad, alt: "Hyderabad City", path: "/trending/hyderabad" },
-];
+const staticFallbackMap = {
+  Ooty:      Ooty,
+  Bangalore: Bangalore,
+  Chennai:   Chennai,
+  Hyderabad: Hyderabad,
+};
 
 const TopTourist = () => {
   const carouselRef = useRef(null);
+  const dispatch = useDispatch();
+  const topTouristPlaces = useSelector((state) => state.categoryReducer.topTouristPlaces || []);
+
+  useEffect(() => {
+    dispatch(fetchTopTouristPlaces());
+  }, [dispatch]);
 
   const scrollRight = () => {
     carouselRef.current?.scrollBy({ left: 320, behavior: "smooth" });
@@ -53,22 +61,24 @@ const TopTourist = () => {
         {/* <div className="tourist-fade-right"></div> */}
 
         <div className="tourist-carousel" ref={carouselRef}>
-          {trendingServices.map((service) => (
-            <Link key={service.id} to={service.path} className="tourist-card">
-
-              <div className="tourist-img-wrapper">
-                <img src={service.image} alt={service.alt} className="tourist-img" />
-              </div>
-
-              <div className="tourist-info">
-                <p className="tourist-name">{service.name}</p>
-                <div className="tourist-explore">
-                  Explore <ChevronRightIcon />
+          {topTouristPlaces.map((place, index) => {
+            const imgSrc = place.imageUrl || staticFallbackMap[place.name] || null;
+            return (
+              <Link key={index} to={place.path} className="tourist-card">
+                {imgSrc && (
+                  <div className="tourist-img-wrapper">
+                    <img src={imgSrc} alt={place.alt} className="tourist-img" />
+                  </div>
+                )}
+                <div className="tourist-info">
+                  <p className="tourist-name">{place.name}</p>
+                  <div className="tourist-explore">
+                    Explore <ChevronRightIcon />
+                  </div>
                 </div>
-              </div>
-
-            </Link>
-          ))}
+              </Link>
+            );
+          })}
         </div>
       </div>
 

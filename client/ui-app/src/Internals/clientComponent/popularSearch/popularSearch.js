@@ -1,9 +1,8 @@
 import React, { useRef, useState, useEffect } from "react";
 import "./CardCarousel.css";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
-import { useSelector } from "react-redux";
 
 import KeyboardDoubleArrowRightIcon from "@mui/icons-material/KeyboardDoubleArrowRight";
 import KeyboardDoubleArrowLeftIcon from "@mui/icons-material/KeyboardDoubleArrowLeft";
@@ -13,16 +12,17 @@ import HotelRoom from "../../../assets/popular/hotelroom.webp";
 import Photography from "../../../assets/popular/photography.webp";
 import { createEnquiryNow } from "../../../redux/actions/popularSearchesAction";
 import { logSearchActivity } from "../../../redux/actions/businessListAction";
+import { fetchPopularSearches } from "../../../redux/actions/categoryAction";
 import OTPLoginModal from "../AddBusinessModel";
 
-const cardsData = [
-  { title: "CCTV", image: Cctv, buttonText: "Enquire Now", accent: "#e67e22", alt: "CCTV camera installation" },
-  { title: "Hotels", image: HotelRoom, buttonText: "Enquire Now", accent: "#e67e22", alt: "Modern hotel room" },
-  { title: "Photography", image: Photography, buttonText: "Enquire Now", accent: "#e67e22", alt: "Photographer with camera" },
-  { title: "Education", image: Education, buttonText: "Enquire Now", accent: "#e67e22", alt: "Graduation scroll" },
-  { title: "Logistics", image: Cctv, buttonText: "Enquire Now", accent: "#5dade2", alt: "Logistics and delivery" },
-  { title: "Consulting", image: HotelRoom, buttonText: "Enquire Now", accent: "#2ecc71", alt: "Business consulting" },
-];
+const staticFallbackMap = {
+  CCTV:        Cctv,
+  Hotels:      HotelRoom,
+  Photography: Photography,
+  Education:   Education,
+  Logistics:   Cctv,
+  Consulting:  HotelRoom,
+};
 
 const CardCarousel = () => {
   const containerRef = useRef(null);
@@ -34,9 +34,17 @@ const CardCarousel = () => {
 
   const authUser = JSON.parse(localStorage.getItem("authUser") || "null");
 
-const selectedDistrict = useSelector(
-  (state) => state.locationReducer.selectedDistrict
-);
+  const selectedDistrict = useSelector(
+    (state) => state.locationReducer.selectedDistrict
+  );
+
+  const popularSearchCards = useSelector(
+    (state) => state.categoryReducer.popularSearchCards || []
+  );
+
+  useEffect(() => {
+    dispatch(fetchPopularSearches());
+  }, [dispatch]);
 
   // Cache card width to avoid forced reflows on every scroll
   useEffect(() => {
@@ -164,27 +172,32 @@ const selectedDistrict = useSelector(
             <div className="popular-search__fade popular-search__fade--right" /> */}
 
             <div className="popular-search__track" ref={containerRef}>
-              {cardsData.map((card, index) => (
-                <article
-                  className="popular-search__card"
-                  key={index}
-                  style={{ "--accent-color": card.accent }}
-                >
-                  <div className="popular-search__card-image-wrapper">
-                    <img src={card.image} alt={card.alt} className="popular-search__card-image" />
-                  </div>
-                  <div className="popular-search__card-body">
-                    <div className="popular-search__card-tag">Popular</div>
-                    <h3 className="popular-search__card-title">{card.title}</h3>
-                    <button
-                      className="popular-search__card-button"
-                      onClick={() => handleEnquireClick(card)}
-                    >
-                      {card.buttonText}
-                    </button>
-                  </div>
-                </article>
-              ))}
+              {popularSearchCards.map((card, index) => {
+                const imgSrc = card.imageUrl || staticFallbackMap[card.title] || null;
+                return (
+                  <article
+                    className="popular-search__card"
+                    key={index}
+                    style={{ "--accent-color": card.accent }}
+                  >
+                    {imgSrc && (
+                      <div className="popular-search__card-image-wrapper">
+                        <img src={imgSrc} alt={card.alt} className="popular-search__card-image" />
+                      </div>
+                    )}
+                    <div className="popular-search__card-body">
+                      <div className="popular-search__card-tag">Popular</div>
+                      <h3 className="popular-search__card-title">{card.title}</h3>
+                      <button
+                        className="popular-search__card-button"
+                        onClick={() => handleEnquireClick(card)}
+                      >
+                        {card.buttonText}
+                      </button>
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           </div>
         </div>

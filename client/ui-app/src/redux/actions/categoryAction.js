@@ -8,7 +8,10 @@ import {
   FETCH_HOME_CATEGORY_REQUEST, FETCH_HOME_CATEGORY_SUCCESS, FETCH_HOME_CATEGORY_FAILURE,
   FETCH_SUB_CATEGORY_REQUEST, FETCH_SUB_CATEGORY_SUCCESS, FETCH_SUB_CATEGORY_FAILURE,
   FETCH_POPULAR_CATEGORY_REQUEST, FETCH_POPULAR_CATEGORY_SUCCESS, FETCH_POPULAR_CATEGORY_FAILURE,
-  FETCH_SERVICE_CARDS_REQUEST, FETCH_SERVICE_CARDS_SUCCESS, FETCH_SERVICE_CARDS_FAILURE
+  FETCH_SERVICE_CARDS_REQUEST, FETCH_SERVICE_CARDS_SUCCESS, FETCH_SERVICE_CARDS_FAILURE,
+  FETCH_POPULAR_SEARCHES_REQUEST, FETCH_POPULAR_SEARCHES_SUCCESS, FETCH_POPULAR_SEARCHES_FAILURE,
+  FETCH_TOP_TOURIST_REQUEST, FETCH_TOP_TOURIST_SUCCESS, FETCH_TOP_TOURIST_FAILURE,
+  FETCH_POPULAR_CATEGORY_CONTENT_REQUEST, FETCH_POPULAR_CATEGORY_CONTENT_SUCCESS, FETCH_POPULAR_CATEGORY_CONTENT_FAILURE,
 } from "../actions/userActionTypes.js";
 import { getClientToken } from "./clientAuthAction.js";
 
@@ -222,6 +225,36 @@ export const fetchServiceCards = () => async (dispatch) => {
       type: FETCH_SERVICE_CARDS_FAILURE,
       payload: error.response?.data || error.message
     });
+  }
+};
+
+export const fetchPopularSearches = () => async (dispatch) => {
+  try {
+    dispatch({ type: FETCH_POPULAR_SEARCHES_REQUEST });
+    const response = await axiosInstance.get(`${API_URL}/v2/home/popular-searches`);
+    dispatch({ type: FETCH_POPULAR_SEARCHES_SUCCESS, payload: response.data });
+  } catch (error) {
+    dispatch({ type: FETCH_POPULAR_SEARCHES_FAILURE, payload: error.response?.data || error.message });
+  }
+};
+
+export const fetchTopTouristPlaces = () => async (dispatch) => {
+  try {
+    dispatch({ type: FETCH_TOP_TOURIST_REQUEST });
+    const response = await axiosInstance.get(`${API_URL}/v2/home/top-tourist`);
+    dispatch({ type: FETCH_TOP_TOURIST_SUCCESS, payload: response.data });
+  } catch (error) {
+    dispatch({ type: FETCH_TOP_TOURIST_FAILURE, payload: error.response?.data || error.message });
+  }
+};
+
+export const fetchPopularCategoryContent = () => async (dispatch) => {
+  try {
+    dispatch({ type: FETCH_POPULAR_CATEGORY_CONTENT_REQUEST });
+    const response = await axiosInstance.get(`${API_URL}/v2/home/popular-category-content`);
+    dispatch({ type: FETCH_POPULAR_CATEGORY_CONTENT_SUCCESS, payload: response.data });
+  } catch (error) {
+    dispatch({ type: FETCH_POPULAR_CATEGORY_CONTENT_FAILURE, payload: error.response?.data || error.message });
   }
 };
 
