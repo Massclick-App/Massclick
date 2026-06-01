@@ -1,11 +1,26 @@
-// EnquiryPage.jsx
-import React, { useEffect, useState, useMemo } from "react";
-import "./enquiry-page.css";
+import React, { useEffect, useState, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   getAllStartProjects,
   editStartProject,
 } from "../../redux/actions/startProjectAction.js";
+import CustomizedTable from "../../components/Table/CustomizedTable.js";
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Box,
+  Typography,
+  Grid,
+  Chip,
+  Avatar,
+} from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import ErrorIcon from "@mui/icons-material/Error";
+import "./enquiry-page.css";
 
 export default function EnquiryPage() {
   const dispatch = useDispatch();
@@ -15,32 +30,40 @@ export default function EnquiryPage() {
   );
 
   const [selectedEnquiry, setSelectedEnquiry] = useState(null);
-  const [openDrawer, setOpenDrawer] = useState(false);
-
-  // New: search + status filter
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("open"); // 'open' | 'closed' | 'all'
+  const [openDetails, setOpenDetails] = useState(false);
 
   useEffect(() => {
     dispatch(getAllStartProjects());
   }, [dispatch]);
 
-  // --- Summary metrics ---
-  const totalEnquiries = projects.length;
-  const openEnquiries = projects.filter((p) => p.isActive !== false).length;
-  const closedEnquiries = projects.filter((p) => p.isActive === false).length;
-  const todayEnquiries = projects.filter((p) => {
-    if (!p.submittedAt) return false;
-    const d = new Date(p.submittedAt);
-    const today = new Date();
-    return (
-      d.getFullYear() === today.getFullYear() &&
-      d.getMonth() === today.getMonth() &&
-      d.getDate() === today.getDate()
-    );
-  }).length;
+  const handleFetchData = useCallback((pageNo, pageSize, options) => {
+    dispatch(getAllStartProjects());
+  }, [dispatch]);
 
-  // --- Helpers ---
+  const handleRowClick = (row) => {
+    setSelectedEnquiry(row);
+    setOpenDetails(true);
+  };
+
+  const handleCloseDetails = () => {
+    setOpenDetails(false);
+    setTimeout(() => setSelectedEnquiry(null), 300);
+  };
+
+  const handleMarkClosed = (item) => {
+    const confirmClose = window.confirm(
+      "Mark this enquiry as closed? You can still view it later from the filters."
+    );
+    if (!confirmClose) return;
+
+    dispatch(editStartProject(item._id, { isActive: false }))
+      .then(() => {
+        dispatch(getAllStartProjects());
+        handleCloseDetails();
+      })
+      .catch((err) => console.log(err));
+  };
+
   const getInitials = (name = "") => {
     const parts = name.trim().split(" ").filter(Boolean);
     if (!parts.length) return "U";
@@ -48,427 +71,480 @@ export default function EnquiryPage() {
     return (parts[0].charAt(0) + parts[1].charAt(0)).toUpperCase();
   };
 
-  const isNewEnquiry = (submittedAt) => {
-    if (!submittedAt) return false;
-    const diff = Date.now() - new Date(submittedAt).getTime();
-    const twoDays = 1000 * 60 * 60 * 24 * 2;
-    return diff < twoDays;
-  };
+  const totalEnquiries = projects.length;
+  const openEnquiries = projects.filter((p) => p.isActive !== false).length;
+  const closedEnquiries = projects.filter((p) => p.isActive === false).length;
 
-  // --- Filter + sort enquiries for display ---
-  const filteredEnquiries = useMemo(() => {
-    let list = [...projects];
-
-    // status filter
-    list = list.filter((p) => {
-      if (statusFilter === "open") return p.isActive !== false;
-      if (statusFilter === "closed") return p.isActive === false;
-      return true; // all
-    });
-
-    // search filter
-    if (searchTerm.trim()) {
-      const query = searchTerm.toLowerCase();
-      list = list.filter((p) => {
-        const fullName = (p.fullName || "").toLowerCase();
-        const businessName = (p.businessName || "").toLowerCase();
-        const email = (p.email || "").toLowerCase();
-        const phone = (p.contactNumber || "").toLowerCase();
-        return (
-          fullName.includes(query) ||
-          businessName.includes(query) ||
-          email.includes(query) ||
-          phone.includes(query)
-        );
-      });
-    }
-
-    // sort: latest first
-    list.sort((a, b) => {
-      const ta = a.submittedAt ? new Date(a.submittedAt).getTime() : 0;
-      const tb = b.submittedAt ? new Date(b.submittedAt).getTime() : 0;
-      return tb - ta;
-    });
-
-    return list;
-  }, [projects, searchTerm, statusFilter]);
-
-  // --- Handlers ---
-  const handleView = (item) => {
-    setSelectedEnquiry(item);
-    setOpenDrawer(true);
-  };
-
-  const handleCloseDrawer = () => {
-    setSelectedEnquiry(null);
-    setOpenDrawer(false);
-  };
-
-  const handleCloseEnquiry = (item) => {
-    const confirmClose = window.confirm(
-      "Mark this enquiry as closed? You can still view it later from the Closed filter."
-    );
-    if (!confirmClose) return;
-
-    dispatch(editStartProject(item._id, { isActive: false }))
-      .then(() => dispatch(getAllStartProjects()))
-      .catch((err) => console.log(err));
-  };
+  const columns = [
+    {
+      id: "fullName",
+      label: "Name / Business",
+      renderCell: (value, row) => (
+        <Box onClick={() => handleRowClick(row)} sx={{ cursor: "pointer" }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Avatar sx={{ width: 32, height: 32, backgroundColor: "#ff7a00" }}>
+              {getInitials(row.fullName || row.businessName)}
+            </Avatar>
+            <Box>
+              <Typography sx={{ fontWeight: 600, fontSize: "14px" }}>
+                {row.fullName}
+              </Typography>
+              {row.businessName && (
+                <Typography sx={{ fontSize: "12px", color: "#6b7280" }}>
+                  {row.businessName}
+                </Typography>
+              )}
+            </Box>
+          </Box>
+        </Box>
+      ),
+    },
+    {
+      id: "email",
+      label: "Email",
+      renderCell: (value) => (
+        <Typography sx={{ fontSize: "13px", color: "#1f2937" }}>
+          {value || "—"}
+        </Typography>
+      ),
+    },
+    {
+      id: "contactNumber",
+      label: "Phone",
+      renderCell: (value) => (
+        <Typography sx={{ fontSize: "13px", color: "#1f2937" }}>
+          {value || "—"}
+        </Typography>
+      ),
+    },
+    {
+      id: "city",
+      label: "Location",
+      renderCell: (value, row) => (
+        <Typography sx={{ fontSize: "13px", color: "#1f2937" }}>
+          {value || row.state || "—"}
+        </Typography>
+      ),
+    },
+    {
+      id: "submittedAt",
+      label: "Date",
+      renderCell: (value) =>
+        value ? new Date(value).toLocaleDateString() : "—",
+    },
+    {
+      id: "isActive",
+      label: "Status",
+      renderCell: (value) => (
+        <Box
+          sx={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 0.5,
+            px: 1.5,
+            py: 0.5,
+            borderRadius: "16px",
+            backgroundColor: value !== false ? "#d1fae5" : "#fee2e2",
+            color: value !== false ? "#065f46" : "#991b1b",
+            fontSize: "12px",
+            fontWeight: 600,
+          }}
+        >
+          {value !== false ? (
+            <>
+              <CheckCircleIcon sx={{ fontSize: "14px" }} />
+              Open
+            </>
+          ) : (
+            <>
+              <ErrorIcon sx={{ fontSize: "14px" }} />
+              Closed
+            </>
+          )}
+        </Box>
+      ),
+    },
+    {
+      id: "action",
+      label: "Action",
+      renderCell: (_, row) => (
+        <Button
+          variant="contained"
+          size="small"
+          onClick={() => handleRowClick(row)}
+          sx={{
+            backgroundColor: "#ff7a00",
+            textTransform: "none",
+            "&:hover": { backgroundColor: "#e56a00" },
+          }}
+        >
+          View
+        </Button>
+      ),
+    },
+  ];
 
   return (
-    <div className="business-enquiry-container">
-      {/* Top header + metrics */}
-      <header className="be-header-row">
-        <div className="be-header-left">
-          <h2 className="business-enquiry-title">Business Enquiries</h2>
-          <p className="business-enquiry-sub">
-            Central inbox for all enquiries coming from your website &amp; lead
-            forms. Reach out, update status, and never miss a potential client.
-          </p>
-        </div>
+    <>
+      {/* Metrics Header */}
+      <Box sx={{ px: 3, pt: 3, pb: 2 }}>
+        <Typography variant="h4" sx={{ fontWeight: 800, mb: 1 }}>
+          Business Enquiries
+        </Typography>
+        <Typography sx={{ color: "#6b7280", mb: 3 }}>
+          Central inbox for all enquiries coming from your website & lead forms.
+          Reach out, update status, and never miss a potential client.
+        </Typography>
 
-        <div className="be-header-metrics">
-          <div className="be-metric-card primary">
-            <div className="be-metric-label">Total</div>
-            <div className="be-metric-value">{totalEnquiries}</div>
-            <div className="be-metric-sub">All enquiries</div>
-          </div>
-          <div className="be-metric-card">
-            <div className="be-metric-label">Open</div>
-            <div className="be-metric-value">{openEnquiries}</div>
-            <div className="be-metric-sub">Awaiting action</div>
-          </div>
-          <div className="be-metric-card">
-            <div className="be-metric-label">Closed</div>
-            <div className="be-metric-value">{closedEnquiries}</div>
-            <div className="be-metric-sub">Handled</div>
-          </div>
-          <div className="be-metric-card">
-            <div className="be-metric-label">Today</div>
-            <div className="be-metric-value">{todayEnquiries}</div>
-            <div className="be-metric-sub">New today</div>
-          </div>
-        </div>
-      </header>
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Grid item xs={12} sm={6} md={3}>
+            <Box
+              sx={{
+                background:
+                  "linear-gradient(135deg, #fff7ed 0%, #ffffff 100%)",
+                border: "1px solid rgba(234, 88, 12, 0.3)",
+                borderRadius: "12px",
+                p: 2,
+              }}
+            >
+              <Typography sx={{ fontSize: "11px", fontWeight: 600, color: "#9ca3af", textTransform: "uppercase" }}>
+                Total
+              </Typography>
+              <Typography sx={{ fontSize: "28px", fontWeight: 700, my: 1 }}>
+                {totalEnquiries}
+              </Typography>
+              <Typography sx={{ fontSize: "12px", color: "#6b7280" }}>
+                All enquiries
+              </Typography>
+            </Box>
+          </Grid>
 
-      {/* Controls row */}
-      <div className="be-controls-row">
-        <div className="be-search-wrapper">
-          <input
-            type="text"
-            className="be-search-input"
-            placeholder="Search by name, business, email or phone..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+          <Grid item xs={12} sm={6} md={3}>
+            <Box
+              sx={{
+                background: "#ffffff",
+                border: "1px solid #e5e7eb",
+                borderRadius: "12px",
+                p: 2,
+              }}
+            >
+              <Typography sx={{ fontSize: "11px", fontWeight: 600, color: "#9ca3af", textTransform: "uppercase" }}>
+                Open
+              </Typography>
+              <Typography sx={{ fontSize: "28px", fontWeight: 700, my: 1, color: "#065f46" }}>
+                {openEnquiries}
+              </Typography>
+              <Typography sx={{ fontSize: "12px", color: "#6b7280" }}>
+                Awaiting action
+              </Typography>
+            </Box>
+          </Grid>
+
+          <Grid item xs={12} sm={6} md={3}>
+            <Box
+              sx={{
+                background: "#ffffff",
+                border: "1px solid #e5e7eb",
+                borderRadius: "12px",
+                p: 2,
+              }}
+            >
+              <Typography sx={{ fontSize: "11px", fontWeight: 600, color: "#9ca3af", textTransform: "uppercase" }}>
+                Closed
+              </Typography>
+              <Typography sx={{ fontSize: "28px", fontWeight: 700, my: 1, color: "#991b1b" }}>
+                {closedEnquiries}
+              </Typography>
+              <Typography sx={{ fontSize: "12px", color: "#6b7280" }}>
+                Handled
+              </Typography>
+            </Box>
+          </Grid>
+
+          <Grid item xs={12} sm={6} md={3}>
+            <Box
+              sx={{
+                background: "#ffffff",
+                border: "1px solid #e5e7eb",
+                borderRadius: "12px",
+                p: 2,
+              }}
+            >
+              <Typography sx={{ fontSize: "11px", fontWeight: 600, color: "#9ca3af", textTransform: "uppercase" }}>
+                Response Rate
+              </Typography>
+              <Typography sx={{ fontSize: "28px", fontWeight: 700, my: 1 }}>
+                {totalEnquiries > 0 ? Math.round((closedEnquiries / totalEnquiries) * 100) : 0}%
+              </Typography>
+              <Typography sx={{ fontSize: "12px", color: "#6b7280" }}>
+                Closure rate
+              </Typography>
+            </Box>
+          </Grid>
+        </Grid>
+      </Box>
+
+      {/* Table */}
+      <CustomizedTable
+        title="All Enquiries"
+        columns={columns}
+        data={projects}
+        total={totalEnquiries}
+        fetchData={handleFetchData}
+        enableSearch={true}
+        enableStatusFilter={false}
+      />
+
+      {/* Details Modal */}
+      <Dialog
+        open={openDetails}
+        onClose={handleCloseDetails}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: "12px",
+            boxShadow: "0 20px 50px rgba(0,0,0,0.15)",
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            fontSize: "18px",
+            fontWeight: 700,
+            borderBottom: "1px solid #e5e7eb",
+            pb: 2,
+          }}
+        >
+          Enquiry Details
+          <CloseIcon
+            onClick={handleCloseDetails}
+            sx={{ cursor: "pointer", fontSize: "20px" }}
           />
-        </div>
+        </DialogTitle>
 
-        <div className="be-filter-tabs">
-          <button
-            type="button"
-            className={`be-filter-tab ${
-              statusFilter === "open" ? "active" : ""
-            }`}
-            onClick={() => setStatusFilter("open")}
-          >
-            Open
-          </button>
-          <button
-            type="button"
-            className={`be-filter-tab ${
-              statusFilter === "closed" ? "active" : ""
-            }`}
-            onClick={() => setStatusFilter("closed")}
-          >
-            Closed
-          </button>
-          <button
-            type="button"
-            className={`be-filter-tab ${
-              statusFilter === "all" ? "active" : ""
-            }`}
-            onClick={() => setStatusFilter("all")}
-          >
-            All
-          </button>
-        </div>
-      </div>
-
-      {/* List / loader / empty states */}
-
-      {!loading && filteredEnquiries.length === 0 && (
-        <div className="be-empty-state">
-          <h3>No enquiries found</h3>
-          <p>
-            Try adjusting your filters or search. New enquiries will appear here
-            automatically as they come in.
-          </p>
-        </div>
-      )}
-
-      {!loading && filteredEnquiries.length > 0 && (
-        <div className="business-enquiry-card-list">
-          {filteredEnquiries.map((item) => {
-            const status = item.isActive === false ? "Closed" : "Open";
-            const statusClass =
-              item.isActive === false ? "status-closed" : "status-open";
-
-            const isNew = isNewEnquiry(item.submittedAt);
-            const initials = getInitials(item.fullName || item.businessName);
-
-            return (
-              <div key={item._id} className="business-enquiry-card">
-                {/* Card header */}
-                <div className="business-enquiry-header">
-                  <div className="be-header-left-side">
-                    <div className="be-avatar-circle">{initials}</div>
-
-                    <div className="be-name-block">
-                      <div className="be-name-row">
-                        <h3 className="business-enquiry-name">
-                          {item.fullName}
-                          {item.businessName
-                            ? ` (${item.businessName})`
-                            : ""}
-                        </h3>
-                        {isNew && (
-                          <span className="be-badge-new">New</span>
-                        )}
-                      </div>
-
-                      <div className="be-meta-row">
-                        {item.submittedAt && (
-                          <span>
-                            {new Date(
-                              item.submittedAt
-                            ).toLocaleDateString()}{" "}
-                            ·{" "}
-                            {new Date(
-                              item.submittedAt
-                            ).toLocaleTimeString()}
-                          </span>
-                        )}
-                        {(item.city || item.state) && (
-                          <>
-                            <span className="be-dot">•</span>
-                            <span>
-                              {item.city}
-                              {item.city && item.state ? ", " : ""}
-                              {item.state}
-                            </span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="business-enquiry-btn-group">
-                    <span className={`be-status-pill ${statusClass}`}>
-                      {status}
-                    </span>
-
-                    <div className="business-enquiry-btn-row">
-                      <button
-                        className="business-enquiry-view-btn"
-                        onClick={() => handleView(item)}
-                      >
-                        View
-                      </button>
-
-                      {item.isActive !== false && (
-                        <button
-                          className="business-enquiry-close-btn"
-                          onClick={() => handleCloseEnquiry(item)}
-                        >
-                          Close
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Message preview + details */}
-                <p className="business-enquiry-text be-message-preview">
-                  <strong>Message:</strong>{" "}
-                  {item.message || "No message provided."}
-                </p>
-
-                <div className="be-card-details-row">
-                  <p className="business-enquiry-text">
-                    <strong>Phone:</strong> {item.contactNumber || "—"}
-                  </p>
-
-                  <p className="business-enquiry-text">
-                    <strong>Email:</strong> {item.email || "—"}
-                  </p>
-
-                  <p className="business-enquiry-text">
-                    <strong>Location:</strong>{" "}
-                    {item.city || item.state
-                      ? `${item.city || ""}${
-                          item.city && item.state ? ", " : ""
-                        }${item.state || ""}`
-                      : "—"}
-                  </p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Slide-in right drawer for details */}
-      {openDrawer && selectedEnquiry && (
-        <div className="be-drawer-overlay" onClick={handleCloseDrawer}>
-          <aside
-            className="be-drawer"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <header className="be-drawer-header">
-              <div className="be-drawer-title-block">
-                <h3 className="be-drawer-title">
-                  {selectedEnquiry.fullName}
-                  {selectedEnquiry.businessName
-                    ? ` (${selectedEnquiry.businessName})`
-                    : ""}
-                </h3>
-                <p className="be-drawer-subtitle">
-                  Detailed view of this enquiry. Use this info when you
-                  call or follow up with the customer.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                className="be-drawer-close-btn"
-                onClick={handleCloseDrawer}
-              >
-                ✕
-              </button>
-            </header>
-
-            <div className="be-drawer-body">
-              <section className="be-drawer-section">
-                <h4>Contact</h4>
-                <div className="be-drawer-grid">
-                  <p>
-                    <strong>Full Name:</strong>{" "}
-                    {selectedEnquiry.fullName || "—"}
-                  </p>
-                  <p>
-                    <strong>Email:</strong>{" "}
-                    {selectedEnquiry.email || "—"}
-                  </p>
-                  <p>
-                    <strong>Phone:</strong>{" "}
-                    {selectedEnquiry.contactNumber || "—"}
-                  </p>
-                  <p>
-                    <strong>Business Phone:</strong>{" "}
-                    {selectedEnquiry.businessPhone || "—"}
-                  </p>
-                </div>
-              </section>
-
-              <section className="be-drawer-section">
-                <h4>Business</h4>
-                <div className="be-drawer-grid">
-                  <p>
-                    <strong>Business Name:</strong>{" "}
-                    {selectedEnquiry.businessName || "—"}
-                  </p>
-                  <p>
-                    <strong>Business Type:</strong>{" "}
-                    {selectedEnquiry.businessType || "—"}
-                  </p>
-                  <p>
-                    <strong>Category:</strong>{" "}
-                    {selectedEnquiry.category || "—"}
-                  </p>
-                  <p>
-                    <strong>Sub Category:</strong>{" "}
-                    {selectedEnquiry.subCategory || "—"}
-                  </p>
-                </div>
-              </section>
-
-              <section className="be-drawer-section">
-                <h4>Location</h4>
-                <div className="be-drawer-grid">
-                  <p>
-                    <strong>Address:</strong>{" "}
-                    {selectedEnquiry.address || "—"}
-                  </p>
-                  <p>
-                    <strong>City:</strong> {selectedEnquiry.city || "—"}
-                  </p>
-                  <p>
-                    <strong>State:</strong>{" "}
-                    {selectedEnquiry.state || "—"}
-                  </p>
-                  <p>
-                    <strong>Country:</strong>{" "}
-                    {selectedEnquiry.country || "—"}
-                  </p>
-                  <p>
-                    <strong>Pincode:</strong>{" "}
-                    {selectedEnquiry.postalCode || "—"}
-                  </p>
-                </div>
-              </section>
-
-              <section className="be-drawer-section">
-                <h4>Message & Notes</h4>
-                <p>
-                  <strong>Message:</strong>{" "}
-                  {selectedEnquiry.message || "—"}
-                </p>
-                <p>
-                  <strong>Notes:</strong>{" "}
-                  {selectedEnquiry.notes || "—"}
-                </p>
-              </section>
-
-              <section className="be-drawer-section">
-                <h4>Meta</h4>
-                <p>
-                  <strong>Status:</strong>{" "}
-                  {selectedEnquiry.isActive === false
-                    ? "Closed"
-                    : "Open"}
-                </p>
-                <p>
-                  <strong>Submitted At:</strong>{" "}
-                  {selectedEnquiry.submittedAt
-                    ? new Date(
-                        selectedEnquiry.submittedAt
-                      ).toLocaleString()
-                    : "—"}
-                </p>
-              </section>
-            </div>
-
-            <footer className="be-drawer-footer">
-              <button
-                type="button"
-                className="be-drawer-secondary-btn"
-                onClick={handleCloseDrawer}
-              >
-                Close
-              </button>
-              {selectedEnquiry.isActive !== false && (
-                <button
-                  type="button"
-                  className="be-drawer-primary-btn"
-                  onClick={() => handleCloseEnquiry(selectedEnquiry)}
+        <DialogContent sx={{ paddingTop: "24px" }}>
+          {selectedEnquiry && (
+            <Grid container spacing={3}>
+              {/* Contact Section */}
+              <Grid item xs={12}>
+                <Typography
+                  variant="subtitle2"
+                  sx={{
+                    color: "#6b7280",
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    fontSize: "11px",
+                    mb: 2,
+                  }}
                 >
-                  Mark as Closed
-                </button>
-              )}
-            </footer>
-          </aside>
-        </div>
-      )}
-    </div>
+                  Contact Information
+                </Typography>
+
+                <Grid container spacing={2}>
+                  <Grid item xs={12}>
+                    <Typography sx={{ color: "#6b7280", fontSize: "12px", fontWeight: 600, mb: 0.5 }}>
+                      Full Name
+                    </Typography>
+                    <Typography sx={{ color: "#1f2937", fontWeight: 500 }}>
+                      {selectedEnquiry.fullName || "—"}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Typography sx={{ color: "#6b7280", fontSize: "12px", fontWeight: 600, mb: 0.5 }}>
+                      Email
+                    </Typography>
+                    <Typography sx={{ color: "#1f2937", fontWeight: 500 }}>
+                      {selectedEnquiry.email || "—"}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Typography sx={{ color: "#6b7280", fontSize: "12px", fontWeight: 600, mb: 0.5 }}>
+                      Phone
+                    </Typography>
+                    <Typography sx={{ color: "#1f2937", fontWeight: 500 }}>
+                      {selectedEnquiry.contactNumber || "—"}
+                    </Typography>
+                  </Grid>
+                </Grid>
+              </Grid>
+
+              {/* Business Section */}
+              <Grid item xs={12}>
+                <Typography
+                  variant="subtitle2"
+                  sx={{
+                    color: "#6b7280",
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    fontSize: "11px",
+                    mb: 2,
+                  }}
+                >
+                  Business Information
+                </Typography>
+
+                <Grid container spacing={2}>
+                  <Grid item xs={12}>
+                    <Typography sx={{ color: "#6b7280", fontSize: "12px", fontWeight: 600, mb: 0.5 }}>
+                      Business Name
+                    </Typography>
+                    <Typography sx={{ color: "#1f2937", fontWeight: 500 }}>
+                      {selectedEnquiry.businessName || "—"}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Typography sx={{ color: "#6b7280", fontSize: "12px", fontWeight: 600, mb: 0.5 }}>
+                      Category
+                    </Typography>
+                    <Typography sx={{ color: "#1f2937", fontWeight: 500 }}>
+                      {selectedEnquiry.category || "—"}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Typography sx={{ color: "#6b7280", fontSize: "12px", fontWeight: 600, mb: 0.5 }}>
+                      Business Type
+                    </Typography>
+                    <Typography sx={{ color: "#1f2937", fontWeight: 500 }}>
+                      {selectedEnquiry.businessType || "—"}
+                    </Typography>
+                  </Grid>
+                </Grid>
+              </Grid>
+
+              {/* Location Section */}
+              <Grid item xs={12}>
+                <Typography
+                  variant="subtitle2"
+                  sx={{
+                    color: "#6b7280",
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    fontSize: "11px",
+                    mb: 2,
+                  }}
+                >
+                  Location
+                </Typography>
+
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
+                    <Typography sx={{ color: "#6b7280", fontSize: "12px", fontWeight: 600, mb: 0.5 }}>
+                      City
+                    </Typography>
+                    <Typography sx={{ color: "#1f2937", fontWeight: 500 }}>
+                      {selectedEnquiry.city || "—"}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Typography sx={{ color: "#6b7280", fontSize: "12px", fontWeight: 600, mb: 0.5 }}>
+                      State
+                    </Typography>
+                    <Typography sx={{ color: "#1f2937", fontWeight: 500 }}>
+                      {selectedEnquiry.state || "—"}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12}>
+                    <Typography sx={{ color: "#6b7280", fontSize: "12px", fontWeight: 600, mb: 0.5 }}>
+                      Address
+                    </Typography>
+                    <Typography sx={{ color: "#1f2937", fontWeight: 500 }}>
+                      {selectedEnquiry.address || "—"}
+                    </Typography>
+                  </Grid>
+                </Grid>
+              </Grid>
+
+              {/* Message Section */}
+              <Grid item xs={12}>
+                <Typography
+                  variant="subtitle2"
+                  sx={{
+                    color: "#6b7280",
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    fontSize: "11px",
+                    mb: 2,
+                  }}
+                >
+                  Message
+                </Typography>
+                <Box
+                  sx={{
+                    background: "#f9fafb",
+                    border: "1px solid #e5e7eb",
+                    borderRadius: "8px",
+                    p: 2,
+                    minHeight: "80px",
+                  }}
+                >
+                  <Typography sx={{ color: "#1f2937", fontSize: "13px", lineHeight: 1.6 }}>
+                    {selectedEnquiry.message || "No message provided."}
+                  </Typography>
+                </Box>
+              </Grid>
+
+              {/* Meta Section */}
+              <Grid item xs={12}>
+                <Typography
+                  variant="subtitle2"
+                  sx={{
+                    color: "#6b7280",
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    fontSize: "11px",
+                    mb: 2,
+                  }}
+                >
+                  Additional Info
+                </Typography>
+
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
+                    <Typography sx={{ color: "#6b7280", fontSize: "12px", fontWeight: 600, mb: 0.5 }}>
+                      Status
+                    </Typography>
+                    <Chip
+                      label={selectedEnquiry.isActive !== false ? "Open" : "Closed"}
+                      size="small"
+                      color={selectedEnquiry.isActive !== false ? "success" : "error"}
+                      variant="filled"
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Typography sx={{ color: "#6b7280", fontSize: "12px", fontWeight: 600, mb: 0.5 }}>
+                      Submitted
+                    </Typography>
+                    <Typography sx={{ color: "#1f2937", fontWeight: 500 }}>
+                      {selectedEnquiry.submittedAt
+                        ? new Date(selectedEnquiry.submittedAt).toLocaleDateString()
+                        : "—"}
+                    </Typography>
+                  </Grid>
+                </Grid>
+              </Grid>
+            </Grid>
+          )}
+        </DialogContent>
+
+        <DialogActions sx={{ padding: "16px", borderTop: "1px solid #e5e7eb", gap: 1 }}>
+          <Button onClick={handleCloseDetails} variant="outlined">
+            Close
+          </Button>
+          {selectedEnquiry?.isActive !== false && (
+            <Button
+              onClick={() => handleMarkClosed(selectedEnquiry)}
+              variant="contained"
+              color="error"
+            >
+              Mark as Closed
+            </Button>
+          )}
+        </DialogActions>
+      </Dialog>
+    </>
   );
 }

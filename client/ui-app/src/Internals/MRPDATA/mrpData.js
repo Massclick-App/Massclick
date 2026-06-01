@@ -1,6 +1,18 @@
-import { useEffect, useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { getAllMRP } from '../../redux/actions/mrpAction';
+import CustomizedTable from '../../components/Table/CustomizedTable.js';
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Box,
+  Typography,
+  Grid,
+} from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
 import './mrpData.css';
 
 export default function MRPDatas() {
@@ -9,121 +21,214 @@ export default function MRPDatas() {
   const {
     mrpList = [],
     total = 0,
-    pageNo = 1,
-    pageSize = 10,
-    loading
   } = useSelector(state => state.mrp || {});
 
-  const [openId, setOpenId] = useState(null);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [openDetails, setOpenDetails] = useState(false);
 
-  const totalPages = Math.ceil(total / pageSize);
-
-  useEffect(() => {
-    dispatch(getAllMRP({ pageNo: 1, pageSize: 10 }));
+  const handleFetchData = useCallback((pageNo, pageSize, options) => {
+    dispatch(getAllMRP({
+      pageNo,
+      pageSize,
+      search: options.search,
+      status: options.status,
+      sortBy: options.sortBy,
+      sortOrder: options.sortOrder,
+    }));
   }, [dispatch]);
 
-  const toggle = (id) => {
-    setOpenId(prev => (prev === id ? null : id));
+  const handleRowClick = (row) => {
+    setSelectedItem(row);
+    setOpenDetails(true);
   };
 
-  const goPrev = () => {
-    if (pageNo > 1) {
-      dispatch(getAllMRP({ pageNo: pageNo - 1, pageSize }));
-    }
+  const handleCloseDetails = () => {
+    setOpenDetails(false);
+    setTimeout(() => setSelectedItem(null), 300);
   };
 
-  const goNext = () => {
-    if (pageNo < totalPages) {
-      dispatch(getAllMRP({ pageNo: pageNo + 1, pageSize }));
-    }
-  };
+  const columns = [
+    {
+      id: 'description',
+      label: 'Description',
+      renderCell: (value, row) => (
+        <Typography
+          sx={{ cursor: 'pointer', fontWeight: 500, color: '#1f2937' }}
+          onClick={() => handleRowClick(row)}
+        >
+          {value}
+        </Typography>
+      ),
+    },
+    {
+      id: 'categoryId',
+      label: 'Category',
+      renderCell: (value) => (
+        <Box
+          sx={{
+            display: 'inline-block',
+            backgroundColor: '#fed7aa',
+            color: '#92400e',
+            padding: '4px 12px',
+            borderRadius: '16px',
+            fontSize: '12px',
+            fontWeight: 600,
+          }}
+        >
+          {value}
+        </Box>
+      ),
+    },
+    {
+      id: 'location',
+      label: 'Location',
+    },
+    {
+      id: 'createdAt',
+      label: 'Date',
+      renderCell: (value) => new Date(value).toLocaleDateString(),
+    },
+    {
+      id: 'contactDetails',
+      label: 'Contact',
+    },
+    {
+      id: 'status',
+      label: 'Status',
+      renderCell: () => (
+        <Box
+          sx={{
+            display: 'inline-block',
+            backgroundColor: '#d1fae5',
+            color: '#065f46',
+            padding: '4px 12px',
+            borderRadius: '16px',
+            fontSize: '12px',
+            fontWeight: 600,
+          }}
+        >
+          Active
+        </Box>
+      ),
+    },
+    {
+      id: 'action',
+      label: 'Action',
+      renderCell: (_, row) => (
+        <Button
+          variant="contained"
+          size="small"
+          onClick={() => handleRowClick(row)}
+          sx={{
+            backgroundColor: '#ff7a00',
+            '&:hover': { backgroundColor: '#e56a00' },
+          }}
+        >
+          View
+        </Button>
+      ),
+    },
+  ];
 
   return (
-    <div className="mrp-admin-wrap">
+    <>
+      <CustomizedTable
+        title="MNI Responses"
+        columns={columns}
+        data={mrpList}
+        total={total}
+        fetchData={handleFetchData}
+        enableSearch={true}
+        enableStatusFilter={false}
+      />
 
-      <div className="mrp-admin-title">
-        <h1>MNI Responses</h1>
-        <p>All published business requirements</p>
-      </div>
+      {/* Details Modal */}
+      <Dialog
+        open={openDetails}
+        onClose={handleCloseDetails}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '12px',
+            boxShadow: '0 20px 50px rgba(0,0,0,0.15)',
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            fontSize: '18px',
+            fontWeight: 700,
+            borderBottom: '1px solid #e5e7eb',
+          }}
+        >
+          Business Details
+          <CloseIcon
+            onClick={handleCloseDetails}
+            sx={{ cursor: 'pointer', fontSize: '20px' }}
+          />
+        </DialogTitle>
 
+        <DialogContent sx={{ paddingTop: '24px' }}>
+          {selectedItem?.businessSnapshot && (
+            <Grid container spacing={3}>
+              <Grid item xs={12}>
+                <Typography variant="subtitle2" sx={{ color: '#6b7280', fontWeight: 600 }}>
+                  Business Name
+                </Typography>
+                <Typography sx={{ color: '#1f2937', fontWeight: 500, marginTop: '4px' }}>
+                  {selectedItem.businessSnapshot.businessName}
+                </Typography>
+              </Grid>
 
-      <div className="mrp-response-grid">
-        {mrpList.map(item => {
-          const isOpen = openId === item._id;
+              <Grid item xs={12}>
+                <Typography variant="subtitle2" sx={{ color: '#6b7280', fontWeight: 600 }}>
+                  Category
+                </Typography>
+                <Typography sx={{ color: '#1f2937', fontWeight: 500, marginTop: '4px' }}>
+                  {selectedItem.businessSnapshot.category}
+                </Typography>
+              </Grid>
 
-          return (
-            <div
-              key={item._id}
-              className={`mrp-response-card ${isOpen ? 'expanded' : ''}`}
-              onClick={() => toggle(item._id)}
-            >
-              <div className="mrp-card-top">
-                <span className="mrp-badge">{item.categoryId}</span>
+              <Grid item xs={12}>
+                <Typography variant="subtitle2" sx={{ color: '#6b7280', fontWeight: 600 }}>
+                  Location
+                </Typography>
+                <Typography sx={{ color: '#1f2937', fontWeight: 500, marginTop: '4px' }}>
+                  {selectedItem.businessSnapshot.location}
+                </Typography>
+              </Grid>
 
-                <h3>{item.description}</h3>
+              <Grid item xs={12}>
+                <Typography variant="subtitle2" sx={{ color: '#6b7280', fontWeight: 600 }}>
+                  Contact
+                </Typography>
+                <Typography sx={{ color: '#1f2937', fontWeight: 500, marginTop: '4px' }}>
+                  {selectedItem.businessSnapshot.contact}
+                </Typography>
+              </Grid>
 
-                <p className="mrp-location">📍 {item.location}</p>
+              <Grid item xs={12}>
+                <Typography variant="subtitle2" sx={{ color: '#6b7280', fontWeight: 600 }}>
+                  Email
+                </Typography>
+                <Typography sx={{ color: '#1f2937', fontWeight: 500, marginTop: '4px' }}>
+                  {selectedItem.businessSnapshot.email}
+                </Typography>
+              </Grid>
+            </Grid>
+          )}
+        </DialogContent>
 
-                <div className="mrp-meta">
-                  <span>{new Date(item.createdAt).toLocaleDateString()}</span>
-                  <span className="active">Active</span>
-                </div>
-
-                <div className="mrp-contact">
-                  📞 {item.contactDetails}
-                </div>
-              </div>
-
-              <div className="mrp-expand">
-                {item.businessSnapshot && (
-                  <>
-                    <h4>Business Snapshot</h4>
-
-                    <div className="snap">
-                      <label>Name</label>
-                      <span>{item.businessSnapshot.businessName}</span>
-                    </div>
-
-                    <div className="snap">
-                      <label>Category</label>
-                      <span>{item.businessSnapshot.category}</span>
-                    </div>
-
-                    <div className="snap">
-                      <label>Location</label>
-                      <span>{item.businessSnapshot.location}</span>
-                    </div>
-
-                    <div className="snap">
-                      <label>Contact</label>
-                      <span>{item.businessSnapshot.contact}</span>
-                    </div>
-
-                    <div className="snap">
-                      <label>Email</label>
-                      <span>{item.businessSnapshot.email}</span>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="pagination">
-        <button onClick={goPrev} disabled={pageNo === 1}>
-          ⬅ Prev
-        </button>
-
-        <span>
-          Page {pageNo} of {totalPages}
-        </span>
-
-        <button onClick={goNext} disabled={pageNo === totalPages}>
-          Next ➡
-        </button>
-      </div>
-    </div>
+        <DialogActions sx={{ padding: '16px', borderTop: '1px solid #e5e7eb' }}>
+          <Button onClick={handleCloseDetails} variant="contained" fullWidth>
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
   );
 }
