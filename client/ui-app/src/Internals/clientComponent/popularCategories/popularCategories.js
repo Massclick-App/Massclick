@@ -184,9 +184,9 @@ const PopularCategoriesLink = () => {
         </div>
 
         <div className="popular-categories-links__keywords">
-          {activeKeywords.map((keyword, index) => (
+          {activeKeywords.map((keyword) => (
             <button
-              key={`${keyword}-${index}`}
+              key={keyword}
               type="button"
               className="popular-categories-links__keyword"
               onClick={() => handleKeywordClick(keyword)}
@@ -209,7 +209,7 @@ const PopularCategoriesLink = () => {
             return (
               <article
                 className="popular-categories-links__service"
-                key={service.title}
+                key={service._id || service.title}
               >
                 <button
                   type="button"
@@ -247,9 +247,9 @@ const PopularCategoriesLink = () => {
             </div>
 
             <div className="popular-categories-links__inlineLinks">
-              {section.keywords.map((keyword, index) => (
+              {section.keywords.map((keyword) => (
                 <button
-                  key={`${section.title}-${keyword}-${index}`}
+                  key={`${section.title}-${keyword}`}
                   type="button"
                   className="popular-categories-links__inlineLink"
                   onClick={() => handleKeywordClick(keyword)}
