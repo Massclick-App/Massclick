@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import axiosInstance from "../../services/axiosInstance.js";
 import "./CategoryDisplaySettings.css";
 import {
   fetchCategoryDisplaySettings,
@@ -43,6 +44,8 @@ import DesktopWindowsOutlinedIcon from "@mui/icons-material/DesktopWindowsOutlin
 import PhoneIphoneOutlinedIcon from "@mui/icons-material/PhoneIphoneOutlined";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import CloudUploadOutlinedIcon from "@mui/icons-material/CloudUploadOutlined";
+import BrokenImageOutlinedIcon from "@mui/icons-material/BrokenImageOutlined";
 
 // ── Tokens ───────────────────────────────────────────────────────────────────
 const T = {
@@ -693,6 +696,116 @@ function ViewToggle({ value, onChange, options }) {
   );
 }
 
+// ── Image uploader ───────────────────────────────────────────────────────────
+const S3_BASE = "https://massclickdev.s3.ap-southeast-2.amazonaws.com/";
+
+function ImageUploader({ imageKey, onUploaded, folder = "home-sections" }) {
+  const fileRef = useRef(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState("");
+
+  const previewUrl = imageKey ? `${S3_BASE}${imageKey}` : null;
+
+  const handleFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { setError("Please select an image file."); return; }
+
+    setError("");
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      const imageData = ev.target.result;
+      setUploading(true);
+      try {
+        const API_URL = process.env.REACT_APP_API_URL;
+        const token = localStorage.getItem("accessToken");
+        const { data } = await axiosInstance.post(
+          `${API_URL}/admin/home-section/upload-image`,
+          { imageData, folder },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (data.success) onUploaded(data.imageKey);
+        else setError(data.message || "Upload failed");
+      } catch (err) {
+        setError(err.response?.data?.message || "Upload failed");
+      } finally {
+        setUploading(false);
+        e.target.value = "";
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  return (
+    <Box>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        style={{ display: "none" }}
+        onChange={handleFile}
+      />
+
+      <Box
+        sx={{
+          width: 96,
+          height: 72,
+          border: `1px dashed ${error ? T.red : T.line2}`,
+          borderRadius: 1.5,
+          overflow: "hidden",
+          bgcolor: T.surface2,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          position: "relative",
+          cursor: uploading ? "wait" : "pointer",
+          flexShrink: 0,
+          "&:hover .upload-overlay": { opacity: 1 },
+        }}
+        onClick={() => !uploading && fileRef.current?.click()}
+      >
+        {previewUrl ? (
+          <img
+            src={previewUrl}
+            alt="preview"
+            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+            onError={(e) => { e.target.style.display = "none"; }}
+          />
+        ) : (
+          <BrokenImageOutlinedIcon sx={{ fontSize: 22, color: T.ink4 }} />
+        )}
+
+        <Box
+          className="upload-overlay"
+          sx={{
+            position: "absolute",
+            inset: 0,
+            bgcolor: "rgba(0,0,0,0.45)",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            opacity: uploading ? 1 : 0,
+            transition: "opacity .15s",
+            gap: 0.5,
+          }}
+        >
+          {uploading
+            ? <CircularProgress size={18} sx={{ color: "#fff" }} />
+            : <CloudUploadOutlinedIcon sx={{ fontSize: 18, color: "#fff" }} />}
+          <Typography sx={{ fontSize: 10, color: "#fff", fontWeight: 600 }}>
+            {uploading ? "Uploading…" : "Change"}
+          </Typography>
+        </Box>
+      </Box>
+
+      {error && (
+        <Typography sx={{ fontSize: 11, color: T.red, mt: 0.5, maxWidth: 96 }}>{error}</Typography>
+      )}
+    </Box>
+  );
+}
+
 // ── Main component ───────────────────────────────────────────────────────────
 export default function CategoryDisplaySettings() {
   const dispatch = useDispatch();
@@ -1192,28 +1305,37 @@ export default function CategoryDisplaySettings() {
               <Box>
                 {popularSearchCards.map((card, i) => (
                   <Card key={i} variant="outlined" sx={{ mb: 1.5, borderColor: T.line, borderRadius: 1.5 }}>
-                    <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 1.5, p: 2 }}>
-                      {[["title", "Title"], ["imageKey", "Image key (S3)"], ["buttonText", "Button text"], ["accent", "Accent colour"], ["alt", "Alt text"]].map(([field, label]) => (
-                        <TextField
-                          key={field}
-                          size="small"
-                          label={label}
-                          value={card[field] || ""}
-                          onChange={(e) => setPopularSearchCards((p) => {
-                            const next = [...p];
-                            next[i] = { ...next[i], [field]: e.target.value };
-                            return next;
-                          })}
-                          sx={{ "& .MuiOutlinedInput-root": { fontSize: 13, "& fieldset": { borderColor: T.line2 } } }}
-                        />
-                      ))}
-                      <Box sx={{ display: "flex", alignItems: "center" }}>
-                        <Tooltip title="Remove card">
-                          <IconButton size="small" onClick={() => setPopularSearchCards((p) => p.filter((_, j) => j !== i))} sx={{ color: T.ink3, "&:hover": { color: T.red, bgcolor: T.redTint } }}>
-                            <DeleteOutlineIcon sx={{ fontSize: 18 }} />
-                          </IconButton>
-                        </Tooltip>
+                    <Box sx={{ display: "flex", gap: 2, p: 2, alignItems: "flex-start" }}>
+                      <ImageUploader
+                        imageKey={card.imageKey}
+                        folder="home-sections/popular-search"
+                        onUploaded={(key) => setPopularSearchCards((p) => {
+                          const next = [...p];
+                          next[i] = { ...next[i], imageKey: key };
+                          return next;
+                        })}
+                      />
+                      <Box sx={{ flex: 1, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
+                        {[["title", "Title"], ["buttonText", "Button text"], ["accent", "Accent colour (#hex)"], ["alt", "Alt text"]].map(([field, label]) => (
+                          <TextField
+                            key={field}
+                            size="small"
+                            label={label}
+                            value={card[field] || ""}
+                            onChange={(e) => setPopularSearchCards((p) => {
+                              const next = [...p];
+                              next[i] = { ...next[i], [field]: e.target.value };
+                              return next;
+                            })}
+                            sx={{ "& .MuiOutlinedInput-root": { fontSize: 13, "& fieldset": { borderColor: T.line2 } } }}
+                          />
+                        ))}
                       </Box>
+                      <Tooltip title="Remove card">
+                        <IconButton size="small" onClick={() => setPopularSearchCards((p) => p.filter((_, j) => j !== i))} sx={{ color: T.ink3, mt: 0.25, "&:hover": { color: T.red, bgcolor: T.redTint } }}>
+                          <DeleteOutlineIcon sx={{ fontSize: 18 }} />
+                        </IconButton>
+                      </Tooltip>
                     </Box>
                   </Card>
                 ))}
@@ -1228,28 +1350,37 @@ export default function CategoryDisplaySettings() {
               <Box>
                 {topTouristPlaces.map((place, i) => (
                   <Card key={i} variant="outlined" sx={{ mb: 1.5, borderColor: T.line, borderRadius: 1.5 }}>
-                    <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 1.5, p: 2 }}>
-                      {[["name", "City name"], ["imageKey", "Image key (S3)"], ["alt", "Alt text"], ["path", "Link path"]].map(([field, label]) => (
-                        <TextField
-                          key={field}
-                          size="small"
-                          label={label}
-                          value={place[field] || ""}
-                          onChange={(e) => setTopTouristPlaces((p) => {
-                            const next = [...p];
-                            next[i] = { ...next[i], [field]: e.target.value };
-                            return next;
-                          })}
-                          sx={{ "& .MuiOutlinedInput-root": { fontSize: 13, "& fieldset": { borderColor: T.line2 } } }}
-                        />
-                      ))}
-                      <Box sx={{ display: "flex", alignItems: "center" }}>
-                        <Tooltip title="Remove place">
-                          <IconButton size="small" onClick={() => setTopTouristPlaces((p) => p.filter((_, j) => j !== i))} sx={{ color: T.ink3, "&:hover": { color: T.red, bgcolor: T.redTint } }}>
-                            <DeleteOutlineIcon sx={{ fontSize: 18 }} />
-                          </IconButton>
-                        </Tooltip>
+                    <Box sx={{ display: "flex", gap: 2, p: 2, alignItems: "flex-start" }}>
+                      <ImageUploader
+                        imageKey={place.imageKey}
+                        folder="home-sections/top-tourist"
+                        onUploaded={(key) => setTopTouristPlaces((p) => {
+                          const next = [...p];
+                          next[i] = { ...next[i], imageKey: key };
+                          return next;
+                        })}
+                      />
+                      <Box sx={{ flex: 1, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
+                        {[["name", "City name"], ["alt", "Alt text"], ["path", "Link path (e.g. /trending/ooty)"]].map(([field, label]) => (
+                          <TextField
+                            key={field}
+                            size="small"
+                            label={label}
+                            value={place[field] || ""}
+                            onChange={(e) => setTopTouristPlaces((p) => {
+                              const next = [...p];
+                              next[i] = { ...next[i], [field]: e.target.value };
+                              return next;
+                            })}
+                            sx={{ "& .MuiOutlinedInput-root": { fontSize: 13, "& fieldset": { borderColor: T.line2 } } }}
+                          />
+                        ))}
                       </Box>
+                      <Tooltip title="Remove place">
+                        <IconButton size="small" onClick={() => setTopTouristPlaces((p) => p.filter((_, j) => j !== i))} sx={{ color: T.ink3, mt: 0.25, "&:hover": { color: T.red, bgcolor: T.redTint } }}>
+                          <DeleteOutlineIcon sx={{ fontSize: 18 }} />
+                        </IconButton>
+                      </Tooltip>
                     </Box>
                   </Card>
                 ))}

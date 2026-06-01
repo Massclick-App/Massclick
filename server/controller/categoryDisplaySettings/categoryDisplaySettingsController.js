@@ -2,7 +2,7 @@ import categoryDisplaySettingsModel from "../../model/categoryDisplaySettings/ca
 import categoryModel from "../../model/category/categoryModel.js";
 import { categoriesData } from "../../utils/sub-categoriesData.js";
 import { getCache, setCache } from "../../utils/redisClient.js";
-import { getSignedUrlByKey } from "../../s3Uploder.js";
+import { getSignedUrlByKey, uploadImageToS3 } from "../../s3Uploder.js";
 import { invalidateCategoryDisplaySettingsCache } from "../../utils/cacheInvalidation.js";
 
 // ─── Fallback arrays (copied from categoryController.js) ──────────────────────
@@ -646,5 +646,32 @@ export const getV2PopularCategoryContentAction = async (req, res) => {
   } catch (error) {
     console.error("getV2PopularCategoryContentAction error:", error);
     return res.status(500).send({ message: error.message });
+  }
+};
+
+// ─── Admin: Upload home-section image ─────────────────────────────────────────
+
+export const uploadHomeSectionImageAction = async (req, res) => {
+  try {
+    const { imageData, folder = "home-sections" } = req.body;
+
+    if (!imageData) {
+      return res.status(400).json({ success: false, message: "imageData is required" });
+    }
+    if (!imageData.startsWith("data:image")) {
+      return res.status(400).json({ success: false, message: "imageData must be a base64 data URL" });
+    }
+
+    const uploadPath = `${folder}/${Date.now()}`;
+    const { key: imageKey } = await uploadImageToS3(imageData, uploadPath);
+
+    return res.status(200).json({
+      success: true,
+      imageKey,
+      imageUrl: getSignedUrlByKey(imageKey),
+    });
+  } catch (error) {
+    console.error("uploadHomeSectionImageAction error:", error);
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
