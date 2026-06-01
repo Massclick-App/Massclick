@@ -20,6 +20,7 @@ import {
   FETCH_DASHBOARDCARD_REQUEST,
   FETCH_DASHBOARDCARD_SUCCESS,
   FETCH_DASHBOARDCARD_FAILURE,
+  SEND_ENQUIRY_LEAD_REQUEST, SEND_ENQUIRY_LEAD_SUCCESS, SEND_ENQUIRY_LEAD_FAILURE,
   FETCH_DASHBOARDCHART_REQUEST,
   FETCH_DASHBOARDCHART_SUCCESS,
   FETCH_DASHBOARDCHART_FAILURE,
@@ -86,6 +87,9 @@ const initialState = {
   businessBySlug: null,
   businessBySlugLoading: false,
   businessBySlugError: null,
+  sendEnquiryLoading: false,
+  sendEnquiryError: null,
+  sendEnquiryResult: null,
 
 };
 
@@ -390,6 +394,29 @@ export default function businessListReducer(state = initialState, action) {
         searchLogsLoading: false,
         searchLogs: [],
         searchLogsError: action.payload,
+      };
+
+    case SEND_ENQUIRY_LEAD_REQUEST:
+      return {
+        ...state,
+        sendEnquiryLoading: true,
+        sendEnquiryError: null,
+        sendEnquiryResult: null,
+      };
+
+    case SEND_ENQUIRY_LEAD_SUCCESS:
+      return {
+        ...state,
+        sendEnquiryLoading: false,
+        sendEnquiryResult: action.payload,
+        sendEnquiryError: null,
+      };
+
+    case SEND_ENQUIRY_LEAD_FAILURE:
+      return {
+        ...state,
+        sendEnquiryLoading: false,
+        sendEnquiryError: action.payload,
       };
 
     case FETCH_LOGS_REQUEST:
