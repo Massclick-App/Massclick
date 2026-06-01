@@ -2,7 +2,7 @@ import express from 'express'
 
 import { addBusinessListAction, viewBusinessListAction,getBusinessBySlugAction, getSuggestionsController, getEnhancedSuggestionsController, mainSearchController, viewAllBusinessListAction,viewAllBusinessAction, updateBusinessListAction, deleteBusinessListAction, activeBusinessListAction, viewAllClientBusinessListAction, viewBusinessByCategory, findBusinessByMobileAction, dashboardSummaryAction, dashboardChartsAction, getPendingBusinessAction, trackQrDownload } from "../controller/businessList/businessListController.js"
 import { oauthAuthentication } from '../helper/oauthHelper.js';
-import { logSearchAction, viewLogSearchAction, viewSearchAction, updateSearchAction, getTrendingSearchesAction } from "../controller/businessList/logSearchController.js"
+import { logSearchAction, viewLogSearchAction, viewSearchAction, updateSearchAction, getTrendingSearchesAction, sendEnquiryLead } from "../controller/businessList/logSearchController.js"
 import { cacheMiddleware } from '../middleware/cacheMiddleware.js';
 import { validateBusiness } from '../middleware/validationMiddleware.js';
 
@@ -22,6 +22,7 @@ router.put('/api/businesslist/update/:id', oauthAuthentication, validateBusiness
 router.delete('/api/businesslist/delete/:id', oauthAuthentication, deleteBusinessListAction);
 router.put('/api/businesslist/activate/:id', oauthAuthentication, activeBusinessListAction);
 router.post('/api/businesslist/log-search', logSearchAction);
+router.post('/api/businesslist/send-enquiry', sendEnquiryLead);
 router.put('/api/businesslist/log-search/:id', updateSearchAction);
 // router.get('/api/businesslist/trending-searches', getTrendingSearchesAction);
 router.get('/api/businesslist/trending-searches/viewall',viewLogSearchAction);

@@ -20,6 +20,7 @@ import {
   UPDATE_SEARCH_LOG_REQUEST, UPDATE_SEARCH_LOG_SUCCESS, UPDATE_SEARCH_LOG_FAILURE,
   FETCH_BUSINESS_BY_SLUG_REQUEST, FETCH_BUSINESS_BY_SLUG_SUCCESS, FETCH_BUSINESS_BY_SLUG_FAILURE,
   QR_DOWNLOAD_REQUEST, QR_DOWNLOAD_SUCCESS, QR_DOWNLOAD_FAILURE,
+  SEND_ENQUIRY_LEAD_REQUEST, SEND_ENQUIRY_LEAD_SUCCESS, SEND_ENQUIRY_LEAD_FAILURE,
 } from "../actions/userActionTypes.js";
 import { getClientToken } from "./clientAuthAction.js";
 const API_URL = process.env.REACT_APP_API_URL;
@@ -292,6 +293,29 @@ export const logSearchActivity = (categoryName, location, userDetails, searchedU
       console.warn("Failed to log search activity:", error.message);
     }
   };
+
+export const sendEnquiryLead = (payload) => async (dispatch) => {
+  dispatch({ type: SEND_ENQUIRY_LEAD_REQUEST });
+
+  try {
+    const token = await dispatch(getClientToken());
+
+    const response = await axiosInstance.post(
+      `${API_URL}/businesslist/send-enquiry`,
+      payload,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    dispatch({ type: SEND_ENQUIRY_LEAD_SUCCESS, payload: response.data });
+
+    return response.data;
+  } catch (error) {
+    const errPayload = error.response?.data || error.message;
+    dispatch({ type: SEND_ENQUIRY_LEAD_FAILURE, payload: errPayload });
+    console.error("sendEnquiryLead error:", errPayload);
+    throw error;
+  }
+};
 
 export const getAllSearchLogs = () => async (dispatch) => {
   dispatch({ type: FETCH_SEARCH_LOGS_REQUEST });

@@ -107,8 +107,20 @@ const CategoryBar = () => {
 
     const otpState = useSelector((state) => state.otpReducer) || {};
     const { viewResponse } = otpState;
-    const userName = viewResponse?.user?.userName || '';
-    const authUser = useSelector((state) => state.otp?.viewResponse) || {};
+    const authUser = useSelector((state) => state.otpReducer?.viewResponse?.user) || {};
+
+    const storedAuthUser = useMemo(() => {
+        try {
+            return JSON.parse(localStorage.getItem("authUser") || "{}") || {};
+        } catch {
+            return {};
+        }
+    }, []);
+
+    const userData = viewResponse?.user || authUser || storedAuthUser || {};
+    const userName = userData?.userName || userData?.name || '';
+    const profileImageUrl =
+        userData?.userProfile || userData?.profileImage || userData?.avatar || "";
 
     const { leads: leadsData, loading } = useSelector(
         (state) => state.leads
@@ -210,7 +222,10 @@ const CategoryBar = () => {
                     <h3 className="userName">{userName || 'Guest User'}</h3>
                     <p className="viewProfileText">Click to view profile</p>
                 </div>
-                <Avatar sx={{ width: 48, height: 48, ml: 2, bgcolor: '#F7941D' }}>
+                <Avatar
+                    src={profileImageUrl}
+                    sx={{ width: 48, height: 48, ml: 2, bgcolor: '#F7941D' }}
+                >
                     {userName ? userName[0].toUpperCase() : 'G'}
                 </Avatar>
             </div>
@@ -324,7 +339,12 @@ const CategoryBar = () => {
                     ) : (
                         <>
                             <IconButton onClick={openDrawer} className="iconButtonPrimary">
-                                <AccountCircleIcon />
+                                <Avatar
+                                    src={profileImageUrl}
+                                    sx={{ width: 34, height: 34, bgcolor: 'secondary.main' }}
+                                >
+                                    {userName ? userName[0].toUpperCase() : <AccountCircleIcon sx={{ color: 'white' }} />}
+                                </Avatar>
                             </IconButton>
 
                             <IconButton
