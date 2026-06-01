@@ -6,6 +6,7 @@ import Alert from "@mui/material/Alert";
 
 import KeyboardDoubleArrowRightIcon from "@mui/icons-material/KeyboardDoubleArrowRight";
 import KeyboardDoubleArrowLeftIcon from "@mui/icons-material/KeyboardDoubleArrowLeft";
+
 import Cctv from "../../../assets/popular/cctv.webp";
 import Education from "../../../assets/popular/education.webp";
 import HotelRoom from "../../../assets/popular/hotelroom.webp";
@@ -174,25 +175,33 @@ const CardCarousel = () => {
             <div className="popular-search__track" ref={containerRef}>
               {popularSearchCards.map((card, index) => {
                 const imgSrc = card.imageUrl || staticFallbackMap[card.title] || null;
+
                 return (
                   <article
                     className="popular-search__card"
                     key={index}
-                    style={{ "--accent-color": card.accent }}
                   >
-                    {imgSrc && (
+                    {imgSrc ? (
                       <div className="popular-search__card-image-wrapper">
                         <img src={imgSrc} alt={card.alt} className="popular-search__card-image" />
+                        <div className="popular-search__card-overlay" />
+                      </div>
+                    ) : (
+                      <div className="popular-search__card-image-wrapper popular-search__card-image-wrapper--empty">
                       </div>
                     )}
+
                     <div className="popular-search__card-body">
-                      <div className="popular-search__card-tag">Popular</div>
+                      <div className="popular-search__card-badge">Popular</div>
                       <h3 className="popular-search__card-title">{card.title}</h3>
+                      <p className="popular-search__card-description">
+                        {card.description || "Find verified services"}
+                      </p>
                       <button
                         className="popular-search__card-button"
                         onClick={() => handleEnquireClick(card)}
                       >
-                        {card.buttonText}
+                        {card.buttonText || "Enquire Now"}
                       </button>
                     </div>
                   </article>
