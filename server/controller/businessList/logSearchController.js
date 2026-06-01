@@ -3,7 +3,7 @@ import { createSearchLog, getAllSearchLogs, getMatchedSearchLogs, updateSearchDa
 import CategoryModel from "../../model/category/categoryModel.js";
 import { getSignedUrlByKey } from "../../s3Uploder.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
-import { sendBusinessesToCustomer, sendBusinessLead } from "../../helper/msg91/smsGatewayHelper.js";
+import { sendBusinessesToCustomer, sendBusinessLead, sendEnquiryBusinessLead } from "../../helper/msg91/smsGatewayHelper.js";
 import { getSettings } from "../../helper/systemSettings/settingsService.js";
 import searchLogModel from "../../model/businessList/searchLogModel.js";
 import userModel from "../../model/msg91Model/usersModels.js";
@@ -22,7 +22,6 @@ const anonFingerprint = (req) => {
   const ua = req.headers["user-agent"] || "unknown";
   return createHash("sha256").update(`${ip}:${ua}`).digest("hex").slice(0, 8);
 };
-
 
 const cleanIndianMobile = (mobile) => {
   if (!mobile) return null;
@@ -85,7 +84,6 @@ const getDynamicCategoryRegex = (value = "") => {
 
   text = text.replace(/\s+/g, " ");
 
-
   const spellingMap = {
     "nursery garden": "nursary garden",
     "nursery": "nursary"
@@ -95,7 +93,7 @@ const getDynamicCategoryRegex = (value = "") => {
     text = spellingMap[text];
   }
 
-  let singular = text;
+  let singular = text;  
 
   if (text.endsWith("ies")) {
     singular = text.slice(0, -3) + "y";
@@ -704,3 +702,101 @@ export const getTrendingSearchesAction = async (req, res) => {
 };
 
 
+export const sendEnquiryLead = async (req, res) => {
+  try {
+    const {
+      businessId,
+      category,
+      location,
+      customerName,
+      customerMobile,
+      customerEmail
+    } = req.body;
+    const leadData = {
+      category,
+      location,
+      customerName,
+      customerMobile,
+      customerEmail
+    };
+
+    // If businessId provided, send to that specific business (existing behaviour)
+    if (businessId) {
+      const business = await businessListModel.findById(businessId);
+
+      if (!business) {
+        return res.status(404).json({
+          success: false,
+          message: "Business not found"
+        });
+      }
+
+      const mobile = business.whatsappNumber || business.contactList?.[0];
+      await sendEnquiryBusinessLead(mobile, leadData);
+
+      return res.status(200).json({
+        success: true,
+        message: "Lead sent to business",
+        totalBusinesses: 1,
+        notifiedBusinesses: [{ businessName: business.businessName, mobile }]
+      });
+    }
+
+    // Otherwise, treat as category-level enquiry: find matching businesses and send
+    const normalizedLocation = (location || "global").toLowerCase().trim();
+    const categoryText = (category || "").toLowerCase().trim();
+
+    const escapeRegex = (text = "") => text.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&");
+
+    const getCategoryRegex = (val) => {
+      try {
+        return getDynamicCategoryRegex(val);
+      } catch (e) {
+        return new RegExp(`^${escapeRegex(val)}$`, "i");
+      }
+    };
+
+    const searchMatchQuery = { businessesLive: true };
+
+    if (normalizedLocation && normalizedLocation !== "global") {
+      searchMatchQuery.location = { $regex: `^${escapeRegex(normalizedLocation)}$`, $options: "i" };
+    }
+
+    if (categoryText) {
+      const categoryRegex = getCategoryRegex(categoryText);
+      searchMatchQuery.$or = [{ category: categoryRegex }, { keywords: categoryRegex }];
+    }
+
+    const businesses = await businessListModel.find(searchMatchQuery, { businessName: 1, contactList: 1, whatsappNumber: 1, location: 1 }).limit(10).lean();
+
+    if (!businesses.length) {
+      return res.status(200).json({ success: true, message: "No businesses found for this enquiry", totalBusinesses: 0 });
+    }
+
+    const notified = [];
+    for (const b of businesses) {
+      const mobile = b.whatsappNumber || b.contactList?.[0];
+      if (!mobile) continue;
+      try {
+        await sendEnquiryBusinessLead(mobile, leadData);
+        notified.push({ businessName: b.businessName, mobile });
+        await wait(300);
+      } catch (err) {
+        console.error("sendEnquiryBusinessLead failed:", err.message || err);
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Lead sent to matching businesses",
+      totalBusinesses: businesses.length,
+      notifiedBusinesses: notified
+    });
+
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({
+      success: false
+    });
+  }
+};

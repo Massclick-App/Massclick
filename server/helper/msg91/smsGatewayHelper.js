@@ -760,5 +760,64 @@ export const sendLoginWelcomeMessage = async (mobile, userName) => {
 };
 
 
+export const sendEnquiryBusinessLead = async (
+  mobile,
+  lead
+) => {
 
+  const payload = {
+    integrated_number: process.env.MSG91_WHATSAPP_SENDER_ID,
+    content_type: "template",
+    payload: {
+      messaging_product: "whatsapp",
+      type: "template",
+      template: {
+        name: "enquiry_business_lead_v1",
+        language: {
+          code: "en",
+          policy: "deterministic"
+        },
+        namespace: process.env.MSG91_TEMPLATE_NAMESPACE,
+        to_and_components: [
+          {
+            to: [mobile],
+            components: {
+              body_1: {
+                type: "text",
+                value: lead.category
+              },
+              body_2: {
+                type: "text",
+                value: lead.location
+              },
+              body_3: {
+                type: "text",
+                value: lead.customerName
+              },
+              body_4: {
+                type: "text",
+                value: lead.customerMobile
+              },
+              body_5: {
+                type: "text",
+                value: lead.customerEmail || "N/A"
+              }
+            }
+          }
+        ]
+      }
+    }
+  };
+
+  return axios.post(
+    "https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/",
+    payload,
+    {
+      headers: {
+        authkey: process.env.MSG91_AUTH_KEY,
+        "Content-Type": "application/json"
+      }
+    }
+  );
+};
 

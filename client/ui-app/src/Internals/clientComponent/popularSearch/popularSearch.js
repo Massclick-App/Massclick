@@ -12,7 +12,7 @@ import Education from "../../../assets/popular/education.webp";
 import HotelRoom from "../../../assets/popular/hotelroom.webp";
 import Photography from "../../../assets/popular/photography.webp";
 import { createEnquiryNow } from "../../../redux/actions/popularSearchesAction";
-import { logSearchActivity } from "../../../redux/actions/businessListAction";
+import { logSearchActivity, sendEnquiryLead } from "../../../redux/actions/businessListAction";
 import OTPLoginModal from "../AddBusinessModel";
 
 const cardsData = [
@@ -31,12 +31,16 @@ const CardCarousel = () => {
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [pendingCard, setPendingCard] = useState(null);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [showError, setShowError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const authUser = JSON.parse(localStorage.getItem("authUser") || "null");
 
 const selectedDistrict = useSelector(
   (state) => state.locationReducer.selectedDistrict
 );
+const sendEnquiryLoading = useSelector((state) => state.businessListReducer.sendEnquiryLoading);
+const sendEnquiryError = useSelector((state) => state.businessListReducer.sendEnquiryError);
 
   // Cache card width to avoid forced reflows on every scroll
   useEffect(() => {
@@ -109,6 +113,24 @@ const selectedDistrict = useSelector(
 
     await dispatch(createEnquiryNow(enquiryPayload));
 
+    // Also send WhatsApp enquiry leads (category-level) to matching businesses
+    try {
+      const leadPayload = {
+        category: categoryName,
+        location: locationName,
+        customerName: authUser?.userName,
+        customerMobile: authUser?.mobileNumber1,
+        customerEmail: authUser?.email || ""
+      };
+
+      await dispatch(sendEnquiryLead(leadPayload));
+    } catch (err) {
+      console.warn("sendEnquiryLead failed:", err?.response || err?.message || err);
+      const msg = err?.response?.data?.message || err?.response?.data || err?.message || String(err);
+      setErrorMessage(msg);
+      setShowError(true);
+    }
+
     setShowSuccess(true);
 
   } catch (error) {
@@ -178,7 +200,8 @@ const selectedDistrict = useSelector(
                     <h3 className="popular-search__card-title">{card.title}</h3>
                     <button
                       className="popular-search__card-button"
-                      onClick={() => handleEnquireClick(card)}
+                                    onClick={() => handleEnquireClick(card)}
+                                    disabled={sendEnquiryLoading}
                     >
                       {card.buttonText}
                     </button>
@@ -213,6 +236,21 @@ const selectedDistrict = useSelector(
         >
           ✅ Your enquiry has been submitted successfully.
           Please wait — our team will contact you within 24 hours.
+        </Alert>
+      </Snackbar>
+      <Snackbar
+        open={showError}
+        autoHideDuration={7000}
+        onClose={() => setShowError(false)}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+        sx={{ zIndex: 1400 }}
+      >
+        <Alert
+          onClose={() => setShowError(false)}
+          severity="error"
+          sx={{ fontSize: "0.95rem", fontWeight: 500, borderRadius: "12px" }}
+        >
+          ❌ Failed to send enquiry: {errorMessage}
         </Alert>
       </Snackbar>
     </>
