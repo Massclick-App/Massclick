@@ -36,6 +36,7 @@ const TrendingSearchesCarousel = () => {
   const carouselRef  = useRef(null);
   const autoScrollRef = useRef(null);
   const cardWidthRef = useRef(210);
+  const userInteractedRef = useRef(false);
   const scrollDimensionsRef = useRef({ scrollLeft: 0, scrollWidth: 0, clientWidth: 0 });
   const dispatch = useDispatch();
 
@@ -62,7 +63,7 @@ const TrendingSearchesCarousel = () => {
     const el = carouselRef.current;
     if (!el) return;
 
-    const firstCard = el.querySelector(".trending-search__card");
+    const firstCard = el.querySelector(".ts__card");
     if (!firstCard) return;
 
     const updateDimensions = () => {
@@ -113,6 +114,7 @@ const TrendingSearchesCarousel = () => {
 
   /* ── auto-scroll (uses cached dimensions) ── */
   const startAutoScroll = useCallback(() => {
+    if (userInteractedRef.current) return;
     stopAutoScroll();
     autoScrollRef.current = setInterval(() => {
       const el = carouselRef.current;
@@ -121,7 +123,7 @@ const TrendingSearchesCarousel = () => {
       if (el.scrollLeft >= scrollWidth - clientWidth - 8) {
         el.scrollTo({ left: 0, behavior: "smooth" });
       } else {
-        el.scrollBy({ left: 210, behavior: "smooth" });
+        el.scrollBy({ left: cardWidthRef.current, behavior: "smooth" });
       }
     }, 3200);
   }, []);
@@ -129,6 +131,11 @@ const TrendingSearchesCarousel = () => {
   function stopAutoScroll() {
     clearInterval(autoScrollRef.current);
   }
+
+  const stopAutoScrollAfterUserInteraction = useCallback(() => {
+    userInteractedRef.current = true;
+    stopAutoScroll();
+  }, []);
 
   useEffect(() => {
     if (trendingList.length > 1) startAutoScroll();
@@ -138,13 +145,15 @@ const TrendingSearchesCarousel = () => {
 
   /* ── navigation ── */
   const scrollBy = (dir) => {
-    carouselRef.current?.scrollBy({ left: dir * 210, behavior: "smooth" });
+    stopAutoScrollAfterUserInteraction();
+    carouselRef.current?.scrollBy({ left: dir * cardWidthRef.current, behavior: "smooth" });
   };
 
   const scrollToIndex = (idx) => {
+    stopAutoScrollAfterUserInteraction();
     const el = carouselRef.current;
     if (!el) return;
-    const cards = el.querySelectorAll(".trending-search__card");
+    const cards = el.querySelectorAll(".ts__card");
     cards[idx]?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "start" });
   };
 
@@ -191,6 +200,9 @@ const TrendingSearchesCarousel = () => {
           <div
             className="ts__track"
             ref={carouselRef}
+            onWheel={stopAutoScrollAfterUserInteraction}
+            onTouchStart={stopAutoScrollAfterUserInteraction}
+            onPointerDown={stopAutoScrollAfterUserInteraction}
             onMouseEnter={stopAutoScroll}
             onMouseLeave={startAutoScroll}
           >
