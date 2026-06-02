@@ -90,12 +90,26 @@ const uploadBase64Images = async (images = []) => {
       typeof item === "string" &&
       item.startsWith("data:image")
     ) {
+      // Upload new base64 images
       const result = await uploadImageToS3(
         item,
         `seo/page-${Date.now()}`
       );
 
       keys.push(result.key);
+    } else if (
+      typeof item === "string" &&
+      (item.startsWith("seo/") || item.includes("s3"))
+    ) {
+      // Preserve existing S3 keys or URLs
+      // Extract key from URL if it's a full URL
+      const key = item.includes("s3")
+        ? item.split(".amazonaws.com/")[1]
+        : item;
+      
+      if (key) {
+        keys.push(key);
+      }
     }
   }
 
@@ -351,11 +365,17 @@ export const updateSeoPageContentBlog =
       data.slug = makeSlug(data.heading);
     }
 
-    if (Array.isArray(data.pageImages)) {
+    if (Array.isArray(data.pageImages) && data.pageImages.length > 0) {
       data.pageImageKey =
         await uploadBase64Images(
           data.pageImages
         );
+    } else if (!data.pageImages) {
+      // If pageImages is not provided, don't update pageImageKey
+      // This preserves existing images
+    } else if (Array.isArray(data.pageImages) && data.pageImages.length === 0) {
+      // If pageImages is empty array, clear the keys
+      data.pageImageKey = [];
     }
 
     if (
