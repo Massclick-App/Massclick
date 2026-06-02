@@ -2,7 +2,7 @@ import categoryDisplaySettingsModel from "../../model/categoryDisplaySettings/ca
 import categoryModel from "../../model/category/categoryModel.js";
 import { categoriesData } from "../../utils/sub-categoriesData.js";
 import { getCache, setCache } from "../../utils/redisClient.js";
-import { getSignedUrlByKey } from "../../s3Uploder.js";
+import { getSignedUrlByKey, uploadImageToS3 } from "../../s3Uploder.js";
 import { invalidateCategoryDisplaySettingsCache } from "../../utils/cacheInvalidation.js";
 
 // ─── Fallback arrays (copied from categoryController.js) ──────────────────────
@@ -95,6 +95,11 @@ export const updateCategoryDisplaySettingsAction = async (req, res) => {
       popularCategories,
       serviceCardSections,
       subCategoryMapping,
+      popularSearchCards,
+      topTouristPlaces,
+      popularCategoryTabs,
+      popularCategoryServices,
+      popularCategoryLinkSections,
     } = req.body;
 
     const updates = {};
@@ -128,6 +133,36 @@ export const updateCategoryDisplaySettingsAction = async (req, res) => {
       if (!Array.isArray(subCategoryMapping))
         return res.status(400).json({ success: false, message: "subCategoryMapping must be an array" });
       updates.subCategoryMapping = subCategoryMapping;
+    }
+
+    if (popularSearchCards !== undefined) {
+      if (!Array.isArray(popularSearchCards))
+        return res.status(400).json({ success: false, message: "popularSearchCards must be an array" });
+      updates.popularSearchCards = popularSearchCards;
+    }
+
+    if (topTouristPlaces !== undefined) {
+      if (!Array.isArray(topTouristPlaces))
+        return res.status(400).json({ success: false, message: "topTouristPlaces must be an array" });
+      updates.topTouristPlaces = topTouristPlaces;
+    }
+
+    if (popularCategoryTabs !== undefined) {
+      if (!Array.isArray(popularCategoryTabs))
+        return res.status(400).json({ success: false, message: "popularCategoryTabs must be an array" });
+      updates.popularCategoryTabs = popularCategoryTabs;
+    }
+
+    if (popularCategoryServices !== undefined) {
+      if (!Array.isArray(popularCategoryServices))
+        return res.status(400).json({ success: false, message: "popularCategoryServices must be an array" });
+      updates.popularCategoryServices = popularCategoryServices;
+    }
+
+    if (popularCategoryLinkSections !== undefined) {
+      if (!Array.isArray(popularCategoryLinkSections))
+        return res.status(400).json({ success: false, message: "popularCategoryLinkSections must be an array" });
+      updates.popularCategoryLinkSections = popularCategoryLinkSections;
     }
 
     if (!Object.keys(updates).length)
@@ -480,5 +515,163 @@ export const getV2SubCategoriesAction = async (req, res) => {
   } catch (error) {
     console.error("getV2SubCategoriesAction error:", error);
     return res.status(500).json({ message: error.message });
+  }
+};
+
+// ─── V2: Popular Search Cards ─────────────────────────────────────────────────
+
+const FALLBACK_POPULAR_SEARCHES = [
+  { title: "CCTV",        imageKey: "", buttonText: "Enquire Now", accent: "#e67e22", alt: "CCTV camera installation" },
+  { title: "Hotels",      imageKey: "", buttonText: "Enquire Now", accent: "#e67e22", alt: "Modern hotel room" },
+  { title: "Photography", imageKey: "", buttonText: "Enquire Now", accent: "#e67e22", alt: "Photographer with camera" },
+  { title: "Education",   imageKey: "", buttonText: "Enquire Now", accent: "#e67e22", alt: "Graduation scroll" },
+  { title: "Logistics",   imageKey: "", buttonText: "Enquire Now", accent: "#5dade2", alt: "Logistics and delivery" },
+  { title: "Consulting",  imageKey: "", buttonText: "Enquire Now", accent: "#2ecc71", alt: "Business consulting" },
+];
+
+export const getV2PopularSearchesAction = async (req, res) => {
+  try {
+    const cacheKey = "popular-searches:home:v2";
+    const cached = await getCache(cacheKey);
+    if (cached) return res.send(cached);
+
+    const settings = await categoryDisplaySettingsModel.findOne().lean();
+    const cards = settings?.popularSearchCards?.length > 0
+      ? settings.popularSearchCards
+      : FALLBACK_POPULAR_SEARCHES;
+
+    const result = cards.map((card) => ({
+      title:      card.title,
+      imageUrl:   card.imageKey ? getSignedUrlByKey(card.imageKey) : "",
+      buttonText: card.buttonText || "Enquire Now",
+      accent:     card.accent || "#e67e22",
+      alt:        card.alt || card.title,
+    }));
+
+    await setCache(cacheKey, result, 86400);
+    return res.send(result);
+  } catch (error) {
+    console.error("getV2PopularSearchesAction error:", error);
+    return res.status(500).send({ message: error.message });
+  }
+};
+
+// ─── V2: Top Tourist Places ───────────────────────────────────────────────────
+
+const FALLBACK_TOP_TOURIST = [
+  { name: "Ooty",      imageKey: "", alt: "Ooty Hills",     path: "/trending/ooty" },
+  { name: "Bangalore", imageKey: "", alt: "Bangalore City", path: "/trending/bangalore" },
+  { name: "Chennai",   imageKey: "", alt: "Chennai City",   path: "/trending/chennai" },
+  { name: "Hyderabad", imageKey: "", alt: "Hyderabad City", path: "/trending/hyderabad" },
+];
+
+export const getV2TopTouristAction = async (req, res) => {
+  try {
+    const cacheKey = "top-tourist:home:v2";
+    const cached = await getCache(cacheKey);
+    if (cached) return res.send(cached);
+
+    const settings = await categoryDisplaySettingsModel.findOne().lean();
+    const places = settings?.topTouristPlaces?.length > 0
+      ? settings.topTouristPlaces
+      : FALLBACK_TOP_TOURIST;
+
+    const result = places.map((place) => ({
+      name:     place.name,
+      imageUrl: place.imageKey ? getSignedUrlByKey(place.imageKey) : "",
+      alt:      place.alt || place.name,
+      path:     place.path || `/trending/${place.name.toLowerCase()}`,
+    }));
+
+    await setCache(cacheKey, result, 86400);
+    return res.send(result);
+  } catch (error) {
+    console.error("getV2TopTouristAction error:", error);
+    return res.status(500).send({ message: error.message });
+  }
+};
+
+// ─── V2: Popular Category Content (tabs + services + link sections) ───────────
+
+const FALLBACK_POPULAR_CATEGORY_SERVICES = [
+  { title: "MNI",                 icon: "handshake", route: "/user_mni",      description: "Experience the ultimate MNI portal by MassClick. Explore diverse categories, connect with vendors, and discover wholesale opportunities through a simple local discovery experience." },
+  { title: "Packers and Movers",  icon: "package",   routeSlug: "packers-and-movers",  searchName: "Packers and Movers",  description: "Find reliable relocation partners, compare movers for your location, get quotes from providers, and check ratings before making your selection." },
+  { title: "Order Food Online",   icon: "food",      routeSlug: "restaurants",         searchName: "Restaurants",         description: "Find restaurants, explore cuisines, view reviews and ratings, discover offers, and get your favourite food delivered to your doorstep." },
+  { title: "Movies",              icon: "movies",    routeSlug: "theaters",            searchName: "Theaters",            description: "Access movie information, discover theatres, view show details, and make a better choice for the movie you would like to watch." },
+  { title: "Spa & Salon",         icon: "spa",       routeSlug: "beauty-spa",          searchName: "Beauty Spa",          description: "Find salons and spas near you, compare options, and book pampering, grooming, beauty, and wellness services with confidence." },
+  { title: "Repair & Services",   icon: "repair",    routeSlug: "bike-service",        searchName: "Bike Service",        description: "Find trusted help for appliance repair, car service, cleaning, water purifier service, utility maintenance, and daily home service needs." },
+  { title: "Doctor Appointment",  icon: "doctor",    routeSlug: "hospitals",           searchName: "Hospitals",           description: "Find suitable medical specialists near you and connect with healthcare providers for everyday health and well-being needs." },
+  { title: "Real Estate Agents",  icon: "realEstate",routeSlug: "real-estate",         searchName: "Real Estate",         description: "Discover agents and developers for PG, rentals, buying, selling, and local property updates across residential and commercial projects." },
+];
+
+const FALLBACK_POPULAR_CATEGORY_LINK_SECTIONS = [
+  {
+    title: "Trending Searches",
+    keywords: [
+      "English Medium Schools","Packers And Movers (Within City)","Home Delivery Restaurants","Estate Agents For Land","Wedding Photographers","Income Tax Consultants","Newspaper Advertising Agencies","Hepatologist Doctors","Search Engine Optimization Services","Motorcycle Repair & Services-TVS","Tyre Dealers-JK","Tutorials For SSC Cgl","Bitcoin Services","Tour Packages For Goa","Transporters For Kolkata","Tour Packages For Manali","Transporters For Bihar","Pet Food Dealers","Event Organisers For Jagran","Tutorials For UGC Net Exam","Battery Operated Scooter Dealers-Ather Energy","Courier Services For USA","Transporters For Rajasthan","MCA Institutes","Tutorials For Ctet","Share Brokers-Angel One","Transporters For Punjab","LPG Conversion Kit Dealers","Event Organisers For Bhajan Sandhya","Bhojpuri Film Producers","Courier Services For Dubai","Khatu Shyam Bhajan Singers","Dairy Product Retailers-Amul","Bengali Sweet Retailers","Ayurvedic Doctors For Hair Fall Treatment","Overseas Education Consultants For Luxembourg","Tutorials For NIOS Class XII","Packers And Movers For Hyderabad","Dish Antenna Installation Services-Tata Sky","Event Organisers For DJ","Personal Loans-Axis Bank","Car Rental-Toyota","Marathi Books","Women Top Retailers","HD Makeup Artists","Cricket T Shirt Manufacturers","Ad Film Makers","ABC Fire Extinguisher Dealers","Solar Panel Dealers-Vikram Solar","Kick Scooter Dealers",
+    ],
+  },
+];
+
+export const getV2PopularCategoryContentAction = async (req, res) => {
+  try {
+    const cacheKey = "popular-category-content:home:v2";
+    const cached = await getCache(cacheKey);
+    if (cached) return res.send(cached);
+
+    const settings = await categoryDisplaySettingsModel.findOne().lean();
+
+    const tabs = settings?.popularCategoryTabs?.length > 0
+      ? settings.popularCategoryTabs.map((t) => ({ category: t.category, keywords: t.keywords || [] }))
+      : [];
+
+    const services = settings?.popularCategoryServices?.length > 0
+      ? settings.popularCategoryServices.map((s) => ({
+          title:       s.title,
+          description: s.description || "",
+          icon:        s.icon || "",
+          route:       s.route || "",
+          searchName:  s.searchName || "",
+          routeSlug:   s.routeSlug || "",
+        }))
+      : FALLBACK_POPULAR_CATEGORY_SERVICES;
+
+    const linkSections = settings?.popularCategoryLinkSections?.length > 0
+      ? settings.popularCategoryLinkSections.map((l) => ({ title: l.title, keywords: l.keywords || [] }))
+      : FALLBACK_POPULAR_CATEGORY_LINK_SECTIONS;
+
+    const result = { tabs, services, linkSections };
+    await setCache(cacheKey, result, 86400);
+    return res.send(result);
+  } catch (error) {
+    console.error("getV2PopularCategoryContentAction error:", error);
+    return res.status(500).send({ message: error.message });
+  }
+};
+
+// ─── Admin: Upload home-section image ─────────────────────────────────────────
+
+export const uploadHomeSectionImageAction = async (req, res) => {
+  try {
+    const { imageData, folder = "home-sections" } = req.body;
+
+    if (!imageData) {
+      return res.status(400).json({ success: false, message: "imageData is required" });
+    }
+    if (!imageData.startsWith("data:image")) {
+      return res.status(400).json({ success: false, message: "imageData must be a base64 data URL" });
+    }
+
+    const uploadPath = `${folder}/${Date.now()}`;
+    const { key: imageKey } = await uploadImageToS3(imageData, uploadPath);
+
+    return res.status(200).json({
+      success: true,
+      imageKey,
+      imageUrl: getSignedUrlByKey(imageKey),
+    });
+  } catch (error) {
+    console.error("uploadHomeSectionImageAction error:", error);
+    return res.status(500).json({ success: false, message: error.message });
   }
 };

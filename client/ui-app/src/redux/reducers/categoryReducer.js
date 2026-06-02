@@ -8,7 +8,10 @@ import {
   FETCH_HOME_CATEGORY_REQUEST, FETCH_HOME_CATEGORY_SUCCESS, FETCH_HOME_CATEGORY_FAILURE,
   FETCH_SUB_CATEGORY_REQUEST, FETCH_SUB_CATEGORY_SUCCESS, FETCH_SUB_CATEGORY_FAILURE,
   FETCH_POPULAR_CATEGORY_REQUEST, FETCH_POPULAR_CATEGORY_SUCCESS, FETCH_POPULAR_CATEGORY_FAILURE,
-  FETCH_SERVICE_CARDS_REQUEST, FETCH_SERVICE_CARDS_SUCCESS, FETCH_SERVICE_CARDS_FAILURE
+  FETCH_SERVICE_CARDS_REQUEST, FETCH_SERVICE_CARDS_SUCCESS, FETCH_SERVICE_CARDS_FAILURE,
+  FETCH_POPULAR_SEARCHES_REQUEST, FETCH_POPULAR_SEARCHES_SUCCESS, FETCH_POPULAR_SEARCHES_FAILURE,
+  FETCH_TOP_TOURIST_REQUEST, FETCH_TOP_TOURIST_SUCCESS, FETCH_TOP_TOURIST_FAILURE,
+  FETCH_POPULAR_CATEGORY_CONTENT_REQUEST, FETCH_POPULAR_CATEGORY_CONTENT_SUCCESS, FETCH_POPULAR_CATEGORY_CONTENT_FAILURE,
 
 } from '../actions/userActionTypes';
 
@@ -19,6 +22,9 @@ const initialState = {
   popularCategories: [],
   searchCategory: [],
   serviceCards: [],
+  popularSearchCards: [],
+  topTouristPlaces: [],
+  popularCategoryContent: { tabs: [], services: [], linkSections: [] },
   total: 0,
   pageNo: 1,
   pageSize: 10,
@@ -38,6 +44,9 @@ export default function categoryReducer(state = initialState, action) {
     case FETCH_SUB_CATEGORY_REQUEST:
     case FETCH_POPULAR_CATEGORY_REQUEST:
     case FETCH_SERVICE_CARDS_REQUEST:
+    case FETCH_POPULAR_SEARCHES_REQUEST:
+    case FETCH_TOP_TOURIST_REQUEST:
+    case FETCH_POPULAR_CATEGORY_CONTENT_REQUEST:
     case BUSINESS_CATEGORYSEARCH_REQUEST:
       return { ...state, loading: true, error: null };
 
@@ -183,6 +192,24 @@ export default function categoryReducer(state = initialState, action) {
         error: action.payload,
       };
 
+
+    // ================= POPULAR SEARCHES =================
+    case FETCH_POPULAR_SEARCHES_SUCCESS:
+      return { ...state, loading: false, popularSearchCards: action.payload, error: null };
+    case FETCH_POPULAR_SEARCHES_FAILURE:
+      return { ...state, loading: false, popularSearchCards: [], error: action.payload };
+
+    // ================= TOP TOURIST PLACES =================
+    case FETCH_TOP_TOURIST_SUCCESS:
+      return { ...state, loading: false, topTouristPlaces: action.payload, error: null };
+    case FETCH_TOP_TOURIST_FAILURE:
+      return { ...state, loading: false, topTouristPlaces: [], error: action.payload };
+
+    // ================= POPULAR CATEGORY CONTENT =================
+    case FETCH_POPULAR_CATEGORY_CONTENT_SUCCESS:
+      return { ...state, loading: false, popularCategoryContent: action.payload, error: null };
+    case FETCH_POPULAR_CATEGORY_CONTENT_FAILURE:
+      return { ...state, loading: false, popularCategoryContent: { tabs: [], services: [], linkSections: [] }, error: action.payload };
 
     // ================= DEFAULT =================
     default:

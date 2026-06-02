@@ -1,44 +1,114 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect, useMemo } from "react";
 import "./CardCarousel.css";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
-import { useSelector } from "react-redux";
 
 import KeyboardDoubleArrowRightIcon from "@mui/icons-material/KeyboardDoubleArrowRight";
 import KeyboardDoubleArrowLeftIcon from "@mui/icons-material/KeyboardDoubleArrowLeft";
+
 import Cctv from "../../../assets/popular/cctv.webp";
 import Education from "../../../assets/popular/education.webp";
 import HotelRoom from "../../../assets/popular/hotelroom.webp";
 import Photography from "../../../assets/popular/photography.webp";
 import { createEnquiryNow } from "../../../redux/actions/popularSearchesAction";
-import { logSearchActivity } from "../../../redux/actions/businessListAction";
+import { fetchPopularSearches } from "../../../redux/actions/categoryAction";
+import { logSearchActivity, sendEnquiryLead } from "../../../redux/actions/businessListAction";
 import OTPLoginModal from "../AddBusinessModel";
 
-const cardsData = [
-  { title: "CCTV", image: Cctv, buttonText: "Enquire Now", accent: "#e67e22", alt: "CCTV camera installation" },
-  { title: "Hotels", image: HotelRoom, buttonText: "Enquire Now", accent: "#e67e22", alt: "Modern hotel room" },
-  { title: "Photography", image: Photography, buttonText: "Enquire Now", accent: "#e67e22", alt: "Photographer with camera" },
-  { title: "Education", image: Education, buttonText: "Enquire Now", accent: "#e67e22", alt: "Graduation scroll" },
-  { title: "Logistics", image: Cctv, buttonText: "Enquire Now", accent: "#5dade2", alt: "Logistics and delivery" },
-  { title: "Consulting", image: HotelRoom, buttonText: "Enquire Now", accent: "#2ecc71", alt: "Business consulting" },
+const defaultCards = [
+  {
+    title: "CCTV",
+    image: Cctv,
+    alt: "CCTV installation",
+    buttonText: "Enquire Now",
+    accent: "#e67e22",
+  },
+  {
+    title: "Hotels",
+    image: HotelRoom,
+    alt: "Hotel room",
+    buttonText: "Enquire Now",
+    accent: "#2f80ed",
+  },
+  {
+    title: "Photography",
+    image: Photography,
+    alt: "Photography service",
+    buttonText: "Enquire Now",
+    accent: "#9b51e0",
+  },
+  {
+    title: "Education",
+    image: Education,
+    alt: "Education service",
+    buttonText: "Enquire Now",
+    accent: "#27ae60",
+  },
 ];
+
+const staticFallbackMap = {
+  CCTV: Cctv,
+  Hotels: HotelRoom,
+  Photography,
+  Education,
+  Logistics: Cctv,
+  Consulting: HotelRoom,
+};
+
+const getAuthUser = () => JSON.parse(localStorage.getItem("authUser") || "null");
+
+const getErrorMessage = (error) =>
+  error?.response?.data?.message ||
+  error?.response?.data?.error ||
+  error?.response?.data ||
+  error?.message ||
+  "Something went wrong";
 
 const CardCarousel = () => {
   const containerRef = useRef(null);
-  const cardWidthRef = useRef(300); // default value: 280 + 20 gap
+  const cardWidthRef = useRef(300);
   const dispatch = useDispatch();
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [pendingCard, setPendingCard] = useState(null);
+  const [submittingCard, setSubmittingCard] = useState(null);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [showError, setShowError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
-  const authUser = JSON.parse(localStorage.getItem("authUser") || "null");
+  const selectedDistrict = useSelector(
+    (state) => state.locationReducer.selectedDistrict
+  );
+  const popularSearchCards = useSelector(
+    (state) => state.categoryReducer.popularSearchCards || []
+  );
+  const sendEnquiryError = useSelector(
+    (state) => state.businessListReducer.sendEnquiryError
+  );
 
-const selectedDistrict = useSelector(
-  (state) => state.locationReducer.selectedDistrict
-);
+  const cards = useMemo(() => {
+    const source = popularSearchCards.length ? popularSearchCards : defaultCards;
 
-  // Cache card width to avoid forced reflows on every scroll
+    return source.map((card) => ({
+      ...card,
+      title: card.title || card.categoryName || card.category || "",
+      buttonText: card.buttonText || "Enquire Now",
+      alt: card.alt || card.title || "Popular search",
+      image: card.imageUrl || card.image || staticFallbackMap[card.title] || null,
+      accent: card.accent || "#e67e22",
+    }));
+  }, [popularSearchCards]);
+
+  useEffect(() => {
+    dispatch(fetchPopularSearches());
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (!sendEnquiryError) return;
+    setErrorMessage(getErrorMessage(sendEnquiryError));
+    setShowError(true);
+  }, [sendEnquiryError]);
+
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -52,7 +122,7 @@ const selectedDistrict = useSelector(
 
     observer.observe(card);
     return () => observer.disconnect();
-  }, []);
+  }, [cards.length]);
 
   const scrollByCard = (direction) => {
     if (!containerRef.current) return;
@@ -63,72 +133,88 @@ const selectedDistrict = useSelector(
   };
 
   const handleEnquireClick = (card) => {
+    const authUser = getAuthUser();
+
     if (!authUser?._id) {
       setPendingCard(card);
       setIsLoginOpen(true);
       return;
     }
-    proceedEnquiry(card);
+
+    proceedEnquiry(card, authUser);
   };
 
- const proceedEnquiry = async (card) => {
-  try {
+  const proceedEnquiry = async (card, user = getAuthUser()) => {
+    try {
+      if (!user?._id) return;
 
-    if (!authUser?._id) return;
+      setSubmittingCard(card.title);
 
-    const categoryName = card.title;
-    const locationName = selectedDistrict || "Global";
+      const categoryName = card.title;
+      const locationName = selectedDistrict || "Global";
 
-    const userDetails = {
-      userName: authUser?.userName,
-      mobileNumber1: authUser?.mobileNumber1,
-      mobileNumber2: authUser?.mobileNumber2 || "",
-      email: authUser?.email || "",
-    };
+      const userDetails = {
+        userName: user.userName,
+        mobileNumber1: user.mobileNumber1,
+        mobileNumber2: user.mobileNumber2 || "",
+        email: user.email || "",
+      };
 
-    dispatch(
-      logSearchActivity(
-        categoryName,
-        locationName,
-        userDetails,
-        categoryName
-      )
-    );
+      dispatch(
+        logSearchActivity(
+          categoryName,
+          locationName,
+          userDetails,
+          categoryName
+        )
+      );
 
-    const enquiryPayload = {
-      category: card.title,
-      categorySlug: card.title.toLowerCase().replace(/\s+/g, "-"),
-      enquirySource: "Popular Searches",
-      userId: authUser._id,
-      userName: authUser.userName,
-      mobileNumber1: authUser.mobileNumber1,
-      mobileNumber2: authUser.mobileNumber2 || "",
-      email: authUser.email || "",
-      businessName: authUser.businessName || "",
-    };
+      const enquiryPayload = {
+        category: categoryName,
+        categorySlug: categoryName.toLowerCase().replace(/\s+/g, "-"),
+        enquirySource: "Popular Searches",
+        userId: user._id,
+        userName: user.userName,
+        mobileNumber1: user.mobileNumber1,
+        mobileNumber2: user.mobileNumber2 || "",
+        email: user.email || "",
+        businessName: user.businessName || "",
+      };
 
-    await dispatch(createEnquiryNow(enquiryPayload));
+      await dispatch(createEnquiryNow(enquiryPayload));
 
-    setShowSuccess(true);
+      const leadPayload = {
+        category: categoryName,
+        location: locationName,
+        customerName: user.userName,
+        customerMobile: user.mobileNumber1,
+        customerEmail: user.email || "",
+      };
 
-  } catch (error) {
-
-    console.error("❌ Enquiry failed:", error);
-
-  }
-};
+      await dispatch(sendEnquiryLead(leadPayload));
+      setShowSuccess(true);
+    } catch (error) {
+      console.error("Enquiry failed:", error);
+      setErrorMessage(getErrorMessage(error));
+      setShowError(true);
+    } finally {
+      setSubmittingCard(null);
+    }
+  };
 
   useEffect(() => {
     const onAuthChange = () => {
-      if (pendingCard && localStorage.getItem("authToken")) {
-        proceedEnquiry(pendingCard);
+      const authUser = getAuthUser();
+      if (pendingCard && authUser?._id) {
+        proceedEnquiry(pendingCard, authUser);
         setPendingCard(null);
+        setIsLoginOpen(false);
       }
     };
 
     window.addEventListener("authChange", onAuthChange);
     return () => window.removeEventListener("authChange", onAuthChange);
-  }, [pendingCard]);
+  }, [pendingCard, selectedDistrict]);
 
   return (
     <>
@@ -160,27 +246,39 @@ const selectedDistrict = useSelector(
           </div>
 
           <div className="popular-search__viewport">
-            {/* <div className="popular-search__fade popular-search__fade--left" />
-            <div className="popular-search__fade popular-search__fade--right" /> */}
-
             <div className="popular-search__track" ref={containerRef}>
-              {cardsData.map((card, index) => (
+              {cards.map((card, index) => (
                 <article
                   className="popular-search__card"
-                  key={index}
+                  key={`${card.title}-${index}`}
                   style={{ "--accent-color": card.accent }}
                 >
-                  <div className="popular-search__card-image-wrapper">
-                    <img src={card.image} alt={card.alt} className="popular-search__card-image" />
-                  </div>
+                  {card.image ? (
+                    <div className="popular-search__card-image-wrapper">
+                      <img
+                        src={card.image}
+                        alt={card.alt}
+                        className="popular-search__card-image"
+                      />
+                      <div className="popular-search__card-overlay" />
+                    </div>
+                  ) : (
+                    <div className="popular-search__card-image-wrapper popular-search__card-image-wrapper--empty">
+                    </div>
+                  )}
                   <div className="popular-search__card-body">
-                    <div className="popular-search__card-tag">Popular</div>
+                    <div className="popular-search__card-badge">Popular</div>
                     <h3 className="popular-search__card-title">{card.title}</h3>
+                    <p className="popular-search__card-description">
+                      {card.description || "Find verified services"}
+                    </p>
                     <button
+                      type="button"
                       className="popular-search__card-button"
                       onClick={() => handleEnquireClick(card)}
+                      disabled={submittingCard === card.title}
                     >
-                      {card.buttonText}
+                      {submittingCard === card.title ? "Sending..." : card.buttonText}
                     </button>
                   </div>
                 </article>
@@ -200,7 +298,7 @@ const selectedDistrict = useSelector(
         autoHideDuration={5000}
         onClose={() => setShowSuccess(false)}
         anchorOrigin={{ vertical: "top", horizontal: "center" }}
-        sx={{ zIndex: 1400 }} 
+        sx={{ zIndex: 1400 }}
       >
         <Alert
           onClose={() => setShowSuccess(false)}
@@ -211,8 +309,23 @@ const selectedDistrict = useSelector(
             borderRadius: "12px",
           }}
         >
-          ✅ Your enquiry has been submitted successfully.
-          Please wait — our team will contact you within 24 hours.
+          Your enquiry has been submitted successfully. Please wait - our team
+          will contact you within 24 hours.
+        </Alert>
+      </Snackbar>
+      <Snackbar
+        open={showError}
+        autoHideDuration={7000}
+        onClose={() => setShowError(false)}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+        sx={{ zIndex: 1400 }}
+      >
+        <Alert
+          onClose={() => setShowError(false)}
+          severity="error"
+          sx={{ fontSize: "0.95rem", fontWeight: 500, borderRadius: "12px" }}
+        >
+          Failed to send enquiry: {errorMessage}
         </Alert>
       </Snackbar>
     </>

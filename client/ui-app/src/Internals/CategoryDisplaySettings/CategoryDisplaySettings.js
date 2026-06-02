@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import axiosInstance from "../../services/axiosInstance.js";
 import "./CategoryDisplaySettings.css";
 import {
   fetchCategoryDisplaySettings,
@@ -43,6 +44,8 @@ import DesktopWindowsOutlinedIcon from "@mui/icons-material/DesktopWindowsOutlin
 import PhoneIphoneOutlinedIcon from "@mui/icons-material/PhoneIphoneOutlined";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import CloudUploadOutlinedIcon from "@mui/icons-material/CloudUploadOutlined";
+import BrokenImageOutlinedIcon from "@mui/icons-material/BrokenImageOutlined";
 
 // ── Tokens ───────────────────────────────────────────────────────────────────
 const T = {
@@ -481,7 +484,7 @@ function SectionCard({ section, allCategories, pickerLoading, onUpdate, onRemove
             onMove={(f, t) => onUpdate("desktopItems", moveItem(section.desktopItems || [], f, t))}
           />
         </Box>
-        <Box sx={{ p: 2.25 }}>
+        <Box sx={{ p: 2 }}>
           <Stack direction="row" alignItems="center" spacing={1.25} sx={{ mb: 1.5 }}>
             <Box
               sx={{
@@ -693,6 +696,116 @@ function ViewToggle({ value, onChange, options }) {
   );
 }
 
+// ── Image uploader ───────────────────────────────────────────────────────────
+const S3_BASE = "https://massclickdev.s3.ap-southeast-2.amazonaws.com/";
+
+function ImageUploader({ imageKey, onUploaded, folder = "home-sections" }) {
+  const fileRef = useRef(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState("");
+
+  const previewUrl = imageKey ? `${S3_BASE}${imageKey}` : null;
+
+  const handleFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { setError("Please select an image file."); return; }
+
+    setError("");
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      const imageData = ev.target.result;
+      setUploading(true);
+      try {
+        const API_URL = process.env.REACT_APP_API_URL;
+        const token = localStorage.getItem("accessToken");
+        const { data } = await axiosInstance.post(
+          `${API_URL}/admin/home-section/upload-image`,
+          { imageData, folder },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (data.success) onUploaded(data.imageKey);
+        else setError(data.message || "Upload failed");
+      } catch (err) {
+        setError(err.response?.data?.message || "Upload failed");
+      } finally {
+        setUploading(false);
+        e.target.value = "";
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  return (
+    <Box>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        style={{ display: "none" }}
+        onChange={handleFile}
+      />
+
+      <Box
+        sx={{
+          width: 96,
+          height: 72,
+          border: `1px dashed ${error ? T.red : T.line2}`,
+          borderRadius: 1.5,
+          overflow: "hidden",
+          bgcolor: T.surface2,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          position: "relative",
+          cursor: uploading ? "wait" : "pointer",
+          flexShrink: 0,
+          "&:hover .upload-overlay": { opacity: 1 },
+        }}
+        onClick={() => !uploading && fileRef.current?.click()}
+      >
+        {previewUrl ? (
+          <img
+            src={previewUrl}
+            alt="preview"
+            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+            onError={(e) => { e.target.style.display = "none"; }}
+          />
+        ) : (
+          <BrokenImageOutlinedIcon sx={{ fontSize: 22, color: T.ink4 }} />
+        )}
+
+        <Box
+          className="upload-overlay"
+          sx={{
+            position: "absolute",
+            inset: 0,
+            bgcolor: "rgba(0,0,0,0.45)",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            opacity: uploading ? 1 : 0,
+            transition: "opacity .15s",
+            gap: 0.5,
+          }}
+        >
+          {uploading
+            ? <CircularProgress size={18} sx={{ color: "#fff" }} />
+            : <CloudUploadOutlinedIcon sx={{ fontSize: 18, color: "#fff" }} />}
+          <Typography sx={{ fontSize: 10, color: "#fff", fontWeight: 600 }}>
+            {uploading ? "Uploading…" : "Change"}
+          </Typography>
+        </Box>
+      </Box>
+
+      {error && (
+        <Typography sx={{ fontSize: 11, color: T.red, mt: 0.5, maxWidth: 96 }}>{error}</Typography>
+      )}
+    </Box>
+  );
+}
+
 // ── Main component ───────────────────────────────────────────────────────────
 export default function CategoryDisplaySettings() {
   const dispatch = useDispatch();
@@ -709,6 +822,11 @@ export default function CategoryDisplaySettings() {
   const [popularCategories, setPopularCategories] = useState([]);
   const [serviceCardSections, setServiceCardSections] = useState([]);
   const [subCategoryMapping, setSubCategoryMapping] = useState([]);
+  const [popularSearchCards, setPopularSearchCards] = useState([]);
+  const [topTouristPlaces, setTopTouristPlaces] = useState([]);
+  const [popularCategoryTabs, setPopularCategoryTabs] = useState([]);
+  const [popularCategoryServices, setPopularCategoryServices] = useState([]);
+  const [popularCategoryLinkSections, setPopularCategoryLinkSections] = useState([]);
   const [snapshot, setSnapshot] = useState(null);
 
   useEffect(() => {
@@ -732,12 +850,22 @@ export default function CategoryDisplaySettings() {
               { section: "Building Materials", desktopItems: [], mobileItems: [] },
             ],
       subCategoryMapping: settings.subCategoryMapping || [],
+      popularSearchCards: settings.popularSearchCards || [],
+      topTouristPlaces: settings.topTouristPlaces || [],
+      popularCategoryTabs: settings.popularCategoryTabs || [],
+      popularCategoryServices: settings.popularCategoryServices || [],
+      popularCategoryLinkSections: settings.popularCategoryLinkSections || [],
     };
     setHomeFeaturedDesktop(next.homeFeaturedDesktop);
     setHomeFeaturedMobile(next.homeFeaturedMobile);
     setPopularCategories(next.popularCategories);
     setServiceCardSections(next.serviceCardSections);
     setSubCategoryMapping(next.subCategoryMapping);
+    setPopularSearchCards(next.popularSearchCards);
+    setTopTouristPlaces(next.topTouristPlaces);
+    setPopularCategoryTabs(next.popularCategoryTabs);
+    setPopularCategoryServices(next.popularCategoryServices);
+    setPopularCategoryLinkSections(next.popularCategoryLinkSections);
     setSnapshot(JSON.stringify(next));
   }, [settings]);
 
@@ -748,8 +876,13 @@ export default function CategoryDisplaySettings() {
       popularCategories,
       serviceCardSections,
       subCategoryMapping,
+      popularSearchCards,
+      topTouristPlaces,
+      popularCategoryTabs,
+      popularCategoryServices,
+      popularCategoryLinkSections,
     }),
-    [homeFeaturedDesktop, homeFeaturedMobile, popularCategories, serviceCardSections, subCategoryMapping]
+    [homeFeaturedDesktop, homeFeaturedMobile, popularCategories, serviceCardSections, subCategoryMapping, popularSearchCards, topTouristPlaces, popularCategoryTabs, popularCategoryServices, popularCategoryLinkSections]
   );
 
   const dirty = snapshot !== null && JSON.stringify(current) !== snapshot;
@@ -772,6 +905,11 @@ export default function CategoryDisplaySettings() {
     setPopularCategories(s.popularCategories);
     setServiceCardSections(s.serviceCardSections);
     setSubCategoryMapping(s.subCategoryMapping);
+    setPopularSearchCards(s.popularSearchCards);
+    setTopTouristPlaces(s.topTouristPlaces);
+    setPopularCategoryTabs(s.popularCategoryTabs);
+    setPopularCategoryServices(s.popularCategoryServices);
+    setPopularCategoryLinkSections(s.popularCategoryLinkSections);
   };
 
   useEffect(() => {
@@ -870,81 +1008,155 @@ export default function CategoryDisplaySettings() {
       accent: T.blue,
       accentTint: T.blueTint,
     },
+    {
+      id: "popularSearchCards",
+      label: "Popular Searches",
+      desc: "Home enquiry cards",
+      icon: <StarBorderRoundedIcon sx={{ fontSize: 18 }} />,
+      stat: popularSearchCards.length,
+      statLabel: "cards",
+      detail: "Title, image key, button text, accent",
+      accent: T.amber,
+      accentTint: T.amberTint,
+    },
+    {
+      id: "topTourist",
+      label: "Top Tourist",
+      desc: "Destination cards",
+      icon: <HomeOutlinedIcon sx={{ fontSize: 18 }} />,
+      stat: topTouristPlaces.length,
+      statLabel: "places",
+      detail: "Name, image key, link path",
+      accent: T.green,
+      accentTint: T.greenTint,
+    },
+    {
+      id: "popularCategoryContent",
+      label: "Popular Categories",
+      desc: "Tabs · services · links",
+      icon: <GridViewOutlinedIcon sx={{ fontSize: 18 }} />,
+      stat: popularCategoryTabs.length,
+      statLabel: "tabs",
+      detail: `${popularCategoryServices.length} services · ${popularCategoryLinkSections.length} link sections`,
+      accent: T.purple,
+      accentTint: T.purpleTint,
+    },
   ];
 
   const activeCard = cards.find((c) => c.id === open);
 
   return (
-    <Box className="category-display-settings">
+    <Box className="category-display-settings" sx={{ display: "flex", height: "100vh", flexDirection: "column", bgcolor: T.bg }}>
       {/* Header */}
-      <Box sx={{ px: 3, py: 3, borderBottom: `1px solid ${T.line}` }}>
-        <Typography sx={{ fontSize: 24, fontWeight: 700, color: T.ink, mb: 0.5 }}>
-          Category Display Settings
+      <Box sx={{ px: 2, py: 2, borderBottom: `1px solid ${T.line}`, bgcolor: T.surface, boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+        <Typography sx={{ fontSize: 22, fontWeight: 700, color: T.ink, mb: 0.25 }}>
+          Display Settings
         </Typography>
-        <Typography sx={{ fontSize: 13.5, color: T.ink3 }}>
-          Configure what shows on the home page · clears v2 cache on save
+        <Typography sx={{ fontSize: 12.5, color: T.ink3 }}>
+          Configure home page content & layouts
         </Typography>
       </Box>
 
-      {/* Page */}
-      <Box className="category-display-content">
-        {saveError && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {saveError}
-          </Alert>
-        )}
-
-        {/* Overview grid */}
-        <Box className="category-overview-grid">
-          {cards.map((c) => (
-            <OverviewCard
-              key={c.id}
-              icon={c.icon}
-              label={c.label}
-              desc={c.desc}
-              stat={c.stat}
-              statLabel={c.statLabel}
-              detail={c.detail}
-              accent={c.accent}
-              accentTint={c.accentTint}
-              active={open === c.id}
-              onClick={() => setOpen(c.id)}
-            />
-          ))}
+      {/* Main content area with sidebar */}
+      <Box sx={{ display: "flex", flex: 1, overflow: "hidden" }}>
+        {/* Sidebar Navigation */}
+        <Box
+          sx={{
+            width: 220,
+            bgcolor: T.surface,
+            borderRight: `1px solid ${T.line}`,
+            overflowY: "auto",
+            display: "flex",
+            flexDirection: "column",
+            flexShrink: 0,
+            "&::-webkit-scrollbar": { width: 6 },
+            "&::-webkit-scrollbar-track": { bgcolor: T.surface },
+            "&::-webkit-scrollbar-thumb": { bgcolor: T.line2, borderRadius: 3, "&:hover": { bgcolor: T.ink4 } },
+          }}
+        >
+          <Box sx={{ p: 1 }}>
+            {cards.map((c) => (
+              <Box
+                key={c.id}
+                onClick={() => setOpen(c.id)}
+                sx={{
+                  p: 1,
+                  mb: 0.5,
+                  borderRadius: 0.75,
+                  cursor: "pointer",
+                  bgcolor: open === c.id ? c.accentTint : "transparent",
+                  border: `1px solid ${open === c.id ? c.accent : "transparent"}`,
+                  transition: "all .15s",
+                  "&:hover": {
+                    bgcolor: c.accentTint,
+                    borderColor: c.accent,
+                  },
+                }}
+              >
+                <Stack direction="row" spacing={0.75} alignItems="center">
+                  <Box sx={{ color: open === c.id ? c.accent : T.ink3, display: "flex", flexShrink: 0, fontSize: 16 }}>
+                    {c.icon}
+                  </Box>
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography sx={{ fontSize: 12, fontWeight: 600, color: open === c.id ? c.accent : T.ink, lineHeight: 1.2 }}>
+                      {c.label}
+                    </Typography>
+                    <Typography sx={{ fontSize: 10, color: T.ink3, mt: 0.25, lineHeight: 1 }}>
+                      {c.stat} {c.statLabel}
+                    </Typography>
+                  </Box>
+                </Stack>
+              </Box>
+            ))}
+          </Box>
         </Box>
 
-        {/* Active panel */}
-        <Paper className="category-panel">
-          <Box className="category-panel__header">
-            <Box>
-              <Typography className="category-panel__header-title">{activeCard.label}</Typography>
-              <Typography className="category-panel__header-desc">{activeCard.desc}</Typography>
-            </Box>
-            {open === "home" && (
-              <Box sx={{ ml: "auto" }}>
-                <ViewToggle
-                  value={homeView}
-                  onChange={setHomeView}
-                  options={[
-                    {
-                      id: "desktop",
-                      label: "Desktop",
-                      icon: <DesktopWindowsOutlinedIcon sx={{ fontSize: 14 }} />,
-                      count: `${homeFeaturedDesktop.length}/20`,
-                    },
-                    {
-                      id: "mobile",
-                      label: "Mobile",
-                      icon: <PhoneIphoneOutlinedIcon sx={{ fontSize: 14 }} />,
-                      count: `${homeFeaturedMobile.length}/12`,
-                    },
-                  ]}
-                />
-              </Box>
-            )}
-          </Box>
+        {/* Main Content */}
+        <Box sx={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", bgcolor: T.bg }}>
+          {/* Error Alert */}
+          {saveError && (
+            <Alert severity="error" sx={{ mx: 2, my: 1.5 }}>
+              {saveError}
+            </Alert>
+          )}
 
-          <Box className="category-panel__body">
+          {/* Content Area */}
+          <Box sx={{ flex: 1, px: 2, py: 2.5, overflowY: "auto" }}>
+            {/* Panel Header */}
+            <Box sx={{ mb: 2, pb: 1.5, borderBottom: `1px solid ${T.line}` }}>
+              <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1.5}>
+                <Box>
+                  <Typography sx={{ fontSize: 18, fontWeight: 700, color: T.ink, mb: 0.5 }}>
+                    {activeCard.label}
+                  </Typography>
+                  <Typography sx={{ fontSize: 12.5, color: T.ink3 }}>
+                    {activeCard.desc}
+                  </Typography>
+                </Box>
+                {open === "home" && (
+                  <ViewToggle
+                    value={homeView}
+                    onChange={setHomeView}
+                    options={[
+                      {
+                        id: "desktop",
+                        label: "Desktop",
+                        icon: <DesktopWindowsOutlinedIcon sx={{ fontSize: 14 }} />,
+                        count: `${homeFeaturedDesktop.length}/20`,
+                      },
+                      {
+                        id: "mobile",
+                        label: "Mobile",
+                        icon: <PhoneIphoneOutlinedIcon sx={{ fontSize: 14 }} />,
+                        count: `${homeFeaturedMobile.length}/12`,
+                      },
+                    ]}
+                  />
+                )}
+              </Stack>
+            </Box>
+
+            {/* Panel Content */}
             {/* Home featured */}
             {open === "home" &&
               (homeView === "desktop" ? (
@@ -1049,7 +1261,7 @@ export default function CategoryDisplaySettings() {
 
             {/* Sub-categories */}
             {open === "sub" && (
-              <Box>
+              <Box sx={{ mx: 0 }}>
                 <Stack
                   direction="row"
                   spacing={1.5}
@@ -1128,26 +1340,442 @@ export default function CategoryDisplaySettings() {
                 </Button>
               </Box>
             )}
+
+            {/* Popular Search Cards */}
+            {open === "popularSearchCards" && (
+              <Box sx={{ mx: 0 }}>
+                <Stack spacing={2}>
+                  {popularSearchCards.length === 0 ? (
+                    <Box sx={{ p: 3, textAlign: "center", border: `1px dashed ${T.line2}`, borderRadius: 1.5, bgcolor: T.surface2 }}>
+                      <Typography sx={{ color: T.ink3, mb: 1 }}>No search cards yet</Typography>
+                      <Button variant="text" startIcon={<AddIcon />} sx={{ textTransform: "none", color: T.accent }}>
+                        Add your first card
+                      </Button>
+                    </Box>
+                  ) : (
+                    popularSearchCards.map((card, i) => (
+                      <Card key={i} variant="outlined" sx={{ borderColor: T.line, borderRadius: 1.75, overflow: "hidden" }}>
+                        <Box sx={{ display: "grid", gridTemplateColumns: "120px 1fr auto", gap: 2, p: 2.5, alignItems: "start" }}>
+                          {/* Image uploader */}
+                          <Box>
+                            <Typography sx={{ fontSize: 11, fontWeight: 600, color: T.ink3, mb: 0.75, textTransform: "uppercase", letterSpacing: "0.03em" }}>
+                              Image
+                            </Typography>
+                            <ImageUploader
+                              imageKey={card.imageKey}
+                              folder="home-sections/popular-search"
+                              onUploaded={(key) => setPopularSearchCards((p) => {
+                                const next = [...p];
+                                next[i] = { ...next[i], imageKey: key };
+                                return next;
+                              })}
+                            />
+                          </Box>
+
+                          {/* Fields Grid */}
+                          <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
+                            <Box>
+                              <Typography sx={{ fontSize: 11, fontWeight: 600, color: T.ink3, mb: 0.5 }}>Title</Typography>
+                              <TextField
+                                size="small"
+                                fullWidth
+                                placeholder="e.g., Photography"
+                                value={card.title || ""}
+                                onChange={(e) => setPopularSearchCards((p) => {
+                                  const next = [...p];
+                                  next[i] = { ...next[i], title: e.target.value };
+                                  return next;
+                                })}
+                                sx={{ "& .MuiOutlinedInput-root": { fontSize: 13, "& fieldset": { borderColor: T.line2 } } }}
+                              />
+                            </Box>
+                            <Box>
+                              <Typography sx={{ fontSize: 11, fontWeight: 600, color: T.ink3, mb: 0.5 }}>Button Text</Typography>
+                              <TextField
+                                size="small"
+                                fullWidth
+                                placeholder="e.g., Enquire Now"
+                                value={card.buttonText || ""}
+                                onChange={(e) => setPopularSearchCards((p) => {
+                                  const next = [...p];
+                                  next[i] = { ...next[i], buttonText: e.target.value };
+                                  return next;
+                                })}
+                                sx={{ "& .MuiOutlinedInput-root": { fontSize: 13, "& fieldset": { borderColor: T.line2 } } }}
+                              />
+                            </Box>
+                            <Box>
+                              <Typography sx={{ fontSize: 11, fontWeight: 600, color: T.ink3, mb: 0.5 }}>Color (#hex)</Typography>
+                              <TextField
+                                size="small"
+                                fullWidth
+                                placeholder="#e67e22"
+                                value={card.accent || ""}
+                                onChange={(e) => setPopularSearchCards((p) => {
+                                  const next = [...p];
+                                  next[i] = { ...next[i], accent: e.target.value };
+                                  return next;
+                                })}
+                                sx={{ "& .MuiOutlinedInput-root": { fontSize: 13, "& fieldset": { borderColor: T.line2 } } }}
+                              />
+                            </Box>
+                            <Box>
+                              <Typography sx={{ fontSize: 11, fontWeight: 600, color: T.ink3, mb: 0.5 }}>Alt Text</Typography>
+                              <TextField
+                                size="small"
+                                fullWidth
+                                placeholder="Image description"
+                                value={card.alt || ""}
+                                onChange={(e) => setPopularSearchCards((p) => {
+                                  const next = [...p];
+                                  next[i] = { ...next[i], alt: e.target.value };
+                                  return next;
+                                })}
+                                sx={{ "& .MuiOutlinedInput-root": { fontSize: 13, "& fieldset": { borderColor: T.line2 } } }}
+                              />
+                            </Box>
+                          </Box>
+
+                          {/* Delete button */}
+                          <Tooltip title="Remove card">
+                            <IconButton size="small" onClick={() => setPopularSearchCards((p) => p.filter((_, j) => j !== i))} sx={{ color: T.ink3, "&:hover": { color: T.red, bgcolor: T.redTint } }}>
+                              <DeleteOutlineIcon sx={{ fontSize: 18 }} />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
+                      </Card>
+                    ))
+                  )}
+                </Stack>
+
+                <Box sx={{ mt: 2 }}>
+                  <Button
+                    variant="outlined"
+                    startIcon={<AddIcon />}
+                    onClick={() => setPopularSearchCards((p) => [...p, { title: "", imageKey: "", buttonText: "Enquire Now", accent: "#e67e22", alt: "" }])}
+                    sx={{ textTransform: "none", borderColor: T.line2, color: T.ink2, "&:hover": { bgcolor: T.surface2, borderColor: T.line } }}
+                  >
+                    Add card
+                  </Button>
+                </Box>
+              </Box>
+            )}
+
+            {/* Top Tourist Places */}
+            {open === "topTourist" && (
+              <Box sx={{ mx: 0 }}>
+                <Stack spacing={2}>
+                  {topTouristPlaces.length === 0 ? (
+                    <Box sx={{ p: 3, textAlign: "center", border: `1px dashed ${T.line2}`, borderRadius: 1.5, bgcolor: T.surface2 }}>
+                      <Typography sx={{ color: T.ink3, mb: 1 }}>No destinations yet</Typography>
+                      <Button variant="text" startIcon={<AddIcon />} sx={{ textTransform: "none", color: T.accent }}>
+                        Add your first place
+                      </Button>
+                    </Box>
+                  ) : (
+                    topTouristPlaces.map((place, i) => (
+                      <Card key={i} variant="outlined" sx={{ borderColor: T.line, borderRadius: 1.75, overflow: "hidden" }}>
+                        <Box sx={{ display: "grid", gridTemplateColumns: "120px 1fr auto", gap: 2, p: 2.5, alignItems: "start" }}>
+                          {/* Image */}
+                          <Box>
+                            <Typography sx={{ fontSize: 11, fontWeight: 600, color: T.ink3, mb: 0.75, textTransform: "uppercase", letterSpacing: "0.03em" }}>
+                              Image
+                            </Typography>
+                            <ImageUploader
+                              imageKey={place.imageKey}
+                              folder="home-sections/top-tourist"
+                              onUploaded={(key) => setTopTouristPlaces((p) => {
+                                const next = [...p];
+                                next[i] = { ...next[i], imageKey: key };
+                                return next;
+                              })}
+                            />
+                          </Box>
+
+                          {/* Fields */}
+                          <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
+                            <Box>
+                              <Typography sx={{ fontSize: 11, fontWeight: 600, color: T.ink3, mb: 0.5 }}>City Name</Typography>
+                              <TextField
+                                size="small"
+                                fullWidth
+                                placeholder="e.g., Ooty"
+                                value={place.name || ""}
+                                onChange={(e) => setTopTouristPlaces((p) => {
+                                  const next = [...p];
+                                  next[i] = { ...next[i], name: e.target.value };
+                                  return next;
+                                })}
+                                sx={{ "& .MuiOutlinedInput-root": { fontSize: 13, "& fieldset": { borderColor: T.line2 } } }}
+                              />
+                            </Box>
+                            <Box>
+                              <Typography sx={{ fontSize: 11, fontWeight: 600, color: T.ink3, mb: 0.5 }}>Alt Text</Typography>
+                              <TextField
+                                size="small"
+                                fullWidth
+                                placeholder="Image description"
+                                value={place.alt || ""}
+                                onChange={(e) => setTopTouristPlaces((p) => {
+                                  const next = [...p];
+                                  next[i] = { ...next[i], alt: e.target.value };
+                                  return next;
+                                })}
+                                sx={{ "& .MuiOutlinedInput-root": { fontSize: 13, "& fieldset": { borderColor: T.line2 } } }}
+                              />
+                            </Box>
+                            <Box sx={{ gridColumn: "1 / -1" }}>
+                              <Typography sx={{ fontSize: 11, fontWeight: 600, color: T.ink3, mb: 0.5 }}>Link Path</Typography>
+                              <TextField
+                                size="small"
+                                fullWidth
+                                placeholder="/trending/ooty"
+                                value={place.path || ""}
+                                onChange={(e) => setTopTouristPlaces((p) => {
+                                  const next = [...p];
+                                  next[i] = { ...next[i], path: e.target.value };
+                                  return next;
+                                })}
+                                sx={{ "& .MuiOutlinedInput-root": { fontSize: 13, "& fieldset": { borderColor: T.line2 } } }}
+                              />
+                            </Box>
+                          </Box>
+
+                          {/* Delete */}
+                          <Tooltip title="Remove place">
+                            <IconButton size="small" onClick={() => setTopTouristPlaces((p) => p.filter((_, j) => j !== i))} sx={{ color: T.ink3, "&:hover": { color: T.red, bgcolor: T.redTint } }}>
+                              <DeleteOutlineIcon sx={{ fontSize: 18 }} />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
+                      </Card>
+                    ))
+                  )}
+                </Stack>
+
+                <Box sx={{ mt: 2 }}>
+                  <Button
+                    variant="outlined"
+                    startIcon={<AddIcon />}
+                    onClick={() => setTopTouristPlaces((p) => [...p, { name: "", imageKey: "", alt: "", path: "" }])}
+                    sx={{ textTransform: "none", borderColor: T.line2, color: T.ink2, "&:hover": { bgcolor: T.surface2, borderColor: T.line } }}
+                  >
+                    Add place
+                  </Button>
+                </Box>
+              </Box>
+            )}
+
+            {/* Popular Category Content */}
+            {open === "popularCategoryContent" && (
+              <Stack spacing={3.5}>
+                {/* Category Tabs Section */}
+                <Box>
+                  <Box sx={{ mb: 2, pb: 1.5, borderBottom: `1px solid ${T.line}` }}>
+                    <Typography sx={{ fontWeight: 700, fontSize: 15, color: T.ink }}>Category Tabs</Typography>
+                    <Typography sx={{ fontSize: 12, color: T.ink3, mt: 0.25 }}>Tabs shown on the Popular Categories page</Typography>
+                  </Box>
+                  <Stack spacing={1.5}>
+                    {popularCategoryTabs.length === 0 ? (
+                      <Box sx={{ p: 2.5, textAlign: "center", border: `1px dashed ${T.line2}`, borderRadius: 1.5, bgcolor: T.surface2 }}>
+                        <Typography sx={{ color: T.ink3, mb: 0.5 }}>No tabs configured</Typography>
+                      </Box>
+                    ) : (
+                      popularCategoryTabs.map((tab, i) => (
+                        <Card key={i} variant="outlined" sx={{ borderColor: T.line, borderRadius: 1.5 }}>
+                          <Box sx={{ p: 2 }}>
+                            <Stack spacing={1.5}>
+                              <Box>
+                                <Typography sx={{ fontSize: 11, fontWeight: 600, color: T.ink3, mb: 0.5 }}>Category Name</Typography>
+                                <TextField
+                                  size="small"
+                                  fullWidth
+                                  placeholder="e.g., Plumbing"
+                                  value={tab.category || ""}
+                                  onChange={(e) => setPopularCategoryTabs((p) => { const n = [...p]; n[i] = { ...n[i], category: e.target.value }; return n; })}
+                                  sx={{ "& .MuiOutlinedInput-root": { fontSize: 13, "& fieldset": { borderColor: T.line2 } } }}
+                                />
+                              </Box>
+                              <Box>
+                                <Typography sx={{ fontSize: 11, fontWeight: 600, color: T.ink3, mb: 0.5 }}>Keywords ({(tab.keywords || []).length})</Typography>
+                                <TextField
+                                  size="small"
+                                  fullWidth
+                                  multiline
+                                  minRows={2}
+                                  placeholder="pipe, tap, water... (comma-separated)"
+                                  value={(tab.keywords || []).join(", ")}
+                                  onChange={(e) => setPopularCategoryTabs((p) => { const n = [...p]; n[i] = { ...n[i], keywords: e.target.value.split(",").map((k) => k.trim()).filter(Boolean) }; return n; })}
+                                  sx={{ "& .MuiOutlinedInput-root": { fontSize: 13, "& fieldset": { borderColor: T.line2 } } }}
+                                />
+                              </Box>
+                              <Tooltip title="Remove tab">
+                                <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+                                  <IconButton size="small" onClick={() => setPopularCategoryTabs((p) => p.filter((_, j) => j !== i))} sx={{ color: T.ink3, "&:hover": { color: T.red, bgcolor: T.redTint } }}>
+                                    <DeleteOutlineIcon sx={{ fontSize: 18 }} />
+                                  </IconButton>
+                                </Box>
+                              </Tooltip>
+                            </Stack>
+                          </Box>
+                        </Card>
+                      ))
+                    )}
+                  </Stack>
+                  <Button variant="text" startIcon={<AddIcon />} onClick={() => setPopularCategoryTabs((p) => [...p, { category: "", keywords: [] }])} sx={{ textTransform: "none", color: T.accent, mt: 1, "&:hover": { bgcolor: T.accentTint } }}>
+                    Add tab
+                  </Button>
+                </Box>
+
+                {/* Services Section */}
+                <Box>
+                  <Box sx={{ mb: 2, pb: 1.5, borderBottom: `1px solid ${T.line}` }}>
+                    <Typography sx={{ fontWeight: 700, fontSize: 15, color: T.ink }}>Services</Typography>
+                    <Typography sx={{ fontSize: 12, color: T.ink3, mt: 0.25 }}>Service items under each tab</Typography>
+                  </Box>
+                  <Stack spacing={1.5}>
+                    {popularCategoryServices.length === 0 ? (
+                      <Box sx={{ p: 2.5, textAlign: "center", border: `1px dashed ${T.line2}`, borderRadius: 1.5, bgcolor: T.surface2 }}>
+                        <Typography sx={{ color: T.ink3, mb: 0.5 }}>No services configured</Typography>
+                      </Box>
+                    ) : (
+                      popularCategoryServices.map((svc, i) => (
+                        <Card key={i} variant="outlined" sx={{ borderColor: T.line, borderRadius: 1.5 }}>
+                          <Box sx={{ p: 2 }}>
+                            <Stack spacing={1.5}>
+                              <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
+                                {[["title", "Title"], ["searchName", "Search Name"]].map(([field, label]) => (
+                                  <Box key={field}>
+                                    <Typography sx={{ fontSize: 11, fontWeight: 600, color: T.ink3, mb: 0.5 }}>{label}</Typography>
+                                    <TextField
+                                      size="small"
+                                      fullWidth
+                                      value={svc[field] || ""}
+                                      onChange={(e) => setPopularCategoryServices((p) => { const n = [...p]; n[i] = { ...n[i], [field]: e.target.value }; return n; })}
+                                      sx={{ "& .MuiOutlinedInput-root": { fontSize: 13, "& fieldset": { borderColor: T.line2 } } }}
+                                    />
+                                  </Box>
+                                ))}
+                              </Box>
+                              <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
+                                {[["icon", "Icon Key"], ["routeSlug", "Route Slug"]].map(([field, label]) => (
+                                  <Box key={field}>
+                                    <Typography sx={{ fontSize: 11, fontWeight: 600, color: T.ink3, mb: 0.5 }}>{label}</Typography>
+                                    <TextField
+                                      size="small"
+                                      fullWidth
+                                      value={svc[field] || ""}
+                                      onChange={(e) => setPopularCategoryServices((p) => { const n = [...p]; n[i] = { ...n[i], [field]: e.target.value }; return n; })}
+                                      sx={{ "& .MuiOutlinedInput-root": { fontSize: 13, "& fieldset": { borderColor: T.line2 } } }}
+                                    />
+                                  </Box>
+                                ))}
+                              </Box>
+                              <Box>
+                                <Typography sx={{ fontSize: 11, fontWeight: 600, color: T.ink3, mb: 0.5 }}>Description</Typography>
+                                <TextField
+                                  size="small"
+                                  fullWidth
+                                  multiline
+                                  minRows={2}
+                                  value={svc.description || ""}
+                                  onChange={(e) => setPopularCategoryServices((p) => { const n = [...p]; n[i] = { ...n[i], description: e.target.value }; return n; })}
+                                  sx={{ "& .MuiOutlinedInput-root": { fontSize: 13, "& fieldset": { borderColor: T.line2 } } }}
+                                />
+                              </Box>
+                              <Tooltip title="Remove service">
+                                <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+                                  <IconButton size="small" onClick={() => setPopularCategoryServices((p) => p.filter((_, j) => j !== i))} sx={{ color: T.ink3, "&:hover": { color: T.red, bgcolor: T.redTint } }}>
+                                    <DeleteOutlineIcon sx={{ fontSize: 18 }} />
+                                  </IconButton>
+                                </Box>
+                              </Tooltip>
+                            </Stack>
+                          </Box>
+                        </Card>
+                      ))
+                    )}
+                  </Stack>
+                  <Button variant="text" startIcon={<AddIcon />} onClick={() => setPopularCategoryServices((p) => [...p, { title: "", icon: "", description: "", route: "", searchName: "", routeSlug: "" }])} sx={{ textTransform: "none", color: T.accent, mt: 1, "&:hover": { bgcolor: T.accentTint } }}>
+                    Add service
+                  </Button>
+                </Box>
+
+                {/* Link Sections */}
+                <Box>
+                  <Box sx={{ mb: 2, pb: 1.5, borderBottom: `1px solid ${T.line}` }}>
+                    <Typography sx={{ fontWeight: 700, fontSize: 15, color: T.ink }}>Link Sections</Typography>
+                    <Typography sx={{ fontSize: 12, color: T.ink3, mt: 0.25 }}>Quick link groups for navigation</Typography>
+                  </Box>
+                  <Stack spacing={1.5}>
+                    {popularCategoryLinkSections.length === 0 ? (
+                      <Box sx={{ p: 2.5, textAlign: "center", border: `1px dashed ${T.line2}`, borderRadius: 1.5, bgcolor: T.surface2 }}>
+                        <Typography sx={{ color: T.ink3, mb: 0.5 }}>No link sections configured</Typography>
+                      </Box>
+                    ) : (
+                      popularCategoryLinkSections.map((sec, i) => (
+                        <Card key={i} variant="outlined" sx={{ borderColor: T.line, borderRadius: 1.5 }}>
+                          <Box sx={{ p: 2 }}>
+                            <Stack spacing={1.5}>
+                              <Box>
+                                <Typography sx={{ fontSize: 11, fontWeight: 600, color: T.ink3, mb: 0.5 }}>Section Title</Typography>
+                                <TextField
+                                  size="small"
+                                  fullWidth
+                                  placeholder="e.g., Quick Tools"
+                                  value={sec.title || ""}
+                                  onChange={(e) => setPopularCategoryLinkSections((p) => { const n = [...p]; n[i] = { ...n[i], title: e.target.value }; return n; })}
+                                  sx={{ "& .MuiOutlinedInput-root": { fontSize: 13, "& fieldset": { borderColor: T.line2 } } }}
+                                />
+                              </Box>
+                              <Box>
+                                <Typography sx={{ fontSize: 11, fontWeight: 600, color: T.ink3, mb: 0.5 }}>Keywords ({(sec.keywords || []).length})</Typography>
+                                <TextField
+                                  size="small"
+                                  fullWidth
+                                  multiline
+                                  minRows={2}
+                                  placeholder="filter, drain, repair... (comma-separated)"
+                                  value={(sec.keywords || []).join(", ")}
+                                  onChange={(e) => setPopularCategoryLinkSections((p) => { const n = [...p]; n[i] = { ...n[i], keywords: e.target.value.split(",").map((k) => k.trim()).filter(Boolean) }; return n; })}
+                                  sx={{ "& .MuiOutlinedInput-root": { fontSize: 13, "& fieldset": { borderColor: T.line2 } } }}
+                                />
+                              </Box>
+                              <Tooltip title="Remove section">
+                                <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+                                  <IconButton size="small" onClick={() => setPopularCategoryLinkSections((p) => p.filter((_, j) => j !== i))} sx={{ color: T.ink3, "&:hover": { color: T.red, bgcolor: T.redTint } }}>
+                                    <DeleteOutlineIcon sx={{ fontSize: 18 }} />
+                                  </IconButton>
+                                </Box>
+                              </Tooltip>
+                            </Stack>
+                          </Box>
+                        </Card>
+                      ))
+                    )}
+                  </Stack>
+                  <Button variant="text" startIcon={<AddIcon />} onClick={() => setPopularCategoryLinkSections((p) => [...p, { title: "", keywords: [] }])} sx={{ textTransform: "none", color: T.accent, mt: 1, "&:hover": { bgcolor: T.accentTint } }}>
+                    Add section
+                  </Button>
+                </Box>
+              </Stack>
+            )}
           </Box>
-        </Paper>
+        </Box>
       </Box>
 
-      {/* Sticky footer bar */}
+      {/* Footer bar */}
       <Box
         sx={{
-          position: "fixed",
-          bottom: 0,
-          left: 0,
-          right: 0,
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          px: 3,
-          py: 1.75,
+          px: 2,
+          py: 1.5,
           bgcolor: T.surface,
           borderTop: `1px solid ${T.line}`,
-          boxShadow: "0 -2px 8px rgba(20, 17, 15, 0.08)",
-          zIndex: 100,
+          boxShadow: "0 -1px 3px rgba(0,0,0,0.05)",
+          flexShrink: 0,
         }}
       >
         <Chip
@@ -1184,9 +1812,6 @@ export default function CategoryDisplaySettings() {
           </Button>
         </Stack>
       </Box>
-
-      {/* Spacer for fixed footer */}
-      <Box sx={{ height: 68 }} />
 
       <Snackbar
         open={snackbar.open}
