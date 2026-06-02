@@ -122,9 +122,15 @@ export default function SeoPageContentBlogs() {
       );
     }
 
+    // Ensure pageImages is always sent and not lost
+    const submitData = {
+      ...formData,
+      pageImages: formData.pageImages || [],
+    };
+
     const action = editingId
-      ? updateSeoPageContentBlogs(editingId, formData)
-      : createSeoPageContentBlogs(formData);
+      ? updateSeoPageContentBlogs(editingId, submitData)
+      : createSeoPageContentBlogs(submitData);
 
     await dispatch(action);
     resetForm();
