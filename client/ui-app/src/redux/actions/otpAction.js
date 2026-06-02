@@ -73,6 +73,10 @@ export const updateOtpUser = (mobile, data) => async (dispatch) => {
       payload: response.data,
     });
 
+    if (response.data?.user) {
+      localStorage.setItem("authUser", JSON.stringify(response.data.user));
+    }
+
     return response.data;
   } catch (error) {
     dispatch({
@@ -92,12 +96,18 @@ export const viewOtpUser = (mobile) => async (dispatch) => {
 
     const response = await axiosInstance.get(`${API_URL}/otp_user/${mobile}`);
 
+    const user = response.data.user;
+
+    if (user) {
+      localStorage.setItem("authUser", JSON.stringify(user));
+    }
+
     dispatch({
       type: VIEW_OTP_USER_SUCCESS,
-      payload: response.data.user,
+      payload: user,
     });
 
-    return response.data.user;
+    return user;
 
   } catch (error) {
 

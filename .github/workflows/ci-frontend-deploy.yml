@@ -44,7 +44,7 @@ jobs:
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -p 2244 \
             ${{ secrets.DEPLOY_USER }}@${{ secrets.SERVER_HOST }} \
-            'cp -r /var/www/massclickQA/client/ui-app/build /var/www/backups/frontend-build.backup'
+            'rm -rf /var/www/backups/frontend-build.backup && rsync -avz --chown=deploy:deploy /var/www/massclickQA/client/ui-app/build/ /var/www/backups/frontend-build.backup/'
 
       - name: Deploy to server
         run: |
@@ -71,8 +71,9 @@ jobs:
           echo "❌ Deployment failed, rolling back..."
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -p 2244 \
             ${{ secrets.DEPLOY_USER }}@${{ secrets.SERVER_HOST }} \
-            'rm -rf /var/www/massclickQA/client/ui-app/build && \
-             cp -r /var/www/backups/frontend-build.backup /var/www/massclickQA/client/ui-app/build && \
+            'sudo chown -R deploy:deploy /var/www/massclickQA/client/ui-app/build && \
+             rm -rf /var/www/massclickQA/client/ui-app/build && \
+             rsync -avz --chown=deploy:deploy /var/www/backups/frontend-build.backup/ /var/www/massclickQA/client/ui-app/build/ && \
              sudo /bin/systemctl reload nginx && \
              echo "✅ Rollback completed"'
 
