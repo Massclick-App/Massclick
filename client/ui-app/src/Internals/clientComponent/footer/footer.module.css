@@ -7,7 +7,9 @@
     --footer-text-muted: rgba(15, 23, 42, 0.45);
     --footer-border-soft: rgba(15, 23, 42, 0.08);
     --footer-transition: 0.35s cubic-bezier(.4,0,.2,1);
-    --footer-max-width: var(--section-max-width, 1720px);
+    --footer-max-width: var(--section-max-width, 1280px);
+    --footer-padding-h: var(--section-padding-h, clamp(16px, 3vw, 36px));
+    --footer-shadow-soft: var(--section-shadow, 0 12px 32px rgba(15, 23, 42, 0.08));
     background:
         radial-gradient(
             circle at 85% 40%,
@@ -22,7 +24,7 @@
 .footer-inner {
     max-width: var(--footer-max-width);
     margin: auto;
-    padding: 48px var(--section-padding-h, 32px) 38px;
+    padding: 48px var(--footer-padding-h) 38px;
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: clamp(32px, 6vw, 96px);
@@ -90,7 +92,7 @@
     height: 36px;
     border-radius: 50%;
     background: var(--footer-bg-card);
-    box-shadow: var(--section-shadow);
+    box-shadow: var(--footer-shadow-soft);
     display: flex;
     align-items: center;
     justify-content: center;

@@ -131,6 +131,7 @@ const CategoriesPage = () => {
         <script type="application/ld+json">{JSON.stringify(breadcrumbSchema)}</script>
       </Helmet>
 
+      <div className={cx("category-page")}>
       <div className={cx("category-container")}>
         {/* Header Section */}
         <div className={cx("category-header")}>
@@ -187,11 +188,11 @@ const CategoriesPage = () => {
             </article>
           </div>
         </div>}
-      <br />
       {/* Bottom Sections */}
       <div className={cx("bottom-sections-wrapper")}>
         <PopularCategoriesLink />
         <Footer />
+      </div>
       </div>
     </>;
 };

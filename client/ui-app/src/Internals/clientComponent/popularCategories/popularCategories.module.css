@@ -8,6 +8,10 @@
   --pc-border: #e7eaf0;
   --pc-surface: #ffffff;
   --pc-soft: #f8fafc;
+  --pc-section-max-width: var(--section-max-width, 1280px);
+  --pc-section-padding-h: var(--section-padding-h, clamp(16px, 3vw, 36px));
+  --pc-section-radius: var(--section-radius, 8px);
+  --pc-section-shadow: var(--section-shadow, 0 12px 32px rgba(15, 23, 42, 0.08));
   width: 100%;
   padding: 0;
   box-sizing: border-box;
@@ -16,15 +20,15 @@
 
 .popular-categories-links__inner {
   width: 100%;
-  max-width: var(--section-max-width);
+  max-width: var(--pc-section-max-width);
   margin: 0 auto;
-  padding: 28px var(--section-padding-h) 24px;
+  padding: 28px var(--pc-section-padding-h) 24px;
   border: 1px solid rgba(231, 234, 240, 0.9);
-  border-radius: var(--section-radius);
+  border-radius: var(--pc-section-radius);
   background:
     linear-gradient(135deg, rgba(255, 244, 234, 0.72), rgba(255, 255, 255, 0) 34%),
     linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
-  box-shadow: var(--section-shadow);
+  box-shadow: var(--pc-section-shadow);
   box-sizing: border-box;
 }
 
@@ -138,7 +142,7 @@
 
 .popular-categories-links__collections {
   width: 100%;
-  max-width: var(--section-max-width);
+  max-width: var(--pc-section-max-width);
   margin: 16px auto 0;
   display: grid;
   gap: 12px;
@@ -146,7 +150,7 @@
 }
 
 .popular-categories-links__collection {
-  padding: 18px var(--section-padding-h);
+  padding: 18px var(--pc-section-padding-h);
   border: 1px solid rgba(231, 234, 240, 0.86);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.92);
@@ -236,9 +240,9 @@
 
 .popular-categories-links__services {
   width: 100%;
-  max-width: var(--section-max-width);
+  max-width: var(--pc-section-max-width);
   margin: 16px auto 0;
-  padding: 26px var(--section-padding-h);
+  padding: 26px var(--pc-section-padding-h);
   border: 1px solid rgba(231, 234, 240, 0.86);
   border-radius: 8px;
   background:

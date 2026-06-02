@@ -317,7 +317,7 @@ const SearchResults = React.memo(() => {
                 </div>;
             })}
           </div>
-        </div><br />
+        </div>
         {!seoContentLoading && sanitizedPageContent && <div className={cx("seo-outer-wrapper")}>
             <div className={cx("seo-article-wrapper")}>
               <article className={cx("seo-article")}>
@@ -328,7 +328,7 @@ const SearchResults = React.memo(() => {
               }} />
               </article>
             </div>
-          </div>}<br />
+          </div>}
         </main>
         <div className={cx("bottom-sections-wrapper")}>
           <PopularCategoriesLink />
