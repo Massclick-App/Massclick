@@ -59,6 +59,16 @@ import { fetchMatchedLeads } from "../../redux/actions/leadsAction.js";
 import './categoryBar.css'
 import MRPPage from "./MRP/mrp.js";
 
+export const isBusinessPeopleUser = (user = {}) => user?.businessPeople === true;
+
+export const getUserMenuLabel = (item, user = {}) => {
+    if (item.path === "/user_edit-profile" && isBusinessPeopleUser(user)) {
+        return "Edit Business";
+    }
+
+    return item.name.startsWith("User ") ? item.name.replace("User ", "") : item.name;
+};
+
 const categories = [
     { name: "Leads", icon: <MailIcon /> },
     // { name: "MNI", icon: <CorporateFareIcon /> },
@@ -105,9 +115,9 @@ const CategoryBar = () => {
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
 
-    const otpState = useSelector((state) => state.otpReducer) || {};
+    const otpState = useSelector((state) => state.otp) || {};
     const { viewResponse } = otpState;
-    const authUser = useSelector((state) => state.otpReducer?.viewResponse?.user) || {};
+    const authUser = useSelector((state) => state.otp?.viewResponse) || {};
 
     const storedAuthUser = useMemo(() => {
         try {
@@ -117,7 +127,7 @@ const CategoryBar = () => {
         }
     }, []);
 
-    const userData = viewResponse?.user || authUser || storedAuthUser || {};
+    const userData = viewResponse || authUser || storedAuthUser || {};
     const userName = userData?.userName || userData?.name || '';
     const profileImageUrl =
         userData?.userProfile || userData?.profileImage || userData?.avatar || "";
@@ -267,7 +277,7 @@ const CategoryBar = () => {
                             >
                                 <div className="menuIcon">{item.icon}</div>
                                 <span className="menuText">
-                                    {item.name.startsWith('User ') ? item.name.replace('User ', '') : item.name}
+                                    {getUserMenuLabel(item, userData)}
                                 </span>
                             </li>
                         </React.Fragment>
