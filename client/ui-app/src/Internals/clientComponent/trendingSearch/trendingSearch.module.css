@@ -4,7 +4,7 @@
 
 .ts {
   width: 100%;
-  max-width: 1720px;
+  max-width: var(--section-max-width);
   margin: 0 auto;
   font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 }
@@ -12,9 +12,9 @@
 /* ── shell ── */
 .ts__inner {
   background: #ffffff;
-  border-radius: 16px;
-  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.1);
-  padding: 22px 20px 18px;
+  border-radius: var(--section-radius);
+  box-shadow: var(--section-shadow);
+  padding: 28px var(--section-padding-h) 24px;
   position: relative;
   overflow: hidden;
   scrollbar-width: none;
@@ -81,8 +81,6 @@
 /* ── carousel wrapper ── */
 .ts__wrap {
   position: relative;
-  padding: 0 50px;
-  margin: 0 -50px;
 }
 
 /* ── arrow buttons ── */
@@ -108,8 +106,8 @@
   transition: opacity 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.ts__arrow--left  { left:  20px; }
-.ts__arrow--right { right: 20px; }
+.ts__arrow--left  { left:  8px; }
+.ts__arrow--right { right: 8px; }
 
 .ts__arrow--visible {
   opacity: 1;
@@ -268,9 +266,6 @@
 }
 
 @media (min-width: 600px) {
-  .ts__inner {
-    padding: 26px 24px 22px;
-  }
   .ts__title {
     font-size: 1.7rem;
   }
@@ -284,9 +279,6 @@
 }
 
 @media (min-width: 900px) {
-  .ts__inner {
-    padding: 24px 28px 22px;
-  }
   .ts__track {
     gap: 20px;
   }
@@ -298,14 +290,9 @@
     width: 40px;
     height: 40px;
   }
-  .ts__arrow--left  { left:  20px; }
-  .ts__arrow--right { right: 20px; }
 }
 
 @media (min-width: 1200px) {
-  .ts__inner {
-    padding: 26px 32px 24px;
-  }
   .ts__title {
     font-size: 1.95rem;
   }

@@ -15,6 +15,37 @@ import { connectSocket } from '../../services/socketService.js';
 import { generateWebsiteSchema, generateOrganizationSchema } from '../../utils/seoSchemaGenerators';
 import styles from "./homeLayout.module.css";
 const cx = createScopedClassNames(styles);
+
+// Design System Constants - Enforce uniformity across all components
+const DESIGN_TOKENS = {
+  // Spacing (vertical gaps between sections)
+  sectionGap: {
+    xs: 2.5,
+    sm: 3,
+    md: 3.5
+  },
+  // Padding (horizontal - applied to all sections)
+  sectionPadding: {
+    xs: 2,
+    sm: 4,
+    md: 6
+  },
+  // Font sizes
+  fontSize: {
+    lg: 14,      // Labels, titles
+    md: 13,      // Body text
+    sm: 11       // Secondary text
+  },
+  // Component sizes
+  avatar: {
+    notification: 48
+  },
+  gap: {
+    xs: 1,
+    sm: 1.5
+  }
+};
+
 const S = ({
   variant = "rounded",
   w,
@@ -30,7 +61,7 @@ const S = ({
 }} {...rest} />;
 const Txt = ({
   w = "100%",
-  h = 14,
+  h = DESIGN_TOKENS.fontSize.lg,
   sx
 } = {}) => <S variant="rounded" w={w} h={h} r={1} sx={sx} />;
 const FeaturedServices = lazy(() => import('../clientComponent/featuredService/featureService.js'));
@@ -43,11 +74,9 @@ const SearchResults = lazy(() => import('./SearchResult/SearchResult'));
 const Footer = lazy(() => import('./footer/footer'));
 const PageHeaderContents = lazy(() => import('./pageHeaderContents/pageHeaderContents.js'));
 const RelatedBlogs = lazy(() => import('./relatedBlogs/relatedBlogs.js'));
-const HOME_SECTION_GAP = {
-  xs: 2.5,
-  sm: 3,
-  md: 3.5
-};
+
+const HOME_SECTION_GAP = DESIGN_TOKENS.sectionGap;
+
 const homeSectionSx = {
   mb: HOME_SECTION_GAP,
   contain: 'layout style paint'
@@ -142,10 +171,10 @@ const SkeletonCards = ({
       flexShrink: 0
     }}>
                     <SkeletonCard w={c.iconW} h={c.iconH} r={50} mb={1.5} mt={0} />
-                    <Txt w="70%" h={14} sx={{
+                    <Txt w="70%" h={DESIGN_TOKENS.fontSize.lg} sx={{
         mx: "auto"
       }} />
-                    <Txt w="50%" h={11} sx={{
+                    <Txt w="50%" h={DESIGN_TOKENS.fontSize.sm} sx={{
         mx: "auto",
         mt: 0.5
       }} />
@@ -161,15 +190,11 @@ const SkeletonCarousel = ({
   const count = isTrending ? 5 : 4;
   const containerH = isTrending ? SKELETON_HEIGHTS.trending.skeleton : SKELETON_HEIGHTS.popular.skeleton;
   return <div style={{
-    px: {
-      xs: 2,
-      sm: 4,
-      md: 6
-    },
     height: containerH,
     display: 'flex',
     alignItems: 'center',
-    contain: 'layout style paint'
+    contain: 'layout style paint',
+    overflow: 'auto'
   }}>
             <div className={cx(isTrending ? "trending-search__track" : "popular-search__track")} style={{
       display: "flex",
@@ -181,7 +206,7 @@ const SkeletonCarousel = ({
         flexShrink: 0
       }}>
                         <S w={cardW} h={cardH} r={14} />
-                        <Txt w="60%" h={14} sx={{
+                        <Txt w="60%" h={DESIGN_TOKENS.fontSize.lg} sx={{
           mt: 1
         }} />
                         {!isTrending && <S w={120} h={36} r={8} sx={{
@@ -199,11 +224,6 @@ const SkeletonGrid = ({
   const h = isTourist ? 200 : 170;
   const containerH = isTourist ? SKELETON_HEIGHTS.tourist.skeleton : SKELETON_HEIGHTS.blogs.skeleton;
   return <Grid container spacing={2} sx={{
-    px: {
-      xs: 2,
-      sm: 4,
-      md: 6
-    },
     height: containerH,
     display: 'flex',
     alignItems: 'center',
@@ -215,10 +235,10 @@ const SkeletonGrid = ({
       md: isTourist ? 3 : 4
     }} key={i}>
                     <S w="100%" h={h} r={12} />
-                    <Txt w="60%" h={14} sx={{
+                    <Txt w="60%" h={DESIGN_TOKENS.fontSize.lg} sx={{
         mt: 1.5
       }} />
-                    {isTourist && <Txt w="40%" h={11} sx={{
+                    {isTourist && <Txt w="40%" h={DESIGN_TOKENS.fontSize.sm} sx={{
         mt: 0.5
       }} />}
                 </Grid>)}
@@ -389,18 +409,8 @@ const LandingPage = React.memo(() => {
 
                 <Suspense fallback={null}>
 
-                    {isSearching ? <Box sx={{
-            mt: 4,
-            mb: 4,
-            px: {
-              xs: 2,
-              sm: 4,
-              md: 6
-            }
-          }}>
-                            <SearchResults results={searchResults} />
-                        </Box> : <>
-                            <Box className={cx("home-section home-section--flush")} sx={{
+                    {isSearching ? <SearchResults results={searchResults} /> : <>
+                            <Box className={cx("home-section")} sx={{
               ...homeSectionSx,
               minHeight: 280,
               maxHeight: 'none',
@@ -474,37 +484,37 @@ const LandingPage = React.memo(() => {
         borderRadius: 2,
         display: 'flex',
         alignItems: 'flex-start',
-        gap: 1.5,
-        p: 1.5
+        gap: DESIGN_TOKENS.gap.sm,
+        p: DESIGN_TOKENS.gap.sm
       }}>
                     <Box sx={{
           display: 'flex',
-          gap: 1.5,
+          gap: DESIGN_TOKENS.gap.sm,
           alignItems: 'flex-start'
         }}>
                         {fcmNotif?.image ? <Avatar src={fcmNotif.image} variant="rounded" sx={{
-            width: 48,
-            height: 48,
+            width: DESIGN_TOKENS.avatar.notification,
+            height: DESIGN_TOKENS.avatar.notification,
             flexShrink: 0
           }} imgProps={{
             onError: e => {
               e.target.style.display = 'none';
             }
           }} /> : <Avatar src="/apple-touch-icon.png" variant="rounded" sx={{
-            width: 48,
-            height: 48,
+            width: DESIGN_TOKENS.avatar.notification,
+            height: DESIGN_TOKENS.avatar.notification,
             flexShrink: 0
           }} />}
                         <Box>
                             <Box sx={{
               fontWeight: 700,
-              fontSize: 14,
+              fontSize: DESIGN_TOKENS.fontSize.lg,
               mb: 0.25
             }}>
                                 {fcmNotif?.title}
                             </Box>
                             <Box sx={{
-              fontSize: 13,
+              fontSize: DESIGN_TOKENS.fontSize.md,
               color: '#555'
             }}>
                                 {fcmNotif?.body}

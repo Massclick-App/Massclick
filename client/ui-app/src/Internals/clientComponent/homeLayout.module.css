@@ -1,11 +1,14 @@
 .home-page {
   --home-max-width: 1720px;
   --home-edge: clamp(48px, 8vw, 128px);
-  --home-card-radius: 8px;
-  --home-section-bg: #ffffff;
   --home-page-bg: #f5f7fa;
-  --home-border: 1px solid rgba(226, 232, 240, 0.9);
-  --home-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+
+  /* ── Section design tokens (inherited by all child components) ── */
+  --section-max-width: 1720px;
+  --section-padding-h: clamp(16px, 3.5vw, 52px);
+  --section-radius: 16px;
+  --section-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+
   background: var(--home-page-bg);
   contain: layout style paint;
   display: flow-root;

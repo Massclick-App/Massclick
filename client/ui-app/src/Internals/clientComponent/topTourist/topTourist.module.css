@@ -2,25 +2,20 @@
 /* PREMIUM TOURIST SECTION (Apple-Level UI) */
 /* ========================================= */
 
-:root {
+.tourist-section {
   --tourist-brand: #ff6f00;
   --tourist-bg: linear-gradient(135deg, #fff7ec, #fff);
-  --tourist-shadow: 0 14px 40px rgba(0,0,0,0.10);
   --tourist-hover-shadow: 0 18px 50px rgba(0,0,0,0.14);
-  --radius-lg: 22px;
-  --radius-md: 14px;
-  --radius-sm: 10px;
-  --transition: 0.25s ease-in-out;
-}
+  --tourist-radius-md: 14px;
+  --tourist-radius-sm: 10px;
+  --tourist-transition: 0.25s ease-in-out;
 
-
-.tourist-section {
-  max-width: 1800px;
+  max-width: var(--section-max-width);
   margin: 0 auto;
-  padding: 28px clamp(16px, 4vw, 48px);
+  padding: 28px var(--section-padding-h) 24px;
   background: var(--tourist-bg);
-  border-radius: 16px;
-  box-shadow: 0 12px 32px rgba(0,0,0,0.09);
+  border-radius: var(--section-radius);
+  box-shadow: var(--section-shadow);
   position: relative;
   overflow: visible;
 }
@@ -63,7 +58,7 @@
   border-radius: 50%;
   box-shadow: 0 6px 16px rgba(0,0,0,0.10);
   cursor: pointer;
-  transition: var(--transition);
+  transition: var(--tourist-transition);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -123,12 +118,12 @@
   max-width: 420px;
   height: 150px;
   background: #fff;
-  border-radius: var(--radius-md);
+  border-radius: var(--tourist-radius-md);
   box-shadow: 0 6px 16px rgba(0,0,0,0.08);
   border: 1px solid #eee;
   overflow: hidden;
   text-decoration: none;
-  transition: var(--transition);
+  transition: var(--tourist-transition);
   scroll-snap-align: start;
 }
 
@@ -188,7 +183,7 @@
 
 .tourist-card:hover .tourist-explore svg {
   transform: translateX(3px);
-  transition: var(--transition);
+  transition: var(--tourist-transition);
 }
 
 

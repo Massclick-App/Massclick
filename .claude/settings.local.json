@@ -13,7 +13,10 @@
       "Bash(git commit -m 'Fix ItemList schema structure: move aggregateRating into item object *)",
       "Bash(git commit -m 'Fix ItemList item type: use LocalBusiness instead of Thing for rating support *)",
       "Bash(git commit -m 'Fix schema architecture: use SearchResultsPage instead of ItemList for category pages *)",
-      "Bash(xargs -I {} sh -c 'echo \"=== {} ===\" && grep -n \"featured-services-container\\\\|service-card\" {}')"
+      "Bash(xargs -I {} sh -c 'echo \"=== {} ===\" && grep -n \"featured-services-container\\\\|service-card\" {}')",
+      "Bash(Get-Content \"D:\\\\dev_abishek\\\\massclick\\\\client\\\\ui-app\\\\src\\\\Internals\\\\clientComponent\\\\trendingSearch\\\\trendingSearch.module.css\")",
+      "Bash(Select-String \"padding\")",
+      "Bash(Select-Object -First 10)"
     ]
   }
 }

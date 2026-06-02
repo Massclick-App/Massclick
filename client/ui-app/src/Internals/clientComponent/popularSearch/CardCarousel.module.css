@@ -1,19 +1,13 @@
-:root {
-  --popular-brand-orange: #e67e22;
-  --popular-bg-page: #f8f9fa;
-  --popular-bg-card: #ffffff;
-  --popular-shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.08);
-  --popular-shadow-medium: 0 4px 16px rgba(0, 0, 0, 0.1);
-  --popular-shadow-hover: 0 12px 32px rgba(0, 0, 0, 0.15);
-  --popular-radius-lg: 20px;
-  --popular-radius-md: 12px;
-  --popular-transition: 0.25s ease;
-}
-
 /* ==================== ROOT SECTION ==================== */
 .popular-search {
+  --popular-brand-orange: #e67e22;
+  --popular-bg-card: #ffffff;
+  --popular-shadow-hover: 0 12px 32px rgba(0, 0, 0, 0.15);
+  --popular-radius-md: 12px;
+  --popular-transition: 0.25s ease;
+
   width: 100%;
-  max-width: 1800px;
+  max-width: var(--section-max-width);
   margin: 0 auto;
   font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 }
@@ -21,12 +15,11 @@
 /* ==================== INNER WRAPPER ==================== */
 .popular-search__inner {
   position: relative;
-  border-radius: var(--popular-radius-lg);
+  border-radius: var(--section-radius);
   background: #ffffff;
-  box-shadow: var(--popular-shadow-soft);
-  padding: 28px 24px 24px;
+  box-shadow: var(--section-shadow);
+  padding: 28px var(--section-padding-h) 24px;
   overflow: hidden;
-  border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 /* ==================== HEADER ==================== */
@@ -251,10 +244,6 @@
 /* ==================== RESPONSIVE BREAKPOINTS ==================== */
 
 @media (max-width: 480px) {
-  .popular-search__inner {
-    padding: 18px 16px 14px;
-  }
-
   .popular-search__title {
     font-size: 1.4rem;
   }
@@ -273,10 +262,6 @@
 }
 
 @media (min-width: 600px) {
-  .popular-search__inner {
-    padding: 24px 24px 20px;
-  }
-
   .popular-search__title {
     font-size: 1.6rem;
   }
@@ -287,20 +272,12 @@
 }
 
 @media (min-width: 900px) {
-  .popular-search__inner {
-    padding: 28px 28px 24px;
-  }
-
   .popular-search__card {
     width: 290px;
   }
 }
 
 @media (min-width: 1200px) {
-  .popular-search__inner {
-    padding: 32px 32px 28px;
-  }
-
   .popular-search__title {
     font-size: 1.9rem;
   }

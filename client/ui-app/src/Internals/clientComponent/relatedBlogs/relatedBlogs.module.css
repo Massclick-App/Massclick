@@ -1,9 +1,12 @@
 .related-wrapper {
   width: 100%;
-  padding: 0;
-  background:
-    linear-gradient(180deg, #ffffff 0%, #f8fafc 42%, #ffffff 100%),
-    #f8fafc;
+  max-width: var(--section-max-width);
+  margin: 0 auto;
+  padding: 28px var(--section-padding-h) 24px;
+  background: #ffffff;
+  border-radius: var(--section-radius);
+  box-shadow: var(--section-shadow);
+  box-sizing: border-box;
   font-family:
     "Inter",
     system-ui,
@@ -14,9 +17,7 @@
 }
 
 .related-container {
-  max-width: 1720px;
-  margin: 0 auto;
-  padding: 0 clamp(16px, 4vw, 48px);
+  width: 100%;
 }
 
 .related-header {

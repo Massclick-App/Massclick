@@ -1,14 +1,14 @@
 /* Container */
 .featured-services-container {
   display: grid;
-  grid-template-columns: repeat(10, 1fr) !important;
+  grid-template-columns: repeat(10, 1fr);
   justify-items: center;
   align-items: stretch;
   column-gap: 28px;
   row-gap: 32px;
-  padding: 35px 60px 20px 100px !important;
-  max-width: 100% !important;
-  width: 100% !important;
+  padding: 35px var(--section-padding-h) 20px;
+  max-width: var(--section-max-width);
+  width: 100%;
   margin: 0 auto;
   position: relative;
   z-index: 1;
@@ -18,7 +18,8 @@
 
 /* Card - Icon only */
 .service-card {
-  width: 145px;
+  width: 100%;
+  max-width: 145px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -63,16 +64,16 @@
   word-wrap: break-word;
   overflow-wrap: break-word;
   word-break: break-word;
-  white-space: normal !important;
-  overflow: hidden !important;
-  text-overflow: clip !important;
-  max-width: 130px !important;
-  width: 130px !important;
+  white-space: normal;
+  overflow: hidden;
+  text-overflow: clip;
+  width: 100%;
+  max-width: 130px;
   margin: 0;
   padding: 0 4px;
-  display: block !important;
-  max-height: 3.1em !important;
-  height: auto !important;
+  display: block;
+  max-height: 3.1em;
+  height: auto;
 }
 
 @media (max-width: 480px) {
@@ -80,13 +81,10 @@
     grid-template-columns: repeat(4, 1fr);
     column-gap: 6px;
     row-gap: 14px;
-    padding-top: 12px !important;
-    padding-right: 8px !important;
-    padding-bottom: 10px !important;
-    padding-left: 8px !important;
-    margin: 0 !important;
-    width: 100% !important;
-    box-sizing: border-box !important;
+    padding: 12px 8px 10px;
+    margin: 0;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .service-card {
@@ -102,28 +100,28 @@
   }
 
   .service-name {
-    font-size: 0.6rem !important;
-    line-height: 1.15 !important;
-    max-height: 2.4em !important;
-    overflow: hidden !important;
-    white-space: normal !important;
-    word-break: break-word !important;
-    max-width: 100% !important;
-    width: 100% !important;
-    display: block !important;
+    font-size: 0.6rem;
+    line-height: 1.15;
+    max-height: 2.4em;
+    overflow: hidden;
+    white-space: normal;
+    word-break: break-word;
+    max-width: 100%;
+    width: 100%;
+    display: block;
   }
 }
 
 @media (min-width: 481px) and (max-width: 768px) {
   .featured-services-container {
-    grid-template-columns: repeat(10, 1fr) !important;
+    grid-template-columns: repeat(5, 1fr);
     column-gap: 20px;
     row-gap: 30px;
-    padding: 28px 16px 18px;
+    padding: 28px var(--section-padding-h) 18px;
   }
 
   .service-card {
-    width: 128px;
+    max-width: 128px;
   }
 
   .service-icons {
@@ -135,8 +133,7 @@
 
   .service-name {
     font-size: 0.9rem;
-    max-height: 2.6em !important;
-    overflow: hidden !important;
+    max-height: 2.6em;
   }
 }
 
@@ -145,11 +142,11 @@
     grid-template-columns: repeat(7, 1fr);
     column-gap: 22px;
     row-gap: 30px;
-    padding: 32px 24px 20px;
+    padding: 32px var(--section-padding-h) 20px;
   }
 
   .service-card {
-    width: 134px;
+    max-width: 134px;
   }
 
   .service-icons {
@@ -161,8 +158,7 @@
 
   .service-name {
     font-size: 0.95rem;
-    max-height: 2.7em !important;
-    overflow: hidden !important;
+    max-height: 2.7em;
   }
 }
 
@@ -171,11 +167,11 @@
     grid-template-columns: repeat(8, 1fr);
     column-gap: 24px;
     row-gap: 31px;
-    padding: 32px 32px 20px;
+    padding: 32px var(--section-padding-h) 20px;
   }
 
   .service-card {
-    width: 137px;
+    max-width: 137px;
   }
 
   .service-icons {
@@ -187,21 +183,20 @@
 
   .service-name {
     font-size: 1rem;
-    max-height: 2.8em !important;
-    overflow: hidden !important;
+    max-height: 2.8em;
   }
 }
 
 @media (min-width: 1200px) and (max-width: 1299px) {
   .featured-services-container {
-    grid-template-columns: repeat(7, 1fr);
+    grid-template-columns: repeat(8, 1fr);
     column-gap: 22px;
     row-gap: 30px;
-    padding: 32px 24px 20px;
+    padding: 32px var(--section-padding-h) 20px;
   }
 
   .service-card {
-    width: 134px;
+    max-width: 134px;
   }
 
   .service-icons {
@@ -213,21 +208,20 @@
 
   .service-name {
     font-size: 0.95rem;
-    max-height: 2.7em !important;
-    overflow: hidden !important;
+    max-height: 2.7em;
   }
 }
 
 @media (min-width: 1300px) and (max-width: 1499px) {
   .featured-services-container {
-    grid-template-columns: repeat(8, 1fr);
+    grid-template-columns: repeat(9, 1fr);
     column-gap: 24px;
     row-gap: 31px;
-    padding: 34px 32px 20px;
+    padding: 34px var(--section-padding-h) 20px;
   }
 
   .service-card {
-    width: 137px;
+    max-width: 137px;
   }
 
   .service-icons {
@@ -239,21 +233,20 @@
 
   .service-name {
     font-size: 1rem;
-    max-height: 2.8em !important;
-    overflow: hidden !important;
+    max-height: 2.8em;
   }
 }
 
 @media (min-width: 1500px) and (max-width: 1749px) {
   .featured-services-container {
-    grid-template-columns: repeat(9, 1fr);
+    grid-template-columns: repeat(10, 1fr);
     column-gap: 26px;
     row-gap: 31px;
-    padding: 35px 40px 20px;
+    padding: 35px var(--section-padding-h) 20px;
   }
 
   .service-card {
-    width: 142px;
+    max-width: 142px;
   }
 
   .service-icons {
@@ -265,8 +258,7 @@
 
   .service-name {
     font-size: 1.05rem;
-    max-height: 2.9em !important;
-    overflow: hidden !important;
+    max-height: 2.9em;
   }
 }
 
@@ -275,11 +267,11 @@
     grid-template-columns: repeat(10, 1fr);
     column-gap: 28px;
     row-gap: 32px;
-    padding: 35px clamp(16px, 4vw, 48px) 20px;
+    padding: 35px var(--section-padding-h) 20px;
   }
 
   .service-card {
-    width: 145px;
+    max-width: 145px;
   }
 
   .service-icons {
@@ -291,7 +283,6 @@
 
   .service-name {
     font-size: 1.08rem;
-    max-height: 3.1em !important;
-    overflow: hidden !important;
+    max-height: 3.1em;
   }
 }

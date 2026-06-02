@@ -1,4 +1,4 @@
-:root {
+.hero-section {
   --color-primary: #ff7b00;
   --color-primary-hover: #ff5a00;
   --color-text-light: #f0f0f0;
@@ -7,18 +7,12 @@
   --brand-blue: #0b1a4a;
   --brand-light-gray: #6b7280;
   --color-glass-base: rgba(255, 255, 255, 0.9);
-
   --search-height: 60px;
   --border-radius-base: 8px;
   --transition-speed: 0.3s;
-
   --box-shadow-deep: 0 10px 40px rgba(0, 0, 0, 0.5);
   --box-shadow-default: 0 4px 15px rgba(0, 0, 0, 0.1);
-
   --spacing-gap: 15px;
-}
-
-.hero-section {
   position: relative;
   width: 100%;
   padding: 20px 0;
@@ -41,7 +35,7 @@
       #ffffff 0%,
       #f6f7f9 100%);
 
-  overflow: visible !important;
+  overflow: hidden;
 }
 
 .mic-listening {
