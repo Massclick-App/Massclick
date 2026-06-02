@@ -150,6 +150,16 @@ const BusinessList = React.memo(() => {
   });
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [inputKeyword, setInputKeyword] = useState("");
+  
+  // Search & Filter States
+  const [searchMode, setSearchMode] = useState("easy"); // "easy" or "advanced"
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedLocation, setSelectedLocation] = useState("");
+  const [paymentStatus, setPaymentStatus] = useState("all"); // "all", "paid", "pending"
+  const [dateRange, setDateRange] = useState({ from: "", to: "" });
+  const [activeFilters, setActiveFilters] = useState([]);
+  
   const handlePayNow = row => {
     const amount = 1;
     let businessId = row?._id?.$oid || row?._id || row?.businessId || row?.id || createdBusinessId;
@@ -405,6 +415,74 @@ const BusinessList = React.memo(() => {
     dispatch(getAllUsers());
     dispatch(checkPhonePeStatus());
   }, [dispatch]);
+
+  // ===== FILTER & SEARCH HANDLERS =====
+  const updateActiveFilters = (newFilters) => {
+    const filters = [];
+    if (newFilters.searchTerm) filters.push({ type: "search", label: `Search: ${newFilters.searchTerm}`, value: newFilters.searchTerm });
+    if (newFilters.category) filters.push({ type: "category", label: `Category: ${newFilters.category}`, value: newFilters.category });
+    if (newFilters.location) filters.push({ type: "location", label: `Location: ${newFilters.location}`, value: newFilters.location });
+    if (newFilters.paymentStatus && newFilters.paymentStatus !== "all") filters.push({ type: "payment", label: `Payment: ${newFilters.paymentStatus}`, value: newFilters.paymentStatus });
+    setActiveFilters(filters);
+  };
+
+  const handleApplyFilters = () => {
+    updateActiveFilters({ searchTerm, selectedCategory, selectedLocation, paymentStatus });
+  };
+
+  const handleClearFilters = () => {
+    setSearchTerm("");
+    setSelectedCategory("");
+    setSelectedLocation("");
+    setPaymentStatus("all");
+    setDateRange({ from: "", to: "" });
+    setActiveFilters([]);
+  };
+
+  const handleRemoveFilter = (filterType) => {
+    if (filterType === "search") setSearchTerm("");
+    if (filterType === "category") setSelectedCategory("");
+    if (filterType === "location") setSelectedLocation("");
+    if (filterType === "payment") setPaymentStatus("all");
+    updateActiveFilters({ 
+      searchTerm: filterType !== "search" ? searchTerm : "",
+      category: filterType !== "category" ? selectedCategory : "",
+      location: filterType !== "location" ? selectedLocation : "",
+      paymentStatus: filterType !== "payment" ? paymentStatus : "all"
+    });
+  };
+
+  const getFilteredRows = () => {
+    return rows.filter(row => {
+      // Search term filter
+      if (searchTerm) {
+        const term = searchTerm.toLowerCase();
+        const matchesSearch = 
+          row.businessName?.toLowerCase().includes(term) ||
+          row.location?.toLowerCase().includes(term) ||
+          row.category?.toLowerCase().includes(term) ||
+          row.email?.toLowerCase().includes(term) ||
+          row.contact?.includes(term);
+        if (!matchesSearch) return false;
+      }
+
+      // Category filter
+      if (selectedCategory && row.category !== selectedCategory) return false;
+
+      // Location filter
+      if (selectedLocation && row.location !== selectedLocation) return false;
+
+      // Payment status filter
+      if (paymentStatus !== "all") {
+        const isPaid = row.amountPaid === true;
+        if (paymentStatus === "paid" && !isPaid) return false;
+        if (paymentStatus === "pending" && isPaid) return false;
+      }
+
+      return true;
+    });
+  };
+
   const handleChange = e => {
     const {
       name,
@@ -653,6 +731,9 @@ const BusinessList = React.memo(() => {
     amountPaid: bl.amountPaid || false,
     paidDate: bl.paidDate || null
   }));
+  
+  const filteredRows = getFilteredRows();
+  
   const businessListTable = [{
     id: "clientId",
     label: "Client ID"
@@ -831,6 +912,166 @@ const BusinessList = React.memo(() => {
         {subtitle && <p className={cx("section-subtitle")}>{subtitle}</p>}
       </div>
     </div>;
+
+  // ===== SEARCH PANEL COMPONENT =====
+  const SearchPanel = () => (
+    <div className={cx("search-panel")}>
+      <div className={cx("search-header")}>
+        <h2 className={cx("search-title")}>🔍 Find Business</h2>
+        <div className={cx("search-mode-toggle")}>
+          <button 
+            className={cx("mode-btn", { active: searchMode === "easy" })} 
+            onClick={() => setSearchMode("easy")}
+          >
+            Easy Search
+          </button>
+          <button 
+            className={cx("mode-btn", { active: searchMode === "advanced" })} 
+            onClick={() => setSearchMode("advanced")}
+          >
+            Advanced
+          </button>
+        </div>
+      </div>
+
+      {/* EASY SEARCH */}
+      {searchMode === "easy" && (
+        <div className={cx("search-content-easy")}>
+          <div className={cx("search-input-wrapper")}>
+            <input
+              type="text"
+              placeholder="Search by business name, location, or category..."
+              className={cx("search-input-main")}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyPress={(e) => e.key === "Enter" && handleApplyFilters()}
+            />
+            <Button 
+              variant="contained" 
+              className={cx("search-btn")}
+              onClick={handleApplyFilters}
+              sx={{ backgroundColor: "var(--color-primary-orange)", "&:hover": { backgroundColor: "var(--color-primary-hover)" } }}
+            >
+              Search
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* ADVANCED SEARCH */}
+      {searchMode === "advanced" && (
+        <div className={cx("search-content-advanced")}>
+          <div className={cx("advanced-grid")}>
+            {/* Business Name Search */}
+            <div className={cx("advanced-field")}>
+              <label className={cx("field-label")}>Business Name</label>
+              <input
+                type="text"
+                placeholder="Enter business name..."
+                className={cx("search-input")}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+
+            {/* Category Filter */}
+            <div className={cx("advanced-field")}>
+              <label className={cx("field-label")}>Category</label>
+              <select 
+                className={cx("search-select")}
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+              >
+                <option value="">All Categories</option>
+                {Array.from(new Set(category.map(c => c.category))).map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Location Filter */}
+            <div className={cx("advanced-field")}>
+              <label className={cx("field-label")}>Location</label>
+              <select 
+                className={cx("search-select")}
+                value={selectedLocation}
+                onChange={(e) => setSelectedLocation(e.target.value)}
+              >
+                <option value="">All Locations</option>
+                {Array.from(new Set(location.map(l => l.city || l.district))).map(loc => (
+                  <option key={loc} value={loc}>{loc}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Payment Status Filter */}
+            <div className={cx("advanced-field")}>
+              <label className={cx("field-label")}>Payment Status</label>
+              <select 
+                className={cx("search-select")}
+                value={paymentStatus}
+                onChange={(e) => setPaymentStatus(e.target.value)}
+              >
+                <option value="all">All</option>
+                <option value="paid">Paid</option>
+                <option value="pending">Pending</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className={cx("search-actions")}>
+            <Button 
+              variant="contained" 
+              className={cx("search-btn")}
+              onClick={handleApplyFilters}
+              sx={{ backgroundColor: "var(--color-primary-orange)", "&:hover": { backgroundColor: "var(--color-primary-hover)" } }}
+            >
+              Apply Filters
+            </Button>
+            <Button 
+              variant="outlined" 
+              onClick={handleClearFilters}
+            >
+              Clear All
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* ACTIVE FILTERS DISPLAY */}
+      {activeFilters.length > 0 && (
+        <div className={cx("active-filters")}>
+          <span className={cx("filters-label")}>Active Filters:</span>
+          <div className={cx("filter-chips")}>
+            {activeFilters.map((filter, idx) => (
+              <Chip
+                key={idx}
+                label={filter.label}
+                onDelete={() => handleRemoveFilter(filter.type)}
+                icon={<span style={{ marginRight: "4px" }}>✕</span>}
+                className={cx("filter-chip")}
+                sx={{
+                  backgroundColor: "#FFE8D6",
+                  color: "#D97800",
+                  fontWeight: 500,
+                  "& .MuiChip-deleteIcon": { color: "#D97800", "&:hover": { color: "#B35900" } }
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* RESULTS COUNT */}
+      {activeFilters.length > 0 && (
+        <div className={cx("results-count")}>
+          Found <strong>{filteredRows.length}</strong> business{filteredRows.length !== 1 ? "es" : ""}
+        </div>
+      )}
+    </div>
+  );
+
   const renderStepContent = step => {
     switch (step) {
       case 0:
@@ -1433,26 +1674,38 @@ const BusinessList = React.memo(() => {
         </form>
       </div>
 
-      <Typography variant="h6" gutterBottom sx={{
-      textAlign: "center"
-    }}>
-        BusinessList Table
-      </Typography>
-      <Box sx={{
-      width: "100%"
-    }}>
-        <CustomizedTable data={rows} total={total} columns={businessListTable} fetchData={(pageNo, pageSize, options = {}) => {
-        dispatch(getAllBusinessList({
-          pageNo,
-          pageSize,
-          search: options.search || "",
-          status: options.status || "all",
-          sortBy: options.sortBy || null,
-          sortOrder: options.sortOrder || "asc"
-        }));
-      }} />
+      {/* SEARCH SECTION */}
+      <SearchPanel />
 
-      </Box>
+      {/* TABLE SECTION */}
+      <div className={cx("table-section")}>
+        <div className={cx("table-header")}>
+          <Typography variant="h6" className={cx("table-title")}>
+            📋 Business Directory
+          </Typography>
+          <Typography variant="body2" className={cx("table-count")}>
+            {filteredRows.length} of {rows.length} businesses
+          </Typography>
+        </div>
+
+        <Box sx={{ width: "100%" }}>
+          <CustomizedTable 
+            data={filteredRows} 
+            total={filteredRows.length} 
+            columns={businessListTable} 
+            fetchData={(pageNo, pageSize, options = {}) => {
+              dispatch(getAllBusinessList({
+                pageNo,
+                pageSize,
+                search: options.search || "",
+                status: options.status || "all",
+                sortBy: options.sortBy || null,
+                sortOrder: options.sortOrder || "asc"
+              }));
+            }} 
+          />
+        </Box>
+      </div>
 
       <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({
       open: false,
