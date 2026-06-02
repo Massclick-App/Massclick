@@ -1,11 +1,12 @@
 // src/components/.../MultiStepProfileForm.jsx
-import React, { useState, useEffect} from "react";
-import { useDispatch} from "react-redux";
+import React, { useState, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import "./EditProfile.css";
 import Footer from "../../footer/footer";
 import CardsSearch from "../../CardsSearch/CardsSearch";
 import { viewOtpUser, updateOtpUser } from "../../../../redux/actions/otpAction";
 import { Alert, AlertTitle } from "@mui/material";
+import EditBusinessPage from "../EditBusiness/EditBusinessPage";
 
 const PersonalDetails = ({
   formData,
@@ -341,7 +342,15 @@ const Completed = () => (
   </div>
 );
 
-export default function MultiStepProfileForm() {
+const parseStoredUser = () => {
+  try {
+    return JSON.parse(localStorage.getItem("authUser") || "{}") || {};
+  } catch {
+    return {};
+  }
+};
+
+function MultiStepProfileForm() {
   const dispatch = useDispatch();
 
   const storedMobile = localStorage.getItem("mobileNumber") || "";
@@ -386,10 +395,7 @@ export default function MultiStepProfileForm() {
     favorites: { colors: [], food: [], hobbies: [] },
   });
 
-
   const CurrentComponent = steps.find((s) => s.id === currentStep)?.component;
-
-
 
  useEffect(() => {
   if (!storedMobile) return;
@@ -398,7 +404,6 @@ export default function MultiStepProfileForm() {
 
   dispatch(viewOtpUser(storedMobile))
     .then((user) => {     
-      console.log("Loaded User:", user);
 
       if (user) {
         setFormData((prev) => ({
@@ -429,7 +434,6 @@ export default function MultiStepProfileForm() {
     })
     .finally(() => setLoadingUser(false));
 }, [storedMobile, dispatch]);
-
 
 
   const handleImageUpload = (e) => {
@@ -531,26 +535,30 @@ export default function MultiStepProfileForm() {
               </Alert>
             )}
 
-            <form onSubmit={handleSubmit}>
-              <CurrentComponent
-                formData={formData}
-                handleChange={handleChange}
-                handleArrayChange={handleArrayChange}
-                handleImageUpload={handleImageUpload}
-              />
+            {loadingUser ? (
+              <div className="business-edit-loading">Loading profile details...</div>
+            ) : (
+              <form onSubmit={handleSubmit}>
+                <CurrentComponent
+                  formData={formData}
+                  handleChange={handleChange}
+                  handleArrayChange={handleArrayChange}
+                  handleImageUpload={handleImageUpload}
+                />
 
-              <div className="form-actions-footer">
-                {currentStep > 1 && (
-                  <button type="button" className="btn-secondary" onClick={handleBack}>
-                    Back
+                <div className="form-actions-footer">
+                  {currentStep > 1 && (
+                    <button type="button" className="btn-secondary" onClick={handleBack}>
+                      Back
+                    </button>
+                  )}
+
+                  <button type="submit" className="btn-primary">
+                    {currentStep < steps.length ? "Save & Continue" : "Update Profile"}
                   </button>
-                )}
-
-                <button type="submit" className="btn-primary">
-                  {currentStep < steps.length ? "Save & Continue" : "Update Profile"}
-                </button>
-              </div>
-            </form>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       </div>
@@ -558,4 +566,12 @@ export default function MultiStepProfileForm() {
       <Footer />
     </>
   );
+}
+
+export default function EditProfilePage() {
+  const reduxUser = useSelector((state) => state.otp?.viewResponse) || {};
+  const storedUser = parseStoredUser();
+  const isBusinessPeople = reduxUser?.businessPeople === true || storedUser?.businessPeople === true;
+
+  return isBusinessPeople ? <EditBusinessPage /> : <MultiStepProfileForm />;
 }

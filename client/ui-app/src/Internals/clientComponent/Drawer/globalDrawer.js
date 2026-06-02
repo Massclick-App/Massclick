@@ -12,7 +12,7 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { useDrawer } from "./drawerContext";
-import { userMenuItems } from "../categoryBar.js";
+import { getUserMenuLabel, isBusinessPeopleUser, userMenuItems } from "../categoryBar.js";
 import { useNavigate } from "react-router-dom";
 import { styled } from "@mui/material/styles";
 import { useDispatch, useSelector } from "react-redux";
@@ -80,6 +80,11 @@ export default function GlobalDrawer() {
 
   const UserDetail =
     allUsers.find((u) => u.mobileNumber1 === mobileNumber) || {};
+
+  const currentUser = {
+    ...authUser,
+    ...UserDetail,
+  };
 
   const handleLogout = () => {
     localStorage.removeItem("authToken");
@@ -159,7 +164,7 @@ export default function GlobalDrawer() {
                 navigate("/user_edit-profile");
               }}
             >
-              View Profile
+              {isBusinessPeopleUser(currentUser) ? "View Business" : "View Profile"}
             </Typography>
           </Box>
           <CloseIcon
@@ -199,7 +204,7 @@ export default function GlobalDrawer() {
                   {item.icon}
                 </ListItemIcon>
                 <ListItemText
-                  primary={formatUiName(item.name)}
+                  primary={formatUiName(getUserMenuLabel(item, currentUser))}
                   primaryTypographyProps={{
                     fontSize: "0.95rem",
                     fontWeight: 600,
