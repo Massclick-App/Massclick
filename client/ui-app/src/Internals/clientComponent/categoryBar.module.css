@@ -113,22 +113,6 @@
     flex: 1;
 }
 
-/* =========================
-   LANGUAGE SELECT
-========================= */
-.languageSelectControlDesktop {
-    min-width: 120px;
-}
-
-.languageSelectDesktop {
-    height: 40px;
-    border-radius: 999px;
-    background: var(--bg-light);
-    font-size: .9rem;
-    font-weight: 500;
-}
-
-
 .categoryButtons {
     display: flex;
     gap: clamp(.5rem, 1.5vw, 1.5rem);

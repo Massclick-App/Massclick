@@ -379,7 +379,7 @@
   color: #fff !important;
 }
 
-.snackbar-success .MuiAlert-icon {
+.snackbar-success :global(.MuiAlert-icon) {
   color: var(--color-green) !important;
 }
 

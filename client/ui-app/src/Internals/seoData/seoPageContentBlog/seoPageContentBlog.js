@@ -1,38 +1,18 @@
+import { createScopedClassNames } from "../../../utils/createScopedClassNames";
 // FILE: SeoPageContentBlogs.jsx
 
 import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import SeoPageContentForm from "./pageContentBlogForm";
-
-import {
-  viewAllSeoPageContentBlogs,
-  createSeoPageContentBlogs,
-  updateSeoPageContentBlogs,
-  deleteSeoPageContentBlogs,
-} from "../../../redux/actions/seoPageContentBlogAction";
-import {
-  getAllLocation,
-  createLocation,
-} from "../../../redux/actions/locationAction.js";
-
-import {
-  Box,
-  IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  Chip,
-} from "@mui/material";
-
+import { viewAllSeoPageContentBlogs, createSeoPageContentBlogs, updateSeoPageContentBlogs, deleteSeoPageContentBlogs } from "../../../redux/actions/seoPageContentBlogAction";
+import { getAllLocation, createLocation } from "../../../redux/actions/locationAction.js";
+import { Box, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, Button, Chip } from "@mui/material";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
-
 import CustomizedTable from "../../../components/Table/CustomizedTable";
-import "./seoPageContentBlog.css";
-
+import styles from "./seoPageContentBlog.module.css";
+const cx = createScopedClassNames(styles);
 const defaultForm = {
   metaTitle: "",
   metaDescription: "",
@@ -50,100 +30,73 @@ const defaultForm = {
   popularBusiness: [],
   profileImage: "",
   ogImage: "",
-  contentBlocks: [],
+  contentBlocks: []
 };
-
 export default function SeoPageContentBlogs() {
   const dispatch = useDispatch();
-
-  const { list = [], total = 0, loading = false } =
-    useSelector((state) => state.seoPageContentBlogReducer) || {};
-  const { location = [] } = useSelector((state) => state.locationReducer || {});
-
+  const {
+    list = [],
+    total = 0,
+    loading = false
+  } = useSelector(state => state.seoPageContentBlogReducer) || {};
+  const {
+    location = []
+  } = useSelector(state => state.locationReducer || {});
   const [formData, setFormData] = useState(defaultForm);
   const [editingId, setEditingId] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedRow, setSelectedRow] = useState(null);
-
-  const modules = useMemo(
-    () => ({
-      toolbar: [
-        [{ header: [1, 2, 3, false] }],
-        ["bold", "italic", "underline", "strike"],
-        [{ list: "ordered" }, { list: "bullet" }],
-        ["link"],
-        ["clean"],
-      ],
-    }),
-    []
-  );
-
-  const formats = useMemo(
-    () => [
-      "header",
-      "bold",
-      "italic",
-      "underline",
-      "strike",
-      "list",
-      "bullet",
-      "link",
-    ],
-    []
-  );
-
+  const modules = useMemo(() => ({
+    toolbar: [[{
+      header: [1, 2, 3, false]
+    }], ["bold", "italic", "underline", "strike"], [{
+      list: "ordered"
+    }, {
+      list: "bullet"
+    }], ["link"], ["clean"]]
+  }), []);
+  const formats = useMemo(() => ["header", "bold", "italic", "underline", "strike", "list", "bullet", "link"], []);
   useEffect(() => {
     dispatch(viewAllSeoPageContentBlogs());
-    dispatch(getAllLocation({ pageNo: 1, pageSize: 1000 }));
+    dispatch(getAllLocation({
+      pageNo: 1,
+      pageSize: 1000
+    }));
   }, [dispatch]);
-
   const resetForm = () => {
     setFormData(defaultForm);
     setEditingId(null);
   };
-
-  const handleSubmit = async (e) => {
+  const handleSubmit = async e => {
     e.preventDefault();
-
-    const locationExists = location.some(
-      (loc) =>
-        loc.city?.toLowerCase() === formData.location?.toLowerCase() ||
-        loc.district?.toLowerCase() === formData.location?.toLowerCase()
-    );
-
+    const locationExists = location.some(loc => loc.city?.toLowerCase() === formData.location?.toLowerCase() || loc.district?.toLowerCase() === formData.location?.toLowerCase());
     if (!locationExists && formData.location) {
-      await dispatch(
-        createLocation({
-          city: formData.location,
-          district: formData.location,
-          state: "N/A",
-          country: "N/A",
-        })
-      );
+      await dispatch(createLocation({
+        city: formData.location,
+        district: formData.location,
+        state: "N/A",
+        country: "N/A"
+      }));
     }
 
     // Ensure pageImages is always sent and not lost
     const submitData = {
       ...formData,
-      pageImages: formData.pageImages || [],
+      pageImages: formData.pageImages || []
     };
-
-    const action = editingId
-      ? updateSeoPageContentBlogs(editingId, submitData)
-      : createSeoPageContentBlogs(submitData);
-
+    const action = editingId ? updateSeoPageContentBlogs(editingId, submitData) : createSeoPageContentBlogs(submitData);
     await dispatch(action);
     resetForm();
     dispatch(viewAllSeoPageContentBlogs());
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth"
+    });
   };
-
-  const handleEdit = (rowId) => {
-    const found = list.find((x) => x._id === rowId);
+  const handleEdit = rowId => {
+    const found = list.find(x => x._id === rowId);
     if (!found) return;
-
     setEditingId(rowId);
-
     setFormData({
       ...defaultForm,
       ...found,
@@ -153,113 +106,81 @@ export default function SeoPageContentBlogs() {
       popularBusiness: found.businessDetails || [],
       tags: found.tags || [],
       faq: found.faq || [],
-      contentBlocks: found.contentBlocks || [],
+      contentBlocks: found.contentBlocks || []
     });
-
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth"
+    });
   };
-
-  const rows = list.map((seo) => ({
+  const rows = list.map(seo => ({
     id: seo._id,
     pageType: seo.pageType,
     category: seo.category,
     location: seo.location,
     views: seo.views || 0,
-    status: seo.isActive ? "Active" : "Inactive",
+    status: seo.isActive ? "Active" : "Inactive"
   }));
-
-  const columns = [
-    { id: "pageType", label: "Page Type" },
-    { id: "category", label: "Category" },
-    { id: "location", label: "Location" },
-    { id: "views", label: "Views" },
-    {
-      id: "status",
-      label: "Status",
-      renderCell: (_, row) => (
-        <Chip
-          size="small"
-          label={row.status}
-          color={row.status === "Active" ? "success" : "default"}
-        />
-      ),
-    },
-    {
-      id: "action",
-      label: "Action",
-      renderCell: (_, row) => (
-        <div className="table-actions">
+  const columns = [{
+    id: "pageType",
+    label: "Page Type"
+  }, {
+    id: "category",
+    label: "Category"
+  }, {
+    id: "location",
+    label: "Location"
+  }, {
+    id: "views",
+    label: "Views"
+  }, {
+    id: "status",
+    label: "Status",
+    renderCell: (_, row) => <Chip size="small" label={row.status} color={row.status === "Active" ? "success" : "default"} />
+  }, {
+    id: "action",
+    label: "Action",
+    renderCell: (_, row) => <div className={cx("table-actions")}>
           <IconButton onClick={() => handleEdit(row.id)}>
             <EditRoundedIcon />
           </IconButton>
 
-          <IconButton
-            color="error"
-            onClick={() => {
-              setSelectedRow(row);
-              setDeleteDialogOpen(true);
-            }}
-          >
+          <IconButton color="error" onClick={() => {
+        setSelectedRow(row);
+        setDeleteDialogOpen(true);
+      }}>
             <DeleteOutlineRoundedIcon />
           </IconButton>
         </div>
-      ),
-    },
-  ];
-
-  return (
-    <div className="seo-shell">
-      <div className="seo-container">
-        <header className="seo-header">
+  }];
+  return <div className={cx("seo-shell")}>
+      <div className={cx("seo-container")}>
+        <header className={cx("seo-header")}>
           <div>
             <h1>
-              {editingId
-                ? "Edit SEO Blog Content"
-                : "Create SEO Blog Content"}
+              {editingId ? "Edit SEO Blog Content" : "Create SEO Blog Content"}
             </h1>
             <p>Premium SEO content management dashboard</p>
           </div>
 
-          <Button
-            variant="outlined"
-            startIcon={<RefreshRoundedIcon />}
-            onClick={resetForm}
-          >
+          <Button variant="outlined" startIcon={<RefreshRoundedIcon />} onClick={resetForm}>
             Reset
           </Button>
         </header>
 
-        <SeoPageContentForm
-          formData={formData}
-          setFormData={setFormData}
-          handleSubmit={handleSubmit}
-          loading={loading}
-          editingId={editingId}
-          modules={modules}
-          formats={formats}
-        />
+        <SeoPageContentForm formData={formData} setFormData={setFormData} handleSubmit={handleSubmit} loading={loading} editingId={editingId} modules={modules} formats={formats} />
 
-        <Box sx={{ mt: 5 }}>
-          <CustomizedTable
-            data={rows}
-            columns={columns}
-            total={total}
-            fetchData={(pageNo, pageSize, options) =>
-              dispatch(
-                viewAllSeoPageContentBlogs({
-                  pageNo,
-                  pageSize,
-                  options,
-                })
-              )
-            }
-          />
+        <Box sx={{
+        mt: 5
+      }}>
+          <CustomizedTable data={rows} columns={columns} total={total} fetchData={(pageNo, pageSize, options) => dispatch(viewAllSeoPageContentBlogs({
+          pageNo,
+          pageSize,
+          options
+        }))} />
         </Box>
 
-        <Dialog
-          open={deleteDialogOpen}
-          onClose={() => setDeleteDialogOpen(false)}
-        >
+        <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
           <DialogTitle>Delete Blog</DialogTitle>
 
           <DialogContent>
@@ -271,22 +192,15 @@ export default function SeoPageContentBlogs() {
               Cancel
             </Button>
 
-            <Button
-              color="error"
-              variant="contained"
-              onClick={async () => {
-                await dispatch(
-                  deleteSeoPageContentBlogs(selectedRow.id)
-                );
-                setDeleteDialogOpen(false);
-                dispatch(viewAllSeoPageContentBlogs());
-              }}
-            >
+            <Button color="error" variant="contained" onClick={async () => {
+            await dispatch(deleteSeoPageContentBlogs(selectedRow.id));
+            setDeleteDialogOpen(false);
+            dispatch(viewAllSeoPageContentBlogs());
+          }}>
               Delete
             </Button>
           </DialogActions>
         </Dialog>
       </div>
-    </div>
-  );
+    </div>;
 }

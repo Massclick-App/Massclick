@@ -1,3 +1,4 @@
+import { createScopedClassNames } from "../../../../utils/createScopedClassNames";
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
@@ -6,7 +7,7 @@ import { fetchSeoBlogBySlug } from "../../../../redux/actions/seoPageContentBlog
 import { throttle } from "../../../../utils/throttle";
 import { getPlaceholderImage } from "../../../../utils/placeholderImage";
 import { generateArticleSchema, generateBreadcrumbSchema } from "../../../../utils/seoSchemaGenerators";
-import "./blogDetails.css";
+import styles from "./blogDetails.module.css";
 import Navbar from "../relatedBlogNavbar/relatedBlogNavbar";
 import Breadcrumbs from "../../Breadcrumbs/Breadcrumbs";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
@@ -21,280 +22,199 @@ import PlaceIcon from "@mui/icons-material/Place";
 import ShareIcon from "@mui/icons-material/Share";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import VisibilityIcon from "@mui/icons-material/Visibility";
-
+const cx = createScopedClassNames(styles);
 const BlogDetail = () => {
-  const { slug } = useParams();
+  const {
+    slug
+  } = useParams();
   const dispatch = useDispatch();
   const [readingProgress, setReadingProgress] = useState(0);
   const [copied, setCopied] = useState(false);
   const [selectedContact, setSelectedContact] = useState(null);
   const [copiedContact, setCopiedContact] = useState(false);
-
-  const { blog, loading, error } = useSelector(
-    (state) => state.seoPageContentBlogReducer
-  );
-
+  const {
+    blog,
+    loading,
+    error
+  } = useSelector(state => state.seoPageContentBlogReducer);
   useEffect(() => {
     if (slug) {
       dispatch(fetchSeoBlogBySlug(slug));
     }
   }, [dispatch, slug]);
-
   useEffect(() => {
     const updateReadingProgress = () => {
       const scrollTop = window.scrollY || document.documentElement.scrollTop;
-      const scrollHeight =
-        document.documentElement.scrollHeight - window.innerHeight;
-
+      const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
       if (scrollHeight <= 0) {
         setReadingProgress(0);
         return;
       }
-
-      setReadingProgress(Math.min(100, Math.round((scrollTop / scrollHeight) * 100)));
+      setReadingProgress(Math.min(100, Math.round(scrollTop / scrollHeight * 100)));
     };
-
     const throttledUpdate = throttle(updateReadingProgress, 60);
-
     updateReadingProgress();
-    window.addEventListener("scroll", throttledUpdate, { passive: true });
-
+    window.addEventListener("scroll", throttledUpdate, {
+      passive: true
+    });
     return () => window.removeEventListener("scroll", throttledUpdate);
   }, []);
-
   const renderFaqAnswer = (answer = "", links = []) => {
     if (!answer) return "";
     if (!links || links.length === 0) return answer;
-
     let html = answer;
 
     // Sort by position/index to replace from end to start (prevents offset issues)
-    const sortedLinks = [...links]
-      .filter(link => link.linkText && link.url)
-      .sort((a, b) => {
-        const posA = answer.indexOf(a.linkText);
-        const posB = answer.indexOf(b.linkText);
-        return posB - posA;
-      });
-
+    const sortedLinks = [...links].filter(link => link.linkText && link.url).sort((a, b) => {
+      const posA = answer.indexOf(a.linkText);
+      const posB = answer.indexOf(b.linkText);
+      return posB - posA;
+    });
     if (sortedLinks.length === 0) return answer;
-
-    sortedLinks.forEach((link) => {
+    sortedLinks.forEach(link => {
       const escapedText = link.linkText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const regex = new RegExp(`\\b${escapedText}\\b`, 'gi');
-
-      html = html.replace(regex,
-        `<a href="${link.url}" target="_blank" rel="noopener noreferrer" class="faq-link">${link.linkText}</a>`
-      );
+      html = html.replace(regex, `<a href="${link.url}" target="_blank" rel="noopener noreferrer" class="faq-link">${link.linkText}</a>`);
     });
-
     return html;
   };
-
-  const makeSlug = (text = "") =>
-    text
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "");
-
-  
+  const makeSlug = (text = "") => text.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
   const formattedContent = useMemo(() => {
     if (!blog?.pageContent) return "";
-
     const parser = new DOMParser();
     const doc = parser.parseFromString(blog.pageContent, "text/html");
-
     const headings = doc.querySelectorAll("h2, h3");
-
-    headings.forEach((item) => {
+    headings.forEach(item => {
       const text = item.textContent.trim();
       item.setAttribute("id", makeSlug(text));
     });
-
     const firstStrong = doc.querySelector("p strong");
-
     if (firstStrong) {
       const text = firstStrong.textContent.trim();
-
       if (text.toLowerCase() === "introduction") {
         const parent = firstStrong.closest("p");
-
         if (parent) {
           parent.innerHTML = `<h2 id="${makeSlug(text)}">${text}</h2>`;
         }
       }
     }
-
     return doc.body.innerHTML;
   }, [blog]);
-
   const tocItems = useMemo(() => {
     if (!blog?.pageContent) return [];
-
     const parser = new DOMParser();
     const doc = parser.parseFromString(blog.pageContent, "text/html");
-
     const items = [];
-
-    const skipWords = [
-      "features",
-      "best for",
-      "price",
-      "includes",
-      "services include"
-    ];
-
+    const skipWords = ["features", "best for", "price", "includes", "services include"];
     const firstStrong = doc.querySelector("p strong");
-
     if (firstStrong) {
       const text = firstStrong.textContent.trim();
-
       if (text.toLowerCase() === "introduction") {
         items.push({
           title: text,
-          id: makeSlug(text),
+          id: makeSlug(text)
         });
       }
     }
-
     const headings = doc.querySelectorAll("h2, h3");
-
-    headings.forEach((item) => {
+    headings.forEach(item => {
       const text = item.textContent.trim();
       const lower = text.toLowerCase();
-
-      const shouldSkip = skipWords.some((word) =>
-        lower === word || lower.startsWith(word)
-      );
-
+      const shouldSkip = skipWords.some(word => lower === word || lower.startsWith(word));
       if (!shouldSkip) {
         items.push({
           title: text,
-          id: makeSlug(text),
+          id: makeSlug(text)
         });
       }
     });
-
     if (blog?.faq?.length > 0) {
       items.push({
         title: "Frequently Asked Questions",
-        id: "frequently-asked-questions",
+        id: "frequently-asked-questions"
       });
     }
-
     return items;
   }, [blog]);
-
-  const scrollToSection = useCallback((id) => {
+  const scrollToSection = useCallback(id => {
     const el = document.getElementById(id);
     if (!el) return;
-
     requestAnimationFrame(() => {
       const elementTop = el.getBoundingClientRect().top;
       const pageOffset = window.pageYOffset;
       const offset = 90;
-
       window.scrollTo({
         top: elementTop + pageOffset - offset,
-        behavior: "smooth",
+        behavior: "smooth"
       });
     });
   }, []);
-
-  const handleContentClick = (e) => {
+  const handleContentClick = e => {
     const link = e.target.closest("a");
     if (!link) return;
-
     e.preventDefault();
-
     const href = link.getAttribute("href");
-
     if (href && href.startsWith("/")) {
       const parts = href.split("/").filter(Boolean);
-
       let location = "";
       let category = "";
-
       if (parts.length === 1) {
         category = parts[0];
       } else {
         category = parts[parts.length - 1];
         location = parts[parts.length - 2];
       }
-
       if (!location) {
-        location = (blog?.location || "trichy")
-          .toLowerCase()
-          .replace(/\s+/g, "-");
+        location = (blog?.location || "trichy").toLowerCase().replace(/\s+/g, "-");
       }
-
       const url = `https://massclick.in/${location}/${category}`;
       window.open(url, "_blank");
       return;
     }
-
     let text = link.innerText.toLowerCase().trim();
-
     let category = "";
     let location = "";
-
     if (text.includes(" in ")) {
       const parts = text.split(" in ");
       category = parts[0].trim();
       location = parts[1].trim();
     }
-
-    category = category
-      .replace(/near.*$/g, "")
-      .replace(/best|top|cheap|low|price/g, "")
-      .trim();
-
+    category = category.replace(/near.*$/g, "").replace(/best|top|cheap|low|price/g, "").trim();
     if (!category) category = blog?.category || "services";
     if (!location) location = blog?.location || "trichy";
-
     category = category.replace(/\s+/g, "-");
     location = location.replace(/\s+/g, "-");
-
     const url = `https://massclick.in/${location}/${category}`;
     window.open(url, "_blank");
   };
-
   const ssrMeta = typeof window !== "undefined" ? window.__SSR_SEO__ : null;
   const metaTitle = blog?.metaTitle || ssrMeta?.title || "Massclick Blog";
   const metaDescription = blog?.metaDescription || ssrMeta?.description || "Read expert guides and local business tips on the Massclick blog.";
   const metaKeywords = blog?.metaKeywords || ssrMeta?.keywords || "massclick blog, local business tips";
   const canonical = `https://massclick.in/blog/${slug}`;
-  const formatDate = (value) => {
+  const formatDate = value => {
     if (!value) return null;
-
     const parsedDate = new Date(value);
     if (Number.isNaN(parsedDate.getTime())) return null;
-
     return parsedDate.toLocaleDateString("en-IN", {
       day: "numeric",
       month: "long",
-      year: "numeric",
+      year: "numeric"
     });
   };
   const publishedDate = formatDate(blog?.createdAt);
   const updatedDate = formatDate(blog?.updatedAt);
   const plainContent = useMemo(() => {
     if (!blog?.pageContent) return "";
-
     const parser = new DOMParser();
     const doc = parser.parseFromString(blog.pageContent, "text/html");
-
     return doc.body.textContent || "";
   }, [blog?.pageContent]);
   const wordCount = plainContent.trim().split(/\s+/).filter(Boolean).length;
   const estimatedReadTime = blog?.readTime || `${Math.max(3, Math.ceil(wordCount / 220))} min read`;
-  const heroDescription =
-    blog?.metaDescription ||
-    "Explore a practical local guide from Massclick with helpful recommendations, business insights and decision-ready details.";
+  const heroDescription = blog?.metaDescription || "Explore a practical local guide from Massclick with helpful recommendations, business insights and decision-ready details.";
   const articleUrl = canonical;
   const shareTitle = blog?.heading || metaTitle;
-
   const copyArticleLink = async () => {
     try {
       await navigator.clipboard.writeText(articleUrl);
@@ -304,78 +224,50 @@ const BlogDetail = () => {
       window.prompt("Copy this article link", articleUrl);
     }
   };
-
   const shareArticle = async () => {
     if (navigator.share) {
       await navigator.share({
         title: shareTitle,
         text: heroDescription,
-        url: articleUrl,
+        url: articleUrl
       });
       return;
     }
-
     copyArticleLink();
   };
-
-  const renderContentBlock = (block) => {
+  const renderContentBlock = block => {
     switch (block.type) {
       case "table":
-        return (
-          <div key={block.id} className="content-block table-block">
-            <div className="table-container">
-              <table className="data-table">
+        return <div key={block.id} className={cx("content-block table-block")}>
+            <div className={cx("table-container")}>
+              <table className={cx("data-table")}>
                 <tbody>
-                  {block.rows.map((row, rIdx) => (
-                    <tr key={rIdx}>
-                      {row.map((cell, cIdx) => (
-                        <td key={cIdx}>{cell}</td>
-                      ))}
-                    </tr>
-                  ))}
+                  {block.rows.map((row, rIdx) => <tr key={rIdx}>
+                      {row.map((cell, cIdx) => <td key={cIdx}>{cell}</td>)}
+                    </tr>)}
                 </tbody>
               </table>
             </div>
-          </div>
-        );
-
+          </div>;
       case "code":
-        return (
-          <div key={block.id} className="content-block code-block">
-            <div className="code-block-display">
-              <div className="code-label">{block.language}</div>
+        return <div key={block.id} className={cx("content-block code-block")}>
+            <div className={cx("code-block-display")}>
+              <div className={cx("code-label")}>{block.language}</div>
               <pre>
                 <code>{block.content}</code>
               </pre>
             </div>
-          </div>
-        );
-
+          </div>;
       case "video":
-        return (
-          <div key={block.id} className="content-block video-block">
-            <div className="video-embed">
-              <iframe
-                width="100%"
-                height="400"
-                src={block.url.includes("youtube.com") || block.url.includes("youtu.be")
-                  ? `https://www.youtube.com/embed/${block.url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/)?.[1]}`
-                  : block.url.includes("vimeo.com")
-                  ? `https://player.vimeo.com/video/${block.url.match(/vimeo\.com\/(\d+)/)?.[1]}`
-                  : block.url}
-                frameBorder="0"
-                allowFullScreen
-                title="Embedded Video"
-              ></iframe>
+        return <div key={block.id} className={cx("content-block video-block")}>
+            <div className={cx("video-embed")}>
+              <iframe width="100%" height="400" src={block.url.includes("youtube.com") || block.url.includes("youtu.be") ? `https://www.youtube.com/embed/${block.url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/)?.[1]}` : block.url.includes("vimeo.com") ? `https://player.vimeo.com/video/${block.url.match(/vimeo\.com\/(\d+)/)?.[1]}` : block.url} frameBorder="0" allowFullScreen title="Embedded Video"></iframe>
             </div>
-          </div>
-        );
-
+          </div>;
       case "callout":
-        return (
-          <div key={block.id} className="content-block callout-block">
-            <div className={`callout callout-${block.calloutType}`}>
-              <span className="callout-icon">
+        return <div key={block.id} className={cx("content-block callout-block")}>
+            <div className={cx(`callout callout-${block.calloutType}`)}>
+              <span className={cx("callout-icon")}>
                 {block.calloutType === "info" && "ℹ️"}
                 {block.calloutType === "warning" && "⚠️"}
                 {block.calloutType === "success" && "✅"}
@@ -384,145 +276,102 @@ const BlogDetail = () => {
               </span>
               <p>{block.text}</p>
             </div>
-          </div>
-        );
-
+          </div>;
       case "statistics":
-        return (
-          <div key={block.id} className="content-block statistics-block">
-            <div className="statistics-grid">
-              {block.items.map((stat, idx) => (
-                <div key={idx} className="stat-card">
-                  <div className="stat-value">{stat.value}</div>
-                  <div className="stat-label">{stat.label}</div>
-                </div>
-              ))}
+        return <div key={block.id} className={cx("content-block statistics-block")}>
+            <div className={cx("statistics-grid")}>
+              {block.items.map((stat, idx) => <div key={idx} className={cx("stat-card")}>
+                  <div className={cx("stat-value")}>{stat.value}</div>
+                  <div className={cx("stat-label")}>{stat.label}</div>
+                </div>)}
             </div>
-          </div>
-        );
-
+          </div>;
       case "testimonial":
-        return (
-          <div key={block.id} className="content-block testimonial-block">
-            <div className="testimonial-card">
-              <div className="testimonial-text">"{block.text}"</div>
-              <div className="testimonial-author">
+        return <div key={block.id} className={cx("content-block testimonial-block")}>
+            <div className={cx("testimonial-card")}>
+              <div className={cx("testimonial-text")}>"{block.text}"</div>
+              <div className={cx("testimonial-author")}>
                 {block.image && <img src={block.image} alt={block.name} />}
                 <div>
-                  <div className="author-name">{block.name}</div>
-                  {block.role && <div className="author-role">{block.role}</div>}
+                  <div className={cx("author-name")}>{block.name}</div>
+                  {block.role && <div className={cx("author-role")}>{block.role}</div>}
                 </div>
               </div>
             </div>
-          </div>
-        );
-
+          </div>;
       case "steps":
-        return (
-          <div key={block.id} className="content-block steps-block">
-            <div className="steps-container">
-              {block.items.map((step, idx) => (
-                <div key={idx} className="step-item">
-                  <div className="step-number">{idx + 1}</div>
-                  <div className="step-content">
+        return <div key={block.id} className={cx("content-block steps-block")}>
+            <div className={cx("steps-container")}>
+              {block.items.map((step, idx) => <div key={idx} className={cx("step-item")}>
+                  <div className={cx("step-number")}>{idx + 1}</div>
+                  <div className={cx("step-content")}>
                     <h4>{step.title}</h4>
                     {step.description && <p>{step.description}</p>}
                   </div>
-                </div>
-              ))}
+                </div>)}
             </div>
-          </div>
-        );
-
+          </div>;
       case "accordion":
-        return (
-          <div key={block.id} className="content-block accordion-block">
-            <div className="accordion-container">
-              {block.items.map((item, idx) => (
-                <div key={idx} className="accordion-item">
-                  <div className="accordion-title">
+        return <div key={block.id} className={cx("content-block accordion-block")}>
+            <div className={cx("accordion-container")}>
+              {block.items.map((item, idx) => <div key={idx} className={cx("accordion-item")}>
+                  <div className={cx("accordion-title")}>
                     <span>{item.title}</span>
                     <span>▼</span>
                   </div>
-                  <div className="accordion-content">{item.content}</div>
-                </div>
-              ))}
+                  <div className={cx("accordion-content")}>{item.content}</div>
+                </div>)}
             </div>
-          </div>
-        );
-
+          </div>;
       case "button":
-        return (
-          <div key={block.id} className="content-block button-block">
-            <div className="button-container">
-              {block.url ? (
-                <a href={block.url} target="_blank" rel="noopener noreferrer" className={`cta-button btn-${block.style}`}>
+        return <div key={block.id} className={cx("content-block button-block")}>
+            <div className={cx("button-container")}>
+              {block.url ? <a href={block.url} target="_blank" rel="noopener noreferrer" className={cx(`cta-button btn-${block.style}`)}>
                   {block.text}
-                </a>
-              ) : (
-                <button className={`cta-button btn-${block.style}`}>{block.text}</button>
-              )}
+                </a> : <button className={cx(`cta-button btn-${block.style}`)}>{block.text}</button>}
             </div>
-          </div>
-        );
-
+          </div>;
       case "features":
-        return (
-          <div key={block.id} className="content-block features-block">
-            <div className="features-grid">
-              {block.items.map((feature, idx) => (
-                <div key={idx} className="feature-card">
-                  <div className="feature-icon">{feature.icon}</div>
+        return <div key={block.id} className={cx("content-block features-block")}>
+            <div className={cx("features-grid")}>
+              {block.items.map((feature, idx) => <div key={idx} className={cx("feature-card")}>
+                  <div className={cx("feature-icon")}>{feature.icon}</div>
                   <h4>{feature.title}</h4>
                   {feature.description && <p>{feature.description}</p>}
-                </div>
-              ))}
+                </div>)}
             </div>
-          </div>
-        );
-
+          </div>;
       case "prosCons":
-        return (
-          <div key={block.id} className="content-block proscons-block">
-            <div className="proscons-container">
-              <div className="pros-column">
+        return <div key={block.id} className={cx("content-block proscons-block")}>
+            <div className={cx("proscons-container")}>
+              <div className={cx("pros-column")}>
                 <h4>✅ Pros</h4>
                 <ul>
-                  {block.pros.map((pro, idx) => (
-                    <li key={idx}>{pro}</li>
-                  ))}
+                  {block.pros.map((pro, idx) => <li key={idx}>{pro}</li>)}
                 </ul>
               </div>
-              <div className="cons-column">
+              <div className={cx("cons-column")}>
                 <h4>❌ Cons</h4>
                 <ul>
-                  {block.cons.map((con, idx) => (
-                    <li key={idx}>{con}</li>
-                  ))}
+                  {block.cons.map((con, idx) => <li key={idx}>{con}</li>)}
                 </ul>
               </div>
             </div>
-          </div>
-        );
-
+          </div>;
       default:
         return null;
     }
   };
-
-  const openContactPopover = (business) => {
+  const openContactPopover = business => {
     setSelectedContact(business);
     setCopiedContact(false);
   };
-
   const closeContactPopover = () => {
     setSelectedContact(null);
     setCopiedContact(false);
   };
-
   const copyContactNumber = async () => {
     if (!selectedContact?.contact) return;
-
     try {
       await navigator.clipboard.writeText(selectedContact.contact);
       setCopiedContact(true);
@@ -531,9 +380,8 @@ const BlogDetail = () => {
       window.prompt("Copy this contact number", selectedContact.contact);
     }
   };
-
   if (loading) return null;
-  if (error) return <div className="error">Error loading blog</div>;
+  if (error) return <div className={cx("error")}>Error loading blog</div>;
   if (!blog) return null;
 
   // Generate Article schema for blog post
@@ -547,14 +395,17 @@ const BlogDetail = () => {
   });
 
   // Generate Breadcrumb schema
-  const breadcrumbSchema = generateBreadcrumbSchema([
-    { name: "Home", url: "https://massclick.in" },
-    { name: blog.category, url: `https://massclick.in/${blog.location}/${blog.category}` },
-    { name: blog.heading, url: canonical }
-  ]);
-
-  return (
-    <>
+  const breadcrumbSchema = generateBreadcrumbSchema([{
+    name: "Home",
+    url: "https://massclick.in"
+  }, {
+    name: blog.category,
+    url: `https://massclick.in/${blog.location}/${blog.category}`
+  }, {
+    name: blog.heading,
+    url: canonical
+  }]);
+  return <>
       <Helmet>
         <title>{metaTitle}</title>
         <meta name="description" content={metaDescription} />
@@ -564,73 +415,60 @@ const BlogDetail = () => {
         <meta property="og:description" content={metaDescription} />
         <meta property="og:url" content={canonical} />
         <meta property="og:type" content="article" />
-        {blog?.ogImage && (
-          <meta property="og:image" content={blog.ogImage} />
-        )}
+        {blog?.ogImage && <meta property="og:image" content={blog.ogImage} />}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={metaTitle} />
         <meta name="twitter:description" content={metaDescription} />
-        {blog?.ogImage && (
-          <meta name="twitter:image" content={blog.ogImage} />
-        )}
-        {articleSchema && (
-          <script type="application/ld+json">{JSON.stringify(articleSchema)}</script>
-        )}
-        {breadcrumbSchema && (
-          <script type="application/ld+json">{JSON.stringify(breadcrumbSchema)}</script>
-        )}
+        {blog?.ogImage && <meta name="twitter:image" content={blog.ogImage} />}
+        {articleSchema && <script type="application/ld+json">{JSON.stringify(articleSchema)}</script>}
+        {breadcrumbSchema && <script type="application/ld+json">{JSON.stringify(breadcrumbSchema)}</script>}
       </Helmet>
       <Navbar tags={blog?.tags} location={blog?.location} />
       <main>
-      <div className="reading-progress" aria-hidden="true">
-        <span style={{ width: `${readingProgress}%` }} />
+      <div className={cx("reading-progress")} aria-hidden="true">
+        <span style={{
+          width: `${readingProgress}%`
+        }} />
       </div>
 
-      <div className="blog-container">
+      <div className={cx("blog-container")}>
 
-        <section className="blog-hero">
-          <div className="blog-hero-copy">
-            <Breadcrumbs
-              items={[
-                { label: "Home", link: "/" },
-                {
-                  label: blog.category,
-                  link: `/${(blog.location || "trichy").toLowerCase().replace(/\s+/g, "-")}/${(blog.category || "services").toLowerCase().replace(/\s+/g, "-")}`
-                },
-                { label: blog.heading }
-              ]}
-            />
+        <section className={cx("blog-hero")}>
+          <div className={cx("blog-hero-copy")}>
+            <Breadcrumbs items={[{
+              label: "Home",
+              link: "/"
+            }, {
+              label: blog.category,
+              link: `/${(blog.location || "trichy").toLowerCase().replace(/\s+/g, "-")}/${(blog.category || "services").toLowerCase().replace(/\s+/g, "-")}`
+            }, {
+              label: blog.heading
+            }]} />
 
-            <div className="blog-kicker">
+            <div className={cx("blog-kicker")}>
               <span>
                 <LocalOfferIcon />
                 {blog.category || "Guide"}
               </span>
-              {blog.location && (
-                <span>
+              {blog.location && <span>
                   <PlaceIcon />
                   {blog.location}
-                </span>
-              )}
+                </span>}
             </div>
 
-            <div className="blog-header">
+            <div className={cx("blog-header")}>
               <h1>{blog.heading}</h1>
               <p>{heroDescription}</p>
 
-              <div className="blog-meta">
-                {publishedDate && (
-                  <span>
+              <div className={cx("blog-meta")}>
+                {publishedDate && <span>
                     <CalendarTodayIcon />
                     Published {publishedDate}
-                  </span>
-                )}
-                {updatedDate && (
-                  <span>
+                  </span>}
+                {updatedDate && <span>
                     <TrendingUpIcon />
                     Updated {updatedDate}
-                  </span>
-                )}
+                  </span>}
                 <span>
                   <VisibilityIcon />
                   {blog.views || 48} views
@@ -642,34 +480,28 @@ const BlogDetail = () => {
               </div>
             </div>
 
-            <div className="hero-actions">
-              <button type="button" className="share-btn primary-share" onClick={shareArticle}>
+            <div className={cx("hero-actions")}>
+              <button type="button" className={cx("share-btn primary-share")} onClick={shareArticle}>
                 <ShareIcon />
                 Share Article
               </button>
-              <button type="button" className="share-btn" onClick={copyArticleLink}>
+              <button type="button" className={cx("share-btn")} onClick={copyArticleLink}>
                 {copied ? <DoneIcon /> : <ContentCopyIcon />}
                 {copied ? "Copied" : "Copy Link"}
               </button>
             </div>
           </div>
 
-          <div className="blog-hero-media">
-            {blog.pageImages?.[0] && (
-              <img
-                src={blog.pageImages[0]}
-                className="hero-img"
-                alt={blog.heading}
-              />
-            )}
-            <div className="hero-stat-card">
+          <div className={cx("blog-hero-media")}>
+            {blog.pageImages?.[0] && <img src={blog.pageImages[0]} className={cx("hero-img")} alt={blog.heading} />}
+            <div className={cx("hero-stat-card")}>
               <span>Article depth</span>
               <strong>{wordCount || "Fresh"} words</strong>
             </div>
           </div>
         </section>
 
-        <div className="article-quick-stats">
+        <div className={cx("article-quick-stats")}>
           <div>
             <ArticleIcon />
             <span>Guide Type</span>
@@ -687,75 +519,46 @@ const BlogDetail = () => {
           </div>
         </div>
 
-        <div className="blog-grid">
+        <div className={cx("blog-grid")}>
 
-          <div className="blog-content-area">
+          <div className={cx("blog-content-area")}>
 
-            <div
-              className="blog-content"
-              onClick={handleContentClick}
-              dangerouslySetInnerHTML={{
-                __html: formattedContent || "<p>No content available</p>",
-              }}
-            />
+            <div className={cx("blog-content")} onClick={handleContentClick} dangerouslySetInnerHTML={{
+              __html: formattedContent || "<p>No content available</p>"
+            }} />
 
-            {blog.contentBlocks?.length > 0 && (
-              <div className="content-blocks-section">
-                {blog.contentBlocks.map((block) => renderContentBlock(block))}
-              </div>
-            )}
+            {blog.contentBlocks?.length > 0 && <div className={cx("content-blocks-section")}>
+                {blog.contentBlocks.map(block => renderContentBlock(block))}
+              </div>}
 
-            {blog.pageImages?.length > 1 && (
-              <div className="image-grid">
-                {blog.pageImages.slice(1).map((img, i) => (
-                  <img key={i} src={img} alt={`${blog.heading} supporting visual ${i + 2}`} />
-                ))}
-              </div>
-            )}
+            {blog.pageImages?.length > 1 && <div className={cx("image-grid")}>
+                {blog.pageImages.slice(1).map((img, i) => <img key={i} src={img} alt={`${blog.heading} supporting visual ${i + 2}`} />)}
+              </div>}
 
-            {blog.businessDetails?.length > 0 && (
-              <div className="business-section">
+            {blog.businessDetails?.length > 0 && <div className={cx("business-section")}>
 
-                <h2 className="business-title">Popular Businesses</h2>
+                <h2 className={cx("business-title")}>Popular Businesses</h2>
 
-                {blog.businessDetails.map((b, index) => (
-                  <div className="business-card" key={index}>
+                {blog.businessDetails.map((b, index) => <div className={cx("business-card")} key={index}>
 
-                    <div className="business-header">
+                    <div className={cx("business-header")}>
                       <h3>{b.businessName}</h3>
 
-                      <button
-                        type="button"
-                        className="call-btn"
-                        onClick={() => openContactPopover(b)}
-                      >
+                      <button type="button" className={cx("call-btn")} onClick={() => openContactPopover(b)}>
                         Call Now
                       </button>
                     </div>
 
-                    {b.bannerImage && (
-                      <img
-                        src={
-                          b.bannerImage ||
-                          "https://dummyimage.com/600x400/e2e8f0/64748b&text=No+Image"
-                        }
-                        alt={b.businessName}
-                        className="business-img"
-                        loading="lazy"
-                        onError={(event) => {
-                          event.currentTarget.onerror = null;
+                    {b.bannerImage && <img src={b.bannerImage || "https://dummyimage.com/600x400/e2e8f0/64748b&text=No+Image"} alt={b.businessName} className={cx("business-img")} loading="lazy" onError={event => {
+                  event.currentTarget.onerror = null;
+                  event.currentTarget.src = "https://dummyimage.com/600x400/e2e8f0/64748b&text=No+Image";
+                }} />}
 
-                          event.currentTarget.src =
-                            "https://dummyimage.com/600x400/e2e8f0/64748b&text=No+Image";
-                        }}
-                      />
-                    )}
-
-                    <p className="business-desc">
+                    <p className={cx("business-desc")}>
                       {b.businessName} is one of the best {b.category} in {b.location}.
                     </p>
 
-                    <div className="business-info">
+                    <div className={cx("business-info")}>
 
                       <div>
                         <strong>Experience</strong>
@@ -774,65 +577,50 @@ const BlogDetail = () => {
 
                     </div>
 
-                    <div className="business-address">
+                    <div className={cx("business-address")}>
                       <strong>Address</strong>
                       <p>{b.street}</p>
                     </div>
 
-                  </div>
-                ))}
+                  </div>)}
 
-              </div>
-            )}
+              </div>}
 
-            {blog.faq?.length > 0 && (
-              <div className="faq-section">
+            {blog.faq?.length > 0 && <div className={cx("faq-section")}>
 
-                <h2
-                  className="faq-title"
-                  id="frequently-asked-questions"
-                >
+                <h2 className={cx("faq-title")} id="frequently-asked-questions">
                   Frequently Asked Questions
                 </h2>
 
-                <div className="faq-wrapper">
-                  {blog.faq.map((item, index) => (
-                    <div className="faq-item" key={index}>
+                <div className={cx("faq-wrapper")}>
+                  {blog.faq.map((item, index) => <div className={cx("faq-item")} key={index}>
 
-                      <h3 className="faq-question">
+                      <h3 className={cx("faq-question")}>
                         {item.question}
                       </h3>
 
-                      <p
-                        className="faq-answer"
-                        dangerouslySetInnerHTML={{
-                          __html: renderFaqAnswer(item.answer, item.links),
-                        }}
-                      />
+                      <p className={cx("faq-answer")} dangerouslySetInnerHTML={{
+                    __html: renderFaqAnswer(item.answer, item.links)
+                  }} />
 
-                    </div>
-                  ))}
+                    </div>)}
                 </div>
 
-              </div>
-            )}
+              </div>}
 
-            <div className="comment-box">
+            <div className={cx("comment-box")}>
               <h3>Comments (0)</h3>
 
               <textarea placeholder="Share your thoughts..." />
 
-              <div className="comment-actions">
-                <button className="cancel-btn">Cancel</button>
-                <button className="submit-btn">Submit</button>
+              <div className={cx("comment-actions")}>
+                <button className={cx("cancel-btn")}>Cancel</button>
+                <button className={cx("submit-btn")}>Submit</button>
               </div>
             </div>
 
-            <div className="author-card author-card-large">
-              <img
-                src={blog.profileImage || getPlaceholderImage()}
-                alt={`${blog.author || "Massclick"} author profile`}
-              />
+            <div className={cx("author-card author-card-large")}>
+              <img src={blog.profileImage || getPlaceholderImage()} alt={`${blog.author || "Massclick"} author profile`} />
               <div>
                 <h3>{blog.author || "Massclick Editorial Team"}</h3>
                 <p>
@@ -845,92 +633,56 @@ const BlogDetail = () => {
 
           </div>
 
-          <div className="sidebar">
+          <div className={cx("sidebar")}>
 
-            <div className="author-card">
-              <img
-                src={blog.profileImage || getPlaceholderImage()}
-                alt={`${blog.author || "Massclick"} author profile`}
-              />
+            <div className={cx("author-card")}>
+              <img src={blog.profileImage || getPlaceholderImage()} alt={`${blog.author || "Massclick"} author profile`} />
               <div>
                 <h4>{blog.author || "Admin"}</h4>
                 <p>Content Creator</p>
               </div>
             </div>
 
-            <div className="toc">
+            <div className={cx("toc")}>
               <h4>List of Contents</h4>
 
               <ul>
-                {tocItems.map((item, index) => (
-                  <li
-                    key={index}
-                    onClick={() => scrollToSection(item.id)}
-                  >
+                {tocItems.map((item, index) => <li key={index} onClick={() => scrollToSection(item.id)}>
                     {item.title}
-                  </li>
-                ))}
+                  </li>)}
               </ul>
             </div>
 
-            <div className="sidebar-cta">
+            <div className={cx("sidebar-cta")}>
               <span>Need a quick shortlist?</span>
               <h4>Find trusted {blog.category || "services"} near you</h4>
               <p>
                 Use Massclick to compare local options faster and move from reading to action.
               </p>
-              <button
-                type="button"
-                onClick={() => {
-                  const locationSlug = (blog.location || "trichy")
-                    .toLowerCase()
-                    .trim()
-                    .replace(/\s+/g, "-");
-
-                  const categorySlug = (blog.category || "services")
-                    .toLowerCase()
-                    .trim()
-                    .replace(/\s+/g, "-");
-
-                  window.open(`https://massclick.in/${locationSlug}/${categorySlug}`, "_blank");
-                }}
-              >
+              <button type="button" onClick={() => {
+                const locationSlug = (blog.location || "trichy").toLowerCase().trim().replace(/\s+/g, "-");
+                const categorySlug = (blog.category || "services").toLowerCase().trim().replace(/\s+/g, "-");
+                window.open(`https://massclick.in/${locationSlug}/${categorySlug}`, "_blank");
+              }}>
                 Explore Listings
               </button>
             </div>
 
-            <div className="tags">
+            <div className={cx("tags")}>
               <h4>Related Tags</h4>
 
-              <div className="tag-list">
+              <div className={cx("tag-list")}>
 
-                {blog?.tags?.length > 0 ? (
-                  blog.tags.map((tag, index) => (
-                    <span
-                      key={index}
-                      onClick={() => {
-                        const locationSlug = (blog.location || "trichy")
-                          .toLowerCase()
-                          .trim()
-                          .replace(/\s+/g, "-");
-
-                        const categorySlug = (blog.category || tag)
-                          .toLowerCase()
-                          .trim()
-                          .replace(/\s+/g, "-");
-
-                        window.location.href = `https://massclick.in/${locationSlug}/${categorySlug}`;
-                      }}
-                    >
+                {blog?.tags?.length > 0 ? blog.tags.map((tag, index) => <span key={index} onClick={() => {
+                  const locationSlug = (blog.location || "trichy").toLowerCase().trim().replace(/\s+/g, "-");
+                  const categorySlug = (blog.category || tag).toLowerCase().trim().replace(/\s+/g, "-");
+                  window.location.href = `https://massclick.in/${locationSlug}/${categorySlug}`;
+                }}>
                       {tag}
-                    </span>
-                  ))
-                ) : (
-                  <>
+                    </span>) : <>
                     <span>{blog.category}</span>
                     <span>{blog.location}</span>
-                  </>
-                )}
+                  </>}
 
               </div>
             </div>
@@ -941,54 +693,37 @@ const BlogDetail = () => {
       </div>
       </main>
 
-      {selectedContact && (
-        <div className="contact-popover-backdrop" role="presentation" onClick={closeContactPopover}>
-          <div
-            className="contact-popover"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="contact-popover-title"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <button
-              type="button"
-              className="contact-popover-close"
-              aria-label="Close contact details"
-              onClick={closeContactPopover}
-            >
+      {selectedContact && <div className={cx("contact-popover-backdrop")} role="presentation" onClick={closeContactPopover}>
+          <div className={cx("contact-popover")} role="dialog" aria-modal="true" aria-labelledby="contact-popover-title" onClick={event => event.stopPropagation()}>
+            <button type="button" className={cx("contact-popover-close")} aria-label="Close contact details" onClick={closeContactPopover}>
               <CloseIcon />
             </button>
 
-            <div className="contact-popover-icon">
+            <div className={cx("contact-popover-icon")}>
               <PhoneIcon />
             </div>
 
-            <span className="contact-popover-eyebrow">Contact number</span>
+            <span className={cx("contact-popover-eyebrow")}>Contact number</span>
             <h3 id="contact-popover-title">{selectedContact.businessName}</h3>
             <p>{selectedContact.category} in {selectedContact.location}</p>
 
-            <div className="contact-number-box">
+            <div className={cx("contact-number-box")}>
               <span>{selectedContact.contact || "Not available"}</span>
             </div>
 
-            <div className="contact-popover-actions">
-              {selectedContact.contact && (
-                <a href={`tel:${selectedContact.contact}`} className="contact-call-link">
+            <div className={cx("contact-popover-actions")}>
+              {selectedContact.contact && <a href={`tel:${selectedContact.contact}`} className={cx("contact-call-link")}>
                   <PhoneIcon />
                   Call Now
-                </a>
-              )}
+                </a>}
 
-              <button type="button" className="contact-copy-btn" onClick={copyContactNumber}>
+              <button type="button" className={cx("contact-copy-btn")} onClick={copyContactNumber}>
                 {copiedContact ? <DoneIcon /> : <ContentCopyIcon />}
                 {copiedContact ? "Copied" : "Copy Number"}
               </button>
             </div>
           </div>
-        </div>
-      )}
-    </>
-  );
+        </div>}
+    </>;
 };
-
 export default BlogDetail;

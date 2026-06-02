@@ -92,18 +92,18 @@
   box-shadow: 0 0 0 4px rgba(255, 140, 0, 0.12);
 }
 
-.editor-wrapper .ql-container {
+.editor-wrapper :global(.ql-container) {
   min-height: 220px;
   border-bottom-left-radius: 12px;
   border-bottom-right-radius: 12px;
 }
 
-.editor-wrapper .ql-toolbar {
+.editor-wrapper :global(.ql-toolbar) {
   border-top-left-radius: 12px;
   border-top-right-radius: 12px;
 }
 
-.editor-wrapper .ql-editor {
+.editor-wrapper :global(.ql-editor) {
   min-height: 180px;
   font-size: 15px;
 }

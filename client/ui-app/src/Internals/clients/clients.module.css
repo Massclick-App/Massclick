@@ -192,23 +192,23 @@
   overflow-x: auto;
 }
 
-.MuiPaper-root {
+:global(.MuiPaper-root) {
   border-radius: 12px !important;
 }
 
-.MuiDataGrid-root {
+:global(.MuiDataGrid-root) {
   background-color: #fff;
   border-radius: 10px;
   min-width: 600px;
 }
 
-.MuiDataGrid-columnHeaders {
+:global(.MuiDataGrid-columnHeaders) {
   background-color: #f7f7f9;
   color: #1f2937;
   font-weight: 600;
 }
 
-.MuiDataGrid-row:hover {
+:global(.MuiDataGrid-row):hover {
   background-color: #f9fafb;
 }
 
@@ -227,25 +227,25 @@
 /* ===========================
    ℹ️ Alert Styles
    =========================== */
-.MuiAlert-root {
+:global(.MuiAlert-root) {
   border-radius: 10px !important;
   margin-bottom: 20px !important;
   font-weight: 500;
 }
 
-.MuiAlert-standardSuccess {
+:global(.MuiAlert-standardSuccess) {
   background-color: #f0fdf4 !important;
   border: 1px solid #86efac !important;
   color: #166534 !important;
 }
 
-.MuiAlert-standardError {
+:global(.MuiAlert-standardError) {
   background-color: #fef2f2 !important;
   border: 1px solid #fecaca !important;
   color: #7f1d1d !important;
 }
 
-.MuiAlertTitle-root {
+:global(.MuiAlertTitle-root) {
   font-weight: 600 !important;
   margin-bottom: 4px !important;
 }
@@ -310,7 +310,7 @@
     padding: 10px;
   }
 
-  .MuiDataGrid-root {
+  :global(.MuiDataGrid-root) {
     min-width: 500px;
   }
 }

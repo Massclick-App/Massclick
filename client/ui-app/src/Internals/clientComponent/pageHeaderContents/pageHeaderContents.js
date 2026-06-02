@@ -1,17 +1,17 @@
-import "./pageHeaderContents.css";
-
+import { createScopedClassNames } from "../../../utils/createScopedClassNames";
+import styles from "./pageHeaderContents.module.css";
+const cx = createScopedClassNames(styles);
 const PageHeaderContents = () => {
-  return (
-    <section className="phc-container">
-      <div className="phc-wrapper">
+  return <section className={cx("phc-container")}>
+      <div className={cx("phc-wrapper")}>
 
-        <header className="phc-header">
-          <h1 className="phc-title">
+        <header className={cx("phc-header")}>
+          <h1 className={cx("phc-title")}>
             One-Stop for All Local Businesses, Services & Stores Nearby Across Tamil Nadu, India
           </h1>
         </header>
 
-        <article className="phc-content">
+        <article className={cx("phc-content")}>
 
           <p>
             Welcome to <strong>MassClick</strong>, your ultimate one-stop destination for discovering all local businesses, services, and stores nearby across Tamil Nadu, India. From the vibrant metropolitan lifestyle of Chennai to the industrial strength of Coimbatore, the cultural heritage of Madurai, the educational prominence of Tiruchirappalli, and the growing commercial centres of Salem, MassClick connects people with trusted local businesses in every corner of the state.
@@ -32,8 +32,6 @@ const PageHeaderContents = () => {
         </article>
 
       </div>
-    </section>
-  );
+    </section>;
 };
-
 export default PageHeaderContents;

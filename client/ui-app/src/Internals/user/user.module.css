@@ -368,8 +368,8 @@
 }
 
 /* 🧾 Make Table Responsive */
-.user-table-card,
-.MuiTableContainer-root,
+.user-table-card,:global(
+.MuiTableContainer-root),
 .customized-table-wrapper {
   width: 100%;
   overflow-x: auto;

@@ -71,7 +71,7 @@
 .edit-business-field input,
 .edit-business-field select,
 .edit-business-field textarea,
-.edit-business-field .MuiInputBase-root,
+.edit-business-field :global(.MuiInputBase-root),
 .edit-business-hour-row input,
 .edit-business-hour-row select {
   width: 100%;
@@ -83,7 +83,7 @@
   font-size: 0.96rem;
 }
 
-.edit-business-field .MuiInputBase-root {
+.edit-business-field :global(.MuiInputBase-root) {
   padding: 2px 10px;
 }
 

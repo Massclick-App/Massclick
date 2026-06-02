@@ -6,7 +6,6 @@ import { clientLogin } from './redux/actions/clientAuthAction.js';
 import { fetchMatchedLeads } from './redux/actions/leadsAction.js';
 import { setMaintenanceModeOn, setMaintenanceModeOff } from './redux/reducers/maintenanceReducer.js';
 import { connectSocket } from './services/socketService.js';
-import { setAxiosStore } from './services/axiosInstance.js';
 
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -21,7 +20,6 @@ import { userMenuItems } from './Internals/clientComponent/categoryBar.js';
 
 import ShimmerSkeleton from './Internals/clientComponent/shimmerSkeleton.js';
 import GlobalLoaderWrapper from './Internals/clientComponent/common/GlobalLoaderWrapper.js';
-import VideoPreloader from './components/VideoPreloader.js';
 
 
 const Dashboard = lazy(() => import(/* webpackChunkName: "admin-dashboard" */ './Dashboard'));
@@ -306,8 +304,6 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-
-      {/* <VideoPreloader /> */}
 
       <GlobalLoaderWrapper>
         <SnackbarProvider

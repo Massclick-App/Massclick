@@ -1,3 +1,4 @@
+import { createScopedClassNames } from "../../utils/createScopedClassNames";
 import React, { useEffect, useState, useRef, lazy, Suspense } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import InputValidator from "../validators/inputValidator.js";
@@ -13,25 +14,9 @@ import BusinessCenterIcon from '@mui/icons-material/BusinessCenter';
 import PrivacyTipIcon from '@mui/icons-material/PrivacyTip';
 import CategoryIcon from '@mui/icons-material/Category';
 import VerifiedUserIcon from "@mui/icons-material/VerifiedUser";
-import {
-  Box,
-  Button,
-  Typography,
-  CircularProgress,
-  IconButton,
-  Avatar,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  // Stepper Imports:
-  Stack,
-  Stepper,
-  Step,
-  StepLabel,
-  InputAdornment,
-  Chip,
-} from "@mui/material";
+import { Box, Button, Typography, CircularProgress, IconButton, Avatar, Dialog, DialogTitle, DialogContent, DialogActions,
+// Stepper Imports:
+Stack, Stepper, Step, StepLabel, InputAdornment, Chip } from "@mui/material";
 import PaidIcon from '@mui/icons-material/Paid';
 import PendingIcon from '@mui/icons-material/Pending';
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
@@ -47,42 +32,43 @@ import CollectionsBookmarkOutlinedIcon from '@mui/icons-material/CollectionsBook
 import { checkPhonePeStatus, createPhonePePayment } from "../../redux/actions/phonePayAction.js";
 import CustomizedTable from "../../components/Table/CustomizedTable.js";
 import Tooltip from "@mui/material/Tooltip";
-import './business.css';
-
+import styles from "./business.module.css";
+const cx = createScopedClassNames(styles);
 const ReactQuill = lazy(() => import('react-quill').then(m => {
   require('react-quill/dist/quill.snow.css');
-  return { default: m.default };
+  return {
+    default: m.default
+  };
 }));
-
-
 const ORANGE_PRIMARY = '#FF8C00';
 const ORANGE_HOVER = '#D97800';
-
-const ColorlibConnector = styled(StepConnector)(({ theme }) => ({
+const ColorlibConnector = styled(StepConnector)(({
+  theme
+}) => ({
   [`&.${stepConnectorClasses.alternativeLabel}`]: {
-    top: 22,
+    top: 22
   },
   [`&.${stepConnectorClasses.active}`]: {
     [`& .${stepConnectorClasses.line}`]: {
-      backgroundImage:
-        `linear-gradient( 95deg, ${ORANGE_PRIMARY} 0%, ${ORANGE_HOVER} 50%, #FFB643 100%)`,
-    },
+      backgroundImage: `linear-gradient( 95deg, ${ORANGE_PRIMARY} 0%, ${ORANGE_HOVER} 50%, #FFB643 100%)`
+    }
   },
   [`&.${stepConnectorClasses.completed}`]: {
     [`& .${stepConnectorClasses.line}`]: {
-      backgroundImage:
-        `linear-gradient( 95deg, ${ORANGE_PRIMARY} 0%, ${ORANGE_HOVER} 50%, #FFB643 100%)`,
-    },
+      backgroundImage: `linear-gradient( 95deg, ${ORANGE_PRIMARY} 0%, ${ORANGE_HOVER} 50%, #FFB643 100%)`
+    }
   },
   [`& .${stepConnectorClasses.line}`]: {
     height: 3,
     border: 0,
     backgroundColor: '#eaeaf0',
-    borderRadius: 1,
-  },
+    borderRadius: 1
+  }
 }));
-
-const ColorlibStepIconRoot = styled('div')(({ theme, ownerState }) => ({
+const ColorlibStepIconRoot = styled('div')(({
+  theme,
+  ownerState
+}) => ({
   backgroundColor: '#ccc',
   zIndex: 1,
   color: '#fff',
@@ -93,139 +79,130 @@ const ColorlibStepIconRoot = styled('div')(({ theme, ownerState }) => ({
   justifyContent: 'center',
   alignItems: 'center',
   ...(ownerState.active && {
-    backgroundImage:
-      `linear-gradient( 136deg, ${ORANGE_PRIMARY} 0%, ${ORANGE_HOVER} 50%, #FFB643 100%)`,
-    boxShadow: '0 4px 10px 0 rgba(255, 140, 0, 0.4)',
+    backgroundImage: `linear-gradient( 136deg, ${ORANGE_PRIMARY} 0%, ${ORANGE_HOVER} 50%, #FFB643 100%)`,
+    boxShadow: '0 4px 10px 0 rgba(255, 140, 0, 0.4)'
   }),
   ...(ownerState.completed && {
-    backgroundImage:
-      `linear-gradient( 136deg, ${ORANGE_PRIMARY} 0%, ${ORANGE_HOVER} 50%, #FFB643 100%)`,
-  }),
+    backgroundImage: `linear-gradient( 136deg, ${ORANGE_PRIMARY} 0%, ${ORANGE_HOVER} 50%, #FFB643 100%)`
+  })
 }));
-
 function ColorlibStepIcon(props) {
-  const { active, completed, className } = props;
-
+  const {
+    active,
+    completed,
+    className
+  } = props;
   const icons = {
     1: <BusinessCenterIcon />,
     2: <CategoryIcon />,
     3: <PrivacyTipIcon />,
-    4: <VerifiedUserIcon />,
+    4: <VerifiedUserIcon />
   };
-
-  return (
-    <ColorlibStepIconRoot ownerState={{ completed, active }} className={className}>
+  return <ColorlibStepIconRoot ownerState={{
+    completed,
+    active
+  }} className={className}>
       {icons[String(props.icon)]}
-    </ColorlibStepIconRoot>
-  );
+    </ColorlibStepIconRoot>;
 }
-
 ColorlibStepIcon.propTypes = {
   active: PropTypes.bool,
   className: PropTypes.string,
   completed: PropTypes.bool,
-  icon: PropTypes.node,
+  icon: PropTypes.node
 };
-
-const steps = [
-  "Business Details",
-  "Category",
-  "Privacy Settings",
-  "Payment"
-];
-
+const steps = ["Business Details", "Category", "Privacy Settings", "Payment"];
 const BusinessList = React.memo(() => {
   const dispatch = useDispatch();
-  const { enqueueSnackbar } = useSnackbar();
-  const { businessList = [], total = 0, loading } = useSelector(
-    (state) => state.businessListReducer || {}
-  );
-  const { searchSuggestion = [] } = useSelector(
-    (state) => state.userClientReducer || {}
-  );
+  const {
+    enqueueSnackbar
+  } = useSnackbar();
+  const {
+    businessList = [],
+    total = 0,
+    loading
+  } = useSelector(state => state.businessListReducer || {});
+  const {
+    searchSuggestion = []
+  } = useSelector(state => state.userClientReducer || {});
   const [showCategorySuggest, setShowCategorySuggest] = useState(false);
   const [showLocationSuggest, setShowLocationSuggest] = useState(false);
   const [locationSuggestions, setLocationSuggestions] = useState([]);
-  const { searchCategory } = useSelector((state) => state.categoryReducer);
-
-
-  const { location = [] } = useSelector((state) => state.locationReducer || {});
-  const { category = [] } = useSelector((state) => state.categoryReducer || {});
+  const {
+    searchCategory
+  } = useSelector(state => state.categoryReducer);
+  const {
+    location = []
+  } = useSelector(state => state.locationReducer || {});
+  const {
+    category = []
+  } = useSelector(state => state.categoryReducer || {});
   const fileInputRef = useRef();
-
   const [businessvalue, setBusinessValue] = useState("");
   const [editMode, setEditMode] = useState(false);
   const [editId, setEditId] = useState(null);
   const [newGalleryImages, setNewGalleryImages] = useState([]);
   const [createdBusinessId, setCreatedBusinessId] = useState(null);
-  const [createUserId, setCreateUserId] = useState(null)
+  const [createUserId, setCreateUserId] = useState(null);
   const [galleryDialog, setGalleryDialog] = useState({
     open: false,
-    data: null,
+    data: null
   });
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [inputKeyword, setInputKeyword] = useState("");
-
-  const handlePayNow = (row) => {
+  const handlePayNow = row => {
     const amount = 1;
-
-    let businessId =
-      row?._id?.$oid || row?._id || row?.businessId || row?.id || createdBusinessId;
-    let userId =
-      row?.createdBy?.$oid ||
-      (typeof row?.createdBy === "string" ? row.createdBy : null) ||
-      createUserId;
-
+    let businessId = row?._id?.$oid || row?._id || row?.businessId || row?.id || createdBusinessId;
+    let userId = row?.createdBy?.$oid || (typeof row?.createdBy === "string" ? row.createdBy : null) || createUserId;
     if (!row) {
       businessId = createdBusinessId;
       userId = createUserId;
     }
-
     if (!businessId || !userId) {
-      console.error("❌ Missing businessId or userId:", { businessId, userId });
+      console.error("❌ Missing businessId or userId:", {
+        businessId,
+        userId
+      });
       return;
     }
-
     dispatch(createPhonePePayment(amount, userId, businessId));
   };
-
   const [activeStep, setActiveStep] = useState(0);
   const [kycFiles, setKycFiles] = useState([]);
-
-  const handleKycUpload = (event) => {
+  const handleKycUpload = event => {
     const files = Array.from(event.target.files || []);
-    const validFiles = files.filter((f) => f instanceof File);
-
-    const newFiles = validFiles.map((file) => {
+    const validFiles = files.filter(f => f instanceof File);
+    const newFiles = validFiles.map(file => {
       file.preview = URL.createObjectURL(file);
       return file;
     });
-
-    setKycFiles((prev) => [...prev, ...newFiles]);
+    setKycFiles(prev => [...prev, ...newFiles]);
   };
-
-  const handleRemoveFile = (index) => {
-    setKycFiles((prevFiles) => {
+  const handleRemoveFile = index => {
+    setKycFiles(prevFiles => {
       const updatedFiles = [...prevFiles];
       URL.revokeObjectURL(updatedFiles[index].preview);
       updatedFiles.splice(index, 1);
       return updatedFiles;
     });
   };
-
   const handleNext = () => {
-    setActiveStep((prevActiveStep) => prevActiveStep + 1);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    setActiveStep(prevActiveStep => prevActiveStep + 1);
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth"
+    });
   };
-
   const handleBack = () => {
-    setActiveStep((prevActiveStep) => prevActiveStep - 1);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    setActiveStep(prevActiveStep => prevActiveStep - 1);
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth"
+    });
   };
-
-  const handleGalleryImageChange = (e) => {
+  const handleGalleryImageChange = e => {
     const files = Array.from(e.target.files);
-    const readers = files.map((file) => {
+    const readers = files.map(file => {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result);
@@ -233,29 +210,24 @@ const BusinessList = React.memo(() => {
         reader.readAsDataURL(file);
       });
     });
-
-    Promise.all(readers).then((images) => {
-      setNewGalleryImages((prev) => [...prev, ...images]);
+    Promise.all(readers).then(images => {
+      setNewGalleryImages(prev => [...prev, ...images]);
     });
   };
-
   const handleUploadGalleryImages = async () => {
     if (!galleryDialog.data?._id) return;
-
     try {
       const uploadPayload = {
-        businessImages: newGalleryImages.length > 0 ? newGalleryImages : null,
+        businessImages: newGalleryImages.length > 0 ? newGalleryImages : null
       };
-
-      const updatedBusiness = await dispatch(
-        editBusinessList(galleryDialog.data._id, uploadPayload)
-      );
-
-      setGalleryDialog((prev) => ({
+      const updatedBusiness = await dispatch(editBusinessList(galleryDialog.data._id, uploadPayload));
+      setGalleryDialog(prev => ({
         ...prev,
-        data: { ...prev.data, businessImages: updatedBusiness.businessImages },
+        data: {
+          ...prev.data,
+          businessImages: updatedBusiness.businessImages
+        }
       }));
-
       setNewGalleryImages([]);
       handleCloseGallery();
       await dispatch(getAllBusinessList());
@@ -263,25 +235,12 @@ const BusinessList = React.memo(() => {
       console.error("Upload failed:", err);
     }
   };
-
-  const fieldsToCheck = [
-    "keywords",
-    "slug",
-    "seoTitle",
-    "seoDescription",
-    "title",
-    "description",
-  ];
-
+  const fieldsToCheck = ["keywords", "slug", "seoTitle", "seoDescription", "title", "description"];
   const getUpdatedCategoryFields = (existing, current) => {
     const updates = {};
-
-    fieldsToCheck.forEach((field) => {
+    fieldsToCheck.forEach(field => {
       if (Array.isArray(current[field])) {
-        const newValues = current[field]
-          .map(k => k.trim().toLowerCase())
-          .filter(k => !existing[field]?.map(e => e.trim().toLowerCase()).includes(k));
-
+        const newValues = current[field].map(k => k.trim().toLowerCase()).filter(k => !existing[field]?.map(e => e.trim().toLowerCase()).includes(k));
         if (newValues.length > 0) {
           updates[field] = [...existing[field], ...newValues];
         }
@@ -291,35 +250,69 @@ const BusinessList = React.memo(() => {
         }
       }
     });
-
     return updates;
   };
-
-  const defaultOpeningHours = [
-    { day: "Monday", open: "", close: "", isClosed: false, is24Hours: false },
-    { day: "Tuesday", open: "", close: "", isClosed: false, is24Hours: false },
-    { day: "Wednesday", open: "", close: "", isClosed: false, is24Hours: false },
-    { day: "Thursday", open: "", close: "", isClosed: false, is24Hours: false },
-    { day: "Friday", open: "", close: "", isClosed: false, is24Hours: false },
-    { day: "Saturday", open: "", close: "", isClosed: false, is24Hours: false },
-    { day: "Sunday", open: "", close: "", isClosed: false, is24Hours: false },
-  ];
-
-  const handleOpenGallery = (rowId) => {
-    const business = businessList.find((b) => b._id === rowId);
-
+  const defaultOpeningHours = [{
+    day: "Monday",
+    open: "",
+    close: "",
+    isClosed: false,
+    is24Hours: false
+  }, {
+    day: "Tuesday",
+    open: "",
+    close: "",
+    isClosed: false,
+    is24Hours: false
+  }, {
+    day: "Wednesday",
+    open: "",
+    close: "",
+    isClosed: false,
+    is24Hours: false
+  }, {
+    day: "Thursday",
+    open: "",
+    close: "",
+    isClosed: false,
+    is24Hours: false
+  }, {
+    day: "Friday",
+    open: "",
+    close: "",
+    isClosed: false,
+    is24Hours: false
+  }, {
+    day: "Saturday",
+    open: "",
+    close: "",
+    isClosed: false,
+    is24Hours: false
+  }, {
+    day: "Sunday",
+    open: "",
+    close: "",
+    isClosed: false,
+    is24Hours: false
+  }];
+  const handleOpenGallery = rowId => {
+    const business = businessList.find(b => b._id === rowId);
     if (business) {
-      setGalleryDialog({ open: true, data: business });
+      setGalleryDialog({
+        open: true,
+        data: business
+      });
       setNewGalleryImages([]);
     } else {
       console.error("Business not found in Redux store");
     }
   };
-
   const handleCloseGallery = () => {
-    setGalleryDialog({ open: false, data: null });
+    setGalleryDialog({
+      open: false,
+      data: null
+    });
   };
-
   const [formData, setFormData] = useState({
     clientId: "",
     businessName: "",
@@ -352,57 +345,42 @@ const BusinessList = React.memo(() => {
     linkedin: "",
     businessDetails: "",
     kycDocuments: [],
-    openingHours: defaultOpeningHours,
+    openingHours: defaultOpeningHours
   });
-
   const [preview, setPreview] = useState(null);
   const [deleteDialog, setDeleteDialog] = useState({
     open: false,
-    id: null,
+    id: null
   });
-
   const modules = {
-    toolbar: [
-      [{ 'header': '1' }, { 'header': '2' }],
-      ['bold', 'italic', 'underline', 'strike'],
-      [{ 'list': 'ordered' }, { 'list': 'bullet' }],
-      ['link', 'image', 'video'],
-      ['clean']
-    ],
+    toolbar: [[{
+      'header': '1'
+    }, {
+      'header': '2'
+    }], ['bold', 'italic', 'underline', 'strike'], [{
+      'list': 'ordered'
+    }, {
+      'list': 'bullet'
+    }], ['link', 'image', 'video'], ['clean']]
   };
-
-  const formats = [
-    "header",
-    "bold",
-    "italic",
-    "underline",
-    "strike",
-    "list",
-    "bullet",
-    "link",
-    "image",
-    "video",
-  ];
-
-  const handleBusinessChange = (content) => {
+  const formats = ["header", "bold", "italic", "underline", "strike", "list", "bullet", "link", "image", "video"];
+  const handleBusinessChange = content => {
     setBusinessValue(content);
-    setFormData((prev) => ({ ...prev, businessDetails: content }));
+    setFormData(prev => ({
+      ...prev,
+      businessDetails: content
+    }));
   };
-
   const handleOpeningHourChange = (index, field, value) => {
-    setFormData((prev) => {
+    setFormData(prev => {
       const updatedHours = [...(prev.openingHours || defaultOpeningHours)];
-
       updatedHours[index][field] = value;
-
       if (field === "isClosed" && value) {
         updatedHours[index].open = "";
         updatedHours[index].close = "";
       }
-
       if (index === 0 && (field === "open" || field === "close")) {
         const monday = updatedHours[0];
-
         for (let i = 1; i < updatedHours.length; i++) {
           if (!updatedHours[i].isClosed && !updatedHours[i].is24Hours) {
             updatedHours[i].open = monday.open;
@@ -410,25 +388,31 @@ const BusinessList = React.memo(() => {
           }
         }
       }
-
-      return { ...prev, openingHours: updatedHours };
+      return {
+        ...prev,
+        openingHours: updatedHours
+      };
     });
   };
-
   useEffect(() => {
     dispatch(getAllBusinessList());
-    dispatch(getAllLocation({ pageNo: 1, pageSize: 1000 }));
-    dispatch(businessCategorySearch())
-    dispatch(getAllUsersClient())
-    dispatch(getAllUsers())
+    dispatch(getAllLocation({
+      pageNo: 1,
+      pageSize: 1000
+    }));
+    dispatch(businessCategorySearch());
+    dispatch(getAllUsersClient());
+    dispatch(getAllUsers());
     dispatch(checkPhonePeStatus());
   }, [dispatch]);
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
+  const handleChange = e => {
+    const {
+      name,
+      value
+    } = e.target;
     if (name === "category") {
-      const selected = category.find((cat) => cat.category === value);
-      setFormData((prev) => ({
+      const selected = category.find(cat => cat.category === value);
+      setFormData(prev => ({
         ...prev,
         category: value,
         keywords: selected?.keywords || [],
@@ -436,16 +420,16 @@ const BusinessList = React.memo(() => {
         seoTitle: selected?.seoTitle || "",
         seoDescription: selected?.seoDescription || "",
         title: selected?.title || "",
-        description: selected?.description || "",
+        description: selected?.description || ""
       }));
-
       return;
     }
-
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
-
-  const handleEdit = (row) => {
+  const handleEdit = row => {
     setEditMode(true);
     setEditId(row.id);
     setFormData({
@@ -480,43 +464,51 @@ const BusinessList = React.memo(() => {
       twitter: row.twitter || "",
       linkedin: row.linkedin || "",
       businessDetails: row.businessDetails || "",
-      openingHours: row.openingHours?.length
-        ? row.openingHours
-        : defaultOpeningHours,
-      kycDocuments: row.kycDocuments || [],
+      openingHours: row.openingHours?.length ? row.openingHours : defaultOpeningHours,
+      kycDocuments: row.kycDocuments || []
     });
     setBusinessValue(row.businessDetails || "");
     setPreview(row.bannerImage || null);
     setActiveStep(0);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth"
+    });
   };
-
-  const handleDelete = (row) => {
-    setDeleteDialog({ open: true, id: row.id, name: row.businessName });
+  const handleDelete = row => {
+    setDeleteDialog({
+      open: true,
+      id: row.id,
+      name: row.businessName
+    });
   };
-
   const confirmDelete = () => {
     if (deleteDialog.id) {
       dispatch(deleteBusinessList(deleteDialog.id)).then(() => {
         dispatch(getAllBusinessList());
       });
     }
-    setDeleteDialog({ open: false, id: null, name: "" });
+    setDeleteDialog({
+      open: false,
+      id: null,
+      name: ""
+    });
   };
-
-  const handleImageChange = (e) => {
+  const handleImageChange = e => {
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setFormData((prev) => ({ ...prev, bannerImage: reader.result }));
+        setFormData(prev => ({
+          ...prev,
+          bannerImage: reader.result
+        }));
         setPreview(reader.result);
       };
       reader.readAsDataURL(file);
     }
   };
-
-  const handleSubmit = async (e) => {
+  const handleSubmit = async e => {
     e.preventDefault();
 
     // Validate business data using InputValidator
@@ -528,111 +520,74 @@ const BusinessList = React.memo(() => {
         contact: formData.phoneNumber || '',
         keywords: formData.keywords || []
       };
-
       InputValidator.validateBusiness(businessData);
     } catch (error) {
       // Show validation error to user
       const errorMessage = error.message.split('\n').filter(line => line.trim()).join('\n');
       enqueueSnackbar(`Validation error: ${errorMessage}`, {
-        variant: "error",
+        variant: "error"
       });
       return;
     }
-
-    const kycBase64 = await Promise.all(
-      kycFiles.map(
-        (file) =>
-          new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-          })
-      )
-    );
-
-    const locationExists = location.some(
-      (loc) => loc.city?.toLowerCase() === formData.location?.toLowerCase() ||
-        loc.district?.toLowerCase() === formData.location?.toLowerCase()
-    );
-
+    const kycBase64 = await Promise.all(kycFiles.map(file => new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    })));
+    const locationExists = location.some(loc => loc.city?.toLowerCase() === formData.location?.toLowerCase() || loc.district?.toLowerCase() === formData.location?.toLowerCase());
     if (!locationExists && formData.location) {
       await dispatch(createLocation({
         city: formData.location,
         district: formData.location,
         state: "N/A",
-        country: "N/A",
+        country: "N/A"
       }));
     }
-
-    const existingCategory = category.find(
-      (cat) =>
-        String(cat.category || "").toLowerCase() === String(formData.category || "").toLowerCase()
-    );
-
+    const existingCategory = category.find(cat => String(cat.category || "").toLowerCase() === String(formData.category || "").toLowerCase());
     if (existingCategory) {
       const updates = getUpdatedCategoryFields(existingCategory, formData);
-
       if (Object.keys(updates).length > 0) {
-        await dispatch(
-          editCategory(existingCategory._id, updates)
-        );
+        await dispatch(editCategory(existingCategory._id, updates));
       }
     } else {
-      await dispatch(
-        createCategory({
-          category: formData.category,
-          keywords: formData.keywords || [],
-          slug: formData.slug || "",
-          seoTitle: formData.seoTitle || "",
-          seoDescription: formData.seoDescription || "",
-          title: formData.title || "",
-          description: formData.description || "",
-        })
-      );
+      await dispatch(createCategory({
+        category: formData.category,
+        keywords: formData.keywords || [],
+        slug: formData.slug || "",
+        seoTitle: formData.seoTitle || "",
+        seoDescription: formData.seoDescription || "",
+        title: formData.title || "",
+        description: formData.description || ""
+      }));
     }
-
     const payload = {
       ...formData,
       name: formData.businessName,
       businessDetails: businessvalue,
-      kycDocuments: kycBase64,
+      kycDocuments: kycBase64
     };
-
     try {
       let response;
-
       if (editMode && editId) {
         response = await dispatch(editBusinessList(editId, payload));
         enqueueSnackbar(`${formData.businessName} updated successfully!`, {
-          variant: "success",
+          variant: "success"
         });
       } else {
         response = await dispatch(createBusinessList(payload));
-
-        const businessId =
-          response?.data?._id ||
-          response?._id ||
-          response?.payload?._id ||
-          response?.payload?.data?._id;
-
-        const userId =
-          response?.data?.createdBy ||
-          response?.createdBy ||
-          response?.payload?.createdBy ||
-          response?.payload?.data?.createdBy;
-
+        const businessId = response?.data?._id || response?._id || response?.payload?._id || response?.payload?.data?._id;
+        const userId = response?.data?.createdBy || response?.createdBy || response?.payload?.createdBy || response?.payload?.data?.createdBy;
         if (businessId) {
           setCreatedBusinessId(businessId);
         }
         if (userId) {
-          setCreateUserId(userId)
+          setCreateUserId(userId);
         }
         enqueueSnackbar(`${formData.businessName} created successfully!`, {
-          variant: "success",
+          variant: "success"
         });
       }
-
       dispatch(getAllBusinessList());
       setActiveStep(3);
     } catch (err) {
@@ -640,268 +595,217 @@ const BusinessList = React.memo(() => {
 
       // Handle backend validation errors
       if (err.response?.data?.errors) {
-        const errorMessages = err.response.data.errors
-          .map(e => `${e.field}: ${e.message}`)
-          .join('\n');
+        const errorMessages = err.response.data.errors.map(e => `${e.field}: ${e.message}`).join('\n');
         enqueueSnackbar(`Validation errors:\n${errorMessages}`, {
-          variant: "error",
+          variant: "error"
         });
       } else if (err.response?.data?.message) {
         enqueueSnackbar(err.response.data.message, {
-          variant: "error",
+          variant: "error"
         });
       } else {
         enqueueSnackbar("Error saving business. Please try again.", {
-          variant: "error",
+          variant: "error"
         });
       }
     }
   };
-
-  const rows = businessList
-    .filter((c) => c.isActive)
-    .map((bl, index) => ({
-      id: bl._id || index,
-      _id: bl._id,
-      clientId: bl.clientId || "-",
-      businessName: bl.businessName || "-",
-      plotNumber: bl.plotNumber || "-",
-      street: bl.street || "-",
-      pincode: bl.pincode || "-",
-      globalAddress: bl.globalAddress || "-",
-      email: bl.email || "-",
-      contact: bl.contact || "-",
-      contactList: bl.contactList || "-",
-      gstin: bl.gstin || "-",
-      whatsappNumber: bl.whatsappNumber || "-",
-      experience: bl.experience || "-",
-      location: bl.location || "-",
-      category: bl.category || "-",
-      seoTitle: bl.seoTitle || "",
-      seoDescription: bl.seoDescription || "",
-      title: bl.title || "",
-      description: bl.description || "",
-      slug: bl.slug || "",
-      keywords: bl.keywords || [],
-      restaurantOptions: bl.restaurantOptions || "",
-      bannerImage: bl.bannerImage || null,
-      businessImages: bl.businessImages || [],
-      googleMap: bl.googleMap || "-",
-      website: bl.website || "-",
-      facebook: bl.facebook || "-",
-      instagram: bl.instagram || "-",
-      youtube: bl.youtube || "-",
-      pinterest: bl.pinterest || "-",
-      twitter: bl.twitter || "-",
-      linkedin: bl.linkedin || "-",
-      businessDetails: bl.businessDetails || "-",
-      openingHours: bl.openingHours || defaultOpeningHours,
-      mniDetails: bl.mniDetails || [],
-      payment: bl.payment || [],
-      qrImage: bl.qrCode?.qrImage || null,
-      qrDownloads: bl.qrDownloads || [],
-      amountPaid: bl.amountPaid || false,
-      paidDate: bl.paidDate || null,
-
-    }));
-
-  const businessListTable = [
-    { id: "clientId", label: "Client ID" },
-    {
-      id: "bannerImage",
-      label: "Banner Image",
-      renderCell: (value) =>
-        value ? <Avatar src={value} alt="Banner" /> : "-",
-    },
-    { id: "businessName", label: "Business Name" },
-    { id: "location", label: "Location Name" },
-    { id: "category", label: "Category" },
-    {
-      id: "mniDetails",
-      label: "Category Group",
-      renderCell: (value) => {
-        if (!Array.isArray(value) || value.length === 0) return "—";
-
-        const groups = value
-          .map((item) => item?.categoryGroup)
-          .filter(Boolean);
-
-        return groups.length > 0 ? groups.join(", ") : "—";
-      },
-    },
-
-    {
-      id: "qrCode",
-      label: "Review QR",
-      renderCell: (_, row) => {
-        if (!row.qrImage) return "—";
-
-        const handleDownload = async () => {
-          try {
-            const link = document.createElement("a");
-            link.href = row.qrImage;
-            link.target = "_blank";
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-
-            await dispatch(trackQrDownload(row._id));
-
-            enqueueSnackbar("QR downloaded successfully", {
-              variant: "success",
-            });
-
-          } catch (err) {
-            enqueueSnackbar("Download failed", {
-              variant: "error",
-            });
-          }
-        };
-
-        const lastDownload =
-          row.qrDownloads?.length > 0
-            ? new Date(
-              row.qrDownloads[row.qrDownloads.length - 1].downloadedAt
-            ).toLocaleString()
-            : "Not Downloaded";
-
-        return (
-          <Box sx={{ textAlign: "center" }}>
-            <Avatar
-              src={row.qrImage}
-              sx={{ width: 60, height: 60, margin: "0 auto" }}
-            />
-            <Typography variant="caption" sx={{ display: "block", mt: 1 }}>
+  const rows = businessList.filter(c => c.isActive).map((bl, index) => ({
+    id: bl._id || index,
+    _id: bl._id,
+    clientId: bl.clientId || "-",
+    businessName: bl.businessName || "-",
+    plotNumber: bl.plotNumber || "-",
+    street: bl.street || "-",
+    pincode: bl.pincode || "-",
+    globalAddress: bl.globalAddress || "-",
+    email: bl.email || "-",
+    contact: bl.contact || "-",
+    contactList: bl.contactList || "-",
+    gstin: bl.gstin || "-",
+    whatsappNumber: bl.whatsappNumber || "-",
+    experience: bl.experience || "-",
+    location: bl.location || "-",
+    category: bl.category || "-",
+    seoTitle: bl.seoTitle || "",
+    seoDescription: bl.seoDescription || "",
+    title: bl.title || "",
+    description: bl.description || "",
+    slug: bl.slug || "",
+    keywords: bl.keywords || [],
+    restaurantOptions: bl.restaurantOptions || "",
+    bannerImage: bl.bannerImage || null,
+    businessImages: bl.businessImages || [],
+    googleMap: bl.googleMap || "-",
+    website: bl.website || "-",
+    facebook: bl.facebook || "-",
+    instagram: bl.instagram || "-",
+    youtube: bl.youtube || "-",
+    pinterest: bl.pinterest || "-",
+    twitter: bl.twitter || "-",
+    linkedin: bl.linkedin || "-",
+    businessDetails: bl.businessDetails || "-",
+    openingHours: bl.openingHours || defaultOpeningHours,
+    mniDetails: bl.mniDetails || [],
+    payment: bl.payment || [],
+    qrImage: bl.qrCode?.qrImage || null,
+    qrDownloads: bl.qrDownloads || [],
+    amountPaid: bl.amountPaid || false,
+    paidDate: bl.paidDate || null
+  }));
+  const businessListTable = [{
+    id: "clientId",
+    label: "Client ID"
+  }, {
+    id: "bannerImage",
+    label: "Banner Image",
+    renderCell: value => value ? <Avatar src={value} alt="Banner" /> : "-"
+  }, {
+    id: "businessName",
+    label: "Business Name"
+  }, {
+    id: "location",
+    label: "Location Name"
+  }, {
+    id: "category",
+    label: "Category"
+  }, {
+    id: "mniDetails",
+    label: "Category Group",
+    renderCell: value => {
+      if (!Array.isArray(value) || value.length === 0) return "—";
+      const groups = value.map(item => item?.categoryGroup).filter(Boolean);
+      return groups.length > 0 ? groups.join(", ") : "—";
+    }
+  }, {
+    id: "qrCode",
+    label: "Review QR",
+    renderCell: (_, row) => {
+      if (!row.qrImage) return "—";
+      const handleDownload = async () => {
+        try {
+          const link = document.createElement("a");
+          link.href = row.qrImage;
+          link.target = "_blank";
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          await dispatch(trackQrDownload(row._id));
+          enqueueSnackbar("QR downloaded successfully", {
+            variant: "success"
+          });
+        } catch (err) {
+          enqueueSnackbar("Download failed", {
+            variant: "error"
+          });
+        }
+      };
+      const lastDownload = row.qrDownloads?.length > 0 ? new Date(row.qrDownloads[row.qrDownloads.length - 1].downloadedAt).toLocaleString() : "Not Downloaded";
+      return <Box sx={{
+        textAlign: "center"
+      }}>
+            <Avatar src={row.qrImage} sx={{
+          width: 60,
+          height: 60,
+          margin: "0 auto"
+        }} />
+            <Typography variant="caption" sx={{
+          display: "block",
+          mt: 1
+        }}>
               {row.qrText}
             </Typography>
-            <Typography variant="caption" sx={{ display: "block", mt: 1 }}>
+            <Typography variant="caption" sx={{
+          display: "block",
+          mt: 1
+        }}>
               Last: {lastDownload}
             </Typography>
-            <Button
-              size="small"
-              variant="contained"
-              sx={{ mt: 1 }}
-              onClick={handleDownload}
-            >
+            <Button size="small" variant="contained" sx={{
+          mt: 1
+        }} onClick={handleDownload}>
               Download
             </Button>
-          </Box>
-        );
-      },
-    },
+          </Box>;
+    }
+  }, {
+    id: "payment",
+    label: "Payment",
+    renderCell: (value, row) => {
+      const handleMarkPaid = async () => {
+        if (!row?._id) return;
+        try {
+          const payload = {
+            name: row.businessName,
+            businessName: row.businessName,
+            category: row.category,
+            location: row.location,
+            payment: [{
+              amount: row?.subscription?.price || 1
+            }]
+          };
+          await dispatch(editBusinessList(row._id, payload));
+          enqueueSnackbar(`${row.businessName} marked as paid`, {
+            variant: "success"
+          });
+          dispatch(getAllBusinessList());
+        } catch (error) {
+          console.error(error);
+          enqueueSnackbar("Payment failed. Please try again!", {
+            variant: "error"
+          });
+        }
+      };
+      const paidDateValue = row.paidDate?.$date ? row.paidDate.$date : row.paidDate;
+      const formattedDate = paidDateValue ? new Date(paidDateValue).toLocaleString("en-IN", {
+        timeZone: "Asia/Kolkata",
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true
+      }) : null;
+      const isPaid = Boolean(row.amountPaid);
+      return <Box sx={{
+        textAlign: "center"
+      }}>
 
-    {
-      id: "payment",
-      label: "Payment",
-      renderCell: (value, row) => {
-
-        const handleMarkPaid = async () => {
-          if (!row?._id) return;
-
-          try {
-            const payload = {
-              name: row.businessName,
-              businessName: row.businessName,
-              category: row.category,
-              location: row.location,
-              payment: [
-                {
-                  amount: row?.subscription?.price || 1,
-                }
-              ]
-            };
-
-            await dispatch(editBusinessList(row._id, payload));
-
-            enqueueSnackbar(`${row.businessName} marked as paid`, {
-              variant: "success",
-            });
-
-            dispatch(getAllBusinessList());
-
-          } catch (error) {
-            console.error(error);
-
-            enqueueSnackbar("Payment failed. Please try again!", {
-              variant: "error",
-            });
-          }
-        };
-
-        const paidDateValue = row.paidDate?.$date ? row.paidDate.$date : row.paidDate;
-        const formattedDate = paidDateValue
-          ? new Date(paidDateValue).toLocaleString("en-IN", {
-            timeZone: "Asia/Kolkata",
-            day: "2-digit",
-            month: "short",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true,
-          })
-          : null;
-
-        const isPaid = Boolean(row.amountPaid);
-
-        return (
-          <Box sx={{ textAlign: "center" }}>
-
-            <Tooltip
-              title={
-                isPaid
-                  ? `Paid on ${formattedDate}`
-                  : "Click to mark as paid"
-              }
-              arrow
-            >
+            <Tooltip title={isPaid ? `Paid on ${formattedDate}` : "Click to mark as paid"} arrow>
               <span>
-                <IconButton
-                  color={isPaid ? "success" : "warning"}
-                  onClick={!isPaid ? handleMarkPaid : undefined}
-                  disabled={isPaid}
-                  sx={{
-                    transition: "transform 0.2s ease",
-                    "&:hover": {
-                      transform: !isPaid ? "scale(1.15)" : "none",
-                    },
-                  }}
-                >
+                <IconButton color={isPaid ? "success" : "warning"} onClick={!isPaid ? handleMarkPaid : undefined} disabled={isPaid} sx={{
+              transition: "transform 0.2s ease",
+              "&:hover": {
+                transform: !isPaid ? "scale(1.15)" : "none"
+              }
+            }}>
                   {isPaid ? <PaidIcon /> : <PendingIcon />}
                 </IconButton>
               </span>
             </Tooltip>
 
-            <Typography
-              variant="caption"
-              display="block"
-              sx={{
-                color: isPaid ? "green" : "orange",
-                fontWeight: 600,
-              }}
-            >
+            <Typography variant="caption" display="block" sx={{
+          color: isPaid ? "green" : "orange",
+          fontWeight: 600
+        }}>
               {isPaid ? "Paid" : "Pending"}
             </Typography>
 
-            {formattedDate && (
-              <Typography
-                variant="caption"
-                display="block"
-                sx={{ color: "#666" }}
-              >
+            {formattedDate && <Typography variant="caption" display="block" sx={{
+          color: "#666"
+        }}>
                 {formattedDate}
-              </Typography>
-            )}
+              </Typography>}
 
-          </Box>
-        );
-      },
-    },
-
-    {
-      id: "action",
-      label: "Action",
-      renderCell: (_, row) => (
-        <div style={{ display: "flex", gap: "8px" }}>
+          </Box>;
+    }
+  }, {
+    id: "action",
+    label: "Action",
+    renderCell: (_, row) => <div style={{
+      display: "flex",
+      gap: "8px"
+    }}>
           <IconButton color="primary" size="small" onClick={() => handleEdit(row)}>
             <EditRoundedIcon fontSize="small" />
           </IconButton>
@@ -909,488 +813,309 @@ const BusinessList = React.memo(() => {
             <DeleteOutlineRoundedIcon fontSize="small" />
           </IconButton>
         </div>
-      ),
-    },
-
-    {
-      id: "gallery",
-      label: "Gallery",
-      renderCell: (_, row) => (
-        <IconButton color="primary" onClick={() => handleOpenGallery(row._id)}>
+  }, {
+    id: "gallery",
+    label: "Gallery",
+    renderCell: (_, row) => <IconButton color="primary" onClick={() => handleOpenGallery(row._id)}>
           <CollectionsBookmarkOutlinedIcon />
         </IconButton>
-      ),
-    },
-  ];
-
-  const SectionHeader = ({ icon: Icon, title, subtitle }) => (
-    <div className="section-header">
-      {Icon && <Icon className="section-icon" />}
-      <div className="section-title-group">
-        <h3 className="section-title">{title}</h3>
-        {subtitle && <p className="section-subtitle">{subtitle}</p>}
+  }];
+  const SectionHeader = ({
+    icon: Icon,
+    title,
+    subtitle
+  }) => <div className={cx("section-header")}>
+      {Icon && <Icon className={cx("section-icon")} />}
+      <div className={cx("section-title-group")}>
+        <h3 className={cx("section-title")}>{title}</h3>
+        {subtitle && <p className={cx("section-subtitle")}>{subtitle}</p>}
       </div>
-    </div>
-  );
-
-  const renderStepContent = (step) => {
+    </div>;
+  const renderStepContent = step => {
     switch (step) {
       case 0:
-        return (
-          <>
+        return <>
             <SectionHeader title="Client & Business Information" subtitle="Basic details about your business" />
 
-            <div className="form-input-group" style={{ position: "relative" }}>
-              <label htmlFor="clientId" className="input-label">🔍 Client ID</label>
+            <div className={cx("form-input-group")} style={{
+            position: "relative"
+          }}>
+              <label htmlFor="clientId" className={cx("input-label")}>🔍 Client ID</label>
 
-              <input
-                type="text"
-                id="clientId"
-                name="clientId"
-                className="text-input"
-                value={formData.clientId}
-                placeholder="Type client ID or name..."
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setFormData((prev) => ({ ...prev, clientId: value }));
+              <input type="text" id="clientId" name="clientId" className={cx("text-input")} value={formData.clientId} placeholder="Type client ID or name..." onChange={e => {
+              const value = e.target.value;
+              setFormData(prev => ({
+                ...prev,
+                clientId: value
+              }));
+              if (value.length >= 2) {
+                dispatch(getUserClientSuggestion(value));
+                setShowSuggestions(true);
+              } else {
+                setShowSuggestions(false);
+              }
+            }} onBlur={() => {
+              setTimeout(() => setShowSuggestions(false), 200);
+            }} onFocus={() => {
+              if (formData.clientId.length >= 2) {
+                setShowSuggestions(true);
+              }
+            }} />
 
-                  if (value.length >= 2) {
-                    dispatch(getUserClientSuggestion(value));
-                    setShowSuggestions(true);
-                  } else {
-                    setShowSuggestions(false);
-                  }
-                }}
-                onBlur={() => {
-                  setTimeout(() => setShowSuggestions(false), 200);
-                }}
-                onFocus={() => {
-                  if (formData.clientId.length >= 2) {
-                    setShowSuggestions(true);
-                  }
-                }}
-              />
-
-              {showSuggestions && searchSuggestion?.length > 0 && (
-                <ul className="category-suggestion-box">
-                  {searchSuggestion.map((client) => (
-                    <li
-                      key={client._id}
-                      onClick={() => {
-                        setFormData((prev) => ({
-                          ...prev,
-                          clientId: `${client.clientId} — ${client.name}`,
-                        }));
-                        setShowSuggestions(false);
-                      }}
-                      style={{
-                        padding: "12px",
-                        cursor: "pointer",
-                        borderBottom: "1px solid #eee",
-                      }}
-                    >
+              {showSuggestions && searchSuggestion?.length > 0 && <ul className={cx("category-suggestion-box")}>
+                  {searchSuggestion.map(client => <li key={client._id} onClick={() => {
+                setFormData(prev => ({
+                  ...prev,
+                  clientId: `${client.clientId} — ${client.name}`
+                }));
+                setShowSuggestions(false);
+              }} style={{
+                padding: "12px",
+                cursor: "pointer",
+                borderBottom: "1px solid #eee"
+              }}>
                       <strong>{client.clientId}</strong> — {client.name}
-                    </li>
-                  ))}
-                </ul>
-              )}
+                    </li>)}
+                </ul>}
             </div>
 
-            <div className="form-input-group">
-              <label htmlFor="businessName" className="input-label">🏢 Business Name</label>
-              <input
-                type="text"
-                id="businessName"
-                name="businessName"
-                className="text-input"
-                value={formData.businessName}
-                onChange={handleChange}
-              />
+            <div className={cx("form-input-group")}>
+              <label htmlFor="businessName" className={cx("input-label")}>🏢 Business Name</label>
+              <input type="text" id="businessName" name="businessName" className={cx("text-input")} value={formData.businessName} onChange={handleChange} />
             </div>
 
-            <div className="form-divider"></div>
+            <div className={cx("form-divider")}></div>
             <SectionHeader title="Address Details" subtitle="Business location information" />
 
-            <div className="form-input-group">
-              <label htmlFor="plotNumber" className="input-label">📍 Plot Number</label>
-              <input
-                type="text"
-                id="plotNumber"
-                name="plotNumber"
-                className="text-input"
-                value={formData.plotNumber}
-                onChange={handleChange}
-              />
+            <div className={cx("form-input-group")}>
+              <label htmlFor="plotNumber" className={cx("input-label")}>📍 Plot Number</label>
+              <input type="text" id="plotNumber" name="plotNumber" className={cx("text-input")} value={formData.plotNumber} onChange={handleChange} />
             </div>
 
-            <div className="form-input-group">
-              <label htmlFor="street" className="input-label">🛣️ Street</label>
-              <input
-                type="text"
-                id="street"
-                name="street"
-                className="text-input"
-                value={formData.street}
-                onChange={handleChange}
-                placeholder="Enter street address"
-              />
+            <div className={cx("form-input-group")}>
+              <label htmlFor="street" className={cx("input-label")}>🛣️ Street</label>
+              <input type="text" id="street" name="street" className={cx("text-input")} value={formData.street} onChange={handleChange} placeholder="Enter street address" />
             </div>
 
-            <div className="form-input-group">
-              <label htmlFor="pincode" className="input-label">📮 Pincode</label>
-              <input
-                type="text"
-                id="pincode"
-                name="pincode"
-                className="text-input"
-                value={formData.pincode}
-                onChange={handleChange}
-              />
+            <div className={cx("form-input-group")}>
+              <label htmlFor="pincode" className={cx("input-label")}>📮 Pincode</label>
+              <input type="text" id="pincode" name="pincode" className={cx("text-input")} value={formData.pincode} onChange={handleChange} />
             </div>
 
-            <div className="form-input-group" style={{ position: "relative" }}>
-              <label htmlFor="location" className="input-label">Location</label>
-              <input
-                type="text"
-                id="location"
-                name="location"
-                autoComplete="off"
-                className="text-input"
-                value={formData.location}
-                placeholder="Type to search location..."
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setFormData((prev) => ({ ...prev, location: value }));
-                  if (value.length >= 1) {
-                    const filtered = location.filter((loc) =>
-                      loc.city?.toLowerCase().includes(value.toLowerCase()) ||
-                      loc.district?.toLowerCase().includes(value.toLowerCase())
-                    );
-                    setLocationSuggestions(filtered);
-                    setShowLocationSuggest(true);
-                  } else {
-                    setShowLocationSuggest(false);
-                    setLocationSuggestions([]);
-                  }
-                }}
-                onBlur={() => setTimeout(() => setShowLocationSuggest(false), 200)}
-                onFocus={() => {
-                  if (formData.location.length >= 1) {
-                    const filtered = location.filter((loc) =>
-                      loc.city?.toLowerCase().includes(formData.location.toLowerCase()) ||
-                      loc.district?.toLowerCase().includes(formData.location.toLowerCase())
-                    );
-                    setLocationSuggestions(filtered);
-                    setShowLocationSuggest(filtered.length > 0);
-                  }
-                }}
-              />
-              {showLocationSuggest && locationSuggestions.length > 0 && (
-                <ul className="category-suggestion-box">
-                  {locationSuggestions.map((loc) => (
-                    <li
-                      key={loc._id}
-                      onClick={() => {
-                        setFormData((prev) => ({ ...prev, location: loc.city || loc.district }));
-                        setShowLocationSuggest(false);
-                        setLocationSuggestions([]);
-                      }}
-                      style={{ padding: "10px", cursor: "pointer", borderBottom: "1px solid #eee" }}
-                    >
+            <div className={cx("form-input-group")} style={{
+            position: "relative"
+          }}>
+              <label htmlFor="location" className={cx("input-label")}>Location</label>
+              <input type="text" id="location" name="location" autoComplete="off" className={cx("text-input")} value={formData.location} placeholder="Type to search location..." onChange={e => {
+              const value = e.target.value;
+              setFormData(prev => ({
+                ...prev,
+                location: value
+              }));
+              if (value.length >= 1) {
+                const filtered = location.filter(loc => loc.city?.toLowerCase().includes(value.toLowerCase()) || loc.district?.toLowerCase().includes(value.toLowerCase()));
+                setLocationSuggestions(filtered);
+                setShowLocationSuggest(true);
+              } else {
+                setShowLocationSuggest(false);
+                setLocationSuggestions([]);
+              }
+            }} onBlur={() => setTimeout(() => setShowLocationSuggest(false), 200)} onFocus={() => {
+              if (formData.location.length >= 1) {
+                const filtered = location.filter(loc => loc.city?.toLowerCase().includes(formData.location.toLowerCase()) || loc.district?.toLowerCase().includes(formData.location.toLowerCase()));
+                setLocationSuggestions(filtered);
+                setShowLocationSuggest(filtered.length > 0);
+              }
+            }} />
+              {showLocationSuggest && locationSuggestions.length > 0 && <ul className={cx("category-suggestion-box")}>
+                  {locationSuggestions.map(loc => <li key={loc._id} onClick={() => {
+                setFormData(prev => ({
+                  ...prev,
+                  location: loc.city || loc.district
+                }));
+                setShowLocationSuggest(false);
+                setLocationSuggestions([]);
+              }} style={{
+                padding: "10px",
+                cursor: "pointer",
+                borderBottom: "1px solid #eee"
+              }}>
                       {loc.city}{loc.district && loc.district !== loc.city ? `, ${loc.district}` : ""}
                       {loc.state ? ` — ${loc.state}` : ""}
-                    </li>
-                  ))}
-                </ul>
-              )}
+                    </li>)}
+                </ul>}
             </div>
 
-            <div className="form-input-group">
-              <label htmlFor="address2" className="input-label">Global Address</label>
-              <input
-                type="text"
-                id="globalAddress"
-                name="globalAddress"
-                className="text-input"
-                value={formData.globalAddress}
-                onChange={handleChange}
-              />
+            <div className={cx("form-input-group")}>
+              <label htmlFor="address2" className={cx("input-label")}>Global Address</label>
+              <input type="text" id="globalAddress" name="globalAddress" className={cx("text-input")} value={formData.globalAddress} onChange={handleChange} />
             </div>
 
-            <div className="form-divider"></div>
+            <div className={cx("form-divider")}></div>
             <SectionHeader title="Contact Information" subtitle="How customers can reach you" />
 
-            <div className="form-input-group">
-              <label htmlFor="email" className="input-label">📧 Email</label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                className="text-input"
-                value={formData.email}
-                onChange={handleChange}
-                placeholder="business@example.com"
-              />
+            <div className={cx("form-input-group")}>
+              <label htmlFor="email" className={cx("input-label")}>📧 Email</label>
+              <input type="email" id="email" name="email" className={cx("text-input")} value={formData.email} onChange={handleChange} placeholder="business@example.com" />
             </div>
 
-            <div className="form-input-group">
-              <label htmlFor="contact" className="input-label">📞 Phone</label>
-              <input
-                type="text"
-                id="contact"
-                name="contact"
-                className="text-input"
-                value={formData.contact}
-                onChange={handleChange}
-              />
+            <div className={cx("form-input-group")}>
+              <label htmlFor="contact" className={cx("input-label")}>📞 Phone</label>
+              <input type="text" id="contact" name="contact" className={cx("text-input")} value={formData.contact} onChange={handleChange} />
             </div>
 
-            <div className="form-input-group">
-              <label htmlFor="contactList" className="input-label">☎️ Enquiry Number</label>
-              <input
-                type="text"
-                id="contactList"
-                name="contactList"
-                className="text-input"
-                value={formData.contactList}
-                onChange={handleChange}
-                placeholder="Alternate contact number"
-              />
+            <div className={cx("form-input-group")}>
+              <label htmlFor="contactList" className={cx("input-label")}>☎️ Enquiry Number</label>
+              <input type="text" id="contactList" name="contactList" className={cx("text-input")} value={formData.contactList} onChange={handleChange} placeholder="Alternate contact number" />
             </div>
 
-            <div className="form-input-group">
-              <label htmlFor="whatsappNumber" className="input-label">💬 WhatsApp Number</label>
-              <input
-                type="text"
-                id="whatsappNumber"
-                name="whatsappNumber"
-                className="text-input"
-                value={formData.whatsappNumber}
-                onChange={handleChange}
-                placeholder="Business WhatsApp number"
-              />
+            <div className={cx("form-input-group")}>
+              <label htmlFor="whatsappNumber" className={cx("input-label")}>💬 WhatsApp Number</label>
+              <input type="text" id="whatsappNumber" name="whatsappNumber" className={cx("text-input")} value={formData.whatsappNumber} onChange={handleChange} placeholder="Business WhatsApp number" />
             </div>
 
-            <div className="form-divider"></div>
+            <div className={cx("form-divider")}></div>
             <SectionHeader title="Business Information" subtitle="Additional business details" />
 
-            <div className="form-input-group">
-              <label htmlFor="gstin" className="input-label">🏛️ GSTIN</label>
-              <input
-                type="text"
-                id="gstin"
-                name="gstin"
-                className="text-input"
-                value={formData.gstin}
-                onChange={handleChange}
-                placeholder="Enter GST registration number"
-              />
+            <div className={cx("form-input-group")}>
+              <label htmlFor="gstin" className={cx("input-label")}>🏛️ GSTIN</label>
+              <input type="text" id="gstin" name="gstin" className={cx("text-input")} value={formData.gstin} onChange={handleChange} placeholder="Enter GST registration number" />
             </div>
 
-            <div className="form-input-group">
-              <label htmlFor="experience" className="input-label">⭐ Experience (Years)</label>
-              <input
-                type="text"
-                id="experience"
-                name="experience"
-                className="text-input"
-                value={formData.experience}
-                onChange={handleChange}
-              />
+            <div className={cx("form-input-group")}>
+              <label htmlFor="experience" className={cx("input-label")}>⭐ Experience (Years)</label>
+              <input type="text" id="experience" name="experience" className={cx("text-input")} value={formData.experience} onChange={handleChange} />
             </div>
 
-            <div className="form-divider"></div>
+            <div className={cx("form-divider")}></div>
             <SectionHeader title="Location & Web Presence" subtitle="Map and website links" />
 
-            <div className="form-input-group">
-              <label htmlFor="googleMap" className="input-label">🗺️ Google Map Link</label>
-              <input
-                type="text"
-                id="googleMap"
-                name="googleMap"
-                className="text-input"
-                value={formData.googleMap}
-                onChange={handleChange}
-                placeholder="https://maps.google.com/..."
-              />
+            <div className={cx("form-input-group")}>
+              <label htmlFor="googleMap" className={cx("input-label")}>🗺️ Google Map Link</label>
+              <input type="text" id="googleMap" name="googleMap" className={cx("text-input")} value={formData.googleMap} onChange={handleChange} placeholder="https://maps.google.com/..." />
             </div>
 
-            <div className="form-input-group">
-              <label htmlFor="website" className="input-label">🌐 Website</label>
-              <input
-                type="text"
-                id="website"
-                name="website"
-                className="text-input"
-                value={formData.website}
-                onChange={handleChange}
-                placeholder="https://example.com"
-              />
+            <div className={cx("form-input-group")}>
+              <label htmlFor="website" className={cx("input-label")}>🌐 Website</label>
+              <input type="text" id="website" name="website" className={cx("text-input")} value={formData.website} onChange={handleChange} placeholder="https://example.com" />
             </div>
 
-            <div className="form-divider"></div>
+            <div className={cx("form-divider")}></div>
             <SectionHeader title="Social Media" subtitle="Connect your social profiles" />
 
-            <div className="social-media-grid">
-              {[
-                { field: "facebook", icon: "f", label: "Facebook" },
-                { field: "instagram", icon: "📷", label: "Instagram" },
-                { field: "youtube", icon: "▶️", label: "YouTube" },
-                { field: "pinterest", icon: "📌", label: "Pinterest" },
-                { field: "twitter", icon: "𝕏", label: "Twitter" },
-                { field: "linkedin", icon: "in", label: "LinkedIn" }
-              ].map(({ field, icon, label }) => (
-                <div className="form-input-group" key={field}>
-                  <label htmlFor={field} className="input-label">{icon} {label}</label>
-                  <input
-                    type="text"
-                    id={field}
-                    name={field}
-                    className="text-input"
-                    value={formData[field]}
-                    onChange={handleChange}
-                    placeholder={`Your ${label} profile URL`}
-                  />
-                </div>
-              ))}
+            <div className={cx("social-media-grid")}>
+              {[{
+              field: "facebook",
+              icon: "f",
+              label: "Facebook"
+            }, {
+              field: "instagram",
+              icon: "📷",
+              label: "Instagram"
+            }, {
+              field: "youtube",
+              icon: "▶️",
+              label: "YouTube"
+            }, {
+              field: "pinterest",
+              icon: "📌",
+              label: "Pinterest"
+            }, {
+              field: "twitter",
+              icon: "𝕏",
+              label: "Twitter"
+            }, {
+              field: "linkedin",
+              icon: "in",
+              label: "LinkedIn"
+            }].map(({
+              field,
+              icon,
+              label
+            }) => <div className={cx("form-input-group")} key={field}>
+                  <label htmlFor={field} className={cx("input-label")}>{icon} {label}</label>
+                  <input type="text" id={field} name={field} className={cx("text-input")} value={formData[field]} onChange={handleChange} placeholder={`Your ${label} profile URL`} />
+                </div>)}
             </div>
 
-            <div className="form-divider"></div>
+            <div className={cx("form-divider")}></div>
             <SectionHeader title="Business Banner & Details" subtitle="Upload banner image and describe your business" />
 
-            <div className="form-input-group col-span-all upload-section">
-              <label className="input-label">🖼️ Banner Image</label>
-              <div className="upload-content">
-                <Button
-                  variant="contained"
-                  startIcon={<CloudUploadIcon />}
-                  component="label"
-                  className="upload-button"
-                >
+            <div className={cx("form-input-group col-span-all upload-section")}>
+              <label className={cx("input-label")}>🖼️ Banner Image</label>
+              <div className={cx("upload-content")}>
+                <Button variant="contained" startIcon={<CloudUploadIcon />} component="label" className={cx("upload-button")}>
                   Upload Image
-                  <input
-                    type="file"
-                    accept="image/*"
-                    hidden
-                    ref={fileInputRef}
-                    onChange={handleImageChange}
-                  />
+                  <input type="file" accept="image/*" hidden ref={fileInputRef} onChange={handleImageChange} />
                 </Button>
-                {preview && <Avatar src={preview} sx={{ width: 56, height: 56 }} className="preview-avatar" />}
+                {preview && <Avatar src={preview} sx={{
+                width: 56,
+                height: 56
+              }} className={cx("preview-avatar")} />}
               </div>
             </div>
 
-            <div className="form-input-group col-span-all">
-              <label className="input-label">📝 Business Details</label>
+            <div className={cx("form-input-group col-span-all")}>
+              <label className={cx("input-label")}>📝 Business Details</label>
               <Suspense fallback={<CircularProgress />}>
-                <ReactQuill
-                  theme="snow"
-                  value={businessvalue}
-                  onChange={handleBusinessChange}
-                  modules={modules}
-                  formats={formats}
-                  placeholder="Type business details here..."
-                  style={{ height: "200px" }}
-                />
+                <ReactQuill theme="snow" value={businessvalue} onChange={handleBusinessChange} modules={modules} formats={formats} placeholder="Type business details here..." style={{
+                height: "200px"
+              }} />
               </Suspense>
             </div><br />
 
-            <div className="form-input-group col-span-all">
+            <div className={cx("form-input-group col-span-all")}>
               <SectionHeader title="Opening Hours" subtitle="Set business hours for each day" />
-              <div className="opening-hours-container">
-                {formData.openingHours.map((hour, index) => (
-                  <div
-                    key={hour.day}
-                    className="opening-hours-row"
-                    data-closed={hour.isClosed}
-                    data-247={hour.is24Hours}
-                  >
-                    <div className="day-label">{hour.day}</div>
+              <div className={cx("opening-hours-container")}>
+                {formData.openingHours.map((hour, index) => <div key={hour.day} className={cx("opening-hours-row")} data-closed={hour.isClosed} data-247={hour.is24Hours}>
+                    <div className={cx("day-label")}>{hour.day}</div>
 
-                    <div className="time-group">
-                      <input
-                        type="time"
-                        value={hour.is24Hours ? "00:00" : hour.open}
-                        onChange={(e) =>
-                          handleOpeningHourChange(index, "open", e.target.value)
-                        }
-                        disabled={hour.isClosed || hour.is24Hours}
-                        className="text-input"
-                        placeholder="Open Time"
-                      />
+                    <div className={cx("time-group")}>
+                      <input type="time" value={hour.is24Hours ? "00:00" : hour.open} onChange={e => handleOpeningHourChange(index, "open", e.target.value)} disabled={hour.isClosed || hour.is24Hours} className={cx("text-input")} placeholder="Open Time" />
                       
-                      <input
-                        type="time"
-                        value={hour.is24Hours ? "23:59" : hour.close}
-                        onChange={(e) =>
-                          handleOpeningHourChange(index, "close", e.target.value)
-                        }
-                        disabled={hour.isClosed || hour.is24Hours}
-                        className="text-input"
-                        placeholder="Close Time"
-                      />
+                      <input type="time" value={hour.is24Hours ? "23:59" : hour.close} onChange={e => handleOpeningHourChange(index, "close", e.target.value)} disabled={hour.isClosed || hour.is24Hours} className={cx("text-input")} placeholder="Close Time" />
                     </div>
 
-                    <div style={{ justifySelf: "end" }}>
-                      <select
-                        value={
-                          hour.isClosed ? "closed" : hour.is24Hours ? "24/7" : "open"
-                        }
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          if (value === "closed") {
-                            handleOpeningHourChange(index, "isClosed", true);
-                            handleOpeningHourChange(index, "is24Hours", false);
-                          } else if (value === "24/7") {
-                            handleOpeningHourChange(index, "isClosed", false);
-                            handleOpeningHourChange(index, "is24Hours", true);
-                            handleOpeningHourChange(index, "open", "00:00");
-                            handleOpeningHourChange(index, "close", "23:59");
-                          } else {
-                            handleOpeningHourChange(index, "isClosed", false);
-                            handleOpeningHourChange(index, "is24Hours", false);
-                          }
-                        }}
-                        className="select-input"
-                      >
+                    <div style={{
+                  justifySelf: "end"
+                }}>
+                      <select value={hour.isClosed ? "closed" : hour.is24Hours ? "24/7" : "open"} onChange={e => {
+                    const value = e.target.value;
+                    if (value === "closed") {
+                      handleOpeningHourChange(index, "isClosed", true);
+                      handleOpeningHourChange(index, "is24Hours", false);
+                    } else if (value === "24/7") {
+                      handleOpeningHourChange(index, "isClosed", false);
+                      handleOpeningHourChange(index, "is24Hours", true);
+                      handleOpeningHourChange(index, "open", "00:00");
+                      handleOpeningHourChange(index, "close", "23:59");
+                    } else {
+                      handleOpeningHourChange(index, "isClosed", false);
+                      handleOpeningHourChange(index, "is24Hours", false);
+                    }
+                  }} className={cx("select-input")}>
                         <option value="open">Open</option>
                         <option value="closed">Closed</option>
                         <option value="24/7">24/7</option>
                       </select>
                     </div>
-                  </div>
-                ))}
+                  </div>)}
               </div>
             </div>
-          </>
-        );
-
+          </>;
       case 1:
-        return (
-          <>
+        return <>
             <SectionHeader title="KYC Documents" subtitle="Upload identity proof and business documents" />
-            <div className="form-input-group col-span-all">
-              <label className="input-label">📄 Upload Documents (PDF, PNG, JPG)</label>
+            <div className={cx("form-input-group col-span-all")}>
+              <label className={cx("input-label")}>📄 Upload Documents (PDF, PNG, JPG)</label>
 
-            <Button
-              variant="contained"
-              component="label"
-              startIcon={<CloudUploadIcon />}
-              className="upload-button"
-            >
+            <Button variant="contained" component="label" startIcon={<CloudUploadIcon />} className={cx("upload-button")}>
               Upload Files
-              <input
-                type="file"
-                multiple
-                hidden
-                onChange={handleKycUpload}
-                accept=".pdf,.png,.jpg,.jpeg"
-              />
+              <input type="file" multiple hidden onChange={handleKycUpload} accept=".pdf,.png,.jpg,.jpeg" />
             </Button>
 
-              <div className="kyc-file-list">
-                {kycFiles.map((file, index) => (
-                  <div key={index} className="kyc-file-item">
+              <div className={cx("kyc-file-list")}>
+                {kycFiles.map((file, index) => <div key={index} className={cx("kyc-file-item")}>
                     <Typography variant="body2">
                       {file.name || `Document ${index + 1}`}
                     </Typography>
@@ -1398,37 +1123,25 @@ const BusinessList = React.memo(() => {
                       <DeleteOutlineRoundedIcon fontSize="small" />
                     </IconButton>
 
-                    <div style={{ marginTop: "5px" }}>
-                      {file.type?.includes("image") ? (
-                        <img
-                          src={file.preview}
-                          alt={file.name}
-                          style={{
-                            width: "100px",
-                            height: "100px",
-                            borderRadius: "8px",
-                            objectFit: "cover",
-                          }}
-                        />
-                      ) : file.type?.includes("pdf") ? (
-                        <iframe
-                          src={file.preview}
-                          title={file.name}
-                          width="100%"
-                          height="150px"
-                          style={{
-                            border: "1px solid #ccc",
-                            borderRadius: "8px",
-                          }}
-                        />
-                      ) : null}
+                    <div style={{
+                  marginTop: "5px"
+                }}>
+                      {file.type?.includes("image") ? <img src={file.preview} alt={file.name} style={{
+                    width: "100px",
+                    height: "100px",
+                    borderRadius: "8px",
+                    objectFit: "cover"
+                  }} /> : file.type?.includes("pdf") ? <iframe src={file.preview} title={file.name} width="100%" height="150px" style={{
+                    border: "1px solid #ccc",
+                    borderRadius: "8px"
+                  }} /> : null}
 
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          onClick={() => window.open(file.preview, "_blank")}
-                        >
+                      <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px"
+                  }}>
+                        <Button size="small" variant="outlined" onClick={() => window.open(file.preview, "_blank")}>
                           View Full
                         </Button>
                         <IconButton color="error" onClick={() => handleRemoveFile(index)}>
@@ -1436,443 +1149,326 @@ const BusinessList = React.memo(() => {
                         </IconButton>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  </div>)}
               </div>
             </div>
-          </>
-        );
-
+          </>;
       case 2:
-        return (
-          <>
+        return <>
             <SectionHeader title="Category & SEO" subtitle="Categorize your business and optimize for search" />
 
-            <div className="form-input-group" style={{ position: "relative" }}>
-              <label className="input-label">🏷️ Category</label>
+            <div className={cx("form-input-group")} style={{
+            position: "relative"
+          }}>
+              <label className={cx("input-label")}>🏷️ Category</label>
 
-              <input
-                type="text"
-                className="text-input"
-                placeholder="Search category..."
-                value={formData.category}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setFormData({ ...formData, category: value });
+              <input type="text" className={cx("text-input")} placeholder="Search category..." value={formData.category} onChange={e => {
+              const value = e.target.value;
+              setFormData({
+                ...formData,
+                category: value
+              });
+              if (value.length >= 2) {
+                dispatch(businessCategorySearch(value));
+                setShowCategorySuggest(true);
+              } else {
+                setShowCategorySuggest(false);
+              }
+            }} onFocus={() => {
+              if (formData.category.length >= 2) {
+                setShowCategorySuggest(true);
+              }
+            }} onBlur={() => setTimeout(() => setShowCategorySuggest(false), 200)} />
 
-                  if (value.length >= 2) {
-                    dispatch(businessCategorySearch(value));
-                    setShowCategorySuggest(true);
-                  } else {
-                    setShowCategorySuggest(false);
-                  }
-                }}
-                onFocus={() => {
-                  if (formData.category.length >= 2) {
-                    setShowCategorySuggest(true);
-                  }
-                }}
-                onBlur={() => setTimeout(() => setShowCategorySuggest(false), 200)}
-              />
-
-              {showCategorySuggest && searchCategory?.length > 0 && (
-                <ul className="category-suggestion-box">
-                  {searchCategory.map((cat) => (
-                    <li
-                      key={cat._id}
-                      onClick={() => {
-                        setFormData((prev) => ({
-                          ...prev,
-                          category: cat.category,
-                          keywords: cat.keywords || [],
-                          slug: cat.slug || "",
-                          seoTitle: cat.seoTitle || "",
-                          seoDescription: cat.seoDescription || "",
-                          title: cat.title || "",
-                          description: cat.description || "",
-                        }));
-
-                        setShowCategorySuggest(false);
-                      }}
-                      style={{
-                        padding: "10px",
-                        cursor: "pointer",
-                        borderBottom: "1px solid #eee",
-                      }}
-                    >
+              {showCategorySuggest && searchCategory?.length > 0 && <ul className={cx("category-suggestion-box")}>
+                  {searchCategory.map(cat => <li key={cat._id} onClick={() => {
+                setFormData(prev => ({
+                  ...prev,
+                  category: cat.category,
+                  keywords: cat.keywords || [],
+                  slug: cat.slug || "",
+                  seoTitle: cat.seoTitle || "",
+                  seoDescription: cat.seoDescription || "",
+                  title: cat.title || "",
+                  description: cat.description || ""
+                }));
+                setShowCategorySuggest(false);
+              }} style={{
+                padding: "10px",
+                cursor: "pointer",
+                borderBottom: "1px solid #eee"
+              }}>
                       {cat.category}
-                    </li>
-                  ))}
-                </ul>
-              )}
+                    </li>)}
+                </ul>}
             </div>
 
-            <div className="form-divider"></div>
+            <div className={cx("form-divider")}></div>
             <SectionHeader title="Keywords & Tags" subtitle="Help customers find you with relevant keywords" />
 
-            <div className="category-form-input-group" style={{ marginTop: "0px" }}>
-              <label className="category-input-label">🔑 Keywords</label>
+            <div className={cx("category-form-input-group")} style={{
+            marginTop: "0px"
+          }}>
+              <label className={cx("category-input-label")}>🔑 Keywords</label>
 
-              <Autocomplete
-                multiple
-                freeSolo
-                options={[]}
-                value={Array.isArray(formData.keywords) ? formData.keywords : []}
-                onChange={(event, newValue) => {
-                  setFormData({
-                    ...formData,
-                    keywords: newValue,
-                  });
-                }}
-                renderTags={(value, getTagProps) =>
-                  value.map((option, index) => (
-                    <Chip
-                      key={index}
-                      label={option}
-                      {...getTagProps({ index })}
-                      onDelete={() => {
-                        // delete chip
-                        setFormData((prev) => ({
-                          ...prev,
-                          keywords: prev.keywords.filter((k) => k !== option),
-                        }));
-                      }}
-                      sx={{
-                        backgroundColor: "#ff8c00",
-                        color: "white",
-                        fontWeight: 500,
-                        "& .MuiChip-deleteIcon": { color: "white" },
-                      }}
-                    />
-                  ))
-                }
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    variant="outlined"
-                    placeholder="Add keywords"
-                    value={inputKeyword}
-                    onChange={(e) => setInputKeyword(e.target.value)}
-                    InputProps={{
-                      ...params.InputProps,
-                      endAdornment: (
-                        <InputAdornment position="end">
-                          <IconButton
-                            onClick={() => {
-                              if (!inputKeyword.trim()) return;
-
-                              setFormData((prev) => ({
-                                ...prev,
-                                keywords: [...prev.keywords, inputKeyword.trim()],
-                              }));
-
-                              setInputKeyword("");
-                            }}
-                            sx={{
-                              color: "var(--color-primary-orange)",
-                              "&:hover": { color: "var(--color-primary-hover)" },
-                            }}
-                          >
+              <Autocomplete multiple freeSolo options={[]} value={Array.isArray(formData.keywords) ? formData.keywords : []} onChange={(event, newValue) => {
+              setFormData({
+                ...formData,
+                keywords: newValue
+              });
+            }} renderTags={(value, getTagProps) => value.map((option, index) => <Chip key={index} label={option} {...getTagProps({
+              index
+            })} onDelete={() => {
+              // delete chip
+              setFormData(prev => ({
+                ...prev,
+                keywords: prev.keywords.filter(k => k !== option)
+              }));
+            }} sx={{
+              backgroundColor: "#ff8c00",
+              color: "white",
+              fontWeight: 500,
+              "& .MuiChip-deleteIcon": {
+                color: "white"
+              }
+            }} />)} renderInput={params => <TextField {...params} variant="outlined" placeholder="Add keywords" value={inputKeyword} onChange={e => setInputKeyword(e.target.value)} InputProps={{
+              ...params.InputProps,
+              endAdornment: <InputAdornment position="end">
+                          <IconButton onClick={() => {
+                  if (!inputKeyword.trim()) return;
+                  setFormData(prev => ({
+                    ...prev,
+                    keywords: [...prev.keywords, inputKeyword.trim()]
+                  }));
+                  setInputKeyword("");
+                }} sx={{
+                  color: "var(--color-primary-orange)",
+                  "&:hover": {
+                    color: "var(--color-primary-hover)"
+                  }
+                }}>
                             <AddCircleOutlineIcon />
                           </IconButton>
                         </InputAdornment>
-                      ),
-                    }}
-                  />
-                )}
-              />
+            }} />} />
             </div>
 
-            <div className="form-divider"></div>
+            <div className={cx("form-divider")}></div>
             <SectionHeader title="Display & SEO" subtitle="How your business appears online" />
 
-            <div className="form-input-group">
-              <label className="input-label">👁️ Display Title</label>
-              <input
-                type="text"
-                name="title"
-                className="text-input"
-                value={formData.title}
-                onChange={handleChange}
-                placeholder="How your business appears to customers"
-              />
+            <div className={cx("form-input-group")}>
+              <label className={cx("input-label")}>👁️ Display Title</label>
+              <input type="text" name="title" className={cx("text-input")} value={formData.title} onChange={handleChange} placeholder="How your business appears to customers" />
             </div>
 
-            <div className="form-input-group col-span-all">
-              <label className="input-label">📖 Display Description</label>
-              <textarea
-                name="description"
-                className="textarea-input"
-                value={formData.description}
-                rows={3}
-                onChange={handleChange}
-                placeholder="A brief description of your business"
-              />
+            <div className={cx("form-input-group col-span-all")}>
+              <label className={cx("input-label")}>📖 Display Description</label>
+              <textarea name="description" className={cx("textarea-input")} value={formData.description} rows={3} onChange={handleChange} placeholder="A brief description of your business" />
             </div>
 
-            <div className="form-divider"></div>
+            <div className={cx("form-divider")}></div>
             <SectionHeader title="Search Engine Optimization" subtitle="Improve your search visibility" />
 
-            <div className="form-input-group col-span-all">
-              <label className="input-label">🔍 SEO Title</label>
-              <input
-                type="text"
-                name="seoTitle"
-                className="text-input"
-                value={formData.seoTitle}
-                onChange={handleChange}
-                placeholder="Meta title for search engines (50-60 characters)"
-              />
+            <div className={cx("form-input-group col-span-all")}>
+              <label className={cx("input-label")}>🔍 SEO Title</label>
+              <input type="text" name="seoTitle" className={cx("text-input")} value={formData.seoTitle} onChange={handleChange} placeholder="Meta title for search engines (50-60 characters)" />
             </div>
 
-            <div className="form-input-group col-span-all">
-              <label className="input-label">📝 SEO Description</label>
-              <textarea
-                name="seoDescription"
-                className="textarea-input"
-                value={formData.seoDescription}
-                rows={2}
-                onChange={handleChange}
-                placeholder="Meta description for search engines (150-160 characters)"
-              />
+            <div className={cx("form-input-group col-span-all")}>
+              <label className={cx("input-label")}>📝 SEO Description</label>
+              <textarea name="seoDescription" className={cx("textarea-input")} value={formData.seoDescription} rows={2} onChange={handleChange} placeholder="Meta description for search engines (150-160 characters)" />
             </div>
 
-            {["restaurants", "hotels"].includes(formData.category?.toLowerCase()) && (
-              <>
-                <div className="form-divider"></div>
-                <div className="form-input-group">
-                  <label className="input-label">🍽️ Cuisine Type</label>
-                  <select
-                    className="select-input"
-                    name="restaurantOptions"
-                    value={formData.restaurantOptions || ""}
-                    onChange={handleChange}
-                  >
+            {["restaurants", "hotels"].includes(formData.category?.toLowerCase()) && <>
+                <div className={cx("form-divider")}></div>
+                <div className={cx("form-input-group")}>
+                  <label className={cx("input-label")}>🍽️ Cuisine Type</label>
+                  <select className={cx("select-input")} name="restaurantOptions" value={formData.restaurantOptions || ""} onChange={handleChange}>
                     <option value="">-- Select Option --</option>
                     <option value="Veg">Vegetarian Only</option>
                     <option value="Non-Veg">Non-Vegetarian</option>
                     <option value="Both">Both Veg & Non-Veg</option>
                   </select>
                 </div>
-              </>
-            )}
-            <div className="form-input-group col-span-all">
-              <label className="input-label">📍 Slug (URL-friendly name)</label>
-              <input
-                type="text"
-                name="slug"
-                className="text-input"
-                value={formData.slug}
-                onChange={handleChange}
-                placeholder="business-name-here"
-              />
+              </>}
+            <div className={cx("form-input-group col-span-all")}>
+              <label className={cx("input-label")}>📍 Slug (URL-friendly name)</label>
+              <input type="text" name="slug" className={cx("text-input")} value={formData.slug} onChange={handleChange} placeholder="business-name-here" />
             </div>
-          </>
-        );
-
+          </>;
       case 3:
-        return (
-          <>
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                height: "100vh",
-                backgroundColor: "#f8f9fa",
-                px: 2,
-              }}
-            >
-              <Box
-                sx={{
-                  borderRadius: 2,
-                  p: { xs: 3, sm: 4 },
-                  textAlign: "center",
-                  maxWidth: 320,
-                  width: "100%",
-                }}
-              >
-                <Typography
-                  variant="h6"
-                  sx={{
-                    fontWeight: 600,
-                    fontSize: { xs: "1.1rem", sm: "1.25rem" },
-                    color: "#333",
-                    mb: 1,
-                  }}
-                >
+        return <>
+            <Box sx={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            height: "100vh",
+            backgroundColor: "#f8f9fa",
+            px: 2
+          }}>
+              <Box sx={{
+              borderRadius: 2,
+              p: {
+                xs: 3,
+                sm: 4
+              },
+              textAlign: "center",
+              maxWidth: 320,
+              width: "100%"
+            }}>
+                <Typography variant="h6" sx={{
+                fontWeight: 600,
+                fontSize: {
+                  xs: "1.1rem",
+                  sm: "1.25rem"
+                },
+                color: "#333",
+                mb: 1
+              }}>
                   List Your Business on{" "}
-                  <Box component="span" sx={{ color: "#f57c00" }}>
+                  <Box component="span" sx={{
+                  color: "#f57c00"
+                }}>
                     MassClick
                   </Box>
                 </Typography>
 
-                <Typography
-                  sx={{
-                    fontWeight: 700,
-                    fontSize: { xs: "1.2rem", sm: "1.4rem" },
-                    mb: 3,
-                  }}
-                >
+                <Typography sx={{
+                fontWeight: 700,
+                fontSize: {
+                  xs: "1.2rem",
+                  sm: "1.4rem"
+                },
+                mb: 3
+              }}>
                   Just ₹ 99/- + GST
                 </Typography>
 
-                <Button
-                  variant="contained"
-                  onClick={handlePayNow}
-                  sx={{
-                    backgroundColor: "#f57c00",
-                    color: "#fff",
-                    fontWeight: 600,
-                    textTransform: "none",
-                    px: 4,
-                    py: 1.2,
-                    borderRadius: "6px",
-                    "&:hover": { backgroundColor: "#e66b00" },
-                  }}
-                >
+                <Button variant="contained" onClick={handlePayNow} sx={{
+                backgroundColor: "#f57c00",
+                color: "#fff",
+                fontWeight: 600,
+                textTransform: "none",
+                px: 4,
+                py: 1.2,
+                borderRadius: "6px",
+                "&:hover": {
+                  backgroundColor: "#e66b00"
+                }
+              }}>
                   Pay Now
                 </Button>
 
               </Box>
             </Box>
-          </>
-        );
-
+          </>;
       default:
         return null;
     }
   };
-
-
-  return (
-    <div className="business-page">
-      <div className="business-card" style={{ marginBottom: '20px', padding: '15px 30px', boxShadow: 'none' }}>
-        <Stack sx={{ width: '100%' }} spacing={4}>
+  return <div className={cx("business-page")}>
+      <div className={cx("business-card")} style={{
+      marginBottom: '20px',
+      padding: '15px 30px',
+      boxShadow: 'none'
+    }}>
+        <Stack sx={{
+        width: '100%'
+      }} spacing={4}>
           <Stepper alternativeLabel activeStep={activeStep} connector={<ColorlibConnector />}>
-            {steps.map((label) => (
-              <Step key={label}>
+            {steps.map(label => <Step key={label}>
                 <StepLabel StepIconComponent={ColorlibStepIcon}>{label}</StepLabel>
-              </Step>
-            ))}
+              </Step>)}
           </Stepper>
         </Stack>
       </div>
 
-      <div className="business-card form-section">
-        <h2 className="card-title">
+      <div className={cx("business-card form-section")}>
+        <h2 className={cx("card-title")}>
           {editMode ? `Edit Business (${steps[activeStep]})` : `Add New Business (${steps[activeStep]})`}
         </h2>
 
         <form onSubmit={handleSubmit}>
-          <div className="form-grid">
+          <div className={cx("form-grid")}>
             {renderStepContent(activeStep)}
           </div>
 
-          <div
-            className="col-span-all upload-section"
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              marginTop: activeStep !== 3 ? "28px" : "150px",
-            }}
-          >
-            {activeStep > 0 && activeStep < steps.length - 1 && (
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "flex-start",
-                  marginBottom: "-88px",
-                }}
-              >
-                <button
-                  type="button"
-                  className="submit-button"
-                  onClick={handleBack}
-                >
+          <div className={cx("col-span-all upload-section")} style={{
+          display: "flex",
+          justifyContent: "space-between",
+          marginTop: activeStep !== 3 ? "28px" : "150px"
+        }}>
+            {activeStep > 0 && activeStep < steps.length - 1 && <div style={{
+            display: "flex",
+            justifyContent: "flex-start",
+            marginBottom: "-88px"
+          }}>
+                <button type="button" className={cx("submit-button")} onClick={handleBack}>
                   <SkipPreviousIcon />
                 </button>
-              </div>
-            )}
+              </div>}
 
-            {activeStep < steps.length - 2 ? (
-              <div
-                style={{
-                  width: "100%",
-                  display: "flex",
-                  justifyContent: "flex-end",
-                }}
-              >
-                <button
-                  type="button"
-                  className="submit-button"
-                  onClick={handleNext}
-                  style={{
-                    marginLeft: "auto",
-                    display: "flex",
-                    justifyContent: "flex-end",
-                    marginTop: "28px",
-                  }}
-                >
+            {activeStep < steps.length - 2 ? <div style={{
+            width: "100%",
+            display: "flex",
+            justifyContent: "flex-end"
+          }}>
+                <button type="button" className={cx("submit-button")} onClick={handleNext} style={{
+              marginLeft: "auto",
+              display: "flex",
+              justifyContent: "flex-end",
+              marginTop: "28px"
+            }}>
                   <SkipNextIcon />
                 </button>
-              </div>
-            ) : activeStep === steps.length - 2 ? (
-              <button
-                type="submit"
-                className="submit-button"
-                disabled={loading}
-                style={{
-                  marginLeft: "auto",
-                  display: "flex",
-                  justifyContent: "flex-end",
-                  marginTop: "28px",
-                }}
-              >
-                {loading ? (
-                  <CircularProgress size={24} color="inherit" />
-                ) : editMode ? (
-                  "Update"
-                ) : (
-                  "Create"
-                )}
-              </button>
-            ) : null}
+              </div> : activeStep === steps.length - 2 ? <button type="submit" className={cx("submit-button")} disabled={loading} style={{
+            marginLeft: "auto",
+            display: "flex",
+            justifyContent: "flex-end",
+            marginTop: "28px"
+          }}>
+                {loading ? <CircularProgress size={24} color="inherit" /> : editMode ? "Update" : "Create"}
+              </button> : null}
           </div>
         </form>
       </div>
 
-      <Typography variant="h6" gutterBottom sx={{ textAlign: "center" }}>
+      <Typography variant="h6" gutterBottom sx={{
+      textAlign: "center"
+    }}>
         BusinessList Table
       </Typography>
-      <Box sx={{ width: "100%" }}>
-        <CustomizedTable
-          data={rows}
-          total={total}
-          columns={businessListTable}
-          fetchData={(pageNo, pageSize, options = {}) => {
-            dispatch(
-              getAllBusinessList({
-                pageNo,
-                pageSize,
-                search: options.search || "",
-                status: options.status || "all",
-                sortBy: options.sortBy || null,
-                sortOrder: options.sortOrder || "asc",
-              })
-            );
-          }}
-        />
+      <Box sx={{
+      width: "100%"
+    }}>
+        <CustomizedTable data={rows} total={total} columns={businessListTable} fetchData={(pageNo, pageSize, options = {}) => {
+        dispatch(getAllBusinessList({
+          pageNo,
+          pageSize,
+          search: options.search || "",
+          status: options.status || "all",
+          sortBy: options.sortBy || null,
+          sortOrder: options.sortOrder || "asc"
+        }));
+      }} />
 
       </Box>
 
-      <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, id: null, name: "" })}>
+      <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({
+      open: false,
+      id: null,
+      name: ""
+    })}>
         <DialogTitle>Confirm Delete</DialogTitle>
         <DialogContent>
           Are you sure you want to delete <strong>{deleteDialog.name || "this business"}</strong>?
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeleteDialog({ open: false, id: null, name: "" })} color="secondary">
+          <Button onClick={() => setDeleteDialog({
+          open: false,
+          id: null,
+          name: ""
+        })} color="secondary">
             Cancel
           </Button>
           <Button color="error" variant="contained" onClick={confirmDelete}>
@@ -1884,11 +1480,24 @@ const BusinessList = React.memo(() => {
       <Dialog open={galleryDialog.open} onClose={handleCloseGallery} maxWidth="md" fullWidth>
         <DialogTitle>Gallery - {galleryDialog.data?.businessName}</DialogTitle>
         <DialogContent dividers>
-          <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
-            {galleryDialog.data?.businessImages?.map((img, idx) => <Avatar key={idx} src={img} sx={{ width: 100, height: 100 }} />)}
-            {newGalleryImages.map((img, idx) => <Avatar key={idx} src={img} sx={{ width: 100, height: 100, border: "2px dashed green" }} />)}
+          <div style={{
+          display: "flex",
+          gap: "12px",
+          flexWrap: "wrap"
+        }}>
+            {galleryDialog.data?.businessImages?.map((img, idx) => <Avatar key={idx} src={img} sx={{
+            width: 100,
+            height: 100
+          }} />)}
+            {newGalleryImages.map((img, idx) => <Avatar key={idx} src={img} sx={{
+            width: 100,
+            height: 100,
+            border: "2px dashed green"
+          }} />)}
           </div>
-          <Button variant="contained" component="label" sx={{ mt: 2 }}>
+          <Button variant="contained" component="label" sx={{
+          mt: 2
+        }}>
             Upload Images
             <input type="file" hidden multiple accept="image/*" onChange={handleGalleryImageChange} />
           </Button>
@@ -1898,9 +1507,6 @@ const BusinessList = React.memo(() => {
           <Button onClick={handleUploadGalleryImages} color="primary" variant="contained" disabled={newGalleryImages.length === 0}>Upload</Button>
         </DialogActions>
       </Dialog>
-    </div>
-
-  );
+    </div>;
 });
-
 export default BusinessList;

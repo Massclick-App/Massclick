@@ -1151,7 +1151,7 @@
   margin-bottom: 6px;
 }
 
-.review-card .MuiRating-root {
+.review-card :global(.MuiRating-root) {
   color: #ff8c00;
   font-size: 20px;
 }

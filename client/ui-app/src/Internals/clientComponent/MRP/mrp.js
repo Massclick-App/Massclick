@@ -1,3 +1,4 @@
+import { createScopedClassNames } from "../../../utils/createScopedClassNames";
 import { useState, useRef, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useSnackbar } from 'notistack';
@@ -5,37 +6,34 @@ import BusinessIcon from "@mui/icons-material/Business";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import PhoneIcon from "@mui/icons-material/Phone";
 import CategoryIcon from "@mui/icons-material/Category";
-import './mrp.css';
+import styles from "./mrp.module.css";
 import CardsSearch from '../CardsSearch/CardsSearch';
-import {
-  createMRP,
-  searchMrpBusiness,
-  searchMrpCategory,
-  getAllMRP,
-  sendMrpLeads
-} from '../../../redux/actions/mrpAction';
+import { createMRP, searchMrpBusiness, searchMrpCategory, getAllMRP, sendMrpLeads } from '../../../redux/actions/mrpAction';
 import MRPInsights from './mrpInsights/mrpInsights';
 import MRPCategoryChart from './mrpChart/mrpCategoryChart';
 import MRPChartKPI from './mrpKpiChart/mrpChartKpi';
-
+const cx = createScopedClassNames(styles);
 export default function MRPPage() {
   const dispatch = useDispatch();
   const timerRef = useRef(null);
-  const { enqueueSnackbar } = useSnackbar();
-
-  const { loading, error } = useSelector(state => state.mrp || {});
+  const {
+    enqueueSnackbar
+  } = useSnackbar();
+  const {
+    loading,
+    error
+  } = useSelector(state => state.mrp || {});
   const {
     businessSearchResults = [],
     categorySearchResults = []
   } = useSelector(state => state.mrp || {});
-  const { mrpList = [] } = useSelector(state => state.mrp || {});
-
+  const {
+    mrpList = []
+  } = useSelector(state => state.mrp || {});
   const [businessQuery, setBusinessQuery] = useState('');
   const [categoryQuery, setCategoryQuery] = useState('');
-
   const [businessSelected, setBusinessSelected] = useState(false);
   const [categorySelected, setCategorySelected] = useState(false);
-
   const [formData, setFormData] = useState({
     organizationId: '',
     categoryId: '',
@@ -43,7 +41,6 @@ export default function MRPPage() {
     contactDetails: '',
     details: ''
   });
-
   useEffect(() => {
     try {
       const storedUser = localStorage.getItem("authUser");
@@ -61,28 +58,26 @@ export default function MRPPage() {
       console.error("Invalid authUser in localStorage:", error);
     }
   }, []);
-
   useEffect(() => {
     return () => clearTimeout(timerRef.current);
   }, []);
-
   useEffect(() => {
     dispatch(getAllMRP());
   }, [dispatch]);
-
-  const handleSubmit = async (e) => {
+  const handleSubmit = async e => {
     e.preventDefault();
-
     if (!formData.organizationId) {
-      enqueueSnackbar('Business not found', { variant: 'error' });
+      enqueueSnackbar('Business not found', {
+        variant: 'error'
+      });
       return;
     }
-
     if (!categorySelected) {
-      enqueueSnackbar('Please select category from suggestions', { variant: 'warning' });
+      enqueueSnackbar('Please select category from suggestions', {
+        variant: 'warning'
+      });
       return;
     }
-
     try {
       const createdMRP = await dispatch(createMRP({
         categoryId: formData.categoryId,
@@ -90,34 +85,38 @@ export default function MRPPage() {
         description: formData.details,
         contactDetails: formData.contactDetails
       }));
-
       if (createdMRP?._id) {
         await dispatch(sendMrpLeads(createdMRP._id));
       }
-
       dispatch(getAllMRP());
-
-      enqueueSnackbar('Requirement published and leads sent successfully', { variant: 'success' });
-
-      setFormData({ organizationId: '', categoryId: '', location: '', details: '', contactDetails: '' });
+      enqueueSnackbar('Requirement published and leads sent successfully', {
+        variant: 'success'
+      });
+      setFormData({
+        organizationId: '',
+        categoryId: '',
+        location: '',
+        details: '',
+        contactDetails: ''
+      });
       setBusinessQuery('');
       setCategoryQuery('');
       setBusinessSelected(false);
       setCategorySelected(false);
-
     } catch (err) {
       console.error(err);
-      enqueueSnackbar(
-        typeof err === "string" ? err : err?.message || "Failed to publish requirement",
-        { variant: "error" }
-      );
+      enqueueSnackbar(typeof err === "string" ? err : err?.message || "Failed to publish requirement", {
+        variant: "error"
+      });
     }
   };
-
-  const handleBusinessSearch = (value) => {
+  const handleBusinessSearch = value => {
     setBusinessQuery(value);
     setBusinessSelected(false);
-    setFormData(prev => ({ ...prev, organizationId: '' }));
+    setFormData(prev => ({
+      ...prev,
+      organizationId: ''
+    }));
     clearTimeout(timerRef.current);
     if (value.trim().length >= 2) {
       timerRef.current = setTimeout(() => {
@@ -125,11 +124,13 @@ export default function MRPPage() {
       }, 300);
     }
   };
-
-  const handleCategorySearch = (value) => {
+  const handleCategorySearch = value => {
     setCategoryQuery(value);
     setCategorySelected(false);
-    setFormData(prev => ({ ...prev, categoryId: '' }));
+    setFormData(prev => ({
+      ...prev,
+      categoryId: ''
+    }));
     clearTimeout(timerRef.current);
     if (value.trim().length >= 2) {
       timerRef.current = setTimeout(() => {
@@ -137,20 +138,18 @@ export default function MRPPage() {
       }, 300);
     }
   };
-
-  return (
-    <>
+  return <>
       <CardsSearch />
-      <div className="page-spacing-mrp" />
+      <div className={cx("page-spacing-mrp")} />
 
-      <section className="mrp-container">
+      <section className={cx("mrp-container")}>
 
         {/* ── ROW 1: Publish form (60%) + Business profile (40%) ── */}
-        <div className="mrp-row mrp-row-1">
+        <div className={cx("mrp-row mrp-row-1")}>
 
-          <div className="mrp-form-card mrp-card">
-            <header className="mrp-header">
-              <span className="mrp-badge">MRP Dashboard</span>
+          <div className={cx("mrp-form-card mrp-card")}>
+            <header className={cx("mrp-header")}>
+              <span className={cx("mrp-badge")}>MRP Dashboard</span>
               <h1>Create a modern business requirement</h1>
               <p>
                 Publish a clear requirement, get faster responses, and track demand
@@ -158,109 +157,83 @@ export default function MRPPage() {
               </p>
             </header>
 
-            <form className="mrp-form" onSubmit={handleSubmit}>
+            <form className={cx("mrp-form")} onSubmit={handleSubmit}>
 
-              <div className="mrp-field async-search">
+              <div className={cx("mrp-field async-search")}>
                 <label>Requesting Organization</label>
-                <div className="mrp-input">
-                  <span className="icon"><BusinessIcon fontSize="small" /></span>
-                  <input
-                    value={businessQuery}
-                    onChange={(e) => handleBusinessSearch(e.target.value)}
-                    placeholder="Start typing to search organization"
-                    required
-                  />
+                <div className={cx("mrp-input")}>
+                  <span className={cx("icon")}><BusinessIcon fontSize="small" /></span>
+                  <input value={businessQuery} onChange={e => handleBusinessSearch(e.target.value)} placeholder="Start typing to search organization" required />
                 </div>
-                {!businessSelected && businessQuery.length >= 2 && businessSearchResults.length > 0 && (
-                  <ul className="async-dropdown">
-                    {businessSearchResults.map(biz => (
-                      <li
-                        key={biz._id}
-                        onClick={() => {
-                          setBusinessQuery(biz.businessName);
-                          setBusinessSelected(true);
-                          setFormData(prev => ({ ...prev, organizationId: biz._id }));
-                        }}
-                      >
+                {!businessSelected && businessQuery.length >= 2 && businessSearchResults.length > 0 && <ul className={cx("async-dropdown")}>
+                    {businessSearchResults.map(biz => <li key={biz._id} onClick={() => {
+                  setBusinessQuery(biz.businessName);
+                  setBusinessSelected(true);
+                  setFormData(prev => ({
+                    ...prev,
+                    organizationId: biz._id
+                  }));
+                }}>
                         {biz.businessName}
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                      </li>)}
+                  </ul>}
               </div>
 
-              <div className="mrp-field">
+              <div className={cx("mrp-field")}>
                 <label>Requirement Location</label>
-                <div className="mrp-input">
-                  <span className="icon"><LocationOnIcon fontSize="small" /></span>
-                  <input
-                    value={formData.location}
-                    onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
-                    placeholder="City / Region"
-                    required
-                  />
+                <div className={cx("mrp-input")}>
+                  <span className={cx("icon")}><LocationOnIcon fontSize="small" /></span>
+                  <input value={formData.location} onChange={e => setFormData(prev => ({
+                  ...prev,
+                  location: e.target.value
+                }))} placeholder="City / Region" required />
                 </div>
               </div>
 
-              <div className="mrp-field">
+              <div className={cx("mrp-field")}>
                 <label>Contact Details</label>
-                <div className="mrp-input">
-                  <span className="icon"><PhoneIcon fontSize="small" /></span>
-                  <input
-                    value={formData.contactDetails}
-                    onChange={(e) => setFormData(prev => ({ ...prev, contactDetails: e.target.value }))}
-                    placeholder="Phone / WhatsApp / Email"
-                    required
-                  />
+                <div className={cx("mrp-input")}>
+                  <span className={cx("icon")}><PhoneIcon fontSize="small" /></span>
+                  <input value={formData.contactDetails} onChange={e => setFormData(prev => ({
+                  ...prev,
+                  contactDetails: e.target.value
+                }))} placeholder="Phone / WhatsApp / Email" required />
                 </div>
               </div>
 
-              <div className="mrp-field async-search">
+              <div className={cx("mrp-field async-search")}>
                 <label>Requirement Category</label>
-                <div className="mrp-input">
-                  <span className="icon"><CategoryIcon fontSize="small" /></span>
-                  <input
-                    value={categoryQuery}
-                    placeholder="Search service category"
-                    onChange={(e) => handleCategorySearch(e.target.value)}
-                    required
-                  />
+                <div className={cx("mrp-input")}>
+                  <span className={cx("icon")}><CategoryIcon fontSize="small" /></span>
+                  <input value={categoryQuery} placeholder="Search service category" onChange={e => handleCategorySearch(e.target.value)} required />
                 </div>
-                {!categorySelected && categoryQuery.length >= 2 && categorySearchResults.length > 0 && (
-                  <ul className="async-dropdown">
-                    {categorySearchResults.map(cat => (
-                      <li
-                        key={cat}
-                        onClick={() => {
-                          setCategoryQuery(cat);
-                          setCategorySelected(true);
-                          setFormData(prev => ({ ...prev, categoryId: cat }));
-                        }}
-                      >
+                {!categorySelected && categoryQuery.length >= 2 && categorySearchResults.length > 0 && <ul className={cx("async-dropdown")}>
+                    {categorySearchResults.map(cat => <li key={cat} onClick={() => {
+                  setCategoryQuery(cat);
+                  setCategorySelected(true);
+                  setFormData(prev => ({
+                    ...prev,
+                    categoryId: cat
+                  }));
+                }}>
                         {cat}
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                      </li>)}
+                  </ul>}
               </div>
 
-              <div className="mrp-field mrp-full">
+              <div className={cx("mrp-field mrp-full")}>
                 <label>Requirement Details</label>
-                <textarea
-                  value={formData.details}
-                  onChange={(e) => setFormData(prev => ({ ...prev, details: e.target.value }))}
-                  placeholder="Describe your requirement clearly and professionally"
-                  required
-                />
+                <textarea value={formData.details} onChange={e => setFormData(prev => ({
+                ...prev,
+                details: e.target.value
+              }))} placeholder="Describe your requirement clearly and professionally" required />
               </div>
 
-              {error && (
-                <div className="mrp-error">
+              {error && <div className={cx("mrp-error")}>
                   {typeof error === "string" ? error : error?.message || "Something went wrong"}
-                </div>
-              )}
+                </div>}
 
-              <div className="mrp-actions">
+              <div className={cx("mrp-actions")}>
                 <button type="submit" disabled={loading}>
                   {loading ? 'Publishing…' : 'Publish Requirement'}
                 </button>
@@ -273,35 +246,31 @@ export default function MRPPage() {
 
         </div>
 
-        <div className="mrp-row mrp-row-2">
+        <div className={cx("mrp-row mrp-row-2")}>
 
-          <div className="mrp-analytics-panel mrp-card">
-            <div className="mrp-panel-header">
-              <span className="mrp-badge">Analytics</span>
+          <div className={cx("mrp-analytics-panel mrp-card")}>
+            <div className={cx("mrp-panel-header")}>
+              <span className={cx("mrp-badge")}>Analytics</span>
               <h2>Lead Intelligence</h2>
               <p>Real-time insights from published requirements across your region.</p>
             </div>
 
             <MRPChartKPI />
 
-            <div className="mrp-chart-section">
-              <div className="mrp-chart-section-header">
+            <div className={cx("mrp-chart-section")}>
+              <div className={cx("mrp-chart-section-header")}>
                 <div>
                   <h3>Top Response Categories</h3>
-                  <p className="mrp-info-sub">Based on published requirements.</p>
+                  <p className={cx("mrp-info-sub")}>Based on published requirements.</p>
                 </div>
-                <span className="mrp-live-pill">Live data</span>
+                <span className={cx("mrp-live-pill")}>Live data</span>
               </div>
 
-              {mrpList?.length > 0 ? (
-                <MRPCategoryChart data={mrpList} />
-              ) : (
-                <div className="mrp-empty-state">
+              {mrpList?.length > 0 ? <MRPCategoryChart data={mrpList} /> : <div className={cx("mrp-empty-state")}>
                   Demand insights will appear once requirements are added.
-                </div>
-              )}
+                </div>}
 
-              <p className="mrp-chart-footnote">Updated just now • Automatic response analysis</p>
+              <p className={cx("mrp-chart-footnote")}>Updated just now • Automatic response analysis</p>
             </div>
           </div>
 
@@ -311,6 +280,5 @@ export default function MRPPage() {
         </div>
 
       </section>
-    </>
-  );
+    </>;
 }

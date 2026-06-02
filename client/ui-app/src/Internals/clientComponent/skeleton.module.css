@@ -13,12 +13,12 @@
 }
 
 /* Brand shimmer override for MUI wave */
-.sk-root .MuiSkeleton-root {
+.sk-root :global(.MuiSkeleton-root) {
   background-color: rgba(255, 107, 44, 0.055);
   border-radius: 8px;
 }
 
-.sk-root .MuiSkeleton-wave::after {
+.sk-root :global(.MuiSkeleton-wave)::after {
   background: linear-gradient(
     90deg,
     transparent 0%,
@@ -265,7 +265,7 @@
 }
 
 /* Main container inside sk-root */
-.sk-root > .MuiContainer-root {
+.sk-root > :global(.MuiContainer-root) {
   display: flex;
   flex-direction: column;
   contain: layout style paint;

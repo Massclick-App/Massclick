@@ -1,29 +1,8 @@
+import { createScopedClassNames } from "../../utils/createScopedClassNames";
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import {
-  fetchFCMUsers,
-  sendFCMMarketing,
-  scheduleFCMMarketing,
-  resendFCMCampaign,
-  cancelFCMCampaign,
-  fetchFCMCampaigns,
-  uploadFCMImage,
-} from "../../redux/actions/fcmMarketingAction.js";
-import {
-  Box,
-  CircularProgress,
-  Typography,
-  IconButton,
-  Chip,
-  Tooltip,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-} from "@mui/material";
+import { fetchFCMUsers, sendFCMMarketing, scheduleFCMMarketing, resendFCMCampaign, cancelFCMCampaign, fetchFCMCampaigns, uploadFCMImage } from "../../redux/actions/fcmMarketingAction.js";
+import { Box, CircularProgress, Typography, IconButton, Chip, Tooltip, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from "@mui/material";
 import NotificationsActiveIcon from "@mui/icons-material/NotificationsActive";
 import SendIcon from "@mui/icons-material/Send";
 import AddIcon from "@mui/icons-material/Add";
@@ -37,20 +16,31 @@ import UploadIcon from "@mui/icons-material/Upload";
 import ScheduleIcon from "@mui/icons-material/Schedule";
 import ReplayIcon from "@mui/icons-material/Replay";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
-import "./FCMMarketing.css";
-
-const PLATFORM_OPTIONS = [
-  { value: "android", label: "Android" },
-  { value: "ios", label: "iOS" },
-  { value: "web", label: "Web" },
-];
-
-const TARGET_TYPES = [
-  { value: "all", label: "All Users", desc: "Send to every user with an active token" },
-  { value: "platform", label: "By Platform", desc: "Target a specific device platform" },
-  { value: "specific_user", label: "Specific User", desc: "Send to one selected user" },
-];
-
+import styles from "./FCMMarketing.module.css";
+const cx = createScopedClassNames(styles);
+const PLATFORM_OPTIONS = [{
+  value: "android",
+  label: "Android"
+}, {
+  value: "ios",
+  label: "iOS"
+}, {
+  value: "web",
+  label: "Web"
+}];
+const TARGET_TYPES = [{
+  value: "all",
+  label: "All Users",
+  desc: "Send to every user with an active token"
+}, {
+  value: "platform",
+  label: "By Platform",
+  desc: "Target a specific device platform"
+}, {
+  value: "specific_user",
+  label: "Specific User",
+  desc: "Send to one selected user"
+}];
 const EMPTY_FORM = {
   title: "",
   body: "",
@@ -60,55 +50,69 @@ const EMPTY_FORM = {
   targetPlatform: "android",
   targetUserId: "",
   targetUserName: "",
-  customData: [],
+  customData: []
 };
-
-function NotificationPreview({ title, body, imageUrl, clickAction }) {
-  return (
-    <div className="fcm-preview-card">
-      <div className="fcm-preview-header">
-        <NotificationsActiveIcon sx={{ fontSize: 14, color: "#ff8c00" }} />
-        <span className="fcm-preview-app">MassClick</span>
-        <span className="fcm-preview-time">now</span>
+function NotificationPreview({
+  title,
+  body,
+  imageUrl,
+  clickAction
+}) {
+  return <div className={cx("fcm-preview-card")}>
+      <div className={cx("fcm-preview-header")}>
+        <NotificationsActiveIcon sx={{
+        fontSize: 14,
+        color: "#ff8c00"
+      }} />
+        <span className={cx("fcm-preview-app")}>MassClick</span>
+        <span className={cx("fcm-preview-time")}>now</span>
       </div>
-      <div className="fcm-preview-body">
-        <p className="fcm-preview-title">{title || "Your notification title"}</p>
-        <p className="fcm-preview-text">{body || "Your notification body text will appear here."}</p>
-        {clickAction && (
-          <p className="fcm-preview-action">
+      <div className={cx("fcm-preview-body")}>
+        <p className={cx("fcm-preview-title")}>{title || "Your notification title"}</p>
+        <p className={cx("fcm-preview-text")}>{body || "Your notification body text will appear here."}</p>
+        {clickAction && <p className={cx("fcm-preview-action")}>
             🔗 <span>{clickAction}</span>
-          </p>
-        )}
+          </p>}
       </div>
-      {imageUrl && (
-        <div className="fcm-preview-image-wrap fcm-preview-image-wrap--bottom">
-          <img src={imageUrl} alt="notification" className="fcm-preview-image" onError={(e) => { e.target.style.display = "none"; }} />
-        </div>
-      )}
-    </div>
-  );
+      {imageUrl && <div className={cx("fcm-preview-image-wrap fcm-preview-image-wrap--bottom")}>
+          <img src={imageUrl} alt="notification" className={cx("fcm-preview-image")} onError={e => {
+        e.target.style.display = "none";
+      }} />
+        </div>}
+    </div>;
 }
-
-function StatusBadge({ status }) {
+function StatusBadge({
+  status
+}) {
   const map = {
-    sent: { label: "Sent", cls: "fcm-status-sent" },
-    scheduled: { label: "Scheduled", cls: "fcm-status-scheduled" },
-    cancelled: { label: "Cancelled", cls: "fcm-status-cancelled" },
-    failed: { label: "Failed", cls: "fcm-status-failed" },
+    sent: {
+      label: "Sent",
+      cls: "fcm-status-sent"
+    },
+    scheduled: {
+      label: "Scheduled",
+      cls: "fcm-status-scheduled"
+    },
+    cancelled: {
+      label: "Cancelled",
+      cls: "fcm-status-cancelled"
+    },
+    failed: {
+      label: "Failed",
+      cls: "fcm-status-failed"
+    }
   };
   const s = map[status] || map.sent;
-  return <span className={`fcm-status-badge ${s.cls}`}>{s.label}</span>;
+  return <span className={cx(`fcm-status-badge ${s.cls}`)}>{s.label}</span>;
 }
 
 // Returns the minimum datetime string for the schedule input (5 min from now)
 function minScheduleDatetime() {
   return new Date(Date.now() + 5 * 60 * 1000).toISOString().slice(0, 16);
 }
-
 export default function FCMMarketing() {
   const dispatch = useDispatch();
   const composeRef = useRef(null);
-
   const {
     users = [],
     usersLoading = false,
@@ -119,9 +123,8 @@ export default function FCMMarketing() {
     resendError = null,
     campaigns = [],
     campaignsTotal = 0,
-    campaignsLoading = false,
-  } = useSelector((state) => state.fcmMarketing || {});
-
+    campaignsLoading = false
+  } = useSelector(state => state.fcmMarketing || {});
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
   const [userSearch, setUserSearch] = useState("");
@@ -135,68 +138,85 @@ export default function FCMMarketing() {
   const [resendingId, setResendingId] = useState(null);
   const fileInputRef = useRef(null);
   const PAGE_SIZE = 20;
-
   useEffect(() => {
     dispatch(fetchFCMUsers());
     dispatch(fetchFCMCampaigns(1, PAGE_SIZE));
   }, [dispatch]);
-
-  const filteredUsers = userSearch.trim()
-    ? users.filter(
-        (u) =>
-          u.userName?.toLowerCase().includes(userSearch.toLowerCase()) ||
-          u.mobileNumber1?.includes(userSearch)
-      )
-    : users;
-
+  const filteredUsers = userSearch.trim() ? users.filter(u => u.userName?.toLowerCase().includes(userSearch.toLowerCase()) || u.mobileNumber1?.includes(userSearch)) : users;
   const handleChange = (field, value) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
-    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
-  };
-
-  const addCustomDataRow = () => {
-    if (form.customData.length >= 10) return;
-    setForm((prev) => ({ ...prev, customData: [...prev.customData, { key: "", value: "" }] }));
-  };
-
-  const updateCustomDataRow = (idx, field, val) => {
-    const updated = form.customData.map((row, i) => (i === idx ? { ...row, [field]: val } : row));
-    setForm((prev) => ({ ...prev, customData: updated }));
-    if (errors[`customData_${idx}`]) {
-      setErrors((prev) => ({ ...prev, [`customData_${idx}`]: "" }));
-    }
-  };
-
-  const removeCustomDataRow = (idx) => {
-    setForm((prev) => ({
+    setForm(prev => ({
       ...prev,
-      customData: prev.customData.filter((_, i) => i !== idx),
+      [field]: value
+    }));
+    if (errors[field]) setErrors(prev => ({
+      ...prev,
+      [field]: ""
     }));
   };
-
-  const handleImageFileSelect = (e) => {
+  const addCustomDataRow = () => {
+    if (form.customData.length >= 10) return;
+    setForm(prev => ({
+      ...prev,
+      customData: [...prev.customData, {
+        key: "",
+        value: ""
+      }]
+    }));
+  };
+  const updateCustomDataRow = (idx, field, val) => {
+    const updated = form.customData.map((row, i) => i === idx ? {
+      ...row,
+      [field]: val
+    } : row);
+    setForm(prev => ({
+      ...prev,
+      customData: updated
+    }));
+    if (errors[`customData_${idx}`]) {
+      setErrors(prev => ({
+        ...prev,
+        [`customData_${idx}`]: ""
+      }));
+    }
+  };
+  const removeCustomDataRow = idx => {
+    setForm(prev => ({
+      ...prev,
+      customData: prev.customData.filter((_, i) => i !== idx)
+    }));
+  };
+  const handleImageFileSelect = e => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     if (!file.type.startsWith("image/")) {
-      setErrors((prev) => ({ ...prev, imageUrl: "Please select an image file" }));
+      setErrors(prev => ({
+        ...prev,
+        imageUrl: "Please select an image file"
+      }));
       return;
     }
     if (file.size > 3 * 1024 * 1024) {
-      setErrors((prev) => ({ ...prev, imageUrl: "Image must be under 3 MB" }));
+      setErrors(prev => ({
+        ...prev,
+        imageUrl: "Image must be under 3 MB"
+      }));
       return;
     }
-
     setImageUploading(true);
-    setErrors((prev) => ({ ...prev, imageUrl: "" }));
-
+    setErrors(prev => ({
+      ...prev,
+      imageUrl: ""
+    }));
     const reader = new FileReader();
-    reader.onload = async (ev) => {
+    reader.onload = async ev => {
       try {
         const url = await dispatch(uploadFCMImage(ev.target.result));
         handleChange("imageUrl", url);
       } catch {
-        setErrors((prev) => ({ ...prev, imageUrl: "Upload failed. Try pasting a URL instead." }));
+        setErrors(prev => ({
+          ...prev,
+          imageUrl: "Upload failed. Try pasting a URL instead."
+        }));
       } finally {
         setImageUploading(false);
         if (fileInputRef.current) fileInputRef.current.value = "";
@@ -204,8 +224,7 @@ export default function FCMMarketing() {
     };
     reader.readAsDataURL(file);
   };
-
-  const isValidUrl = (str) => {
+  const isValidUrl = str => {
     try {
       const url = new URL(str);
       return url.protocol === "http:" || url.protocol === "https:";
@@ -213,48 +232,28 @@ export default function FCMMarketing() {
       return false;
     }
   };
-
   const validate = () => {
     const errs = {};
-
-    if (!form.title.trim()) errs.title = "Title is required";
-    else if (form.title.trim().length > 65) errs.title = "Title must be 65 characters or less";
-
-    if (!form.body.trim()) errs.body = "Body is required";
-    else if (form.body.trim().length > 200) errs.body = "Body must be 200 characters or less";
-
-    if (form.imageUrl.trim() && !isValidUrl(form.imageUrl.trim()))
-      errs.imageUrl = "Must be a valid URL (https://...)";
-
-    if (form.clickAction.trim() && !isValidUrl(form.clickAction.trim()))
-      errs.clickAction = "Must be a valid URL (https://...)";
-
-    if (form.targetType === "platform" && !form.targetPlatform)
-      errs.targetPlatform = "Select a platform";
-
-    if (form.targetType === "specific_user" && !form.targetUserId)
-      errs.targetUserId = "Select a user";
-
+    if (!form.title.trim()) errs.title = "Title is required";else if (form.title.trim().length > 65) errs.title = "Title must be 65 characters or less";
+    if (!form.body.trim()) errs.body = "Body is required";else if (form.body.trim().length > 200) errs.body = "Body must be 200 characters or less";
+    if (form.imageUrl.trim() && !isValidUrl(form.imageUrl.trim())) errs.imageUrl = "Must be a valid URL (https://...)";
+    if (form.clickAction.trim() && !isValidUrl(form.clickAction.trim())) errs.clickAction = "Must be a valid URL (https://...)";
+    if (form.targetType === "platform" && !form.targetPlatform) errs.targetPlatform = "Select a platform";
+    if (form.targetType === "specific_user" && !form.targetUserId) errs.targetUserId = "Select a user";
     if (sendMode === "schedule") {
-      if (!scheduledAt) errs.scheduledAt = "Pick a date and time";
-      else if (new Date(scheduledAt) <= new Date()) errs.scheduledAt = "Schedule time must be in the future";
+      if (!scheduledAt) errs.scheduledAt = "Pick a date and time";else if (new Date(scheduledAt) <= new Date()) errs.scheduledAt = "Schedule time must be in the future";
     }
-
     form.customData.forEach((row, idx) => {
       if (row.key || row.value) {
-        if (!row.key.trim()) errs[`customData_${idx}`] = "Key is required";
-        else if (!/^[a-zA-Z0-9_]+$/.test(row.key.trim()))
-          errs[`customData_${idx}`] = "Key must be alphanumeric (letters, numbers, underscores)";
+        if (!row.key.trim()) errs[`customData_${idx}`] = "Key is required";else if (!/^[a-zA-Z0-9_]+$/.test(row.key.trim())) errs[`customData_${idx}`] = "Key must be alphanumeric (letters, numbers, underscores)";
         if (!row.value.trim()) errs[`customData_${idx}`] = errs[`customData_${idx}`] || "Value is required";
       }
     });
-
     return errs;
   };
-
   const buildPayload = () => {
     const customDataObj = {};
-    form.customData.forEach((row) => {
+    form.customData.forEach(row => {
       if (row.key.trim() && row.value.trim()) {
         customDataObj[row.key.trim()] = row.value.trim();
       }
@@ -268,10 +267,9 @@ export default function FCMMarketing() {
       targetType: form.targetType,
       targetPlatform: form.targetType === "platform" ? form.targetPlatform : "",
       targetUserId: form.targetType === "specific_user" ? form.targetUserId : null,
-      targetUserName: form.targetType === "specific_user" ? form.targetUserName : "",
+      targetUserName: form.targetType === "specific_user" ? form.targetUserName : ""
     };
   };
-
   const resetForm = () => {
     setForm(EMPTY_FORM);
     setUserSearch("");
@@ -279,28 +277,34 @@ export default function FCMMarketing() {
     setSendMode("now");
     setScheduledAt("");
   };
-
-  const handleSubmit = async (e) => {
+  const handleSubmit = async e => {
     e.preventDefault();
     const errs = validate();
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
       return;
     }
-
     const payload = buildPayload();
-
     try {
       if (sendMode === "schedule") {
-        const result = await dispatch(scheduleFCMMarketing({ ...payload, scheduledAt: new Date(scheduledAt).toISOString() }));
-        setSuccessBanner({ type: "schedule", scheduledAt: result.scheduledAt });
+        const result = await dispatch(scheduleFCMMarketing({
+          ...payload,
+          scheduledAt: new Date(scheduledAt).toISOString()
+        }));
+        setSuccessBanner({
+          type: "schedule",
+          scheduledAt: result.scheduledAt
+        });
         resetForm();
         dispatch(fetchFCMCampaigns(1, PAGE_SIZE));
         setPage(1);
         setTimeout(() => setSuccessBanner(null), 7000);
       } else {
         const result = await dispatch(sendFCMMarketing(payload));
-        setSuccessBanner({ type: "send", ...result });
+        setSuccessBanner({
+          type: "send",
+          ...result
+        });
         resetForm();
         dispatch(fetchFCMCampaigns(1, PAGE_SIZE));
         setPage(1);
@@ -310,13 +314,15 @@ export default function FCMMarketing() {
       // error in Redux state via sendError / scheduleError
     }
   };
-
-  const handleResend = async (campaign) => {
+  const handleResend = async campaign => {
     if (!window.confirm(`Resend "${campaign.title}" now?`)) return;
     setResendingId(campaign._id);
     try {
       const result = await dispatch(resendFCMCampaign(campaign._id));
-      setSuccessBanner({ type: "send", ...result });
+      setSuccessBanner({
+        type: "send",
+        ...result
+      });
       dispatch(fetchFCMCampaigns(1, PAGE_SIZE));
       setPage(1);
       setTimeout(() => setSuccessBanner(null), 6000);
@@ -326,11 +332,11 @@ export default function FCMMarketing() {
       setResendingId(null);
     }
   };
-
-  const handleRepeat = (campaign) => {
-    const customDataRows = campaign.customData
-      ? Object.entries(campaign.customData).map(([key, value]) => ({ key, value }))
-      : [];
+  const handleRepeat = campaign => {
+    const customDataRows = campaign.customData ? Object.entries(campaign.customData).map(([key, value]) => ({
+      key,
+      value
+    })) : [];
     setForm({
       title: campaign.title,
       body: campaign.body,
@@ -340,16 +346,18 @@ export default function FCMMarketing() {
       targetPlatform: campaign.targetPlatform || "android",
       targetUserId: campaign.targetUserId || "",
       targetUserName: campaign.targetUserName || "",
-      customData: customDataRows,
+      customData: customDataRows
     });
     setSendMode("now");
     setScheduledAt("");
     setErrors({});
     setUserSearch("");
-    composeRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    composeRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
   };
-
-  const handleCancelCampaign = async (campaign) => {
+  const handleCancelCampaign = async campaign => {
     if (!window.confirm(`Cancel scheduled campaign "${campaign.title}"?`)) return;
     try {
       await dispatch(cancelFCMCampaign(campaign._id));
@@ -357,658 +365,553 @@ export default function FCMMarketing() {
       // error handled in state
     }
   };
-
-  const handlePageChange = useCallback(
-    (newPage) => {
-      setPage(newPage);
-      dispatch(fetchFCMCampaigns(newPage, PAGE_SIZE));
-    },
-    [dispatch]
-  );
-
+  const handlePageChange = useCallback(newPage => {
+    setPage(newPage);
+    dispatch(fetchFCMCampaigns(newPage, PAGE_SIZE));
+  }, [dispatch]);
   const isWorking = sending || scheduling;
   const activeError = sendError || scheduleError;
-
-  const campaignColumns = [
-    {
-      id: "status",
-      label: "Status",
-      minWidth: 90,
-      renderCell: (row) => <StatusBadge status={row.status || "sent"} />,
-    },
-    { id: "title", label: "Title", minWidth: 130 },
-    { id: "body", label: "Body", minWidth: 160 },
-    {
-      id: "targetType",
-      label: "Target",
-      minWidth: 120,
-      renderCell: (row) => {
-        const map = { all: "All Users", platform: `Platform: ${row.targetPlatform}`, specific_user: row.targetUserName || "Specific User" };
-        return <span className="fcm-table-target">{map[row.targetType] || row.targetType}</span>;
-      },
-    },
-    {
-      id: "totalTargeted",
-      label: "Targeted",
-      minWidth: 70,
-      renderCell: (row) => <span className="fcm-table-num">{row.totalTargeted ?? "—"}</span>,
-    },
-    {
-      id: "successCount",
-      label: "Sent",
-      minWidth: 60,
-      renderCell: (row) => <span className="fcm-table-success">{row.successCount ?? "—"}</span>,
-    },
-    {
-      id: "failureCount",
-      label: "Failed",
-      minWidth: 60,
-      renderCell: (row) => (
-        <span className={row.failureCount > 0 ? "fcm-table-fail" : "fcm-table-num"}>
+  const campaignColumns = [{
+    id: "status",
+    label: "Status",
+    minWidth: 90,
+    renderCell: row => <StatusBadge status={row.status || "sent"} />
+  }, {
+    id: "title",
+    label: "Title",
+    minWidth: 130
+  }, {
+    id: "body",
+    label: "Body",
+    minWidth: 160
+  }, {
+    id: "targetType",
+    label: "Target",
+    minWidth: 120,
+    renderCell: row => {
+      const map = {
+        all: "All Users",
+        platform: `Platform: ${row.targetPlatform}`,
+        specific_user: row.targetUserName || "Specific User"
+      };
+      return <span className={cx("fcm-table-target")}>{map[row.targetType] || row.targetType}</span>;
+    }
+  }, {
+    id: "totalTargeted",
+    label: "Targeted",
+    minWidth: 70,
+    renderCell: row => <span className={cx("fcm-table-num")}>{row.totalTargeted ?? "—"}</span>
+  }, {
+    id: "successCount",
+    label: "Sent",
+    minWidth: 60,
+    renderCell: row => <span className={cx("fcm-table-success")}>{row.successCount ?? "—"}</span>
+  }, {
+    id: "failureCount",
+    label: "Failed",
+    minWidth: 60,
+    renderCell: row => <span className={cx(row.failureCount > 0 ? "fcm-table-fail" : "fcm-table-num")}>
           {row.failureCount ?? "—"}
         </span>
-      ),
-    },
-    {
-      id: "time",
-      label: "Time",
-      minWidth: 140,
-      renderCell: (row) => {
-        if (row.status === "scheduled" && row.scheduledAt) {
-          return (
-            <span className="fcm-table-scheduled-time">
-              {new Date(row.scheduledAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}
-            </span>
-          );
-        }
-        return row.sentAt
-          ? new Date(row.sentAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })
-          : "—";
-      },
-    },
-    {
-      id: "actions",
-      label: "Actions",
-      minWidth: 160,
-      renderCell: (row) => (
-        <div className="fcm-table-actions">
-          <button
-            className="fcm-action-btn fcm-action-btn-resend"
-            onClick={() => handleResend(row)}
-            disabled={resendingId === row._id}
-            title="Resend now"
-          >
-            {resendingId === row._id
-              ? <CircularProgress size={11} sx={{ color: "#ff8c00" }} />
-              : <ReplayIcon sx={{ fontSize: 13 }} />}
+  }, {
+    id: "time",
+    label: "Time",
+    minWidth: 140,
+    renderCell: row => {
+      if (row.status === "scheduled" && row.scheduledAt) {
+        return <span className={cx("fcm-table-scheduled-time")}>
+              {new Date(row.scheduledAt).toLocaleString("en-IN", {
+            timeZone: "Asia/Kolkata"
+          })}
+            </span>;
+      }
+      return row.sentAt ? new Date(row.sentAt).toLocaleString("en-IN", {
+        timeZone: "Asia/Kolkata"
+      }) : "—";
+    }
+  }, {
+    id: "actions",
+    label: "Actions",
+    minWidth: 160,
+    renderCell: row => <div className={cx("fcm-table-actions")}>
+          <button className={cx("fcm-action-btn fcm-action-btn-resend")} onClick={() => handleResend(row)} disabled={resendingId === row._id} title="Resend now">
+            {resendingId === row._id ? <CircularProgress size={11} sx={{
+          color: "#ff8c00"
+        }} /> : <ReplayIcon sx={{
+          fontSize: 13
+        }} />}
             Resend
           </button>
-          <button
-            className="fcm-action-btn fcm-action-btn-repeat"
-            onClick={() => handleRepeat(row)}
-            title="Load into form to edit and resend"
-          >
-            <ContentCopyIcon sx={{ fontSize: 13 }} />
+          <button className={cx("fcm-action-btn fcm-action-btn-repeat")} onClick={() => handleRepeat(row)} title="Load into form to edit and resend">
+            <ContentCopyIcon sx={{
+          fontSize: 13
+        }} />
             Repeat
           </button>
-          {row.status === "scheduled" && (
-            <button
-              className="fcm-action-btn fcm-action-btn-cancel"
-              onClick={() => handleCancelCampaign(row)}
-              title="Cancel scheduled campaign"
-            >
-              <CloseIcon sx={{ fontSize: 13 }} />
+          {row.status === "scheduled" && <button className={cx("fcm-action-btn fcm-action-btn-cancel")} onClick={() => handleCancelCampaign(row)} title="Cancel scheduled campaign">
+              <CloseIcon sx={{
+          fontSize: 13
+        }} />
               Cancel
-            </button>
-          )}
+            </button>}
         </div>
-      ),
-    },
-  ];
-
-  const selectedUser = users.find((u) => u._id === form.targetUserId);
-
-  return (
-    <div className="fcm-page">
+  }];
+  const selectedUser = users.find(u => u._id === form.targetUserId);
+  return <div className={cx("fcm-page")}>
       {/* Header */}
-      <div className="fcm-page-header">
-        <div className="fcm-page-header-left">
-          <NotificationsActiveIcon sx={{ fontSize: 28, color: "#ff8c00", mr: 1 }} />
+      <div className={cx("fcm-page-header")}>
+        <div className={cx("fcm-page-header-left")}>
+          <NotificationsActiveIcon sx={{
+          fontSize: 28,
+          color: "#ff8c00",
+          mr: 1
+        }} />
           <div>
-            <h1 className="fcm-page-title">Push Notifications</h1>
-            <p className="fcm-page-subtitle">Send marketing push notifications to your app users</p>
+            <h1 className={cx("fcm-page-title")}>Push Notifications</h1>
+            <p className={cx("fcm-page-subtitle")}>Send marketing push notifications to your app users</p>
           </div>
         </div>
-        <div className="fcm-header-stats">
-          {usersLoading ? (
-            <CircularProgress size={18} sx={{ color: "#ff8c00" }} />
-          ) : (
-            <>
-              <div className="fcm-stat-pill">
-                <span className="fcm-stat-number">{users.length}</span>
-                <span className="fcm-stat-label">Reachable Users</span>
+        <div className={cx("fcm-header-stats")}>
+          {usersLoading ? <CircularProgress size={18} sx={{
+          color: "#ff8c00"
+        }} /> : <>
+              <div className={cx("fcm-stat-pill")}>
+                <span className={cx("fcm-stat-number")}>{users.length}</span>
+                <span className={cx("fcm-stat-label")}>Reachable Users</span>
               </div>
               <Tooltip title="Refresh user list">
                 <IconButton size="small" onClick={() => dispatch(fetchFCMUsers())}>
-                  <RefreshIcon sx={{ fontSize: 18, color: "#6b7280" }} />
+                  <RefreshIcon sx={{
+                fontSize: 18,
+                color: "#6b7280"
+              }} />
                 </IconButton>
               </Tooltip>
-            </>
-          )}
+            </>}
         </div>
       </div>
 
       {/* Success Banner */}
-      {successBanner && successBanner.type === "send" && (
-        <div className="fcm-banner fcm-banner-success">
-          <CheckCircleOutlineIcon sx={{ fontSize: 20, mr: 1 }} />
+      {successBanner && successBanner.type === "send" && <div className={cx("fcm-banner fcm-banner-success")}>
+          <CheckCircleOutlineIcon sx={{
+        fontSize: 20,
+        mr: 1
+      }} />
           <span>
             Notification sent! <strong>{successBanner.successCount}</strong> delivered,{" "}
             <strong>{successBanner.failureCount}</strong> failed out of{" "}
             <strong>{successBanner.totalTargeted}</strong> targeted.
           </span>
-        </div>
-      )}
-      {successBanner && successBanner.type === "schedule" && (
-        <div className="fcm-banner fcm-banner-info">
-          <ScheduleIcon sx={{ fontSize: 20, mr: 1 }} />
+        </div>}
+      {successBanner && successBanner.type === "schedule" && <div className={cx("fcm-banner fcm-banner-info")}>
+          <ScheduleIcon sx={{
+        fontSize: 20,
+        mr: 1
+      }} />
           <span>
             Campaign scheduled for{" "}
             <strong>
-              {new Date(successBanner.scheduledAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}
+              {new Date(successBanner.scheduledAt).toLocaleString("en-IN", {
+            timeZone: "Asia/Kolkata"
+          })}
             </strong>
           </span>
-        </div>
-      )}
+        </div>}
 
       {/* Error Banners */}
-      {activeError && (
-        <div className="fcm-banner fcm-banner-error">
-          <ErrorOutlineIcon sx={{ fontSize: 20, mr: 1 }} />
+      {activeError && <div className={cx("fcm-banner fcm-banner-error")}>
+          <ErrorOutlineIcon sx={{
+        fontSize: 20,
+        mr: 1
+      }} />
           <span>{activeError}</span>
-        </div>
-      )}
-      {resendError && (
-        <div className="fcm-banner fcm-banner-error">
-          <ErrorOutlineIcon sx={{ fontSize: 20, mr: 1 }} />
+        </div>}
+      {resendError && <div className={cx("fcm-banner fcm-banner-error")}>
+          <ErrorOutlineIcon sx={{
+        fontSize: 20,
+        mr: 1
+      }} />
           <span>Resend failed: {resendError}</span>
-        </div>
-      )}
+        </div>}
 
-      <div className="fcm-layout">
+      <div className={cx("fcm-layout")}>
         {/* LEFT: Compose Form */}
-        <form ref={composeRef} className="fcm-card fcm-compose" onSubmit={handleSubmit} noValidate>
-          <h2 className="fcm-card-title">Compose Notification</h2>
+        <form ref={composeRef} className={cx("fcm-card fcm-compose")} onSubmit={handleSubmit} noValidate>
+          <h2 className={cx("fcm-card-title")}>Compose Notification</h2>
 
           {/* Title */}
-          <div className="fcm-field">
-            <label className="fcm-label">
-              Title <span className="fcm-required">*</span>
-              <span className="fcm-char-count">{form.title.length}/65</span>
+          <div className={cx("fcm-field")}>
+            <label className={cx("fcm-label")}>
+              Title <span className={cx("fcm-required")}>*</span>
+              <span className={cx("fcm-char-count")}>{form.title.length}/65</span>
             </label>
-            <input
-              className={`fcm-input ${errors.title ? "fcm-input-error" : ""}`}
-              type="text"
-              value={form.title}
-              onChange={(e) => handleChange("title", e.target.value)}
-              placeholder="e.g. Big Sale Today!"
-              maxLength={65}
-            />
-            {errors.title && <p className="fcm-error-msg">{errors.title}</p>}
+            <input className={cx(`fcm-input ${errors.title ? "fcm-input-error" : ""}`)} type="text" value={form.title} onChange={e => handleChange("title", e.target.value)} placeholder="e.g. Big Sale Today!" maxLength={65} />
+            {errors.title && <p className={cx("fcm-error-msg")}>{errors.title}</p>}
           </div>
 
           {/* Body */}
-          <div className="fcm-field">
-            <label className="fcm-label">
-              Body <span className="fcm-required">*</span>
-              <span className="fcm-char-count">{form.body.length}/200</span>
+          <div className={cx("fcm-field")}>
+            <label className={cx("fcm-label")}>
+              Body <span className={cx("fcm-required")}>*</span>
+              <span className={cx("fcm-char-count")}>{form.body.length}/200</span>
             </label>
-            <textarea
-              className={`fcm-textarea ${errors.body ? "fcm-input-error" : ""}`}
-              value={form.body}
-              onChange={(e) => handleChange("body", e.target.value)}
-              placeholder="e.g. Get 50% off on all services. Limited time offer!"
-              maxLength={200}
-              rows={3}
-            />
-            {errors.body && <p className="fcm-error-msg">{errors.body}</p>}
+            <textarea className={cx(`fcm-textarea ${errors.body ? "fcm-input-error" : ""}`)} value={form.body} onChange={e => handleChange("body", e.target.value)} placeholder="e.g. Get 50% off on all services. Limited time offer!" maxLength={200} rows={3} />
+            {errors.body && <p className={cx("fcm-error-msg")}>{errors.body}</p>}
           </div>
 
           {/* Image */}
-          <div className="fcm-field">
-            <div className="fcm-label-row">
-              <label className="fcm-label">
-                Image <span className="fcm-optional">(optional)</span>
+          <div className={cx("fcm-field")}>
+            <div className={cx("fcm-label-row")}>
+              <label className={cx("fcm-label")}>
+                Image <span className={cx("fcm-optional")}>(optional)</span>
               </label>
-              <div className="fcm-image-mode-toggle">
-                <button
-                  type="button"
-                  className={`fcm-mode-btn ${imageMode === "upload" ? "fcm-mode-btn-active" : ""}`}
-                  onClick={() => setImageMode("upload")}
-                >
-                  <UploadIcon sx={{ fontSize: 13, mr: 0.4 }} /> Upload
+              <div className={cx("fcm-image-mode-toggle")}>
+                <button type="button" className={cx(`fcm-mode-btn ${imageMode === "upload" ? "fcm-mode-btn-active" : ""}`)} onClick={() => setImageMode("upload")}>
+                  <UploadIcon sx={{
+                  fontSize: 13,
+                  mr: 0.4
+                }} /> Upload
                 </button>
-                <button
-                  type="button"
-                  className={`fcm-mode-btn ${imageMode === "url" ? "fcm-mode-btn-active" : ""}`}
-                  onClick={() => setImageMode("url")}
-                >
+                <button type="button" className={cx(`fcm-mode-btn ${imageMode === "url" ? "fcm-mode-btn-active" : ""}`)} onClick={() => setImageMode("url")}>
                   URL
                 </button>
               </div>
             </div>
 
-            {form.imageUrl ? (
-              <div className="fcm-image-preview-wrap">
-                <img src={form.imageUrl} alt="notification" className="fcm-image-preview" />
-                <button
-                  type="button"
-                  className="fcm-remove-image"
-                  onClick={() => handleChange("imageUrl", "")}
-                >
-                  <CloseIcon sx={{ fontSize: 14 }} /> Remove
+            {form.imageUrl ? <div className={cx("fcm-image-preview-wrap")}>
+                <img src={form.imageUrl} alt="notification" className={cx("fcm-image-preview")} />
+                <button type="button" className={cx("fcm-remove-image")} onClick={() => handleChange("imageUrl", "")}>
+                  <CloseIcon sx={{
+                fontSize: 14
+              }} /> Remove
                 </button>
-              </div>
-            ) : imageMode === "upload" ? (
-              <div
-                className={`fcm-upload-zone ${imageUploading ? "fcm-upload-zone-loading" : ""}`}
-                onClick={() => !imageUploading && fileInputRef.current?.click()}
-              >
-                {imageUploading ? (
-                  <>
-                    <CircularProgress size={22} sx={{ color: "#ff8c00", mb: 1 }} />
-                    <span className="fcm-upload-text">Uploading…</span>
-                  </>
-                ) : (
-                  <>
-                    <ImageOutlinedIcon sx={{ fontSize: 32, color: "#d1d5db", mb: 0.5 }} />
-                    <span className="fcm-upload-text">Click to upload image</span>
-                    <span className="fcm-upload-hint">PNG, JPG, WebP — max 3 MB</span>
-                  </>
-                )}
-              </div>
-            ) : (
-              <input
-                className={`fcm-input ${errors.imageUrl ? "fcm-input-error" : ""}`}
-                type="url"
-                value={form.imageUrl}
-                onChange={(e) => handleChange("imageUrl", e.target.value)}
-                placeholder="https://example.com/banner.png"
-                autoFocus
-              />
-            )}
+              </div> : imageMode === "upload" ? <div className={cx(`fcm-upload-zone ${imageUploading ? "fcm-upload-zone-loading" : ""}`)} onClick={() => !imageUploading && fileInputRef.current?.click()}>
+                {imageUploading ? <>
+                    <CircularProgress size={22} sx={{
+                color: "#ff8c00",
+                mb: 1
+              }} />
+                    <span className={cx("fcm-upload-text")}>Uploading…</span>
+                  </> : <>
+                    <ImageOutlinedIcon sx={{
+                fontSize: 32,
+                color: "#d1d5db",
+                mb: 0.5
+              }} />
+                    <span className={cx("fcm-upload-text")}>Click to upload image</span>
+                    <span className={cx("fcm-upload-hint")}>PNG, JPG, WebP — max 3 MB</span>
+                  </>}
+              </div> : <input className={cx(`fcm-input ${errors.imageUrl ? "fcm-input-error" : ""}`)} type="url" value={form.imageUrl} onChange={e => handleChange("imageUrl", e.target.value)} placeholder="https://example.com/banner.png" autoFocus />}
 
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              style={{ display: "none" }}
-              onChange={handleImageFileSelect}
-            />
-            {errors.imageUrl && <p className="fcm-error-msg">{errors.imageUrl}</p>}
+            <input ref={fileInputRef} type="file" accept="image/*" style={{
+            display: "none"
+          }} onChange={handleImageFileSelect} />
+            {errors.imageUrl && <p className={cx("fcm-error-msg")}>{errors.imageUrl}</p>}
           </div>
 
           {/* Click Action */}
-          <div className="fcm-field">
-            <label className="fcm-label">Click Action URL <span className="fcm-optional">(optional)</span></label>
-            <input
-              className={`fcm-input ${errors.clickAction ? "fcm-input-error" : ""}`}
-              type="url"
-              value={form.clickAction}
-              onChange={(e) => handleChange("clickAction", e.target.value)}
-              placeholder="https://massclick.in/offers"
-            />
-            {errors.clickAction && <p className="fcm-error-msg">{errors.clickAction}</p>}
+          <div className={cx("fcm-field")}>
+            <label className={cx("fcm-label")}>Click Action URL <span className={cx("fcm-optional")}>(optional)</span></label>
+            <input className={cx(`fcm-input ${errors.clickAction ? "fcm-input-error" : ""}`)} type="url" value={form.clickAction} onChange={e => handleChange("clickAction", e.target.value)} placeholder="https://massclick.in/offers" />
+            {errors.clickAction && <p className={cx("fcm-error-msg")}>{errors.clickAction}</p>}
           </div>
 
           {/* Custom Data */}
-          <div className="fcm-field">
-            <div className="fcm-label-row">
-              <label className="fcm-label">Custom Data <span className="fcm-optional">(optional)</span></label>
-              {form.customData.length < 10 && (
-                <button type="button" className="fcm-add-btn" onClick={addCustomDataRow}>
-                  <AddIcon sx={{ fontSize: 14 }} /> Add Pair
-                </button>
-              )}
+          <div className={cx("fcm-field")}>
+            <div className={cx("fcm-label-row")}>
+              <label className={cx("fcm-label")}>Custom Data <span className={cx("fcm-optional")}>(optional)</span></label>
+              {form.customData.length < 10 && <button type="button" className={cx("fcm-add-btn")} onClick={addCustomDataRow}>
+                  <AddIcon sx={{
+                fontSize: 14
+              }} /> Add Pair
+                </button>}
             </div>
-            {form.customData.map((row, idx) => (
-              <div key={idx} className="fcm-custom-row">
-                <input
-                  className={`fcm-input fcm-custom-key ${errors[`customData_${idx}`] ? "fcm-input-error" : ""}`}
-                  placeholder="key"
-                  value={row.key}
-                  onChange={(e) => updateCustomDataRow(idx, "key", e.target.value)}
-                />
-                <input
-                  className={`fcm-input fcm-custom-val ${errors[`customData_${idx}`] ? "fcm-input-error" : ""}`}
-                  placeholder="value"
-                  value={row.value}
-                  onChange={(e) => updateCustomDataRow(idx, "value", e.target.value)}
-                />
-                <IconButton size="small" onClick={() => removeCustomDataRow(idx)} sx={{ color: "#ef4444" }}>
-                  <DeleteOutlineIcon sx={{ fontSize: 18 }} />
+            {form.customData.map((row, idx) => <div key={idx} className={cx("fcm-custom-row")}>
+                <input className={cx(`fcm-input fcm-custom-key ${errors[`customData_${idx}`] ? "fcm-input-error" : ""}`)} placeholder="key" value={row.key} onChange={e => updateCustomDataRow(idx, "key", e.target.value)} />
+                <input className={cx(`fcm-input fcm-custom-val ${errors[`customData_${idx}`] ? "fcm-input-error" : ""}`)} placeholder="value" value={row.value} onChange={e => updateCustomDataRow(idx, "value", e.target.value)} />
+                <IconButton size="small" onClick={() => removeCustomDataRow(idx)} sx={{
+              color: "#ef4444"
+            }}>
+                  <DeleteOutlineIcon sx={{
+                fontSize: 18
+              }} />
                 </IconButton>
-                {errors[`customData_${idx}`] && (
-                  <p className="fcm-error-msg fcm-custom-error">{errors[`customData_${idx}`]}</p>
-                )}
-              </div>
-            ))}
+                {errors[`customData_${idx}`] && <p className={cx("fcm-error-msg fcm-custom-error")}>{errors[`customData_${idx}`]}</p>}
+              </div>)}
           </div>
 
-          <hr className="fcm-divider" />
+          <hr className={cx("fcm-divider")} />
 
           {/* Target Type */}
-          <div className="fcm-field">
-            <label className="fcm-label">Target Audience <span className="fcm-required">*</span></label>
-            <div className="fcm-target-grid">
-              {TARGET_TYPES.map((t) => (
-                <button
-                  key={t.value}
-                  type="button"
-                  className={`fcm-target-btn ${form.targetType === t.value ? "fcm-target-btn-active" : ""}`}
-                  onClick={() => handleChange("targetType", t.value)}
-                >
-                  <span className="fcm-target-label">{t.label}</span>
-                  <span className="fcm-target-desc">{t.desc}</span>
-                </button>
-              ))}
+          <div className={cx("fcm-field")}>
+            <label className={cx("fcm-label")}>Target Audience <span className={cx("fcm-required")}>*</span></label>
+            <div className={cx("fcm-target-grid")}>
+              {TARGET_TYPES.map(t => <button key={t.value} type="button" className={cx(`fcm-target-btn ${form.targetType === t.value ? "fcm-target-btn-active" : ""}`)} onClick={() => handleChange("targetType", t.value)}>
+                  <span className={cx("fcm-target-label")}>{t.label}</span>
+                  <span className={cx("fcm-target-desc")}>{t.desc}</span>
+                </button>)}
             </div>
           </div>
 
           {/* Platform Filter */}
-          {form.targetType === "platform" && (
-            <div className="fcm-field">
-              <label className="fcm-label">Platform <span className="fcm-required">*</span></label>
-              <div className="fcm-platform-row">
-                {PLATFORM_OPTIONS.map((p) => (
-                  <button
-                    key={p.value}
-                    type="button"
-                    className={`fcm-platform-btn ${form.targetPlatform === p.value ? "fcm-platform-btn-active" : ""}`}
-                    onClick={() => handleChange("targetPlatform", p.value)}
-                  >
+          {form.targetType === "platform" && <div className={cx("fcm-field")}>
+              <label className={cx("fcm-label")}>Platform <span className={cx("fcm-required")}>*</span></label>
+              <div className={cx("fcm-platform-row")}>
+                {PLATFORM_OPTIONS.map(p => <button key={p.value} type="button" className={cx(`fcm-platform-btn ${form.targetPlatform === p.value ? "fcm-platform-btn-active" : ""}`)} onClick={() => handleChange("targetPlatform", p.value)}>
                     {p.label}
-                  </button>
-                ))}
+                  </button>)}
               </div>
-              {errors.targetPlatform && <p className="fcm-error-msg">{errors.targetPlatform}</p>}
-            </div>
-          )}
+              {errors.targetPlatform && <p className={cx("fcm-error-msg")}>{errors.targetPlatform}</p>}
+            </div>}
 
           {/* Specific User Search */}
-          {form.targetType === "specific_user" && (
-            <div className="fcm-field">
-              <label className="fcm-label">Select User <span className="fcm-required">*</span></label>
-              {selectedUser ? (
-                <div className="fcm-selected-user">
+          {form.targetType === "specific_user" && <div className={cx("fcm-field")}>
+              <label className={cx("fcm-label")}>Select User <span className={cx("fcm-required")}>*</span></label>
+              {selectedUser ? <div className={cx("fcm-selected-user")}>
                   <div>
-                    <p className="fcm-selected-name">{selectedUser.userName}</p>
-                    <p className="fcm-selected-mobile">{selectedUser.mobileNumber1}</p>
+                    <p className={cx("fcm-selected-name")}>{selectedUser.userName}</p>
+                    <p className={cx("fcm-selected-mobile")}>{selectedUser.mobileNumber1}</p>
                   </div>
-                  <div className="fcm-selected-meta">
-                    {selectedUser.platforms.map((pl) => (
-                      <Chip key={pl} label={pl} size="small" sx={{ mr: 0.5, bgcolor: "#fff3e8", color: "#ff8c00" }} />
-                    ))}
-                    <span className="fcm-token-count">{selectedUser.activeTokenCount} token(s)</span>
+                  <div className={cx("fcm-selected-meta")}>
+                    {selectedUser.platforms.map(pl => <Chip key={pl} label={pl} size="small" sx={{
+                mr: 0.5,
+                bgcolor: "#fff3e8",
+                color: "#ff8c00"
+              }} />)}
+                    <span className={cx("fcm-token-count")}>{selectedUser.activeTokenCount} token(s)</span>
                   </div>
-                  <button
-                    type="button"
-                    className="fcm-clear-user"
-                    onClick={() => { handleChange("targetUserId", ""); handleChange("targetUserName", ""); setUserSearch(""); }}
-                  >
+                  <button type="button" className={cx("fcm-clear-user")} onClick={() => {
+              handleChange("targetUserId", "");
+              handleChange("targetUserName", "");
+              setUserSearch("");
+            }}>
                     Change
                   </button>
-                </div>
-              ) : (
-                <div className="fcm-user-search-wrap" onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setShowDropdown(false); }}>
-                  <input
-                    className={`fcm-input ${errors.targetUserId ? "fcm-input-error" : ""}`}
-                    type="text"
-                    placeholder="Search by name or mobile..."
-                    value={userSearch}
-                    onChange={(e) => { setUserSearch(e.target.value); setShowDropdown(true); }}
-                    onFocus={() => setShowDropdown(true)}
-                  />
-                  {showDropdown && (
-                    <div className="fcm-user-dropdown">
-                      {usersLoading && <div className="fcm-dropdown-loading"><CircularProgress size={14} /></div>}
-                      {!usersLoading && filteredUsers.length === 0 && (
-                        <div className="fcm-dropdown-empty">No users found</div>
-                      )}
-                      {filteredUsers.slice(0, 50).map((u) => (
-                        <button
-                          key={u._id}
-                          type="button"
-                          className="fcm-dropdown-item"
-                          onMouseDown={() => {
-                            handleChange("targetUserId", u._id);
-                            handleChange("targetUserName", u.userName || u.mobileNumber1);
-                            setUserSearch("");
-                            setShowDropdown(false);
-                          }}
-                        >
-                          <span className="fcm-dropdown-name">{u.userName || "Unknown"}</span>
-                          <span className="fcm-dropdown-mobile">{u.mobileNumber1}</span>
-                          <div className="fcm-dropdown-chips">
-                            {u.platforms.map((pl) => (
-                              <Chip key={pl} label={pl} size="small" sx={{ mr: 0.3, height: 18, fontSize: "0.65rem", bgcolor: "#fff3e8", color: "#ff8c00" }} />
-                            ))}
+                </div> : <div className={cx("fcm-user-search-wrap")} onBlur={e => {
+            if (!e.currentTarget.contains(e.relatedTarget)) setShowDropdown(false);
+          }}>
+                  <input className={cx(`fcm-input ${errors.targetUserId ? "fcm-input-error" : ""}`)} type="text" placeholder="Search by name or mobile..." value={userSearch} onChange={e => {
+              setUserSearch(e.target.value);
+              setShowDropdown(true);
+            }} onFocus={() => setShowDropdown(true)} />
+                  {showDropdown && <div className={cx("fcm-user-dropdown")}>
+                      {usersLoading && <div className={cx("fcm-dropdown-loading")}><CircularProgress size={14} /></div>}
+                      {!usersLoading && filteredUsers.length === 0 && <div className={cx("fcm-dropdown-empty")}>No users found</div>}
+                      {filteredUsers.slice(0, 50).map(u => <button key={u._id} type="button" className={cx("fcm-dropdown-item")} onMouseDown={() => {
+                handleChange("targetUserId", u._id);
+                handleChange("targetUserName", u.userName || u.mobileNumber1);
+                setUserSearch("");
+                setShowDropdown(false);
+              }}>
+                          <span className={cx("fcm-dropdown-name")}>{u.userName || "Unknown"}</span>
+                          <span className={cx("fcm-dropdown-mobile")}>{u.mobileNumber1}</span>
+                          <div className={cx("fcm-dropdown-chips")}>
+                            {u.platforms.map(pl => <Chip key={pl} label={pl} size="small" sx={{
+                    mr: 0.3,
+                    height: 18,
+                    fontSize: "0.65rem",
+                    bgcolor: "#fff3e8",
+                    color: "#ff8c00"
+                  }} />)}
                           </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-              {errors.targetUserId && <p className="fcm-error-msg">{errors.targetUserId}</p>}
-            </div>
-          )}
+                        </button>)}
+                    </div>}
+                </div>}
+              {errors.targetUserId && <p className={cx("fcm-error-msg")}>{errors.targetUserId}</p>}
+            </div>}
 
           {/* Audience count hint */}
-          {form.targetType === "all" && !usersLoading && (
-            <p className="fcm-audience-hint">
+          {form.targetType === "all" && !usersLoading && <p className={cx("fcm-audience-hint")}>
               This will target <strong>{users.length}</strong> reachable users.
-            </p>
-          )}
-          {form.targetType === "platform" && form.targetPlatform && !usersLoading && (
-            <p className="fcm-audience-hint">
+            </p>}
+          {form.targetType === "platform" && form.targetPlatform && !usersLoading && <p className={cx("fcm-audience-hint")}>
               Users with active <strong>{form.targetPlatform}</strong> tokens:{" "}
-              <strong>{users.filter((u) => u.platforms.includes(form.targetPlatform)).length}</strong>
-            </p>
-          )}
+              <strong>{users.filter(u => u.platforms.includes(form.targetPlatform)).length}</strong>
+            </p>}
 
-          <hr className="fcm-divider" />
+          <hr className={cx("fcm-divider")} />
 
           {/* Send Timing */}
-          <div className="fcm-field">
-            <label className="fcm-label">Send Timing</label>
-            <div className="fcm-send-toggle">
-              <button
-                type="button"
-                className={`fcm-send-toggle-btn ${sendMode === "now" ? "fcm-send-toggle-btn-active" : ""}`}
-                onClick={() => { setSendMode("now"); setScheduledAt(""); setErrors((p) => ({ ...p, scheduledAt: "" })); }}
-              >
-                <SendIcon sx={{ fontSize: 15 }} />
+          <div className={cx("fcm-field")}>
+            <label className={cx("fcm-label")}>Send Timing</label>
+            <div className={cx("fcm-send-toggle")}>
+              <button type="button" className={cx(`fcm-send-toggle-btn ${sendMode === "now" ? "fcm-send-toggle-btn-active" : ""}`)} onClick={() => {
+              setSendMode("now");
+              setScheduledAt("");
+              setErrors(p => ({
+                ...p,
+                scheduledAt: ""
+              }));
+            }}>
+                <SendIcon sx={{
+                fontSize: 15
+              }} />
                 Send Now
               </button>
-              <button
-                type="button"
-                className={`fcm-send-toggle-btn ${sendMode === "schedule" ? "fcm-send-toggle-btn-active" : ""}`}
-                onClick={() => setSendMode("schedule")}
-              >
-                <ScheduleIcon sx={{ fontSize: 15 }} />
+              <button type="button" className={cx(`fcm-send-toggle-btn ${sendMode === "schedule" ? "fcm-send-toggle-btn-active" : ""}`)} onClick={() => setSendMode("schedule")}>
+                <ScheduleIcon sx={{
+                fontSize: 15
+              }} />
                 Schedule
               </button>
             </div>
 
-            {sendMode === "schedule" && (
-              <div className="fcm-schedule-input-wrap">
-                <label className="fcm-label" style={{ marginTop: 10 }}>
-                  Date &amp; Time <span className="fcm-required">*</span>
+            {sendMode === "schedule" && <div className={cx("fcm-schedule-input-wrap")}>
+                <label className={cx("fcm-label")} style={{
+              marginTop: 10
+            }}>
+                  Date &amp; Time <span className={cx("fcm-required")}>*</span>
                 </label>
-                <input
-                  className={`fcm-input ${errors.scheduledAt ? "fcm-input-error" : ""}`}
-                  type="datetime-local"
-                  value={scheduledAt}
-                  min={minScheduleDatetime()}
-                  onChange={(e) => {
-                    setScheduledAt(e.target.value);
-                    if (errors.scheduledAt) setErrors((p) => ({ ...p, scheduledAt: "" }));
-                  }}
-                />
-                {errors.scheduledAt && <p className="fcm-error-msg">{errors.scheduledAt}</p>}
-              </div>
-            )}
+                <input className={cx(`fcm-input ${errors.scheduledAt ? "fcm-input-error" : ""}`)} type="datetime-local" value={scheduledAt} min={minScheduleDatetime()} onChange={e => {
+              setScheduledAt(e.target.value);
+              if (errors.scheduledAt) setErrors(p => ({
+                ...p,
+                scheduledAt: ""
+              }));
+            }} />
+                {errors.scheduledAt && <p className={cx("fcm-error-msg")}>{errors.scheduledAt}</p>}
+              </div>}
           </div>
 
-          <button type="submit" className="fcm-send-btn" disabled={isWorking}>
-            {isWorking ? (
-              <>
-                <CircularProgress size={16} sx={{ color: "#fff", mr: 1 }} />
+          <button type="submit" className={cx("fcm-send-btn")} disabled={isWorking}>
+            {isWorking ? <>
+                <CircularProgress size={16} sx={{
+              color: "#fff",
+              mr: 1
+            }} />
                 {scheduling ? "Scheduling..." : "Sending..."}
-              </>
-            ) : sendMode === "schedule" ? (
-              <>
-                <ScheduleIcon sx={{ fontSize: 18, mr: 0.8 }} />
+              </> : sendMode === "schedule" ? <>
+                <ScheduleIcon sx={{
+              fontSize: 18,
+              mr: 0.8
+            }} />
                 Schedule Notification
-              </>
-            ) : (
-              <>
-                <SendIcon sx={{ fontSize: 18, mr: 0.8 }} />
+              </> : <>
+                <SendIcon sx={{
+              fontSize: 18,
+              mr: 0.8
+            }} />
                 Send Notification
-              </>
-            )}
+              </>}
           </button>
         </form>
 
         {/* RIGHT: Preview */}
-        <div className="fcm-sidebar">
-          <div className="fcm-card fcm-preview-section">
-            <h2 className="fcm-card-title">Preview</h2>
-            <NotificationPreview
-              title={form.title}
-              body={form.body}
-              imageUrl={form.imageUrl}
-              clickAction={form.clickAction}
-            />
-            <div className="fcm-preview-meta">
-              <p><span className="fcm-meta-label">Target:</span> {TARGET_TYPES.find((t) => t.value === form.targetType)?.label}</p>
-              {form.targetType === "platform" && (
-                <p><span className="fcm-meta-label">Platform:</span> {form.targetPlatform || "—"}</p>
-              )}
-              {form.targetType === "specific_user" && (
-                <p><span className="fcm-meta-label">User:</span> {form.targetUserName || "—"}</p>
-              )}
-              {sendMode === "schedule" && scheduledAt && (
-                <p>
-                  <span className="fcm-meta-label">Scheduled:</span>{" "}
-                  {new Date(scheduledAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}
-                </p>
-              )}
-              {form.customData.filter((r) => r.key && r.value).length > 0 && (
-                <p><span className="fcm-meta-label">Custom data keys:</span> {form.customData.filter((r) => r.key).map((r) => r.key).join(", ")}</p>
-              )}
+        <div className={cx("fcm-sidebar")}>
+          <div className={cx("fcm-card fcm-preview-section")}>
+            <h2 className={cx("fcm-card-title")}>Preview</h2>
+            <NotificationPreview title={form.title} body={form.body} imageUrl={form.imageUrl} clickAction={form.clickAction} />
+            <div className={cx("fcm-preview-meta")}>
+              <p><span className={cx("fcm-meta-label")}>Target:</span> {TARGET_TYPES.find(t => t.value === form.targetType)?.label}</p>
+              {form.targetType === "platform" && <p><span className={cx("fcm-meta-label")}>Platform:</span> {form.targetPlatform || "—"}</p>}
+              {form.targetType === "specific_user" && <p><span className={cx("fcm-meta-label")}>User:</span> {form.targetUserName || "—"}</p>}
+              {sendMode === "schedule" && scheduledAt && <p>
+                  <span className={cx("fcm-meta-label")}>Scheduled:</span>{" "}
+                  {new Date(scheduledAt).toLocaleString("en-IN", {
+                timeZone: "Asia/Kolkata"
+              })}
+                </p>}
+              {form.customData.filter(r => r.key && r.value).length > 0 && <p><span className={cx("fcm-meta-label")}>Custom data keys:</span> {form.customData.filter(r => r.key).map(r => r.key).join(", ")}</p>}
             </div>
           </div>
 
           {/* Platform breakdown */}
-          {!usersLoading && users.length > 0 && (
-            <div className="fcm-card fcm-breakdown">
-              <h2 className="fcm-card-title">User Breakdown</h2>
-              <div className="fcm-breakdown-grid">
-                {PLATFORM_OPTIONS.map((p) => {
-                  const count = users.filter((u) => u.platforms.includes(p.value)).length;
-                  return (
-                    <div key={p.value} className="fcm-breakdown-item">
-                      <span className="fcm-breakdown-count">{count}</span>
-                      <span className="fcm-breakdown-label">{p.label}</span>
-                    </div>
-                  );
-                })}
-                <div className="fcm-breakdown-item fcm-breakdown-total">
-                  <span className="fcm-breakdown-count">{users.length}</span>
-                  <span className="fcm-breakdown-label">Total</span>
+          {!usersLoading && users.length > 0 && <div className={cx("fcm-card fcm-breakdown")}>
+              <h2 className={cx("fcm-card-title")}>User Breakdown</h2>
+              <div className={cx("fcm-breakdown-grid")}>
+                {PLATFORM_OPTIONS.map(p => {
+              const count = users.filter(u => u.platforms.includes(p.value)).length;
+              return <div key={p.value} className={cx("fcm-breakdown-item")}>
+                      <span className={cx("fcm-breakdown-count")}>{count}</span>
+                      <span className={cx("fcm-breakdown-label")}>{p.label}</span>
+                    </div>;
+            })}
+                <div className={cx("fcm-breakdown-item fcm-breakdown-total")}>
+                  <span className={cx("fcm-breakdown-count")}>{users.length}</span>
+                  <span className={cx("fcm-breakdown-label")}>Total</span>
                 </div>
               </div>
-            </div>
-          )}
+            </div>}
         </div>
       </div>
 
       {/* Campaign History Table */}
-      <div className="fcm-card fcm-history-section">
-        <div className="fcm-history-header">
-          <h2 className="fcm-card-title">Campaign History</h2>
-          <button
-            className="fcm-refresh-btn"
-            onClick={() => { dispatch(fetchFCMCampaigns(1, PAGE_SIZE)); setPage(1); }}
-          >
-            <RefreshIcon sx={{ fontSize: 16, mr: 0.5 }} />
+      <div className={cx("fcm-card fcm-history-section")}>
+        <div className={cx("fcm-history-header")}>
+          <h2 className={cx("fcm-card-title")}>Campaign History</h2>
+          <button className={cx("fcm-refresh-btn")} onClick={() => {
+          dispatch(fetchFCMCampaigns(1, PAGE_SIZE));
+          setPage(1);
+        }}>
+            <RefreshIcon sx={{
+            fontSize: 16,
+            mr: 0.5
+          }} />
             Refresh
           </button>
         </div>
 
-        {campaignsLoading ? (
-          <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
-            <CircularProgress sx={{ color: "#ff8c00" }} />
-          </Box>
-        ) : campaigns.length === 0 ? (
-          <div className="fcm-empty-history">
-            <NotificationsActiveIcon sx={{ fontSize: 40, color: "#d1d5db", mb: 1 }} />
+        {campaignsLoading ? <Box sx={{
+        display: "flex",
+        justifyContent: "center",
+        py: 4
+      }}>
+            <CircularProgress sx={{
+          color: "#ff8c00"
+        }} />
+          </Box> : campaigns.length === 0 ? <div className={cx("fcm-empty-history")}>
+            <NotificationsActiveIcon sx={{
+          fontSize: 40,
+          color: "#d1d5db",
+          mb: 1
+        }} />
             <Typography variant="body2" color="text.secondary">
               No campaigns yet. Send your first notification above.
             </Typography>
-          </div>
-        ) : (
-          <>
-            <TableContainer component={Paper} elevation={0} sx={{ border: "1px solid #e5e7eb", borderRadius: "10px" }}>
+          </div> : <>
+            <TableContainer component={Paper} elevation={0} sx={{
+          border: "1px solid #e5e7eb",
+          borderRadius: "10px"
+        }}>
               <Table size="small">
                 <TableHead>
-                  <TableRow sx={{ bgcolor: "#f8f9fb" }}>
-                    {campaignColumns.map((col) => (
-                      <TableCell key={col.id} sx={{ fontWeight: 700, fontSize: "0.82rem", color: "#1f2937", minWidth: col.minWidth }}>
+                  <TableRow sx={{
+                bgcolor: "#f8f9fb"
+              }}>
+                    {campaignColumns.map(col => <TableCell key={col.id} sx={{
+                  fontWeight: 700,
+                  fontSize: "0.82rem",
+                  color: "#1f2937",
+                  minWidth: col.minWidth
+                }}>
                         {col.label}
-                      </TableCell>
-                    ))}
+                      </TableCell>)}
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {campaigns.map((row) => (
-                    <TableRow key={row._id} hover>
-                      {campaignColumns.map((col) => (
-                        <TableCell key={col.id} sx={{ fontSize: "0.82rem", color: "#374151" }}>
-                          {col.renderCell ? col.renderCell(row) : (row[col.id] ?? "—")}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))}
+                  {campaigns.map(row => <TableRow key={row._id} hover>
+                      {campaignColumns.map(col => <TableCell key={col.id} sx={{
+                  fontSize: "0.82rem",
+                  color: "#374151"
+                }}>
+                          {col.renderCell ? col.renderCell(row) : row[col.id] ?? "—"}
+                        </TableCell>)}
+                    </TableRow>)}
                 </TableBody>
               </Table>
             </TableContainer>
-            {campaignsTotal > PAGE_SIZE && (
-              <div className="fcm-pagination">
-                <button
-                  className="fcm-page-btn"
-                  disabled={page === 1}
-                  onClick={() => handlePageChange(page - 1)}
-                >
+            {campaignsTotal > PAGE_SIZE && <div className={cx("fcm-pagination")}>
+                <button className={cx("fcm-page-btn")} disabled={page === 1} onClick={() => handlePageChange(page - 1)}>
                   Previous
                 </button>
-                <span className="fcm-page-info">
+                <span className={cx("fcm-page-info")}>
                   Page {page} of {Math.ceil(campaignsTotal / PAGE_SIZE)}
                 </span>
-                <button
-                  className="fcm-page-btn"
-                  disabled={page >= Math.ceil(campaignsTotal / PAGE_SIZE)}
-                  onClick={() => handlePageChange(page + 1)}
-                >
+                <button className={cx("fcm-page-btn")} disabled={page >= Math.ceil(campaignsTotal / PAGE_SIZE)} onClick={() => handlePageChange(page + 1)}>
                   Next
                 </button>
-              </div>
-            )}
-          </>
-        )}
+              </div>}
+          </>}
       </div>
-    </div>
-  );
+    </div>;
 }

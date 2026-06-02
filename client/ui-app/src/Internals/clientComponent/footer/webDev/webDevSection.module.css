@@ -24,11 +24,11 @@ body {
 /* Mobile Devices (Max-width 600px - MUI's 'sm' breakpoint) */
 @media (max-width: 600px) {
    
-    .MuiTypography-root.MuiTypography-h1 {
+    :global(.MuiTypography-root):global(.MuiTypography-h1) {
         font-size: 2.2rem !important; /* Tighter hero title on small screens */
     }
 
-    .MuiCardContent-root {
+    :global(.MuiCardContent-root) {
         padding: 20px !important; /* Tighter padding on cards */
     }
 }

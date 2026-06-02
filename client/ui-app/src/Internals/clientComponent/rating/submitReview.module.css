@@ -127,7 +127,7 @@ h3 {
 }
 
 /* RATING */
-.MuiRating-root { color: var(--star-color) !important; }
+:global(.MuiRating-root) { color: var(--star-color) !important; }
 .rating-label { font-size: 1.1rem; }
 
 /* TAGS - CRITICAL BRAND COLOR FIX */

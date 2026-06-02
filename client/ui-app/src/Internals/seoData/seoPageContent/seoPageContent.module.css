@@ -91,21 +91,21 @@
   border-radius: 16px;
 }
 
-.editor-wrapper .ql-toolbar {
+.editor-wrapper :global(.ql-toolbar) {
   border: none;
   border-bottom: 1px solid var(--border);
   background: #f3f4f6;
   border-radius: 16px 16px 0 0;
 }
 
-.editor-wrapper .ql-container {
+.editor-wrapper :global(.ql-container) {
   border: none;
   border-radius: 0 0 16px 16px;
   height: 320px;
   overflow-y: auto;
 }
 
-.editor-wrapper .ql-editor {
+.editor-wrapper :global(.ql-editor) {
   min-height: 100%;
   padding: 18px 20px;
   line-height: 1.75;
@@ -133,7 +133,7 @@
     max-width: 100%;
   }
 
-  .editor-wrapper .ql-container {
+  .editor-wrapper :global(.ql-container) {
     height: 260px;
   }
 }
@@ -152,7 +152,7 @@
     padding: 18px;
   }
 
-  .editor-wrapper .ql-container {
+  .editor-wrapper :global(.ql-container) {
     height: 220px;
   }
 }

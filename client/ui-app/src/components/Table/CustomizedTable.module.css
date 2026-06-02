@@ -39,7 +39,7 @@ body {
   overflow: auto;
 }
 
-.table-scrolled .MuiTableHead-root {
+.table-scrolled :global(.MuiTableHead-root) {
   box-shadow: 0 5px 16px rgba(15, 23, 42, 0.12);
   transition: box-shadow 0.2s ease;
 }
@@ -181,7 +181,7 @@ body {
   z-index: 3;
 }
 
-.custom-table .MuiTableBody-root .checkbox-cell {
+.custom-table :global(.MuiTableBody-root) .checkbox-cell {
   background: var(--color-bg);
 }
 
@@ -261,7 +261,7 @@ body {
 }
 
 /* Checkbox color */
-.MuiCheckbox-root {
+:global(.MuiCheckbox-root) {
   color: var(--color-primary) !important;
 }
 
@@ -275,8 +275,8 @@ body {
   padding: 6px 16px;
 }
 
-.pagination .MuiTablePagination-caption,
-.pagination .MuiTablePagination-selectLabel {
+.pagination :global(.MuiTablePagination-caption),
+.pagination :global(.MuiTablePagination-selectLabel) {
   color: var(--color-text-medium);
   font-weight: 500;
 }

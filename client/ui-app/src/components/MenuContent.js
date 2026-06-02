@@ -13,7 +13,6 @@ import {
 } from "@mui/material";
 import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
 import CategoryIcon from "@mui/icons-material/Category";
-import BusinessIcon from "@mui/icons-material/Business";
 import SupportAgentIcon from "@mui/icons-material/SupportAgent";
 import InterpreterModeIcon from "@mui/icons-material/InterpreterMode";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
@@ -70,8 +69,6 @@ const MENU_SECTIONS = [
     ]
   },
 ];
-
-const flattenedItems = MENU_SECTIONS.flatMap(section => section.items);
 
 export default function SideMenu({ onItemClick }) {
   const navigate = useNavigate();

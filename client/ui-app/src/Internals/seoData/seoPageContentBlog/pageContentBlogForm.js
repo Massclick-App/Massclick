@@ -61,7 +61,6 @@ export default function SeoPageContentForm({
   const [locationSuggestions, setLocationSuggestions] = useState([]);
   const [categoryInput, setCategoryInput] = useState("");
   const [showCategorySuggestions, setShowCategorySuggestions] = useState(false);
-  const [categorySuggestions, setCategorySuggestions] = useState([]);
 
   // Content Blocks State
   const [contentBlocks, setContentBlocks] = useState(formData.contentBlocks || []);

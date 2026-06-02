@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useLocation, useNavigate } from "react-router-dom";
+import { useParams, useLocation } from "react-router-dom";
 import { useDispatch } from "react-redux";
 
 import CategoriesPage from "./categories.js";
@@ -8,7 +8,6 @@ import SearchResults from "../SearchResult/SearchResult";
 import {
   performSearch,
 } from "../../../redux/actions/businessListAction";
-import { navigateToSearchResult } from "../../../utils/searchResultNavigation";
 import axiosInstance from "../../../services/axiosInstance.js";
 
 const formatText = (text = "") =>
@@ -19,7 +18,6 @@ const formatText = (text = "") =>
 const CategoryRouter = () => {
   const { location, category, subcategory } = useParams();
   const routerLocation = useLocation();
-  const navigate = useNavigate();
   const dispatch = useDispatch();
 
   const [resolvedCategory, setResolvedCategory] = useState(null);

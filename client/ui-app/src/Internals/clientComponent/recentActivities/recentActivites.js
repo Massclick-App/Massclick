@@ -1,5 +1,6 @@
+import { createScopedClassNames } from "../../../utils/createScopedClassNames";
 import React, { useRef, useEffect } from 'react';
-import './recentActivities.css'; // Make sure this path is correct
+import styles from "./recentActivities.module.css"; // Make sure this path is correct
 
 import KeyboardDoubleArrowRightIcon from '@mui/icons-material/KeyboardDoubleArrowRight';
 import KeyboardDoubleArrowLeftIcon from '@mui/icons-material/KeyboardDoubleArrowLeft';
@@ -10,136 +11,120 @@ import WhatsAppIcon from '@mui/icons-material/WhatsApp'; // Added WhatsApp icon
 // import StudioShopImage from "../../../assets/Activities/StudioShopPhotography.png"; // Placeholder for Studio Shop
 // import PestControlImage from "../../../assets/Activities/ZaraPestControl.jpg"; // Placeholder for Zara Pest Control
 
-import MooseImage from "../../../assets/Popular/CCTV.png"
-import PestControlImage from "../../../assets/Popular/HotelRoom.png"
-import StudioShopImage from "../../../assets/Popular/Photography.png"
-
-
-const cardsData = [
-    {
-        title: 'Matahn hotel',
-        location: 'woralaiyur',
-        city: 'Tichy',
-        image: MooseImage,
-        alt: 'Matshn hotel surrounded by nature',
-        type: 'hotel'
-    },
-    {
-        title: 'Studio Shop Photography',
-        location: 'Srirangam',
-        city: 'Tichy',
-        image: StudioShopImage,
-        alt: 'Studio Shop Photography logo',
-        type: 'photography'
-    },
-    {
-        title: 'Zara Pest Control',
-        location: 'chennai',
-        city: '',
-        image: PestControlImage,
-        alt: 'Person in protective suit spraying for pest control',
-        type: 'pest-control'
-    },
-    // Adding more data to ensure horizontal scrolling works well
-    {
-        title: 'Tech Repair Hub',
-        location: 'karanai',
-        city: 'Tichy',
-        image: MooseImage,
-        alt: 'Computer repair service',
-        type: 'repair'
-    },
-    {
-        title: 'The Organic Market',
-        location: 'velachery',
-        city: 'chennai',
-        image: StudioShopImage,
-        alt: 'Fresh organic produce',
-        type: 'market'
-    },
-];
-
+import MooseImage from "../../../assets/Popular/CCTV.png";
+import PestControlImage from "../../../assets/Popular/HotelRoom.png";
+import StudioShopImage from "../../../assets/Popular/Photography.png";
+const cx = createScopedClassNames(styles);
+const cardsData = [{
+  title: 'Matahn hotel',
+  location: 'woralaiyur',
+  city: 'Tichy',
+  image: MooseImage,
+  alt: 'Matshn hotel surrounded by nature',
+  type: 'hotel'
+}, {
+  title: 'Studio Shop Photography',
+  location: 'Srirangam',
+  city: 'Tichy',
+  image: StudioShopImage,
+  alt: 'Studio Shop Photography logo',
+  type: 'photography'
+}, {
+  title: 'Zara Pest Control',
+  location: 'chennai',
+  city: '',
+  image: PestControlImage,
+  alt: 'Person in protective suit spraying for pest control',
+  type: 'pest-control'
+},
+// Adding more data to ensure horizontal scrolling works well
+{
+  title: 'Tech Repair Hub',
+  location: 'karanai',
+  city: 'Tichy',
+  image: MooseImage,
+  alt: 'Computer repair service',
+  type: 'repair'
+}, {
+  title: 'The Organic Market',
+  location: 'velachery',
+  city: 'chennai',
+  image: StudioShopImage,
+  alt: 'Fresh organic produce',
+  type: 'market'
+}];
 const RecentActivities = () => {
-    const containerRef = useRef(null);
-    const cardWidthRef = useRef(370); // 350 + 20 gap
+  const containerRef = useRef(null);
+  const cardWidthRef = useRef(370); // 350 + 20 gap
 
-    // Cache card width to avoid forced reflows
-    useEffect(() => {
-        const container = containerRef.current;
-        if (!container) return;
-
-        const card = container.querySelector('.activity-card');
-        if (!card) return;
-
-        const updateWidth = () => {
-            cardWidthRef.current = card.offsetWidth + 20;
-        };
-
-        updateWidth();
-
-        const observer = new ResizeObserver(updateWidth);
-        observer.observe(card);
-
-        return () => observer.disconnect();
-    }, []);
-
-    // Functionality for left/right scroll remains the same
-    const scroll = (direction) => {
-        if (containerRef.current) {
-            containerRef.current.scrollBy({
-                left: direction === 'right' ? cardWidthRef.current : -cardWidthRef.current,
-                behavior: 'smooth'
-            });
-        }
+  // Cache card width to avoid forced reflows
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const card = container.querySelector('.activity-card');
+    if (!card) return;
+    const updateWidth = () => {
+      cardWidthRef.current = card.offsetWidth + 20;
     };
+    updateWidth();
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(card);
+    return () => observer.disconnect();
+  }, []);
 
-    return (
-        <div className="recent-activities-section">
-            <h1
-                className="section-title text-3xl font-bold text-gray-800 mb-6"
-                style={{ color: '#E67E22', textAlign: 'start' }}
-            >Recent Activities</h1>
+  // Functionality for left/right scroll remains the same
+  const scroll = direction => {
+    if (containerRef.current) {
+      containerRef.current.scrollBy({
+        left: direction === 'right' ? cardWidthRef.current : -cardWidthRef.current,
+        behavior: 'smooth'
+      });
+    }
+  };
+  return <div className={cx("recent-activities-section")}>
+            <h1 className={cx("section-title text-3xl font-bold text-gray-800 mb-6")} style={{
+      color: '#E67E22',
+      textAlign: 'start'
+    }}>Recent Activities</h1>
 
-            <div className="carousel-container-v2">
+            <div className={cx("carousel-container-v2")}>
 
                 {/* Scroll Buttons */}
-                <button className="nav-arrow left" onClick={() => scroll('left')}>
+                <button className={cx("nav-arrow left")} onClick={() => scroll('left')}>
                     <KeyboardDoubleArrowLeftIcon />
                 </button>
 
                 {/* Cards Wrapper (The Scrollable Area) */}
-                <div className="cards-wrapper-v2" ref={containerRef}>
-                    {cardsData.map((card, index) => (
-                        <div className="activity-card" key={index}>
+                <div className={cx("cards-wrapper-v2")} ref={containerRef}>
+                    {cardsData.map((card, index) => <div className={cx("activity-card")} key={index}>
 
                             {/* Card Header (Details) */}
-                            <div className="card-header">
-                                <h3 className="card-title">{card.title}</h3>
-                                <p className="card-location">{card.location} - {card.city}</p>
+                            <div className={cx("card-header")}>
+                                <h3 className={cx("card-title")}>{card.title}</h3>
+                                <p className={cx("card-location")}>{card.location} - {card.city}</p>
                             </div>
 
                             {/* Image Section */}
-                            <div className="card-image-wrapper-v2">
-                                <img src={card.image} alt={card.alt} className="card-image-v2" />
+                            <div className={cx("card-image-wrapper-v2")}>
+                                <img src={card.image} alt={card.alt} className={cx("card-image-v2")} />
                             </div>
 
                             {/* WhatsApp Button */}
-                            <div className="card-actions">
-                                <button className="whatsapp-button">
-                                    <WhatsAppIcon sx={{ mr: 1 }} />
+                            <div className={cx("card-actions")}>
+                                <button className={cx("whatsapp-button")}>
+                                    <WhatsAppIcon sx={{
+                mr: 1
+              }} />
                                     WhatsApp
                                 </button>
                             </div>
-                        </div>
-                    ))}
+                        </div>)}
                 </div>
 
-                <button className="nav-arrow right" onClick={() => scroll('right')}>
+                <button className={cx("nav-arrow right")} onClick={() => scroll('right')}>
                     <KeyboardDoubleArrowRightIcon />
                 </button>
             </div>
-        </div>
-    );
+        </div>;
 };
-
 export default RecentActivities;

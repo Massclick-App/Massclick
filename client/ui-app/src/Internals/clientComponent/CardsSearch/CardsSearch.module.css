@@ -272,7 +272,7 @@
     min-width: 0;
 }
 
-.search-input.main .MuiSvgIcon-root {
+.search-input.main :global(.MuiSvgIcon-root) {
     position: absolute;
     right: 12px;
     color: #ea6d11;
@@ -281,7 +281,7 @@
     transition: transform 0.2s ease;
 }
 
-.search-input.main .MuiSvgIcon-root:hover {
+.search-input.main :global(.MuiSvgIcon-root):hover {
     transform: scale(1.1);
 }
 

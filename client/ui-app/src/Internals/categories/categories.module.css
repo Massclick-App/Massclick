@@ -241,22 +241,22 @@ body {
     gap: 8px;
 }
 
-.MuiIconButton-root {
+:global(.MuiIconButton-root) {
   transition: color 0.2s, background-color 0.2s;
   border-radius: 8px !important;
 }
 
-.MuiIconButton-root:hover {
+:global(.MuiIconButton-root):hover {
   background-color: rgba(255, 140, 0, 0.1) !important;
 }
 
 /* --- Dialog (Delete Confirmation) --- */
-.MuiDialogTitle-root {
+:global(.MuiDialogTitle-root) {
   font-weight: 600 !important;
   color: var(--color-text-primary);
 }
 
-.MuiDialogActions-root button {
+:global(.MuiDialogActions-root) button {
   border-radius: 8px !important;
   font-weight: 600;
 }
@@ -296,8 +296,8 @@ body {
 
   .category-text-input,
   .category-select-input,
-  textarea,
-  .MuiAutocomplete-root {
+  textarea,:global(
+  .MuiAutocomplete-root) {
     font-size: 0.95rem !important;
     height: auto;
   }
