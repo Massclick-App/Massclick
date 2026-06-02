@@ -1,19 +1,18 @@
 /* Container */
 .featured-services-container {
   display: grid;
-  grid-template-columns: repeat(10, 1fr);
+  grid-template-columns: repeat(10, 1fr) !important;
   justify-items: center;
   align-items: stretch;
   column-gap: 28px;
   row-gap: 32px;
-  padding: 35px clamp(16px, 4vw, 48px) 20px;
-  max-width: 100%;
-  width: 100%;
+  padding: 35px 60px 20px 100px !important;
+  max-width: 100% !important;
+  width: 100% !important;
   margin: 0 auto;
   position: relative;
   z-index: 1;
   box-sizing: border-box;
-  overflow-x: auto;
 }
 
 
@@ -117,7 +116,7 @@
 
 @media (min-width: 481px) and (max-width: 768px) {
   .featured-services-container {
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: repeat(10, 1fr) !important;
     column-gap: 20px;
     row-gap: 30px;
     padding: 28px 16px 18px;

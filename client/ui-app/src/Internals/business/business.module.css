@@ -1,3 +1,23 @@
+/*
+  TECHNICAL DEBT: Contains 20 !important declarations - artifacts of CSS conflicts.
+
+  CLEANUP STRATEGY:
+  1. Lines 30-32 (position/overflow/z-index): Likely fighting form library resets
+  2. Line 40 (width auto): Button styling, likely necessary
+  3. Lines 203-204, 208 (colors): Button state styles, may be overriding library
+  4. Line 241 (height): Form control height constraint
+  5. Lines 344-345: Position/overflow (duplicate of 30-32?)
+  6. Lines 471, 485, 489: Border colors for form fields
+  7. Lines 666, 671, 748, 783: Various UI tweaks
+
+  ACTION: Each !important should have a comment explaining why it exists.
+  Run: grep -n "!important" business.module.css | while read line; do
+    echo "Line $line: Does this really need !important?"
+  done
+
+  See: CLAUDE.md § "CSS Modules - STRICT ISOLATION RULE"
+*/
+
 /* --- Global Reset and Base Styles --- */
 :root {
   --color-background: #f8f9fb;

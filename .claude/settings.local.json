@@ -12,7 +12,8 @@
       "Bash(git add *)",
       "Bash(git commit -m 'Fix ItemList schema structure: move aggregateRating into item object *)",
       "Bash(git commit -m 'Fix ItemList item type: use LocalBusiness instead of Thing for rating support *)",
-      "Bash(git commit -m 'Fix schema architecture: use SearchResultsPage instead of ItemList for category pages *)"
+      "Bash(git commit -m 'Fix schema architecture: use SearchResultsPage instead of ItemList for category pages *)",
+      "Bash(xargs -I {} sh -c 'echo \"=== {} ===\" && grep -n \"featured-services-container\\\\|service-card\" {}')"
     ]
   }
 }
