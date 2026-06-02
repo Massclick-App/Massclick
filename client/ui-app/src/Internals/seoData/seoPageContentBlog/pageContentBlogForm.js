@@ -185,7 +185,11 @@ export default function SeoPageContentForm({
 
     const reader = new FileReader();
     reader.onloadend = () => {
-      updateField("profileImage", reader.result);
+      setFormData((prev) => ({
+        ...prev,
+        profileImage: reader.result,
+        pageImages: prev.pageImages || [],
+      }));
     };
     reader.readAsDataURL(file);
   };
@@ -202,7 +206,11 @@ export default function SeoPageContentForm({
 
     const reader = new FileReader();
     reader.onloadend = () => {
-      updateField("ogImage", reader.result);
+      setFormData((prev) => ({
+        ...prev,
+        ogImage: reader.result,
+        pageImages: prev.pageImages || [],
+      }));
     };
     reader.readAsDataURL(file);
   };
