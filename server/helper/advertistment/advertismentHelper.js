@@ -4,8 +4,8 @@ import advertismentModel from "../../model/advertistment/advertismentModel.js";
 import { uploadImageToS3, getSignedUrlByKey } from "../../s3Uploder.js";
 
 const TOP_BANNER_RULES = {
-  targetWidth: 1440,
-  targetHeight: 150,
+  targetWidth: 1200,
+  targetHeight: 300,
 };
 
 const getBase64ImageBuffer = (imageData = "") => {
@@ -22,6 +22,14 @@ const getBase64ImageBuffer = (imageData = "") => {
 const cropTopBannerImage = async (imageData) => {
   const buffer = getBase64ImageBuffer(imageData);
   if (!buffer) return imageData;
+
+  const metadata = await sharp(buffer).metadata();
+  if (
+    metadata.width === TOP_BANNER_RULES.targetWidth &&
+    metadata.height === TOP_BANNER_RULES.targetHeight
+  ) {
+    return imageData;
+  }
 
   const outputBuffer = await sharp(buffer)
     .resize(TOP_BANNER_RULES.targetWidth, TOP_BANNER_RULES.targetHeight, {

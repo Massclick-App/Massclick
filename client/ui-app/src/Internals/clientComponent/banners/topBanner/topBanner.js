@@ -90,7 +90,7 @@ const TopBannerAds = ({
 
         {bannerAds.map(ad => <a key={ad._id} href={ad.redirectUrl || "#"} target={ad.redirectUrl ? "_blank" : "_self"} rel="noopener noreferrer" className={cx("carousel-slide")}>
             <div className={cx("banner-image-wrapper")}>
-              <img src={ad.image} alt={ad.title || "Top banner"} width="1440" height="150" loading="eager" fetchPriority="high" decoding="async" />
+              <img src={ad.image} alt={ad.title || "Top banner"} width="1200" height="300" loading="eager" fetchPriority="high" decoding="async" />
 
             </div>
 

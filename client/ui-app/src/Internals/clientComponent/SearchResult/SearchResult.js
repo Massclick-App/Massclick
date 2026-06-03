@@ -434,9 +434,13 @@ const SearchResults = React.memo(() => {
                       <CardDesign businessId={business._id} title={business.businessName} phone={business.contact}
                         whatsappNumber={business.whatsappNumber} contactList={business.contactList}
                         rating={averageRating} reviews={totalRatings} address={business.location}
-                        details={`${business.experience}+ years experience`} category={business.category}
+                        experience={business.experience} category={business.category}
                         price={business.category === "Hotels" ? business.price : null}
-                        imageSrc={business.bannerImage || "/header.png"} to={businessUrl} />
+                        imageSrc={business.bannerImage || "/header.png"} to={businessUrl}
+                        isVerified={!!business.verification?.isVerified}
+                        isFeatured={!!business.badges?.isFeatured}
+                        filters={business.filters}
+                        index={results.indexOf(business)} />
                     </div>
                   );
                 })}

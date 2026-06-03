@@ -10,10 +10,10 @@ import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import styles from "./advertisement.module.css";
 const cx = createScopedClassNames(styles);
 const TOP_BANNER_RULES = {
-  targetWidth: 1440,
-  targetHeight: 150,
-  recommended: "1440 x 150 px",
-  label: "Top banner output is forced to 1440 x 150 px. Uploaded images are center-cropped to fit the slim banner frame."
+  targetWidth: 1200,
+  targetHeight: 300,
+  recommended: "1200 x 300 px",
+  label: "Top banner output is forced to 1200 x 300 px. Uploaded images are center-cropped to fit the 4:1 banner frame."
 };
 const getImageDimensions = file => new Promise((resolve, reject) => {
   const image = new Image();
@@ -29,6 +29,53 @@ const getImageDimensions = file => new Promise((resolve, reject) => {
     URL.revokeObjectURL(objectUrl);
     reject(new Error("Unable to read image dimensions"));
   };
+  image.src = objectUrl;
+});
+const cropImageToTopBanner = file => new Promise((resolve, reject) => {
+  const image = new Image();
+  const objectUrl = URL.createObjectURL(file);
+
+  image.onload = () => {
+    const sourceWidth = image.naturalWidth;
+    const sourceHeight = image.naturalHeight;
+    const targetWidth = TOP_BANNER_RULES.targetWidth;
+    const targetHeight = TOP_BANNER_RULES.targetHeight;
+    const sourceRatio = sourceWidth / sourceHeight;
+    const targetRatio = targetWidth / targetHeight;
+    let cropWidth = sourceWidth;
+    let cropHeight = sourceHeight;
+    let cropX = 0;
+    let cropY = 0;
+
+    if (sourceRatio > targetRatio) {
+      cropWidth = sourceHeight * targetRatio;
+      cropX = (sourceWidth - cropWidth) / 2;
+    } else {
+      cropHeight = sourceWidth / targetRatio;
+      cropY = (sourceHeight - cropHeight) / 2;
+    }
+
+    const canvas = document.createElement("canvas");
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+    const context = canvas.getContext("2d");
+    context.drawImage(image, cropX, cropY, cropWidth, cropHeight, 0, 0, targetWidth, targetHeight);
+    URL.revokeObjectURL(objectUrl);
+
+    resolve({
+      base64: canvas.toDataURL("image/webp", 0.92),
+      originalWidth: sourceWidth,
+      originalHeight: sourceHeight,
+      width: targetWidth,
+      height: targetHeight
+    });
+  };
+
+  image.onerror = () => {
+    URL.revokeObjectURL(objectUrl);
+    reject(new Error("Unable to crop image preview"));
+  };
+
   image.src = objectUrl;
 });
 export default function AdvertisementPage() {
@@ -98,8 +145,17 @@ export default function AdvertisementPage() {
       }));
       return;
     }
-    const base64 = await convertToBase64(file);
-    setPreview(base64);
+    let bannerImage;
+    let previewImage;
+    if (formData.position === "TOP_BANNER") {
+      const cropped = await cropImageToTopBanner(file);
+      bannerImage = cropped.base64;
+      previewImage = cropped.base64;
+    } else {
+      bannerImage = await convertToBase64(file);
+      previewImage = bannerImage;
+    }
+    setPreview(previewImage);
     setImageMeta(dimensions);
     setErrors(prev => {
       const next = {
@@ -110,7 +166,7 @@ export default function AdvertisementPage() {
     });
     setFormData(p => ({
       ...p,
-      bannerImage: base64
+      bannerImage
     }));
   };
   const validateForm = () => {

@@ -1,0 +1,387 @@
+/* ============================= */
+/* FILTER PANEL                  */
+/* ============================= */
+
+.panel {
+  width: 100%;
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid #eef1f6;
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.06);
+  overflow: hidden;
+}
+
+/* ---- Header ---- */
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px 14px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #ff8c00 0%, #ff6b00 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.header-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+}
+
+.count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ff8c00;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  margin-left: 4px;
+}
+
+.clear-btn {
+  font-size: 12px;
+  font-weight: 600;
+  color: #ff8c00;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+
+.clear-btn:hover {
+  background: #fff5eb;
+}
+
+/* ---- Section ---- */
+
+.section {
+  padding: 14px 18px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.section:last-child {
+  border-bottom: none;
+}
+
+.section-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 10px;
+}
+
+/* ============================= */
+/* SORT — horizontal pill chips  */
+/* ============================= */
+
+.sort-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.sort-chip {
+  padding: 6px 13px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1.5px solid #e2e8f0;
+  background: #f8fafc;
+  color: #64748b;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.sort-chip:hover {
+  border-color: #ff8c00;
+  color: #ff8c00;
+  background: #fff5eb;
+}
+
+.sort-chip-active {
+  background: linear-gradient(135deg, #ff8c00, #ff6b00);
+  border-color: transparent;
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(255, 140, 0, 0.35);
+}
+
+.sort-chip-active:hover {
+  color: #fff;
+  background: linear-gradient(135deg, #e07d00, #e05a00);
+}
+
+/* ============================= */
+/* RATING — star chips           */
+/* ============================= */
+
+.rating-chips {
+  display: flex;
+  gap: 6px;
+}
+
+.rating-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 11px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1.5px solid #e2e8f0;
+  background: #f8fafc;
+  color: #64748b;
+  transition: all 0.15s ease;
+}
+
+.rating-chip:hover {
+  border-color: #f59e0b;
+  color: #d97706;
+  background: #fffbeb;
+}
+
+.rating-chip-active {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
+}
+
+.rating-chip-active:hover {
+  color: #fff;
+  background: linear-gradient(135deg, #e08c00, #c26600);
+}
+
+.star-icon {
+  font-size: 12px;
+}
+
+/* ============================= */
+/* UNIVERSAL TOGGLES             */
+/* ============================= */
+
+.toggle-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.toggle-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  background: #f8fafc;
+  border: 1.5px solid transparent;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.toggle-item:hover {
+  background: #f1f5f9;
+}
+
+.toggle-item-active {
+  background: #fff5eb;
+  border-color: #fcd19d;
+}
+
+.toggle-item-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toggle-icon-wrap {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.toggle-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.toggle-label-active {
+  color: #c25a00;
+  font-weight: 600;
+}
+
+/* Pill switch */
+.pill-switch {
+  width: 34px;
+  height: 18px;
+  border-radius: 20px;
+  background: #cbd5e1;
+  position: relative;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+
+.pill-switch-on {
+  background: #ff8c00;
+}
+
+.pill-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  transition: transform 0.2s ease;
+}
+
+.pill-thumb-on {
+  transform: translateX(16px);
+}
+
+/* ============================= */
+/* MULTISELECT — tag grid        */
+/* ============================= */
+
+.tag-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tag {
+  padding: 5px 11px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1.5px solid #e2e8f0;
+  background: #f8fafc;
+  color: #475569;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.tag:hover {
+  border-color: #ff8c00;
+  color: #ff8c00;
+  background: #fff8f0;
+}
+
+.tag-active {
+  background: #fff5eb;
+  border-color: #ff8c00;
+  color: #c25a00;
+  font-weight: 600;
+}
+
+/* ============================= */
+/* RADIO — pill row              */
+/* ============================= */
+
+.radio-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.radio-pill {
+  padding: 6px 13px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1.5px solid #e2e8f0;
+  background: #f8fafc;
+  color: #475569;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.radio-pill:hover {
+  border-color: #ff8c00;
+  color: #ff8c00;
+  background: #fff8f0;
+}
+
+.radio-pill-active {
+  background: linear-gradient(135deg, #ff8c00, #ff6b00);
+  border-color: transparent;
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(255, 140, 0, 0.3);
+}
+
+.radio-pill-active:hover {
+  color: #fff;
+}
+
+/* ============================= */
+/* RANGE SLIDER                  */
+/* ============================= */
+
+.range-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.range-value {
+  font-size: 13px;
+  font-weight: 700;
+  color: #ff8c00;
+  background: #fff5eb;
+  padding: 3px 9px;
+  border-radius: 6px;
+}
+
+.range-bounds {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+}
+
+.range-bound {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+/* MUI Slider override wrapper */
+.slider-wrap {
+  padding: 0 4px;
+}
