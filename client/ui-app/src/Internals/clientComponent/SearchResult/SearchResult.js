@@ -27,6 +27,7 @@ import TopBannerAds from "../banners/topBanner/topBanner.js";
 import GlobalSkeleton from "../globalSkeleton.js";
 import OTPLoginModal from "../AddBusinessModel.js";
 import FilterPanel from "./FilterPanel.js";
+import axiosInstance from "../../../services/axiosInstance.js";
 import { generateSearchResultsPageSchema, generateBreadcrumbSchema, generateOrganizationSchema, generateWebsiteSchema, generateFAQSchema } from "../../../utils/seoSchemaGenerators";
 const cx = createScopedClassNames(styles);
 const createSlug = (text = "") => text.toLowerCase().trim().replace(/&/g, "and").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
@@ -136,9 +137,8 @@ const SearchResults = React.memo(() => {
   useEffect(() => {
     if (!normalizedSearchTerm) return;
     const slug = normalizedSearchTerm.toLowerCase().trim().replace(/\s+/g, "-");
-    fetch(`/api/category/${encodeURIComponent(slug)}/filters`)
-      .then(r => r.ok ? r.json() : [])
-      .then(data => setFilterConfig(Array.isArray(data) ? data : []))
+    axiosInstance.get(`/category/${encodeURIComponent(slug)}/filters`)
+      .then(res => setFilterConfig(Array.isArray(res.data) ? res.data : []))
       .catch(() => setFilterConfig([]));
   }, [normalizedSearchTerm]);
 
