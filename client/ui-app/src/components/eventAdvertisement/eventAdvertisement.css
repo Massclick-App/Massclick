@@ -1,0 +1,398 @@
+/* ===========================
+   Event Advertisement Styles
+   =========================== */
+
+:root {
+  --eventAdvertisement-background: #f8f9fb;
+  --eventAdvertisement-card-bg: #ffffff;
+  --eventAdvertisement-text-primary: #1f2937;
+  --eventAdvertisement-text-secondary: #6b7280;
+  --eventAdvertisement-border: #e5e7eb;
+  --eventAdvertisement-primary-orange: #ff8c00;
+  --eventAdvertisement-primary-hover: #d97800;
+  --eventAdvertisement-disabled-orange: #ffc280;
+  --eventAdvertisement-error: #ef4444;
+  --eventAdvertisement-success-bg: #ecfdf5;
+  --eventAdvertisement-success-text: #047857;
+  --eventAdvertisement-danger-bg: #fef2f2;
+  --eventAdvertisement-danger-text: #b91c1c;
+  --eventAdvertisement-muted-bg: #f3f4f6;
+}
+
+/* ===========================
+   Page Layout
+   =========================== */
+
+.eventAdvertisement-page {
+  width: 100%;
+  padding: 0 16px;
+  background-color: var(--eventAdvertisement-background);
+  box-sizing: border-box;
+  font-family: "Inter", system-ui, sans-serif;
+}
+
+/* ===========================
+   Card
+   =========================== */
+
+.eventAdvertisement-card {
+  background-color: var(--eventAdvertisement-card-bg);
+  padding: 28px;
+  border: 1px solid var(--eventAdvertisement-border);
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+  margin-bottom: 24px;
+  transition: all 0.3s ease;
+}
+
+.eventAdvertisement-card:hover {
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
+}
+
+.eventAdvertisement-card h2 {
+  width: fit-content;
+  margin: 0 0 24px;
+  padding-bottom: 4px;
+  border-bottom: 3px solid var(--eventAdvertisement-primary-orange);
+  color: var(--eventAdvertisement-text-primary);
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+/* ===========================
+   Form Grid
+   =========================== */
+
+.eventAdvertisement-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px 18px;
+}
+
+.eventAdvertisement-grid > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.eventAdvertisement-field--full {
+  grid-column: 1 / -1;
+}
+
+/* ===========================
+   Labels
+   =========================== */
+
+.eventAdvertisement-grid label {
+  margin-bottom: 6px;
+  color: var(--eventAdvertisement-text-secondary);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+/* ===========================
+   Inputs
+   =========================== */
+
+.eventAdvertisement-grid input,
+.eventAdvertisement-grid select,
+.eventAdvertisement-grid textarea {
+  width: 100%;
+  padding: 0 14px;
+  border: 2px solid var(--eventAdvertisement-border);
+  border-radius: 8px;
+  background-color: #fff;
+  color: var(--eventAdvertisement-text-primary);
+  font: inherit;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+}
+
+.eventAdvertisement-grid input,
+.eventAdvertisement-grid select {
+  height: 48px;
+}
+
+.eventAdvertisement-grid textarea {
+  min-height: 96px;
+  padding-top: 12px;
+  padding-bottom: 12px;
+  resize: vertical;
+}
+
+.eventAdvertisement-grid input:hover,
+.eventAdvertisement-grid select:hover,
+.eventAdvertisement-grid textarea:hover {
+  border-color: #d1d5db;
+}
+
+.eventAdvertisement-grid input:focus,
+.eventAdvertisement-grid select:focus,
+.eventAdvertisement-grid textarea:focus {
+  outline: none;
+  border-color: var(--eventAdvertisement-primary-orange);
+  box-shadow: 0 0 0 3px rgba(255, 140, 0, 0.15);
+  background-color: #fffbf7;
+}
+
+.eventAdvertisement-grid input[readonly] {
+  background-color: #f9fafb;
+  color: var(--eventAdvertisement-text-secondary);
+  cursor: not-allowed;
+}
+
+/* ===========================
+   Toggle
+   =========================== */
+
+.eventAdvertisement-toggle {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+}
+
+.eventAdvertisement-toggle label {
+  margin-bottom: 0;
+}
+
+.eventAdvertisement-toggle input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--eventAdvertisement-primary-orange);
+  cursor: pointer;
+}
+
+/* ===========================
+   Image Preview
+   =========================== */
+
+.eventAdvertisement-preview-list {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.eventAdvertisement-image-preview {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: var(--eventAdvertisement-text-secondary);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.eventAdvertisement-image-preview img {
+  width: 88px;
+  height: 64px;
+  border: 1px solid var(--eventAdvertisement-border);
+  border-radius: 8px;
+  object-fit: cover;
+  background-color: var(--eventAdvertisement-muted-bg);
+}
+
+.eventAdvertisement-image-preview--banner img {
+  width: 136px;
+}
+
+.eventAdvertisement-thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  border: 1px solid var(--eventAdvertisement-border);
+  object-fit: cover;
+  background-color: var(--eventAdvertisement-muted-bg);
+}
+
+/* ===========================
+   Error
+   =========================== */
+
+.eventAdvertisement-error-text {
+  margin: 6px 0 0;
+  color: var(--eventAdvertisement-error);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+/* ===========================
+   Buttons
+   =========================== */
+
+.eventAdvertisement-button-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.eventAdvertisement-save-btn {
+  min-width: 154px;
+  min-height: 46px;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 10px;
+  background-color: var(--eventAdvertisement-primary-orange);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.eventAdvertisement-save-btn:hover:not(:disabled) {
+  background-color: var(--eventAdvertisement-primary-hover);
+  box-shadow: 0 4px 10px rgba(255, 140, 0, 0.4);
+}
+
+.eventAdvertisement-save-btn:disabled {
+  background-color: var(--eventAdvertisement-disabled-orange);
+  cursor: not-allowed;
+}
+
+.eventAdvertisement-cancel-btn {
+  padding: 12px 24px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  background-color: var(--eventAdvertisement-muted-bg);
+  color: #374151;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.eventAdvertisement-cancel-btn:hover {
+  background-color: #e5e7eb;
+}
+
+/* ===========================
+   Table
+   =========================== */
+
+.eventAdvertisement-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.eventAdvertisement-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 72px;
+  min-height: 28px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.eventAdvertisement-status--active {
+  background-color: var(--eventAdvertisement-success-bg);
+  color: var(--eventAdvertisement-success-text);
+}
+
+.eventAdvertisement-status--inactive {
+  background-color: var(--eventAdvertisement-danger-bg);
+  color: var(--eventAdvertisement-danger-text);
+}
+
+/* ===========================
+   Dialog
+   =========================== */
+
+.MuiDialog-paper {
+  border-radius: 14px !important;
+}
+
+/* ===========================
+   Alerts
+   =========================== */
+
+.MuiAlert-root {
+  margin-bottom: 20px !important;
+  border-radius: 10px !important;
+}
+
+/* ===========================
+   Tablet
+   =========================== */
+
+@media (max-width: 992px) {
+  .eventAdvertisement-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .eventAdvertisement-card {
+    padding: 20px;
+  }
+
+  .eventAdvertisement-save-btn,
+  .eventAdvertisement-cancel-btn {
+    width: 100%;
+  }
+}
+
+/* ===========================
+   Mobile
+   =========================== */
+
+@media (max-width: 600px) {
+  .eventAdvertisement-page {
+    padding: 0 12px;
+  }
+
+  .eventAdvertisement-card {
+    padding: 16px;
+    border-radius: 10px;
+  }
+
+  .eventAdvertisement-card h2 {
+    font-size: 1.2rem;
+  }
+
+  .eventAdvertisement-grid {
+    gap: 16px;
+  }
+
+  .eventAdvertisement-grid input,
+  .eventAdvertisement-grid select {
+    height: 44px;
+    font-size: 0.95rem;
+  }
+
+  .eventAdvertisement-grid textarea {
+    font-size: 0.95rem;
+  }
+
+  .eventAdvertisement-preview-list,
+  .eventAdvertisement-image-preview {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .eventAdvertisement-button-group {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .eventAdvertisement-save-btn,
+  .eventAdvertisement-cancel-btn {
+    width: 100%;
+    font-size: 0.95rem;
+  }
+}
+
+/* ===========================
+   Large Monitors
+   =========================== */
+
+@media (min-width: 1600px) {
+  .eventAdvertisement-page {
+    max-width: 1600px;
+    margin: 0 auto;
+  }
+}

@@ -1,0 +1,293 @@
+/* ===========================
+   Event Location Styles
+   =========================== */
+
+:root {
+  --color-background: #f8f9fb;
+  --color-card-bg: #ffffff;
+  --color-text-primary: #1f2937;
+  --color-text-secondary: #6b7280;
+  --color-border: #e5e7eb;
+  --color-primary-orange: #ff8c00;
+  --color-primary-hover: #d97800;
+  --color-disabled-orange: #ffc280;
+  --color-error: #ef4444;
+}
+
+/* ===========================
+   Page Layout
+   =========================== */
+
+.event-location-page {
+  width: 100%;
+  padding: 0 16px;
+  background-color: var(--color-background);
+  box-sizing: border-box;
+  font-family: "Inter", system-ui, sans-serif;
+}
+
+/* ===========================
+   Card
+   =========================== */
+
+.event-location-card {
+  background-color: var(--color-card-bg);
+  padding: 28px;
+  border-radius: 16px;
+  border: 1px solid var(--color-border);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+  margin-bottom: 24px;
+  transition: all 0.3s ease;
+}
+
+.event-location-card:hover {
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
+}
+
+.event-location-card h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-bottom: 24px;
+  border-bottom: 3px solid var(--color-primary-orange);
+  width: fit-content;
+  padding-bottom: 4px;
+}
+
+/* ===========================
+   Form Grid
+   =========================== */
+
+.event-location-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px 18px;
+}
+
+.event-location-grid > div {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ===========================
+   Labels
+   =========================== */
+
+.event-location-grid label {
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+/* ===========================
+   Inputs
+   =========================== */
+
+.event-location-grid input {
+  width: 100%;
+  height: 48px;
+  padding: 0 14px;
+  border: 2px solid var(--color-border);
+  border-radius: 8px;
+  background-color: #fff;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+}
+
+.event-location-grid input:hover {
+  border-color: #d1d5db;
+}
+
+.event-location-grid input:focus {
+  outline: none;
+  border-color: var(--color-primary-orange);
+  box-shadow: 0 0 0 3px rgba(255, 140, 0, 0.15);
+  background-color: #fffbf7;
+}
+
+/* ===========================
+   Error
+   =========================== */
+
+.error-text {
+  color: var(--color-error);
+  font-size: 0.8rem;
+  margin-top: 6px;
+  font-weight: 500;
+}
+
+/* ===========================
+   Buttons
+   =========================== */
+
+.button-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.save-btn {
+  background-color: var(--color-primary-orange);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.save-btn:hover:not(:disabled) {
+  background-color: var(--color-primary-hover);
+  box-shadow: 0 4px 10px rgba(255, 140, 0, 0.4);
+}
+
+.save-btn:disabled {
+  background-color: var(--color-disabled-orange);
+  cursor: not-allowed;
+}
+
+.cancel-btn {
+  background-color: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cancel-btn:hover {
+  background-color: #e5e7eb;
+}
+
+/* ===========================
+   Table
+   =========================== */
+
+.event-location-table {
+  margin-top: 24px;
+  overflow-x: auto;
+}
+
+.MuiDataGrid-root {
+  background: #fff;
+  border-radius: 10px;
+  min-width: 700px;
+}
+
+.MuiDataGrid-row:hover {
+  background-color: #f9fafb;
+}
+
+/* ===========================
+   Action Buttons
+   =========================== */
+
+.event-location-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ===========================
+   Dialog
+   =========================== */
+
+.MuiDialog-paper {
+  border-radius: 14px !important;
+}
+
+/* ===========================
+   Alerts
+   =========================== */
+
+.MuiAlert-root {
+  margin-bottom: 20px !important;
+  border-radius: 10px !important;
+}
+
+/* ===========================
+   Tablet
+   =========================== */
+
+@media (max-width: 992px) {
+
+  .event-location-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .event-location-card {
+    padding: 20px;
+  }
+
+  .save-btn,
+  .cancel-btn {
+    width: 100%;
+  }
+
+}
+
+/* ===========================
+   Mobile
+   =========================== */
+
+@media (max-width: 600px) {
+
+  .event-location-page {
+    padding: 0 12px;
+  }
+
+  .event-location-card {
+    padding: 16px;
+    border-radius: 10px;
+  }
+
+  .event-location-card h2 {
+    font-size: 1.2rem;
+  }
+
+  .event-location-grid {
+    gap: 16px;
+  }
+
+  .event-location-grid input {
+    height: 44px;
+    font-size: 0.95rem;
+  }
+
+  .button-group {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .save-btn,
+  .cancel-btn {
+    width: 100%;
+    font-size: 0.95rem;
+  }
+
+  .MuiDataGrid-root {
+    min-width: 500px;
+  }
+
+}
+
+/* ===========================
+   Large Monitors
+   =========================== */
+
+@media (min-width: 1600px) {
+
+  .event-location-page {
+    max-width: 1600px;
+    margin: 0 auto;
+  }
+
+}

@@ -65,6 +65,10 @@ const BusinessEnquiry = lazy(() => import(/* webpackChunkName: "business-enquiry
 
 const EnquiryPage = lazy(() => import(/* webpackChunkName: "admin-enquiry" */ './Internals/enquiry-page/enquiry-page.js'));
 const AdvertisementPage = lazy(() => import(/* webpackChunkName: "admin-advertisement" */ './Internals/advertisement/advertisement.js'));
+const EventCategory = lazy(() => import(/* webpackChunkName: "admin-event-category" */ './components/eventCategory/eventCategory.js'));
+const EventLocation = lazy(() => import(/* webpackChunkName: "admin-event-location" */ './components/eventLocation/eventLocation.js'));
+const EventAdvertisement = lazy(() => import(/* webpackChunkName: "admin-event-advertisement" */ './components/eventAdvertisement/eventAdvertisement.js'));
+const EventCreation = lazy(() => import(/* webpackChunkName: "admin-event-creation" */ './components/eventCreation/eventCreation.js'));
 
 const GlobalDrawer = lazy(() => import(/* webpackChunkName: "drawer" */ './Internals/clientComponent/Drawer/globalDrawer.js'));
 const SeoData = lazy(() => import(/* webpackChunkName: "admin-seo" */ './Internals/seoData/seoData.js'));
@@ -197,6 +201,10 @@ function AppRoutes({
                 <Route path="seopagecontentblogs" element={<SeoPageContentBlogs />} />
                 <Route path="enquiry" element={<EnquiryPage />} />
                 <Route path="advertisements" element={<AdvertisementPage />} />
+                <Route path="event-category" element={<EventCategory />} />
+                <Route path="event-location" element={<EventLocation />} />
+                <Route path="event-advertisement" element={<EventAdvertisement />} />
+                <Route path="event-creation" element={<EventCreation />} />
                 <Route path="mni-data" element={<MRPDatas />} />
                 <Route path="terms-conditions-data" element={<TermsAndConditionsDatas />} />
                 <Route path="fcm-marketing" element={<FCMMarketing />} />

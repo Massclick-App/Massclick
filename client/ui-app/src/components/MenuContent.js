@@ -60,6 +60,15 @@ const MENU_SECTIONS = [
     ]
   },
   {
+    label: "Events",
+    items: [
+      { text: "EventCategory", icon: MailOutlineIcon, path: "/dashboard/event-category" },
+      { text: "EventLocation", icon: NotificationsIcon, path: "/dashboard/event-location" },
+      { text: "EventAdvertisement", icon: StorefrontIcon, path: "/dashboard/event-advertisement" },
+      { text: "EventCreation", icon: NotificationsIcon, path: "/dashboard/event-creation" },
+    ]
+  },
+  {
     label: "Settings",
     items: [
       { text: "Users", icon: InterpreterModeIcon, path: "/dashboard/user" },
