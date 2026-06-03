@@ -8,15 +8,6 @@
     --bg-light: #f0f2f5; 
 }
 
-body {
-    font-family: 'Poppins', sans-serif;
-    color: var(--text-dark);
-    line-height: 1.6;
-    margin: 0;
-    background-color: var(--bg-light);
-}
-
-
 @media (max-width: 1200px) {
     /* If you had a custom element outside of MUI, you'd adjust it here. */
 }

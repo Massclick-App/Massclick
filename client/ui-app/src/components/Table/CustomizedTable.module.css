@@ -13,12 +13,6 @@
   --color-hover: rgba(255, 122, 0, 0.06);
 }
 
-body {
-  font-family: "Inter", "Roboto", sans-serif;
-  background: var(--color-bg-alt);
-  color: var(--color-text-dark);
-}
-
 .custom-table-container {
   width: 100%;
   border-radius: 14px;
@@ -138,7 +132,7 @@ body {
 
 .custom-header-cell {
   background: var(--color-bg-alt);
-  color: var(--color-text-dark) !important;
+  color: var(--color-text-dark) !important; /* !important: override MUI TableCell text color in header */
   font-weight: 700;
   font-size: 0.8rem;
   text-transform: uppercase;
@@ -170,7 +164,7 @@ body {
 }
 
 .checkbox-cell {
-  padding-left: 12px !important;
+  padding-left: 12px !important; /* !important: force consistent padding against MUI TableCell defaults */
   padding-right: 12px !important;
   background: var(--color-bg-alt);
 }
@@ -222,7 +216,7 @@ body {
 /* Selected glow */
 .selected-row .custom-body-cell,
 .selected-row .checkbox-cell {
-  background-color: rgba(255, 122, 0, 0.09) !important;
+  background-color: rgba(255, 122, 0, 0.09) !important; /* !important: ensure selected state wins over row striping / MUI */
 }
 
 .selected-row {
@@ -262,7 +256,7 @@ body {
 
 /* Checkbox color */
 :global(.MuiCheckbox-root) {
-  color: var(--color-primary) !important;
+  color: var(--color-primary) !important; /* !important: override MUI Checkbox default color for brand consistency */
 }
 
 /* Pagination */

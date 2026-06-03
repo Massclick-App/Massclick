@@ -51,7 +51,7 @@ const Txt = ({
 ────────────────────────────────────────────────────────────── */
 const LandingSkeleton = () => <div className={cx("sk-root")}>
     {/* ── Category bar ─────────────────────────── */}
-    <header className={cx("categoryBarContainer sk-catbar")}>
+    <header className={cx("sk-category-bar sk-catbar")}>
       <div className={cx("categoryBarContent")}>
         <div className={cx("logoGroup")}>
           <div className={cx("logoWrapper")}>
@@ -76,8 +76,8 @@ const LandingSkeleton = () => <div className={cx("sk-root")}>
     </header>
 
     {/* ── Hero section ─────────────────────────── */}
-    <div className={cx("hero-section")}>
-      <div className={cx("hero-content hero-minimal")}>
+    <div className={cx("sk-hero-section")}>
+      <div className={cx("sk-hero-content sk-hero-minimal")}>
         {/* Search bar */}
         <form className={cx("search-bar-container")}>
           <div className={cx("input-group location-group")}>
@@ -123,7 +123,7 @@ const LandingSkeleton = () => <div className={cx("sk-root")}>
       <div className={cx("sk-hscroll")} style={{
       marginBottom: "2.5rem"
     }}>
-        {[...Array(8)].map((_, i) => <div key={i} className={cx("service-card")} style={{
+        {[...Array(8)].map((_, i) => <div key={i} className={cx("sk-featured-card")} style={{
         width: 130,
         height: 160,
         flexShrink: 0
@@ -155,7 +155,7 @@ const LandingSkeleton = () => <div className={cx("sk-root")}>
       }} />
         <Txt w={180} h={22} r={2} />
       </Box>
-      <div className={cx("service-cards-container")}>
+      <div className={cx("sk-service-cards-container")}>
         {[...Array(4)].map((_, sectionIdx) => <Paper key={sectionIdx} elevation={0} sx={{
         p: 3,
         borderRadius: 4,

@@ -35,8 +35,8 @@
    Matches the actual landing page layout
 ================================================================ */
 
-/* Category bar */
-.sk-root .categoryBarContainer.sk-catbar {
+/* Category bar (skeleton version) */
+.sk-root .sk-category-bar.sk-catbar {
   display: flex;
   align-items: center;
   padding: 0.75rem 1.5rem;
@@ -84,8 +84,8 @@
   align-items: center;
 }
 
-/* Hero section */
-.sk-root .hero-section {
+/* Hero section (skeleton version - private classes) */
+.sk-root .sk-hero-section {
   position: relative;
   width: 100%;
   padding: 20px 0;
@@ -102,7 +102,7 @@
   flex-shrink: 0;
 }
 
-.sk-root .hero-content {
+.sk-root .sk-hero-content {
   width: 100%;
   max-width: 1100px;
   padding: 24px 16px;
@@ -171,8 +171,8 @@
   box-shadow: 0 6px 14px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.6);
 }
 
-/* Service cards container */
-.sk-root .service-cards-container {
+/* Service cards container (skeleton version) */
+.sk-root .sk-service-cards-container {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
@@ -182,9 +182,8 @@
   gap: 30px;
 }
 
-/* Featured service cards */
-.sk-root .featured-services-container .service-card,
-.sk-root .service-card {
+/* Featured service cards (skeleton shells - own classes, do not target real component classes) */
+.sk-root .sk-featured-card {
   width: 130px;
   height: 160px;
   background: linear-gradient(145deg, #ffffff, #f9f9f9);

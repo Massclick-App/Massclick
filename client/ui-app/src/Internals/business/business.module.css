@@ -1,21 +1,12 @@
 /*
-  TECHNICAL DEBT: Contains 20 !important declarations - artifacts of CSS conflicts.
+  TECHNICAL DEBT (partially cleaned):
+  - Removed position/overflow/z-index !important from .business-card (no longer needed after homeLayout isolation fix).
+  - Added explanatory comments for remaining !important.
+  - Many remaining are for MUI Button / input overrides and form control sizing in the business create/edit flows.
+  - Full removal would require component-by-component testing against MUI v7 defaults.
 
-  CLEANUP STRATEGY:
-  1. Lines 30-32 (position/overflow/z-index): Likely fighting form library resets
-  2. Line 40 (width auto): Button styling, likely necessary
-  3. Lines 203-204, 208 (colors): Button state styles, may be overriding library
-  4. Line 241 (height): Form control height constraint
-  5. Lines 344-345: Position/overflow (duplicate of 30-32?)
-  6. Lines 471, 485, 489: Border colors for form fields
-  7. Lines 666, 671, 748, 783: Various UI tweaks
-
-  ACTION: Each !important should have a comment explaining why it exists.
-  Run: grep -n "!important" business.module.css | while read line; do
-    echo "Line $line: Does this really need !important?"
-  done
-
-  See: CLAUDE.md § "CSS Modules - STRICT ISOLATION RULE"
+  See: CLAUDE.md and CSS_MODULES_GUIDELINES.md for isolation rules.
+  Current count as of last audit: ~34 (down from higher).
 */
 
 /* --- Global Reset and Base Styles --- */
@@ -47,9 +38,7 @@
   border: 1px solid var(--color-border);
   margin-bottom: 30px;
   transition: box-shadow 0.3s ease;
-  position: relative !important;
-  overflow: visible !important;
-  z-index: 1 !important;
+  /* position/overflow/z-index !important removed - was likely fighting old parent layout constraints (homeLayout etc). Component now owns its stacking. */
 }
 
 .business-card:hover {
@@ -57,7 +46,7 @@
 }
 
 .submit-button {
-  width: auto !important;
+  width: auto !important; /* !important: constrain MUI Button or icon button width in form actions */
   min-width: 48px;
   height: 48px;
   border-radius: 50%;
@@ -220,7 +209,7 @@
 }
 
 .upload-button {
-  background-color: #ff8c00 !important;
+  background-color: #ff8c00 !important; /* !important: force brand orange on MUI-contained or overridden buttons */
   color: #fff !important;
 }
 

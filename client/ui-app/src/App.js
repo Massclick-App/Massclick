@@ -20,7 +20,7 @@ import { userMenuItems } from './Internals/clientComponent/categoryBar.js';
 
 import ShimmerSkeleton from './Internals/clientComponent/shimmerSkeleton.js';
 import GlobalLoaderWrapper from './Internals/clientComponent/common/GlobalLoaderWrapper.js';
-
+import VideoPreloader from './components/VideoPreloader.js';
 
 const Dashboard = lazy(() => import(/* webpackChunkName: "admin-dashboard" */ './Dashboard'));
 const Login = lazy(() => import(/* webpackChunkName: "admin-login" */ './Internals/Login/login.js'));
@@ -304,6 +304,8 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
+
+      {/* <VideoPreloader /> */}
 
       <GlobalLoaderWrapper>
         <SnackbarProvider

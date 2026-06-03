@@ -74,7 +74,22 @@ for (const file of cssFiles) {
 
 const duplicates = [...globalClassFiles.entries()].filter(([, files]) => files.length > 1);
 
-if (violations.length || duplicates.length) {
+/* Additional isolation check: forbid bare global element selectors (body, html) inside modules.
+   These pollute global styles and violate "component owns its styles". Use root class on wrapper instead. */
+const forbiddenGlobalSelectors = [];
+const globalElementRe = /(^|[\s,{>+~(])(body|html)\b(?!\S)/gm; // simple match for body/html as type selectors
+
+for (const file of cssFiles) {
+  if (!file.endsWith(".module.css")) continue;
+  const source = fs.readFileSync(file, "utf8");
+  if (globalElementRe.test(source)) {
+    forbiddenGlobalSelectors.push(relative(file));
+  }
+}
+
+const hasGlobalElementViolations = forbiddenGlobalSelectors.length > 0;
+
+if (violations.length || duplicates.length || hasGlobalElementViolations) {
   console.error("CSS scope check failed.");
 
   if (violations.length) {
@@ -87,6 +102,11 @@ if (violations.length || duplicates.length) {
     for (const [className, files] of duplicates) {
       console.error(`- .${className}: ${files.join(", ")}`);
     }
+  }
+
+  if (hasGlobalElementViolations) {
+    console.error("\nGlobal element selectors (body/html) inside CSS Modules (use component root class instead):");
+    for (const f of forbiddenGlobalSelectors) console.error(`- ${f}`);
   }
 
   process.exit(1);

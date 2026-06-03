@@ -19,18 +19,14 @@
   --color-error: #ef4444;
 }
 
-body {
+.category-page-container {
+  width: 100%;
+  margin: 0 auto;
+  padding: 20px 16px;
   background-color: var(--color-background);
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  padding: 20px;
   color: var(--color-text-primary);
   line-height: 1.5;
-}
-
-.category-page-container {
-    width: 100%;
-  margin: 0 auto;
-  padding: 0 16px;
 }
 
 /* --- Card --- */
@@ -329,8 +325,8 @@ body {
 }
 
 @media (max-width: 480px) {
-  body {
-    padding: 10px;
+  .category-page-container {
+    padding: 10px 16px;
   }
 
   .category-card {
