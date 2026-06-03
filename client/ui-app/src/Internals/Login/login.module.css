@@ -1,12 +1,4 @@
 /* RESET (adjust if you already have global reset) */
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
-    "Inter", "Poppins", "Segoe UI", sans-serif;
-}
-
 /* DESIGN TOKENS */
 :root {
   --corp-bg: #f5f7fb;

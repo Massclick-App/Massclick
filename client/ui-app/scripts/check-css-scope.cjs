@@ -77,7 +77,8 @@ const duplicates = [...globalClassFiles.entries()].filter(([, files]) => files.l
 /* Additional isolation check: forbid bare global element selectors (body, html) inside modules.
    These pollute global styles and violate "component owns its styles". Use root class on wrapper instead. */
 const forbiddenGlobalSelectors = [];
-const globalElementRe = /(^|[\s,{>+~(])(body|html)\b(?!\S)/gm; // simple match for body/html as type selectors
+// Match html or body as element selectors (not inside .class-names like foo-body or .my-html-thing)
+const globalElementRe = /(?<![\w.-])(html|body)\s*[{,]/g;
 
 for (const file of cssFiles) {
   if (!file.endsWith(".module.css")) continue;
