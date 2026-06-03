@@ -1,7 +1,38 @@
 import { ObjectId } from "mongodb";
+import sharp from "sharp";
 import advertismentModel from "../../model/advertistment/advertismentModel.js";
 import { uploadImageToS3, getSignedUrlByKey } from "../../s3Uploder.js";
 
+const TOP_BANNER_RULES = {
+  targetWidth: 1440,
+  targetHeight: 150,
+};
+
+const getBase64ImageBuffer = (imageData = "") => {
+  if (typeof imageData !== "string" || !imageData.startsWith("data:image")) {
+    return null;
+  }
+
+  const matches = imageData.match(/^data:([\w/+.-]+);base64,(.+)$/);
+  if (!matches) throw new Error("Invalid image data");
+
+  return Buffer.from(matches[2], "base64");
+};
+
+const cropTopBannerImage = async (imageData) => {
+  const buffer = getBase64ImageBuffer(imageData);
+  if (!buffer) return imageData;
+
+  const outputBuffer = await sharp(buffer)
+    .resize(TOP_BANNER_RULES.targetWidth, TOP_BANNER_RULES.targetHeight, {
+      fit: "cover",
+      position: "center",
+    })
+    .webp({ quality: 92 })
+    .toBuffer();
+
+  return `data:image/webp;base64,${outputBuffer.toString("base64")}`;
+};
 
 export const createAdvertisement = async (reqBody = {}) => {
   try {
@@ -9,11 +40,17 @@ export const createAdvertisement = async (reqBody = {}) => {
     if (!reqBody.category) throw new Error("Category is required");
     if (!reqBody.startTime || !reqBody.endTime)
       throw new Error("Start time and end time are required");
+    if (reqBody.position === "TOP_BANNER" && !reqBody.bannerImage)
+      throw new Error("Top banner image is required");
 
     if (reqBody.bannerImage) {
+      if (reqBody.position === "TOP_BANNER") {
+        reqBody.bannerImage = await cropTopBannerImage(reqBody.bannerImage);
+      }
       const uploadResult = await uploadImageToS3(
         reqBody.bannerImage,
-        `advertisements/banners/ad-${Date.now()}`
+        `advertisements/banners/ad-${Date.now()}`,
+        reqBody.position === "TOP_BANNER" ? { skipImageConversion: true } : {}
       );
       reqBody.bannerImageKey = uploadResult.key;
     }
@@ -119,9 +156,13 @@ export const updateAdvertisement = async (id, data) => {
     typeof data.bannerImage === "string" &&
     data.bannerImage.startsWith("data:image")
   ) {
+    if (data.position === "TOP_BANNER") {
+      data.bannerImage = await cropTopBannerImage(data.bannerImage);
+    }
     const uploadResult = await uploadImageToS3(
       data.bannerImage,
-      `advertisements/banners/ad-${Date.now()}`
+      `advertisements/banners/ad-${Date.now()}`,
+      data.position === "TOP_BANNER" ? { skipImageConversion: true } : {}
     );
     data.bannerImageKey = uploadResult.key;
   }

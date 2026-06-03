@@ -55,12 +55,16 @@ const TopBannerAds = ({
       const baseUrl = `https://massclickdev.s3.ap-southeast-2.amazonaws.com/${ad.bannerImageKey}`;
       return {
         ...ad,
-        image: baseUrl
+        image: ad.bannerImage || baseUrl
       };
     });
-    return [DEFAULT_BANNER, ...apiBanners];
+    return apiBanners.length > 0 ? apiBanners : [DEFAULT_BANNER];
   }, [categoryAdvertisements, category]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const hasPaidBanner = bannerAds.some(ad => !ad.isDefault);
+  useEffect(() => {
+    setCurrentIndex(0);
+  }, [category, bannerAds.length]);
   useEffect(() => {
     if (bannerAds.length <= 1) return;
     const timer = setInterval(() => {
@@ -77,6 +81,7 @@ const TopBannerAds = ({
     return null;
   }
   return <div className={cx("top-banner-carousel")}>
+      {hasPaidBanner && <div className={cx("sponsored-label")}>Sponsored</div>}
 
       <div className={cx("carousel-track")} style={{
       transform: `translateX(-${currentIndex * 100}%)`,
@@ -85,16 +90,16 @@ const TopBannerAds = ({
 
         {bannerAds.map(ad => <a key={ad._id} href={ad.redirectUrl || "#"} target={ad.redirectUrl ? "_blank" : "_self"} rel="noopener noreferrer" className={cx("carousel-slide")}>
             <div className={cx("banner-image-wrapper")}>
-              <img src={ad.image} alt={ad.title || "Top banner"} width="1200" height="400" loading="eager" fetchpriority="high" decoding="async" style={{
-            width: "100%",
-            height: "auto"
-          }} />
+              <img src={ad.image} alt={ad.title || "Top banner"} width="1440" height="150" loading="eager" fetchPriority="high" decoding="async" />
 
             </div>
 
           </a>)}
 
       </div>
+      {bannerAds.length > 1 && <div className={cx("carousel-dots")} aria-hidden="true">
+          {bannerAds.map((ad, index) => <span key={`${ad._id}-dot`} className={cx("carousel-dot", index === currentIndex && "active")} />)}
+        </div>}
 
     </div>;
 };

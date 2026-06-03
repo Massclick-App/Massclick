@@ -127,6 +127,8 @@ export default function Category() {
   const fileInputRef = useRef();
   const liveImageInputRef = useRef();
   const [errors, setErrors] = useState({});
+  const [filterDraft, setFilterDraft] = useState({ key: "", label: "", type: "multiselect", options: [], min: "", max: "", unit: "", isRequired: false });
+  const [filterDraftError, setFilterDraftError] = useState("");
   const [formData, setFormData] = useState({
     _id: null,
     categoryImages: {
@@ -149,7 +151,8 @@ export default function Category() {
     description: "",
     seoTitle: "",
     seoDescription: "",
-    slug: ""
+    slug: "",
+    filterConfig: []
   });
 
   // Image previews and refs
@@ -295,6 +298,35 @@ export default function Category() {
       return url;
     }
   };
+  const handleAddFilterField = () => {
+    if (!filterDraft.key.trim() || !filterDraft.label.trim()) {
+      setFilterDraftError("Key and Label are required");
+      return;
+    }
+    if (["multiselect", "radio"].includes(filterDraft.type) && filterDraft.options.length === 0) {
+      setFilterDraftError("Add at least one option for this type");
+      return;
+    }
+    setFilterDraftError("");
+    const { ...rest } = filterDraft;
+    setFormData(prev => ({ ...prev, filterConfig: [...prev.filterConfig, rest] }));
+    setFilterDraft({ key: "", label: "", type: "multiselect", options: [], min: "", max: "", unit: "", isRequired: false });
+  };
+
+  const handleRemoveFilterField = (index) => {
+    setFormData(prev => ({ ...prev, filterConfig: prev.filterConfig.filter((_, i) => i !== index) }));
+  };
+
+  const handleMoveFilterField = (index, dir) => {
+    setFormData(prev => {
+      const arr = [...prev.filterConfig];
+      const swapIdx = index + dir;
+      if (swapIdx < 0 || swapIdx >= arr.length) return prev;
+      [arr[index], arr[swapIdx]] = [arr[swapIdx], arr[index]];
+      return { ...prev, filterConfig: arr };
+    });
+  };
+
   const handleEdit = row => {
     setEditMode(true);
 
@@ -328,7 +360,8 @@ export default function Category() {
       description: row.description,
       seoTitle: row.seoTitle || "",
       seoDescription: row.seoDescription || "",
-      slug: row.slug || ""
+      slug: row.slug || "",
+      filterConfig: Array.isArray(row.filterConfig) ? row.filterConfig : []
     });
     // Set previews using signed URLs (for display)
     setImagePreviews({
@@ -776,8 +809,11 @@ export default function Category() {
       description: "",
       seoTitle: "",
       seoDescription: "",
-      slug: ""
+      slug: "",
+      filterConfig: []
     });
+    setFilterDraft({ key: "", label: "", type: "multiselect", options: [], min: "", max: "", unit: "", isRequired: false });
+    setFilterDraftError("");
     setPreview(null);
     setLiveImagePreview(null);
     setEditMode(false);
@@ -1465,6 +1501,92 @@ export default function Category() {
                     </Button>}
                 </Box>}
             </div>
+          </div>
+
+          {/* Filter Configuration */}
+          <div className={cx("category-form-input-group category-col-span-all")}>
+            <label className={cx("category-input-label")}>Filter Configuration</label>
+            <Box sx={{ mt: 1, p: 2, border: "1px solid #e0e0e0", borderRadius: 2, bgcolor: "#fafafa" }}>
+              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.5, mb: filterDraftError ? 0.5 : 0 }}>
+                <TextField size="small" label="Key" value={filterDraft.key}
+                  onChange={e => setFilterDraft(p => ({ ...p, key: e.target.value.replace(/\s+/g, "_").toLowerCase() }))}
+                  placeholder="e.g. cuisineType" sx={{ flex: "1 1 120px" }} />
+                <TextField size="small" label="Label" value={filterDraft.label}
+                  onChange={e => setFilterDraft(p => ({ ...p, label: e.target.value }))}
+                  placeholder="e.g. Cuisine Type" sx={{ flex: "1 1 130px" }} />
+                <TextField size="small" select label="Type" value={filterDraft.type}
+                  onChange={e => setFilterDraft(p => ({ ...p, type: e.target.value, options: [] }))}
+                  SelectProps={{ native: true }} sx={{ flex: "0 0 120px" }}>
+                  <option value="multiselect">Multiselect</option>
+                  <option value="radio">Radio</option>
+                  <option value="toggle">Toggle</option>
+                  <option value="range">Range</option>
+                </TextField>
+
+                {["multiselect", "radio"].includes(filterDraft.type) && (
+                  <Autocomplete multiple freeSolo options={[]} value={filterDraft.options}
+                    onChange={(_, val) => setFilterDraft(p => ({ ...p, options: val }))}
+                    renderTags={(value, getTagProps) => value.map((opt, i) =>
+                      <Chip key={i} label={opt} size="small" {...getTagProps({ index: i })} />)}
+                    renderInput={params => <TextField {...params} size="small" label="Options (Enter to add)" placeholder="Add option" />}
+                    sx={{ flex: "1 1 200px" }} />
+                )}
+
+                {filterDraft.type === "range" && (
+                  <>
+                    <TextField size="small" label="Min" type="number" value={filterDraft.min}
+                      onChange={e => setFilterDraft(p => ({ ...p, min: e.target.value }))} sx={{ flex: "0 0 70px" }} />
+                    <TextField size="small" label="Max" type="number" value={filterDraft.max}
+                      onChange={e => setFilterDraft(p => ({ ...p, max: e.target.value }))} sx={{ flex: "0 0 70px" }} />
+                    <TextField size="small" label="Unit" value={filterDraft.unit}
+                      onChange={e => setFilterDraft(p => ({ ...p, unit: e.target.value }))}
+                      placeholder="₹ / yrs" sx={{ flex: "0 0 70px" }} />
+                  </>
+                )}
+
+                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                  <Checkbox size="small" checked={filterDraft.isRequired}
+                    onChange={e => setFilterDraft(p => ({ ...p, isRequired: e.target.checked }))}
+                    sx={{ p: 0.5 }} />
+                  <Typography variant="caption">Required</Typography>
+                </Box>
+
+                <Button variant="contained" size="small" onClick={handleAddFilterField}
+                  sx={{ bgcolor: "var(--color-primary-orange)", "&:hover": { bgcolor: "#D97800" }, alignSelf: "center", flexShrink: 0 }}>
+                  + Add
+                </Button>
+              </Box>
+
+              {filterDraftError && (
+                <Typography variant="caption" color="error" sx={{ display: "block", mt: 0.5 }}>
+                  {filterDraftError}
+                </Typography>
+              )}
+            </Box>
+
+            {/* Saved filter fields list */}
+            {formData.filterConfig.length > 0 && (
+              <Box sx={{ mt: 1.5, display: "flex", flexDirection: "column", gap: 0.75 }}>
+                {formData.filterConfig.map((fc, i) => (
+                  <Box key={i} sx={{ display: "flex", alignItems: "center", gap: 1, p: 1.5, border: "1px solid #e0e0e0", borderRadius: 1, bgcolor: "#fff" }}>
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>{fc.label}</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        key: {fc.key} &nbsp;|&nbsp; {fc.type}
+                        {fc.options?.length ? ` | ${fc.options.join(", ")}` : ""}
+                        {fc.type === "range" ? ` | ${fc.min}–${fc.max} ${fc.unit}` : ""}
+                        {fc.isRequired ? " | required" : ""}
+                      </Typography>
+                    </Box>
+                    <IconButton size="small" onClick={() => handleMoveFilterField(i, -1)} disabled={i === 0}>▲</IconButton>
+                    <IconButton size="small" onClick={() => handleMoveFilterField(i, 1)} disabled={i === formData.filterConfig.length - 1}>▼</IconButton>
+                    <IconButton size="small" color="error" onClick={() => handleRemoveFilterField(i)}>
+                      <DeleteOutlineRoundedIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
+                ))}
+              </Box>
+            )}
           </div>
 
           {/* Submit Button */}

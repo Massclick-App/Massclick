@@ -7,6 +7,9 @@ import VerifiedIcon from "@mui/icons-material/Verified";
 import StarIcon from "@mui/icons-material/Star";
 import GroupsIcon from "@mui/icons-material/Groups";
 import LockIcon from "@mui/icons-material/Lock";
+import TuneIcon from "@mui/icons-material/Tune";
+import CloseIcon from "@mui/icons-material/Close";
+import { Box, Chip, Drawer, Button } from "@mui/material";
 import styles from "./SearchResult.module.css";
 import CardsSearch from "../CardsSearch/CardsSearch";
 import CardDesign from "../cards/cards.js";
@@ -23,6 +26,7 @@ import { selectBusinessLoading, selectBusinessError } from "../../../redux/selec
 import TopBannerAds from "../banners/topBanner/topBanner.js";
 import GlobalSkeleton from "../globalSkeleton.js";
 import OTPLoginModal from "../AddBusinessModel.js";
+import FilterPanel from "./FilterPanel.js";
 import { generateSearchResultsPageSchema, generateBreadcrumbSchema, generateOrganizationSchema, generateWebsiteSchema, generateFAQSchema } from "../../../utils/seoSchemaGenerators";
 const cx = createScopedClassNames(styles);
 const createSlug = (text = "") => text.toLowerCase().trim().replace(/&/g, "and").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
@@ -65,6 +69,10 @@ const SearchResults = React.memo(() => {
     loading: seoContentLoading = false
   } = useSelector(state => state.seoPageContentReducer || {});
   const [results, setResults] = useState([]);
+  const [activeFilters, setActiveFilters] = useState({});
+  const [filterConfig, setFilterConfig] = useState([]);
+  const [sortBy, setSortBy] = useState("relevant");
+  const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
   const stateAppliedRef = useRef(false);
   const requestIdRef = useRef(0);
   useEffect(() => {
@@ -123,6 +131,68 @@ const SearchResults = React.memo(() => {
       setResults(action?.payload || []);
     });
   }, [normalizedSearchTerm, locationText, isKnownCategory, dispatch]);
+
+  // Fetch filterConfig for this category
+  useEffect(() => {
+    if (!normalizedSearchTerm) return;
+    const slug = normalizedSearchTerm.toLowerCase().trim().replace(/\s+/g, "-");
+    fetch(`/api/category/${encodeURIComponent(slug)}/filters`)
+      .then(r => r.ok ? r.json() : [])
+      .then(data => setFilterConfig(Array.isArray(data) ? data : []))
+      .catch(() => setFilterConfig([]));
+  }, [normalizedSearchTerm]);
+
+  // Re-search when filters or sort change
+  const hasActiveFilters = Object.values(activeFilters).some(v =>
+    Array.isArray(v) ? v.length > 0 : v !== null && v !== undefined && v !== ""
+  );
+  useEffect(() => {
+    if (!normalizedSearchTerm || !locationText) return;
+    if (!hasActiveFilters && sortBy === "relevant") return; // let normal search handle initial load
+    const requestId = ++requestIdRef.current;
+    const extraParams = {};
+    if (sortBy !== "relevant") extraParams.sortBy = sortBy;
+    const { minRating, openNow, verified, featured, ...categoryFilters } = activeFilters;
+    if (minRating) extraParams.minRating = minRating;
+    if (openNow) extraParams.openNow = openNow;
+    if (verified) extraParams.verified = verified;
+    if (featured) extraParams.featured = featured;
+    if (Object.keys(categoryFilters).length > 0) {
+      extraParams.filters = JSON.stringify(categoryFilters);
+    }
+    dispatch(performSearch(normalizedSearchTerm, locationText, isKnownCategory, extraParams)).then(action => {
+      if (requestId !== requestIdRef.current) return;
+      setResults(action?.payload || []);
+    });
+  }, [activeFilters, sortBy, normalizedSearchTerm, locationText, isKnownCategory, dispatch]); // eslint-disable-line
+
+  const handleFilterChange = useCallback((key, value) => {
+    setActiveFilters(prev => {
+      const next = { ...prev };
+      if (value === null || value === undefined || (Array.isArray(value) && value.length === 0)) {
+        delete next[key];
+      } else {
+        next[key] = value;
+      }
+      return next;
+    });
+  }, []);
+
+  const handleClearAllFilters = useCallback(() => {
+    setActiveFilters({});
+    setSortBy("relevant");
+  }, []);
+
+  const activeFilterChips = Object.entries(activeFilters).flatMap(([key, value]) => {
+    if (Array.isArray(value)) return value.map(v => ({ key, value: v, label: v }));
+    if (key === "minRating") return [{ key, value, label: `${value}+ Stars` }];
+    if (key === "openNow") return [{ key, value, label: "Open Now" }];
+    if (key === "verified") return [{ key, value, label: "Verified" }];
+    if (key === "featured") return [{ key, value, label: "Featured" }];
+    return [{ key, value, label: String(value) }];
+  });
+
+  const totalActiveCount = activeFilterChips.length + (sortBy !== "relevant" ? 1 : 0);
   useEffect(() => {
     if (!normalizedSearchTerm || !locationText) return;
     dispatch({
@@ -276,47 +346,130 @@ const SearchResults = React.memo(() => {
             </h2>
 
             <div className={cx("category-trust-badges")}>
-
               <span className={cx("trust-badge")}>
                 <VerifiedIcon fontSize="small" /> Verified Listings
               </span>
-
               <span className={cx("trust-badge")}>
                 <StarIcon fontSize="small" /> Top Rated Businesses
               </span>
-
               <span className={cx("trust-badge")}>
                 <GroupsIcon fontSize="small" /> Trusted by Thousands
               </span>
-
               <span className={cx("trust-badge")}>
                 <LockIcon fontSize="small" /> Secure Enquiry Platform
               </span>
             </div>
-
           </div>
-          {loading && <GlobalSkeleton type="list" />}
 
-          {!loading && results.length === 0 && <div className={cx("no-results-container")}>
-              <p className={cx("no-results-title")}>No results found 😔</p>
-              <button className={cx("go-home-button")} onClick={() => navigate("/")}>
-                Go to Homepage
-              </button>
-            </div>}
+          {/* Active filter chips row */}
+          {activeFilterChips.length > 0 && (
+            <div className={cx("filter-chips-row")}>
+              {activeFilterChips.map((chip, i) => (
+                <Chip key={`${chip.key}-${chip.value}-${i}`} label={chip.label} size="small"
+                  onDelete={() => {
+                    const current = activeFilters[chip.key];
+                    if (Array.isArray(current)) {
+                      const updated = current.filter(v => v !== chip.value);
+                      handleFilterChange(chip.key, updated.length > 0 ? updated : null);
+                    } else {
+                      handleFilterChange(chip.key, null);
+                    }
+                  }}
+                  deleteIcon={<CloseIcon sx={{ fontSize: "12px !important" }} />}
+                  sx={{ bgcolor: "#fff3e0", color: "#e65100", border: "1px solid #ffb74d", fontSize: "12px", height: 26 }} />
+              ))}
+              <Chip label="Clear all" size="small" onClick={handleClearAllFilters}
+                sx={{ bgcolor: "transparent", border: "1px solid #ccc", color: "#666", fontSize: "12px", height: 26, cursor: "pointer" }} />
+            </div>
+          )}
 
-          <div className={cx("business-list")}>
+          {/* Two-column layout: filter panel + results */}
+          <div className={cx("search-layout")}>
+            {/* Desktop filter column */}
+            <div className={cx("filter-column")}>
+              <FilterPanel
+                filterConfig={filterConfig}
+                activeFilters={activeFilters}
+                sortBy={sortBy}
+                onFilterChange={handleFilterChange}
+                onSortChange={setSortBy}
+                onClearAll={handleClearAllFilters}
+              />
+            </div>
 
-            {results.map(business => {
-              const averageRating = typeof business.averageRating === "number" ? business.averageRating.toFixed(1) : "0.0";
-              const totalRatings = typeof business.totalReviews === "number" ? business.totalReviews : 0;
-              const businessUrl = `/business/${createSlug(business.location)}/${createSlug(business.businessName)}/${business._id}`;
-              return <div className={cx("business-card-wrapper")} key={business._id}>
-                  <CardDesign businessId={business._id} title={business.businessName} phone={business.contact} whatsappNumber={business.whatsappNumber} contactList={business.contactList}
-                // address={business.location}
-                rating={averageRating} reviews={totalRatings} address={business.location} details={`${business.experience}+ years experience`} category={business.category} price={business.category === "Hotels" ? business.price : null} imageSrc={business.bannerImage || "/header.png"} to={businessUrl} />
-                </div>;
-            })}
+            {/* Results column */}
+            <div className={cx("results-column")}>
+              {/* Result count + sort info */}
+              {!loading && results.length > 0 && (
+                <p className={cx("result-count")}>
+                  {results.length} result{results.length !== 1 ? "s" : ""} for {searchText} in {locationText}
+                </p>
+              )}
+
+              {loading && <GlobalSkeleton type="list" />}
+
+              {!loading && results.length === 0 && (
+                <div className={cx("no-results-container")}>
+                  <p className={cx("no-results-title")}>No results found 😔</p>
+                  {hasActiveFilters && (
+                    <button className={cx("go-home-button")} onClick={handleClearAllFilters}>
+                      Clear Filters
+                    </button>
+                  )}
+                  {!hasActiveFilters && (
+                    <button className={cx("go-home-button")} onClick={() => navigate("/")}>
+                      Go to Homepage
+                    </button>
+                  )}
+                </div>
+              )}
+
+              <div className={cx("business-list")}>
+                {results.map(business => {
+                  const averageRating = typeof business.averageRating === "number" ? business.averageRating.toFixed(1) : "0.0";
+                  const totalRatings = typeof business.totalReviews === "number" ? business.totalReviews : 0;
+                  const businessUrl = `/business/${createSlug(business.location)}/${createSlug(business.businessName)}/${business._id}`;
+                  return (
+                    <div className={cx("business-card-wrapper")} key={business._id}>
+                      <CardDesign businessId={business._id} title={business.businessName} phone={business.contact}
+                        whatsappNumber={business.whatsappNumber} contactList={business.contactList}
+                        rating={averageRating} reviews={totalRatings} address={business.location}
+                        details={`${business.experience}+ years experience`} category={business.category}
+                        price={business.category === "Hotels" ? business.price : null}
+                        imageSrc={business.bannerImage || "/header.png"} to={businessUrl} />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
+        </div>
+
+        {/* Mobile filter drawer */}
+        <Drawer anchor="bottom" open={filterDrawerOpen} onClose={() => setFilterDrawerOpen(false)}
+          PaperProps={{ sx: { borderRadius: "16px 16px 0 0", maxHeight: "80vh", overflow: "auto", p: 2 } }}>
+          <FilterPanel
+            filterConfig={filterConfig}
+            activeFilters={activeFilters}
+            sortBy={sortBy}
+            onFilterChange={handleFilterChange}
+            onSortChange={setSortBy}
+            onClearAll={handleClearAllFilters}
+          />
+          <Box sx={{ p: 2, pt: 1 }}>
+            <Button fullWidth variant="contained" onClick={() => setFilterDrawerOpen(false)}
+              sx={{ bgcolor: "#ff8c00", "&:hover": { bgcolor: "#e07800" }, borderRadius: 2, fontWeight: 700 }}>
+              Apply Filters {totalActiveCount > 0 ? `(${totalActiveCount})` : ""}
+            </Button>
+          </Box>
+        </Drawer>
+
+        {/* Mobile sticky filter bar */}
+        <div className={cx("mobile-filter-bar")}>
+          <button className={cx("mobile-filter-btn")} onClick={() => setFilterDrawerOpen(true)}>
+            <TuneIcon sx={{ fontSize: 16 }} />
+            Filters {totalActiveCount > 0 ? `(${totalActiveCount})` : ""}
+          </button>
         </div>
         {!seoContentLoading && sanitizedPageContent && <div className={cx("seo-outer-wrapper")}>
             <div className={cx("seo-article-wrapper")}>

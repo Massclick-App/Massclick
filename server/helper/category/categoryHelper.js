@@ -53,6 +53,10 @@ export const createCategory = async (reqBody = {}) => {
         }
       });
 
+      if (Array.isArray(reqBody.filterConfig)) {
+        updates.filterConfig = reqBody.filterConfig;
+      }
+
       // Handle new categoryImages object (6 variants) - always extract S3 keys
       if (reqBody.categoryImages && typeof reqBody.categoryImages === "object") {
         const categoryImages = {};

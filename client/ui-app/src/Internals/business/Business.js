@@ -1,5 +1,6 @@
 import { createScopedClassNames } from "../../utils/createScopedClassNames";
-import React, { useEffect, useState, useRef, lazy, Suspense } from "react";
+import React, { useEffect, useState, useRef, lazy, Suspense, useCallback } from "react";
+import axiosInstance from "../../services/axiosInstance.js";
 import { useDispatch, useSelector } from "react-redux";
 import InputValidator from "../validators/inputValidator.js";
 import { getAllBusinessList, createBusinessList, editBusinessList, deleteBusinessList, trackQrDownload } from "../../redux/actions/businessListAction";
@@ -16,7 +17,7 @@ import CategoryIcon from '@mui/icons-material/Category';
 import VerifiedUserIcon from "@mui/icons-material/VerifiedUser";
 import { Box, Button, Typography, CircularProgress, IconButton, Avatar, Dialog, DialogTitle, DialogContent, DialogActions,
 // Stepper Imports:
-Stack, Stepper, Step, StepLabel, InputAdornment, Chip } from "@mui/material";
+Stack, Stepper, Step, StepLabel, InputAdornment, Chip, Checkbox, FormControlLabel, RadioGroup, Radio, Slider, FormGroup } from "@mui/material";
 import PaidIcon from '@mui/icons-material/Paid';
 import PendingIcon from '@mui/icons-material/Pending';
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
@@ -355,8 +356,11 @@ const BusinessList = React.memo(() => {
     linkedin: "",
     businessDetails: "",
     kycDocuments: [],
-    openingHours: defaultOpeningHours
+    openingHours: defaultOpeningHours,
+    filters: {}
   });
+  const [categoryFilterConfig, setCategoryFilterConfig] = useState([]);
+  const [filterConfigLoading, setFilterConfigLoading] = useState(false);
   const [preview, setPreview] = useState(null);
   const [deleteDialog, setDeleteDialog] = useState({
     open: false,
@@ -543,7 +547,8 @@ const BusinessList = React.memo(() => {
       linkedin: row.linkedin || "",
       businessDetails: row.businessDetails || "",
       openingHours: row.openingHours?.length ? row.openingHours : defaultOpeningHours,
-      kycDocuments: row.kycDocuments || []
+      kycDocuments: row.kycDocuments || [],
+      filters: (row.filters && typeof row.filters === "object") ? row.filters : {}
     });
     setBusinessValue(row.businessDetails || "");
     setPreview(row.bannerImage || null);
@@ -553,6 +558,29 @@ const BusinessList = React.memo(() => {
       behavior: "smooth"
     });
   };
+  // Fetch filterConfig when category changes
+  useEffect(() => {
+    const cat = formData.category;
+    if (!cat) { setCategoryFilterConfig([]); return; }
+    // Check Redux searchCategory first
+    const found = searchCategory?.find(c => c.category?.toLowerCase() === cat.toLowerCase());
+    if (found && Array.isArray(found.filterConfig) && found.filterConfig.length > 0) {
+      setCategoryFilterConfig(found.filterConfig);
+      return;
+    }
+    // Fallback: fetch from API
+    setFilterConfigLoading(true);
+    const slug = cat.toLowerCase().replace(/\s+/g, "-");
+    axiosInstance.get(`/api/category/${encodeURIComponent(slug)}/filters`)
+      .then(res => setCategoryFilterConfig(Array.isArray(res.data) ? res.data : []))
+      .catch(() => setCategoryFilterConfig([]))
+      .finally(() => setFilterConfigLoading(false));
+  }, [formData.category]); // eslint-disable-line
+
+  const handleFilterChange = useCallback((key, value) => {
+    setFormData(prev => ({ ...prev, filters: { ...prev.filters, [key]: value } }));
+  }, []);
+
   const handleDelete = row => {
     setDeleteDialog({
       open: true,
@@ -1532,6 +1560,78 @@ const BusinessList = React.memo(() => {
                   </select>
                 </div>
               </>}
+
+            {/* Dynamic category filters */}
+            {filterConfigLoading && (
+              <div className={cx("form-input-group col-span-all")}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <CircularProgress size={16} />
+                  <Typography variant="caption">Loading filters…</Typography>
+                </Box>
+              </div>
+            )}
+            {categoryFilterConfig.length > 0 && (
+              <>
+                <div className={cx("form-divider")}></div>
+                <div className={cx("form-input-group col-span-all")}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
+                    Category Filters — {formData.category}
+                  </Typography>
+                </div>
+                {categoryFilterConfig.map(fc => (
+                  <div key={fc.key} className={cx("form-input-group")}>
+                    <label className={cx("input-label")}>
+                      {fc.label}{fc.isRequired && <span style={{ color: "red" }}> *</span>}
+                    </label>
+
+                    {fc.type === "multiselect" && (
+                      <Autocomplete multiple options={fc.options || []}
+                        value={Array.isArray(formData.filters?.[fc.key]) ? formData.filters[fc.key] : []}
+                        onChange={(_, val) => handleFilterChange(fc.key, val)}
+                        renderTags={(value, getTagProps) => value.map((opt, i) =>
+                          <Chip key={i} label={opt} size="small" {...getTagProps({ index: i })}
+                            sx={{ bgcolor: "#ff8c00", color: "#fff", "& .MuiChip-deleteIcon": { color: "rgba(255,255,255,0.7)" } }} />)}
+                        renderInput={params => <TextField {...params} variant="outlined" size="small" placeholder={`Select ${fc.label}`} />}
+                      />
+                    )}
+
+                    {fc.type === "radio" && (
+                      <select className={cx("select-input")} value={formData.filters?.[fc.key] || ""}
+                        onChange={e => handleFilterChange(fc.key, e.target.value || null)}>
+                        <option value="">-- Select {fc.label} --</option>
+                        {(fc.options || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                      </select>
+                    )}
+
+                    {fc.type === "toggle" && (
+                      <FormControlLabel
+                        control={
+                          <Checkbox checked={Boolean(formData.filters?.[fc.key])}
+                            onChange={e => handleFilterChange(fc.key, e.target.checked)}
+                            sx={{ color: "#ff8c00", "&.Mui-checked": { color: "#ff8c00" } }} />
+                        }
+                        label={<Typography variant="body2">{fc.label}</Typography>}
+                      />
+                    )}
+
+                    {fc.type === "range" && (
+                      <Box sx={{ px: 1 }}>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
+                          {fc.min ?? 0}{fc.unit} – {fc.max ?? 100}{fc.unit}
+                        </Typography>
+                        <Slider value={formData.filters?.[fc.key] ?? fc.min ?? 0}
+                          min={fc.min ?? 0} max={fc.max ?? 100}
+                          step={Math.ceil(((fc.max ?? 100) - (fc.min ?? 0)) / 20)}
+                          valueLabelDisplay="auto"
+                          valueLabelFormat={v => `${v}${fc.unit || ""}`}
+                          onChange={(_, val) => handleFilterChange(fc.key, val)}
+                          sx={{ color: "#ff8c00" }} />
+                      </Box>
+                    )}
+                  </div>
+                ))}
+              </>
+            )}
             <div className={cx("form-input-group col-span-all")}>
               <label className={cx("input-label")}>📍 Slug (URL-friendly name)</label>
               <input type="text" name="slug" className={cx("text-input")} value={formData.slug} onChange={handleChange} placeholder="business-name-here" />

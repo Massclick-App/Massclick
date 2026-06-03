@@ -9,6 +9,28 @@ import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import styles from "./advertisement.module.css";
 const cx = createScopedClassNames(styles);
+const TOP_BANNER_RULES = {
+  targetWidth: 1440,
+  targetHeight: 150,
+  recommended: "1440 x 150 px",
+  label: "Top banner output is forced to 1440 x 150 px. Uploaded images are center-cropped to fit the slim banner frame."
+};
+const getImageDimensions = file => new Promise((resolve, reject) => {
+  const image = new Image();
+  const objectUrl = URL.createObjectURL(file);
+  image.onload = () => {
+    URL.revokeObjectURL(objectUrl);
+    resolve({
+      width: image.naturalWidth,
+      height: image.naturalHeight
+    });
+  };
+  image.onerror = () => {
+    URL.revokeObjectURL(objectUrl);
+    reject(new Error("Unable to read image dimensions"));
+  };
+  image.src = objectUrl;
+});
 export default function AdvertisementPage() {
   const dispatch = useDispatch();
   const fileInputRef = useRef(null);
@@ -24,6 +46,7 @@ export default function AdvertisementPage() {
   const [editMode, setEditMode] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [preview, setPreview] = useState(null);
+  const [imageMeta, setImageMeta] = useState(null);
   const [errors, setErrors] = useState({});
   const [formData, setFormData] = useState({
     title: "",
@@ -52,12 +75,39 @@ export default function AdvertisementPage() {
       ...prev,
       [name]: value
     }));
+    if (name === "position") {
+      setErrors(prev => {
+        const next = {
+          ...prev
+        };
+        delete next.bannerImage;
+        return next;
+      });
+    }
   };
   const handleImageChange = async e => {
     const file = e.target.files[0];
     if (!file) return;
+    let dimensions;
+    try {
+      dimensions = await getImageDimensions(file);
+    } catch (error) {
+      setErrors(prev => ({
+        ...prev,
+        bannerImage: error.message
+      }));
+      return;
+    }
     const base64 = await convertToBase64(file);
     setPreview(base64);
+    setImageMeta(dimensions);
+    setErrors(prev => {
+      const next = {
+        ...prev
+      };
+      delete next.bannerImage;
+      return next;
+    });
     setFormData(p => ({
       ...p,
       bannerImage: base64
@@ -69,6 +119,7 @@ export default function AdvertisementPage() {
     if (!formData.category.trim()) err.category = "Category is required";
     if (!formData.startTime) err.startTime = "Start time required";
     if (!formData.endTime) err.endTime = "End time required";
+    if (!editMode && !formData.bannerImage) err.bannerImage = "Banner image is required";
     setErrors(err);
     return Object.keys(err).length === 0;
   };
@@ -83,6 +134,7 @@ export default function AdvertisementPage() {
       bannerImage: ""
     });
     setPreview(null);
+    setImageMeta(null);
     setEditMode(false);
     setEditingId(null);
     setErrors({});
@@ -110,6 +162,7 @@ export default function AdvertisementPage() {
       bannerImage: ""
     });
     setPreview(row.bannerImage || null);
+    setImageMeta(null);
   };
   const handleDelete = row => {
     if (window.confirm(`Delete "${row.title}" ?`)) {
@@ -154,6 +207,7 @@ export default function AdvertisementPage() {
           </button>
         </div>
   }];
+  const isTopBanner = formData.position === "TOP_BANNER";
   return <div className={cx("ads-page")}>
       <div className={cx("ads-header")}>
         <h1>Advertisements</h1>
@@ -243,14 +297,25 @@ export default function AdvertisementPage() {
 
           <div className={cx("form-field upload")}>
             <label>Banner Image</label>
+            <p className={cx("upload-guidance")}>
+              {isTopBanner ? TOP_BANNER_RULES.label : "Upload a clear JPG, PNG or WEBP banner image."}
+            </p>
             <div className={cx("upload-box")}>
               <button type="button" onClick={() => fileInputRef.current.click()}>
                 <CloudUploadIcon fontSize="small" />
                 Upload Image
               </button>
               <input ref={fileInputRef} hidden type="file" accept="image/*" onChange={handleImageChange} />
-              {preview && <img src={preview} alt="preview" />}
             </div>
+            {preview && <div className={cx("banner-preview", isTopBanner && "top-banner-preview")}>
+                <span>Preview</span>
+                <img src={preview} alt="preview" />
+              </div>}
+            {imageMeta && <span className={cx("image-meta")}>
+                Selected image: {imageMeta.width} x {imageMeta.height} px
+                {isTopBanner ? ` -> saved as ${TOP_BANNER_RULES.targetWidth} x ${TOP_BANNER_RULES.targetHeight} px` : ""}
+              </span>}
+            {errors.bannerImage && <span className={cx("error")}>{errors.bannerImage}</span>}
           </div>
 
           <div className={cx("form-field")}>

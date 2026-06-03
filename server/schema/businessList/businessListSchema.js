@@ -211,6 +211,7 @@ const businessListSchema = new mongoose.Schema({
     type: Schema.Types.ObjectId,
     ref: 'User',
   },
+  filters: { type: mongoose.Schema.Types.Mixed, default: {} },
   isActive: { type: Boolean, default: true },
 });
 

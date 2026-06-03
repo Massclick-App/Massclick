@@ -382,7 +382,7 @@ export const getBackendSuggestions = (search) => async (dispatch) => {
   }
 };
 
-export const backendMainSearch = (term, location, category) => async (dispatch) => {
+export const backendMainSearch = (term, location, category, extraParams = {}) => async (dispatch) => {
   dispatch({ type: SEARCH_BUSINESS_REQUEST });
 
   try {
@@ -392,7 +392,7 @@ export const backendMainSearch = (term, location, category) => async (dispatch) 
       `${API_URL}/businesslist/search`,
       {
         headers: { Authorization: `Bearer ${token}` },
-        params: { term, location, category },
+        params: { term, location, category, ...extraParams },
       }
     );
 
@@ -415,13 +415,11 @@ export const backendMainSearch = (term, location, category) => async (dispatch) 
 // Centralized search function - intelligently routes to category or term search
 // If isKnownCategory: sends as category parameter (exact match)
 // If !isKnownCategory: sends as term parameter (flexible search)
-export const performSearch = (searchInput, location, isKnownCategory = false) => async (dispatch) => {
+export const performSearch = (searchInput, location, isKnownCategory = false, extraParams = {}) => async (dispatch) => {
   if (isKnownCategory) {
-    // Known category: send as category parameter for exact match
-    return dispatch(backendMainSearch("", location, searchInput));
+    return dispatch(backendMainSearch("", location, searchInput, extraParams));
   } else {
-    // User search: send as term parameter for flexible search
-    return dispatch(backendMainSearch(searchInput, location, ""));
+    return dispatch(backendMainSearch(searchInput, location, "", extraParams));
   }
 };
 
