@@ -283,23 +283,6 @@ section.seo-header-content.premium-section {
   align-self: flex-start;
 }
 
-.ad-unit {
-  width: 300px;
-  min-height: 600px;
-  background: #f8fafc;
-  border: 1.5px dashed #cbd5e1;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #94a3b8;
-  font-size: 12px;
-  letter-spacing: 0.04em;
-}
-
-.ad-unit::after {
-  content: "Advertisement";
-}
 
 .results-toolbar {
   display: flex;

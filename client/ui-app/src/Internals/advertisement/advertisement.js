@@ -15,16 +15,9 @@ const TOP_BANNER_RULES = {
   targetWidth: 1720,
   targetHeight: 168,
   recommended: "1720 x 168 px",
-  label: "Choose a large image and crop it into the required 1720 x 168 px top banner frame."
+  label: "Choose an image and crop it into the required 1720 x 168 px top banner frame."
 };
 const TOP_BANNER_RATIO = TOP_BANNER_RULES.targetWidth / TOP_BANNER_RULES.targetHeight;
-const validateTopBannerDimensions = ({ width, height }) => {
-  if (width < TOP_BANNER_RULES.targetWidth || height < TOP_BANNER_RULES.targetHeight) {
-    return `Top banner image must be at least ${TOP_BANNER_RULES.recommended}.`;
-  }
-
-  return "";
-};
 const getImageDimensions = file => new Promise((resolve, reject) => {
   const image = new Image();
   const objectUrl = URL.createObjectURL(file);
@@ -174,22 +167,6 @@ export default function AdvertisementPage() {
     let bannerImage;
     let previewImage;
     if (formData.position === "TOP_BANNER") {
-      const topBannerError = validateTopBannerDimensions(dimensions);
-      if (topBannerError) {
-        setPreview(null);
-        setImageMeta(dimensions);
-        setFormData(p => ({
-          ...p,
-          bannerImage: ""
-        }));
-        setErrors(prev => ({
-          ...prev,
-          bannerImage: topBannerError
-        }));
-        if (fileInputRef.current) fileInputRef.current.value = "";
-        return;
-      }
-
       const sourceImage = await convertToBase64(file);
       setImageMeta(dimensions);
       setCropData({

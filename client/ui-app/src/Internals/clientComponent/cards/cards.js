@@ -173,97 +173,82 @@ const Cards = ({
             )}
           </div>
 
-          {/* Content */}
-          <div className={cx("card-content")}>
-
-            {/* TOP — title + meta */}
-            <div className={cx("card-top")}>
-              <div className={cx("card-header-row")}>
-                <h2 className={cx("card-title")}>{title}</h2>
-                {category?.toLowerCase().includes("hotel") && price && (
-                  <div className={cx("price-box")}>
-                    ₹{price}
-                    <span className={cx("price-type")}>/{priceType}</span>
-                  </div>
-                )}
+          {/* Content — list mode uses a completely separate row layout */}
+          {viewMode === "list" ? (
+            <div className={cx("list-content")}>
+              <div className={cx("list-info")}>
+                <div className={cx("card-header-row")}>
+                  <h2 className={cx("card-title")}>{title}</h2>
+                  {category?.toLowerCase().includes("hotel") && price && (
+                    <div className={cx("price-box")}>₹{price}<span className={cx("price-type")}>/{priceType}</span></div>
+                  )}
+                </div>
+                <div className={cx("card-meta")}>
+                  <span className={cx("rating-badge")}><StarRoundedIcon style={{ fontSize: 13 }} />{safeRating}</span>
+                  <span className={cx("reviews-text")}>{safeReviews} ratings</span>
+                  {category && <span className={cx("category-pill")}>{category}</span>}
+                </div>
+                <div className={cx("card-info")}>
+                  {address && <p className={cx("card-address-inline")}><LocationOnIcon className={cx("icon")} /><span>{address}</span></p>}
+                  {category?.toLowerCase().includes("bank") && contactList && <p className={cx("card-ifsc")}>IFSC: {contactList}</p>}
+                  {experience != null && experience !== "" && <p className={cx("card-details")}><WorkHistoryRoundedIcon className={cx("icon")} />{experience}+ yrs experience</p>}
+                  {filterBadges.length > 0 && (
+                    <div className={cx("filter-badges")}>
+                      {filterBadges.map(badge => <span key={badge} className={cx("filter-badge")}>{badge}</span>)}
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className={cx("card-meta")}>
-                <span className={cx("rating-badge")}>
-                  <StarRoundedIcon style={{ fontSize: 13 }} />
-                  {safeRating}
-                </span>
-                <span className={cx("reviews-text")}>{safeReviews} ratings</span>
-                {category && (
-                  <span className={cx("category-pill")}>{category}</span>
-                )}
+              <div className={cx("list-actions")}>
+                <button className={cx("card-action-button phone-button")} onClick={handlePhoneClick}><PhoneIcon />Call</button>
+                <button className={cx("card-action-button whatsapp-button")} onClick={handleWhatsAppClick}><WhatsAppIcon />WhatsApp</button>
+                <button className={cx("card-action-button enquiry-button")} onClick={handleEnquiryClick}><SendIcon />Enquiry</button>
               </div>
             </div>
-
-            {/* MID — address, experience, filter badges */}
-            <div className={cx("card-info")}>
-              {address && (
-                <p className={cx("card-address-inline")}>
-                  <LocationOnIcon className={cx("icon")} />
-                  <span>{address}</span>
-                </p>
-              )}
-              {category?.toLowerCase().includes("bank") && contactList && (
-                <p className={cx("card-ifsc")}>IFSC: {contactList}</p>
-              )}
-              {experience != null && experience !== "" && (
-                <p className={cx("card-details")}>
-                  <WorkHistoryRoundedIcon className={cx("icon")} />
-                  {experience}+ yrs experience
-                </p>
-              )}
-              {filterBadges.length > 0 && (() => {
-                const isGrid = viewMode === "grid" || viewMode === "large";
-                const LIMIT = 2;
-                const shown = isGrid && !chipsExpanded ? filterBadges.slice(0, LIMIT) : filterBadges;
-                const remaining = filterBadges.length - LIMIT;
-                return (
-                  <div className={cx("filter-badges", isGrid && "filter-badges--nowrap")}>
-                    {shown.map((badge) => (
-                      <span key={badge} className={cx("filter-badge")}>{badge}</span>
-                    ))}
-                    {isGrid && !chipsExpanded && remaining > 0 && (
-                      <span
-                        className={cx("filter-badge", "filter-badge-more")}
-                        onClick={e => { e.preventDefault(); e.stopPropagation(); setChipsExpanded(true); }}
-                      >
-                        +{remaining} more
-                      </span>
-                    )}
-                    {isGrid && chipsExpanded && (
-                      <span
-                        className={cx("filter-badge", "filter-badge-more")}
-                        onClick={e => { e.preventDefault(); e.stopPropagation(); setChipsExpanded(false); }}
-                      >
-                        less
-                      </span>
-                    )}
-                  </div>
-                );
-              })()}
+          ) : (
+            <div className={cx("card-content")}>
+              <div className={cx("card-top")}>
+                <div className={cx("card-header-row")}>
+                  <h2 className={cx("card-title")}>{title}</h2>
+                  {category?.toLowerCase().includes("hotel") && price && (
+                    <div className={cx("price-box")}>₹{price}<span className={cx("price-type")}>/{priceType}</span></div>
+                  )}
+                </div>
+                <div className={cx("card-meta")}>
+                  <span className={cx("rating-badge")}><StarRoundedIcon style={{ fontSize: 13 }} />{safeRating}</span>
+                  <span className={cx("reviews-text")}>{safeReviews} ratings</span>
+                  {category && <span className={cx("category-pill")}>{category}</span>}
+                </div>
+              </div>
+              <div className={cx("card-info")}>
+                {address && <p className={cx("card-address-inline")}><LocationOnIcon className={cx("icon")} /><span>{address}</span></p>}
+                {category?.toLowerCase().includes("bank") && contactList && <p className={cx("card-ifsc")}>IFSC: {contactList}</p>}
+                {experience != null && experience !== "" && <p className={cx("card-details")}><WorkHistoryRoundedIcon className={cx("icon")} />{experience}+ yrs experience</p>}
+                {filterBadges.length > 0 && (() => {
+                  const isGrid = viewMode === "grid" || viewMode === "large";
+                  const LIMIT = 2;
+                  const shown = isGrid && !chipsExpanded ? filterBadges.slice(0, LIMIT) : filterBadges;
+                  const remaining = filterBadges.length - LIMIT;
+                  return (
+                    <div className={cx("filter-badges", isGrid && "filter-badges--nowrap")}>
+                      {shown.map(badge => <span key={badge} className={cx("filter-badge")}>{badge}</span>)}
+                      {isGrid && !chipsExpanded && remaining > 0 && (
+                        <span className={cx("filter-badge", "filter-badge-more")} onClick={e => { e.preventDefault(); e.stopPropagation(); setChipsExpanded(true); }}>+{remaining} more</span>
+                      )}
+                      {isGrid && chipsExpanded && (
+                        <span className={cx("filter-badge", "filter-badge-more")} onClick={e => { e.preventDefault(); e.stopPropagation(); setChipsExpanded(false); }}>less</span>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+              <div className={cx("cardpage-actions")}>
+                <button className={cx("card-action-button phone-button")} onClick={handlePhoneClick}><PhoneIcon />Call</button>
+                <button className={cx("card-action-button whatsapp-button")} onClick={handleWhatsAppClick}><WhatsAppIcon />WhatsApp</button>
+                <button className={cx("card-action-button enquiry-button")} onClick={handleEnquiryClick}><SendIcon />Enquiry</button>
+              </div>
             </div>
-
-            {/* BOTTOM — actions */}
-            <div className={cx("cardpage-actions")}>
-              <button className={cx("card-action-button phone-button")} onClick={handlePhoneClick}>
-                <PhoneIcon />
-                Call
-              </button>
-              <button className={cx("card-action-button whatsapp-button")} onClick={handleWhatsAppClick}>
-                <WhatsAppIcon />
-                WhatsApp
-              </button>
-              <button className={cx("card-action-button enquiry-button")} onClick={handleEnquiryClick}>
-                <SendIcon />
-                Enquiry
-              </button>
-            </div>
-
-          </div>
+          )}
         </div>
       </Link>
     </>

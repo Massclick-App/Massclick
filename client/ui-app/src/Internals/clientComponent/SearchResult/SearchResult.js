@@ -35,6 +35,25 @@ import axiosInstance from "../../../services/axiosInstance.js";
 import { generateSearchResultsPageSchema, generateBreadcrumbSchema, generateOrganizationSchema, generateWebsiteSchema, generateFAQSchema } from "../../../utils/seoSchemaGenerators";
 const cx = createScopedClassNames(styles);
 const createSlug = (text = "") => text.toLowerCase().trim().replace(/&/g, "and").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+
+const GoogleAd = () => {
+  useEffect(() => {
+    try {
+      (window.adsbygoogle = window.adsbygoogle || []).push({});
+    } catch (e) {}
+  }, []);
+  return (
+    <ins
+      className="adsbygoogle"
+      style={{ display: "block" }}
+      data-ad-client="ca-pub-3217097513155005"
+      data-ad-slot="1401736258"
+      data-ad-format="auto"
+      data-full-width-responsive="true"
+    />
+  );
+};
+
 const sanitizeSeoHtml = (html = "") => {
   return html.replace(/<h1(\s[^>]*)?>/gi, "<h2>").replace(/<\/h1>/gi, "</h2>");
 };
@@ -486,9 +505,7 @@ const SearchResults = React.memo(() => {
             {/* Right ads column — only for single-column (list / table) modes */}
             {(viewMode === "list" || viewMode === "table") && (
               <div className={cx("ads-column")}>
-                <div className={cx("ad-unit")} aria-label="Advertisement">
-                  {/* Replace with <ins class="adsbygoogle"> block */}
-                </div>
+                <GoogleAd />
               </div>
             )}
           </div>
