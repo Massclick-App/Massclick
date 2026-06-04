@@ -32,6 +32,13 @@ const cropTopBannerImage = async (imageData) => {
   }
 
   if (
+    metadata.width === TOP_BANNER_RULES.targetWidth &&
+    metadata.height === TOP_BANNER_RULES.targetHeight
+  ) {
+    return imageData;
+  }
+
+  if (
     metadata.width < TOP_BANNER_RULES.targetWidth ||
     metadata.height < TOP_BANNER_RULES.targetHeight
   ) {

@@ -222,7 +222,7 @@ const Cards = ({
                 const shown = isGrid && !chipsExpanded ? filterBadges.slice(0, LIMIT) : filterBadges;
                 const remaining = filterBadges.length - LIMIT;
                 return (
-                  <div className={cx("filter-badges")}>
+                  <div className={cx("filter-badges", isGrid && "filter-badges--nowrap")}>
                     {shown.map((badge) => (
                       <span key={badge} className={cx("filter-badge")}>{badge}</span>
                     ))}

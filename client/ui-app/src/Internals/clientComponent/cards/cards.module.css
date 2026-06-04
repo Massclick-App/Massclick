@@ -511,11 +511,17 @@
   letter-spacing: 0.01em;
 }
 
+.filter-badges--nowrap {
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
 .filter-badge-more {
   background: #e2e8f0;
   color: #334155;
   border-color: #cbd5e1;
   cursor: pointer;
+  flex-shrink: 0;
 }
 
 .filter-badge-more:hover {

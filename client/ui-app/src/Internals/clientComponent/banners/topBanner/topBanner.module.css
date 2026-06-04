@@ -28,7 +28,7 @@
   margin: 0 auto;
   padding: 0;
   box-sizing: border-box;
-  height: clamp(92px, 9vw, 168px);
+  aspect-ratio: 1720 / 168;
   overflow: hidden;
   border-radius: 8px;
   background: #f8fafc;
@@ -91,10 +91,6 @@
 
 /* ===== Mobile ===== */
 @media (max-width: 768px) {
-  .banner-image-wrapper {
-    height: clamp(72px, 18vw, 112px);
-  }
-
   .sponsored-label {
     top: 8px;
     left: 8px;
@@ -114,7 +110,6 @@
 /* ===== Small Mobile ===== */
 @media (max-width: 480px) {
   .banner-image-wrapper {
-    height: clamp(64px, 20vw, 88px);
     border-radius: 7px;
   }
 
