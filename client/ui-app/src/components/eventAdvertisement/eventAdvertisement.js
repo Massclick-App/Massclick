@@ -29,8 +29,11 @@ import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 
 import CustomizedTable from "../../components/Table/CustomizedTable";
+import { createScopedClassNames } from "../../utils/createScopedClassNames";
 
-import "./eventAdvertisement.css";
+import styles from "./eventAdvertisement.module.css";
+
+const cx = createScopedClassNames(styles);
 
 const initialFormData = {
   title: "",
@@ -302,7 +305,7 @@ export default function EventAdvertisement() {
       renderCell: (value, row) =>
         value ? (
           <img
-            className="eventAdvertisement-thumb"
+            className={cx("eventAdvertisement-thumb")}
             src={value}
             alt={row.title}
           />
@@ -347,11 +350,11 @@ export default function EventAdvertisement() {
       label: "Status",
       renderCell: (value, row) => (
         <span
-          className={`eventAdvertisement-status ${
+          className={cx(`eventAdvertisement-status ${
             row.isActive
               ? "eventAdvertisement-status--active"
               : "eventAdvertisement-status--inactive"
-          }`}
+          }`)}
         >
           {value}
         </span>
@@ -361,7 +364,7 @@ export default function EventAdvertisement() {
       id: "action",
       label: "Action",
       renderCell: (_, row) => (
-        <div className="eventAdvertisement-actions">
+        <div className={cx("eventAdvertisement-actions")}>
           <IconButton
             color="primary"
             onClick={() => handleEdit(row)}
@@ -383,8 +386,8 @@ export default function EventAdvertisement() {
   ];
 
   return (
-    <div className="eventAdvertisement-page">
-      <div className="eventAdvertisement-card">
+    <div className={cx("eventAdvertisement-page")}>
+      <div className={cx("eventAdvertisement-card")}>
         <h2>
           {isEditMode
             ? "Edit Event Advertisement"
@@ -404,7 +407,7 @@ export default function EventAdvertisement() {
         )}
 
         <form onSubmit={handleSubmit}>
-          <div className="eventAdvertisement-grid">
+          <div className={cx("eventAdvertisement-grid")}>
             <div>
               <label>Title *</label>
 
@@ -416,7 +419,7 @@ export default function EventAdvertisement() {
               />
 
               {errors.title && (
-                <p className="eventAdvertisement-error-text">
+                <p className={cx("eventAdvertisement-error-text")}>
                   {errors.title}
                 </p>
               )}
@@ -454,7 +457,7 @@ export default function EventAdvertisement() {
               </select>
 
               {errors.eventCategory && (
-                <p className="eventAdvertisement-error-text">
+                <p className={cx("eventAdvertisement-error-text")}>
                   {errors.eventCategory}
                 </p>
               )}
@@ -480,13 +483,13 @@ export default function EventAdvertisement() {
               </select>
 
               {errors.eventLocation && (
-                <p className="eventAdvertisement-error-text">
+                <p className={cx("eventAdvertisement-error-text")}>
                   {errors.eventLocation}
                 </p>
               )}
             </div>
 
-            <div className="eventAdvertisement-field--full">
+            <div className={cx("eventAdvertisement-field--full")}>
               <label>Description</label>
 
               <textarea
@@ -497,15 +500,15 @@ export default function EventAdvertisement() {
               />
             </div>
 
-            <div className="eventAdvertisement-upload-field">
+            <div className={cx("eventAdvertisement-upload-field")}>
               <label>Advertisement Image</label>
 
-              <div className="eventAdvertisement-upload-content">
+              <div className={cx("eventAdvertisement-upload-content")}>
                 <Button
                   variant="contained"
                   startIcon={<CloudUploadIcon />}
                   component="label"
-                  className="eventAdvertisement-upload-button"
+                  className={cx("eventAdvertisement-upload-button")}
                 >
                   Upload Image
                   <input
@@ -523,21 +526,21 @@ export default function EventAdvertisement() {
                     src={formData.advertisementImage}
                     variant="rounded"
                     sx={{ width: 56, height: 56 }}
-                    className="eventAdvertisement-preview-avatar"
+                    className={cx("eventAdvertisement-preview-avatar")}
                   />
                 )}
               </div>
             </div>
 
-            <div className="eventAdvertisement-upload-field">
+            <div className={cx("eventAdvertisement-upload-field")}>
               <label>Banner Image</label>
 
-              <div className="eventAdvertisement-upload-content">
+              <div className={cx("eventAdvertisement-upload-content")}>
                 <Button
                   variant="contained"
                   startIcon={<CloudUploadIcon />}
                   component="label"
-                  className="eventAdvertisement-upload-button"
+                  className={cx("eventAdvertisement-upload-button")}
                 >
                   Upload Image
                   <input
@@ -553,7 +556,7 @@ export default function EventAdvertisement() {
                     src={formData.bannerImage}
                     variant="rounded"
                     sx={{ width: 96, height: 56 }}
-                    className="eventAdvertisement-preview-avatar"
+                    className={cx("eventAdvertisement-preview-avatar")}
                   />
                 )}
               </div>
@@ -592,7 +595,7 @@ export default function EventAdvertisement() {
               />
 
               {errors.advertiserEmail && (
-                <p className="eventAdvertisement-error-text">
+                <p className={cx("eventAdvertisement-error-text")}>
                   {errors.advertiserEmail}
                 </p>
               )}
@@ -631,7 +634,7 @@ export default function EventAdvertisement() {
               />
 
               {errors.endDate && (
-                <p className="eventAdvertisement-error-text">
+                <p className={cx("eventAdvertisement-error-text")}>
                   {errors.endDate}
                 </p>
               )}
@@ -652,7 +655,7 @@ export default function EventAdvertisement() {
               </select>
             </div>
 
-            <div className="eventAdvertisement-toggle">
+            <div className={cx("eventAdvertisement-toggle")}>
               <label htmlFor="eventAdvertisement-isActive">
                 Active Advertisement
               </label>
@@ -667,10 +670,10 @@ export default function EventAdvertisement() {
             </div>
           </div>
 
-          <div className="eventAdvertisement-button-group">
+          <div className={cx("eventAdvertisement-button-group")}>
             <button
               type="submit"
-              className="eventAdvertisement-save-btn"
+              className={cx("eventAdvertisement-save-btn")}
               disabled={loading}
             >
               {loading ? (
@@ -688,7 +691,7 @@ export default function EventAdvertisement() {
             {isEditMode && (
               <button
                 type="button"
-                className="eventAdvertisement-cancel-btn"
+                className={cx("eventAdvertisement-cancel-btn")}
                 onClick={resetForm}
               >
                 Cancel

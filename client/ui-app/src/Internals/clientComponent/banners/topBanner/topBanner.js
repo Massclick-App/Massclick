@@ -63,7 +63,7 @@ const TopBannerAds = ({
     return apiBanners.length > 0 ? apiBanners : [DEFAULT_BANNER];
   }, [categoryAdvertisements, category]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const hasPaidBanner = bannerAds.some(ad => !ad.isDefault);
+  const hasPaidBanner = bannerAds.some(ad => !ad.isDefault && !isCommonTopBanner(ad.category));
   useEffect(() => {
     setCurrentIndex(0);
   }, [category, bannerAds.length]);
