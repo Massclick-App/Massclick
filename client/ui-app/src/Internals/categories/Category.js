@@ -129,6 +129,7 @@ export default function Category() {
   const [errors, setErrors] = useState({});
   const [filterDraft, setFilterDraft] = useState({ key: "", label: "", type: "multiselect", options: [], min: "", max: "", unit: "", isRequired: false });
   const [filterDraftError, setFilterDraftError] = useState("");
+  const [editingFilterIndex, setEditingFilterIndex] = useState(null);
   const [formData, setFormData] = useState({
     _id: null,
     categoryImages: {
@@ -325,6 +326,38 @@ export default function Category() {
       [arr[index], arr[swapIdx]] = [arr[swapIdx], arr[index]];
       return { ...prev, filterConfig: arr };
     });
+  };
+
+  const handleEditFilterField = (index) => {
+    const filter = formData.filterConfig[index];
+    setFilterDraft(filter);
+    setEditingFilterIndex(index);
+    setFilterDraftError("");
+  };
+
+  const handleUpdateFilterField = (index) => {
+    if (!filterDraft.key.trim() || !filterDraft.label.trim()) {
+      setFilterDraftError("Key and Label are required");
+      return;
+    }
+    if (["multiselect", "radio"].includes(filterDraft.type) && filterDraft.options.length === 0) {
+      setFilterDraftError("Add at least one option for this type");
+      return;
+    }
+    setFilterDraftError("");
+    setFormData(prev => {
+      const arr = [...prev.filterConfig];
+      arr[index] = { ...filterDraft };
+      return { ...prev, filterConfig: arr };
+    });
+    setEditingFilterIndex(null);
+    setFilterDraft({ key: "", label: "", type: "multiselect", options: [], min: "", max: "", unit: "", isRequired: false });
+  };
+
+  const handleCancelEditFilter = () => {
+    setEditingFilterIndex(null);
+    setFilterDraft({ key: "", label: "", type: "multiselect", options: [], min: "", max: "", unit: "", isRequired: false });
+    setFilterDraftError("");
   };
 
   const handleEdit = row => {
@@ -1551,10 +1584,23 @@ export default function Category() {
                   <Typography variant="caption">Required</Typography>
                 </Box>
 
-                <Button variant="contained" size="small" onClick={handleAddFilterField}
-                  sx={{ bgcolor: "var(--color-primary-orange)", "&:hover": { bgcolor: "#D97800" }, alignSelf: "center", flexShrink: 0 }}>
-                  + Add
-                </Button>
+                {editingFilterIndex === null ? (
+                  <Button variant="contained" size="small" onClick={handleAddFilterField}
+                    sx={{ bgcolor: "var(--color-primary-orange)", "&:hover": { bgcolor: "#D97800" }, alignSelf: "center", flexShrink: 0 }}>
+                    + Add
+                  </Button>
+                ) : (
+                  <>
+                    <Button variant="contained" size="small" onClick={() => handleUpdateFilterField(editingFilterIndex)}
+                      sx={{ bgcolor: "#4caf50", "&:hover": { bgcolor: "#45a049" }, alignSelf: "center", flexShrink: 0 }}>
+                      ✓ Update
+                    </Button>
+                    <Button variant="outlined" size="small" onClick={handleCancelEditFilter}
+                      sx={{ color: "#666", borderColor: "#ddd", alignSelf: "center", flexShrink: 0 }}>
+                      Cancel
+                    </Button>
+                  </>
+                )}
               </Box>
 
               {filterDraftError && (
@@ -1580,6 +1626,9 @@ export default function Category() {
                     </Box>
                     <IconButton size="small" onClick={() => handleMoveFilterField(i, -1)} disabled={i === 0}>▲</IconButton>
                     <IconButton size="small" onClick={() => handleMoveFilterField(i, 1)} disabled={i === formData.filterConfig.length - 1}>▼</IconButton>
+                    <IconButton size="small" color="primary" onClick={() => handleEditFilterField(i)}>
+                      <EditRoundedIcon fontSize="small" />
+                    </IconButton>
                     <IconButton size="small" color="error" onClick={() => handleRemoveFilterField(i)}>
                       <DeleteOutlineRoundedIcon fontSize="small" />
                     </IconButton>

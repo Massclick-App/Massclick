@@ -227,6 +227,7 @@ export const viewAllCategory = async ({
 
     const categories = await categoryModel
       .find(query)
+      .select("+filterConfig")
       .sort(sortQuery)
       .skip((pageNo - 1) * pageSize)
       .limit(pageSize)

@@ -571,7 +571,7 @@ const BusinessList = React.memo(() => {
     // Fallback: fetch from API
     setFilterConfigLoading(true);
     const slug = cat.toLowerCase().replace(/\s+/g, "-");
-    axiosInstance.get(`/api/category/${encodeURIComponent(slug)}/filters`)
+    axiosInstance.get(`/category/${encodeURIComponent(slug)}/filters`)
       .then(res => setCategoryFilterConfig(Array.isArray(res.data) ? res.data : []))
       .catch(() => setCategoryFilterConfig([]))
       .finally(() => setFilterConfigLoading(false));
