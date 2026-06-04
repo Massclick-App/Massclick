@@ -26,7 +26,15 @@ const eventAdvertisementSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    advertisementImageKey: {
+      type: String,
+      default: "",
+    },
     bannerImage: {
+      type: String,
+      default: "",
+    },
+    bannerImageKey: {
       type: String,
       default: "",
     },

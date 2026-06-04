@@ -49,6 +49,53 @@ const getLocationName = (event) => {
 
 const getEventImage = (event) => event?.eventImage || event?.bannerImage || "";
 
+const normalizeLocation = (value = "") => {
+  const normalized = value.toString().toLowerCase().trim();
+
+  if (["trichy", "tiruchirappalli"].includes(normalized)) {
+    return "tiruchirappalli";
+  }
+
+  return normalized;
+};
+
+const getLocationValues = (event) => {
+  const location = event?.eventLocation;
+
+  if (!location) return [];
+  if (typeof location === "string") return [location];
+
+  return [
+    location.locationName,
+    location.city,
+    location.address,
+    location.state,
+    location.country,
+  ].filter(Boolean);
+};
+
+const isSameLocation = (event, locationLabel) => {
+  const selectedLocation = normalizeLocation(locationLabel);
+  if (!selectedLocation) return true;
+
+  return getLocationValues(event).some(
+    (value) => normalizeLocation(value) === selectedLocation
+  );
+};
+
+const isCurrentOrUpcomingEvent = (event) => {
+  if (!event?.endDate) return true;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const endDate = new Date(event.endDate);
+  if (Number.isNaN(endDate.getTime())) return true;
+  endDate.setHours(23, 59, 59, 999);
+
+  return endDate >= today;
+};
+
 const toSlug = (value = "") =>
   value
     .toString()
@@ -102,9 +149,12 @@ export default function EventCarousel({
         (event) =>
           event?.isActive !== false &&
           event?.isPublished !== false &&
-          event?.status !== "cancelled"
+          event?.status !== "cancelled" &&
+          event?.status !== "completed" &&
+          isCurrentOrUpcomingEvent(event) &&
+          isSameLocation(event, locationLabel)
       ),
-    [data]
+    [data, locationLabel]
   );
 
   const categories = useMemo(() => {
@@ -205,6 +255,10 @@ export default function EventCarousel({
       state: { event },
     });
   };
+
+  if (!loading && !error && events.length === 0) {
+    return null;
+  }
 
   return (
     <section className="eventCarousel-shell" aria-label="Events carousel">
@@ -410,16 +464,6 @@ export default function EventCarousel({
                 </article>
               );
             })}
-
-          {!loading &&
-            !error &&
-            selectedCategory === "all" &&
-            categoryCards.length === 0 && (
-              <div className="eventCarousel-empty">
-                <h3>No event categories found</h3>
-                <p>Check back for new event categories and listings.</p>
-              </div>
-            )}
 
           {!loading &&
             !error &&

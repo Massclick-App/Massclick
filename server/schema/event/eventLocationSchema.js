@@ -45,6 +45,10 @@ const eventLocationSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    locationImageKey: {
+      type: String,
+      default: "",
+    },
     description: {
       type: String,
       trim: true,

@@ -41,6 +41,11 @@ const eventCategorySchema = new mongoose.Schema(
       trim: true,
       default: "",
     },
+    categoryImageKey: {
+      type: String,
+      trim: true,
+      default: "",
+    },
     slug: {
       type: String,
       required: true,

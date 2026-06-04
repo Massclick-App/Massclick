@@ -1,5 +1,50 @@
 import { ObjectId } from "mongodb";
 import eventCreationModel from "../../model/event/eventCreationModel.js";
+import { uploadImageToS3, getSignedUrlByKey } from "../../s3Uploder.js";
+
+const formatEventCreationImages = (event) => {
+  if (!event) return event;
+
+  const result =
+    typeof event.toObject === "function"
+      ? event.toObject()
+      : event;
+
+  result.eventImage = result.eventImageKey
+    ? getSignedUrlByKey(result.eventImageKey)
+    : "";
+
+  result.bannerImage = result.bannerImageKey
+    ? getSignedUrlByKey(result.bannerImageKey)
+    : "";
+
+  return result;
+};
+
+const handleEventCreationImageUploads = async (data = {}) => {
+  if (typeof data.eventImage === "string" && data.eventImage.startsWith("data:")) {
+    const uploadResult = await uploadImageToS3(
+      data.eventImage,
+      `event/creations/images/image-${Date.now()}`
+    );
+    data.eventImageKey = uploadResult.key;
+  } else if (data.eventImage === null || data.eventImage === "") {
+    data.eventImageKey = "";
+  }
+
+  if (typeof data.bannerImage === "string" && data.bannerImage.startsWith("data:")) {
+    const uploadResult = await uploadImageToS3(
+      data.bannerImage,
+      `event/creations/banners/banner-${Date.now()}`
+    );
+    data.bannerImageKey = uploadResult.key;
+  } else if (data.bannerImage === null || data.bannerImage === "") {
+    data.bannerImageKey = "";
+  }
+
+  delete data.eventImage;
+  delete data.bannerImage;
+};
 
 export const createEventCreation = async (reqBody = {}) => {
   try {
@@ -17,13 +62,15 @@ export const createEventCreation = async (reqBody = {}) => {
       throw new Error("Invalid event location ID");
     }
 
+    await handleEventCreationImageUploads(reqBody);
+
     const eventCreation = new eventCreationModel({
       eventName: reqBody.eventName,
       eventCategory: reqBody.eventCategory,
       eventLocation: reqBody.eventLocation,
       description: reqBody.description || "",
-      eventImage: reqBody.eventImage || "",
-      bannerImage: reqBody.bannerImage || "",
+      eventImageKey: reqBody.eventImageKey || "",
+      bannerImageKey: reqBody.bannerImageKey || "",
       startDate: reqBody.startDate,
       endDate: reqBody.endDate,
       startTime: reqBody.startTime || "",
@@ -46,10 +93,11 @@ export const createEventCreation = async (reqBody = {}) => {
     });
 
     await eventCreation.save();
-    return await eventCreation.populate([
+    const populatedEvent = await eventCreation.populate([
       { path: "eventCategory", select: "categoryName slug" },
       { path: "eventLocation", select: "locationName city" }
     ]);
+    return formatEventCreationImages(populatedEvent);
   } catch (error) {
     throw error;
   }
@@ -78,7 +126,7 @@ export const viewEventCreation = async (eventId) => {
       { $inc: { views: 1 } }
     );
 
-    return event;
+    return formatEventCreationImages(event);
   } catch (error) {
     throw error;
   }
@@ -116,11 +164,12 @@ export const viewAllEventCreation = async (options = {}) => {
       ])
       .sort(sortQuery)
       .skip(skip)
-      .limit(parseInt(pageSize));
+      .limit(parseInt(pageSize))
+      .lean();
 
     const total = await eventCreationModel.countDocuments(query);
 
-    return { list, total };
+    return { list: list.map(formatEventCreationImages), total };
   } catch (error) {
     throw error;
   }
@@ -145,6 +194,8 @@ export const updateEventCreation = async (eventId, updateData) => {
       throw new Error("Invalid event location ID");
     }
 
+    await handleEventCreationImageUploads(updateData);
+
     const updatedEvent = await eventCreationModel.findByIdAndUpdate(
       eventId,
       {
@@ -157,7 +208,7 @@ export const updateEventCreation = async (eventId, updateData) => {
       { path: "eventLocation", select: "locationName city" }
     ]);
 
-    return updatedEvent;
+    return formatEventCreationImages(updatedEvent);
   } catch (error) {
     throw error;
   }
@@ -179,7 +230,7 @@ export const deleteEventCreation = async (eventId) => {
       throw new Error("Event not found");
     }
 
-    return event;
+    return formatEventCreationImages(event);
   } catch (error) {
     throw error;
   }
@@ -196,7 +247,7 @@ export const hardDeleteEventCreation = async (eventId) => {
       throw new Error("Event not found");
     }
 
-    return event;
+    return formatEventCreationImages(event);
   } catch (error) {
     throw error;
   }
@@ -214,7 +265,7 @@ export const publishEventCreation = async (eventId) => {
       { new: true }
     );
 
-    return event;
+    return formatEventCreationImages(event);
   } catch (error) {
     throw error;
   }
@@ -232,7 +283,7 @@ export const unpublishEventCreation = async (eventId) => {
       { new: true }
     );
 
-    return event;
+    return formatEventCreationImages(event);
   } catch (error) {
     throw error;
   }

@@ -1,5 +1,35 @@
 import { ObjectId } from "mongodb";
 import eventLocationModel from "../../model/event/eventLocationModel.js";
+import { uploadImageToS3, getSignedUrlByKey } from "../../s3Uploder.js";
+
+const formatEventLocationImage = (location) => {
+  if (!location) return location;
+
+  const result =
+    typeof location.toObject === "function"
+      ? location.toObject()
+      : location;
+
+  result.locationImage = result.locationImageKey
+    ? getSignedUrlByKey(result.locationImageKey)
+    : "";
+
+  return result;
+};
+
+const handleEventLocationImageUpload = async (data = {}) => {
+  if (typeof data.locationImage === "string" && data.locationImage.startsWith("data:")) {
+    const uploadResult = await uploadImageToS3(
+      data.locationImage,
+      `event/locations/location-${Date.now()}`
+    );
+    data.locationImageKey = uploadResult.key;
+  } else if (data.locationImage === null || data.locationImage === "") {
+    data.locationImageKey = "";
+  }
+
+  delete data.locationImage;
+};
 
 const slugify = (value = "") =>
   value
@@ -25,6 +55,8 @@ export const createEventLocation = async (reqBody = {}) => {
       throw new Error("Event location with this name already exists");
     }
 
+    await handleEventLocationImageUpload(reqBody);
+
     const eventLocation = new eventLocationModel({
       locationName: reqBody.locationName,
       address: reqBody.address || "",
@@ -34,7 +66,7 @@ export const createEventLocation = async (reqBody = {}) => {
       zipCode: reqBody.zipCode || "",
       latitude: optionalNumber(reqBody.latitude),
       longitude: optionalNumber(reqBody.longitude),
-      locationImage: reqBody.locationImage || "",
+      locationImageKey: reqBody.locationImageKey || "",
       description: reqBody.description || "",
       keywords: reqBody.keywords || [],
       seoTitle: reqBody.seoTitle || "",
@@ -45,7 +77,7 @@ export const createEventLocation = async (reqBody = {}) => {
     });
 
     const result = await eventLocation.save();
-    return { message: "Event location created", location: result };
+    return { message: "Event location created", location: formatEventLocationImage(result) };
   } catch (error) {
     throw error;
   }
@@ -62,7 +94,7 @@ export const viewEventLocation = async (locationId) => {
       throw new Error("Event location not found");
     }
 
-    return { message: "Event location retrieved", location };
+    return { message: "Event location retrieved", location: formatEventLocationImage(location) };
   } catch (error) {
     throw error;
   }
@@ -98,11 +130,12 @@ export const viewAllEventLocation = async (options = {}) => {
       .find(query)
       .sort(sortQuery)
       .skip(skip)
-      .limit(parseInt(pageSize));
+      .limit(parseInt(pageSize))
+      .lean();
 
     const total = await eventLocationModel.countDocuments(query);
 
-    return { list, total };
+    return { list: list.map(formatEventLocationImage), total };
   } catch (error) {
     throw error;
   }
@@ -131,6 +164,8 @@ export const updateEventLocation = async (locationId, updateData) => {
       }
     }
 
+    await handleEventLocationImageUpload(updateData);
+
     const payload = {
       ...updateData,
       updatedBy: updateData.updatedBy || null,
@@ -154,7 +189,7 @@ export const updateEventLocation = async (locationId, updateData) => {
       { new: true, runValidators: true }
     );
 
-    return { message: "Event location updated", location: updatedLocation };
+    return { message: "Event location updated", location: formatEventLocationImage(updatedLocation) };
   } catch (error) {
     throw error;
   }
@@ -176,7 +211,7 @@ export const deleteEventLocation = async (locationId) => {
       throw new Error("Event location not found");
     }
 
-    return { message: "Event location deleted", location };
+    return { message: "Event location deleted", location: formatEventLocationImage(location) };
   } catch (error) {
     throw error;
   }
@@ -193,7 +228,7 @@ export const hardDeleteEventLocation = async (locationId) => {
       throw new Error("Event location not found");
     }
 
-    return { message: "Event location permanently deleted", location };
+    return { message: "Event location permanently deleted", location: formatEventLocationImage(location) };
   } catch (error) {
     throw error;
   }

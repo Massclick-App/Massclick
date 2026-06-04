@@ -1,5 +1,50 @@
 import { ObjectId } from "mongodb";
 import eventAdvertisementModel from "../../model/event/eventAdvertisementModel.js";
+import { uploadImageToS3, getSignedUrlByKey } from "../../s3Uploder.js";
+
+const formatEventAdvertisementImages = (advertisement) => {
+  if (!advertisement) return advertisement;
+
+  const result =
+    typeof advertisement.toObject === "function"
+      ? advertisement.toObject()
+      : advertisement;
+
+  result.advertisementImage = result.advertisementImageKey
+    ? getSignedUrlByKey(result.advertisementImageKey)
+    : "";
+
+  result.bannerImage = result.bannerImageKey
+    ? getSignedUrlByKey(result.bannerImageKey)
+    : "";
+
+  return result;
+};
+
+const handleEventAdvertisementImageUploads = async (data = {}) => {
+  if (typeof data.advertisementImage === "string" && data.advertisementImage.startsWith("data:")) {
+    const uploadResult = await uploadImageToS3(
+      data.advertisementImage,
+      `event/advertisements/images/image-${Date.now()}`
+    );
+    data.advertisementImageKey = uploadResult.key;
+  } else if (data.advertisementImage === null || data.advertisementImage === "") {
+    data.advertisementImageKey = "";
+  }
+
+  if (typeof data.bannerImage === "string" && data.bannerImage.startsWith("data:")) {
+    const uploadResult = await uploadImageToS3(
+      data.bannerImage,
+      `event/advertisements/banners/banner-${Date.now()}`
+    );
+    data.bannerImageKey = uploadResult.key;
+  } else if (data.bannerImage === null || data.bannerImage === "") {
+    data.bannerImageKey = "";
+  }
+
+  delete data.advertisementImage;
+  delete data.bannerImage;
+};
 
 export const createEventAdvertisement = async (reqBody = {}) => {
   try {
@@ -14,13 +59,15 @@ export const createEventAdvertisement = async (reqBody = {}) => {
       throw new Error("Invalid event location ID");
     }
 
+    await handleEventAdvertisementImageUploads(reqBody);
+
     const eventAdvertisement = new eventAdvertisementModel({
       title: reqBody.title,
       description: reqBody.description || "",
       eventCategory: reqBody.eventCategory,
       eventLocation: reqBody.eventLocation,
-      advertisementImage: reqBody.advertisementImage || "",
-      bannerImage: reqBody.bannerImage || "",
+      advertisementImageKey: reqBody.advertisementImageKey || "",
+      bannerImageKey: reqBody.bannerImageKey || "",
       advertiserName: reqBody.advertiserName || "",
       advertiserContact: reqBody.advertiserContact || "",
       advertiserEmail: reqBody.advertiserEmail || "",
@@ -33,10 +80,11 @@ export const createEventAdvertisement = async (reqBody = {}) => {
     });
 
     await eventAdvertisement.save();
-    return await eventAdvertisement.populate([
+    const populatedAdvertisement = await eventAdvertisement.populate([
       { path: "eventCategory", select: "categoryName slug" },
       { path: "eventLocation", select: "locationName city" }
     ]);
+    return formatEventAdvertisementImages(populatedAdvertisement);
   } catch (error) {
     throw error;
   }
@@ -59,7 +107,7 @@ export const viewEventAdvertisement = async (advertisementId) => {
       throw new Error("Event advertisement not found");
     }
 
-    return advertisement;
+    return formatEventAdvertisementImages(advertisement);
   } catch (error) {
     throw error;
   }
@@ -99,11 +147,12 @@ export const viewAllEventAdvertisement = async (options = {}) => {
       ])
       .sort(sortQuery)
       .skip(skip)
-      .limit(parseInt(pageSize));
+      .limit(parseInt(pageSize))
+      .lean();
 
     const total = await eventAdvertisementModel.countDocuments(query);
 
-    return { list, total };
+    return { list: list.map(formatEventAdvertisementImages), total };
   } catch (error) {
     throw error;
   }
@@ -128,6 +177,8 @@ export const updateEventAdvertisement = async (advertisementId, updateData) => {
       throw new Error("Invalid event location ID");
     }
 
+    await handleEventAdvertisementImageUploads(updateData);
+
     const updatedAdvertisement = await eventAdvertisementModel.findByIdAndUpdate(
       advertisementId,
       {
@@ -140,7 +191,7 @@ export const updateEventAdvertisement = async (advertisementId, updateData) => {
       { path: "eventLocation", select: "locationName city" }
     ]);
 
-    return updatedAdvertisement;
+    return formatEventAdvertisementImages(updatedAdvertisement);
   } catch (error) {
     throw error;
   }
@@ -162,7 +213,7 @@ export const deleteEventAdvertisement = async (advertisementId) => {
       throw new Error("Event advertisement not found");
     }
 
-    return advertisement;
+    return formatEventAdvertisementImages(advertisement);
   } catch (error) {
     throw error;
   }
@@ -179,7 +230,7 @@ export const hardDeleteEventAdvertisement = async (advertisementId) => {
       throw new Error("Event advertisement not found");
     }
 
-    return advertisement;
+    return formatEventAdvertisementImages(advertisement);
   } catch (error) {
     throw error;
   }
@@ -197,7 +248,7 @@ export const trackAdvertisementClick = async (advertisementId) => {
       { new: true }
     );
 
-    return advertisement;
+    return formatEventAdvertisementImages(advertisement);
   } catch (error) {
     throw error;
   }
@@ -215,7 +266,7 @@ export const trackAdvertisementImpression = async (advertisementId) => {
       { new: true }
     );
 
-    return advertisement;
+    return formatEventAdvertisementImages(advertisement);
   } catch (error) {
     throw error;
   }

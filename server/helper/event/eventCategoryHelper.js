@@ -1,5 +1,35 @@
 import { ObjectId } from "mongodb";
 import eventCategoryModel from "../../model/event/eventCategoryModel.js";
+import { uploadImageToS3, getSignedUrlByKey } from "../../s3Uploder.js";
+
+const formatEventCategoryImage = (category) => {
+  if (!category) return category;
+
+  const result =
+    typeof category.toObject === "function"
+      ? category.toObject()
+      : category;
+
+  result.categoryImage = result.categoryImageKey
+    ? getSignedUrlByKey(result.categoryImageKey)
+    : "";
+
+  return result;
+};
+
+const handleEventCategoryImageUpload = async (data = {}) => {
+  if (typeof data.categoryImage === "string" && data.categoryImage.startsWith("data:")) {
+    const uploadResult = await uploadImageToS3(
+      data.categoryImage,
+      `event/categories/category-${Date.now()}`
+    );
+    data.categoryImageKey = uploadResult.key;
+  } else if (data.categoryImage === null || data.categoryImage === "") {
+    data.categoryImageKey = "";
+  }
+
+  delete data.categoryImage;
+};
 
 export const createEventCategory = async (reqBody = {}) => {
   try {
@@ -14,10 +44,12 @@ export const createEventCategory = async (reqBody = {}) => {
       throw new Error("Event category with this name already exists");
     }
 
+    await handleEventCategoryImageUpload(reqBody);
+
     const eventCategory = new eventCategoryModel({
       categoryName: reqBody.categoryName,
       description: reqBody.description || "",
-      categoryImage: reqBody.categoryImage || "",
+      categoryImageKey: reqBody.categoryImageKey || "",
       keywords: reqBody.keywords || [],
       seoTitle: reqBody.seoTitle || "",
       seoDescription: reqBody.seoDescription || "",
@@ -27,7 +59,7 @@ export const createEventCategory = async (reqBody = {}) => {
     });
 
     const result = await eventCategory.save();
-    return { message: "Event category created", category: result };
+    return { message: "Event category created", category: formatEventCategoryImage(result) };
   } catch (error) {
     throw error;
   }
@@ -44,7 +76,7 @@ export const viewEventCategory = async (categoryId) => {
       throw new Error("Event category not found");
     }
 
-    return { message: "Event category retrieved", category };
+    return { message: "Event category retrieved", category: formatEventCategoryImage(category) };
   } catch (error) {
     throw error;
   }
@@ -79,11 +111,12 @@ export const viewAllEventCategory = async (options = {}) => {
       .find(query)
       .sort(sortQuery)
       .skip(skip)
-      .limit(parseInt(pageSize));
+      .limit(parseInt(pageSize))
+      .lean();
 
     const total = await eventCategoryModel.countDocuments(query);
 
-    return { list, total };
+    return { list: list.map(formatEventCategoryImage), total };
   } catch (error) {
     throw error;
   }
@@ -112,6 +145,8 @@ export const updateEventCategory = async (categoryId, updateData) => {
       }
     }
 
+    await handleEventCategoryImageUpload(updateData);
+
     const updatedCategory = await eventCategoryModel.findByIdAndUpdate(
       categoryId,
       {
@@ -121,7 +156,7 @@ export const updateEventCategory = async (categoryId, updateData) => {
       { new: true, runValidators: true }
     );
 
-    return { message: "Event category updated", category: updatedCategory };
+    return { message: "Event category updated", category: formatEventCategoryImage(updatedCategory) };
   } catch (error) {
     throw error;
   }
@@ -143,7 +178,7 @@ export const deleteEventCategory = async (categoryId) => {
       throw new Error("Event category not found");
     }
 
-    return { message: "Event category deleted", category };
+    return { message: "Event category deleted", category: formatEventCategoryImage(category) };
   } catch (error) {
     throw error;
   }
@@ -160,7 +195,7 @@ export const hardDeleteEventCategory = async (categoryId) => {
       throw new Error("Event category not found");
     }
 
-    return { message: "Event category permanently deleted", category };
+    return { message: "Event category permanently deleted", category: formatEventCategoryImage(category) };
   } catch (error) {
     throw error;
   }
