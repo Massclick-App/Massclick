@@ -314,22 +314,26 @@
 .eventCarousel-body {
   width: 64%;
   min-width: 0;
-  padding: 12px 14px;
+  height: 100%;
+  padding: 10px 14px;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 6px;
+  gap: 4px;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .eventCarousel-body h3 {
   display: -webkit-box;
+  flex: 0 0 auto;
   min-height: 0;
   margin: 0;
   overflow: hidden;
   color: var(--eventCarousel-ink);
-  font-size: 0.97rem;
+  font-size: 0.9rem;
   font-weight: 800;
-  line-height: 1.25;
+  line-height: 1.16;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
@@ -337,9 +341,9 @@
 .eventCarousel-meta {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
   color: var(--eventCarousel-muted);
-  font-size: 0.72rem;
+  font-size: 0.66rem;
   min-width: 0;
 }
 
@@ -347,27 +351,36 @@
 .eventCarousel-interest {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   min-width: 0;
 }
 
 .eventCarousel-meta span {
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 1.15;
   white-space: nowrap;
+}
+
+.eventCarousel-meta svg,
+.eventCarousel-interest svg {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 12px;
 }
 
 .eventCarousel-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  margin-top: 2px;
+  gap: 6px;
+  margin-top: 0;
+  min-height: 16px;
 }
 
 .eventCarousel-interest {
   color: var(--eventCarousel-muted);
-  font-size: 0.7rem;
+  font-size: 0.64rem;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -381,7 +394,7 @@
   border-radius: 6px;
   background: transparent;
   color: var(--eventCarousel-orange);
-  font-size: 0.76rem;
+  font-size: 0.68rem;
   font-weight: 800;
   white-space: nowrap;
 }
@@ -551,6 +564,6 @@
   }
 
   .eventCarousel-body h3 {
-    font-size: 1.05rem;
+    font-size: 0.98rem;
   }
 }
