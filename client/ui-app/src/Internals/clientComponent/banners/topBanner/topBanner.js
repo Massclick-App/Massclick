@@ -6,6 +6,7 @@ import styles from "./topBanner.module.css";
 import defaultBanner from "../../../../assets/new_banner.webp";
 const cx = createScopedClassNames(styles);
 const SLIDE_INTERVAL = 2000;
+const COMMON_TOP_BANNER_CATEGORY = "ALL_CATEGORIES";
 const parseDate = date => {
   if (!date) return null;
   if (typeof date === "string") {
@@ -17,6 +18,7 @@ const parseDate = date => {
   return null;
 };
 const normalizeCategory = (value = "") => value.toString().trim().toLowerCase().replace(/[^a-z]/g, "");
+const isCommonTopBanner = value => value === COMMON_TOP_BANNER_CATEGORY || normalizeCategory(value) === "allcategories";
 const DEFAULT_BANNER = {
   _id: "default-banner",
   title: "Default Banner",
@@ -50,7 +52,7 @@ const TopBannerAds = ({
         return false;
       }
       const imageKey = ad.bannerImageKey;
-      return ad.isActive && !ad.isDeleted && ad.position === "TOP_BANNER" && normalizeCategory(ad.category) === normalizeCategory(category) && imageKey;
+      return ad.isActive && !ad.isDeleted && ad.position === "TOP_BANNER" && (normalizeCategory(ad.category) === normalizeCategory(category) || isCommonTopBanner(ad.category)) && imageKey;
     }).map(ad => {
       const baseUrl = `https://massclickdev.s3.ap-southeast-2.amazonaws.com/${ad.bannerImageKey}`;
       return {
@@ -90,7 +92,7 @@ const TopBannerAds = ({
 
         {bannerAds.map(ad => <a key={ad._id} href={ad.redirectUrl || "#"} target={ad.redirectUrl ? "_blank" : "_self"} rel="noopener noreferrer" className={cx("carousel-slide")}>
             <div className={cx("banner-image-wrapper")}>
-              <img src={ad.image} alt={ad.title || "Top banner"} width="1200" height="300" loading="eager" fetchPriority="high" decoding="async" />
+              <img src={ad.image} alt={ad.title || "Top banner"} width="1200" height="300" loading="eager" fetchpriority="high" decoding="async" />
 
             </div>
 

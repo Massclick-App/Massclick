@@ -471,7 +471,7 @@ const BusinessDetail = React.memo(() => {
               setShowFullGallery(true);
             }
           }}>
-            <img key={business?._id || business?.bannerImage} src={bannerImageSrc} alt={business?.businessName} className={cx("business-CardDetails-bannerImage")} loading="eager" fetchPriority="high" width="1200" height="600" />
+            <img key={business?._id || business?.bannerImage} src={bannerImageSrc} alt={business?.businessName} className={cx("business-CardDetails-bannerImage")} loading="eager" fetchpriority="high" width="1200" height="600" />
             <div className={cx("business-CardDetails-heroGradient")} />
             <div className={cx("business-CardDetails-heroMeta")}>
               <div className={cx("business-CardDetails-heroMetaPrimary")}>

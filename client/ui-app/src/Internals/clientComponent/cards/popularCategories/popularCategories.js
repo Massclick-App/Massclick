@@ -112,9 +112,9 @@ const PopularCategoriesDrawer = ({
         textAlign: "center"
       }}>No categories found</p>}
 
-        {filtered.map(cat => {
+        {filtered.map((cat, index) => {
         const altText = generateAltText(cat.name, districtSlug);
-        return <article key={cat.name} className={cx("pc-item")} onClick={() => handleClick(cat)}>
+        return <article key={cat._id || cat.slug || `${cat.name}-${index}`} className={cx("pc-item")} onClick={() => handleClick(cat)}>
               <img src={cat.icon || getPlaceholderImage()} className={cx("popular-icons")} alt={altText} width="70" height="70" loading="lazy" decoding="async" style={{
             objectFit: "contain"
           }} onError={e => {

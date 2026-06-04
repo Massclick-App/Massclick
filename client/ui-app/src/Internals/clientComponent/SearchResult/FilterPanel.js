@@ -52,6 +52,7 @@ const FilterPanel = ({
   const activeCount = Object.values(activeFilters).filter((v) =>
     Array.isArray(v) ? v.length > 0 : v !== null && v !== undefined && v !== ""
   ).length;
+  const activeControlCount = activeCount + (sortBy !== "relevant" ? 1 : 0);
 
   const handleMultiselectToggle = (key, option) => {
     const current = Array.isArray(activeFilters[key]) ? activeFilters[key] : [];
@@ -79,12 +80,12 @@ const FilterPanel = ({
           </div>
           <span className={styles["header-title"]}>
             Filters
-            {activeCount > 0 && (
-              <span className={styles["count-badge"]}>{activeCount}</span>
+            {activeControlCount > 0 && (
+              <span className={styles["count-badge"]}>{activeControlCount}</span>
             )}
           </span>
         </div>
-        {activeCount > 0 && (
+        {activeControlCount > 0 && (
           <button className={styles["clear-btn"]} onClick={onClearAll}>
             Clear all
           </button>

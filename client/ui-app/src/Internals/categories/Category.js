@@ -242,6 +242,8 @@ export default function Category() {
       }));
     }
   }, [formData.category]);
+
+
   const handleChange = e => {
     const {
       name,
@@ -379,6 +381,9 @@ export default function Category() {
         mobileThumbnail: ""
       };
     }
+
+    const filterConfigToSet = Array.isArray(row.filterConfig) ? row.filterConfig : [];
+
     setFormData({
       _id: row._id,
       categoryImages: categoryImagesKeys,
@@ -394,7 +399,7 @@ export default function Category() {
       seoTitle: row.seoTitle || "",
       seoDescription: row.seoDescription || "",
       slug: row.slug || "",
-      filterConfig: Array.isArray(row.filterConfig) ? row.filterConfig : []
+      filterConfig: filterConfigToSet
     });
     // Set previews using signed URLs (for display)
     setImagePreviews({
@@ -939,7 +944,8 @@ export default function Category() {
     seoTitle: cat.seoTitle || "-",
     seoDescription: cat.seoDescription || "-",
     slug: cat.slug || "-",
-    isActive: cat.isActive
+    isActive: cat.isActive,
+    filterConfig: cat.filterConfig || []
   }));
   const categoryList = [{
     id: "categoryImages",
@@ -1072,16 +1078,17 @@ export default function Category() {
               </Button>
             </Box>
 
-            <Autocomplete multiple freeSolo options={[]} value={formData.keywords} onChange={handleKeywordChange} renderTags={(value, getTagProps) => value.map((option, index) => <Chip key={index} label={option} {...getTagProps({
-            index
-          })} onDelete={() => handleKeywordDelete(option)} sx={{
+            <Autocomplete multiple freeSolo options={[]} value={formData.keywords} onChange={handleKeywordChange} renderTags={(value, getTagProps) => value.map((option, index) => {
+              const { key, ...tagProps } = getTagProps({ index });
+              return <Chip key={key} label={option} {...tagProps} onDelete={() => handleKeywordDelete(option)} sx={{
             backgroundColor: "#ff8c00",
             color: "white",
             fontWeight: 500,
             "& .MuiChip-deleteIcon": {
               color: "white"
             }
-          }} />)} renderInput={params => <TextField {...params} variant="outlined" placeholder='e.g. "ac repair service", "split ac installation" — min 2 words' value={inputKeyword} onChange={e => {
+          }} />;
+            })} renderInput={params => <TextField {...params} variant="outlined" placeholder='e.g. "ac repair service", "split ac installation" — min 2 words' value={inputKeyword} onChange={e => {
             setInputKeyword(e.target.value);
             setKeywordInputError("");
           }} onKeyDown={e => {
@@ -1559,8 +1566,10 @@ export default function Category() {
                 {["multiselect", "radio"].includes(filterDraft.type) && (
                   <Autocomplete multiple freeSolo options={[]} value={filterDraft.options}
                     onChange={(_, val) => setFilterDraft(p => ({ ...p, options: val }))}
-                    renderTags={(value, getTagProps) => value.map((opt, i) =>
-                      <Chip key={i} label={opt} size="small" {...getTagProps({ index: i })} />)}
+                    renderTags={(value, getTagProps) => value.map((opt, i) => {
+                      const { key, ...tagProps } = getTagProps({ index: i });
+                      return <Chip key={key} label={opt} size="small" {...tagProps} />;
+                    })}
                     renderInput={params => <TextField {...params} size="small" label="Options (Enter to add)" placeholder="Add option" />}
                     sx={{ flex: "1 1 200px" }} />
                 )}

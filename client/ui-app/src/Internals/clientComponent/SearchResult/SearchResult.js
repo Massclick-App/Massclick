@@ -1,5 +1,5 @@
 import { createScopedClassNames } from "../../../utils/createScopedClassNames";
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
@@ -35,6 +35,18 @@ import axiosInstance from "../../../services/axiosInstance.js";
 import { generateSearchResultsPageSchema, generateBreadcrumbSchema, generateOrganizationSchema, generateWebsiteSchema, generateFAQSchema } from "../../../utils/seoSchemaGenerators";
 const cx = createScopedClassNames(styles);
 const createSlug = (text = "") => text.toLowerCase().trim().replace(/&/g, "and").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+const isActiveFilterValue = (value) =>
+  Array.isArray(value)
+    ? value.length > 0
+    : value !== null && value !== undefined && value !== "";
+
+const cleanFilterValues = (filters = {}) =>
+  Object.entries(filters).reduce((cleaned, [key, value]) => {
+    if (isActiveFilterValue(value)) {
+      cleaned[key] = value;
+    }
+    return cleaned;
+  }, {});
 
 const GoogleAd = () => {
   useEffect(() => {
@@ -100,6 +112,7 @@ const SearchResults = React.memo(() => {
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
   const stateAppliedRef = useRef(false);
   const requestIdRef = useRef(0);
+  const searchControlsChangedRef = useRef(false);
   useEffect(() => {
     const authUser = localStorage.getItem("authUser");
     if (!authUser) {
@@ -109,6 +122,12 @@ const SearchResults = React.memo(() => {
   const searchLoggedRef = useRef(false);
   useEffect(() => {
     searchLoggedRef.current = false;
+  }, [normalizedSearchTerm, locationText]);
+  useEffect(() => {
+    searchControlsChangedRef.current = false;
+    setActiveFilters({});
+    setSortBy("relevant");
+    stateAppliedRef.current = false;
   }, [normalizedSearchTerm, locationText]);
   const logSearch = useCallback(() => {
     if (searchLoggedRef.current) return;
@@ -155,7 +174,7 @@ const SearchResults = React.memo(() => {
       if (requestId !== requestIdRef.current) return;
       setResults(action?.payload || []);
     });
-  }, [normalizedSearchTerm, locationText, isKnownCategory, dispatch]);
+  }, [safeStateResults, normalizedSearchTerm, locationText, isKnownCategory, dispatch]);
 
   // Fetch filterConfig for this category
   useEffect(() => {
@@ -167,30 +186,31 @@ const SearchResults = React.memo(() => {
   }, [normalizedSearchTerm]);
 
   // Re-search when filters or sort change
-  const hasActiveFilters = Object.values(activeFilters).some(v =>
-    Array.isArray(v) ? v.length > 0 : v !== null && v !== undefined && v !== ""
-  );
+  const normalizedActiveFilters = useMemo(() => cleanFilterValues(activeFilters), [activeFilters]);
+  const hasActiveFilters = Object.values(normalizedActiveFilters).some(isActiveFilterValue);
   useEffect(() => {
     if (!normalizedSearchTerm || !locationText) return;
-    if (!hasActiveFilters && sortBy === "relevant") return; // let normal search handle initial load
+    if (!hasActiveFilters && sortBy === "relevant" && !searchControlsChangedRef.current) return; // let normal search handle initial load
     const requestId = ++requestIdRef.current;
     const extraParams = {};
     if (sortBy !== "relevant") extraParams.sortBy = sortBy;
-    const { minRating, openNow, verified, featured, ...categoryFilters } = activeFilters;
+    const { minRating, openNow, verified, featured, ...categoryFilters } = normalizedActiveFilters;
+    const cleanCategoryFilters = cleanFilterValues(categoryFilters);
     if (minRating) extraParams.minRating = minRating;
     if (openNow) extraParams.openNow = openNow;
     if (verified) extraParams.verified = verified;
     if (featured) extraParams.featured = featured;
-    if (Object.keys(categoryFilters).length > 0) {
-      extraParams.filters = JSON.stringify(categoryFilters);
+    if (Object.keys(cleanCategoryFilters).length > 0) {
+      extraParams.filters = JSON.stringify(cleanCategoryFilters);
     }
     dispatch(performSearch(normalizedSearchTerm, locationText, isKnownCategory, extraParams)).then(action => {
       if (requestId !== requestIdRef.current) return;
       setResults(action?.payload || []);
     });
-  }, [activeFilters, sortBy, normalizedSearchTerm, locationText, isKnownCategory, dispatch]); // eslint-disable-line
+  }, [normalizedActiveFilters, hasActiveFilters, sortBy, normalizedSearchTerm, locationText, isKnownCategory, dispatch]); // eslint-disable-line
 
   const handleFilterChange = useCallback((key, value) => {
+    searchControlsChangedRef.current = true;
     setActiveFilters(prev => {
       const next = { ...prev };
       if (value === null || value === undefined || (Array.isArray(value) && value.length === 0)) {
@@ -202,12 +222,18 @@ const SearchResults = React.memo(() => {
     });
   }, []);
 
+  const handleSortChange = useCallback((value) => {
+    searchControlsChangedRef.current = true;
+    setSortBy(value);
+  }, []);
+
   const handleClearAllFilters = useCallback(() => {
+    searchControlsChangedRef.current = true;
     setActiveFilters({});
     setSortBy("relevant");
   }, []);
 
-  const activeFilterChips = Object.entries(activeFilters).flatMap(([key, value]) => {
+  const activeFilterChips = Object.entries(normalizedActiveFilters).flatMap(([key, value]) => {
     if (Array.isArray(value)) return value.map(v => ({ key, value: v, label: v }));
     if (key === "minRating") return [{ key, value, label: `${value}+ Stars` }];
     if (key === "openNow") return [{ key, value, label: "Open Now" }];
@@ -422,7 +448,7 @@ const SearchResults = React.memo(() => {
                 activeFilters={activeFilters}
                 sortBy={sortBy}
                 onFilterChange={handleFilterChange}
-                onSortChange={setSortBy}
+                onSortChange={handleSortChange}
                 onClearAll={handleClearAllFilters}
               />
             </div>
@@ -452,7 +478,7 @@ const SearchResults = React.memo(() => {
                 )}
                 <label className={cx("sort-control")}>
                   <span>Sort by</span>
-                  <select value={sortBy} onChange={e => setSortBy(e.target.value)}>
+                  <select value={sortBy} onChange={e => handleSortChange(e.target.value)}>
                     <option value="relevant">Relevant</option>
                     <option value="rating">Rating</option>
                     <option value="newest">Latest</option>
@@ -519,7 +545,7 @@ const SearchResults = React.memo(() => {
             activeFilters={activeFilters}
             sortBy={sortBy}
             onFilterChange={handleFilterChange}
-            onSortChange={setSortBy}
+            onSortChange={handleSortChange}
             onClearAll={handleClearAllFilters}
           />
           <Box sx={{ p: 2, pt: 1 }}>

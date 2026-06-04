@@ -97,13 +97,13 @@ const FeaturedServicesSection = () => {
 
         {orderedCategories.map((service, index) => {
         const altText = generateAltText(service.name, districtSlug);
-        return <article key={service.name} className={cx("service-card")} onClick={() => handleClick(service)} role="button" tabIndex={0} aria-label={`View ${service.name} services`} onKeyDown={e => {
+        return <article key={service._id || service.slug || `${service.name}-${index}`} className={cx("service-card")} onClick={() => handleClick(service)} role="button" tabIndex={0} aria-label={`View ${service.name} services`} onKeyDown={e => {
           if (e.key === "Enter" || e.key === " ") {
             handleClick(service);
           }
         }}>
 
-              <img src={service.icon ? service.icon : getPlaceholderImage()} alt={altText} title={`${service.name} services in ${districtSlug}`} className={cx("service-icons")} width="60" height="60" loading={index < 2 ? "eager" : "lazy"} decoding="async" fetchPriority={index < 2 ? "high" : "auto"} onError={e => {
+              <img src={service.icon ? service.icon : getPlaceholderImage()} alt={altText} title={`${service.name} services in ${districtSlug}`} className={cx("service-icons")} width="60" height="60" loading={index < 2 ? "eager" : "lazy"} decoding="async" fetchpriority={index < 2 ? "high" : "auto"} onError={e => {
             e.target.onerror = null;
             handleImageError(e);
           }} />

@@ -72,6 +72,25 @@
   border-color: #ff8a00;
 }
 
+.common-banner-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  color: #4b5563;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.common-banner-toggle input {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  margin: 0;
+  accent-color: #ff8a00;
+}
+
 .span-2 {
   grid-column: span 8;
 }

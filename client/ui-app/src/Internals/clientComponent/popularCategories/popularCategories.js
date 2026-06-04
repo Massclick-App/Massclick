@@ -96,16 +96,16 @@ const PopularCategoriesLink = () => {
         </div>
 
         <div className={cx("popular-categories-links__tabs")} role="tablist">
-          {tabs.map(item => {
+          {tabs.map((item, index) => {
           const isActive = item.category === activeCategory;
-          return <button key={item.category} type="button" className={cx(`popular-categories-links__tab${isActive ? " popular-categories-links__tab--active" : ""}`)} role="tab" aria-selected={isActive} onClick={() => setActiveCategory(item.category)}>
+          return <button key={`${item.category}-${index}`} type="button" className={cx(`popular-categories-links__tab${isActive ? " popular-categories-links__tab--active" : ""}`)} role="tab" aria-selected={isActive} onClick={() => setActiveCategory(item.category)}>
                 {item.category}
               </button>;
         })}
         </div>
 
         <div className={cx("popular-categories-links__keywords")}>
-          {activeKeywords.map(keyword => <button key={keyword} type="button" className={cx("popular-categories-links__keyword")} onClick={() => handleKeywordClick(keyword)}>
+          {activeKeywords.map((keyword, index) => <button key={`${activeCategory}-${keyword}-${index}`} type="button" className={cx("popular-categories-links__keyword")} onClick={() => handleKeywordClick(keyword)}>
               {keyword}
             </button>)}
         </div>
@@ -117,9 +117,9 @@ const PopularCategoriesLink = () => {
         </h2>
 
         <div className={cx("popular-categories-links__servicesGrid")}>
-          {popularCategoriesServices.map(service => {
+          {popularCategoriesServices.map((service, index) => {
           const Icon = serviceIcons[service.icon] || Sparkles;
-          return <article className={cx("popular-categories-links__service")} key={service._id || service.title}>
+          return <article className={cx("popular-categories-links__service")} key={service._id || `${service.title}-${index}`}>
                 <button type="button" className={cx("popular-categories-links__serviceHead")} onClick={() => handleServiceClick(service)}>
                   <span className={cx("popular-categories-links__serviceIcon")}>
                     <Icon size={24} strokeWidth={1.7} />
@@ -136,7 +136,7 @@ const PopularCategoriesLink = () => {
       </div>
 
       <div className={cx("popular-categories-links__collections")}>
-        {popularCategoriesLinkSections.map(section => <article className={cx("popular-categories-links__collection")} key={section.title}>
+        {popularCategoriesLinkSections.map((section, sectionIndex) => <article className={cx("popular-categories-links__collection")} key={`${section.title}-${sectionIndex}`}>
             <div className={cx("popular-categories-links__collectionHeader")}>
               <h3 className={cx("popular-categories-links__collectionTitle")}>
                 {section.title}
@@ -147,7 +147,7 @@ const PopularCategoriesLink = () => {
             </div>
 
             <div className={cx("popular-categories-links__inlineLinks")}>
-              {section.keywords.map(keyword => <button key={`${section.title}-${keyword}`} type="button" className={cx("popular-categories-links__inlineLink")} onClick={() => handleKeywordClick(keyword)}>
+              {section.keywords.map((keyword, keywordIndex) => <button key={`${section.title}-${keyword}-${keywordIndex}`} type="button" className={cx("popular-categories-links__inlineLink")} onClick={() => handleKeywordClick(keyword)}>
                   {keyword}
                 </button>)}
             </div>

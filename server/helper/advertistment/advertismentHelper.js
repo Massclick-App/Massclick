@@ -8,8 +8,11 @@ const TOP_BANNER_RULES = {
   targetHeight: 168,
   aspectTolerance: 0.03,
 };
+const COMMON_TOP_BANNER_CATEGORY = "ALL_CATEGORIES";
 const TOP_BANNER_RATIO =
   TOP_BANNER_RULES.targetWidth / TOP_BANNER_RULES.targetHeight;
+const escapeRegExp = (value = "") =>
+  value.toString().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const getBase64ImageBuffer = (imageData = "") => {
   if (typeof imageData !== "string" || !imageData.startsWith("data:image")) {
@@ -121,7 +124,11 @@ export const findAdvertisementByCategory = async (category) => {
   const now = new Date();
 
   const query = {
-    category: { $regex: category, $options: "i" },
+    $or: [
+      { category: { $regex: `^${escapeRegExp(category)}$`, $options: "i" } },
+      { category: COMMON_TOP_BANNER_CATEGORY },
+    ],
+    position: "TOP_BANNER",
     isActive: true,
     isDeleted: false,
     startTime: { $lte: now },

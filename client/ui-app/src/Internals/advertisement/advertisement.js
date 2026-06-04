@@ -17,6 +17,8 @@ const TOP_BANNER_RULES = {
   recommended: "1720 x 168 px",
   label: "Choose an image and crop it into the required 1720 x 168 px top banner frame."
 };
+const COMMON_TOP_BANNER_CATEGORY = "ALL_CATEGORIES";
+const COMMON_TOP_BANNER_LABEL = "All Categories";
 const TOP_BANNER_RATIO = TOP_BANNER_RULES.targetWidth / TOP_BANNER_RULES.targetHeight;
 const getImageDimensions = file => new Promise((resolve, reject) => {
   const image = new Image();
@@ -125,7 +127,10 @@ export default function AdvertisementPage() {
     setFormData(prev => ({
       ...prev,
       [name]: value,
-      ...(name === "position" ? { bannerImage: "" } : {})
+      ...(name === "position" ? {
+        bannerImage: "",
+        ...(value !== "TOP_BANNER" && prev.category === COMMON_TOP_BANNER_CATEGORY ? { category: "" } : {})
+      } : {})
     }));
     if (name === "position") {
       setPreview(null);
@@ -150,6 +155,21 @@ export default function AdvertisementPage() {
         return next;
       });
     }
+  };
+  const handleCommonBannerChange = e => {
+    const checked = e.target.checked;
+    setFormData(prev => ({
+      ...prev,
+      category: checked ? COMMON_TOP_BANNER_CATEGORY : ""
+    }));
+    setShowCategorySuggest(false);
+    setErrors(prev => {
+      const next = {
+        ...prev
+      };
+      delete next.category;
+      return next;
+    });
   };
   const handleImageChange = async e => {
     const file = e.target.files[0];
@@ -293,7 +313,7 @@ export default function AdvertisementPage() {
     setEditingId(row.id);
     setFormData({
       title: row.title,
-      category: row.category,
+      category: row.categoryRaw || row.category,
       position: row.position,
       redirectUrl: row.redirectUrl || "",
       startTime: row.startTimeRaw,
@@ -311,7 +331,8 @@ export default function AdvertisementPage() {
   const rows = advertisements.map(ad => ({
     id: ad._id,
     title: ad.title,
-    category: ad.category,
+    category: ad.category === COMMON_TOP_BANNER_CATEGORY ? COMMON_TOP_BANNER_LABEL : ad.category,
+    categoryRaw: ad.category,
     position: ad.position,
     startTime: new Date(ad.startTime).toLocaleString(),
     endTime: new Date(ad.endTime).toLocaleString(),
@@ -347,6 +368,7 @@ export default function AdvertisementPage() {
         </div>
   }];
   const isTopBanner = formData.position === "TOP_BANNER";
+  const isCommonTopBanner = isTopBanner && formData.category === COMMON_TOP_BANNER_CATEGORY;
   return <div className={cx("ads-page")}>
       <div className={cx("ads-header")}>
         <h1>Advertisements</h1>
@@ -368,7 +390,12 @@ export default function AdvertisementPage() {
         }}>
             <label>Category</label>
 
-            <input type="text" name="category" value={formData.category} placeholder="Search category..." onChange={e => {
+            {isTopBanner && <label className={cx("common-banner-toggle")}>
+                <input type="checkbox" checked={isCommonTopBanner} onChange={handleCommonBannerChange} />
+                Common banner for all categories
+              </label>}
+
+            <input type="text" name="category" value={isCommonTopBanner ? COMMON_TOP_BANNER_LABEL : formData.category} placeholder="Search category..." disabled={isCommonTopBanner} onChange={e => {
             const value = e.target.value;
             setFormData(prev => ({
               ...prev,
@@ -381,12 +408,12 @@ export default function AdvertisementPage() {
               setShowCategorySuggest(false);
             }
           }} onFocus={() => {
-            if (formData.category.length >= 2) {
+            if (!isCommonTopBanner && formData.category.length >= 2) {
               setShowCategorySuggest(true);
             }
           }} onBlur={() => setTimeout(() => setShowCategorySuggest(false), 200)} />
 
-            {showCategorySuggest && searchCategory.length > 0 && <ul style={{
+            {showCategorySuggest && !isCommonTopBanner && searchCategory.length > 0 && <ul style={{
             position: "absolute",
             top: "70px",
             width: "100%",
