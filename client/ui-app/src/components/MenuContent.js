@@ -27,6 +27,10 @@ import SearchIcon from '@mui/icons-material/Search';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import SettingsIcon from '@mui/icons-material/Settings';
 import GavelIcon from '@mui/icons-material/Gavel';
+import NavigationIcon from '@mui/icons-material/Navigation';
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import ClassIcon from '@mui/icons-material/Class';
+import FeaturedVideoIcon from '@mui/icons-material/FeaturedVideo';
 
 const SUPERADMIN = 'SuperAdmin';
 
@@ -61,10 +65,10 @@ const MENU_SECTIONS = [
   {
     label: "Events",
     items: [
-      { text: "EventCategory", icon: MailOutlineIcon, path: "/dashboard/event-category" },
-      { text: "EventLocation", icon: NotificationsIcon, path: "/dashboard/event-location" },
-      { text: "EventAdvertisement", icon: StorefrontIcon, path: "/dashboard/event-advertisement" },
-      { text: "EventCreation", icon: NotificationsIcon, path: "/dashboard/event-creation" },
+      { text: "EventLocation", icon: NavigationIcon, path: "/dashboard/event-location" },
+      { text: "EventCategory", icon: ClassIcon, path: "/dashboard/event-category" },
+      { text: "EventCreation", icon: EmojiEventsIcon, path: "/dashboard/event-creation" },
+      { text: "EventAdvertisement", icon: FeaturedVideoIcon, path: "/dashboard/event-advertisement" },
     ]
   },
   {
