@@ -63,11 +63,13 @@ const Cards = ({
   isVerified = false,
   isFeatured = false,
   filters,
+  viewMode = "list",
   ...props
 }) => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [chipsExpanded, setChipsExpanded] = useState(false);
   const favoriteIds = useSelector(state => state.favorites.favoriteIds);
   const togglingIds = useSelector(state => state.favorites.togglingIds);
   const user = getAuthUser();
@@ -121,7 +123,7 @@ const Cards = ({
     <>
       <OTPLoginModal open={showLoginModal} handleClose={() => setShowLoginModal(false)} />
       <Link to={to} state={props.state} className={cx("card-link")}>
-        <div className={cx("base-card")}>
+        <div className={cx("base-card", `base-card--${viewMode}`)}>
 
           {/* Image */}
           <div className={cx("card-image-wrapper")}>
@@ -214,13 +216,35 @@ const Cards = ({
                   {experience}+ yrs experience
                 </p>
               )}
-              {filterBadges.length > 0 && (
-                <div className={cx("filter-badges")}>
-                  {filterBadges.map((badge) => (
-                    <span key={badge} className={cx("filter-badge")}>{badge}</span>
-                  ))}
-                </div>
-              )}
+              {filterBadges.length > 0 && (() => {
+                const isGrid = viewMode === "grid" || viewMode === "large";
+                const LIMIT = 2;
+                const shown = isGrid && !chipsExpanded ? filterBadges.slice(0, LIMIT) : filterBadges;
+                const remaining = filterBadges.length - LIMIT;
+                return (
+                  <div className={cx("filter-badges")}>
+                    {shown.map((badge) => (
+                      <span key={badge} className={cx("filter-badge")}>{badge}</span>
+                    ))}
+                    {isGrid && !chipsExpanded && remaining > 0 && (
+                      <span
+                        className={cx("filter-badge", "filter-badge-more")}
+                        onClick={e => { e.preventDefault(); e.stopPropagation(); setChipsExpanded(true); }}
+                      >
+                        +{remaining} more
+                      </span>
+                    )}
+                    {isGrid && chipsExpanded && (
+                      <span
+                        className={cx("filter-badge", "filter-badge-more")}
+                        onClick={e => { e.preventDefault(); e.stopPropagation(); setChipsExpanded(false); }}
+                      >
+                        less
+                      </span>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* BOTTOM — actions */}

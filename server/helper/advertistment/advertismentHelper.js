@@ -4,9 +4,12 @@ import advertismentModel from "../../model/advertistment/advertismentModel.js";
 import { uploadImageToS3, getSignedUrlByKey } from "../../s3Uploder.js";
 
 const TOP_BANNER_RULES = {
-  targetWidth: 1200,
-  targetHeight: 300,
+  targetWidth: 1720,
+  targetHeight: 168,
+  aspectTolerance: 0.03,
 };
+const TOP_BANNER_RATIO =
+  TOP_BANNER_RULES.targetWidth / TOP_BANNER_RULES.targetHeight;
 
 const getBase64ImageBuffer = (imageData = "") => {
   if (typeof imageData !== "string" || !imageData.startsWith("data:image")) {
@@ -21,14 +24,29 @@ const getBase64ImageBuffer = (imageData = "") => {
 
 const cropTopBannerImage = async (imageData) => {
   const buffer = getBase64ImageBuffer(imageData);
-  if (!buffer) return imageData;
+  if (!buffer) throw new Error("Top banner image data is invalid");
 
   const metadata = await sharp(buffer).metadata();
+  if (!metadata.width || !metadata.height) {
+    throw new Error("Unable to read top banner image dimensions");
+  }
+
   if (
-    metadata.width === TOP_BANNER_RULES.targetWidth &&
-    metadata.height === TOP_BANNER_RULES.targetHeight
+    metadata.width < TOP_BANNER_RULES.targetWidth ||
+    metadata.height < TOP_BANNER_RULES.targetHeight
   ) {
-    return imageData;
+    throw new Error(
+      `Top banner image must be at least ${TOP_BANNER_RULES.targetWidth} x ${TOP_BANNER_RULES.targetHeight} px`
+    );
+  }
+
+  const sourceRatio = metadata.width / metadata.height;
+  const ratioDifference =
+    Math.abs(sourceRatio - TOP_BANNER_RATIO) / TOP_BANNER_RATIO;
+  if (ratioDifference > TOP_BANNER_RULES.aspectTolerance) {
+    throw new Error(
+      `Top banner image ratio must match ${TOP_BANNER_RULES.targetWidth} x ${TOP_BANNER_RULES.targetHeight} px`
+    );
   }
 
   const outputBuffer = await sharp(buffer)
@@ -159,10 +177,23 @@ export const viewAllAdvertisement = async ({
 export const updateAdvertisement = async (id, data) => {
   if (!ObjectId.isValid(id)) throw new Error("Invalid advertisement ID");
 
-  if (
+  const existingAd = await advertismentModel.findById(id).lean();
+  if (!existingAd) throw new Error("Advertisement not found");
+
+  const hasNewImage =
     data.bannerImage &&
     typeof data.bannerImage === "string" &&
-    data.bannerImage.startsWith("data:image")
+    data.bannerImage.startsWith("data:image");
+  if (
+    data.position === "TOP_BANNER" &&
+    existingAd.position !== "TOP_BANNER" &&
+    !hasNewImage
+  ) {
+    throw new Error("A valid top banner image is required");
+  }
+
+  if (
+    hasNewImage
   ) {
     if (data.position === "TOP_BANNER") {
       data.bannerImage = await cropTopBannerImage(data.bannerImage);

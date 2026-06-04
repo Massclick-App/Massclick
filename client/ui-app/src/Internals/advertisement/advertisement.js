@@ -4,16 +4,26 @@ import { useDispatch, useSelector } from "react-redux";
 import { getAllAdvertisements, createAdvertisement, editAdvertisement, deleteAdvertisement } from "../../redux/actions/advertisementAction";
 import { businessCategorySearch } from "../../redux/actions/categoryAction";
 import CustomizedTable from "../../components/Table/CustomizedTable";
+import Cropper from "react-easy-crop";
+import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Slider, Typography } from "@mui/material";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import styles from "./advertisement.module.css";
 const cx = createScopedClassNames(styles);
 const TOP_BANNER_RULES = {
-  targetWidth: 1200,
-  targetHeight: 300,
-  recommended: "1200 x 300 px",
-  label: "Top banner output is forced to 1200 x 300 px. Uploaded images are center-cropped to fit the 4:1 banner frame."
+  targetWidth: 1720,
+  targetHeight: 168,
+  recommended: "1720 x 168 px",
+  label: "Choose a large image and crop it into the required 1720 x 168 px top banner frame."
+};
+const TOP_BANNER_RATIO = TOP_BANNER_RULES.targetWidth / TOP_BANNER_RULES.targetHeight;
+const validateTopBannerDimensions = ({ width, height }) => {
+  if (width < TOP_BANNER_RULES.targetWidth || height < TOP_BANNER_RULES.targetHeight) {
+    return `Top banner image must be at least ${TOP_BANNER_RULES.recommended}.`;
+  }
+
+  return "";
 };
 const getImageDimensions = file => new Promise((resolve, reject) => {
   const image = new Image();
@@ -31,36 +41,27 @@ const getImageDimensions = file => new Promise((resolve, reject) => {
   };
   image.src = objectUrl;
 });
-const cropImageToTopBanner = file => new Promise((resolve, reject) => {
+const cropImageToTopBanner = (imageSource, croppedAreaPixels) => new Promise((resolve, reject) => {
   const image = new Image();
-  const objectUrl = URL.createObjectURL(file);
+  image.crossOrigin = "anonymous";
 
   image.onload = () => {
     const sourceWidth = image.naturalWidth;
     const sourceHeight = image.naturalHeight;
     const targetWidth = TOP_BANNER_RULES.targetWidth;
     const targetHeight = TOP_BANNER_RULES.targetHeight;
-    const sourceRatio = sourceWidth / sourceHeight;
-    const targetRatio = targetWidth / targetHeight;
-    let cropWidth = sourceWidth;
-    let cropHeight = sourceHeight;
-    let cropX = 0;
-    let cropY = 0;
-
-    if (sourceRatio > targetRatio) {
-      cropWidth = sourceHeight * targetRatio;
-      cropX = (sourceWidth - cropWidth) / 2;
-    } else {
-      cropHeight = sourceWidth / targetRatio;
-      cropY = (sourceHeight - cropHeight) / 2;
-    }
+    const {
+      x,
+      y,
+      width,
+      height
+    } = croppedAreaPixels;
 
     const canvas = document.createElement("canvas");
     canvas.width = targetWidth;
     canvas.height = targetHeight;
     const context = canvas.getContext("2d");
-    context.drawImage(image, cropX, cropY, cropWidth, cropHeight, 0, 0, targetWidth, targetHeight);
-    URL.revokeObjectURL(objectUrl);
+    context.drawImage(image, x, y, width, height, 0, 0, targetWidth, targetHeight);
 
     resolve({
       base64: canvas.toDataURL("image/webp", 0.92),
@@ -72,11 +73,10 @@ const cropImageToTopBanner = file => new Promise((resolve, reject) => {
   };
 
   image.onerror = () => {
-    URL.revokeObjectURL(objectUrl);
     reject(new Error("Unable to crop image preview"));
   };
 
-  image.src = objectUrl;
+  image.src = imageSource;
 });
 export default function AdvertisementPage() {
   const dispatch = useDispatch();
@@ -94,6 +94,17 @@ export default function AdvertisementPage() {
   const [editingId, setEditingId] = useState(null);
   const [preview, setPreview] = useState(null);
   const [imageMeta, setImageMeta] = useState(null);
+  const [cropperOpen, setCropperOpen] = useState(false);
+  const [cropData, setCropData] = useState({
+    image: null,
+    dimensions: null,
+    crop: {
+      x: 0,
+      y: 0
+    },
+    zoom: 1,
+    croppedAreaPixels: null
+  });
   const [errors, setErrors] = useState({});
   const [formData, setFormData] = useState({
     title: "",
@@ -120,9 +131,24 @@ export default function AdvertisementPage() {
     } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: value,
+      ...(name === "position" ? { bannerImage: "" } : {})
     }));
     if (name === "position") {
+      setPreview(null);
+      setImageMeta(null);
+      setCropperOpen(false);
+      setCropData({
+        image: null,
+        dimensions: null,
+        crop: {
+          x: 0,
+          y: 0
+        },
+        zoom: 1,
+        croppedAreaPixels: null
+      });
+      if (fileInputRef.current) fileInputRef.current.value = "";
       setErrors(prev => {
         const next = {
           ...prev
@@ -148,9 +174,36 @@ export default function AdvertisementPage() {
     let bannerImage;
     let previewImage;
     if (formData.position === "TOP_BANNER") {
-      const cropped = await cropImageToTopBanner(file);
-      bannerImage = cropped.base64;
-      previewImage = cropped.base64;
+      const topBannerError = validateTopBannerDimensions(dimensions);
+      if (topBannerError) {
+        setPreview(null);
+        setImageMeta(dimensions);
+        setFormData(p => ({
+          ...p,
+          bannerImage: ""
+        }));
+        setErrors(prev => ({
+          ...prev,
+          bannerImage: topBannerError
+        }));
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        return;
+      }
+
+      const sourceImage = await convertToBase64(file);
+      setImageMeta(dimensions);
+      setCropData({
+        image: sourceImage,
+        dimensions,
+        crop: {
+          x: 0,
+          y: 0
+        },
+        zoom: 1,
+        croppedAreaPixels: null
+      });
+      setCropperOpen(true);
+      return;
     } else {
       bannerImage = await convertToBase64(file);
       previewImage = bannerImage;
@@ -169,6 +222,45 @@ export default function AdvertisementPage() {
       bannerImage
     }));
   };
+  const handleTopBannerCropSave = async () => {
+    if (!cropData.image || !cropData.croppedAreaPixels) {
+      setErrors(prev => ({
+        ...prev,
+        bannerImage: "Please adjust the top banner crop before saving"
+      }));
+      return;
+    }
+
+    try {
+      const cropped = await cropImageToTopBanner(cropData.image, cropData.croppedAreaPixels);
+      setPreview(cropped.base64);
+      setImageMeta({
+        width: cropped.originalWidth,
+        height: cropped.originalHeight
+      });
+      setFormData(p => ({
+        ...p,
+        bannerImage: cropped.base64
+      }));
+      setErrors(prev => {
+        const next = {
+          ...prev
+        };
+        delete next.bannerImage;
+        return next;
+      });
+      setCropperOpen(false);
+    } catch (error) {
+      setErrors(prev => ({
+        ...prev,
+        bannerImage: error.message
+      }));
+    }
+  };
+  const handleTopBannerCropCancel = () => {
+    setCropperOpen(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
   const validateForm = () => {
     let err = {};
     if (!formData.title.trim()) err.title = "Title is required";
@@ -176,6 +268,9 @@ export default function AdvertisementPage() {
     if (!formData.startTime) err.startTime = "Start time required";
     if (!formData.endTime) err.endTime = "End time required";
     if (!editMode && !formData.bannerImage) err.bannerImage = "Banner image is required";
+    if (formData.position === "TOP_BANNER" && !formData.bannerImage && !preview) {
+      err.bannerImage = "Top banner image is required";
+    }
     setErrors(err);
     return Object.keys(err).length === 0;
   };
@@ -191,6 +286,17 @@ export default function AdvertisementPage() {
     });
     setPreview(null);
     setImageMeta(null);
+    setCropperOpen(false);
+    setCropData({
+      image: null,
+      dimensions: null,
+      crop: {
+        x: 0,
+        y: 0
+      },
+      zoom: 1,
+      croppedAreaPixels: null
+    });
     setEditMode(false);
     setEditingId(null);
     setErrors({});
@@ -369,7 +475,7 @@ export default function AdvertisementPage() {
               </div>}
             {imageMeta && <span className={cx("image-meta")}>
                 Selected image: {imageMeta.width} x {imageMeta.height} px
-                {isTopBanner ? ` -> saved as ${TOP_BANNER_RULES.targetWidth} x ${TOP_BANNER_RULES.targetHeight} px` : ""}
+                {isTopBanner ? ` -> saved as ${TOP_BANNER_RULES.recommended}` : ""}
               </span>}
             {errors.bannerImage && <span className={cx("error")}>{errors.bannerImage}</span>}
           </div>
@@ -404,5 +510,96 @@ export default function AdvertisementPage() {
         options
       }))} />
       </div>
+
+      <Dialog open={cropperOpen} onClose={handleTopBannerCropCancel} maxWidth="md" fullWidth>
+        <DialogTitle sx={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between"
+      }}>
+          <span>Crop Top Banner</span>
+          <IconButton size="small" onClick={handleTopBannerCropCancel}>x</IconButton>
+        </DialogTitle>
+        <DialogContent dividers sx={{
+        p: 2
+      }}>
+          <Box sx={{
+          mb: 2,
+          p: 1.5,
+          borderRadius: "8px",
+          bgcolor: "#f8fafc",
+          border: "1px solid #e5e7eb"
+        }}>
+            <Typography variant="body2" sx={{
+            fontWeight: 700,
+            color: "#172033"
+          }}>
+              Forced output: {TOP_BANNER_RULES.recommended}
+            </Typography>
+            <Typography variant="caption" sx={{
+            display: "block",
+            mt: 0.5,
+            color: "#6b7280"
+          }}>
+              Drag the image into the long banner frame, then save the crop.
+            </Typography>
+            {cropData.dimensions && <Typography variant="caption" sx={{
+            display: "block",
+            mt: 0.5,
+            color: "#6b7280"
+          }}>
+                Source image: {cropData.dimensions.width} x {cropData.dimensions.height} px
+              </Typography>}
+          </Box>
+
+          {cropData.image && <Box sx={{
+          position: "relative",
+          width: "100%",
+          height: {
+            xs: 260,
+            sm: 320,
+            md: 380
+          },
+          bgcolor: "#0f172a",
+          borderRadius: "8px",
+          overflow: "hidden"
+        }}>
+              <Cropper image={cropData.image} crop={cropData.crop} zoom={cropData.zoom} aspect={TOP_BANNER_RATIO} onCropChange={crop => setCropData(prev => ({
+            ...prev,
+            crop
+          }))} onCropComplete={(croppedArea, croppedAreaPixels) => setCropData(prev => ({
+            ...prev,
+            croppedAreaPixels
+          }))} onZoomChange={zoom => setCropData(prev => ({
+            ...prev,
+            zoom
+          }))} />
+            </Box>}
+
+          <Box sx={{
+          mt: 2
+        }}>
+            <Typography variant="caption" sx={{
+            display: "block",
+            mb: 1,
+            color: "#6b7280"
+          }}>
+              Zoom: {(cropData.zoom * 100).toFixed(0)}%
+            </Typography>
+            <Slider value={cropData.zoom} onChange={(event, zoom) => setCropData(prev => ({
+            ...prev,
+            zoom
+          }))} min={1} max={5} step={0.1} valueLabelDisplay="auto" />
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{
+        p: 2
+      }}>
+          <Button onClick={handleTopBannerCropCancel}>Cancel</Button>
+          <Button variant="contained" onClick={handleTopBannerCropSave}>
+            Save Crop
+          </Button>
+        </DialogActions>
+      </Dialog>
     </div>;
 }

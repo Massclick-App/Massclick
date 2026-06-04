@@ -25,11 +25,10 @@
 /* Banner wrapper */
 .banner-image-wrapper {
   width: 100%;
-  max-width: 1200px;
   margin: 0 auto;
   padding: 0;
   box-sizing: border-box;
-  aspect-ratio: 4 / 1;
+  height: clamp(92px, 9vw, 168px);
   overflow: hidden;
   border-radius: 8px;
   background: #f8fafc;
@@ -92,6 +91,10 @@
 
 /* ===== Mobile ===== */
 @media (max-width: 768px) {
+  .banner-image-wrapper {
+    height: clamp(72px, 18vw, 112px);
+  }
+
   .sponsored-label {
     top: 8px;
     left: 8px;
@@ -111,6 +114,7 @@
 /* ===== Small Mobile ===== */
 @media (max-width: 480px) {
   .banner-image-wrapper {
+    height: clamp(64px, 20vw, 88px);
     border-radius: 7px;
   }
 

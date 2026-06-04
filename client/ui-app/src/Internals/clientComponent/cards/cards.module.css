@@ -21,6 +21,7 @@
   display: block;
   text-decoration: none;
   width: 100%;
+  height: 100%;
 }
 
 /* ================================ */
@@ -46,6 +47,175 @@
   border-color: rgba(255, 140, 0, 0.22);
   box-shadow: var(--card-shadow-hover);
   transform: translateY(-2px);
+}
+
+.base-card--grid {
+  flex-direction: column;
+  height: 100%;
+}
+
+.base-card--grid .card-image-wrapper {
+  width: 100%;
+  height: 200px;
+  flex-shrink: 0;
+}
+
+.base-card--grid .card-content {
+  height: 100%;
+  padding: 14px 16px;
+  overflow: hidden;
+}
+
+.base-card--grid .card-header-row {
+  flex-wrap: wrap;
+}
+
+.base-card--grid .card-title {
+  font-size: 1rem;
+}
+
+.base-card--grid .cardpage-actions {
+  gap: 8px;
+}
+
+.base-card--grid .card-action-button {
+  min-height: 38px;
+  padding: 8px 7px;
+  font-size: 0.78rem;
+}
+
+/* ================================ */
+/* LARGE CARD — magazine grid       */
+/* ================================ */
+
+.base-card--large {
+  flex-direction: column;
+  height: 100%;
+}
+
+.base-card--large .card-image-wrapper {
+  width: 100%;
+  height: 260px;
+  flex-shrink: 0;
+}
+
+.base-card--large .card-content {
+  height: 100%;
+  padding: 18px 20px;
+  gap: 12px;
+  overflow: hidden;
+}
+
+.base-card--large .card-title {
+  font-size: 1.18rem;
+}
+
+.base-card--large .card-header-row {
+  flex-wrap: wrap;
+}
+
+.base-card--large .card-action-button {
+  min-height: 42px;
+  font-size: 0.84rem;
+}
+
+/* ================================ */
+/* TABLE CARD — ultra-compact row   */
+/* ================================ */
+
+.base-card--table {
+  height: 72px;
+  border-radius: 10px;
+  box-shadow: none;
+  border-color: rgba(15, 23, 42, 0.06);
+  background: #fff;
+}
+
+.base-card--table:hover {
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.08);
+  transform: none;
+}
+
+.base-card--table .card-image-wrapper {
+  display: none;
+}
+
+.base-card--table .card-content {
+  flex-direction: row;
+  align-items: center;
+  padding: 0 18px;
+  gap: 20px;
+  justify-content: flex-start;
+}
+
+.base-card--table .card-top {
+  flex-shrink: 0;
+  min-width: 190px;
+  max-width: 230px;
+  gap: 3px;
+}
+
+.base-card--table .card-header-row {
+  gap: 8px;
+}
+
+.base-card--table .card-title {
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.base-card--table .card-meta {
+  flex-wrap: nowrap;
+  gap: 7px;
+}
+
+.base-card--table .reviews-text,
+.base-card--table .category-pill {
+  display: none;
+}
+
+.base-card--table .card-info {
+  flex-direction: row;
+  align-items: center;
+  gap: 14px;
+  flex: 1;
+  margin-top: 0;
+  overflow: hidden;
+}
+
+.base-card--table .card-address-inline {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 280px;
+  flex-shrink: 1;
+}
+
+.base-card--table .card-details,
+.base-card--table .filter-badges,
+.base-card--table .card-ifsc {
+  display: none;
+}
+
+.base-card--table .cardpage-actions {
+  padding-top: 0;
+  border-top: none;
+  margin-top: 0;
+  flex-shrink: 0;
+  gap: 7px;
+}
+
+.base-card--table .card-action-button {
+  min-height: 34px;
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  flex: initial;
+}
+
+.base-card--table .enquiry-button {
+  display: none;
 }
 
 /* ================================ */
@@ -341,6 +511,17 @@
   letter-spacing: 0.01em;
 }
 
+.filter-badge-more {
+  background: #e2e8f0;
+  color: #334155;
+  border-color: #cbd5e1;
+  cursor: pointer;
+}
+
+.filter-badge-more:hover {
+  background: #cbd5e1;
+}
+
 
 /* ================================ */
 /* ACTION BUTTONS                   */
@@ -436,6 +617,76 @@
   .base-card {
     flex-direction: column;
     height: auto;
+  }
+
+  .base-card--table {
+    height: auto;
+    border-radius: var(--card-radius);
+    flex-direction: column;
+  }
+
+  .base-card--table .card-image-wrapper {
+    display: block;
+    width: 100%;
+    height: 160px;
+  }
+
+  .base-card--table .card-content {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 14px 16px;
+    gap: 10px;
+  }
+
+  .base-card--table .card-top {
+    min-width: 0;
+    max-width: none;
+  }
+
+  .base-card--table .card-title {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+  }
+
+  .base-card--table .reviews-text,
+  .base-card--table .category-pill {
+    display: inline-flex;
+  }
+
+  .base-card--table .card-info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .base-card--table .card-address-inline {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+    max-width: none;
+  }
+
+  .base-card--table .card-details,
+  .base-card--table .filter-badges {
+    display: flex;
+  }
+
+  .base-card--table .cardpage-actions {
+    padding-top: 10px;
+    border-top: 1px solid #f1f5f9;
+    gap: 8px;
+  }
+
+  .base-card--table .card-action-button {
+    flex: 1;
+    min-height: 40px;
+    padding: 8px 10px;
+    font-size: 0.8rem;
+  }
+
+  .base-card--table .enquiry-button {
+    display: inline-flex;
   }
 
   .card-image-wrapper {

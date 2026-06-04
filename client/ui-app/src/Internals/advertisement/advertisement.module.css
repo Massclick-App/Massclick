@@ -117,7 +117,8 @@
 }
 
 .banner-preview.top-banner-preview {
-  aspect-ratio: 4 / 1;
+  width: min(100%, 720px);
+  aspect-ratio: 1720 / 168;
 }
 
 .banner-preview span {

@@ -9,6 +9,10 @@ import GroupsIcon from "@mui/icons-material/Groups";
 import LockIcon from "@mui/icons-material/Lock";
 import TuneIcon from "@mui/icons-material/Tune";
 import CloseIcon from "@mui/icons-material/Close";
+import ViewListIcon from "@mui/icons-material/ViewList";
+import ViewModuleIcon from "@mui/icons-material/ViewModule";
+import ViewHeadlineIcon from "@mui/icons-material/ViewHeadline";
+import ViewAgendaIcon from "@mui/icons-material/ViewAgenda";
 import { Box, Chip, Drawer, Button } from "@mui/material";
 import styles from "./SearchResult.module.css";
 import CardsSearch from "../CardsSearch/CardsSearch";
@@ -73,6 +77,7 @@ const SearchResults = React.memo(() => {
   const [activeFilters, setActiveFilters] = useState({});
   const [filterConfig, setFilterConfig] = useState([]);
   const [sortBy, setSortBy] = useState("relevant");
+  const [viewMode, setViewMode] = useState("list");
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
   const stateAppliedRef = useRef(false);
   const requestIdRef = useRef(0);
@@ -193,6 +198,12 @@ const SearchResults = React.memo(() => {
   });
 
   const totalActiveCount = activeFilterChips.length + (sortBy !== "relevant" ? 1 : 0);
+  const viewOptions = [
+    { value: "list", label: "List", icon: ViewListIcon },
+    { value: "grid", label: "Grid", icon: ViewModuleIcon },
+    { value: "large", label: "Large", icon: ViewAgendaIcon },
+    { value: "table", label: "Table", icon: ViewHeadlineIcon },
+  ];
   useEffect(() => {
     if (!normalizedSearchTerm || !locationText) return;
     dispatch({
@@ -383,7 +394,7 @@ const SearchResults = React.memo(() => {
             </div>
           )}
 
-          {/* Two-column layout: filter panel + results */}
+          {/* Three-column layout: filter | results | ads (ads only in single-col modes) */}
           <div className={cx("search-layout")}>
             {/* Desktop filter column */}
             <div className={cx("filter-column")}>
@@ -399,12 +410,36 @@ const SearchResults = React.memo(() => {
 
             {/* Results column */}
             <div className={cx("results-column")}>
-              {/* Result count + sort info */}
-              {!loading && results.length > 0 && (
-                <p className={cx("result-count")}>
-                  {results.length} result{results.length !== 1 ? "s" : ""} for {searchText} in {locationText}
-                </p>
-              )}
+              <div className={cx("results-toolbar")}>
+                <div className={cx("view-toggle")} aria-label="Choose listing view">
+                  {viewOptions.map(({ value, label, icon: Icon }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      className={cx("view-toggle-button", viewMode === value && "view-toggle-button--active")}
+                      onClick={() => setViewMode(value)}
+                      aria-label={`${label} view`}
+                      aria-pressed={viewMode === value}
+                      title={`${label} view`}
+                    >
+                      <Icon fontSize="small" />
+                    </button>
+                  ))}
+                </div>
+                {!loading && results.length > 0 && (
+                  <p className={cx("result-count")}>
+                    Showing {results.length} result{results.length !== 1 ? "s" : ""} for {searchText} in {locationText}
+                  </p>
+                )}
+                <label className={cx("sort-control")}>
+                  <span>Sort by</span>
+                  <select value={sortBy} onChange={e => setSortBy(e.target.value)}>
+                    <option value="relevant">Relevant</option>
+                    <option value="rating">Rating</option>
+                    <option value="newest">Latest</option>
+                  </select>
+                </label>
+              </div>
 
               {loading && <GlobalSkeleton type="list" />}
 
@@ -424,7 +459,7 @@ const SearchResults = React.memo(() => {
                 </div>
               )}
 
-              <div className={cx("business-list")}>
+              <div className={cx("business-list", `business-list--${viewMode}`)}>
                 {results.map(business => {
                   const averageRating = typeof business.averageRating === "number" ? business.averageRating.toFixed(1) : "0.0";
                   const totalRatings = typeof business.totalReviews === "number" ? business.totalReviews : 0;
@@ -440,12 +475,22 @@ const SearchResults = React.memo(() => {
                         isVerified={!!business.verification?.isVerified}
                         isFeatured={!!business.badges?.isFeatured}
                         filters={business.filters}
+                        viewMode={viewMode}
                         index={results.indexOf(business)} />
                     </div>
                   );
                 })}
               </div>
             </div>
+
+            {/* Right ads column — only for single-column (list / table) modes */}
+            {(viewMode === "list" || viewMode === "table") && (
+              <div className={cx("ads-column")}>
+                <div className={cx("ad-unit")} aria-label="Advertisement">
+                  {/* Replace with <ins class="adsbygoogle"> block */}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
