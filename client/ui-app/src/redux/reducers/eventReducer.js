@@ -12,6 +12,7 @@ import {
   EDIT_EVENT_ADVERTISEMENT_REQUEST, EDIT_EVENT_ADVERTISEMENT_SUCCESS, EDIT_EVENT_ADVERTISEMENT_FAILURE,
   DELETE_EVENT_ADVERTISEMENT_REQUEST, DELETE_EVENT_ADVERTISEMENT_SUCCESS, DELETE_EVENT_ADVERTISEMENT_FAILURE,
   FETCH_EVENT_CREATION_REQUEST, FETCH_EVENT_CREATION_SUCCESS, FETCH_EVENT_CREATION_FAILURE,
+  VIEW_EVENT_CREATION_REQUEST, VIEW_EVENT_CREATION_SUCCESS, VIEW_EVENT_CREATION_FAILURE,
   CREATE_EVENT_CREATION_REQUEST, CREATE_EVENT_CREATION_SUCCESS, CREATE_EVENT_CREATION_FAILURE,
   EDIT_EVENT_CREATION_REQUEST, EDIT_EVENT_CREATION_SUCCESS, EDIT_EVENT_CREATION_FAILURE,
   DELETE_EVENT_CREATION_REQUEST, DELETE_EVENT_CREATION_SUCCESS, DELETE_EVENT_CREATION_FAILURE,
@@ -27,11 +28,18 @@ const initialEventState = {
   error: null,
 };
 
+const initialEventDetailState = {
+  data: null,
+  loading: false,
+  error: null,
+};
+
 const initialState = {
   eventCategory: initialEventState,
   eventLocation: initialEventState,
   eventAdvertisement: initialEventState,
   eventCreation: initialEventState,
+  eventCreationDetail: initialEventDetailState,
 };
 
 export default function eventReducer(state = initialState, action) {
@@ -259,6 +267,32 @@ export default function eventReducer(state = initialState, action) {
       return {
         ...state,
         eventCreation: { ...state.eventCreation, loading: false, error: action.payload }
+      };
+
+    case VIEW_EVENT_CREATION_REQUEST:
+      return {
+        ...state,
+        eventCreationDetail: { ...state.eventCreationDetail, loading: true, error: null }
+      };
+
+    case VIEW_EVENT_CREATION_SUCCESS:
+      return {
+        ...state,
+        eventCreationDetail: {
+          data: action.payload,
+          loading: false,
+          error: null
+        }
+      };
+
+    case VIEW_EVENT_CREATION_FAILURE:
+      return {
+        ...state,
+        eventCreationDetail: {
+          ...state.eventCreationDetail,
+          loading: false,
+          error: action.payload
+        }
       };
 
     case CREATE_EVENT_CREATION_SUCCESS:

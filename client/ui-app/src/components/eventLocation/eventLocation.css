@@ -3,25 +3,30 @@
    =========================== */
 
 :root {
-  --color-background: #f8f9fb;
-  --color-card-bg: #ffffff;
-  --color-text-primary: #1f2937;
-  --color-text-secondary: #6b7280;
-  --color-border: #e5e7eb;
-  --color-primary-orange: #ff8c00;
-  --color-primary-hover: #d97800;
-  --color-disabled-orange: #ffc280;
-  --color-error: #ef4444;
+  --eventLocation-background: #f8f9fb;
+  --eventLocation-card-bg: #ffffff;
+  --eventLocation-text-primary: #1f2937;
+  --eventLocation-text-secondary: #6b7280;
+  --eventLocation-border: #e5e7eb;
+  --eventLocation-primary-orange: #ff8c00;
+  --eventLocation-primary-hover: #d97800;
+  --eventLocation-disabled-orange: #ffc280;
+  --eventLocation-error: #ef4444;
+  --eventLocation-success-bg: #ecfdf5;
+  --eventLocation-success-text: #047857;
+  --eventLocation-danger-bg: #fef2f2;
+  --eventLocation-danger-text: #b91c1c;
+  --eventLocation-muted-bg: #f3f4f6;
 }
 
 /* ===========================
    Page Layout
    =========================== */
 
-.event-location-page {
+.eventLocation-page {
   width: 100%;
   padding: 0 16px;
-  background-color: var(--color-background);
+  background-color: var(--eventLocation-background);
   box-sizing: border-box;
   font-family: "Inter", system-ui, sans-serif;
 }
@@ -30,53 +35,57 @@
    Card
    =========================== */
 
-.event-location-card {
-  background-color: var(--color-card-bg);
+.eventLocation-card {
+  background-color: var(--eventLocation-card-bg);
   padding: 28px;
+  border: 1px solid var(--eventLocation-border);
   border-radius: 16px;
-  border: 1px solid var(--color-border);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
   margin-bottom: 24px;
   transition: all 0.3s ease;
 }
 
-.event-location-card:hover {
+.eventLocation-card:hover {
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
 }
 
-.event-location-card h2 {
+.eventLocation-card h2 {
+  width: fit-content;
+  margin: 0 0 24px;
+  padding-bottom: 4px;
+  border-bottom: 3px solid var(--eventLocation-primary-orange);
+  color: var(--eventLocation-text-primary);
   font-size: 1.5rem;
   font-weight: 700;
-  color: var(--color-text-primary);
-  margin-bottom: 24px;
-  border-bottom: 3px solid var(--color-primary-orange);
-  width: fit-content;
-  padding-bottom: 4px;
 }
 
 /* ===========================
    Form Grid
    =========================== */
 
-.event-location-grid {
+.eventLocation-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 24px 18px;
 }
 
-.event-location-grid > div {
+.eventLocation-grid > div {
   display: flex;
   flex-direction: column;
+}
+
+.eventLocation-field--full {
+  grid-column: 1 / -1;
 }
 
 /* ===========================
    Labels
    =========================== */
 
-.event-location-grid label {
-  font-size: 0.9rem;
-  color: var(--color-text-secondary);
+.eventLocation-grid label {
   margin-bottom: 6px;
+  color: var(--eventLocation-text-secondary);
+  font-size: 0.9rem;
   font-weight: 600;
 }
 
@@ -84,37 +93,142 @@
    Inputs
    =========================== */
 
-.event-location-grid input {
+.eventLocation-grid input,
+.eventLocation-grid textarea {
   width: 100%;
-  height: 48px;
   padding: 0 14px;
-  border: 2px solid var(--color-border);
+  border: 2px solid var(--eventLocation-border);
   border-radius: 8px;
   background-color: #fff;
+  color: var(--eventLocation-text-primary);
+  font: inherit;
   font-size: 1rem;
   transition: all 0.3s ease;
   box-sizing: border-box;
 }
 
-.event-location-grid input:hover {
+.eventLocation-grid input {
+  height: 48px;
+}
+
+.eventLocation-grid textarea {
+  min-height: 96px;
+  padding-top: 12px;
+  padding-bottom: 12px;
+  resize: vertical;
+}
+
+.eventLocation-grid input:hover,
+.eventLocation-grid textarea:hover {
   border-color: #d1d5db;
 }
 
-.event-location-grid input:focus {
+.eventLocation-grid input:focus,
+.eventLocation-grid textarea:focus {
   outline: none;
-  border-color: var(--color-primary-orange);
+  border-color: var(--eventLocation-primary-orange);
   box-shadow: 0 0 0 3px rgba(255, 140, 0, 0.15);
   background-color: #fffbf7;
+}
+
+.eventLocation-grid input[readonly] {
+  background-color: #f9fafb;
+  color: var(--eventLocation-text-secondary);
+  cursor: not-allowed;
+}
+
+/* ===========================
+   Toggle
+   =========================== */
+
+.eventLocation-toggle {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+}
+
+.eventLocation-toggle label {
+  margin-bottom: 0;
+}
+
+.eventLocation-toggle input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--eventLocation-primary-orange);
+  cursor: pointer;
+}
+
+/* ===========================
+   Image Preview
+   =========================== */
+
+.eventLocation-upload-field {
+  min-height: 82px;
+}
+
+.eventLocation-upload-content {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 56px;
+}
+
+.eventLocation-upload-button {
+  min-width: 148px !important;
+  min-height: 42px !important;
+  border-radius: 10px !important;
+  background-color: var(--eventLocation-primary-orange) !important;
+  color: #fff !important;
+  font-weight: 600 !important;
+  text-transform: none !important;
+}
+
+.eventLocation-upload-button:hover {
+  background-color: var(--eventLocation-primary-hover) !important;
+}
+
+.eventLocation-preview-avatar {
+  border: 1px solid var(--eventLocation-border);
+  background-color: var(--eventLocation-muted-bg);
+}
+
+.eventLocation-image-preview {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 18px;
+  color: var(--eventLocation-text-secondary);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.eventLocation-image-preview img {
+  width: 88px;
+  height: 64px;
+  border: 1px solid var(--eventLocation-border);
+  border-radius: 8px;
+  object-fit: cover;
+  background-color: var(--eventLocation-muted-bg);
+}
+
+.eventLocation-thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  border: 1px solid var(--eventLocation-border);
+  object-fit: cover;
+  background-color: var(--eventLocation-muted-bg);
 }
 
 /* ===========================
    Error
    =========================== */
 
-.error-text {
-  color: var(--color-error);
+.eventLocation-error-text {
+  margin: 6px 0 0;
+  color: var(--eventLocation-error);
   font-size: 0.8rem;
-  margin-top: 6px;
   font-weight: 500;
 }
 
@@ -122,7 +236,7 @@
    Buttons
    =========================== */
 
-.button-group {
+.eventLocation-button-group {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -130,40 +244,42 @@
   margin-top: 24px;
 }
 
-.save-btn {
-  background-color: var(--color-primary-orange);
-  color: white;
-  border: none;
+.eventLocation-save-btn {
+  min-width: 154px;
+  min-height: 46px;
   padding: 12px 24px;
+  border: none;
   border-radius: 10px;
+  background-color: var(--eventLocation-primary-orange);
+  color: #fff;
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
 }
 
-.save-btn:hover:not(:disabled) {
-  background-color: var(--color-primary-hover);
+.eventLocation-save-btn:hover:not(:disabled) {
+  background-color: var(--eventLocation-primary-hover);
   box-shadow: 0 4px 10px rgba(255, 140, 0, 0.4);
 }
 
-.save-btn:disabled {
-  background-color: var(--color-disabled-orange);
+.eventLocation-save-btn:disabled {
+  background-color: var(--eventLocation-disabled-orange);
   cursor: not-allowed;
 }
 
-.cancel-btn {
-  background-color: #f3f4f6;
-  color: #374151;
-  border: 1px solid #d1d5db;
+.eventLocation-cancel-btn {
   padding: 12px 24px;
+  border: 1px solid #d1d5db;
   border-radius: 10px;
+  background-color: var(--eventLocation-muted-bg);
+  color: #374151;
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
 }
 
-.cancel-btn:hover {
+.eventLocation-cancel-btn:hover {
   background-color: #e5e7eb;
 }
 
@@ -171,29 +287,32 @@
    Table
    =========================== */
 
-.event-location-table {
-  margin-top: 24px;
-  overflow-x: auto;
-}
-
-.MuiDataGrid-root {
-  background: #fff;
-  border-radius: 10px;
-  min-width: 700px;
-}
-
-.MuiDataGrid-row:hover {
-  background-color: #f9fafb;
-}
-
-/* ===========================
-   Action Buttons
-   =========================== */
-
-.event-location-actions {
+.eventLocation-actions {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.eventLocation-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 72px;
+  min-height: 28px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.eventLocation-status--active {
+  background-color: var(--eventLocation-success-bg);
+  color: var(--eventLocation-success-text);
+}
+
+.eventLocation-status--inactive {
+  background-color: var(--eventLocation-danger-bg);
+  color: var(--eventLocation-danger-text);
 }
 
 /* ===========================
@@ -218,20 +337,18 @@
    =========================== */
 
 @media (max-width: 992px) {
-
-  .event-location-grid {
+  .eventLocation-grid {
     grid-template-columns: 1fr;
   }
 
-  .event-location-card {
+  .eventLocation-card {
     padding: 20px;
   }
 
-  .save-btn,
-  .cancel-btn {
+  .eventLocation-save-btn,
+  .eventLocation-cancel-btn {
     width: 100%;
   }
-
 }
 
 /* ===========================
@@ -239,44 +356,52 @@
    =========================== */
 
 @media (max-width: 600px) {
-
-  .event-location-page {
+  .eventLocation-page {
     padding: 0 12px;
   }
 
-  .event-location-card {
+  .eventLocation-card {
     padding: 16px;
     border-radius: 10px;
   }
 
-  .event-location-card h2 {
+  .eventLocation-card h2 {
     font-size: 1.2rem;
   }
 
-  .event-location-grid {
+  .eventLocation-grid {
     gap: 16px;
   }
 
-  .event-location-grid input {
+  .eventLocation-grid input {
     height: 44px;
     font-size: 0.95rem;
   }
 
-  .button-group {
+  .eventLocation-grid textarea {
+    font-size: 0.95rem;
+  }
+
+  .eventLocation-image-preview {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .eventLocation-upload-content {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .eventLocation-button-group {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .save-btn,
-  .cancel-btn {
+  .eventLocation-save-btn,
+  .eventLocation-cancel-btn {
     width: 100%;
     font-size: 0.95rem;
   }
-
-  .MuiDataGrid-root {
-    min-width: 500px;
-  }
-
 }
 
 /* ===========================
@@ -284,10 +409,8 @@
    =========================== */
 
 @media (min-width: 1600px) {
-
-  .event-location-page {
+  .eventLocation-page {
     max-width: 1600px;
     margin: 0 auto;
   }
-
 }

@@ -13,6 +13,7 @@ import {
   EDIT_EVENT_ADVERTISEMENT_REQUEST, EDIT_EVENT_ADVERTISEMENT_SUCCESS, EDIT_EVENT_ADVERTISEMENT_FAILURE,
   DELETE_EVENT_ADVERTISEMENT_REQUEST, DELETE_EVENT_ADVERTISEMENT_SUCCESS, DELETE_EVENT_ADVERTISEMENT_FAILURE,
   FETCH_EVENT_CREATION_REQUEST, FETCH_EVENT_CREATION_SUCCESS, FETCH_EVENT_CREATION_FAILURE,
+  VIEW_EVENT_CREATION_REQUEST, VIEW_EVENT_CREATION_SUCCESS, VIEW_EVENT_CREATION_FAILURE,
   CREATE_EVENT_CREATION_REQUEST, CREATE_EVENT_CREATION_SUCCESS, CREATE_EVENT_CREATION_FAILURE,
   EDIT_EVENT_CREATION_REQUEST, EDIT_EVENT_CREATION_SUCCESS, EDIT_EVENT_CREATION_FAILURE,
   DELETE_EVENT_CREATION_REQUEST, DELETE_EVENT_CREATION_SUCCESS, DELETE_EVENT_CREATION_FAILURE,
@@ -270,6 +271,22 @@ export const getAllEventCreation = ({ pageNo = 1, pageSize = 10, options = {} } 
     });
   } catch (error) {
     dispatch({ type: FETCH_EVENT_CREATION_FAILURE, payload: error.message });
+  }
+};
+
+export const viewEventCreation = (eventId) => async (dispatch) => {
+  dispatch({ type: VIEW_EVENT_CREATION_REQUEST });
+  try {
+    const token = await getValidToken(dispatch);
+    const response = await axiosInstance.get(`${API_URL}/event-creation/view/${eventId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    dispatch({ type: VIEW_EVENT_CREATION_SUCCESS, payload: response.data.data });
+    return response.data;
+  } catch (error) {
+    dispatch({ type: VIEW_EVENT_CREATION_FAILURE, payload: error.message });
+    throw error;
   }
 };
 

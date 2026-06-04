@@ -11,8 +11,11 @@ import {
 } from "../../redux/actions/eventAction";
 
 import {
+  Autocomplete,
+  Avatar,
   Box,
   Button,
+  Chip,
   Typography,
   CircularProgress,
   IconButton,
@@ -21,10 +24,14 @@ import {
   DialogContent,
   DialogActions,
   Alert,
+  InputAdornment,
+  TextField,
 } from "@mui/material";
 
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import CloudUploadIcon from "@mui/icons-material/CloudUpload";
+import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 
 import CustomizedTable from "../../components/Table/CustomizedTable";
 
@@ -49,7 +56,7 @@ const initialFormData = {
   registeredParticipants: 0,
   ticketPrice: 0,
   registrationUrl: "",
-  keywords: "",
+  keywords: [],
   slug: "",
   seoTitle: "",
   seoDescription: "",
@@ -59,14 +66,17 @@ const initialFormData = {
 };
 
 const parseKeywords = (keywords) =>
-  keywords
-    .split(",")
+  (Array.isArray(keywords) ? keywords : keywords.split(","))
     .map((keyword) => keyword.trim())
     .filter(Boolean);
 
-const toKeywordText = (keywords) => {
-  if (Array.isArray(keywords)) return keywords.join(", ");
-  return keywords || "";
+const toKeywordList = (keywords) => {
+  if (Array.isArray(keywords)) return keywords;
+  if (!keywords) return [];
+  return keywords
+    .split(",")
+    .map((keyword) => keyword.trim())
+    .filter(Boolean);
 };
 
 const formatDateInput = (value) => {
@@ -115,6 +125,7 @@ export default function EventCreation() {
   const [editId, setEditId] = useState(null);
   const [successMessage, setSuccessMessage] = useState("");
   const [formData, setFormData] = useState(initialFormData);
+  const [inputKeyword, setInputKeyword] = useState("");
   const [errors, setErrors] = useState({});
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
@@ -228,8 +239,40 @@ export default function EventCreation() {
     }));
   };
 
+  const handleImageUpload = (e, fieldName) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setFormData((prev) => ({
+        ...prev,
+        [fieldName]: reader.result || "",
+      }));
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
+  const handleAddKeyword = () => {
+    const keyword = inputKeyword.trim();
+    if (!keyword) return;
+
+    setFormData((prev) => ({
+      ...prev,
+      keywords: Array.from(
+        new Set([
+          ...(Array.isArray(prev.keywords) ? prev.keywords : []),
+          keyword,
+        ])
+      ),
+    }));
+    setInputKeyword("");
+  };
+
   const resetForm = () => {
     setFormData(initialFormData);
+    setInputKeyword("");
     setEditId(null);
     setIsEditMode(false);
     setErrors({});
@@ -282,7 +325,7 @@ export default function EventCreation() {
       registeredParticipants: row.registeredParticipants ?? 0,
       ticketPrice: row.ticketPrice ?? 0,
       registrationUrl: row.registrationUrl || "",
-      keywords: toKeywordText(row.rawKeywords),
+      keywords: toKeywordList(row.rawKeywords),
       slug: row.slug || "",
       seoTitle: row.seoTitle || "",
       seoDescription: row.seoDescription || "",
@@ -642,26 +685,64 @@ export default function EventCreation() {
               />
             </div>
 
-            <div>
-              <label>Event Image URL</label>
+            <div className="eventCreation-upload-field">
+              <label>Event Image</label>
 
-              <input
-                type="text"
-                name="eventImage"
-                value={formData.eventImage}
-                onChange={handleChange}
-              />
+              <div className="eventCreation-upload-content">
+                <Button
+                  variant="contained"
+                  startIcon={<CloudUploadIcon />}
+                  component="label"
+                  className="eventCreation-upload-button"
+                >
+                  Upload Image
+                  <input
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    onChange={(e) => handleImageUpload(e, "eventImage")}
+                  />
+                </Button>
+
+                {formData.eventImage && (
+                  <Avatar
+                    src={formData.eventImage}
+                    variant="rounded"
+                    sx={{ width: 56, height: 56 }}
+                    className="eventCreation-preview-avatar"
+                  />
+                )}
+              </div>
             </div>
 
-            <div>
-              <label>Banner Image URL</label>
+            <div className="eventCreation-upload-field">
+              <label>Banner Image</label>
 
-              <input
-                type="text"
-                name="bannerImage"
-                value={formData.bannerImage}
-                onChange={handleChange}
-              />
+              <div className="eventCreation-upload-content">
+                <Button
+                  variant="contained"
+                  startIcon={<CloudUploadIcon />}
+                  component="label"
+                  className="eventCreation-upload-button"
+                >
+                  Upload Image
+                  <input
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    onChange={(e) => handleImageUpload(e, "bannerImage")}
+                  />
+                </Button>
+
+                {formData.bannerImage && (
+                  <Avatar
+                    src={formData.bannerImage}
+                    variant="rounded"
+                    sx={{ width: 96, height: 56 }}
+                    className="eventCreation-preview-avatar"
+                  />
+                )}
+              </div>
             </div>
 
             <div>
@@ -769,15 +850,74 @@ export default function EventCreation() {
               )}
             </div>
 
-            <div className="eventCreation-field--full">
+            <div className="eventCreation-field--full eventCreation-keywords-field">
               <label>Keywords</label>
 
-              <input
-                type="text"
-                name="keywords"
-                value={formData.keywords}
-                onChange={handleChange}
-                placeholder="conference, workshop, music"
+              <Autocomplete
+                multiple
+                freeSolo
+                options={[]}
+                inputValue={inputKeyword}
+                value={Array.isArray(formData.keywords) ? formData.keywords : []}
+                onInputChange={(event, newInputValue) => {
+                  setInputKeyword(newInputValue);
+                }}
+                onChange={(event, newValue) => {
+                  setFormData((prev) => ({
+                    ...prev,
+                    keywords: newValue,
+                  }));
+                }}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => (
+                    <Chip
+                      key={option}
+                      label={option}
+                      {...getTagProps({ index })}
+                      sx={{
+                        backgroundColor: "#ff8c00",
+                        color: "#fff",
+                        fontWeight: 500,
+                        "& .MuiChip-deleteIcon": { color: "#fff" },
+                      }}
+                    />
+                  ))
+                }
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    variant="outlined"
+                    placeholder="Add keywords"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddKeyword();
+                      }
+                    }}
+                    InputProps={{
+                      ...params.InputProps,
+                      endAdornment: (
+                        <>
+                          <InputAdornment position="end">
+                            <IconButton
+                              onClick={handleAddKeyword}
+                              aria-label="Add keyword"
+                              sx={{
+                                color: "var(--eventCreation-primary-orange)",
+                                "&:hover": {
+                                  color: "var(--eventCreation-primary-hover)",
+                                },
+                              }}
+                            >
+                              <AddCircleOutlineIcon />
+                            </IconButton>
+                          </InputAdornment>
+                          {params.InputProps.endAdornment}
+                        </>
+                      ),
+                    }}
+                  />
+                )}
               />
             </div>
 
@@ -831,30 +971,6 @@ export default function EventCreation() {
               />
             </div>
           </div>
-
-          {(formData.eventImage || formData.bannerImage) && (
-            <div className="eventCreation-preview-list">
-              {formData.eventImage && (
-                <div className="eventCreation-image-preview">
-                  <span>Event Image</span>
-                  <img
-                    src={formData.eventImage}
-                    alt="Event preview"
-                  />
-                </div>
-              )}
-
-              {formData.bannerImage && (
-                <div className="eventCreation-image-preview eventCreation-image-preview--banner">
-                  <span>Banner Image</span>
-                  <img
-                    src={formData.bannerImage}
-                    alt="Event banner preview"
-                  />
-                </div>
-              )}
-            </div>
-          )}
 
           <div className="eventCreation-button-group">
             <button

@@ -167,6 +167,36 @@
    Image Preview
    =========================== */
 
+.eventAdvertisement-upload-field {
+  min-height: 82px;
+}
+
+.eventAdvertisement-upload-content {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 56px;
+}
+
+.eventAdvertisement-upload-button {
+  min-width: 148px !important;
+  min-height: 42px !important;
+  border-radius: 10px !important;
+  background-color: var(--eventAdvertisement-primary-orange) !important;
+  color: #fff !important;
+  font-weight: 600 !important;
+  text-transform: none !important;
+}
+
+.eventAdvertisement-upload-button:hover {
+  background-color: var(--eventAdvertisement-primary-hover) !important;
+}
+
+.eventAdvertisement-preview-avatar {
+  border: 1px solid var(--eventAdvertisement-border);
+  background-color: var(--eventAdvertisement-muted-bg);
+}
+
 .eventAdvertisement-preview-list {
   display: flex;
   align-items: flex-start;
@@ -370,6 +400,11 @@
 
   .eventAdvertisement-preview-list,
   .eventAdvertisement-image-preview {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .eventAdvertisement-upload-content {
     align-items: flex-start;
     flex-direction: column;
   }

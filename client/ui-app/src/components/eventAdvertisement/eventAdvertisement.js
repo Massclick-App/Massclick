@@ -11,6 +11,7 @@ import {
 } from "../../redux/actions/eventAction";
 
 import {
+  Avatar,
   Box,
   Button,
   Typography,
@@ -25,6 +26,7 @@ import {
 
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 
 import CustomizedTable from "../../components/Table/CustomizedTable";
 
@@ -171,6 +173,21 @@ export default function EventAdvertisement() {
       ...prev,
       [name]: "",
     }));
+  };
+
+  const handleImageUpload = (e, fieldName) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setFormData((prev) => ({
+        ...prev,
+        [fieldName]: reader.result || "",
+      }));
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
   };
 
   const resetForm = () => {
@@ -480,26 +497,66 @@ export default function EventAdvertisement() {
               />
             </div>
 
-            <div>
-              <label>Advertisement Image URL</label>
+            <div className="eventAdvertisement-upload-field">
+              <label>Advertisement Image</label>
 
-              <input
-                type="text"
-                name="advertisementImage"
-                value={formData.advertisementImage}
-                onChange={handleChange}
-              />
+              <div className="eventAdvertisement-upload-content">
+                <Button
+                  variant="contained"
+                  startIcon={<CloudUploadIcon />}
+                  component="label"
+                  className="eventAdvertisement-upload-button"
+                >
+                  Upload Image
+                  <input
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    onChange={(e) =>
+                      handleImageUpload(e, "advertisementImage")
+                    }
+                  />
+                </Button>
+
+                {formData.advertisementImage && (
+                  <Avatar
+                    src={formData.advertisementImage}
+                    variant="rounded"
+                    sx={{ width: 56, height: 56 }}
+                    className="eventAdvertisement-preview-avatar"
+                  />
+                )}
+              </div>
             </div>
 
-            <div>
-              <label>Banner Image URL</label>
+            <div className="eventAdvertisement-upload-field">
+              <label>Banner Image</label>
 
-              <input
-                type="text"
-                name="bannerImage"
-                value={formData.bannerImage}
-                onChange={handleChange}
-              />
+              <div className="eventAdvertisement-upload-content">
+                <Button
+                  variant="contained"
+                  startIcon={<CloudUploadIcon />}
+                  component="label"
+                  className="eventAdvertisement-upload-button"
+                >
+                  Upload Image
+                  <input
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    onChange={(e) => handleImageUpload(e, "bannerImage")}
+                  />
+                </Button>
+
+                {formData.bannerImage && (
+                  <Avatar
+                    src={formData.bannerImage}
+                    variant="rounded"
+                    sx={{ width: 96, height: 56 }}
+                    className="eventAdvertisement-preview-avatar"
+                  />
+                )}
+              </div>
             </div>
 
             <div>
@@ -609,30 +666,6 @@ export default function EventAdvertisement() {
               />
             </div>
           </div>
-
-          {(formData.advertisementImage || formData.bannerImage) && (
-            <div className="eventAdvertisement-preview-list">
-              {formData.advertisementImage && (
-                <div className="eventAdvertisement-image-preview">
-                  <span>Advertisement Image</span>
-                  <img
-                    src={formData.advertisementImage}
-                    alt="Advertisement preview"
-                  />
-                </div>
-              )}
-
-              {formData.bannerImage && (
-                <div className="eventAdvertisement-image-preview eventAdvertisement-image-preview--banner">
-                  <span>Banner Image</span>
-                  <img
-                    src={formData.bannerImage}
-                    alt="Advertisement banner preview"
-                  />
-                </div>
-              )}
-            </div>
-          )}
 
           <div className="eventAdvertisement-button-group">
             <button

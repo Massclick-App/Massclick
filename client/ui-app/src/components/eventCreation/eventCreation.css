@@ -146,6 +146,34 @@
   cursor: not-allowed;
 }
 
+.eventCreation-keywords-field .MuiFormControl-root {
+  width: 100%;
+}
+
+.eventCreation-keywords-field .MuiOutlinedInput-root {
+  min-height: 48px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background-color: #fff;
+}
+
+.eventCreation-keywords-field .MuiAutocomplete-inputRoot input {
+  width: auto;
+  height: auto;
+  min-width: 140px;
+  padding: 4px 0 !important;
+  border: 0;
+  box-shadow: none;
+  background-color: transparent;
+}
+
+.eventCreation-keywords-field .MuiAutocomplete-inputRoot input:focus,
+.eventCreation-keywords-field .MuiAutocomplete-inputRoot input:hover {
+  border: 0;
+  box-shadow: none;
+  background-color: transparent;
+}
+
 /* ===========================
    Toggle
    =========================== */
@@ -171,6 +199,36 @@
 /* ===========================
    Image Preview
    =========================== */
+
+.eventCreation-upload-field {
+  min-height: 82px;
+}
+
+.eventCreation-upload-content {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 56px;
+}
+
+.eventCreation-upload-button {
+  min-width: 148px !important;
+  min-height: 42px !important;
+  border-radius: 10px !important;
+  background-color: var(--eventCreation-primary-orange) !important;
+  color: #fff !important;
+  font-weight: 600 !important;
+  text-transform: none !important;
+}
+
+.eventCreation-upload-button:hover {
+  background-color: var(--eventCreation-primary-hover) !important;
+}
+
+.eventCreation-preview-avatar {
+  border: 1px solid var(--eventCreation-border);
+  background-color: var(--eventCreation-muted-bg);
+}
 
 .eventCreation-preview-list {
   display: flex;
@@ -392,6 +450,11 @@
 
   .eventCreation-preview-list,
   .eventCreation-image-preview {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .eventCreation-upload-content {
     align-items: flex-start;
     flex-direction: column;
   }

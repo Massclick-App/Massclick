@@ -1,6 +1,17 @@
 import { ObjectId } from "mongodb";
 import eventLocationModel from "../../model/event/eventLocationModel.js";
 
+const slugify = (value = "") =>
+  value
+    .toString()
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)+/g, "");
+
+const optionalNumber = (value) =>
+  value === "" || value === null || value === undefined ? null : Number(value);
+
 export const createEventLocation = async (reqBody = {}) => {
   try {
     const locationName = reqBody.locationName?.trim().toLowerCase();
@@ -21,8 +32,8 @@ export const createEventLocation = async (reqBody = {}) => {
       state: reqBody.state || "",
       country: reqBody.country || "",
       zipCode: reqBody.zipCode || "",
-      latitude: reqBody.latitude || null,
-      longitude: reqBody.longitude || null,
+      latitude: optionalNumber(reqBody.latitude),
+      longitude: optionalNumber(reqBody.longitude),
       locationImage: reqBody.locationImage || "",
       description: reqBody.description || "",
       keywords: reqBody.keywords || [],
@@ -120,12 +131,26 @@ export const updateEventLocation = async (locationId, updateData) => {
       }
     }
 
+    const payload = {
+      ...updateData,
+      updatedBy: updateData.updatedBy || null,
+    };
+
+    if (payload.locationName) {
+      payload.slug = slugify(payload.locationName);
+    }
+
+    if ("latitude" in payload) {
+      payload.latitude = optionalNumber(payload.latitude);
+    }
+
+    if ("longitude" in payload) {
+      payload.longitude = optionalNumber(payload.longitude);
+    }
+
     const updatedLocation = await eventLocationModel.findByIdAndUpdate(
       locationId,
-      {
-        ...updateData,
-        updatedBy: updateData.updatedBy || null,
-      },
+      payload,
       { new: true, runValidators: true }
     );
 

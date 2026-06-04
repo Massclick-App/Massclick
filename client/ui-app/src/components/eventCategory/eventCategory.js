@@ -9,8 +9,11 @@ import {
 } from "../../redux/actions/eventAction";
 
 import {
+  Autocomplete,
+  Avatar,
   Box,
   Button,
+  Chip,
   Typography,
   CircularProgress,
   IconButton,
@@ -19,10 +22,14 @@ import {
   DialogContent,
   DialogActions,
   Alert,
+  InputAdornment,
+  TextField,
 } from "@mui/material";
 
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import CloudUploadIcon from "@mui/icons-material/CloudUpload";
+import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 
 import CustomizedTable from "../../components/Table/CustomizedTable";
 
@@ -33,21 +40,24 @@ const initialFormData = {
   description: "",
   categoryImage: "",
   slug: "",
-  keywords: "",
+  keywords: [],
   seoTitle: "",
   seoDescription: "",
   isActive: true,
   sortOrder: 0,
 };
 
-const toKeywordText = (keywords) => {
-  if (Array.isArray(keywords)) return keywords.join(", ");
-  return keywords || "";
+const toKeywordList = (keywords) => {
+  if (Array.isArray(keywords)) return keywords;
+  if (!keywords) return [];
+  return keywords
+    .split(",")
+    .map((keyword) => keyword.trim())
+    .filter(Boolean);
 };
 
 const parseKeywords = (keywords) =>
-  keywords
-    .split(",")
+  (Array.isArray(keywords) ? keywords : keywords.split(","))
     .map((keyword) => keyword.trim())
     .filter(Boolean);
 
@@ -65,6 +75,7 @@ export default function EventCategory() {
   const [editId, setEditId] = useState(null);
   const [successMessage, setSuccessMessage] = useState("");
   const [formData, setFormData] = useState(initialFormData);
+  const [inputKeyword, setInputKeyword] = useState("");
   const [errors, setErrors] = useState({});
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -102,10 +113,7 @@ export default function EventCategory() {
       newErrors.sortOrder = "Sort order must be zero or a positive number";
     }
 
-    if (
-      formData.keywords.trim() &&
-      keywords.length !== formData.keywords.split(",").filter((item) => item.trim()).length
-    ) {
+    if (keywords.some((keyword) => !keyword.trim())) {
       newErrors.keywords = "Each keyword must be a non-empty string";
     }
 
@@ -138,8 +146,44 @@ export default function EventCategory() {
     }));
   };
 
+  const handleImageUpload = (e, fieldName) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+    setFormData((prev) => ({
+      ...prev,
+      [fieldName]: reader.result || "",
+      }));
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
+  const handleAddKeyword = () => {
+    const keyword = inputKeyword.trim();
+    if (!keyword) return;
+
+    setFormData((prev) => ({
+      ...prev,
+      keywords: Array.from(
+        new Set([
+          ...(Array.isArray(prev.keywords) ? prev.keywords : []),
+          keyword,
+        ])
+      ),
+    }));
+    setInputKeyword("");
+    setErrors((prev) => ({
+      ...prev,
+      keywords: "",
+    }));
+  };
+
   const resetForm = () => {
     setFormData(initialFormData);
+    setInputKeyword("");
     setEditId(null);
     setIsEditMode(false);
     setErrors({});
@@ -178,7 +222,7 @@ export default function EventCategory() {
       description: row.description || "",
       categoryImage: row.categoryImage || "",
       slug: row.slug || "",
-      keywords: toKeywordText(row.rawKeywords),
+      keywords: toKeywordList(row.rawKeywords),
       seoTitle: row.seoTitle || "",
       seoDescription: row.seoDescription || "",
       isActive: row.isActive,
@@ -354,15 +398,34 @@ export default function EventCategory() {
               />
             </div>
 
-            <div>
-              <label>Category Image URL</label>
+            <div className="eventCategory-upload-field">
+              <label>Category Image</label>
 
-              <input
-                type="text"
-                name="categoryImage"
-                value={formData.categoryImage}
-                onChange={handleChange}
-              />
+              <div className="eventCategory-upload-content">
+                <Button
+                  variant="contained"
+                  startIcon={<CloudUploadIcon />}
+                  component="label"
+                  className="eventCategory-upload-button"
+                >
+                  Upload Image
+                  <input
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    onChange={(e) => handleImageUpload(e, "categoryImage")}
+                  />
+                </Button>
+
+                {formData.categoryImage && (
+                  <Avatar
+                    src={formData.categoryImage}
+                    variant="rounded"
+                    sx={{ width: 56, height: 56 }}
+                    className="eventCategory-preview-avatar"
+                  />
+                )}
+              </div>
             </div>
 
             <div>
@@ -400,15 +463,74 @@ export default function EventCategory() {
               )}
             </div>
 
-            <div className="event-category-field--full">
+            <div className="event-category-field--full eventCategory-keywords-field">
               <label>Keywords</label>
 
-              <input
-                type="text"
-                name="keywords"
-                value={formData.keywords}
-                onChange={handleChange}
-                placeholder="music, concert, workshop"
+              <Autocomplete
+                multiple
+                freeSolo
+                options={[]}
+                inputValue={inputKeyword}
+                value={Array.isArray(formData.keywords) ? formData.keywords : []}
+                onInputChange={(event, newInputValue) => {
+                  setInputKeyword(newInputValue);
+                }}
+                onChange={(event, newValue) => {
+                  setFormData((prev) => ({
+                    ...prev,
+                    keywords: newValue,
+                  }));
+                }}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => (
+                    <Chip
+                      key={option}
+                      label={option}
+                      {...getTagProps({ index })}
+                      sx={{
+                        backgroundColor: "#ff8c00",
+                        color: "#fff",
+                        fontWeight: 500,
+                        "& .MuiChip-deleteIcon": { color: "#fff" },
+                      }}
+                    />
+                  ))
+                }
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    variant="outlined"
+                    placeholder="Add keywords"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddKeyword();
+                      }
+                    }}
+                    InputProps={{
+                      ...params.InputProps,
+                      endAdornment: (
+                        <>
+                          <InputAdornment position="end">
+                            <IconButton
+                              onClick={handleAddKeyword}
+                              aria-label="Add keyword"
+                              sx={{
+                                color: "var(--color-primary-orange)",
+                                "&:hover": {
+                                  color: "var(--color-primary-hover)",
+                                },
+                              }}
+                            >
+                              <AddCircleOutlineIcon />
+                            </IconButton>
+                          </InputAdornment>
+                          {params.InputProps.endAdornment}
+                        </>
+                      ),
+                    }}
+                  />
+                )}
               />
 
               {errors.keywords && (
@@ -466,16 +588,6 @@ export default function EventCategory() {
               />
             </div>
           </div>
-
-          {formData.categoryImage && (
-            <div className="event-category-image-preview">
-              <span>Image Preview</span>
-              <img
-                src={formData.categoryImage}
-                alt="Event category preview"
-              />
-            </div>
-          )}
 
           <div className="eventCategory-button-group">
             <button

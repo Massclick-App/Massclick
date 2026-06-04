@@ -34,6 +34,7 @@ const Txt = ({ w = "100%", h = 14, sx } = {}) => (
 
 const FeaturedServices = lazy(() => import('../clientComponent/featuredService/featureService.js'));
 const ServiceCardsGrid = lazy(() => import('../clientComponent/serviceCard/serviceCard.js'));
+const EventCarousel = lazy(() => import('./events/eventCarousel/eventCarousel.js'));
 const TrendingSearchesCarousel = lazy(() => import('./trendingSearch/trendingSearch'));
 const CardCarousel = lazy(() => import('./popularSearch/popularSearch'));
 const TopTourist = lazy(() => import('./topTourist/topTourist'));
@@ -377,6 +378,12 @@ const LandingPage = React.memo(() => {
                             <Box className="home-section" sx={homeSectionSx}>
                                 <Suspense fallback={<SkeletonCards type="service" />}>
                                     <ServiceCardsGrid />
+                                </Suspense>
+                            </Box>
+
+                            <Box className="home-section" sx={homeSectionSx}>
+                                <Suspense fallback={<SkeletonCarousel type="popular" />}>
+                                    <EventCarousel locationLabel={locationName} />
                                 </Suspense>
                             </Box>
 
