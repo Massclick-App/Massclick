@@ -14,8 +14,10 @@ import {
 } from "lucide-react";
 
 import { getAllEventCreation } from "../../../../redux/actions/eventAction.js";
+import { createScopedClassNames } from "../../../../utils/createScopedClassNames.js";
+import styles from "./eventCarousel.module.css";
 
-import "./eventCarousel.css";
+const cx = createScopedClassNames(styles);
 
 const formatDateParts = (value) => {
   if (!value) return { day: "--", month: "---", full: "Date to be announced" };
@@ -242,7 +244,7 @@ export default function EventCarousel({
   const scrollCards = (direction) => {
     if (!railRef.current) return;
 
-    const card = railRef.current.querySelector(".eventCarousel-card");
+    const card = railRef.current.querySelector(`.${styles["eventCarousel-card"]}`);
     const cardWidth = card?.clientWidth || 280;
     railRef.current.scrollBy({
       left: direction * (cardWidth + 18) * 2,
@@ -261,10 +263,10 @@ export default function EventCarousel({
   }
 
   return (
-    <section className="eventCarousel-shell" aria-label="Events carousel">
-      <div className="eventCarousel-header">
+    <section className={cx("eventCarousel-shell")} aria-label="Events carousel">
+      <div className={cx("eventCarousel-header")}>
         <div>
-          <div className="eventCarousel-kicker">
+          <div className={cx("eventCarousel-kicker")}>
             <Flame size={18} aria-hidden="true" />
             <span>{heading} in {locationLabel}</span>
           </div>
@@ -273,7 +275,7 @@ export default function EventCarousel({
 
         <button
           type="button"
-          className="eventCarousel-viewAll"
+          className={cx("eventCarousel-viewAll")}
           onClick={() => navigate("/events")}
         >
           View All Events
@@ -281,16 +283,16 @@ export default function EventCarousel({
         </button>
       </div>
 
-      <div className="eventCarousel-categories" aria-label="Event categories">
+      <div className={cx("eventCarousel-categories")} aria-label="Event categories">
         {categories.map((category) => (
           <button
             key={category.slug}
             type="button"
-            className={`eventCarousel-categoryPill ${
+            className={cx(`eventCarousel-categoryPill ${
               selectedCategory === category.slug
                 ? "eventCarousel-categoryPill--active"
                 : ""
-            }`}
+            }`)}
             onClick={() => handleCategorySelect(category.slug)}
           >
             <span>{category.name}</span>
@@ -300,7 +302,7 @@ export default function EventCarousel({
       </div>
 
       {!loading && !error && (
-        <div className="eventCarousel-listHeader">
+        <div className={cx("eventCarousel-listHeader")}>
           <div>
             <strong>
               {selectedCategoryDetails?.slug === "all"
@@ -320,20 +322,20 @@ export default function EventCarousel({
         </div>
       )}
 
-      <div className="eventCarousel-stage">
+      <div className={cx("eventCarousel-stage")}>
         <button
           type="button"
-          className="eventCarousel-arrow eventCarousel-arrow--left"
+          className={cx("eventCarousel-arrow eventCarousel-arrow--left")}
           onClick={() => scrollCards(-1)}
           aria-label="Previous events"
         >
           <ChevronLeft size={22} />
         </button>
 
-        <div className="eventCarousel-rail" ref={railRef}>
+        <div className={cx("eventCarousel-rail")} ref={railRef}>
           {loading &&
             Array.from({ length: 5 }).map((_, index) => (
-              <div key={index} className="eventCarousel-card eventCarousel-card--loading" />
+              <div key={index} className={cx("eventCarousel-card eventCarousel-card--loading")} />
             ))}
 
           {!loading &&
@@ -345,35 +347,35 @@ export default function EventCarousel({
               return (
                 <article
                   key={category.slug}
-                  className="eventCarousel-card eventCarousel-categoryCard"
+                  className={cx("eventCarousel-card eventCarousel-categoryCard")}
                 >
                   <button
                     type="button"
-                    className="eventCarousel-categoryCardButton"
+                    className={cx("eventCarousel-categoryCardButton")}
                     onClick={() => handleCategorySelect(category.slug)}
                     aria-label={`View ${category.name} events`}
                   >
-                    <div className="eventCarousel-media">
+                    <div className={cx("eventCarousel-media")}>
                       {category.image ? (
                         <img src={category.image} alt={category.name} loading="lazy" />
                       ) : (
-                        <div className="eventCarousel-mediaFallback">
+                        <div className={cx("eventCarousel-mediaFallback")}>
                           {category.name}
                         </div>
                       )}
 
-                      <span className="eventCarousel-badge">{category.name}</span>
+                      <span className={cx("eventCarousel-badge")}>{category.name}</span>
 
-                      <time className="eventCarousel-date" dateTime={category.nextDate}>
+                      <time className={cx("eventCarousel-date")} dateTime={category.nextDate}>
                         <strong>{date.day}</strong>
                         <span>{date.month}</span>
                       </time>
                     </div>
 
-                    <div className="eventCarousel-body">
+                    <div className={cx("eventCarousel-body")}>
                       <h3>{category.name}</h3>
 
-                      <div className="eventCarousel-meta">
+                      <div className={cx("eventCarousel-meta")}>
                         <span>
                           <Layers size={14} aria-hidden="true" />
                           {category.count} event{category.count === 1 ? "" : "s"}
@@ -384,12 +386,12 @@ export default function EventCarousel({
                         </span>
                       </div>
 
-                      <div className="eventCarousel-footer">
-                        <span className="eventCarousel-interest">
+                      <div className={cx("eventCarousel-footer")}>
+                        <span className={cx("eventCarousel-interest")}>
                           Open category list
                         </span>
 
-                        <span className="eventCarousel-detailsButton">
+                        <span className={cx("eventCarousel-detailsButton")}>
                           View Events
                         </span>
                       </div>
@@ -410,28 +412,28 @@ export default function EventCarousel({
               const interestCount = event.registeredParticipants || event.views || 0;
 
               return (
-                <article key={event._id} className="eventCarousel-card">
-                  <div className="eventCarousel-media">
+                <article key={event._id} className={cx("eventCarousel-card")}>
+                  <div className={cx("eventCarousel-media")}>
                     {image ? (
                       <img src={image} alt={event.eventName} loading="lazy" />
                     ) : (
-                      <div className="eventCarousel-mediaFallback">
+                      <div className={cx("eventCarousel-mediaFallback")}>
                         {categoryName}
                       </div>
                     )}
 
-                    <span className="eventCarousel-badge">{categoryName}</span>
+                    <span className={cx("eventCarousel-badge")}>{categoryName}</span>
 
-                    <time className="eventCarousel-date" dateTime={event.startDate}>
+                    <time className={cx("eventCarousel-date")} dateTime={event.startDate}>
                       <strong>{date.day}</strong>
                       <span>{date.month}</span>
                     </time>
                   </div>
 
-                  <div className="eventCarousel-body">
+                  <div className={cx("eventCarousel-body")}>
                     <h3>{event.eventName}</h3>
 
-                    <div className="eventCarousel-meta">
+                    <div className={cx("eventCarousel-meta")}>
                       <span>
                         <CalendarDays size={14} aria-hidden="true" />
                         {date.full}
@@ -446,15 +448,15 @@ export default function EventCarousel({
                       </span>
                     </div>
 
-                    <div className="eventCarousel-footer">
-                      <span className="eventCarousel-interest">
+                    <div className={cx("eventCarousel-footer")}>
+                      <span className={cx("eventCarousel-interest")}>
                         <Users size={14} aria-hidden="true" />
                         {interestCount.toLocaleString("en-IN")} Interested
                       </span>
 
                       <button
                         type="button"
-                        className="eventCarousel-detailsButton"
+                        className={cx("eventCarousel-detailsButton")}
                         onClick={() => openDetails(event)}
                       >
                         View Details
@@ -469,14 +471,14 @@ export default function EventCarousel({
             !error &&
             selectedCategory !== "all" &&
             visibleEvents.length === 0 && (
-            <div className="eventCarousel-empty">
+            <div className={cx("eventCarousel-empty")}>
               <h3>No events found</h3>
               <p>Try another category or check back for new event listings.</p>
             </div>
           )}
 
           {!loading && error && (
-            <div className="eventCarousel-empty eventCarousel-empty--error">
+            <div className={cx("eventCarousel-empty eventCarousel-empty--error")}>
               <h3>Events unavailable</h3>
               <p>{error}</p>
             </div>
@@ -485,7 +487,7 @@ export default function EventCarousel({
 
         <button
           type="button"
-          className="eventCarousel-arrow eventCarousel-arrow--right"
+          className={cx("eventCarousel-arrow eventCarousel-arrow--right")}
           onClick={() => scrollCards(1)}
           aria-label="Next events"
         >
