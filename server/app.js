@@ -40,6 +40,10 @@ import systemSettingsRoutes from "./routes/systemSettingsRoutes.js";
 import categoryDisplaySettingsRoutes from "./routes/categoryDisplaySettingsRoutes.js";
 import cacheRoutes from "./routes/cacheRoutes.js";
 import footerRoutes from "./routes/footerRoute.js";
+import eventCategoryRoute from "./routes/eventCategoryRoute.js";
+import eventLocationRoute from "./routes/eventLocationRoute.js";
+import eventAdvertisementRoute from "./routes/eventAdvertisementRoute.js";
+import eventCreationRoute from "./routes/eventCreationRoute.js";
 import { startFCMScheduler } from "./scheduler/fcmScheduler.js";
 
 dotenv.config();
@@ -115,7 +119,10 @@ app.use("/", fcmAdminRoutes);
 app.use("/", systemSettingsRoutes);
 app.use("/", categoryDisplaySettingsRoutes);
 app.use("/", cacheRoutes);
-
+app.use("/", eventCategoryRoute);
+app.use("/", eventLocationRoute);
+app.use("/", eventAdvertisementRoute);
+app.use("/", eventCreationRoute);
 app.use(express.static(CLIENT_BUILD_PATH, {
   index: false,
   maxAge: "365d",

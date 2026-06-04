@@ -29,6 +29,7 @@ import cacheReducer from './reducers/cacheReducer.js';
 import { maintenanceReducer } from './reducers/maintenanceReducer.js';
 import categoryDisplaySettingsReducer from './reducers/categoryDisplaySettingsReducer.js';
 import globalLoaderReducer from './reducers/globalLoaderReducer.js';
+import eventReducer from './reducers/eventReducer.js';
 
 const rootReducer = combineReducers({
   auth: authReducer,
@@ -60,6 +61,7 @@ const rootReducer = combineReducers({
   maintenance: maintenanceReducer,
   categoryDisplaySettings: categoryDisplaySettingsReducer,
   globalLoader: globalLoaderReducer,
+  event: eventReducer,
 });
 
 let storeInstance = null;

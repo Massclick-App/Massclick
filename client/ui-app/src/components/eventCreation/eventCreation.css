@@ -1,0 +1,483 @@
+/* ===========================
+   Event Creation Styles
+   =========================== */
+
+:root {
+  --eventCreation-background: #f8f9fb;
+  --eventCreation-card-bg: #ffffff;
+  --eventCreation-text-primary: #1f2937;
+  --eventCreation-text-secondary: #6b7280;
+  --eventCreation-border: #e5e7eb;
+  --eventCreation-primary-orange: #ff8c00;
+  --eventCreation-primary-hover: #d97800;
+  --eventCreation-disabled-orange: #ffc280;
+  --eventCreation-error: #ef4444;
+  --eventCreation-success-bg: #ecfdf5;
+  --eventCreation-success-text: #047857;
+  --eventCreation-danger-bg: #fef2f2;
+  --eventCreation-danger-text: #b91c1c;
+  --eventCreation-info-bg: #eff6ff;
+  --eventCreation-info-text: #1d4ed8;
+  --eventCreation-warning-bg: #fffbeb;
+  --eventCreation-warning-text: #b45309;
+  --eventCreation-muted-bg: #f3f4f6;
+  --eventCreation-muted-text: #4b5563;
+}
+
+/* ===========================
+   Page Layout
+   =========================== */
+
+.eventCreation-page {
+  width: 100%;
+  padding: 0 16px;
+  background-color: var(--eventCreation-background);
+  box-sizing: border-box;
+  font-family: "Inter", system-ui, sans-serif;
+}
+
+/* ===========================
+   Card
+   =========================== */
+
+.eventCreation-card {
+  background-color: var(--eventCreation-card-bg);
+  padding: 28px;
+  border: 1px solid var(--eventCreation-border);
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+  margin-bottom: 24px;
+  transition: all 0.3s ease;
+}
+
+.eventCreation-card:hover {
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
+}
+
+.eventCreation-card h2 {
+  width: fit-content;
+  margin: 0 0 24px;
+  padding-bottom: 4px;
+  border-bottom: 3px solid var(--eventCreation-primary-orange);
+  color: var(--eventCreation-text-primary);
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+/* ===========================
+   Form Grid
+   =========================== */
+
+.eventCreation-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px 18px;
+}
+
+.eventCreation-grid > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.eventCreation-field--full {
+  grid-column: 1 / -1;
+}
+
+/* ===========================
+   Labels
+   =========================== */
+
+.eventCreation-grid label {
+  margin-bottom: 6px;
+  color: var(--eventCreation-text-secondary);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+/* ===========================
+   Inputs
+   =========================== */
+
+.eventCreation-grid input,
+.eventCreation-grid select,
+.eventCreation-grid textarea {
+  width: 100%;
+  padding: 0 14px;
+  border: 2px solid var(--eventCreation-border);
+  border-radius: 8px;
+  background-color: #fff;
+  color: var(--eventCreation-text-primary);
+  font: inherit;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+}
+
+.eventCreation-grid input,
+.eventCreation-grid select {
+  height: 48px;
+}
+
+.eventCreation-grid textarea {
+  min-height: 96px;
+  padding-top: 12px;
+  padding-bottom: 12px;
+  resize: vertical;
+}
+
+.eventCreation-grid input:hover,
+.eventCreation-grid select:hover,
+.eventCreation-grid textarea:hover {
+  border-color: #d1d5db;
+}
+
+.eventCreation-grid input:focus,
+.eventCreation-grid select:focus,
+.eventCreation-grid textarea:focus {
+  outline: none;
+  border-color: var(--eventCreation-primary-orange);
+  box-shadow: 0 0 0 3px rgba(255, 140, 0, 0.15);
+  background-color: #fffbf7;
+}
+
+.eventCreation-grid input[readonly] {
+  background-color: #f9fafb;
+  color: var(--eventCreation-text-secondary);
+  cursor: not-allowed;
+}
+
+.eventCreation-keywords-field .MuiFormControl-root {
+  width: 100%;
+}
+
+.eventCreation-keywords-field .MuiOutlinedInput-root {
+  min-height: 48px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background-color: #fff;
+}
+
+.eventCreation-keywords-field .MuiAutocomplete-inputRoot input {
+  width: auto;
+  height: auto;
+  min-width: 140px;
+  padding: 4px 0 !important;
+  border: 0;
+  box-shadow: none;
+  background-color: transparent;
+}
+
+.eventCreation-keywords-field .MuiAutocomplete-inputRoot input:focus,
+.eventCreation-keywords-field .MuiAutocomplete-inputRoot input:hover {
+  border: 0;
+  box-shadow: none;
+  background-color: transparent;
+}
+
+/* ===========================
+   Toggle
+   =========================== */
+
+.eventCreation-toggle {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+}
+
+.eventCreation-toggle label {
+  margin-bottom: 0;
+}
+
+.eventCreation-toggle input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--eventCreation-primary-orange);
+  cursor: pointer;
+}
+
+/* ===========================
+   Image Preview
+   =========================== */
+
+.eventCreation-upload-field {
+  min-height: 82px;
+}
+
+.eventCreation-upload-content {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 56px;
+}
+
+.eventCreation-upload-button {
+  min-width: 148px !important;
+  min-height: 42px !important;
+  border-radius: 10px !important;
+  background-color: var(--eventCreation-primary-orange) !important;
+  color: #fff !important;
+  font-weight: 600 !important;
+  text-transform: none !important;
+}
+
+.eventCreation-upload-button:hover {
+  background-color: var(--eventCreation-primary-hover) !important;
+}
+
+.eventCreation-preview-avatar {
+  border: 1px solid var(--eventCreation-border);
+  background-color: var(--eventCreation-muted-bg);
+}
+
+.eventCreation-preview-list {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.eventCreation-image-preview {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: var(--eventCreation-text-secondary);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.eventCreation-image-preview img {
+  width: 88px;
+  height: 64px;
+  border: 1px solid var(--eventCreation-border);
+  border-radius: 8px;
+  object-fit: cover;
+  background-color: var(--eventCreation-muted-bg);
+}
+
+.eventCreation-image-preview--banner img {
+  width: 136px;
+}
+
+.eventCreation-thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  border: 1px solid var(--eventCreation-border);
+  object-fit: cover;
+  background-color: var(--eventCreation-muted-bg);
+}
+
+/* ===========================
+   Error
+   =========================== */
+
+.eventCreation-error-text {
+  margin: 6px 0 0;
+  color: var(--eventCreation-error);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+/* ===========================
+   Buttons
+   =========================== */
+
+.eventCreation-button-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.eventCreation-save-btn {
+  min-width: 154px;
+  min-height: 46px;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 10px;
+  background-color: var(--eventCreation-primary-orange);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.eventCreation-save-btn:hover:not(:disabled) {
+  background-color: var(--eventCreation-primary-hover);
+  box-shadow: 0 4px 10px rgba(255, 140, 0, 0.4);
+}
+
+.eventCreation-save-btn:disabled {
+  background-color: var(--eventCreation-disabled-orange);
+  cursor: not-allowed;
+}
+
+.eventCreation-cancel-btn {
+  padding: 12px 24px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  background-color: var(--eventCreation-muted-bg);
+  color: #374151;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.eventCreation-cancel-btn:hover {
+  background-color: #e5e7eb;
+}
+
+/* ===========================
+   Table
+   =========================== */
+
+.eventCreation-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.eventCreation-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 84px;
+  min-height: 28px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.eventCreation-status--upcoming,
+.eventCreation-status--published {
+  background-color: var(--eventCreation-success-bg);
+  color: var(--eventCreation-success-text);
+}
+
+.eventCreation-status--ongoing {
+  background-color: var(--eventCreation-info-bg);
+  color: var(--eventCreation-info-text);
+}
+
+.eventCreation-status--completed {
+  background-color: var(--eventCreation-muted-bg);
+  color: var(--eventCreation-muted-text);
+}
+
+.eventCreation-status--cancelled {
+  background-color: var(--eventCreation-danger-bg);
+  color: var(--eventCreation-danger-text);
+}
+
+.eventCreation-status--draft {
+  background-color: var(--eventCreation-warning-bg);
+  color: var(--eventCreation-warning-text);
+}
+
+/* ===========================
+   Dialog
+   =========================== */
+
+.MuiDialog-paper {
+  border-radius: 14px !important;
+}
+
+/* ===========================
+   Alerts
+   =========================== */
+
+.MuiAlert-root {
+  margin-bottom: 20px !important;
+  border-radius: 10px !important;
+}
+
+/* ===========================
+   Tablet
+   =========================== */
+
+@media (max-width: 992px) {
+  .eventCreation-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .eventCreation-card {
+    padding: 20px;
+  }
+
+  .eventCreation-save-btn,
+  .eventCreation-cancel-btn {
+    width: 100%;
+  }
+}
+
+/* ===========================
+   Mobile
+   =========================== */
+
+@media (max-width: 600px) {
+  .eventCreation-page {
+    padding: 0 12px;
+  }
+
+  .eventCreation-card {
+    padding: 16px;
+    border-radius: 10px;
+  }
+
+  .eventCreation-card h2 {
+    font-size: 1.2rem;
+  }
+
+  .eventCreation-grid {
+    gap: 16px;
+  }
+
+  .eventCreation-grid input,
+  .eventCreation-grid select {
+    height: 44px;
+    font-size: 0.95rem;
+  }
+
+  .eventCreation-grid textarea {
+    font-size: 0.95rem;
+  }
+
+  .eventCreation-preview-list,
+  .eventCreation-image-preview {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .eventCreation-upload-content {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .eventCreation-button-group {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .eventCreation-save-btn,
+  .eventCreation-cancel-btn {
+    width: 100%;
+    font-size: 0.95rem;
+  }
+}
+
+/* ===========================
+   Large Monitors
+   =========================== */
+
+@media (min-width: 1600px) {
+  .eventCreation-page {
+    max-width: 1600px;
+    margin: 0 auto;
+  }
+}

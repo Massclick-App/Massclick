@@ -1,0 +1,443 @@
+/* ===========================
+   Event Category Styles
+   =========================== */
+
+:root {
+  --color-background: #f8f9fb;
+  --color-card-bg: #ffffff;
+  --color-text-primary: #1f2937;
+  --color-text-secondary: #6b7280;
+  --color-border: #e5e7eb;
+  --color-primary-orange: #ff8c00;
+  --color-primary-hover: #d97800;
+  --color-disabled-orange: #ffc280;
+  --color-error: #ef4444;
+  --color-success-bg: #ecfdf5;
+  --color-success-text: #047857;
+  --color-danger-bg: #fef2f2;
+  --color-danger-text: #b91c1c;
+}
+
+/* ===========================
+   Page Layout
+   =========================== */
+
+.event-category-page {
+  width: 100%;
+  padding: 0 16px;
+  background-color: var(--color-background);
+  box-sizing: border-box;
+  font-family: "Inter", system-ui, sans-serif;
+}
+
+/* ===========================
+   Card
+   =========================== */
+
+.event-category-card {
+  background-color: var(--color-card-bg);
+  padding: 28px;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+  margin-bottom: 24px;
+  transition: all 0.3s ease;
+}
+
+.event-category-card:hover {
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
+}
+
+.event-category-card h2 {
+  width: fit-content;
+  margin: 0 0 24px;
+  padding-bottom: 4px;
+  border-bottom: 3px solid var(--color-primary-orange);
+  color: var(--color-text-primary);
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+/* ===========================
+   Form Grid
+   =========================== */
+
+.event-category-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px 18px;
+}
+
+.event-category-grid > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.event-category-field--full {
+  grid-column: 1 / -1;
+}
+
+/* ===========================
+   Labels
+   =========================== */
+
+.event-category-grid label {
+  margin-bottom: 6px;
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+/* ===========================
+   Inputs
+   =========================== */
+
+.event-category-grid input,
+.event-category-grid textarea {
+  width: 100%;
+  padding: 0 14px;
+  border: 2px solid var(--color-border);
+  border-radius: 8px;
+  background-color: #fff;
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+}
+
+.event-category-grid input {
+  height: 48px;
+}
+
+.event-category-grid textarea {
+  min-height: 96px;
+  padding-top: 12px;
+  padding-bottom: 12px;
+  resize: vertical;
+}
+
+.event-category-grid input:hover,
+.event-category-grid textarea:hover {
+  border-color: #d1d5db;
+}
+
+.event-category-grid input:focus,
+.event-category-grid textarea:focus {
+  outline: none;
+  border-color: var(--color-primary-orange);
+  box-shadow: 0 0 0 3px rgba(255, 140, 0, 0.15);
+  background-color: #fffbf7;
+}
+
+.event-category-grid input[readonly] {
+  background-color: #f9fafb;
+  color: var(--color-text-secondary);
+  cursor: not-allowed;
+}
+
+.eventCategory-keywords-field .MuiFormControl-root {
+  width: 100%;
+}
+
+.eventCategory-keywords-field .MuiOutlinedInput-root {
+  min-height: 48px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background-color: #fff;
+}
+
+.eventCategory-keywords-field .MuiAutocomplete-inputRoot input {
+  width: auto;
+  height: auto;
+  min-width: 140px;
+  padding: 4px 0 !important;
+  border: 0;
+  box-shadow: none;
+  background-color: transparent;
+}
+
+.eventCategory-keywords-field .MuiAutocomplete-inputRoot input:focus,
+.eventCategory-keywords-field .MuiAutocomplete-inputRoot input:hover {
+  border: 0;
+  box-shadow: none;
+  background-color: transparent;
+}
+
+/* ===========================
+   Toggle
+   =========================== */
+
+.event-category-toggle {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+}
+
+.event-category-toggle label {
+  margin-bottom: 0;
+}
+
+.event-category-toggle input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-primary-orange);
+  cursor: pointer;
+}
+
+/* ===========================
+   Image Preview
+   =========================== */
+
+.eventCategory-upload-field {
+  min-height: 82px;
+}
+
+.eventCategory-upload-content {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 56px;
+}
+
+.eventCategory-upload-button {
+  min-width: 148px !important;
+  min-height: 42px !important;
+  border-radius: 10px !important;
+  background-color: var(--color-primary-orange) !important;
+  color: #fff !important;
+  font-weight: 600 !important;
+  text-transform: none !important;
+}
+
+.eventCategory-upload-button:hover {
+  background-color: var(--color-primary-hover) !important;
+}
+
+.eventCategory-preview-avatar {
+  border: 1px solid var(--color-border);
+  background-color: #f3f4f6;
+}
+
+.event-category-image-preview {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 18px;
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.event-category-image-preview img {
+  width: 88px;
+  height: 64px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  object-fit: cover;
+  background-color: #f3f4f6;
+}
+
+.event-category-thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  object-fit: cover;
+  background-color: #f3f4f6;
+}
+
+/* ===========================
+   Error
+   =========================== */
+
+.eventCategory-error-text {
+  margin: 6px 0 0;
+  color: var(--color-error);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+/* ===========================
+   Buttons
+   =========================== */
+
+.eventCategory-button-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.eventCategory-save-btn {
+  min-width: 154px;
+  min-height: 46px;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 10px;
+  background-color: var(--color-primary-orange);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.eventCategory-save-btn:hover:not(:disabled) {
+  background-color: var(--color-primary-hover);
+  box-shadow: 0 4px 10px rgba(255, 140, 0, 0.4);
+}
+
+.eventCategory-save-btn:disabled {
+  background-color: var(--color-disabled-orange);
+  cursor: not-allowed;
+}
+
+.eventCategory-cancel-btn {
+  padding: 12px 24px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  background-color: #f3f4f6;
+  color: #374151;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.eventCategory-cancel-btn:hover {
+  background-color: #e5e7eb;
+}
+
+/* ===========================
+   Table
+   =========================== */
+
+.event-category-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.event-category-status {
+  display: inline-flex;
+  align-items: center;
+  min-width: 72px;
+  min-height: 28px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  justify-content: center;
+}
+
+.event-category-status--active {
+  background-color: var(--color-success-bg);
+  color: var(--color-success-text);
+}
+
+.event-category-status--inactive {
+  background-color: var(--color-danger-bg);
+  color: var(--color-danger-text);
+}
+
+/* ===========================
+   Dialog
+   =========================== */
+
+.MuiDialog-paper {
+  border-radius: 14px !important;
+}
+
+/* ===========================
+   Alerts
+   =========================== */
+
+.MuiAlert-root {
+  margin-bottom: 20px !important;
+  border-radius: 10px !important;
+}
+
+/* ===========================
+   Tablet
+   =========================== */
+
+@media (max-width: 992px) {
+  .event-category-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .event-category-card {
+    padding: 20px;
+  }
+
+  .eventCategory-save-btn,
+  .eventCategory-cancel-btn {
+    width: 100%;
+  }
+}
+
+/* ===========================
+   Mobile
+   =========================== */
+
+@media (max-width: 600px) {
+  .event-category-page {
+    padding: 0 12px;
+  }
+
+  .event-category-card {
+    padding: 16px;
+    border-radius: 10px;
+  }
+
+  .event-category-card h2 {
+    font-size: 1.2rem;
+  }
+
+  .event-category-grid {
+    gap: 16px;
+  }
+
+  .event-category-grid input {
+    height: 44px;
+    font-size: 0.95rem;
+  }
+
+  .event-category-grid textarea {
+    font-size: 0.95rem;
+  }
+
+  .event-category-image-preview {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .eventCategory-upload-content {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .eventCategory-button-group {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .eventCategory-save-btn,
+  .eventCategory-cancel-btn {
+    width: 100%;
+    font-size: 0.95rem;
+  }
+}
+
+/* ===========================
+   Large Monitors
+   =========================== */
+
+@media (min-width: 1600px) {
+  .event-category-page {
+    max-width: 1600px;
+    margin: 0 auto;
+  }
+}

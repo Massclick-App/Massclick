@@ -27,7 +27,11 @@ export const Collections = {
     FAVORITES: 'favorites',
     FCMCAMPAIGNS: 'fcmcampaigns',
     SYSTEMSETTINGS: 'systemsettings',
-    CATEGORYDISPLAYSETTINGS: 'categorydisplaysettings'
+    CATEGORYDISPLAYSETTINGS: 'categorydisplaysettings',
+    EVENTCATEGORY: 'eventcategory',
+    EVENTLOCATION: 'eventlocation',
+    EVENTADVERTISEMENT: 'eventadvertisement',
+    EVENTCREATION: 'eventcreation'
 };
 
 export const {
@@ -59,5 +63,9 @@ export const {
     FAVORITES,
     FCMCAMPAIGNS,
     SYSTEMSETTINGS,
-    CATEGORYDISPLAYSETTINGS
+    CATEGORYDISPLAYSETTINGS,
+    EVENTCATEGORY,
+    EVENTLOCATION,
+    EVENTADVERTISEMENT,
+    EVENTCREATION
 } = Collections;
