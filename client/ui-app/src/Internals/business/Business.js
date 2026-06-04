@@ -5,7 +5,7 @@ import { useDispatch, useSelector } from "react-redux";
 import InputValidator from "../validators/inputValidator.js";
 import { getAllBusinessList, createBusinessList, editBusinessList, deleteBusinessList, trackQrDownload } from "../../redux/actions/businessListAction";
 import { getAllLocation, createLocation } from "../../redux/actions/locationAction";
-import { createCategory, editCategory, businessCategorySearch } from "../../redux/actions/categoryAction";
+import { getAllCategory, createCategory, editCategory, businessCategorySearch } from "../../redux/actions/categoryAction";
 import { getAllUsersClient, getUserClientSuggestion } from "../../redux/actions/userClientAction.js";
 import { getAllUsers } from "../../redux/actions/userAction.js";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
@@ -160,6 +160,13 @@ const BusinessList = React.memo(() => {
   const [paymentStatus, setPaymentStatus] = useState("all"); // "all", "paid", "pending"
   const [dateRange, setDateRange] = useState({ from: "", to: "" });
   const [activeFilters, setActiveFilters] = useState([]);
+  const [appliedFilters, setAppliedFilters] = useState({
+    searchTerm: "",
+    category: "",
+    location: "",
+    paymentStatus: "all"
+  });
+  const [tableRefreshKey, setTableRefreshKey] = useState(0);
   
   const handlePayNow = row => {
     const amount = 1;
@@ -414,73 +421,148 @@ const BusinessList = React.memo(() => {
       pageNo: 1,
       pageSize: 1000
     }));
-    dispatch(businessCategorySearch());
+    dispatch(getAllCategory({
+      pageNo: 1,
+      pageSize: 1000,
+      options: {
+        status: "active"
+      }
+    }));
+    dispatch(businessCategorySearch(""));
     dispatch(getAllUsersClient());
     dispatch(getAllUsers());
     dispatch(checkPhonePeStatus());
   }, [dispatch]);
 
   // ===== FILTER & SEARCH HANDLERS =====
+  const normalizeSearchValue = value => String(value ?? "").replace(/<[^>]*>/g, " ").toLowerCase().trim();
+
+  const valueMatchesSearch = (value, term) => {
+    if (Array.isArray(value)) {
+      return value.some(item => valueMatchesSearch(item, term));
+    }
+    return normalizeSearchValue(value).includes(term);
+  };
+
+  const matchesSelectedValue = (value, selectedValue) => {
+    if (!selectedValue) return true;
+    return normalizeSearchValue(value) === normalizeSearchValue(selectedValue);
+  };
+
+  const getServerSearchQuery = (filters = appliedFilters) => {
+    return (filters.searchTerm || filters.category || filters.location || "").trim();
+  };
+
   const updateActiveFilters = (newFilters) => {
     const filters = [];
-    if (newFilters.searchTerm) filters.push({ type: "search", label: `Search: ${newFilters.searchTerm}`, value: newFilters.searchTerm });
-    if (newFilters.category) filters.push({ type: "category", label: `Category: ${newFilters.category}`, value: newFilters.category });
-    if (newFilters.location) filters.push({ type: "location", label: `Location: ${newFilters.location}`, value: newFilters.location });
-    if (newFilters.paymentStatus && newFilters.paymentStatus !== "all") filters.push({ type: "payment", label: `Payment: ${newFilters.paymentStatus}`, value: newFilters.paymentStatus });
+    const cleanFilters = {
+      searchTerm: (newFilters.searchTerm || "").trim(),
+      category: newFilters.category || "",
+      location: newFilters.location || "",
+      paymentStatus: newFilters.paymentStatus || "all"
+    };
+
+    if (cleanFilters.searchTerm) filters.push({ type: "search", label: `Search: ${cleanFilters.searchTerm}`, value: cleanFilters.searchTerm });
+    if (cleanFilters.category) filters.push({ type: "category", label: `Category: ${cleanFilters.category}`, value: cleanFilters.category });
+    if (cleanFilters.location) filters.push({ type: "location", label: `Location: ${cleanFilters.location}`, value: cleanFilters.location });
+    if (cleanFilters.paymentStatus !== "all") filters.push({ type: "payment", label: `Payment: ${cleanFilters.paymentStatus}`, value: cleanFilters.paymentStatus });
     setActiveFilters(filters);
   };
 
   const handleApplyFilters = () => {
-    updateActiveFilters({ searchTerm, selectedCategory, selectedLocation, paymentStatus });
+    const nextFilters = {
+      searchTerm: searchTerm.trim(),
+      category: selectedCategory,
+      location: selectedLocation,
+      paymentStatus
+    };
+    setAppliedFilters(nextFilters);
+    updateActiveFilters(nextFilters);
+    setTableRefreshKey(prev => prev + 1);
   };
 
   const handleClearFilters = () => {
+    const nextFilters = {
+      searchTerm: "",
+      category: "",
+      location: "",
+      paymentStatus: "all"
+    };
     setSearchTerm("");
     setSelectedCategory("");
     setSelectedLocation("");
     setPaymentStatus("all");
     setDateRange({ from: "", to: "" });
+    setAppliedFilters(nextFilters);
     setActiveFilters([]);
+    setTableRefreshKey(prev => prev + 1);
   };
 
   const handleRemoveFilter = (filterType) => {
-    if (filterType === "search") setSearchTerm("");
-    if (filterType === "category") setSelectedCategory("");
-    if (filterType === "location") setSelectedLocation("");
-    if (filterType === "payment") setPaymentStatus("all");
-    updateActiveFilters({ 
-      searchTerm: filterType !== "search" ? searchTerm : "",
-      category: filterType !== "category" ? selectedCategory : "",
-      location: filterType !== "location" ? selectedLocation : "",
-      paymentStatus: filterType !== "payment" ? paymentStatus : "all"
-    });
+    const nextFilters = {
+      ...appliedFilters,
+      ...(filterType === "search" ? { searchTerm: "" } : {}),
+      ...(filterType === "category" ? { category: "" } : {}),
+      ...(filterType === "location" ? { location: "" } : {}),
+      ...(filterType === "payment" ? { paymentStatus: "all" } : {})
+    };
+
+    setSearchTerm(nextFilters.searchTerm);
+    setSelectedCategory(nextFilters.category);
+    setSelectedLocation(nextFilters.location);
+    setPaymentStatus(nextFilters.paymentStatus);
+    setAppliedFilters(nextFilters);
+    updateActiveFilters(nextFilters);
+    setTableRefreshKey(prev => prev + 1);
   };
 
   const getFilteredRows = () => {
     return rows.filter(row => {
+      const {
+        searchTerm: appliedSearchTerm,
+        category: appliedCategory,
+        location: appliedLocation,
+        paymentStatus: appliedPaymentStatus
+      } = appliedFilters;
+
       // Search term filter
-      if (searchTerm) {
-        const term = searchTerm.toLowerCase();
-        const matchesSearch = 
-          row.businessName?.toLowerCase().includes(term) ||
-          row.location?.toLowerCase().includes(term) ||
-          row.category?.toLowerCase().includes(term) ||
-          row.email?.toLowerCase().includes(term) ||
-          row.contact?.includes(term);
+      if (appliedSearchTerm) {
+        const term = normalizeSearchValue(appliedSearchTerm);
+        const matchesSearch = [
+          row.businessName,
+          row.location,
+          row.category,
+          row.email,
+          row.contact,
+          row.contactList,
+          row.whatsappNumber,
+          row.globalAddress,
+          row.street,
+          row.pincode,
+          row.gstin,
+          row.title,
+          row.description,
+          row.seoTitle,
+          row.seoDescription,
+          row.slug,
+          row.businessDetails,
+          row.keywords,
+          row.mniDetails?.map(item => item?.categoryGroup)
+        ].some(value => valueMatchesSearch(value, term));
         if (!matchesSearch) return false;
       }
 
       // Category filter
-      if (selectedCategory && row.category !== selectedCategory) return false;
+      if (!matchesSelectedValue(row.category, appliedCategory)) return false;
 
       // Location filter
-      if (selectedLocation && row.location !== selectedLocation) return false;
+      if (!matchesSelectedValue(row.location, appliedLocation)) return false;
 
       // Payment status filter
-      if (paymentStatus !== "all") {
+      if (appliedPaymentStatus !== "all") {
         const isPaid = row.amountPaid === true;
-        if (paymentStatus === "paid" && !isPaid) return false;
-        if (paymentStatus === "pending" && isPaid) return false;
+        if (appliedPaymentStatus === "paid" && !isPaid) return false;
+        if (appliedPaymentStatus === "pending" && isPaid) return false;
       }
 
       return true;
@@ -761,6 +843,12 @@ const BusinessList = React.memo(() => {
   }));
   
   const filteredRows = getFilteredRows();
+  const categoryOptions = Array.from(new Set(
+    [...category, ...searchCategory].map(c => c?.category).filter(Boolean)
+  )).sort((a, b) => a.localeCompare(b));
+  const locationOptions = Array.from(new Set(
+    location.map(l => l?.city || l?.district || l?.location || l?.name).filter(Boolean)
+  )).sort((a, b) => a.localeCompare(b));
   
   const businessListTable = [{
     id: "clientId",
@@ -942,19 +1030,21 @@ const BusinessList = React.memo(() => {
     </div>;
 
   // ===== SEARCH PANEL COMPONENT =====
-  const SearchPanel = () => (
+  const renderSearchPanel = () => (
     <div className={cx("search-panel")}>
       <div className={cx("search-header")}>
         <h2 className={cx("search-title")}>🔍 Find Business</h2>
         <div className={cx("search-mode-toggle")}>
           <button 
-            className={cx("mode-btn", { active: searchMode === "easy" })} 
+            type="button"
+            className={cx("mode-btn", searchMode === "easy" ? "active" : "")} 
             onClick={() => setSearchMode("easy")}
           >
             Easy Search
           </button>
           <button 
-            className={cx("mode-btn", { active: searchMode === "advanced" })} 
+            type="button"
+            className={cx("mode-btn", searchMode === "advanced" ? "active" : "")} 
             onClick={() => setSearchMode("advanced")}
           >
             Advanced
@@ -972,7 +1062,7 @@ const BusinessList = React.memo(() => {
               className={cx("search-input-main")}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyPress={(e) => e.key === "Enter" && handleApplyFilters()}
+              onKeyDown={(e) => e.key === "Enter" && handleApplyFilters()}
             />
             <Button 
               variant="contained" 
@@ -1011,7 +1101,7 @@ const BusinessList = React.memo(() => {
                 onChange={(e) => setSelectedCategory(e.target.value)}
               >
                 <option value="">All Categories</option>
-                {Array.from(new Set(category.map(c => c.category))).map(cat => (
+                {categoryOptions.map(cat => (
                   <option key={cat} value={cat}>{cat}</option>
                 ))}
               </select>
@@ -1026,7 +1116,7 @@ const BusinessList = React.memo(() => {
                 onChange={(e) => setSelectedLocation(e.target.value)}
               >
                 <option value="">All Locations</option>
-                {Array.from(new Set(location.map(l => l.city || l.district))).map(loc => (
+                {locationOptions.map(loc => (
                   <option key={loc} value={loc}>{loc}</option>
                 ))}
               </select>
@@ -1775,7 +1865,7 @@ const BusinessList = React.memo(() => {
       </div>
 
       {/* SEARCH SECTION */}
-      <SearchPanel />
+      {renderSearchPanel()}
 
       {/* TABLE SECTION */}
       <div className={cx("table-section")}>
@@ -1784,20 +1874,22 @@ const BusinessList = React.memo(() => {
             📋 Business Directory
           </Typography>
           <Typography variant="body2" className={cx("table-count")}>
-            {filteredRows.length} of {rows.length} businesses
+            {filteredRows.length} shown of {total || rows.length} businesses
           </Typography>
         </div>
 
         <Box sx={{ width: "100%" }}>
           <CustomizedTable 
+            key={tableRefreshKey}
             data={filteredRows} 
-            total={filteredRows.length} 
+            total={total || filteredRows.length} 
             columns={businessListTable} 
             fetchData={(pageNo, pageSize, options = {}) => {
+              const serverSearch = options.search || getServerSearchQuery();
               dispatch(getAllBusinessList({
                 pageNo,
                 pageSize,
-                search: options.search || "",
+                search: serverSearch,
                 status: options.status || "all",
                 sortBy: options.sortBy || null,
                 sortOrder: options.sortOrder || "asc"
