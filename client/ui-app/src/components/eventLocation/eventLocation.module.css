@@ -319,7 +319,7 @@
    Dialog
    =========================== */
 
-.MuiDialog-paper {
+:global(.MuiDialog-paper) {
   border-radius: 14px !important;
 }
 
@@ -327,7 +327,7 @@
    Alerts
    =========================== */
 
-.MuiAlert-root {
+:global(.MuiAlert-root) {
   margin-bottom: 20px !important;
   border-radius: 10px !important;
 }

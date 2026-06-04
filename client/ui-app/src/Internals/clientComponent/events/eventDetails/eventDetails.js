@@ -17,8 +17,11 @@ import {
 } from "lucide-react";
 
 import { viewEventCreation } from "../../../../redux/actions/eventAction.js";
+import { createScopedClassNames } from "../../../../utils/createScopedClassNames";
 
-import "./eventDetails.css";
+import styles from "./eventDetails.module.css";
+
+const cx = createScopedClassNames(styles);
 
 const formatDate = (value) => {
   if (!value) return "To be announced";
@@ -52,8 +55,8 @@ const DetailItem = ({ icon: Icon, label, value }) => {
   if (value === undefined || value === null || value === "") return null;
 
   return (
-    <div className="eventDetails-infoItem">
-      <span className="eventDetails-infoIcon">
+    <div className={cx("eventDetails-infoItem")}>
+      <span className={cx("eventDetails-infoIcon")}>
         <Icon size={18} aria-hidden="true" />
       </span>
       <div>
@@ -91,16 +94,16 @@ export default function EventDetails() {
 
   if (loading && !event) {
     return (
-      <main className="eventDetails-page">
-        <div className="eventDetails-loading" />
+      <main className={cx("eventDetails-page")}>
+        <div className={cx("eventDetails-loading")} />
       </main>
     );
   }
 
   if (error || !event) {
     return (
-      <main className="eventDetails-page">
-        <section className="eventDetails-empty">
+      <main className={cx("eventDetails-page")}>
+        <section className={cx("eventDetails-empty")}>
           <h1>Event details unavailable</h1>
           <p>{error || "This event could not be found."}</p>
           <button type="button" onClick={() => navigate("/events")}>
@@ -116,35 +119,35 @@ export default function EventDetails() {
   const locationName = getLocationName(event);
 
   return (
-    <main className="eventDetails-page">
-      <section className="eventDetails-hero">
+    <main className={cx("eventDetails-page")}>
+      <section className={cx("eventDetails-hero")}>
         {image ? (
-          <img src={image} alt={event.eventName} className="eventDetails-heroImage" />
+          <img src={image} alt={event.eventName} className={cx("eventDetails-heroImage")} />
         ) : (
-          <div className="eventDetails-heroFallback" />
+          <div className={cx("eventDetails-heroFallback")} />
         )}
 
-        <div className="eventDetails-heroOverlay">
+        <div className={cx("eventDetails-heroOverlay")}>
           <button
             type="button"
-            className="eventDetails-backButton"
+            className={cx("eventDetails-backButton")}
             onClick={() => navigate(-1)}
           >
             <ArrowLeft size={18} aria-hidden="true" />
             Back
           </button>
 
-          <div className="eventDetails-titleBlock">
-            <span className="eventDetails-category">{categoryName}</span>
+          <div className={cx("eventDetails-titleBlock")}>
+            <span className={cx("eventDetails-category")}>{categoryName}</span>
             <h1>{event.eventName}</h1>
             <p>{event.description || "Explore complete event details, schedule and registration information."}</p>
           </div>
         </div>
       </section>
 
-      <section className="eventDetails-content">
-        <div className="eventDetails-main">
-          <div className="eventDetails-summaryGrid">
+      <section className={cx("eventDetails-content")}>
+        <div className={cx("eventDetails-main")}>
+          <div className={cx("eventDetails-summaryGrid")}>
             <DetailItem icon={CalendarDays} label="Start Date" value={formatDate(event.startDate)} />
             <DetailItem icon={CalendarDays} label="End Date" value={formatDate(event.endDate)} />
             <DetailItem icon={Clock} label="Start Time" value={event.startTime || "To be announced"} />
@@ -153,7 +156,7 @@ export default function EventDetails() {
             <DetailItem icon={Tag} label="Event Type" value={event.eventType || "physical"} />
           </div>
 
-          <article className="eventDetails-section">
+          <article className={cx("eventDetails-section")}>
             <h2>About This Event</h2>
             <p>
               {event.description ||
@@ -161,7 +164,7 @@ export default function EventDetails() {
             </p>
           </article>
 
-          <article className="eventDetails-section eventDetails-twoColumn">
+          <article className={cx("eventDetails-section eventDetails-twoColumn")}>
             <div>
               <h2>Organizer</h2>
               <DetailItem icon={Users} label="Organizer" value={event.organizer || "Organizer team"} />
@@ -182,9 +185,9 @@ export default function EventDetails() {
           </article>
 
           {keywords.length > 0 && (
-            <article className="eventDetails-section">
+            <article className={cx("eventDetails-section")}>
               <h2>Keywords</h2>
-              <div className="eventDetails-keywords">
+              <div className={cx("eventDetails-keywords")}>
                 {keywords.map((keyword) => (
                   <span key={keyword}>{keyword}</span>
                 ))}
@@ -193,9 +196,9 @@ export default function EventDetails() {
           )}
         </div>
 
-        <aside className="eventDetails-aside">
-          <div className="eventDetails-ticketCard">
-            <span className="eventDetails-ticketIcon">
+        <aside className={cx("eventDetails-aside")}>
+          <div className={cx("eventDetails-ticketCard")}>
+            <span className={cx("eventDetails-ticketIcon")}>
               <Ticket size={22} aria-hidden="true" />
             </span>
             <small>Ticket Price</small>
@@ -210,20 +213,20 @@ export default function EventDetails() {
                 href={event.registrationUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="eventDetails-primaryAction"
+                className={cx("eventDetails-primaryAction")}
               >
                 Register Now
                 <Globe size={16} aria-hidden="true" />
               </a>
             ) : (
-              <button type="button" className="eventDetails-primaryAction" disabled>
+              <button type="button" className={cx("eventDetails-primaryAction")} disabled>
                 Registration Opens Soon
               </button>
             )}
 
             <button
               type="button"
-              className="eventDetails-secondaryAction"
+              className={cx("eventDetails-secondaryAction")}
               onClick={() => navigator.clipboard?.writeText(window.location.href)}
             >
               Share Event
@@ -231,7 +234,7 @@ export default function EventDetails() {
             </button>
           </div>
 
-          <div className="eventDetails-statusCard">
+          <div className={cx("eventDetails-statusCard")}>
             <span>Status</span>
             <strong>{event.status || "upcoming"}</strong>
             <span>Publishing</span>

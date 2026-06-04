@@ -34,8 +34,11 @@ import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 
 import CustomizedTable from "../../components/Table/CustomizedTable";
+import { createScopedClassNames } from "../../utils/createScopedClassNames";
 
-import "./eventCreation.css";
+import styles from "./eventCreation.module.css";
+
+const cx = createScopedClassNames(styles);
 
 const initialFormData = {
   eventName: "",
@@ -408,7 +411,7 @@ export default function EventCreation() {
       renderCell: (value, row) =>
         value ? (
           <img
-            className="eventCreation-thumb"
+            className={cx("eventCreation-thumb")}
             src={value}
             alt={row.eventName}
           />
@@ -440,7 +443,7 @@ export default function EventCreation() {
       id: "status",
       label: "Status",
       renderCell: (value) => (
-        <span className={`eventCreation-status eventCreation-status--${value}`}>
+        <span className={cx(`eventCreation-status eventCreation-status--${value}`)}>
           {value}
         </span>
       ),
@@ -450,11 +453,11 @@ export default function EventCreation() {
       label: "Published",
       renderCell: (value) => (
         <span
-          className={`eventCreation-status ${
+          className={cx(`eventCreation-status ${
             value
               ? "eventCreation-status--published"
               : "eventCreation-status--draft"
-          }`}
+          }`)}
         >
           {value ? "Published" : "Draft"}
         </span>
@@ -464,7 +467,7 @@ export default function EventCreation() {
       id: "action",
       label: "Action",
       renderCell: (_, row) => (
-        <div className="eventCreation-actions">
+        <div className={cx("eventCreation-actions")}>
           <IconButton
             color="primary"
             onClick={() => handleEdit(row)}
@@ -486,8 +489,8 @@ export default function EventCreation() {
   ];
 
   return (
-    <div className="eventCreation-page">
-      <div className="eventCreation-card">
+    <div className={cx("eventCreation-page")}>
+      <div className={cx("eventCreation-card")}>
         <h2>
           {isEditMode
             ? "Edit Event"
@@ -507,7 +510,7 @@ export default function EventCreation() {
         )}
 
         <form onSubmit={handleSubmit}>
-          <div className="eventCreation-grid">
+          <div className={cx("eventCreation-grid")}>
             <div>
               <label>Event Name *</label>
 
@@ -519,7 +522,7 @@ export default function EventCreation() {
               />
 
               {errors.eventName && (
-                <p className="eventCreation-error-text">
+                <p className={cx("eventCreation-error-text")}>
                   {errors.eventName}
                 </p>
               )}
@@ -557,7 +560,7 @@ export default function EventCreation() {
               </select>
 
               {errors.eventCategory && (
-                <p className="eventCreation-error-text">
+                <p className={cx("eventCreation-error-text")}>
                   {errors.eventCategory}
                 </p>
               )}
@@ -583,7 +586,7 @@ export default function EventCreation() {
               </select>
 
               {errors.eventLocation && (
-                <p className="eventCreation-error-text">
+                <p className={cx("eventCreation-error-text")}>
                   {errors.eventLocation}
                 </p>
               )}
@@ -600,7 +603,7 @@ export default function EventCreation() {
               />
 
               {errors.startDate && (
-                <p className="eventCreation-error-text">
+                <p className={cx("eventCreation-error-text")}>
                   {errors.startDate}
                 </p>
               )}
@@ -617,7 +620,7 @@ export default function EventCreation() {
               />
 
               {errors.endDate && (
-                <p className="eventCreation-error-text">
+                <p className={cx("eventCreation-error-text")}>
                   {errors.endDate}
                 </p>
               )}
@@ -674,7 +677,7 @@ export default function EventCreation() {
               </select>
             </div>
 
-            <div className="eventCreation-field--full">
+            <div className={cx("eventCreation-field--full")}>
               <label>Description</label>
 
               <textarea
@@ -685,15 +688,15 @@ export default function EventCreation() {
               />
             </div>
 
-            <div className="eventCreation-upload-field">
+            <div className={cx("eventCreation-upload-field")}>
               <label>Event Image</label>
 
-              <div className="eventCreation-upload-content">
+              <div className={cx("eventCreation-upload-content")}>
                 <Button
                   variant="contained"
                   startIcon={<CloudUploadIcon />}
                   component="label"
-                  className="eventCreation-upload-button"
+                  className={cx("eventCreation-upload-button")}
                 >
                   Upload Image
                   <input
@@ -709,21 +712,21 @@ export default function EventCreation() {
                     src={formData.eventImage}
                     variant="rounded"
                     sx={{ width: 56, height: 56 }}
-                    className="eventCreation-preview-avatar"
+                    className={cx("eventCreation-preview-avatar")}
                   />
                 )}
               </div>
             </div>
 
-            <div className="eventCreation-upload-field">
+            <div className={cx("eventCreation-upload-field")}>
               <label>Banner Image</label>
 
-              <div className="eventCreation-upload-content">
+              <div className={cx("eventCreation-upload-content")}>
                 <Button
                   variant="contained"
                   startIcon={<CloudUploadIcon />}
                   component="label"
-                  className="eventCreation-upload-button"
+                  className={cx("eventCreation-upload-button")}
                 >
                   Upload Image
                   <input
@@ -739,7 +742,7 @@ export default function EventCreation() {
                     src={formData.bannerImage}
                     variant="rounded"
                     sx={{ width: 96, height: 56 }}
-                    className="eventCreation-preview-avatar"
+                    className={cx("eventCreation-preview-avatar")}
                   />
                 )}
               </div>
@@ -767,7 +770,7 @@ export default function EventCreation() {
               />
 
               {errors.organizerEmail && (
-                <p className="eventCreation-error-text">
+                <p className={cx("eventCreation-error-text")}>
                   {errors.organizerEmail}
                 </p>
               )}
@@ -807,7 +810,7 @@ export default function EventCreation() {
               />
 
               {errors.capacity && (
-                <p className="eventCreation-error-text">
+                <p className={cx("eventCreation-error-text")}>
                   {errors.capacity}
                 </p>
               )}
@@ -825,7 +828,7 @@ export default function EventCreation() {
               />
 
               {errors.registeredParticipants && (
-                <p className="eventCreation-error-text">
+                <p className={cx("eventCreation-error-text")}>
                   {errors.registeredParticipants}
                 </p>
               )}
@@ -844,13 +847,13 @@ export default function EventCreation() {
               />
 
               {errors.ticketPrice && (
-                <p className="eventCreation-error-text">
+                <p className={cx("eventCreation-error-text")}>
                   {errors.ticketPrice}
                 </p>
               )}
             </div>
 
-            <div className="eventCreation-field--full eventCreation-keywords-field">
+            <div className={cx("eventCreation-field--full eventCreation-keywords-field")}>
               <label>Keywords</label>
 
               <Autocomplete
@@ -943,7 +946,7 @@ export default function EventCreation() {
               />
             </div>
 
-            <div className="eventCreation-toggle">
+            <div className={cx("eventCreation-toggle")}>
               <label htmlFor="eventCreation-isActive">
                 Active Event
               </label>
@@ -957,7 +960,7 @@ export default function EventCreation() {
               />
             </div>
 
-            <div className="eventCreation-toggle">
+            <div className={cx("eventCreation-toggle")}>
               <label htmlFor="eventCreation-isPublished">
                 Published
               </label>
@@ -972,10 +975,10 @@ export default function EventCreation() {
             </div>
           </div>
 
-          <div className="eventCreation-button-group">
+          <div className={cx("eventCreation-button-group")}>
             <button
               type="submit"
-              className="eventCreation-save-btn"
+              className={cx("eventCreation-save-btn")}
               disabled={loading}
             >
               {loading ? (
@@ -993,7 +996,7 @@ export default function EventCreation() {
             {isEditMode && (
               <button
                 type="button"
-                className="eventCreation-cancel-btn"
+                className={cx("eventCreation-cancel-btn")}
                 onClick={resetForm}
               >
                 Cancel

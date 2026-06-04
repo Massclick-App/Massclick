@@ -136,18 +136,18 @@
   cursor: not-allowed;
 }
 
-.eventCategory-keywords-field .MuiFormControl-root {
+.eventCategory-keywords-field :global(.MuiFormControl-root) {
   width: 100%;
 }
 
-.eventCategory-keywords-field .MuiOutlinedInput-root {
+.eventCategory-keywords-field :global(.MuiOutlinedInput-root) {
   min-height: 48px;
   padding: 6px 12px;
   border-radius: 8px;
   background-color: #fff;
 }
 
-.eventCategory-keywords-field .MuiAutocomplete-inputRoot input {
+.eventCategory-keywords-field :global(.MuiAutocomplete-inputRoot) input {
   width: auto;
   height: auto;
   min-width: 140px;
@@ -157,8 +157,8 @@
   background-color: transparent;
 }
 
-.eventCategory-keywords-field .MuiAutocomplete-inputRoot input:focus,
-.eventCategory-keywords-field .MuiAutocomplete-inputRoot input:hover {
+.eventCategory-keywords-field :global(.MuiAutocomplete-inputRoot) input:focus,
+.eventCategory-keywords-field :global(.MuiAutocomplete-inputRoot) input:hover {
   border: 0;
   box-shadow: none;
   background-color: transparent;
@@ -346,7 +346,7 @@
    Dialog
    =========================== */
 
-.MuiDialog-paper {
+:global(.MuiDialog-paper) {
   border-radius: 14px !important;
 }
 
@@ -354,7 +354,7 @@
    Alerts
    =========================== */
 
-.MuiAlert-root {
+:global(.MuiAlert-root) {
   margin-bottom: 20px !important;
   border-radius: 10px !important;
 }

@@ -32,8 +32,11 @@ import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 
 import CustomizedTable from "../../components/Table/CustomizedTable";
+import { createScopedClassNames } from "../../utils/createScopedClassNames";
 
-import "./eventCategory.css";
+import styles from "./eventCategory.module.css";
+
+const cx = createScopedClassNames(styles);
 
 const initialFormData = {
   categoryName: "",
@@ -278,7 +281,7 @@ export default function EventCategory() {
       renderCell: (value, row) =>
         value ? (
           <img
-            className="event-category-thumb"
+            className={cx("event-category-thumb")}
             src={value}
             alt={row.categoryName}
           />
@@ -311,11 +314,11 @@ export default function EventCategory() {
       label: "Status",
       renderCell: (value, row) => (
         <span
-          className={`event-category-status ${
+          className={cx(`event-category-status ${
             row.isActive
               ? "event-category-status--active"
               : "event-category-status--inactive"
-          }`}
+          }`)}
         >
           {value}
         </span>
@@ -325,7 +328,7 @@ export default function EventCategory() {
       id: "action",
       label: "Action",
       renderCell: (_, row) => (
-        <div className="event-category-actions">
+        <div className={cx("event-category-actions")}>
           <IconButton
             color="primary"
             onClick={() => handleEdit(row)}
@@ -347,8 +350,8 @@ export default function EventCategory() {
   ];
 
   return (
-    <div className="event-category-page">
-      <div className="event-category-card">
+    <div className={cx("event-category-page")}>
+      <div className={cx("event-category-card")}>
         <h2>
           {isEditMode
             ? "Edit Event Category"
@@ -368,7 +371,7 @@ export default function EventCategory() {
         )}
 
         <form onSubmit={handleSubmit}>
-          <div className="event-category-grid">
+          <div className={cx("event-category-grid")}>
             <div>
               <label>Category Name *</label>
 
@@ -380,7 +383,7 @@ export default function EventCategory() {
               />
 
               {errors.categoryName && (
-                <p className="eventCategory-error-text">
+                <p className={cx("eventCategory-error-text")}>
                   {errors.categoryName}
                 </p>
               )}
@@ -398,15 +401,15 @@ export default function EventCategory() {
               />
             </div>
 
-            <div className="eventCategory-upload-field">
+            <div className={cx("eventCategory-upload-field")}>
               <label>Category Image</label>
 
-              <div className="eventCategory-upload-content">
+              <div className={cx("eventCategory-upload-content")}>
                 <Button
                   variant="contained"
                   startIcon={<CloudUploadIcon />}
                   component="label"
-                  className="eventCategory-upload-button"
+                  className={cx("eventCategory-upload-button")}
                 >
                   Upload Image
                   <input
@@ -422,7 +425,7 @@ export default function EventCategory() {
                     src={formData.categoryImage}
                     variant="rounded"
                     sx={{ width: 56, height: 56 }}
-                    className="eventCategory-preview-avatar"
+                    className={cx("eventCategory-preview-avatar")}
                   />
                 )}
               </div>
@@ -440,13 +443,13 @@ export default function EventCategory() {
               />
 
               {errors.sortOrder && (
-                <p className="eventCategory-error-text">
+                <p className={cx("eventCategory-error-text")}>
                   {errors.sortOrder}
                 </p>
               )}
             </div>
 
-            <div className="event-category-field--full">
+            <div className={cx("event-category-field--full")}>
               <label>Description</label>
 
               <textarea
@@ -457,13 +460,13 @@ export default function EventCategory() {
               />
 
               {errors.description && (
-                <p className="eventCategory-error-text">
+                <p className={cx("eventCategory-error-text")}>
                   {errors.description}
                 </p>
               )}
             </div>
 
-            <div className="event-category-field--full eventCategory-keywords-field">
+            <div className={cx("event-category-field--full eventCategory-keywords-field")}>
               <label>Keywords</label>
 
               <Autocomplete
@@ -534,7 +537,7 @@ export default function EventCategory() {
               />
 
               {errors.keywords && (
-                <p className="eventCategory-error-text">
+                <p className={cx("eventCategory-error-text")}>
                   {errors.keywords}
                 </p>
               )}
@@ -551,7 +554,7 @@ export default function EventCategory() {
               />
 
               {errors.seoTitle && (
-                <p className="eventCategory-error-text">
+                <p className={cx("eventCategory-error-text")}>
                   {errors.seoTitle}
                 </p>
               )}
@@ -568,13 +571,13 @@ export default function EventCategory() {
               />
 
               {errors.seoDescription && (
-                <p className="eventCategory-error-text">
+                <p className={cx("eventCategory-error-text")}>
                   {errors.seoDescription}
                 </p>
               )}
             </div>
 
-            <div className="event-category-toggle">
+            <div className={cx("event-category-toggle")}>
               <label htmlFor="isActive">
                 Active Category
               </label>
@@ -589,10 +592,10 @@ export default function EventCategory() {
             </div>
           </div>
 
-          <div className="eventCategory-button-group">
+          <div className={cx("eventCategory-button-group")}>
             <button
               type="submit"
-              className="eventCategory-save-btn"
+              className={cx("eventCategory-save-btn")}
               disabled={loading}
             >
               {loading ? (
@@ -610,7 +613,7 @@ export default function EventCategory() {
             {isEditMode && (
               <button
                 type="button"
-                className="eventCategory-cancel-btn"
+                className={cx("eventCategory-cancel-btn")}
                 onClick={resetForm}
               >
                 Cancel

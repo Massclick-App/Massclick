@@ -27,8 +27,11 @@ import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 
 import CustomizedTable from "../../components/Table/CustomizedTable";
+import { createScopedClassNames } from "../../utils/createScopedClassNames";
 
-import "./eventLocation.css";
+import styles from "./eventLocation.module.css";
+
+const cx = createScopedClassNames(styles);
 
 const initialFormData = {
   locationName: "",
@@ -259,7 +262,7 @@ export default function EventLocation() {
       renderCell: (value, row) =>
         value ? (
           <img
-            className="eventLocation-thumb"
+            className={cx("eventLocation-thumb")}
             src={value}
             alt={row.locationName}
           />
@@ -296,11 +299,11 @@ export default function EventLocation() {
       label: "Status",
       renderCell: (value, row) => (
         <span
-          className={`eventLocation-status ${
+          className={cx(`eventLocation-status ${
             row.isActive
               ? "eventLocation-status--active"
               : "eventLocation-status--inactive"
-          }`}
+          }`)}
         >
           {value}
         </span>
@@ -310,7 +313,7 @@ export default function EventLocation() {
       id: "action",
       label: "Action",
       renderCell: (_, row) => (
-        <div className="eventLocation-actions">
+        <div className={cx("eventLocation-actions")}>
           <IconButton
             color="primary"
             onClick={() => handleEdit(row)}
@@ -332,8 +335,8 @@ export default function EventLocation() {
   ];
 
   return (
-    <div className="eventLocation-page">
-      <div className="eventLocation-card">
+    <div className={cx("eventLocation-page")}>
+      <div className={cx("eventLocation-card")}>
         <h2>
           {isEditMode
             ? "Edit Event Location"
@@ -353,7 +356,7 @@ export default function EventLocation() {
         )}
 
         <form onSubmit={handleSubmit}>
-          <div className="eventLocation-grid">
+          <div className={cx("eventLocation-grid")}>
             <div>
               <label>Location Name *</label>
 
@@ -365,7 +368,7 @@ export default function EventLocation() {
               />
 
               {errors.locationName && (
-                <p className="eventLocation-error-text">
+                <p className={cx("eventLocation-error-text")}>
                   {errors.locationName}
                 </p>
               )}
@@ -383,7 +386,7 @@ export default function EventLocation() {
               />
             </div>
 
-            <div className="eventLocation-field--full">
+            <div className={cx("eventLocation-field--full")}>
               <label>Address</label>
 
               <textarea
@@ -450,7 +453,7 @@ export default function EventLocation() {
               />
 
               {errors.latitude && (
-                <p className="eventLocation-error-text">
+                <p className={cx("eventLocation-error-text")}>
                   {errors.latitude}
                 </p>
               )}
@@ -468,7 +471,7 @@ export default function EventLocation() {
               />
 
               {errors.longitude && (
-                <p className="eventLocation-error-text">
+                <p className={cx("eventLocation-error-text")}>
                   {errors.longitude}
                 </p>
               )}
@@ -486,21 +489,21 @@ export default function EventLocation() {
               />
 
               {errors.capacity && (
-                <p className="eventLocation-error-text">
+                <p className={cx("eventLocation-error-text")}>
                   {errors.capacity}
                 </p>
               )}
             </div>
 
-            <div className="eventLocation-upload-field">
+            <div className={cx("eventLocation-upload-field")}>
               <label>Location Image</label>
 
-              <div className="eventLocation-upload-content">
+              <div className={cx("eventLocation-upload-content")}>
                 <Button
                   variant="contained"
                   startIcon={<CloudUploadIcon />}
                   component="label"
-                  className="eventLocation-upload-button"
+                  className={cx("eventLocation-upload-button")}
                 >
                   Upload Image
                   <input
@@ -516,13 +519,13 @@ export default function EventLocation() {
                     src={formData.locationImage}
                     variant="rounded"
                     sx={{ width: 56, height: 56 }}
-                    className="eventLocation-preview-avatar"
+                    className={cx("eventLocation-preview-avatar")}
                   />
                 )}
               </div>
             </div>
 
-            <div className="eventLocation-field--full">
+            <div className={cx("eventLocation-field--full")}>
               <label>Description</label>
 
               <textarea
@@ -533,7 +536,7 @@ export default function EventLocation() {
               />
             </div>
 
-            <div className="eventLocation-toggle">
+            <div className={cx("eventLocation-toggle")}>
               <label htmlFor="eventLocation-isActive">
                 Active Location
               </label>
@@ -548,10 +551,10 @@ export default function EventLocation() {
             </div>
           </div>
 
-          <div className="eventLocation-button-group">
+          <div className={cx("eventLocation-button-group")}>
             <button
               type="submit"
-              className="eventLocation-save-btn"
+              className={cx("eventLocation-save-btn")}
               disabled={loading}
             >
               {loading ? (
@@ -569,7 +572,7 @@ export default function EventLocation() {
             {isEditMode && (
               <button
                 type="button"
-                className="eventLocation-cancel-btn"
+                className={cx("eventLocation-cancel-btn")}
                 onClick={resetForm}
               >
                 Cancel

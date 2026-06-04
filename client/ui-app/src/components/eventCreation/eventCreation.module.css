@@ -146,18 +146,18 @@
   cursor: not-allowed;
 }
 
-.eventCreation-keywords-field .MuiFormControl-root {
+.eventCreation-keywords-field :global(.MuiFormControl-root) {
   width: 100%;
 }
 
-.eventCreation-keywords-field .MuiOutlinedInput-root {
+.eventCreation-keywords-field :global(.MuiOutlinedInput-root) {
   min-height: 48px;
   padding: 6px 12px;
   border-radius: 8px;
   background-color: #fff;
 }
 
-.eventCreation-keywords-field .MuiAutocomplete-inputRoot input {
+.eventCreation-keywords-field :global(.MuiAutocomplete-inputRoot) input {
   width: auto;
   height: auto;
   min-width: 140px;
@@ -167,8 +167,8 @@
   background-color: transparent;
 }
 
-.eventCreation-keywords-field .MuiAutocomplete-inputRoot input:focus,
-.eventCreation-keywords-field .MuiAutocomplete-inputRoot input:hover {
+.eventCreation-keywords-field :global(.MuiAutocomplete-inputRoot) input:focus,
+.eventCreation-keywords-field :global(.MuiAutocomplete-inputRoot) input:hover {
   border: 0;
   box-shadow: none;
   background-color: transparent;
@@ -384,7 +384,7 @@
    Dialog
    =========================== */
 
-.MuiDialog-paper {
+:global(.MuiDialog-paper) {
   border-radius: 14px !important;
 }
 
@@ -392,7 +392,7 @@
    Alerts
    =========================== */
 
-.MuiAlert-root {
+:global(.MuiAlert-root) {
   margin-bottom: 20px !important;
   border-radius: 10px !important;
 }
