@@ -20,7 +20,21 @@ const CategoryDropdown = React.memo(({
   onSelect
 }) => {
   const MAX_HEIGHT_PX = 220;
-  if (!options || options.length === 0) return null;
+  const getOptionLabel = option => {
+    if (typeof option === "string") return option;
+    if (!option || typeof option !== "object") return "";
+    return String(
+      option.category ||
+      option.categoryName ||
+      option.businessName ||
+      option.location ||
+      option.locationName ||
+      option.name ||
+      ""
+    ).trim();
+  };
+  const visibleOptions = (options || []).filter(option => getOptionLabel(option));
+  if (visibleOptions.length === 0) return null;
   return <div className={cx("category-custom-dropdown")} style={{
     zIndex: 10000
   }}>
@@ -29,14 +43,14 @@ const CategoryDropdown = React.memo(({
       maxHeight: `${MAX_HEIGHT_PX}px`,
       overflowY: "auto"
     }}>
-        {options.map((option, index) => {
-        const displayText = typeof option === "string" ? option : String(option.category || option.businessName || option.location || "");
+        {visibleOptions.map((option, index) => {
+        const displayText = getOptionLabel(option);
         return <div key={index} className={cx("option-item")} onClick={() => onSelect(option)}>
               {label.toLowerCase().includes("location") ? <LocationOnIcon className={cx("option-icon")} /> : label === "RECENT SEARCHES" ? <HistoryToggleOffIcon className={cx("option-icon")} /> : <SearchIcon className={cx("option-icon")} />}
 
               <span className={cx("option-text-main")}>{displayText}</span>
 
-              {label === "RECENT SEARCHES" && typeof option !== "string" && option.category && <span className={cx("option-text-sub")}>{option.category}</span>}
+              {label === "RECENT SEARCHES" && typeof option !== "string" && (option.category || option.categoryName) && <span className={cx("option-text-sub")}>{option.category || option.categoryName}</span>}
             </div>;
       })}
       </div>
@@ -146,7 +160,7 @@ const HeroSection = React.memo(({
     const seen = new Set();
     const list = [];
     backendSuggestions.forEach(item => {
-      const val = item.category;
+      const val = item.category || item.categoryName || item.name;
       if (!val) return;
       const text = String(val).trim();
       if (!text) return;
