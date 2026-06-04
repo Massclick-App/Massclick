@@ -80,3 +80,4 @@ client/ui-app/build/
 client/ui-app/.env
 docker-compose.yml
 client/ui-app/lh-report-prod.json
+/server/scripts
