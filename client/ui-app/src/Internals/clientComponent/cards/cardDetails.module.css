@@ -959,6 +959,20 @@
   transform: translateY(-1px);
 }
 
+.business-CardDetails-lowerSections {
+  --section-max-width: var(--bc-max-width);
+  --section-padding-h: 24px;
+  --section-radius: 16px;
+  --section-shadow: 0 14px 34px rgba(17, 24, 39, 0.08);
+  margin: 22px auto 0;
+  max-width: var(--bc-max-width);
+  width: 100%;
+}
+
+.business-CardDetails-lowerSections > * {
+  width: 100%;
+}
+
 @media (max-width: 1200px) {
   .business-CardDetails-pageWrapper {
     padding: 20px 18px 46px;
