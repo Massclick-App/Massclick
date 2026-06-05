@@ -34,6 +34,7 @@ import { checkPhonePeStatus, createPhonePePayment } from "../../redux/actions/ph
 import CustomizedTable from "../../components/Table/CustomizedTable.js";
 import Tooltip from "@mui/material/Tooltip";
 import styles from "./business.module.css";
+import GooglePlacesInput from "../../components/GooglePlacesInput/GooglePlacesInput";
 import AdminViewTabs from "../../components/AdminViewTabs.js";
 const cx = createScopedClassNames(styles);
 const FORCE_BYPASS_BLOCKED_FIELDS = new Set(["businessName", "category", "location"]);
@@ -648,6 +649,21 @@ const BusinessList = React.memo(() => {
     }));
     updateLiveValidation(nextData, name);
   };
+  const handlePlaceSelect = useCallback((place) => {
+    const nextData = {
+      ...formData,
+      street: place.street || formData.street,
+      pincode: place.pincode || formData.pincode,
+      location: place.location || formData.location,
+      geoLocation: {
+        type: "Point",
+        coordinates: [String(place.lng), String(place.lat)]
+      }
+    };
+    setFormData(nextData);
+    updateLiveValidation(nextData, ["street", "pincode", "location", "geoLatitude", "geoLongitude"]);
+  }, [formData]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleGeoCoordinateChange = (coordinateIndex, value) => {
     clearForceBypassForFields(coordinateIndex === 1 ? "geoLatitude" : "geoLongitude");
     const coordinates = Array.isArray(formData.geoLocation?.coordinates) ? [...formData.geoLocation.coordinates] : ["", ""];
@@ -1583,6 +1599,14 @@ const BusinessList = React.memo(() => {
 
             <div className={cx("form-divider")}></div>
             <SectionHeader title="Address Details" subtitle="Business location information" />
+
+            <div className={cx("form-input-group col-span-all")}>
+              <label className={cx("input-label")}>🔍 Search Address (Auto-fill)</label>
+              <GooglePlacesInput onPlaceSelect={handlePlaceSelect} placeholder="Type business name or address to search..." />
+              <small style={{ color: "#888", marginTop: "4px", display: "block" }}>
+                Selecting from suggestions auto-fills street, pincode, location and coordinates.
+              </small>
+            </div>
 
             <div className={cx("form-input-group")}>
               <label htmlFor="plotNumber" className={cx("input-label")}>📍 Plot Number</label>
