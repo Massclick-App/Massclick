@@ -887,7 +887,7 @@ const BusinessDetail = React.memo(() => {
 
       {showFullGallery && <FullScreenGallery images={galleryImageSrcs} initialIndex={currentSlideIndex} onClose={() => setShowFullGallery(false)} />}
 
-      <div className={cx("bottom-sections-wrapper")}>
+      <div className={cx("cardDetails-bottom-sections-wrapper")}>
         <PopularCategoriesLink />
         <Footer />
       </div>

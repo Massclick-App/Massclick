@@ -5,18 +5,46 @@
   --eventDetails-muted: #667085;
   --eventDetails-line: #e7ebf0;
   --eventDetails-soft: #fff7ed;
+  --eventDetails-shell: min(calc(100% - clamp(32px, 6vw, 72px)), 1320px);
   width: 100%;
   min-height: 100vh;
-  background: #f8fafc;
+  background:
+    linear-gradient(180deg, #f3f6fb 0, #f8fafc 320px),
+    #f8fafc;
   color: var(--eventDetails-ink);
   font-family: "Inter", system-ui, sans-serif;
+  overflow-x: hidden;
 }
 
 .eventDetails-hero {
   position: relative;
-  min-height: clamp(420px, 56vw, 620px);
+  min-height: clamp(500px, 48vw, 660px);
   overflow: hidden;
-  background: #111827;
+  background:
+    radial-gradient(circle at 72% 20%, rgba(255, 122, 0, 0.18), transparent 30%),
+    linear-gradient(135deg, #0b1220 0%, #131b2d 54%, #1b273b 100%);
+  isolation: isolate;
+}
+
+.eventDetails-hero::before,
+.eventDetails-hero::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  pointer-events: none;
+}
+
+.eventDetails-hero::before {
+  z-index: 1;
+  background:
+    linear-gradient(90deg, rgba(5, 10, 21, 0.94) 0%, rgba(8, 13, 26, 0.88) 32%, rgba(8, 13, 26, 0.52) 62%, rgba(8, 13, 26, 0.24) 100%),
+    linear-gradient(0deg, rgba(5, 10, 21, 0.72) 0%, rgba(5, 10, 21, 0.18) 52%, rgba(5, 10, 21, 0.4) 100%);
+}
+
+.eventDetails-hero::after {
+  z-index: 2;
+  background:
+    linear-gradient(180deg, transparent 0%, rgba(248, 250, 252, 0) 72%, #f8fafc 100%);
 }
 
 .eventDetails-heroImage,
@@ -29,6 +57,9 @@
 
 .eventDetails-heroImage {
   object-fit: cover;
+  object-position: center top;
+  filter: saturate(1.06) contrast(1.02);
+  transform: scale(1.015);
 }
 
 .eventDetails-heroFallback {
@@ -40,12 +71,11 @@
   z-index: 1;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: flex-start;
   min-height: inherit;
-  padding: clamp(20px, 4vw, 56px);
-  background:
-    linear-gradient(90deg, rgba(8, 13, 26, 0.82), rgba(8, 13, 26, 0.38), rgba(8, 13, 26, 0.18)),
-    linear-gradient(0deg, rgba(8, 13, 26, 0.84), rgba(8, 13, 26, 0.06));
+  width: var(--eventDetails-shell);
+  margin: 0 auto;
+  padding: clamp(32px, 4vw, 58px) 0 clamp(112px, 10vw, 150px);
 }
 
 .eventDetails-backButton,
@@ -66,52 +96,75 @@
 
 .eventDetails-backButton {
   width: fit-content;
-  min-height: 40px;
-  padding: 0 14px;
-  background: rgba(255, 255, 255, 0.14);
+  min-height: 42px;
+  padding: 0 16px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.12);
   color: #fff;
-  backdrop-filter: blur(12px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(16px);
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.eventDetails-backButton:hover {
+  border-color: rgba(255, 255, 255, 0.34);
+  background: rgba(255, 255, 255, 0.18);
+  transform: translateY(-1px);
 }
 
 .eventDetails-titleBlock {
-  max-width: 900px;
+  width: min(100%, 720px);
+  margin-top: clamp(78px, 12vw, 150px);
   color: #fff;
 }
 
 .eventDetails-category {
   display: inline-flex;
-  margin-bottom: 14px;
-  padding: 8px 12px;
+  align-items: center;
+  min-height: 38px;
+  margin-bottom: 18px;
+  padding: 0 14px;
   border-radius: 999px;
-  background: var(--eventDetails-orange);
-  font-size: 0.82rem;
+  background: linear-gradient(135deg, var(--eventDetails-orange), #ff9a2b);
+  box-shadow: 0 12px 28px rgba(255, 122, 0, 0.28);
+  color: #fff;
+  font-size: 0.78rem;
   font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1.1;
   text-transform: uppercase;
 }
 
 .eventDetails-titleBlock h1 {
   margin: 0;
-  max-width: 15ch;
-  font-size: clamp(2.1rem, 7vw, 5.7rem);
-  line-height: 0.95;
+  max-width: 14ch;
+  color: #fff;
+  text-shadow: 0 16px 42px rgba(0, 0, 0, 0.42);
+  font-size: clamp(2.8rem, 5.2vw, 5.3rem);
+  line-height: 0.98;
   letter-spacing: 0;
+  overflow-wrap: anywhere;
 }
 
 .eventDetails-titleBlock p {
-  max-width: 760px;
-  margin: 18px 0 0;
-  color: rgba(255, 255, 255, 0.88);
-  font-size: clamp(1rem, 2vw, 1.25rem);
+  max-width: 660px;
+  margin: 22px 0 0;
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow: 0 8px 24px rgba(0, 0, 0, 0.34);
+  font-size: clamp(1rem, 1.25vw, 1.16rem);
   line-height: 1.6;
 }
 
 .eventDetails-content {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 360px;
-  gap: 24px;
-  width: min(100% - 32px, 1320px);
-  margin: -68px auto 0;
-  padding-bottom: 56px;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+  gap: clamp(16px, 2vw, 24px);
+  width: var(--eventDetails-shell);
+  margin: clamp(-92px, -7vw, -64px) auto 0;
+  padding-bottom: clamp(36px, 5vw, 64px);
   position: relative;
   z-index: 2;
 }
@@ -143,7 +196,7 @@
   display: flex;
   gap: 12px;
   min-width: 0;
-  padding: 18px;
+  padding: clamp(14px, 1.6vw, 18px);
   background: #fff;
 }
 
@@ -178,7 +231,7 @@
 
 .eventDetails-section {
   margin-top: 20px;
-  padding: 24px;
+  padding: clamp(18px, 2vw, 24px);
 }
 
 .eventDetails-section h2 {
@@ -222,13 +275,13 @@
 
 .eventDetails-aside {
   position: sticky;
-  top: 20px;
+  top: 16px;
   align-self: start;
 }
 
 .eventDetails-ticketCard,
 .eventDetails-statusCard {
-  padding: 24px;
+  padding: clamp(18px, 2vw, 24px);
 }
 
 .eventDetails-ticketIcon {
@@ -255,7 +308,9 @@
   display: block;
   margin: 8px 0 18px;
   color: var(--eventDetails-ink);
-  font-size: 2rem;
+  font-size: clamp(1.65rem, 2.2vw, 2rem);
+  line-height: 1.15;
+  overflow-wrap: anywhere;
 }
 
 .eventDetails-primaryAction,
@@ -345,20 +400,50 @@
 }
 
 @media (min-width: 1600px) {
+  .eventDetails-page {
+    --eventDetails-shell: min(calc(100% - 80px), 1480px);
+  }
+
   .eventDetails-content {
-    max-width: 1480px;
+    width: var(--eventDetails-shell);
   }
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 1200px) {
+  .eventDetails-content {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 320px);
+  }
+}
+
+@media (max-width: 1024px) {
+  .eventDetails-hero {
+    min-height: clamp(500px, 62vw, 620px);
+  }
+
+  .eventDetails-hero::before {
+    background:
+      linear-gradient(90deg, rgba(5, 10, 21, 0.92) 0%, rgba(8, 13, 26, 0.76) 54%, rgba(8, 13, 26, 0.28) 100%),
+      linear-gradient(0deg, rgba(5, 10, 21, 0.76) 0%, rgba(5, 10, 21, 0.18) 54%, rgba(5, 10, 21, 0.38) 100%);
+  }
+
+  .eventDetails-titleBlock {
+    margin-top: clamp(80px, 14vw, 128px);
+  }
+
+  .eventDetails-titleBlock h1 {
+    max-width: 16ch;
+    font-size: clamp(2.55rem, 7vw, 4.4rem);
+  }
+
   .eventDetails-content {
     grid-template-columns: 1fr;
+    margin-top: -76px;
   }
 
   .eventDetails-aside {
     position: static;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(260px, 0.7fr);
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 0.8fr);
     gap: 16px;
   }
 
@@ -368,43 +453,127 @@
 }
 
 @media (max-width: 820px) {
-  .eventDetails-summaryGrid,
+  .eventDetails-summaryGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .eventDetails-twoColumn,
   .eventDetails-aside {
     grid-template-columns: 1fr;
   }
 
   .eventDetails-content {
-    width: min(100% - 24px, 760px);
+    width: min(calc(100% - 24px), 760px);
     margin-top: -44px;
+  }
+
+  .eventDetails-titleBlock p {
+    max-width: 100%;
   }
 }
 
-@media (max-width: 520px) {
+@media (max-width: 640px) {
+  .eventDetails-page {
+    --eventDetails-shell: calc(100% - 20px);
+  }
+
   .eventDetails-hero {
-    min-height: 520px;
+    min-height: 540px;
+  }
+
+  .eventDetails-heroImage {
+    object-position: center top;
+  }
+
+  .eventDetails-hero::before {
+    background:
+      linear-gradient(90deg, rgba(5, 10, 21, 0.88), rgba(8, 13, 26, 0.68)),
+      linear-gradient(0deg, rgba(5, 10, 21, 0.9) 0%, rgba(5, 10, 21, 0.22) 56%, rgba(5, 10, 21, 0.48) 100%);
   }
 
   .eventDetails-heroOverlay {
-    padding: 16px;
+    padding: 18px 0 112px;
+  }
+
+  .eventDetails-backButton {
+    min-height: 38px;
+    padding: 0 13px;
+    font-size: 0.9rem;
+  }
+
+  .eventDetails-titleBlock {
+    margin-top: 112px;
+  }
+
+  .eventDetails-summaryGrid {
+    grid-template-columns: 1fr;
   }
 
   .eventDetails-titleBlock h1 {
-    font-size: 2.35rem;
+    max-width: 100%;
+    font-size: clamp(2.2rem, 11vw, 3.35rem);
+    line-height: 1.05;
+  }
+
+  .eventDetails-titleBlock p {
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    font-size: 0.98rem;
+  }
+
+  .eventDetails-category {
+    max-width: 100%;
+    font-size: 0.74rem;
+    overflow-wrap: anywhere;
+    text-align: center;
   }
 
   .eventDetails-content {
-    width: calc(100% - 16px);
+    width: var(--eventDetails-shell);
+    margin-top: -88px;
     padding-bottom: 28px;
   }
 
-  .eventDetails-section,
-  .eventDetails-ticketCard,
-  .eventDetails-statusCard {
-    padding: 18px;
+  .eventDetails-infoItem {
+    align-items: flex-start;
   }
 
-  .eventDetails-infoItem {
-    padding: 14px;
+  .eventDetails-infoIcon,
+  .eventDetails-ticketIcon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .eventDetails-section h2 {
+    font-size: 1.15rem;
+  }
+
+  .eventDetails-section p {
+    font-size: 0.95rem;
+    line-height: 1.65;
+  }
+}
+
+@media (max-width: 380px) {
+  .eventDetails-hero {
+    min-height: 510px;
+  }
+
+  .eventDetails-backButton {
+    min-height: 36px;
+    padding: 0 12px;
+  }
+
+  .eventDetails-titleBlock h1 {
+    font-size: 2rem;
+  }
+
+  .eventDetails-primaryAction,
+  .eventDetails-secondaryAction,
+  .eventDetails-empty button {
+    min-height: 44px;
+    font-size: 0.9rem;
   }
 }
