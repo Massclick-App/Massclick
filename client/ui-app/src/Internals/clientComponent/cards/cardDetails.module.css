@@ -28,6 +28,27 @@
   width: 100%;
 }
 
+.cardDetails-bottom-sections-wrapper {
+  --section-max-width: var(--bc-max-width);
+  --section-padding-h: clamp(16px, 3vw, 44px);
+  --section-radius: 8px;
+  --section-shadow: 0 10px 28px rgba(15, 23, 42, 0.07);
+  background: var(--bc-page);
+  box-sizing: border-box;
+  padding: 18px max(22px, calc((100% - var(--bc-max-width)) / 2)) 0;
+  width: 100%;
+}
+
+.cardDetails-bottom-sections-wrapper > * {
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
+}
+
+.cardDetails-bottom-sections-wrapper > *:not(:last-child) {
+  margin-bottom: 18px;
+}
+
 .business-CardDetails-heroSection,
 .business-CardDetails-mainGrid {
   margin: 0 auto;
@@ -943,6 +964,10 @@
     padding: 20px 18px 46px;
   }
 
+  .cardDetails-bottom-sections-wrapper {
+    padding: 18px 18px 0;
+  }
+
   .business-CardDetails-heroName {
     font-size: 2rem;
   }
@@ -1382,6 +1407,10 @@
     padding: 16px 18px 38px;
   }
 
+  .cardDetails-bottom-sections-wrapper {
+    padding: 16px 18px 0;
+  }
+
   .business-CardDetails-mainGrid {
     grid-template-columns: 1fr;
   }
@@ -1411,6 +1440,10 @@
 @media (max-width: 767px) {
   .business-CardDetails-pageWrapper {
     padding: 12px 14px 32px;
+  }
+
+  .cardDetails-bottom-sections-wrapper {
+    padding: 12px 14px 0;
   }
 
   .business-CardDetails-mainImageContainer {
@@ -1506,6 +1539,10 @@
 
 @media (max-width: 420px) {
   .business-CardDetails-pageWrapper {
+    padding-inline: 12px;
+  }
+
+  .cardDetails-bottom-sections-wrapper {
     padding-inline: 12px;
   }
 
