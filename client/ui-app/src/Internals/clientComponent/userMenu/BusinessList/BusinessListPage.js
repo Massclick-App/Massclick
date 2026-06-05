@@ -1,39 +1,32 @@
-
-import CardsSearch from '../../CardsSearch/CardsSearch'
-import Footer from '../../footer/footer'
-import './BusinessList.css'
+import { createScopedClassNames } from "../../../../utils/createScopedClassNames";
+import CardsSearch from '../../CardsSearch/CardsSearch';
+import Footer from '../../footer/footer';
+import styles from "./BusinessList.module.css";
+const cx = createScopedClassNames(styles);
 export default function BusinessListPage() {
-
-    const handlePayNow = () => {
-  
+  const handlePayNow = () => {
     console.log("Initiating payment via PhonePe for MassClick Business Listing...");
     alert("Redirecting to PhonePe for secure payment...");
-  
   };
-  return (
-  <>
-  <CardsSearch /><br/><br/><br/>
-      <div className="cta-page-container">
-        <div className="listing-cta-card">
-          <h3 className="cta-title">List Your Business on</h3>
-          <h2 className="cta-brand">MassClick</h2>
+  return <>
+  <CardsSearch /><br /><br /><br />
+      <div className={cx("cta-page-container")}>
+        <div className={cx("listing-cta-card")}>
+          <h3 className={cx("cta-title")}>List Your Business on</h3>
+          <h2 className={cx("cta-brand")}>MassClick</h2>
 
-          <div className="cta-price-details">
-            <p className="cta-price-value">Just <span className="currency">₹</span> 99/-</p>
-            <p className="cta-tax-info">+ GST</p>
+          <div className={cx("cta-price-details")}>
+            <p className={cx("cta-price-value")}>Just <span className={cx("currency")}>₹</span> 99/-</p>
+            <p className={cx("cta-tax-info")}>+ GST</p>
           </div>
 
-          <button
-            onClick={handlePayNow}
-            className="btn-pay-now"
-          >
+          <button onClick={handlePayNow} className={cx("btn-pay-now")}>
             Pay Now
           </button>
 
-          <p className="payment-note">Secure payment powered by PhonePe & other gateways.</p>
+          <p className={cx("payment-note")}>Secure payment powered by PhonePe & other gateways.</p>
         </div>
       </div>    
       <Footer />
-      </>
-  )
+      </>;
 }

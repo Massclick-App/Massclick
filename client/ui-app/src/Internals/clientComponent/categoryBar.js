@@ -1,402 +1,264 @@
+import { createScopedClassNames } from "../../utils/createScopedClassNames";
 import React, { useState, useEffect, useMemo } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { viewOtpUser } from "../../redux/actions/otpAction.js";
 import { useDrawer } from "./Drawer/drawerContext.js";
-import {
-    Select,
-    FormControl,
-    IconButton,
-    Menu,
-    MenuItem,
-    Avatar,
-} from "@mui/material";
+import { IconButton, Menu, MenuItem, Avatar } from "@mui/material";
 import Badge from "@mui/material/Badge";
-import {
-    Notifications as NotificationsIcon,
-    Campaign as CampaignIcon,
-    Mail as MailIcon,
-    Menu as MenuIcon,
-    AccountCircle as AccountCircleIcon,
-    Close as CloseIcon,
-    ExitToApp as ExitToAppIcon,
-} from "@mui/icons-material";
+import { Notifications as NotificationsIcon, Campaign as CampaignIcon, Mail as MailIcon, Menu as MenuIcon, AccountCircle as AccountCircleIcon, ExitToApp as ExitToAppIcon } from "@mui/icons-material";
 import MassclickIndiaLogo from "../../assets/Massclick-India.webp";
 import AddBusinessModal from "./AddBusinessModel.js";
 import AppRegistrationIcon from '@mui/icons-material/AppRegistration';
 import LoginIcon from '@mui/icons-material/Login';
 import DashboardIcon from "@mui/icons-material/Dashboard";
-import AccountBoxIcon from "@mui/icons-material/AccountBox";
 import BusinessCenterIcon from "@mui/icons-material/BusinessCenter";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
-import BookmarkBorderIcon from "@mui/icons-material/BookmarkBorder";
 import EditIcon from "@mui/icons-material/Edit";
-import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
-import NotificationsActiveIcon from "@mui/icons-material/NotificationsActive";
 import HeadsetMicIcon from "@mui/icons-material/HeadsetMic";
-import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import PolicyIcon from "@mui/icons-material/Policy";
 import FeedbackIcon from "@mui/icons-material/Feedback";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
-import { Divider } from "@mui/material";
-
 import DashboardPage from "../clientComponent/userMenu/DashboardPage/Dashboard.js";
-import AccountPage from "../clientComponent/userMenu/AccountPage/AccountPage.js";
-import BusinessListPage from "../clientComponent/userMenu/BusinessList/BusinessListPage.js";
 import FavoritesPage from "../clientComponent/userMenu/FavouritePage/FavouritePage.js";
-import SavedPage from "../clientComponent/userMenu/SavedPage/SavedPage.js";
 import EditProfilePage from "../clientComponent/userMenu/EditProfile/EditProfilePage.js";
-import MyTransactionPage from "../clientComponent/userMenu/MyTransaction/MyTransaction.js";
-import NotificationsPage from "../clientComponent/userMenu/NotificationPage/NotificaPage.js";
 import CustomerServicePage from "../clientComponent/userMenu/CustomerService/CustomerServicePage.js";
-import InvestorRelationsPage from "../clientComponent/userMenu/InvesterRelation/InvestorRelationPage.js";
 import PolicyPage from "../clientComponent/userMenu/PolicyPage/PolicyPage.js";
 import FeedbackPage from "../clientComponent/userMenu/FeedbackPage/FeedBackPage.js";
 import HelpPage from "../clientComponent/userMenu/HelpPage/HelpPage.js";
 import LeadsNotificationModal from "./leadsNotification/leadsNotification.js";
 import { fetchMatchedLeads } from "../../redux/actions/leadsAction.js";
-
-import './categoryBar.css'
+import styles from "./categoryBar.module.css";
 import MRPPage from "./MRP/mrp.js";
-
-const categories = [
-    { name: "Leads", icon: <MailIcon /> },
-    // { name: "MNI", icon: <CorporateFareIcon /> },
-    { name: "Advertise", icon: <CampaignIcon /> },
-    { name: "Business Enquiry", icon: <AppRegistrationIcon /> },
-];
-
-const languages = [
-    { name: "Tamil", nativeName: "தமிழ்" },
-    { name: "English", nativeName: "English" },
-    { name: "Hindi", nativeName: "हिन्दी" },
-    { name: "Kannada", nativeName: "ಕನ್ನಡ" },
-    { name: "Telugu", nativeName: "తెలుగు" },
-];
-
-export const userMenuItems = [
-    { name: "User Dashboard", path: "/user_dashboard", icon: <DashboardIcon color="action" />, component: DashboardPage },
-    { name: "User Edit Profile", path: "/user_edit-profile", icon: <EditIcon color="action" />, component: EditProfilePage },
-    // { name: "User Account", path: "/user_account", icon: <AccountBoxIcon color="action" />, component: AccountPage },
-    { name: "MNI", path: "/user_mni", icon: <BusinessCenterIcon color="action" />, component: MRPPage },
-    { name: "User Favorites", path: "/user_favorites", icon: <FavoriteBorderIcon color="action" />, component: FavoritesPage },
-    // { name: "User Saved", path: "/user_saved", icon: <BookmarkBorderIcon color="action" />, component: SavedPage },
-    // { name: "User My Transaction", path: "/user_my-transaction", icon: <AccountBalanceWalletIcon color="action" />, component: MyTransactionPage },
-    // { name: "User Notifications", path: "/user_notifications", icon: <NotificationsActiveIcon color="action" />, component: NotificationsPage },
-    { name: "User Customer Service", path: "/user_customer-service", icon: <HeadsetMicIcon color="action" />, component: CustomerServicePage },
-    // { name: "User Investor Relations", path: "/user_investor-relations", icon: <TrendingUpIcon color="action" />, component: InvestorRelationsPage },
-    { name: "User Policy", path: "/user_policy", icon: <PolicyIcon color="action" />, component: PolicyPage },
-    { name: "User Feedback", path: "/user_feedback", icon: <FeedbackIcon color="action" />, component: FeedbackPage },
-    { name: "User Help", path: "/user_help", icon: <HelpOutlineIcon color="action" />, component: HelpPage },
-    // { name: "Change Language", isLanguageSwitch: true, icon: <LanguageIcon color="action" /> },
-    { name: "Logout", isLogout: true, path: "/", icon: <ExitToAppIcon color="action" /> },
-];
-
+const cx = createScopedClassNames(styles);
+export const isBusinessPeopleUser = (user = {}) => user?.businessPeople === true;
+export const getUserMenuLabel = (item, user = {}) => {
+  if (item.path === "/user_edit-profile" && isBusinessPeopleUser(user)) {
+    return "Edit Business";
+  }
+  return item.name.startsWith("User ") ? item.name.replace("User ", "") : item.name;
+};
+const categories = [{
+  name: "Leads",
+  icon: <MailIcon />
+},
+// { name: "MNI", icon: <CorporateFareIcon /> },
+{
+  name: "Advertise",
+  icon: <CampaignIcon />
+}, {
+  name: "Business Enquiry",
+  icon: <AppRegistrationIcon />
+}];
+export const userMenuItems = [{
+  name: "User Dashboard",
+  path: "/user_dashboard",
+  icon: <DashboardIcon color="action" />,
+  component: DashboardPage
+}, {
+  name: "User Edit Profile",
+  path: "/user_edit-profile",
+  icon: <EditIcon color="action" />,
+  component: EditProfilePage
+},
+// { name: "User Account", path: "/user_account", icon: <AccountBoxIcon color="action" />, component: AccountPage },
+{
+  name: "MNI",
+  path: "/user_mni",
+  icon: <BusinessCenterIcon color="action" />,
+  component: MRPPage
+}, {
+  name: "User Favorites",
+  path: "/user_favorites",
+  icon: <FavoriteBorderIcon color="action" />,
+  component: FavoritesPage
+},
+// { name: "User Saved", path: "/user_saved", icon: <BookmarkBorderIcon color="action" />, component: SavedPage },
+// { name: "User My Transaction", path: "/user_my-transaction", icon: <AccountBalanceWalletIcon color="action" />, component: MyTransactionPage },
+// { name: "User Notifications", path: "/user_notifications", icon: <NotificationsActiveIcon color="action" />, component: NotificationsPage },
+{
+  name: "User Customer Service",
+  path: "/user_customer-service",
+  icon: <HeadsetMicIcon color="action" />,
+  component: CustomerServicePage
+},
+// { name: "User Investor Relations", path: "/user_investor-relations", icon: <TrendingUpIcon color="action" />, component: InvestorRelationsPage },
+{
+  name: "User Policy",
+  path: "/user_policy",
+  icon: <PolicyIcon color="action" />,
+  component: PolicyPage
+}, {
+  name: "User Feedback",
+  path: "/user_feedback",
+  icon: <FeedbackIcon color="action" />,
+  component: FeedbackPage
+}, {
+  name: "User Help",
+  path: "/user_help",
+  icon: <HelpOutlineIcon color="action" />,
+  component: HelpPage
+},
+// { name: "Change Language", isLanguageSwitch: true, icon: <LanguageIcon color="action" /> },
+{
+  name: "Logout",
+  isLogout: true,
+  path: "/",
+  icon: <ExitToAppIcon color="action" />
+}];
 const CategoryBar = () => {
-    const navigate = useNavigate();
-    const location = useLocation();
-    const dispatch = useDispatch();
-    const { openDrawer } = useDrawer();
-
-    const [selectedLanguage, setSelectedLanguage] = useState("English");
-    const [anchorEl, setAnchorEl] = useState(null);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [isLoggedIn, setIsLoggedIn] = useState(false);
-    const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-    const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
-
-    const otpState = useSelector((state) => state.otpReducer) || {};
-    const { viewResponse } = otpState;
-    const authUser = useSelector((state) => state.otpReducer?.viewResponse?.user) || {};
-
-    const storedAuthUser = useMemo(() => {
-        try {
-            return JSON.parse(localStorage.getItem("authUser") || "{}") || {};
-        } catch {
-            return {};
-        }
-    }, []);
-
-    const userData = viewResponse?.user || authUser || storedAuthUser || {};
-    const userName = userData?.userName || userData?.name || '';
-    const profileImageUrl =
-        userData?.userProfile || userData?.profileImage || userData?.avatar || "";
-
-    const { leads: leadsData, loading } = useSelector(
-        (state) => state.leads
-    );
-
-    useEffect(() => {
-        const mobile = localStorage.getItem("mobileNumber");
-        if (mobile) {
-            dispatch(viewOtpUser(mobile));
-        }
-        dispatch(fetchMatchedLeads());
-    }, [dispatch]);
-
-    const handleMenuClick = (event) => setAnchorEl(event.currentTarget);
-    const handleMenuClose = () => setAnchorEl(null);
-    const handleOpenModal = () => setIsModalOpen(true);
-    const handleCloseModal = () => setIsModalOpen(false);
-
-    const checkLogin = () => {
-        const token = localStorage.getItem("authToken");
-        setIsLoggedIn(!!token);
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const {
+    openDrawer
+  } = useDrawer();
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
+  const otpState = useSelector(state => state.otp) || {};
+  const {
+    viewResponse
+  } = otpState;
+  const authUser = useSelector(state => state.otp?.viewResponse) || {};
+  const storedAuthUser = useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem("authUser") || "{}") || {};
+    } catch {
+      return {};
+    }
+  }, []);
+  const userData = viewResponse || authUser || storedAuthUser || {};
+  const userName = userData?.userName || userData?.name || '';
+  const profileImageUrl = userData?.userProfile || userData?.profileImage || userData?.avatar || "";
+  const {
+    leads: leadsData
+  } = useSelector(state => state.leads);
+  useEffect(() => {
+    const mobile = localStorage.getItem("mobileNumber");
+    if (mobile) {
+      dispatch(viewOtpUser(mobile));
+    }
+    dispatch(fetchMatchedLeads());
+  }, [dispatch]);
+  const handleMenuClick = event => setAnchorEl(event.currentTarget);
+  const handleMenuClose = () => setAnchorEl(null);
+  const checkLogin = () => {
+    const token = localStorage.getItem("authToken");
+    setIsLoggedIn(!!token);
+  };
+  useEffect(() => {
+    checkLogin();
+    window.addEventListener("storage", checkLogin);
+    window.addEventListener("authChange", checkLogin);
+    return () => {
+      window.removeEventListener("storage", checkLogin);
+      window.removeEventListener("authChange", checkLogin);
     };
+  }, []);
+  const handleCategoryClick = name => {
+    if (name === "Leads") {
+      if (!localStorage.getItem("authUser")) {
+        setIsModalOpen(true);
+        return;
+      }
+      navigate("/leads");
+    } else if (name === "Advertise") {
+      if (!localStorage.getItem("authUser")) {
+        setIsModalOpen(true);
+        return;
+      }
+      navigate("/advertise");
+    } else if (name === "MNI") {
+      if (!localStorage.getItem("authUser")) {
+        setIsModalOpen(true);
+        return;
+      }
+      navigate("/mni");
+    } else if (name === "Business Enquiry") {
+      if (!localStorage.getItem("authUser")) {
+        setIsModalOpen(true);
+        return;
+      }
+      navigate("/business-enquiry");
+    }
+  };
+  return <header className={cx("categoryBarContainer")}>
+            <div className={cx("categoryBarContent")}>
 
-    const handleLogout = () => {
-        localStorage.removeItem("authToken");
-        localStorage.removeItem("mobileNumber");
-        localStorage.removeItem("authUser");
-        setIsLoggedIn(false);
-        setIsDrawerOpen(false);
-        navigate("/");
-        window.dispatchEvent(new Event('authChange'));
-    };
-
-    useEffect(() => {
-        checkLogin();
-        window.addEventListener("storage", checkLogin);
-        window.addEventListener("authChange", checkLogin);
-        const handleOpenDrawer = () => setIsDrawerOpen(true);
-        window.addEventListener("openUserDrawer", handleOpenDrawer);
-
-        return () => {
-            window.removeEventListener("storage", checkLogin);
-            window.removeEventListener("authChange", checkLogin);
-            window.removeEventListener("openUserDrawer", handleOpenDrawer);
-        };
-    }, []);
-
-    const handleDrawerToggle = (open) => (event) => {
-        if (event && event.type === "keydown" && (event.key === "Tab" || event.key === "Shift")) {
-            return;
-        }
-        setIsDrawerOpen(open);
-    };
-
-    const handleDrawerItemClick = (item) => {
-        setIsDrawerOpen(false);
-        if (item.isLogout) {
-            handleLogout();
-        } else if (item.path) {
-            navigate(item.path);
-        }
-    };
-
-    const handleCategoryClick = (name) => {
-        if (name === "Leads") {
-            if (!localStorage.getItem("authUser")) {
-                setIsModalOpen(true);
-                return;
-            }
-            navigate("/leads");
-        } else if (name === "Advertise") {
-            if (!localStorage.getItem("authUser")) {
-                setIsModalOpen(true);
-                return;
-            }
-            navigate("/advertise");
-        } else if (name === "MNI") {
-            if (!localStorage.getItem("authUser")) {
-                setIsModalOpen(true);
-                return;
-            }
-            navigate("/mni");
-        } else if (name === "Business Enquiry") {
-            if (!localStorage.getItem("authUser")) {
-                setIsModalOpen(true);
-                return;
-            }
-            navigate("/business-enquiry");
-        }
-    };
-
-    const drawerList = (currentPath) => (
-        <div className="drawerList" role="presentation" onClick={handleDrawerToggle(false)} onKeyDown={handleDrawerToggle(false)}>
-            <div className="drawerHeader">
-                <IconButton onClick={handleDrawerToggle(false)} className="closeButton">
-                    <CloseIcon />
-                </IconButton>
-                <div className="userInfo">
-                    <h3 className="userName">{userName || 'Guest User'}</h3>
-                    <p className="viewProfileText">Click to view profile</p>
-                </div>
-                <Avatar
-                    src={profileImageUrl}
-                    sx={{ width: 48, height: 48, ml: 2, bgcolor: '#F7941D' }}
-                >
-                    {userName ? userName[0].toUpperCase() : 'G'}
-                </Avatar>
-            </div>
-
-            <ul className="menuList">
-                {userMenuItems.map((item, index) => {
-                    const isActive = currentPath === item.path;
-                    const isDividerBefore = item.name === "User Edit Profile" || item.name === "User Policy";
-
-                    if (item.isLanguageSwitch) {
-                        return (
-                            <li key={item.name} className="languageSwitchItem">
-                                <div className="languageIconAndText">
-                                    <div className="menuIcon">{item.icon}</div>
-                                    <span className="menuText">{item.name}</span>
-                                </div>
-                                <FormControl size="small" className="languageSelectControl">
-                                    <Select
-                                        value={selectedLanguage}
-                                        onChange={(e) => setSelectedLanguage(e.target.value)}
-                                        onClick={(e) => e.stopPropagation()}
-                                        className="languageSelect"
-                                    >
-                                        {languages.map((lang) => (
-                                            <MenuItem key={lang.name} value={lang.name}>{lang.nativeName}</MenuItem>
-                                        ))}
-                                    </Select>
-                                </FormControl>
-                            </li>
-                        );
-                    }
-
-                    return (
-                        <React.Fragment key={index}>
-                            {isDividerBefore && <Divider className="menuDivider" />}
-                            <li
-                                className={`menuItem ${isActive ? 'active' : ''} ${item.isLogout ? 'logout' : ''}`}
-                                onClick={() => handleDrawerItemClick(item)}
-                            >
-                                <div className="menuIcon">{item.icon}</div>
-                                <span className="menuText">
-                                    {item.name.startsWith('User ') ? item.name.replace('User ', '') : item.name}
-                                </span>
-                            </li>
-                        </React.Fragment>
-                    );
-                })}
-            </ul>
-        </div>
-    );
-
-    return (
-        <header className="categoryBarContainer">
-            <div className="categoryBarContent">
-
-                <div className="logoGroup">
-                    <div className="logoWrapper">
-                        <img src="/header.png" alt="Massclick Logo" className="logoImage"  onClick={() => (window.location.href = "/")}/>
+                <div className={cx("logoGroup")}>
+                    <div className={cx("logoWrapper")}>
+                        <img src="/header.png" alt="Massclick Logo" className={cx("logoImage")} onClick={() => window.location.href = "/"} />
                     </div>
-                    <div className="brandingText">
-                        <img src={MassclickIndiaLogo} alt="Massclick India" className="brandLogo"  onClick={() => (window.location.href = "/")} />
+                    <div className={cx("brandingText")}>
+                        <img src={MassclickIndiaLogo} alt="Massclick India" className={cx("brandLogo")} onClick={() => window.location.href = "/"} />
                     </div>
                 </div>
 
-                <nav className="desktopNav">
-                    {/* <FormControl size="small" className="languageSelectControlDesktop">
-                        <Select
-                            value={selectedLanguage}
-                            onChange={(e) => setSelectedLanguage(e.target.value)}
-                            className="languageSelectDesktop"
-                        >
-                            {languages.map((lang) => (
-                                <MenuItem key={lang.name} value={lang.name}>
-                                    {lang.nativeName}
-                                </MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl> */}
-
-                    <div className="categoryButtons">
-                        {categories.map((category, index) => (
-                            <button
-                                key={index}
-                                className="categoryButton"
-                                onClick={() => handleCategoryClick(category.name)}
-                            >
+                <nav className={cx("desktopNav")}>
+                    <div className={cx("categoryButtons")}>
+                        {categories.map((category, index) => <button key={index} className={cx("categoryButton")} onClick={() => handleCategoryClick(category.name)}>
                                 {category.icon}
                                 <span>{category.name}</span>
-                            </button>
-                        ))}
+                            </button>)}
                     </div>
                 </nav>
 
-                <div className="actionButtons">
+                <div className={cx("actionButtons")}>
 
-                    <IconButton
-                        className="mobileMenuButton"
-                        onClick={handleMenuClick}
-                    >
+                    <IconButton className={cx("mobileMenuButton")} onClick={handleMenuClick}>
                         <MenuIcon />
                     </IconButton>
 
-                    {!isLoggedIn ? (
-                        <button
-                            className="authButton loginButton"
-                            onClick={() => setIsModalOpen(true)}
-                        >
+                    {!isLoggedIn ? <button className={cx("authButton loginButton")} onClick={() => setIsModalOpen(true)}>
                             <LoginIcon />
-                            <span className="loginText">Login / Sign Up</span>
-                        </button>
-                    ) : (
-                        <>
-                            <IconButton onClick={openDrawer} className="iconButtonPrimary">
-                                <Avatar
-                                    src={profileImageUrl}
-                                    sx={{ width: 34, height: 34, bgcolor: 'secondary.main' }}
-                                >
-                                    {userName ? userName[0].toUpperCase() : <AccountCircleIcon sx={{ color: 'white' }} />}
+                            <span className={cx("loginText")}>Login / Sign Up</span>
+                        </button> : <>
+                            <IconButton onClick={openDrawer} className={cx("iconButtonPrimary")}>
+                                <Avatar src={profileImageUrl} sx={{
+              width: 34,
+              height: 34,
+              bgcolor: 'secondary.main'
+            }}>
+                                    {userName ? userName[0].toUpperCase() : <AccountCircleIcon sx={{
+                color: 'white'
+              }} />}
                                 </Avatar>
                             </IconButton>
 
-                            <IconButton
-                                className="iconButtonPrimary"
-                                onClick={() => setIsNotificationModalOpen(true)}
-                            >
+                            <IconButton className={cx("iconButtonPrimary")} onClick={() => setIsNotificationModalOpen(true)}>
                                 <Badge badgeContent={leadsData.length} color="error">
                                     <NotificationsIcon />
                                 </Badge>
                             </IconButton>
-                        </>
-                    )}
+                        </>}
                 </div>
             </div>
 
             <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
-                {categories.map((category, index) => (
-                    <MenuItem
-                        key={index}
-                        onClick={() => handleCategoryClick(category.name)}
-                    >
+                {categories.map((category, index) => <MenuItem key={index} onClick={() => handleCategoryClick(category.name)}>
                         {category.icon}
-                        <span style={{ marginLeft: 10 }}>{category.name}</span>
-                    </MenuItem>
-                ))}
+                        <span style={{
+          marginLeft: 10
+        }}>{category.name}</span>
+                    </MenuItem>)}
             </Menu>
 
             <AddBusinessModal open={isModalOpen} handleClose={() => setIsModalOpen(false)} />
 
-            <LeadsNotificationModal
-                open={isNotificationModalOpen}
-                onClose={() => setIsNotificationModalOpen(false)}
-            />
-        </header>
-    );
+            <LeadsNotificationModal open={isNotificationModalOpen} onClose={() => setIsNotificationModalOpen(false)} />
+        </header>;
 };
-
 export default CategoryBar;
-
-
 export const categoryBarHelpers = {
-
-    checkLogin: () => {
-        const token = localStorage.getItem("authToken");
-        return !!token;
-    },
-
-    handleLogout: (navigate) => {
-        localStorage.removeItem("authToken");
-        localStorage.removeItem("mobileNumber");
-        window.dispatchEvent(new Event("authChange"));
-        navigate("/");
-    },
-
+  checkLogin: () => {
+    const token = localStorage.getItem("authToken");
+    return !!token;
+  },
+  handleLogout: navigate => {
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("mobileNumber");
+    window.dispatchEvent(new Event("authChange"));
+    navigate("/");
+  }
 };

@@ -32,6 +32,10 @@ import { getAllLocation } from "../../../redux/actions/locationAction.js";
 import { fetchSeoCategorySuggestions } from "../../../redux/actions/seoAction.js";
 
 import "react-quill/dist/quill.snow.css";
+import { createScopedClassNames } from "../../../utils/createScopedClassNames";
+import styles from "./seoPageContentBlog.module.css";
+
+const cx = createScopedClassNames(styles);
 
 export default function SeoPageContentForm({
   formData,
@@ -61,7 +65,6 @@ export default function SeoPageContentForm({
   const [locationSuggestions, setLocationSuggestions] = useState([]);
   const [categoryInput, setCategoryInput] = useState("");
   const [showCategorySuggestions, setShowCategorySuggestions] = useState(false);
-  const [categorySuggestions, setCategorySuggestions] = useState([]);
 
   // Content Blocks State
   const [contentBlocks, setContentBlocks] = useState(formData.contentBlocks || []);
@@ -554,23 +557,23 @@ export default function SeoPageContentForm({
   ];
 
   return (
-    <form className="seo-form" onSubmit={handleSubmit}>
+    <form className={cx("seo-form")} onSubmit={handleSubmit}>
       {/* ======================================
           META CARD
       ====================================== */}
-      <section className="meta-card premium-card">
-        <h2 className="section-title full-row">
+      <section className={cx("meta-card", "premium-card")}>
+        <h2 className={cx("section-title", "full-row")}>
           SEO Settings
         </h2>
 
         {fields.map((field) => (
-          <div className="floating-field" key={field.key}>
+          <div className={cx("floating-field")} key={field.key}>
             {field.key === "category" ? (
               <>
                 <input
                   value={categoryInput}
                   placeholder=" "
-                  className="seo-text-input"
+                  className={cx("seo-text-input")}
                   onChange={(e) => {
                     const value = e.target.value;
                     setCategoryInput(value);
@@ -585,11 +588,11 @@ export default function SeoPageContentForm({
                 />
                 <label>{field.label}</label>
                 {showCategorySuggestions && seoCategorySuggestions.length > 0 && (
-                  <ul className="category-suggestion-list">
+                  <ul className={cx("category-suggestion-list")}>
                     {seoCategorySuggestions.map((item) => (
                       <li
                         key={item._id}
-                        className="category-suggestion-item"
+                        className={cx("category-suggestion-item")}
                         onClick={() => {
                           setCategoryInput(item.category);
                           updateField("category", item.category);
@@ -619,7 +622,7 @@ export default function SeoPageContentForm({
                 <label>{field.label}</label>
 
                 {showLocationSuggest && locationSuggestions.length > 0 && (
-                  <ul className="category-suggestion-list">
+                  <ul className={cx("category-suggestion-list")}>
                     {locationSuggestions.map((loc) => (
                       <li
                         key={loc._id}
@@ -655,7 +658,7 @@ export default function SeoPageContentForm({
                 <label>{field.label}</label>
 
                 {field.limit && (
-                  <span className="char-count">
+                  <span className={cx("char-count")}>
                     {(formData[field.key] || "").length}/{field.limit}
                   </span>
                 )}
@@ -664,12 +667,12 @@ export default function SeoPageContentForm({
           </div>
         ))}
 
-        <div className="slug-preview full-row">
+        <div className={cx("slug-preview", "full-row")}>
           <strong>Slug:</strong> {slugPreview || "-"}
         </div>
 
-        <div className="floating-field full-row">
-          <div className="category-input-wrapper">
+        <div className={cx("floating-field", "full-row")}>
+          <div className={cx("category-input-wrapper")}>
             <input
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -678,12 +681,12 @@ export default function SeoPageContentForm({
             <label>Popular Business</label>
 
             {(formData.popularBusiness || []).length > 0 && (
-              <div className="selected-tags">
+              <div className={cx("selected-tags")}>
                 {formData.popularBusiness.map((item, i) => (
-                  <span className="tag" key={i}>
+                  <span className={cx("tag")} key={i}>
                     {item.businessName}
                     <span
-                      className="remove"
+                      className={cx("remove")}
                       onClick={() => {
                         const updated = formData.popularBusiness.filter(
                           (_, index) => index !== i
@@ -700,7 +703,7 @@ export default function SeoPageContentForm({
             )}
 
             {searchTerm && suggestions.length > 0 && (
-              <ul className="category-suggestion-list">
+              <ul className={cx("category-suggestion-list")}>
                 {suggestions.map((b, i) => (
                   <li
                     key={i}
@@ -727,8 +730,8 @@ export default function SeoPageContentForm({
           </div>
         </div>
 
-        <div className="full-row">
-          <div className="tags-box">
+        <div className={cx("full-row")}>
+          <div className={cx("tags-box")}>
             <input
               placeholder="Add tag and press Enter"
               onKeyDown={(e) => {
@@ -740,7 +743,7 @@ export default function SeoPageContentForm({
               }}
             />
 
-            <div className="selected-tags">
+            <div className={cx("selected-tags")}>
               {(formData.tags || []).map((tag) => (
                 <Chip
                   key={tag}
@@ -752,13 +755,13 @@ export default function SeoPageContentForm({
           </div>
         </div>
 
-        <div className="upload-row">
-          <div className="upload-box">
+        <div className={cx("upload-row")}>
+          <div className={cx("upload-box")}>
             <Button
               variant="contained"
               component="label"
               startIcon={<CloudUploadIcon />}
-              className="upload-btn primary"
+              className={cx("upload-btn", "primary")}
             >
               Upload Images
               <input
@@ -771,9 +774,9 @@ export default function SeoPageContentForm({
               />
             </Button>
 
-            <div className="preview-row">
+            <div className={cx("preview-row")}>
               {preview.map((img, i) => (
-                <div className="preview-item" key={i}>
+                <div className={cx("preview-item")} key={i}>
                   <Avatar src={img} />
                   <span onClick={() => removeImage(i)}>
                     x
@@ -783,12 +786,12 @@ export default function SeoPageContentForm({
             </div>
           </div>
 
-          <div className="upload-box">
+          <div className={cx("upload-box")}>
             <Button
               variant="contained"
               component="label"
               startIcon={<CloudUploadIcon />}
-              className="upload-btn secondary"
+              className={cx("upload-btn", "secondary")}
             >
               Upload Profile
               <input
@@ -802,18 +805,18 @@ export default function SeoPageContentForm({
             {profilePreview && (
               <Avatar
                 src={profilePreview}
-                className="profile-avatar"
+                className={cx("profile-avatar")}
               />
             )}
           </div>
 
-          <div className="upload-box">
+          <div className={cx("upload-box")}>
             <Tooltip title="Recommended size: 1200x630px for social media sharing">
               <Button
                 variant="contained"
                 component="label"
                 startIcon={<CloudUploadIcon />}
-                className="upload-btn secondary"
+                className={cx("upload-btn", "secondary")}
               >
                 Upload OG Image
                 <input
@@ -828,19 +831,19 @@ export default function SeoPageContentForm({
             {ogImagePreview && (
               <Avatar
                 src={ogImagePreview}
-                className="profile-avatar"
+                className={cx("profile-avatar")}
               />
             )}
           </div>
         </div>
       </section>
 
-      <section className="editor-card premium-card">
-        <h2 className="section-title">
+      <section className={cx("editor-card", "premium-card")}>
+        <h2 className={cx("section-title")}>
           Header Content
         </h2>
 
-        <div className="editor-wrapper">
+        <div className={cx("editor-wrapper")}>
           <ReactQuill
             value={formData.headerContent || ""}
             onChange={(val) =>
@@ -852,10 +855,10 @@ export default function SeoPageContentForm({
         </div>
       </section>
 
-      <section className="editor-card premium-card">
-        <div className="editor-header">
-          <h2 className="section-title">Page Content</h2>
-          <div className="editor-controls">
+      <section className={cx("editor-card", "premium-card")}>
+        <div className={cx("editor-header")}>
+          <h2 className={cx("section-title")}>Page Content</h2>
+          <div className={cx("editor-controls")}>
             <Tooltip title={previewMode ? "Edit Mode" : "Preview Mode"}>
               <IconButton size="small" onClick={() => setPreviewMode(!previewMode)} color={previewMode ? "primary" : "default"}>
                 {previewMode ? <VisibilityOffIcon /> : <PreviewIcon />}
@@ -864,7 +867,7 @@ export default function SeoPageContentForm({
           </div>
         </div>
         {!previewMode ? (
-          <div className="editor-wrapper">
+          <div className={cx("editor-wrapper")}>
             <ReactQuill
               value={formData.pageContent || ""}
               onChange={(val) => updateField("pageContent", val)}
@@ -873,15 +876,15 @@ export default function SeoPageContentForm({
             />
           </div>
         ) : (
-          <div className="preview-content" dangerouslySetInnerHTML={{ __html: formData.pageContent || "" }} />
+          <div className={cx("preview-content")} dangerouslySetInnerHTML={{ __html: formData.pageContent || "" }} />
         )}
       </section>
 
       {/* CONTENT BLOCKS SECTION */}
-      <section className="editor-card premium-card">
-        <div className="content-blocks-header">
-          <h2 className="section-title">Rich Content Blocks</h2>
-          <div className="block-actions">
+      <section className={cx("editor-card", "premium-card")}>
+        <div className={cx("content-blocks-header")}>
+          <h2 className={cx("section-title")}>Rich Content Blocks</h2>
+          <div className={cx("block-actions")}>
             <Button size="small" variant="outlined" onClick={() => setShowTableDialog(true)}>📊 Table</Button>
             <Button size="small" variant="outlined" onClick={() => setShowCodeDialog(true)}>💻 Code</Button>
             <Button size="small" variant="outlined" onClick={() => setShowVideoDialog(true)}>🎬 Video</Button>
@@ -896,25 +899,25 @@ export default function SeoPageContentForm({
           </div>
         </div>
         {contentBlocks.length === 0 ? (
-          <p className="empty-state">No content blocks yet. Add tables, code, videos, or callouts above.</p>
+          <p className={cx("empty-state")}>No content blocks yet. Add tables, code, videos, or callouts above.</p>
         ) : (
-          <div className="content-blocks-list">
+          <div className={cx("content-blocks-list")}>
             {contentBlocks.map((block, idx) => (
-              <div key={block.id} className="content-block">
-                <div className="block-header">
-                  <DragIndicatorIcon className="drag-handle" />
-                  <span className="block-type">{block.type.toUpperCase()}</span>
-                  <div className="block-actions-inline">
+              <div key={block.id} className={cx("content-block")}>
+                <div className={cx("block-header")}>
+                  <DragIndicatorIcon className={cx("drag-handle")} />
+                  <span className={cx("block-type")}>{block.type.toUpperCase()}</span>
+                  <div className={cx("block-actions-inline")}>
                     {idx > 0 && <IconButton size="small" onClick={() => moveBlock(idx, idx - 1)}>↑</IconButton>}
                     {idx < contentBlocks.length - 1 && <IconButton size="small" onClick={() => moveBlock(idx, idx + 1)}>↓</IconButton>}
                     <IconButton size="small" onClick={() => duplicateBlock(block.id)}>📋</IconButton>
                     <IconButton size="small" color="error" onClick={() => removeContentBlock(block.id)}><DeleteOutlineIcon /></IconButton>
                   </div>
                 </div>
-                <div className="block-content">
+                <div className={cx("block-content")}>
                   {block.type === "table" && (
-                    <div className="table-container">
-                      <table className="data-table">
+                    <div className={cx("table-container")}>
+                      <table className={cx("data-table")}>
                         <tbody>
                           {block.rows.map((row, rIdx) => (
                             <tr key={rIdx}>
@@ -930,50 +933,50 @@ export default function SeoPageContentForm({
                     </div>
                   )}
                   {block.type === "code" && (
-                    <div className="code-block-display">
-                      <div className="code-label">{block.language}</div>
+                    <div className={cx("code-block-display")}>
+                      <div className={cx("code-label")}>{block.language}</div>
                       <pre><code>{block.content}</code></pre>
                     </div>
                   )}
                   {block.type === "video" && (
-                    <div className="video-embed">
+                    <div className={cx("video-embed")}>
                       <iframe width="100%" height="400" src={block.url.includes("youtube.com") || block.url.includes("youtu.be") ? `https://www.youtube.com/embed/${block.url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/)?.[1]}` : block.url.includes("vimeo.com") ? `https://player.vimeo.com/video/${block.url.match(/vimeo\.com\/(\d+)/)?.[1]}` : block.url} frameBorder="0" allowFullScreen title="Embedded Video"></iframe>
                     </div>
                   )}
                   {block.type === "callout" && (
-                    <div className={`callout callout-${block.calloutType}`}>
-                      <span className="callout-icon">{block.calloutType === "info" && "ℹ️"}{block.calloutType === "warning" && "⚠️"}{block.calloutType === "success" && "✅"}{block.calloutType === "error" && "❌"}{block.calloutType === "tip" && "💡"}</span>
+                    <div className={cx("callout", `callout-${block.calloutType}`)}>
+                      <span className={cx("callout-icon")}>{block.calloutType === "info" && "ℹ️"}{block.calloutType === "warning" && "⚠️"}{block.calloutType === "success" && "✅"}{block.calloutType === "error" && "❌"}{block.calloutType === "tip" && "💡"}</span>
                       <p>{block.text}</p>
                     </div>
                   )}
                   {block.type === "statistics" && (
-                    <div className="statistics-grid">
+                    <div className={cx("statistics-grid")}>
                       {block.items.map((stat, idx) => (
-                        <div key={idx} className="stat-card">
-                          <div className="stat-value">{stat.value}</div>
-                          <div className="stat-label">{stat.label}</div>
+                        <div key={idx} className={cx("stat-card")}>
+                          <div className={cx("stat-value")}>{stat.value}</div>
+                          <div className={cx("stat-label")}>{stat.label}</div>
                         </div>
                       ))}
                     </div>
                   )}
                   {block.type === "testimonial" && (
-                    <div className="testimonial-card">
-                      <div className="testimonial-text">"{block.text}"</div>
-                      <div className="testimonial-author">
+                    <div className={cx("testimonial-card")}>
+                      <div className={cx("testimonial-text")}>"{block.text}"</div>
+                      <div className={cx("testimonial-author")}>
                         {block.image && <img src={block.image} alt={block.name} />}
                         <div>
-                          <div className="author-name">{block.name}</div>
-                          {block.role && <div className="author-role">{block.role}</div>}
+                          <div className={cx("author-name")}>{block.name}</div>
+                          {block.role && <div className={cx("author-role")}>{block.role}</div>}
                         </div>
                       </div>
                     </div>
                   )}
                   {block.type === "steps" && (
-                    <div className="steps-container">
+                    <div className={cx("steps-container")}>
                       {block.items.map((step, idx) => (
-                        <div key={idx} className="step-item">
-                          <div className="step-number">{idx + 1}</div>
-                          <div className="step-content">
+                        <div key={idx} className={cx("step-item")}>
+                          <div className={cx("step-number")}>{idx + 1}</div>
+                          <div className={cx("step-content")}>
                             <h4>{step.title}</h4>
                             {step.description && <p>{step.description}</p>}
                           </div>
@@ -982,26 +985,26 @@ export default function SeoPageContentForm({
                     </div>
                   )}
                   {block.type === "accordion" && (
-                    <div className="accordion-container">
+                    <div className={cx("accordion-container")}>
                       {block.items.map((item, idx) => (
-                        <div key={idx} className="accordion-item">
-                          <div className="accordion-title"><span>{item.title}</span><span>▼</span></div>
-                          <div className="accordion-content">{item.content}</div>
+                        <div key={idx} className={cx("accordion-item")}>
+                          <div className={cx("accordion-title")}><span>{item.title}</span><span>▼</span></div>
+                          <div className={cx("accordion-content")}>{item.content}</div>
                         </div>
                       ))}
                     </div>
                   )}
                   {block.type === "button" && (
-                    <div className="button-container">
-                      <button className={`cta-button btn-${block.style}`}>{block.text}</button>
+                    <div className={cx("button-container")}>
+                      <button className={`${cx("cta-button", `btn-${block.style}`)} `}>{block.text}</button>
                       {block.url && <code>{block.url}</code>}
                     </div>
                   )}
                   {block.type === "features" && (
-                    <div className="features-grid">
+                    <div className={cx("features-grid")}>
                       {block.items.map((feature, idx) => (
-                        <div key={idx} className="feature-card">
-                          <div className="feature-icon">{feature.icon}</div>
+                        <div key={idx} className={cx("feature-card")}>
+                          <div className={cx("feature-icon")}>{feature.icon}</div>
                           <h4>{feature.title}</h4>
                           {feature.description && <p>{feature.description}</p>}
                         </div>
@@ -1009,14 +1012,14 @@ export default function SeoPageContentForm({
                     </div>
                   )}
                   {block.type === "prosCons" && (
-                    <div className="proscons-container">
-                      <div className="pros-column">
+                    <div className={cx("proscons-container")}>
+                      <div className={cx("pros-column")}>
                         <h4>✅ Pros</h4>
                         <ul>
                           {block.pros.map((pro, idx) => (<li key={idx}>{pro}</li>))}
                         </ul>
                       </div>
-                      <div className="cons-column">
+                      <div className={cx("cons-column")}>
                         <h4>❌ Cons</h4>
                         <ul>
                           {block.cons.map((con, idx) => (<li key={idx}>{con}</li>))}
@@ -1031,9 +1034,9 @@ export default function SeoPageContentForm({
         )}
       </section>
 
-      <section className="editor-card premium-card">
-        <div className="faq-head">
-          <h2 className="section-title">FAQs</h2>
+      <section className={cx("editor-card", "premium-card")}>
+        <div className={cx("faq-head")}>
+          <h2 className={cx("section-title")}>FAQs</h2>
 
           <Button
             startIcon={<AddIcon />}
@@ -1044,7 +1047,7 @@ export default function SeoPageContentForm({
         </div>
 
         {(formData.faq || []).map((item, faqIndex) => (
-          <div className="faq-item" key={faqIndex}>
+          <div className={cx("faq-item")} key={faqIndex}>
             <input
               placeholder="Question"
               value={item.question}
@@ -1070,8 +1073,8 @@ export default function SeoPageContentForm({
             />
 
             {/* Links Section */}
-            <div className="faq-links-section">
-              <div className="faq-links-header">
+            <div className={cx("faq-links-section")}>
+              <div className={cx("faq-links-header")}>
                 <label style={{ fontSize: "13px", fontWeight: 700, color: "#0f172a" }}>
                   🔗 Add Links in Answer
                 </label>
@@ -1088,7 +1091,7 @@ export default function SeoPageContentForm({
               {(item.links || []).map((link, linkIndex) => (
                 <div
                   key={linkIndex}
-                  className="faq-link-row"
+                  className={cx("faq-link-row")}
                 >
                   <TextField
                     size="small"
@@ -1123,7 +1126,7 @@ export default function SeoPageContentForm({
               ))}
 
               {(!item.links || item.links.length === 0) && (
-                <div className="faq-no-links">
+                <div className={cx("faq-no-links")}>
                   No links added. Click "Add Link" to make words in the answer clickable.
                 </div>
               )}
@@ -1436,7 +1439,7 @@ export default function SeoPageContentForm({
         </DialogActions>
       </Dialog>
 
-      <div className="action-bar">
+      <div className={cx("action-bar")}>
         <button type="submit" disabled={loading}>
           {loading ? (
             <CircularProgress size={20} />

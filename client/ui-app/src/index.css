@@ -1,11 +1,28 @@
+/* CSS Module Isolation Strategy:
+   This global CSS only sets baseline styles.
+   Component-specific styles belong in .module.css files.
+
+   Rule: CSS Modules handle all layout, spacing, and component-specific styling.
+   Global CSS only provides browser reset and font defaults.
+
+   See: src/styles/CSS_MODULES_GUIDELINES.md
+*/
+
 *,
 *::before,
 *::after {
   box-sizing: border-box;
 }
 
+html {
+  /* Prevent zoom on input focus (mobile) */
+  font-size: 16px;
+  scroll-behavior: smooth;
+}
+
 body {
   margin: 0;
+  padding: 0;
 
   font-family:
     system-ui,
@@ -17,7 +34,7 @@ body {
     Arial,
     sans-serif;
 
-  font-size: 14px;      
+  font-size: 14px;
   line-height: 1.4;
 
   color: #111;
@@ -27,6 +44,16 @@ body {
   -moz-osx-font-smoothing: grayscale;
 
   text-rendering: optimizeLegibility;
+}
+
+/* Prevent button/input library overrides */
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
 }
 
 code {

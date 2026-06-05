@@ -37,6 +37,22 @@ const categorySchema = new mongoose.Schema(
     seoDescription: { type: String, default: "" },
     regionTags: { type: [String], default: [] },
     isActive: { type: Boolean, default: true },
+    filterConfig: {
+      type: [new mongoose.Schema(
+        {
+          key:        { type: String, trim: true },
+          label:      { type: String, trim: true },
+          type:       { type: String, enum: ["multiselect", "radio", "toggle", "range"] },
+          options:    { type: [String], default: [] },
+          min:        { type: Number, default: null },
+          max:        { type: Number, default: null },
+          unit:       { type: String, default: "" },
+          isRequired: { type: Boolean, default: false },
+        },
+        { _id: false }
+      )],
+      default: []
+    },
   },
   { timestamps: true }
 );

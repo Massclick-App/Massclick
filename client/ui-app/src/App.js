@@ -6,7 +6,6 @@ import { clientLogin } from './redux/actions/clientAuthAction.js';
 import { fetchMatchedLeads } from './redux/actions/leadsAction.js';
 import { setMaintenanceModeOn, setMaintenanceModeOff } from './redux/reducers/maintenanceReducer.js';
 import { connectSocket } from './services/socketService.js';
-import { setAxiosStore } from './services/axiosInstance.js';
 
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -23,7 +22,6 @@ import ShimmerSkeleton from './Internals/clientComponent/shimmerSkeleton.js';
 import GlobalLoaderWrapper from './Internals/clientComponent/common/GlobalLoaderWrapper.js';
 import VideoPreloader from './components/VideoPreloader.js';
 
-
 const Dashboard = lazy(() => import(/* webpackChunkName: "admin-dashboard" */ './Dashboard'));
 const Login = lazy(() => import(/* webpackChunkName: "admin-login" */ './Internals/Login/login.js'));
 const User = lazy(() => import(/* webpackChunkName: "admin-users" */ './Internals/user/Users.js'));
@@ -38,6 +36,8 @@ const MainGrid = lazy(() => import(/* webpackChunkName: "admin-maingrid" */ './c
 const BusinessListing = lazy(() => import(/* webpackChunkName: "home" */ './Internals/clientComponent/home.js'));
 const SearchResults = lazy(() => import(/* webpackChunkName: "search" */ './Internals/clientComponent/SearchResult/SearchResult.js'));
 const BusinessDetails = lazy(() => import(/* webpackChunkName: "business-detail" */ './Internals/clientComponent/cards/cardDetails.js'));
+const EventCarousel = lazy(() => import(/* webpackChunkName: "events" */ './Internals/clientComponent/events/eventCarousel/eventCarousel.js'));
+const EventDetails = lazy(() => import(/* webpackChunkName: "event-detail" */ './Internals/clientComponent/events/eventDetails/eventDetails.js'));
 
 const AboutUsPage = lazy(() => import(/* webpackChunkName: "footer-aboutus" */ './Internals/clientComponent/footer/aboutUs/aboutUsPage.js'));
 const Testimonials = lazy(() => import(/* webpackChunkName: "footer-testimonials" */ './Internals/clientComponent/footer/testimonials/testimonials.js'));
@@ -65,6 +65,10 @@ const BusinessEnquiry = lazy(() => import(/* webpackChunkName: "business-enquiry
 
 const EnquiryPage = lazy(() => import(/* webpackChunkName: "admin-enquiry" */ './Internals/enquiry-page/enquiry-page.js'));
 const AdvertisementPage = lazy(() => import(/* webpackChunkName: "admin-advertisement" */ './Internals/advertisement/advertisement.js'));
+const EventCategory = lazy(() => import(/* webpackChunkName: "admin-event-category" */ './components/eventCategory/eventCategory.js'));
+const EventLocation = lazy(() => import(/* webpackChunkName: "admin-event-location" */ './components/eventLocation/eventLocation.js'));
+const EventAdvertisement = lazy(() => import(/* webpackChunkName: "admin-event-advertisement" */ './components/eventAdvertisement/eventAdvertisement.js'));
+const EventCreation = lazy(() => import(/* webpackChunkName: "admin-event-creation" */ './components/eventCreation/eventCreation.js'));
 
 const GlobalDrawer = lazy(() => import(/* webpackChunkName: "drawer" */ './Internals/clientComponent/Drawer/globalDrawer.js'));
 const SeoData = lazy(() => import(/* webpackChunkName: "admin-seo" */ './Internals/seoData/seoData.js'));
@@ -148,6 +152,8 @@ function AppRoutes({
           <Route path="/leads" element={<LeadsPage />} />
           <Route path="/free-listing" element={<FreeListingPage />} />
           <Route path="/advertise" element={<AdvertisePage />} />
+          <Route path="/events" element={<EventCarousel />} />
+          <Route path="/events/:eventSlug/:id" element={<EventDetails />} />
           <Route path="/user/search-history" element={<LeadsCardHistory />} />
           <Route path="/business-enquiry" element={<BusinessEnquiry />} />
           <Route path="/payment-status/:transactionId" element={<PaymentStatus />} />
@@ -197,6 +203,10 @@ function AppRoutes({
                 <Route path="seopagecontentblogs" element={<SeoPageContentBlogs />} />
                 <Route path="enquiry" element={<EnquiryPage />} />
                 <Route path="advertisements" element={<AdvertisementPage />} />
+                <Route path="event-category" element={<EventCategory />} />
+                <Route path="event-location" element={<EventLocation />} />
+                <Route path="event-advertisement" element={<EventAdvertisement />} />
+                <Route path="event-creation" element={<EventCreation />} />
                 <Route path="mni-data" element={<MRPDatas />} />
                 <Route path="terms-conditions-data" element={<TermsAndConditionsDatas />} />
                 <Route path="fcm-marketing" element={<FCMMarketing />} />

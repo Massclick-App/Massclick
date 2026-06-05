@@ -543,9 +543,71 @@ export const mainSearchController = async (req, res) => {
       matchQuery.$text = { $search: term };
     }
 
-    if (matchQuery.$and.length === 0) {
+    // ===============================
+    // 🔽 CATEGORY-SPECIFIC FILTERS
+    // ===============================
+    if (req.query.filters) {
+      try {
+        const activeFilters = JSON.parse(req.query.filters);
+        for (const [key, value] of Object.entries(activeFilters)) {
+          if (Array.isArray(value) && value.length > 0) {
+            matchQuery.$and = matchQuery.$and || [];
+            matchQuery.$and.push({ [`filters.${key}`]: { $in: value } });
+          } else if (value !== null && value !== undefined && value !== "") {
+            matchQuery.$and = matchQuery.$and || [];
+            matchQuery.$and.push({ [`filters.${key}`]: value });
+          }
+        }
+      } catch (_) {}
+    }
+
+    // ===============================
+    // 🌟 UNIVERSAL FILTERS
+    // ===============================
+    if (req.query.minRating) {
+      matchQuery.$and = matchQuery.$and || [];
+      matchQuery.$and.push({ averageRating: { $gte: parseFloat(req.query.minRating) } });
+    }
+    if (req.query.verified === "true") {
+      matchQuery.$and = matchQuery.$and || [];
+      matchQuery.$and.push({ "verification.isVerified": true });
+    }
+    if (req.query.featured === "true") {
+      matchQuery.$and = matchQuery.$and || [];
+      matchQuery.$and.push({ "badges.isFeatured": true });
+    }
+    if (req.query.openNow === "true") {
+      const now = new Date();
+      const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+      const todayName = dayNames[now.getDay()];
+      const currentTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+      matchQuery.$and = matchQuery.$and || [];
+      matchQuery.$and.push({
+        openingHours: {
+          $elemMatch: {
+            day: todayName,
+            isClosed: false,
+            open: { $lte: currentTime },
+            close: { $gte: currentTime }
+          }
+        }
+      });
+    }
+
+    if (matchQuery.$and && matchQuery.$and.length === 0) {
       delete matchQuery.$and;
     }
+
+    // ===============================
+    // 🔀 SORT
+    // ===============================
+    const sortByParam = req.query.sortBy || "relevant";
+    const customSortMap = {
+      rating:  { averageRating: -1, amountPaid: -1, createdAt: -1 },
+      newest:  { createdAt: -1, amountPaid: -1 },
+      popular: { "analytics.views": -1, amountPaid: -1, createdAt: -1 },
+    };
+    const useCustomSort = customSortMap[sortByParam];
 
     const results = await businessListModel.aggregate([
       { $match: matchQuery },
@@ -582,8 +644,8 @@ export const mainSearchController = async (req, res) => {
       },
 
       {
-        $sort: {
-          ...(term ? { textScore: -1 } : {}),  // Text relevance first if searching
+        $sort: useCustomSort || {
+          ...(term ? { textScore: -1 } : {}),
           categoryPriority: 1,
           amountPaid: -1,
           paidDate: -1,

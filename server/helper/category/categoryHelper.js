@@ -53,6 +53,10 @@ export const createCategory = async (reqBody = {}) => {
         }
       });
 
+      if (Array.isArray(reqBody.filterConfig)) {
+        updates.filterConfig = reqBody.filterConfig;
+      }
+
       // Handle new categoryImages object (6 variants) - always extract S3 keys
       if (reqBody.categoryImages && typeof reqBody.categoryImages === "object") {
         const categoryImages = {};
@@ -223,6 +227,7 @@ export const viewAllCategory = async ({
 
     const categories = await categoryModel
       .find(query)
+      .select("+filterConfig")
       .sort(sortQuery)
       .skip((pageNo - 1) * pageSize)
       .limit(pageSize)

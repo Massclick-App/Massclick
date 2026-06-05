@@ -1,46 +1,20 @@
+import { createScopedClassNames } from "../../utils/createScopedClassNames";
 import React, { useEffect, useState, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import axiosInstance from "../../services/axiosInstance.js";
 import { normalizeImageUrl } from "../../utils/imageUrlHelper.js";
 import Cropper from "react-easy-crop";
 import InputValidator from "../validators/inputValidator.js";
-import {
-  getAllCategory,
-  createCategory,
-  editCategory,
-  deleteCategory,
-  hardDeleteCategory,
-} from "../../redux/actions/categoryAction";
-import "./categories.css";
-import {
-  Box,
-  Button,
-  Typography,
-  CircularProgress,
-  IconButton,
-  Avatar,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Autocomplete,
-  Chip,
-  InputAdornment,
-  Checkbox,
-  Divider,
-  ToggleButton,
-  ToggleButtonGroup,
-  Slider,
-} from "@mui/material";
-
+import { getAllCategory, createCategory, editCategory, deleteCategory, hardDeleteCategory } from "../../redux/actions/categoryAction";
+import styles from "./categories.module.css";
+import { Box, Button, Typography, CircularProgress, IconButton, Avatar, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Autocomplete, Chip, InputAdornment, Checkbox, Divider, ToggleButton, ToggleButtonGroup, Slider } from "@mui/material";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import CustomizedTable from "../../components/Table/CustomizedTable";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
-
+const cx = createScopedClassNames(styles);
 const API_URL = process.env.REACT_APP_API_URL;
 
 // Image variant configuration with size constraints
@@ -106,18 +80,12 @@ const IMAGE_VARIANTS = {
     maxFileSize: 0.5
   }
 };
-
-const NOISE_WORDS = new Set([
-  "and", "the", "near", "me", "center", "centre",
-  "service", "services", "solution", "solutions",
-  "provider", "providers",
-]);
-
+const NOISE_WORDS = new Set(["and", "the", "near", "me", "center", "centre", "service", "services", "solution", "solutions", "provider", "providers"]);
 const SYNONYM_MAP = (() => {
   const groups = {
-    repair:   ["repair", "repairs", "maintenance", "fix", "fixing", "servicing"],
+    repair: ["repair", "repairs", "maintenance", "fix", "fixing", "servicing"],
     computer: ["computer", "computers", "pc", "desktop", "desktops"],
-    laptop:   ["laptop", "laptops"],
+    laptop: ["laptop", "laptops"]
   };
   const map = {};
   for (const [canonical, words] of Object.entries(groups)) {
@@ -125,13 +93,8 @@ const SYNONYM_MAP = (() => {
   }
   return map;
 })();
-
-const SPLIT_DICT = [
-  "laptop", "computer", "desktop", "mobile", "phone", "printer",
-  "repair", "service", "maintenance", "camera", "ac", "tv",
-].sort((a, b) => b.length - a.length);
-
-const splitMergedWord = (word) => {
+const SPLIT_DICT = ["laptop", "computer", "desktop", "mobile", "phone", "printer", "repair", "service", "maintenance", "camera", "ac", "tv"].sort((a, b) => b.length - a.length);
+const splitMergedWord = word => {
   for (const known of SPLIT_DICT) {
     if (word.startsWith(known) && word.length > known.length) {
       return [known, ...splitMergedWord(word.slice(known.length))];
@@ -139,49 +102,34 @@ const splitMergedWord = (word) => {
   }
   return [word];
 };
-
-const semanticKey = (text) => {
-  const s = (text || "")
-    .toLowerCase()
-    .replace(/&/g, "and")
-    .replace(/[^a-z0-9\s]/g, " ");
+const semanticKey = text => {
+  const s = (text || "").toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9\s]/g, " ");
   const words = s.split(/\s+/).filter(Boolean).flatMap(splitMergedWord);
-  const core = [
-    ...new Set(
-      words
-        .map((w) => SYNONYM_MAP[w] || w)
-        .filter((w) => !NOISE_WORDS.has(w) && w.length > 1)
-    ),
-  ].sort();
+  const core = [...new Set(words.map(w => SYNONYM_MAP[w] || w).filter(w => !NOISE_WORDS.has(w) && w.length > 1))].sort();
   return core.join(" ");
 };
-
-const normalizeSlug = (slug) =>
-  (slug || "")
-    .toLowerCase()
-    .trim()
-    .replace(/-e?s$/, "")
-    .replace(/[-_]+/g, "-")
-    .replace(/^-|-$/g, "");
-
+const normalizeSlug = slug => (slug || "").toLowerCase().trim().replace(/-e?s$/, "").replace(/[-_]+/g, "-").replace(/^-|-$/g, "");
 const getCatKey = (text, mode) => {
   if (mode === "slug") return (text || "").toLowerCase().trim();
   if (mode === "similar-slug") return normalizeSlug(text);
   if (mode === "semantic") return semanticKey(text);
-  if (mode === "similar")
-    return (text || "").toLowerCase().trim().replace(/e?s$/i, "").replace(/[^a-z0-9]+/g, " ").trim();
+  if (mode === "similar") return (text || "").toLowerCase().trim().replace(/e?s$/i, "").replace(/[^a-z0-9]+/g, " ").trim();
   return (text || "").toLowerCase().trim();
 };
-
 export default function Category() {
   const dispatch = useDispatch();
-  const { category = [], total = 0, loading, error } = useSelector(
-    (state) => state.categoryReducer || {}
-  );
+  const {
+    category = [],
+    total = 0,
+    loading,
+    error
+  } = useSelector(state => state.categoryReducer || {});
   const fileInputRef = useRef();
   const liveImageInputRef = useRef();
   const [errors, setErrors] = useState({});
-
+  const [filterDraft, setFilterDraft] = useState({ key: "", label: "", type: "multiselect", options: [], min: "", max: "", unit: "", isRequired: false });
+  const [filterDraftError, setFilterDraftError] = useState("");
+  const [editingFilterIndex, setEditingFilterIndex] = useState(null);
   const [formData, setFormData] = useState({
     _id: null,
     categoryImages: {
@@ -205,6 +153,7 @@ export default function Category() {
     seoTitle: "",
     seoDescription: "",
     slug: "",
+    filterConfig: []
   });
 
   // Image previews and refs
@@ -216,7 +165,6 @@ export default function Category() {
     mobileCard: null,
     mobileThumbnail: null
   });
-
   const [imageDimensions, setImageDimensions] = useState({
     webHero: null,
     webCard: null,
@@ -225,8 +173,6 @@ export default function Category() {
     mobileCard: null,
     mobileThumbnail: null
   });
-
-  const [imageErrors, setImageErrors] = useState({});
   const [uploadingImageVariant, setUploadingImageVariant] = useState(null);
 
   // Cropper states
@@ -234,7 +180,10 @@ export default function Category() {
   const [cropData, setCropData] = useState({
     image: null,
     variantKey: null,
-    crop: { x: 0, y: 0 },
+    crop: {
+      x: 0,
+      y: 0
+    },
     zoom: 1,
     aspect: 1
   });
@@ -253,76 +202,69 @@ export default function Category() {
   const [preview, setPreview] = useState(null);
   const [liveImagePreview, setLiveImagePreview] = useState(null);
   const [editMode, setEditMode] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState({ open: false, id: null });
+  const [deleteConfirm, setDeleteConfirm] = useState({
+    open: false,
+    id: null
+  });
   const [inputKeyword, setInputKeyword] = useState("");
   const [keywordInputError, setKeywordInputError] = useState("");
   const [suggestedKeywords, setSuggestedKeywords] = useState([]);
   const [suggestLoading, setSuggestLoading] = useState(false);
-  const [dupDialog, setDupDialog] = useState({ open: false, groups: [] });
+  const [dupDialog, setDupDialog] = useState({
+    open: false,
+    groups: []
+  });
   const [selectedDups, setSelectedDups] = useState([]);
   const [dupLoading, setDupLoading] = useState(false);
   const [dupDeleting, setDupDeleting] = useState(false);
   const [dupMode, setDupMode] = useState("exact");
   const [allCatsCache, setAllCatsCache] = useState([]);
   const [businessUsage, setBusinessUsage] = useState({});
-  const [createWarning, setCreateWarning] = useState({ open: false, matches: [] });
+  const [createWarning, setCreateWarning] = useState({
+    open: false,
+    matches: []
+  });
   const [createWarningLoading, setCreateWarningLoading] = useState(false);
-  const [imageModalOpen, setImageModalOpen] = useState({ open: false, variantKey: null });
-
-  const subCategories = [
-    "Services",
-    "Construction Company",
-    "Travels",
-    "Restaurants",
-    "Medical",
-    "Events",
-    "Education",
-    "Garments",
-    "Hotels",
-    "Spa",
-    "Real Estate",
-    "Interior Designer",
-    "Dealers",
-    "Building Materials",
-    "Shop",
-    "CCTV",
-    "Manufacturer",
-    "Hostels",
-  ];
-
+  const [imageModalOpen, setImageModalOpen] = useState({
+    open: false,
+    variantKey: null
+  });
+  const subCategories = ["Services", "Construction Company", "Travels", "Restaurants", "Medical", "Events", "Education", "Garments", "Hotels", "Spa", "Real Estate", "Interior Designer", "Dealers", "Building Materials", "Shop", "CCTV", "Manufacturer", "Hostels"];
   useEffect(() => {
     dispatch(getAllCategory());
   }, [dispatch]);
-
   useEffect(() => {
     if (formData.category) {
-      const slug = formData.category
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/(^-|-$)+/g, "");
-      setFormData((prev) => ({ ...prev, slug }));
+      const slug = formData.category.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "");
+      setFormData(prev => ({
+        ...prev,
+        slug
+      }));
     }
   }, [formData.category]);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
 
+  const handleChange = e => {
+    const {
+      name,
+      value
+    } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
   const handleKeywordChange = (event, newValue) => {
     // freeSolo adds raw string on Enter — validate before accepting it
     const validated = [];
     let lastError = "";
-
     for (const kw of newValue) {
       const trimmed = typeof kw === "string" ? kw.trim().toLowerCase() : kw;
       if (!trimmed) continue;
-
       if (trimmed.split(/\s+/).length < 2) {
         lastError = `"${trimmed}" is too generic. Use a descriptive phrase, e.g. "${trimmed} service"`;
         continue;
       }
-
       try {
         InputValidator.validateAndCleanKeywords([trimmed]);
         validated.push(trimmed);
@@ -330,14 +272,16 @@ export default function Category() {
         lastError = err.message;
       }
     }
-
     setKeywordInputError(lastError);
     setInputKeyword("");
-    setFormData((prev) => ({ ...prev, keywords: validated }));
+    setFormData(prev => ({
+      ...prev,
+      keywords: validated
+    }));
   };
 
   // Extract S3 key from signed URL (handles malformed double-signed URLs too)
-  const extractS3KeyFromUrl = (url) => {
+  const extractS3KeyFromUrl = url => {
     if (!url || typeof url !== "string") return "";
     if (!url.startsWith("http")) return url; // Already a key
 
@@ -357,12 +301,72 @@ export default function Category() {
       return url;
     }
   };
+  const handleAddFilterField = () => {
+    if (!filterDraft.key.trim() || !filterDraft.label.trim()) {
+      setFilterDraftError("Key and Label are required");
+      return;
+    }
+    if (["multiselect", "radio"].includes(filterDraft.type) && filterDraft.options.length === 0) {
+      setFilterDraftError("Add at least one option for this type");
+      return;
+    }
+    setFilterDraftError("");
+    const { ...rest } = filterDraft;
+    setFormData(prev => ({ ...prev, filterConfig: [...prev.filterConfig, rest] }));
+    setFilterDraft({ key: "", label: "", type: "multiselect", options: [], min: "", max: "", unit: "", isRequired: false });
+  };
 
-  const handleEdit = (row) => {
+  const handleRemoveFilterField = (index) => {
+    setFormData(prev => ({ ...prev, filterConfig: prev.filterConfig.filter((_, i) => i !== index) }));
+  };
+
+  const handleMoveFilterField = (index, dir) => {
+    setFormData(prev => {
+      const arr = [...prev.filterConfig];
+      const swapIdx = index + dir;
+      if (swapIdx < 0 || swapIdx >= arr.length) return prev;
+      [arr[index], arr[swapIdx]] = [arr[swapIdx], arr[index]];
+      return { ...prev, filterConfig: arr };
+    });
+  };
+
+  const handleEditFilterField = (index) => {
+    const filter = formData.filterConfig[index];
+    setFilterDraft(filter);
+    setEditingFilterIndex(index);
+    setFilterDraftError("");
+  };
+
+  const handleUpdateFilterField = (index) => {
+    if (!filterDraft.key.trim() || !filterDraft.label.trim()) {
+      setFilterDraftError("Key and Label are required");
+      return;
+    }
+    if (["multiselect", "radio"].includes(filterDraft.type) && filterDraft.options.length === 0) {
+      setFilterDraftError("Add at least one option for this type");
+      return;
+    }
+    setFilterDraftError("");
+    setFormData(prev => {
+      const arr = [...prev.filterConfig];
+      arr[index] = { ...filterDraft };
+      return { ...prev, filterConfig: arr };
+    });
+    setEditingFilterIndex(null);
+    setFilterDraft({ key: "", label: "", type: "multiselect", options: [], min: "", max: "", unit: "", isRequired: false });
+  };
+
+  const handleCancelEditFilter = () => {
+    setEditingFilterIndex(null);
+    setFilterDraft({ key: "", label: "", type: "multiselect", options: [], min: "", max: "", unit: "", isRequired: false });
+    setFilterDraftError("");
+  };
+
+  const handleEdit = row => {
     setEditMode(true);
 
     // Extract S3 keys from signed URLs for categoryImages
-    const categoryImagesKeys = {};
+    let categoryImagesKeys = {};
     if (row.categoryImages && typeof row.categoryImages === "object") {
       for (const [variant, url] of Object.entries(row.categoryImages)) {
         categoryImagesKeys[variant] = extractS3KeyFromUrl(url) || "";
@@ -378,6 +382,8 @@ export default function Category() {
       };
     }
 
+    const filterConfigToSet = Array.isArray(row.filterConfig) ? row.filterConfig : [];
+
     setFormData({
       _id: row._id,
       categoryImages: categoryImagesKeys,
@@ -388,13 +394,12 @@ export default function Category() {
       subCategoryType: row.subCategoryType,
       parentCategoryId: row.parentCategoryId || "",
       title: row.title,
-      keywords: Array.isArray(row.keywords)
-        ? row.keywords
-        : row.keywords?.split(",") || [],
+      keywords: Array.isArray(row.keywords) ? row.keywords : row.keywords?.split(",") || [],
       description: row.description,
       seoTitle: row.seoTitle || "",
       seoDescription: row.seoDescription || "",
       slug: row.slug || "",
+      filterConfig: filterConfigToSet
     });
     // Set previews using signed URLs (for display)
     setImagePreviews({
@@ -409,20 +414,20 @@ export default function Category() {
     setPreview(row.categoryImage || null);
     setLiveImagePreview(row.liveImage || null);
   };
-
-  const handleDelete = (row) => {
-    setDeleteConfirm({ open: true, id: row.id });
+  const handleDelete = row => {
+    setDeleteConfirm({
+      open: true,
+      id: row.id
+    });
   };
-
   const confirmDelete = () => {
     if (deleteConfirm.id) {
-      dispatch(deleteCategory(deleteConfirm.id))
-        .then(() => dispatch(getAllCategory()))
-        .catch((err) => console.error("Delete failed:", err))
-        .finally(() => setDeleteConfirm({ open: false, id: null }));
+      dispatch(deleteCategory(deleteConfirm.id)).then(() => dispatch(getAllCategory())).catch(err => console.error("Delete failed:", err)).finally(() => setDeleteConfirm({
+        open: false,
+        id: null
+      }));
     }
   };
-
   const handleAddKeyword = () => {
     const trimmed = inputKeyword.trim().toLowerCase();
     if (!trimmed) return;
@@ -452,70 +457,68 @@ export default function Category() {
       setKeywordInputError("Maximum 50 keywords allowed");
       return;
     }
-
     setKeywordInputError("");
-    setFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
-      keywords: [...prev.keywords, trimmed],
+      keywords: [...prev.keywords, trimmed]
     }));
     setInputKeyword("");
   };
-
-  const handleKeywordDelete = (keywordToDelete) => {
-    setFormData((prev) => ({
+  const handleKeywordDelete = keywordToDelete => {
+    setFormData(prev => ({
       ...prev,
-      keywords: prev.keywords.filter((k) => k !== keywordToDelete),
+      keywords: prev.keywords.filter(k => k !== keywordToDelete)
     }));
   };
-
   const handleSuggestKeywords = async () => {
     const categoryName = formData.category?.trim();
     if (!categoryName) {
       setKeywordInputError("Enter a category name first to get suggestions");
       return;
     }
-
     setSuggestLoading(true);
     setSuggestedKeywords([]);
     setKeywordInputError("");
-
     try {
       const token = localStorage.getItem("accessToken");
-      const res = await axiosInstance.get(
-        `${API_URL}/category/suggest-keywords`,
-        {
-          params: { category: categoryName },
-          headers: { Authorization: `Bearer ${token}` },
+      const res = await axiosInstance.get(`${API_URL}/category/suggest-keywords`, {
+        params: {
+          category: categoryName
+        },
+        headers: {
+          Authorization: `Bearer ${token}`
         }
-      );
-
+      });
       const suggestions = res.data?.keywords || [];
       // Filter out already-added keywords
-      const existing = new Set(formData.keywords.map((k) => k.toLowerCase()));
-      setSuggestedKeywords(suggestions.filter((k) => !existing.has(k)));
+      const existing = new Set(formData.keywords.map(k => k.toLowerCase()));
+      setSuggestedKeywords(suggestions.filter(k => !existing.has(k)));
     } catch (err) {
       setKeywordInputError("Could not fetch suggestions. Try again.");
     } finally {
       setSuggestLoading(false);
     }
   };
-
-  const handleAddSuggestion = (kw) => {
+  const handleAddSuggestion = kw => {
     if (formData.keywords.length >= 50) {
       setKeywordInputError("Maximum 50 keywords allowed");
       return;
     }
-    setFormData((prev) => ({ ...prev, keywords: [...prev.keywords, kw] }));
-    setSuggestedKeywords((prev) => prev.filter((s) => s !== kw));
+    setFormData(prev => ({
+      ...prev,
+      keywords: [...prev.keywords, kw]
+    }));
+    setSuggestedKeywords(prev => prev.filter(s => s !== kw));
   };
-
   const handleAddAllSuggestions = () => {
     const slots = 50 - formData.keywords.length;
     const toAdd = suggestedKeywords.slice(0, slots);
-    setFormData((prev) => ({ ...prev, keywords: [...prev.keywords, ...toAdd] }));
+    setFormData(prev => ({
+      ...prev,
+      keywords: [...prev.keywords, ...toAdd]
+    }));
     setSuggestedKeywords([]);
   };
-
   const validateForm = () => {
     let newErrors = {};
 
@@ -533,26 +536,16 @@ export default function Category() {
       // Parse InputValidator error message into field errors
       const errorLines = error.message.split('\n').filter(line => line.trim());
       errorLines.forEach(line => {
-        let cleanedError = line
-          .replace(/^Category validation failed:\s*/, '')
-          .trim();
-
-        if (cleanedError.includes('name')) newErrors.category = cleanedError;
-        else if (cleanedError.includes('Description')) newErrors.description = cleanedError;
-        else if (cleanedError.includes('keyword')) newErrors.keywords = cleanedError;
-        else if (cleanedError.includes('required')) newErrors.category = cleanedError;
+        let cleanedError = line.replace(/^Category validation failed:\s*/, '').trim();
+        if (cleanedError.includes('name')) newErrors.category = cleanedError;else if (cleanedError.includes('Description')) newErrors.description = cleanedError;else if (cleanedError.includes('keyword')) newErrors.keywords = cleanedError;else if (cleanedError.includes('required')) newErrors.category = cleanedError;
       });
     }
 
     // Additional MassClick-specific validations
-    if (!formData.categoryType)
-      newErrors.categoryType = "Category Type is required";
-    if (formData.categoryType === "Sub Category" && !formData.subCategoryType)
-      newErrors.subCategoryType = "Sub Category Type is required";
+    if (!formData.categoryType) newErrors.categoryType = "Category Type is required";
+    if (formData.categoryType === "Sub Category" && !formData.subCategoryType) newErrors.subCategoryType = "Sub Category Type is required";
     if (!formData.title.trim()) newErrors.title = "Title is required";
-    if (!formData.keywords.length)
-      newErrors.keywords = "At least one keyword is required";
-
+    if (!formData.keywords.length) newErrors.keywords = "At least one keyword is required";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -564,105 +557,97 @@ export default function Category() {
         alert("Please adjust the crop area");
         return;
       }
-
-      const { variantKey, image, croppedAreaPixels } = cropData;
-
+      const {
+        variantKey,
+        image,
+        croppedAreaPixels
+      } = cropData;
       const img = new Image();
       img.crossOrigin = "anonymous";
-
       img.onload = () => {
         try {
           const canvas = document.createElement("canvas");
           const ctx = canvas.getContext("2d");
-          const { x, y, width, height } = croppedAreaPixels;
-
+          const {
+            x,
+            y,
+            width,
+            height
+          } = croppedAreaPixels;
           canvas.width = width;
           canvas.height = height;
           ctx.drawImage(img, x, y, width, height, 0, 0, width, height);
+          canvas.toBlob(async blob => {
+            if (!blob) {
+              alert("Failed to process image");
+              return;
+            }
+            try {
+              const reader = new FileReader();
+              reader.onload = async () => {
+                const finalWidth = width;
+                const finalHeight = height;
+                const base64Data = reader.result;
+                try {
+                  setUploadingImageVariant(variantKey);
 
-          canvas.toBlob(
-            async (blob) => {
-              if (!blob) {
-                alert("Failed to process image");
-                return;
-              }
-
-              try {
-                const reader = new FileReader();
-                reader.onload = async () => {
-                  const finalWidth = width;
-                  const finalHeight = height;
-                  const base64Data = reader.result;
-
-                  try {
-                    setUploadingImageVariant(variantKey);
-
-                    // Upload to backend (auto-updates category if editing)
-                    const token = localStorage.getItem("accessToken");
-                    const response = await axiosInstance.post(
-                      `${API_URL}/category/upload-images`,
-                      {
-                        variant: variantKey,
-                        imageData: base64Data,
-                        categoryId: formData._id || null // Auto-update if editing existing category
-                      },
-                      { headers: { Authorization: `Bearer ${token}` } }
-                    );
-
-                    if (response.data.success && response.data.imageKey) {
-                      const imageKey = response.data.imageKey;
-
-                      // Store S3 key, not base64
-                      setFormData((prev) => ({
-                        ...prev,
-                        categoryImages: {
-                          ...prev.categoryImages,
-                          [variantKey]: imageKey
-                        }
-                      }));
-
-                      // Store preview as data URL for display only
-                      setImagePreviews((prev) => ({
-                        ...prev,
-                        [variantKey]: base64Data
-                      }));
-
-                      setImageDimensions((prev) => ({
-                        ...prev,
-                        [variantKey]: { width: finalWidth, height: finalHeight }
-                      }));
-
-                      setImageErrors((prev) => ({
-                        ...prev,
-                        [variantKey]: null
-                      }));
-
-                      setCropperOpen(false);
-                    } else {
-                      alert("Failed to upload image");
+                  // Upload to backend (auto-updates category if editing)
+                  const token = localStorage.getItem("accessToken");
+                  const response = await axiosInstance.post(`${API_URL}/category/upload-images`, {
+                    variant: variantKey,
+                    imageData: base64Data,
+                    categoryId: formData._id || null // Auto-update if editing existing category
+                  }, {
+                    headers: {
+                      Authorization: `Bearer ${token}`
                     }
-                  } catch (err) {
-                    console.error("Upload error:", err);
-                    alert("Upload failed: " + err.message);
-                  } finally {
-                    setUploadingImageVariant(null);
+                  });
+                  if (response.data.success && response.data.imageKey) {
+                    const imageKey = response.data.imageKey;
+
+                    // Store S3 key, not base64
+                    setFormData(prev => ({
+                      ...prev,
+                      categoryImages: {
+                        ...prev.categoryImages,
+                        [variantKey]: imageKey
+                      }
+                    }));
+
+                    // Store preview as data URL for display only
+                    setImagePreviews(prev => ({
+                      ...prev,
+                      [variantKey]: base64Data
+                    }));
+                    setImageDimensions(prev => ({
+                      ...prev,
+                      [variantKey]: {
+                        width: finalWidth,
+                        height: finalHeight
+                      }
+                    }));
+                    setCropperOpen(false);
+                  } else {
+                    alert("Failed to upload image");
                   }
-                };
-                reader.readAsDataURL(blob);
-              } catch (err) {
-                console.error("Error uploading image:", err);
-                alert("Upload failed: " + err.message);
-              }
-            },
-            "image/jpeg",
-            0.95
-          );
+                } catch (err) {
+                  console.error("Upload error:", err);
+                  alert("Upload failed: " + err.message);
+                } finally {
+                  setUploadingImageVariant(null);
+                }
+              };
+              reader.readAsDataURL(blob);
+            } catch (err) {
+              console.error("Error uploading image:", err);
+              alert("Upload failed: " + err.message);
+            }
+          }, "image/jpeg", 0.95);
         } catch (err) {
           console.error("Error in crop processing:", err);
           alert("Error: " + err.message);
         }
       };
-
       img.onerror = () => alert("Failed to load image");
       img.src = image;
     } catch (err) {
@@ -674,10 +659,9 @@ export default function Category() {
   // Auto-fit image to variant constraints (no validation, just resize)
   const autoFitImage = (file, variantKey) => {
     const variant = IMAGE_VARIANTS[variantKey];
-
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = e => {
         const img = new Image();
         img.onload = () => {
           const originalWidth = img.width;
@@ -685,7 +669,6 @@ export default function Category() {
           const [aspectW, aspectH] = variant.aspectRatio.split(":").map(Number);
           const targetAspect = aspectW / aspectH;
           const originalAspect = originalWidth / originalHeight;
-
           let cropWidth = originalWidth;
           let cropHeight = originalHeight;
 
@@ -695,14 +678,12 @@ export default function Category() {
           } else {
             cropHeight = originalWidth / targetAspect;
           }
-
           const cropX = (originalWidth - cropWidth) / 2;
           const cropY = (originalHeight - cropHeight) / 2;
 
           // Scale down to max dimensions if needed
           let finalWidth = cropWidth;
           let finalHeight = cropHeight;
-
           if (finalWidth > variant.maxWidth || finalHeight > variant.maxHeight) {
             const scaleW = variant.maxWidth / finalWidth;
             const scaleH = variant.maxHeight / finalHeight;
@@ -710,7 +691,6 @@ export default function Category() {
             finalWidth = finalWidth * scale;
             finalHeight = finalHeight * scale;
           }
-
           resolve({
             originalWidth,
             originalHeight,
@@ -729,57 +709,56 @@ export default function Category() {
       reader.readAsDataURL(file);
     });
   };
-
   const handleImageChange = async (e, variantKey) => {
     const file = e.target.files[0];
     if (!file) return;
-
     const fitData = await autoFitImage(file, variantKey);
     if (!fitData) return;
-
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = event => {
       setCropData({
         image: event.target.result,
         variantKey,
-        crop: { x: 0, y: 0 },
+        crop: {
+          x: 0,
+          y: 0
+        },
         zoom: 1,
         aspect: fitData.aspect,
         fitData
       });
       setCropperOpen(true);
-      setImageErrors((prev) => ({
-        ...prev,
-        [variantKey]: null
-      }));
     };
     reader.readAsDataURL(file);
   };
-
   const computeDupGroups = (cats, mode) => {
     const isSlugMode = mode === "slug" || mode === "similar-slug";
     const groups = {};
-    cats.forEach((cat) => {
+    cats.forEach(cat => {
       const text = isSlugMode ? cat.slug : cat.category;
       const key = getCatKey(text, mode);
       if (!key) return;
       if (!groups[key]) groups[key] = [];
       groups[key].push(cat);
     });
-    return Object.values(groups).filter((g) => g.length > 1);
+    return Object.values(groups).filter(g => g.length > 1);
   };
-
-  const fetchBusinessUsage = async (cats) => {
+  const fetchBusinessUsage = async cats => {
     try {
       const token = localStorage.getItem("accessToken");
-      const names = cats.map((c) => c.category).filter(Boolean);
+      const names = cats.map(c => c.category).filter(Boolean);
       if (!names.length) return;
-      const params = names.map((n) => `names=${encodeURIComponent(n)}`).join("&");
+      const params = names.map(n => `names=${encodeURIComponent(n)}`).join("&");
       const res = await axiosInstance.get(`${API_URL}/category/business-usage?${params}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
       });
       const map = {};
-      (res.data || []).forEach(({ name, count }) => {
+      (res.data || []).forEach(({
+        name,
+        count
+      }) => {
         map[name.toLowerCase()] = count;
       });
       setBusinessUsage(map);
@@ -787,19 +766,22 @@ export default function Category() {
       console.error("Failed to fetch business usage:", err);
     }
   };
-
   const findDuplicates = async () => {
     setDupLoading(true);
     try {
       const token = localStorage.getItem("accessToken");
-      const response = await axiosInstance.get(
-        `${API_URL}/category/viewall?pageNo=1&pageSize=9999&status=active`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const response = await axiosInstance.get(`${API_URL}/category/viewall?pageNo=1&pageSize=9999&status=active`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
       const allCats = response.data.data || [];
       setAllCatsCache(allCats);
       const groups = computeDupGroups(allCats, dupMode);
-      setDupDialog({ open: true, groups });
+      setDupDialog({
+        open: true,
+        groups
+      });
       setSelectedDups([]);
       fetchBusinessUsage(allCats);
     } catch (err) {
@@ -808,41 +790,41 @@ export default function Category() {
       setDupLoading(false);
     }
   };
-
   const handleModeChange = (_, newMode) => {
     if (!newMode) return;
     setDupMode(newMode);
     const groups = computeDupGroups(allCatsCache, newMode);
-    setDupDialog((prev) => ({ ...prev, groups }));
+    setDupDialog(prev => ({
+      ...prev,
+      groups
+    }));
     setSelectedDups([]);
   };
-
-  const toggleDupSelect = (id) => {
-    setSelectedDups((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    );
+  const toggleDupSelect = id => {
+    setSelectedDups(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   };
-
-  const toggleSelectGroup = (group) => {
-    const ids = group.map((c) => c._id);
-    const allSelected = ids.every((id) => selectedDups.includes(id));
+  const toggleSelectGroup = group => {
+    const ids = group.map(c => c._id);
+    const allSelected = ids.every(id => selectedDups.includes(id));
     if (allSelected) {
-      setSelectedDups((prev) => prev.filter((id) => !ids.includes(id)));
+      setSelectedDups(prev => prev.filter(id => !ids.includes(id)));
     } else {
-      setSelectedDups((prev) => [...new Set([...prev, ...ids])]);
+      setSelectedDups(prev => [...new Set([...prev, ...ids])]);
     }
   };
-
   const deleteSelectedDups = async (hard = false) => {
     setDupDeleting(hard ? "hard" : "soft");
     try {
       for (const id of selectedDups) {
         await dispatch(hard ? hardDeleteCategory(id) : deleteCategory(id));
       }
-      const remaining = allCatsCache.filter((c) => !selectedDups.includes(c._id));
+      const remaining = allCatsCache.filter(c => !selectedDups.includes(c._id));
       setAllCatsCache(remaining);
       const groups = computeDupGroups(remaining, dupMode);
-      setDupDialog((prev) => ({ ...prev, groups }));
+      setDupDialog(prev => ({
+        ...prev,
+        groups
+      }));
       setSelectedDups([]);
       dispatch(getAllCategory());
     } catch (err) {
@@ -851,19 +833,30 @@ export default function Category() {
       setDupDeleting(false);
     }
   };
-
   const resetForm = () => {
     setFormData({
-      _id: null, categoryImage: "", liveImage: "", category: "", categoryType: "",
-      subCategoryType: "", parentCategoryId: "", title: "", keywords: [],
-      description: "", seoTitle: "", seoDescription: "", slug: "",
+      _id: null,
+      categoryImage: "",
+      liveImage: "",
+      category: "",
+      categoryType: "",
+      subCategoryType: "",
+      parentCategoryId: "",
+      title: "",
+      keywords: [],
+      description: "",
+      seoTitle: "",
+      seoDescription: "",
+      slug: "",
+      filterConfig: []
     });
+    setFilterDraft({ key: "", label: "", type: "multiselect", options: [], min: "", max: "", unit: "", isRequired: false });
+    setFilterDraftError("");
     setPreview(null);
     setLiveImagePreview(null);
     setEditMode(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
-
   const doSave = () => {
     // Prepare data to send (use cleaned keywords from InputValidator)
     const saveData = {
@@ -871,53 +864,49 @@ export default function Category() {
       // Ensure keywords are properly formatted
       keywords: Array.isArray(formData.keywords) ? formData.keywords : []
     };
-
-    const action = editMode
-      ? editCategory(formData._id, saveData)
-      : createCategory(saveData);
-
-    dispatch(action)
-      .then(() => {
-        resetForm();
-        dispatch(getAllCategory());
-      })
-      .catch((err) => {
-        console.error(editMode ? "Update failed:" : "Create failed:", err);
-        // Show error from backend if available
-        if (err.response?.data?.errors) {
-          const backendErrors = {};
-          err.response.data.errors.forEach(e => {
-            backendErrors[e.field] = e.message;
-          });
-          setErrors(backendErrors);
-        }
-      });
+    const action = editMode ? editCategory(formData._id, saveData) : createCategory(saveData);
+    dispatch(action).then(() => {
+      resetForm();
+      dispatch(getAllCategory());
+    }).catch(err => {
+      console.error(editMode ? "Update failed:" : "Create failed:", err);
+      // Show error from backend if available
+      if (err.response?.data?.errors) {
+        const backendErrors = {};
+        err.response.data.errors.forEach(e => {
+          backendErrors[e.field] = e.message;
+        });
+        setErrors(backendErrors);
+      }
+    });
   };
-
-  const handleSubmit = async (e) => {
+  const handleSubmit = async e => {
     e.preventDefault();
     if (!validateForm()) return;
-
     if (!editMode) {
       setCreateWarningLoading(true);
       try {
         const token = localStorage.getItem("accessToken");
-        const res = await axiosInstance.get(
-          `${API_URL}/category/viewall?pageNo=1&pageSize=9999&status=active`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+        const res = await axiosInstance.get(`${API_URL}/category/viewall?pageNo=1&pageSize=9999&status=active`, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
         const allCats = res.data.data || [];
         const matchIds = new Set();
-        ["exact", "similar", "semantic"].forEach((mode) => {
+        ["exact", "similar", "semantic"].forEach(mode => {
           const newKey = getCatKey(formData.category, mode);
           if (!newKey) return;
-          allCats.forEach((cat) => {
+          allCats.forEach(cat => {
             if (getCatKey(cat.category, mode) === newKey) matchIds.add(cat._id);
           });
         });
-        const matches = allCats.filter((c) => matchIds.has(c._id));
+        const matches = allCats.filter(c => matchIds.has(c._id));
         if (matches.length > 0) {
-          setCreateWarning({ open: true, matches });
+          setCreateWarning({
+            open: true,
+            matches
+          });
           fetchBusinessUsage(matches);
           setCreateWarningLoading(false);
           return;
@@ -927,90 +916,89 @@ export default function Category() {
       }
       setCreateWarningLoading(false);
     }
-
     doSave();
   };
-
-  const mobilePreviewSource =
-    imagePreviews.mobileVertical ||
-    imagePreviews.mobileCard ||
-    preview ||
-    liveImagePreview ||
-    null;
-  const mobilePreviewImage = mobilePreviewSource
-    ? mobilePreviewSource.startsWith("data:")
-      ? mobilePreviewSource
-      : normalizeImageUrl(mobilePreviewSource)
-    : null;
+  const mobilePreviewSource = imagePreviews.mobileVertical || imagePreviews.mobileCard || preview || liveImagePreview || null;
+  const mobilePreviewImage = mobilePreviewSource ? mobilePreviewSource.startsWith("data:") ? mobilePreviewSource : normalizeImageUrl(mobilePreviewSource) : null;
   const mobilePreviewTitle = (formData.category || "Category Name").trim();
-  const mobilePreviewHint = imagePreviews.mobileVertical
-    ? "Showing Mobile Vertical"
-    : imagePreviews.mobileCard
-      ? "Showing Mobile Card fallback"
-      : preview || liveImagePreview
-        ? "Showing legacy image fallback"
-        : "Upload Mobile Vertical to preview the final mobile look";
-
-  const rows = category
-    .filter((c) => c.isActive)
-    .map((cat, index) => ({
-      id: cat._id || index,
-      _id: cat._id,
-      categoryImages: cat.categoryImages || {
-        webHero: cat.categoryImage || "",
-        webCard: "",
-        webThumbnail: "",
-        mobileVertical: cat.liveImage || "",
-        mobileCard: "",
-        mobileThumbnail: ""
-      },
-      categoryImage: cat.categoryImage,
-      liveImage: cat.liveImage,
-      category: cat.category,
-      categoryType: cat.categoryType,
-      subCategoryType: cat.subCategoryType,
-      title: cat.title,
-      keywords:
-        Array.isArray(cat.keywords) && cat.keywords.length
-          ? cat.keywords.join(", ")
-          : "-",
-      description: cat.description,
-      seoTitle: cat.seoTitle || "-",
-      seoDescription: cat.seoDescription || "-",
-      slug: cat.slug || "-",
-      isActive: cat.isActive,
-    }));
-
-  const categoryList = [
-    {
-      id: "categoryImages",
-      label: "Images",
-      renderCell: (_, row) => (
-        <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
-          {row.categoryImages?.webHero ? (
-            <Avatar src={normalizeImageUrl(row.categoryImages.webHero)} alt="Web Hero" title="Web Hero" sx={{ width: 36, height: 36 }} />
-          ) : null}
-          {row.categoryImages?.mobileVertical ? (
-            <Avatar src={normalizeImageUrl(row.categoryImages.mobileVertical)} alt="Mobile" title="Mobile Vertical" sx={{ width: 36, height: 36 }} />
-          ) : null}
+  const mobilePreviewHint = imagePreviews.mobileVertical ? "Showing Mobile Vertical" : imagePreviews.mobileCard ? "Showing Mobile Card fallback" : preview || liveImagePreview ? "Showing legacy image fallback" : "Upload Mobile Vertical to preview the final mobile look";
+  const rows = category.filter(c => c.isActive).map((cat, index) => ({
+    id: cat._id || index,
+    _id: cat._id,
+    categoryImages: cat.categoryImages || {
+      webHero: cat.categoryImage || "",
+      webCard: "",
+      webThumbnail: "",
+      mobileVertical: cat.liveImage || "",
+      mobileCard: "",
+      mobileThumbnail: ""
+    },
+    categoryImage: cat.categoryImage,
+    liveImage: cat.liveImage,
+    category: cat.category,
+    categoryType: cat.categoryType,
+    subCategoryType: cat.subCategoryType,
+    title: cat.title,
+    keywords: Array.isArray(cat.keywords) && cat.keywords.length ? cat.keywords.join(", ") : "-",
+    description: cat.description,
+    seoTitle: cat.seoTitle || "-",
+    seoDescription: cat.seoDescription || "-",
+    slug: cat.slug || "-",
+    isActive: cat.isActive,
+    filterConfig: cat.filterConfig || []
+  }));
+  const categoryList = [{
+    id: "categoryImages",
+    label: "Images",
+    renderCell: (_, row) => <div style={{
+      display: "flex",
+      gap: "4px",
+      flexWrap: "wrap"
+    }}>
+          {row.categoryImages?.webHero ? <Avatar src={normalizeImageUrl(row.categoryImages.webHero)} alt="Web Hero" title="Web Hero" sx={{
+        width: 36,
+        height: 36
+      }} /> : null}
+          {row.categoryImages?.mobileVertical ? <Avatar src={normalizeImageUrl(row.categoryImages.mobileVertical)} alt="Mobile" title="Mobile Vertical" sx={{
+        width: 36,
+        height: 36
+      }} /> : null}
           {!row.categoryImages?.webHero && !row.categoryImages?.mobileVertical && "-"}
         </div>
-      ),
-    },
-    { id: "category", label: "Category" },
-    { id: "categoryType", label: "Type" },
-    { id: "subCategoryType", label: "Sub Type" },
-    { id: "title", label: "Title" },
-    { id: "keywords", label: "Keywords" },
-    { id: "description", label: "Description" },
-    { id: "seoTitle", label: "SEO Title" },
-    { id: "seoDescription", label: "SEO Description" },
-    { id: "slug", label: "Slug" },
-    {
-      id: "action",
-      label: "Action",
-      renderCell: (_, row) => (
-        <div style={{ display: "flex", gap: "8px" }}>
+  }, {
+    id: "category",
+    label: "Category"
+  }, {
+    id: "categoryType",
+    label: "Type"
+  }, {
+    id: "subCategoryType",
+    label: "Sub Type"
+  }, {
+    id: "title",
+    label: "Title"
+  }, {
+    id: "keywords",
+    label: "Keywords"
+  }, {
+    id: "description",
+    label: "Description"
+  }, {
+    id: "seoTitle",
+    label: "SEO Title"
+  }, {
+    id: "seoDescription",
+    label: "SEO Description"
+  }, {
+    id: "slug",
+    label: "Slug"
+  }, {
+    id: "action",
+    label: "Action",
+    renderCell: (_, row) => <div style={{
+      display: "flex",
+      gap: "8px"
+    }}>
           <IconButton color="primary" size="small" onClick={() => handleEdit(row)}>
             <EditRoundedIcon fontSize="small" />
           </IconButton>
@@ -1018,432 +1006,366 @@ export default function Category() {
             <DeleteOutlineRoundedIcon fontSize="small" />
           </IconButton>
         </div>
-      ),
-    },
-  ];
-
-  return (
-    <div className="category-page-container">
+  }];
+  return <div className={cx("category-page-container")}>
       {/* Category Form */}
-      <div className="category-form-section">
-        <h2 className="category-card-title">
+      <div className={cx("category-form-section")}>
+        <h2 className={cx("category-card-title")}>
           {editMode ? "Edit Category" : "Add New Category"}
         </h2>
-        <form onSubmit={handleSubmit} className="category-form-grid">
-          <div className="category-form-input-group">
-            <label className="category-input-label">Category</label>
-            <input
-              type="text"
-              name="category"
-              className={`category-text-input ${errors.category ? "category-error" : ""}`}
-              value={formData.category}
-              onChange={handleChange}
-            />
-            {errors.category && (
-              <p className="category-error-text">{errors.category}</p>
-            )}
+        <form onSubmit={handleSubmit} className={cx("category-form-grid")}>
+          <div className={cx("category-form-input-group")}>
+            <label className={cx("category-input-label")}>Category</label>
+            <input type="text" name="category" className={cx(`category-text-input ${errors.category ? "category-error" : ""}`)} value={formData.category} onChange={handleChange} />
+            {errors.category && <p className={cx("category-error-text")}>{errors.category}</p>}
           </div>
 
-          <div className="category-form-input-group">
-            <label className="category-input-label">Slug (Auto)</label>
-            <input
-              type="text"
-              name="slug"
-              className="category-text-input"
-              value={formData.slug}
-              readOnly
-            />
+          <div className={cx("category-form-input-group")}>
+            <label className={cx("category-input-label")}>Slug (Auto)</label>
+            <input type="text" name="slug" className={cx("category-text-input")} value={formData.slug} readOnly />
           </div>
 
-          <div className="category-form-input-group"> 
-            <label className="category-input-label">Category Type</label>
-            <select
-              name="categoryType"
-              className={`category-select-input ${errors.categoryType ? "category-error" : ""}`}
-              value={formData.categoryType}
-              onChange={handleChange}
-            >
+          <div className={cx("category-form-input-group")}> 
+            <label className={cx("category-input-label")}>Category Type</label>
+            <select name="categoryType" className={cx(`category-select-input ${errors.categoryType ? "category-error" : ""}`)} value={formData.categoryType} onChange={handleChange}>
               <option value="">-- Select Type --</option>
               <option value="Primary Category">Primary Category</option>
               <option value="Sub Category">Sub Category</option>
             </select>
-            {errors.categoryType && (
-              <p className="category-error-text">{errors.categoryType}</p>
-            )}
+            {errors.categoryType && <p className={cx("category-error-text")}>{errors.categoryType}</p>}
           </div>
 
-          {formData.categoryType === "Sub Category" && (
-            <div className="category-form-input-group"> 
-              <label className="category-input-label">Sub Category Type</label>
-              <select
-                name="subCategoryType"
-                className={`category-select-input ${errors.subCategoryType ? "category-error" : ""
-                  }`}
-                value={formData.subCategoryType}
-                onChange={handleChange}
-              >
+          {formData.categoryType === "Sub Category" && <div className={cx("category-form-input-group")}> 
+              <label className={cx("category-input-label")}>Sub Category Type</label>
+              <select name="subCategoryType" className={cx(`category-select-input ${errors.subCategoryType ? "category-error" : ""}`)} value={formData.subCategoryType} onChange={handleChange}>
                 <option value="">-- Select Sub Category --</option>
-                {subCategories.map((sub) => (
-                  <option key={sub} value={sub}>
+                {subCategories.map(sub => <option key={sub} value={sub}>
                     {sub}
-                  </option>
-                ))}
+                  </option>)}
               </select>
-              {errors.subCategoryType && (
-                <p className="category-error-text">{errors.subCategoryType}</p>
-              )}
-            </div>
-          )}
+              {errors.subCategoryType && <p className={cx("category-error-text")}>{errors.subCategoryType}</p>}
+            </div>}
 
-          <div className="category-form-input-group">
-            <label className="category-input-label">Title</label>
-            <input
-              type="text"
-              name="title"
-              className={`category-text-input ${errors.title ? "category-error" : ""}`}
-              value={formData.title}
-              onChange={handleChange}
-            />
-            {errors.title && <p className="category-error-text">{errors.title}</p>}
+          <div className={cx("category-form-input-group")}>
+            <label className={cx("category-input-label")}>Title</label>
+            <input type="text" name="title" className={cx(`category-text-input ${errors.title ? "category-error" : ""}`)} value={formData.title} onChange={handleChange} />
+            {errors.title && <p className={cx("category-error-text")}>{errors.title}</p>}
           </div>
 
-          <div className="category-form-input-group">
-            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 0.5 }}>
-              <label className="category-input-label">Keywords</label>
-              <Button
-                size="small"
-                variant="outlined"
-                onClick={handleSuggestKeywords}
-                disabled={suggestLoading || !formData.category?.trim()}
-                sx={{
-                  fontSize: "0.75rem",
-                  borderColor: "#ff8c00",
-                  color: "#ff8c00",
-                  "&:hover": { borderColor: "#D97800", color: "#D97800", backgroundColor: "rgba(255,140,0,0.05)" },
-                  textTransform: "none",
-                }}
-              >
-                {suggestLoading ? (
-                  <><CircularProgress size={12} sx={{ mr: 0.5, color: "#ff8c00" }} /> Fetching…</>
-                ) : (
-                  "✨ Suggest Keywords"
-                )}
+          <div className={cx("category-form-input-group")}>
+            <Box sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            mb: 0.5
+          }}>
+              <label className={cx("category-input-label")}>Keywords</label>
+              <Button size="small" variant="outlined" onClick={handleSuggestKeywords} disabled={suggestLoading || !formData.category?.trim()} sx={{
+              fontSize: "0.75rem",
+              borderColor: "#ff8c00",
+              color: "#ff8c00",
+              "&:hover": {
+                borderColor: "#D97800",
+                color: "#D97800",
+                backgroundColor: "rgba(255,140,0,0.05)"
+              },
+              textTransform: "none"
+            }}>
+                {suggestLoading ? <><CircularProgress size={12} sx={{
+                  mr: 0.5,
+                  color: "#ff8c00"
+                }} /> Fetching…</> : "✨ Suggest Keywords"}
               </Button>
             </Box>
 
-            <Autocomplete
-              multiple
-              freeSolo
-              options={[]}
-              value={formData.keywords}
-              onChange={handleKeywordChange}
-              renderTags={(value, getTagProps) =>
-                value.map((option, index) => (
-                  <Chip
-                    key={index}
-                    label={option}
-                    {...getTagProps({ index })}
-                    onDelete={() => handleKeywordDelete(option)}
-                    sx={{
-                      backgroundColor: "#ff8c00",
-                      color: "white",
-                      fontWeight: 500,
-                      "& .MuiChip-deleteIcon": { color: "white" },
-                    }}
-                  />
-                ))
-              }
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  variant="outlined"
-                  placeholder='e.g. "ac repair service", "split ac installation" — min 2 words'
-                  value={inputKeyword}
-                  onChange={(e) => {
-                    setInputKeyword(e.target.value);
-                    setKeywordInputError("");
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      handleAddKeyword();
-                    }
-                  }}
-                  error={!!keywordInputError || !!errors.keywords}
-                  helperText={keywordInputError || errors.keywords}
-                  InputProps={{
-                    ...params.InputProps,
-                    endAdornment: (
-                      <InputAdornment position="end">
-                        <IconButton
-                          onClick={handleAddKeyword}
-                          color="primary"
-                          sx={{
-                            color: "var(--color-primary-orange)",
-                            "&:hover": { color: "var(--color-primary-hover)" },
-                          }}
-                        >
+            <Autocomplete multiple freeSolo options={[]} value={formData.keywords} onChange={handleKeywordChange} renderTags={(value, getTagProps) => value.map((option, index) => {
+              const { key, ...tagProps } = getTagProps({ index });
+              return <Chip key={key} label={option} {...tagProps} onDelete={() => handleKeywordDelete(option)} sx={{
+            backgroundColor: "#ff8c00",
+            color: "white",
+            fontWeight: 500,
+            "& .MuiChip-deleteIcon": {
+              color: "white"
+            }
+          }} />;
+            })} renderInput={params => <TextField {...params} variant="outlined" placeholder='e.g. "ac repair service", "split ac installation" — min 2 words' value={inputKeyword} onChange={e => {
+            setInputKeyword(e.target.value);
+            setKeywordInputError("");
+          }} onKeyDown={e => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              handleAddKeyword();
+            }
+          }} error={!!keywordInputError || !!errors.keywords} helperText={keywordInputError || errors.keywords} InputProps={{
+            ...params.InputProps,
+            endAdornment: <InputAdornment position="end">
+                        <IconButton onClick={handleAddKeyword} color="primary" sx={{
+                color: "var(--color-primary-orange)",
+                "&:hover": {
+                  color: "var(--color-primary-hover)"
+                }
+              }}>
                           <AddCircleOutlineIcon />
                         </IconButton>
                       </InputAdornment>
-                    ),
-                  }}
-                />
-              )}
-            />
+          }} />} />
 
             {/* Keyword Suggestions Panel */}
-            {suggestedKeywords.length > 0 && (
-              <Box sx={{ mt: 1.5, p: 1.5, border: "1px dashed #ff8c00", borderRadius: 2, backgroundColor: "rgba(255,140,0,0.03)" }}>
-                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
-                  <Typography variant="caption" sx={{ color: "#666", fontWeight: 600 }}>
+            {suggestedKeywords.length > 0 && <Box sx={{
+            mt: 1.5,
+            p: 1.5,
+            border: "1px dashed #ff8c00",
+            borderRadius: 2,
+            backgroundColor: "rgba(255,140,0,0.03)"
+          }}>
+                <Box sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              mb: 1
+            }}>
+                  <Typography variant="caption" sx={{
+                color: "#666",
+                fontWeight: 600
+              }}>
                     ✨ Suggested — click to add
                   </Typography>
-                  <Button
-                    size="small"
-                    onClick={handleAddAllSuggestions}
-                    sx={{ fontSize: "0.7rem", color: "#ff8c00", textTransform: "none", p: "2px 8px" }}
-                  >
+                  <Button size="small" onClick={handleAddAllSuggestions} sx={{
+                fontSize: "0.7rem",
+                color: "#ff8c00",
+                textTransform: "none",
+                p: "2px 8px"
+              }}>
                     Add All ({suggestedKeywords.length})
                   </Button>
                 </Box>
-                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75 }}>
-                  {suggestedKeywords.map((kw) => (
-                    <Chip
-                      key={kw}
-                      label={kw}
-                      size="small"
-                      onClick={() => handleAddSuggestion(kw)}
-                      sx={{
-                        cursor: "pointer",
-                        backgroundColor: "white",
-                        border: "1px solid #ff8c00",
-                        color: "#ff8c00",
-                        fontWeight: 500,
-                        "&:hover": { backgroundColor: "#ff8c00", color: "white" },
-                      }}
-                    />
-                  ))}
+                <Box sx={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 0.75
+            }}>
+                  {suggestedKeywords.map(kw => <Chip key={kw} label={kw} size="small" onClick={() => handleAddSuggestion(kw)} sx={{
+                cursor: "pointer",
+                backgroundColor: "white",
+                border: "1px solid #ff8c00",
+                color: "#ff8c00",
+                fontWeight: 500,
+                "&:hover": {
+                  backgroundColor: "#ff8c00",
+                  color: "white"
+                }
+              }} />)}
                 </Box>
-              </Box>
-            )}
+              </Box>}
           </div>
-          <div className="category-form-input-group">
-            <label className="category-input-label">SEO Description</label>
-            <input
-              type="text"
-              name="seoDescription"
-              className="category-text-input"
-              value={formData.seoDescription}
-              onChange={handleChange}
-            />
+          <div className={cx("category-form-input-group")}>
+            <label className={cx("category-input-label")}>SEO Description</label>
+            <input type="text" name="seoDescription" className={cx("category-text-input")} value={formData.seoDescription} onChange={handleChange} />
           </div>
-          <div className="category-form-input-group category-col-span-2">
-            <label className="category-input-label">Description</label>
-            <textarea
-              name="description"
-              className={`category-text-input category-text-area ${errors.description ? "category-error" : ""
-                }`}
-              value={formData.description}
-              onChange={handleChange}
-              rows="3"
-            />
-            {errors.description && (
-              <p className="category-error-text">{errors.description}</p>
-            )}
+          <div className={cx("category-form-input-group category-col-span-2")}>
+            <label className={cx("category-input-label")}>Description</label>
+            <textarea name="description" className={cx(`category-text-input category-text-area ${errors.description ? "category-error" : ""}`)} value={formData.description} onChange={handleChange} rows="3" />
+            {errors.description && <p className={cx("category-error-text")}>{errors.description}</p>}
           </div>
 
-          <div className="category-form-input-group">
-            <label className="category-input-label">SEO Title</label>
-            <input
-              type="text"
-              name="seoTitle"
-              className="category-text-input"
-              value={formData.seoTitle}
-              onChange={handleChange}
-            />
+          <div className={cx("category-form-input-group")}>
+            <label className={cx("category-input-label")}>SEO Title</label>
+            <input type="text" name="seoTitle" className={cx("category-text-input")} value={formData.seoTitle} onChange={handleChange} />
           </div>
 
           {/* Image Variants Upload Section - Compact Grid */}
-          <div className="category-form-input-group category-col-span-all">
-            <label className="category-input-label">Image Variants</label>
+          <div className={cx("category-form-input-group category-col-span-all")}>
+            <label className={cx("category-input-label")}>Image Variants</label>
             <div style={{
-              display: "flex",
-              flexWrap: "wrap",
-              alignItems: "flex-start",
-              gap: "18px",
-              marginTop: "12px"
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "flex-start",
+            gap: "18px",
+            marginTop: "12px"
+          }}>
+              <div style={{
+              flex: "1 1 420px",
+              minWidth: "320px"
             }}>
-              <div style={{ flex: "1 1 420px", minWidth: "320px" }}>
                 <div style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))",
-                  gap: "12px",
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))",
+                gap: "12px"
+              }}>
+                  {Object.entries(IMAGE_VARIANTS).map(([key, variant]) => <div key={key} onClick={() => setImageModalOpen({
+                  open: true,
+                  variantKey: key
+                })} style={{
+                  position: "relative",
+                  cursor: "pointer",
+                  borderRadius: "8px",
+                  overflow: "hidden",
+                  border: imagePreviews[key] ? "2px solid #4caf50" : "2px dashed #bbb",
+                  backgroundColor: "#f5f5f5",
+                  aspectRatio: "1",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  transition: "all 0.2s ease",
+                  padding: "8px"
+                }} onMouseEnter={e => {
+                  e.currentTarget.style.borderColor = "var(--color-primary-orange)";
+                  e.currentTarget.style.backgroundColor = "#fff3e0";
+                }} onMouseLeave={e => {
+                  e.currentTarget.style.borderColor = imagePreviews[key] ? "#4caf50" : "#bbb";
+                  e.currentTarget.style.backgroundColor = "#f5f5f5";
                 }}>
-                  {Object.entries(IMAGE_VARIANTS).map(([key, variant]) => (
-                    <div
-                      key={key}
-                      onClick={() => setImageModalOpen({ open: true, variantKey: key })}
-                      style={{
-                        position: "relative",
-                        cursor: "pointer",
-                        borderRadius: "8px",
-                        overflow: "hidden",
-                        border: imagePreviews[key] ? "2px solid #4caf50" : "2px dashed #bbb",
-                        backgroundColor: "#f5f5f5",
-                        aspectRatio: "1",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        transition: "all 0.2s ease",
-                        padding: "8px"
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = "var(--color-primary-orange)";
-                        e.currentTarget.style.backgroundColor = "#fff3e0";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = imagePreviews[key] ? "#4caf50" : "#bbb";
-                        e.currentTarget.style.backgroundColor = "#f5f5f5";
-                      }}
-                    >
-                      {imagePreviews[key] ? (
-                        <>
-                          <img
-                            src={imagePreviews[key]}
-                            alt={variant.name}
-                            style={{
-                              width: "100%",
-                              height: "100%",
-                              objectFit: "cover"
-                            }}
-                          />
+                      {imagePreviews[key] ? <>
+                          <img src={imagePreviews[key]} alt={variant.name} style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover"
+                    }} />
                           <div style={{
-                            position: "absolute",
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            backgroundColor: "rgba(0,0,0,0.4)",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            color: "white",
-                            opacity: 0,
-                            transition: "opacity 0.2s ease",
-                          }}
-                            onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
-                            onMouseLeave={(e) => { e.currentTarget.style.opacity = "0"; }}
-                          >
-                            <span style={{ fontSize: "12px", fontWeight: "600", textAlign: "center" }}>Edit</span>
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      backgroundColor: "rgba(0,0,0,0.4)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "white",
+                      opacity: 0,
+                      transition: "opacity 0.2s ease"
+                    }} onMouseEnter={e => {
+                      e.currentTarget.style.opacity = "1";
+                    }} onMouseLeave={e => {
+                      e.currentTarget.style.opacity = "0";
+                    }}>
+                            <span style={{
+                        fontSize: "12px",
+                        fontWeight: "600",
+                        textAlign: "center"
+                      }}>Edit</span>
                           </div>
-                        </>
-                      ) : (
-                        <div style={{ textAlign: "center" }}>
-                          <CloudUploadIcon sx={{ fontSize: "32px", color: "#999", mb: 1 }} />
-                          <p style={{ fontSize: "11px", fontWeight: "600", color: "#666", margin: "4px 0 0 0" }}>
+                        </> : <div style={{
+                    textAlign: "center"
+                  }}>
+                          <CloudUploadIcon sx={{
+                      fontSize: "32px",
+                      color: "#999",
+                      mb: 1
+                    }} />
+                          <p style={{
+                      fontSize: "11px",
+                      fontWeight: "600",
+                      color: "#666",
+                      margin: "4px 0 0 0"
+                    }}>
                             {variant.name}
                           </p>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                        </div>}
+                    </div>)}
                 </div>
               </div>
 
               <div style={{
-                flex: "0 0 240px",
-                width: "240px",
-                maxWidth: "100%",
-                padding: "14px",
-                borderRadius: "14px",
-                border: "1px solid #e2e2e2",
-                background: "linear-gradient(180deg, #fffaf5 0%, #ffffff 100%)",
-                boxShadow: "0 8px 24px rgba(0,0,0,0.06)"
+              flex: "0 0 240px",
+              width: "240px",
+              maxWidth: "100%",
+              padding: "14px",
+              borderRadius: "14px",
+              border: "1px solid #e2e2e2",
+              background: "linear-gradient(180deg, #fffaf5 0%, #ffffff 100%)",
+              boxShadow: "0 8px 24px rgba(0,0,0,0.06)"
+            }}>
+                <div style={{
+                fontSize: "13px",
+                fontWeight: "700",
+                color: "#222"
               }}>
-                <div style={{ fontSize: "13px", fontWeight: "700", color: "#222" }}>
                   Mobile Trending Preview
                 </div>
-                <div style={{ fontSize: "11px", color: "#777", marginTop: "4px", marginBottom: "12px", lineHeight: 1.4 }}>
+                <div style={{
+                fontSize: "11px",
+                color: "#777",
+                marginTop: "4px",
+                marginBottom: "12px",
+                lineHeight: 1.4
+              }}>
                   {mobilePreviewHint}
                 </div>
 
                 <div style={{
-                  width: "140px",
-                  height: "180px",
-                  margin: "0 auto",
-                  borderRadius: "16px",
-                  overflow: "hidden",
-                  position: "relative",
-                  background: "linear-gradient(135deg, rgba(255,145,77,0.22) 0%, rgba(255,145,77,0.08) 100%)",
-                  boxShadow: "0 10px 24px rgba(0,0,0,0.14)"
+                width: "140px",
+                height: "180px",
+                margin: "0 auto",
+                borderRadius: "16px",
+                overflow: "hidden",
+                position: "relative",
+                background: "linear-gradient(135deg, rgba(255,145,77,0.22) 0%, rgba(255,145,77,0.08) 100%)",
+                boxShadow: "0 10px 24px rgba(0,0,0,0.14)"
+              }}>
+                  {mobilePreviewImage ? <img src={mobilePreviewImage} alt="Mobile trending preview" style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover"
+                }} /> : <div style={{
+                  width: "100%",
+                  height: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#c07d41",
+                  fontSize: "12px",
+                  fontWeight: "600",
+                  textAlign: "center",
+                  padding: "16px"
                 }}>
-                  {mobilePreviewImage ? (
-                    <img
-                      src={mobilePreviewImage}
-                      alt="Mobile trending preview"
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover"
-                      }}
-                    />
-                  ) : (
-                    <div style={{
-                      width: "100%",
-                      height: "100%",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      color: "#c07d41",
-                      fontSize: "12px",
-                      fontWeight: "600",
-                      textAlign: "center",
-                      padding: "16px"
-                    }}>
                       No mobile image yet
-                    </div>
-                  )}
+                    </div>}
 
                   <div style={{
-                    position: "absolute",
-                    inset: 0,
-                    background: "linear-gradient(180deg, rgba(0,0,0,0) 28%, rgba(0,0,0,0.82) 100%)"
-                  }} />
+                  position: "absolute",
+                  inset: 0,
+                  background: "linear-gradient(180deg, rgba(0,0,0,0) 28%, rgba(0,0,0,0.82) 100%)"
+                }} />
 
                   <div style={{
-                    position: "absolute",
-                    left: "12px",
-                    right: "12px",
-                    bottom: "12px",
-                    color: "#fff"
-                  }}>
+                  position: "absolute",
+                  left: "12px",
+                  right: "12px",
+                  bottom: "12px",
+                  color: "#fff"
+                }}>
                     <div style={{
-                      fontSize: "13px",
-                      fontWeight: "700",
-                      lineHeight: 1.2,
-                      display: "-webkit-box",
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: "vertical",
-                      overflow: "hidden"
-                    }}>
+                    fontSize: "13px",
+                    fontWeight: "700",
+                    lineHeight: 1.2,
+                    display: "-webkit-box",
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: "vertical",
+                    overflow: "hidden"
+                  }}>
                       {mobilePreviewTitle}
                     </div>
                     <div style={{
-                      marginTop: "4px",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "4px",
-                      fontSize: "10px",
-                      color: "rgba(255,255,255,0.72)"
-                    }}>
+                    marginTop: "4px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                    fontSize: "10px",
+                    color: "rgba(255,255,255,0.72)"
+                  }}>
                       <span>Explore</span>
                       <span aria-hidden="true">&gt;</span>
                     </div>
                   </div>
                 </div>
 
-                <div style={{ fontSize: "11px", color: "#666", marginTop: "10px", lineHeight: 1.45 }}>
+                <div style={{
+                fontSize: "11px",
+                color: "#666",
+                marginTop: "10px",
+                lineHeight: 1.45
+              }}>
                   Best result: keep faces, logos, and text away from the top and bottom edges because the mobile card uses cover cropping.
                 </div>
               </div>
@@ -1451,249 +1373,346 @@ export default function Category() {
           </div>
 
           {/* Legacy Image Fields (for backward compatibility) */}
-          <div className="category-form-input-group category-col-span-all">
-            <label className="category-input-label" style={{ fontSize: "12px", color: "#999" }}>
+          <div className={cx("category-form-input-group category-col-span-all")}>
+            <label className={cx("category-input-label")} style={{
+            fontSize: "12px",
+            color: "#999"
+          }}>
               Legacy Images (Optional - for backward compatibility)
             </label>
             <div style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))",
-              gap: "10px",
-              marginTop: "10px"
-            }}>
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))",
+            gap: "10px",
+            marginTop: "10px"
+          }}>
               {/* Legacy Category Image */}
-              <div
-                onClick={() => {
-                  if (fileInputRef.current) fileInputRef.current.click();
-                }}
-                style={{
-                  cursor: "pointer",
-                  borderRadius: "6px",
-                  overflow: "hidden",
-                  border: preview ? "2px solid #4caf50" : "2px dashed #ccc",
-                  backgroundColor: "#f9f9f9",
-                  aspectRatio: "1",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  transition: "all 0.2s ease",
-                  position: "relative",
-                  padding: "6px"
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = "var(--color-primary-orange)";
-                  e.currentTarget.style.backgroundColor = "#fff3e0";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = preview ? "#4caf50" : "#ccc";
-                  e.currentTarget.style.backgroundColor = "#f9f9f9";
-                }}
-              >
-                {preview ? (
-                  <>
-                    <img src={preview} alt="Category" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                    <div style={{ position: "absolute", fontSize: "9px", color: "#666", fontWeight: "600", padding: "2px 4px", backgroundColor: "rgba(255,255,255,0.9)", borderRadius: "3px" }}>Category</div>
-                  </>
-                ) : (
-                  <Typography variant="caption" sx={{ fontSize: "10px", color: "#999", textAlign: "center" }}>Category Image</Typography>
-                )}
+              <div onClick={() => {
+              if (fileInputRef.current) fileInputRef.current.click();
+            }} style={{
+              cursor: "pointer",
+              borderRadius: "6px",
+              overflow: "hidden",
+              border: preview ? "2px solid #4caf50" : "2px dashed #ccc",
+              backgroundColor: "#f9f9f9",
+              aspectRatio: "1",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              transition: "all 0.2s ease",
+              position: "relative",
+              padding: "6px"
+            }} onMouseEnter={e => {
+              e.currentTarget.style.borderColor = "var(--color-primary-orange)";
+              e.currentTarget.style.backgroundColor = "#fff3e0";
+            }} onMouseLeave={e => {
+              e.currentTarget.style.borderColor = preview ? "#4caf50" : "#ccc";
+              e.currentTarget.style.backgroundColor = "#f9f9f9";
+            }}>
+                {preview ? <>
+                    <img src={preview} alt="Category" style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover"
+                }} />
+                    <div style={{
+                  position: "absolute",
+                  fontSize: "9px",
+                  color: "#666",
+                  fontWeight: "600",
+                  padding: "2px 4px",
+                  backgroundColor: "rgba(255,255,255,0.9)",
+                  borderRadius: "3px"
+                }}>Category</div>
+                  </> : <Typography variant="caption" sx={{
+                fontSize: "10px",
+                color: "#999",
+                textAlign: "center"
+              }}>Category Image</Typography>}
               </div>
-              <input
-                type="file"
-                accept="image/*"
-                hidden
-                ref={fileInputRef}
-                onChange={(e) => {
-                  const file = e.target.files[0];
-                  if (file) {
-                    const reader = new FileReader();
-                    reader.onload = async () => {
-                      const base64Data = reader.result;
-                      // For legacy images, store base64 in form (will be handled by backend on submit)
-                      setFormData((prev) => ({ ...prev, categoryImage: base64Data }));
-                      setPreview(base64Data);
-                    };
-                    reader.readAsDataURL(file);
-                  }
-                }}
-              />
+              <input type="file" accept="image/*" hidden ref={fileInputRef} onChange={e => {
+              const file = e.target.files[0];
+              if (file) {
+                const reader = new FileReader();
+                reader.onload = async () => {
+                  const base64Data = reader.result;
+                  // For legacy images, store base64 in form (will be handled by backend on submit)
+                  setFormData(prev => ({
+                    ...prev,
+                    categoryImage: base64Data
+                  }));
+                  setPreview(base64Data);
+                };
+                reader.readAsDataURL(file);
+              }
+            }} />
 
               {/* Legacy Live Image */}
-              <div
-                onClick={() => {
-                  if (liveImageInputRef.current) liveImageInputRef.current.click();
-                }}
-                style={{
-                  cursor: "pointer",
-                  borderRadius: "6px",
-                  overflow: "hidden",
-                  border: liveImagePreview ? "2px solid #4caf50" : "2px dashed #ccc",
-                  backgroundColor: "#f9f9f9",
-                  aspectRatio: "1",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  transition: "all 0.2s ease",
-                  position: "relative",
-                  padding: "6px"
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = "var(--color-primary-orange)";
-                  e.currentTarget.style.backgroundColor = "#fff3e0";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = liveImagePreview ? "#4caf50" : "#ccc";
-                  e.currentTarget.style.backgroundColor = "#f9f9f9";
-                }}
-              >
-                {liveImagePreview ? (
-                  <>
-                    <img src={liveImagePreview} alt="Live" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                    <div style={{ position: "absolute", fontSize: "9px", color: "#666", fontWeight: "600", padding: "2px 4px", backgroundColor: "rgba(255,255,255,0.9)", borderRadius: "3px" }}>Live</div>
-                  </>
-                ) : (
-                  <Typography variant="caption" sx={{ fontSize: "10px", color: "#999", textAlign: "center" }}>Live Image</Typography>
-                )}
+              <div onClick={() => {
+              if (liveImageInputRef.current) liveImageInputRef.current.click();
+            }} style={{
+              cursor: "pointer",
+              borderRadius: "6px",
+              overflow: "hidden",
+              border: liveImagePreview ? "2px solid #4caf50" : "2px dashed #ccc",
+              backgroundColor: "#f9f9f9",
+              aspectRatio: "1",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              transition: "all 0.2s ease",
+              position: "relative",
+              padding: "6px"
+            }} onMouseEnter={e => {
+              e.currentTarget.style.borderColor = "var(--color-primary-orange)";
+              e.currentTarget.style.backgroundColor = "#fff3e0";
+            }} onMouseLeave={e => {
+              e.currentTarget.style.borderColor = liveImagePreview ? "#4caf50" : "#ccc";
+              e.currentTarget.style.backgroundColor = "#f9f9f9";
+            }}>
+                {liveImagePreview ? <>
+                    <img src={liveImagePreview} alt="Live" style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover"
+                }} />
+                    <div style={{
+                  position: "absolute",
+                  fontSize: "9px",
+                  color: "#666",
+                  fontWeight: "600",
+                  padding: "2px 4px",
+                  backgroundColor: "rgba(255,255,255,0.9)",
+                  borderRadius: "3px"
+                }}>Live</div>
+                  </> : <Typography variant="caption" sx={{
+                fontSize: "10px",
+                color: "#999",
+                textAlign: "center"
+              }}>Live Image</Typography>}
               </div>
-              <input
-                type="file"
-                accept="image/*"
-                hidden
-                ref={liveImageInputRef}
-                onChange={(e) => {
-                  const file = e.target.files[0];
-                  if (file) {
-                    const reader = new FileReader();
-                    reader.onload = async () => {
-                      const base64Data = reader.result;
-                      // For legacy images, store base64 in form (will be handled by backend on submit)
-                      setFormData((prev) => ({ ...prev, liveImage: base64Data }));
-                      setLiveImagePreview(base64Data);
-                    };
-                    reader.readAsDataURL(file);
-                  }
-                }}
-              />
+              <input type="file" accept="image/*" hidden ref={liveImageInputRef} onChange={e => {
+              const file = e.target.files[0];
+              if (file) {
+                const reader = new FileReader();
+                reader.onload = async () => {
+                  const base64Data = reader.result;
+                  // For legacy images, store base64 in form (will be handled by backend on submit)
+                  setFormData(prev => ({
+                    ...prev,
+                    liveImage: base64Data
+                  }));
+                  setLiveImagePreview(base64Data);
+                };
+                reader.readAsDataURL(file);
+              }
+            }} />
 
               {/* Remove buttons in compact form */}
-              {(preview || liveImagePreview) && (
-                <Box sx={{ display: "flex", gap: 1, mt: 1, gridColumn: "1 / -1" }}>
-                  {preview && (
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      color="error"
-                      sx={{ flex: 1 }}
-                      onClick={() => {
-                        setFormData((prev) => ({ ...prev, categoryImage: "" }));
-                        setPreview(null);
-                        if (fileInputRef.current) fileInputRef.current.value = "";
-                      }}
-                    >
+              {(preview || liveImagePreview) && <Box sx={{
+              display: "flex",
+              gap: 1,
+              mt: 1,
+              gridColumn: "1 / -1"
+            }}>
+                  {preview && <Button size="small" variant="outlined" color="error" sx={{
+                flex: 1
+              }} onClick={() => {
+                setFormData(prev => ({
+                  ...prev,
+                  categoryImage: ""
+                }));
+                setPreview(null);
+                if (fileInputRef.current) fileInputRef.current.value = "";
+              }}>
                       Remove Category
-                    </Button>
-                  )}
-                  {liveImagePreview && (
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      color="error"
-                      sx={{ flex: 1 }}
-                      onClick={() => {
-                        setFormData((prev) => ({ ...prev, liveImage: "" }));
-                        setLiveImagePreview(null);
-                        if (liveImageInputRef.current) liveImageInputRef.current.value = "";
-                      }}
-                    >
+                    </Button>}
+                  {liveImagePreview && <Button size="small" variant="outlined" color="error" sx={{
+                flex: 1
+              }} onClick={() => {
+                setFormData(prev => ({
+                  ...prev,
+                  liveImage: ""
+                }));
+                setLiveImagePreview(null);
+                if (liveImageInputRef.current) liveImageInputRef.current.value = "";
+              }}>
                       Remove Live
-                    </Button>
-                  )}
-                </Box>
-              )}
+                    </Button>}
+                </Box>}
             </div>
           </div>
 
-          {/* Submit Button */}
-          <div className="category-form-input-group category-col-span-all">
-            <button
-              type="submit"
-              className="category-submit-button"
-              disabled={loading}
-              style={{
-                width: "100%",
-                padding: "12px",
-                backgroundColor: loading ? "#ccc" : "var(--color-primary-orange)",
-                cursor: loading ? "not-allowed" : "pointer"
-              }}
-            >
-              {loading || createWarningLoading ? (
-                <CircularProgress size={24} color="inherit" />
-              ) : editMode ? (
-                "Update Category"
-              ) : (
-                "Create Category"
+          {/* Filter Configuration */}
+          <div className={cx("category-form-input-group category-col-span-all")}>
+            <label className={cx("category-input-label")}>Filter Configuration</label>
+            <Box sx={{ mt: 1, p: 2, border: "1px solid #e0e0e0", borderRadius: 2, bgcolor: "#fafafa" }}>
+              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.5, mb: filterDraftError ? 0.5 : 0 }}>
+                <TextField size="small" label="Key" value={filterDraft.key}
+                  onChange={e => setFilterDraft(p => ({ ...p, key: e.target.value.replace(/\s+/g, "_").toLowerCase() }))}
+                  placeholder="e.g. cuisineType" sx={{ flex: "1 1 120px" }} />
+                <TextField size="small" label="Label" value={filterDraft.label}
+                  onChange={e => setFilterDraft(p => ({ ...p, label: e.target.value }))}
+                  placeholder="e.g. Cuisine Type" sx={{ flex: "1 1 130px" }} />
+                <TextField size="small" select label="Type" value={filterDraft.type}
+                  onChange={e => setFilterDraft(p => ({ ...p, type: e.target.value, options: [] }))}
+                  SelectProps={{ native: true }} sx={{ flex: "0 0 120px" }}>
+                  <option value="multiselect">Multiselect</option>
+                  <option value="radio">Radio</option>
+                  <option value="toggle">Toggle</option>
+                  <option value="range">Range</option>
+                </TextField>
+
+                {["multiselect", "radio"].includes(filterDraft.type) && (
+                  <Autocomplete multiple freeSolo options={[]} value={filterDraft.options}
+                    onChange={(_, val) => setFilterDraft(p => ({ ...p, options: val }))}
+                    renderTags={(value, getTagProps) => value.map((opt, i) => {
+                      const { key, ...tagProps } = getTagProps({ index: i });
+                      return <Chip key={key} label={opt} size="small" {...tagProps} />;
+                    })}
+                    renderInput={params => <TextField {...params} size="small" label="Options (Enter to add)" placeholder="Add option" />}
+                    sx={{ flex: "1 1 200px" }} />
+                )}
+
+                {filterDraft.type === "range" && (
+                  <>
+                    <TextField size="small" label="Min" type="number" value={filterDraft.min}
+                      onChange={e => setFilterDraft(p => ({ ...p, min: e.target.value }))} sx={{ flex: "0 0 70px" }} />
+                    <TextField size="small" label="Max" type="number" value={filterDraft.max}
+                      onChange={e => setFilterDraft(p => ({ ...p, max: e.target.value }))} sx={{ flex: "0 0 70px" }} />
+                    <TextField size="small" label="Unit" value={filterDraft.unit}
+                      onChange={e => setFilterDraft(p => ({ ...p, unit: e.target.value }))}
+                      placeholder="₹ / yrs" sx={{ flex: "0 0 70px" }} />
+                  </>
+                )}
+
+                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                  <Checkbox size="small" checked={filterDraft.isRequired}
+                    onChange={e => setFilterDraft(p => ({ ...p, isRequired: e.target.checked }))}
+                    sx={{ p: 0.5 }} />
+                  <Typography variant="caption">Required</Typography>
+                </Box>
+
+                {editingFilterIndex === null ? (
+                  <Button variant="contained" size="small" onClick={handleAddFilterField}
+                    sx={{ bgcolor: "var(--color-primary-orange)", "&:hover": { bgcolor: "#D97800" }, alignSelf: "center", flexShrink: 0 }}>
+                    + Add
+                  </Button>
+                ) : (
+                  <>
+                    <Button variant="contained" size="small" onClick={() => handleUpdateFilterField(editingFilterIndex)}
+                      sx={{ bgcolor: "#4caf50", "&:hover": { bgcolor: "#45a049" }, alignSelf: "center", flexShrink: 0 }}>
+                      ✓ Update
+                    </Button>
+                    <Button variant="outlined" size="small" onClick={handleCancelEditFilter}
+                      sx={{ color: "#666", borderColor: "#ddd", alignSelf: "center", flexShrink: 0 }}>
+                      Cancel
+                    </Button>
+                  </>
+                )}
+              </Box>
+
+              {filterDraftError && (
+                <Typography variant="caption" color="error" sx={{ display: "block", mt: 0.5 }}>
+                  {filterDraftError}
+                </Typography>
               )}
+            </Box>
+
+            {/* Saved filter fields list */}
+            {formData.filterConfig.length > 0 && (
+              <Box sx={{ mt: 1.5, display: "flex", flexDirection: "column", gap: 0.75 }}>
+                {formData.filterConfig.map((fc, i) => (
+                  <Box key={i} sx={{ display: "flex", alignItems: "center", gap: 1, p: 1.5, border: "1px solid #e0e0e0", borderRadius: 1, bgcolor: "#fff" }}>
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>{fc.label}</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        key: {fc.key} &nbsp;|&nbsp; {fc.type}
+                        {fc.options?.length ? ` | ${fc.options.join(", ")}` : ""}
+                        {fc.type === "range" ? ` | ${fc.min}–${fc.max} ${fc.unit}` : ""}
+                        {fc.isRequired ? " | required" : ""}
+                      </Typography>
+                    </Box>
+                    <IconButton size="small" onClick={() => handleMoveFilterField(i, -1)} disabled={i === 0}>▲</IconButton>
+                    <IconButton size="small" onClick={() => handleMoveFilterField(i, 1)} disabled={i === formData.filterConfig.length - 1}>▼</IconButton>
+                    <IconButton size="small" color="primary" onClick={() => handleEditFilterField(i)}>
+                      <EditRoundedIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton size="small" color="error" onClick={() => handleRemoveFilterField(i)}>
+                      <DeleteOutlineRoundedIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
+                ))}
+              </Box>
+            )}
+          </div>
+
+          {/* Submit Button */}
+          <div className={cx("category-form-input-group category-col-span-all")}>
+            <button type="submit" className={cx("category-submit-button")} disabled={loading} style={{
+            width: "100%",
+            padding: "12px",
+            backgroundColor: loading ? "#ccc" : "var(--color-primary-orange)",
+            cursor: loading ? "not-allowed" : "pointer"
+          }}>
+              {loading || createWarningLoading ? <CircularProgress size={24} color="inherit" /> : editMode ? "Update Category" : "Create Category"}
             </button>
           </div>
         </form>
 
-        {error && (
-          <p className="category-error-text" style={{ marginTop: "16px" }}>
+        {error && <p className={cx("category-error-text")} style={{
+        marginTop: "16px"
+      }}>
             {" "}
             {(() => {
-              if (typeof error === "string") return error;
-              if (error instanceof Error) return error.message;
-              if (typeof error === "object") return JSON.stringify(error, null, 2);
-              return String(error);
-            })()}
-          </p>
-        )}
+          if (typeof error === "string") return error;
+          if (error instanceof Error) return error.message;
+          if (typeof error === "object") return JSON.stringify(error, null, 2);
+          return String(error);
+        })()}
+          </p>}
       </div>
 
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 2, mb: 1 }}>
+      <Box sx={{
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 2,
+      mb: 1
+    }}>
         <Typography variant="h6">Category Table</Typography>
-        <Button
-          variant="outlined"
-          color="warning"
-          size="small"
-          startIcon={dupLoading ? <CircularProgress size={16} /> : <ContentCopyRoundedIcon />}
-          onClick={findDuplicates}
-          disabled={dupLoading}
-        >
+        <Button variant="outlined" color="warning" size="small" startIcon={dupLoading ? <CircularProgress size={16} /> : <ContentCopyRoundedIcon />} onClick={findDuplicates} disabled={dupLoading}>
           Find Duplicates
         </Button>
       </Box>
-      <Box sx={{ width: "100%" }}>
-        <CustomizedTable data={rows}
-          columns={categoryList}
-          total={total}
-          fetchData={(pageNo, pageSize, options) =>
-            dispatch(getAllCategory({ pageNo, pageSize, options }))
-          }
-        />
+      <Box sx={{
+      width: "100%"
+    }}>
+        <CustomizedTable data={rows} columns={categoryList} total={total} fetchData={(pageNo, pageSize, options) => dispatch(getAllCategory({
+        pageNo,
+        pageSize,
+        options
+      }))} />
       </Box>
 
       {/* Duplicates Dialog */}
-      <Dialog
-        open={dupDialog.open}
-        onClose={() => setDupDialog({ open: false, groups: [] })}
-        maxWidth="md"
-        fullWidth
-      >
+      <Dialog open={dupDialog.open} onClose={() => setDupDialog({
+      open: false,
+      groups: []
+    })} maxWidth="md" fullWidth>
         <DialogTitle>
-          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 1 }}>
+          <Box sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: 1
+        }}>
             <span>
               Duplicate Categories
-              {dupDialog.groups.length === 0
-                ? " — None Found"
-                : ` — ${dupDialog.groups.length} group(s)`}
+              {dupDialog.groups.length === 0 ? " — None Found" : ` — ${dupDialog.groups.length} group(s)`}
             </span>
-            <ToggleButtonGroup
-              value={dupMode}
-              exclusive
-              onChange={handleModeChange}
-              size="small"
-            >
+            <ToggleButtonGroup value={dupMode} exclusive onChange={handleModeChange} size="small">
               <ToggleButton value="exact">Exact Name</ToggleButton>
               <ToggleButton value="similar">Similar Name</ToggleButton>
               <ToggleButton value="semantic">Semantic</ToggleButton>
@@ -1703,91 +1722,92 @@ export default function Category() {
           </Box>
         </DialogTitle>
         <DialogContent dividers>
-          {dupDialog.groups.length === 0 ? (
-            <Typography>No duplicate categories found.</Typography>
-          ) : (
-            dupDialog.groups.map((group, gi) => {
-              const groupIds = group.map((c) => c._id);
-              const allSelected = groupIds.every((id) => selectedDups.includes(id));
-              return (
-                <Box key={gi} sx={{ mb: 2 }}>
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
-                    <Checkbox
-                      size="small"
-                      checked={allSelected}
-                      indeterminate={groupIds.some((id) => selectedDups.includes(id)) && !allSelected}
-                      onChange={() => toggleSelectGroup(group)}
-                    />
-                    <Typography variant="subtitle2" sx={{ fontWeight: 700, textTransform: "capitalize" }}>
+          {dupDialog.groups.length === 0 ? <Typography>No duplicate categories found.</Typography> : dupDialog.groups.map((group, gi) => {
+          const groupIds = group.map(c => c._id);
+          const allSelected = groupIds.every(id => selectedDups.includes(id));
+          return <Box key={gi} sx={{
+            mb: 2
+          }}>
+                  <Box sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+              mb: 0.5
+            }}>
+                    <Checkbox size="small" checked={allSelected} indeterminate={groupIds.some(id => selectedDups.includes(id)) && !allSelected} onChange={() => toggleSelectGroup(group)} />
+                    <Typography variant="subtitle2" sx={{
+                fontWeight: 700,
+                textTransform: "capitalize"
+              }}>
                       "{group[0].category}" — {group.length} entries
                     </Typography>
                   </Box>
-                  {group.map((cat) => (
-                    <Box
-                      key={cat._id}
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 1.5,
-                        pl: 4,
-                        py: 0.5,
-                        borderRadius: 1,
-                        bgcolor: selectedDups.includes(cat._id) ? "rgba(211,47,47,0.07)" : "transparent",
-                      }}
-                    >
-                      <Checkbox
-                        size="small"
-                        checked={selectedDups.includes(cat._id)}
-                        onChange={() => toggleDupSelect(cat._id)}
-                      />
-                      {cat.categoryImage ? (
-                        <Avatar src={cat.categoryImage} sx={{ width: 32, height: 32 }} />
-                      ) : (
-                        <Avatar sx={{ width: 32, height: 32, fontSize: 14 }}>
+                  {group.map(cat => <Box key={cat._id} sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1.5,
+              pl: 4,
+              py: 0.5,
+              borderRadius: 1,
+              bgcolor: selectedDups.includes(cat._id) ? "rgba(211,47,47,0.07)" : "transparent"
+            }}>
+                      <Checkbox size="small" checked={selectedDups.includes(cat._id)} onChange={() => toggleDupSelect(cat._id)} />
+                      {cat.categoryImage ? <Avatar src={cat.categoryImage} sx={{
+                width: 32,
+                height: 32
+              }} /> : <Avatar sx={{
+                width: 32,
+                height: 32,
+                fontSize: 14
+              }}>
                           {(cat.category || "?")[0].toUpperCase()}
-                        </Avatar>
-                      )}
+                        </Avatar>}
                       <Box>
-                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                        <Typography variant="body2" sx={{
+                  fontWeight: 500
+                }}>
                           {cat.category}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
                           {cat.categoryType}{cat.subCategoryType ? ` › ${cat.subCategoryType}` : ""} &nbsp;|&nbsp; slug: {cat.slug || "—"} &nbsp;|&nbsp; id: {cat._id}
                         </Typography>
                         {(() => {
-                          const count = businessUsage[(cat.category || "").toLowerCase()];
-                          return count > 0 ? (
-                            <Typography variant="caption" sx={{ color: "warning.main", fontWeight: 600 }}>
+                  const count = businessUsage[(cat.category || "").toLowerCase()];
+                  return count > 0 ? <Typography variant="caption" sx={{
+                    color: "warning.main",
+                    fontWeight: 600
+                  }}>
                               ⚠ {count} business{count !== 1 ? "es" : ""} using this category
-                            </Typography>
-                          ) : (
-                            <Typography variant="caption" sx={{ color: "success.main" }}>
+                            </Typography> : <Typography variant="caption" sx={{
+                    color: "success.main"
+                  }}>
                               No businesses linked
-                            </Typography>
-                          );
-                        })()}
+                            </Typography>;
+                })()}
                       </Box>
-                    </Box>
-                  ))}
-                  {gi < dupDialog.groups.length - 1 && <Divider sx={{ mt: 1.5 }} />}
-                </Box>
-              );
-            })
-          )}
+                    </Box>)}
+                  {gi < dupDialog.groups.length - 1 && <Divider sx={{
+              mt: 1.5
+            }} />}
+                </Box>;
+        })}
         </DialogContent>
-        <DialogActions sx={{ justifyContent: "space-between", px: 3 }}>
+        <DialogActions sx={{
+        justifyContent: "space-between",
+        px: 3
+      }}>
           <Typography variant="body2" color="text.secondary">
             {selectedDups.length} selected
           </Typography>
-          <Box sx={{ display: "flex", gap: 1 }}>
-            <Button onClick={() => setDupDialog({ open: false, groups: [] })}>Close</Button>
-            <Button
-              color="warning"
-              variant="outlined"
-              disabled={selectedDups.length === 0 || !!dupDeleting}
-              onClick={() => deleteSelectedDups(false)}
-              startIcon={dupDeleting === "soft" ? <CircularProgress size={16} color="inherit" /> : null}
-            >
+          <Box sx={{
+          display: "flex",
+          gap: 1
+        }}>
+            <Button onClick={() => setDupDialog({
+            open: false,
+            groups: []
+          })}>Close</Button>
+            <Button color="warning" variant="outlined" disabled={selectedDups.length === 0 || !!dupDeleting} onClick={() => deleteSelectedDups(false)} startIcon={dupDeleting === "soft" ? <CircularProgress size={16} color="inherit" /> : null}>
               Soft Delete ({selectedDups.length})
             </Button>
             {/* <Button
@@ -1796,26 +1816,26 @@ export default function Category() {
               disabled={selectedDups.length === 0 || !!dupDeleting}
               onClick={() => deleteSelectedDups(true)}
               startIcon={dupDeleting === "hard" ? <CircularProgress size={16} color="inherit" /> : null}
-            >
+             >
               Hard Delete ({selectedDups.length})
-            </Button> */}
+             </Button> */}
           </Box>
         </DialogActions>
       </Dialog>
 
-      <Dialog
-        open={deleteConfirm.open}
-        onClose={() => setDeleteConfirm({ open: false, id: null })}
-      >
+      <Dialog open={deleteConfirm.open} onClose={() => setDeleteConfirm({
+      open: false,
+      id: null
+    })}>
         <DialogTitle>Confirm Delete</DialogTitle>
         <DialogContent>
           Are you sure you want to delete this category?
         </DialogContent>
         <DialogActions>
-          <Button
-            onClick={() => setDeleteConfirm({ open: false, id: null })}
-            color="secondary"
-          >
+          <Button onClick={() => setDeleteConfirm({
+          open: false,
+          id: null
+        })} color="secondary">
             Cancel
           </Button>
           <Button color="error" variant="contained" onClick={confirmDelete}>
@@ -1825,31 +1845,50 @@ export default function Category() {
       </Dialog>
 
       {/* Image Variant Modal */}
-      {imageModalOpen.variantKey && (
-        <Dialog
-          open={imageModalOpen.open}
-          onClose={() => setImageModalOpen({ open: false, variantKey: null })}
-          maxWidth="sm"
-          fullWidth
-        >
-          <DialogTitle sx={{ pb: 1 }}>
-            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      {imageModalOpen.variantKey && <Dialog open={imageModalOpen.open} onClose={() => setImageModalOpen({
+      open: false,
+      variantKey: null
+    })} maxWidth="sm" fullWidth>
+          <DialogTitle sx={{
+        pb: 1
+      }}>
+            <Box sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between"
+        }}>
               <span>{IMAGE_VARIANTS[imageModalOpen.variantKey]?.name}</span>
-              <IconButton
-                size="small"
-                onClick={() => setImageModalOpen({ open: false, variantKey: null })}
-              >
+              <IconButton size="small" onClick={() => setImageModalOpen({
+            open: false,
+            variantKey: null
+          })}>
                 ×
               </IconButton>
             </Box>
           </DialogTitle>
-          <DialogContent dividers sx={{ py: 2 }}>
+          <DialogContent dividers sx={{
+        py: 2
+      }}>
             {/* Image Specs */}
-            <Box sx={{ mb: 2, p: 1.5, backgroundColor: "#f5f5f5", borderRadius: "6px" }}>
-              <Typography variant="caption" display="block" sx={{ color: "#666", mb: 0.5 }}>
+            <Box sx={{
+          mb: 2,
+          p: 1.5,
+          backgroundColor: "#f5f5f5",
+          borderRadius: "6px"
+        }}>
+              <Typography variant="caption" display="block" sx={{
+            color: "#666",
+            mb: 0.5
+          }}>
                 {IMAGE_VARIANTS[imageModalOpen.variantKey]?.description}
               </Typography>
-              <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, fontSize: "12px", color: "#888" }}>
+              <Box sx={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 1,
+            fontSize: "12px",
+            color: "#888"
+          }}>
                 <div>Size: {IMAGE_VARIANTS[imageModalOpen.variantKey]?.minWidth}x{IMAGE_VARIANTS[imageModalOpen.variantKey]?.minHeight} - {IMAGE_VARIANTS[imageModalOpen.variantKey]?.maxWidth}x{IMAGE_VARIANTS[imageModalOpen.variantKey]?.maxHeight}px</div>
                 <div>Aspect: {IMAGE_VARIANTS[imageModalOpen.variantKey]?.aspectRatio}</div>
                 <div>Max File: {IMAGE_VARIANTS[imageModalOpen.variantKey]?.maxFileSize}MB</div>
@@ -1857,220 +1896,213 @@ export default function Category() {
             </Box>
 
             {/* Preview */}
-            {imagePreviews[imageModalOpen.variantKey] && (
-              <Box sx={{ mb: 2, textAlign: "center" }}>
-                <img
-                  src={imagePreviews[imageModalOpen.variantKey]}
-                  alt={IMAGE_VARIANTS[imageModalOpen.variantKey]?.name}
-                  style={{
-                    maxWidth: "100%",
-                    maxHeight: "300px",
-                    borderRadius: "6px",
-                    border: "1px solid #ddd"
-                  }}
-                />
-                {imageDimensions[imageModalOpen.variantKey] && (
-                  <Typography variant="caption" display="block" sx={{ mt: 1, color: "#666" }}>
+            {imagePreviews[imageModalOpen.variantKey] && <Box sx={{
+          mb: 2,
+          textAlign: "center"
+        }}>
+                <img src={imagePreviews[imageModalOpen.variantKey]} alt={IMAGE_VARIANTS[imageModalOpen.variantKey]?.name} style={{
+            maxWidth: "100%",
+            maxHeight: "300px",
+            borderRadius: "6px",
+            border: "1px solid #ddd"
+          }} />
+                {imageDimensions[imageModalOpen.variantKey] && <Typography variant="caption" display="block" sx={{
+            mt: 1,
+            color: "#666"
+          }}>
                     ✓ {imageDimensions[imageModalOpen.variantKey].width}x{imageDimensions[imageModalOpen.variantKey].height}px
-                  </Typography>
-                )}
-              </Box>
-            )}
+                  </Typography>}
+              </Box>}
 
 
             {/* Upload Button */}
-            <Button
-              variant="contained"
-              component="label"
-              fullWidth
-              startIcon={uploadingImageVariant === imageModalOpen.variantKey ? <CircularProgress size={20} /> : <CloudUploadIcon />}
-              sx={{ mb: 2 }}
-              disabled={uploadingImageVariant === imageModalOpen.variantKey}
-            >
-              {uploadingImageVariant === imageModalOpen.variantKey
-                ? "Uploading..."
-                : imagePreviews[imageModalOpen.variantKey]
-                ? "Replace Image"
-                : "Upload Image"}
-              <input
-                type="file"
-                accept="image/*"
-                hidden
-                ref={imageInputRefs[imageModalOpen.variantKey]}
-                onChange={(e) => {
-                  handleImageChange(e, imageModalOpen.variantKey);
-                }}
-                disabled={uploadingImageVariant === imageModalOpen.variantKey}
-              />
+            <Button variant="contained" component="label" fullWidth startIcon={uploadingImageVariant === imageModalOpen.variantKey ? <CircularProgress size={20} /> : <CloudUploadIcon />} sx={{
+          mb: 2
+        }} disabled={uploadingImageVariant === imageModalOpen.variantKey}>
+              {uploadingImageVariant === imageModalOpen.variantKey ? "Uploading..." : imagePreviews[imageModalOpen.variantKey] ? "Replace Image" : "Upload Image"}
+              <input type="file" accept="image/*" hidden ref={imageInputRefs[imageModalOpen.variantKey]} onChange={e => {
+            handleImageChange(e, imageModalOpen.variantKey);
+          }} disabled={uploadingImageVariant === imageModalOpen.variantKey} />
             </Button>
           </DialogContent>
-          <DialogActions sx={{ p: 2 }}>
-            {imagePreviews[imageModalOpen.variantKey] && (
-              <Button
-                size="small"
-                variant="outlined"
-                color="error"
-                onClick={() => {
-                  setFormData((prev) => ({
-                    ...prev,
-                    categoryImages: {
-                      ...prev.categoryImages,
-                      [imageModalOpen.variantKey]: ""
-                    }
-                  }));
-                  setImagePreviews((prev) => ({
-                    ...prev,
-                    [imageModalOpen.variantKey]: null
-                  }));
-                  setImageErrors((prev) => ({
-                    ...prev,
-                    [imageModalOpen.variantKey]: null
-                  }));
-                  if (imageInputRefs[imageModalOpen.variantKey].current) {
-                    imageInputRefs[imageModalOpen.variantKey].current.value = "";
-                  }
-                }}
-              >
+          <DialogActions sx={{
+        p: 2
+      }}>
+            {imagePreviews[imageModalOpen.variantKey] && <Button size="small" variant="outlined" color="error" onClick={() => {
+          setFormData(prev => ({
+            ...prev,
+            categoryImages: {
+              ...prev.categoryImages,
+              [imageModalOpen.variantKey]: ""
+            }
+          }));
+          setImagePreviews(prev => ({
+            ...prev,
+            [imageModalOpen.variantKey]: null
+          }));
+          if (imageInputRefs[imageModalOpen.variantKey].current) {
+            imageInputRefs[imageModalOpen.variantKey].current.value = "";
+          }
+        }}>
                 Remove
-              </Button>
-            )}
-            <Box sx={{ flex: 1 }} />
-            <Button onClick={() => setImageModalOpen({ open: false, variantKey: null })}>
+              </Button>}
+            <Box sx={{
+          flex: 1
+        }} />
+            <Button onClick={() => setImageModalOpen({
+          open: false,
+          variantKey: null
+        })}>
               Done
             </Button>
           </DialogActions>
-        </Dialog>
-      )}
+        </Dialog>}
 
       {/* Create duplicate warning dialog */}
-      <Dialog
-        open={createWarning.open}
-        onClose={() => setCreateWarning({ open: false, matches: [] })}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle sx={{ color: "warning.main" }}>
+      <Dialog open={createWarning.open} onClose={() => setCreateWarning({
+      open: false,
+      matches: []
+    })} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{
+        color: "warning.main"
+      }}>
           ⚠ Similar Categories Already Exist
         </DialogTitle>
         <DialogContent dividers>
-          <Typography variant="body2" sx={{ mb: 2 }}>
+          <Typography variant="body2" sx={{
+          mb: 2
+        }}>
             The category <strong>"{formData.category}"</strong> is similar to {createWarning.matches.length} existing {createWarning.matches.length === 1 ? "category" : "categories"}:
           </Typography>
-          {createWarning.matches.map((cat) => {
-            const count = businessUsage[(cat.category || "").toLowerCase()];
-            return (
-              <Box
-                key={cat._id}
-                sx={{ display: "flex", alignItems: "center", gap: 1.5, py: 0.75, borderBottom: "1px solid", borderColor: "divider" }}
-              >
-                {cat.categoryImage ? (
-                  <Avatar src={cat.categoryImage} sx={{ width: 32, height: 32 }} />
-                ) : (
-                  <Avatar sx={{ width: 32, height: 32, fontSize: 14 }}>
+          {createWarning.matches.map(cat => {
+          const count = businessUsage[(cat.category || "").toLowerCase()];
+          return <Box key={cat._id} sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 1.5,
+            py: 0.75,
+            borderBottom: "1px solid",
+            borderColor: "divider"
+          }}>
+                {cat.categoryImage ? <Avatar src={cat.categoryImage} sx={{
+              width: 32,
+              height: 32
+            }} /> : <Avatar sx={{
+              width: 32,
+              height: 32,
+              fontSize: 14
+            }}>
                     {(cat.category || "?")[0].toUpperCase()}
-                  </Avatar>
-                )}
-                <Box sx={{ flex: 1 }}>
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{cat.category}</Typography>
+                  </Avatar>}
+                <Box sx={{
+              flex: 1
+            }}>
+                  <Typography variant="body2" sx={{
+                fontWeight: 600
+              }}>{cat.category}</Typography>
                   <Typography variant="caption" color="text.secondary">
                     {cat.categoryType}{cat.subCategoryType ? ` › ${cat.subCategoryType}` : ""} &nbsp;|&nbsp; slug: {cat.slug || "—"}
                   </Typography>
                   <br />
-                  {count > 0 ? (
-                    <Typography variant="caption" sx={{ color: "warning.main", fontWeight: 600 }}>
+                  {count > 0 ? <Typography variant="caption" sx={{
+                color: "warning.main",
+                fontWeight: 600
+              }}>
                       ⚠ {count} business{count !== 1 ? "es" : ""} using this category
-                    </Typography>
-                  ) : (
-                    <Typography variant="caption" sx={{ color: "success.main" }}>No businesses linked</Typography>
-                  )}
+                    </Typography> : <Typography variant="caption" sx={{
+                color: "success.main"
+              }}>No businesses linked</Typography>}
                 </Box>
-              </Box>
-            );
-          })}
+              </Box>;
+        })}
         </DialogContent>
-        <DialogActions sx={{ justifyContent: "space-between", px: 3 }}>
-          <Button onClick={() => setCreateWarning({ open: false, matches: [] })}>
+        <DialogActions sx={{
+        justifyContent: "space-between",
+        px: 3
+      }}>
+          <Button onClick={() => setCreateWarning({
+          open: false,
+          matches: []
+        })}>
             Cancel
           </Button>
-          <Button
-            color="warning"
-            variant="contained"
-            onClick={() => {
-              setCreateWarning({ open: false, matches: [] });
-              doSave();
-            }}
-          >
+          <Button color="warning" variant="contained" onClick={() => {
+          setCreateWarning({
+            open: false,
+            matches: []
+          });
+          doSave();
+        }}>
             Allow — Create Anyway
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Image Cropper Modal */}
-      <Dialog
-        open={cropperOpen}
-        onClose={() => setCropperOpen(false)}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <Dialog open={cropperOpen} onClose={() => setCropperOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center"
+      }}>
           <span>Crop Image - {IMAGE_VARIANTS[cropData.variantKey]?.name}</span>
           <IconButton size="small" onClick={() => setCropperOpen(false)}>×</IconButton>
         </DialogTitle>
-        <DialogContent dividers sx={{ p: 2 }}>
-          {cropData.image && (
-            <>
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="caption" sx={{ color: "#666" }}>
+        <DialogContent dividers sx={{
+        p: 2
+      }}>
+          {cropData.image && <>
+              <Box sx={{
+            mb: 2
+          }}>
+                <Typography variant="caption" sx={{
+              color: "#666"
+            }}>
                   Drag to move • Scroll to zoom • Resize handles to adjust crop area
                 </Typography>
               </Box>
-              <Box sx={{ position: "relative", width: "100%", height: "400px", backgroundColor: "#f0f0f0" }}>
-                <Cropper
-                  image={cropData.image}
-                  crop={cropData.crop}
-                  zoom={cropData.zoom}
-                  aspect={cropData.aspect}
-                  onCropChange={(crop) =>
-                    setCropData((prev) => ({ ...prev, crop }))
-                  }
-                  onCropComplete={(croppedArea, croppedAreaPixels) =>
-                    setCropData((prev) => ({ ...prev, croppedAreaPixels }))
-                  }
-                  onZoomChange={(zoom) =>
-                    setCropData((prev) => ({ ...prev, zoom }))
-                  }
-                />
+              <Box sx={{
+            position: "relative",
+            width: "100%",
+            height: "400px",
+            backgroundColor: "#f0f0f0"
+          }}>
+                <Cropper image={cropData.image} crop={cropData.crop} zoom={cropData.zoom} aspect={cropData.aspect} onCropChange={crop => setCropData(prev => ({
+              ...prev,
+              crop
+            }))} onCropComplete={(croppedArea, croppedAreaPixels) => setCropData(prev => ({
+              ...prev,
+              croppedAreaPixels
+            }))} onZoomChange={zoom => setCropData(prev => ({
+              ...prev,
+              zoom
+            }))} />
               </Box>
-              <Box sx={{ mt: 2 }}>
-                <Typography variant="caption" sx={{ color: "#666", display: "block", mb: 1 }}>
+              <Box sx={{
+            mt: 2
+          }}>
+                <Typography variant="caption" sx={{
+              color: "#666",
+              display: "block",
+              mb: 1
+            }}>
                   Zoom: {(cropData.zoom * 100).toFixed(0)}%
                 </Typography>
-                <Slider
-                  value={cropData.zoom}
-                  onChange={(e, zoom) =>
-                    setCropData((prev) => ({ ...prev, zoom }))
-                  }
-                  min={1}
-                  max={3}
-                  step={0.1}
-                  valueLabelDisplay="auto"
-                />
+                <Slider value={cropData.zoom} onChange={(e, zoom) => setCropData(prev => ({
+              ...prev,
+              zoom
+            }))} min={1} max={3} step={0.1} valueLabelDisplay="auto" />
               </Box>
-            </>
-          )}
+            </>}
         </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
+        <DialogActions sx={{
+        p: 2
+      }}>
           <Button onClick={() => setCropperOpen(false)} disabled={uploadingImageVariant}>Cancel</Button>
-          <Button
-            variant="contained"
-            onClick={handleCropSave}
-            disabled={uploadingImageVariant}
-            startIcon={uploadingImageVariant ? <CircularProgress size={20} /> : null}
-          >
+          <Button variant="contained" onClick={handleCropSave} disabled={uploadingImageVariant} startIcon={uploadingImageVariant ? <CircularProgress size={20} /> : null}>
             {uploadingImageVariant ? "Uploading..." : "Save Crop"}
           </Button>
         </DialogActions>
       </Dialog>
-    </div>
-  );
+    </div>;
 }

@@ -868,6 +868,23 @@ export const getAllUniqueCategoriesAction = async (req, res) => {
  * GET /api/category/suggest-keywords?category=AC+Repair+Service
  * Returns SEO keyword suggestions from Google Autocomplete
  */
+export const getCategoryFiltersAction = async (req, res) => {
+  try {
+    const slug = req.params.slug?.toLowerCase().trim();
+    if (!slug) return res.json([]);
+
+    const cat = await categoryModel.findOne(
+      { slug, isActive: true },
+      { filterConfig: 1, _id: 0 }
+    ).lean();
+
+    res.json(cat?.filterConfig || []);
+  } catch (error) {
+    console.error("getCategoryFiltersAction error:", error);
+    res.status(500).json([]);
+  }
+};
+
 export const suggestKeywordsAction = async (req, res) => {
   try {
     const category = (req.query.category || "").trim();

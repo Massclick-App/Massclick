@@ -1,0 +1,772 @@
+:root {
+  --card-primary: #0f172a;
+  --card-muted: #64748b;
+  --card-soft: #f8fafc;
+  --card-border: rgba(15, 23, 42, 0.07);
+  --card-radius: 14px;
+  --card-shadow: 0 2px 16px rgba(15, 23, 42, 0.07);
+  --card-shadow-hover: 0 8px 32px rgba(15, 23, 42, 0.13);
+  --surface: #ffffff;
+  --surface-strong: #f1f5f9;
+  --brand: #ff8c00;
+  --brand-light: #fff5eb;
+}
+
+/* ================================ */
+/* LINK WRAPPER                     */
+/* ================================ */
+
+.card-link {
+  color: inherit;
+  display: block;
+  text-decoration: none;
+  width: 100%;
+  height: 100%;
+}
+
+/* ================================ */
+/* BASE CARD — vertical layout      */
+/* ================================ */
+
+.base-card {
+  background: var(--surface);
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  width: 100%;
+  height: 212px;
+  overflow: hidden;
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+  position: relative;
+}
+
+.base-card:hover {
+  border-color: rgba(255, 140, 0, 0.22);
+  box-shadow: var(--card-shadow-hover);
+  transform: translateY(-2px);
+}
+
+.base-card--grid {
+  flex-direction: column;
+  height: 100%;
+}
+
+.base-card--grid .card-image-wrapper {
+  width: 100%;
+  height: 200px;
+  flex-shrink: 0;
+}
+
+.base-card--grid .card-content {
+  height: 100%;
+  padding: 14px 16px;
+  overflow: hidden;
+}
+
+.base-card--grid .card-header-row {
+  flex-wrap: wrap;
+}
+
+.base-card--grid .card-title {
+  font-size: 1rem;
+}
+
+.base-card--grid .cardpage-actions {
+  gap: 8px;
+}
+
+.base-card--grid .card-action-button {
+  min-height: 38px;
+  padding: 8px 7px;
+  font-size: 0.78rem;
+}
+
+/* ================================ */
+/* LARGE CARD — magazine grid       */
+/* ================================ */
+
+.base-card--large {
+  flex-direction: column;
+  height: 100%;
+}
+
+.base-card--large .card-image-wrapper {
+  width: 100%;
+  height: 260px;
+  flex-shrink: 0;
+}
+
+.base-card--large .card-content {
+  height: 100%;
+  padding: 18px 20px;
+  gap: 12px;
+  overflow: hidden;
+}
+
+.base-card--large .card-title {
+  font-size: 1.18rem;
+}
+
+.base-card--large .card-header-row {
+  flex-wrap: wrap;
+}
+
+.base-card--large .card-action-button {
+  min-height: 42px;
+  font-size: 0.84rem;
+}
+
+/* ================================ */
+/* TABLE CARD — ultra-compact row   */
+/* ================================ */
+
+.base-card--table {
+  height: 72px;
+  border-radius: 10px;
+  box-shadow: none;
+  border-color: rgba(15, 23, 42, 0.06);
+  background: #fff;
+}
+
+.base-card--table:hover {
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.08);
+  transform: none;
+}
+
+.base-card--table .card-image-wrapper {
+  display: none;
+}
+
+.base-card--table .card-content {
+  flex-direction: row;
+  align-items: center;
+  padding: 0 18px;
+  gap: 20px;
+  justify-content: flex-start;
+}
+
+.base-card--table .card-top {
+  flex-shrink: 0;
+  min-width: 190px;
+  max-width: 230px;
+  gap: 3px;
+}
+
+.base-card--table .card-header-row {
+  gap: 8px;
+}
+
+.base-card--table .card-title {
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.base-card--table .card-meta {
+  flex-wrap: nowrap;
+  gap: 7px;
+}
+
+.base-card--table .reviews-text,
+.base-card--table .category-pill {
+  display: none;
+}
+
+.base-card--table .card-info {
+  flex-direction: row;
+  align-items: center;
+  gap: 14px;
+  flex: 1;
+  margin-top: 0;
+  overflow: hidden;
+}
+
+.base-card--table .card-address-inline {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 280px;
+  flex-shrink: 1;
+}
+
+.base-card--table .card-details,
+.base-card--table .filter-badges,
+.base-card--table .card-ifsc {
+  display: none;
+}
+
+.base-card--table .cardpage-actions {
+  padding-top: 0;
+  border-top: none;
+  margin-top: 0;
+  flex-shrink: 0;
+  gap: 7px;
+}
+
+.base-card--table .card-action-button {
+  min-height: 34px;
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  flex: initial;
+}
+
+.base-card--table .enquiry-button {
+  display: none;
+}
+
+/* ================================ */
+/* IMAGE — landscape, left side     */
+/* ================================ */
+
+.card-image-wrapper {
+  position: relative;
+  flex-shrink: 0;
+  width: 192px;
+  height: 212px;
+  overflow: hidden;
+}
+
+.card-image-container {
+  width: 100%;
+  height: 100%;
+  background: var(--surface-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* LazyLoadImage span wrapper */
+.card-image-container span {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.card-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.45s ease;
+}
+
+.base-card:hover .card-image {
+  transform: scale(1.04);
+}
+
+
+/* ---- Image overlay badges ---- */
+
+.image-badges {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  z-index: 2;
+}
+
+.badge-verified {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(37, 99, 235, 0.9);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 4px 9px;
+  border-radius: 20px;
+  backdrop-filter: blur(4px);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+}
+
+.badge-featured {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(217, 119, 6, 0.9);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 4px 9px;
+  border-radius: 20px;
+  backdrop-filter: blur(4px);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(217, 119, 6, 0.3);
+}
+
+/* ---- Fav button ---- */
+
+.fav-btn {
+  position: absolute;
+  bottom: 14px;
+  right: 14px;
+  z-index: 2;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.14);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.2s, box-shadow 0.2s;
+  backdrop-filter: blur(4px);
+}
+
+.fav-btn:hover,
+.fav-btn--active {
+  transform: scale(1.12);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.18);
+  background: #fff;
+}
+
+.fav-btn--loading {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* ================================ */
+/* CONTENT AREA                     */
+/* ================================ */
+
+.card-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 20px 24px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* ================================ */
+/* LIST MODE — isolated layout      */
+/* completely separate from card-content, no bleed into other modes */
+/* ================================ */
+
+.list-content {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  min-width: 0;
+  overflow: hidden;
+  height: 100%;
+}
+
+.list-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 7px;
+  padding: 14px 18px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.list-actions {
+  width: 136px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 12px;
+  border-left: 1px solid #f1f5f9;
+}
+
+.list-actions .card-action-button {
+  min-height: 34px;
+  font-size: 0.78rem;
+  padding: 7px 6px;
+  flex: initial;
+  width: 100%;
+}
+
+/* TOP group: title + meta */
+.card-top {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* MID group: address, experience, badges */
+.card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* ---- Title row ---- */
+
+.card-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.card-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--card-primary);
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.price-box {
+  flex-shrink: 0;
+  background: var(--brand-light);
+  border: 1.5px solid #fcd19d;
+  color: #c25a00;
+  font-size: 0.88rem;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 10px;
+  white-space: nowrap;
+  line-height: 1.3;
+}
+
+.price-type {
+  font-size: 0.74rem;
+  font-weight: 500;
+  color: #d97706;
+  margin-left: 2px;
+}
+
+/* ---- Meta row: rating + category ---- */
+
+.card-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 0;
+}
+
+.rating-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 5px 11px;
+  border-radius: 20px;
+  line-height: 1;
+  box-shadow: 0 2px 6px rgba(217, 119, 6, 0.28);
+}
+
+.reviews-text {
+  font-size: 0.82rem;
+  color: var(--card-muted);
+  font-weight: 500;
+}
+
+.category-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--brand-light);
+  border: 1px solid #fcd19d;
+  color: #c25a00;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 4px 11px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+/* ---- Info rows ---- */
+
+
+.card-address-inline,
+.card-category,
+.card-address,
+.card-ifsc {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  color: var(--card-muted);
+  font-size: 0.89rem;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.icon {
+  flex-shrink: 0;
+  font-size: 15px !important;
+  color: var(--brand) !important;
+  opacity: 0.85;
+  margin-top: 1px;
+}
+
+.card-details {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.84rem;
+  color: var(--card-muted);
+  line-height: 1.4;
+  margin: 0;
+}
+
+/* ================================ */
+/* FILTER BADGES                    */
+/* ================================ */
+
+.filter-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 4px;
+}
+
+.filter-badge {
+  display: inline-block;
+  padding: 5px 11px;
+  border-radius: 20px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+}
+
+.filter-badges--nowrap {
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+.filter-badge-more {
+  background: #e2e8f0;
+  color: #334155;
+  border-color: #cbd5e1;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.filter-badge-more:hover {
+  background: #cbd5e1;
+}
+
+
+/* ================================ */
+/* ACTION BUTTONS                   */
+/* ================================ */
+
+.cardpage-actions {
+  display: flex;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid #f1f5f9;
+  flex-shrink: 0;
+  margin-top: auto;
+}
+
+.card-action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 1;
+  min-height: 42px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+
+.card-action-button svg {
+  font-size: 15px !important;
+}
+
+.phone-button {
+  background: linear-gradient(135deg, #ff8c00, #ff6200);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(255, 140, 0, 0.28);
+}
+
+.phone-button:hover {
+  background: linear-gradient(135deg, #e07c00, #e05500);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(255, 140, 0, 0.38);
+}
+
+.whatsapp-button {
+  background: #fff;
+  color: #16a34a;
+  border-color: #bbf7d0;
+}
+
+.whatsapp-button:hover {
+  background: #f0fdf4;
+  border-color: #4ade80;
+  transform: translateY(-1px);
+}
+
+.enquiry-button {
+  background: #fff;
+  color: #4f46e5;
+  border-color: #c7d2fe;
+}
+
+.enquiry-button:hover {
+  background: #eef2ff;
+  border-color: #818cf8;
+  transform: translateY(-1px);
+}
+
+/* ================================ */
+/* RESPONSIVE                       */
+/* ================================ */
+
+@media (max-width: 992px) {
+  .card-image-wrapper {
+    width: 170px;
+    height: 212px;
+  }
+
+  .card-content {
+    padding: 16px 18px;
+    gap: 10px;
+  }
+
+  .card-title {
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 680px) {
+  .base-card {
+    flex-direction: column;
+    height: auto;
+  }
+
+  .base-card--table {
+    height: auto;
+    border-radius: var(--card-radius);
+    flex-direction: column;
+  }
+
+  .base-card--table .card-image-wrapper {
+    display: block;
+    width: 100%;
+    height: 160px;
+  }
+
+  .base-card--table .card-content {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 14px 16px;
+    gap: 10px;
+  }
+
+  .base-card--table .card-top {
+    min-width: 0;
+    max-width: none;
+  }
+
+  .base-card--table .card-title {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+  }
+
+  .base-card--table .reviews-text,
+  .base-card--table .category-pill {
+    display: inline-flex;
+  }
+
+  .base-card--table .card-info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .base-card--table .card-address-inline {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+    max-width: none;
+  }
+
+  .base-card--table .card-details,
+  .base-card--table .filter-badges {
+    display: flex;
+  }
+
+  .base-card--table .cardpage-actions {
+    padding-top: 10px;
+    border-top: 1px solid #f1f5f9;
+    gap: 8px;
+  }
+
+  .base-card--table .card-action-button {
+    flex: 1;
+    min-height: 40px;
+    padding: 8px 10px;
+    font-size: 0.8rem;
+  }
+
+  .base-card--table .enquiry-button {
+    display: inline-flex;
+  }
+
+  .card-image-wrapper {
+    width: 100%;
+    height: 190px;
+    min-height: 0;
+  }
+
+  .card-content {
+    padding: 14px 16px 14px;
+  }
+
+  .card-header-row {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 480px) {
+  .card-image-wrapper {
+    height: 180px;
+    min-height: 0;
+  }
+
+  .card-title {
+    font-size: 0.98rem;
+  }
+
+  .card-action-button {
+    font-size: 0.78rem;
+    padding: 8px 6px;
+  }
+}

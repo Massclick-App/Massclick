@@ -188,7 +188,7 @@ class InputValidator {
 
       // Check for gibberish (no repeated chars, reasonable pattern)
       if (/(.)\1{3,}/.test(name)) errors.push('Invalid name format');
-      if (!/^[a-zA-Z\s\-']+$/.test(name)) errors.push('Name contains invalid characters');
+      if (!/^[a-zA-Z\s'-]+$/.test(name)) errors.push('Name contains invalid characters');
 
       validated.name = name.replace(/\s+/g, ' ');
     }
@@ -198,7 +198,7 @@ class InputValidator {
       errors.push('Email is required');
     } else {
       const email = data.email.trim().toLowerCase();
-      const emailRegex = /^[a-zA-Z0-9._\-+]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
+      const emailRegex = /^[a-zA-Z0-9._+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
       if (!emailRegex.test(email)) {
         errors.push('Invalid email format');
@@ -313,7 +313,7 @@ class InputValidator {
       }
 
       // Allow only alphanumeric, spaces, hyphens, ampersands
-      if (!/^[a-z0-9\s\-&'()]+$/.test(clean)) {
+      if (!/^[a-z0-9\s&'()-]+$/.test(clean)) {
         errors.push(`Keyword "${keyword}" contains invalid characters`);
         return;
       }

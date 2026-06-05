@@ -9,7 +9,7 @@ const PaymentStatus = () => {
   const navigate = useNavigate();
 
   const dispatch = useDispatch();
-  const { statusData, loading } = useSelector((state) => state.phonepe);
+  const { statusData } = useSelector((state) => state.phonepe);
   const handleHomeClick = () => {
     navigate("/dashboard");
   };

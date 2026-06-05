@@ -16,7 +16,8 @@ AWS.config.update({
 const s3 = new AWS.S3();
 
 
-export const uploadImageToS3 = async (fileData, uploadPath) => {
+export const uploadImageToS3 = async (fileData, uploadPath, options = {}) => {
+  const { skipImageConversion = false } = options;
   let fileBuffer;
   let mimeType;
   let extension;
@@ -44,7 +45,7 @@ export const uploadImageToS3 = async (fileData, uploadPath) => {
   let finalBuffer = fileBuffer;
 
 
-  if (mimeType.startsWith("image/")) {
+  if (mimeType.startsWith("image/") && !skipImageConversion) {
     try {
       finalBuffer = await sharp(fileBuffer)
         .webp({ quality: 70 })

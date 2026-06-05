@@ -1,7 +1,74 @@
 import { ObjectId } from "mongodb";
+import sharp from "sharp";
 import advertismentModel from "../../model/advertistment/advertismentModel.js";
 import { uploadImageToS3, getSignedUrlByKey } from "../../s3Uploder.js";
 
+const TOP_BANNER_RULES = {
+  targetWidth: 1720,
+  targetHeight: 168,
+  aspectTolerance: 0.03,
+};
+const COMMON_TOP_BANNER_CATEGORY = "ALL_CATEGORIES";
+const TOP_BANNER_RATIO =
+  TOP_BANNER_RULES.targetWidth / TOP_BANNER_RULES.targetHeight;
+const escapeRegExp = (value = "") =>
+  value.toString().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const getBase64ImageBuffer = (imageData = "") => {
+  if (typeof imageData !== "string" || !imageData.startsWith("data:image")) {
+    return null;
+  }
+
+  const matches = imageData.match(/^data:([\w/+.-]+);base64,(.+)$/);
+  if (!matches) throw new Error("Invalid image data");
+
+  return Buffer.from(matches[2], "base64");
+};
+
+const cropTopBannerImage = async (imageData) => {
+  const buffer = getBase64ImageBuffer(imageData);
+  if (!buffer) throw new Error("Top banner image data is invalid");
+
+  const metadata = await sharp(buffer).metadata();
+  if (!metadata.width || !metadata.height) {
+    throw new Error("Unable to read top banner image dimensions");
+  }
+
+  if (
+    metadata.width === TOP_BANNER_RULES.targetWidth &&
+    metadata.height === TOP_BANNER_RULES.targetHeight
+  ) {
+    return imageData;
+  }
+
+  if (
+    metadata.width < TOP_BANNER_RULES.targetWidth ||
+    metadata.height < TOP_BANNER_RULES.targetHeight
+  ) {
+    throw new Error(
+      `Top banner image must be at least ${TOP_BANNER_RULES.targetWidth} x ${TOP_BANNER_RULES.targetHeight} px`
+    );
+  }
+
+  const sourceRatio = metadata.width / metadata.height;
+  const ratioDifference =
+    Math.abs(sourceRatio - TOP_BANNER_RATIO) / TOP_BANNER_RATIO;
+  if (ratioDifference > TOP_BANNER_RULES.aspectTolerance) {
+    throw new Error(
+      `Top banner image ratio must match ${TOP_BANNER_RULES.targetWidth} x ${TOP_BANNER_RULES.targetHeight} px`
+    );
+  }
+
+  const outputBuffer = await sharp(buffer)
+    .resize(TOP_BANNER_RULES.targetWidth, TOP_BANNER_RULES.targetHeight, {
+      fit: "cover",
+      position: "center",
+    })
+    .webp({ quality: 92 })
+    .toBuffer();
+
+  return `data:image/webp;base64,${outputBuffer.toString("base64")}`;
+};
 
 export const createAdvertisement = async (reqBody = {}) => {
   try {
@@ -9,11 +76,17 @@ export const createAdvertisement = async (reqBody = {}) => {
     if (!reqBody.category) throw new Error("Category is required");
     if (!reqBody.startTime || !reqBody.endTime)
       throw new Error("Start time and end time are required");
+    if (reqBody.position === "TOP_BANNER" && !reqBody.bannerImage)
+      throw new Error("Top banner image is required");
 
     if (reqBody.bannerImage) {
+      if (reqBody.position === "TOP_BANNER") {
+        reqBody.bannerImage = await cropTopBannerImage(reqBody.bannerImage);
+      }
       const uploadResult = await uploadImageToS3(
         reqBody.bannerImage,
-        `advertisements/banners/ad-${Date.now()}`
+        `advertisements/banners/ad-${Date.now()}`,
+        reqBody.position === "TOP_BANNER" ? { skipImageConversion: true } : {}
       );
       reqBody.bannerImageKey = uploadResult.key;
     }
@@ -51,7 +124,11 @@ export const findAdvertisementByCategory = async (category) => {
   const now = new Date();
 
   const query = {
-    category: { $regex: category, $options: "i" },
+    $or: [
+      { category: { $regex: `^${escapeRegExp(category)}$`, $options: "i" } },
+      { category: COMMON_TOP_BANNER_CATEGORY },
+    ],
+    position: "TOP_BANNER",
     isActive: true,
     isDeleted: false,
     startTime: { $lte: now },
@@ -114,14 +191,31 @@ export const viewAllAdvertisement = async ({
 export const updateAdvertisement = async (id, data) => {
   if (!ObjectId.isValid(id)) throw new Error("Invalid advertisement ID");
 
-  if (
+  const existingAd = await advertismentModel.findById(id).lean();
+  if (!existingAd) throw new Error("Advertisement not found");
+
+  const hasNewImage =
     data.bannerImage &&
     typeof data.bannerImage === "string" &&
-    data.bannerImage.startsWith("data:image")
+    data.bannerImage.startsWith("data:image");
+  if (
+    data.position === "TOP_BANNER" &&
+    existingAd.position !== "TOP_BANNER" &&
+    !hasNewImage
   ) {
+    throw new Error("A valid top banner image is required");
+  }
+
+  if (
+    hasNewImage
+  ) {
+    if (data.position === "TOP_BANNER") {
+      data.bannerImage = await cropTopBannerImage(data.bannerImage);
+    }
     const uploadResult = await uploadImageToS3(
       data.bannerImage,
-      `advertisements/banners/ad-${Date.now()}`
+      `advertisements/banners/ad-${Date.now()}`,
+      data.position === "TOP_BANNER" ? { skipImageConversion: true } : {}
     );
     data.bannerImageKey = uploadResult.key;
   }

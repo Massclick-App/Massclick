@@ -13,7 +13,6 @@ import {
 } from "@mui/material";
 import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
 import CategoryIcon from "@mui/icons-material/Category";
-import BusinessIcon from "@mui/icons-material/Business";
 import SupportAgentIcon from "@mui/icons-material/SupportAgent";
 import InterpreterModeIcon from "@mui/icons-material/InterpreterMode";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
@@ -60,6 +59,15 @@ const MENU_SECTIONS = [
     ]
   },
   {
+    label: "Events",
+    items: [
+      { text: "EventCategory", icon: MailOutlineIcon, path: "/dashboard/event-category" },
+      { text: "EventLocation", icon: NotificationsIcon, path: "/dashboard/event-location" },
+      { text: "EventAdvertisement", icon: StorefrontIcon, path: "/dashboard/event-advertisement" },
+      { text: "EventCreation", icon: NotificationsIcon, path: "/dashboard/event-creation" },
+    ]
+  },
+  {
     label: "Settings",
     items: [
       { text: "Users", icon: InterpreterModeIcon, path: "/dashboard/user" },
@@ -70,8 +78,6 @@ const MENU_SECTIONS = [
     ]
   },
 ];
-
-const flattenedItems = MENU_SECTIONS.flatMap(section => section.items);
 
 export default function SideMenu({ onItemClick }) {
   const navigate = useNavigate();

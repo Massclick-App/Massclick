@@ -1,0 +1,39 @@
+.home-page {
+  --home-max-width: 1720px;
+  --home-edge: clamp(48px, 8vw, 128px);
+  --home-page-bg: #f5f7fa;
+
+  /* ── Section design tokens (inherited by all child components) ── */
+  --section-max-width: 1720px;
+  --section-padding-h: clamp(16px, 3.5vw, 52px);
+  --section-radius: 16px;
+  --section-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+
+  background: var(--home-page-bg);
+  contain: layout style paint;
+  display: flow-root;
+  font-display: swap;
+}
+
+.home-section {
+  width: 100%;
+  contain: layout style paint;
+  display: flow-root;
+  overflow: visible;
+  position: relative;
+  z-index: 1;
+}
+
+.home-section--flush {
+  padding: 0;
+}
+
+/* IMPORTANT: Do NOT add child-targeting rules here.
+   Each component manages its own styling via CSS Modules.
+   This layout container only manages its own properties. */
+
+@media (max-width: 900px) {
+  .home-page {
+    --home-edge: clamp(24px, 7vw, 52px);
+  }
+}

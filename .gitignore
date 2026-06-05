@@ -28,6 +28,12 @@ server/google-chrome-stable_current_x86_64.rpm
 *.bak
 *.swp
 
+# CSS Refactoring documentation (local tracking only)
+CSS_LEAKAGE_CLEANUP.md
+CSS_REFACTORING_SUMMARY.md
+CSS_ISOLATION_IMPLEMENTATION_COMPLETE.md
+SETUP_CSS_ISOLATION.md
+
 
 # 3. ENVIRONMENT & SECRETS (CRUCIAL) ⚠️
 # Ignore all .env files that contain sensitive keys (DB, API, etc.)
@@ -74,4 +80,4 @@ client/ui-app/build/
 client/ui-app/.env
 docker-compose.yml
 client/ui-app/lh-report-prod.json
-/server
+/server/scripts

@@ -1,0 +1,25 @@
+
+
+:root {
+    --primary-orange: #ff6600;
+    --dark-orange: #e65100;
+    --text-dark: #1f1f1f;
+    --text-medium: #555;
+    --bg-light: #f0f2f5; 
+}
+
+@media (max-width: 1200px) {
+    /* If you had a custom element outside of MUI, you'd adjust it here. */
+}
+
+/* Mobile Devices (Max-width 600px - MUI's 'sm' breakpoint) */
+@media (max-width: 600px) {
+   
+    :global(.MuiTypography-root):global(.MuiTypography-h1) {
+        font-size: 2.2rem !important; /* Tighter hero title on small screens */
+    }
+
+    :global(.MuiCardContent-root) {
+        padding: 20px !important; /* Tighter padding on cards */
+    }
+}

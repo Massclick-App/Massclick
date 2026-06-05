@@ -1,0 +1,19 @@
+{
+  "extends": "stylelint-config-standard",
+  "rules": {
+    "selector-max-specificity": ["0,2,0", { "severity": "warning" }],
+    "declaration-no-important": [true, { "severity": "warning" }],
+    "no-duplicate-selectors": true,
+    "at-rule-no-unknown": [true, {
+      "ignoreAtRules": ["extend", "mixin", "include", "function"]
+    }],
+    "color-no-invalid-hex": true,
+    "font-family-no-missing-generic-family-keyword": true,
+    "media-feature-name-no-unknown": true,
+    "property-no-unknown": true,
+    "string-no-newline": true,
+    "unit-no-unknown": true,
+    "no-descending-specificity": ["warning", { "ignore": ["#id"] }]
+  },
+  "ignoreFiles": ["**/node_modules/**", "build/**"]
+}

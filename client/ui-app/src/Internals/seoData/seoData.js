@@ -1,46 +1,31 @@
+import { createScopedClassNames } from "../../utils/createScopedClassNames";
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import {
-  createSeo,
-  editSeo,
-  deleteSeo,
-  getAllSeo,
-} from "../../redux/actions/seoAction.js";
-import {
-  getAllLocation,
-  createLocation,
-} from "../../redux/actions/locationAction.js";
+import { createSeo, editSeo, deleteSeo, getAllSeo } from "../../redux/actions/seoAction.js";
+import { getAllLocation, createLocation } from "../../redux/actions/locationAction.js";
 import { useSnackbar } from "notistack";
-import {
-  Box,
-  Button,
-  Typography,
-  CircularProgress,
-  IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-} from "@mui/material";
+import { Box, Button, Typography, CircularProgress, IconButton, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import { fetchSeoCategorySuggestions } from "../../redux/actions/seoAction.js";
-
 import CustomizedTable from "../../components/Table/CustomizedTable.js";
-import "./seoData.css";
-
+import styles from "./seoData.module.css";
+const cx = createScopedClassNames(styles);
 export default function SeoData() {
   const dispatch = useDispatch();
-  const { enqueueSnackbar } = useSnackbar();
+  const {
+    enqueueSnackbar
+  } = useSnackbar();
   const {
     list: seoList = [],
     total = 0,
     loading = false,
     error = null,
-    categorySuggestions = [],
-  } = useSelector((state) => state.seoReducer || {});
-  const { location = [] } = useSelector((state) => state.locationReducer || {});
-
+    categorySuggestions = []
+  } = useSelector(state => state.seoReducer || {});
+  const {
+    location = []
+  } = useSelector(state => state.locationReducer || {});
   const [formData, setFormData] = useState({
     pageType: "",
     location: "",
@@ -48,9 +33,8 @@ export default function SeoData() {
     description: "",
     keywords: "",
     canonical: "",
-    robots: "index, follow",
+    robots: "index, follow"
   });
-
   const [errors, setErrors] = useState({});
   const [editingId, setEditingId] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -59,138 +43,109 @@ export default function SeoData() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showLocationSuggest, setShowLocationSuggest] = useState(false);
   const [locationSuggestions, setLocationSuggestions] = useState([]);
-
   useEffect(() => {
     dispatch(getAllSeo());
-    dispatch(getAllLocation({ pageNo: 1, pageSize: 1000 }));
+    dispatch(getAllLocation({
+      pageNo: 1,
+      pageSize: 1000
+    }));
   }, [dispatch]);
-
   useEffect(() => {
     if (!categoryInput || categoryInput.length < 1) return;
-
     const delay = setTimeout(() => {
-      dispatch(
-        fetchSeoCategorySuggestions({
-          query: categoryInput,
-          limit: 10,
-        })
-      );
+      dispatch(fetchSeoCategorySuggestions({
+        query: categoryInput,
+        limit: 10
+      }));
     }, 300);
-
     return () => clearTimeout(delay);
   }, [categoryInput, dispatch]);
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+  const handleChange = e => {
+    const {
+      name,
+      value
+    } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
-
-  const updateLocationSuggestions = (value) => {
+  const updateLocationSuggestions = value => {
     const query = value.trim().toLowerCase();
-
     if (!query) {
       setLocationSuggestions([]);
       setShowLocationSuggest(false);
       return;
     }
-
-    const filtered = location.filter(
-      (loc) =>
-        loc.city?.toLowerCase().includes(query) ||
-        loc.district?.toLowerCase().includes(query)
-    );
-
+    const filtered = location.filter(loc => loc.city?.toLowerCase().includes(query) || loc.district?.toLowerCase().includes(query));
     setLocationSuggestions(filtered);
     setShowLocationSuggest(filtered.length > 0);
   };
-
   const validateForm = () => {
     const newErrors = {};
     if (!formData.pageType) newErrors.pageType = "Page type required";
     if (!formData.title.trim()) newErrors.title = "Meta title required";
-    if (!formData.description.trim())
-      newErrors.description = "Meta description required";
-
+    if (!formData.description.trim()) newErrors.description = "Meta description required";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
-
- const resetForm = () => {
-
-  setFormData({
-    pageType: "",
-    category: "",
-    location: "",
-    title: "",
-    description: "",
-    keywords: "",
-    canonical: "",
-    robots: "index, follow",
-  });
-
-  setCategoryInput("");
-  setShowLocationSuggest(false);
-  setLocationSuggestions([]);
-  setEditingId(null);
-  setErrors({});
-};
-
- const handleSubmit = async (e) => {
-
-  e.preventDefault();
-
-  const locationExists = location.some(
-    (loc) =>
-      loc.city?.toLowerCase() === formData.location?.toLowerCase() ||
-      loc.district?.toLowerCase() === formData.location?.toLowerCase()
-  );
-
-  const finalData = {
-    ...formData,
-    category: categoryInput  
+  const resetForm = () => {
+    setFormData({
+      pageType: "",
+      category: "",
+      location: "",
+      title: "",
+      description: "",
+      keywords: "",
+      canonical: "",
+      robots: "index, follow"
+    });
+    setCategoryInput("");
+    setShowLocationSuggest(false);
+    setLocationSuggestions([]);
+    setEditingId(null);
+    setErrors({});
   };
-
-  if (!validateForm()) return;
-
-  try {
-    if (!locationExists && formData.location) {
-      await dispatch(
-        createLocation({
+  const handleSubmit = async e => {
+    e.preventDefault();
+    const locationExists = location.some(loc => loc.city?.toLowerCase() === formData.location?.toLowerCase() || loc.district?.toLowerCase() === formData.location?.toLowerCase());
+    const finalData = {
+      ...formData,
+      category: categoryInput
+    };
+    if (!validateForm()) return;
+    try {
+      if (!locationExists && formData.location) {
+        await dispatch(createLocation({
           city: formData.location,
           district: formData.location,
           state: "N/A",
-          country: "N/A",
-        })
-      );
+          country: "N/A"
+        }));
+      }
+      if (editingId) {
+        await dispatch(editSeo(editingId, finalData));
+        enqueueSnackbar("SEO updated successfully", {
+          variant: "success"
+        });
+      } else {
+        await dispatch(createSeo(finalData));
+        enqueueSnackbar("SEO created successfully", {
+          variant: "success"
+        });
+      }
+      resetForm();
+      setCategoryInput("");
+      dispatch(getAllSeo());
+    } catch (error) {
+      const message = error?.response?.data?.message || error?.message || "Failed to save SEO data";
+      enqueueSnackbar(message, {
+        variant: "error"
+      });
     }
-
-    if (editingId) {
-      await dispatch(editSeo(editingId, finalData));
-      enqueueSnackbar("SEO updated successfully", { variant: "success" });
-    } else {
-      await dispatch(createSeo(finalData));
-      enqueueSnackbar("SEO created successfully", { variant: "success" });
-    }
-
-    resetForm();
-    setCategoryInput(""); 
-    dispatch(getAllSeo());
-
-  } catch (error) {
-
-    const message =
-      error?.response?.data?.message ||
-      error?.message ||
-      "Failed to save SEO data";
-
-    enqueueSnackbar(message, { variant: "error" });
-
-  }
-};
-
-  const handleEdit = (row) => {
+  };
+  const handleEdit = row => {
     setEditingId(row.id);
-
     setFormData({
       pageType: row.pageType || "",
       category: row.category || "",
@@ -199,60 +154,62 @@ export default function SeoData() {
       description: row.description || "",
       keywords: row.keywords || "",
       canonical: row.canonical || "",
-      robots: row.robots || "index, follow",
+      robots: row.robots || "index, follow"
     });
     setCategoryInput(row.category || "");
     setShowLocationSuggest(false);
     setLocationSuggestions([]);
-
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth"
+    });
   };
-
-  const handleDeleteClick = (row) => {
+  const handleDeleteClick = row => {
     setSelectedRow(row);
     setDeleteDialogOpen(true);
   };
-
   const confirmDelete = () => {
     if (!selectedRow?.id) return;
-
     dispatch(deleteSeo(selectedRow.id)).then(() => {
       dispatch(getAllSeo());
       setDeleteDialogOpen(false);
       setSelectedRow(null);
     });
   };
-
   const cancelDelete = () => {
     setDeleteDialogOpen(false);
     setSelectedRow(null);
   };
-
-  const rows = seoList
-    .filter((seo) => seo.isActive)
-    .map((seo) => ({
-      id: seo._id,
-      pageType: seo.pageType,
-      category: seo.category || "",
-      location: seo.location || "",
-      title: seo.title || "",
-      description: seo.description || "",
-      keywords: seo.keywords || "",
-      canonical: seo.canonical || "",
-      robots: seo.robots || "index, follow",
-    }));
-
-  const columns = [
-    { id: "pageType", label: "Page Type" },
-    { id: "category", label: "Category" },
-    { id: "location", label: "Location" },
-    { id: "title", label: "Meta Title" },
-    { id: "robots", label: "Robots" },
-    {
-      id: "action",
-      label: "Action",
-      renderCell: (_, row) => (
-        <>
+  const rows = seoList.filter(seo => seo.isActive).map(seo => ({
+    id: seo._id,
+    pageType: seo.pageType,
+    category: seo.category || "",
+    location: seo.location || "",
+    title: seo.title || "",
+    description: seo.description || "",
+    keywords: seo.keywords || "",
+    canonical: seo.canonical || "",
+    robots: seo.robots || "index, follow"
+  }));
+  const columns = [{
+    id: "pageType",
+    label: "Page Type"
+  }, {
+    id: "category",
+    label: "Category"
+  }, {
+    id: "location",
+    label: "Location"
+  }, {
+    id: "title",
+    label: "Meta Title"
+  }, {
+    id: "robots",
+    label: "Robots"
+  }, {
+    id: "action",
+    label: "Action",
+    renderCell: (_, row) => <>
           <IconButton color="primary" onClick={() => handleEdit(row)}>
             <EditRoundedIcon />
           </IconButton>
@@ -260,176 +217,121 @@ export default function SeoData() {
             <DeleteOutlineRoundedIcon />
           </IconButton>
         </>
-      ),
-    },
-  ];
-
-  const fields = [
-    { label: "Page Type", name: "pageType" },
-    // { label: "Category", name: "category" },
-    { label: "Meta Title", name: "title" },
-    { label: "Meta Description", name: "description" },
-    { label: "Keywords", name: "keywords" },
-    { label: "Canonical URL", name: "canonical" },
-    { label: "Robots", name: "robots" },
-  ];
-
-  return (
-    <div className="seo-page">
-      <div className="seo-card">
-        <h2 className="seo-card-title">
+  }];
+  const fields = [{
+    label: "Page Type",
+    name: "pageType"
+  },
+  // { label: "Category", name: "category" },
+  {
+    label: "Meta Title",
+    name: "title"
+  }, {
+    label: "Meta Description",
+    name: "description"
+  }, {
+    label: "Keywords",
+    name: "keywords"
+  }, {
+    label: "Canonical URL",
+    name: "canonical"
+  }, {
+    label: "Robots",
+    name: "robots"
+  }];
+  return <div className={cx("seo-page")}>
+      <div className={cx("seo-card")}>
+        <h2 className={cx("seo-card-title")}>
           {editingId ? "Edit SEO Meta" : "Add SEO Meta"}
         </h2>
-        <form onSubmit={handleSubmit} className="seo-form-grid">
-          <div className="seo-form-input-group category-search">
-            <label className="seo-input-label">Category</label>
-            <input
-              type="text"
-              value={categoryInput}
-              placeholder="Search category"
-              className="seo-text-input"
-              onChange={(e) => {
-                const value = e.target.value;
-
-                setCategoryInput(value);
-                setShowSuggestions(true);
-
-                setFormData((prev) => ({
-                  ...prev,
-                  category: value,
-                }));
-              }}
-              onFocus={() => setShowSuggestions(true)}
-              onBlur={() => {
-                setTimeout(() => setShowSuggestions(false), 150);
-              }}
-            />
-            {showSuggestions && categorySuggestions.length > 0 && (
-              <ul className="category-suggestion-list">
-                {categorySuggestions.map((item) => (
-                  <li
-                    key={item._id}
-                    className="category-suggestion-item"
-                    onClick={() => {
-                      setCategoryInput(item.category);
-                      setFormData((prev) => ({
-                        ...prev,
-                        category: item.category,
-                      }));
-                      setShowSuggestions(false);
-                    }}
-                  >
+        <form onSubmit={handleSubmit} className={cx("seo-form-grid")}>
+          <div className={cx("seo-form-input-group category-search")}>
+            <label className={cx("seo-input-label")}>Category</label>
+            <input type="text" value={categoryInput} placeholder="Search category" className={cx("seo-text-input")} onChange={e => {
+            const value = e.target.value;
+            setCategoryInput(value);
+            setShowSuggestions(true);
+            setFormData(prev => ({
+              ...prev,
+              category: value
+            }));
+          }} onFocus={() => setShowSuggestions(true)} onBlur={() => {
+            setTimeout(() => setShowSuggestions(false), 150);
+          }} />
+            {showSuggestions && categorySuggestions.length > 0 && <ul className={cx("category-suggestion-list")}>
+                {categorySuggestions.map(item => <li key={item._id} className={cx("category-suggestion-item")} onClick={() => {
+              setCategoryInput(item.category);
+              setFormData(prev => ({
+                ...prev,
+                category: item.category
+              }));
+              setShowSuggestions(false);
+            }}>
                     {item.category}
-                  </li>
-                ))}
-              </ul>
-            )}
+                  </li>)}
+              </ul>}
           </div>
-          <div className="seo-form-input-group category-search">
-            <label className="seo-input-label">Location</label>
-            <input
-              type="text"
-              name="location"
-              value={formData.location}
-              placeholder="Search location"
-              className={`seo-text-input ${errors.location ? "error" : ""}`}
-              onChange={(e) => {
-                handleChange(e);
-                updateLocationSuggestions(e.target.value);
-              }}
-              onFocus={() => updateLocationSuggestions(formData.location)}
-              onBlur={() => setTimeout(() => setShowLocationSuggest(false), 150)}
-            />
-            {showLocationSuggest && locationSuggestions.length > 0 && (
-              <ul className="category-suggestion-list">
-                {locationSuggestions.map((loc) => (
-                  <li
-                    key={loc._id}
-                    className="category-suggestion-item"
-                    onClick={() => {
-                      setFormData((prev) => ({
-                        ...prev,
-                        location: loc.city || loc.district || "",
-                      }));
-                      setShowLocationSuggest(false);
-                      setLocationSuggestions([]);
-                    }}
-                  >
+          <div className={cx("seo-form-input-group category-search")}>
+            <label className={cx("seo-input-label")}>Location</label>
+            <input type="text" name="location" value={formData.location} placeholder="Search location" className={cx(`seo-text-input ${errors.location ? "error" : ""}`)} onChange={e => {
+            handleChange(e);
+            updateLocationSuggestions(e.target.value);
+          }} onFocus={() => updateLocationSuggestions(formData.location)} onBlur={() => setTimeout(() => setShowLocationSuggest(false), 150)} />
+            {showLocationSuggest && locationSuggestions.length > 0 && <ul className={cx("category-suggestion-list")}>
+                {locationSuggestions.map(loc => <li key={loc._id} className={cx("category-suggestion-item")} onClick={() => {
+              setFormData(prev => ({
+                ...prev,
+                location: loc.city || loc.district || ""
+              }));
+              setShowLocationSuggest(false);
+              setLocationSuggestions([]);
+            }}>
                     {loc.city}
                     {loc.district && loc.district !== loc.city ? `, ${loc.district}` : ""}
                     {loc.state ? ` - ${loc.state}` : ""}
-                  </li>
-                ))}
-              </ul>
-            )}
-            {errors.location && <p className="seo-error-text">{errors.location}</p>}
+                  </li>)}
+              </ul>}
+            {errors.location && <p className={cx("seo-error-text")}>{errors.location}</p>}
           </div>
-          {fields.map(({ label, name }) => (
-            <div key={name} className="seo-form-input-group">
-              <label className="seo-input-label">{label}</label>
-              {name === "description" ? (
-                <textarea
-                  name={name}
-                  value={formData[name]}
-                  onChange={handleChange}
-                  className={`seo-textarea ${errors[name] ? "error" : ""
-                    }`}
-                />
-              ) : (
-                <input
-                  type="text"
-                  name={name}
-                  value={formData[name]}
-                  onChange={handleChange}
-                  className={`seo-text-input ${errors[name] ? "error" : ""
-                    }`}
-                />
-              )}
+          {fields.map(({
+          label,
+          name
+        }) => <div key={name} className={cx("seo-form-input-group")}>
+              <label className={cx("seo-input-label")}>{label}</label>
+              {name === "description" ? <textarea name={name} value={formData[name]} onChange={handleChange} className={cx(`seo-textarea ${errors[name] ? "error" : ""}`)} /> : <input type="text" name={name} value={formData[name]} onChange={handleChange} className={cx(`seo-text-input ${errors[name] ? "error" : ""}`)} />}
 
-              {errors[name] && (
-                <p className="seo-error-text">{errors[name]}</p>
-              )}
-            </div>
-          ))}
+              {errors[name] && <p className={cx("seo-error-text")}>{errors[name]}</p>}
+            </div>)}
 
-          <div className="seo-actions">
+          <div className={cx("seo-actions")}>
             <button type="submit" disabled={loading}>
-              {loading ? (
-                <CircularProgress size={22} />
-              ) : editingId ? (
-                "Update SEO"
-              ) : (
-                "Create SEO"
-              )}
+              {loading ? <CircularProgress size={22} /> : editingId ? "Update SEO" : "Create SEO"}
             </button>
 
-            {editingId && (
-              <button type="button" onClick={resetForm}>
+            {editingId && <button type="button" onClick={resetForm}>
                 Cancel
-              </button>
-            )}
+              </button>}
           </div>
         </form>
 
-        {error && (
-          <p className="seo-error-text">
+        {error && <p className={cx("seo-error-text")}>
             {typeof error === "string" ? error : JSON.stringify(error)}
-          </p>
-        )}
+          </p>}
 
-        <Typography variant="h6" align="center" sx={{ mt: 4 }}>
+        <Typography variant="h6" align="center" sx={{
+        mt: 4
+      }}>
           SEO Metadata Table
         </Typography>
 
-        <Box sx={{ mt: 2 }}>
-          <CustomizedTable
-            data={rows}
-            columns={columns}
-            total={total}
-            fetchData={(pageNo, pageSize, options) =>
-              dispatch(getAllSeo({ pageNo, pageSize, options }))
-            }
-          />
+        <Box sx={{
+        mt: 2
+      }}>
+          <CustomizedTable data={rows} columns={columns} total={total} fetchData={(pageNo, pageSize, options) => dispatch(getAllSeo({
+          pageNo,
+          pageSize,
+          options
+        }))} />
         </Box>
 
         <Dialog open={deleteDialogOpen} onClose={cancelDelete}>
@@ -439,16 +341,11 @@ export default function SeoData() {
           </DialogContent>
           <DialogActions>
             <Button onClick={cancelDelete}>Cancel</Button>
-            <Button
-              onClick={confirmDelete}
-              color="error"
-              variant="contained"
-            >
+            <Button onClick={confirmDelete} color="error" variant="contained">
               Delete
             </Button>
           </DialogActions>
         </Dialog>
       </div>
-    </div>
-  );
+    </div>;
 }
