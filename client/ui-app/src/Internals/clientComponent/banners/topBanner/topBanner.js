@@ -55,9 +55,11 @@ const TopBannerAds = ({
       return ad.isActive && !ad.isDeleted && ad.position === "TOP_BANNER" && (normalizeCategory(ad.category) === normalizeCategory(category) || isCommonTopBanner(ad.category)) && imageKey;
     }).map(ad => {
       const baseUrl = `https://massclickdev.s3.ap-southeast-2.amazonaws.com/${ad.bannerImageKey}`;
+      const mobileBaseUrl = ad.mobileBannerImageKey ? `https://massclickdev.s3.ap-southeast-2.amazonaws.com/${ad.mobileBannerImageKey}` : null;
       return {
         ...ad,
-        image: ad.bannerImage || baseUrl
+        image: ad.bannerImage || baseUrl,
+        mobileImage: ad.mobileBannerImage || mobileBaseUrl
       };
     });
     return apiBanners.length > 0 ? apiBanners : [DEFAULT_BANNER];
@@ -92,7 +94,10 @@ const TopBannerAds = ({
 
         {bannerAds.map(ad => <a key={ad._id} href={ad.redirectUrl || "#"} target={ad.redirectUrl ? "_blank" : "_self"} rel="noopener noreferrer" className={cx("carousel-slide")}>
             <div className={cx("banner-image-wrapper")}>
-              <img src={ad.image} alt={ad.title || "Top banner"} width="1200" height="300" loading="eager" fetchpriority="high" decoding="async" />
+              <picture>
+                {ad.mobileImage && <source media="(max-width: 768px)" srcSet={ad.mobileImage} />}
+                <img src={ad.image} alt={ad.title || "Top banner"} width="1720" height="168" loading="eager" fetchpriority="high" decoding="async" />
+              </picture>
 
             </div>
 
