@@ -869,6 +869,10 @@ const BusinessDetail = React.memo(() => {
           </aside>
         </div>
         </main>
+
+        <div className={cx("business-CardDetails-lowerSections")}>
+          <PopularCategoriesLink />
+        </div>
       </div>
 
       {showContactModal && <SimpleModal title={`Contact for ${business.businessName}`} onClose={() => setShowContactModal(false)}>
@@ -887,10 +891,7 @@ const BusinessDetail = React.memo(() => {
 
       {showFullGallery && <FullScreenGallery images={galleryImageSrcs} initialIndex={currentSlideIndex} onClose={() => setShowFullGallery(false)} />}
 
-      <div className={cx("cardDetails-bottom-sections-wrapper")}>
-        <PopularCategoriesLink />
-        <Footer />
-      </div>
+      <Footer />
       <OTPLoginModal open={showLoginModal} handleClose={() => setShowLoginModal(false)} />
     </>;
 });

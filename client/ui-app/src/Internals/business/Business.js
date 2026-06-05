@@ -36,6 +36,7 @@ import Tooltip from "@mui/material/Tooltip";
 import styles from "./business.module.css";
 import AdminViewTabs from "../../components/AdminViewTabs.js";
 const cx = createScopedClassNames(styles);
+const FORCE_BYPASS_BLOCKED_FIELDS = new Set(["businessName", "category", "location"]);
 const ReactQuill = lazy(() => import('react-quill').then(m => {
   require('react-quill/dist/quill.snow.css');
   return {
@@ -190,6 +191,7 @@ const BusinessList = React.memo(() => {
   const [activeStep, setActiveStep] = useState(0);
   const [kycFiles, setKycFiles] = useState([]);
   const handleKycUpload = event => {
+    clearForceBypassForFields("kycDocuments");
     const files = Array.from(event.target.files || []);
     const validFiles = files.filter(f => f instanceof File);
     const newFiles = validFiles.map(file => {
@@ -199,6 +201,7 @@ const BusinessList = React.memo(() => {
     setKycFiles(prev => [...prev, ...newFiles]);
   };
   const handleRemoveFile = index => {
+    clearForceBypassForFields("kycDocuments");
     setKycFiles(prevFiles => {
       const updatedFiles = [...prevFiles];
       URL.revokeObjectURL(updatedFiles[index].preview);
@@ -375,6 +378,9 @@ const BusinessList = React.memo(() => {
   const [categoryFilterConfig, setCategoryFilterConfig] = useState([]);
   const [filterConfigLoading, setFilterConfigLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
+  const [forceBypassedFields, setForceBypassedFields] = useState([]);
+  const [warnLevel, setWarnLevel] = useState(0);
+  const [warnDialog, setWarnDialog] = useState(false);
   const [preview, setPreview] = useState(null);
   const [deleteDialog, setDeleteDialog] = useState({
     open: false,
@@ -392,7 +398,15 @@ const BusinessList = React.memo(() => {
     }], ['link', 'image', 'video'], ['clean']]
   };
   const formats = ["header", "bold", "italic", "underline", "strike", "list", "bullet", "link", "image", "video"];
+  const isForceBypassableField = field => Boolean(field) && !FORCE_BYPASS_BLOCKED_FIELDS.has(field);
+  const getUniqueFields = fields => [...new Set((fields || []).filter(Boolean))];
+  const clearForceBypassForFields = useCallback(fields => {
+    const names = Array.isArray(fields) ? fields : [fields];
+    setForceBypassedFields(prev => prev.filter(field => !names.includes(field)));
+    setWarnLevel(0);
+  }, []);
   const handleBusinessChange = content => {
+    clearForceBypassForFields("businessDetails");
     setBusinessValue(content);
     setFormData(prev => ({
       ...prev,
@@ -404,6 +418,8 @@ const BusinessList = React.memo(() => {
     }, "businessDetails");
   };
   const handleOpeningHourChange = (index, field, value) => {
+    const bypassField = `openingHours.${formData.openingHours?.[index]?.day}`;
+    clearForceBypassForFields(bypassField);
     setFormData(prev => {
       const updatedHours = [...(prev.openingHours || defaultOpeningHours)];
       updatedHours[index][field] = value;
@@ -597,6 +613,7 @@ const BusinessList = React.memo(() => {
     if (name === "category") {
       const selected = category.find(cat => cat.category === value);
       const categoryFields = ["category", "keywords", "title", "description", "seoTitle", "seoDescription", "slug"];
+      clearForceBypassForFields(categoryFields);
       const nextData = {
         ...formData,
         category: value,
@@ -620,6 +637,7 @@ const BusinessList = React.memo(() => {
       updateLiveValidation(nextData, categoryFields);
       return;
     }
+    clearForceBypassForFields(name);
     const nextData = {
       ...formData,
       [name]: value
@@ -631,6 +649,7 @@ const BusinessList = React.memo(() => {
     updateLiveValidation(nextData, name);
   };
   const handleGeoCoordinateChange = (coordinateIndex, value) => {
+    clearForceBypassForFields(coordinateIndex === 1 ? "geoLatitude" : "geoLongitude");
     const coordinates = Array.isArray(formData.geoLocation?.coordinates) ? [...formData.geoLocation.coordinates] : ["", ""];
     coordinates[coordinateIndex] = value;
     const nextData = {
@@ -812,7 +831,8 @@ const BusinessList = React.memo(() => {
   const updateLiveValidation = (nextFormData, fieldNames) => {
     const names = Array.isArray(fieldNames) ? fieldNames : [fieldNames];
     const cleanData = getCleanBusinessFormData(nextFormData);
-    const matchingErrors = validateBusinessEntryData(cleanData).filter(error => names.includes(error.field));
+    const bypassed = new Set(forceBypassedFields);
+    const matchingErrors = validateBusinessEntryData(cleanData).filter(error => names.includes(error.field) && !bypassed.has(error.field));
 
     setFieldErrors(prev => {
       const next = { ...prev };
@@ -897,12 +917,13 @@ const BusinessList = React.memo(() => {
   }, [formData.category]); // eslint-disable-line
 
   const handleFilterChange = useCallback((key, value) => {
+    clearForceBypassForFields(`filters.${key}`);
     setFormData(prev => {
       const nextData = { ...prev, filters: { ...prev.filters, [key]: value } };
       updateLiveValidation(nextData, `filters.${key}`);
       return nextData;
     });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [clearForceBypassForFields]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleDelete = row => {
     setDeleteDialog({
@@ -924,6 +945,7 @@ const BusinessList = React.memo(() => {
     });
   };
   const handleImageChange = e => {
+    clearForceBypassForFields("bannerImage");
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
@@ -941,24 +963,39 @@ const BusinessList = React.memo(() => {
       reader.readAsDataURL(file);
     }
   };
-  const handleSubmit = async e => {
-    e.preventDefault();
+  const buildFieldErrorMap = errors => errors.reduce((acc, error) => ({
+    ...acc,
+    [error.field]: getValidationMessage(error)
+  }), {});
+  const getFirstErrorStep = errors => typeof errors[0]?.step === "number" ? errors[0].step : 0;
+  const getActiveValidationErrors = (cleanedFormData, forceBypassFields = []) => {
+    const bypassed = new Set([...forceBypassedFields, ...forceBypassFields]);
+    return validateBusinessEntryData(cleanedFormData).filter(error => !bypassed.has(error.field));
+  };
+  const showBusinessValidationErrors = validationErrors => {
+    setActiveStep(getFirstErrorStep(validationErrors));
+    setFieldErrors(buildFieldErrorMap(validationErrors));
+    const errorMessage = validationErrors.slice(0, 8).map(error => `- ${getValidationMessage(error)}`).join("\n");
+    enqueueSnackbar(`Please fix these fields before saving:\n${errorMessage}${validationErrors.length > 8 ? `\n- ${validationErrors.length - 8} more issue(s)` : ""}`, {
+      variant: "error"
+    });
+  };
+  const saveBusiness = async ({ forceBypassFields = [] } = {}) => {
     const cleanedFormData = getCleanBusinessFormData(formData);
-    const validationErrors = validateBusinessEntryData(cleanedFormData);
+    const bypassFields = getUniqueFields(forceBypassFields).filter(isForceBypassableField);
+    const validationErrors = getActiveValidationErrors(cleanedFormData, bypassFields);
 
     if (validationErrors.length > 0) {
-      setActiveStep(validationErrors[0].step);
-      setFieldErrors(validationErrors.reduce((acc, error) => ({
-        ...acc,
-        [error.field]: getValidationMessage(error)
-      }), {}));
-      const errorMessage = validationErrors.slice(0, 8).map(error => `- ${getValidationMessage(error)}`).join("\n");
-      enqueueSnackbar(`Please fix these fields before saving:\n${errorMessage}${validationErrors.length > 8 ? `\n- ${validationErrors.length - 8} more issue(s)` : ""}`, {
-        variant: "error"
-      });
+      showBusinessValidationErrors(validationErrors);
       return;
     }
     setFieldErrors({});
+    if (bypassFields.length > 0) {
+      setForceBypassedFields(prev => getUniqueFields([...prev, ...bypassFields]));
+      enqueueSnackbar(`Force bypass applied for ${bypassFields.length} optional field${bypassFields.length === 1 ? "" : "s"}.`, {
+        variant: "warning"
+      });
+    }
 
     // Validate business data using InputValidator
     try {
@@ -971,7 +1008,6 @@ const BusinessList = React.memo(() => {
       };
       InputValidator.validateBusiness(businessData);
     } catch (error) {
-      // Show validation error to user
       const errorMessage = error.message.split('\n').filter(line => line.trim()).join('\n');
       enqueueSnackbar(`Validation error: ${errorMessage}`, {
         variant: "error"
@@ -986,8 +1022,8 @@ const BusinessList = React.memo(() => {
     })));
     const longitudeRaw = cleanedFormData.geoLocation?.coordinates?.[0];
     const latitudeRaw = cleanedFormData.geoLocation?.coordinates?.[1];
-    const longitude = Number(longitudeRaw);
-    const latitude = Number(latitudeRaw);
+    const longitude = Number.isFinite(Number(longitudeRaw)) ? Number(longitudeRaw) : 0;
+    const latitude = Number.isFinite(Number(latitudeRaw)) ? Number(latitudeRaw) : 0;
     const locationExists = location.some(loc => loc.city?.toLowerCase() === cleanedFormData.location?.toLowerCase() || loc.district?.toLowerCase() === cleanedFormData.location?.toLowerCase());
     if (!locationExists && cleanedFormData.location) {
       await dispatch(createLocation({
@@ -1046,6 +1082,7 @@ const BusinessList = React.memo(() => {
         });
       }
       dispatch(getAllBusinessList());
+      setForceBypassedFields([]);
       setActiveStep(3);
     } catch (err) {
       console.error("Error saving business:", err);
@@ -1065,6 +1102,29 @@ const BusinessList = React.memo(() => {
           variant: "error"
         });
       }
+    }
+  };
+  const handleSubmit = async e => {
+    e.preventDefault();
+    await saveBusiness();
+  };
+  const warnMessages = [
+    null,
+    { title: "Warning 1 of 3", body: "Some fields are incomplete. The listing may appear low quality to users.", confirm: "Yes, continue" },
+    { title: "Warning 2 of 3", body: "Are you sure? This data will be published as-is to users browsing the directory.", confirm: "Yes, I'm sure" },
+    { title: "Final confirmation", body: "You are about to save incomplete business data. Only proceed if you are certain.", confirm: "Save anyway" }
+  ];
+  const handleWarnConfirm = async () => {
+    const nextLevel = warnLevel + 1;
+    setWarnDialog(false);
+    if (nextLevel < 3) {
+      setWarnLevel(nextLevel);
+    } else {
+      setWarnLevel(0);
+      const cleanedFormData = getCleanBusinessFormData(formData);
+      const allErrors = validateBusinessEntryData(cleanedFormData);
+      const bypassFields = getUniqueFields(allErrors.filter(e => isForceBypassableField(e.field)).map(e => e.field));
+      await saveBusiness({ forceBypassFields: bypassFields });
     }
   };
   const rows = businessList.filter(c => c.isActive).map((bl, index) => ({
@@ -2105,6 +2165,7 @@ const BusinessList = React.memo(() => {
         return null;
     }
   };
+  const bypassableFieldErrorCount = Object.keys(fieldErrors).filter(isForceBypassableField).length;
   return <div className={cx("business-page")}>
       <AdminViewTabs activeView={activeView} onChange={setActiveView} isEditing={editMode} createLabel="Business" listLabel="Directory" listCount={filteredRows.length} />
 
@@ -2139,6 +2200,16 @@ const BusinessList = React.memo(() => {
               ))}
               {Object.keys(fieldErrors).length > 6 && (
                 <p>{Object.keys(fieldErrors).length - 6} more issue(s) need attention.</p>
+              )}
+              {bypassableFieldErrorCount > 0 && (
+                <div className={cx("validation-actions")}>
+                  <button type="button" className={cx("warn-save-button")} onClick={() => setWarnDialog(true)} disabled={loading}>
+                    {warnLevel > 0 ? `⚠️ Warning ${warnLevel}/3 — Save with warnings` : "Save with warnings"}
+                  </button>
+                  <span className={cx("force-bypass-note")}>
+                    businessName, category &amp; location still need valid values.
+                  </span>
+                </div>
               )}
             </div>
           )}
@@ -2223,6 +2294,21 @@ const BusinessList = React.memo(() => {
         </Box>
       </div>
       </>}
+
+      <Dialog open={warnDialog} onClose={() => setWarnDialog(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ color: "#D97800", fontWeight: 700 }}>
+          ⚠️ {warnMessages[warnLevel + 1]?.title}
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2">{warnMessages[warnLevel + 1]?.body}</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setWarnDialog(false)} color="secondary">Cancel</Button>
+          <Button color="warning" variant="contained" onClick={handleWarnConfirm} disabled={loading}>
+            {loading ? <CircularProgress size={20} color="inherit" /> : warnMessages[warnLevel + 1]?.confirm}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({
       open: false,
