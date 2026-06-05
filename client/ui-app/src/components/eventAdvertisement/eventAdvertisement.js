@@ -29,6 +29,7 @@ import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 
 import CustomizedTable from "../../components/Table/CustomizedTable";
+import AdminViewTabs from "../../components/AdminViewTabs.js";
 import { createScopedClassNames } from "../../utils/createScopedClassNames";
 
 import styles from "./eventAdvertisement.module.css";
@@ -96,6 +97,7 @@ export default function EventAdvertisement() {
   );
 
   const [isEditMode, setIsEditMode] = useState(false);
+  const [activeView, setActiveView] = useState("list");
   const [editId, setEditId] = useState(null);
   const [successMessage, setSuccessMessage] = useState("");
   const [formData, setFormData] = useState(initialFormData);
@@ -248,6 +250,7 @@ export default function EventAdvertisement() {
 
     setEditId(row.id);
     setIsEditMode(true);
+    setActiveView("form");
     setErrors({});
   };
 
@@ -387,7 +390,9 @@ export default function EventAdvertisement() {
 
   return (
     <div className={cx("eventAdvertisement-page")}>
-      <div className={cx("eventAdvertisement-card")}>
+      <AdminViewTabs activeView={activeView} onChange={setActiveView} isEditing={isEditMode} createLabel="Event Advertisement" listLabel="Event Advertisements" listCount={rows.length} />
+
+      {activeView === "form" && <div className={cx("eventAdvertisement-card")}>
         <h2>
           {isEditMode
             ? "Edit Event Advertisement"
@@ -699,8 +704,9 @@ export default function EventAdvertisement() {
             )}
           </div>
         </form>
-      </div>
+      </div>}
 
+      {activeView === "list" && <>
       <Typography
         variant="h6"
         sx={{
@@ -728,6 +734,7 @@ export default function EventAdvertisement() {
           }
         />
       </Box>
+      </>}
 
       <Dialog
         open={deleteDialogOpen}

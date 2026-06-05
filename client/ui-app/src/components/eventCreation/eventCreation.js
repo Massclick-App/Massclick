@@ -34,6 +34,7 @@ import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 
 import CustomizedTable from "../../components/Table/CustomizedTable";
+import AdminViewTabs from "../../components/AdminViewTabs.js";
 import { createScopedClassNames } from "../../utils/createScopedClassNames";
 
 import styles from "./eventCreation.module.css";
@@ -125,6 +126,7 @@ export default function EventCreation() {
   );
 
   const [isEditMode, setIsEditMode] = useState(false);
+  const [activeView, setActiveView] = useState("list");
   const [editId, setEditId] = useState(null);
   const [successMessage, setSuccessMessage] = useState("");
   const [formData, setFormData] = useState(initialFormData);
@@ -339,6 +341,7 @@ export default function EventCreation() {
 
     setEditId(row.id);
     setIsEditMode(true);
+    setActiveView("form");
     setErrors({});
   };
 
@@ -490,7 +493,9 @@ export default function EventCreation() {
 
   return (
     <div className={cx("eventCreation-page")}>
-      <div className={cx("eventCreation-card")}>
+      <AdminViewTabs activeView={activeView} onChange={setActiveView} isEditing={isEditMode} createLabel="Event" listLabel="Events" listCount={rows.length} />
+
+      {activeView === "form" && <div className={cx("eventCreation-card")}>
         <h2>
           {isEditMode
             ? "Edit Event"
@@ -1004,8 +1009,9 @@ export default function EventCreation() {
             )}
           </div>
         </form>
-      </div>
+      </div>}
 
+      {activeView === "list" && <>
       <Typography
         variant="h6"
         sx={{
@@ -1034,6 +1040,7 @@ export default function EventCreation() {
           }
         />
       </Box>
+      </>}
 
       <Dialog
         open={deleteDialogOpen}

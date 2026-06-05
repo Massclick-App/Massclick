@@ -539,16 +539,18 @@ const SearchResults = React.memo(() => {
 
         {/* Mobile filter drawer */}
         <Drawer anchor="bottom" open={filterDrawerOpen} onClose={() => setFilterDrawerOpen(false)}
-          PaperProps={{ sx: { borderRadius: "16px 16px 0 0", maxHeight: "80vh", overflow: "auto", p: 2 } }}>
-          <FilterPanel
-            filterConfig={filterConfig}
-            activeFilters={activeFilters}
-            sortBy={sortBy}
-            onFilterChange={handleFilterChange}
-            onSortChange={handleSortChange}
-            onClearAll={handleClearAllFilters}
-          />
-          <Box sx={{ p: 2, pt: 1 }}>
+          PaperProps={{ sx: { borderRadius: "16px 16px 0 0", maxHeight: "80vh", display: "flex", flexDirection: "column", overflow: "hidden" } }}>
+          <Box sx={{ overflowY: "auto", flex: 1, p: 2, WebkitOverflowScrolling: "touch" }}>
+            <FilterPanel
+              filterConfig={filterConfig}
+              activeFilters={activeFilters}
+              sortBy={sortBy}
+              onFilterChange={handleFilterChange}
+              onSortChange={handleSortChange}
+              onClearAll={handleClearAllFilters}
+            />
+          </Box>
+          <Box sx={{ p: 2, pt: 1, flexShrink: 0, borderTop: "1px solid #f1f5f9", bgcolor: "#fff" }}>
             <Button fullWidth variant="contained" onClick={() => setFilterDrawerOpen(false)}
               sx={{ bgcolor: "#ff8c00", "&:hover": { bgcolor: "#e07800" }, borderRadius: 2, fontWeight: 700 }}>
               Apply Filters {totalActiveCount > 0 ? `(${totalActiveCount})` : ""}

@@ -12,6 +12,7 @@ import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 import CustomizedTable from "../../../components/Table/CustomizedTable";
 import styles from "./termsAndConditions.module.css";
+import AdminViewTabs from "../../../components/AdminViewTabs.js";
 const cx = createScopedClassNames(styles);
 const defaultForm = {
   data: [{
@@ -42,6 +43,7 @@ export default function TermsAndConditionsDatas() {
   } = useSelector(state => state.termsAndConditions) || {};
   const [formData, setFormData] = useState(defaultForm);
   const [editingId, setEditingId] = useState(null);
+  const [activeView, setActiveView] = useState("list");
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
   useEffect(() => {
@@ -111,6 +113,7 @@ export default function TermsAndConditionsDatas() {
     const found = termsList.find(item => item._id === rowId);
     if (!found) return;
     setEditingId(rowId);
+    setActiveView("form");
     setFormData({
       data: found.data?.length ? found.data : [{
         header: "",
@@ -154,6 +157,9 @@ export default function TermsAndConditionsDatas() {
   }];
   return <div className={cx("terms-page")}>
       <div className={cx("terms-container")}>
+        <AdminViewTabs activeView={activeView} onChange={setActiveView} isEditing={Boolean(editingId)} createLabel="Terms" listLabel="Terms List" listCount={rows.length} />
+
+        {activeView === "form" && (
         <div className={cx("terms-card")}>
           <header className={cx("terms-header")}>
             <div>
@@ -200,7 +206,9 @@ export default function TermsAndConditionsDatas() {
             </div>
           </form>
         </div>
+        )}
 
+        {activeView === "list" && (
         <Box className={cx("terms-table")}>
           <CustomizedTable data={rows} columns={columns} total={total} fetchData={(pageNo, pageSize, options) => dispatch(getAllTermsAndConditions({
           pageNo,
@@ -208,6 +216,7 @@ export default function TermsAndConditionsDatas() {
           options
         }))} />
         </Box>
+        )}
 
         <Dialog open={deleteOpen} onClose={() => setDeleteOpen(false)}>
           <DialogTitle>Delete Terms</DialogTitle>

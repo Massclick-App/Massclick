@@ -5,7 +5,7 @@ import { useDispatch, useSelector } from "react-redux";
 import InputValidator from "../validators/inputValidator.js";
 import { getAllBusinessList, createBusinessList, editBusinessList, deleteBusinessList, trackQrDownload } from "../../redux/actions/businessListAction";
 import { getAllLocation, createLocation } from "../../redux/actions/locationAction";
-import { createCategory, editCategory, businessCategorySearch } from "../../redux/actions/categoryAction";
+import { getAllCategory, createCategory, editCategory, businessCategorySearch } from "../../redux/actions/categoryAction";
 import { getAllUsersClient, getUserClientSuggestion } from "../../redux/actions/userClientAction.js";
 import { getAllUsers } from "../../redux/actions/userAction.js";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
@@ -34,6 +34,7 @@ import { checkPhonePeStatus, createPhonePePayment } from "../../redux/actions/ph
 import CustomizedTable from "../../components/Table/CustomizedTable.js";
 import Tooltip from "@mui/material/Tooltip";
 import styles from "./business.module.css";
+import AdminViewTabs from "../../components/AdminViewTabs.js";
 const cx = createScopedClassNames(styles);
 const ReactQuill = lazy(() => import('react-quill').then(m => {
   require('react-quill/dist/quill.snow.css');
@@ -141,6 +142,7 @@ const BusinessList = React.memo(() => {
   const fileInputRef = useRef();
   const [businessvalue, setBusinessValue] = useState("");
   const [editMode, setEditMode] = useState(false);
+  const [activeView, setActiveView] = useState("list");
   const [editId, setEditId] = useState(null);
   const [newGalleryImages, setNewGalleryImages] = useState([]);
   const [createdBusinessId, setCreatedBusinessId] = useState(null);
@@ -160,6 +162,13 @@ const BusinessList = React.memo(() => {
   const [paymentStatus, setPaymentStatus] = useState("all"); // "all", "paid", "pending"
   const [dateRange, setDateRange] = useState({ from: "", to: "" });
   const [activeFilters, setActiveFilters] = useState([]);
+  const [appliedFilters, setAppliedFilters] = useState({
+    searchTerm: "",
+    category: "",
+    location: "",
+    paymentStatus: "all"
+  });
+  const [tableRefreshKey, setTableRefreshKey] = useState(0);
   
   const handlePayNow = row => {
     const amount = 1;
@@ -357,10 +366,15 @@ const BusinessList = React.memo(() => {
     businessDetails: "",
     kycDocuments: [],
     openingHours: defaultOpeningHours,
+    geoLocation: {
+      type: "Point",
+      coordinates: ["", ""]
+    },
     filters: {}
   });
   const [categoryFilterConfig, setCategoryFilterConfig] = useState([]);
   const [filterConfigLoading, setFilterConfigLoading] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
   const [preview, setPreview] = useState(null);
   const [deleteDialog, setDeleteDialog] = useState({
     open: false,
@@ -384,6 +398,10 @@ const BusinessList = React.memo(() => {
       ...prev,
       businessDetails: content
     }));
+    updateLiveValidation({
+      ...formData,
+      businessDetails: content
+    }, "businessDetails");
   };
   const handleOpeningHourChange = (index, field, value) => {
     setFormData(prev => {
@@ -407,6 +425,15 @@ const BusinessList = React.memo(() => {
         openingHours: updatedHours
       };
     });
+    const baseHours = [...(formData.openingHours || defaultOpeningHours)];
+    baseHours[index] = {
+      ...baseHours[index],
+      [field]: value
+    };
+    updateLiveValidation({
+      ...formData,
+      openingHours: baseHours
+    }, `openingHours.${baseHours[index]?.day}`);
   };
   useEffect(() => {
     dispatch(getAllBusinessList());
@@ -414,73 +441,148 @@ const BusinessList = React.memo(() => {
       pageNo: 1,
       pageSize: 1000
     }));
-    dispatch(businessCategorySearch());
+    dispatch(getAllCategory({
+      pageNo: 1,
+      pageSize: 1000,
+      options: {
+        status: "active"
+      }
+    }));
+    dispatch(businessCategorySearch(""));
     dispatch(getAllUsersClient());
     dispatch(getAllUsers());
     dispatch(checkPhonePeStatus());
   }, [dispatch]);
 
   // ===== FILTER & SEARCH HANDLERS =====
+  const normalizeSearchValue = value => String(value ?? "").replace(/<[^>]*>/g, " ").toLowerCase().trim();
+
+  const valueMatchesSearch = (value, term) => {
+    if (Array.isArray(value)) {
+      return value.some(item => valueMatchesSearch(item, term));
+    }
+    return normalizeSearchValue(value).includes(term);
+  };
+
+  const matchesSelectedValue = (value, selectedValue) => {
+    if (!selectedValue) return true;
+    return normalizeSearchValue(value) === normalizeSearchValue(selectedValue);
+  };
+
+  const getServerSearchQuery = (filters = appliedFilters) => {
+    return (filters.searchTerm || filters.category || filters.location || "").trim();
+  };
+
   const updateActiveFilters = (newFilters) => {
     const filters = [];
-    if (newFilters.searchTerm) filters.push({ type: "search", label: `Search: ${newFilters.searchTerm}`, value: newFilters.searchTerm });
-    if (newFilters.category) filters.push({ type: "category", label: `Category: ${newFilters.category}`, value: newFilters.category });
-    if (newFilters.location) filters.push({ type: "location", label: `Location: ${newFilters.location}`, value: newFilters.location });
-    if (newFilters.paymentStatus && newFilters.paymentStatus !== "all") filters.push({ type: "payment", label: `Payment: ${newFilters.paymentStatus}`, value: newFilters.paymentStatus });
+    const cleanFilters = {
+      searchTerm: (newFilters.searchTerm || "").trim(),
+      category: newFilters.category || "",
+      location: newFilters.location || "",
+      paymentStatus: newFilters.paymentStatus || "all"
+    };
+
+    if (cleanFilters.searchTerm) filters.push({ type: "search", label: `Search: ${cleanFilters.searchTerm}`, value: cleanFilters.searchTerm });
+    if (cleanFilters.category) filters.push({ type: "category", label: `Category: ${cleanFilters.category}`, value: cleanFilters.category });
+    if (cleanFilters.location) filters.push({ type: "location", label: `Location: ${cleanFilters.location}`, value: cleanFilters.location });
+    if (cleanFilters.paymentStatus !== "all") filters.push({ type: "payment", label: `Payment: ${cleanFilters.paymentStatus}`, value: cleanFilters.paymentStatus });
     setActiveFilters(filters);
   };
 
   const handleApplyFilters = () => {
-    updateActiveFilters({ searchTerm, selectedCategory, selectedLocation, paymentStatus });
+    const nextFilters = {
+      searchTerm: searchTerm.trim(),
+      category: selectedCategory,
+      location: selectedLocation,
+      paymentStatus
+    };
+    setAppliedFilters(nextFilters);
+    updateActiveFilters(nextFilters);
+    setTableRefreshKey(prev => prev + 1);
   };
 
   const handleClearFilters = () => {
+    const nextFilters = {
+      searchTerm: "",
+      category: "",
+      location: "",
+      paymentStatus: "all"
+    };
     setSearchTerm("");
     setSelectedCategory("");
     setSelectedLocation("");
     setPaymentStatus("all");
     setDateRange({ from: "", to: "" });
+    setAppliedFilters(nextFilters);
     setActiveFilters([]);
+    setTableRefreshKey(prev => prev + 1);
   };
 
   const handleRemoveFilter = (filterType) => {
-    if (filterType === "search") setSearchTerm("");
-    if (filterType === "category") setSelectedCategory("");
-    if (filterType === "location") setSelectedLocation("");
-    if (filterType === "payment") setPaymentStatus("all");
-    updateActiveFilters({ 
-      searchTerm: filterType !== "search" ? searchTerm : "",
-      category: filterType !== "category" ? selectedCategory : "",
-      location: filterType !== "location" ? selectedLocation : "",
-      paymentStatus: filterType !== "payment" ? paymentStatus : "all"
-    });
+    const nextFilters = {
+      ...appliedFilters,
+      ...(filterType === "search" ? { searchTerm: "" } : {}),
+      ...(filterType === "category" ? { category: "" } : {}),
+      ...(filterType === "location" ? { location: "" } : {}),
+      ...(filterType === "payment" ? { paymentStatus: "all" } : {})
+    };
+
+    setSearchTerm(nextFilters.searchTerm);
+    setSelectedCategory(nextFilters.category);
+    setSelectedLocation(nextFilters.location);
+    setPaymentStatus(nextFilters.paymentStatus);
+    setAppliedFilters(nextFilters);
+    updateActiveFilters(nextFilters);
+    setTableRefreshKey(prev => prev + 1);
   };
 
   const getFilteredRows = () => {
     return rows.filter(row => {
+      const {
+        searchTerm: appliedSearchTerm,
+        category: appliedCategory,
+        location: appliedLocation,
+        paymentStatus: appliedPaymentStatus
+      } = appliedFilters;
+
       // Search term filter
-      if (searchTerm) {
-        const term = searchTerm.toLowerCase();
-        const matchesSearch = 
-          row.businessName?.toLowerCase().includes(term) ||
-          row.location?.toLowerCase().includes(term) ||
-          row.category?.toLowerCase().includes(term) ||
-          row.email?.toLowerCase().includes(term) ||
-          row.contact?.includes(term);
+      if (appliedSearchTerm) {
+        const term = normalizeSearchValue(appliedSearchTerm);
+        const matchesSearch = [
+          row.businessName,
+          row.location,
+          row.category,
+          row.email,
+          row.contact,
+          row.contactList,
+          row.whatsappNumber,
+          row.globalAddress,
+          row.street,
+          row.pincode,
+          row.gstin,
+          row.title,
+          row.description,
+          row.seoTitle,
+          row.seoDescription,
+          row.slug,
+          row.businessDetails,
+          row.keywords,
+          row.mniDetails?.map(item => item?.categoryGroup)
+        ].some(value => valueMatchesSearch(value, term));
         if (!matchesSearch) return false;
       }
 
       // Category filter
-      if (selectedCategory && row.category !== selectedCategory) return false;
+      if (!matchesSelectedValue(row.category, appliedCategory)) return false;
 
       // Location filter
-      if (selectedLocation && row.location !== selectedLocation) return false;
+      if (!matchesSelectedValue(row.location, appliedLocation)) return false;
 
       // Payment status filter
-      if (paymentStatus !== "all") {
+      if (appliedPaymentStatus !== "all") {
         const isPaid = row.amountPaid === true;
-        if (paymentStatus === "paid" && !isPaid) return false;
-        if (paymentStatus === "pending" && isPaid) return false;
+        if (appliedPaymentStatus === "paid" && !isPaid) return false;
+        if (appliedPaymentStatus === "pending" && isPaid) return false;
       }
 
       return true;
@@ -494,6 +596,17 @@ const BusinessList = React.memo(() => {
     } = e.target;
     if (name === "category") {
       const selected = category.find(cat => cat.category === value);
+      const categoryFields = ["category", "keywords", "title", "description", "seoTitle", "seoDescription", "slug"];
+      const nextData = {
+        ...formData,
+        category: value,
+        keywords: selected?.keywords || [],
+        slug: selected?.slug || "",
+        seoTitle: selected?.seoTitle || "",
+        seoDescription: selected?.seoDescription || "",
+        title: selected?.title || "",
+        description: selected?.description || ""
+      };
       setFormData(prev => ({
         ...prev,
         category: value,
@@ -504,15 +617,217 @@ const BusinessList = React.memo(() => {
         title: selected?.title || "",
         description: selected?.description || ""
       }));
+      updateLiveValidation(nextData, categoryFields);
       return;
     }
+    const nextData = {
+      ...formData,
+      [name]: value
+    };
     setFormData(prev => ({
       ...prev,
       [name]: value
     }));
+    updateLiveValidation(nextData, name);
+  };
+  const handleGeoCoordinateChange = (coordinateIndex, value) => {
+    const coordinates = Array.isArray(formData.geoLocation?.coordinates) ? [...formData.geoLocation.coordinates] : ["", ""];
+    coordinates[coordinateIndex] = value;
+    const nextData = {
+      ...formData,
+      geoLocation: {
+        type: "Point",
+        coordinates
+      }
+    };
+    setFormData(prev => {
+      const nextCoordinates = Array.isArray(prev.geoLocation?.coordinates) ? [...prev.geoLocation.coordinates] : ["", ""];
+      nextCoordinates[coordinateIndex] = value;
+
+      return {
+        ...prev,
+        geoLocation: {
+          type: "Point",
+          coordinates: nextCoordinates
+        }
+      };
+    });
+    updateLiveValidation(nextData, coordinateIndex === 1 ? "geoLatitude" : "geoLongitude");
+  };
+  const normalizeText = value => String(value ?? "").trim().replace(/\s+/g, " ");
+  const stripHtml = value => normalizeText(String(value ?? "").replace(/<[^>]*>/g, " ").replace(/&nbsp;/gi, " "));
+  const digitsOnly = value => String(value ?? "").replace(/\D/g, "");
+  const isValidUrl = value => {
+    try {
+      const url = new URL(String(value ?? "").trim());
+      return ["http:", "https:"].includes(url.protocol);
+    } catch {
+      return false;
+    }
+  };
+  const isEmptyFilterValue = value => {
+    if (Array.isArray(value)) return value.length === 0;
+    if (typeof value === "boolean") return false;
+    return normalizeText(value) === "";
+  };
+  const getCleanBusinessFormData = data => ({
+    ...data,
+    clientId: normalizeText(data.clientId),
+    businessName: normalizeText(data.businessName),
+    plotNumber: normalizeText(data.plotNumber),
+    street: normalizeText(data.street),
+    pincode: normalizeText(data.pincode),
+    globalAddress: normalizeText(data.globalAddress),
+    email: normalizeText(data.email).toLowerCase(),
+    contact: normalizeText(data.contact),
+    contactList: normalizeText(data.contactList),
+    gstin: normalizeText(data.gstin).toUpperCase(),
+    whatsappNumber: normalizeText(data.whatsappNumber),
+    experience: normalizeText(data.experience),
+    location: normalizeText(data.location),
+    category: normalizeText(data.category),
+    keywords: Array.isArray(data.keywords) ? [...new Set(data.keywords.map(normalizeText).filter(Boolean))] : [],
+    slug: normalizeText(data.slug).toLowerCase(),
+    seoTitle: normalizeText(data.seoTitle),
+    seoDescription: normalizeText(data.seoDescription),
+    title: normalizeText(data.title),
+    description: normalizeText(data.description),
+    googleMap: normalizeText(data.googleMap),
+    website: normalizeText(data.website),
+    facebook: normalizeText(data.facebook),
+    instagram: normalizeText(data.instagram),
+    youtube: normalizeText(data.youtube),
+    pinterest: normalizeText(data.pinterest),
+    twitter: normalizeText(data.twitter),
+    linkedin: normalizeText(data.linkedin),
+    businessDetails: data.businessDetails,
+    geoLocation: {
+      type: "Point",
+      coordinates: Array.isArray(data.geoLocation?.coordinates) ? data.geoLocation.coordinates.map(value => String(value ?? "").trim()) : ["", ""]
+    }
+  });
+  const getValidationMessage = error => {
+    const example = error.example ? ` Example: ${error.example}` : "";
+    const suggestion = error.suggestion ? ` Suggestion: ${error.suggestion}` : "";
+    return `${error.label}: ${error.message}${example}${suggestion}`;
+  };
+  const passOrMessage = (condition, message) => condition ? true : message;
+  const getBusinessValidationRules = data => {
+    const latitudeRaw = data.geoLocation?.coordinates?.[1];
+    const longitudeRaw = data.geoLocation?.coordinates?.[0];
+    const socialRules = [
+      ["facebook", "Facebook", "https://facebook.com/massclick"],
+      ["instagram", "Instagram", "https://instagram.com/massclick"],
+      ["youtube", "YouTube", "https://youtube.com/@massclick"],
+      ["pinterest", "Pinterest", "https://pinterest.com/massclick"],
+      ["twitter", "Twitter", "https://x.com/massclick"],
+      ["linkedin", "LinkedIn", "https://linkedin.com/company/massclick"]
+    ].map(([field, label, example]) => ({
+      field,
+      label,
+      example,
+      suggestion: "Leave it blank if the business does not have this profile.",
+      validate: value => !value || isValidUrl(value) || "must be a valid http or https URL."
+    }));
+    const categoryFilterRules = (categoryFilterConfig || []).filter(filter => filter.isRequired).map(filter => ({
+      field: `filters.${filter.key}`,
+      label: filter.label || filter.key,
+      step: 1,
+      required: true,
+      example: Array.isArray(filter.options) && filter.options.length > 0 ? String(filter.options[0]) : "Select the applicable option",
+      suggestion: "This field is required by the selected category.",
+      getValue: source => source.filters?.[filter.key]
+    }));
+    const openingHourRules = (data.openingHours || []).flatMap(hour => {
+      if (hour.isClosed || hour.is24Hours) return [];
+      return [{
+        field: `openingHours.${hour.day}`,
+        label: `${hour.day} hours`,
+        required: true,
+        example: "09:00 to 18:00",
+        suggestion: "Enter both times, or mark the day as closed/24 hours.",
+        getValue: () => hour.open && hour.close ? `${hour.open}-${hour.close}` : "",
+        validate: () => passOrMessage(!hour.open || !hour.close || hour.open < hour.close, "closing time must be after opening time.")
+      }];
+    });
+
+    return [
+      { field: "clientId", label: "Client ID", required: true, example: "MC-1023 - Kumar Stores", suggestion: "Pick an existing client suggestion." },
+      { field: "businessName", label: "Business name", required: true, example: "Kumar Electricals", suggestion: "Use the legal or public shop name.", validate: value => passOrMessage(value.length >= 2 && !/(.)\1{3,}/.test(value), "must be at least 2 characters and not repeated/gibberish.") },
+      { field: "plotNumber", label: "Plot number", required: true, example: "12A", suggestion: "Use door, shop, plot, or building number." },
+      { field: "street", label: "Street", required: true, example: "Gandhi Road", suggestion: "Add the road, area, or landmark street." },
+      { field: "pincode", label: "Pincode", required: true, example: "600001", suggestion: "Enter a valid 6 digit Indian pincode.", validate: value => /^[1-9][0-9]{5}$/.test(value) || "must be a valid 6 digit Indian pincode." },
+      { field: "location", label: "Location", required: true, example: "Chennai", suggestion: "Choose from location suggestions when available." },
+      { field: "globalAddress", label: "Global address", required: true, example: "12A Gandhi Road, Chennai, Tamil Nadu 600001", suggestion: "Enter the complete searchable address." },
+      { field: "email", label: "Email", required: true, example: "owner@example.com", suggestion: "Use the business or owner email.", validate: value => /^[a-zA-Z0-9._+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(value) || "must be a valid email address." },
+      { field: "contact", label: "Phone", required: true, example: "9876543210", suggestion: "Enter the main customer-facing number.", validate: value => passOrMessage(digitsOnly(value).length >= 10 && digitsOnly(value).length <= 15, "must contain 10 to 15 digits.") },
+      { field: "contactList", label: "Enquiry number", required: true, example: "9876543210", suggestion: "Use the number that should receive enquiries.", validate: value => passOrMessage(digitsOnly(value).length >= 10 && digitsOnly(value).length <= 15, "must contain 10 to 15 digits.") },
+      { field: "whatsappNumber", label: "WhatsApp number", required: true, example: "9876543210", suggestion: "Use a WhatsApp-enabled number.", validate: value => passOrMessage(digitsOnly(value).length >= 10 && digitsOnly(value).length <= 15, "must contain 10 to 15 digits.") },
+      { field: "gstin", label: "GSTIN", required: true, example: "22AAAAA0000A1Z5", suggestion: "Use the registered GSTIN in uppercase format.", validate: value => /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(value) || "must be a valid GSTIN." },
+      { field: "experience", label: "Experience", required: true, example: "5", suggestion: "Enter years only, between 0 and 100.", validate: value => passOrMessage(/^\d{1,3}$/.test(value) && Number(value) >= 0 && Number(value) <= 100, "must be a number between 0 and 100.") },
+      { field: "googleMap", label: "Google Map link", required: true, example: "https://maps.google.com/?q=13.0827,80.2707", suggestion: "Paste the share link from Google Maps.", validate: value => isValidUrl(value) || "must be a valid http or https URL." },
+      { field: "geoLatitude", label: "Latitude", required: true, example: "13.0827", suggestion: "Use the latitude copied from Google Maps.", getValue: () => latitudeRaw, validate: value => passOrMessage(Number.isFinite(Number(value)) && Number(value) >= -90 && Number(value) <= 90, "must be a number between -90 and 90.") },
+      { field: "geoLongitude", label: "Longitude", required: true, example: "80.2707", suggestion: "Use the longitude copied from Google Maps.", getValue: () => longitudeRaw, validate: value => passOrMessage(Number.isFinite(Number(value)) && Number(value) >= -180 && Number(value) <= 180, "must be a number between -180 and 180.") },
+      { field: "website", label: "Website", required: true, example: "https://example.com", suggestion: "Use the official website URL.", validate: value => isValidUrl(value) || "must be a valid http or https URL." },
+      { field: "bannerImage", label: "Business banner image", required: true, example: "shop-front.jpg", suggestion: "Upload a clear shop, logo, or business image.", getValue: source => preview || source.bannerImage },
+      { field: "kycDocuments", label: "KYC document", required: true, example: "GST certificate or shop proof", suggestion: "Upload at least one verification document.", getValue: source => editMode ? [...(source.kycDocuments || []), ...kycFiles] : kycFiles },
+      { field: "businessDetails", label: "Business details", required: true, example: "We provide electrical repairs, wiring, and inverter service in Chennai.", suggestion: "Write at least 20 useful characters.", getValue: source => stripHtml(source.businessDetails), validate: value => value.length >= 20 || "must be at least 20 characters." },
+      { field: "category", label: "Category", step: 1, required: true, example: "Electricians", suggestion: "Pick or type the closest business category." },
+      { field: "keywords", label: "Keywords", step: 1, required: true, example: "electrician, wiring, inverter repair", suggestion: "Add at least one search keyword.", getValue: source => source.keywords },
+      { field: "title", label: "Display title", step: 1, required: true, example: "Trusted Electrician in Chennai", suggestion: "Use a customer-friendly listing title." },
+      { field: "description", label: "Display description", step: 1, required: true, example: "Fast electrical repair and installation services for homes and shops.", suggestion: "Summarize what the business offers." },
+      { field: "seoTitle", label: "SEO title", step: 1, required: true, example: "Kumar Electricals - Electrician in Chennai", suggestion: "Keep it between 20 and 70 characters.", validate: value => passOrMessage(value.length >= 20 && value.length <= 70, "should be 20 to 70 characters.") },
+      { field: "seoDescription", label: "SEO description", step: 1, required: true, example: "Book Kumar Electricals for wiring, inverter repair, and electrical services in Chennai.", suggestion: "Keep it between 50 and 170 characters.", validate: value => passOrMessage(value.length >= 50 && value.length <= 170, "should be 50 to 170 characters.") },
+      { field: "slug", label: "Slug", step: 1, required: true, example: "kumar-electricals-chennai", suggestion: "Use lowercase words separated by hyphens.", validate: value => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value) || "must use lowercase letters, numbers, and hyphens only." },
+      ...socialRules,
+      ...categoryFilterRules,
+      ...openingHourRules
+    ];
+  };
+  const validateBusinessEntryData = data => {
+    return getBusinessValidationRules(data).reduce((errors, rule) => {
+      const value = rule.getValue ? rule.getValue(data) : data[rule.field];
+      const empty = isEmptyFilterValue(value);
+
+      if (rule.required && empty) {
+        return [...errors, {
+          ...rule,
+          message: "is required."
+        }];
+      }
+
+      if (!empty && rule.validate) {
+        const result = rule.validate(value, data);
+        if (result !== true) {
+          return [...errors, {
+            ...rule,
+            message: typeof result === "string" ? result : "has invalid information."
+          }];
+        }
+      }
+
+      return errors;
+    }, []);
+  };
+  const updateLiveValidation = (nextFormData, fieldNames) => {
+    const names = Array.isArray(fieldNames) ? fieldNames : [fieldNames];
+    const cleanData = getCleanBusinessFormData(nextFormData);
+    const matchingErrors = validateBusinessEntryData(cleanData).filter(error => names.includes(error.field));
+
+    setFieldErrors(prev => {
+      const next = { ...prev };
+      names.forEach(name => {
+        delete next[name];
+      });
+      matchingErrors.forEach(error => {
+        next[error.field] = getValidationMessage(error);
+      });
+      return next;
+    });
   };
   const handleEdit = row => {
     setEditMode(true);
+    setActiveView("form");
     setEditId(row.id);
     setFormData({
       clientId: row.clientId || "",
@@ -548,6 +863,10 @@ const BusinessList = React.memo(() => {
       businessDetails: row.businessDetails || "",
       openingHours: row.openingHours?.length ? row.openingHours : defaultOpeningHours,
       kycDocuments: row.kycDocuments || [],
+      geoLocation: {
+        type: "Point",
+        coordinates: Array.isArray(row.geoLocation?.coordinates) ? row.geoLocation.coordinates.map(value => value ?? "") : ["", ""]
+      },
       filters: (row.filters && typeof row.filters === "object") ? row.filters : {}
     });
     setBusinessValue(row.businessDetails || "");
@@ -578,8 +897,12 @@ const BusinessList = React.memo(() => {
   }, [formData.category]); // eslint-disable-line
 
   const handleFilterChange = useCallback((key, value) => {
-    setFormData(prev => ({ ...prev, filters: { ...prev.filters, [key]: value } }));
-  }, []);
+    setFormData(prev => {
+      const nextData = { ...prev, filters: { ...prev.filters, [key]: value } };
+      updateLiveValidation(nextData, `filters.${key}`);
+      return nextData;
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleDelete = row => {
     setDeleteDialog({
@@ -610,21 +933,41 @@ const BusinessList = React.memo(() => {
           bannerImage: reader.result
         }));
         setPreview(reader.result);
+        updateLiveValidation({
+          ...formData,
+          bannerImage: reader.result
+        }, "bannerImage");
       };
       reader.readAsDataURL(file);
     }
   };
   const handleSubmit = async e => {
     e.preventDefault();
+    const cleanedFormData = getCleanBusinessFormData(formData);
+    const validationErrors = validateBusinessEntryData(cleanedFormData);
+
+    if (validationErrors.length > 0) {
+      setActiveStep(validationErrors[0].step);
+      setFieldErrors(validationErrors.reduce((acc, error) => ({
+        ...acc,
+        [error.field]: getValidationMessage(error)
+      }), {}));
+      const errorMessage = validationErrors.slice(0, 8).map(error => `- ${getValidationMessage(error)}`).join("\n");
+      enqueueSnackbar(`Please fix these fields before saving:\n${errorMessage}${validationErrors.length > 8 ? `\n- ${validationErrors.length - 8} more issue(s)` : ""}`, {
+        variant: "error"
+      });
+      return;
+    }
+    setFieldErrors({});
 
     // Validate business data using InputValidator
     try {
       const businessData = {
-        businessName: formData.businessName || '',
-        category: formData.category || '',
-        location: formData.location || '',
-        contact: formData.phoneNumber || '',
-        keywords: formData.keywords || []
+        businessName: cleanedFormData.businessName || '',
+        category: cleanedFormData.category || '',
+        location: cleanedFormData.location || '',
+        contact: cleanedFormData.contact || '',
+        keywords: cleanedFormData.keywords || []
       };
       InputValidator.validateBusiness(businessData);
     } catch (error) {
@@ -641,43 +984,51 @@ const BusinessList = React.memo(() => {
       reader.onerror = reject;
       reader.readAsDataURL(file);
     })));
-    const locationExists = location.some(loc => loc.city?.toLowerCase() === formData.location?.toLowerCase() || loc.district?.toLowerCase() === formData.location?.toLowerCase());
-    if (!locationExists && formData.location) {
+    const longitudeRaw = cleanedFormData.geoLocation?.coordinates?.[0];
+    const latitudeRaw = cleanedFormData.geoLocation?.coordinates?.[1];
+    const longitude = Number(longitudeRaw);
+    const latitude = Number(latitudeRaw);
+    const locationExists = location.some(loc => loc.city?.toLowerCase() === cleanedFormData.location?.toLowerCase() || loc.district?.toLowerCase() === cleanedFormData.location?.toLowerCase());
+    if (!locationExists && cleanedFormData.location) {
       await dispatch(createLocation({
-        city: formData.location,
-        district: formData.location,
+        city: cleanedFormData.location,
+        district: cleanedFormData.location,
         state: "N/A",
         country: "N/A"
       }));
     }
-    const existingCategory = category.find(cat => String(cat.category || "").toLowerCase() === String(formData.category || "").toLowerCase());
+    const existingCategory = category.find(cat => String(cat.category || "").toLowerCase() === String(cleanedFormData.category || "").toLowerCase());
     if (existingCategory) {
-      const updates = getUpdatedCategoryFields(existingCategory, formData);
+      const updates = getUpdatedCategoryFields(existingCategory, cleanedFormData);
       if (Object.keys(updates).length > 0) {
         await dispatch(editCategory(existingCategory._id, updates));
       }
     } else {
       await dispatch(createCategory({
-        category: formData.category,
-        keywords: formData.keywords || [],
-        slug: formData.slug || "",
-        seoTitle: formData.seoTitle || "",
-        seoDescription: formData.seoDescription || "",
-        title: formData.title || "",
-        description: formData.description || ""
+        category: cleanedFormData.category,
+        keywords: cleanedFormData.keywords || [],
+        slug: cleanedFormData.slug || "",
+        seoTitle: cleanedFormData.seoTitle || "",
+        seoDescription: cleanedFormData.seoDescription || "",
+        title: cleanedFormData.title || "",
+        description: cleanedFormData.description || ""
       }));
     }
     const payload = {
-      ...formData,
-      name: formData.businessName,
+      ...cleanedFormData,
+      name: cleanedFormData.businessName,
       businessDetails: businessvalue,
-      kycDocuments: kycBase64
+      kycDocuments: kycBase64,
+      geoLocation: {
+        type: "Point",
+        coordinates: [longitude, latitude]
+      }
     };
     try {
       let response;
       if (editMode && editId) {
         response = await dispatch(editBusinessList(editId, payload));
-        enqueueSnackbar(`${formData.businessName} updated successfully!`, {
+        enqueueSnackbar(`${cleanedFormData.businessName} updated successfully!`, {
           variant: "success"
         });
       } else {
@@ -690,7 +1041,7 @@ const BusinessList = React.memo(() => {
         if (userId) {
           setCreateUserId(userId);
         }
-        enqueueSnackbar(`${formData.businessName} created successfully!`, {
+        enqueueSnackbar(`${cleanedFormData.businessName} created successfully!`, {
           variant: "success"
         });
       }
@@ -743,6 +1094,10 @@ const BusinessList = React.memo(() => {
     bannerImage: bl.bannerImage || null,
     businessImages: bl.businessImages || [],
     googleMap: bl.googleMap || "-",
+    geoLocation: bl.geoLocation || {
+      type: "Point",
+      coordinates: ["", ""]
+    },
     website: bl.website || "-",
     facebook: bl.facebook || "-",
     instagram: bl.instagram || "-",
@@ -761,6 +1116,12 @@ const BusinessList = React.memo(() => {
   }));
   
   const filteredRows = getFilteredRows();
+  const categoryOptions = Array.from(new Set(
+    [...category, ...searchCategory].map(c => c?.category).filter(Boolean)
+  )).sort((a, b) => a.localeCompare(b));
+  const locationOptions = Array.from(new Set(
+    location.map(l => l?.city || l?.district || l?.location || l?.name).filter(Boolean)
+  )).sort((a, b) => a.localeCompare(b));
   
   const businessListTable = [{
     id: "clientId",
@@ -942,19 +1303,21 @@ const BusinessList = React.memo(() => {
     </div>;
 
   // ===== SEARCH PANEL COMPONENT =====
-  const SearchPanel = () => (
+  const renderSearchPanel = () => (
     <div className={cx("search-panel")}>
       <div className={cx("search-header")}>
         <h2 className={cx("search-title")}>🔍 Find Business</h2>
         <div className={cx("search-mode-toggle")}>
           <button 
-            className={cx("mode-btn", { active: searchMode === "easy" })} 
+            type="button"
+            className={cx("mode-btn", searchMode === "easy" ? "active" : "")} 
             onClick={() => setSearchMode("easy")}
           >
             Easy Search
           </button>
           <button 
-            className={cx("mode-btn", { active: searchMode === "advanced" })} 
+            type="button"
+            className={cx("mode-btn", searchMode === "advanced" ? "active" : "")} 
             onClick={() => setSearchMode("advanced")}
           >
             Advanced
@@ -972,7 +1335,7 @@ const BusinessList = React.memo(() => {
               className={cx("search-input-main")}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyPress={(e) => e.key === "Enter" && handleApplyFilters()}
+              onKeyDown={(e) => e.key === "Enter" && handleApplyFilters()}
             />
             <Button 
               variant="contained" 
@@ -1011,7 +1374,7 @@ const BusinessList = React.memo(() => {
                 onChange={(e) => setSelectedCategory(e.target.value)}
               >
                 <option value="">All Categories</option>
-                {Array.from(new Set(category.map(c => c.category))).map(cat => (
+                {categoryOptions.map(cat => (
                   <option key={cat} value={cat}>{cat}</option>
                 ))}
               </select>
@@ -1026,7 +1389,7 @@ const BusinessList = React.memo(() => {
                 onChange={(e) => setSelectedLocation(e.target.value)}
               >
                 <option value="">All Locations</option>
-                {Array.from(new Set(location.map(l => l.city || l.district))).map(loc => (
+                {locationOptions.map(loc => (
                   <option key={loc} value={loc}>{loc}</option>
                 ))}
               </select>
@@ -1113,10 +1476,15 @@ const BusinessList = React.memo(() => {
 
               <input type="text" id="clientId" name="clientId" className={cx("text-input")} value={formData.clientId} placeholder="Type client ID or name..." onChange={e => {
               const value = e.target.value;
+              const nextData = {
+                ...formData,
+                clientId: value
+              };
               setFormData(prev => ({
                 ...prev,
                 clientId: value
               }));
+              updateLiveValidation(nextData, "clientId");
               if (value.length >= 2) {
                 dispatch(getUserClientSuggestion(value));
                 setShowSuggestions(true);
@@ -1167,8 +1535,8 @@ const BusinessList = React.memo(() => {
             </div>
 
             <div className={cx("form-input-group")}>
-              <label htmlFor="pincode" className={cx("input-label")}>📮 Pincode</label>
-              <input type="text" id="pincode" name="pincode" className={cx("text-input")} value={formData.pincode} onChange={handleChange} />
+              <label htmlFor="pincode" className={cx("input-label")}>📮 Pincode *</label>
+              <input type="text" id="pincode" name="pincode" className={cx("text-input")} value={formData.pincode} onChange={handleChange} placeholder="Enter 6-digit pincode" required />
             </div>
 
             <div className={cx("form-input-group")} style={{
@@ -1177,10 +1545,15 @@ const BusinessList = React.memo(() => {
               <label htmlFor="location" className={cx("input-label")}>Location</label>
               <input type="text" id="location" name="location" autoComplete="off" className={cx("text-input")} value={formData.location} placeholder="Type to search location..." onChange={e => {
               const value = e.target.value;
+              const nextData = {
+                ...formData,
+                location: value
+              };
               setFormData(prev => ({
                 ...prev,
                 location: value
               }));
+              updateLiveValidation(nextData, "location");
               if (value.length >= 1) {
                 const filtered = location.filter(loc => loc.city?.toLowerCase().includes(value.toLowerCase()) || loc.district?.toLowerCase().includes(value.toLowerCase()));
                 setLocationSuggestions(filtered);
@@ -1198,10 +1571,15 @@ const BusinessList = React.memo(() => {
             }} />
               {showLocationSuggest && locationSuggestions.length > 0 && <ul className={cx("category-suggestion-box")}>
                   {locationSuggestions.map(loc => <li key={loc._id} onClick={() => {
+                const nextLocation = loc.city || loc.district;
                 setFormData(prev => ({
                   ...prev,
-                  location: loc.city || loc.district
+                  location: nextLocation
                 }));
+                updateLiveValidation({
+                  ...formData,
+                  location: nextLocation
+                }, "location");
                 setShowLocationSuggest(false);
                 setLocationSuggestions([]);
               }} style={{
@@ -1262,6 +1640,16 @@ const BusinessList = React.memo(() => {
             <div className={cx("form-input-group")}>
               <label htmlFor="googleMap" className={cx("input-label")}>🗺️ Google Map Link</label>
               <input type="text" id="googleMap" name="googleMap" className={cx("text-input")} value={formData.googleMap} onChange={handleChange} placeholder="https://maps.google.com/..." />
+            </div>
+
+            <div className={cx("form-input-group")}>
+              <label htmlFor="geoLatitude" className={cx("input-label")}>Latitude *</label>
+              <input type="number" id="geoLatitude" className={cx("text-input")} value={formData.geoLocation?.coordinates?.[1] ?? ""} onChange={e => handleGeoCoordinateChange(1, e.target.value)} placeholder="Example: 13.0827" step="any" min="-90" max="90" required />
+            </div>
+
+            <div className={cx("form-input-group")}>
+              <label htmlFor="geoLongitude" className={cx("input-label")}>Longitude *</label>
+              <input type="number" id="geoLongitude" className={cx("text-input")} value={formData.geoLocation?.coordinates?.[0] ?? ""} onChange={e => handleGeoCoordinateChange(0, e.target.value)} placeholder="Example: 80.2707" step="any" min="-180" max="180" required />
             </div>
 
             <div className={cx("form-input-group")}>
@@ -1433,10 +1821,12 @@ const BusinessList = React.memo(() => {
 
               <input type="text" className={cx("text-input")} placeholder="Search category..." value={formData.category} onChange={e => {
               const value = e.target.value;
-              setFormData({
+              const nextData = {
                 ...formData,
                 category: value
-              });
+              };
+              setFormData(nextData);
+              updateLiveValidation(nextData, "category");
               if (value.length >= 2) {
                 dispatch(businessCategorySearch(value));
                 setShowCategorySuggest(true);
@@ -1451,8 +1841,8 @@ const BusinessList = React.memo(() => {
 
               {showCategorySuggest && searchCategory?.length > 0 && <ul className={cx("category-suggestion-box")}>
                   {searchCategory.map(cat => <li key={cat._id} onClick={() => {
-                setFormData(prev => ({
-                  ...prev,
+                const nextData = {
+                  ...formData,
                   category: cat.category,
                   keywords: cat.keywords || [],
                   slug: cat.slug || "",
@@ -1460,7 +1850,9 @@ const BusinessList = React.memo(() => {
                   seoDescription: cat.seoDescription || "",
                   title: cat.title || "",
                   description: cat.description || ""
-                }));
+                };
+                setFormData(nextData);
+                updateLiveValidation(nextData, ["category", "keywords", "slug", "seoTitle", "seoDescription", "title", "description"]);
                 setShowCategorySuggest(false);
               }} style={{
                 padding: "10px",
@@ -1481,18 +1873,22 @@ const BusinessList = React.memo(() => {
               <label className={cx("category-input-label")}>🔑 Keywords</label>
 
               <Autocomplete multiple freeSolo options={[]} value={Array.isArray(formData.keywords) ? formData.keywords : []} onChange={(event, newValue) => {
-              setFormData({
+              const nextData = {
                 ...formData,
                 keywords: newValue
-              });
+              };
+              setFormData(nextData);
+              updateLiveValidation(nextData, "keywords");
             }} renderTags={(value, getTagProps) => value.map((option, index) => <Chip key={index} label={option} {...getTagProps({
               index
             })} onDelete={() => {
               // delete chip
-              setFormData(prev => ({
-                ...prev,
-                keywords: prev.keywords.filter(k => k !== option)
-              }));
+              const nextData = {
+                ...formData,
+                keywords: formData.keywords.filter(k => k !== option)
+              };
+              setFormData(nextData);
+              updateLiveValidation(nextData, "keywords");
             }} sx={{
               backgroundColor: "#ff8c00",
               color: "white",
@@ -1505,10 +1901,12 @@ const BusinessList = React.memo(() => {
               endAdornment: <InputAdornment position="end">
                           <IconButton onClick={() => {
                   if (!inputKeyword.trim()) return;
-                  setFormData(prev => ({
-                    ...prev,
-                    keywords: [...prev.keywords, inputKeyword.trim()]
-                  }));
+                  const nextData = {
+                    ...formData,
+                    keywords: [...formData.keywords, inputKeyword.trim()]
+                  };
+                  setFormData(nextData);
+                  updateLiveValidation(nextData, "keywords");
                   setInputKeyword("");
                 }} sx={{
                   color: "var(--color-primary-orange)",
@@ -1708,6 +2106,9 @@ const BusinessList = React.memo(() => {
     }
   };
   return <div className={cx("business-page")}>
+      <AdminViewTabs activeView={activeView} onChange={setActiveView} isEditing={editMode} createLabel="Business" listLabel="Directory" listCount={filteredRows.length} />
+
+      {activeView === "form" && <>
       <div className={cx("business-card")} style={{
       marginBottom: '20px',
       padding: '15px 30px',
@@ -1730,6 +2131,17 @@ const BusinessList = React.memo(() => {
         </h2>
 
         <form onSubmit={handleSubmit}>
+          {Object.keys(fieldErrors).length > 0 && (
+            <div className={cx("validation-panel")}>
+              <strong>Fix these fields:</strong>
+              {Object.values(fieldErrors).slice(0, 6).map((message, index) => (
+                <p key={`${message}-${index}`}>{message}</p>
+              ))}
+              {Object.keys(fieldErrors).length > 6 && (
+                <p>{Object.keys(fieldErrors).length - 6} more issue(s) need attention.</p>
+              )}
+            </div>
+          )}
           <div className={cx("form-grid")}>
             {renderStepContent(activeStep)}
           </div>
@@ -1773,9 +2185,11 @@ const BusinessList = React.memo(() => {
           </div>
         </form>
       </div>
+      </>}
 
+      {activeView === "list" && <>
       {/* SEARCH SECTION */}
-      <SearchPanel />
+      {renderSearchPanel()}
 
       {/* TABLE SECTION */}
       <div className={cx("table-section")}>
@@ -1784,20 +2198,22 @@ const BusinessList = React.memo(() => {
             📋 Business Directory
           </Typography>
           <Typography variant="body2" className={cx("table-count")}>
-            {filteredRows.length} of {rows.length} businesses
+            {filteredRows.length} shown of {total || rows.length} businesses
           </Typography>
         </div>
 
         <Box sx={{ width: "100%" }}>
           <CustomizedTable 
+            key={tableRefreshKey}
             data={filteredRows} 
-            total={filteredRows.length} 
+            total={total || filteredRows.length} 
             columns={businessListTable} 
             fetchData={(pageNo, pageSize, options = {}) => {
+              const serverSearch = options.search || getServerSearchQuery();
               dispatch(getAllBusinessList({
                 pageNo,
                 pageSize,
-                search: options.search || "",
+                search: serverSearch,
                 status: options.status || "all",
                 sortBy: options.sortBy || null,
                 sortOrder: options.sortOrder || "asc"
@@ -1806,6 +2222,7 @@ const BusinessList = React.memo(() => {
           />
         </Box>
       </div>
+      </>}
 
       <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({
       open: false,

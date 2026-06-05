@@ -769,4 +769,30 @@
     font-size: 0.78rem;
     padding: 8px 6px;
   }
+
+  /* Stack list-mode card actions below info on very small screens */
+  .list-content {
+    flex-direction: column;
+  }
+
+  .list-info {
+    padding: 12px 14px 4px;
+  }
+
+  .list-actions {
+    width: 100%;
+    flex-direction: row;
+    border-left: none;
+    border-top: 1px solid #f1f5f9;
+    padding: 8px 14px 12px;
+    justify-content: stretch;
+    gap: 8px;
+  }
+
+  .list-actions .card-action-button {
+    flex: 1;
+    min-height: 38px;
+    font-size: 0.78rem;
+    padding: 8px 6px;
+  }
 }

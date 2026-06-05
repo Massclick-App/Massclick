@@ -1017,7 +1017,10 @@ export default function CategoryDisplaySettings() {
   const activeCard = cards.find(c => c.id === open);
   return <Box className={cx("category-display-settings")} sx={{
     display: "flex",
-    height: "100vh",
+    alignSelf: "stretch",
+    width: "100%",
+    minWidth: 0,
+    height: "calc(100vh - 112px)",
     flexDirection: "column",
     bgcolor: T.bg
   }}>

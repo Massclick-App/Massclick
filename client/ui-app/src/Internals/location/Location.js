@@ -7,6 +7,7 @@ import { Box, Button, Typography, CircularProgress, IconButton, Dialog, DialogTi
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import CustomizedTable from "../../components/Table/CustomizedTable.js";
+import AdminViewTabs from "../../components/AdminViewTabs.js";
 const cx = createScopedClassNames(styles);
 export default function Location() {
   const dispatch = useDispatch();
@@ -27,6 +28,7 @@ export default function Location() {
     addressLine2: ""
   });
   const [editingId, setEditingId] = useState(null);
+  const [activeView, setActiveView] = useState("list");
 
   // 🔹 State for delete dialog
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -99,6 +101,7 @@ export default function Location() {
       addressLine1: row.addressLine1 || "",
       addressLine2: row.addressLine2 || ""
     });
+    setActiveView("form");
   };
   const handleDeleteClick = row => {
     setSelectedRow(row);
@@ -202,6 +205,9 @@ export default function Location() {
     type: "text"
   }];
   return <div className={cx("location-page")}>
+            <AdminViewTabs activeView={activeView} onChange={setActiveView} isEditing={Boolean(editingId)} createLabel="Location" listLabel="Locations" listCount={rows.length} />
+
+            {activeView === "form" && (
             <div className={cx("location-card location-form-section")}>
                 <h2 className={cx("location-card-title")}>
                     {editingId ? "Edit Location" : "Add New Location"}
@@ -242,7 +248,11 @@ export default function Location() {
           return String(error);
         })()}
                     </p>}
+            </div>
+            )}
 
+            {activeView === "list" && (
+            <div className={cx("location-card location-form-section")}>
                 <Typography variant="h6" gutterBottom sx={{
         textAlign: "center"
       }}>
@@ -258,6 +268,8 @@ export default function Location() {
           options
         }))} />
                 </Box>
+            </div>
+            )}
 
                 <Dialog open={deleteDialogOpen} onClose={cancelDelete}>
                     <DialogTitle>Confirm Delete</DialogTitle>
@@ -274,6 +286,5 @@ export default function Location() {
                         </Button>
                     </DialogActions>
                 </Dialog>
-            </div>
         </div>;
 }

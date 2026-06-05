@@ -3,6 +3,7 @@ import axios from 'axios';
 const API_URL = process.env.REACT_APP_API_URL;
 const CLIENT_ID = process.env.REACT_APP_OAUTH_CLIENT_ID;
 const CLIENT_SECRET = process.env.REACT_APP_OAUTH_CLIENT_SECRET;
+const ADMIN_PATH_PREFIXES = ['/admin', '/dashboard'];
 
 export const axiosInstance = axios.create({
   baseURL: API_URL,
@@ -40,6 +41,40 @@ const hideGlobalLoader = () => {
 let isRefreshing = false;
 let failedQueue = [];
 
+const getRequestPath = (url) => {
+  try {
+    return new URL(url || '', API_URL || window.location.origin).pathname;
+  } catch (error) {
+    return url || '';
+  }
+};
+
+const isReloginRequest = (url) => getRequestPath(url) === '/oauth/relogin';
+
+const isAdminArea = () => {
+  if (typeof window === 'undefined') return false;
+  return ADMIN_PATH_PREFIXES.some((path) => window.location.pathname.startsWith(path));
+};
+
+const clearAdminAuth = () => {
+  [
+    'accessToken',
+    'refreshToken',
+    'accessTokenExpiresAt',
+    'userRole',
+    'userName',
+    'allowedPages',
+  ].forEach((key) => localStorage.removeItem(key));
+
+  delete axiosInstance.defaults.headers.common.Authorization;
+};
+
+const redirectToAdminLoginIfNeeded = () => {
+  if (isAdminArea()) {
+    window.location.href = '/admin';
+  }
+};
+
 const processQueue = (error, token = null) => {
   failedQueue.forEach(prom => {
     if (error) {
@@ -58,8 +93,12 @@ axiosInstance.interceptors.request.use(
     activeRequests++;
     showGlobalLoader();
 
-    // Don't add token to relogin endpoint (it uses refresh token)
-    if (config.url !== '/oauth/relogin') {
+    // Don't add token to relogin endpoint (it uses refresh token).
+    // Also preserve explicit Authorization headers, such as public client tokens.
+    config.headers = config.headers || {};
+    const hasAuthorizationHeader = config.headers.Authorization || config.headers.authorization;
+
+    if (!isReloginRequest(config.url) && !hasAuthorizationHeader) {
       const accessToken = localStorage.getItem('accessToken');
       if (accessToken) {
         config.headers.Authorization = `Bearer ${accessToken}`;
@@ -105,8 +144,8 @@ axiosInstance.interceptors.response.use(
       const refreshToken = localStorage.getItem('refreshToken');
 
       if (!refreshToken) {
-        localStorage.clear();
-        window.location.href = '/admin';
+        clearAdminAuth();
+        redirectToAdminLoginIfNeeded();
         return Promise.reject(error);
       }
 
@@ -135,8 +174,8 @@ axiosInstance.interceptors.response.use(
         })
         .catch((err) => {
           processQueue(err, null);
-          localStorage.clear();
-          window.location.href = '/admin';
+          clearAdminAuth();
+          redirectToAdminLoginIfNeeded();
           return Promise.reject(err);
         })
         .finally(() => {

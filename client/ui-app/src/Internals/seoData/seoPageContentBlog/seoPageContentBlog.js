@@ -12,6 +12,7 @@ import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import CustomizedTable from "../../../components/Table/CustomizedTable";
 import styles from "./seoPageContentBlog.module.css";
+import AdminViewTabs from "../../../components/AdminViewTabs.js";
 const cx = createScopedClassNames(styles);
 const defaultForm = {
   metaTitle: "",
@@ -44,6 +45,7 @@ export default function SeoPageContentBlogs() {
   } = useSelector(state => state.locationReducer || {});
   const [formData, setFormData] = useState(defaultForm);
   const [editingId, setEditingId] = useState(null);
+  const [activeView, setActiveView] = useState("list");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedRow, setSelectedRow] = useState(null);
   const modules = useMemo(() => ({
@@ -97,6 +99,7 @@ export default function SeoPageContentBlogs() {
     const found = list.find(x => x._id === rowId);
     if (!found) return;
     setEditingId(rowId);
+    setActiveView("form");
     setFormData({
       ...defaultForm,
       ...found,
@@ -168,10 +171,15 @@ export default function SeoPageContentBlogs() {
           </Button>
         </header>
 
-        <SeoPageContentForm formData={formData} setFormData={setFormData} handleSubmit={handleSubmit} loading={loading} editingId={editingId} modules={modules} formats={formats} />
+        <AdminViewTabs activeView={activeView} onChange={setActiveView} isEditing={Boolean(editingId)} createLabel="Blog Content" listLabel="Blog List" listCount={rows.length} />
 
+        {activeView === "form" && (
+        <SeoPageContentForm formData={formData} setFormData={setFormData} handleSubmit={handleSubmit} loading={loading} editingId={editingId} modules={modules} formats={formats} />
+        )}
+
+        {activeView === "list" && (
         <Box sx={{
-        mt: 5
+        mt: 0
       }}>
           <CustomizedTable data={rows} columns={columns} total={total} fetchData={(pageNo, pageSize, options) => dispatch(viewAllSeoPageContentBlogs({
           pageNo,
@@ -179,6 +187,7 @@ export default function SeoPageContentBlogs() {
           options
         }))} />
         </Box>
+        )}
 
         <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
           <DialogTitle>Delete Blog</DialogTitle>
