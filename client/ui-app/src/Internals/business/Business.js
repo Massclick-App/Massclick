@@ -1204,6 +1204,7 @@ const BusinessList = React.memo(() => {
     linkedin: bl.linkedin || "-",
     businessDetails: bl.businessDetails || "-",
     openingHours: bl.openingHours || defaultOpeningHours,
+    filters: bl.filters && typeof bl.filters === "object" ? bl.filters : {},
     mniDetails: bl.mniDetails || [],
     payment: bl.payment || [],
     qrImage: bl.qrCode?.qrImage || null,
