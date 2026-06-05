@@ -27,6 +27,7 @@ import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 
 import CustomizedTable from "../../components/Table/CustomizedTable";
+import AdminViewTabs from "../../components/AdminViewTabs.js";
 import { createScopedClassNames } from "../../utils/createScopedClassNames";
 
 import styles from "./eventLocation.module.css";
@@ -66,6 +67,7 @@ export default function EventLocation() {
   } = useSelector((state) => state.event.eventLocation);
 
   const [isEditMode, setIsEditMode] = useState(false);
+  const [activeView, setActiveView] = useState("list");
   const [editId, setEditId] = useState(null);
   const [successMessage, setSuccessMessage] = useState("");
   const [formData, setFormData] = useState(initialFormData);
@@ -208,6 +210,7 @@ export default function EventLocation() {
 
     setEditId(row.id);
     setIsEditMode(true);
+    setActiveView("form");
     setErrors({});
   };
 
@@ -336,7 +339,9 @@ export default function EventLocation() {
 
   return (
     <div className={cx("eventLocation-page")}>
-      <div className={cx("eventLocation-card")}>
+      <AdminViewTabs activeView={activeView} onChange={setActiveView} isEditing={isEditMode} createLabel="Event Location" listLabel="Event Locations" listCount={rows.length} />
+
+      {activeView === "form" && <div className={cx("eventLocation-card")}>
         <h2>
           {isEditMode
             ? "Edit Event Location"
@@ -580,8 +585,9 @@ export default function EventLocation() {
             )}
           </div>
         </form>
-      </div>
+      </div>}
 
+      {activeView === "list" && <>
       <Typography
         variant="h6"
         sx={{
@@ -609,6 +615,7 @@ export default function EventLocation() {
           }
         />
       </Box>
+      </>}
 
       <Dialog
         open={deleteDialogOpen}

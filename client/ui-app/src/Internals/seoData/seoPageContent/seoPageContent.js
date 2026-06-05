@@ -11,6 +11,7 @@ import "react-quill/dist/quill.snow.css";
 import CustomizedTable from "../../../components/Table/CustomizedTable.js";
 import styles from "./seoPageContent.module.css";
 import { fetchSeoCategorySuggestions } from "../../../redux/actions/seoAction.js";
+import AdminViewTabs from "../../../components/AdminViewTabs.js";
 const cx = createScopedClassNames(styles);
 export default function SeoPageContent() {
   const dispatch = useDispatch();
@@ -34,6 +35,7 @@ export default function SeoPageContent() {
     pageContent: ""
   });
   const [editingId, setEditingId] = useState(null);
+  const [activeView, setActiveView] = useState("list");
   const [errors, setErrors] = useState({});
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedRow, setSelectedRow] = useState(null);
@@ -145,6 +147,7 @@ export default function SeoPageContent() {
         setCategoryInput(row.category || "");
         setShowLocationSuggest(false);
         setLocationSuggestions([]);
+        setActiveView("form");
         window.scrollTo({
           top: 0,
           behavior: "smooth"
@@ -167,6 +170,10 @@ export default function SeoPageContent() {
                     <h1>{editingId ? "Edit Page Content" : "Create Page Content"}</h1>
                     <p>Manage structured SEO page content</p>
                 </header>
+
+                <AdminViewTabs activeView={activeView} onChange={setActiveView} isEditing={Boolean(editingId)} createLabel="Page Content" listLabel="Content List" listCount={rows.length} />
+
+                {activeView === "form" && <>
                 <form className={cx("seo-form")} onSubmit={handleSubmit}>
                     <section className={cx("meta-card")}>
                         <div className={cx("meta-field")}>
@@ -266,9 +273,11 @@ export default function SeoPageContent() {
                         </button>
                     </div>
                 </form>
+                </>}
 
+                {activeView === "list" && <>
                 <Box sx={{
-        mt: 6
+        mt: 0
       }}>
                     <CustomizedTable data={rows} columns={columns} total={total} fetchData={(pageNo, pageSize, options) => dispatch(viewAllSeoPageContent({
           pageNo,
@@ -276,6 +285,7 @@ export default function SeoPageContent() {
           options
         }))} />
                 </Box>
+                </>}
 
                 <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
                     <DialogTitle>Confirm Delete</DialogTitle>

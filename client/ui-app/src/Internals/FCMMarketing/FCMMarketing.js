@@ -17,6 +17,7 @@ import ScheduleIcon from "@mui/icons-material/Schedule";
 import ReplayIcon from "@mui/icons-material/Replay";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import styles from "./FCMMarketing.module.css";
+import AdminViewTabs from "../../components/AdminViewTabs.js";
 const cx = createScopedClassNames(styles);
 const PLATFORM_OPTIONS = [{
   value: "android",
@@ -136,6 +137,7 @@ export default function FCMMarketing() {
   const [sendMode, setSendMode] = useState("now"); // "now" | "schedule"
   const [scheduledAt, setScheduledAt] = useState("");
   const [resendingId, setResendingId] = useState(null);
+  const [activeView, setActiveView] = useState("form");
   const fileInputRef = useRef(null);
   const PAGE_SIZE = 20;
   useEffect(() => {
@@ -349,6 +351,7 @@ export default function FCMMarketing() {
       customData: customDataRows
     });
     setSendMode("now");
+    setActiveView("form");
     setScheduledAt("");
     setErrors({});
     setUserSearch("");
@@ -534,6 +537,9 @@ export default function FCMMarketing() {
           <span>Resend failed: {resendError}</span>
         </div>}
 
+      <AdminViewTabs activeView={activeView} onChange={setActiveView} createLabel="Compose" listLabel="History" listCount={campaignsTotal || campaigns.length} />
+
+      {activeView === "form" && (
       <div className={cx("fcm-layout")}>
         {/* LEFT: Compose Form */}
         <form ref={composeRef} className={cx("fcm-card fcm-compose")} onSubmit={handleSubmit} noValidate>
@@ -834,8 +840,10 @@ export default function FCMMarketing() {
             </div>}
         </div>
       </div>
+      )}
 
       {/* Campaign History Table */}
+      {activeView === "list" && (
       <div className={cx("fcm-card fcm-history-section")}>
         <div className={cx("fcm-history-header")}>
           <h2 className={cx("fcm-card-title")}>Campaign History</h2>
@@ -913,5 +921,6 @@ export default function FCMMarketing() {
               </div>}
           </>}
       </div>
+      )}
     </div>;
 }

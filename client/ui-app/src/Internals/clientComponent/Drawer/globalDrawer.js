@@ -115,6 +115,7 @@ export default function GlobalDrawer() {
       open={isDrawerOpen}
       onClose={closeDrawer}
       onOpen={() => { }}
+      disableSwipeToOpen
       PaperProps={{
         sx: {
           width: { xs: "80%", sm: 320 },

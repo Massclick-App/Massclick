@@ -428,6 +428,45 @@ textarea:focus,
   font-weight: 500;
 }
 
+.validation-panel {
+  position: fixed;
+  top: 84px;
+  right: 24px;
+  z-index: 1300;
+  width: min(420px, calc(100vw - 32px));
+  max-height: 45vh;
+  overflow-y: auto;
+  border: 1px solid #fecaca;
+  background: #fff7f7;
+  color: #991b1b;
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  box-shadow: 0 10px 24px rgba(153, 27, 27, 0.12);
+}
+
+.validation-panel strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+
+.validation-panel p {
+  margin: 4px 0 0;
+}
+
+@media (max-width: 640px) {
+  .validation-panel {
+    top: 72px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+    max-height: 38vh;
+  }
+}
+
 .upload-button,
 .submit-button {
   height: 48px;

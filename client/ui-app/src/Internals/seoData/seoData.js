@@ -10,6 +10,7 @@ import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import { fetchSeoCategorySuggestions } from "../../redux/actions/seoAction.js";
 import CustomizedTable from "../../components/Table/CustomizedTable.js";
 import styles from "./seoData.module.css";
+import AdminViewTabs from "../../components/AdminViewTabs.js";
 const cx = createScopedClassNames(styles);
 export default function SeoData() {
   const dispatch = useDispatch();
@@ -37,6 +38,7 @@ export default function SeoData() {
   });
   const [errors, setErrors] = useState({});
   const [editingId, setEditingId] = useState(null);
+  const [activeView, setActiveView] = useState("list");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedRow, setSelectedRow] = useState(null);
   const [categoryInput, setCategoryInput] = useState("");
@@ -159,6 +161,7 @@ export default function SeoData() {
     setCategoryInput(row.category || "");
     setShowLocationSuggest(false);
     setLocationSuggestions([]);
+    setActiveView("form");
     window.scrollTo({
       top: 0,
       behavior: "smooth"
@@ -240,7 +243,10 @@ export default function SeoData() {
     name: "robots"
   }];
   return <div className={cx("seo-page")}>
+      <AdminViewTabs activeView={activeView} onChange={setActiveView} isEditing={Boolean(editingId)} createLabel="SEO Meta" listLabel="SEO Entries" listCount={rows.length} />
+
       <div className={cx("seo-card")}>
+        {activeView === "form" && <>
         <h2 className={cx("seo-card-title")}>
           {editingId ? "Edit SEO Meta" : "Add SEO Meta"}
         </h2>
@@ -317,9 +323,11 @@ export default function SeoData() {
         {error && <p className={cx("seo-error-text")}>
             {typeof error === "string" ? error : JSON.stringify(error)}
           </p>}
+        </>}
 
+        {activeView === "list" && <>
         <Typography variant="h6" align="center" sx={{
-        mt: 4
+        mt: 0
       }}>
           SEO Metadata Table
         </Typography>
@@ -333,6 +341,7 @@ export default function SeoData() {
           options
         }))} />
         </Box>
+        </>}
 
         <Dialog open={deleteDialogOpen} onClose={cancelDelete}>
           <DialogTitle>Confirm Delete</DialogTitle>

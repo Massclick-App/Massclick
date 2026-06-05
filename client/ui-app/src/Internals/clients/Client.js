@@ -9,6 +9,7 @@ import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import CheckCircleOutlineRoundedIcon from "@mui/icons-material/CheckCircleOutlineRounded";
 import styles from "./clients.module.css";
 import CustomizedTable from "../../components/Table/CustomizedTable.js";
+import AdminViewTabs from "../../components/AdminViewTabs.js";
 const cx = createScopedClassNames(styles);
 export default function UserClients() {
   const dispatch = useDispatch();
@@ -19,6 +20,7 @@ export default function UserClients() {
     error
   } = useSelector(state => state.userClientReducer || {});
   const [isEditMode, setIsEditMode] = useState(false);
+  const [activeView, setActiveView] = useState("list");
   const [editUserId, setEditUserId] = useState(null);
   const [errors, setErrors] = useState({});
   const [successMessage, setSuccessMessage] = useState("");
@@ -175,6 +177,7 @@ export default function UserClients() {
     });
     setEditUserId(row.id);
     setIsEditMode(true);
+    setActiveView("form");
   };
   const handleDeleteClick = row => {
     setSelectedUser(row);
@@ -273,7 +276,9 @@ export default function UserClients() {
     helper: "Complete business address including city and state"
   }];
   return <div className={cx("client-page")}>
-      <div className={cx("client-card form-section")}>
+      <AdminViewTabs activeView={activeView} onChange={setActiveView} isEditing={isEditMode} createLabel="Client" listLabel="Clients" listCount={rows.length} />
+
+      {activeView === "form" && <div className={cx("client-card form-section")}>
         <h2 className={cx("client-card-title")}>
           {isEditMode ? "Edit Client" : "Add New Client"}
         </h2>
@@ -335,8 +340,9 @@ export default function UserClients() {
               </button>}
           </div>
         </form>
-      </div>
+      </div>}
 
+      {activeView === "list" && <>
       <Typography variant="h6" gutterBottom sx={{
       textAlign: "center"
     }}>
@@ -351,6 +357,7 @@ export default function UserClients() {
         options
       }))} />
       </Box>
+      </>}
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onClose={cancelDelete}>
