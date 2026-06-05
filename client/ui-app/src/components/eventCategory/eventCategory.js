@@ -32,6 +32,7 @@ import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 
 import CustomizedTable from "../../components/Table/CustomizedTable";
+import AdminViewTabs from "../../components/AdminViewTabs.js";
 import { createScopedClassNames } from "../../utils/createScopedClassNames";
 
 import styles from "./eventCategory.module.css";
@@ -75,6 +76,7 @@ export default function EventCategory() {
   } = useSelector((state) => state.event.eventCategory);
 
   const [isEditMode, setIsEditMode] = useState(false);
+  const [activeView, setActiveView] = useState("list");
   const [editId, setEditId] = useState(null);
   const [successMessage, setSuccessMessage] = useState("");
   const [formData, setFormData] = useState(initialFormData);
@@ -234,6 +236,7 @@ export default function EventCategory() {
 
     setEditId(row.id);
     setIsEditMode(true);
+    setActiveView("form");
     setErrors({});
   };
 
@@ -351,7 +354,9 @@ export default function EventCategory() {
 
   return (
     <div className={cx("event-category-page")}>
-      <div className={cx("event-category-card")}>
+      <AdminViewTabs activeView={activeView} onChange={setActiveView} isEditing={isEditMode} createLabel="Event Category" listLabel="Event Categories" listCount={rows.length} />
+
+      {activeView === "form" && <div className={cx("event-category-card")}>
         <h2>
           {isEditMode
             ? "Edit Event Category"
@@ -621,8 +626,9 @@ export default function EventCategory() {
             )}
           </div>
         </form>
-      </div>
+      </div>}
 
+      {activeView === "list" && <>
       <Typography
         variant="h6"
         sx={{
@@ -650,6 +656,7 @@ export default function EventCategory() {
           }
         />
       </Box>
+      </>}
 
       <Dialog
         open={deleteDialogOpen}

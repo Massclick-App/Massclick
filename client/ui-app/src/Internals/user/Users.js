@@ -9,6 +9,7 @@ import EditRoundedIcon from '@mui/icons-material/EditRounded';
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import CustomizedTable from "../../components/Table/CustomizedTable.js";
+import AdminViewTabs from "../../components/AdminViewTabs.js";
 const cx = createScopedClassNames(styles);
 export default function User() {
   const dispatch = useDispatch();
@@ -24,6 +25,7 @@ export default function User() {
     roles = []
   } = useSelector(state => state.rolesReducer || {});
   const [isEditMode, setIsEditMode] = useState(false);
+  const [activeView, setActiveView] = useState("list");
   const [editUserId, setEditUserId] = useState(null);
   const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
@@ -122,6 +124,7 @@ export default function User() {
     });
     setEditUserId(row.id);
     setIsEditMode(true);
+    setActiveView("form");
   };
   const resetForm = () => {
     setFormData({
@@ -258,7 +261,9 @@ export default function User() {
     type: "text"
   }];
   return <div className={cx("user-page")}>
-      <div className={cx("user-card form-section")}>
+      <AdminViewTabs activeView={activeView} onChange={setActiveView} isEditing={isEditMode} createLabel="User" listLabel="Users" listCount={rows.length} />
+
+      {activeView === "form" && <div className={cx("user-card form-section")}>
         <h2 className={cx("user-card-title")}>{isEditMode ? "Edit User" : "Add New User"}</h2>
 
         <form onSubmit={handleSubmit} className={cx("user-form-grid")}>
@@ -339,7 +344,9 @@ export default function User() {
           </p>}
 
       </div>
+      }
 
+      {activeView === "list" && <>
       <Typography variant="h6" gutterBottom sx={{
       textAlign: "center"
     }}>
@@ -354,6 +361,7 @@ export default function User() {
         options
       }))} />
       </Box>
+      </>}
 
       <Dialog open={deleteDialogOpen} onClose={cancelDelete}>
         <DialogTitle>Confirm Delete</DialogTitle>

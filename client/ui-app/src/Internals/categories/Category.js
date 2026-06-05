@@ -14,6 +14,7 @@ import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import CustomizedTable from "../../components/Table/CustomizedTable";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
+import AdminViewTabs from "../../components/AdminViewTabs.js";
 const cx = createScopedClassNames(styles);
 const API_URL = process.env.REACT_APP_API_URL;
 
@@ -202,6 +203,7 @@ export default function Category() {
   const [preview, setPreview] = useState(null);
   const [liveImagePreview, setLiveImagePreview] = useState(null);
   const [editMode, setEditMode] = useState(false);
+  const [activeView, setActiveView] = useState("list");
   const [deleteConfirm, setDeleteConfirm] = useState({
     open: false,
     id: null
@@ -364,6 +366,7 @@ export default function Category() {
 
   const handleEdit = row => {
     setEditMode(true);
+    setActiveView("form");
 
     // Extract S3 keys from signed URLs for categoryImages
     let categoryImagesKeys = {};
@@ -1008,6 +1011,9 @@ export default function Category() {
         </div>
   }];
   return <div className={cx("category-page-container")}>
+      <AdminViewTabs activeView={activeView} onChange={setActiveView} isEditing={editMode} createLabel="Category" listLabel="Categories" listCount={rows.length} />
+
+      {activeView === "form" && <>
       {/* Category Form */}
       <div className={cx("category-form-section")}>
         <h2 className={cx("category-card-title")}>
@@ -1672,7 +1678,9 @@ export default function Category() {
         })()}
           </p>}
       </div>
+      </>}
 
+      {activeView === "list" && <>
       <Box sx={{
       display: "flex",
       alignItems: "center",
@@ -1694,6 +1702,7 @@ export default function Category() {
         options
       }))} />
       </Box>
+      </>}
 
       {/* Duplicates Dialog */}
       <Dialog open={dupDialog.open} onClose={() => setDupDialog({

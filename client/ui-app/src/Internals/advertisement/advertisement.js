@@ -10,6 +10,7 @@ import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import styles from "./advertisement.module.css";
+import AdminViewTabs from "../../components/AdminViewTabs.js";
 const cx = createScopedClassNames(styles);
 const TOP_BANNER_RULES = {
   targetWidth: 1720,
@@ -86,6 +87,7 @@ export default function AdvertisementPage() {
   } = useSelector(state => state.categoryReducer || {});
   const [showCategorySuggest, setShowCategorySuggest] = useState(false);
   const [editMode, setEditMode] = useState(false);
+  const [activeView, setActiveView] = useState("list");
   const [editingId, setEditingId] = useState(null);
   const [preview, setPreview] = useState(null);
   const [imageMeta, setImageMeta] = useState(null);
@@ -310,6 +312,7 @@ export default function AdvertisementPage() {
   };
   const handleEdit = row => {
     setEditMode(true);
+    setActiveView("form");
     setEditingId(row.id);
     setFormData({
       title: row.title,
@@ -375,7 +378,9 @@ export default function AdvertisementPage() {
         <p>Create and manage banners across your platform</p>
       </div>
 
-      <div className={cx("ads-card")}>
+      <AdminViewTabs activeView={activeView} onChange={setActiveView} isEditing={editMode} createLabel="Advertisement" listLabel="Advertisements" listCount={rows.length} />
+
+      {activeView === "form" && <div className={cx("ads-card")}>
         <h2>{editMode ? "Edit Advertisement" : "Create Advertisement"}</h2>
 
         <form className={cx("ads-form")} onSubmit={handleSubmit}>
@@ -503,17 +508,17 @@ export default function AdvertisementPage() {
               </button>}
           </div>
         </form>
-      </div>
+      </div>}
 
       {/* TABLE */}
-      <div className={cx("ads-card")}>
+      {activeView === "list" && <div className={cx("ads-card")}>
         <h2>Advertisement List</h2>
         <CustomizedTable data={rows} columns={columns} total={total} fetchData={(pageNo, pageSize, options) => dispatch(getAllAdvertisements({
         pageNo,
         pageSize,
         options
       }))} />
-      </div>
+      </div>}
 
       <Dialog open={cropperOpen} onClose={handleTopBannerCropCancel} maxWidth="md" fullWidth>
         <DialogTitle sx={{

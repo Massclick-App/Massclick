@@ -8,6 +8,7 @@ import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import styles from "./roles.module.css";
 import CustomizedTable from "../../components/Table/CustomizedTable";
 import { PAGE_REGISTRY } from "../../config/pageRegistry";
+import AdminViewTabs from "../../components/AdminViewTabs.js";
 const cx = createScopedClassNames(styles);
 const toArray = val => {
   if (Array.isArray(val)) return val;
@@ -29,6 +30,7 @@ export default function Roles() {
     description: "",
     createdBy: ""
   });
+  const [activeView, setActiveView] = useState("list");
   const [editingId, setEditingId] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedRow, setSelectedRow] = useState(null);
@@ -97,6 +99,7 @@ export default function Roles() {
       description: row.description || "",
       createdBy: row.createdBy || ""
     });
+    setActiveView("form");
   };
   const handleDeleteClick = row => {
     setSelectedRow(row);
@@ -179,7 +182,9 @@ export default function Roles() {
   const allPaths = PAGE_REGISTRY.map(p => p.path);
   const allSelected = allPaths.every(p => formData.permissions.includes(p));
   return <div className={cx("role-page")}>
-            <div className={cx("role-card form-section")}>
+            <AdminViewTabs activeView={activeView} onChange={setActiveView} isEditing={Boolean(editingId)} createLabel="Role" listLabel="Roles" listCount={rows.length} />
+
+            {activeView === "form" && <div className={cx("role-card form-section")}>
                 <h2 className={cx("role-card-title")}>{editingId ? "Edit Role" : "Add New Role"}</h2>
                 <form onSubmit={handleSubmit} className={cx("role-form-grid")}>
                     {textFields.map(field => <div key={field.name} className={cx("role-form-input-group")}>
@@ -252,8 +257,9 @@ export default function Roles() {
       }}>
                         {typeof error === "string" ? error : JSON.stringify(error, null, 2)}
                     </p>}
-            </div>
+            </div>}
 
+            {activeView === "list" && <>
             <Typography variant="h6" gutterBottom sx={{
       textAlign: "center"
     }}>
@@ -268,6 +274,7 @@ export default function Roles() {
         options
       }))} />
             </Box>
+            </>}
 
             <Dialog open={deleteDialogOpen} onClose={cancelDelete}>
                 <DialogTitle>Confirm Delete</DialogTitle>
