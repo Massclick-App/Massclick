@@ -20,6 +20,10 @@ const advertistmentSchema = new mongoose.Schema(
       required: true,
     },
 
+    mobileBannerImageKey: {
+      type: String,
+    },
+
     category: {
       type: String,
       required: true,

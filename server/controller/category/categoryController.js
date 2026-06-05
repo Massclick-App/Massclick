@@ -872,9 +872,17 @@ export const getCategoryFiltersAction = async (req, res) => {
   try {
     const slug = req.params.slug?.toLowerCase().trim();
     if (!slug) return res.json([]);
+    const categoryName = slug.replace(/-/g, " ");
+    const escapedCategoryName = categoryName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
     const cat = await categoryModel.findOne(
-      { slug, isActive: true },
+      {
+        isActive: true,
+        $or: [
+          { slug },
+          { category: new RegExp(`^${escapedCategoryName}$`, "i") }
+        ]
+      },
       { filterConfig: 1, _id: 0 }
     ).lean();
 

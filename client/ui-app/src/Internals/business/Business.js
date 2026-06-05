@@ -690,6 +690,8 @@ const BusinessList = React.memo(() => {
     updateLiveValidation(nextData, coordinateIndex === 1 ? "geoLatitude" : "geoLongitude");
   };
   const normalizeText = value => String(value ?? "").trim().replace(/\s+/g, " ");
+  const normalizeCategoryKey = value => normalizeText(value).toLowerCase();
+  const toCategorySlug = value => normalizeCategoryKey(value).replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
   const stripHtml = value => normalizeText(String(value ?? "").replace(/<[^>]*>/g, " ").replace(/&nbsp;/gi, " "));
   const digitsOnly = value => String(value ?? "").replace(/\D/g, "");
   const isValidUrl = value => {
@@ -917,20 +919,27 @@ const BusinessList = React.memo(() => {
   useEffect(() => {
     const cat = formData.category;
     if (!cat) { setCategoryFilterConfig([]); return; }
-    // Check Redux searchCategory first
-    const found = searchCategory?.find(c => c.category?.toLowerCase() === cat.toLowerCase());
+    const catKey = normalizeCategoryKey(cat);
+    const catSlug = toCategorySlug(cat);
+    const filterSources = [...(searchCategory || []), ...(category || [])];
+    const found = filterSources.find(c => {
+      const categoryKey = normalizeCategoryKey(c?.category);
+      const slugKey = normalizeCategoryKey(c?.slug);
+      return categoryKey === catKey || slugKey === catSlug || toCategorySlug(c?.category) === catSlug;
+    });
+
     if (found && Array.isArray(found.filterConfig) && found.filterConfig.length > 0) {
       setCategoryFilterConfig(found.filterConfig);
       return;
     }
-    // Fallback: fetch from API
+
     setFilterConfigLoading(true);
-    const slug = cat.toLowerCase().replace(/\s+/g, "-");
+    const slug = found?.slug || catSlug;
     axiosInstance.get(`/category/${encodeURIComponent(slug)}/filters`)
       .then(res => setCategoryFilterConfig(Array.isArray(res.data) ? res.data : []))
       .catch(() => setCategoryFilterConfig([]))
       .finally(() => setFilterConfigLoading(false));
-  }, [formData.category]); // eslint-disable-line
+  }, [formData.category, searchCategory, category]); // eslint-disable-line
 
   const handleFilterChange = useCallback((key, value) => {
     clearForceBypassForFields(`filters.${key}`);
@@ -940,6 +949,18 @@ const BusinessList = React.memo(() => {
       return nextData;
     });
   }, [clearForceBypassForFields]); // eslint-disable-line react-hooks/exhaustive-deps
+  const getFilterValue = fc => {
+    const value = formData.filters?.[fc.key];
+    if (fc.type === "multiselect") {
+      if (Array.isArray(value)) return value;
+      return value ? [value] : [];
+    }
+    if (fc.type === "range") {
+      const numberValue = Number(value);
+      return Number.isFinite(numberValue) ? numberValue : fc.min ?? 0;
+    }
+    return value ?? "";
+  };
 
   const handleDelete = row => {
     setDeleteDialog({
@@ -2068,7 +2089,7 @@ const BusinessList = React.memo(() => {
 
                     {fc.type === "multiselect" && (
                       <Autocomplete multiple options={fc.options || []}
-                        value={Array.isArray(formData.filters?.[fc.key]) ? formData.filters[fc.key] : []}
+                        value={getFilterValue(fc)}
                         onChange={(_, val) => handleFilterChange(fc.key, val)}
                         renderTags={(value, getTagProps) => value.map((opt, i) =>
                           <Chip key={i} label={opt} size="small" {...getTagProps({ index: i })}
@@ -2078,7 +2099,7 @@ const BusinessList = React.memo(() => {
                     )}
 
                     {fc.type === "radio" && (
-                      <select className={cx("select-input")} value={formData.filters?.[fc.key] || ""}
+                      <select className={cx("select-input")} value={getFilterValue(fc)}
                         onChange={e => handleFilterChange(fc.key, e.target.value || null)}>
                         <option value="">-- Select {fc.label} --</option>
                         {(fc.options || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
@@ -2088,7 +2109,7 @@ const BusinessList = React.memo(() => {
                     {fc.type === "toggle" && (
                       <FormControlLabel
                         control={
-                          <Checkbox checked={Boolean(formData.filters?.[fc.key])}
+                          <Checkbox checked={Boolean(getFilterValue(fc))}
                             onChange={e => handleFilterChange(fc.key, e.target.checked)}
                             sx={{ color: "#ff8c00", "&.Mui-checked": { color: "#ff8c00" } }} />
                         }
@@ -2101,13 +2122,16 @@ const BusinessList = React.memo(() => {
                         <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
                           {fc.min ?? 0}{fc.unit} – {fc.max ?? 100}{fc.unit}
                         </Typography>
-                        <Slider value={formData.filters?.[fc.key] ?? fc.min ?? 0}
-                          min={fc.min ?? 0} max={fc.max ?? 100}
+                        <Slider
+                          value={getFilterValue(fc)}
+                          min={fc.min ?? 0}
+                          max={fc.max ?? 100}
                           step={Math.ceil(((fc.max ?? 100) - (fc.min ?? 0)) / 20)}
                           valueLabelDisplay="auto"
                           valueLabelFormat={v => `${v}${fc.unit || ""}`}
                           onChange={(_, val) => handleFilterChange(fc.key, val)}
-                          sx={{ color: "#ff8c00" }} />
+                          sx={{ color: "#ff8c00" }}
+                        />
                       </Box>
                     )}
                   </div>
