@@ -147,6 +147,7 @@ export default function AdvertisementPage() {
     startTime: "",
     endTime: "",
     displayDuration: 0,
+    showConfetti: false,
     bannerImage: "",
     mobileBannerImage: ""
   });
@@ -380,6 +381,7 @@ export default function AdvertisementPage() {
       startTime: "",
       endTime: "",
       displayDuration: 0,
+      showConfetti: false,
       bannerImage: "",
       mobileBannerImage: ""
     });
@@ -426,6 +428,7 @@ export default function AdvertisementPage() {
       startTime: row.startTimeRaw,
       endTime: row.endTimeRaw,
       displayDuration: row.displayDuration ?? 0,
+      showConfetti: row.showConfetti ?? false,
       bannerImage: "",
       mobileBannerImage: ""
     });
@@ -450,6 +453,7 @@ export default function AdvertisementPage() {
     startTimeRaw: ad.startTime?.slice(0, 16),
     endTimeRaw: ad.endTime?.slice(0, 16),
     displayDuration: ad.displayDuration ?? 0,
+    showConfetti: ad.showConfetti ?? false,
     bannerImage: ad.bannerImage,
     mobileBannerImage: ad.mobileBannerImage
   }));
@@ -592,6 +596,20 @@ export default function AdvertisementPage() {
               value={formData.displayDuration}
               onChange={handleChange}
             />
+          </div>}
+
+          {isHomePopup && <div className={cx("form-field span-2")}>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+              <input
+                type="checkbox"
+                name="showConfetti"
+                checked={!!formData.showConfetti}
+                onChange={e => setFormData(prev => ({ ...prev, showConfetti: e.target.checked }))}
+                style={{ width: 16, height: 16, cursor: "pointer" }}
+              />
+              Show Confetti 🎉{" "}
+              <span style={{ fontWeight: 400, color: "#6b7280" }}>— burst confetti when popup opens</span>
+            </label>
           </div>}
 
           <div className={cx("form-field upload")}>

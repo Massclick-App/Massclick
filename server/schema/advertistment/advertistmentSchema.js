@@ -83,6 +83,11 @@ const advertistmentSchema = new mongoose.Schema(
       min: 0,
     },
 
+    showConfetti: {
+      type: Boolean,
+      default: false,
+    },
+
     isActive: {
       type: Boolean,
       default: true,
