@@ -31,6 +31,7 @@ import NavigationIcon from '@mui/icons-material/Navigation';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import ClassIcon from '@mui/icons-material/Class';
 import FeaturedVideoIcon from '@mui/icons-material/FeaturedVideo';
+import TravelExploreIcon from '@mui/icons-material/TravelExplore';
 
 const SUPERADMIN = 'SuperAdmin';
 
@@ -60,6 +61,7 @@ const MENU_SECTIONS = [
       { text: "Ads", icon: NotificationsIcon, path: "/dashboard/advertisements" },
       { text: "MNI", icon: StorefrontIcon, path: "/dashboard/mni-data" },
       { text: "Notifications", icon: NotificationsIcon, path: "/dashboard/fcm-marketing" },
+      { text: "GMaps Leads", icon: TravelExploreIcon, path: "/dashboard/gmaps-leads" },
     ]
   },
   {

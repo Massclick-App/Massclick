@@ -31,7 +31,8 @@ export const Collections = {
     EVENTCATEGORY: 'eventcategory',
     EVENTLOCATION: 'eventlocation',
     EVENTADVERTISEMENT: 'eventadvertisement',
-    EVENTCREATION: 'eventcreation'
+    EVENTCREATION: 'eventcreation',
+    GMAPSLEADS: 'gmaps_leads'
 };
 
 export const {
@@ -67,5 +68,6 @@ export const {
     EVENTCATEGORY,
     EVENTLOCATION,
     EVENTADVERTISEMENT,
-    EVENTCREATION
+    EVENTCREATION,
+    GMAPSLEADS
 } = Collections;

@@ -31,6 +31,7 @@ import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import CollectionsBookmarkOutlinedIcon from '@mui/icons-material/CollectionsBookmarkOutlined';
 import { checkPhonePeStatus, createPhonePePayment } from "../../redux/actions/phonePayAction.js";
+import { updateGmapsLeadStatus, clearGmapsLeadImport } from "../../redux/actions/gmapsLeadsAction";
 import CustomizedTable from "../../components/Table/CustomizedTable.js";
 import Tooltip from "@mui/material/Tooltip";
 import styles from "./business.module.css";
@@ -141,6 +142,9 @@ const BusinessList = React.memo(() => {
   const {
     category = []
   } = useSelector(state => state.categoryReducer || {});
+  const {
+    leadToImport = null
+  } = useSelector(state => state.gmapsLeadsReducer || {});
   const fileInputRef = useRef();
   const [businessvalue, setBusinessValue] = useState("");
   const [editMode, setEditMode] = useState(false);
@@ -470,6 +474,35 @@ const BusinessList = React.memo(() => {
     dispatch(getAllUsers());
     dispatch(checkPhonePeStatus());
   }, [dispatch]);
+
+  // ===== GMaps Lead Pre-fill =====
+  useEffect(() => {
+    if (!leadToImport) return;
+    const [lng, lat] = leadToImport.geoLocation?.coordinates || ['', ''];
+    // Try to match category by slug or by search_query text
+    const matchedCategory = category.find(c =>
+      c.slug === leadToImport.massclick_category ||
+      String(c.category || '').toLowerCase() === String(leadToImport.search_query || '').toLowerCase()
+    );
+    setFormData(prev => ({
+      ...prev,
+      businessName: leadToImport.name || '',
+      contact: leadToImport.phone || '',
+      contactList: leadToImport.phone || '',
+      whatsappNumber: leadToImport.phone || '',
+      website: leadToImport.website || '',
+      location: leadToImport.massclick_location || '',
+      globalAddress: leadToImport.formatted_address || '',
+      geoLocation: {
+        type: 'Point',
+        coordinates: [String(lng || ''), String(lat || '')]
+      },
+      category: matchedCategory?.category || '',
+    }));
+    setActiveView('form');
+    setActiveStep(0);
+    enqueueSnackbar(`Pre-filled from GMaps: ${leadToImport.name}`, { variant: 'info' });
+  }, [leadToImport]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ===== FILTER & SEARCH HANDLERS =====
   const normalizeSearchValue = value => String(value ?? "").replace(/<[^>]*>/g, " ").toLowerCase().trim();
@@ -1117,6 +1150,11 @@ const BusinessList = React.memo(() => {
         enqueueSnackbar(`${cleanedFormData.businessName} created successfully!`, {
           variant: "success"
         });
+      }
+      // If this business was created from a GMaps lead, mark it as imported
+      if (!editMode && leadToImport?._id) {
+        dispatch(updateGmapsLeadStatus(leadToImport._id, { imported_to_main: true }));
+        dispatch(clearGmapsLeadImport());
       }
       dispatch(getAllBusinessList());
       setForceBypassedFields([]);

@@ -44,6 +44,7 @@ import eventCategoryRoute from "./routes/eventCategoryRoute.js";
 import eventLocationRoute from "./routes/eventLocationRoute.js";
 import eventAdvertisementRoute from "./routes/eventAdvertisementRoute.js";
 import eventCreationRoute from "./routes/eventCreationRoute.js";
+import gmapsLeadsRoutes from "./routes/gmapsLeadsRoute.js";
 import { startFCMScheduler } from "./scheduler/fcmScheduler.js";
 
 dotenv.config();
@@ -123,6 +124,7 @@ app.use("/", eventCategoryRoute);
 app.use("/", eventLocationRoute);
 app.use("/", eventAdvertisementRoute);
 app.use("/", eventCreationRoute);
+app.use("/", gmapsLeadsRoutes);
 app.use(express.static(CLIENT_BUILD_PATH, {
   index: false,
   maxAge: "365d",
