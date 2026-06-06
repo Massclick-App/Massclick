@@ -4,7 +4,8 @@ import {
   CREATE_AD_REQUEST, CREATE_AD_SUCCESS, CREATE_AD_FAILURE,
   EDIT_AD_REQUEST, EDIT_AD_SUCCESS, EDIT_AD_FAILURE,
   DELETE_AD_REQUEST, DELETE_AD_SUCCESS, DELETE_AD_FAILURE,
-  VIEWCATEGORY_AD_REQUEST, VIEWCATEGORY_AD_SUCCESS, VIEWCATEGORY_AD_FAILURE
+  VIEWCATEGORY_AD_REQUEST, VIEWCATEGORY_AD_SUCCESS, VIEWCATEGORY_AD_FAILURE,
+  FETCH_HOME_POPUP_AD_REQUEST, FETCH_HOME_POPUP_AD_SUCCESS, FETCH_HOME_POPUP_AD_FAILURE
 } from "./userActionTypes.js";
 
 import { getClientToken } from "./clientAuthAction.js";
@@ -135,6 +136,23 @@ export const editAdvertisement = (id, adData) => async (dispatch) => {
       payload: error.response?.data || error.message
     });
     throw error;
+  }
+};
+
+export const getHomePopupAd = () => async (dispatch) => {
+  dispatch({ type: FETCH_HOME_POPUP_AD_REQUEST });
+  try {
+    const token = await dispatch(getClientToken());
+    const response = await axiosInstance.get(
+      `${API_URL}/advertisment/popup`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    dispatch({ type: FETCH_HOME_POPUP_AD_SUCCESS, payload: response.data });
+  } catch (error) {
+    dispatch({
+      type: FETCH_HOME_POPUP_AD_FAILURE,
+      payload: error.response?.data?.message || error.message || "Failed to load popup advertisement",
+    });
   }
 };
 

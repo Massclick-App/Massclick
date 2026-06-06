@@ -5,7 +5,8 @@ import {
   updateAdvertisement,
   deleteAdvertisement,
   getActiveCategoryAdvertisements,
-  findAdvertisementByCategory
+  findAdvertisementByCategory,
+  findHomePopupAdvertisement
 } from "../../helper/advertistment/advertismentHelper.js";
 
 import { BAD_REQUEST } from "../../errorCodes.js";
@@ -121,6 +122,16 @@ export const deleteAdvertisementAction = async (req, res) => {
   }
 };
 
+
+export const viewHomePopupAdvertisement = async (req, res) => {
+  try {
+    const advertisements = await findHomePopupAdvertisement();
+    res.status(200).send(advertisements);
+  } catch (error) {
+    console.error("Error in viewHomePopupAdvertisement:", error);
+    res.status(BAD_REQUEST.code).send({ message: error.message });
+  }
+};
 
 export const getActiveCategoryAdvertisementsAction = async (req, res) => {
   try {

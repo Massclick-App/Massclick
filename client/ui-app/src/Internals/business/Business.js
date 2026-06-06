@@ -1,5 +1,6 @@
 import { createScopedClassNames } from "../../utils/createScopedClassNames";
 import React, { useEffect, useState, useRef, lazy, Suspense, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import axiosInstance from "../../services/axiosInstance.js";
 import { useDispatch, useSelector } from "react-redux";
 import InputValidator from "../validators/inputValidator.js";
@@ -30,8 +31,9 @@ import StepConnector, { stepConnectorClasses } from '@mui/material/StepConnector
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import CollectionsBookmarkOutlinedIcon from '@mui/icons-material/CollectionsBookmarkOutlined';
+import TravelExploreIcon from '@mui/icons-material/TravelExplore';
 import { checkPhonePeStatus, createPhonePePayment } from "../../redux/actions/phonePayAction.js";
-import { updateGmapsLeadStatus, clearGmapsLeadImport } from "../../redux/actions/gmapsLeadsAction";
+import { updateGmapsLeadStatus, clearGmapsLeadImport, setGmapsLeadToImport } from "../../redux/actions/gmapsLeadsAction";
 import CustomizedTable from "../../components/Table/CustomizedTable.js";
 import Tooltip from "@mui/material/Tooltip";
 import styles from "./business.module.css";
@@ -119,6 +121,7 @@ ColorlibStepIcon.propTypes = {
 const steps = ["Business Details", "Category", "Privacy Settings", "Payment"];
 const BusinessList = React.memo(() => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const {
     enqueueSnackbar
   } = useSnackbar();
@@ -175,7 +178,22 @@ const BusinessList = React.memo(() => {
     paymentStatus: "all"
   });
   const [tableRefreshKey, setTableRefreshKey] = useState(0);
-  
+
+  // ===== GMaps Picker State =====
+  const [gmapsPickerOpen, setGmapsPickerOpen] = useState(false);
+  const [pickerLeads, setPickerLeads] = useState([]);
+  const [pickerTotal, setPickerTotal] = useState(0);
+  const [pickerLoading, setPickerLoading] = useState(false);
+  const [pickerPage, setPickerPage] = useState(1);
+  const [pickerLocations, setPickerLocations] = useState([]);
+  const [pickerFilters, setPickerFilters] = useState({
+    search: '',
+    massclick_location: '',
+    min_rating: '',
+    has_phone: false,
+    status: 'available',
+  });
+
   const handlePayNow = row => {
     const amount = 1;
     let businessId = row?._id?.$oid || row?._id || row?.businessId || row?.id || createdBusinessId;
@@ -503,6 +521,79 @@ const BusinessList = React.memo(() => {
     setActiveStep(0);
     enqueueSnackbar(`Pre-filled from GMaps: ${leadToImport.name}`, { variant: 'info' });
   }, [leadToImport]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ===== GMaps Picker Functions =====
+  const fetchPickerLeads = useCallback(async (page, filters) => {
+    setPickerLoading(true);
+    try {
+      const token = localStorage.getItem('accessToken');
+      const f = filters || pickerFilters;
+      const params = new URLSearchParams({
+        pageNo: page || pickerPage,
+        pageSize: 15,
+        search: f.search || '',
+        massclick_location: f.massclick_location || '',
+        min_rating: f.min_rating || '',
+        has_phone: f.has_phone ? 'true' : '',
+        status: f.status || 'all',
+        business_status: 'OPERATIONAL',
+      }).toString();
+      const res = await axiosInstance.get(
+        `${process.env.REACT_APP_API_URL}/gmaps-leads/viewall?${params}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setPickerLeads(res.data.data || []);
+      setPickerTotal(res.data.total || 0);
+    } catch (e) {
+      enqueueSnackbar('Failed to load GMaps leads', { variant: 'error' });
+    } finally {
+      setPickerLoading(false);
+    }
+  }, [pickerFilters, pickerPage, enqueueSnackbar]);
+
+  const openGmapsPicker = useCallback(async () => {
+    setGmapsPickerOpen(true);
+    setPickerPage(1);
+    if (pickerLocations.length === 0) {
+      try {
+        const token = localStorage.getItem('accessToken');
+        const res = await axiosInstance.get(
+          `${process.env.REACT_APP_API_URL}/gmaps-leads/distincts`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        setPickerLocations(res.data.locations || []);
+      } catch (e) {}
+    }
+    fetchPickerLeads(1, pickerFilters);
+  }, [pickerLocations.length, pickerFilters, fetchPickerLeads]);
+
+  const applyGmapsLead = useCallback((lead) => {
+    const [lng, lat] = lead.geoLocation?.coordinates || ['', ''];
+    const matchedCategory = category.find(c =>
+      c.slug === lead.massclick_category ||
+      String(c.category || '').toLowerCase() === String(lead.search_query || '').toLowerCase()
+    );
+    setFormData(prev => ({
+      ...prev,
+      businessName: lead.name || '',
+      contact: lead.phone || '',
+      contactList: lead.phone || '',
+      whatsappNumber: lead.phone || '',
+      website: lead.website || '',
+      location: lead.massclick_location || '',
+      globalAddress: lead.formatted_address || '',
+      geoLocation: {
+        type: 'Point',
+        coordinates: [String(lng || ''), String(lat || '')],
+      },
+      category: matchedCategory?.category || '',
+    }));
+    dispatch(setGmapsLeadToImport(lead));
+    setGmapsPickerOpen(false);
+    setActiveView('form');
+    setActiveStep(0);
+    enqueueSnackbar(`Pre-filled: ${lead.name}`, { variant: 'info' });
+  }, [category, dispatch, enqueueSnackbar]);
 
   // ===== FILTER & SEARCH HANDLERS =====
   const normalizeSearchValue = value => String(value ?? "").replace(/<[^>]*>/g, " ").toLowerCase().trim();
@@ -2274,9 +2365,28 @@ const BusinessList = React.memo(() => {
       </div>
 
       <div className={cx("business-card form-section")}>
-        <h2 className={cx("card-title")}>
-          {editMode ? `Edit Business (${steps[activeStep]})` : `Add New Business (${steps[activeStep]})`}
-        </h2>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+          <h2 className={cx("card-title")} style={{ margin: 0 }}>
+            {editMode ? `Edit Business (${steps[activeStep]})` : `Add New Business (${steps[activeStep]})`}
+          </h2>
+          {!editMode && activeStep === 0 && (
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<TravelExploreIcon />}
+              onClick={openGmapsPicker}
+              sx={{
+                borderColor: '#ff8c42',
+                color: '#ff8c42',
+                fontSize: '0.8rem',
+                textTransform: 'none',
+                '&:hover': { borderColor: '#e67a2e', bgcolor: '#fff5ee' }
+              }}
+            >
+              Fill from GMaps
+            </Button>
+          )}
+        </div>
 
         <form onSubmit={handleSubmit}>
           {Object.keys(fieldErrors).length > 0 && (
@@ -2355,9 +2465,27 @@ const BusinessList = React.memo(() => {
           <Typography variant="h6" className={cx("table-title")}>
             📋 Business Directory
           </Typography>
-          <Typography variant="body2" className={cx("table-count")}>
-            {filteredRows.length} shown of {total || rows.length} businesses
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Typography variant="body2" className={cx("table-count")}>
+              {filteredRows.length} shown of {total || rows.length} businesses
+            </Typography>
+            <Button
+              variant="contained"
+              size="small"
+              startIcon={<TravelExploreIcon />}
+              onClick={() => navigate('/dashboard/gmaps-leads')}
+              sx={{
+                bgcolor: '#ff8c42',
+                color: '#fff',
+                fontSize: '0.8rem',
+                textTransform: 'none',
+                boxShadow: 'none',
+                '&:hover': { bgcolor: '#e67a2e', boxShadow: 'none' }
+              }}
+            >
+              GMaps Leads
+            </Button>
+          </Box>
         </div>
 
         <Box sx={{ width: "100%" }}>
@@ -2448,6 +2576,181 @@ const BusinessList = React.memo(() => {
         <DialogActions>
           <Button onClick={handleCloseGallery} color="secondary">Close</Button>
           <Button onClick={handleUploadGalleryImages} color="primary" variant="contained" disabled={newGalleryImages.length === 0}>Upload</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ════════════════════════════════════════
+          GMaps Leads Picker Dialog
+      ════════════════════════════════════════ */}
+      <Dialog
+        open={gmapsPickerOpen}
+        onClose={() => setGmapsPickerOpen(false)}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{ sx: { height: '85vh', display: 'flex', flexDirection: 'column' } }}
+      >
+        <DialogTitle sx={{ pb: 1.5, borderBottom: '1px solid #f0f0f0' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
+              <Box sx={{ width: 34, height: 34, borderRadius: '9px', bgcolor: '#fff5ee', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <TravelExploreIcon sx={{ color: '#ff8c42', fontSize: 20 }} />
+              </Box>
+              <Box>
+                <Typography sx={{ fontWeight: 700, fontSize: '1rem', lineHeight: 1.2 }}>Pick from GMaps Leads</Typography>
+                <Typography sx={{ fontSize: '0.75rem', color: '#aaa', lineHeight: 1.2 }}>Select a lead to auto-fill the business form</Typography>
+              </Box>
+            </Box>
+          </Box>
+        </DialogTitle>
+
+        {/* Filter bar */}
+        <Box sx={{ px: 2.5, py: 1.5, borderBottom: '1px solid #efefef', bgcolor: '#fafafa' }}>
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+
+            {/* Search input */}
+            <input
+              type="text"
+              placeholder="🔍  Search by name…"
+              value={pickerFilters.search}
+              onChange={e => setPickerFilters(prev => ({ ...prev, search: e.target.value }))}
+              onKeyDown={e => { if (e.key === 'Enter') { setPickerPage(1); fetchPickerLeads(1, pickerFilters); } }}
+              style={{ height: 36, border: '1.5px solid #e2e2e2', borderRadius: 8, padding: '0 12px', fontSize: '0.87rem', color: '#333', background: '#fff', outline: 'none', minWidth: 200, flex: 1 }}
+              onFocus={e => e.target.style.borderColor = '#ff8c42'}
+              onBlur={e => e.target.style.borderColor = '#e2e2e2'}
+            />
+
+            {/* Location */}
+            <select
+              value={pickerFilters.massclick_location}
+              onChange={e => setPickerFilters(prev => ({ ...prev, massclick_location: e.target.value }))}
+              style={{ height: 36, border: '1.5px solid #e2e2e2', borderRadius: 8, padding: '0 10px', fontSize: '0.87rem', color: '#333', background: '#fff', outline: 'none', minWidth: 148, cursor: 'pointer' }}
+            >
+              <option value="">All Locations</option>
+              {pickerLocations.map(loc => <option key={loc} value={loc}>{loc}</option>)}
+            </select>
+
+            {/* Rating */}
+            <select
+              value={pickerFilters.min_rating}
+              onChange={e => setPickerFilters(prev => ({ ...prev, min_rating: e.target.value }))}
+              style={{ height: 36, border: '1.5px solid #e2e2e2', borderRadius: 8, padding: '0 10px', fontSize: '0.87rem', color: '#333', background: '#fff', outline: 'none', minWidth: 110, cursor: 'pointer' }}
+            >
+              <option value="">Any Rating</option>
+              <option value="3">3★ and up</option>
+              <option value="4">4★ and up</option>
+              <option value="4.5">4.5★ and up</option>
+            </select>
+
+            {/* Status */}
+            <select
+              value={pickerFilters.status}
+              onChange={e => setPickerFilters(prev => ({ ...prev, status: e.target.value }))}
+              style={{ height: 36, border: '1.5px solid #e2e2e2', borderRadius: 8, padding: '0 10px', fontSize: '0.87rem', color: '#333', background: '#fff', outline: 'none', minWidth: 120, cursor: 'pointer' }}
+            >
+              <option value="all">All Status</option>
+              <option value="available">🟢 Available</option>
+              <option value="imported">🔵 Imported</option>
+              <option value="skipped">⚫ Skipped</option>
+            </select>
+
+            {/* Has Phone toggle */}
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, height: 36, padding: '0 12px', border: `1.5px solid ${pickerFilters.has_phone ? '#ff8c42' : '#e2e2e2'}`, borderRadius: 8, background: pickerFilters.has_phone ? '#fff5ee' : '#fff', cursor: 'pointer', userSelect: 'none', fontSize: '0.86rem', color: pickerFilters.has_phone ? '#e67a2e' : '#555', transition: 'all 0.18s', whiteSpace: 'nowrap' }}>
+              <input
+                type="checkbox"
+                checked={pickerFilters.has_phone}
+                onChange={e => setPickerFilters(prev => ({ ...prev, has_phone: e.target.checked }))}
+                style={{ accentColor: '#ff8c42', width: 15, height: 15, cursor: 'pointer' }}
+              />
+              📞 Has Phone
+            </label>
+
+            {/* Search button */}
+            <button
+              onClick={() => { setPickerPage(1); fetchPickerLeads(1, pickerFilters); }}
+              disabled={pickerLoading}
+              style={{ height: 36, background: pickerLoading ? '#f0b07a' : '#ff8c42', color: '#fff', border: 'none', borderRadius: 8, padding: '0 20px', fontSize: '0.87rem', fontWeight: 600, cursor: pickerLoading ? 'not-allowed' : 'pointer', transition: 'background 0.18s', whiteSpace: 'nowrap' }}
+            >
+              {pickerLoading ? 'Loading…' : 'Search'}
+            </button>
+
+          </Box>
+        </Box>
+
+        {/* Results table */}
+        <DialogContent sx={{ p: 0, overflow: 'auto', flex: 1 }}>
+          {pickerLoading ? (
+            <Box sx={{ p: 4, textAlign: 'center', color: '#aaa' }}>
+              <CircularProgress size={28} sx={{ color: '#ff8c42' }} />
+              <Typography sx={{ mt: 1.5, fontSize: '0.9rem' }}>Loading leads…</Typography>
+            </Box>
+          ) : pickerLeads.length === 0 ? (
+            <Box sx={{ p: 4, textAlign: 'center', color: '#ccc', fontSize: '0.95rem' }}>
+              No results. Try adjusting filters.
+            </Box>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: '#fafafa' }}>
+                  {['Name', 'Location', 'Query', 'Rating', 'Phone', 'Status', ''].map(h => (
+                    <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid #f0f0f0', whiteSpace: 'nowrap' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {pickerLeads.map(lead => {
+                  const isImported = lead.imported_to_main;
+                  const isSkipped = lead.skip_import;
+                  const hasMatch = lead.hasMatch;
+                  const statusLabel = isImported ? '🔵 Imported' : isSkipped ? '⚫ Skipped' : hasMatch ? '🟡 Has Match' : '🟢 Available';
+                  return (
+                    <tr key={lead._id} style={{ borderBottom: '1px solid #f7f7f7', transition: 'background 0.15s' }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#fdf5ef'}
+                      onMouseLeave={e => e.currentTarget.style.background = ''}
+                    >
+                      <td style={{ padding: '10px 14px', maxWidth: 220 }}>
+                        <div style={{ fontWeight: 600, fontSize: '0.87rem', color: '#222', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{lead.name}</div>
+                        {lead.formatted_address && <div style={{ fontSize: '0.75rem', color: '#aaa', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{lead.formatted_address}</div>}
+                      </td>
+                      <td style={{ padding: '10px 14px', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>{lead.massclick_location || '—'}</td>
+                      <td style={{ padding: '10px 14px', fontSize: '0.83rem', color: '#555' }}>{lead.search_query || '—'}</td>
+                      <td style={{ padding: '10px 14px', fontSize: '0.83rem', whiteSpace: 'nowrap' }}>
+                        {lead.rating != null ? <><span style={{ color: '#f5a623' }}>★</span> {lead.rating}</> : '—'}
+                      </td>
+                      <td style={{ padding: '10px 14px', fontSize: '0.83rem', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
+                        {lead.phone || <span style={{ color: '#ccc' }}>—</span>}
+                      </td>
+                      <td style={{ padding: '10px 14px', fontSize: '0.78rem' }}>{statusLabel}</td>
+                      <td style={{ padding: '10px 14px' }}>
+                        <Button
+                          variant="contained"
+                          size="small"
+                          onClick={() => applyGmapsLead(lead)}
+                          sx={{ bgcolor: '#ff8c42', '&:hover': { bgcolor: '#e67a2e' }, textTransform: 'none', boxShadow: 'none', fontSize: '0.78rem', py: 0.5 }}
+                        >
+                          Use
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </DialogContent>
+
+        {/* Pagination + footer */}
+        <DialogActions sx={{ px: 3, py: 1.5, borderTop: '1px solid #f0f0f0', justifyContent: 'space-between' }}>
+          <Typography variant="body2" sx={{ color: '#888' }}>
+            {pickerTotal.toLocaleString()} results
+          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Button size="small" disabled={pickerPage <= 1} onClick={() => { const p = pickerPage - 1; setPickerPage(p); fetchPickerLeads(p, pickerFilters); }} sx={{ textTransform: 'none', color: '#555' }}>← Prev</Button>
+            <Typography variant="body2" sx={{ px: 1 }}>Page {pickerPage} of {Math.ceil(pickerTotal / 15) || 1}</Typography>
+            <Button size="small" disabled={pickerPage >= Math.ceil(pickerTotal / 15)} onClick={() => { const p = pickerPage + 1; setPickerPage(p); fetchPickerLeads(p, pickerFilters); }} sx={{ textTransform: 'none', color: '#555' }}>Next →</Button>
+            <Button size="small" onClick={() => { navigate('/dashboard/gmaps-leads'); setGmapsPickerOpen(false); }} startIcon={<TravelExploreIcon />} sx={{ ml: 2, textTransform: 'none', color: '#ff8c42' }}>
+              Full Page
+            </Button>
+          </Box>
         </DialogActions>
       </Dialog>
     </div>;

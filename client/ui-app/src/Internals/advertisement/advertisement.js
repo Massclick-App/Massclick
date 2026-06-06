@@ -28,9 +28,30 @@ const MOBILE_TOP_BANNER_RULES = {
   recommended: "720 x 240 px",
   label: "Optional mobile banner. Crop a separate image for phone screens."
 };
+const HOME_POPUP_RULES = {
+  key: "desktop",
+  title: "Popup Desktop Image",
+  targetWidth: 800,
+  targetHeight: 600,
+  recommended: "800 x 600 px",
+  label: "Choose an image and crop it into the required 800 x 600 px popup frame."
+};
+const MOBILE_HOME_POPUP_RULES = {
+  key: "mobile",
+  title: "Popup Mobile Image",
+  targetWidth: 480,
+  targetHeight: 640,
+  recommended: "480 x 640 px",
+  label: "Optional mobile popup image. Crop to 480 x 640 px."
+};
 const COMMON_TOP_BANNER_CATEGORY = "ALL_CATEGORIES";
 const COMMON_TOP_BANNER_LABEL = "All Categories";
-const getBannerRules = cropType => cropType === "mobile" ? MOBILE_TOP_BANNER_RULES : TOP_BANNER_RULES;
+const getBannerRules = (cropType, position) => {
+  if (position === "HOME_POPUP") {
+    return cropType === "mobile" ? MOBILE_HOME_POPUP_RULES : HOME_POPUP_RULES;
+  }
+  return cropType === "mobile" ? MOBILE_TOP_BANNER_RULES : TOP_BANNER_RULES;
+};
 const getImageDimensions = file => new Promise((resolve, reject) => {
   const image = new Image();
   const objectUrl = URL.createObjectURL(file);
@@ -47,12 +68,12 @@ const getImageDimensions = file => new Promise((resolve, reject) => {
   };
   image.src = objectUrl;
 });
-const cropImageToBanner = (imageSource, croppedAreaPixels, cropType = "desktop") => new Promise((resolve, reject) => {
+const cropImageToBanner = (imageSource, croppedAreaPixels, cropType = "desktop", position = "TOP_BANNER") => new Promise((resolve, reject) => {
   const image = new Image();
   image.crossOrigin = "anonymous";
 
   image.onload = () => {
-    const rules = getBannerRules(cropType);
+    const rules = getBannerRules(cropType, position);
     const sourceWidth = image.naturalWidth;
     const sourceHeight = image.naturalHeight;
     const targetWidth = rules.targetWidth;
@@ -125,6 +146,7 @@ export default function AdvertisementPage() {
     redirectUrl: "",
     startTime: "",
     endTime: "",
+    displayDuration: 0,
     bannerImage: "",
     mobileBannerImage: ""
   });
@@ -142,15 +164,21 @@ export default function AdvertisementPage() {
       name,
       value
     } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value,
-      ...(name === "position" ? {
+    setFormData(prev => {
+      const positionUpdates = name === "position" ? {
         bannerImage: "",
         mobileBannerImage: "",
-        ...(value !== "TOP_BANNER" && prev.category === COMMON_TOP_BANNER_CATEGORY ? { category: "" } : {})
-      } : {})
-    }));
+        ...(value === "HOME_POPUP"
+          ? { category: "HOME_POPUP" }
+          : value !== "TOP_BANNER" && prev.category === COMMON_TOP_BANNER_CATEGORY
+            ? { category: "" }
+            : prev.category === "HOME_POPUP"
+              ? { category: "" }
+              : {}
+        )
+      } : {};
+      return { ...prev, [name]: value, ...positionUpdates };
+    });
     if (name === "position") {
       setPreview(null);
       setImageMeta(null);
@@ -209,12 +237,13 @@ export default function AdvertisementPage() {
     }
     let bannerImage;
     let previewImage;
-    if (formData.position === "TOP_BANNER") {
+    if (formData.position === "TOP_BANNER" || formData.position === "HOME_POPUP") {
       const sourceImage = await convertToBase64(file);
       setImageMeta(dimensions);
       setCropData({
         image: sourceImage,
         cropType: "desktop",
+        position: formData.position,
         dimensions,
         crop: {
           x: 0,
@@ -262,6 +291,7 @@ export default function AdvertisementPage() {
     setCropData({
       image: sourceImage,
       cropType: "mobile",
+      position: formData.position,
       dimensions,
       crop: {
         x: 0,
@@ -282,7 +312,7 @@ export default function AdvertisementPage() {
     }
 
     try {
-      const cropped = await cropImageToBanner(cropData.image, cropData.croppedAreaPixels, cropData.cropType);
+      const cropped = await cropImageToBanner(cropData.image, cropData.croppedAreaPixels, cropData.cropType, cropData.position || formData.position);
       if (cropData.cropType === "mobile") {
         setMobilePreview(cropped.base64);
         setMobileImageMeta({
@@ -332,8 +362,11 @@ export default function AdvertisementPage() {
     if (!formData.startTime) err.startTime = "Start time required";
     if (!formData.endTime) err.endTime = "End time required";
     if (!editMode && !formData.bannerImage) err.bannerImage = "Banner image is required";
-    if (formData.position === "TOP_BANNER" && !formData.bannerImage && !preview) {
-      err.bannerImage = "Top banner image is required";
+    if (
+      (formData.position === "TOP_BANNER" || formData.position === "HOME_POPUP") &&
+      !formData.bannerImage && !preview
+    ) {
+      err.bannerImage = "Banner image is required for this position";
     }
     setErrors(err);
     return Object.keys(err).length === 0;
@@ -346,6 +379,7 @@ export default function AdvertisementPage() {
       redirectUrl: "",
       startTime: "",
       endTime: "",
+      displayDuration: 0,
       bannerImage: "",
       mobileBannerImage: ""
     });
@@ -391,6 +425,7 @@ export default function AdvertisementPage() {
       redirectUrl: row.redirectUrl || "",
       startTime: row.startTimeRaw,
       endTime: row.endTimeRaw,
+      displayDuration: row.displayDuration ?? 0,
       bannerImage: "",
       mobileBannerImage: ""
     });
@@ -414,6 +449,7 @@ export default function AdvertisementPage() {
     endTime: new Date(ad.endTime).toLocaleString(),
     startTimeRaw: ad.startTime?.slice(0, 16),
     endTimeRaw: ad.endTime?.slice(0, 16),
+    displayDuration: ad.displayDuration ?? 0,
     bannerImage: ad.bannerImage,
     mobileBannerImage: ad.mobileBannerImage
   }));
@@ -445,7 +481,9 @@ export default function AdvertisementPage() {
         </div>
   }];
   const isTopBanner = formData.position === "TOP_BANNER";
+  const isHomePopup = formData.position === "HOME_POPUP";
   const isCommonTopBanner = isTopBanner && formData.category === COMMON_TOP_BANNER_CATEGORY;
+  const needsMobileBanner = isTopBanner || isHomePopup;
   return <div className={cx("ads-page")}>
       <div className={cx("ads-header")}>
         <h1>Advertisements</h1>
@@ -464,7 +502,7 @@ export default function AdvertisementPage() {
             {errors.title && <span className={cx("error")}>{errors.title}</span>}
           </div>
 
-          <div className={cx("form-field")} style={{
+          {!isHomePopup && <div className={cx("form-field")} style={{
           position: "relative"
         }}>
             <label>Category</label>
@@ -522,7 +560,7 @@ export default function AdvertisementPage() {
               </ul>}
 
             {errors.category && <span className={cx("error")}>{errors.category}</span>}
-          </div>
+          </div>}
 
 
           <div className={cx("form-field")}>
@@ -532,6 +570,7 @@ export default function AdvertisementPage() {
               <option value="TOP_BANNER">Top Banner</option>
               <option value="SIDE_BANNER">Side Banner</option>
               <option value="FOOTER_BANNER">Footer Banner</option>
+              <option value="HOME_POPUP">Home Popup</option>
             </select>
           </div>
 
@@ -540,10 +579,29 @@ export default function AdvertisementPage() {
             <input name="redirectUrl" value={formData.redirectUrl} onChange={handleChange} />
           </div>
 
+          {isHomePopup && <div className={cx("form-field span-2")}>
+            <label>
+              Auto-close Duration (seconds){" "}
+              <span style={{ fontWeight: 400, color: "#6b7280" }}>— 0 = manual close only</span>
+            </label>
+            <input
+              type="number"
+              name="displayDuration"
+              min="0"
+              step="1"
+              value={formData.displayDuration}
+              onChange={handleChange}
+            />
+          </div>}
+
           <div className={cx("form-field upload")}>
             <label>Banner Image</label>
             <p className={cx("upload-guidance")}>
-              {isTopBanner ? TOP_BANNER_RULES.label : "Upload a clear JPG, PNG or WEBP banner image."}
+              {isTopBanner
+                ? TOP_BANNER_RULES.label
+                : isHomePopup
+                  ? HOME_POPUP_RULES.label
+                  : "Upload a clear JPG, PNG or WEBP banner image."}
             </p>
             <div className={cx("upload-box")}>
               <button type="button" onClick={() => fileInputRef.current.click()}>
@@ -558,13 +616,13 @@ export default function AdvertisementPage() {
               </div>}
             {imageMeta && <span className={cx("image-meta")}>
                 Selected image: {imageMeta.width} x {imageMeta.height} px
-                {isTopBanner ? ` -> saved as ${TOP_BANNER_RULES.recommended}` : ""}
+                {isTopBanner ? ` -> saved as ${TOP_BANNER_RULES.recommended}` : isHomePopup ? ` -> saved as ${HOME_POPUP_RULES.recommended}` : ""}
               </span>}
             {errors.bannerImage && <span className={cx("error")}>{errors.bannerImage}</span>}
 
-            {isTopBanner && <div className={cx("mobile-banner-upload")}>
+            {needsMobileBanner && <div className={cx("mobile-banner-upload")}>
                 <label>Mobile Banner Image</label>
-                <p className={cx("upload-guidance")}>{MOBILE_TOP_BANNER_RULES.label}</p>
+                <p className={cx("upload-guidance")}>{isHomePopup ? MOBILE_HOME_POPUP_RULES.label : MOBILE_TOP_BANNER_RULES.label}</p>
                 <div className={cx("upload-box")}>
                   <button type="button" onClick={() => mobileFileInputRef.current.click()}>
                     <CloudUploadIcon fontSize="small" />
@@ -577,20 +635,22 @@ export default function AdvertisementPage() {
                     <img src={mobilePreview} alt="mobile preview" />
                   </div>}
                 {mobileImageMeta && <span className={cx("image-meta")}>
-                    Selected mobile image: {mobileImageMeta.width} x {mobileImageMeta.height} px -> saved as {MOBILE_TOP_BANNER_RULES.recommended}
+                    Selected mobile image: {mobileImageMeta.width} x {mobileImageMeta.height} px -> saved as {isHomePopup ? MOBILE_HOME_POPUP_RULES.recommended : MOBILE_TOP_BANNER_RULES.recommended}
                   </span>}
                 {errors.mobileBannerImage && <span className={cx("error")}>{errors.mobileBannerImage}</span>}
               </div>}
           </div>
 
           <div className={cx("form-field")}>
-            <label>Start Time</label>
+            <label>Start Time <span style={{ fontWeight: 400, color: "#6b7280" }}>(IST)</span></label>
             <input type="datetime-local" name="startTime" value={formData.startTime} onChange={handleChange} />
+            {errors.startTime && <span className={cx("error")}>{errors.startTime}</span>}
           </div>
 
           <div className={cx("form-field")}>
-            <label>End Time</label>
+            <label>End Time <span style={{ fontWeight: 400, color: "#6b7280" }}>(IST)</span></label>
             <input type="datetime-local" name="endTime" value={formData.endTime} onChange={handleChange} />
+            {errors.endTime && <span className={cx("error")}>{errors.endTime}</span>}
           </div>
 
           <div className={cx("form-actions span-3")}>
@@ -620,7 +680,7 @@ export default function AdvertisementPage() {
         alignItems: "center",
         justifyContent: "space-between"
       }}>
-          <span>Crop {getBannerRules(cropData.cropType).title}</span>
+          <span>Crop {getBannerRules(cropData.cropType, cropData.position || formData.position).title}</span>
           <IconButton size="small" onClick={handleTopBannerCropCancel}>x</IconButton>
         </DialogTitle>
         <DialogContent dividers sx={{
@@ -637,7 +697,7 @@ export default function AdvertisementPage() {
             fontWeight: 700,
             color: "#172033"
           }}>
-              Forced output: {getBannerRules(cropData.cropType).recommended}
+              Forced output: {getBannerRules(cropData.cropType, cropData.position || formData.position).recommended}
             </Typography>
             <Typography variant="caption" sx={{
             display: "block",
@@ -667,7 +727,7 @@ export default function AdvertisementPage() {
           borderRadius: "8px",
           overflow: "hidden"
         }}>
-              <Cropper image={cropData.image} crop={cropData.crop} zoom={cropData.zoom} aspect={getBannerRules(cropData.cropType).targetWidth / getBannerRules(cropData.cropType).targetHeight} onCropChange={crop => setCropData(prev => ({
+              <Cropper image={cropData.image} crop={cropData.crop} zoom={cropData.zoom} aspect={getBannerRules(cropData.cropType, cropData.position || formData.position).targetWidth / getBannerRules(cropData.cropType, cropData.position || formData.position).targetHeight} onCropChange={crop => setCropData(prev => ({
             ...prev,
             crop
           }))} onCropComplete={(croppedArea, croppedAreaPixels) => setCropData(prev => ({
