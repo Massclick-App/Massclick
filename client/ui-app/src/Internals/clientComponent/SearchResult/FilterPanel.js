@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Slider } from "@mui/material";
 import StarRoundedIcon from "@mui/icons-material/StarRounded";
 import AccessTimeRoundedIcon from "@mui/icons-material/AccessTimeRounded";
@@ -40,6 +40,56 @@ const UNIVERSAL_TOGGLES = [
     iconBg: "#fef3c7",
   },
 ];
+
+// Sub-component so it can use useState — prevents search firing on every slider tick
+const RangeFilter = ({ fc, committedValue, onFilterChange }) => {
+  const initial = committedValue ?? fc.max ?? 100;
+  const [localVal, setLocalVal] = useState(initial);
+
+  // Sync if the committed value resets from outside (e.g. "Clear all")
+  useEffect(() => {
+    setLocalVal(committedValue ?? fc.max ?? 100);
+  }, [committedValue, fc.max]);
+
+  return (
+    <div>
+      <div className={styles["range-header"]}>
+        <span style={{ fontSize: 12, color: "#64748b" }}>Up to</span>
+        <span className={styles["range-value"]}>
+          {localVal}{fc.unit || ""}
+        </span>
+      </div>
+      <div className={styles["slider-wrap"]}>
+        <Slider
+          value={localVal}
+          min={fc.min ?? 0}
+          max={fc.max ?? 100}
+          step={Math.ceil(((fc.max ?? 100) - (fc.min ?? 0)) / 20)}
+          valueLabelDisplay="auto"
+          valueLabelFormat={(v) => `${v}${fc.unit || ""}`}
+          onChange={(_, val) => setLocalVal(val)}
+          onChangeCommitted={(_, val) => onFilterChange(fc.key, val)}
+          sx={{
+            color: "#ff8c00",
+            height: 4,
+            "& .MuiSlider-thumb": {
+              width: 16,
+              height: 16,
+              "&:hover, &.Mui-focusVisible": {
+                boxShadow: "0 0 0 6px rgba(255,140,0,0.16)",
+              },
+            },
+            "& .MuiSlider-rail": { opacity: 0.2 },
+          }}
+        />
+      </div>
+      <div className={styles["range-bounds"]}>
+        <span className={styles["range-bound"]}>{fc.min ?? 0}{fc.unit || ""}</span>
+        <span className={styles["range-bound"]}>{fc.max ?? 100}{fc.unit || ""}</span>
+      </div>
+    </div>
+  );
+};
 
 const FilterPanel = ({
   filterConfig = [],
@@ -256,46 +306,11 @@ const FilterPanel = ({
           )}
 
           {fc.type === "range" && (
-            <div>
-              <div className={styles["range-header"]}>
-                <span style={{ fontSize: 12, color: "#64748b" }}>Up to</span>
-                <span className={styles["range-value"]}>
-                  {activeFilters[fc.key] ?? fc.max ?? 100}
-                  {fc.unit || ""}
-                </span>
-              </div>
-              <div className={styles["slider-wrap"]}>
-                <Slider
-                  value={activeFilters[fc.key] ?? fc.max ?? 100}
-                  min={fc.min ?? 0}
-                  max={fc.max ?? 100}
-                  step={Math.ceil(((fc.max ?? 100) - (fc.min ?? 0)) / 20)}
-                  valueLabelDisplay="auto"
-                  valueLabelFormat={(v) => `${v}${fc.unit || ""}`}
-                  onChange={(_, val) => onFilterChange(fc.key, val)}
-                  sx={{
-                    color: "#ff8c00",
-                    height: 4,
-                    "& .MuiSlider-thumb": {
-                      width: 16,
-                      height: 16,
-                      "&:hover, &.Mui-focusVisible": {
-                        boxShadow: "0 0 0 6px rgba(255,140,0,0.16)",
-                      },
-                    },
-                    "& .MuiSlider-rail": { opacity: 0.2 },
-                  }}
-                />
-              </div>
-              <div className={styles["range-bounds"]}>
-                <span className={styles["range-bound"]}>
-                  {fc.min ?? 0}{fc.unit || ""}
-                </span>
-                <span className={styles["range-bound"]}>
-                  {fc.max ?? 100}{fc.unit || ""}
-                </span>
-              </div>
-            </div>
+            <RangeFilter
+              fc={fc}
+              committedValue={activeFilters[fc.key]}
+              onFilterChange={onFilterChange}
+            />
           )}
         </div>
       ))}

@@ -520,6 +520,9 @@ export const mainSearchController = async (req, res) => {
         for (const [key, value] of Object.entries(activeFilters)) {
           if (Array.isArray(value) && value.length > 0) {
             matchQuery.$and.push({ [`filters.${key}`]: { $in: value } });
+          } else if (typeof value === "number") {
+            // Range filter: "up to this value" — match strings and numbers in DB
+            matchQuery.$and.push({ [`filters.${key}`]: { $lte: value } });
           } else if (value !== null && value !== undefined && value !== "") {
             matchQuery.$and.push({ [`filters.${key}`]: value });
           }
@@ -687,9 +690,8 @@ export const nearbyBusinessesController = async (req, res) => {
       {
         $geoNear: {
           near: { type: "Point", coordinates: [lng, lat] },
-          distanceField: "distance",
-          distanceMult: 0.001, // convert meters → km
-          maxDistance: 50000,  // 50km radius
+          distanceField: "distanceMeters",
+          maxDistance: 50000,  // 50km radius in meters
           query: {
             businessesLive: true,
             category: { $regex: `^${escapeRegex(category)}$`, $options: "i" }
@@ -703,7 +705,7 @@ export const nearbyBusinessesController = async (req, res) => {
           businessName: 1, category: 1, location: 1, bannerImageKey: 1,
           averageRating: 1, totalReviews: 1, verification: 1, badges: 1,
           contact: 1, whatsappNumber: 1, filters: 1, experience: 1, slug: 1,
-          distance: { $round: ["$distance", 2] }
+          distance: { $round: [{ $divide: ["$distanceMeters", 1000] }, 2] }
         }
       }
     ];

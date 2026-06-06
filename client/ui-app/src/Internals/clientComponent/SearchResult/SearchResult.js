@@ -693,14 +693,14 @@ const SearchResults = React.memo(() => {
               )}
 
               {/* Nearby businesses section — shown only when user has granted geo */}
-              {nearbyResults.length > 0 && (
+              {nearbyResults.filter(b => !results.some(r => r._id === b._id)).length > 0 && (
                 <section className={cx("nearby-section")}>
                   <h3 className={cx("nearby-heading")}>
                     <LocationOnIcon sx={{ fontSize: 20, color: "#ff8c00" }} />
                     More {searchText} Near You
                   </h3>
                   <div className={cx("nearby-strip")}>
-                    {nearbyResults.map((b, idx) => {
+                    {nearbyResults.filter(b => !results.some(r => r._id === b._id)).map((b, idx) => {
                       const businessUrl = `/business/${createSlug(b.location)}/${createSlug(b.businessName)}/${b._id}`;
                       return (
                         <div className={cx("nearby-card")} key={b._id}>
