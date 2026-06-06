@@ -18,11 +18,7 @@ import { getHomePopupAd } from "../../../redux/actions/advertisementAction";
 const SHOW_DELAY_MS = 1000;
 const HIDE_ON = ["/admin", "/dashboard"];
 
-const getTodayKey = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
-};
-const getSeenKey = (adId) => `popup_seen_${adId}_${getTodayKey()}`;
+const getSeenKey = (adId) => `popup_seen_${adId}`;
 
 /* ── Confetti helper ── */
 let confettiModule = null;
@@ -130,7 +126,7 @@ const DesktopPopup = ({ open, onClose, ad, progress, countdown, totalDuration })
     >
       <DialogContent sx={{ p: 0, position: "relative", overflow: "hidden" }}>
         {/* Close + countdown */}
-        <CloseBtn onClick={onClose} countdown={countdown} totalDuration={totalDuration} />
+         {/*<CloseBtn onClick={onClose} countdown={countdown} totalDuration={totalDuration} />*/}
 
         {/* Banner image */}
         <Box
@@ -270,7 +266,7 @@ const MobileBottomSheet = ({ open, onClose, ad, progress, countdown, totalDurati
           }}
         />
         {/* Close button */}
-        <CloseBtn onClick={onClose} countdown={countdown} totalDuration={totalDuration} />
+        {/* <CloseBtn onClick={onClose} countdown={countdown} totalDuration={totalDuration} /> */}
       </Box>
 
       {/* Banner image */}
@@ -413,10 +409,10 @@ const HomePopupAd = () => {
     if (!isHomeRoute || shouldHide || !homePopupAd || homePopupAdLoading) return;
 
     const seenKey = getSeenKey(homePopupAd._id);
-    if (localStorage.getItem(seenKey)) return;
+    if (sessionStorage.getItem(seenKey)) return;
 
     timerRef.current = setTimeout(() => {
-      localStorage.setItem(seenKey, "1");
+      sessionStorage.setItem(seenKey, "1");
       const dur = homePopupAd.displayDuration || 0;
       setTotalDuration(dur);
       setCountdown(dur);
