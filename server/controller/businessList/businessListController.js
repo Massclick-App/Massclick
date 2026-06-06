@@ -451,73 +451,50 @@ export const mainSearchController = async (req, res) => {
   try {
     let { term = "", location = "", category = "" } = req.query;
 
-    // 🔥 Improved normalize (handles &, -, _, spaces)
     const normalize = (text = "") =>
-      text
-        .toLowerCase()
-        .trim()
-        .replace(/&/g, " and ")
-        .replace(/[-_]/g, " ")
-        .replace(/\s+/g, " ");
+      text.toLowerCase().trim().replace(/&/g, " and ").replace(/[-_]/g, " ").replace(/\s+/g, " ");
 
     term = normalize(term);
     location = normalize(location);
     category = normalize(category);
 
-    // 🔥 RESOLVE CATEGORY: If category is not provided, try to find it from the term
-    if (!category && term) {
-      const escapeRegex = (text = "") =>
-        text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    // Pagination
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const pageSize = Math.min(50, Math.max(1, parseInt(req.query.pageSize) || 20));
+    const skip = (page - 1) * pageSize;
 
+    // Geo coords for distance calculation
+    const lat = parseFloat(req.query.lat);
+    const lng = parseFloat(req.query.lng);
+    const hasGeo = !isNaN(lat) && !isNaN(lng) && !(lat === 0 && lng === 0);
+
+    // Resolve category from term if not provided
+    if (!category && term) {
+      const escapeForCat = (text = "") => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       const matchedCategory = await categoryModel.findOne(
         {
           $or: [
-            { category: { $regex: `^${escapeRegex(term)}$`, $options: "i" } },
-            { keywords: { $regex: `^${escapeRegex(term)}$`, $options: "i" } }
+            { category: { $regex: `^${escapeForCat(term)}$`, $options: "i" } },
+            { keywords: { $regex: `^${escapeForCat(term)}$`, $options: "i" } }
           ],
           isActive: true
         },
         { category: 1 }
       );
-
       if (matchedCategory) {
         category = matchedCategory.category;
-        term = ""; // Clear term since we found the category
+        term = "";
       }
     }
 
-    // 🔹 Escape regex special chars
-    const escapeRegex = (text = "") =>
-      text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const escapeRegex = (text = "") => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-    // 🔹 Handle singular/plural
-    const getWordVariations = (word = "") => {
-      const w = word.toLowerCase().trim();
-      if (!w) return [];
+    const matchQuery = { businessesLive: true, $and: [] };
 
-      if (w.endsWith("s")) {
-        return [w, w.slice(0, -1)];
-      } else {
-        return [w, w + "s"];
-      }
-    };
-
-    // 🔥 Flexible matcher (supports space, -, &, _)
-    const makeFlexible = (val = "") =>
-      escapeRegex(val).replace(/\s+/g, "[-\\s&]+");
-
-    const matchQuery = {
-      businessesLive: true,
-      $and: []
-    };
-
-    // ===============================
-    // 📍 LOCATION
-    // ===============================
+    // Location filter
     if (location) {
       const locKey = location.toLowerCase().trim();
       const aliases = districtAliasMap[locKey] || [locKey];
-
       matchQuery.$and.push({
         $or: aliases.map((l) => ({
           location: { $regex: `^${escapeRegex(normalize(l))}$`, $options: "i" }
@@ -525,55 +502,39 @@ export const mainSearchController = async (req, res) => {
       });
     }
 
-    // ===============================
-    // 🏷 CATEGORY
-    // ===============================
+    // Category filter
     if (category) {
-      // EXACT: Match the full normalized category string (anchored at start/end)
       const escaped = escapeRegex(category);
-      matchQuery.$and.push({
-        category: { $regex: `^${escaped}$`, $options: "i" }
-      });
+      matchQuery.$and.push({ category: { $regex: `^${escaped}$`, $options: "i" } });
     }
 
-    // ===============================
-    // 🔍 TERM SEARCH (using MongoDB text search)
-    // ===============================
+    // Text search
     if (term) {
       matchQuery.$text = { $search: term };
     }
 
-    // ===============================
-    // 🔽 CATEGORY-SPECIFIC FILTERS
-    // ===============================
+    // Category-specific filters
     if (req.query.filters) {
       try {
         const activeFilters = JSON.parse(req.query.filters);
         for (const [key, value] of Object.entries(activeFilters)) {
           if (Array.isArray(value) && value.length > 0) {
-            matchQuery.$and = matchQuery.$and || [];
             matchQuery.$and.push({ [`filters.${key}`]: { $in: value } });
           } else if (value !== null && value !== undefined && value !== "") {
-            matchQuery.$and = matchQuery.$and || [];
             matchQuery.$and.push({ [`filters.${key}`]: value });
           }
         }
       } catch (_) {}
     }
 
-    // ===============================
-    // 🌟 UNIVERSAL FILTERS
-    // ===============================
+    // Universal filters
     if (req.query.minRating) {
-      matchQuery.$and = matchQuery.$and || [];
       matchQuery.$and.push({ averageRating: { $gte: parseFloat(req.query.minRating) } });
     }
     if (req.query.verified === "true") {
-      matchQuery.$and = matchQuery.$and || [];
       matchQuery.$and.push({ "verification.isVerified": true });
     }
     if (req.query.featured === "true") {
-      matchQuery.$and = matchQuery.$and || [];
       matchQuery.$and.push({ "badges.isFeatured": true });
     }
     if (req.query.openNow === "true") {
@@ -581,7 +542,6 @@ export const mainSearchController = async (req, res) => {
       const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
       const todayName = dayNames[now.getDay()];
       const currentTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-      matchQuery.$and = matchQuery.$and || [];
       matchQuery.$and.push({
         openingHours: {
           $elemMatch: {
@@ -594,13 +554,9 @@ export const mainSearchController = async (req, res) => {
       });
     }
 
-    if (matchQuery.$and && matchQuery.$and.length === 0) {
-      delete matchQuery.$and;
-    }
+    if (matchQuery.$and.length === 0) delete matchQuery.$and;
 
-    // ===============================
-    // 🔀 SORT
-    // ===============================
+    // Sort
     const sortByParam = req.query.sortBy || "relevant";
     const customSortMap = {
       rating:  { averageRating: -1, amountPaid: -1, createdAt: -1 },
@@ -608,13 +564,53 @@ export const mainSearchController = async (req, res) => {
       popular: { "analytics.views": -1, amountPaid: -1, createdAt: -1 },
     };
     const useCustomSort = customSortMap[sortByParam];
+    const useNearestSort = sortByParam === "nearest" && hasGeo;
 
-    const results = await businessListModel.aggregate([
+    // Haversine distance stages — only added when user coordinates are provided.
+    // Business coordinates at [0,0] (default/unset) get distance=null and sort last.
+    const geoStages = hasGeo ? [
+      {
+        $addFields: {
+          distance: {
+            $cond: {
+              if: { $and: [
+                { $eq: [{ $arrayElemAt: ["$geoLocation.coordinates", 0] }, 0] },
+                { $eq: [{ $arrayElemAt: ["$geoLocation.coordinates", 1] }, 0] }
+              ]},
+              then: null,
+              else: {
+                $let: {
+                  vars: {
+                    dLat: { $multiply: [{ $subtract: [{ $arrayElemAt: ["$geoLocation.coordinates", 1] }, lat] }, Math.PI / 180] },
+                    dLng: { $multiply: [{ $subtract: [{ $arrayElemAt: ["$geoLocation.coordinates", 0] }, lng] }, Math.PI / 180] },
+                    lat2R: { $multiply: [{ $arrayElemAt: ["$geoLocation.coordinates", 1] }, Math.PI / 180] },
+                  },
+                  in: {
+                    $multiply: [
+                      2 * 6371,
+                      { $asin: { $sqrt: { $add: [
+                        { $pow: [{ $sin: { $divide: ["$$dLat", 2] } }, 2] },
+                        { $multiply: [
+                          Math.cos(lat * Math.PI / 180),
+                          { $cos: "$$lat2R" },
+                          { $pow: [{ $sin: { $divide: ["$$dLng", 2] } }, 2] }
+                        ]}
+                      ]}}}
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      // Sentinel for sort: null distance becomes 999999 so nulls sort last ascending
+      { $addFields: { _distanceSort: { $ifNull: ["$distance", 999999] } } }
+    ] : [];
+
+    const pipeline = [
       { $match: matchQuery },
-
-      // Add text score if doing text search
       ...(term ? [{ $addFields: { textScore: { $meta: "textScore" } } }] : []),
-
       {
         $lookup: {
           from: "businessreviews",
@@ -623,18 +619,13 @@ export const mainSearchController = async (req, res) => {
           as: "reviews"
         }
       },
-
       {
         $addFields: {
           totalReviews: { $size: "$reviews" },
           categoryPriority: {
             $cond: [
               category ? {
-                $regexMatch: {
-                  input: "$category",
-                  regex: `^${escapeRegex(category)}$`,
-                  options: "i"
-                }
+                $regexMatch: { input: "$category", regex: `^${escapeRegex(category)}$`, options: "i" }
               } : false,
               0,
               1
@@ -642,51 +633,89 @@ export const mainSearchController = async (req, res) => {
           }
         }
       },
-
+      ...geoStages,
       {
-        $sort: useCustomSort || {
-          ...(term ? { textScore: -1 } : {}),
-          categoryPriority: 1,
-          amountPaid: -1,
-          paidDate: -1,
-          createdAt: -1
-        }
+        $sort: useNearestSort
+          ? { _distanceSort: 1, amountPaid: -1, createdAt: -1 }
+          : (useCustomSort || {
+              ...(term ? { textScore: -1 } : {}),
+              categoryPriority: 1,
+              amountPaid: -1,
+              paidDate: -1,
+              createdAt: -1
+            })
       },
+      { $skip: skip },
+      { $limit: pageSize },
+      { $project: { reviews: 0, categoryPriority: 0, textScore: 0, _distanceSort: 0 } }
+    ];
 
-      {
-        $project: {
-          reviews: 0,
-          categoryPriority: 0,
-          textScore: 0  // Don't return text score to frontend
-        }
-      }
+    const [results, total] = await Promise.all([
+      businessListModel.aggregate(pipeline),
+      businessListModel.countDocuments(matchQuery)
     ]);
 
-    // ===============================
-    // 🖼 IMAGE URL SIGNING
-    // ===============================
+    // Sign image URLs
     results.forEach((b) => {
-      if (b.bannerImageKey) {
-        b.bannerImage = getSignedUrlByKey(b.bannerImageKey);
-      }
-
-      if (b.businessImagesKey?.length > 0) {
-        b.businessImages = b.businessImagesKey.map((k) =>
-          getSignedUrlByKey(k)
-        );
-      }
-
-      if (b.kycDocumentsKey?.length > 0) {
-        b.kycDocuments = b.kycDocumentsKey.map((k) =>
-          getSignedUrlByKey(k)
-        );
-      }
+      if (b.bannerImageKey) b.bannerImage = getSignedUrlByKey(b.bannerImageKey);
+      if (b.businessImagesKey?.length > 0) b.businessImages = b.businessImagesKey.map((k) => getSignedUrlByKey(k));
+      if (b.kycDocumentsKey?.length > 0) b.kycDocuments = b.kycDocumentsKey.map((k) => getSignedUrlByKey(k));
     });
 
-    res.send(results);
+    res.send({ results, total, page, pageSize, hasMore: page * pageSize < total });
 
   } catch (err) {
     console.error(err);
+    res.status(400).send({ message: err.message });
+  }
+};
+
+export const nearbyBusinessesController = async (req, res) => {
+  try {
+    const lat = parseFloat(req.query.lat);
+    const lng = parseFloat(req.query.lng);
+    const category = (req.query.category || "").trim();
+    const limit = Math.min(12, Math.max(1, parseInt(req.query.limit) || 6));
+
+    if (isNaN(lat) || isNaN(lng) || !category) {
+      return res.status(400).send({ message: "lat, lng, and category are required" });
+    }
+
+    const escapeRegex = (text = "") => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+    const pipeline = [
+      {
+        $geoNear: {
+          near: { type: "Point", coordinates: [lng, lat] },
+          distanceField: "distance",
+          distanceMult: 0.001, // convert meters → km
+          maxDistance: 50000,  // 50km radius
+          query: {
+            businessesLive: true,
+            category: { $regex: `^${escapeRegex(category)}$`, $options: "i" }
+          },
+          spherical: true
+        }
+      },
+      { $limit: limit },
+      {
+        $project: {
+          businessName: 1, category: 1, location: 1, bannerImageKey: 1,
+          averageRating: 1, totalReviews: 1, verification: 1, badges: 1,
+          contact: 1, whatsappNumber: 1, filters: 1, experience: 1, slug: 1,
+          distance: { $round: ["$distance", 2] }
+        }
+      }
+    ];
+
+    const results = await businessListModel.aggregate(pipeline);
+    results.forEach((b) => {
+      if (b.bannerImageKey) b.bannerImage = getSignedUrlByKey(b.bannerImageKey);
+    });
+
+    res.send(results);
+  } catch (err) {
+    console.error("nearbyBusinessesController error:", err);
     res.status(400).send({ message: err.message });
   }
 };

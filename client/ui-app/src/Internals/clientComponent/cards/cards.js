@@ -23,10 +23,35 @@ const cx = createScopedClassNames(styles);
 const EMPTY_PIXEL = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
 let favoritesInitialized = false;
 
-const MAX_FILTER_BADGES = 4;
+const MAX_FILTER_BADGES = 3;
 
-function getFilterBadges(filters) {
+function formatDistance(km) {
+  if (typeof km !== "number" || isNaN(km)) return null;
+  return km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`;
+}
+
+function getFilterBadges(filters, filterConfig) {
   if (!filters || typeof filters !== "object") return [];
+
+  // When filterConfig is available, use it to produce labelled badges in config order.
+  if (Array.isArray(filterConfig) && filterConfig.length > 0) {
+    const badges = [];
+    for (const fc of filterConfig) {
+      if (badges.length >= MAX_FILTER_BADGES) break;
+      const val = filters[fc.key];
+      if (val === null || val === undefined || val === "" || val === false) continue;
+      if (Array.isArray(val) && val.length > 0) {
+        badges.push(`${fc.label}: ${val[0]}${val.length > 1 ? ` +${val.length - 1}` : ""}`);
+      } else if (val === true) {
+        badges.push(fc.label);
+      } else if (typeof val === "string" || typeof val === "number") {
+        badges.push(`${fc.label}: ${val}`);
+      }
+    }
+    return badges;
+  }
+
+  // Fallback: raw value dump when no filterConfig (backward compat / other pages).
   const badges = [];
   for (const val of Object.values(filters)) {
     if (badges.length >= MAX_FILTER_BADGES) break;
@@ -36,7 +61,7 @@ function getFilterBadges(filters) {
         if (v && typeof v === "string") badges.push(v);
       }
     } else if (val === true) {
-      // skip plain boolean toggles — no label without key context
+      // skip boolean toggles without label context
     } else if (val && typeof val === "string") {
       badges.push(val);
     }
@@ -63,6 +88,8 @@ const Cards = ({
   isVerified = false,
   isFeatured = false,
   filters,
+  filterConfig = [],
+  distance = null,
   viewMode = "list",
   ...props
 }) => {
@@ -90,7 +117,8 @@ const Cards = ({
   const safeReviews = typeof reviews === "object"
     ? Array.isArray(reviews) ? reviews.length : 0
     : reviews || 0;
-  const filterBadges = getFilterBadges(filters);
+  const filterBadges = getFilterBadges(filters, filterConfig);
+  const distanceLabel = formatDistance(distance);
 
   const handlePhoneClick = e => {
     e.preventDefault();
@@ -179,14 +207,18 @@ const Cards = ({
               <div className={cx("list-info")}>
                 <div className={cx("card-header-row")}>
                   <h2 className={cx("card-title")}>{title}</h2>
-                  {category?.toLowerCase().includes("hotel") && price && (
-                    <div className={cx("price-box")}>₹{price}<span className={cx("price-type")}>/{priceType}</span></div>
-                  )}
+                  {(() => {
+                    const displayPrice = filters?.price || filters?.priceRange || price || null;
+                    return displayPrice ? (
+                      <div className={cx("price-box")}>₹{displayPrice}<span className={cx("price-type")}>/{priceType}</span></div>
+                    ) : null;
+                  })()}
                 </div>
                 <div className={cx("card-meta")}>
                   <span className={cx("rating-badge")}><StarRoundedIcon style={{ fontSize: 13 }} />{safeRating}</span>
                   <span className={cx("reviews-text")}>{safeReviews} ratings</span>
                   {category && <span className={cx("category-pill")}>{category}</span>}
+                  {distanceLabel && <span className={cx("distance-chip")}>{distanceLabel}</span>}
                 </div>
                 <div className={cx("card-info")}>
                   {address && <p className={cx("card-address-inline")}><LocationOnIcon className={cx("icon")} /><span>{address}</span></p>}
@@ -210,14 +242,18 @@ const Cards = ({
               <div className={cx("card-top")}>
                 <div className={cx("card-header-row")}>
                   <h2 className={cx("card-title")}>{title}</h2>
-                  {category?.toLowerCase().includes("hotel") && price && (
-                    <div className={cx("price-box")}>₹{price}<span className={cx("price-type")}>/{priceType}</span></div>
-                  )}
+                  {(() => {
+                    const displayPrice = filters?.price || filters?.priceRange || price || null;
+                    return displayPrice ? (
+                      <div className={cx("price-box")}>₹{displayPrice}<span className={cx("price-type")}>/{priceType}</span></div>
+                    ) : null;
+                  })()}
                 </div>
                 <div className={cx("card-meta")}>
                   <span className={cx("rating-badge")}><StarRoundedIcon style={{ fontSize: 13 }} />{safeRating}</span>
                   <span className={cx("reviews-text")}>{safeReviews} ratings</span>
                   {category && <span className={cx("category-pill")}>{category}</span>}
+                  {distanceLabel && <span className={cx("distance-chip")}>{distanceLabel}</span>}
                 </div>
               </div>
               <div className={cx("card-info")}>

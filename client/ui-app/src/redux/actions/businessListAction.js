@@ -396,19 +396,37 @@ export const backendMainSearch = (term, location, category, extraParams = {}) =>
       }
     );
 
-    dispatch({
-      type: SEARCH_BUSINESS_SUCCESS,
-      payload: response.data || [],
-    });
+    // Handle both legacy (raw array) and new paginated ({ results, total, ... }) shapes.
+    // Old Redis cache entries (30-min TTL) may still return a raw array after deploy.
+    const raw = response.data;
+    const isLegacy = Array.isArray(raw);
+    const normalized = isLegacy
+      ? { results: raw, total: raw.length, page: 1, pageSize: raw.length, hasMore: false }
+      : { results: raw.results || [], total: raw.total || 0, page: raw.page || 1, pageSize: raw.pageSize || 20, hasMore: raw.hasMore || false };
 
-    return { payload: response.data };
+    dispatch({ type: SEARCH_BUSINESS_SUCCESS, payload: normalized.results });
+
+    return { payload: normalized };
 
   } catch (error) {
     dispatch({
       type: SEARCH_BUSINESS_FAILURE,
       payload: error.response?.data || error.message,
     });
-    return { payload: [] };
+    return { payload: { results: [], total: 0, page: 1, pageSize: 20, hasMore: false } };
+  }
+};
+
+export const fetchNearbyBusinesses = ({ lat, lng, category, limit = 6 }) => async (dispatch) => {
+  try {
+    const token = await dispatch(getClientToken());
+    const response = await axiosInstance.get(`${API_URL}/businesslist/nearby`, {
+      headers: { Authorization: `Bearer ${token}` },
+      params: { lat, lng, category, limit },
+    });
+    return { data: Array.isArray(response.data) ? response.data : [] };
+  } catch {
+    return { data: [] };
   }
 };
 

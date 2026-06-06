@@ -48,6 +48,7 @@ const FilterPanel = ({
   onFilterChange,
   onSortChange,
   onClearAll,
+  hasGeo = false,
 }) => {
   const activeCount = Object.values(activeFilters).filter((v) =>
     Array.isArray(v) ? v.length > 0 : v !== null && v !== undefined && v !== ""
@@ -105,6 +106,16 @@ const FilterPanel = ({
               {opt.label}
             </button>
           ))}
+          {hasGeo && (
+            <button
+              key="nearest"
+              className={`${styles["sort-chip"]} ${sortBy === "nearest" ? styles["sort-chip-active"] : ""}`}
+              onClick={() => onSortChange("nearest")}
+              title="Sort by distance from your location"
+            >
+              Nearest
+            </button>
+          )}
         </div>
       </div>
 
