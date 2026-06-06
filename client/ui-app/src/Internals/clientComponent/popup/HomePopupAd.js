@@ -9,6 +9,7 @@ import {
   Box,
   Typography,
   LinearProgress,
+  Button,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
@@ -18,87 +19,267 @@ import { getHomePopupAd } from "../../../redux/actions/advertisementAction";
 const SHOW_DELAY_MS = 1000;
 const HIDE_ON = ["/admin", "/dashboard"];
 
+const BRAND_ORANGE = "#ff7a00";
+const BRAND_ORANGE_DARK = "#e65f00";
+const BRAND_NAVY = "#06155d";
+const SURFACE_DARK = "#0b1020";
+
 const getSeenKey = (adId) => `popup_seen_${adId}`;
 
-/* ── Confetti helper ── */
 let confettiModule = null;
 const fireConfetti = async () => {
   try {
     if (!confettiModule) {
       confettiModule = (await import("canvas-confetti")).default;
     }
+
     const fire = (particleRatio, opts) =>
-      confettiModule(
-        Object.assign({}, opts, {
-          particleCount: Math.floor(200 * particleRatio),
-        })
-      );
+      confettiModule({
+        ...opts,
+        particleCount: Math.floor(200 * particleRatio),
+      });
+
     fire(0.25, { spread: 26, startVelocity: 55, origin: { y: 0.6 } });
-    fire(0.2,  { spread: 60,                   origin: { y: 0.6 } });
+    fire(0.2, { spread: 60, origin: { y: 0.6 } });
     fire(0.35, { spread: 100, decay: 0.91, scalar: 0.8, origin: { y: 0.6 } });
-    fire(0.1,  { spread: 120, startVelocity: 25, decay: 0.92, scalar: 1.2, origin: { y: 0.6 } });
-    fire(0.1,  { spread: 120, startVelocity: 45, origin: { y: 0.6 } });
-  } catch (_) { /* fail silently if canvas-confetti not available */ }
+    fire(0.1, {
+      spread: 120,
+      startVelocity: 25,
+      decay: 0.92,
+      scalar: 1.2,
+      origin: { y: 0.6 },
+    });
+    fire(0.1, { spread: 120, startVelocity: 45, origin: { y: 0.6 } });
+  } catch (_) {
+    // Confetti is decorative, so the popup should still work if it fails.
+  }
 };
 
-/* ── Shared close-button ── */
-const CloseBtn = ({ onClick, countdown, totalDuration }) => (
+const CloseBtn = ({ onClick }) => (
   <IconButton
     onClick={onClick}
     size="small"
     aria-label="Close advertisement"
     sx={{
       position: "absolute",
-      top: 10,
-      right: 10,
-      zIndex: 20,
-      bgcolor: "rgba(0,0,0,0.55)",
-      backdropFilter: "blur(4px)",
+      top: 12,
+      right: 12,
+      zIndex: 30,
+      bgcolor: "rgba(15,23,42,0.78)",
+      backdropFilter: "blur(12px)",
+      border: "1px solid rgba(255,255,255,0.24)",
       color: "#fff",
-      width: 32,
-      height: 32,
-      gap: 0.3,
-      "&:hover": { bgcolor: "rgba(0,0,0,0.75)", transform: "scale(1.08)" },
-      transition: "all 0.18s ease",
+      width: 36,
+      height: 36,
+      boxShadow: "0 10px 26px rgba(0,0,0,0.28)",
+      transition: "background-color 0.18s ease, transform 0.18s ease",
+      "&:hover": {
+        bgcolor: "rgba(15,23,42,0.92)",
+        transform: "scale(1.04)",
+      },
     }}
   >
-    <CloseIcon sx={{ fontSize: 15 }} />
-    {totalDuration > 0 && countdown > 0 && (
-      <Box
-        component="span"
-        sx={{ fontSize: 10, fontWeight: 700, lineHeight: 1, minWidth: 12 }}
-      >
-        {countdown}
-      </Box>
-    )}
+    <CloseIcon sx={{ fontSize: 18 }} />
   </IconButton>
 );
 
-/* ── Progress bar ── */
-const AdProgress = ({ progress }) => (
+const CountdownPill = ({ countdown, totalDuration }) => {
+  if (totalDuration <= 0 || countdown <= 0) return null;
+
+  return (
+    <Box
+      sx={{
+        position: "absolute",
+        top: 12,
+        left: 12,
+        zIndex: 30,
+        display: "flex",
+        alignItems: "center",
+        gap: 0.75,
+        px: 1.25,
+        py: 0.65,
+        borderRadius: "8px",
+        bgcolor: "rgba(255,255,255,0.92)",
+        color: BRAND_NAVY,
+        boxShadow: "0 10px 26px rgba(0,0,0,0.22)",
+        backdropFilter: "blur(10px)",
+      }}
+    >
+      <Box
+        sx={{
+          width: 7,
+          height: 7,
+          borderRadius: "50%",
+          bgcolor: BRAND_ORANGE,
+        }}
+      />
+      <Typography sx={{ fontSize: 12, fontWeight: 800, lineHeight: 1 }}>
+        {countdown}s
+      </Typography>
+    </Box>
+  );
+};
+
+const SponsoredBadge = () => (
+  <Box
+    sx={{
+      display: "inline-flex",
+      alignItems: "center",
+      alignSelf: "flex-start",
+      px: 1,
+      py: 0.45,
+      borderRadius: "6px",
+      bgcolor: "rgba(255,122,0,0.14)",
+      color: BRAND_ORANGE,
+      fontSize: 11,
+      fontWeight: 800,
+      letterSpacing: "0.04em",
+      textTransform: "uppercase",
+    }}
+  >
+    Sponsored
+  </Box>
+);
+
+const AdProgress = ({ progress, placement = "absolute" }) => (
   <LinearProgress
     variant="determinate"
     value={progress}
     sx={{
-      position: "absolute",
-      bottom: 0,
+      position: placement,
+      bottom: placement === "absolute" ? 0 : "auto",
       left: 0,
       right: 0,
-      height: 3,
-      zIndex: 10,
-      bgcolor: "rgba(255,255,255,0.25)",
+      height: 4,
+      zIndex: 20,
+      bgcolor: "rgba(255,255,255,0.18)",
       "& .MuiLinearProgress-bar": {
-        bgcolor: "#ff6b35",
+        background: `linear-gradient(90deg, ${BRAND_ORANGE}, #ffb15f)`,
         transition: "transform 1s linear",
       },
     }}
   />
 );
 
-/* ──────────────────────────────────────────
-   DESKTOP – Polished centered Dialog
-   ────────────────────────────────────────── */
-const DesktopPopup = ({ open, onClose, ad, progress, countdown, totalDuration }) => {
+const AdCta = ({ href, onClose, compact = false }) => {
+  if (!href) return null;
+
+  return (
+    <Button
+      component="a"
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={onClose}
+      endIcon={<OpenInNewIcon sx={{ fontSize: compact ? 15 : 17 }} />}
+      sx={{
+        minWidth: compact ? 106 : 124,
+        borderRadius: "8px",
+        px: compact ? 1.4 : 2,
+        py: compact ? 0.85 : 1,
+        bgcolor: BRAND_ORANGE,
+        color: "#fff",
+        fontSize: compact ? 12 : 13,
+        fontWeight: 800,
+        lineHeight: 1,
+        textTransform: "none",
+        boxShadow: "0 10px 24px rgba(255,122,0,0.32)",
+        whiteSpace: "nowrap",
+        "&:hover": {
+          bgcolor: BRAND_ORANGE_DARK,
+          boxShadow: "0 12px 28px rgba(230,95,0,0.36)",
+        },
+      }}
+    >
+      View offer
+    </Button>
+  );
+};
+
+const AdImage = ({ ad, imageSrc, onClose, desktop = false }) => (
+  <Box
+    component={ad.redirectUrl ? "a" : "div"}
+    href={ad.redirectUrl || undefined}
+    target={ad.redirectUrl ? "_blank" : undefined}
+    rel={ad.redirectUrl ? "noopener noreferrer" : undefined}
+    onClick={ad.redirectUrl ? onClose : undefined}
+    sx={{
+      display: "grid",
+      placeItems: "center",
+      cursor: ad.redirectUrl ? "pointer" : "default",
+      lineHeight: 0,
+      bgcolor: SURFACE_DARK,
+      overflow: "hidden",
+      textDecoration: "none",
+      minHeight: desktop ? 280 : 220,
+    }}
+  >
+    <Box
+      component="img"
+      src={imageSrc}
+      alt={ad.title || "Advertisement"}
+      sx={{
+        width: "100%",
+        height: "auto",
+        maxHeight: desktop ? "68vh" : "58vh",
+        display: "block",
+        objectFit: "contain",
+      }}
+    />
+  </Box>
+);
+
+const AdFooter = ({ ad, onClose, compact = false }) => {
+  if (!ad.title && !ad.redirectUrl) return null;
+
+  return (
+    <Box
+      sx={{
+        display: "flex",
+        alignItems: { xs: "stretch", sm: "center" },
+        justifyContent: "space-between",
+        gap: 1.5,
+        p: compact ? 1.5 : 2,
+        bgcolor: "#fff",
+        borderTop: "1px solid rgba(15,23,42,0.08)",
+      }}
+    >
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 0.75,
+          minWidth: 0,
+        }}
+      >
+        <SponsoredBadge />
+        {ad.title && (
+          <Typography
+            sx={{
+              color: "#101828",
+              fontSize: compact ? 15 : 17,
+              fontWeight: 800,
+              lineHeight: 1.25,
+              wordBreak: "break-word",
+            }}
+          >
+            {ad.title}
+          </Typography>
+        )}
+      </Box>
+      <AdCta href={ad.redirectUrl} onClose={onClose} compact={compact} />
+    </Box>
+  );
+};
+
+const DesktopPopup = ({
+  open,
+  onClose,
+  ad,
+  progress,
+  countdown,
+  totalDuration,
+}) => {
   const imageSrc = ad.bannerImage;
 
   return (
@@ -107,125 +288,45 @@ const DesktopPopup = ({ open, onClose, ad, progress, countdown, totalDuration })
       onClose={onClose}
       maxWidth="sm"
       fullWidth
-      TransitionProps={{ timeout: 320 }}
+      TransitionProps={{ timeout: 280 }}
       sx={{
         "& .MuiBackdrop-root": {
-          backdropFilter: "blur(3px)",
-          bgcolor: "rgba(0,0,0,0.6)",
+          backdropFilter: "blur(6px)",
+          bgcolor: "rgba(2,6,23,0.58)",
         },
         "& .MuiDialog-paper": {
-          borderRadius: "20px",
-          overflow: "hidden",
-          m: { xs: 2, sm: 3 },
+          width: "min(620px, calc(100vw - 32px))",
+          maxWidth: 620,
+          m: 2,
           p: 0,
-          boxShadow: "0 32px 80px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.08)",
-          background: "#0f0f0f",
-          maxWidth: 520,
+          borderRadius: "8px",
+          overflow: "hidden",
+          background: "#fff",
+          boxShadow:
+            "0 32px 90px rgba(2,6,23,0.42), 0 0 0 1px rgba(255,255,255,0.24)",
         },
       }}
     >
       <DialogContent sx={{ p: 0, position: "relative", overflow: "hidden" }}>
-        {/* Close + countdown */}
-         {/*<CloseBtn onClick={onClose} countdown={countdown} totalDuration={totalDuration} />*/}
-
-        {/* Banner image */}
-        <Box
-          component={ad.redirectUrl ? "a" : "div"}
-          href={ad.redirectUrl || undefined}
-          target={ad.redirectUrl ? "_blank" : undefined}
-          rel={ad.redirectUrl ? "noopener noreferrer" : undefined}
-          onClick={ad.redirectUrl ? onClose : undefined}
-          sx={{
-            display: "block",
-            cursor: ad.redirectUrl ? "pointer" : "default",
-            lineHeight: 0,
-            position: "relative",
-          }}
-        >
-          <Box
-            component="img"
-            src={imageSrc}
-            alt={ad.title || "Advertisement"}
-            sx={{
-              width: "100%",
-              height: "auto",
-              display: "block",
-              maxHeight: "72vh",
-              objectFit: "cover",
-            }}
-          />
-
-          {/* Gradient footer with title + CTA */}
-          {(ad.title || ad.redirectUrl) && (
-            <Box
-              sx={{
-                position: "absolute",
-                bottom: 0,
-                left: 0,
-                right: 0,
-                background:
-                  "linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.4) 60%, transparent 100%)",
-                px: 2.5,
-                py: 2,
-                display: "flex",
-                alignItems: "flex-end",
-                justifyContent: "space-between",
-                gap: 1,
-              }}
-            >
-              {ad.title && (
-                <Typography
-                  variant="subtitle1"
-                  sx={{
-                    color: "#fff",
-                    fontWeight: 700,
-                    lineHeight: 1.3,
-                    textShadow: "0 1px 4px rgba(0,0,0,0.5)",
-                    flex: 1,
-                  }}
-                >
-                  {ad.title}
-                </Typography>
-              )}
-              {ad.redirectUrl && (
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 0.5,
-                    bgcolor: "#ff6b35",
-                    color: "#fff",
-                    borderRadius: "8px",
-                    px: 1.5,
-                    py: 0.6,
-                    fontSize: 12,
-                    fontWeight: 700,
-                    whiteSpace: "nowrap",
-                    flexShrink: 0,
-                    boxShadow: "0 2px 8px rgba(255,107,53,0.45)",
-                  }}
-                >
-                  <OpenInNewIcon sx={{ fontSize: 13 }} />
-                  Visit
-                </Box>
-              )}
-            </Box>
-          )}
-        </Box>
-
-        {/* Auto-close progress bar */}
+        <CloseBtn onClick={onClose} />
+        <CountdownPill countdown={countdown} totalDuration={totalDuration} />
+        <AdImage ad={ad} imageSrc={imageSrc} onClose={onClose} desktop />
+        <AdFooter ad={ad} onClose={onClose} />
         {totalDuration > 0 && <AdProgress progress={progress} />}
       </DialogContent>
     </Dialog>
   );
 };
 
-/* ──────────────────────────────────────────
-   MOBILE – Bottom sheet Drawer
-   ────────────────────────────────────────── */
-const MobileBottomSheet = ({ open, onClose, ad, progress, countdown, totalDuration }) => {
-  const imageSrc =
-    ad.mobileBannerImage || ad.bannerImage;
+const MobileBottomSheet = ({
+  open,
+  onClose,
+  ad,
+  progress,
+  countdown,
+  totalDuration,
+}) => {
+  const imageSrc = ad.mobileBannerImage || ad.bannerImage;
 
   return (
     <Drawer
@@ -235,151 +336,48 @@ const MobileBottomSheet = ({ open, onClose, ad, progress, countdown, totalDurati
       ModalProps={{ keepMounted: false }}
       sx={{
         "& .MuiBackdrop-root": {
-          backdropFilter: "blur(2px)",
-          bgcolor: "rgba(0,0,0,0.55)",
+          backdropFilter: "blur(4px)",
+          bgcolor: "rgba(2,6,23,0.58)",
         },
         "& .MuiDrawer-paper": {
-          borderRadius: "20px 20px 0 0",
-          overflow: "hidden",
-          background: "#0f0f0f",
-          boxShadow: "0 -8px 40px rgba(0,0,0,0.6)",
+          width: "100%",
           maxHeight: "88vh",
+          overflow: "hidden",
+          borderRadius: "8px 8px 0 0",
+          background: "#fff",
+          boxShadow: "0 -18px 60px rgba(2,6,23,0.34)",
         },
       }}
     >
-      {/* Drag handle */}
       <Box
         sx={{
-          display: "flex",
-          justifyContent: "center",
-          pt: 1.2,
-          pb: 0.5,
           position: "relative",
+          pt: 1.5,
+          bgcolor: "#fff",
         }}
       >
         <Box
           sx={{
-            width: 36,
+            width: 42,
             height: 4,
+            mx: "auto",
+            mb: 1.25,
             borderRadius: 2,
-            bgcolor: "rgba(255,255,255,0.22)",
+            bgcolor: "rgba(15,23,42,0.18)",
           }}
         />
-        {/* Close button */}
-        {/* <CloseBtn onClick={onClose} countdown={countdown} totalDuration={totalDuration} /> */}
+        <CloseBtn onClick={onClose} />
+        <CountdownPill countdown={countdown} totalDuration={totalDuration} />
       </Box>
 
-      {/* Banner image */}
-      <Box
-        component={ad.redirectUrl ? "a" : "div"}
-        href={ad.redirectUrl || undefined}
-        target={ad.redirectUrl ? "_blank" : undefined}
-        rel={ad.redirectUrl ? "noopener noreferrer" : undefined}
-        onClick={ad.redirectUrl ? onClose : undefined}
-        sx={{
-          display: "block",
-          cursor: ad.redirectUrl ? "pointer" : "default",
-          lineHeight: 0,
-          position: "relative",
-          flex: 1,
-          overflow: "hidden",
-        }}
-      >
-        <Box
-          component="img"
-          src={imageSrc}
-          alt={ad.title || "Advertisement"}
-          sx={{
-            width: "100%",
-            height: "auto",
-            display: "block",
-            maxHeight: "70vh",
-            objectFit: "cover",
-          }}
-        />
+      <AdImage ad={ad} imageSrc={imageSrc} onClose={onClose} />
+      <AdFooter ad={ad} onClose={onClose} compact />
 
-        {/* Gradient footer */}
-        {(ad.title || ad.redirectUrl) && (
-          <Box
-            sx={{
-              position: "absolute",
-              bottom: 0,
-              left: 0,
-              right: 0,
-              background:
-                "linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.35) 55%, transparent 100%)",
-              px: 2,
-              py: 1.8,
-              display: "flex",
-              alignItems: "flex-end",
-              justifyContent: "space-between",
-              gap: 1,
-            }}
-          >
-            {ad.title && (
-              <Typography
-                variant="body1"
-                sx={{
-                  color: "#fff",
-                  fontWeight: 700,
-                  lineHeight: 1.3,
-                  flex: 1,
-                  textShadow: "0 1px 4px rgba(0,0,0,0.5)",
-                }}
-              >
-                {ad.title}
-              </Typography>
-            )}
-            {ad.redirectUrl && (
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 0.5,
-                  bgcolor: "#ff6b35",
-                  color: "#fff",
-                  borderRadius: "8px",
-                  px: 1.5,
-                  py: 0.7,
-                  fontSize: 13,
-                  fontWeight: 700,
-                  whiteSpace: "nowrap",
-                  flexShrink: 0,
-                  boxShadow: "0 2px 8px rgba(255,107,53,0.4)",
-                }}
-              >
-                <OpenInNewIcon sx={{ fontSize: 14 }} />
-                Visit
-              </Box>
-            )}
-          </Box>
-        )}
-      </Box>
-
-      {/* Auto-close progress bar */}
-      {totalDuration > 0 && (
-        <Box sx={{ position: "relative", height: 3 }}>
-          <LinearProgress
-            variant="determinate"
-            value={progress}
-            sx={{
-              height: 3,
-              bgcolor: "rgba(255,255,255,0.15)",
-              "& .MuiLinearProgress-bar": {
-                bgcolor: "#ff6b35",
-                transition: "transform 1s linear",
-              },
-            }}
-          />
-        </Box>
-      )}
+      {totalDuration > 0 && <AdProgress progress={progress} placement="relative" />}
     </Drawer>
   );
 };
 
-/* ──────────────────────────────────────────
-   ROOT COMPONENT
-   ────────────────────────────────────────── */
 const HomePopupAd = () => {
   const dispatch = useDispatch();
   const location = useLocation();
@@ -399,12 +397,10 @@ const HomePopupAd = () => {
   const isHomeRoute = location.pathname === "/";
   const shouldHide = HIDE_ON.some((p) => location.pathname.startsWith(p));
 
-  /* Fetch on home route */
   useEffect(() => {
     if (isHomeRoute) dispatch(getHomePopupAd());
   }, [dispatch, isHomeRoute]);
 
-  /* Show logic */
   useEffect(() => {
     if (!isHomeRoute || shouldHide || !homePopupAd || homePopupAdLoading) return;
 
@@ -423,7 +419,6 @@ const HomePopupAd = () => {
     return () => clearTimeout(timerRef.current);
   }, [isHomeRoute, shouldHide, homePopupAd, homePopupAdLoading]);
 
-  /* Auto-close countdown */
   useEffect(() => {
     if (!open || countdown <= 0) return;
 
@@ -463,9 +458,11 @@ const HomePopupAd = () => {
     totalDuration,
   };
 
-  return isMobile
-    ? <MobileBottomSheet {...sharedProps} />
-    : <DesktopPopup {...sharedProps} />;
+  return isMobile ? (
+    <MobileBottomSheet {...sharedProps} />
+  ) : (
+    <DesktopPopup {...sharedProps} />
+  );
 };
 
 export default HomePopupAd;
