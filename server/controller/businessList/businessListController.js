@@ -521,8 +521,18 @@ export const mainSearchController = async (req, res) => {
           if (Array.isArray(value) && value.length > 0) {
             matchQuery.$and.push({ [`filters.${key}`]: { $in: value } });
           } else if (typeof value === "number") {
-            // Range filter: "up to this value" — match strings and numbers in DB
-            matchQuery.$and.push({ [`filters.${key}`]: { $lte: value } });
+            // Range filter: "up to this value". DB stores prices as strings ("500"),
+            // so $lte: 500 (number) never matches — BSON types don't coerce.
+            // $convert to double handles both string and number storage.
+            // $ifNull + onError guard against missing/non-numeric fields.
+            matchQuery.$and.push({
+              $expr: {
+                $lte: [
+                  { $convert: { input: { $ifNull: [`$filters.${key}`, value + 1] }, to: "double", onError: value + 1 } },
+                  value
+                ]
+              }
+            });
           } else if (value !== null && value !== undefined && value !== "") {
             matchQuery.$and.push({ [`filters.${key}`]: value });
           }
