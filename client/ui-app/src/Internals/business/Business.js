@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import axiosInstance from "../../services/axiosInstance.js";
 import { useDispatch, useSelector } from "react-redux";
 import InputValidator from "../validators/inputValidator.js";
-import { getAllBusinessList, createBusinessList, editBusinessList, deleteBusinessList, trackQrDownload } from "../../redux/actions/businessListAction";
+import { getAllBusinessList, createBusinessList, editBusinessList, deleteBusinessList, trackQrDownload, updateBusinessBadges } from "../../redux/actions/businessListAction";
 import { getAllLocation, createLocation } from "../../redux/actions/locationAction";
 import { getAllCategory, createCategory, editCategory, businessCategorySearch } from "../../redux/actions/categoryAction";
 import { getAllUsersClient, getUserClientSuggestion } from "../../redux/actions/userClientAction.js";
@@ -1306,7 +1306,7 @@ const BusinessList = React.memo(() => {
         verification: formData.verification
       };
 
-      await dispatch(editBusinessList(editId, payload));
+      await dispatch(updateBusinessBadges(editId, payload));
       enqueueSnackbar("Badges updated successfully!", {
         variant: "success"
       });

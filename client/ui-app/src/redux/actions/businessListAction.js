@@ -261,6 +261,23 @@ export const editBusinessList = (id, businessData) => async (dispatch) => {
   }
 };
 
+export const updateBusinessBadges = (id, badgesData) => async (dispatch) => {
+  dispatch({ type: EDIT_BUSINESS_REQUEST });
+  try {
+    const token = await getValidToken(dispatch);
+
+    const response = await axiosInstance.put(`${API_URL}/businesslist/badges/${id}`, badgesData, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const updatedBusinessList = response.data;
+    dispatch({ type: EDIT_BUSINESS_SUCCESS, payload: updatedBusinessList });
+    return updatedBusinessList;
+  } catch (error) {
+    dispatch({ type: EDIT_BUSINESS_FAILURE, payload: error.response?.data || error.message });
+    throw error;
+  }
+};
+
 export const deleteBusinessList = (id) => async (dispatch) => {
   dispatch({ type: DELETE_BUSINESS_REQUEST });
   try {
