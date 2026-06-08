@@ -12,11 +12,11 @@ import {
   startChatConversation,
 } from "../../services/chatService";
 import { AUTH_EXPIRED_EVENT, connectSocket, getSocket } from "../../services/socketService";
+import styles from "./CustomerChatPanel.module.css";
 
 const LOG = (...args) => console.log('[CustomerChat]', ...args);
 const WARN = (...args) => console.warn('[CustomerChat]', ...args);
 const ERR = (...args) => console.error('[CustomerChat]', ...args);
-import styles from "./CustomerChatPanel.module.css";
 
 const cx = createScopedClassNames(styles);
 

@@ -43,15 +43,18 @@ export const connectSocket = (token) => {
 
   const resolvedToken = typeof token === 'function' ? token() : token;
 
-  // Already connected with the same token — reuse
-  if (socket?.connected && currentToken === resolvedToken) {
-    LOG('Reusing existing connected socket, id:', socket.id);
+  // Same token: reuse existing socket whether it's connected OR still connecting.
+  // Do NOT tear down a socket that is mid-handshake — that causes a torn-down-
+  // then-recreated cycle (visible as "transport close" in logs) where the new
+  // socket connects but the component's listeners were registered on the old one.
+  if (socket && currentToken === resolvedToken) {
+    LOG('Reusing socket — connected:', socket.connected, '| id:', socket.id || '(connecting)');
     return socket;
   }
 
-  // Tear down stale socket
+  // Token changed — tear down the stale socket and start fresh
   if (socket) {
-    LOG('Tearing down stale socket before reconnect');
+    LOG('Token changed — tearing down old socket before creating new one');
     socket.removeAllListeners();
     socket.disconnect();
     socket = null;

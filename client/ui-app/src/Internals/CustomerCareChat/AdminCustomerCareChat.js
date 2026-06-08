@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   Avatar,
@@ -34,7 +34,7 @@ import {
   sendChatMessageApi,
   updateChatConversationStatus,
 } from "../../services/chatService";
-import { AUTH_EXPIRED_EVENT, connectSocket } from "../../services/socketService";
+import { AUTH_EXPIRED_EVENT, connectSocket, refreshSocketToken } from "../../services/socketService";
 
 const LOG = (...args) => console.log('[AdminChat]', ...args);
 const WARN = (...args) => console.warn('[AdminChat]', ...args);
@@ -85,15 +85,24 @@ export default function AdminCustomerCareChat() {
   const [listError, setListError] = useState(null);
   const [authExpired, setAuthExpired] = useState(false);
   const endRef = useRef(null);
+  // Always-current ref so socket event handlers (closed over at effect-run time)
+  // can read the latest selected conversation without stale closure issues.
+  const selectedRef = useRef(null);
 
-  const token = useMemo(() => getAdminChatToken(), []);
+  // Read token fresh from localStorage on every call so we always use the
+  // latest value after axios silently refreshes it via the relogin interceptor.
+  const token = getAdminChatToken();
+
+  // Keep ref in sync so socket handlers always see the latest selected value
+  useEffect(() => { selectedRef.current = selected; }, [selected]);
 
   const scrollToEnd = useCallback(() => {
     requestAnimationFrame(() => endRef.current?.scrollIntoView({ behavior: "smooth" }));
   }, []);
 
   const loadConversations = useCallback(async () => {
-    if (!token) {
+    const currentToken = getAdminChatToken();
+    if (!currentToken) {
       WARN('loadConversations: no token, skipping');
       return;
     }
@@ -101,7 +110,7 @@ export default function AdminCustomerCareChat() {
     setLoadingList(true);
     setListError(null);
     try {
-      const result = await fetchChatConversations({ token, status, search, pageSize: 50 });
+      const result = await fetchChatConversations({ token: currentToken, status, search, pageSize: 50 });
       LOG('loadConversations: got %d conversations', result.data?.length ?? 0);
       setConversations(result.data || []);
       setSelected((current) => {
@@ -120,30 +129,32 @@ export default function AdminCustomerCareChat() {
     } finally {
       setLoadingList(false);
     }
-  }, [search, status, token]);
+  }, [search, status]);
 
   useEffect(() => {
     loadConversations();
   }, [loadConversations]);
 
   useEffect(() => {
-    if (!token || !selected?.id) {
+    if (!selected?.id) {
       setMessages([]);
       return undefined;
     }
 
     let cancelled = false;
     const loadMessages = async () => {
+      const currentToken = getAdminChatToken();
+      if (!currentToken) return;
       setLoadingMessages(true);
       try {
         const result = await fetchChatMessages({
           conversationId: selected.id,
-          token,
+          token: currentToken,
           pageSize: 80,
         });
         if (!cancelled) {
           setMessages(result.data || []);
-          await markChatRead({ conversationId: selected.id, token });
+          await markChatRead({ conversationId: selected.id, token: currentToken });
           setConversations((prev) => prev.map((item) =>
             item.id === selected.id ? { ...item, unreadForAdmin: 0 } : item
           ));
@@ -158,7 +169,7 @@ export default function AdminCustomerCareChat() {
     return () => {
       cancelled = true;
     };
-  }, [scrollToEnd, selected?.id, token]);
+  }, [scrollToEnd, selected?.id]);
 
   // Listen for auth expired events from socketService
   useEffect(() => {
@@ -171,13 +182,29 @@ export default function AdminCustomerCareChat() {
     return () => window.removeEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
   }, []);
 
+  // When axios silently refreshes the access token, reconnect the socket
+  // so its next handshake uses the new token instead of the expired one.
   useEffect(() => {
-    if (!token) {
+    const handleTokenRefreshed = (event) => {
+      const newToken = event.detail?.accessToken;
+      LOG('token:refreshed event — reconnecting socket with new token:', newToken ? newToken.slice(0, 12) + '…' : 'null');
+      if (newToken) {
+        setAuthExpired(false);
+        refreshSocketToken(newToken);
+      }
+    };
+    window.addEventListener('token:refreshed', handleTokenRefreshed);
+    return () => window.removeEventListener('token:refreshed', handleTokenRefreshed);
+  }, []);
+
+  useEffect(() => {
+    const currentToken = getAdminChatToken();
+    if (!currentToken) {
       WARN('Socket effect: no token, skipping socket setup');
       return undefined;
     }
 
-    LOG('Socket effect: connecting with token:', token.slice(0, 12) + '…');
+    LOG('Socket effect: connecting with token:', currentToken.slice(0, 12) + '…');
     // Pass getter function so reconnect always reads the freshest token
     const socket = connectSocket(() => getAdminChatToken());
 
@@ -185,6 +212,14 @@ export default function AdminCustomerCareChat() {
       LOG('socket connect — id:', socket?.id);
       setConnected(true);
       setAuthExpired(false);
+      // Always rejoin the conversation room after every (re)connect.
+      // chat:message:new is routed to chat:{id}, NOT admin:chat.
+      // Without this join the admin receives sidebar updates but never the messages.
+      const convId = selectedRef.current?.id;
+      if (convId) {
+        LOG('handleConnect: rejoining chat room for conversation:', convId);
+        socket?.emit("chat:join", { conversationId: convId });
+      }
     };
     const handleDisconnect = (reason) => {
       LOG('socket disconnect — reason:', reason);
@@ -195,9 +230,12 @@ export default function AdminCustomerCareChat() {
       setConnected(true);
       setAuthExpired(false);
       await loadConversations();
-      if (selected?.id) {
-        LOG('socket reconnect — re-joining chat room for conversation:', selected.id);
-        socket?.emit("chat:join", { conversationId: selected.id });
+      // handleConnect already emits chat:join, but emit here too in case
+      // reconnect fires without a separate connect event on some transports
+      const convId = selectedRef.current?.id;
+      if (convId) {
+        LOG('socket reconnect — re-joining chat room for conversation:', convId);
+        socket?.emit("chat:join", { conversationId: convId });
       }
     };
     const handleConversationUpdated = (conversation) => {
@@ -211,16 +249,21 @@ export default function AdminCustomerCareChat() {
     };
     const handleMessageNew = (payload) => {
       try {
-        LOG('chat:message:new — conversationId:', payload?.message?.conversationId, 'from:', payload?.message?.senderType);
+        const msgConvId = String(payload?.message?.conversationId || '');
+        // Use selectedRef — NOT the stale closure `selected` — so we always
+        // compare against the conversation the admin is currently viewing.
+        const currentSelectedId = selectedRef.current?.id;
+        LOG('chat:message:new — convId:', msgConvId, '| currentSelected:', currentSelectedId, '| from:', payload?.message?.senderType);
         if (payload?.conversation) handleConversationUpdated(payload.conversation);
-        if (payload?.message?.conversationId && selected?.id === String(payload.message.conversationId)) {
+        if (msgConvId && currentSelectedId === msgConvId) {
+          LOG('chat:message:new — appending message to chat window');
           setMessages((prev) => mergeMessage(prev, payload.message));
-          markChatRead({ conversationId: selected.id, token }).catch((err) => {
+          markChatRead({ conversationId: currentSelectedId }).catch((err) => {
             WARN('markChatRead failed after new message:', err.message);
           });
           scrollToEnd();
         } else {
-          LOG('chat:message:new — not for selected conversation, skipping message merge');
+          LOG('chat:message:new — message is for a different conversation, only updating sidebar');
         }
       } catch (error) {
         ERR('handleMessageNew error:', error);
@@ -254,10 +297,10 @@ export default function AdminCustomerCareChat() {
       socket?.off("chat:message:new", handleMessageNew);
       socket?.off("chat:unread:count", handleUnreadCount);
     };
-  }, [scrollToEnd, selected?.id, token, loadConversations]);
+  }, [scrollToEnd, selected?.id, loadConversations]);
 
   useEffect(() => {
-    if (!token || !selected?.id) return undefined;
+    if (!selected?.id) return undefined;
     const socket = connectSocket(() => getAdminChatToken());
     LOG('Joining chat room for conversation:', selected.id);
     socket?.emit("chat:join", { conversationId: selected.id });
@@ -265,7 +308,7 @@ export default function AdminCustomerCareChat() {
       LOG('Leaving chat room for conversation:', selected.id);
       socket?.emit("chat:leave", { conversationId: selected.id });
     };
-  }, [selected?.id, token]);
+  }, [selected?.id]);
 
   const handleSend = async () => {
     const text = input.trim();
@@ -276,7 +319,8 @@ export default function AdminCustomerCareChat() {
     setInput("");
     setSendError(null);
     try {
-      const result = await sendChatMessageApi({ conversationId: selected.id, text, token });
+      // No explicit token — axiosInstance interceptor injects fresh accessToken automatically
+      const result = await sendChatMessageApi({ conversationId: selected.id, text });
       LOG('handleSend: success — message id:', result.message?.id);
       setSelected(result.conversation);
       setConversations((prev) => upsertConversation(prev, result.conversation));
@@ -299,10 +343,10 @@ export default function AdminCustomerCareChat() {
 
   const handleStatusUpdate = async (nextStatus) => {
     if (!selected?.id) return;
+    // No explicit token — interceptor injects fresh accessToken
     const updated = await updateChatConversationStatus({
       conversationId: selected.id,
       status: nextStatus,
-      token,
     });
     setSelected(updated);
     setConversations((prev) => upsertConversation(prev, updated));

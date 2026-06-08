@@ -157,7 +157,12 @@ const Cards = ({
   const renderStatusBadges = () => statusBadges.length > 0 ? (
     <div className={cx("status-badges")} aria-label="Listing status">
       {statusBadges.map(badge => (
-        <span key={badge.key} className={cx("status-badge", badge.className)}>
+        <span
+          key={badge.key}
+          className={cx("status-badge", badge.className)}
+          aria-label={badge.label}
+          title={badge.label}
+        >
           {badge.icon}
           {badge.label}
         </span>
@@ -214,34 +219,6 @@ const Cards = ({
               />
             </div>
 
-            {/* Verified / Featured / Sponsored / Trending overlays */}
-            {(isVerified || isFeatured || isSponsored || isTrending) && (
-              <div className={cx("image-badges")}>
-                {isVerified && (
-                  <span className={cx("badge-verified")}>
-                    <VerifiedRoundedIcon style={{ fontSize: 10 }} />
-                    Verified
-                  </span>
-                )}
-                {isFeatured && (
-                  <span className={cx("badge-featured")}>
-                    <WorkspacePremiumRoundedIcon style={{ fontSize: 10 }} />
-                    Featured
-                  </span>
-                )}
-                {isSponsored && (
-                  <span className={cx("badge-sponsored")}>
-                    💎 Sponsored
-                  </span>
-                )}
-                {isTrending && (
-                  <span className={cx("badge-trending")}>
-                    🔥 Trending
-                  </span>
-                )}
-              </div>
-            )}
-
             {/* Fav button */}
             {businessId && (
               <button
@@ -275,6 +252,7 @@ const Cards = ({
                   {category && <span className={cx("category-pill")}>{category}</span>}
                   {distanceLabel && <span className={cx("distance-chip")}>{distanceLabel}</span>}
                 </div>
+                {renderStatusBadges()}
                 <div className={cx("card-info")}>
                   {address && <p className={cx("card-address-inline")}><LocationOnIcon className={cx("icon")} /><span>{address}</span></p>}
                   {category?.toLowerCase().includes("bank") && contactList && <p className={cx("card-ifsc")}>IFSC: {contactList}</p>}
@@ -310,6 +288,7 @@ const Cards = ({
                   {category && <span className={cx("category-pill")}>{category}</span>}
                   {distanceLabel && <span className={cx("distance-chip")}>{distanceLabel}</span>}
                 </div>
+                {renderStatusBadges()}
               </div>
               <div className={cx("card-info")}>
                 {address && <p className={cx("card-address-inline")}><LocationOnIcon className={cx("icon")} /><span>{address}</span></p>}

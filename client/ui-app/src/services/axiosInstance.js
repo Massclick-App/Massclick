@@ -164,9 +164,15 @@ axiosInstance.interceptors.response.use(
         .then((response) => {
           const { accessToken, refreshToken: newRefreshToken, accessTokenExpiresAt } = response.data;
 
+          console.log('[Auth] Access token refreshed — notifying socket');
           localStorage.setItem('accessToken', accessToken);
           localStorage.setItem('refreshToken', newRefreshToken);
           localStorage.setItem('accessTokenExpiresAt', accessTokenExpiresAt);
+
+          // Notify the socket layer so the next reconnect uses the new token.
+          // We dispatch an event instead of importing socketService directly
+          // to avoid a circular dependency (socketService → axiosInstance → socketService).
+          window.dispatchEvent(new CustomEvent('token:refreshed', { detail: { accessToken } }));
 
           originalRequest.headers.Authorization = `Bearer ${accessToken}`;
           processQueue(null, accessToken);

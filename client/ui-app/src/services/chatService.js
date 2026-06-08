@@ -2,12 +2,23 @@ import axiosInstance from "./axiosInstance";
 
 const API_URL = process.env.REACT_APP_API_URL;
 
-const getAuthHeader = (token) => ({
-  headers: {
-    Authorization: `Bearer ${token}`,
-    "Content-Type": "application/json",
-  },
-});
+// WHY token is optional here:
+// Admin calls: don't pass token at all. The axiosInstance request interceptor
+// (axiosInstance.js line ~102) automatically injects the fresh accessToken from
+// localStorage — but ONLY when no Authorization header is already set.
+// Passing a stale token explicitly bypasses that logic and causes 401s.
+//
+// Customer calls: always pass the JWT explicitly because the interceptor only
+// injects the OAuth accessToken, not the customer JWT.
+const getAuthHeader = (token) => {
+  if (!token) return {};   // Let axiosInstance interceptor inject fresh token
+  return {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  };
+};
 
 const retryWithBackoff = async (fn, maxRetries = 3, baseDelay = 1000) => {
   let lastError;
