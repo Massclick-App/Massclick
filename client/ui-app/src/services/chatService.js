@@ -9,6 +9,29 @@ const getAuthHeader = (token) => ({
   },
 });
 
+const retryWithBackoff = async (fn, maxRetries = 3, baseDelay = 1000) => {
+  let lastError;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      const isRetryable =
+        error.code === 'ECONNABORTED' ||
+        error.message?.includes('timeout') ||
+        (error.response?.status >= 500);
+
+      if (!isRetryable || attempt === maxRetries - 1) {
+        throw error;
+      }
+
+      const delay = baseDelay * Math.pow(2, attempt) + Math.random() * 1000;
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  throw lastError;
+};
+
 export const getCustomerChatToken = () => localStorage.getItem("authToken");
 export const getAdminChatToken = () => localStorage.getItem("accessToken");
 
@@ -23,21 +46,27 @@ export const fetchChatMessages = ({
   pageNo = 1,
   pageSize = 50,
 }) =>
-  axiosInstance
-    .get(`${API_URL}/chat/conversations/${conversationId}/messages`, {
-      ...getAuthHeader(token),
-      params: { pageNo, pageSize },
-    })
-    .then((res) => res.data);
+  retryWithBackoff(() =>
+    axiosInstance
+      .get(`${API_URL}/chat/conversations/${conversationId}/messages`, {
+        ...getAuthHeader(token),
+        params: { pageNo, pageSize },
+      })
+      .then((res) => res.data)
+  );
 
 export const sendChatMessageApi = ({ conversationId, text, token }) =>
-  axiosInstance
-    .post(
-      `${API_URL}/chat/conversations/${conversationId}/messages`,
-      { text },
-      getAuthHeader(token)
-    )
-    .then((res) => res.data);
+  retryWithBackoff(() =>
+    axiosInstance
+      .post(
+        `${API_URL}/chat/conversations/${conversationId}/messages`,
+        { text },
+        getAuthHeader(token)
+      )
+      .then((res) => res.data),
+    3,
+    500
+  );
 
 export const markChatRead = ({ conversationId, token }) =>
   axiosInstance

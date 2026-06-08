@@ -7,6 +7,7 @@ const ADMIN_PATH_PREFIXES = ['/admin', '/dashboard'];
 
 export const axiosInstance = axios.create({
   baseURL: API_URL,
+  timeout: 20000,
 });
 
 // Track number of active requests

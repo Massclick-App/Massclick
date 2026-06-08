@@ -208,9 +208,10 @@ export const markConversationRead = async ({ conversationId, user }) => {
     { $set: isAdmin ? { readByAdminAt: now } : { readByCustomerAt: now } }
   );
 
+  const updateObj = isAdmin ? { unreadForAdmin: 0 } : { unreadForCustomer: 0 };
   const updatedConversation = await chatConversationModel.findByIdAndUpdate(
     conversation.id,
-    { $set: isAdmin ? { unreadForAdmin: 0 } : { unreadForCustomer: 0 } },
+    { $set: updateObj },
     { new: true }
   ).lean();
 
@@ -237,6 +238,8 @@ export const updateConversationStatus = async ({ conversationId, status, user })
     conversation.id,
     {
       status,
+      unreadForAdmin: status === "closed" ? 0 : undefined,
+      unreadForCustomer: status === "closed" ? 0 : undefined,
       closedAt: status === "closed" ? new Date() : null,
       closedBy: status === "closed" ? user.userId : null,
     },
@@ -247,6 +250,10 @@ export const updateConversationStatus = async ({ conversationId, status, user })
   emitToRoom(buildRoom.chat(conversation.id), WS_EVENTS.CHAT_CONVERSATION_UPDATED, payload);
   emitToRoom(buildRoom.adminChat(), WS_EVENTS.CHAT_CONVERSATION_UPDATED, payload);
   emitToRoom(buildRoom.user(conversation.customerUserId), WS_EVENTS.CHAT_CONVERSATION_UPDATED, payload);
+
+  if (status === "closed") {
+    await emitChatUnreadCount();
+  }
 
   return payload;
 };

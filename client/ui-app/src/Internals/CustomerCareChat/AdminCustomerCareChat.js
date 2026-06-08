@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Alert,
   Avatar,
   Badge,
   Box,
@@ -12,6 +13,7 @@ import {
   List,
   ListItemButton,
   Paper,
+  Snackbar,
   Stack,
   TextField,
   ToggleButton,
@@ -32,7 +34,11 @@ import {
   sendChatMessageApi,
   updateChatConversationStatus,
 } from "../../services/chatService";
-import { connectSocket } from "../../services/socketService";
+import { AUTH_EXPIRED_EVENT, connectSocket } from "../../services/socketService";
+
+const LOG = (...args) => console.log('[AdminChat]', ...args);
+const WARN = (...args) => console.warn('[AdminChat]', ...args);
+const ERR = (...args) => console.error('[AdminChat]', ...args);
 
 const formatTime = (value) => {
   if (!value) return "";
@@ -75,6 +81,9 @@ export default function AdminCustomerCareChat() {
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
   const [connected, setConnected] = useState(false);
+  const [sendError, setSendError] = useState(null);
+  const [listError, setListError] = useState(null);
+  const [authExpired, setAuthExpired] = useState(false);
   const endRef = useRef(null);
 
   const token = useMemo(() => getAdminChatToken(), []);
@@ -84,20 +93,30 @@ export default function AdminCustomerCareChat() {
   }, []);
 
   const loadConversations = useCallback(async () => {
-    if (!token) return;
+    if (!token) {
+      WARN('loadConversations: no token, skipping');
+      return;
+    }
+    LOG('loadConversations: fetching status=%s search=%s', status, search || '(none)');
     setLoadingList(true);
+    setListError(null);
     try {
-      const result = await fetchChatConversations({
-        token,
-        status,
-        search,
-        pageSize: 50,
-      });
+      const result = await fetchChatConversations({ token, status, search, pageSize: 50 });
+      LOG('loadConversations: got %d conversations', result.data?.length ?? 0);
       setConversations(result.data || []);
       setSelected((current) => {
         if (!current) return result.data?.[0] || null;
         return result.data?.find((item) => item.id === current.id) || result.data?.[0] || null;
       });
+    } catch (error) {
+      const msg = error.response?.data?.error || error.message || "Failed to load conversations";
+      ERR('loadConversations failed:', msg, '| status:', error.response?.status);
+      if (error.response?.status === 401) {
+        LOG('loadConversations: 401 received — token is invalid/expired');
+        setAuthExpired(true);
+        return;
+      }
+      setListError(msg);
     } finally {
       setLoadingList(false);
     }
@@ -141,64 +160,138 @@ export default function AdminCustomerCareChat() {
     };
   }, [scrollToEnd, selected?.id, token]);
 
+  // Listen for auth expired events from socketService
   useEffect(() => {
-    if (!token) return undefined;
+    const handleAuthExpired = () => {
+      WARN('AUTH_EXPIRED_EVENT received — stopping socket activity');
+      setAuthExpired(true);
+      setConnected(false);
+    };
+    window.addEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
+    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
+  }, []);
 
-    const socket = connectSocket(token);
-    const handleConnect = () => setConnected(true);
-    const handleDisconnect = () => setConnected(false);
+  useEffect(() => {
+    if (!token) {
+      WARN('Socket effect: no token, skipping socket setup');
+      return undefined;
+    }
+
+    LOG('Socket effect: connecting with token:', token.slice(0, 12) + '…');
+    // Pass getter function so reconnect always reads the freshest token
+    const socket = connectSocket(() => getAdminChatToken());
+
+    const handleConnect = () => {
+      LOG('socket connect — id:', socket?.id);
+      setConnected(true);
+      setAuthExpired(false);
+    };
+    const handleDisconnect = (reason) => {
+      LOG('socket disconnect — reason:', reason);
+      setConnected(false);
+    };
+    const handleReconnect = async (attempt) => {
+      LOG('socket reconnect — attempt #', attempt, '— reloading state');
+      setConnected(true);
+      setAuthExpired(false);
+      await loadConversations();
+      if (selected?.id) {
+        LOG('socket reconnect — re-joining chat room for conversation:', selected.id);
+        socket?.emit("chat:join", { conversationId: selected.id });
+      }
+    };
     const handleConversationUpdated = (conversation) => {
-      setConversations((prev) => upsertConversation(prev, conversation));
-      setSelected((current) => current?.id === conversation.id ? conversation : current);
+      try {
+        LOG('chat:conversation:updated — id:', conversation?.id, 'status:', conversation?.status);
+        setConversations((prev) => upsertConversation(prev, conversation));
+        setSelected((current) => current?.id === conversation.id ? conversation : current);
+      } catch (error) {
+        ERR('handleConversationUpdated error:', error);
+      }
     };
     const handleMessageNew = (payload) => {
-      if (payload?.conversation) handleConversationUpdated(payload.conversation);
-      if (payload?.message?.conversationId && selected?.id === String(payload.message.conversationId)) {
-        setMessages((prev) => mergeMessage(prev, payload.message));
-        markChatRead({ conversationId: selected.id, token }).catch(() => {});
-        scrollToEnd();
+      try {
+        LOG('chat:message:new — conversationId:', payload?.message?.conversationId, 'from:', payload?.message?.senderType);
+        if (payload?.conversation) handleConversationUpdated(payload.conversation);
+        if (payload?.message?.conversationId && selected?.id === String(payload.message.conversationId)) {
+          setMessages((prev) => mergeMessage(prev, payload.message));
+          markChatRead({ conversationId: selected.id, token }).catch((err) => {
+            WARN('markChatRead failed after new message:', err.message);
+          });
+          scrollToEnd();
+        } else {
+          LOG('chat:message:new — not for selected conversation, skipping message merge');
+        }
+      } catch (error) {
+        ERR('handleMessageNew error:', error);
+      }
+    };
+    const handleUnreadCount = (data) => {
+      try {
+        LOG('chat:unread:count — admin unread total:', data?.admin);
+      } catch (error) {
+        ERR('handleUnreadCount error:', error);
       }
     };
 
-    setConnected(Boolean(socket?.connected));
+    const isConnected = Boolean(socket?.connected);
+    LOG('Socket effect: socket already connected?', isConnected, '| id:', socket?.id);
+    setConnected(isConnected);
+
     socket?.on("connect", handleConnect);
     socket?.on("disconnect", handleDisconnect);
+    socket?.on("reconnect", handleReconnect);
     socket?.on("chat:conversation:updated", handleConversationUpdated);
     socket?.on("chat:message:new", handleMessageNew);
+    socket?.on("chat:unread:count", handleUnreadCount);
 
     return () => {
+      LOG('Socket effect cleanup — removing listeners');
       socket?.off("connect", handleConnect);
       socket?.off("disconnect", handleDisconnect);
+      socket?.off("reconnect", handleReconnect);
       socket?.off("chat:conversation:updated", handleConversationUpdated);
       socket?.off("chat:message:new", handleMessageNew);
+      socket?.off("chat:unread:count", handleUnreadCount);
     };
-  }, [scrollToEnd, selected?.id, token]);
+  }, [scrollToEnd, selected?.id, token, loadConversations]);
 
   useEffect(() => {
     if (!token || !selected?.id) return undefined;
-    const socket = connectSocket(token);
+    const socket = connectSocket(() => getAdminChatToken());
+    LOG('Joining chat room for conversation:', selected.id);
     socket?.emit("chat:join", { conversationId: selected.id });
-    return () => socket?.emit("chat:leave", { conversationId: selected.id });
+    return () => {
+      LOG('Leaving chat room for conversation:', selected.id);
+      socket?.emit("chat:leave", { conversationId: selected.id });
+    };
   }, [selected?.id, token]);
 
   const handleSend = async () => {
     const text = input.trim();
     if (!text || !selected?.id || sending) return;
 
+    LOG('handleSend: sending message to conversation:', selected.id, '| length:', text.length);
     setSending(true);
     setInput("");
+    setSendError(null);
     try {
-      const result = await sendChatMessageApi({
-        conversationId: selected.id,
-        text,
-        token,
-      });
+      const result = await sendChatMessageApi({ conversationId: selected.id, text, token });
+      LOG('handleSend: success — message id:', result.message?.id);
       setSelected(result.conversation);
       setConversations((prev) => upsertConversation(prev, result.conversation));
       setMessages((prev) => mergeMessage(prev, result.message));
       scrollToEnd();
     } catch (error) {
       setInput(text);
+      const status = error.response?.status;
+      const errorMsg = error.response?.data?.error || error.message || "Failed to send message";
+      ERR('handleSend failed — status:', status, '| error:', errorMsg);
+      if (status === 401) {
+        setAuthExpired(true);
+        return;
+      }
+      setSendError(errorMsg);
     } finally {
       setSending(false);
     }
@@ -239,6 +332,17 @@ export default function AdminCustomerCareChat() {
           </Stack>
         </Stack>
       </Box>
+
+      {authExpired && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          Your session has expired. Please refresh the page to log in again.
+        </Alert>
+      )}
+      {listError && (
+        <Alert severity="error" onClose={() => setListError(null)} sx={{ mb: 2 }}>
+          {listError}
+        </Alert>
+      )}
 
       <Paper sx={{ width: "100%", height: "calc(100vh - 210px)", minHeight: 560, display: "grid", gridTemplateColumns: { xs: "1fr", md: "360px 1fr" }, overflow: "hidden", borderRadius: 2 }}>
         <Box sx={{ borderRight: { md: "1px solid #e5e7eb" }, display: "flex", flexDirection: "column", minHeight: 0 }}>
@@ -418,6 +522,17 @@ export default function AdminCustomerCareChat() {
           )}
         </Box>
       </Paper>
+
+      <Snackbar
+        open={Boolean(sendError)}
+        autoHideDuration={6000}
+        onClose={() => setSendError(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert severity="error" onClose={() => setSendError(null)} sx={{ minWidth: 300 }}>
+          {sendError}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }
