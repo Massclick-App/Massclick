@@ -127,6 +127,43 @@ const Cards = ({
   const priceFilterDisabled = filterConfig.some(
     fc => (fc.key === "price" || fc.key === "priceRange") && fc.enabled === false
   );
+  const statusBadges = [
+    isVerified && {
+      key: "verified",
+      className: "status-badge--verified",
+      icon: <VerifiedRoundedIcon style={{ fontSize: 13 }} />,
+      label: "Verified"
+    },
+    isFeatured && {
+      key: "featured",
+      className: "status-badge--featured",
+      icon: <WorkspacePremiumRoundedIcon style={{ fontSize: 13 }} />,
+      label: "Featured"
+    },
+    isSponsored && {
+      key: "sponsored",
+      className: "status-badge--sponsored",
+      icon: <DiamondRoundedIcon style={{ fontSize: 13 }} />,
+      label: "Sponsored"
+    },
+    isTrending && {
+      key: "trending",
+      className: "status-badge--trending",
+      icon: <LocalFireDepartmentRoundedIcon style={{ fontSize: 13 }} />,
+      label: "Trending"
+    }
+  ].filter(Boolean);
+
+  const renderStatusBadges = () => statusBadges.length > 0 ? (
+    <div className={cx("status-badges")} aria-label="Listing status">
+      {statusBadges.map(badge => (
+        <span key={badge.key} className={cx("status-badge", badge.className)}>
+          {badge.icon}
+          {badge.label}
+        </span>
+      ))}
+    </div>
+  ) : null;
 
   const handlePhoneClick = e => {
     e.preventDefault();
