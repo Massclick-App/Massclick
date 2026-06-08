@@ -11,7 +11,6 @@ import { Button, Modal, Box, Typography, Chip, IconButton } from "@mui/material"
 import CardsSearch from "../../CardsSearch/CardsSearch";
 import { updateOtpUser } from "../../../../redux/actions/otpAction.js";
 const cx = createScopedClassNames(styles);
-const logoUrl = "/mnt/data/30429df4-c55e-4274-a7ab-b2327308fb94.png";
 const LeadsCardHistory = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -159,22 +158,6 @@ const LeadsCardHistory = () => {
     }
   };
   return <>
-      <div className={cx("lh-topbar")}>
-        <div className={cx("lh-topbar-inner")}>
-          <div className={cx("lh-brand")}>
-            <img src={logoUrl} className={cx("lh-logo")} alt="Massclick" />
-            <div className={cx("lh-brand-texts")}>
-              <div className={cx("lh-title")}>Massclick</div>
-              <div className={cx("lh-sub")}>India&apos;s Leading Local Search Engine</div>
-            </div>
-          </div>
-
-          <Button variant="outlined" startIcon={<BackIcon />} onClick={() => navigate(-1)}>
-            Back
-          </Button>
-        </div>
-      </div>
-
       <div className={cx("lh-search-shell")}>
         <CardsSearch />
       </div>
@@ -194,6 +177,9 @@ const LeadsCardHistory = () => {
                 Showing <strong>{filteredLeads.length}</strong> of{" "}
                 <strong>{totalLeads}</strong> leads
               </div>
+              <Button variant="outlined" startIcon={<BackIcon />} onClick={() => navigate(-1)}>
+                Back
+              </Button>
             </div>
           </header>
 
