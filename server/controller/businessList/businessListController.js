@@ -897,3 +897,37 @@ export const getPendingBusinessAction = async (req, res) => {
     return res.status(400).send({ message: error.message });
   }
 };
+
+export const updateBusinessBadgesAction = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { badges, verification } = req.body;
+
+    if (!id) {
+      return res.status(400).send({ message: "Business ID is required" });
+    }
+
+    const business = await businessListModel.findByIdAndUpdate(
+      id,
+      {
+        badges: badges || {},
+        verification: verification || {}
+      },
+      { new: true }
+    );
+
+    if (!business) {
+      return res.status(404).send({ message: "Business not found" });
+    }
+
+    await invalidateSearchCache();
+    await invalidateDashboardCache();
+    await invalidateCategoryCache();
+
+    res.status(200).send(business);
+
+  } catch (error) {
+    console.error("Error updating business badges:", error);
+    return res.status(400).send({ message: error.message });
+  }
+};

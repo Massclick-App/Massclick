@@ -1,6 +1,6 @@
 import express from 'express'
 
-import { addBusinessListAction, viewBusinessListAction,getBusinessBySlugAction, getSuggestionsController, getEnhancedSuggestionsController, mainSearchController, nearbyBusinessesController, viewAllBusinessListAction,viewAllBusinessAction, updateBusinessListAction, deleteBusinessListAction, activeBusinessListAction, viewAllClientBusinessListAction, viewBusinessByCategory, findBusinessByMobileAction, dashboardSummaryAction, dashboardChartsAction, getPendingBusinessAction, trackQrDownload } from "../controller/businessList/businessListController.js"
+import { addBusinessListAction, viewBusinessListAction,getBusinessBySlugAction, getSuggestionsController, getEnhancedSuggestionsController, mainSearchController, nearbyBusinessesController, viewAllBusinessListAction,viewAllBusinessAction, updateBusinessListAction, deleteBusinessListAction, activeBusinessListAction, viewAllClientBusinessListAction, viewBusinessByCategory, findBusinessByMobileAction, dashboardSummaryAction, dashboardChartsAction, getPendingBusinessAction, trackQrDownload, updateBusinessBadgesAction } from "../controller/businessList/businessListController.js"
 import { oauthAuthentication } from '../helper/oauthHelper.js';
 import { logSearchAction, viewLogSearchAction, viewSearchAction, updateSearchAction, getTrendingSearchesAction, sendEnquiryLead } from "../controller/businessList/logSearchController.js"
 import { cacheMiddleware } from '../middleware/cacheMiddleware.js';
@@ -21,6 +21,7 @@ router.get('/api/businesslist/clientview', oauthAuthentication, viewAllClientBus
 router.put('/api/businesslist/update/:id', oauthAuthentication, validateBusiness, updateBusinessListAction);
 router.delete('/api/businesslist/delete/:id', oauthAuthentication, deleteBusinessListAction);
 router.put('/api/businesslist/activate/:id', oauthAuthentication, activeBusinessListAction);
+router.put('/api/businesslist/badges/:id', oauthAuthentication, updateBusinessBadgesAction);
 router.post('/api/businesslist/log-search', logSearchAction);
 router.post('/api/businesslist/send-enquiry', sendEnquiryLead);
 router.put('/api/businesslist/log-search/:id', updateSearchAction);
