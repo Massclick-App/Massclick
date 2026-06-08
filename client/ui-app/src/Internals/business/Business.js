@@ -2053,6 +2053,56 @@ const BusinessList = React.memo(() => {
                   </div>)}
               </div>
             </div>
+
+            <div className={cx("form-divider")}></div>
+            <SectionHeader title="Badges & Visibility" subtitle="Control how this listing is highlighted" />
+
+            <div className={cx("form-input-group col-span-all")}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}>
+                {[
+                  { key: "isFeatured",  label: "⭐ Featured",  color: "#d97706", bg: "#fef3c7" },
+                  { key: "isSponsored", label: "💎 Sponsored", color: "#7c3aed", bg: "#ede9fe" },
+                  { key: "isTrending",  label: "🔥 Trending",  color: "#dc2626", bg: "#fee2e2" },
+                ].map(({ key, label, color, bg }) => {
+                  const on = !!formData.badges?.[key];
+                  return (
+                    <label key={key} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 14px", borderRadius: "8px", border: `1.5px solid ${on ? color : "#e0e0e0"}`, background: on ? bg : "#fafafa", cursor: "pointer", userSelect: "none", fontWeight: 600, fontSize: "13px", color: on ? color : "#555" }}>
+                      <input type="checkbox" checked={on} onChange={e => setFormData(prev => ({ ...prev, badges: { ...prev.badges, [key]: e.target.checked } }))} style={{ accentColor: color }} />
+                      {label}
+                    </label>
+                  );
+                })}
+
+                <label style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 14px", borderRadius: "8px", border: `1.5px solid ${formData.verification?.isVerified ? "#2563eb" : "#e0e0e0"}`, background: formData.verification?.isVerified ? "#dbeafe" : "#fafafa", cursor: "pointer", userSelect: "none", fontWeight: 600, fontSize: "13px", color: formData.verification?.isVerified ? "#2563eb" : "#555" }}>
+                  <input type="checkbox" checked={!!formData.verification?.isVerified} onChange={e => setFormData(prev => ({ ...prev, verification: { ...prev.verification, isVerified: e.target.checked } }))} style={{ accentColor: "#2563eb" }} />
+                  ✅ Verified
+                </label>
+              </div>
+            </div>
+
+            <div className={cx("form-input-group")}>
+              <label className={cx("input-label")}>Priority Score</label>
+              <div style={{ display: "flex", gap: "12px", alignItems: "flex-end" }}>
+                <input type="number" min="0" max="100" className={cx("text-input")} value={formData.badges?.priorityScore ?? 0} onChange={e => setFormData(prev => ({ ...prev, badges: { ...prev.badges, priorityScore: Number(e.target.value) } }))} placeholder="0–100, higher = boosted in results" style={{ flex: 1 }} />
+                {editMode && editId && (
+                  <Button
+                    variant="contained"
+                    onClick={updateBadgesOnly}
+                    disabled={badgeUpdateLoading}
+                    sx={{
+                      bgcolor: '#ff8c42',
+                      color: '#fff',
+                      textTransform: 'none',
+                      fontWeight: 600,
+                      '&:hover': { bgcolor: '#e67a2e' },
+                      '&:disabled': { bgcolor: '#cccccc' }
+                    }}
+                  >
+                    {badgeUpdateLoading ? <CircularProgress size={20} color="inherit" /> : "Update Badges"}
+                  </Button>
+                )}
+              </div>
+            </div>
           </>;
       case 1:
         return <>
@@ -2330,56 +2380,6 @@ const BusinessList = React.memo(() => {
             <div className={cx("form-input-group col-span-all")}>
               <label className={cx("input-label")}>📍 Slug (URL-friendly name)</label>
               <input type="text" name="slug" className={cx("text-input")} value={formData.slug} onChange={handleChange} placeholder="business-name-here" />
-            </div>
-
-            <div className={cx("form-divider")}></div>
-            <SectionHeader title="Badges & Visibility" subtitle="Control how this listing is highlighted" />
-
-            <div className={cx("form-input-group col-span-all")}>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}>
-                {[
-                  { key: "isFeatured",  label: "⭐ Featured",  color: "#d97706", bg: "#fef3c7" },
-                  { key: "isSponsored", label: "💎 Sponsored", color: "#7c3aed", bg: "#ede9fe" },
-                  { key: "isTrending",  label: "🔥 Trending",  color: "#dc2626", bg: "#fee2e2" },
-                ].map(({ key, label, color, bg }) => {
-                  const on = !!formData.badges?.[key];
-                  return (
-                    <label key={key} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 14px", borderRadius: "8px", border: `1.5px solid ${on ? color : "#e0e0e0"}`, background: on ? bg : "#fafafa", cursor: "pointer", userSelect: "none", fontWeight: 600, fontSize: "13px", color: on ? color : "#555" }}>
-                      <input type="checkbox" checked={on} onChange={e => setFormData(prev => ({ ...prev, badges: { ...prev.badges, [key]: e.target.checked } }))} style={{ accentColor: color }} />
-                      {label}
-                    </label>
-                  );
-                })}
-
-                <label style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 14px", borderRadius: "8px", border: `1.5px solid ${formData.verification?.isVerified ? "#2563eb" : "#e0e0e0"}`, background: formData.verification?.isVerified ? "#dbeafe" : "#fafafa", cursor: "pointer", userSelect: "none", fontWeight: 600, fontSize: "13px", color: formData.verification?.isVerified ? "#2563eb" : "#555" }}>
-                  <input type="checkbox" checked={!!formData.verification?.isVerified} onChange={e => setFormData(prev => ({ ...prev, verification: { ...prev.verification, isVerified: e.target.checked } }))} style={{ accentColor: "#2563eb" }} />
-                  ✅ Verified
-                </label>
-              </div>
-            </div>
-
-            <div className={cx("form-input-group")}>
-              <label className={cx("input-label")}>Priority Score</label>
-              <div style={{ display: "flex", gap: "12px", alignItems: "flex-end" }}>
-                <input type="number" min="0" max="100" className={cx("text-input")} value={formData.badges?.priorityScore ?? 0} onChange={e => setFormData(prev => ({ ...prev, badges: { ...prev.badges, priorityScore: Number(e.target.value) } }))} placeholder="0–100, higher = boosted in results" style={{ flex: 1 }} />
-                {editMode && editId && (
-                  <Button
-                    variant="contained"
-                    onClick={updateBadgesOnly}
-                    disabled={badgeUpdateLoading}
-                    sx={{
-                      bgcolor: '#ff8c42',
-                      color: '#fff',
-                      textTransform: 'none',
-                      fontWeight: 600,
-                      '&:hover': { bgcolor: '#e67a2e' },
-                      '&:disabled': { bgcolor: '#cccccc' }
-                    }}
-                  >
-                    {badgeUpdateLoading ? <CircularProgress size={20} color="inherit" /> : "Update Badges"}
-                  </Button>
-                )}
-              </div>
             </div>
           </>;
       case 3:
