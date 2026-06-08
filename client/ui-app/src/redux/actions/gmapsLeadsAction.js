@@ -32,6 +32,7 @@ export const getAllGmapsLeads =
       const {
         massclick_location = '',
         search_sector = '',
+        massclick_category = '',
         status = 'all',
         min_rating = '',
         has_phone = '',
@@ -44,6 +45,7 @@ export const getAllGmapsLeads =
         pageSize,
         massclick_location,
         search_sector,
+        massclick_category,
         status,
         min_rating,
         has_phone: has_phone ? 'true' : '',

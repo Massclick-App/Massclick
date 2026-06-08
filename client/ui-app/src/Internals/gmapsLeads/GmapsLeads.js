@@ -58,6 +58,7 @@ export default function GmapsLeads() {
   const [filters, setFilters] = useState({
     massclick_location: '',
     search_sector: '',
+    massclick_category: '',
     status: 'all',
     min_rating: '',
     has_phone: false,
@@ -94,6 +95,7 @@ export default function GmapsLeads() {
     const blank = {
       massclick_location: '',
       search_sector: '',
+      massclick_category: '',
       status: 'all',
       min_rating: '',
       has_phone: false,
@@ -210,6 +212,17 @@ export default function GmapsLeads() {
               <option value="">All Sectors</option>
               {distincts.sectors.map((s) => (
                 <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Category */}
+          <div className={cx('filter-field')}>
+            <label>Category</label>
+            <select name="massclick_category" value={filters.massclick_category} onChange={handleFilterChange}>
+              <option value="">All Categories</option>
+              {(distincts.categories || []).map((c) => (
+                <option key={c.slug} value={c.slug}>{c.name}</option>
               ))}
             </select>
           </div>

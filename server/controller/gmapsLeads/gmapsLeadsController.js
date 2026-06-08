@@ -14,6 +14,7 @@ export const viewAllGmapsLeadsAction = async (req, res) => {
     const {
       massclick_location = "",
       search_sector = "",
+      massclick_category = "",
       status = "all",
       min_rating = "",
       has_phone = "",
@@ -26,6 +27,7 @@ export const viewAllGmapsLeadsAction = async (req, res) => {
       pageSize,
       massclick_location: massclick_location.trim(),
       search_sector: search_sector.trim(),
+      massclick_category: massclick_category.trim(),
       status: status.trim(),
       min_rating,
       has_phone,

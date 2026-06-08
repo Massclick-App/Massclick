@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb";
 import gmapsLeadsModel from "../../model/gmapsLeads/gmapsLeadsModel.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
+import categoryModel from "../../model/category/categoryModel.js";
 
 /**
  * Paginated + filtered list of gmaps leads.
@@ -11,6 +12,7 @@ export const viewAllGmapsLeads = async ({
   pageSize = 20,
   massclick_location = "",
   search_sector = "",
+  massclick_category = "",
   status = "all",
   min_rating = "",
   has_phone = "",
@@ -31,6 +33,10 @@ export const viewAllGmapsLeads = async ({
 
     if (search_sector) {
       query.search_sector = search_sector;
+    }
+
+    if (massclick_category) {
+      query.massclick_category = massclick_category;
     }
 
     // Status filter
@@ -136,13 +142,29 @@ export const updateGmapsLeadStatus = async (id, data) => {
  */
 export const getGmapsLeadsDistincts = async () => {
   try {
-    const [locations, sectors] = await Promise.all([
+    const [locations, sectors, categorySlugs] = await Promise.all([
       gmapsLeadsModel.distinct("massclick_location"),
       gmapsLeadsModel.distinct("search_sector"),
+      gmapsLeadsModel.distinct("massclick_category"),
     ]);
+
+    const slugList = categorySlugs.filter(Boolean).sort();
+
+    // Lookup display names from categories collection
+    const catDocs = await categoryModel
+      .find({ slug: { $in: slugList }, isActive: true }, { slug: 1, category: 1 })
+      .lean();
+    const slugToName = Object.fromEntries(catDocs.map((c) => [c.slug, c.category]));
+
+    const categories = slugList.map((slug) => ({
+      slug,
+      name: slugToName[slug] || slug,
+    }));
+
     return {
       locations: locations.filter(Boolean).sort(),
       sectors: sectors.filter(Boolean).sort(),
+      categories,
     };
   } catch (error) {
     console.error("Error in getGmapsLeadsDistincts:", error);

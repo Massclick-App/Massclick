@@ -13,7 +13,7 @@ const initialState = {
   leads: [],
   total: 0,
   stats: { total: 0, available: 0, imported: 0, skipped: 0 },
-  distincts: { locations: [], sectors: [] },
+  distincts: { locations: [], sectors: [], categories: [] },
   loading: false,
   error: null,
   leadToImport: null,
