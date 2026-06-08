@@ -118,14 +118,14 @@
 .business-list--grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
-  grid-auto-rows: 460px;
+  align-items: stretch;
   gap: clamp(16px, 2vw, 24px);
 }
 
 .business-list--large {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr));
-  grid-auto-rows: 520px;
+  align-items: stretch;
   gap: clamp(20px, 2.5vw, 32px);
 }
 
@@ -142,7 +142,7 @@
 /* In grid/large, wrapper must be full cell height so card-link height:100% resolves */
 .business-list--grid .business-card-wrapper,
 .business-list--large .business-card-wrapper {
-  height: 100%;
+  height: auto;
 }
 
 .business-card-wrapper:hover {

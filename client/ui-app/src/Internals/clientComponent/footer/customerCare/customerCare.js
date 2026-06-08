@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import styles from "./customerCare.module.css";
 import LiveHelpIcon from '@mui/icons-material/LiveHelp';
 import SupportAgentIcon from '@mui/icons-material/SupportAgent';
-import ForumIcon from '@mui/icons-material/Forum';
+import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import CallIcon from '@mui/icons-material/Call';
 import BusinessCenterIcon from '@mui/icons-material/BusinessCenter';
 import CardsSearch from '../../CardsSearch/CardsSearch';
@@ -15,6 +15,7 @@ import { Box, Drawer } from "@mui/material";
 import OTPLoginModal from "../../AddBusinessModel";
 import CustomerChatPanel from "../../../../components/chat/CustomerChatPanel";
 const cx = createScopedClassNames(styles);
+const whatsappCommunityUrl = process.env.REACT_APP_WHATSAPP_COMMUNITY_URL || "https://chat.whatsapp.com/LPgedrPJv3TKzHlxsUrJhl";
 const carePillars = [{
   id: 1,
   title: "Knowledge Base & FAQs",
@@ -32,11 +33,12 @@ const carePillars = [{
   link: "/customercare"
 }, {
   id: 3,
-  title: "Community & Social Hub",
-  description: "Join our official channels to share ideas, report minor bugs, and stay updated on the latest service features and announcements.",
-  icon: ForumIcon,
-  buttonText: "Connect Now",
-  link: "/community"
+  title: "WhatsApp Community",
+  description: "Join the Massclick WhatsApp community to get service updates, share feedback, report minor issues, and connect with our support team.",
+  icon: WhatsAppIcon,
+  buttonText: "Join WhatsApp",
+  link: whatsappCommunityUrl,
+  external: true
 }];
 const contactLeads = [{
   id: 1,
@@ -68,7 +70,7 @@ const CareCard = ({
             </div>
             <h3 className={cx("card-title")}>{pillar.title}</h3>
             <p className={cx("card-description")}>{pillar.description}</p>
-            <a href={pillar.link} className={cx("card-button")} onClick={handleClick}>
+            <a href={pillar.link} className={cx("card-button")} onClick={handleClick} target={pillar.external ? "_blank" : undefined} rel={pillar.external ? "noopener noreferrer" : undefined}>
                 {pillar.buttonText}
             </a>
         </div>;
