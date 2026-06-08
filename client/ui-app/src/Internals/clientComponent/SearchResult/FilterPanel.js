@@ -236,7 +236,7 @@ const FilterPanel = ({
       </div>
 
       {/* Category-specific filters */}
-      {filterConfig.map((fc) => (
+      {filterConfig.filter((fc) => fc.enabled !== false).map((fc) => (
         <div key={fc.key} className={styles.section}>
           <div className={styles["section-label"]}>{fc.label}</div>
 

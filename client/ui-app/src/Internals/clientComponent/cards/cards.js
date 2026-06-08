@@ -38,6 +38,7 @@ function getFilterBadges(filters, filterConfig) {
     const badges = [];
     for (const fc of filterConfig) {
       if (badges.length >= MAX_FILTER_BADGES) break;
+      if (fc.enabled === false) continue;
       const val = filters[fc.key];
       if (val === null || val === undefined || val === "" || val === false) continue;
       if (Array.isArray(val) && val.length > 0) {

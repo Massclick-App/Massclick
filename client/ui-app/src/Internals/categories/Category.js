@@ -128,7 +128,7 @@ export default function Category() {
   const fileInputRef = useRef();
   const liveImageInputRef = useRef();
   const [errors, setErrors] = useState({});
-  const [filterDraft, setFilterDraft] = useState({ key: "", label: "", type: "multiselect", options: [], min: "", max: "", unit: "", isRequired: false });
+  const [filterDraft, setFilterDraft] = useState({ key: "", label: "", type: "multiselect", options: [], min: "", max: "", unit: "", isRequired: false, enabled: true });
   const [filterDraftError, setFilterDraftError] = useState("");
   const [editingFilterIndex, setEditingFilterIndex] = useState(null);
   const [formData, setFormData] = useState({
@@ -315,7 +315,7 @@ export default function Category() {
     setFilterDraftError("");
     const { ...rest } = filterDraft;
     setFormData(prev => ({ ...prev, filterConfig: [...prev.filterConfig, rest] }));
-    setFilterDraft({ key: "", label: "", type: "multiselect", options: [], min: "", max: "", unit: "", isRequired: false });
+    setFilterDraft({ key: "", label: "", type: "multiselect", options: [], min: "", max: "", unit: "", isRequired: false, enabled: true });
   };
 
   const handleRemoveFilterField = (index) => {
@@ -355,13 +355,21 @@ export default function Category() {
       return { ...prev, filterConfig: arr };
     });
     setEditingFilterIndex(null);
-    setFilterDraft({ key: "", label: "", type: "multiselect", options: [], min: "", max: "", unit: "", isRequired: false });
+    setFilterDraft({ key: "", label: "", type: "multiselect", options: [], min: "", max: "", unit: "", isRequired: false, enabled: true });
   };
 
   const handleCancelEditFilter = () => {
     setEditingFilterIndex(null);
-    setFilterDraft({ key: "", label: "", type: "multiselect", options: [], min: "", max: "", unit: "", isRequired: false });
+    setFilterDraft({ key: "", label: "", type: "multiselect", options: [], min: "", max: "", unit: "", isRequired: false, enabled: true });
     setFilterDraftError("");
+  };
+
+  const handleToggleFilterEnabled = (index) => {
+    setFormData(prev => {
+      const arr = [...prev.filterConfig];
+      arr[index] = { ...arr[index], enabled: arr[index].enabled === false ? true : false };
+      return { ...prev, filterConfig: arr };
+    });
   };
 
   const handleEdit = row => {
@@ -853,7 +861,7 @@ export default function Category() {
       slug: "",
       filterConfig: []
     });
-    setFilterDraft({ key: "", label: "", type: "multiselect", options: [], min: "", max: "", unit: "", isRequired: false });
+    setFilterDraft({ key: "", label: "", type: "multiselect", options: [], min: "", max: "", unit: "", isRequired: false, enabled: true });
     setFilterDraftError("");
     setPreview(null);
     setLiveImagePreview(null);
@@ -1599,6 +1607,13 @@ export default function Category() {
                   <Typography variant="caption">Required</Typography>
                 </Box>
 
+                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                  <Checkbox size="small" checked={filterDraft.enabled !== false}
+                    onChange={e => setFilterDraft(p => ({ ...p, enabled: e.target.checked }))}
+                    sx={{ p: 0.5, color: "#4caf50", "&.Mui-checked": { color: "#4caf50" } }} />
+                  <Typography variant="caption">Show in UI</Typography>
+                </Box>
+
                 {editingFilterIndex === null ? (
                   <Button variant="contained" size="small" onClick={handleAddFilterField}
                     sx={{ bgcolor: "var(--color-primary-orange)", "&:hover": { bgcolor: "#D97800" }, alignSelf: "center", flexShrink: 0 }}>
@@ -1628,10 +1643,29 @@ export default function Category() {
             {/* Saved filter fields list */}
             {formData.filterConfig.length > 0 && (
               <Box sx={{ mt: 1.5, display: "flex", flexDirection: "column", gap: 0.75 }}>
-                {formData.filterConfig.map((fc, i) => (
-                  <Box key={i} sx={{ display: "flex", alignItems: "center", gap: 1, p: 1.5, border: "1px solid #e0e0e0", borderRadius: 1, bgcolor: "#fff" }}>
+                {formData.filterConfig.map((fc, i) => {
+                  const isEnabled = fc.enabled !== false;
+                  return (
+                  <Box key={i} sx={{ display: "flex", alignItems: "center", gap: 1, p: 1.5, border: `1px solid ${isEnabled ? "#e0e0e0" : "#f5c6c6"}`, borderRadius: 1, bgcolor: isEnabled ? "#fff" : "#fff8f8", opacity: isEnabled ? 1 : 0.75 }}>
                     <Box sx={{ flex: 1 }}>
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>{fc.label}</Typography>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>{fc.label}</Typography>
+                        <Chip
+                          label={isEnabled ? "Visible" : "Hidden"}
+                          size="small"
+                          onClick={() => handleToggleFilterEnabled(i)}
+                          sx={{
+                            height: 18,
+                            fontSize: "10px",
+                            fontWeight: 600,
+                            cursor: "pointer",
+                            bgcolor: isEnabled ? "#e8f5e9" : "#fce4ec",
+                            color: isEnabled ? "#2e7d32" : "#c62828",
+                            "& .MuiChip-label": { px: 0.75 },
+                            "&:hover": { bgcolor: isEnabled ? "#c8e6c9" : "#f8bbd0" },
+                          }}
+                        />
+                      </Box>
                       <Typography variant="caption" color="text.secondary">
                         key: {fc.key} &nbsp;|&nbsp; {fc.type}
                         {fc.options?.length ? ` | ${fc.options.join(", ")}` : ""}
@@ -1648,7 +1682,7 @@ export default function Category() {
                       <DeleteOutlineRoundedIcon fontSize="small" />
                     </IconButton>
                   </Box>
-                ))}
+                );})}
               </Box>
             )}
           </div>
