@@ -209,12 +209,14 @@ const SearchResults = React.memo(() => {
   const buildSearchParams = useCallback((page = 1) => {
     const params = {};
     if (sortBy !== "relevant") params.sortBy = sortBy;
-    const { minRating, openNow, verified, featured, ...categoryFilters } = activeFilters;
+    const { minRating, openNow, verified, featured, sponsored, trending, ...categoryFilters } = activeFilters;
     const cleanCategoryFilters = cleanFilterValues(categoryFilters);
     if (minRating) params.minRating = minRating;
     if (openNow) params.openNow = openNow;
     if (verified) params.verified = verified;
     if (featured) params.featured = featured;
+    if (sponsored) params.sponsored = sponsored;
+    if (trending) params.trending = trending;
     if (Object.keys(cleanCategoryFilters).length > 0) {
       params.filters = JSON.stringify(cleanCategoryFilters);
     }
@@ -414,6 +416,8 @@ const SearchResults = React.memo(() => {
     if (key === "openNow") return [{ key, value, label: "Open Now" }];
     if (key === "verified") return [{ key, value, label: "Verified" }];
     if (key === "featured") return [{ key, value, label: "Featured" }];
+    if (key === "sponsored") return [{ key, value, label: "Sponsored" }];
+    if (key === "trending") return [{ key, value, label: "Trending" }];
     return [{ key, value, label: String(value) }];
   });
 
@@ -669,6 +673,8 @@ const SearchResults = React.memo(() => {
                         to={businessUrl}
                         isVerified={!!business.verification?.isVerified}
                         isFeatured={!!business.badges?.isFeatured}
+                        isSponsored={!!business.badges?.isSponsored}
+                        isTrending={!!business.badges?.isTrending}
                         filters={business.filters}
                         filterConfig={filterConfig}
                         distance={typeof business.distance === "number" ? business.distance : null}
@@ -719,6 +725,8 @@ const SearchResults = React.memo(() => {
                             to={businessUrl}
                             isVerified={!!b.verification?.isVerified}
                             isFeatured={!!b.badges?.isFeatured}
+                            isSponsored={!!b.badges?.isSponsored}
+                            isTrending={!!b.badges?.isTrending}
                             filters={b.filters}
                             filterConfig={filterConfig}
                             distance={typeof b.distance === "number" ? b.distance : null}

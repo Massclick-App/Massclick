@@ -87,6 +87,8 @@ const Cards = ({
   businessId,
   isVerified = false,
   isFeatured = false,
+  isSponsored = false,
+  isTrending = false,
   filters,
   filterConfig = [],
   distance = null,
@@ -169,8 +171,8 @@ const Cards = ({
               />
             </div>
 
-            {/* Verified / Featured overlays */}
-            {(isVerified || isFeatured) && (
+            {/* Verified / Featured / Sponsored / Trending overlays */}
+            {(isVerified || isFeatured || isSponsored || isTrending) && (
               <div className={cx("image-badges")}>
                 {isVerified && (
                   <span className={cx("badge-verified")}>
@@ -182,6 +184,16 @@ const Cards = ({
                   <span className={cx("badge-featured")}>
                     <WorkspacePremiumRoundedIcon style={{ fontSize: 10 }} />
                     Featured
+                  </span>
+                )}
+                {isSponsored && (
+                  <span className={cx("badge-sponsored")}>
+                    💎 Sponsored
+                  </span>
+                )}
+                {isTrending && (
+                  <span className={cx("badge-trending")}>
+                    🔥 Trending
                   </span>
                 )}
               </div>
