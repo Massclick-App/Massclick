@@ -46,6 +46,63 @@
   flex-direction: column;
 }
 
+.lp-search-shell {
+  position: sticky;
+  top: 0;
+  z-index: 1100;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.96);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(14px);
+}
+
+.lp-search-shell :global(header[class*="CardsSearch_search-header"]) {
+  position: relative;
+  top: auto;
+  width: 100%;
+  background: transparent;
+  box-shadow: none;
+}
+
+.lp-search-shell :global([class*="CardsSearch_search-header-content"]) {
+  width: min(100%, 1760px);
+  min-height: 80px;
+  margin: 0 auto;
+  padding: 12px 28px;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.lp-search-shell :global([class*="CardsSearch_logo-section"]) {
+  min-width: 260px;
+}
+
+.lp-search-shell :global([class*="CardsSearch_search-area"]) {
+  max-width: 1120px;
+  margin-left: 0;
+  gap: 16px;
+}
+
+@media (max-width: 1024px) {
+  .lp-search-shell :global([class*="CardsSearch_search-header-content"]) {
+    min-height: 72px;
+    padding: 10px 20px;
+    gap: 14px;
+  }
+
+  .lp-search-shell :global([class*="CardsSearch_logo-section"]) {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 560px) {
+  .lp-search-shell :global([class*="CardsSearch_search-header-content"]) {
+    min-height: 64px;
+    padding: 8px 14px;
+  }
+}
+
 /* Top bar */
 .lp-topbar {
   display: flex;
@@ -161,7 +218,7 @@
 .lp-container {
   width: 100%;
   max-width: 1800px;
-  margin: 18px auto 40px;
+  margin: 48px auto 40px;
   padding: 0 24px 40px;
 }
 

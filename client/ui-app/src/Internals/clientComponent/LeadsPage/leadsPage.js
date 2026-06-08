@@ -147,12 +147,10 @@ export default function LeadsPage() {
   const leadsCount = matchedUsers.length;
   if (!hasBusinessCategory) {
     return <div className={cx("lp-root")}>
-        <main className={cx("lp-container")}>
+        <div className={cx("lp-search-shell")}>
           <CardsSearch />
-          <br />
-          <br />
-          <br />
-          <br />
+        </div>
+        <main className={cx("lp-container")}>
           <section className={cx("lp-card")} style={{
           padding: 40,
           textAlign: "center"
@@ -175,8 +173,10 @@ export default function LeadsPage() {
   };
   const qualityLabel = leadsCount === 0 ? "No data yet" : leadsCount > 20 || repeatCount > 5 ? "High quality" : leadsCount > 5 ? "Moderate quality" : "Low quality";
   return <div className={cx("lp-root")}>
+      <div className={cx("lp-search-shell")}>
+        <CardsSearch />
+      </div>
       <main className={cx("lp-container")}>
-        <CardsSearch /><br /><br /><br />
         <section className={cx("lp-card")}>
           <header className={cx("lp-header")}>
             <div className={cx("lp-business")}>

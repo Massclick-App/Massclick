@@ -30,12 +30,11 @@ const formatUiName = (name) => {
 
 const DrawerContainer = styled("div")(({ theme }) => ({
   width: "100%",
-  maxWidth: 340,
-  height: "100%",
+  height: "100dvh",
   display: "flex",
   flexDirection: "column",
   background: "linear-gradient(180deg, #ffffff 0%, #f7f7f7 100%)",
-  boxShadow: "0 0 40px rgba(0,0,0,0.1)",
+  boxShadow: "-24px 0 70px rgba(15, 23, 42, 0.18)",
 }));
 
 const HeaderBox = styled(Box)(({ theme }) => ({
@@ -116,12 +115,23 @@ export default function GlobalDrawer() {
       onClose={closeDrawer}
       onOpen={() => { }}
       disableSwipeToOpen
+      sx={{
+        zIndex: (theme) => theme.zIndex.modal + 20,
+        "& .MuiBackdrop-root": {
+          backgroundColor: "rgba(15, 23, 42, 0.52)",
+          backdropFilter: "blur(2px)",
+        },
+      }}
       PaperProps={{
         sx: {
-          width: { xs: "80%", sm: 320 },
-          borderRadius: "20px 0 0 20px",
+          width: { xs: "min(88vw, 360px)", sm: 360, md: 384 },
+          maxWidth: "100vw",
+          height: "100dvh",
+          top: 0,
+          borderRadius: { xs: "18px 0 0 18px", sm: "22px 0 0 22px" },
           overflow: "hidden",
-          backdropFilter: "blur(10px)",
+          backgroundColor: "transparent",
+          boxShadow: "none",
         },
       }}
     >
@@ -160,7 +170,8 @@ export default function GlobalDrawer() {
                   textDecoration: "underline",
                 },
               }}
-              onClick={() => {
+              onClick={(event) => {
+                event.stopPropagation();
                 closeDrawer();
                 navigate("/user_edit-profile");
               }}
@@ -169,7 +180,10 @@ export default function GlobalDrawer() {
             </Typography>
           </Box>
           <CloseIcon
-            onClick={closeDrawer}
+            onClick={(event) => {
+              event.stopPropagation();
+              closeDrawer();
+            }}
             sx={{
               marginLeft: "auto",
               cursor: "pointer",

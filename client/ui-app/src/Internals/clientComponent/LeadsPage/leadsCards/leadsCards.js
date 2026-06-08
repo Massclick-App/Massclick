@@ -175,11 +175,11 @@ const LeadsCardHistory = () => {
         </div>
       </div>
 
-      <main className={cx("lh-container")}>
-        <div className={cx("lh-search-shell")}>
-          <CardsSearch />
-        </div>
+      <div className={cx("lh-search-shell")}>
+        <CardsSearch />
+      </div>
 
+      <main className={cx("lh-container")}>
         <section className={cx("lh-content-card")}>
           <header className={cx("lh-header")}>
             <div>
