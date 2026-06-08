@@ -14,7 +14,7 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { useTheme, useMediaQuery } from "@mui/material";
-import { getHomePopupAd } from "../../../redux/actions/advertisementAction";
+import { getHomePopupEventAd } from "../../../redux/actions/eventAction";
 
 const SHOW_DELAY_MS = 1000;
 const HIDE_ON = ["/admin", "/dashboard"];
@@ -385,7 +385,7 @@ const HomePopupAd = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   const { homePopupAd, homePopupAdLoading } = useSelector(
-    (state) => state.advertisement || {}
+    (state) => state.event?.eventAdvertisement || {}
   );
 
   const [open, setOpen] = useState(false);
@@ -398,7 +398,7 @@ const HomePopupAd = () => {
   const shouldHide = HIDE_ON.some((p) => location.pathname.startsWith(p));
 
   useEffect(() => {
-    if (isHomeRoute) dispatch(getHomePopupAd());
+    if (isHomeRoute) dispatch(getHomePopupEventAd());
   }, [dispatch, isHomeRoute]);
 
   useEffect(() => {

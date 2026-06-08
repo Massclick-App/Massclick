@@ -11,6 +11,7 @@ import {
   CREATE_EVENT_ADVERTISEMENT_REQUEST, CREATE_EVENT_ADVERTISEMENT_SUCCESS, CREATE_EVENT_ADVERTISEMENT_FAILURE,
   EDIT_EVENT_ADVERTISEMENT_REQUEST, EDIT_EVENT_ADVERTISEMENT_SUCCESS, EDIT_EVENT_ADVERTISEMENT_FAILURE,
   DELETE_EVENT_ADVERTISEMENT_REQUEST, DELETE_EVENT_ADVERTISEMENT_SUCCESS, DELETE_EVENT_ADVERTISEMENT_FAILURE,
+  FETCH_HOME_POPUP_EVENT_AD_REQUEST, FETCH_HOME_POPUP_EVENT_AD_SUCCESS, FETCH_HOME_POPUP_EVENT_AD_FAILURE,
   FETCH_EVENT_CREATION_REQUEST, FETCH_EVENT_CREATION_SUCCESS, FETCH_EVENT_CREATION_FAILURE,
   VIEW_EVENT_CREATION_REQUEST, VIEW_EVENT_CREATION_SUCCESS, VIEW_EVENT_CREATION_FAILURE,
   CREATE_EVENT_CREATION_REQUEST, CREATE_EVENT_CREATION_SUCCESS, CREATE_EVENT_CREATION_FAILURE,
@@ -37,7 +38,7 @@ const initialEventDetailState = {
 const initialState = {
   eventCategory: initialEventState,
   eventLocation: initialEventState,
-  eventAdvertisement: initialEventState,
+  eventAdvertisement: { ...initialEventState, homePopupAd: null, homePopupAdLoading: false },
   eventCreation: initialEventState,
   eventCreationDetail: initialEventDetailState,
 };
@@ -237,6 +238,31 @@ export default function eventReducer(state = initialState, action) {
           loading: false,
           error: null
         }
+      };
+
+    case FETCH_HOME_POPUP_EVENT_AD_REQUEST:
+      return {
+        ...state,
+        eventAdvertisement: { ...state.eventAdvertisement, homePopupAdLoading: true }
+      };
+
+    case FETCH_HOME_POPUP_EVENT_AD_SUCCESS:
+      return {
+        ...state,
+        eventAdvertisement: {
+          ...state.eventAdvertisement,
+          homePopupAdLoading: false,
+          homePopupAd:
+            Array.isArray(action.payload) && action.payload.length > 0
+              ? action.payload[0]
+              : null,
+        }
+      };
+
+    case FETCH_HOME_POPUP_EVENT_AD_FAILURE:
+      return {
+        ...state,
+        eventAdvertisement: { ...state.eventAdvertisement, homePopupAdLoading: false }
       };
 
     // ============= EVENT CREATION =============
