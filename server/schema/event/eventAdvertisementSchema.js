@@ -38,6 +38,22 @@ const eventAdvertisementSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    popupImage: {
+      type: String,
+      default: "",
+    },
+    popupImageKey: {
+      type: String,
+      default: "",
+    },
+    mobilePopupImage: {
+      type: String,
+      default: "",
+    },
+    mobilePopupImageKey: {
+      type: String,
+      default: "",
+    },
     advertiserName: {
       type: String,
       trim: true,
@@ -68,8 +84,16 @@ const eventAdvertisementSchema = new mongoose.Schema(
     },
     displayPosition: {
       type: String,
-      enum: ["top", "middle", "bottom", "sidebar"],
+      enum: ["top", "middle", "bottom", "sidebar", "popup"],
       default: "middle",
+    },
+    popupAutoCloseDuration: {
+      type: Number,
+      default: 0,
+    },
+    popupShowConfetti: {
+      type: Boolean,
+      default: false,
     },
     clicks: {
       type: Number,

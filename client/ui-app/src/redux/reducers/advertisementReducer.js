@@ -3,8 +3,7 @@ import {
   CREATE_AD_REQUEST, CREATE_AD_SUCCESS, CREATE_AD_FAILURE,
   EDIT_AD_REQUEST, EDIT_AD_SUCCESS, EDIT_AD_FAILURE,
   DELETE_AD_REQUEST, DELETE_AD_SUCCESS, DELETE_AD_FAILURE,
-  VIEWCATEGORY_AD_REQUEST, VIEWCATEGORY_AD_SUCCESS, VIEWCATEGORY_AD_FAILURE,
-  FETCH_HOME_POPUP_AD_REQUEST, FETCH_HOME_POPUP_AD_SUCCESS, FETCH_HOME_POPUP_AD_FAILURE
+  VIEWCATEGORY_AD_REQUEST, VIEWCATEGORY_AD_SUCCESS, VIEWCATEGORY_AD_FAILURE
 } from "../actions/userActionTypes.js";
 
 const initialState = {
@@ -15,8 +14,6 @@ const initialState = {
   loading: false,
   error: null,
   categoryAdvertisements: [],
-  homePopupAd: null,
-  homePopupAdLoading: false,
 };
 
 export default function advertisementReducer(state = initialState, action) {
@@ -82,22 +79,6 @@ export default function advertisementReducer(state = initialState, action) {
     case EDIT_AD_FAILURE:
     case DELETE_AD_FAILURE:
       return { ...state, loading: false, error: action.payload };
-
-    case FETCH_HOME_POPUP_AD_REQUEST:
-      return { ...state, homePopupAdLoading: true };
-
-    case FETCH_HOME_POPUP_AD_SUCCESS:
-      return {
-        ...state,
-        homePopupAdLoading: false,
-        homePopupAd:
-          Array.isArray(action.payload) && action.payload.length > 0
-            ? action.payload[0]
-            : null,
-      };
-
-    case FETCH_HOME_POPUP_AD_FAILURE:
-      return { ...state, homePopupAdLoading: false };
 
     default:
       return state;

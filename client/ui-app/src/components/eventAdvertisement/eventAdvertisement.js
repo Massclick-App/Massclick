@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import Cropper from "react-easy-crop";
 
 import {
   getAllEventCategory,
@@ -22,6 +23,7 @@ import {
   DialogContent,
   DialogActions,
   Alert,
+  Slider,
 } from "@mui/material";
 
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
@@ -35,6 +37,74 @@ import { createScopedClassNames } from "../../utils/createScopedClassNames";
 import styles from "./eventAdvertisement.module.css";
 
 const cx = createScopedClassNames(styles);
+
+const HOME_POPUP_RULES = {
+  key: "desktop",
+  title: "Popup Desktop Image",
+  targetWidth: 800,
+  targetHeight: 600,
+  recommended: "800 x 600 px",
+  label: "Choose an image and crop it into the required 800 x 600 px popup frame."
+};
+const MOBILE_HOME_POPUP_RULES = {
+  key: "mobile",
+  title: "Popup Mobile Image",
+  targetWidth: 480,
+  targetHeight: 640,
+  recommended: "480 x 640 px",
+  label: "Optional mobile popup image. Crop to 480 x 640 px."
+};
+
+const getImageDimensions = file => new Promise((resolve, reject) => {
+  const image = new Image();
+  const objectUrl = URL.createObjectURL(file);
+  image.onload = () => {
+    URL.revokeObjectURL(objectUrl);
+    resolve({
+      width: image.naturalWidth,
+      height: image.naturalHeight
+    });
+  };
+  image.onerror = () => {
+    URL.revokeObjectURL(objectUrl);
+    reject(new Error("Unable to read image dimensions"));
+  };
+  image.src = objectUrl;
+});
+
+const cropImageToPopup = (imageSource, croppedAreaPixels, cropType = "desktop") => new Promise((resolve, reject) => {
+  const image = new Image();
+  image.crossOrigin = "anonymous";
+
+  image.onload = () => {
+    const rules = cropType === "mobile" ? MOBILE_HOME_POPUP_RULES : HOME_POPUP_RULES;
+    const sourceWidth = image.naturalWidth;
+    const sourceHeight = image.naturalHeight;
+    const targetWidth = rules.targetWidth;
+    const targetHeight = rules.targetHeight;
+    const { x, y, width, height } = croppedAreaPixels;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+    const context = canvas.getContext("2d");
+    context.drawImage(image, x, y, width, height, 0, 0, targetWidth, targetHeight);
+
+    resolve({
+      base64: canvas.toDataURL("image/webp", 0.92),
+      originalWidth: sourceWidth,
+      originalHeight: sourceHeight,
+      width: targetWidth,
+      height: targetHeight
+    });
+  };
+
+  image.onerror = () => {
+    reject(new Error("Unable to crop image preview"));
+  };
+
+  image.src = imageSource;
+});
 
 const initialFormData = {
   title: "",
@@ -52,6 +122,10 @@ const initialFormData = {
   displayPosition: "middle",
   slug: "",
   isActive: true,
+  popupImage: "",
+  mobilePopupImage: "",
+  popupAutoCloseDuration: 0,
+  popupShowConfetti: false,
 };
 
 const formatDateInput = (value) => {
@@ -80,6 +154,8 @@ const getLocationLabel = (value) => {
 
 export default function EventAdvertisement() {
   const dispatch = useDispatch();
+  const popupFileInputRef = useRef(null);
+  const mobilePopupFileInputRef = useRef(null);
 
   const {
     data = [],
@@ -104,6 +180,19 @@ export default function EventAdvertisement() {
   const [errors, setErrors] = useState({});
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedAdvertisement, setSelectedAdvertisement] = useState(null);
+  const [popupPreview, setPopupPreview] = useState(null);
+  const [popupImageMeta, setPopupImageMeta] = useState(null);
+  const [mobilePopupPreview, setMobilePopupPreview] = useState(null);
+  const [mobilePopupImageMeta, setMobilePopupImageMeta] = useState(null);
+  const [cropperOpen, setCropperOpen] = useState(false);
+  const [cropData, setCropData] = useState({
+    image: null,
+    cropType: "desktop",
+    dimensions: null,
+    crop: { x: 0, y: 0 },
+    zoom: 1,
+    croppedAreaPixels: null
+  });
 
   useEffect(() => {
     dispatch(getAllEventAdvertisement());
@@ -149,6 +238,116 @@ export default function EventAdvertisement() {
     return Object.keys(newErrors).length === 0;
   };
 
+  const convertToBase64 = file => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+  });
+
+  const handlePopupImageChange = async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    let dimensions;
+    try {
+      dimensions = await getImageDimensions(file);
+    } catch (error) {
+      setErrors(prev => ({ ...prev, popupImage: error.message }));
+      return;
+    }
+
+    const sourceImage = await convertToBase64(file);
+    setPopupImageMeta(dimensions);
+    setCropData({
+      image: sourceImage,
+      cropType: "desktop",
+      dimensions,
+      crop: { x: 0, y: 0 },
+      zoom: 1,
+      croppedAreaPixels: null
+    });
+    setCropperOpen(true);
+  };
+
+  const handleMobilePopupImageChange = async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    let dimensions;
+    try {
+      dimensions = await getImageDimensions(file);
+    } catch (error) {
+      setErrors(prev => ({ ...prev, mobilePopupImage: error.message }));
+      return;
+    }
+
+    const sourceImage = await convertToBase64(file);
+    setMobilePopupImageMeta(dimensions);
+    setCropData({
+      image: sourceImage,
+      cropType: "mobile",
+      dimensions,
+      crop: { x: 0, y: 0 },
+      zoom: 1,
+      croppedAreaPixels: null
+    });
+    setCropperOpen(true);
+  };
+
+  const handlePopupCropSave = async () => {
+    if (!cropData.image || !cropData.croppedAreaPixels) {
+      setErrors(prev => ({
+        ...prev,
+        [cropData.cropType === "mobile" ? "mobilePopupImage" : "popupImage"]: "Please adjust the popup crop before saving"
+      }));
+      return;
+    }
+
+    try {
+      const cropped = await cropImageToPopup(cropData.image, cropData.croppedAreaPixels, cropData.cropType);
+      if (cropData.cropType === "mobile") {
+        setMobilePopupPreview(cropped.base64);
+        setMobilePopupImageMeta({
+          width: cropped.originalWidth,
+          height: cropped.originalHeight
+        });
+        setFormData(p => ({
+          ...p,
+          mobilePopupImage: cropped.base64
+        }));
+      } else {
+        setPopupPreview(cropped.base64);
+        setPopupImageMeta({
+          width: cropped.originalWidth,
+          height: cropped.originalHeight
+        });
+        setFormData(p => ({
+          ...p,
+          popupImage: cropped.base64
+        }));
+      }
+      setErrors(prev => {
+        const next = { ...prev };
+        delete next.popupImage;
+        delete next.mobilePopupImage;
+        return next;
+      });
+      setCropperOpen(false);
+    } catch (error) {
+      setErrors(prev => ({
+        ...prev,
+        [cropData.cropType === "mobile" ? "mobilePopupImage" : "popupImage"]: error.message
+      }));
+    }
+  };
+
+  const handlePopupCropCancel = () => {
+    setCropperOpen(false);
+    if (popupFileInputRef.current) popupFileInputRef.current.value = "";
+    if (mobilePopupFileInputRef.current) mobilePopupFileInputRef.current.value = "";
+  };
+
   const buildPayload = () => ({
     title: formData.title.trim(),
     description: formData.description.trim(),
@@ -164,6 +363,10 @@ export default function EventAdvertisement() {
     endDate: formData.endDate || null,
     displayPosition: formData.displayPosition,
     isActive: formData.isActive,
+    popupImage: formData.popupImage.trim(),
+    mobilePopupImage: formData.mobilePopupImage.trim(),
+    popupAutoCloseDuration: formData.popupAutoCloseDuration,
+    popupShowConfetti: formData.popupShowConfetti,
   });
 
   const handleChange = (e) => {
@@ -200,6 +403,21 @@ export default function EventAdvertisement() {
     setEditId(null);
     setIsEditMode(false);
     setErrors({});
+    setPopupPreview(null);
+    setPopupImageMeta(null);
+    setMobilePopupPreview(null);
+    setMobilePopupImageMeta(null);
+    setCropperOpen(false);
+    setCropData({
+      image: null,
+      cropType: "desktop",
+      dimensions: null,
+      crop: { x: 0, y: 0 },
+      zoom: 1,
+      croppedAreaPixels: null
+    });
+    if (popupFileInputRef.current) popupFileInputRef.current.value = "";
+    if (mobilePopupFileInputRef.current) mobilePopupFileInputRef.current.value = "";
   };
 
   const handleSubmit = (e) => {
@@ -246,7 +464,16 @@ export default function EventAdvertisement() {
       displayPosition: row.displayPosition || "middle",
       slug: row.slug || "",
       isActive: row.isActive,
+      popupImage: "",
+      mobilePopupImage: "",
+      popupAutoCloseDuration: row.popupAutoCloseDuration || 0,
+      popupShowConfetti: row.popupShowConfetti || false,
     });
+
+    setPopupPreview(row.popupImage || null);
+    setMobilePopupPreview(row.mobilePopupImage || null);
+    setPopupImageMeta(null);
+    setMobilePopupImageMeta(null);
 
     setEditId(row.id);
     setIsEditMode(true);
@@ -299,6 +526,10 @@ export default function EventAdvertisement() {
     slug: item.slug || "",
     isActive: item.isActive !== false,
     status: item.isActive !== false ? "Active" : "Inactive",
+    popupImage: item.popupImage || "",
+    mobilePopupImage: item.mobilePopupImage || "",
+    popupAutoCloseDuration: item.popupAutoCloseDuration ?? 0,
+    popupShowConfetti: item.popupShowConfetti ?? false,
   }));
 
   const columns = [
@@ -657,8 +888,118 @@ export default function EventAdvertisement() {
                 <option value="middle">Middle</option>
                 <option value="bottom">Bottom</option>
                 <option value="sidebar">Sidebar</option>
+                <option value="popup">Popup</option>
               </select>
             </div>
+
+            {formData.displayPosition === "popup" && (
+              <>
+                <div className={cx("eventAdvertisement-upload-field")}>
+                  <label>Popup Image</label>
+
+                  <div className={cx("eventAdvertisement-upload-content")}>
+                    <Button
+                      variant="contained"
+                      startIcon={<CloudUploadIcon />}
+                      component="label"
+                      className={cx("eventAdvertisement-upload-button")}
+                    >
+                      Upload Popup Image
+                      <input
+                        type="file"
+                        accept="image/*"
+                        hidden
+                        ref={popupFileInputRef}
+                        onChange={handlePopupImageChange}
+                      />
+                    </Button>
+
+                    {popupPreview && (
+                      <Avatar
+                        src={popupPreview}
+                        variant="rounded"
+                        sx={{ width: 56, height: 56 }}
+                        className={cx("eventAdvertisement-preview-avatar")}
+                      />
+                    )}
+                  </div>
+                  {popupImageMeta && <span className={cx("eventAdvertisement-error-text")} style={{ color: "#6b7280", fontWeight: 400 }}>
+                    Selected image: {popupImageMeta.width} x {popupImageMeta.height} px -> saved as {HOME_POPUP_RULES.recommended}
+                  </span>}
+                  {errors.popupImage && (
+                    <p className={cx("eventAdvertisement-error-text")}>
+                      {errors.popupImage}
+                    </p>
+                  )}
+                </div>
+
+                <div className={cx("eventAdvertisement-upload-field")}>
+                  <label>Mobile Popup Image</label>
+
+                  <div className={cx("eventAdvertisement-upload-content")}>
+                    <Button
+                      variant="contained"
+                      startIcon={<CloudUploadIcon />}
+                      component="label"
+                      className={cx("eventAdvertisement-upload-button")}
+                    >
+                      Upload Mobile Popup Image
+                      <input
+                        type="file"
+                        accept="image/*"
+                        hidden
+                        ref={mobilePopupFileInputRef}
+                        onChange={handleMobilePopupImageChange}
+                      />
+                    </Button>
+
+                    {mobilePopupPreview && (
+                      <Avatar
+                        src={mobilePopupPreview}
+                        variant="rounded"
+                        sx={{ width: 96, height: 56 }}
+                        className={cx("eventAdvertisement-preview-avatar")}
+                      />
+                    )}
+                  </div>
+                  {mobilePopupImageMeta && <span className={cx("eventAdvertisement-error-text")} style={{ color: "#6b7280", fontWeight: 400 }}>
+                    Selected mobile image: {mobilePopupImageMeta.width} x {mobilePopupImageMeta.height} px -> saved as {MOBILE_HOME_POPUP_RULES.recommended}
+                  </span>}
+                  {errors.mobilePopupImage && (
+                    <p className={cx("eventAdvertisement-error-text")}>
+                      {errors.mobilePopupImage}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label>Auto-close Duration (seconds) <span style={{ fontWeight: 400, color: "#6b7280" }}>— 0 = manual close only</span></label>
+
+                  <input
+                    type="number"
+                    name="popupAutoCloseDuration"
+                    min="0"
+                    step="1"
+                    value={formData.popupAutoCloseDuration}
+                    onChange={handleChange}
+                  />
+                </div>
+
+                <div className={cx("eventAdvertisement-toggle")}>
+                  <label htmlFor="eventAdvertisement-popupShowConfetti">
+                    Show Confetti 🎉 <span style={{ fontWeight: 400, color: "#6b7280" }}>— burst confetti when popup opens</span>
+                  </label>
+
+                  <input
+                    id="eventAdvertisement-popupShowConfetti"
+                    type="checkbox"
+                    name="popupShowConfetti"
+                    checked={formData.popupShowConfetti}
+                    onChange={handleChange}
+                  />
+                </div>
+              </>
+            )}
 
             <div className={cx("eventAdvertisement-toggle")}>
               <label htmlFor="eventAdvertisement-isActive">
@@ -735,6 +1076,62 @@ export default function EventAdvertisement() {
         />
       </Box>
       </>}
+
+      <Dialog open={cropperOpen} onClose={handlePopupCropCancel} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <span>Crop {cropData.cropType === "mobile" ? MOBILE_HOME_POPUP_RULES.title : HOME_POPUP_RULES.title}</span>
+          <IconButton size="small" onClick={handlePopupCropCancel}>x</IconButton>
+        </DialogTitle>
+        <DialogContent dividers sx={{ p: 2 }}>
+          <Box sx={{ mb: 2, p: 1.5, borderRadius: "8px", bgcolor: "#f8fafc", border: "1px solid #e5e7eb" }}>
+            <Typography variant="body2" sx={{ fontWeight: 700, color: "#172033" }}>
+              Forced output: {cropData.cropType === "mobile" ? MOBILE_HOME_POPUP_RULES.recommended : HOME_POPUP_RULES.recommended}
+            </Typography>
+            <Typography variant="caption" sx={{ display: "block", mt: 0.5, color: "#6b7280" }}>
+              Drag the image into the popup frame, then save the crop.
+            </Typography>
+            {cropData.dimensions && (
+              <Typography variant="caption" sx={{ display: "block", mt: 0.5, color: "#6b7280" }}>
+                Source image: {cropData.dimensions.width} x {cropData.dimensions.height} px
+              </Typography>
+            )}
+          </Box>
+
+          {cropData.image && (
+            <Box sx={{ position: "relative", width: "100%", height: { xs: 260, sm: 320, md: 380 }, bgcolor: "#0f172a", borderRadius: "8px", overflow: "hidden" }}>
+              <Cropper
+                image={cropData.image}
+                crop={cropData.crop}
+                zoom={cropData.zoom}
+                aspect={(cropData.cropType === "mobile" ? MOBILE_HOME_POPUP_RULES.targetWidth : HOME_POPUP_RULES.targetWidth) / (cropData.cropType === "mobile" ? MOBILE_HOME_POPUP_RULES.targetHeight : HOME_POPUP_RULES.targetHeight)}
+                onCropChange={crop => setCropData(prev => ({ ...prev, crop }))}
+                onCropComplete={(croppedArea, croppedAreaPixels) => setCropData(prev => ({ ...prev, croppedAreaPixels }))}
+                onZoomChange={zoom => setCropData(prev => ({ ...prev, zoom }))}
+              />
+            </Box>
+          )}
+
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="caption" sx={{ display: "block", mb: 1, color: "#6b7280" }}>
+              Zoom: {(cropData.zoom * 100).toFixed(0)}%
+            </Typography>
+            <Slider
+              value={cropData.zoom}
+              onChange={(event, zoom) => setCropData(prev => ({ ...prev, zoom }))}
+              min={1}
+              max={5}
+              step={0.1}
+              valueLabelDisplay="auto"
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={handlePopupCropCancel}>Cancel</Button>
+          <Button variant="contained" onClick={handlePopupCropSave}>
+            Save Crop
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog
         open={deleteDialogOpen}

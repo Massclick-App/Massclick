@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb";
 import sharp from "sharp";
 import advertismentModel from "../../model/advertistment/advertismentModel.js";
+import eventAdvertisementModel from "../../model/event/eventAdvertisementModel.js";
 import { uploadImageToS3, getSignedUrlByKey } from "../../s3Uploder.js";
 
 const TOP_BANNER_RULES = {
@@ -324,18 +325,33 @@ export const deleteAdvertisement = async (id) => {
 export const findHomePopupAdvertisement = async () => {
   const now = new Date();
 
-  const ads = await advertismentModel
-    .find({
-      position: "HOME_POPUP",
+  const ad = await eventAdvertisementModel
+    .findOne({
+      displayPosition: "popup",
       isActive: true,
-      isDeleted: false,
-      startTime: { $lte: now },
-      endTime: { $gte: now },
+      startDate: { $lte: now },
+      endDate: { $gte: now },
     })
-    .sort({ priority: -1, createdAt: -1 })
+    .populate([
+      { path: "eventCategory", select: "categoryName slug" },
+      { path: "eventLocation", select: "locationName city" }
+    ])
+    .sort({ createdAt: -1 })
     .lean();
 
-  return ads.map((ad) => addAdvertisementImageUrls(ad));
+  if (!ad) return null;
+
+  const result = typeof ad.toObject === "function" ? ad.toObject() : ad;
+
+  result.popupImage = result.popupImageKey
+    ? getSignedUrlByKey(result.popupImageKey)
+    : "";
+
+  result.mobilePopupImage = result.mobilePopupImageKey
+    ? getSignedUrlByKey(result.mobilePopupImageKey)
+    : "";
+
+  return result;
 };
 
 export const getActiveCategoryAdvertisements = async (

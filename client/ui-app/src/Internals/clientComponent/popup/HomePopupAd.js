@@ -14,7 +14,7 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { useTheme, useMediaQuery } from "@mui/material";
-import { getHomePopupAd } from "../../../redux/actions/advertisementAction";
+import { getAllEventAdvertisement } from "../../../redux/actions/eventAction";
 
 const SHOW_DELAY_MS = 1000;
 const HIDE_ON = ["/admin", "/dashboard"];
@@ -280,7 +280,7 @@ const DesktopPopup = ({
   countdown,
   totalDuration,
 }) => {
-  const imageSrc = ad.bannerImage;
+  const imageSrc = ad.popupImage;
 
   return (
     <Dialog
@@ -326,7 +326,7 @@ const MobileBottomSheet = ({
   countdown,
   totalDuration,
 }) => {
-  const imageSrc = ad.mobileBannerImage || ad.bannerImage;
+  const imageSrc = ad.mobilePopupImage || ad.popupImage;
 
   return (
     <Drawer
@@ -384,9 +384,10 @@ const HomePopupAd = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
-  const { homePopupAd, homePopupAdLoading } = useSelector(
-    (state) => state.advertisement || {}
-  );
+  const {
+    data: eventAds = [],
+    loading: eventAdLoading,
+  } = useSelector((state) => state.event?.eventAdvertisement || {});
 
   const [open, setOpen] = useState(false);
   const [countdown, setCountdown] = useState(0);
@@ -397,8 +398,15 @@ const HomePopupAd = () => {
   const isHomeRoute = location.pathname === "/";
   const shouldHide = HIDE_ON.some((p) => location.pathname.startsWith(p));
 
+  const homePopupAd = eventAds.find(
+    (ad) => ad.displayPosition === "popup" && ad.isActive !== false
+  );
+  const homePopupAdLoading = eventAdLoading;
+
   useEffect(() => {
-    if (isHomeRoute) dispatch(getHomePopupAd());
+    if (isHomeRoute) {
+      dispatch(getAllEventAdvertisement({ pageSize: 100 }));
+    }
   }, [dispatch, isHomeRoute]);
 
   useEffect(() => {
@@ -409,11 +417,11 @@ const HomePopupAd = () => {
 
     timerRef.current = setTimeout(() => {
       sessionStorage.setItem(seenKey, "1");
-      const dur = homePopupAd.displayDuration || 0;
+      const dur = homePopupAd.popupAutoCloseDuration || 0;
       setTotalDuration(dur);
       setCountdown(dur);
       setOpen(true);
-      if (homePopupAd.showConfetti) fireConfetti();
+      if (homePopupAd.popupShowConfetti) fireConfetti();
     }, SHOW_DELAY_MS);
 
     return () => clearTimeout(timerRef.current);
