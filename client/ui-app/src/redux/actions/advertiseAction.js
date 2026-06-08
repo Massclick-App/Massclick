@@ -63,14 +63,14 @@ export const createAdvertise = (advertiseData) => async (dispatch) => {
       }
     );
 
-    const createdAdvertise = response.data;
+    const createdAdvertise = response.data?.advertise || response.data;
 
     dispatch({
       type: CREATE_ADVERTISE_SUCCESS,
       payload: createdAdvertise,
     });
 
-    return createdAdvertise;
+    return response.data;
   } catch (error) {
     dispatch({
       type: CREATE_ADVERTISE_FAILURE,
