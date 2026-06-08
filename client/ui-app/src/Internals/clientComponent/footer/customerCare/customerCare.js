@@ -1,5 +1,5 @@
 import { createScopedClassNames } from "../../../../utils/createScopedClassNames";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import styles from "./customerCare.module.css";
 import LiveHelpIcon from '@mui/icons-material/LiveHelp';
 import SupportAgentIcon from '@mui/icons-material/SupportAgent';
@@ -11,6 +11,9 @@ import Footer from '../footer';
 import SeoMeta from "../../seo/seoMeta";
 import { fetchSeoMeta } from "../../../../redux/actions/seoAction";
 import { useDispatch, useSelector } from "react-redux";
+import { Box, Drawer } from "@mui/material";
+import OTPLoginModal from "../../AddBusinessModel";
+import CustomerChatPanel from "../../../../components/chat/CustomerChatPanel";
 const cx = createScopedClassNames(styles);
 const carePillars = [{
   id: 1,
@@ -25,7 +28,8 @@ const carePillars = [{
   description: "For technical issues or personalized consultation, connect directly with our expert team via live chat or a scheduled call.",
   icon: SupportAgentIcon,
   buttonText: "Start Live Chat",
-  link: "/contact"
+  action: "chat",
+  link: "/customercare"
 }, {
   id: 3,
   title: "Community & Social Hub",
@@ -48,22 +52,32 @@ const contactLeads = [{
   note: "People operations and partnership support"
 }];
 const CareCard = ({
-  pillar
+  pillar,
+  onStartChat
 }) => {
   const IconComponent = pillar.icon;
+  const handleClick = event => {
+    if (pillar.action === "chat") {
+      event.preventDefault();
+      onStartChat();
+    }
+  };
   return <div className={cx("care-card")}>
             <div className={cx("icon-wrapper")}>
                 <IconComponent className={cx("care-icon")} />
             </div>
             <h3 className={cx("card-title")}>{pillar.title}</h3>
             <p className={cx("card-description")}>{pillar.description}</p>
-            <a href={pillar.link} className={cx("card-button")}>
+            <a href={pillar.link} className={cx("card-button")} onClick={handleClick}>
                 {pillar.buttonText}
             </a>
         </div>;
 };
 const CustomerCareComponent = () => {
   const dispatch = useDispatch();
+  const [chatOpen, setChatOpen] = useState(false);
+  const [loginOpen, setLoginOpen] = useState(false);
+  const [openChatAfterLogin, setOpenChatAfterLogin] = useState(false);
   const {
     meta: seoMetaData
   } = useSelector(state => state.seoReducer);
@@ -78,6 +92,25 @@ const CustomerCareComponent = () => {
     keywords: "about massclick, business directory, local search",
     canonical: "https://massclick.in/customerCare",
     robots: "index, follow"
+  };
+  useEffect(() => {
+    const handleAuthChange = () => {
+      if (openChatAfterLogin && localStorage.getItem("authToken")) {
+        setLoginOpen(false);
+        setChatOpen(true);
+        setOpenChatAfterLogin(false);
+      }
+    };
+    window.addEventListener("authChange", handleAuthChange);
+    return () => window.removeEventListener("authChange", handleAuthChange);
+  }, [openChatAfterLogin]);
+  const handleStartChat = () => {
+    if (!localStorage.getItem("authToken")) {
+      setOpenChatAfterLogin(true);
+      setLoginOpen(true);
+      return;
+    }
+    setChatOpen(true);
   };
   return <>
             <SeoMeta seoData={seoMetaData} fallback={fallbackSeo} />
@@ -116,9 +149,22 @@ const CustomerCareComponent = () => {
                 </div>
 
                 <div className={cx("care-grid-container")}>
-                    {carePillars.map(pillar => <CareCard key={pillar.id} pillar={pillar} />)}
+                    {carePillars.map(pillar => <CareCard key={pillar.id} pillar={pillar} onStartChat={handleStartChat} />)}
                 </div>
             </section>
+            <Drawer anchor="right" open={chatOpen} onClose={() => setChatOpen(false)}>
+                <Box sx={{ p: 2, width: { xs: "100vw", sm: 500 }, maxWidth: "100vw" }}>
+                    <CustomerChatPanel
+                      open={chatOpen}
+                      onClose={() => setChatOpen(false)}
+                      onRequireLogin={() => {
+                        setOpenChatAfterLogin(true);
+                        setLoginOpen(true);
+                      }}
+                    />
+                </Box>
+            </Drawer>
+            <OTPLoginModal open={loginOpen} handleClose={() => setLoginOpen(false)} />
             <Footer />
         </>;
 };
