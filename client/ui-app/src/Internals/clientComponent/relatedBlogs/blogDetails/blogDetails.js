@@ -10,6 +10,7 @@ import { generateArticleSchema, generateBreadcrumbSchema } from "../../../../uti
 import styles from "./blogDetails.module.css";
 import Navbar from "../relatedBlogNavbar/relatedBlogNavbar";
 import Breadcrumbs from "../../Breadcrumbs/Breadcrumbs";
+import AuthorCard from "./AuthorCard";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import ArticleIcon from "@mui/icons-material/Article";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
@@ -619,29 +620,35 @@ const BlogDetail = () => {
               </div>
             </div>
 
-            <div className={cx("author-card author-card-large")}>
-              <img src={blog.profileImage || getPlaceholderImage()} alt={`${blog.author || "Massclick"} author profile`} />
-              <div>
-                <h3>{blog.author || "Massclick Editorial Team"}</h3>
-                <p>
-                  {blog.author || "Massclick Editorial Team"} curates local business guides,
-                  service recommendations and city-focused insights to help readers make
-                  informed decisions faster.
-                </p>
-              </div>
-            </div>
+            <AuthorCard
+              variant="full-width"
+              name={blog.author || "Massclick Editorial Team"}
+              title={blog.expertCategory || "Content Expert"}
+              profileImage={blog.profileImage || getPlaceholderImage()}
+              bio={blog.experience || `${blog.author || "Massclick Editorial Team"} curates local business guides, service recommendations and city-focused insights to help readers make informed decisions faster.`}
+              expertiseAreas={blog.expertiseAreas || (blog.expertCategory ? [blog.expertCategory] : ["Local Guides", "Business Tips", "City Insights"])}
+              bestFor={blog.bestFor || []}
+              features={blog.features || []}
+              email={blog.email || blog.authorEmail || "content@massclick.in"}
+              website={blog.website}
+              linkedin={blog.linkedin}
+              viewProfileLink={blog.authorProfileUrl || blog.website}
+            />
 
           </div>
 
           <div className={cx("sidebar")}>
 
-            <div className={cx("author-card")}>
-              <img src={blog.profileImage || getPlaceholderImage()} alt={`${blog.author || "Massclick"} author profile`} />
-              <div>
-                <h4>{blog.author || "Admin"}</h4>
-                <p>Content Creator</p>
-              </div>
-            </div>
+            <AuthorCard
+              variant="sidebar"
+              name={blog.author || "Admin"}
+              title={blog.expertCategory || "Content Creator"}
+              profileImage={blog.profileImage || getPlaceholderImage()}
+              expertiseAreas={blog.expertiseAreas?.slice(0, 2) || (blog.expertCategory ? [blog.expertCategory] : ["Local Guides", "Business Tips"])}
+              email={blog.email}
+              website={blog.website}
+              linkedin={blog.linkedin}
+            />
 
             <div className={cx("toc")}>
               <h4>List of Contents</h4>

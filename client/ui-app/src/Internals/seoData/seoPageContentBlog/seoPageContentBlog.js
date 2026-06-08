@@ -31,6 +31,13 @@ const defaultForm = {
   popularBusiness: [],
   profileImage: "",
   ogImage: "",
+  experience: "",
+  expertCategory: "",
+  email: "",
+  website: "",
+  linkedin: "",
+  bestFor: [],
+  features: [],
   contentBlocks: []
 };
 export default function SeoPageContentBlogs() {

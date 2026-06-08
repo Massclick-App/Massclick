@@ -165,6 +165,46 @@ const seoPageContentBlogSchema = new mongoose.Schema(
       trim: true,
     },
 
+    experience: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    expertCategory: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    email: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    website: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    linkedin: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    bestFor: {
+      type: [String],
+      default: [],
+    },
+
+    features: {
+      type: [String],
+      default: [],
+    },
+
     profileImageKey: {
       type: String,
       default: "",

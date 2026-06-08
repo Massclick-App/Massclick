@@ -280,6 +280,23 @@ export default function SeoPageContentForm({
     );
   };
 
+  const addListItem = (key, value) => {
+    const val = value.trim();
+    if (!val) return;
+
+    const exists = (formData[key] || []).includes(val);
+    if (exists) return;
+
+    updateField(key, [...(formData[key] || []), val]);
+  };
+
+  const removeListItem = (key, value) => {
+    updateField(
+      key,
+      (formData[key] || []).filter((item) => item !== value)
+    );
+  };
+
   /* ======================================
      FAQ
   ====================================== */
@@ -554,6 +571,11 @@ export default function SeoPageContentForm({
     { label: "Heading", key: "heading" },
     { label: "Excerpt", key: "excerpt" },
     { label: "Author", key: "author" },
+    { label: "Experience", key: "experience" },
+    { label: "Expert Category", key: "expertCategory" },
+    { label: "Email", key: "email", type: "email" },
+    { label: "Website", key: "website" },
+    { label: "LinkedIn", key: "linkedin" },
   ];
 
   return (
@@ -643,6 +665,7 @@ export default function SeoPageContentForm({
             ) : (
               <>
                 <input
+                  type={field.type || "text"}
                   value={formData[field.key] || ""}
                   onChange={(e) =>
                     updateField(field.key, e.target.value)
@@ -669,6 +692,56 @@ export default function SeoPageContentForm({
 
         <div className={cx("slug-preview", "full-row")}>
           <strong>Slug:</strong> {slugPreview || "-"}
+        </div>
+
+        <div className={cx("full-row")}>
+          <div className={cx("tags-box")}>
+            <input
+              placeholder="Add Best For item and press Enter"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  addListItem("bestFor", e.target.value);
+                  e.target.value = "";
+                }
+              }}
+            />
+
+            <div className={cx("selected-tags")}>
+              {(formData.bestFor || []).map((item) => (
+                <Chip
+                  key={item}
+                  label={item}
+                  onDelete={() => removeListItem("bestFor", item)}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className={cx("full-row")}>
+          <div className={cx("tags-box")}>
+            <input
+              placeholder="Add Feature item and press Enter"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  addListItem("features", e.target.value);
+                  e.target.value = "";
+                }
+              }}
+            />
+
+            <div className={cx("selected-tags")}>
+              {(formData.features || []).map((item) => (
+                <Chip
+                  key={item}
+                  label={item}
+                  onDelete={() => removeListItem("features", item)}
+                />
+              ))}
+            </div>
+          </div>
         </div>
 
         <div className={cx("floating-field", "full-row")}>

@@ -43,6 +43,21 @@ const makeSlug = (text = "") =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
+const normalizeStringList = (value = []) => {
+  if (Array.isArray(value)) {
+    return value.map((item) => item?.toString().trim()).filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    return value
+      .split(/\r?\n|,/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+};
+
 /* =====================================
    IMAGE MAP
 ===================================== */
@@ -174,6 +189,9 @@ export const createPageContentBlogSeo = async (
   data.slug = data.slug
     ? makeSlug(data.slug)
     : makeSlug(data.heading);
+
+  data.bestFor = normalizeStringList(data.bestFor);
+  data.features = normalizeStringList(data.features);
 
   data.pageImageKey = await uploadBase64Images(
     data.pageImages || []
@@ -365,6 +383,14 @@ export const updateSeoPageContentBlog =
       data.slug = makeSlug(data.heading);
     }
 
+    if ("bestFor" in data) {
+      data.bestFor = normalizeStringList(data.bestFor);
+    }
+
+    if ("features" in data) {
+      data.features = normalizeStringList(data.features);
+    }
+
     if (Array.isArray(data.pageImages) && data.pageImages.length > 0) {
       data.pageImageKey =
         await uploadBase64Images(
@@ -499,7 +525,7 @@ export const getSeoBlogBySlugService = async (slug) => {
 ===================================== */
 export const getSeoBlogMetaBySlug = async (slug) => {
   const cleanSlug = makeSlug(slug);
-  const fields = "metaTitle metaDescription metaKeywords heading slug category location author createdAt updatedAt pageContent faq";
+  const fields = "metaTitle metaDescription metaKeywords heading slug category location author experience expertCategory email website linkedin bestFor features createdAt updatedAt pageContent faq";
 
   let result = await seoPageContentBlogModel
     .findOne({ slug: cleanSlug, isActive: true })

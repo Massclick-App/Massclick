@@ -409,11 +409,9 @@ export const logSearchAction = async (req, res) => {
 
     const notifiedBusinesses = [];
 
-    // ── WebSocket: instant update to each matching business owner's app ─────────
     for (const business of businesses) {
       const ownerMobile = extractIndianMobiles([business.contactList, business.whatsappNumber])[0];
       if (!ownerMobile) continue;
-      // Strip 91 prefix — room keys use 10-digit (matches userModel.mobileNumber1)
       const mobile10 = ownerMobile.startsWith("91") && ownerMobile.length === 12
         ? ownerMobile.slice(2)
         : ownerMobile;
@@ -424,7 +422,6 @@ export const logSearchAction = async (req, res) => {
       });
     }
 
-    // Collect mobile numbers for batch FCM lookup (avoid per-business DB query)
     const ownerMobiles = businesses
       .flatMap(b => extractIndianMobiles([b.contactList, b.whatsappNumber]))
       .filter(Boolean);
