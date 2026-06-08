@@ -93,6 +93,11 @@ const businessListSchema = new mongoose.Schema({
   clientId: { type: String, default: '', },
   name: { type: String, default: '', },
   businessName: { type: String, default: '', },
+  sourceAdvertiseId: {
+    type: Schema.Types.ObjectId,
+    ref: 'advertise',
+    default: null,
+  },
   plotNumber: { type: String, default: '', },
   street: { type: String, default: '', },
   pincode: { type: String, default: '', },

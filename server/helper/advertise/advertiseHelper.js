@@ -1,13 +1,42 @@
 import { ObjectId } from "mongodb";
 import advertiseModel from "../../model/advertise/advertiseModel.js";
+import businessListModel from "../../model/businessList/businessListModel.js";
 
+const buildBusinessFromAdvertise = (advertise) => ({
+  sourceAdvertiseId: advertise._id,
+  name: advertise.businessName,
+  businessName: advertise.businessName,
+  pincode: advertise.pincode,
+  contact: advertise.mobileNumber,
+  contactList: advertise.mobileNumber,
+  whatsappNumber: advertise.mobileNumber,
+  category: advertise.category,
+  location: advertise.city,
+  street: advertise.businessAddress,
+  globalAddress: advertise.businessAddress,
+  description: advertise.category,
+  activeBusinesses: false,
+  businessesLive: false,
+  amountPaid: false,
+  isActive: true,
+});
 
 export const createAdvertise = async (reqBody = {}) => {
   try {
     const advertiseDocument = new advertiseModel(reqBody);
-    return await advertiseDocument.save();
+    const savedAdvertise = await advertiseDocument.save();
+
+    const businessDocument = new businessListModel(
+      buildBusinessFromAdvertise(savedAdvertise)
+    );
+    const savedBusiness = await businessDocument.save();
+
+    return {
+      advertise: savedAdvertise.toObject(),
+      business: savedBusiness.toObject(),
+    };
   } catch (error) {
-    console.error("Error saving advertise:", error);
+    console.error("Error saving advertise and business:", error);
     throw error;
   }
 };
