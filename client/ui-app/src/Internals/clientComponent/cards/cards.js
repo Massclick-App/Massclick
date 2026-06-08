@@ -38,6 +38,7 @@ function getFilterBadges(filters, filterConfig) {
     const badges = [];
     for (const fc of filterConfig) {
       if (badges.length >= MAX_FILTER_BADGES) break;
+      if (fc.enabled === false) continue;
       const val = filters[fc.key];
       if (val === null || val === undefined || val === "" || val === false) continue;
       if (Array.isArray(val) && val.length > 0) {
@@ -87,6 +88,8 @@ const Cards = ({
   businessId,
   isVerified = false,
   isFeatured = false,
+  isSponsored = false,
+  isTrending = false,
   filters,
   filterConfig = [],
   distance = null,
@@ -119,6 +122,9 @@ const Cards = ({
     : reviews || 0;
   const filterBadges = getFilterBadges(filters, filterConfig);
   const distanceLabel = formatDistance(distance);
+  const priceFilterDisabled = filterConfig.some(
+    fc => (fc.key === "price" || fc.key === "priceRange") && fc.enabled === false
+  );
 
   const handlePhoneClick = e => {
     e.preventDefault();
@@ -169,8 +175,8 @@ const Cards = ({
               />
             </div>
 
-            {/* Verified / Featured overlays */}
-            {(isVerified || isFeatured) && (
+            {/* Verified / Featured / Sponsored / Trending overlays */}
+            {(isVerified || isFeatured || isSponsored || isTrending) && (
               <div className={cx("image-badges")}>
                 {isVerified && (
                   <span className={cx("badge-verified")}>
@@ -182,6 +188,16 @@ const Cards = ({
                   <span className={cx("badge-featured")}>
                     <WorkspacePremiumRoundedIcon style={{ fontSize: 10 }} />
                     Featured
+                  </span>
+                )}
+                {isSponsored && (
+                  <span className={cx("badge-sponsored")}>
+                    💎 Sponsored
+                  </span>
+                )}
+                {isTrending && (
+                  <span className={cx("badge-trending")}>
+                    🔥 Trending
                   </span>
                 )}
               </div>
@@ -208,7 +224,7 @@ const Cards = ({
                 <div className={cx("card-header-row")}>
                   <h2 className={cx("card-title")}>{title}</h2>
                   {(() => {
-                    const displayPrice = filters?.price || filters?.priceRange || price || null;
+                    const displayPrice = !priceFilterDisabled && (filters?.price || filters?.priceRange || price || null);
                     return displayPrice ? (
                       <div className={cx("price-box")}>₹{displayPrice}<span className={cx("price-type")}>/{priceType}</span></div>
                     ) : null;
@@ -243,7 +259,7 @@ const Cards = ({
                 <div className={cx("card-header-row")}>
                   <h2 className={cx("card-title")}>{title}</h2>
                   {(() => {
-                    const displayPrice = filters?.price || filters?.priceRange || price || null;
+                    const displayPrice = !priceFilterDisabled && (filters?.price || filters?.priceRange || price || null);
                     return displayPrice ? (
                       <div className={cx("price-box")}>₹{displayPrice}<span className={cx("price-type")}>/{priceType}</span></div>
                     ) : null;

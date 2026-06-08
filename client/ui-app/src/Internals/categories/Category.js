@@ -128,7 +128,7 @@ export default function Category() {
   const fileInputRef = useRef();
   const liveImageInputRef = useRef();
   const [errors, setErrors] = useState({});
-  const [filterDraft, setFilterDraft] = useState({ key: "", label: "", type: "multiselect", options: [], min: "", max: "", unit: "", isRequired: false });
+  const [filterDraft, setFilterDraft] = useState({ key: "", label: "", type: "multiselect", options: [], min: "", max: "", unit: "", isRequired: false, enabled: true });
   const [filterDraftError, setFilterDraftError] = useState("");
   const [editingFilterIndex, setEditingFilterIndex] = useState(null);
   const [formData, setFormData] = useState({
@@ -315,7 +315,7 @@ export default function Category() {
     setFilterDraftError("");
     const { ...rest } = filterDraft;
     setFormData(prev => ({ ...prev, filterConfig: [...prev.filterConfig, rest] }));
-    setFilterDraft({ key: "", label: "", type: "multiselect", options: [], min: "", max: "", unit: "", isRequired: false });
+    setFilterDraft({ key: "", label: "", type: "multiselect", options: [], min: "", max: "", unit: "", isRequired: false, enabled: true });
   };
 
   const handleRemoveFilterField = (index) => {
@@ -355,13 +355,21 @@ export default function Category() {
       return { ...prev, filterConfig: arr };
     });
     setEditingFilterIndex(null);
-    setFilterDraft({ key: "", label: "", type: "multiselect", options: [], min: "", max: "", unit: "", isRequired: false });
+    setFilterDraft({ key: "", label: "", type: "multiselect", options: [], min: "", max: "", unit: "", isRequired: false, enabled: true });
   };
 
   const handleCancelEditFilter = () => {
     setEditingFilterIndex(null);
-    setFilterDraft({ key: "", label: "", type: "multiselect", options: [], min: "", max: "", unit: "", isRequired: false });
+    setFilterDraft({ key: "", label: "", type: "multiselect", options: [], min: "", max: "", unit: "", isRequired: false, enabled: true });
     setFilterDraftError("");
+  };
+
+  const handleToggleFilterEnabled = (index) => {
+    setFormData(prev => {
+      const arr = [...prev.filterConfig];
+      arr[index] = { ...arr[index], enabled: arr[index].enabled === false ? true : false };
+      return { ...prev, filterConfig: arr };
+    });
   };
 
   const handleEdit = row => {
@@ -524,6 +532,15 @@ export default function Category() {
   };
   const validateForm = () => {
     let newErrors = {};
+    console.log("[Category] validateForm — formData:", {
+      category: formData.category,
+      categoryType: formData.categoryType,
+      subCategoryType: formData.subCategoryType,
+      title: formData.title,
+      description: formData.description,
+      keywords: formData.keywords,
+      filterConfig: formData.filterConfig,
+    });
 
     // Use InputValidator for comprehensive validation
     try {
@@ -536,6 +553,7 @@ export default function Category() {
       // This will throw if validation fails
       InputValidator.validateCategory(categoryData);
     } catch (error) {
+      console.log("[Category] InputValidator threw:", error.message);
       // Parse InputValidator error message into field errors
       const errorLines = error.message.split('\n').filter(line => line.trim());
       errorLines.forEach(line => {
@@ -549,6 +567,7 @@ export default function Category() {
     if (formData.categoryType === "Sub Category" && !formData.subCategoryType) newErrors.subCategoryType = "Sub Category Type is required";
     if (!formData.title.trim()) newErrors.title = "Title is required";
     if (!formData.keywords.length) newErrors.keywords = "At least one keyword is required";
+    console.log("[Category] validateForm errors:", newErrors);
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -853,7 +872,7 @@ export default function Category() {
       slug: "",
       filterConfig: []
     });
-    setFilterDraft({ key: "", label: "", type: "multiselect", options: [], min: "", max: "", unit: "", isRequired: false });
+    setFilterDraft({ key: "", label: "", type: "multiselect", options: [], min: "", max: "", unit: "", isRequired: false, enabled: true });
     setFilterDraftError("");
     setPreview(null);
     setLiveImagePreview(null);
@@ -861,6 +880,7 @@ export default function Category() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
   const doSave = () => {
+    console.log("[Category] doSave called, editMode:", editMode, "_id:", formData._id);
     // Prepare data to send (use cleaned keywords from InputValidator)
     const saveData = {
       ...formData,
@@ -870,22 +890,28 @@ export default function Category() {
     const action = editMode ? editCategory(formData._id, saveData) : createCategory(saveData);
     dispatch(action).then(() => {
       resetForm();
+      setActiveView("list");
       dispatch(getAllCategory());
     }).catch(err => {
       console.error(editMode ? "Update failed:" : "Create failed:", err);
-      // Show error from backend if available
       if (err.response?.data?.errors) {
         const backendErrors = {};
         err.response.data.errors.forEach(e => {
           backendErrors[e.field] = e.message;
         });
         setErrors(backendErrors);
+      } else {
+        const msg = err.response?.data?.message || err.message || "Save failed. Please try again.";
+        setErrors({ _form: msg });
       }
     });
   };
   const handleSubmit = async e => {
     e.preventDefault();
-    if (!validateForm()) return;
+    console.log("[Category] handleSubmit fired, editMode:", editMode);
+    const valid = validateForm();
+    console.log("[Category] validateForm result:", valid);
+    if (!valid) return;
     if (!editMode) {
       setCreateWarningLoading(true);
       try {
@@ -1599,6 +1625,13 @@ export default function Category() {
                   <Typography variant="caption">Required</Typography>
                 </Box>
 
+                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                  <Checkbox size="small" checked={filterDraft.enabled !== false}
+                    onChange={e => setFilterDraft(p => ({ ...p, enabled: e.target.checked }))}
+                    sx={{ p: 0.5, color: "#4caf50", "&.Mui-checked": { color: "#4caf50" } }} />
+                  <Typography variant="caption">Show in UI</Typography>
+                </Box>
+
                 {editingFilterIndex === null ? (
                   <Button variant="contained" size="small" onClick={handleAddFilterField}
                     sx={{ bgcolor: "var(--color-primary-orange)", "&:hover": { bgcolor: "#D97800" }, alignSelf: "center", flexShrink: 0 }}>
@@ -1628,10 +1661,29 @@ export default function Category() {
             {/* Saved filter fields list */}
             {formData.filterConfig.length > 0 && (
               <Box sx={{ mt: 1.5, display: "flex", flexDirection: "column", gap: 0.75 }}>
-                {formData.filterConfig.map((fc, i) => (
-                  <Box key={i} sx={{ display: "flex", alignItems: "center", gap: 1, p: 1.5, border: "1px solid #e0e0e0", borderRadius: 1, bgcolor: "#fff" }}>
+                {formData.filterConfig.map((fc, i) => {
+                  const isEnabled = fc.enabled !== false;
+                  return (
+                  <Box key={i} sx={{ display: "flex", alignItems: "center", gap: 1, p: 1.5, border: `1px solid ${isEnabled ? "#e0e0e0" : "#f5c6c6"}`, borderRadius: 1, bgcolor: isEnabled ? "#fff" : "#fff8f8", opacity: isEnabled ? 1 : 0.75 }}>
                     <Box sx={{ flex: 1 }}>
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>{fc.label}</Typography>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>{fc.label}</Typography>
+                        <Chip
+                          label={isEnabled ? "Visible" : "Hidden"}
+                          size="small"
+                          onClick={() => handleToggleFilterEnabled(i)}
+                          sx={{
+                            height: 18,
+                            fontSize: "10px",
+                            fontWeight: 600,
+                            cursor: "pointer",
+                            bgcolor: isEnabled ? "#e8f5e9" : "#fce4ec",
+                            color: isEnabled ? "#2e7d32" : "#c62828",
+                            "& .MuiChip-label": { px: 0.75 },
+                            "&:hover": { bgcolor: isEnabled ? "#c8e6c9" : "#f8bbd0" },
+                          }}
+                        />
+                      </Box>
                       <Typography variant="caption" color="text.secondary">
                         key: {fc.key} &nbsp;|&nbsp; {fc.type}
                         {fc.options?.length ? ` | ${fc.options.join(", ")}` : ""}
@@ -1648,7 +1700,7 @@ export default function Category() {
                       <DeleteOutlineRoundedIcon fontSize="small" />
                     </IconButton>
                   </Box>
-                ))}
+                );})}
               </Box>
             )}
           </div>
@@ -1665,6 +1717,8 @@ export default function Category() {
             </button>
           </div>
         </form>
+
+        {errors._form && <p className={cx("category-error-text")} style={{ marginTop: "16px", color: "#d32f2f" }}>{errors._form}</p>}
 
         {error && <p className={cx("category-error-text")} style={{
         marginTop: "16px"

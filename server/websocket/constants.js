@@ -3,6 +3,12 @@ export const WS_EVENTS = {
   ROOM_JOIN:             "room:join",
   ROOM_LEAVE:            "room:leave",
   PING:                  "ping",
+  HEARTBEAT:             "heartbeat",
+  CHAT_JOIN:             "chat:join",
+  CHAT_LEAVE:            "chat:leave",
+  CHAT_SEND:             "chat:send",
+  CHAT_TYPING:           "chat:typing",
+  CHAT_READ:             "chat:read",
 
   // ── Server → Client ──────────────────────────────────────────────────────────
   ROOM_JOINED:           "room:joined",
@@ -10,6 +16,9 @@ export const WS_EVENTS = {
   PONG:                  "pong",
   CONNECTED:             "connected",
   WS_ERROR:              "ws:error",
+  CHAT_MESSAGE_NEW:      "chat:message:new",
+  CHAT_CONVERSATION_UPDATED: "chat:conversation:updated",
+  CHAT_UNREAD_COUNT:     "chat:unread:count",
 
   // ── Lead domain ───────────────────────────────────────────────────────────────
   LEAD_ANALYTICS_UPDATE: "lead:analytics:update",
@@ -31,4 +40,6 @@ export const buildRoom = {
   business: (mobile) => `business:${mobile}`,
   user:     (userId) => `user:${userId}`,
   admin:    ()       => `admin:global`,
+  adminChat: ()      => `admin:chat`,
+  chat:     (id)     => `chat:${id}`,
 };

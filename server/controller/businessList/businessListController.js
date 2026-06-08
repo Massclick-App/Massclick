@@ -550,6 +550,12 @@ export const mainSearchController = async (req, res) => {
     if (req.query.featured === "true") {
       matchQuery.$and.push({ "badges.isFeatured": true });
     }
+    if (req.query.sponsored === "true") {
+      matchQuery.$and.push({ "badges.isSponsored": true });
+    }
+    if (req.query.trending === "true") {
+      matchQuery.$and.push({ "badges.isTrending": true });
+    }
     if (req.query.openNow === "true") {
       const now = new Date();
       const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];

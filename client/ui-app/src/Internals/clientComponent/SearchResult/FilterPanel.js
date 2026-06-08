@@ -4,6 +4,8 @@ import StarRoundedIcon from "@mui/icons-material/StarRounded";
 import AccessTimeRoundedIcon from "@mui/icons-material/AccessTimeRounded";
 import VerifiedRoundedIcon from "@mui/icons-material/VerifiedRounded";
 import WorkspacePremiumRoundedIcon from "@mui/icons-material/WorkspacePremiumRounded";
+import WhatshotRoundedIcon from "@mui/icons-material/WhatshotRounded";
+import DiamondRoundedIcon from "@mui/icons-material/DiamondRounded";
 import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 import styles from "./FilterPanel.module.css";
 
@@ -38,6 +40,18 @@ const UNIVERSAL_TOGGLES = [
     label: "Featured",
     icon: <WorkspacePremiumRoundedIcon sx={{ fontSize: 15, color: "#d97706" }} />,
     iconBg: "#fef3c7",
+  },
+  {
+    key: "sponsored",
+    label: "Sponsored",
+    icon: <DiamondRoundedIcon sx={{ fontSize: 15, color: "#7c3aed" }} />,
+    iconBg: "#ede9fe",
+  },
+  {
+    key: "trending",
+    label: "Trending",
+    icon: <WhatshotRoundedIcon sx={{ fontSize: 15, color: "#dc2626" }} />,
+    iconBg: "#fee2e2",
   },
 ];
 
@@ -222,7 +236,7 @@ const FilterPanel = ({
       </div>
 
       {/* Category-specific filters */}
-      {filterConfig.map((fc) => (
+      {filterConfig.filter((fc) => fc.enabled !== false).map((fc) => (
         <div key={fc.key} className={styles.section}>
           <div className={styles["section-label"]}>{fc.label}</div>
 

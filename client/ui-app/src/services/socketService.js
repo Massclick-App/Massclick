@@ -6,9 +6,11 @@ const WS_URL =
   (process.env.REACT_APP_API_URL || '').replace(/\/api\/?$/, '');
 
 let socket = null;
+let currentToken = null;
 
 export const connectSocket = (token) => {
-  if (socket?.connected) return socket;
+  if (!token) return socket;
+  if (socket?.connected && currentToken === token) return socket;
 
   // Tear down any stale disconnected socket before recreating
   if (socket) {
@@ -17,6 +19,7 @@ export const connectSocket = (token) => {
     socket = null;
   }
 
+  currentToken = token;
   socket = io(WS_URL, {
     auth: { token },
     transports: ['websocket'],
@@ -51,5 +54,6 @@ export const disconnectSocket = () => {
     socket.removeAllListeners();
     socket.disconnect();
     socket = null;
+    currentToken = null;
   }
 };

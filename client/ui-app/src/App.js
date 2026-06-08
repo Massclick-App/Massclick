@@ -64,6 +64,7 @@ const LeadsCardHistory = lazy(() => import(/* webpackChunkName: "leads-history" 
 const BusinessEnquiry = lazy(() => import(/* webpackChunkName: "business-enquiry" */ './Internals/clientComponent/businessEnquiry/businessEnquiry.js'));
 
 const EnquiryPage = lazy(() => import(/* webpackChunkName: "admin-enquiry" */ './Internals/enquiry-page/enquiry-page.js'));
+const AdminCustomerCareChat = lazy(() => import(/* webpackChunkName: "admin-customer-care-chat" */ './Internals/CustomerCareChat/AdminCustomerCareChat.js'));
 const AdvertisementPage = lazy(() => import(/* webpackChunkName: "admin-advertisement" */ './Internals/advertisement/advertisement.js'));
 const EventCategory = lazy(() => import(/* webpackChunkName: "admin-event-category" */ './components/eventCategory/eventCategory.js'));
 const EventLocation = lazy(() => import(/* webpackChunkName: "admin-event-location" */ './components/eventLocation/eventLocation.js'));
@@ -205,6 +206,7 @@ function AppRoutes({
                 <Route path="seopagecontent" element={<SeoPageContent />} />
                 <Route path="seopagecontentblogs" element={<SeoPageContentBlogs />} />
                 <Route path="enquiry" element={<EnquiryPage />} />
+                <Route path="customer-care" element={<AdminCustomerCareChat />} />
                 <Route path="advertisements" element={<AdvertisementPage />} />
                 <Route path="event-category" element={<EventCategory />} />
                 <Route path="event-location" element={<EventLocation />} />

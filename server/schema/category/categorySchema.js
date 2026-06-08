@@ -48,6 +48,7 @@ const categorySchema = new mongoose.Schema(
           max:        { type: Number, default: null },
           unit:       { type: String, default: "" },
           isRequired: { type: Boolean, default: false },
+          enabled:    { type: Boolean, default: true },
         },
         { _id: false }
       )],

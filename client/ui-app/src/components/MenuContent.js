@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
+  Badge,
   List,
   ListItem,
   ListItemButton,
@@ -17,6 +18,7 @@ import SupportAgentIcon from "@mui/icons-material/SupportAgent";
 import InterpreterModeIcon from "@mui/icons-material/InterpreterMode";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import MailOutlineIcon from "@mui/icons-material/MailOutline";
+import HeadsetMicIcon from "@mui/icons-material/HeadsetMic";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
@@ -32,6 +34,8 @@ import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import ClassIcon from '@mui/icons-material/Class';
 import FeaturedVideoIcon from '@mui/icons-material/FeaturedVideo';
 import TravelExploreIcon from '@mui/icons-material/TravelExplore';
+import { fetchChatUnreadCount, getAdminChatToken } from "../services/chatService";
+import { connectSocket } from "../services/socketService";
 
 const SUPERADMIN = 'SuperAdmin';
 
@@ -58,6 +62,7 @@ const MENU_SECTIONS = [
     label: "Manage",
     items: [
       { text: "Enquiries", icon: MailOutlineIcon, path: "/dashboard/enquiry" },
+      { text: "Care Chat", icon: HeadsetMicIcon, path: "/dashboard/customer-care", badgeKey: "chat" },
       { text: "Ads", icon: NotificationsIcon, path: "/dashboard/advertisements" },
       { text: "MNI", icon: StorefrontIcon, path: "/dashboard/mni-data" },
       { text: "Notifications", icon: NotificationsIcon, path: "/dashboard/fcm-marketing" },
@@ -101,6 +106,24 @@ export default function SideMenu({ onItemClick }) {
     JSON.parse(localStorage.getItem("allowedPages") || "[]");
 
   const isSuperAdmin = userRole === SUPERADMIN;
+  const [chatUnread, setChatUnread] = useState(0);
+
+  useEffect(() => {
+    const token = getAdminChatToken();
+    if (!token) return undefined;
+
+    fetchChatUnreadCount(token)
+      .then((data) => setChatUnread(data.admin || 0))
+      .catch(() => {});
+
+    const socket = connectSocket(token);
+    const handleUnread = (data) => setChatUnread(data?.admin || 0);
+    socket?.on("chat:unread:count", handleUnread);
+
+    return () => {
+      socket?.off("chat:unread:count", handleUnread);
+    };
+  }, []);
 
   const hasAccess = (path) => {
     if (path === "/dashboard") return true;
@@ -170,6 +193,7 @@ export default function SideMenu({ onItemClick }) {
               sx={{
                 width: isMobile ? 36 : 40,
                 height: isMobile ? 36 : 40,
+                position: "relative",
                 borderRadius: "10px",
                 display: "flex",
                 alignItems: "center",
@@ -187,6 +211,22 @@ export default function SideMenu({ onItemClick }) {
               }}
             >
               <IconComp sx={{ fontSize: iconSize }} />
+              {item.badgeKey === "chat" && chatUnread > 0 && (
+                <Badge
+                  badgeContent={chatUnread}
+                  color="error"
+                  sx={{
+                    position: "absolute",
+                    top: 2,
+                    right: 2,
+                    "& .MuiBadge-badge": {
+                      minWidth: 16,
+                      height: 16,
+                      fontSize: "0.62rem",
+                    },
+                  }}
+                />
+              )}
             </Box>
           </ListItemIcon>
 

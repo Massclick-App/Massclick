@@ -7,26 +7,35 @@ import {
 } from "../connectionManager.js";
 
 export const registerCoreHandlers = (socket) => {
-  const { userId, userName, mobileNumber1, userRole } = socket.data.user;
+  const { userId, userName, mobileNumber1, userRole, authType } = socket.data.user;
 
   addConnection(socket.id, { userId, userName, mobileNumber: mobileNumber1, role: userRole });
 
   // Auto-join personal rooms immediately on connection
-  const businessRoom = buildRoom.business(mobileNumber1);
   const userRoom = buildRoom.user(userId);
+  const rooms = [userRoom];
 
-  socket.join(businessRoom);
-  socket.join(userRoom);
-  addRoomToConnection(socket.id, businessRoom);
-  addRoomToConnection(socket.id, userRoom);
+  if (mobileNumber1) {
+    rooms.push(buildRoom.business(mobileNumber1));
+  }
+
+  if (authType === "admin") {
+    rooms.push(buildRoom.admin());
+    rooms.push(buildRoom.adminChat());
+  }
+
+  rooms.forEach((room) => {
+    socket.join(room);
+    addRoomToConnection(socket.id, room);
+  });
 
   socket.emit(WS_EVENTS.CONNECTED, {
     socketId: socket.id,
-    rooms: [businessRoom, userRoom],
+    rooms,
     ts: new Date().toISOString(),
   });
 
-  console.log(`[WS] + ${userName} (${mobileNumber1}) socket=${socket.id}`);
+  console.log(`[WS] + ${userName || userId} (${authType || "user"}) socket=${socket.id}`);
 
   // Dynamic room join (e.g. admin joining admin:global, or category:restaurants)
   socket.on(WS_EVENTS.ROOM_JOIN, ({ room } = {}) => {
@@ -47,8 +56,12 @@ export const registerCoreHandlers = (socket) => {
     socket.emit(WS_EVENTS.PONG, { ts: Date.now() });
   });
 
+  socket.on(WS_EVENTS.HEARTBEAT, () => {
+    socket.emit(WS_EVENTS.PONG, { ts: Date.now() });
+  });
+
   socket.on("disconnect", (reason) => {
-    console.log(`[WS] - ${userName} socket=${socket.id} reason=${reason}`);
+    console.log(`[WS] - ${userName || userId} socket=${socket.id} reason=${reason}`);
     removeConnection(socket.id);
   });
 };
