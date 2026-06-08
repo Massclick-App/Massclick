@@ -415,6 +415,7 @@ const BusinessList = React.memo(() => {
   const [warnLevel, setWarnLevel] = useState(0);
   const [warnDialog, setWarnDialog] = useState(false);
   const [preview, setPreview] = useState(null);
+  const [badgeUpdateLoading, setBadgeUpdateLoading] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState({
     open: false,
     id: null
@@ -1290,6 +1291,42 @@ const BusinessList = React.memo(() => {
       }
     }
   };
+  const updateBadgesOnly = async () => {
+    if (!editId) {
+      enqueueSnackbar("Please save the business first before updating badges.", {
+        variant: "warning"
+      });
+      return;
+    }
+
+    setBadgeUpdateLoading(true);
+    try {
+      const payload = {
+        badges: formData.badges,
+        verification: formData.verification
+      };
+
+      await dispatch(editBusinessList(editId, payload));
+      enqueueSnackbar("Badges updated successfully!", {
+        variant: "success"
+      });
+      dispatch(getAllBusinessList());
+    } catch (err) {
+      console.error("Error updating badges:", err);
+      if (err.response?.data?.message) {
+        enqueueSnackbar(err.response.data.message, {
+          variant: "error"
+        });
+      } else {
+        enqueueSnackbar("Error updating badges. Please try again.", {
+          variant: "error"
+        });
+      }
+    } finally {
+      setBadgeUpdateLoading(false);
+    }
+  };
+
   const handleSubmit = async e => {
     e.preventDefault();
     await saveBusiness();
@@ -2323,7 +2360,26 @@ const BusinessList = React.memo(() => {
 
             <div className={cx("form-input-group")}>
               <label className={cx("input-label")}>Priority Score</label>
-              <input type="number" min="0" max="100" className={cx("text-input")} value={formData.badges?.priorityScore ?? 0} onChange={e => setFormData(prev => ({ ...prev, badges: { ...prev.badges, priorityScore: Number(e.target.value) } }))} placeholder="0–100, higher = boosted in results" />
+              <div style={{ display: "flex", gap: "12px", alignItems: "flex-end" }}>
+                <input type="number" min="0" max="100" className={cx("text-input")} value={formData.badges?.priorityScore ?? 0} onChange={e => setFormData(prev => ({ ...prev, badges: { ...prev.badges, priorityScore: Number(e.target.value) } }))} placeholder="0–100, higher = boosted in results" style={{ flex: 1 }} />
+                {editMode && editId && (
+                  <Button
+                    variant="contained"
+                    onClick={updateBadgesOnly}
+                    disabled={badgeUpdateLoading}
+                    sx={{
+                      bgcolor: '#ff8c42',
+                      color: '#fff',
+                      textTransform: 'none',
+                      fontWeight: 600,
+                      '&:hover': { bgcolor: '#e67a2e' },
+                      '&:disabled': { bgcolor: '#cccccc' }
+                    }}
+                  >
+                    {badgeUpdateLoading ? <CircularProgress size={20} color="inherit" /> : "Update Badges"}
+                  </Button>
+                )}
+              </div>
             </div>
           </>;
       case 3:

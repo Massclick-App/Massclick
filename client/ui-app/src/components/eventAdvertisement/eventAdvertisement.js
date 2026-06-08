@@ -3,27 +3,25 @@ import { useDispatch, useSelector } from "react-redux";
 import Cropper from "react-easy-crop";
 
 import {
-  getAllEventCategory,
-  getAllEventLocation,
-  getAllEventAdvertisement,
   createEventAdvertisement,
-  updateEventAdvertisement,
   deleteEventAdvertisement,
+  getAllEventAdvertisement,
+  updateEventAdvertisement,
 } from "../../redux/actions/eventAction";
 
 import {
+  Alert,
   Avatar,
   Box,
   Button,
-  Typography,
   CircularProgress,
-  IconButton,
   Dialog,
-  DialogTitle,
-  DialogContent,
   DialogActions,
-  Alert,
+  DialogContent,
+  DialogTitle,
+  IconButton,
   Slider,
+  Typography,
 } from "@mui/material";
 
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
@@ -38,39 +36,31 @@ import styles from "./eventAdvertisement.module.css";
 
 const cx = createScopedClassNames(styles);
 
+const HOME_POPUP_POSITION = "HOME_POPUP";
+
 const initialFormData = {
   title: "",
   description: "",
-  eventCategory: "",
-  eventLocation: "",
-  advertisementImage: "",
   bannerImage: "",
   mobileBannerImage: "",
-  advertiserName: "",
-  advertiserContact: "",
-  advertiserEmail: "",
   redirectUrl: "",
   startDate: "",
   endDate: "",
-  displayPosition: "middle",
   displayDuration: 0,
   showConfetti: false,
-  slug: "",
   isActive: true,
 };
 
-const HOME_POPUP_RULES = {
-  key: "desktop",
-  title: "Popup Desktop Image",
+const DESKTOP_POPUP_RULES = {
+  title: "Desktop Popup Image",
   targetWidth: 800,
   targetHeight: 600,
   recommended: "800 x 600 px",
-  label: "Choose an image and crop it into the required 800 x 600 px popup frame.",
+  label: "Choose an image and crop it into the required 800 x 600 px desktop popup frame.",
 };
 
 const MOBILE_POPUP_RULES = {
-  key: "mobile",
-  title: "Popup Mobile Image",
+  title: "Mobile Popup Image",
   targetWidth: 480,
   targetHeight: 640,
   recommended: "480 x 640 px",
@@ -78,30 +68,13 @@ const MOBILE_POPUP_RULES = {
 };
 
 const getPopupRules = (cropType) =>
-  cropType === "mobile" ? MOBILE_POPUP_RULES : HOME_POPUP_RULES;
+  cropType === "mobile" ? MOBILE_POPUP_RULES : DESKTOP_POPUP_RULES;
 
 const formatDateInput = (value) => {
   if (!value) return "";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
   return date.toISOString().slice(0, 10);
-};
-
-const getRefId = (value) => {
-  if (!value) return "";
-  return typeof value === "object" ? value._id || value.id || "" : value;
-};
-
-const getCategoryLabel = (value) => {
-  if (!value) return "-";
-  if (typeof value === "object") return value.categoryName || value.slug || "-";
-  return value;
-};
-
-const getLocationLabel = (value) => {
-  if (!value) return "-";
-  if (typeof value === "object") return value.locationName || value.city || "-";
-  return value;
 };
 
 const getImageDimensions = (file) =>
@@ -171,23 +144,14 @@ const cropImageToPopup = (imageSource, croppedAreaPixels, cropType = "desktop") 
 
 export default function EventAdvertisement() {
   const dispatch = useDispatch();
-  const bannerInputRef = useRef(null);
-  const mobileBannerInputRef = useRef(null);
+  const desktopInputRef = useRef(null);
+  const mobileInputRef = useRef(null);
 
   const {
     data = [],
-    total = 0,
     loading,
     error,
   } = useSelector((state) => state.event.eventAdvertisement);
-
-  const { data: categories = [] } = useSelector(
-    (state) => state.event.eventCategory
-  );
-
-  const { data: locations = [] } = useSelector(
-    (state) => state.event.eventLocation
-  );
 
   const [isEditMode, setIsEditMode] = useState(false);
   const [activeView, setActiveView] = useState("list");
@@ -196,10 +160,10 @@ export default function EventAdvertisement() {
   const [formData, setFormData] = useState(initialFormData);
   const [errors, setErrors] = useState({});
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [selectedAdvertisement, setSelectedAdvertisement] = useState(null);
-  const [preview, setPreview] = useState(null);
+  const [selectedPopup, setSelectedPopup] = useState(null);
+  const [desktopPreview, setDesktopPreview] = useState(null);
   const [mobilePreview, setMobilePreview] = useState(null);
-  const [imageMeta, setImageMeta] = useState(null);
+  const [desktopImageMeta, setDesktopImageMeta] = useState(null);
   const [mobileImageMeta, setMobileImageMeta] = useState(null);
   const [cropperOpen, setCropperOpen] = useState(false);
   const [cropData, setCropData] = useState({
@@ -213,26 +177,19 @@ export default function EventAdvertisement() {
 
   useEffect(() => {
     dispatch(getAllEventAdvertisement());
-    dispatch(getAllEventCategory({ pageSize: 100, options: { status: "active" } }));
-    dispatch(getAllEventLocation({ pageSize: 100, options: { status: "active" } }));
   }, [dispatch]);
 
   const validateForm = () => {
     const newErrors = {};
     const startDate = new Date(formData.startDate);
     const endDate = new Date(formData.endDate);
-    const isPopup = formData.displayPosition === "HOME_POPUP";
 
     if (!formData.title.trim()) {
-      newErrors.title = "Title is required";
+      newErrors.title = "Popup title is required";
     }
 
-    if (!isPopup && !formData.eventCategory) {
-      newErrors.eventCategory = "Event category is required";
-    }
-
-    if (!isPopup && !formData.eventLocation) {
-      newErrors.eventLocation = "Event location is required";
+    if (!isEditMode && !formData.bannerImage) {
+      newErrors.bannerImage = "Desktop popup image is required";
     }
 
     if (
@@ -245,57 +202,41 @@ export default function EventAdvertisement() {
       newErrors.endDate = "End date cannot be before start date";
     }
 
-    if (
-      formData.advertiserEmail.trim() &&
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.advertiserEmail.trim())
-    ) {
-      newErrors.advertiserEmail = "Enter a valid advertiser email";
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const buildPayload = () => {
-    const isPopup = formData.displayPosition === "HOME_POPUP";
-
-    return {
-    title: formData.title.trim(),
-    description: formData.description.trim(),
-    eventCategory: isPopup ? null : formData.eventCategory,
-    eventLocation: isPopup ? null : formData.eventLocation,
-    advertisementImage: formData.advertisementImage.trim(),
-    bannerImage: formData.bannerImage.trim(),
-    mobileBannerImage: formData.mobileBannerImage.trim(),
-    advertiserName: formData.advertiserName.trim(),
-    advertiserContact: formData.advertiserContact.trim(),
-    advertiserEmail: formData.advertiserEmail.trim(),
-    redirectUrl: formData.redirectUrl.trim(),
-    startDate: formData.startDate || null,
-    endDate: formData.endDate || null,
-    displayPosition: formData.displayPosition,
-    displayDuration: Number(formData.displayDuration) || 0,
-    showConfetti: !!formData.showConfetti,
-    isActive: formData.isActive,
+    const payload = {
+      title: formData.title.trim(),
+      description: formData.description.trim(),
+      redirectUrl: formData.redirectUrl.trim(),
+      startDate: formData.startDate || null,
+      endDate: formData.endDate || null,
+      displayPosition: HOME_POPUP_POSITION,
+      displayDuration: Number(formData.displayDuration) || 0,
+      showConfetti: !!formData.showConfetti,
+      isActive: formData.isActive,
     };
+
+    if (formData.bannerImage.trim()) {
+      payload.bannerImage = formData.bannerImage.trim();
+    }
+
+    if (formData.mobileBannerImage.trim()) {
+      payload.mobileBannerImage = formData.mobileBannerImage.trim();
+    }
+
+    return payload;
   };
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
 
-    setFormData((prev) => {
-      const next = {
-        ...prev,
-        [name]: type === "checkbox" ? checked : value,
-      };
-
-      if (name === "displayPosition" && value === "HOME_POPUP") {
-        next.eventCategory = "";
-        next.eventLocation = "";
-      }
-
-      return next;
-    });
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
 
     setErrors((prev) => ({
       ...prev,
@@ -307,45 +248,33 @@ export default function EventAdvertisement() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (
-      formData.displayPosition === "HOME_POPUP" &&
-      (fieldName === "bannerImage" || fieldName === "mobileBannerImage")
-    ) {
-      try {
-        const dimensions = await getImageDimensions(file);
-        const image = await readFileAsDataUrl(file);
-        const cropType = fieldName === "mobileBannerImage" ? "mobile" : "desktop";
+    try {
+      const dimensions = await getImageDimensions(file);
+      const image = await readFileAsDataUrl(file);
+      const cropType = fieldName === "mobileBannerImage" ? "mobile" : "desktop";
 
-        if (cropType === "mobile") {
-          setMobileImageMeta(dimensions);
-        } else {
-          setImageMeta(dimensions);
-        }
-
-        setCropData({
-          image,
-          cropType,
-          dimensions,
-          crop: { x: 0, y: 0 },
-          zoom: 1,
-          croppedAreaPixels: null,
-        });
-        setCropperOpen(true);
-      } catch (error) {
-        setErrors((prev) => ({
-          ...prev,
-          [fieldName]: error.message,
-        }));
+      if (cropType === "mobile") {
+        setMobileImageMeta(dimensions);
+      } else {
+        setDesktopImageMeta(dimensions);
       }
-      e.target.value = "";
-      return;
+
+      setCropData({
+        image,
+        cropType,
+        dimensions,
+        crop: { x: 0, y: 0 },
+        zoom: 1,
+        croppedAreaPixels: null,
+      });
+      setCropperOpen(true);
+    } catch (uploadError) {
+      setErrors((prev) => ({
+        ...prev,
+        [fieldName]: uploadError.message,
+      }));
     }
 
-    const image = await readFileAsDataUrl(file);
-    setFormData((prev) => ({
-      ...prev,
-      [fieldName]: image,
-    }));
     e.target.value = "";
   };
 
@@ -375,8 +304,8 @@ export default function EventAdvertisement() {
           height: cropped.originalHeight,
         });
       } else {
-        setPreview(cropped.base64);
-        setImageMeta({
+        setDesktopPreview(cropped.base64);
+        setDesktopImageMeta({
           width: cropped.originalWidth,
           height: cropped.originalHeight,
         });
@@ -394,18 +323,18 @@ export default function EventAdvertisement() {
         return next;
       });
       setCropperOpen(false);
-    } catch (error) {
+    } catch (cropError) {
       setErrors((prev) => ({
         ...prev,
-        [fieldName]: error.message,
+        [fieldName]: cropError.message,
       }));
     }
   };
 
   const handlePopupCropCancel = () => {
     setCropperOpen(false);
-    if (bannerInputRef.current) bannerInputRef.current.value = "";
-    if (mobileBannerInputRef.current) mobileBannerInputRef.current.value = "";
+    if (desktopInputRef.current) desktopInputRef.current.value = "";
+    if (mobileInputRef.current) mobileInputRef.current.value = "";
   };
 
   const resetForm = () => {
@@ -413,9 +342,9 @@ export default function EventAdvertisement() {
     setEditId(null);
     setIsEditMode(false);
     setErrors({});
-    setPreview(null);
+    setDesktopPreview(null);
     setMobilePreview(null);
-    setImageMeta(null);
+    setDesktopImageMeta(null);
     setMobileImageMeta(null);
     setCropperOpen(false);
   };
@@ -434,8 +363,8 @@ export default function EventAdvertisement() {
       .then(() => {
         setSuccessMessage(
           isEditMode
-            ? "Event advertisement updated successfully"
-            : "Event advertisement created successfully"
+            ? "Home popup updated successfully"
+            : "Home popup created successfully"
         );
         dispatch(getAllEventAdvertisement());
         resetForm();
@@ -451,27 +380,19 @@ export default function EventAdvertisement() {
     setFormData({
       title: row.title || "",
       description: row.description || "",
-      eventCategory: getRefId(row.rawEventCategory),
-      eventLocation: getRefId(row.rawEventLocation),
-      advertisementImage: row.advertisementImage || "",
-      bannerImage: row.bannerImage || "",
-      mobileBannerImage: row.mobileBannerImage || "",
-      advertiserName: row.advertiserName || "",
-      advertiserContact: row.advertiserContact || "",
-      advertiserEmail: row.advertiserEmail || "",
+      bannerImage: "",
+      mobileBannerImage: "",
       redirectUrl: row.redirectUrl || "",
       startDate: formatDateInput(row.startDate),
       endDate: formatDateInput(row.endDate),
-      displayPosition: row.displayPosition || "middle",
       displayDuration: row.displayDuration ?? 0,
       showConfetti: row.showConfetti ?? false,
-      slug: row.slug || "",
       isActive: row.isActive,
     });
 
-    setPreview(row.bannerImage || null);
+    setDesktopPreview(row.bannerImage || null);
     setMobilePreview(row.mobileBannerImage || null);
-    setImageMeta(null);
+    setDesktopImageMeta(null);
     setMobileImageMeta(null);
     setEditId(row.id);
     setIsEditMode(true);
@@ -480,59 +401,51 @@ export default function EventAdvertisement() {
   };
 
   const handleDeleteClick = (row) => {
-    setSelectedAdvertisement(row);
+    setSelectedPopup(row);
     setDeleteDialogOpen(true);
   };
 
   const confirmDelete = () => {
-    if (!selectedAdvertisement?.id) return;
+    if (!selectedPopup?.id) return;
 
-    dispatch(deleteEventAdvertisement(selectedAdvertisement.id))
+    dispatch(deleteEventAdvertisement(selectedPopup.id))
       .then(() => {
         dispatch(getAllEventAdvertisement());
         setDeleteDialogOpen(false);
-        setSelectedAdvertisement(null);
-        setSuccessMessage("Event advertisement deleted successfully");
+        setSelectedPopup(null);
+        setSuccessMessage("Home popup deleted successfully");
       })
       .catch(console.error);
   };
 
-  const rows = data.map((item) => ({
-    _id: item._id,
-    id: item._id,
-    title: item.title || "",
-    description: item.description || "",
-    rawEventCategory: item.eventCategory,
-    rawEventLocation: item.eventLocation,
-    eventCategory: getCategoryLabel(item.eventCategory),
-    eventLocation: getLocationLabel(item.eventLocation),
-    advertisementImage: item.advertisementImage || "",
-    bannerImage: item.bannerImage || "",
-    mobileBannerImage: item.mobileBannerImage || "",
-    advertiserName: item.advertiserName || "-",
-    advertiserContact: item.advertiserContact || "",
-    advertiserEmail: item.advertiserEmail || "",
-    redirectUrl: item.redirectUrl || "",
-    startDate: item.startDate || "",
-    endDate: item.endDate || "",
-    dateRange:
-      item.startDate || item.endDate
-        ? `${formatDateInput(item.startDate) || "-"} to ${formatDateInput(item.endDate) || "-"}`
-        : "-",
-    displayPosition: item.displayPosition || "middle",
-    displayDuration: item.displayDuration ?? 0,
-    showConfetti: item.showConfetti ?? false,
-    clicks: item.clicks ?? 0,
-    impressions: item.impressions ?? 0,
-    slug: item.slug || "",
-    isActive: item.isActive !== false,
-    status: item.isActive !== false ? "Active" : "Inactive",
-  }));
+  const rows = data
+    .filter((item) => item.displayPosition === HOME_POPUP_POSITION)
+    .map((item) => ({
+      _id: item._id,
+      id: item._id,
+      title: item.title || "",
+      description: item.description || "",
+      bannerImage: item.bannerImage || "",
+      mobileBannerImage: item.mobileBannerImage || "",
+      redirectUrl: item.redirectUrl || "",
+      startDate: item.startDate || "",
+      endDate: item.endDate || "",
+      dateRange:
+        item.startDate || item.endDate
+          ? `${formatDateInput(item.startDate) || "-"} to ${formatDateInput(item.endDate) || "-"}`
+          : "-",
+      displayDuration: item.displayDuration ?? 0,
+      showConfetti: item.showConfetti ?? false,
+      clicks: item.clicks ?? 0,
+      impressions: item.impressions ?? 0,
+      isActive: item.isActive !== false,
+      status: item.isActive !== false ? "Active" : "Inactive",
+    }));
 
   const columns = [
     {
-      id: "advertisementImage",
-      label: "Image",
+      id: "bannerImage",
+      label: "Desktop Image",
       renderCell: (value, row) =>
         value ? (
           <img
@@ -546,27 +459,21 @@ export default function EventAdvertisement() {
     },
     {
       id: "title",
-      label: "Title",
-    },
-    {
-      id: "eventCategory",
-      label: "Category",
-    },
-    {
-      id: "eventLocation",
-      label: "Location",
-    },
-    {
-      id: "advertiserName",
-      label: "Advertiser",
-    },
-    {
-      id: "displayPosition",
-      label: "Position",
+      label: "Popup Title",
     },
     {
       id: "dateRange",
-      label: "Date",
+      label: "Schedule",
+    },
+    {
+      id: "displayDuration",
+      label: "Auto-close",
+      renderCell: (value) => (value ? `${value}s` : "Manual"),
+    },
+    {
+      id: "showConfetti",
+      label: "Confetti",
+      renderCell: (value) => (value ? "Yes" : "No"),
     },
     {
       id: "clicks",
@@ -599,7 +506,7 @@ export default function EventAdvertisement() {
           <IconButton
             color="primary"
             onClick={() => handleEdit(row)}
-            aria-label="Edit event advertisement"
+            aria-label="Edit home popup"
           >
             <EditRoundedIcon />
           </IconButton>
@@ -607,7 +514,7 @@ export default function EventAdvertisement() {
           <IconButton
             color="error"
             onClick={() => handleDeleteClick(row)}
-            aria-label="Delete event advertisement"
+            aria-label="Delete home popup"
           >
             <DeleteOutlineRoundedIcon />
           </IconButton>
@@ -616,210 +523,112 @@ export default function EventAdvertisement() {
     },
   ];
 
-  const isPopup = formData.displayPosition === "HOME_POPUP";
-
   return (
     <div className={cx("eventAdvertisement-page")}>
-      <AdminViewTabs activeView={activeView} onChange={setActiveView} isEditing={isEditMode} createLabel="Event Advertisement" listLabel="Event Advertisements" listCount={rows.length} />
+      <AdminViewTabs
+        activeView={activeView}
+        onChange={setActiveView}
+        isEditing={isEditMode}
+        createLabel="Home Popup"
+        listLabel="Home Popups"
+        listCount={rows.length}
+      />
 
-      {activeView === "form" && <div className={cx("eventAdvertisement-card")}>
-        <h2>
-          {isEditMode
-            ? "Edit Event Advertisement"
-            : "Create Event Advertisement"}
-        </h2>
+      {activeView === "form" && (
+        <div className={cx("eventAdvertisement-card")}>
+          <h2>{isEditMode ? "Edit Home Popup" : "Create Home Popup"}</h2>
 
-        {successMessage && (
-          <Alert severity="success">
-            {successMessage}
-          </Alert>
-        )}
+          {successMessage && <Alert severity="success">{successMessage}</Alert>}
+          {error && <Alert severity="error">{error}</Alert>}
 
-        {error && (
-          <Alert severity="error">
-            {error}
-          </Alert>
-        )}
-
-        <form onSubmit={handleSubmit}>
-          <div className={cx("eventAdvertisement-grid")}>
-            <div>
-              <label>Title *</label>
-
-              <input
-                type="text"
-                name="title"
-                value={formData.title}
-                onChange={handleChange}
-              />
-
-              {errors.title && (
-                <p className={cx("eventAdvertisement-error-text")}>
-                  {errors.title}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <label>Slug</label>
-
-              <input
-                type="text"
-                name="slug"
-                value={formData.slug}
-                readOnly
-                placeholder="Auto generated from title"
-              />
-            </div>
-
-            {!isPopup && <div>
-              <label>Event Category *</label>
-
-              <select
-                name="eventCategory"
-                value={formData.eventCategory}
-                onChange={handleChange}
-              >
-                <option value="">Select category</option>
-                {categories.map((category) => (
-                  <option
-                    key={category._id}
-                    value={category._id}
-                  >
-                    {category.categoryName}
-                  </option>
-                ))}
-              </select>
-
-              {errors.eventCategory && (
-                <p className={cx("eventAdvertisement-error-text")}>
-                  {errors.eventCategory}
-                </p>
-              )}
-            </div>}
-
-            {!isPopup && <div>
-              <label>Event Location *</label>
-
-              <select
-                name="eventLocation"
-                value={formData.eventLocation}
-                onChange={handleChange}
-              >
-                <option value="">Select location</option>
-                {locations.map((location) => (
-                  <option
-                    key={location._id}
-                    value={location._id}
-                  >
-                    {location.locationName}
-                  </option>
-                ))}
-              </select>
-
-              {errors.eventLocation && (
-                <p className={cx("eventAdvertisement-error-text")}>
-                  {errors.eventLocation}
-                </p>
-              )}
-            </div>}
-
-            <div className={cx("eventAdvertisement-field--full")}>
-              <label>Description</label>
-
-              <textarea
-                name="description"
-                value={formData.description}
-                onChange={handleChange}
-                rows="4"
-              />
-            </div>
-
-            <div className={cx("eventAdvertisement-upload-field")}>
-              <label>Advertisement Image</label>
-
-              <div className={cx("eventAdvertisement-upload-content")}>
-                <Button
-                  variant="contained"
-                  startIcon={<CloudUploadIcon />}
-                  component="label"
-                  className={cx("eventAdvertisement-upload-button")}
-                >
-                  Upload Image
-                  <input
-                    type="file"
-                    accept="image/*"
-                    hidden
-                    onChange={(e) =>
-                      handleImageUpload(e, "advertisementImage")
-                    }
-                  />
-                </Button>
-
-                {formData.advertisementImage && (
-                  <Avatar
-                    src={formData.advertisementImage}
-                    variant="rounded"
-                    sx={{ width: 56, height: 56 }}
-                    className={cx("eventAdvertisement-preview-avatar")}
-                  />
+          <form onSubmit={handleSubmit}>
+            <div className={cx("eventAdvertisement-grid")}>
+              <div>
+                <label>Popup Title *</label>
+                <input
+                  type="text"
+                  name="title"
+                  value={formData.title}
+                  onChange={handleChange}
+                />
+                {errors.title && (
+                  <p className={cx("eventAdvertisement-error-text")}>
+                    {errors.title}
+                  </p>
                 )}
               </div>
-            </div>
 
-            <div className={cx("eventAdvertisement-upload-field")}>
-              <label>Banner Image</label>
-              {isPopup && (
+              <div>
+                <label>Redirect URL</label>
+                <input
+                  type="text"
+                  name="redirectUrl"
+                  value={formData.redirectUrl}
+                  onChange={handleChange}
+                />
+              </div>
+
+              <div className={cx("eventAdvertisement-field--full")}>
+                <label>Popup Description</label>
+                <textarea
+                  name="description"
+                  value={formData.description}
+                  onChange={handleChange}
+                  rows="4"
+                />
+              </div>
+
+              <div className={cx("eventAdvertisement-upload-field")}>
+                <label>Desktop Popup Image *</label>
                 <p className={cx("eventAdvertisement-upload-guidance")}>
-                  {HOME_POPUP_RULES.label}
+                  {DESKTOP_POPUP_RULES.label}
                 </p>
-              )}
 
-              <div className={cx("eventAdvertisement-upload-content")}>
-                <Button
-                  variant="contained"
-                  startIcon={<CloudUploadIcon />}
-                  component="label"
-                  className={cx("eventAdvertisement-upload-button")}
-                >
-                  Upload Image
-                  <input
-                    ref={bannerInputRef}
-                    type="file"
-                    accept="image/*"
-                    hidden
-                    onChange={(e) => handleImageUpload(e, "bannerImage")}
-                  />
-                </Button>
+                <div className={cx("eventAdvertisement-upload-content")}>
+                  <Button
+                    variant="contained"
+                    startIcon={<CloudUploadIcon />}
+                    component="label"
+                    className={cx("eventAdvertisement-upload-button")}
+                  >
+                    Upload Desktop Image
+                    <input
+                      ref={desktopInputRef}
+                      type="file"
+                      accept="image/*"
+                      hidden
+                      onChange={(e) => handleImageUpload(e, "bannerImage")}
+                    />
+                  </Button>
 
-                {formData.bannerImage && (
-                  <Avatar
-                    src={formData.bannerImage}
-                    variant="rounded"
-                    sx={{ width: 96, height: 56 }}
-                    className={cx("eventAdvertisement-preview-avatar")}
-                  />
+                  {formData.bannerImage && (
+                    <Avatar
+                      src={formData.bannerImage}
+                      variant="rounded"
+                      sx={{ width: 96, height: 56 }}
+                      className={cx("eventAdvertisement-preview-avatar")}
+                    />
+                  )}
+                </div>
+
+                {desktopPreview && (
+                  <div className={cx("eventAdvertisement-banner-preview")}>
+                    <span>Desktop Preview</span>
+                    <img src={desktopPreview} alt="Desktop popup preview" />
+                  </div>
+                )}
+                {desktopImageMeta && (
+                  <span className={cx("eventAdvertisement-image-meta")}>
+                    Selected image: {desktopImageMeta.width} x {desktopImageMeta.height} px - saved as {DESKTOP_POPUP_RULES.recommended}
+                  </span>
+                )}
+                {errors.bannerImage && (
+                  <p className={cx("eventAdvertisement-error-text")}>
+                    {errors.bannerImage}
+                  </p>
                 )}
               </div>
-              {preview && (
-                <div className={cx("eventAdvertisement-banner-preview")}>
-                  <span>Preview</span>
-                  <img src={preview} alt="Popup preview" />
-                </div>
-              )}
-              {imageMeta && isPopup && (
-                <span className={cx("eventAdvertisement-image-meta")}>
-                  Selected image: {imageMeta.width} x {imageMeta.height} px - saved as {HOME_POPUP_RULES.recommended}
-                </span>
-              )}
-              {errors.bannerImage && (
-                <p className={cx("eventAdvertisement-error-text")}>
-                  {errors.bannerImage}
-                </p>
-              )}
-            </div>
 
-            {isPopup && (
               <div className={cx("eventAdvertisement-upload-field")}>
                 <label>Mobile Popup Image</label>
                 <p className={cx("eventAdvertisement-upload-guidance")}>
@@ -835,7 +644,7 @@ export default function EventAdvertisement() {
                   >
                     Upload Mobile Image
                     <input
-                      ref={mobileBannerInputRef}
+                      ref={mobileInputRef}
                       type="file"
                       accept="image/*"
                       hidden
@@ -852,6 +661,7 @@ export default function EventAdvertisement() {
                     />
                   )}
                 </div>
+
                 {mobilePreview && (
                   <div className={cx("eventAdvertisement-banner-preview", "eventAdvertisement-banner-preview--mobile")}>
                     <span>Mobile Preview</span>
@@ -869,103 +679,32 @@ export default function EventAdvertisement() {
                   </p>
                 )}
               </div>
-            )}
 
-            <div>
-              <label>Advertiser Name</label>
+              <div>
+                <label>Start Date</label>
+                <input
+                  type="date"
+                  name="startDate"
+                  value={formData.startDate}
+                  onChange={handleChange}
+                />
+              </div>
 
-              <input
-                type="text"
-                name="advertiserName"
-                value={formData.advertiserName}
-                onChange={handleChange}
-              />
-            </div>
+              <div>
+                <label>End Date</label>
+                <input
+                  type="date"
+                  name="endDate"
+                  value={formData.endDate}
+                  onChange={handleChange}
+                />
+                {errors.endDate && (
+                  <p className={cx("eventAdvertisement-error-text")}>
+                    {errors.endDate}
+                  </p>
+                )}
+              </div>
 
-            <div>
-              <label>Advertiser Contact</label>
-
-              <input
-                type="text"
-                name="advertiserContact"
-                value={formData.advertiserContact}
-                onChange={handleChange}
-              />
-            </div>
-
-            <div>
-              <label>Advertiser Email</label>
-
-              <input
-                type="email"
-                name="advertiserEmail"
-                value={formData.advertiserEmail}
-                onChange={handleChange}
-              />
-
-              {errors.advertiserEmail && (
-                <p className={cx("eventAdvertisement-error-text")}>
-                  {errors.advertiserEmail}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <label>Redirect URL</label>
-
-              <input
-                type="text"
-                name="redirectUrl"
-                value={formData.redirectUrl}
-                onChange={handleChange}
-              />
-            </div>
-
-            <div>
-              <label>Start Date</label>
-
-              <input
-                type="date"
-                name="startDate"
-                value={formData.startDate}
-                onChange={handleChange}
-              />
-            </div>
-
-            <div>
-              <label>End Date</label>
-
-              <input
-                type="date"
-                name="endDate"
-                value={formData.endDate}
-                onChange={handleChange}
-              />
-
-              {errors.endDate && (
-                <p className={cx("eventAdvertisement-error-text")}>
-                  {errors.endDate}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <label>Display Position</label>
-
-              <select
-                name="displayPosition"
-                value={formData.displayPosition}
-                onChange={handleChange}
-              >
-                <option value="top">Top</option>
-                <option value="middle">Middle</option>
-                <option value="bottom">Bottom</option>
-                <option value="sidebar">Sidebar</option>
-                <option value="HOME_POPUP">Home Popup</option>
-              </select>
-            </div>
-
-            {isPopup && (
               <div>
                 <label>Auto-close Duration</label>
                 <input
@@ -980,99 +719,90 @@ export default function EventAdvertisement() {
                   0 keeps the popup open until manually closed.
                 </span>
               </div>
-            )}
 
-            {isPopup && (
               <div className={cx("eventAdvertisement-toggle")}>
-                <label htmlFor="eventAdvertisement-showConfetti">
-                  Show Confetti
-                </label>
-
+                <label htmlFor="homePopup-showConfetti">Show Confetti</label>
                 <input
-                  id="eventAdvertisement-showConfetti"
+                  id="homePopup-showConfetti"
                   type="checkbox"
                   name="showConfetti"
                   checked={!!formData.showConfetti}
                   onChange={handleChange}
                 />
               </div>
-            )}
 
-            <div className={cx("eventAdvertisement-toggle")}>
-              <label htmlFor="eventAdvertisement-isActive">
-                Active Advertisement
-              </label>
-
-              <input
-                id="eventAdvertisement-isActive"
-                type="checkbox"
-                name="isActive"
-                checked={formData.isActive}
-                onChange={handleChange}
-              />
-            </div>
-          </div>
-
-          <div className={cx("eventAdvertisement-button-group")}>
-            <button
-              type="submit"
-              className={cx("eventAdvertisement-save-btn")}
-              disabled={loading}
-            >
-              {loading ? (
-                <CircularProgress
-                  size={20}
-                  color="inherit"
+              <div className={cx("eventAdvertisement-toggle")}>
+                <label htmlFor="homePopup-isActive">Active Popup</label>
+                <input
+                  id="homePopup-isActive"
+                  type="checkbox"
+                  name="isActive"
+                  checked={formData.isActive}
+                  onChange={handleChange}
                 />
-              ) : isEditMode ? (
-                "Update Advertisement"
-              ) : (
-                "Create Advertisement"
-              )}
-            </button>
+              </div>
+            </div>
 
-            {isEditMode && (
+            <div className={cx("eventAdvertisement-button-group")}>
               <button
-                type="button"
-                className={cx("eventAdvertisement-cancel-btn")}
-                onClick={resetForm}
+                type="submit"
+                className={cx("eventAdvertisement-save-btn")}
+                disabled={loading}
               >
-                Cancel
+                {loading ? (
+                  <CircularProgress size={20} color="inherit" />
+                ) : isEditMode ? (
+                  "Update Home Popup"
+                ) : (
+                  "Create Home Popup"
+                )}
               </button>
-            )}
-          </div>
-        </form>
-      </div>}
 
-      {activeView === "list" && <>
-      <Typography
-        variant="h6"
-        sx={{
-          textAlign: "center",
-          marginBottom: "20px",
-        }}
-      >
-        Event Advertisement Table
-      </Typography>
+              {isEditMode && (
+                <button
+                  type="button"
+                  className={cx("eventAdvertisement-cancel-btn")}
+                  onClick={resetForm}
+                >
+                  Cancel
+                </button>
+              )}
+            </div>
+          </form>
+        </div>
+      )}
 
-      <Box>
-        <CustomizedTable
-          title="Event Advertisements"
-          data={rows}
-          columns={columns}
-          total={total}
-          fetchData={(pageNo, pageSize, options) =>
-            dispatch(
-              getAllEventAdvertisement({
-                pageNo,
-                pageSize,
-                options,
-              })
-            )
-          }
-        />
-      </Box>
-      </>}
+      {activeView === "list" && (
+        <>
+          <Typography
+            variant="h6"
+            sx={{
+              textAlign: "center",
+              marginBottom: "20px",
+            }}
+          >
+            Home Popup Table
+          </Typography>
+
+          <Box>
+            <CustomizedTable
+              title="Home Popups"
+              data={rows}
+              columns={columns}
+              total={rows.length}
+              fetchData={(pageNo, pageSize, options) =>
+                dispatch(
+                  getAllEventAdvertisement({
+                    pageNo,
+                    pageSize,
+                    options,
+                  })
+                )
+              }
+            />
+          </Box>
+        </>
+      )}
 
       <Dialog
         open={cropperOpen}
@@ -1080,9 +810,7 @@ export default function EventAdvertisement() {
         maxWidth="md"
         fullWidth
       >
-        <DialogTitle>
-          Crop {getPopupRules(cropData.cropType).title}
-        </DialogTitle>
+        <DialogTitle>Crop {getPopupRules(cropData.cropType).title}</DialogTitle>
 
         <DialogContent dividers>
           <Box
@@ -1163,9 +891,7 @@ export default function EventAdvertisement() {
         </DialogContent>
 
         <DialogActions>
-          <Button onClick={handlePopupCropCancel}>
-            Cancel
-          </Button>
+          <Button onClick={handlePopupCropCancel}>Cancel</Button>
           <Button variant="contained" onClick={handlePopupCropSave}>
             Save Crop
           </Button>
@@ -1176,24 +902,16 @@ export default function EventAdvertisement() {
         open={deleteDialogOpen}
         onClose={() => setDeleteDialogOpen(false)}
       >
-        <DialogTitle>
-          Confirm Delete
-        </DialogTitle>
+        <DialogTitle>Confirm Delete</DialogTitle>
 
         <DialogContent>
-          Are you sure you want to delete this event advertisement?
+          Are you sure you want to delete this home popup?
         </DialogContent>
 
         <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)}>
-            Cancel
-          </Button>
+          <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
 
-          <Button
-            color="error"
-            variant="contained"
-            onClick={confirmDelete}
-          >
+          <Button color="error" variant="contained" onClick={confirmDelete}>
             Delete
           </Button>
         </DialogActions>

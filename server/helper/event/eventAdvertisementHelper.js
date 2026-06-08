@@ -10,10 +10,6 @@ const formatEventAdvertisementImages = (advertisement) => {
       ? advertisement.toObject()
       : advertisement;
 
-  result.advertisementImage = result.advertisementImageKey
-    ? getSignedUrlByKey(result.advertisementImageKey)
-    : "";
-
   result.bannerImage = result.bannerImageKey
     ? getSignedUrlByKey(result.bannerImageKey)
     : "";
@@ -26,23 +22,13 @@ const formatEventAdvertisementImages = (advertisement) => {
 };
 
 const handleEventAdvertisementImageUploads = async (data = {}) => {
-  if (typeof data.advertisementImage === "string" && data.advertisementImage.startsWith("data:")) {
-    const uploadResult = await uploadImageToS3(
-      data.advertisementImage,
-      `event/advertisements/images/image-${Date.now()}`
-    );
-    data.advertisementImageKey = uploadResult.key;
-  } else if (data.advertisementImage === null || data.advertisementImage === "") {
-    data.advertisementImageKey = "";
-  }
-
   if (typeof data.bannerImage === "string" && data.bannerImage.startsWith("data:")) {
     const uploadResult = await uploadImageToS3(
       data.bannerImage,
       `event/advertisements/banners/banner-${Date.now()}`
     );
     data.bannerImageKey = uploadResult.key;
-  } else if (data.bannerImage === null || data.bannerImage === "") {
+  } else if (data.bannerImage === null) {
     data.bannerImageKey = "";
   }
 
@@ -52,11 +38,10 @@ const handleEventAdvertisementImageUploads = async (data = {}) => {
       `event/advertisements/banners/mobile-banner-${Date.now()}`
     );
     data.mobileBannerImageKey = uploadResult.key;
-  } else if (data.mobileBannerImage === null || data.mobileBannerImage === "") {
+  } else if (data.mobileBannerImage === null) {
     data.mobileBannerImageKey = "";
   }
 
-  delete data.advertisementImage;
   delete data.bannerImage;
   delete data.mobileBannerImage;
 };
@@ -66,34 +51,17 @@ export const createEventAdvertisement = async (reqBody = {}) => {
     const title = reqBody.title?.trim();
     if (!title) throw new Error("Title is required");
 
-    const isPopup = reqBody.displayPosition === "HOME_POPUP";
-
-    if (!isPopup) {
-      if (!ObjectId.isValid(reqBody.eventCategory)) {
-        throw new Error("Invalid event category ID");
-      }
-      if (!ObjectId.isValid(reqBody.eventLocation)) {
-        throw new Error("Invalid event location ID");
-      }
-    }
-
     await handleEventAdvertisementImageUploads(reqBody);
 
     const eventAdvertisement = new eventAdvertisementModel({
       title: reqBody.title,
       description: reqBody.description || "",
-      eventCategory: isPopup ? null : reqBody.eventCategory,
-      eventLocation: isPopup ? null : reqBody.eventLocation,
-      advertisementImageKey: reqBody.advertisementImageKey || "",
       bannerImageKey: reqBody.bannerImageKey || "",
       mobileBannerImageKey: reqBody.mobileBannerImageKey || "",
-      advertiserName: reqBody.advertiserName || "",
-      advertiserContact: reqBody.advertiserContact || "",
-      advertiserEmail: reqBody.advertiserEmail || "",
       redirectUrl: reqBody.redirectUrl || "",
       startDate: reqBody.startDate || null,
       endDate: reqBody.endDate || null,
-      displayPosition: reqBody.displayPosition || "middle",
+      displayPosition: "HOME_POPUP",
       displayDuration: reqBody.displayDuration ?? 0,
       showConfetti: reqBody.showConfetti ?? false,
       isActive: reqBody.isActive !== undefined ? reqBody.isActive : true,
@@ -101,11 +69,7 @@ export const createEventAdvertisement = async (reqBody = {}) => {
     });
 
     await eventAdvertisement.save();
-    const populatedAdvertisement = await eventAdvertisement.populate([
-      { path: "eventCategory", select: "categoryName slug" },
-      { path: "eventLocation", select: "locationName city" }
-    ]);
-    return formatEventAdvertisementImages(populatedAdvertisement);
+    return formatEventAdvertisementImages(eventAdvertisement);
   } catch (error) {
     throw error;
   }
@@ -118,11 +82,7 @@ export const viewEventAdvertisement = async (advertisementId) => {
     }
 
     const advertisement = await eventAdvertisementModel
-      .findById(advertisementId)
-      .populate([
-        { path: "eventCategory", select: "categoryName slug" },
-        { path: "eventLocation", select: "locationName city" }
-      ]);
+      .findById(advertisementId);
 
     if (!advertisement) {
       throw new Error("Event advertisement not found");
@@ -139,13 +99,12 @@ export const viewAllEventAdvertisement = async (options = {}) => {
     const { pageNo = 1, pageSize = 10, search = "", status = "all", sortBy = "createdAt", sortOrder = -1 } = options;
 
     const skip = (pageNo - 1) * pageSize;
-    const query = {};
+    const query = { displayPosition: "HOME_POPUP" };
 
     if (search) {
       query.$or = [
         { title: { $regex: search, $options: "i" } },
         { description: { $regex: search, $options: "i" } },
-        { advertiserName: { $regex: search, $options: "i" } },
       ];
     }
 
@@ -162,10 +121,6 @@ export const viewAllEventAdvertisement = async (options = {}) => {
 
     const list = await eventAdvertisementModel
       .find(query)
-      .populate([
-        { path: "eventCategory", select: "categoryName slug" },
-        { path: "eventLocation", select: "locationName city" }
-      ])
       .sort(sortQuery)
       .skip(skip)
       .limit(parseInt(pageSize))
@@ -190,28 +145,7 @@ export const updateEventAdvertisement = async (advertisementId, updateData) => {
       throw new Error("Event advertisement not found");
     }
 
-    const nextDisplayPosition = updateData.displayPosition || advertisement.displayPosition;
-    const isPopup = nextDisplayPosition === "HOME_POPUP";
-    const nextEventCategory =
-      updateData.eventCategory !== undefined
-        ? updateData.eventCategory
-        : advertisement.eventCategory;
-    const nextEventLocation =
-      updateData.eventLocation !== undefined
-        ? updateData.eventLocation
-        : advertisement.eventLocation;
-
-    if (!isPopup) {
-      if (!ObjectId.isValid(nextEventCategory)) {
-        throw new Error("Invalid event category ID");
-      }
-      if (!ObjectId.isValid(nextEventLocation)) {
-        throw new Error("Invalid event location ID");
-      }
-    } else {
-      updateData.eventCategory = null;
-      updateData.eventLocation = null;
-    }
+    updateData.displayPosition = "HOME_POPUP";
 
     await handleEventAdvertisementImageUploads(updateData);
 
@@ -222,12 +156,7 @@ export const updateEventAdvertisement = async (advertisementId, updateData) => {
 
     await advertisement.save();
 
-    const updatedAdvertisement = await advertisement.populate([
-      { path: "eventCategory", select: "categoryName slug" },
-      { path: "eventLocation", select: "locationName city" }
-    ]);
-
-    return formatEventAdvertisementImages(updatedAdvertisement);
+    return formatEventAdvertisementImages(advertisement);
   } catch (error) {
     throw error;
   }

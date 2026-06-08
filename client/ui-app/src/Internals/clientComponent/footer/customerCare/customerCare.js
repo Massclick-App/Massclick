@@ -152,7 +152,7 @@ const CustomerCareComponent = () => {
                     {carePillars.map(pillar => <CareCard key={pillar.id} pillar={pillar} onStartChat={handleStartChat} />)}
                 </div>
             </section>
-            <Drawer anchor="right" open={chatOpen} onClose={() => setChatOpen(false)}>
+            <Drawer anchor="right" open={chatOpen} onClose={() => setChatOpen(false)} sx={{ zIndex: 1300 }}>
                 <Box sx={{ p: 2, width: { xs: "100vw", sm: 500 }, maxWidth: "100vw" }}>
                     <CustomerChatPanel
                       open={chatOpen}
