@@ -1,6 +1,6 @@
 import express from 'express'
 
-import { addBusinessListAction, viewBusinessListAction,getBusinessBySlugAction, getSuggestionsController, getEnhancedSuggestionsController, mainSearchController, viewAllBusinessListAction,viewAllBusinessAction, updateBusinessListAction, deleteBusinessListAction, activeBusinessListAction, viewAllClientBusinessListAction, viewBusinessByCategory, findBusinessByMobileAction, dashboardSummaryAction, dashboardChartsAction, getPendingBusinessAction, trackQrDownload } from "../controller/businessList/businessListController.js"
+import { addBusinessListAction, viewBusinessListAction,getBusinessBySlugAction, getSuggestionsController, getEnhancedSuggestionsController, mainSearchController, nearbyBusinessesController, viewAllBusinessListAction,viewAllBusinessAction, updateBusinessListAction, deleteBusinessListAction, activeBusinessListAction, viewAllClientBusinessListAction, viewBusinessByCategory, findBusinessByMobileAction, dashboardSummaryAction, dashboardChartsAction, getPendingBusinessAction, trackQrDownload } from "../controller/businessList/businessListController.js"
 import { oauthAuthentication } from '../helper/oauthHelper.js';
 import { logSearchAction, viewLogSearchAction, viewSearchAction, updateSearchAction, getTrendingSearchesAction, sendEnquiryLead } from "../controller/businessList/logSearchController.js"
 import { cacheMiddleware } from '../middleware/cacheMiddleware.js';
@@ -30,6 +30,7 @@ router.post('/api/businesslist/trending-searches/view',viewSearchAction);
 router.post('/api/businesslist/trending-searches/trending-category',getTrendingSearchesAction);
 
 router.get('/api/businesslist/search', searchCache, mainSearchController);
+router.get('/api/businesslist/nearby', nearbyBusinessesController);
 router.get('/api/businesslist/suggestions', suggestionsCache, getSuggestionsController);
 router.get('/api/businesslist/suggestions-enhanced', suggestionsCache, getEnhancedSuggestionsController);
 router.get('/api/businesslist/category', cacheMiddleware({ expirySeconds: 3600, keyPrefix: 'category' }), viewBusinessByCategory);

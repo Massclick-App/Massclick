@@ -1,5 +1,6 @@
 import { createScopedClassNames } from "../../utils/createScopedClassNames";
 import React, { useEffect, useState, useRef, lazy, Suspense, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import axiosInstance from "../../services/axiosInstance.js";
 import { useDispatch, useSelector } from "react-redux";
 import InputValidator from "../validators/inputValidator.js";
@@ -30,12 +31,16 @@ import StepConnector, { stepConnectorClasses } from '@mui/material/StepConnector
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import CollectionsBookmarkOutlinedIcon from '@mui/icons-material/CollectionsBookmarkOutlined';
+import TravelExploreIcon from '@mui/icons-material/TravelExplore';
 import { checkPhonePeStatus, createPhonePePayment } from "../../redux/actions/phonePayAction.js";
+import { updateGmapsLeadStatus, clearGmapsLeadImport, setGmapsLeadToImport } from "../../redux/actions/gmapsLeadsAction";
 import CustomizedTable from "../../components/Table/CustomizedTable.js";
 import Tooltip from "@mui/material/Tooltip";
 import styles from "./business.module.css";
+import GooglePlacesInput from "../../components/GooglePlacesInput/GooglePlacesInput";
 import AdminViewTabs from "../../components/AdminViewTabs.js";
 const cx = createScopedClassNames(styles);
+const FORCE_BYPASS_BLOCKED_FIELDS = new Set(["businessName", "category", "location"]);
 const ReactQuill = lazy(() => import('react-quill').then(m => {
   require('react-quill/dist/quill.snow.css');
   return {
@@ -116,6 +121,7 @@ ColorlibStepIcon.propTypes = {
 const steps = ["Business Details", "Category", "Privacy Settings", "Payment"];
 const BusinessList = React.memo(() => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const {
     enqueueSnackbar
   } = useSnackbar();
@@ -139,6 +145,9 @@ const BusinessList = React.memo(() => {
   const {
     category = []
   } = useSelector(state => state.categoryReducer || {});
+  const {
+    leadToImport = null
+  } = useSelector(state => state.gmapsLeadsReducer || {});
   const fileInputRef = useRef();
   const [businessvalue, setBusinessValue] = useState("");
   const [editMode, setEditMode] = useState(false);
@@ -169,7 +178,22 @@ const BusinessList = React.memo(() => {
     paymentStatus: "all"
   });
   const [tableRefreshKey, setTableRefreshKey] = useState(0);
-  
+
+  // ===== GMaps Picker State =====
+  const [gmapsPickerOpen, setGmapsPickerOpen] = useState(false);
+  const [pickerLeads, setPickerLeads] = useState([]);
+  const [pickerTotal, setPickerTotal] = useState(0);
+  const [pickerLoading, setPickerLoading] = useState(false);
+  const [pickerPage, setPickerPage] = useState(1);
+  const [pickerLocations, setPickerLocations] = useState([]);
+  const [pickerFilters, setPickerFilters] = useState({
+    search: '',
+    massclick_location: '',
+    min_rating: '',
+    has_phone: false,
+    status: 'available',
+  });
+
   const handlePayNow = row => {
     const amount = 1;
     let businessId = row?._id?.$oid || row?._id || row?.businessId || row?.id || createdBusinessId;
@@ -190,6 +214,7 @@ const BusinessList = React.memo(() => {
   const [activeStep, setActiveStep] = useState(0);
   const [kycFiles, setKycFiles] = useState([]);
   const handleKycUpload = event => {
+    clearForceBypassForFields("kycDocuments");
     const files = Array.from(event.target.files || []);
     const validFiles = files.filter(f => f instanceof File);
     const newFiles = validFiles.map(file => {
@@ -199,6 +224,7 @@ const BusinessList = React.memo(() => {
     setKycFiles(prev => [...prev, ...newFiles]);
   };
   const handleRemoveFile = index => {
+    clearForceBypassForFields("kycDocuments");
     setKycFiles(prevFiles => {
       const updatedFiles = [...prevFiles];
       URL.revokeObjectURL(updatedFiles[index].preview);
@@ -375,6 +401,9 @@ const BusinessList = React.memo(() => {
   const [categoryFilterConfig, setCategoryFilterConfig] = useState([]);
   const [filterConfigLoading, setFilterConfigLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
+  const [forceBypassedFields, setForceBypassedFields] = useState([]);
+  const [warnLevel, setWarnLevel] = useState(0);
+  const [warnDialog, setWarnDialog] = useState(false);
   const [preview, setPreview] = useState(null);
   const [deleteDialog, setDeleteDialog] = useState({
     open: false,
@@ -392,7 +421,15 @@ const BusinessList = React.memo(() => {
     }], ['link', 'image', 'video'], ['clean']]
   };
   const formats = ["header", "bold", "italic", "underline", "strike", "list", "bullet", "link", "image", "video"];
+  const isForceBypassableField = field => Boolean(field) && !FORCE_BYPASS_BLOCKED_FIELDS.has(field);
+  const getUniqueFields = fields => [...new Set((fields || []).filter(Boolean))];
+  const clearForceBypassForFields = useCallback(fields => {
+    const names = Array.isArray(fields) ? fields : [fields];
+    setForceBypassedFields(prev => prev.filter(field => !names.includes(field)));
+    setWarnLevel(0);
+  }, []);
   const handleBusinessChange = content => {
+    clearForceBypassForFields("businessDetails");
     setBusinessValue(content);
     setFormData(prev => ({
       ...prev,
@@ -404,6 +441,8 @@ const BusinessList = React.memo(() => {
     }, "businessDetails");
   };
   const handleOpeningHourChange = (index, field, value) => {
+    const bypassField = `openingHours.${formData.openingHours?.[index]?.day}`;
+    clearForceBypassForFields(bypassField);
     setFormData(prev => {
       const updatedHours = [...(prev.openingHours || defaultOpeningHours)];
       updatedHours[index][field] = value;
@@ -453,6 +492,108 @@ const BusinessList = React.memo(() => {
     dispatch(getAllUsers());
     dispatch(checkPhonePeStatus());
   }, [dispatch]);
+
+  // ===== GMaps Lead Pre-fill =====
+  useEffect(() => {
+    if (!leadToImport) return;
+    const [lng, lat] = leadToImport.geoLocation?.coordinates || ['', ''];
+    // Try to match category by slug or by search_query text
+    const matchedCategory = category.find(c =>
+      c.slug === leadToImport.massclick_category ||
+      String(c.category || '').toLowerCase() === String(leadToImport.search_query || '').toLowerCase()
+    );
+    setFormData(prev => ({
+      ...prev,
+      businessName: leadToImport.name || '',
+      contact: leadToImport.phone || '',
+      contactList: leadToImport.phone || '',
+      whatsappNumber: leadToImport.phone || '',
+      website: leadToImport.website || '',
+      location: leadToImport.massclick_location || '',
+      globalAddress: leadToImport.formatted_address || '',
+      geoLocation: {
+        type: 'Point',
+        coordinates: [String(lng || ''), String(lat || '')]
+      },
+      category: matchedCategory?.category || '',
+    }));
+    setActiveView('form');
+    setActiveStep(0);
+    enqueueSnackbar(`Pre-filled from GMaps: ${leadToImport.name}`, { variant: 'info' });
+  }, [leadToImport]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ===== GMaps Picker Functions =====
+  const fetchPickerLeads = useCallback(async (page, filters) => {
+    setPickerLoading(true);
+    try {
+      const token = localStorage.getItem('accessToken');
+      const f = filters || pickerFilters;
+      const params = new URLSearchParams({
+        pageNo: page || pickerPage,
+        pageSize: 15,
+        search: f.search || '',
+        massclick_location: f.massclick_location || '',
+        min_rating: f.min_rating || '',
+        has_phone: f.has_phone ? 'true' : '',
+        status: f.status || 'all',
+        business_status: 'OPERATIONAL',
+      }).toString();
+      const res = await axiosInstance.get(
+        `${process.env.REACT_APP_API_URL}/gmaps-leads/viewall?${params}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setPickerLeads(res.data.data || []);
+      setPickerTotal(res.data.total || 0);
+    } catch (e) {
+      enqueueSnackbar('Failed to load GMaps leads', { variant: 'error' });
+    } finally {
+      setPickerLoading(false);
+    }
+  }, [pickerFilters, pickerPage, enqueueSnackbar]);
+
+  const openGmapsPicker = useCallback(async () => {
+    setGmapsPickerOpen(true);
+    setPickerPage(1);
+    if (pickerLocations.length === 0) {
+      try {
+        const token = localStorage.getItem('accessToken');
+        const res = await axiosInstance.get(
+          `${process.env.REACT_APP_API_URL}/gmaps-leads/distincts`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        setPickerLocations(res.data.locations || []);
+      } catch (e) {}
+    }
+    fetchPickerLeads(1, pickerFilters);
+  }, [pickerLocations.length, pickerFilters, fetchPickerLeads]);
+
+  const applyGmapsLead = useCallback((lead) => {
+    const [lng, lat] = lead.geoLocation?.coordinates || ['', ''];
+    const matchedCategory = category.find(c =>
+      c.slug === lead.massclick_category ||
+      String(c.category || '').toLowerCase() === String(lead.search_query || '').toLowerCase()
+    );
+    setFormData(prev => ({
+      ...prev,
+      businessName: lead.name || '',
+      contact: lead.phone || '',
+      contactList: lead.phone || '',
+      whatsappNumber: lead.phone || '',
+      website: lead.website || '',
+      location: lead.massclick_location || '',
+      globalAddress: lead.formatted_address || '',
+      geoLocation: {
+        type: 'Point',
+        coordinates: [String(lng || ''), String(lat || '')],
+      },
+      category: matchedCategory?.category || '',
+    }));
+    dispatch(setGmapsLeadToImport(lead));
+    setGmapsPickerOpen(false);
+    setActiveView('form');
+    setActiveStep(0);
+    enqueueSnackbar(`Pre-filled: ${lead.name}`, { variant: 'info' });
+  }, [category, dispatch, enqueueSnackbar]);
 
   // ===== FILTER & SEARCH HANDLERS =====
   const normalizeSearchValue = value => String(value ?? "").replace(/<[^>]*>/g, " ").toLowerCase().trim();
@@ -597,6 +738,7 @@ const BusinessList = React.memo(() => {
     if (name === "category") {
       const selected = category.find(cat => cat.category === value);
       const categoryFields = ["category", "keywords", "title", "description", "seoTitle", "seoDescription", "slug"];
+      clearForceBypassForFields(categoryFields);
       const nextData = {
         ...formData,
         category: value,
@@ -620,6 +762,7 @@ const BusinessList = React.memo(() => {
       updateLiveValidation(nextData, categoryFields);
       return;
     }
+    clearForceBypassForFields(name);
     const nextData = {
       ...formData,
       [name]: value
@@ -630,7 +773,23 @@ const BusinessList = React.memo(() => {
     }));
     updateLiveValidation(nextData, name);
   };
+  const handlePlaceSelect = useCallback((place) => {
+    const nextData = {
+      ...formData,
+      street: place.street || formData.street,
+      pincode: place.pincode || formData.pincode,
+      location: place.location || formData.location,
+      geoLocation: {
+        type: "Point",
+        coordinates: [String(place.lng), String(place.lat)]
+      }
+    };
+    setFormData(nextData);
+    updateLiveValidation(nextData, ["street", "pincode", "location", "geoLatitude", "geoLongitude"]);
+  }, [formData]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleGeoCoordinateChange = (coordinateIndex, value) => {
+    clearForceBypassForFields(coordinateIndex === 1 ? "geoLatitude" : "geoLongitude");
     const coordinates = Array.isArray(formData.geoLocation?.coordinates) ? [...formData.geoLocation.coordinates] : ["", ""];
     coordinates[coordinateIndex] = value;
     const nextData = {
@@ -655,6 +814,8 @@ const BusinessList = React.memo(() => {
     updateLiveValidation(nextData, coordinateIndex === 1 ? "geoLatitude" : "geoLongitude");
   };
   const normalizeText = value => String(value ?? "").trim().replace(/\s+/g, " ");
+  const normalizeCategoryKey = value => normalizeText(value).toLowerCase();
+  const toCategorySlug = value => normalizeCategoryKey(value).replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
   const stripHtml = value => normalizeText(String(value ?? "").replace(/<[^>]*>/g, " ").replace(/&nbsp;/gi, " "));
   const digitsOnly = value => String(value ?? "").replace(/\D/g, "");
   const isValidUrl = value => {
@@ -812,7 +973,8 @@ const BusinessList = React.memo(() => {
   const updateLiveValidation = (nextFormData, fieldNames) => {
     const names = Array.isArray(fieldNames) ? fieldNames : [fieldNames];
     const cleanData = getCleanBusinessFormData(nextFormData);
-    const matchingErrors = validateBusinessEntryData(cleanData).filter(error => names.includes(error.field));
+    const bypassed = new Set(forceBypassedFields);
+    const matchingErrors = validateBusinessEntryData(cleanData).filter(error => names.includes(error.field) && !bypassed.has(error.field));
 
     setFieldErrors(prev => {
       const next = { ...prev };
@@ -881,28 +1043,48 @@ const BusinessList = React.memo(() => {
   useEffect(() => {
     const cat = formData.category;
     if (!cat) { setCategoryFilterConfig([]); return; }
-    // Check Redux searchCategory first
-    const found = searchCategory?.find(c => c.category?.toLowerCase() === cat.toLowerCase());
+    const catKey = normalizeCategoryKey(cat);
+    const catSlug = toCategorySlug(cat);
+    const filterSources = [...(searchCategory || []), ...(category || [])];
+    const found = filterSources.find(c => {
+      const categoryKey = normalizeCategoryKey(c?.category);
+      const slugKey = normalizeCategoryKey(c?.slug);
+      return categoryKey === catKey || slugKey === catSlug || toCategorySlug(c?.category) === catSlug;
+    });
+
     if (found && Array.isArray(found.filterConfig) && found.filterConfig.length > 0) {
       setCategoryFilterConfig(found.filterConfig);
       return;
     }
-    // Fallback: fetch from API
+
     setFilterConfigLoading(true);
-    const slug = cat.toLowerCase().replace(/\s+/g, "-");
+    const slug = found?.slug || catSlug;
     axiosInstance.get(`/category/${encodeURIComponent(slug)}/filters`)
       .then(res => setCategoryFilterConfig(Array.isArray(res.data) ? res.data : []))
       .catch(() => setCategoryFilterConfig([]))
       .finally(() => setFilterConfigLoading(false));
-  }, [formData.category]); // eslint-disable-line
+  }, [formData.category, searchCategory, category]); // eslint-disable-line
 
   const handleFilterChange = useCallback((key, value) => {
+    clearForceBypassForFields(`filters.${key}`);
     setFormData(prev => {
       const nextData = { ...prev, filters: { ...prev.filters, [key]: value } };
       updateLiveValidation(nextData, `filters.${key}`);
       return nextData;
     });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [clearForceBypassForFields]); // eslint-disable-line react-hooks/exhaustive-deps
+  const getFilterValue = fc => {
+    const value = formData.filters?.[fc.key];
+    if (fc.type === "multiselect") {
+      if (Array.isArray(value)) return value;
+      return value ? [value] : [];
+    }
+    if (fc.type === "range") {
+      const numberValue = Number(value);
+      return Number.isFinite(numberValue) ? numberValue : fc.min ?? 0;
+    }
+    return value ?? "";
+  };
 
   const handleDelete = row => {
     setDeleteDialog({
@@ -924,6 +1106,7 @@ const BusinessList = React.memo(() => {
     });
   };
   const handleImageChange = e => {
+    clearForceBypassForFields("bannerImage");
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
@@ -941,24 +1124,39 @@ const BusinessList = React.memo(() => {
       reader.readAsDataURL(file);
     }
   };
-  const handleSubmit = async e => {
-    e.preventDefault();
+  const buildFieldErrorMap = errors => errors.reduce((acc, error) => ({
+    ...acc,
+    [error.field]: getValidationMessage(error)
+  }), {});
+  const getFirstErrorStep = errors => typeof errors[0]?.step === "number" ? errors[0].step : 0;
+  const getActiveValidationErrors = (cleanedFormData, forceBypassFields = []) => {
+    const bypassed = new Set([...forceBypassedFields, ...forceBypassFields]);
+    return validateBusinessEntryData(cleanedFormData).filter(error => !bypassed.has(error.field));
+  };
+  const showBusinessValidationErrors = validationErrors => {
+    setActiveStep(getFirstErrorStep(validationErrors));
+    setFieldErrors(buildFieldErrorMap(validationErrors));
+    const errorMessage = validationErrors.slice(0, 8).map(error => `- ${getValidationMessage(error)}`).join("\n");
+    enqueueSnackbar(`Please fix these fields before saving:\n${errorMessage}${validationErrors.length > 8 ? `\n- ${validationErrors.length - 8} more issue(s)` : ""}`, {
+      variant: "error"
+    });
+  };
+  const saveBusiness = async ({ forceBypassFields = [] } = {}) => {
     const cleanedFormData = getCleanBusinessFormData(formData);
-    const validationErrors = validateBusinessEntryData(cleanedFormData);
+    const bypassFields = getUniqueFields(forceBypassFields).filter(isForceBypassableField);
+    const validationErrors = getActiveValidationErrors(cleanedFormData, bypassFields);
 
     if (validationErrors.length > 0) {
-      setActiveStep(validationErrors[0].step);
-      setFieldErrors(validationErrors.reduce((acc, error) => ({
-        ...acc,
-        [error.field]: getValidationMessage(error)
-      }), {}));
-      const errorMessage = validationErrors.slice(0, 8).map(error => `- ${getValidationMessage(error)}`).join("\n");
-      enqueueSnackbar(`Please fix these fields before saving:\n${errorMessage}${validationErrors.length > 8 ? `\n- ${validationErrors.length - 8} more issue(s)` : ""}`, {
-        variant: "error"
-      });
+      showBusinessValidationErrors(validationErrors);
       return;
     }
     setFieldErrors({});
+    if (bypassFields.length > 0) {
+      setForceBypassedFields(prev => getUniqueFields([...prev, ...bypassFields]));
+      enqueueSnackbar(`Force bypass applied for ${bypassFields.length} optional field${bypassFields.length === 1 ? "" : "s"}.`, {
+        variant: "warning"
+      });
+    }
 
     // Validate business data using InputValidator
     try {
@@ -971,7 +1169,6 @@ const BusinessList = React.memo(() => {
       };
       InputValidator.validateBusiness(businessData);
     } catch (error) {
-      // Show validation error to user
       const errorMessage = error.message.split('\n').filter(line => line.trim()).join('\n');
       enqueueSnackbar(`Validation error: ${errorMessage}`, {
         variant: "error"
@@ -986,8 +1183,8 @@ const BusinessList = React.memo(() => {
     })));
     const longitudeRaw = cleanedFormData.geoLocation?.coordinates?.[0];
     const latitudeRaw = cleanedFormData.geoLocation?.coordinates?.[1];
-    const longitude = Number(longitudeRaw);
-    const latitude = Number(latitudeRaw);
+    const longitude = Number.isFinite(Number(longitudeRaw)) ? Number(longitudeRaw) : 0;
+    const latitude = Number.isFinite(Number(latitudeRaw)) ? Number(latitudeRaw) : 0;
     const locationExists = location.some(loc => loc.city?.toLowerCase() === cleanedFormData.location?.toLowerCase() || loc.district?.toLowerCase() === cleanedFormData.location?.toLowerCase());
     if (!locationExists && cleanedFormData.location) {
       await dispatch(createLocation({
@@ -1045,7 +1242,13 @@ const BusinessList = React.memo(() => {
           variant: "success"
         });
       }
+      // If this business was created from a GMaps lead, mark it as imported
+      if (!editMode && leadToImport?._id) {
+        dispatch(updateGmapsLeadStatus(leadToImport._id, { imported_to_main: true }));
+        dispatch(clearGmapsLeadImport());
+      }
       dispatch(getAllBusinessList());
+      setForceBypassedFields([]);
       setActiveStep(3);
     } catch (err) {
       console.error("Error saving business:", err);
@@ -1065,6 +1268,29 @@ const BusinessList = React.memo(() => {
           variant: "error"
         });
       }
+    }
+  };
+  const handleSubmit = async e => {
+    e.preventDefault();
+    await saveBusiness();
+  };
+  const warnMessages = [
+    null,
+    { title: "Warning 1 of 3", body: "Some fields are incomplete. The listing may appear low quality to users.", confirm: "Yes, continue" },
+    { title: "Warning 2 of 3", body: "Are you sure? This data will be published as-is to users browsing the directory.", confirm: "Yes, I'm sure" },
+    { title: "Final confirmation", body: "You are about to save incomplete business data. Only proceed if you are certain.", confirm: "Save anyway" }
+  ];
+  const handleWarnConfirm = async () => {
+    const nextLevel = warnLevel + 1;
+    setWarnDialog(false);
+    if (nextLevel < 3) {
+      setWarnLevel(nextLevel);
+    } else {
+      setWarnLevel(0);
+      const cleanedFormData = getCleanBusinessFormData(formData);
+      const allErrors = validateBusinessEntryData(cleanedFormData);
+      const bypassFields = getUniqueFields(allErrors.filter(e => isForceBypassableField(e.field)).map(e => e.field));
+      await saveBusiness({ forceBypassFields: bypassFields });
     }
   };
   const rows = businessList.filter(c => c.isActive).map((bl, index) => ({
@@ -1107,6 +1333,7 @@ const BusinessList = React.memo(() => {
     linkedin: bl.linkedin || "-",
     businessDetails: bl.businessDetails || "-",
     openingHours: bl.openingHours || defaultOpeningHours,
+    filters: bl.filters && typeof bl.filters === "object" ? bl.filters : {},
     mniDetails: bl.mniDetails || [],
     payment: bl.payment || [],
     qrImage: bl.qrCode?.qrImage || null,
@@ -1523,6 +1750,14 @@ const BusinessList = React.memo(() => {
 
             <div className={cx("form-divider")}></div>
             <SectionHeader title="Address Details" subtitle="Business location information" />
+
+            <div className={cx("form-input-group col-span-all")}>
+              <label className={cx("input-label")}>🔍 Search Address (Auto-fill)</label>
+              <GooglePlacesInput onPlaceSelect={handlePlaceSelect} placeholder="Type business name or address to search..." />
+              <small style={{ color: "#888", marginTop: "4px", display: "block" }}>
+                Selecting from suggestions auto-fills street, pincode, location and coordinates.
+              </small>
+            </div>
 
             <div className={cx("form-input-group")}>
               <label htmlFor="plotNumber" className={cx("input-label")}>📍 Plot Number</label>
@@ -1984,7 +2219,7 @@ const BusinessList = React.memo(() => {
 
                     {fc.type === "multiselect" && (
                       <Autocomplete multiple options={fc.options || []}
-                        value={Array.isArray(formData.filters?.[fc.key]) ? formData.filters[fc.key] : []}
+                        value={getFilterValue(fc)}
                         onChange={(_, val) => handleFilterChange(fc.key, val)}
                         renderTags={(value, getTagProps) => value.map((opt, i) =>
                           <Chip key={i} label={opt} size="small" {...getTagProps({ index: i })}
@@ -1994,7 +2229,7 @@ const BusinessList = React.memo(() => {
                     )}
 
                     {fc.type === "radio" && (
-                      <select className={cx("select-input")} value={formData.filters?.[fc.key] || ""}
+                      <select className={cx("select-input")} value={getFilterValue(fc)}
                         onChange={e => handleFilterChange(fc.key, e.target.value || null)}>
                         <option value="">-- Select {fc.label} --</option>
                         {(fc.options || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
@@ -2004,7 +2239,7 @@ const BusinessList = React.memo(() => {
                     {fc.type === "toggle" && (
                       <FormControlLabel
                         control={
-                          <Checkbox checked={Boolean(formData.filters?.[fc.key])}
+                          <Checkbox checked={Boolean(getFilterValue(fc))}
                             onChange={e => handleFilterChange(fc.key, e.target.checked)}
                             sx={{ color: "#ff8c00", "&.Mui-checked": { color: "#ff8c00" } }} />
                         }
@@ -2017,13 +2252,16 @@ const BusinessList = React.memo(() => {
                         <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
                           {fc.min ?? 0}{fc.unit} – {fc.max ?? 100}{fc.unit}
                         </Typography>
-                        <Slider value={formData.filters?.[fc.key] ?? fc.min ?? 0}
-                          min={fc.min ?? 0} max={fc.max ?? 100}
+                        <Slider
+                          value={getFilterValue(fc)}
+                          min={fc.min ?? 0}
+                          max={fc.max ?? 100}
                           step={Math.ceil(((fc.max ?? 100) - (fc.min ?? 0)) / 20)}
                           valueLabelDisplay="auto"
                           valueLabelFormat={v => `${v}${fc.unit || ""}`}
                           onChange={(_, val) => handleFilterChange(fc.key, val)}
-                          sx={{ color: "#ff8c00" }} />
+                          sx={{ color: "#ff8c00" }}
+                        />
                       </Box>
                     )}
                   </div>
@@ -2105,6 +2343,7 @@ const BusinessList = React.memo(() => {
         return null;
     }
   };
+  const bypassableFieldErrorCount = Object.keys(fieldErrors).filter(isForceBypassableField).length;
   return <div className={cx("business-page")}>
       <AdminViewTabs activeView={activeView} onChange={setActiveView} isEditing={editMode} createLabel="Business" listLabel="Directory" listCount={filteredRows.length} />
 
@@ -2126,9 +2365,28 @@ const BusinessList = React.memo(() => {
       </div>
 
       <div className={cx("business-card form-section")}>
-        <h2 className={cx("card-title")}>
-          {editMode ? `Edit Business (${steps[activeStep]})` : `Add New Business (${steps[activeStep]})`}
-        </h2>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+          <h2 className={cx("card-title")} style={{ margin: 0 }}>
+            {editMode ? `Edit Business (${steps[activeStep]})` : `Add New Business (${steps[activeStep]})`}
+          </h2>
+          {!editMode && activeStep === 0 && (
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<TravelExploreIcon />}
+              onClick={openGmapsPicker}
+              sx={{
+                borderColor: '#ff8c42',
+                color: '#ff8c42',
+                fontSize: '0.8rem',
+                textTransform: 'none',
+                '&:hover': { borderColor: '#e67a2e', bgcolor: '#fff5ee' }
+              }}
+            >
+              Fill from GMaps
+            </Button>
+          )}
+        </div>
 
         <form onSubmit={handleSubmit}>
           {Object.keys(fieldErrors).length > 0 && (
@@ -2139,6 +2397,16 @@ const BusinessList = React.memo(() => {
               ))}
               {Object.keys(fieldErrors).length > 6 && (
                 <p>{Object.keys(fieldErrors).length - 6} more issue(s) need attention.</p>
+              )}
+              {bypassableFieldErrorCount > 0 && (
+                <div className={cx("validation-actions")}>
+                  <button type="button" className={cx("warn-save-button")} onClick={() => setWarnDialog(true)} disabled={loading}>
+                    {warnLevel > 0 ? `⚠️ Warning ${warnLevel}/3 — Save with warnings` : "Save with warnings"}
+                  </button>
+                  <span className={cx("force-bypass-note")}>
+                    businessName, category &amp; location still need valid values.
+                  </span>
+                </div>
               )}
             </div>
           )}
@@ -2197,9 +2465,27 @@ const BusinessList = React.memo(() => {
           <Typography variant="h6" className={cx("table-title")}>
             📋 Business Directory
           </Typography>
-          <Typography variant="body2" className={cx("table-count")}>
-            {filteredRows.length} shown of {total || rows.length} businesses
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Typography variant="body2" className={cx("table-count")}>
+              {filteredRows.length} shown of {total || rows.length} businesses
+            </Typography>
+            <Button
+              variant="contained"
+              size="small"
+              startIcon={<TravelExploreIcon />}
+              onClick={() => navigate('/dashboard/gmaps-leads')}
+              sx={{
+                bgcolor: '#ff8c42',
+                color: '#fff',
+                fontSize: '0.8rem',
+                textTransform: 'none',
+                boxShadow: 'none',
+                '&:hover': { bgcolor: '#e67a2e', boxShadow: 'none' }
+              }}
+            >
+              GMaps Leads
+            </Button>
+          </Box>
         </div>
 
         <Box sx={{ width: "100%" }}>
@@ -2223,6 +2509,21 @@ const BusinessList = React.memo(() => {
         </Box>
       </div>
       </>}
+
+      <Dialog open={warnDialog} onClose={() => setWarnDialog(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ color: "#D97800", fontWeight: 700 }}>
+          ⚠️ {warnMessages[warnLevel + 1]?.title}
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2">{warnMessages[warnLevel + 1]?.body}</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setWarnDialog(false)} color="secondary">Cancel</Button>
+          <Button color="warning" variant="contained" onClick={handleWarnConfirm} disabled={loading}>
+            {loading ? <CircularProgress size={20} color="inherit" /> : warnMessages[warnLevel + 1]?.confirm}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({
       open: false,
@@ -2275,6 +2576,181 @@ const BusinessList = React.memo(() => {
         <DialogActions>
           <Button onClick={handleCloseGallery} color="secondary">Close</Button>
           <Button onClick={handleUploadGalleryImages} color="primary" variant="contained" disabled={newGalleryImages.length === 0}>Upload</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ════════════════════════════════════════
+          GMaps Leads Picker Dialog
+      ════════════════════════════════════════ */}
+      <Dialog
+        open={gmapsPickerOpen}
+        onClose={() => setGmapsPickerOpen(false)}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{ sx: { height: '85vh', display: 'flex', flexDirection: 'column' } }}
+      >
+        <DialogTitle sx={{ pb: 1.5, borderBottom: '1px solid #f0f0f0' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
+              <Box sx={{ width: 34, height: 34, borderRadius: '9px', bgcolor: '#fff5ee', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <TravelExploreIcon sx={{ color: '#ff8c42', fontSize: 20 }} />
+              </Box>
+              <Box>
+                <Typography sx={{ fontWeight: 700, fontSize: '1rem', lineHeight: 1.2 }}>Pick from GMaps Leads</Typography>
+                <Typography sx={{ fontSize: '0.75rem', color: '#aaa', lineHeight: 1.2 }}>Select a lead to auto-fill the business form</Typography>
+              </Box>
+            </Box>
+          </Box>
+        </DialogTitle>
+
+        {/* Filter bar */}
+        <Box sx={{ px: 2.5, py: 1.5, borderBottom: '1px solid #efefef', bgcolor: '#fafafa' }}>
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+
+            {/* Search input */}
+            <input
+              type="text"
+              placeholder="🔍  Search by name…"
+              value={pickerFilters.search}
+              onChange={e => setPickerFilters(prev => ({ ...prev, search: e.target.value }))}
+              onKeyDown={e => { if (e.key === 'Enter') { setPickerPage(1); fetchPickerLeads(1, pickerFilters); } }}
+              style={{ height: 36, border: '1.5px solid #e2e2e2', borderRadius: 8, padding: '0 12px', fontSize: '0.87rem', color: '#333', background: '#fff', outline: 'none', minWidth: 200, flex: 1 }}
+              onFocus={e => e.target.style.borderColor = '#ff8c42'}
+              onBlur={e => e.target.style.borderColor = '#e2e2e2'}
+            />
+
+            {/* Location */}
+            <select
+              value={pickerFilters.massclick_location}
+              onChange={e => setPickerFilters(prev => ({ ...prev, massclick_location: e.target.value }))}
+              style={{ height: 36, border: '1.5px solid #e2e2e2', borderRadius: 8, padding: '0 10px', fontSize: '0.87rem', color: '#333', background: '#fff', outline: 'none', minWidth: 148, cursor: 'pointer' }}
+            >
+              <option value="">All Locations</option>
+              {pickerLocations.map(loc => <option key={loc} value={loc}>{loc}</option>)}
+            </select>
+
+            {/* Rating */}
+            <select
+              value={pickerFilters.min_rating}
+              onChange={e => setPickerFilters(prev => ({ ...prev, min_rating: e.target.value }))}
+              style={{ height: 36, border: '1.5px solid #e2e2e2', borderRadius: 8, padding: '0 10px', fontSize: '0.87rem', color: '#333', background: '#fff', outline: 'none', minWidth: 110, cursor: 'pointer' }}
+            >
+              <option value="">Any Rating</option>
+              <option value="3">3★ and up</option>
+              <option value="4">4★ and up</option>
+              <option value="4.5">4.5★ and up</option>
+            </select>
+
+            {/* Status */}
+            <select
+              value={pickerFilters.status}
+              onChange={e => setPickerFilters(prev => ({ ...prev, status: e.target.value }))}
+              style={{ height: 36, border: '1.5px solid #e2e2e2', borderRadius: 8, padding: '0 10px', fontSize: '0.87rem', color: '#333', background: '#fff', outline: 'none', minWidth: 120, cursor: 'pointer' }}
+            >
+              <option value="all">All Status</option>
+              <option value="available">🟢 Available</option>
+              <option value="imported">🔵 Imported</option>
+              <option value="skipped">⚫ Skipped</option>
+            </select>
+
+            {/* Has Phone toggle */}
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, height: 36, padding: '0 12px', border: `1.5px solid ${pickerFilters.has_phone ? '#ff8c42' : '#e2e2e2'}`, borderRadius: 8, background: pickerFilters.has_phone ? '#fff5ee' : '#fff', cursor: 'pointer', userSelect: 'none', fontSize: '0.86rem', color: pickerFilters.has_phone ? '#e67a2e' : '#555', transition: 'all 0.18s', whiteSpace: 'nowrap' }}>
+              <input
+                type="checkbox"
+                checked={pickerFilters.has_phone}
+                onChange={e => setPickerFilters(prev => ({ ...prev, has_phone: e.target.checked }))}
+                style={{ accentColor: '#ff8c42', width: 15, height: 15, cursor: 'pointer' }}
+              />
+              📞 Has Phone
+            </label>
+
+            {/* Search button */}
+            <button
+              onClick={() => { setPickerPage(1); fetchPickerLeads(1, pickerFilters); }}
+              disabled={pickerLoading}
+              style={{ height: 36, background: pickerLoading ? '#f0b07a' : '#ff8c42', color: '#fff', border: 'none', borderRadius: 8, padding: '0 20px', fontSize: '0.87rem', fontWeight: 600, cursor: pickerLoading ? 'not-allowed' : 'pointer', transition: 'background 0.18s', whiteSpace: 'nowrap' }}
+            >
+              {pickerLoading ? 'Loading…' : 'Search'}
+            </button>
+
+          </Box>
+        </Box>
+
+        {/* Results table */}
+        <DialogContent sx={{ p: 0, overflow: 'auto', flex: 1 }}>
+          {pickerLoading ? (
+            <Box sx={{ p: 4, textAlign: 'center', color: '#aaa' }}>
+              <CircularProgress size={28} sx={{ color: '#ff8c42' }} />
+              <Typography sx={{ mt: 1.5, fontSize: '0.9rem' }}>Loading leads…</Typography>
+            </Box>
+          ) : pickerLeads.length === 0 ? (
+            <Box sx={{ p: 4, textAlign: 'center', color: '#ccc', fontSize: '0.95rem' }}>
+              No results. Try adjusting filters.
+            </Box>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: '#fafafa' }}>
+                  {['Name', 'Location', 'Query', 'Rating', 'Phone', 'Status', ''].map(h => (
+                    <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid #f0f0f0', whiteSpace: 'nowrap' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {pickerLeads.map(lead => {
+                  const isImported = lead.imported_to_main;
+                  const isSkipped = lead.skip_import;
+                  const hasMatch = lead.hasMatch;
+                  const statusLabel = isImported ? '🔵 Imported' : isSkipped ? '⚫ Skipped' : hasMatch ? '🟡 Has Match' : '🟢 Available';
+                  return (
+                    <tr key={lead._id} style={{ borderBottom: '1px solid #f7f7f7', transition: 'background 0.15s' }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#fdf5ef'}
+                      onMouseLeave={e => e.currentTarget.style.background = ''}
+                    >
+                      <td style={{ padding: '10px 14px', maxWidth: 220 }}>
+                        <div style={{ fontWeight: 600, fontSize: '0.87rem', color: '#222', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{lead.name}</div>
+                        {lead.formatted_address && <div style={{ fontSize: '0.75rem', color: '#aaa', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{lead.formatted_address}</div>}
+                      </td>
+                      <td style={{ padding: '10px 14px', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>{lead.massclick_location || '—'}</td>
+                      <td style={{ padding: '10px 14px', fontSize: '0.83rem', color: '#555' }}>{lead.search_query || '—'}</td>
+                      <td style={{ padding: '10px 14px', fontSize: '0.83rem', whiteSpace: 'nowrap' }}>
+                        {lead.rating != null ? <><span style={{ color: '#f5a623' }}>★</span> {lead.rating}</> : '—'}
+                      </td>
+                      <td style={{ padding: '10px 14px', fontSize: '0.83rem', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
+                        {lead.phone || <span style={{ color: '#ccc' }}>—</span>}
+                      </td>
+                      <td style={{ padding: '10px 14px', fontSize: '0.78rem' }}>{statusLabel}</td>
+                      <td style={{ padding: '10px 14px' }}>
+                        <Button
+                          variant="contained"
+                          size="small"
+                          onClick={() => applyGmapsLead(lead)}
+                          sx={{ bgcolor: '#ff8c42', '&:hover': { bgcolor: '#e67a2e' }, textTransform: 'none', boxShadow: 'none', fontSize: '0.78rem', py: 0.5 }}
+                        >
+                          Use
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </DialogContent>
+
+        {/* Pagination + footer */}
+        <DialogActions sx={{ px: 3, py: 1.5, borderTop: '1px solid #f0f0f0', justifyContent: 'space-between' }}>
+          <Typography variant="body2" sx={{ color: '#888' }}>
+            {pickerTotal.toLocaleString()} results
+          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Button size="small" disabled={pickerPage <= 1} onClick={() => { const p = pickerPage - 1; setPickerPage(p); fetchPickerLeads(p, pickerFilters); }} sx={{ textTransform: 'none', color: '#555' }}>← Prev</Button>
+            <Typography variant="body2" sx={{ px: 1 }}>Page {pickerPage} of {Math.ceil(pickerTotal / 15) || 1}</Typography>
+            <Button size="small" disabled={pickerPage >= Math.ceil(pickerTotal / 15)} onClick={() => { const p = pickerPage + 1; setPickerPage(p); fetchPickerLeads(p, pickerFilters); }} sx={{ textTransform: 'none', color: '#555' }}>Next →</Button>
+            <Button size="small" onClick={() => { navigate('/dashboard/gmaps-leads'); setGmapsPickerOpen(false); }} startIcon={<TravelExploreIcon />} sx={{ ml: 2, textTransform: 'none', color: '#ff8c42' }}>
+              Full Page
+            </Button>
+          </Box>
         </DialogActions>
       </Dialog>
     </div>;

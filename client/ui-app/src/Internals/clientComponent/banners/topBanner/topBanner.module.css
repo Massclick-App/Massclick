@@ -37,6 +37,12 @@
 }
 
 /* Image responsive */
+.banner-image-wrapper picture {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
 .banner-image-wrapper img {
   width: 100%;
   height: 100%;
@@ -91,6 +97,10 @@
 
 /* ===== Mobile ===== */
 @media (max-width: 768px) {
+  .banner-image-wrapper {
+    aspect-ratio: 720 / 240;
+  }
+
   .sponsored-label {
     top: 8px;
     left: 8px;

@@ -79,9 +79,11 @@ const MRPDatas = lazy(() => import(/* webpackChunkName: "admin-mrp" */ './Intern
 const FCMMarketing = lazy(() => import(/* webpackChunkName: "admin-fcm" */ './Internals/FCMMarketing/FCMMarketing.js'));
 const SystemSettings = lazy(() => import(/* webpackChunkName: "admin-settings" */ './Internals/SystemSettings/SystemSettings.js'));
 const CategoryDisplaySettings = lazy(() => import(/* webpackChunkName: "admin-cat-display" */ './Internals/CategoryDisplaySettings/CategoryDisplaySettings.js'));
+const GmapsLeads = lazy(() => import(/* webpackChunkName: "admin-gmaps-leads" */ './Internals/gmapsLeads/GmapsLeads.js'));
 
 const FloatingButtons = lazy(() => import(/* webpackChunkName: "floating-buttons" */ './Internals/clientComponent/floating/floatingButtons.js'));
 const FloatingAdCard = lazy(() => import(/* webpackChunkName: "floating-ad" */ './Internals/clientComponent/floating/floatingAdCard.js'));
+const HomePopupAd = lazy(() => import(/* webpackChunkName: "home-popup-ad" */ './Internals/clientComponent/popup/HomePopupAd.js'));
 const OTPLoginModal = lazy(() => import(/* webpackChunkName: "otp-modal" */ './Internals/clientComponent/AddBusinessModel.js'));
 
 const CategoryRouter = lazy(() => import(/* webpackChunkName: "category-router" */ './Internals/clientComponent/categories/categoryRouter.js'));
@@ -134,6 +136,7 @@ function AppRoutes({
       <Suspense fallback={<DynamicLoader />}>
         <GlobalDrawer />
         <FloatingAdCard />
+        <HomePopupAd />
         <FloatingButtons onRequireLogin={() => setOpenLoginModal(true)} />
       </Suspense>
 
@@ -214,6 +217,7 @@ function AppRoutes({
                 <Route path="roles" element={<Roles />} />
                 <Route path="system-settings" element={<SystemSettings />} />
                 <Route path="category-display" element={<CategoryDisplaySettings />} />
+                <Route path="gmaps-leads" element={<GmapsLeads />} />
               </Route>
 
             </Route>

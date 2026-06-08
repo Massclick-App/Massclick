@@ -220,6 +220,8 @@ const businessListSchema = new mongoose.Schema({
   isActive: { type: Boolean, default: true },
 });
 
+businessListSchema.index({ geoLocation: "2dsphere" });
+
 businessListSchema.pre("validate", function syncBusinessName(next) {
   if (!this.businessName && this.name) {
     this.businessName = this.name;

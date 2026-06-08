@@ -81,3 +81,10 @@ client/ui-app/.env
 docker-compose.yml
 client/ui-app/lh-report-prod.json
 /server/scripts
+
+# Local SEO rank tracker settings/output
+server/tools/seo-rank-tracker/.env
+server/tools/seo-rank-tracker/rank-report.csv
+server/tools/seo-rank-tracker/search-console-report.csv
+server/tools/seo-rank-tracker/search-console-service-account.json
+/server/tools

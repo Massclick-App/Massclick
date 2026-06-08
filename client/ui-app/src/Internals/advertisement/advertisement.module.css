@@ -140,6 +140,20 @@
   aspect-ratio: 1720 / 168;
 }
 
+.mobile-banner-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 14px;
+  margin-top: 12px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.banner-preview.mobile-banner-preview {
+  width: min(100%, 360px);
+  aspect-ratio: 720 / 240;
+}
+
 .banner-preview span {
   position: absolute;
   top: 8px;

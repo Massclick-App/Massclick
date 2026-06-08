@@ -7,6 +7,20 @@ import locationModel from "../../model/locationModel/locationModel.js";
 import userModel from "../../model/userModel.js";
 import QRCode from "qrcode";
 import categoryModel from "../../model/category/categoryModel.js";
+import gmapsLeadsModel from "../../model/gmapsLeads/gmapsLeadsModel.js";
+
+// Silently mark any gmaps lead with a matching phone as imported
+const autoMarkGmapsLeadImported = async (contact) => {
+  if (!contact) return;
+  try {
+    await gmapsLeadsModel.updateMany(
+      { phone: contact, imported_to_main: { $ne: true } },
+      { $set: { imported_to_main: true } }
+    );
+  } catch (e) {
+    console.warn("gmaps auto-mark failed:", e.message);
+  }
+};
 
 // Auto-copy keywords from category when business is created
 export const copyKeywordsFromCategory = async (categoryName) => {
@@ -111,6 +125,8 @@ export const createBusinessList = async (reqBody = {}) => {
 
     await savedBusiness.save();
 
+    // Auto-mark any matching GMaps lead as imported
+    autoMarkGmapsLeadImported(savedBusiness.contact);
 
     const result = savedBusiness.toObject();
 
@@ -656,6 +672,9 @@ export const updateBusinessList = async (id, data) => {
   }
 
   await business.save();
+
+  // Auto-mark any matching GMaps lead as imported
+  autoMarkGmapsLeadImported(business.contact);
 
   /* ===============================
      6️⃣ FORMAT RESPONSE

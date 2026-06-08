@@ -1,6 +1,6 @@
 import express from 'express'
 
-import { addAdvertisementAction,viewAdvertisementAction,viewAllAdvertisementAction,updateAdvertisementAction,deleteAdvertisementAction, viewAdvertisementByCategory } from "../controller/advertistment/advertismentController.js"
+import { addAdvertisementAction,viewAdvertisementAction,viewAllAdvertisementAction,updateAdvertisementAction,deleteAdvertisementAction, viewAdvertisementByCategory, viewHomePopupAdvertisement } from "../controller/advertistment/advertismentController.js"
 import { oauthAuthentication } from '../helper/oauthHelper.js';
 import { cacheMiddleware } from '../middleware/cacheMiddleware.js';
 
@@ -14,5 +14,6 @@ router.get('/api/advertisment/viewall', advertisementCache, viewAllAdvertisement
 router.put('/api/advertisment/update/:id', oauthAuthentication, updateAdvertisementAction);
 router.delete('/api/advertisment/delete/:id', oauthAuthentication, deleteAdvertisementAction);
 router.get('/api/advertisment/category', advertisementCache, viewAdvertisementByCategory);
+router.get('/api/advertisment/popup', advertisementCache, viewHomePopupAdvertisement);
 
 export default router; 

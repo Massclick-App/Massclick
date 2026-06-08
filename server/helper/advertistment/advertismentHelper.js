@@ -8,9 +8,16 @@ const TOP_BANNER_RULES = {
   targetHeight: 168,
   aspectTolerance: 0.03,
 };
+const MOBILE_TOP_BANNER_RULES = {
+  targetWidth: 720,
+  targetHeight: 240,
+  aspectTolerance: 0.03,
+};
 const COMMON_TOP_BANNER_CATEGORY = "ALL_CATEGORIES";
 const TOP_BANNER_RATIO =
   TOP_BANNER_RULES.targetWidth / TOP_BANNER_RULES.targetHeight;
+const MOBILE_TOP_BANNER_RATIO =
+  MOBILE_TOP_BANNER_RULES.targetWidth / MOBILE_TOP_BANNER_RULES.targetHeight;
 const escapeRegExp = (value = "") =>
   value.toString().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -25,42 +32,42 @@ const getBase64ImageBuffer = (imageData = "") => {
   return Buffer.from(matches[2], "base64");
 };
 
-const cropTopBannerImage = async (imageData) => {
+const cropBannerImage = async (imageData, rules, targetRatio) => {
   const buffer = getBase64ImageBuffer(imageData);
-  if (!buffer) throw new Error("Top banner image data is invalid");
+  if (!buffer) throw new Error("Banner image data is invalid");
 
   const metadata = await sharp(buffer).metadata();
   if (!metadata.width || !metadata.height) {
-    throw new Error("Unable to read top banner image dimensions");
+    throw new Error("Unable to read banner image dimensions");
   }
 
   if (
-    metadata.width === TOP_BANNER_RULES.targetWidth &&
-    metadata.height === TOP_BANNER_RULES.targetHeight
+    metadata.width === rules.targetWidth &&
+    metadata.height === rules.targetHeight
   ) {
     return imageData;
   }
 
   if (
-    metadata.width < TOP_BANNER_RULES.targetWidth ||
-    metadata.height < TOP_BANNER_RULES.targetHeight
+    metadata.width < rules.targetWidth ||
+    metadata.height < rules.targetHeight
   ) {
     throw new Error(
-      `Top banner image must be at least ${TOP_BANNER_RULES.targetWidth} x ${TOP_BANNER_RULES.targetHeight} px`
+      `Banner image must be at least ${rules.targetWidth} x ${rules.targetHeight} px`
     );
   }
 
   const sourceRatio = metadata.width / metadata.height;
   const ratioDifference =
-    Math.abs(sourceRatio - TOP_BANNER_RATIO) / TOP_BANNER_RATIO;
-  if (ratioDifference > TOP_BANNER_RULES.aspectTolerance) {
+    Math.abs(sourceRatio - targetRatio) / targetRatio;
+  if (ratioDifference > rules.aspectTolerance) {
     throw new Error(
-      `Top banner image ratio must match ${TOP_BANNER_RULES.targetWidth} x ${TOP_BANNER_RULES.targetHeight} px`
+      `Banner image ratio must match ${rules.targetWidth} x ${rules.targetHeight} px`
     );
   }
 
   const outputBuffer = await sharp(buffer)
-    .resize(TOP_BANNER_RULES.targetWidth, TOP_BANNER_RULES.targetHeight, {
+    .resize(rules.targetWidth, rules.targetHeight, {
       fit: "cover",
       position: "center",
     })
@@ -70,36 +77,91 @@ const cropTopBannerImage = async (imageData) => {
   return `data:image/webp;base64,${outputBuffer.toString("base64")}`;
 };
 
+const cropTopBannerImage = (imageData) =>
+  cropBannerImage(imageData, TOP_BANNER_RULES, TOP_BANNER_RATIO);
+
+const cropMobileTopBannerImage = (imageData) =>
+  cropBannerImage(imageData, MOBILE_TOP_BANNER_RULES, MOBILE_TOP_BANNER_RATIO);
+
+const HOME_POPUP_RULES = {
+  targetWidth: 800,
+  targetHeight: 600,
+  aspectTolerance: 0.05,
+};
+const MOBILE_HOME_POPUP_RULES = {
+  targetWidth: 480,
+  targetHeight: 640,
+  aspectTolerance: 0.05,
+};
+const HOME_POPUP_RATIO = HOME_POPUP_RULES.targetWidth / HOME_POPUP_RULES.targetHeight;
+const MOBILE_HOME_POPUP_RATIO = MOBILE_HOME_POPUP_RULES.targetWidth / MOBILE_HOME_POPUP_RULES.targetHeight;
+
+const cropHomePopupImage = (imageData) =>
+  cropBannerImage(imageData, HOME_POPUP_RULES, HOME_POPUP_RATIO);
+
+const cropMobileHomePopupImage = (imageData) =>
+  cropBannerImage(imageData, MOBILE_HOME_POPUP_RULES, MOBILE_HOME_POPUP_RATIO);
+
+const addAdvertisementImageUrls = (ad) => {
+  if (ad.bannerImageKey) {
+    ad.bannerImage = getSignedUrlByKey(ad.bannerImageKey);
+  }
+  if (ad.mobileBannerImageKey) {
+    ad.mobileBannerImage = getSignedUrlByKey(ad.mobileBannerImageKey);
+  }
+  return ad;
+};
+
 export const createAdvertisement = async (reqBody = {}) => {
   try {
     if (!reqBody.title) throw new Error("Title is required");
     if (!reqBody.category) throw new Error("Category is required");
     if (!reqBody.startTime || !reqBody.endTime)
       throw new Error("Start time and end time are required");
-    if (reqBody.position === "TOP_BANNER" && !reqBody.bannerImage)
-      throw new Error("Top banner image is required");
+    if (
+      (reqBody.position === "TOP_BANNER" || reqBody.position === "HOME_POPUP") &&
+      !reqBody.bannerImage
+    )
+      throw new Error("Banner image is required for this position");
 
     if (reqBody.bannerImage) {
       if (reqBody.position === "TOP_BANNER") {
         reqBody.bannerImage = await cropTopBannerImage(reqBody.bannerImage);
+      } else if (reqBody.position === "HOME_POPUP") {
+        reqBody.bannerImage = await cropHomePopupImage(reqBody.bannerImage);
       }
       const uploadResult = await uploadImageToS3(
         reqBody.bannerImage,
         `advertisements/banners/ad-${Date.now()}`,
-        reqBody.position === "TOP_BANNER" ? { skipImageConversion: true } : {}
+        (reqBody.position === "TOP_BANNER" || reqBody.position === "HOME_POPUP")
+          ? { skipImageConversion: true }
+          : {}
       );
       reqBody.bannerImageKey = uploadResult.key;
     }
+    if (
+      (reqBody.position === "TOP_BANNER" || reqBody.position === "HOME_POPUP") &&
+      reqBody.mobileBannerImage
+    ) {
+      const mobileCropFn =
+        reqBody.position === "HOME_POPUP"
+          ? cropMobileHomePopupImage
+          : cropMobileTopBannerImage;
+      reqBody.mobileBannerImage = await mobileCropFn(reqBody.mobileBannerImage);
+      const mobileUploadResult = await uploadImageToS3(
+        reqBody.mobileBannerImage,
+        `advertisements/banners/mobile-ad-${Date.now()}`,
+        { skipImageConversion: true }
+      );
+      reqBody.mobileBannerImageKey = mobileUploadResult.key;
+    }
     delete reqBody.bannerImage;
+    delete reqBody.mobileBannerImage;
 
     const ad = new advertismentModel(reqBody);
     const result = await ad.save();
 
-    if (result.bannerImageKey) {
-      result.bannerImage = getSignedUrlByKey(result.bannerImageKey);
-    }
-
-    return { message: "Advertisement created", advertisement: result };
+    return { message: "Advertisement created", advertisement: addAdvertisementImageUrls(result) };
   } catch (error) {
     console.error("Error creating advertisement:", error);
     throw error;
@@ -113,11 +175,7 @@ export const viewAdvertisement = async (id) => {
   const ad = await advertismentModel.findById(id).lean();
   if (!ad) throw new Error("Advertisement not found");
 
-  if (ad.bannerImageKey) {
-    ad.bannerImage = getSignedUrlByKey(ad.bannerImageKey);
-  }
-
-  return ad;
+  return addAdvertisementImageUrls(ad);
 };
 
 export const findAdvertisementByCategory = async (category) => {
@@ -142,10 +200,7 @@ export const findAdvertisementByCategory = async (category) => {
   }
 
   return advertisementList.map((ad) => {
-    if (ad.bannerImageKey) {
-      ad.bannerImage = getSignedUrlByKey(ad.bannerImageKey);
-    }
-    return ad;
+    return addAdvertisementImageUrls(ad);
   });
 };
 
@@ -178,10 +233,7 @@ export const viewAllAdvertisement = async ({
     .lean();
 
   const list = ads.map((ad) => {
-    if (ad.bannerImageKey) {
-      ad.bannerImage = getSignedUrlByKey(ad.bannerImageKey);
-    }
-    return ad;
+    return addAdvertisementImageUrls(ad);
   });
 
   return { list, total };
@@ -199,27 +251,48 @@ export const updateAdvertisement = async (id, data) => {
     typeof data.bannerImage === "string" &&
     data.bannerImage.startsWith("data:image");
   if (
-    data.position === "TOP_BANNER" &&
-    existingAd.position !== "TOP_BANNER" &&
+    (data.position === "TOP_BANNER" || data.position === "HOME_POPUP") &&
+    existingAd.position !== data.position &&
     !hasNewImage
   ) {
-    throw new Error("A valid top banner image is required");
+    throw new Error("A valid banner image is required for this position");
   }
 
-  if (
-    hasNewImage
-  ) {
+  if (hasNewImage) {
     if (data.position === "TOP_BANNER") {
       data.bannerImage = await cropTopBannerImage(data.bannerImage);
+    } else if (data.position === "HOME_POPUP") {
+      data.bannerImage = await cropHomePopupImage(data.bannerImage);
     }
     const uploadResult = await uploadImageToS3(
       data.bannerImage,
       `advertisements/banners/ad-${Date.now()}`,
-      data.position === "TOP_BANNER" ? { skipImageConversion: true } : {}
+      (data.position === "TOP_BANNER" || data.position === "HOME_POPUP")
+        ? { skipImageConversion: true }
+        : {}
     );
     data.bannerImageKey = uploadResult.key;
   }
+  if (
+    (data.position === "TOP_BANNER" || data.position === "HOME_POPUP") &&
+    data.mobileBannerImage &&
+    typeof data.mobileBannerImage === "string" &&
+    data.mobileBannerImage.startsWith("data:image")
+  ) {
+    const mobileCropFn =
+      data.position === "HOME_POPUP"
+        ? cropMobileHomePopupImage
+        : cropMobileTopBannerImage;
+    data.mobileBannerImage = await mobileCropFn(data.mobileBannerImage);
+    const mobileUploadResult = await uploadImageToS3(
+      data.mobileBannerImage,
+      `advertisements/banners/mobile-ad-${Date.now()}`,
+      { skipImageConversion: true }
+    );
+    data.mobileBannerImageKey = mobileUploadResult.key;
+  }
   delete data.bannerImage;
+  delete data.mobileBannerImage;
 
   const updatedAd = await advertismentModel.findByIdAndUpdate(
     id,
@@ -229,11 +302,7 @@ export const updateAdvertisement = async (id, data) => {
 
   if (!updatedAd) throw new Error("Advertisement not found");
 
-  if (updatedAd.bannerImageKey) {
-    updatedAd.bannerImage = getSignedUrlByKey(updatedAd.bannerImageKey);
-  }
-
-  return updatedAd;
+  return addAdvertisementImageUrls(updatedAd);
 };
 
 
@@ -251,6 +320,23 @@ export const deleteAdvertisement = async (id) => {
   return deleted;
 };
 
+
+export const findHomePopupAdvertisement = async () => {
+  const now = new Date();
+
+  const ads = await advertismentModel
+    .find({
+      position: "HOME_POPUP",
+      isActive: true,
+      isDeleted: false,
+      startTime: { $lte: now },
+      endTime: { $gte: now },
+    })
+    .sort({ priority: -1, createdAt: -1 })
+    .lean();
+
+  return ads.map((ad) => addAdvertisementImageUrls(ad));
+};
 
 export const getActiveCategoryAdvertisements = async (
   category,
@@ -271,9 +357,6 @@ export const getActiveCategoryAdvertisements = async (
     .lean();
 
   return ads.map((ad) => {
-    if (ad.bannerImageKey) {
-      ad.bannerImage = getSignedUrlByKey(ad.bannerImageKey);
-    }
-    return ad;
+    return addAdvertisementImageUrls(ad);
   });
 };

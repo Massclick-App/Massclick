@@ -30,6 +30,7 @@ import { maintenanceReducer } from './reducers/maintenanceReducer.js';
 import categoryDisplaySettingsReducer from './reducers/categoryDisplaySettingsReducer.js';
 import globalLoaderReducer from './reducers/globalLoaderReducer.js';
 import eventReducer from './reducers/eventReducer.js';
+import gmapsLeadsReducer from './reducers/gmapsLeadsReducer.js';
 
 const rootReducer = combineReducers({
   auth: authReducer,
@@ -62,6 +63,7 @@ const rootReducer = combineReducers({
   categoryDisplaySettings: categoryDisplaySettingsReducer,
   globalLoader: globalLoaderReducer,
   event: eventReducer,
+  gmapsLeadsReducer: gmapsLeadsReducer,
 });
 
 let storeInstance = null;
