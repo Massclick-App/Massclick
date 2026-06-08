@@ -18,6 +18,10 @@ const formatEventAdvertisementImages = (advertisement) => {
     ? getSignedUrlByKey(result.bannerImageKey)
     : "";
 
+  result.mobileBannerImage = result.mobileBannerImageKey
+    ? getSignedUrlByKey(result.mobileBannerImageKey)
+    : "";
+
   return result;
 };
 
@@ -42,8 +46,19 @@ const handleEventAdvertisementImageUploads = async (data = {}) => {
     data.bannerImageKey = "";
   }
 
+  if (typeof data.mobileBannerImage === "string" && data.mobileBannerImage.startsWith("data:")) {
+    const uploadResult = await uploadImageToS3(
+      data.mobileBannerImage,
+      `event/advertisements/banners/mobile-banner-${Date.now()}`
+    );
+    data.mobileBannerImageKey = uploadResult.key;
+  } else if (data.mobileBannerImage === null || data.mobileBannerImage === "") {
+    data.mobileBannerImageKey = "";
+  }
+
   delete data.advertisementImage;
   delete data.bannerImage;
+  delete data.mobileBannerImage;
 };
 
 export const createEventAdvertisement = async (reqBody = {}) => {
@@ -51,12 +66,15 @@ export const createEventAdvertisement = async (reqBody = {}) => {
     const title = reqBody.title?.trim();
     if (!title) throw new Error("Title is required");
 
-    if (!ObjectId.isValid(reqBody.eventCategory)) {
-      throw new Error("Invalid event category ID");
-    }
+    const isPopup = reqBody.displayPosition === "HOME_POPUP";
 
-    if (!ObjectId.isValid(reqBody.eventLocation)) {
-      throw new Error("Invalid event location ID");
+    if (!isPopup) {
+      if (!ObjectId.isValid(reqBody.eventCategory)) {
+        throw new Error("Invalid event category ID");
+      }
+      if (!ObjectId.isValid(reqBody.eventLocation)) {
+        throw new Error("Invalid event location ID");
+      }
     }
 
     await handleEventAdvertisementImageUploads(reqBody);
@@ -64,10 +82,11 @@ export const createEventAdvertisement = async (reqBody = {}) => {
     const eventAdvertisement = new eventAdvertisementModel({
       title: reqBody.title,
       description: reqBody.description || "",
-      eventCategory: reqBody.eventCategory,
-      eventLocation: reqBody.eventLocation,
+      eventCategory: isPopup ? null : reqBody.eventCategory,
+      eventLocation: isPopup ? null : reqBody.eventLocation,
       advertisementImageKey: reqBody.advertisementImageKey || "",
       bannerImageKey: reqBody.bannerImageKey || "",
+      mobileBannerImageKey: reqBody.mobileBannerImageKey || "",
       advertiserName: reqBody.advertiserName || "",
       advertiserContact: reqBody.advertiserContact || "",
       advertiserEmail: reqBody.advertiserEmail || "",
@@ -75,6 +94,8 @@ export const createEventAdvertisement = async (reqBody = {}) => {
       startDate: reqBody.startDate || null,
       endDate: reqBody.endDate || null,
       displayPosition: reqBody.displayPosition || "middle",
+      displayDuration: reqBody.displayDuration ?? 0,
+      showConfetti: reqBody.showConfetti ?? false,
       isActive: reqBody.isActive !== undefined ? reqBody.isActive : true,
       createdBy: reqBody.createdBy || null,
     });
@@ -169,24 +190,39 @@ export const updateEventAdvertisement = async (advertisementId, updateData) => {
       throw new Error("Event advertisement not found");
     }
 
-    if (updateData.eventCategory && !ObjectId.isValid(updateData.eventCategory)) {
-      throw new Error("Invalid event category ID");
-    }
+    const nextDisplayPosition = updateData.displayPosition || advertisement.displayPosition;
+    const isPopup = nextDisplayPosition === "HOME_POPUP";
+    const nextEventCategory =
+      updateData.eventCategory !== undefined
+        ? updateData.eventCategory
+        : advertisement.eventCategory;
+    const nextEventLocation =
+      updateData.eventLocation !== undefined
+        ? updateData.eventLocation
+        : advertisement.eventLocation;
 
-    if (updateData.eventLocation && !ObjectId.isValid(updateData.eventLocation)) {
-      throw new Error("Invalid event location ID");
+    if (!isPopup) {
+      if (!ObjectId.isValid(nextEventCategory)) {
+        throw new Error("Invalid event category ID");
+      }
+      if (!ObjectId.isValid(nextEventLocation)) {
+        throw new Error("Invalid event location ID");
+      }
+    } else {
+      updateData.eventCategory = null;
+      updateData.eventLocation = null;
     }
 
     await handleEventAdvertisementImageUploads(updateData);
 
-    const updatedAdvertisement = await eventAdvertisementModel.findByIdAndUpdate(
-      advertisementId,
-      {
-        ...updateData,
-        updatedBy: updateData.updatedBy || null,
-      },
-      { new: true, runValidators: true }
-    ).populate([
+    Object.assign(advertisement, {
+      ...updateData,
+      updatedBy: updateData.updatedBy || null,
+    });
+
+    await advertisement.save();
+
+    const updatedAdvertisement = await advertisement.populate([
       { path: "eventCategory", select: "categoryName slug" },
       { path: "eventLocation", select: "locationName city" }
     ]);
@@ -270,4 +306,26 @@ export const trackAdvertisementImpression = async (advertisementId) => {
   } catch (error) {
     throw error;
   }
+};
+
+export const findEventHomePopupAdvertisement = async () => {
+  const now = new Date();
+  const query = {
+    displayPosition: "HOME_POPUP",
+    isActive: true,
+    $or: [
+      { startDate: null, endDate: null },
+      { startDate: { $lte: now }, endDate: { $gte: now } },
+      { startDate: { $lte: now }, endDate: null },
+      { startDate: null, endDate: { $gte: now } },
+    ],
+  };
+
+  const ads = await eventAdvertisementModel
+    .find(query)
+    .sort({ priority: -1, createdAt: -1 })
+    .limit(1)
+    .lean();
+
+  return ads.map(formatEventAdvertisementImages);
 };

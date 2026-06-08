@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import Cropper from "react-easy-crop";
 
 import {
   getAllEventCategory,
@@ -22,6 +23,7 @@ import {
   DialogContent,
   DialogActions,
   Alert,
+  Slider,
 } from "@mui/material";
 
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
@@ -43,6 +45,7 @@ const initialFormData = {
   eventLocation: "",
   advertisementImage: "",
   bannerImage: "",
+  mobileBannerImage: "",
   advertiserName: "",
   advertiserContact: "",
   advertiserEmail: "",
@@ -50,9 +53,32 @@ const initialFormData = {
   startDate: "",
   endDate: "",
   displayPosition: "middle",
+  displayDuration: 0,
+  showConfetti: false,
   slug: "",
   isActive: true,
 };
+
+const HOME_POPUP_RULES = {
+  key: "desktop",
+  title: "Popup Desktop Image",
+  targetWidth: 800,
+  targetHeight: 600,
+  recommended: "800 x 600 px",
+  label: "Choose an image and crop it into the required 800 x 600 px popup frame.",
+};
+
+const MOBILE_POPUP_RULES = {
+  key: "mobile",
+  title: "Popup Mobile Image",
+  targetWidth: 480,
+  targetHeight: 640,
+  recommended: "480 x 640 px",
+  label: "Optional mobile popup image. Crop to 480 x 640 px.",
+};
+
+const getPopupRules = (cropType) =>
+  cropType === "mobile" ? MOBILE_POPUP_RULES : HOME_POPUP_RULES;
 
 const formatDateInput = (value) => {
   if (!value) return "";
@@ -78,8 +104,75 @@ const getLocationLabel = (value) => {
   return value;
 };
 
+const getImageDimensions = (file) =>
+  new Promise((resolve, reject) => {
+    const image = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    image.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve({
+        width: image.naturalWidth,
+        height: image.naturalHeight,
+      });
+    };
+
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("Unable to read image dimensions"));
+    };
+
+    image.src = objectUrl;
+  });
+
+const readFileAsDataUrl = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result || "");
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
+const cropImageToPopup = (imageSource, croppedAreaPixels, cropType = "desktop") =>
+  new Promise((resolve, reject) => {
+    const image = new Image();
+    image.crossOrigin = "anonymous";
+
+    image.onload = () => {
+      const rules = getPopupRules(cropType);
+      const { x, y, width, height } = croppedAreaPixels;
+      const canvas = document.createElement("canvas");
+      canvas.width = rules.targetWidth;
+      canvas.height = rules.targetHeight;
+
+      const context = canvas.getContext("2d");
+      context.drawImage(
+        image,
+        x,
+        y,
+        width,
+        height,
+        0,
+        0,
+        rules.targetWidth,
+        rules.targetHeight
+      );
+
+      resolve({
+        base64: canvas.toDataURL("image/webp", 0.92),
+        originalWidth: image.naturalWidth,
+        originalHeight: image.naturalHeight,
+      });
+    };
+
+    image.onerror = () => reject(new Error("Unable to crop image preview"));
+    image.src = imageSource;
+  });
+
 export default function EventAdvertisement() {
   const dispatch = useDispatch();
+  const bannerInputRef = useRef(null);
+  const mobileBannerInputRef = useRef(null);
 
   const {
     data = [],
@@ -104,6 +197,19 @@ export default function EventAdvertisement() {
   const [errors, setErrors] = useState({});
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedAdvertisement, setSelectedAdvertisement] = useState(null);
+  const [preview, setPreview] = useState(null);
+  const [mobilePreview, setMobilePreview] = useState(null);
+  const [imageMeta, setImageMeta] = useState(null);
+  const [mobileImageMeta, setMobileImageMeta] = useState(null);
+  const [cropperOpen, setCropperOpen] = useState(false);
+  const [cropData, setCropData] = useState({
+    image: null,
+    cropType: "desktop",
+    dimensions: null,
+    crop: { x: 0, y: 0 },
+    zoom: 1,
+    croppedAreaPixels: null,
+  });
 
   useEffect(() => {
     dispatch(getAllEventAdvertisement());
@@ -115,16 +221,17 @@ export default function EventAdvertisement() {
     const newErrors = {};
     const startDate = new Date(formData.startDate);
     const endDate = new Date(formData.endDate);
+    const isPopup = formData.displayPosition === "HOME_POPUP";
 
     if (!formData.title.trim()) {
       newErrors.title = "Title is required";
     }
 
-    if (!formData.eventCategory) {
+    if (!isPopup && !formData.eventCategory) {
       newErrors.eventCategory = "Event category is required";
     }
 
-    if (!formData.eventLocation) {
+    if (!isPopup && !formData.eventLocation) {
       newErrors.eventLocation = "Event location is required";
     }
 
@@ -149,13 +256,17 @@ export default function EventAdvertisement() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const buildPayload = () => ({
+  const buildPayload = () => {
+    const isPopup = formData.displayPosition === "HOME_POPUP";
+
+    return {
     title: formData.title.trim(),
     description: formData.description.trim(),
-    eventCategory: formData.eventCategory,
-    eventLocation: formData.eventLocation,
+    eventCategory: isPopup ? null : formData.eventCategory,
+    eventLocation: isPopup ? null : formData.eventLocation,
     advertisementImage: formData.advertisementImage.trim(),
     bannerImage: formData.bannerImage.trim(),
+    mobileBannerImage: formData.mobileBannerImage.trim(),
     advertiserName: formData.advertiserName.trim(),
     advertiserContact: formData.advertiserContact.trim(),
     advertiserEmail: formData.advertiserEmail.trim(),
@@ -163,16 +274,28 @@ export default function EventAdvertisement() {
     startDate: formData.startDate || null,
     endDate: formData.endDate || null,
     displayPosition: formData.displayPosition,
+    displayDuration: Number(formData.displayDuration) || 0,
+    showConfetti: !!formData.showConfetti,
     isActive: formData.isActive,
-  });
+    };
+  };
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
 
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value,
-    }));
+    setFormData((prev) => {
+      const next = {
+        ...prev,
+        [name]: type === "checkbox" ? checked : value,
+      };
+
+      if (name === "displayPosition" && value === "HOME_POPUP") {
+        next.eventCategory = "";
+        next.eventLocation = "";
+      }
+
+      return next;
+    });
 
     setErrors((prev) => ({
       ...prev,
@@ -180,19 +303,109 @@ export default function EventAdvertisement() {
     }));
   };
 
-  const handleImageUpload = (e, fieldName) => {
+  const handleImageUpload = async (e, fieldName) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
+    if (
+      formData.displayPosition === "HOME_POPUP" &&
+      (fieldName === "bannerImage" || fieldName === "mobileBannerImage")
+    ) {
+      try {
+        const dimensions = await getImageDimensions(file);
+        const image = await readFileAsDataUrl(file);
+        const cropType = fieldName === "mobileBannerImage" ? "mobile" : "desktop";
+
+        if (cropType === "mobile") {
+          setMobileImageMeta(dimensions);
+        } else {
+          setImageMeta(dimensions);
+        }
+
+        setCropData({
+          image,
+          cropType,
+          dimensions,
+          crop: { x: 0, y: 0 },
+          zoom: 1,
+          croppedAreaPixels: null,
+        });
+        setCropperOpen(true);
+      } catch (error) {
+        setErrors((prev) => ({
+          ...prev,
+          [fieldName]: error.message,
+        }));
+      }
+      e.target.value = "";
+      return;
+    }
+
+    const image = await readFileAsDataUrl(file);
+    setFormData((prev) => ({
+      ...prev,
+      [fieldName]: image,
+    }));
+    e.target.value = "";
+  };
+
+  const handlePopupCropSave = async () => {
+    const fieldName =
+      cropData.cropType === "mobile" ? "mobileBannerImage" : "bannerImage";
+
+    if (!cropData.image || !cropData.croppedAreaPixels) {
+      setErrors((prev) => ({
+        ...prev,
+        [fieldName]: "Please adjust the popup crop before saving",
+      }));
+      return;
+    }
+
+    try {
+      const cropped = await cropImageToPopup(
+        cropData.image,
+        cropData.croppedAreaPixels,
+        cropData.cropType
+      );
+
+      if (cropData.cropType === "mobile") {
+        setMobilePreview(cropped.base64);
+        setMobileImageMeta({
+          width: cropped.originalWidth,
+          height: cropped.originalHeight,
+        });
+      } else {
+        setPreview(cropped.base64);
+        setImageMeta({
+          width: cropped.originalWidth,
+          height: cropped.originalHeight,
+        });
+      }
+
       setFormData((prev) => ({
         ...prev,
-        [fieldName]: reader.result || "",
+        [fieldName]: cropped.base64,
       }));
-    };
-    reader.readAsDataURL(file);
-    e.target.value = "";
+
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.bannerImage;
+        delete next.mobileBannerImage;
+        return next;
+      });
+      setCropperOpen(false);
+    } catch (error) {
+      setErrors((prev) => ({
+        ...prev,
+        [fieldName]: error.message,
+      }));
+    }
+  };
+
+  const handlePopupCropCancel = () => {
+    setCropperOpen(false);
+    if (bannerInputRef.current) bannerInputRef.current.value = "";
+    if (mobileBannerInputRef.current) mobileBannerInputRef.current.value = "";
   };
 
   const resetForm = () => {
@@ -200,6 +413,11 @@ export default function EventAdvertisement() {
     setEditId(null);
     setIsEditMode(false);
     setErrors({});
+    setPreview(null);
+    setMobilePreview(null);
+    setImageMeta(null);
+    setMobileImageMeta(null);
+    setCropperOpen(false);
   };
 
   const handleSubmit = (e) => {
@@ -237,6 +455,7 @@ export default function EventAdvertisement() {
       eventLocation: getRefId(row.rawEventLocation),
       advertisementImage: row.advertisementImage || "",
       bannerImage: row.bannerImage || "",
+      mobileBannerImage: row.mobileBannerImage || "",
       advertiserName: row.advertiserName || "",
       advertiserContact: row.advertiserContact || "",
       advertiserEmail: row.advertiserEmail || "",
@@ -244,10 +463,16 @@ export default function EventAdvertisement() {
       startDate: formatDateInput(row.startDate),
       endDate: formatDateInput(row.endDate),
       displayPosition: row.displayPosition || "middle",
+      displayDuration: row.displayDuration ?? 0,
+      showConfetti: row.showConfetti ?? false,
       slug: row.slug || "",
       isActive: row.isActive,
     });
 
+    setPreview(row.bannerImage || null);
+    setMobilePreview(row.mobileBannerImage || null);
+    setImageMeta(null);
+    setMobileImageMeta(null);
     setEditId(row.id);
     setIsEditMode(true);
     setActiveView("form");
@@ -283,6 +508,7 @@ export default function EventAdvertisement() {
     eventLocation: getLocationLabel(item.eventLocation),
     advertisementImage: item.advertisementImage || "",
     bannerImage: item.bannerImage || "",
+    mobileBannerImage: item.mobileBannerImage || "",
     advertiserName: item.advertiserName || "-",
     advertiserContact: item.advertiserContact || "",
     advertiserEmail: item.advertiserEmail || "",
@@ -294,6 +520,8 @@ export default function EventAdvertisement() {
         ? `${formatDateInput(item.startDate) || "-"} to ${formatDateInput(item.endDate) || "-"}`
         : "-",
     displayPosition: item.displayPosition || "middle",
+    displayDuration: item.displayDuration ?? 0,
+    showConfetti: item.showConfetti ?? false,
     clicks: item.clicks ?? 0,
     impressions: item.impressions ?? 0,
     slug: item.slug || "",
@@ -388,6 +616,8 @@ export default function EventAdvertisement() {
     },
   ];
 
+  const isPopup = formData.displayPosition === "HOME_POPUP";
+
   return (
     <div className={cx("eventAdvertisement-page")}>
       <AdminViewTabs activeView={activeView} onChange={setActiveView} isEditing={isEditMode} createLabel="Event Advertisement" listLabel="Event Advertisements" listCount={rows.length} />
@@ -442,7 +672,7 @@ export default function EventAdvertisement() {
               />
             </div>
 
-            <div>
+            {!isPopup && <div>
               <label>Event Category *</label>
 
               <select
@@ -466,9 +696,9 @@ export default function EventAdvertisement() {
                   {errors.eventCategory}
                 </p>
               )}
-            </div>
+            </div>}
 
-            <div>
+            {!isPopup && <div>
               <label>Event Location *</label>
 
               <select
@@ -492,7 +722,7 @@ export default function EventAdvertisement() {
                   {errors.eventLocation}
                 </p>
               )}
-            </div>
+            </div>}
 
             <div className={cx("eventAdvertisement-field--full")}>
               <label>Description</label>
@@ -539,6 +769,11 @@ export default function EventAdvertisement() {
 
             <div className={cx("eventAdvertisement-upload-field")}>
               <label>Banner Image</label>
+              {isPopup && (
+                <p className={cx("eventAdvertisement-upload-guidance")}>
+                  {HOME_POPUP_RULES.label}
+                </p>
+              )}
 
               <div className={cx("eventAdvertisement-upload-content")}>
                 <Button
@@ -549,6 +784,7 @@ export default function EventAdvertisement() {
                 >
                   Upload Image
                   <input
+                    ref={bannerInputRef}
                     type="file"
                     accept="image/*"
                     hidden
@@ -565,7 +801,75 @@ export default function EventAdvertisement() {
                   />
                 )}
               </div>
+              {preview && (
+                <div className={cx("eventAdvertisement-banner-preview")}>
+                  <span>Preview</span>
+                  <img src={preview} alt="Popup preview" />
+                </div>
+              )}
+              {imageMeta && isPopup && (
+                <span className={cx("eventAdvertisement-image-meta")}>
+                  Selected image: {imageMeta.width} x {imageMeta.height} px - saved as {HOME_POPUP_RULES.recommended}
+                </span>
+              )}
+              {errors.bannerImage && (
+                <p className={cx("eventAdvertisement-error-text")}>
+                  {errors.bannerImage}
+                </p>
+              )}
             </div>
+
+            {isPopup && (
+              <div className={cx("eventAdvertisement-upload-field")}>
+                <label>Mobile Popup Image</label>
+                <p className={cx("eventAdvertisement-upload-guidance")}>
+                  {MOBILE_POPUP_RULES.label}
+                </p>
+
+                <div className={cx("eventAdvertisement-upload-content")}>
+                  <Button
+                    variant="contained"
+                    startIcon={<CloudUploadIcon />}
+                    component="label"
+                    className={cx("eventAdvertisement-upload-button")}
+                  >
+                    Upload Mobile Image
+                    <input
+                      ref={mobileBannerInputRef}
+                      type="file"
+                      accept="image/*"
+                      hidden
+                      onChange={(e) => handleImageUpload(e, "mobileBannerImage")}
+                    />
+                  </Button>
+
+                  {formData.mobileBannerImage && (
+                    <Avatar
+                      src={formData.mobileBannerImage}
+                      variant="rounded"
+                      sx={{ width: 48, height: 64 }}
+                      className={cx("eventAdvertisement-preview-avatar")}
+                    />
+                  )}
+                </div>
+                {mobilePreview && (
+                  <div className={cx("eventAdvertisement-banner-preview", "eventAdvertisement-banner-preview--mobile")}>
+                    <span>Mobile Preview</span>
+                    <img src={mobilePreview} alt="Mobile popup preview" />
+                  </div>
+                )}
+                {mobileImageMeta && (
+                  <span className={cx("eventAdvertisement-image-meta")}>
+                    Selected mobile image: {mobileImageMeta.width} x {mobileImageMeta.height} px - saved as {MOBILE_POPUP_RULES.recommended}
+                  </span>
+                )}
+                {errors.mobileBannerImage && (
+                  <p className={cx("eventAdvertisement-error-text")}>
+                    {errors.mobileBannerImage}
+                  </p>
+                )}
+              </div>
+            )}
 
             <div>
               <label>Advertiser Name</label>
@@ -657,8 +961,42 @@ export default function EventAdvertisement() {
                 <option value="middle">Middle</option>
                 <option value="bottom">Bottom</option>
                 <option value="sidebar">Sidebar</option>
+                <option value="HOME_POPUP">Home Popup</option>
               </select>
             </div>
+
+            {isPopup && (
+              <div>
+                <label>Auto-close Duration</label>
+                <input
+                  type="number"
+                  name="displayDuration"
+                  min="0"
+                  step="1"
+                  value={formData.displayDuration}
+                  onChange={handleChange}
+                />
+                <span className={cx("eventAdvertisement-help-text")}>
+                  0 keeps the popup open until manually closed.
+                </span>
+              </div>
+            )}
+
+            {isPopup && (
+              <div className={cx("eventAdvertisement-toggle")}>
+                <label htmlFor="eventAdvertisement-showConfetti">
+                  Show Confetti
+                </label>
+
+                <input
+                  id="eventAdvertisement-showConfetti"
+                  type="checkbox"
+                  name="showConfetti"
+                  checked={!!formData.showConfetti}
+                  onChange={handleChange}
+                />
+              </div>
+            )}
 
             <div className={cx("eventAdvertisement-toggle")}>
               <label htmlFor="eventAdvertisement-isActive">
@@ -735,6 +1073,104 @@ export default function EventAdvertisement() {
         />
       </Box>
       </>}
+
+      <Dialog
+        open={cropperOpen}
+        onClose={handlePopupCropCancel}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          Crop {getPopupRules(cropData.cropType).title}
+        </DialogTitle>
+
+        <DialogContent dividers>
+          <Box
+            sx={{
+              mb: 2,
+              p: 1.5,
+              borderRadius: "8px",
+              bgcolor: "#f8fafc",
+              border: "1px solid #e5e7eb",
+            }}
+          >
+            <Typography
+              variant="body2"
+              sx={{ fontWeight: 700, color: "#172033" }}
+            >
+              Forced output: {getPopupRules(cropData.cropType).recommended}
+            </Typography>
+            {cropData.dimensions && (
+              <Typography
+                variant="caption"
+                sx={{ display: "block", mt: 0.5, color: "#6b7280" }}
+              >
+                Source image: {cropData.dimensions.width} x {cropData.dimensions.height} px
+              </Typography>
+            )}
+          </Box>
+
+          {cropData.image && (
+            <Box
+              sx={{
+                position: "relative",
+                width: "100%",
+                height: { xs: 280, sm: 340, md: 420 },
+                bgcolor: "#0f172a",
+                borderRadius: "8px",
+                overflow: "hidden",
+              }}
+            >
+              <Cropper
+                image={cropData.image}
+                crop={cropData.crop}
+                zoom={cropData.zoom}
+                aspect={
+                  getPopupRules(cropData.cropType).targetWidth /
+                  getPopupRules(cropData.cropType).targetHeight
+                }
+                onCropChange={(crop) =>
+                  setCropData((prev) => ({ ...prev, crop }))
+                }
+                onCropComplete={(croppedArea, croppedAreaPixels) =>
+                  setCropData((prev) => ({ ...prev, croppedAreaPixels }))
+                }
+                onZoomChange={(zoom) =>
+                  setCropData((prev) => ({ ...prev, zoom }))
+                }
+              />
+            </Box>
+          )}
+
+          <Box sx={{ mt: 2 }}>
+            <Typography
+              variant="caption"
+              sx={{ display: "block", mb: 1, color: "#6b7280" }}
+            >
+              Zoom: {(cropData.zoom * 100).toFixed(0)}%
+            </Typography>
+            <Slider
+              value={cropData.zoom}
+              onChange={(event, zoom) =>
+                setCropData((prev) => ({ ...prev, zoom }))
+              }
+              min={1}
+              max={5}
+              step={0.1}
+              valueLabelDisplay="auto"
+            />
+          </Box>
+        </DialogContent>
+
+        <DialogActions>
+          <Button onClick={handlePopupCropCancel}>
+            Cancel
+          </Button>
+          <Button variant="contained" onClick={handlePopupCropSave}>
+            Save Crop
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog
         open={deleteDialogOpen}

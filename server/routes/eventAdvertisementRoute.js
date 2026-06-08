@@ -7,7 +7,8 @@ import {
   deleteEventAdvertisementAction,
   hardDeleteEventAdvertisementAction,
   trackAdvertisementClickAction,
-  trackAdvertisementImpressionAction
+  trackAdvertisementImpressionAction,
+  viewEventHomePopupAdvertisementAction
 } from '../controller/event/eventAdvertisementController.js';
 import { oauthAuthentication } from '../helper/oauthHelper.js';
 
@@ -21,5 +22,6 @@ router.delete('/api/event-advertisement/delete/:id', oauthAuthentication, delete
 router.delete('/api/event-advertisement/hard-delete/:id', oauthAuthentication, hardDeleteEventAdvertisementAction);
 router.put('/api/event-advertisement/track-click/:id', oauthAuthentication, trackAdvertisementClickAction);
 router.put('/api/event-advertisement/track-impression/:id', oauthAuthentication, trackAdvertisementImpressionAction);
+router.get('/api/event-advertisement/popup', oauthAuthentication, viewEventHomePopupAdvertisementAction);
 
 export default router;

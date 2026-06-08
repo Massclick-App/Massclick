@@ -15,12 +15,12 @@ const eventAdvertisementSchema = new mongoose.Schema(
     eventCategory: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "eventcategory",
-      required: true,
+      default: null,
     },
     eventLocation: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "eventlocation",
-      required: true,
+      default: null,
     },
     advertisementImage: {
       type: String,
@@ -66,9 +66,22 @@ const eventAdvertisementSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    mobileBannerImageKey: {
+      type: String,
+      default: "",
+    },
+    displayDuration: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    showConfetti: {
+      type: Boolean,
+      default: false,
+    },
     displayPosition: {
       type: String,
-      enum: ["top", "middle", "bottom", "sidebar"],
+      enum: ["top", "middle", "bottom", "sidebar", "HOME_POPUP"],
       default: "middle",
     },
     clicks: {
@@ -102,6 +115,18 @@ const eventAdvertisementSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+eventAdvertisementSchema.pre("validate", function (next) {
+  if (this.displayPosition !== "HOME_POPUP") {
+    if (!this.eventCategory) {
+      return next(new Error("Event category is required for non-popup advertisements"));
+    }
+    if (!this.eventLocation) {
+      return next(new Error("Event location is required for non-popup advertisements"));
+    }
+  }
+  next();
+});
 
 eventAdvertisementSchema.pre("save", function (next) {
   if (this.isModified("title")) {

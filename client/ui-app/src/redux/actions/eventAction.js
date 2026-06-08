@@ -18,6 +18,7 @@ import {
   EDIT_EVENT_CREATION_REQUEST, EDIT_EVENT_CREATION_SUCCESS, EDIT_EVENT_CREATION_FAILURE,
   DELETE_EVENT_CREATION_REQUEST, DELETE_EVENT_CREATION_SUCCESS, DELETE_EVENT_CREATION_FAILURE,
   PUBLISH_EVENT_CREATION_REQUEST, PUBLISH_EVENT_CREATION_SUCCESS, PUBLISH_EVENT_CREATION_FAILURE,
+  FETCH_HOME_POPUP_EVENT_AD_REQUEST, FETCH_HOME_POPUP_EVENT_AD_SUCCESS, FETCH_HOME_POPUP_EVENT_AD_FAILURE,
 } from './eventActionTypes.js';
 import { getClientToken } from './clientAuthAction.js';
 
@@ -249,6 +250,23 @@ export const deleteEventAdvertisement = (advertisementId) => async (dispatch) =>
   } catch (error) {
     dispatch({ type: DELETE_EVENT_ADVERTISEMENT_FAILURE, payload: error.message });
     throw error;
+  }
+};
+
+export const getHomePopupEventAd = () => async (dispatch) => {
+  dispatch({ type: FETCH_HOME_POPUP_EVENT_AD_REQUEST });
+  try {
+    const token = await dispatch(getClientToken());
+    const response = await axiosInstance.get(
+      `${API_URL}/event-advertisement/popup`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    dispatch({ type: FETCH_HOME_POPUP_EVENT_AD_SUCCESS, payload: response.data });
+  } catch (error) {
+    dispatch({
+      type: FETCH_HOME_POPUP_EVENT_AD_FAILURE,
+      payload: error.response?.data?.message || error.message || "Failed to load popup advertisement",
+    });
   }
 };
 

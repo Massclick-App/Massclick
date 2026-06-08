@@ -42,7 +42,7 @@ const advertistmentSchema = new mongoose.Schema(
 
     position: {
       type: String,
-      enum: ["TOP_BANNER", "LIST_INLINE", "SIDE_BANNER", "FOOTER_BANNER", "HOME_POPUP"],
+      enum: ["TOP_BANNER", "LIST_INLINE", "SIDE_BANNER", "FOOTER_BANNER"],
       default: "LIST_INLINE",
       index: true,
     },
@@ -75,17 +75,6 @@ const advertistmentSchema = new mongoose.Schema(
       type: Number,
       default: 0,
       index: true,
-    },
-
-    displayDuration: {
-      type: Number,
-      default: 0,
-      min: 0,
-    },
-
-    showConfetti: {
-      type: Boolean,
-      default: false,
     },
 
     isActive: {

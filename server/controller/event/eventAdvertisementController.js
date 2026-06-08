@@ -6,7 +6,8 @@ import {
   deleteEventAdvertisement,
   hardDeleteEventAdvertisement,
   trackAdvertisementClick,
-  trackAdvertisementImpression
+  trackAdvertisementImpression,
+  findEventHomePopupAdvertisement
 } from "../../helper/event/eventAdvertisementHelper.js";
 import { BAD_REQUEST } from "../../errorCodes.js";
 
@@ -117,6 +118,16 @@ export const trackAdvertisementImpressionAction = async (req, res) => {
     res.send({ success: true, message: "Impression tracked", data: advertisement });
   } catch (error) {
     console.error("trackAdvertisementImpressionAction error:", error);
+    return res.status(BAD_REQUEST.code).send({ success: false, message: error.message });
+  }
+};
+
+export const viewEventHomePopupAdvertisementAction = async (req, res) => {
+  try {
+    const ads = await findEventHomePopupAdvertisement();
+    res.send(ads);
+  } catch (error) {
+    console.error("viewEventHomePopupAdvertisementAction error:", error);
     return res.status(BAD_REQUEST.code).send({ success: false, message: error.message });
   }
 };
