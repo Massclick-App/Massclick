@@ -18,14 +18,6 @@ const formatEventAdvertisementImages = (advertisement) => {
     ? getSignedUrlByKey(result.bannerImageKey)
     : "";
 
-  result.popupImage = result.popupImageKey
-    ? getSignedUrlByKey(result.popupImageKey)
-    : "";
-
-  result.mobilePopupImage = result.mobilePopupImageKey
-    ? getSignedUrlByKey(result.mobilePopupImageKey)
-    : "";
-
   return result;
 };
 
@@ -50,30 +42,8 @@ const handleEventAdvertisementImageUploads = async (data = {}) => {
     data.bannerImageKey = "";
   }
 
-  if (typeof data.popupImage === "string" && data.popupImage.startsWith("data:")) {
-    const uploadResult = await uploadImageToS3(
-      data.popupImage,
-      `event/advertisements/popups/popup-${Date.now()}`
-    );
-    data.popupImageKey = uploadResult.key;
-  } else if (data.popupImage === null || data.popupImage === "") {
-    data.popupImageKey = "";
-  }
-
-  if (typeof data.mobilePopupImage === "string" && data.mobilePopupImage.startsWith("data:")) {
-    const uploadResult = await uploadImageToS3(
-      data.mobilePopupImage,
-      `event/advertisements/popups/mobile-popup-${Date.now()}`
-    );
-    data.mobilePopupImageKey = uploadResult.key;
-  } else if (data.mobilePopupImage === null || data.mobilePopupImage === "") {
-    data.mobilePopupImageKey = "";
-  }
-
   delete data.advertisementImage;
   delete data.bannerImage;
-  delete data.popupImage;
-  delete data.mobilePopupImage;
 };
 
 export const createEventAdvertisement = async (reqBody = {}) => {
@@ -98,8 +68,6 @@ export const createEventAdvertisement = async (reqBody = {}) => {
       eventLocation: reqBody.eventLocation,
       advertisementImageKey: reqBody.advertisementImageKey || "",
       bannerImageKey: reqBody.bannerImageKey || "",
-      popupImageKey: reqBody.popupImageKey || "",
-      mobilePopupImageKey: reqBody.mobilePopupImageKey || "",
       advertiserName: reqBody.advertiserName || "",
       advertiserContact: reqBody.advertiserContact || "",
       advertiserEmail: reqBody.advertiserEmail || "",
@@ -107,8 +75,6 @@ export const createEventAdvertisement = async (reqBody = {}) => {
       startDate: reqBody.startDate || null,
       endDate: reqBody.endDate || null,
       displayPosition: reqBody.displayPosition || "middle",
-      popupAutoCloseDuration: reqBody.popupAutoCloseDuration || 0,
-      popupShowConfetti: reqBody.popupShowConfetti || false,
       isActive: reqBody.isActive !== undefined ? reqBody.isActive : true,
       createdBy: reqBody.createdBy || null,
     });
