@@ -532,6 +532,15 @@ export default function Category() {
   };
   const validateForm = () => {
     let newErrors = {};
+    console.log("[Category] validateForm — formData:", {
+      category: formData.category,
+      categoryType: formData.categoryType,
+      subCategoryType: formData.subCategoryType,
+      title: formData.title,
+      description: formData.description,
+      keywords: formData.keywords,
+      filterConfig: formData.filterConfig,
+    });
 
     // Use InputValidator for comprehensive validation
     try {
@@ -544,6 +553,7 @@ export default function Category() {
       // This will throw if validation fails
       InputValidator.validateCategory(categoryData);
     } catch (error) {
+      console.log("[Category] InputValidator threw:", error.message);
       // Parse InputValidator error message into field errors
       const errorLines = error.message.split('\n').filter(line => line.trim());
       errorLines.forEach(line => {
@@ -557,6 +567,7 @@ export default function Category() {
     if (formData.categoryType === "Sub Category" && !formData.subCategoryType) newErrors.subCategoryType = "Sub Category Type is required";
     if (!formData.title.trim()) newErrors.title = "Title is required";
     if (!formData.keywords.length) newErrors.keywords = "At least one keyword is required";
+    console.log("[Category] validateForm errors:", newErrors);
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -869,6 +880,7 @@ export default function Category() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
   const doSave = () => {
+    console.log("[Category] doSave called, editMode:", editMode, "_id:", formData._id);
     // Prepare data to send (use cleaned keywords from InputValidator)
     const saveData = {
       ...formData,
@@ -878,22 +890,28 @@ export default function Category() {
     const action = editMode ? editCategory(formData._id, saveData) : createCategory(saveData);
     dispatch(action).then(() => {
       resetForm();
+      setActiveView("list");
       dispatch(getAllCategory());
     }).catch(err => {
       console.error(editMode ? "Update failed:" : "Create failed:", err);
-      // Show error from backend if available
       if (err.response?.data?.errors) {
         const backendErrors = {};
         err.response.data.errors.forEach(e => {
           backendErrors[e.field] = e.message;
         });
         setErrors(backendErrors);
+      } else {
+        const msg = err.response?.data?.message || err.message || "Save failed. Please try again.";
+        setErrors({ _form: msg });
       }
     });
   };
   const handleSubmit = async e => {
     e.preventDefault();
-    if (!validateForm()) return;
+    console.log("[Category] handleSubmit fired, editMode:", editMode);
+    const valid = validateForm();
+    console.log("[Category] validateForm result:", valid);
+    if (!valid) return;
     if (!editMode) {
       setCreateWarningLoading(true);
       try {
@@ -1699,6 +1717,8 @@ export default function Category() {
             </button>
           </div>
         </form>
+
+        {errors._form && <p className={cx("category-error-text")} style={{ marginTop: "16px", color: "#d32f2f" }}>{errors._form}</p>}
 
         {error && <p className={cx("category-error-text")} style={{
         marginTop: "16px"

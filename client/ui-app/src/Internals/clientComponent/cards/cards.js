@@ -122,6 +122,9 @@ const Cards = ({
     : reviews || 0;
   const filterBadges = getFilterBadges(filters, filterConfig);
   const distanceLabel = formatDistance(distance);
+  const priceFilterDisabled = filterConfig.some(
+    fc => (fc.key === "price" || fc.key === "priceRange") && fc.enabled === false
+  );
 
   const handlePhoneClick = e => {
     e.preventDefault();
@@ -221,7 +224,7 @@ const Cards = ({
                 <div className={cx("card-header-row")}>
                   <h2 className={cx("card-title")}>{title}</h2>
                   {(() => {
-                    const displayPrice = filters?.price || filters?.priceRange || price || null;
+                    const displayPrice = !priceFilterDisabled && (filters?.price || filters?.priceRange || price || null);
                     return displayPrice ? (
                       <div className={cx("price-box")}>₹{displayPrice}<span className={cx("price-type")}>/{priceType}</span></div>
                     ) : null;
@@ -256,7 +259,7 @@ const Cards = ({
                 <div className={cx("card-header-row")}>
                   <h2 className={cx("card-title")}>{title}</h2>
                   {(() => {
-                    const displayPrice = filters?.price || filters?.priceRange || price || null;
+                    const displayPrice = !priceFilterDisabled && (filters?.price || filters?.priceRange || price || null);
                     return displayPrice ? (
                       <div className={cx("price-box")}>₹{displayPrice}<span className={cx("price-type")}>/{priceType}</span></div>
                     ) : null;
