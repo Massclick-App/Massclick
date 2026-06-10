@@ -63,7 +63,7 @@ const mniSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
-   leadsCategory: [
+  leadsCategory: [
     {
       type: String
     }
@@ -176,6 +176,7 @@ const businessListSchema = new mongoose.Schema({
     isFeatured: { type: Boolean, default: false },
     isSponsored: { type: Boolean, default: false },
     isTrending: { type: Boolean, default: false },
+    isTrust: { type: Boolean, default: false },
     priorityScore: { type: Number, default: 0 },
   },
   geoLocation: {

@@ -168,6 +168,33 @@
   background: #fcfcfd;
 }
 
+.edit-business-keyword-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 10px;
+}
+
+.edit-business-keyword-suggestion {
+  max-width: 100%;
+  padding: 5px 9px;
+  border: 1px solid #ffd09a;
+  border-radius: 999px;
+  background: #fff7ed;
+  color: #b45309;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.edit-business-keyword-suggestion:hover,
+.edit-business-keyword-suggestion:focus {
+  border-color: #f7941d;
+  background: #ffedd5;
+  outline: none;
+}
+
 .edit-business-keyword-chips {
   display: flex;
   flex-wrap: wrap;
