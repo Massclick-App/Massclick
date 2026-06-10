@@ -22,7 +22,7 @@ const carePillars = [{
   description: "Find instant answers to common questions about accounts, billing, and services. Search our extensive library for quick self-help.",
   icon: LiveHelpIcon,
   buttonText: "Search Articles",
-  link: "/faqs"
+  link: "/knowledgebase"
 }, {
   id: 2,
   title: "Speak to a Specialist",

@@ -25,6 +25,7 @@ const Footer = () => {
                     <h3 className={cx("footer-heading")}>Explore</h3>
                     <ul className={cx("footer-link-list")}>
                         <FooterLink to="/aboutus">About MassClick</FooterLink>
+                        <FooterLink to="/knowledgebase">Knowledge Base</FooterLink>
                         <FooterLink to="/testimonials">Customer Stories</FooterLink>
                         {/* <FooterLink to="/feedbacks">User Feedback</FooterLink> */}
                         <FooterLink to="/customercare">Customer Support</FooterLink>

@@ -53,6 +53,7 @@ const DigitalMarketing = lazy(() => import(/* webpackChunkName: "footer-digital"
 const GraphicDesign = lazy(() => import(/* webpackChunkName: "footer-graphic" */ './Internals/clientComponent/footer/graphicDesign/graphicDesign.js'));
 const Seo = lazy(() => import(/* webpackChunkName: "footer-seo" */ './Internals/clientComponent/footer/seo/seo.js'));
 const DeleteAccount = lazy(() => import(/* webpackChunkName: "footer-delete" */ './Internals/clientComponent/footer/deleteAccount/deleteAccount.js'));
+const KnowledgeBasePage = lazy(() => import(/* webpackChunkName: "knowledge-base" */ "./Internals/clientComponent/footer/knowledgeBase/knowledgeBase.js"));
 
 const WriteReviewPage = lazy(() => import(/* webpackChunkName: "review" */ './Internals/clientComponent/rating/submitReviewPage.js'));
 const Profile = lazy(() => import(/* webpackChunkName: "profile" */ './Internals/Login/profile/profile.js'));
@@ -126,6 +127,7 @@ function AppRoutes({
     ['refund', <RefundPolicy />],
     ['enquiry', <EnquiryNow />],
     ['deleteaccount', <DeleteAccount />],
+    ['knowledgebase', <KnowledgeBasePage />],
     ['web', <WebDevSection />],
     ['digital', <DigitalMarketing />],
     ['graphic', <GraphicDesign />],
