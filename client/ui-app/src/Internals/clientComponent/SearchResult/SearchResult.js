@@ -672,6 +672,8 @@ const SearchResults = React.memo(() => {
                         imageSrc={business.bannerImage || "/header.png"}
                         to={businessUrl}
                         isVerified={!!business.verification?.isVerified}
+                        isTrusted={!!(business.badges?.isTrusted || business.badges?.isTrust || business.verification?.isTrusted)}
+                        certificateType={business.verification?.certificateType || business.verification?.verificationType}
                         isFeatured={!!business.badges?.isFeatured}
                         isSponsored={!!business.badges?.isSponsored}
                         isTrending={!!business.badges?.isTrending}
@@ -724,6 +726,8 @@ const SearchResults = React.memo(() => {
                             imageSrc={b.bannerImage || "/header.png"}
                             to={businessUrl}
                             isVerified={!!b.verification?.isVerified}
+                            isTrusted={!!(b.badges?.isTrusted || b.badges?.isTrust || b.verification?.isTrusted)}
+                            certificateType={b.verification?.certificateType || b.verification?.verificationType}
                             isFeatured={!!b.badges?.isFeatured}
                             isSponsored={!!b.badges?.isSponsored}
                             isTrending={!!b.badges?.isTrending}
