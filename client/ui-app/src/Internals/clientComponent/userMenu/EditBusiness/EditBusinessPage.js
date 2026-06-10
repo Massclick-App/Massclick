@@ -95,6 +95,7 @@ export default function EditBusinessPage() {
   const [bannerPreview, setBannerPreview] = useState("");
   const [kycDocumentPreviews, setKycDocumentPreviews] = useState([]);
   const [keywordInput, setKeywordInput] = useState("");
+  const [categoryKeywordSuggestions, setCategoryKeywordSuggestions] = useState([]);
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   useEffect(() => {
@@ -112,6 +113,7 @@ export default function EditBusinessPage() {
       })));
     });
   }, [dispatch, mobileNumber]);
+  
   useEffect(() => {
     if (!matchedBusiness) return;
     setBusinessId(getBusinessId(matchedBusiness));
@@ -126,11 +128,12 @@ export default function EditBusinessPage() {
   }, [matchedBusiness]);
   const applyCategory = category => {
     if (!category || typeof category !== "object") return;
+    setCategoryKeywordSuggestions(Array.isArray(category.keywords) ? category.keywords : []);
     setFormData(prev => ({
       ...prev,
       category: category.category || "",
       subcategory: category.subCategoryType || category.subcategory || prev.subcategory || "",
-      keywords: Array.isArray(category.keywords) ? category.keywords : [],
+      keywords: [],
       slug: category.slug || "",
       seoTitle: category.seoTitle || "",
       seoDescription: category.seoDescription || "",
@@ -181,6 +184,7 @@ export default function EditBusinessPage() {
     }));
   };
   const handleCategoryInputChange = value => {
+    setCategoryKeywordSuggestions([]);
     updateField("category", value);
     if (value.trim().length >= 2) {
       dispatch(businessCategorySearch(value.trim()));
@@ -304,7 +308,7 @@ export default function EditBusinessPage() {
             </div>
           </li>} renderInput={params => <TextField {...params} placeholder="Search category..." />} />
       <p className={cx("edit-business-help-text")}>
-        Selecting a suggestion updates keywords, title, description, slug and SEO fields.
+        Selecting a suggestion updates title, description, slug and SEO fields. Keywords stay empty and appear as selectable suggestions.
       </p>
     </div>;
   const renderStep = () => {
@@ -487,6 +491,16 @@ export default function EditBusinessPage() {
         <div className={cx("edit-business-field edit-business-full")}>
           <label htmlFor="keywords">Keywords</label>
           <div className={cx("edit-business-keywords-box")}>
+            {categoryKeywordSuggestions.length > 0 && <div className={cx("edit-business-keyword-suggestions")}>
+                {categoryKeywordSuggestions.filter(keyword => !(formData.keywords || []).some(selectedKeyword => String(selectedKeyword).toLowerCase() === String(keyword).toLowerCase())).map(keyword => <button type="button" className={cx("edit-business-keyword-suggestion")} key={keyword} onClick={() => {
+              setFormData(prev => ({
+                ...prev,
+                keywords: [...(prev.keywords || []), keyword]
+              }));
+            }}>
+                    {keyword}
+                  </button>)}
+              </div>}
             <div className={cx("edit-business-keyword-chips")}>
               {(formData.keywords || []).map(keyword => <button type="button" className={cx("edit-business-keyword-chip")} key={keyword} onClick={() => removeKeyword(keyword)} title={`Remove ${keyword}`}>
                   <span>{keyword}</span>
