@@ -1,11 +1,11 @@
 /* categories.css */
 
 .category-page {
-  --category-content-width: 1200px;
   --category-lower-content-width: 1720px;
+  --category-content-width: var(--category-lower-content-width);
   --grid-gap: 48px;
-  --side-padding: clamp(24px, 5vw, 80px);
   --lower-side-padding: clamp(14px, 3vw, 32px);
+  --side-padding: var(--lower-side-padding);
   --category-text-primary: #0f172a;
   --category-text-secondary: #475569;
   --category-border: rgba(15, 23, 42, 0.08);
@@ -338,14 +338,12 @@
 /* RESPONSIVE - Adjust spacing for smaller screens */
 @media (max-width: 1400px) {
   .category-page {
-    --side-padding: 60px;
     --grid-gap: 40px;
   }
 }
 
 @media (max-width: 1200px) {
   .category-page {
-    --side-padding: 48px;
     --grid-gap: 36px;
   }
   
@@ -356,7 +354,6 @@
 
 @media (max-width: 992px) {
   .category-page {
-    --side-padding: 40px;
     --grid-gap: 32px;
   }
   
@@ -376,7 +373,6 @@
 
 @media (max-width: 768px) {
   .category-page {
-    --side-padding: 32px;
     --grid-gap: 28px;
   }
   
@@ -423,7 +419,6 @@
 
 @media (max-width: 576px) {
   .category-page {
-    --side-padding: 24px;
     --grid-gap: 24px;
     --lower-side-padding: 12px;
   }
@@ -458,7 +453,6 @@
 
 @media (max-width: 400px) {
   .category-page {
-    --side-padding: 20px;
     --grid-gap: 20px;
   }
   

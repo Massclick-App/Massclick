@@ -3,6 +3,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { Helmet } from "react-helmet-async";
+import CardsSearch from "../CardsSearch/CardsSearch";
 import { handleImageError } from "../../../utils/placeholderImage";
 import styles from "./categories.module.css";
 import { logSearchActivity } from "../../../redux/actions/businessListAction";
@@ -132,6 +133,7 @@ const CategoriesPage = () => {
       </Helmet>
 
       <div className={cx("category-page")}>
+      <CardsSearch />
       <div className={cx("category-container")}>
         {/* Header Section */}
         <div className={cx("category-header")}>
