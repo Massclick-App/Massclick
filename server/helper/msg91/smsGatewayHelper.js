@@ -6,13 +6,28 @@ import { createLogger } from "../../utils/logger.js";
 
 const logger = createLogger('SMS');
 
+const getMsg91ErrorMessage = (data, fallback) => {
+  if (!data) return fallback;
+  if (typeof data === "string") return data;
+
+  return (
+    data.message ||
+    data.error ||
+    data.errors?.[0]?.message ||
+    data.data?.message ||
+    data.data?.error ||
+    data.response?.message ||
+    fallback
+  );
+};
+
 const assertMsg91Success = (response, context = "MSG91 WhatsApp") => {
   const data = response?.data;
   const type = data?.type?.toString().toLowerCase();
   const status = data?.status?.toString().toLowerCase();
 
   if (type === "error" || status === "error" || data?.hasError) {
-    throw new Error(data?.message || `${context} failed`);
+    throw new Error(getMsg91ErrorMessage(data, `${context} failed`));
   }
 
   return data;
@@ -268,6 +283,14 @@ const cleanValue = (val) => {
     .replace(/\n/g, " ")   // ❗ REMOVE NEWLINES
     .replace(/\s+/g, " ")  // normalize spaces
     .trim();
+};
+
+const truncateValue = (val, maxLength) => {
+  const cleaned = cleanValue(val);
+
+  if (cleaned === "-" || cleaned.length <= maxLength) return cleaned;
+
+  return `${cleaned.slice(0, Math.max(0, maxLength - 3)).trim()}...`;
 };
 
 export const sendBusinessesToCustomer = async (
