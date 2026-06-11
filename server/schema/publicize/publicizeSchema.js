@@ -22,6 +22,12 @@ const publicizeSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    keywords: [
+      {
+        type: String,
+        trim: true,
+      },
+    ],
     city: {
       type: String,
       required: true,

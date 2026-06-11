@@ -1,21 +1,33 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import { useSnackbar } from "notistack";
 import {
   ArrowRight,
+  Award,
   BadgeCheck,
+  BarChart3,
   Building2,
   Check,
   CheckCircle2,
   ChevronRight,
+  CreditCard,
   Globe2,
+  Headphones,
+  IdCard,
+  Image,
+  ListChecks,
   MapPin,
+  Monitor,
   Phone,
+  ReceiptText,
   Search,
   ShieldCheck,
   Sparkles,
   Star,
+  Store,
   TrendingUp,
+  WalletCards,
   X,
   Zap,
 } from "lucide-react";
@@ -96,6 +108,103 @@ const planFeatures = [
   "Verified seal",
 ];
 
+const premiumFeatures = [
+  {
+    icon: ListChecks,
+    title: "Premium Listing",
+    description: "Get stronger visibility in local searches and high-intent category pages.",
+  },
+  {
+    icon: BadgeCheck,
+    title: "Verified Seal",
+    description: "Improve buyer confidence with verified business identity signals.",
+  },
+  {
+    icon: Store,
+    title: "Online Catalogue",
+    description: "Showcase products, services, pricing details, and enquiries in one profile.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Trust Stamp",
+    description: "Highlight trustworthiness for customers comparing multiple businesses.",
+  },
+  {
+    icon: Image,
+    title: "3D & 360 Catalogue",
+    description: "Present immersive business visuals that make your listing feel premium.",
+  },
+  {
+    icon: Phone,
+    title: "Mobile Banner",
+    description: "Reach buyers on mobile where most local discovery decisions happen.",
+  },
+  {
+    icon: WalletCards,
+    title: "Payment Solutions",
+    description: "Support cleaner buyer-to-business payment workflows as you grow.",
+  },
+  {
+    icon: Monitor,
+    title: "Website Banner",
+    description: "Promote your business across prominent web placements and competitor pages.",
+  },
+  {
+    icon: BarChart3,
+    title: "Competitor Analysis",
+    description: "Understand how competing listings perform and where you can improve.",
+  },
+  {
+    icon: Award,
+    title: "Rating Certificate",
+    description: "Show positive reputation signals with a polished rating certificate.",
+  },
+  {
+    icon: Headphones,
+    title: "Premium Support",
+    description: "Get assisted onboarding and priority support for setup and growth.",
+  },
+  {
+    icon: ReceiptText,
+    title: "Lead Bank Access",
+    description: "Access qualified lead opportunities aligned to your selected keywords.",
+  },
+  {
+    icon: Globe2,
+    title: "Universal Listing",
+    description: "Keep business information organized, current, and ready for discovery.",
+  },
+];
+
+const paymentOptions = [
+  {
+    icon: WalletCards,
+    title: "UPI AutoPay",
+    description: "Monthly auto debit with one year commitment.",
+    badge: "Additional 20% off",
+  },
+  {
+    icon: ReceiptText,
+    title: "1 Year Upfront Payment",
+    description: "Pay once and keep the listing active through the year.",
+    badge: "Save more",
+  },
+  {
+    icon: CreditCard,
+    title: "Cards AutoPay",
+    description: "All major bank cards supported for monthly auto debit.",
+    badge: "Fast setup",
+  },
+  {
+    icon: IdCard,
+    title: "0% Interest EMI",
+    description: "Split the subscription through supported credit and debit cards.",
+    badge: "No cost EMI",
+  },
+];
+
+const testingAmountLabel = "Rs 000";
+
 const initialFormData = {
   businessName: "",
   mobileNumber: "",
@@ -141,6 +250,7 @@ const buildFallbackKeywords = (category) => {
 
 export default function PublicizePage() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { enqueueSnackbar } = useSnackbar();
   const { searchCategory = [] } = useSelector(
     (state) => state.categoryReducer || {}
@@ -150,6 +260,7 @@ export default function PublicizePage() {
   const [activeStep, setActiveStep] = useState(0);
   const [showCategorySuggest, setShowCategorySuggest] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState([]);
+  const [selectedKeywords, setSelectedKeywords] = useState([]);
   const [selectedPlan, setSelectedPlan] = useState("premium");
   const [formData, setFormData] = useState(() => ({
     ...initialFormData,
@@ -186,7 +297,7 @@ export default function PublicizePage() {
       });
     });
 
-    return Array.from(keywordMap.values()).slice(0, 14);
+    return Array.from(keywordMap.values());
   }, [searchCategory, selectedCategories]);
 
   useEffect(() => {
@@ -197,6 +308,12 @@ export default function PublicizePage() {
       prev.mobileNumber ? prev : { ...prev, mobileNumber: storedMobileNumber }
     );
   }, []);
+
+  useEffect(() => {
+    setSelectedKeywords((prev) =>
+      prev.filter((keyword) => selectedCategoryKeywords.includes(keyword))
+    );
+  }, [selectedCategoryKeywords]);
 
   const updateField = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -225,8 +342,13 @@ export default function PublicizePage() {
       }
     }
 
-    if (step === 2 && selectedCategories.length === 0) {
-      err.category = "Select at least one category";
+    if (step === 2) {
+      if (selectedCategories.length === 0) {
+        err.category = "Select at least one category";
+      }
+      if (selectedCategoryKeywords.length > 0 && selectedKeywords.length === 0) {
+        err.keywords = "Select at least one keyword";
+      }
     }
 
     setErrors(err);
@@ -265,12 +387,22 @@ export default function PublicizePage() {
     });
   };
 
+  const toggleKeyword = (keyword) => {
+    setSelectedKeywords((prev) =>
+      prev.includes(keyword)
+        ? prev.filter((item) => item !== keyword)
+        : [...prev, keyword]
+    );
+    setErrors((prev) => ({ ...prev, keywords: "" }));
+  };
+
   const resetFlow = () => {
     setFormData({
       ...initialFormData,
       mobileNumber: getStoredMobileNumber(),
     });
     setSelectedCategories([]);
+    setSelectedKeywords([]);
     setSelectedPlan("premium");
     setActiveStep(0);
     setErrors({});
@@ -287,6 +419,7 @@ export default function PublicizePage() {
           mobileNumber: formData.mobileNumber.trim(),
           pincode: formData.pincode.trim(),
           category: selectedCategories[0],
+          keywords: selectedKeywords,
           city: formData.city.trim(),
           businessAddress: formData.businessAddress.trim(),
         })
@@ -362,12 +495,16 @@ export default function PublicizePage() {
           <a href="#publicize-start">Start</a>
           <a href="#benefits">Benefits</a>
           <a href="#plans">Plans</a>
-          <a href="#benefits">Features</a>
+          <a href="#feature-suite">Features</a>
         </nav>
-        <a className={cx("talk-button")} href="tel:+919342328981">
+        <button
+          className={cx("talk-button")}
+          type="button"
+          onClick={() => navigate("/customercare")}
+        >
           <Phone size={18} />
           Talk to us
-        </a>
+        </button>
       </header>
 
       <section
@@ -622,12 +759,24 @@ export default function PublicizePage() {
                       </span>
                     ) : (
                       selectedCategoryKeywords.map((keyword) => (
-                        <span className={cx("keyword-chip")} key={keyword}>
+                        <button
+                          type="button"
+                          className={cx(
+                            "keyword-chip",
+                            selectedKeywords.includes(keyword) ? "keyword-chip-selected" : ""
+                          )}
+                          key={keyword}
+                          onClick={() => toggleKeyword(keyword)}
+                        >
                           {keyword}
-                        </span>
+                          {selectedKeywords.includes(keyword) && <Check size={14} />}
+                        </button>
                       ))
                     )}
                   </div>
+                  {errors.keywords && (
+                    <small className={cx("keyword-error")}>{errors.keywords}</small>
+                  )}
                 </div>
 
                 <div className={cx("suggested-area")}>
@@ -683,14 +832,8 @@ export default function PublicizePage() {
                       <strong>{plan.label}</strong>
                       <small>{plan.discount}</small>
                       <div className={cx("plan-price")}>
-                        {plan.price === "Custom" ? (
-                          <span>Custom</span>
-                        ) : (
-                          <>
-                            <span>Rs {plan.price}</span>
-                            <small>/Day</small>
-                          </>
-                        )}
+                        <span>{testingAmountLabel}</span>
+                        <small>/Day</small>
                       </div>
                       <em>{plan.save}</em>
                       <p>{plan.description}</p>
@@ -715,6 +858,83 @@ export default function PublicizePage() {
                   ))}
                 </div>
 
+                <section className={cx("payment-showcase", "payment-showcase-inline")}>
+                  <div className={cx("payment-main")}>
+                    <div className={cx("section-heading", "section-heading-left")}>
+                      <span>Plan Checkout</span>
+                      <h2>Recommended upgrades and payment options</h2>
+                      <p>
+                        Choose a payment mode that fits your budget and keep every plan
+                        detail easy to review before submission.
+                      </p>
+                    </div>
+
+                    <div className={cx("recommended-strip")}>
+                      {[
+                        ["Universal Listing", `${testingAmountLabel}/day`, "New launch"],
+                        ["Mobile Banner", `${testingAmountLabel}/day`, "Most popular"],
+                        ["Website Banner", `${testingAmountLabel}/day`, "High intent"],
+                      ].map(([title, price, badge]) => (
+                        <article className={cx("addon-card")} key={title}>
+                          <span>{badge}</span>
+                          <strong>{title}</strong>
+                          <p>{price}</p>
+                          <button type="button">Add</button>
+                        </article>
+                      ))}
+                    </div>
+
+                    <div className={cx("payment-options")}>
+                      {paymentOptions.map(({ icon: Icon, title, description, badge }) => (
+                        <article className={cx("payment-option")} key={title}>
+                          <Icon size={30} />
+                          <div>
+                            <h3>{title}</h3>
+                            <p>{description}</p>
+                            <span>{badge}</span>
+                          </div>
+                          <ChevronRight size={20} />
+                        </article>
+                      ))}
+                    </div>
+                  </div>
+
+                  <aside className={cx("payment-summary")} aria-label="Selected plan summary">
+                    <div className={cx("summary-head")}>
+                      <span>{selectedPlanDetails.tenure}</span>
+                      <h2>{selectedPlanDetails.label} Plan</h2>
+                      <p>{selectedPlanDetails.description}</p>
+                    </div>
+                    <div className={cx("summary-row")}>
+                      <span>Monthly Fee</span>
+                      <strong>{testingAmountLabel}</strong>
+                    </div>
+                    <div className={cx("summary-row")}>
+                      <span>Discount</span>
+                      <strong>{selectedPlanDetails.discount}</strong>
+                    </div>
+                    <div className={cx("summary-row")}>
+                      <span>Verified Seal + Trust Stamp</span>
+                      <strong>Free</strong>
+                    </div>
+                    <div className={cx("summary-row")}>
+                      <span>GST @ 18%</span>
+                      <strong>{testingAmountLabel}</strong>
+                    </div>
+                    <div className={cx("summary-total")}>
+                      <span>Total Monthly Fee</span>
+                      <strong>{testingAmountLabel}</strong>
+                    </div>
+                    <button
+                      className={cx("summary-button")}
+                      type="button"
+                      onClick={() => navigate("/customercare")}
+                    >
+                      Talk to our team <ArrowRight size={18} />
+                    </button>
+                  </aside>
+                </section>
+
                 <div className={cx("button-row", "sticky-actions")}>
                   <button type="button" className={cx("secondary-button")} onClick={goBack}>
                     Back
@@ -735,6 +955,35 @@ export default function PublicizePage() {
         >
           {renderBusinessPreview()}
         </aside>
+      </section>
+
+      <section id="feature-suite" className={cx("feature-suite")}>
+        <div className={cx("section-heading")}>
+          <span>Feature Suite</span>
+          <h2>Everything your business needs to stand out</h2>
+          <p>
+            Premium visibility tools, trust signals, lead support, and catalogue
+            upgrades built into one growth-ready listing experience.
+          </p>
+        </div>
+        <p className={cx("trust-note")}>
+          To activate verified badges, keep your KYC completed and maintain a
+          strong customer rating.
+        </p>
+
+        <div className={cx("feature-matrix")}>
+          {premiumFeatures.map(({ icon: Icon, title, description }) => (
+            <article className={cx("feature-tile")} key={title}>
+              <span className={cx("feature-icon")}>
+                <Icon size={24} />
+              </span>
+              <div>
+                <h3>{title}</h3>
+                <p>{description}</p>
+              </div>
+            </article>
+          ))}
+        </div>
       </section>
 
       <section id="benefits" className={cx("brand-band")}>

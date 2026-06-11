@@ -2,6 +2,18 @@ import { ObjectId } from "mongodb";
 import publicizeModel from "../../model/publicize/publicizeModel.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
 
+const normalizePublicizeKeywords = (keywords) => {
+  if (!Array.isArray(keywords)) return [];
+
+  return [
+    ...new Set(
+      keywords
+        .map((keyword) => String(keyword || "").trim())
+        .filter(Boolean)
+    ),
+  ];
+};
+
 const buildBusinessFromPublicize = (publicize) => ({
   sourcePublicizeId: publicize._id,
   name: publicize.businessName,
@@ -11,6 +23,7 @@ const buildBusinessFromPublicize = (publicize) => ({
   contactList: publicize.mobileNumber,
   whatsappNumber: publicize.mobileNumber,
   category: publicize.category,
+  keywords: normalizePublicizeKeywords(publicize.keywords),
   location: publicize.city,
   street: publicize.businessAddress,
   globalAddress: publicize.businessAddress,
@@ -23,7 +36,10 @@ const buildBusinessFromPublicize = (publicize) => ({
 
 export const createPublicize = async (reqBody = {}) => {
   try {
-    const publicizeDocument = new publicizeModel(reqBody);
+    const publicizeDocument = new publicizeModel({
+      ...reqBody,
+      keywords: normalizePublicizeKeywords(reqBody.keywords),
+    });
     const savedPublicize = await publicizeDocument.save();
 
     const businessDocument = new businessListModel(
@@ -88,6 +104,10 @@ export const updatePublicize = async (id, data) => {
     delete updateData.createdAt;
     delete updateData.updatedAt;
     delete updateData.isActive;
+
+    if (Object.prototype.hasOwnProperty.call(updateData, "keywords")) {
+      updateData.keywords = normalizePublicizeKeywords(updateData.keywords);
+    }
 
     const publicize = await publicizeModel.findByIdAndUpdate(
       id,

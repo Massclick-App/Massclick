@@ -5,8 +5,9 @@ import { useDispatch, useSelector } from "react-redux";
 import { viewOtpUser } from "../../redux/actions/otpAction.js";
 import { useDrawer } from "./Drawer/drawerContext.js";
 import { IconButton, Menu, MenuItem, Avatar } from "@mui/material";
+import PublishedWithChangesIcon from '@mui/icons-material/PublishedWithChanges';
 import Badge from "@mui/material/Badge";
-import { Notifications as NotificationsIcon, Campaign as CampaignIcon, Mail as MailIcon, Menu as MenuIcon, AccountCircle as AccountCircleIcon, ExitToApp as ExitToAppIcon } from "@mui/icons-material";
+import { Notifications as NotificationsIcon, Mail as MailIcon, Menu as MenuIcon, AccountCircle as AccountCircleIcon, ExitToApp as ExitToAppIcon } from "@mui/icons-material";
 import MassclickIndiaLogo from "../../assets/Massclick-India.webp";
 import AddBusinessModal from "./AddBusinessModel.js";
 import AppRegistrationIcon from '@mui/icons-material/AppRegistration';
@@ -45,7 +46,7 @@ const categories = [{
 // { name: "MNI", icon: <CorporateFareIcon /> },
 {
   name: "Publicize",
-  icon: <CampaignIcon />
+  icon: <PublishedWithChangesIcon />
 }, {
   name: "Business Enquiry",
   icon: <AppRegistrationIcon />
