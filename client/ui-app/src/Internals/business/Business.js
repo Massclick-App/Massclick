@@ -121,6 +121,7 @@ ColorlibStepIcon.propTypes = {
   icon: PropTypes.node
 };
 const steps = ["Business Details", "Category", "Privacy Settings", "Payment"];
+const SEARCH_REFRESH_DELAY = 350;
 const BusinessList = React.memo(() => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -181,6 +182,7 @@ const BusinessList = React.memo(() => {
     paymentStatus: "all"
   });
   const [tableRefreshKey, setTableRefreshKey] = useState(0);
+  const tableRefreshTimerRef = useRef(null);
 
   // ===== GMaps Picker State =====
   const [gmapsPickerOpen, setGmapsPickerOpen] = useState(false);
@@ -610,22 +612,60 @@ const BusinessList = React.memo(() => {
   }, [category, dispatch, enqueueSnackbar]);
 
   // ===== FILTER & SEARCH HANDLERS =====
-  const normalizeSearchValue = value => String(value ?? "").replace(/<[^>]*>/g, " ").toLowerCase().trim();
+  const normalizeSearchValue = value => String(value ?? "")
+    .replace(/<[^>]*>/g, " ")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const collectSearchValues = value => {
+    if (value == null) return [];
+    if (Array.isArray(value)) return value.flatMap(collectSearchValues);
+    if (value instanceof Date) return [value.toISOString()];
+    if (typeof value === "object") return Object.values(value).flatMap(collectSearchValues);
+    return [String(value)];
+  };
+
+  const buildSearchHaystack = values => collectSearchValues(values).map(normalizeSearchValue).filter(Boolean).join(" ");
 
   const valueMatchesSearch = (value, term) => {
-    if (Array.isArray(value)) {
-      return value.some(item => valueMatchesSearch(item, term));
-    }
-    return normalizeSearchValue(value).includes(term);
+    const normalizedTerm = normalizeSearchValue(term);
+    if (!normalizedTerm) return true;
+    const tokens = normalizedTerm.split(" ").filter(Boolean);
+    const haystack = buildSearchHaystack(value);
+    return tokens.every(token => haystack.includes(token));
   };
 
   const matchesSelectedValue = (value, selectedValue) => {
-    if (!selectedValue) return true;
-    return normalizeSearchValue(value) === normalizeSearchValue(selectedValue);
+    const selected = normalizeSearchValue(selectedValue);
+    if (!selected) return true;
+    const candidates = collectSearchValues(value).map(normalizeSearchValue).filter(Boolean);
+    return candidates.some(candidate => (
+      candidate === selected ||
+      candidate.includes(selected) ||
+      (candidate.length >= 3 && selected.includes(candidate))
+    ));
+  };
+
+  const isBusinessPaid = row => {
+    if (row.amountPaid === true || Boolean(row.paidDate)) return true;
+    if (!Array.isArray(row.payment)) return false;
+    return row.payment.some(payment => {
+      if (!payment || typeof payment !== "object") return false;
+      const status = normalizeSearchValue(payment.status || payment.paymentStatus || payment.payment_status);
+      const amount = Number(payment.amount || payment.amountPaid || payment.paidAmount || 0);
+      return status === "paid" || amount > 0;
+    });
   };
 
   const getServerSearchQuery = (filters = appliedFilters) => {
-    return (filters.searchTerm || filters.category || filters.location || "").trim();
+    return [filters.searchTerm, filters.category, filters.location]
+      .map(value => String(value || "").trim())
+      .filter(Boolean)
+      .join(" ");
   };
 
   const updateActiveFilters = (newFilters) => {
@@ -644,16 +684,34 @@ const BusinessList = React.memo(() => {
     setActiveFilters(filters);
   };
 
-  const handleApplyFilters = () => {
-    const nextFilters = {
-      searchTerm: searchTerm.trim(),
-      category: selectedCategory,
-      location: selectedLocation,
-      paymentStatus
-    };
+  const buildFilterState = (overrides = {}) => ({
+    searchTerm: String(overrides.searchTerm ?? searchTerm).trim(),
+    category: overrides.category ?? selectedCategory,
+    location: overrides.location ?? selectedLocation,
+    paymentStatus: overrides.paymentStatus ?? paymentStatus
+  });
+
+  const queueTableRefresh = useCallback((delay = SEARCH_REFRESH_DELAY) => {
+    if (tableRefreshTimerRef.current) clearTimeout(tableRefreshTimerRef.current);
+    tableRefreshTimerRef.current = setTimeout(() => {
+      setTableRefreshKey(prev => prev + 1);
+    }, delay);
+  }, []);
+
+  const syncFilters = (overrides = {}, { refreshDelay = SEARCH_REFRESH_DELAY } = {}) => {
+    const nextFilters = buildFilterState(overrides);
     setAppliedFilters(nextFilters);
     updateActiveFilters(nextFilters);
-    setTableRefreshKey(prev => prev + 1);
+    queueTableRefresh(refreshDelay);
+    return nextFilters;
+  };
+
+  useEffect(() => () => {
+    if (tableRefreshTimerRef.current) clearTimeout(tableRefreshTimerRef.current);
+  }, []);
+
+  const handleApplyFilters = () => {
+    syncFilters({}, { refreshDelay: 0 });
   };
 
   const handleClearFilters = () => {
@@ -668,9 +726,7 @@ const BusinessList = React.memo(() => {
     setSelectedLocation("");
     setPaymentStatus("all");
     setDateRange({ from: "", to: "" });
-    setAppliedFilters(nextFilters);
-    setActiveFilters([]);
-    setTableRefreshKey(prev => prev + 1);
+    syncFilters(nextFilters, { refreshDelay: 0 });
   };
 
   const handleRemoveFilter = (filterType) => {
@@ -686,9 +742,7 @@ const BusinessList = React.memo(() => {
     setSelectedCategory(nextFilters.category);
     setSelectedLocation(nextFilters.location);
     setPaymentStatus(nextFilters.paymentStatus);
-    setAppliedFilters(nextFilters);
-    updateActiveFilters(nextFilters);
-    setTableRefreshKey(prev => prev + 1);
+    syncFilters(nextFilters, { refreshDelay: 0 });
   };
 
   const getFilteredRows = () => {
@@ -702,8 +756,10 @@ const BusinessList = React.memo(() => {
 
       // Search term filter
       if (appliedSearchTerm) {
-        const term = normalizeSearchValue(appliedSearchTerm);
-        const matchesSearch = [
+        const matchesSearch = valueMatchesSearch([
+          row.clientId,
+          row.id,
+          row._id,
           row.businessName,
           row.location,
           row.category,
@@ -722,22 +778,26 @@ const BusinessList = React.memo(() => {
           row.slug,
           row.businessDetails,
           row.keywords,
-          row.mniDetails?.map(item => item?.categoryGroup)
-        ].some(value => valueMatchesSearch(value, term));
+          row.filters,
+          row.mniDetails,
+          row.openingHours,
+          row.website,
+          row.googleMap
+        ], appliedSearchTerm);
         if (!matchesSearch) return false;
       }
 
       // Category filter
-      if (!matchesSelectedValue(row.category, appliedCategory)) return false;
+      if (!matchesSelectedValue([row.category, row.mniDetails, row.filters], appliedCategory)) return false;
 
       // Location filter
-      if (!matchesSelectedValue(row.location, appliedLocation)) return false;
+      if (!matchesSelectedValue([row.location, row.globalAddress, row.street, row.pincode, row.googleMap], appliedLocation)) return false;
 
       // Payment status filter
       if (appliedPaymentStatus !== "all") {
-        const isPaid = row.amountPaid === true;
-        if (appliedPaymentStatus === "paid" && !isPaid) return false;
-        if (appliedPaymentStatus === "pending" && isPaid) return false;
+        const paid = isBusinessPaid(row);
+        if (appliedPaymentStatus === "paid" && !paid) return false;
+        if (appliedPaymentStatus === "pending" && paid) return false;
       }
 
       return true;
@@ -1667,7 +1727,11 @@ const BusinessList = React.memo(() => {
               placeholder="Search by business name, location, or category..."
               className={cx("search-input-main")}
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value;
+                setSearchTerm(value);
+                syncFilters({ searchTerm: value });
+              }}
               onKeyDown={(e) => e.key === "Enter" && handleApplyFilters()}
             />
             <Button
@@ -1694,7 +1758,11 @@ const BusinessList = React.memo(() => {
                 placeholder="Enter business name..."
                 className={cx("search-input")}
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setSearchTerm(value);
+                  syncFilters({ searchTerm: value });
+                }}
               />
             </div>
 
@@ -1704,7 +1772,11 @@ const BusinessList = React.memo(() => {
               <select
                 className={cx("search-select")}
                 value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setSelectedCategory(value);
+                  syncFilters({ category: value }, { refreshDelay: 0 });
+                }}
               >
                 <option value="">All Categories</option>
                 {categoryOptions.map(cat => (
@@ -1719,7 +1791,11 @@ const BusinessList = React.memo(() => {
               <select
                 className={cx("search-select")}
                 value={selectedLocation}
-                onChange={(e) => setSelectedLocation(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setSelectedLocation(value);
+                  syncFilters({ location: value }, { refreshDelay: 0 });
+                }}
               >
                 <option value="">All Locations</option>
                 {locationOptions.map(loc => (
@@ -1734,7 +1810,11 @@ const BusinessList = React.memo(() => {
               <select
                 className={cx("search-select")}
                 value={paymentStatus}
-                onChange={(e) => setPaymentStatus(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setPaymentStatus(value);
+                  syncFilters({ paymentStatus: value }, { refreshDelay: 0 });
+                }}
               >
                 <option value="all">All</option>
                 <option value="paid">Paid</option>
