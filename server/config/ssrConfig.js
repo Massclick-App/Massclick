@@ -16,6 +16,6 @@ export const STATIC_PAGES = {
 
 export const SKIP_SEO_ROUTES = new Set([
   "business", "dashboard", "admin", "write-review",
-  "payment-status", "leads", "free-listing", "advertise",
+  "payment-status", "leads", "free-listing", "publicize",
   "user", "deleteaccount",
 ]);

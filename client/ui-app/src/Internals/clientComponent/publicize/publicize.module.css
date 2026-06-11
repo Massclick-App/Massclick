@@ -1,4 +1,4 @@
-.advertise-wrapper {
+.publicize-wrapper {
   --brand-blue: #06155d;
   --brand-blue-dark: #06155d;
   --brand-orange: #ff5722;
@@ -15,9 +15,9 @@
   font-family: inherit;
 }
 
-.advertise-wrapper *,
-.advertise-wrapper *::before,
-.advertise-wrapper *::after {
+.publicize-wrapper *,
+.publicize-wrapper *::before,
+.publicize-wrapper *::after {
   box-sizing: border-box;
 }
 
@@ -277,7 +277,7 @@
   color: #ffffff;
 }
 
-.advertise-form {
+.publicize-form {
   margin: 0;
 }
 

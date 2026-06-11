@@ -93,9 +93,9 @@ const businessListSchema = new mongoose.Schema({
   clientId: { type: String, default: '', },
   name: { type: String, default: '', },
   businessName: { type: String, default: '', },
-  sourceAdvertiseId: {
+  sourcePublicizeId: {
     type: Schema.Types.ObjectId,
-    ref: 'advertise',
+    ref: 'publicize',
     default: null,
   },
   plotNumber: { type: String, default: '', },

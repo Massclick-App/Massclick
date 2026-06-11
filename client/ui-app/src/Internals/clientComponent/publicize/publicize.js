@@ -21,8 +21,8 @@ import {
 } from "lucide-react";
 import { createScopedClassNames } from "../../../utils/createScopedClassNames";
 import { businessCategorySearch } from "../../../redux/actions/categoryAction.js";
-import { createAdvertise } from "../../../redux/actions/advertiseAction.js";
-import styles from "./advertise.module.css";
+import { createPublicize } from "../../../redux/actions/publicizeAction.js";
+import styles from "./publicize.module.css";
 
 const cx = createScopedClassNames(styles);
 
@@ -139,13 +139,13 @@ const buildFallbackKeywords = (category) => {
   ];
 };
 
-export default function AdvertisePage() {
+export default function PublicizePage() {
   const dispatch = useDispatch();
   const { enqueueSnackbar } = useSnackbar();
   const { searchCategory = [] } = useSelector(
     (state) => state.categoryReducer || {}
   );
-  const { loading } = useSelector((state) => state.advertise || {});
+  const { loading } = useSelector((state) => state.publicize || {});
 
   const [activeStep, setActiveStep] = useState(0);
   const [showCategorySuggest, setShowCategorySuggest] = useState(false);
@@ -282,7 +282,7 @@ export default function AdvertisePage() {
 
     try {
       await dispatch(
-        createAdvertise({
+        createPublicize({
           businessName: formData.businessName.trim(),
           mobileNumber: formData.mobileNumber.trim(),
           pincode: formData.pincode.trim(),
@@ -353,13 +353,13 @@ export default function AdvertisePage() {
   );
 
   return (
-    <main className={cx("advertise-wrapper")}>
+    <main className={cx("publicize-wrapper")}>
       <header className={cx("topbar")}>
         <div className={cx("logo")}>
           Mass<span>click</span>
         </div>
-        <nav className={cx("nav-links")} aria-label="Advertise sections">
-          <a href="#advertise-start">Start</a>
+        <nav className={cx("nav-links")} aria-label="Publicize sections">
+          <a href="#publicize-start">Start</a>
           <a href="#benefits">Benefits</a>
           <a href="#plans">Plans</a>
           <a href="#benefits">Features</a>
@@ -371,11 +371,11 @@ export default function AdvertisePage() {
       </header>
 
       <section
-        id="advertise-start"
+        id="publicize-start"
         className={cx("hero", activeStep === 3 ? "hero-plan-mode" : "")}
       >
         <div className={cx("hero-content")}>
-          <div className={cx("breadcrumb")}>Home <ChevronRight size={14} /> Advertise your Business</div>
+          <div className={cx("breadcrumb")}>Home <ChevronRight size={14} /> Publicize your Business</div>
           <h1>
             <span>Grow</span> your business with Massclick
           </h1>
@@ -425,14 +425,14 @@ export default function AdvertisePage() {
             ))}
           </div>
 
-          <form className={cx("advertise-form")} onSubmit={handleSubmit}>
+          <form className={cx("publicize-form")} onSubmit={handleSubmit}>
             {activeStep === 0 && (
               <section className={cx("form-panel")}>
                 <div className={cx("panel-heading")}>
                   <span><Phone size={18} /></span>
                   <div>
                     <h2>Enter mobile number</h2>
-                    <p>Start your Massclick advertising setup securely.</p>
+                    <p>Start your Massclick publicizing setup securely.</p>
                   </div>
                 </div>
 

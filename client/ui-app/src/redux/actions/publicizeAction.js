@@ -1,17 +1,17 @@
 import axiosInstance from '../../services/axiosInstance.js';
 import {
-  FETCH_ADVERTISE_REQUEST,
-  FETCH_ADVERTISE_SUCCESS,
-  FETCH_ADVERTISE_FAILURE,
-  CREATE_ADVERTISE_REQUEST,
-  CREATE_ADVERTISE_SUCCESS,
-  CREATE_ADVERTISE_FAILURE,
-  EDIT_ADVERTISE_REQUEST,
-  EDIT_ADVERTISE_SUCCESS,
-  EDIT_ADVERTISE_FAILURE,
-  DELETE_ADVERTISE_REQUEST,
-  DELETE_ADVERTISE_SUCCESS,
-  DELETE_ADVERTISE_FAILURE,
+  FETCH_PUBLICIZE_REQUEST,
+  FETCH_PUBLICIZE_SUCCESS,
+  FETCH_PUBLICIZE_FAILURE,
+  CREATE_PUBLICIZE_REQUEST,
+  CREATE_PUBLICIZE_SUCCESS,
+  CREATE_PUBLICIZE_FAILURE,
+  EDIT_PUBLICIZE_REQUEST,
+  EDIT_PUBLICIZE_SUCCESS,
+  EDIT_PUBLICIZE_FAILURE,
+  DELETE_PUBLICIZE_REQUEST,
+  DELETE_PUBLICIZE_SUCCESS,
+  DELETE_PUBLICIZE_FAILURE,
 } from "../actions/userActionTypes";
 import { getClientToken } from "./clientAuthAction.js";
 
@@ -24,56 +24,56 @@ const getValidToken = async (dispatch) => {
   return token;
 };
 
-export const getAllAdvertise = () => async (dispatch) => {
-  dispatch({ type: FETCH_ADVERTISE_REQUEST });
+export const getAllPublicize = () => async (dispatch) => {
+  dispatch({ type: FETCH_PUBLICIZE_REQUEST });
 
   try {
       const token = await getValidToken(dispatch);
 
     const response = await axiosInstance.get(
-      `${API_URL}/advertise/viewall`,
+      `${API_URL}/publicize/viewall`,
       {
         headers: { Authorization: `Bearer ${token}` },
       }
     );
 
     dispatch({
-      type: FETCH_ADVERTISE_SUCCESS,
+      type: FETCH_PUBLICIZE_SUCCESS,
       payload: response.data || [],
     });
   } catch (error) {
     dispatch({
-      type: FETCH_ADVERTISE_FAILURE,
+      type: FETCH_PUBLICIZE_FAILURE,
       payload: error.response?.data || error.message,
     });
   }
 };
 
-export const createAdvertise = (advertiseData) => async (dispatch) => {
-  dispatch({ type: CREATE_ADVERTISE_REQUEST });
+export const createPublicize = (publicizeData) => async (dispatch) => {
+  dispatch({ type: CREATE_PUBLICIZE_REQUEST });
 
   try {
       const token = await getValidToken(dispatch);
 
     const response = await axiosInstance.post(
-      `${API_URL}/advertise/create`,
-      advertiseData,
+      `${API_URL}/publicize/create`,
+      publicizeData,
       {
         headers: { Authorization: `Bearer ${token}` },
       }
     );
 
-    const createdAdvertise = response.data?.advertise || response.data;
+    const createdPublicize = response.data?.publicize || response.data;
 
     dispatch({
-      type: CREATE_ADVERTISE_SUCCESS,
-      payload: createdAdvertise,
+      type: CREATE_PUBLICIZE_SUCCESS,
+      payload: createdPublicize,
     });
 
     return response.data;
   } catch (error) {
     dispatch({
-      type: CREATE_ADVERTISE_FAILURE,
+      type: CREATE_PUBLICIZE_FAILURE,
       payload: error.response?.data || error.message,
     });
     throw error;
@@ -81,57 +81,57 @@ export const createAdvertise = (advertiseData) => async (dispatch) => {
 };
 
 
-export const editAdvertise = (id, advertiseData) => async (dispatch) => {
-  dispatch({ type: EDIT_ADVERTISE_REQUEST });
+export const editPublicize = (id, publicizeData) => async (dispatch) => {
+  dispatch({ type: EDIT_PUBLICIZE_REQUEST });
 
   try {
       const token = await getValidToken(dispatch);
 
     const response = await axiosInstance.put(
-      `${API_URL}/advertise/update/${id}`,
-      advertiseData,
+      `${API_URL}/publicize/update/${id}`,
+      publicizeData,
       {
         headers: { Authorization: `Bearer ${token}` },
       }
     );
 
-    const updatedAdvertise = response.data;
+    const updatedPublicize = response.data;
 
     dispatch({
-      type: EDIT_ADVERTISE_SUCCESS,
-      payload: updatedAdvertise,
+      type: EDIT_PUBLICIZE_SUCCESS,
+      payload: updatedPublicize,
     });
 
-    return updatedAdvertise;
+    return updatedPublicize;
   } catch (error) {
     dispatch({
-      type: EDIT_ADVERTISE_FAILURE,
+      type: EDIT_PUBLICIZE_FAILURE,
       payload: error.response?.data || error.message,
     });
     throw error;
   }
 };
 
-export const deleteAdvertise = (id) => async (dispatch) => {
-  dispatch({ type: DELETE_ADVERTISE_REQUEST });
+export const deletePublicize = (id) => async (dispatch) => {
+  dispatch({ type: DELETE_PUBLICIZE_REQUEST });
 
   try {
       const token = await getValidToken(dispatch);
 
     const { data } = await axiosInstance.delete(
-      `${API_URL}/advertise/delete/${id}`,
+      `${API_URL}/publicize/delete/${id}`,
       {
         headers: { Authorization: `Bearer ${token}` },
       }
     );
 
     dispatch({
-      type: DELETE_ADVERTISE_SUCCESS,
-      payload: data.advertise,
+      type: DELETE_PUBLICIZE_SUCCESS,
+      payload: data.publicize,
     });
   } catch (error) {
     dispatch({
-      type: DELETE_ADVERTISE_FAILURE,
+      type: DELETE_PUBLICIZE_FAILURE,
       payload: error.response?.data || error.message,
     });
     throw error;

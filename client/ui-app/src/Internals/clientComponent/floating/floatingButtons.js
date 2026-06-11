@@ -23,11 +23,11 @@ const FloatingButtons = ({ onRequireLogin }) => {
 
   if (shouldHide) return null;
 
-  const handleAdvertiseClick = () => {
+  const handlePublicizeClick = () => {
     const authToken = localStorage.getItem("authToken");
 
     if (authToken) {
-      navigate("/advertise");
+      navigate("/publicize");
     } else {
       onRequireLogin();
     }
@@ -56,7 +56,7 @@ const FloatingButtons = ({ onRequireLogin }) => {
       }}
     >
       <Box
-        onClick={handleAdvertiseClick}
+        onClick={handlePublicizeClick}
         sx={{
           writingMode: "vertical-rl",
           transform: "rotate(180deg)",

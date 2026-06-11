@@ -59,7 +59,7 @@ const WriteReviewPage = lazy(() => import(/* webpackChunkName: "review" */ './In
 const Profile = lazy(() => import(/* webpackChunkName: "profile" */ './Internals/Login/profile/profile.js'));
 const PaymentStatus = lazy(() => import(/* webpackChunkName: "payment" */ './Internals/phonePay/paymentStatus.js'));
 const LeadsPage = lazy(() => import(/* webpackChunkName: "leads" */ './Internals/clientComponent/LeadsPage/leadsPage.js'));
-const AdvertisePage = lazy(() => import(/* webpackChunkName: "advertise" */ './Internals/clientComponent/advertise/advertise.js'));
+const PublicizePage = lazy(() => import(/* webpackChunkName: "publicize" */ './Internals/clientComponent/publicize/publicize.js'));
 const FreeListingPage = lazy(() => import(/* webpackChunkName: "free-listing" */ './Internals/clientComponent/free-Listing/free-Listing.js'));
 const LeadsCardHistory = lazy(() => import(/* webpackChunkName: "leads-history" */ './Internals/clientComponent/LeadsPage/leadsCards/leadsCards.js'));
 const BusinessEnquiry = lazy(() => import(/* webpackChunkName: "business-enquiry" */ './Internals/clientComponent/businessEnquiry/businessEnquiry.js'));
@@ -157,7 +157,7 @@ function AppRoutes({
           />
           <Route path="/leads" element={<LeadsPage />} />
           <Route path="/free-listing" element={<FreeListingPage />} />
-          <Route path="/advertise" element={<AdvertisePage />} />
+          <Route path="/publicize" element={<PublicizePage />} />
           <Route path="/events" element={<EventCarousel />} />
           <Route path="/events/:eventSlug/:id" element={<EventDetails />} />
           <Route path="/user/search-history" element={<LeadsCardHistory />} />

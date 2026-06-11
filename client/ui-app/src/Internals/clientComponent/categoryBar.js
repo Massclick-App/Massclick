@@ -44,7 +44,7 @@ const categories = [{
 },
 // { name: "MNI", icon: <CorporateFareIcon /> },
 {
-  name: "Advertise",
+  name: "Publicize",
   icon: <CampaignIcon />
 }, {
   name: "Business Enquiry",
@@ -163,12 +163,12 @@ const CategoryBar = () => {
         return;
       }
       navigate("/leads");
-    } else if (name === "Advertise") {
+    } else if (name === "Publicize") {
       if (!localStorage.getItem("authUser")) {
         setIsModalOpen(true);
         return;
       }
-      navigate("/advertise");
+      navigate("/publicize");
     } else if (name === "MNI") {
       if (!localStorage.getItem("authUser")) {
         setIsModalOpen(true);
