@@ -368,27 +368,45 @@ export const viewAllBusinessList = async ({
   }
 
   const searchableFields = [
+    "clientId",
     "businessName",
+    "plotNumber",
+    "street",
+    "pincode",
     "location",
     "category",
+    "title",
     "description",
+    "seoTitle",
+    "seoDescription",
+    "slug",
     "email",
     "contact",
     "contactList",
     "whatsappNumber",
+    "gstin",
     "businessDetails",
     "globalAddress",
     "keywords"
   ];
 
   if (search) {
-    const safeSearch = escapeRegex(search);
+    const searchTokens = String(search)
+      .trim()
+      .split(/\s+/)
+      .map((token) => escapeRegex(token))
+      .filter(Boolean);
 
-    const regexSearch = searchableFields.map((field) => ({
-      [field]: { $regex: safeSearch, $options: "i" }
-    }));
-
-    query.$or = regexSearch;
+    if (searchTokens.length > 0) {
+      query.$and = [
+        ...(query.$and || []),
+        ...searchTokens.map((token) => ({
+          $or: searchableFields.map((field) => ({
+            [field]: { $regex: token, $options: "i" }
+          }))
+        }))
+      ];
+    }
   }
 
 
