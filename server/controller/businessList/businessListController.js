@@ -128,6 +128,9 @@ export const viewAllBusinessListAction = async (req, res) => {
 
     const search = (req.query.search || "").trim();
     const status = req.query.status || "all";
+    const category = (req.query.category || "").trim();
+    const createdFrom = (req.query.createdFrom || "").trim();
+    const createdTo = (req.query.createdTo || "").trim();
     const sortBy = req.query.sortBy || "createdAt";
     const sortOrder = req.query.sortOrder === "asc" ? "asc" : "desc";
 
@@ -138,6 +141,9 @@ export const viewAllBusinessListAction = async (req, res) => {
       pageSize,
       search,
       status,
+      category,
+      createdFrom,
+      createdTo,
       sortBy,
       sortOrder
     });

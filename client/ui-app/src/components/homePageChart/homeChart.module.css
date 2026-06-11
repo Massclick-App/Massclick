@@ -137,6 +137,63 @@
   position: relative;
 }
 
+.clickable-chart {
+  cursor: pointer;
+}
+
+.month-filter-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  margin-top: 14px;
+}
+
+.month-filter-button {
+  appearance: none;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  color: #111827;
+  cursor: pointer;
+  display: grid;
+  font: inherit;
+  gap: 2px;
+  min-height: 42px;
+  padding: 7px 8px;
+  text-align: left;
+}
+
+.month-filter-button:hover {
+  background: #fff7ed;
+  border-color: #fed7aa;
+}
+
+.month-filter-button:focus-visible {
+  outline: 3px solid rgba(255, 140, 0, 0.28);
+  outline-offset: 2px;
+}
+
+.month-filter-button span {
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.month-filter-button strong {
+  color: #111827;
+  font-size: 12px;
+}
+
+.month-filter-button--active {
+  background: #fff3e0;
+  border-color: #ff8c00;
+}
+
+.month-filter-button--active span,
+.month-filter-button--active strong {
+  color: #d97800;
+}
+
 /* ============================================================
    DONUT CENTER LABEL
 ============================================================ */
@@ -172,9 +229,42 @@
 }
 
 .breakdown-row {
+  appearance: none;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: inherit;
+  cursor: pointer;
   display: flex;
   flex-direction: column;
   gap: 4px;
+  font: inherit;
+  padding: 4px;
+  text-align: left;
+}
+
+.breakdown-row:hover {
+  background: #f9fafb;
+  border-color: #e5e7eb;
+}
+
+.breakdown-row:focus-visible {
+  outline: 3px solid rgba(255, 140, 0, 0.28);
+  outline-offset: 2px;
+}
+
+.breakdown-row--active {
+  background: #fff3e0;
+  border-color: #ff8c00;
+}
+
+.clickable-slice,
+.active-slice {
+  cursor: pointer;
+}
+
+.active-slice {
+  filter: drop-shadow(0 0 6px rgba(255, 140, 0, 0.45));
 }
 
 .breakdown-header {
@@ -257,6 +347,10 @@
     grid-template-columns: 1fr;
   }
 
+  .month-filter-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .chart-header h2 {
     font-size: 16px;
   }
@@ -287,5 +381,9 @@
 
   .breakdown-title {
     font-size: 11px;
+  }
+
+  .month-filter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

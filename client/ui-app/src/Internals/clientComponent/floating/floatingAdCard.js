@@ -12,30 +12,34 @@ const FloatingAdCard = () => {
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up("lg"));
 
-
-
   const HIDE_ON = ["/admin", "/dashboard"];
+  const isHomeRoute = location.pathname === "/";
 
   const shouldHide = HIDE_ON.some((path) =>
     location.pathname.startsWith(path)
   );
 
   useEffect(() => {
-    if (shouldHide) return;
+    clearTimeout(timerRef.current);
+
+    if (!isHomeRoute || shouldHide) {
+      setOpen(false);
+      return;
+    }
 
     timerRef.current = setTimeout(() => {
       setOpen(true);
     }, 2000);
 
     return () => clearTimeout(timerRef.current);
-  }, [location.pathname, shouldHide]);
+  }, [isHomeRoute, shouldHide]);
 
   const handleClose = () => {
     clearTimeout(timerRef.current);
     setOpen(false);
   };
 
-if (shouldHide || !open || !isDesktop) return null;
+if (!isHomeRoute || shouldHide || !open || !isDesktop) return null;
 
   return (
     <Box

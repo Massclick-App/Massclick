@@ -1,4 +1,4 @@
-import React, { useEffect, lazy, Suspense } from 'react';
+import React, { useEffect, lazy, Suspense, useRef } from 'react';
 import Grid from '@mui/material/Grid';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -29,6 +29,9 @@ export default function MainGrid() {
   const { businessList = [], total = 0 } = useSelector(
     (state) => state.businessListReducer || {}
   );
+  const [cardFilter, setCardFilter] = React.useState({ type: "all", label: "Total Businesses" });
+  const [tableRefreshKey, setTableRefreshKey] = React.useState(0);
+  const tableSectionRef = useRef(null);
   const [activeStatus, setActiveStatus] = React.useState(
     businessList.reduce((acc, b) => {
       acc[b._id] = b.isActive;
@@ -37,6 +40,46 @@ export default function MainGrid() {
   );
 
   const dispatch = useDispatch();
+
+  const getTodayRange = () => {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+    end.setMilliseconds(end.getMilliseconds() - 1);
+    return {
+      createdFrom: start.toISOString(),
+      createdTo: end.toISOString(),
+    };
+  };
+
+  const getMonthRange = (monthIndex) => {
+    const year = new Date().getFullYear();
+    const start = new Date(year, monthIndex, 1);
+    const end = new Date(year, monthIndex + 1, 0, 23, 59, 59, 999);
+    return {
+      createdFrom: start.toISOString(),
+      createdTo: end.toISOString(),
+    };
+  };
+
+  const getCardFilterParams = (filter = cardFilter) => {
+    if (filter.type === "active") return { status: "active" };
+    if (filter.type === "inactive") return { status: "inactive" };
+    if (filter.type === "today") return getTodayRange();
+    if (filter.type === "month" && Number.isInteger(filter.monthIndex)) return getMonthRange(filter.monthIndex);
+    if (filter.type === "category" && filter.value) return { category: filter.value };
+    return {};
+  };
+
+  const handleCardFilter = (filter) => {
+    const nextFilter = filter || { type: "all", label: "Total Businesses" };
+    setCardFilter(nextFilter);
+    setTableRefreshKey(prev => prev + 1);
+    window.requestAnimationFrame(() => {
+      tableSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
 
   useEffect(() => {
     dispatch(getAllBusinessList());
@@ -70,7 +113,8 @@ export default function MainGrid() {
     twitter: bl.twitter || "-",
     linkedin: bl.linkedin || "-",
     businessDetails: bl.businessDetails || "-",
-    activeBusinesses: bl.activeBusinesses,
+    activeBusinesses: bl.activeBusinesses ?? bl.isActive ?? false,
+    createdAt: bl.createdAt || null,
     createdBy: bl.createdBy,
     payment: bl.payment || [],
 
@@ -286,28 +330,57 @@ export default function MainGrid() {
   return (
     <Box sx={{ width: '100%', maxWidth: { sm: '100%', md: '1700px' } }}>
       <Box sx={{ width: '100%', mb: 2 }}>
-        <BusinessCard />
+        <BusinessCard activeFilter={cardFilter.type} onCardClick={handleCardFilter} />
       </Box>
       <Grid container spacing={2} columns={12} sx={{ mb: 2 }}>
         <Grid size={{ xs: 12, md: 12 }}>
           <Suspense fallback={<Skeleton variant="rectangular" height={400} />}>
-            <ChartUserByBusiness />
+            <ChartUserByBusiness activeFilter={cardFilter} onChartClick={handleCardFilter} />
           </Suspense>
         </Grid>
       </Grid><br />
-      <Grid elevation={3} sx={{ p: 3, borderRadius: 2 }}>
+      <Grid elevation={3} sx={{ p: 3, borderRadius: 2 }} ref={tableSectionRef}>
+        {cardFilter.type !== "all" && (
+          <Box sx={{
+            mb: 2,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 1,
+            px: 1.5,
+            py: 0.75,
+            borderRadius: 20,
+            bgcolor: "#fff3e0",
+            color: "#d97800",
+            fontSize: "0.85rem",
+            fontWeight: 700
+          }}>
+            Showing {cardFilter.label}
+            <Button
+              size="small"
+              onClick={() => handleCardFilter({ type: "all", label: "Total Businesses" })}
+              sx={{ minWidth: "auto", color: "#d97800", textTransform: "none", p: 0.25 }}
+            >
+              Clear
+            </Button>
+          </Box>
+        )}
         <Box sx={{ width: "100%" }}>
           <CustomizedTable
+            key={tableRefreshKey}
             data={rows}
             total={total}
             columns={businessListTable}
             fetchData={(pageNo, pageSize, options = {}) => {
+              const cardParams = getCardFilterParams();
               dispatch(
                 getAllBusinessList({
                   pageNo,
                   pageSize,
                   search: options.search || "",
-                  status: options.status || "all",
+                  status: cardParams.status || options.status || "all",
+                  category: cardParams.category || "",
+                  createdFrom: cardParams.createdFrom || "",
+                  createdTo: cardParams.createdTo || "",
                   sortBy: options.sortBy || null,
                   sortOrder: options.sortOrder || "asc",
                 })

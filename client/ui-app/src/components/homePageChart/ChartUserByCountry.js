@@ -36,7 +36,10 @@ const renderActiveShape = props => {
       <Sector cx={cx} cy={cy} innerRadius={innerRadius} outerRadius={outerRadius + 10} startAngle={startAngle} endAngle={endAngle} fill={fill} />
     </g>;
 };
-export default function DashboardCharts() {
+export default function DashboardCharts({
+  activeFilter,
+  onChartClick
+}) {
   const dispatch = useDispatch();
   const {
     chartData,
@@ -54,6 +57,7 @@ export default function DashboardCharts() {
     const found = chartData.monthly.find(x => x._id.month === index + 1);
     return {
       name,
+      monthIndex: index,
       count: found?.count || 0
     };
   });
@@ -71,6 +75,22 @@ export default function DashboardCharts() {
   }));
   const totalCategories = chart2Data.reduce((s, d) => s + d.count, 0);
   const topCategories = [...chart2Data].sort((a, b) => b.count - a.count).slice(0, 6);
+  const handleMonthClick = data => {
+    if (!data) return;
+    onChartClick?.({
+      type: "month",
+      label: `${data.name} ${new Date().getFullYear()} Businesses`,
+      monthIndex: data.monthIndex
+    });
+  };
+  const handleCategoryClick = data => {
+    if (!data?.category) return;
+    onChartClick?.({
+      type: "category",
+      label: `Category: ${data.category}`,
+      value: data.category
+    });
+  };
   return <div className={cx2("dashboard-container")}>
 
       <div className={cx2("chart-card")}>
@@ -100,7 +120,11 @@ export default function DashboardCharts() {
 
         <div className={cx2("chart-wrapper")}>
           <ResponsiveContainer width="100%" height={320}>
-            <AreaChart data={chart1Data}>
+            <AreaChart
+              data={chart1Data}
+              onClick={state => handleMonthClick(state?.activePayload?.[0]?.payload)}
+              className={cx2("clickable-chart")}
+            >
               <defs>
                 <linearGradient id="areaColor" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor={chartColors[0]} stopOpacity={0.8} />
@@ -113,9 +137,31 @@ export default function DashboardCharts() {
               <YAxis domain={[0, yMax1]} />
               <Tooltip content={<CustomTooltip />} />
 
-              <Area type="monotone" dataKey="count" stroke={chartColors[0]} fill="url(#areaColor)" strokeWidth={3} />
+              <Area
+                type="monotone"
+                dataKey="count"
+                stroke={chartColors[0]}
+                fill="url(#areaColor)"
+                strokeWidth={3}
+                dot={{ r: 4, stroke: chartColors[0], strokeWidth: 2, fill: "#fff", cursor: "pointer" }}
+                activeDot={{ r: 6, cursor: "pointer" }}
+              />
             </AreaChart>
           </ResponsiveContainer>
+
+          <div className={cx2("month-filter-grid")}>
+            {chart1Data.map(month => (
+              <button
+                type="button"
+                key={month.name}
+                className={cx2("month-filter-button", activeFilter?.type === "month" && activeFilter?.monthIndex === month.monthIndex ? "month-filter-button--active" : "")}
+                onClick={() => handleMonthClick(month)}
+              >
+                <span>{month.name}</span>
+                <strong>{month.count}</strong>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -133,8 +179,24 @@ export default function DashboardCharts() {
 
           <ResponsiveContainer width="100%" height={260}>
             <PieChart>
-              <Pie data={chart2Data} dataKey="count" nameKey="category" cx="50%" cy="50%" innerRadius="55%" outerRadius="85%" activeIndex={activeIndex} activeShape={renderActiveShape} onMouseEnter={(_, index) => setActiveIndex(index)}>
-                {chart2Data.map((_, i) => <Cell key={i} fill={chartColors[i % chartColors.length]} />)}
+              <Pie
+                data={chart2Data}
+                dataKey="count"
+                nameKey="category"
+                cx="50%"
+                cy="50%"
+                innerRadius="55%"
+                outerRadius="85%"
+                activeIndex={activeIndex}
+                activeShape={renderActiveShape}
+                onMouseEnter={(_, index) => setActiveIndex(index)}
+                onClick={handleCategoryClick}
+              >
+                {chart2Data.map((item, i) => <Cell
+                  key={i}
+                  fill={chartColors[i % chartColors.length]}
+                  className={cx2(activeFilter?.type === "category" && activeFilter?.value === item.category ? "active-slice" : "clickable-slice")}
+                />)}
               </Pie>
 
               <Tooltip content={<CustomTooltip />} />
@@ -144,7 +206,12 @@ export default function DashboardCharts() {
           <div className={cx2("donut-breakdown")}>
             {topCategories.map((item, idx) => {
             const pct = (item.count / totalCategories * 100).toFixed(1);
-            return <div className={cx2("breakdown-row")} key={idx}>
+            return <button
+              type="button"
+              className={cx2("breakdown-row", activeFilter?.type === "category" && activeFilter?.value === item.category ? "breakdown-row--active" : "")}
+              key={idx}
+              onClick={() => handleCategoryClick(item)}
+            >
                   <div className={cx2("breakdown-title")}>
                     <span className={cx2("legend-dot")} style={{
                   background: chartColors[idx % chartColors.length]
@@ -163,7 +230,7 @@ export default function DashboardCharts() {
                   background: chartColors[idx % chartColors.length]
                 }} />
                   </div>
-                </div>;
+                </button>;
           })}
           </div>
         </div>

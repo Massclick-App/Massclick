@@ -102,6 +102,9 @@ export const getAllBusinessList = ({
   pageSize = 10,
   search = "",
   status = "all",
+  category = "",
+  createdFrom = "",
+  createdTo = "",
   sortBy = null,
   sortOrder = "asc",
 } = {}) => async (dispatch) => {
@@ -115,6 +118,9 @@ export const getAllBusinessList = ({
     params.append("pageSize", pageSize);
     if (search) params.append("search", search);
     if (status && status !== "all") params.append("status", status);
+    if (category) params.append("category", category);
+    if (createdFrom) params.append("createdFrom", createdFrom);
+    if (createdTo) params.append("createdTo", createdTo);
     if (sortBy) params.append("sortBy", sortBy);
     if (sortOrder) params.append("sortOrder", sortOrder);
 

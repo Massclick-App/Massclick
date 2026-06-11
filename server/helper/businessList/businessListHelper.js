@@ -321,6 +321,9 @@ export const viewAllBusinessList = async ({
   pageSize,
   search,
   status,
+  category,
+  createdFrom,
+  createdTo,
   sortBy,
   sortOrder
 }) => {
@@ -356,6 +359,13 @@ export const viewAllBusinessList = async ({
   if (status === "active") query.activeBusinesses = true;
   if (status === "inactive") query.activeBusinesses = false;
 
+  if (category) query.category = category;
+
+  if (createdFrom || createdTo) {
+    query.createdAt = {};
+    if (createdFrom) query.createdAt.$gte = new Date(createdFrom);
+    if (createdTo) query.createdAt.$lte = new Date(createdTo);
+  }
 
   const searchableFields = [
     "businessName",
