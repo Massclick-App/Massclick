@@ -81,7 +81,7 @@ const FloatingButtons = ({ onRequireLogin }) => {
         }}
       >
         <Typography fontSize="inherit" fontWeight="inherit">
-          Advertise
+          Publicize
         </Typography>
       </Box>
 
