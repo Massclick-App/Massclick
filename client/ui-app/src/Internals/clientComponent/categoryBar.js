@@ -136,7 +136,10 @@ const CategoryBar = () => {
   const {
     leads: leadsData
   } = useSelector(state => state.leads);
-  const notificationLeads = useMemo(() => getDisplayableLeadNotifications(leadsData), [leadsData]);
+  const notificationLeads = useMemo(
+    () => getDisplayableLeadNotifications(leadsData, userData),
+    [leadsData, userData]
+  );
   useEffect(() => {
     const mobile = localStorage.getItem("mobileNumber");
     if (mobile) {
