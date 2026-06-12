@@ -55,6 +55,11 @@ const extractIndianMobiles = (value) => {
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const nonNegativeInteger = (value, fallback) => {
+  const number = Number(value);
+  return Number.isFinite(number) && number >= 0 ? Math.floor(number) : fallback;
+};
+
 const withRetry = async (fn, label, attempts = 3) => {
   let lastError;
 
@@ -131,15 +136,17 @@ export const logSearchAction = async (req, res) => {
   try {
     const { categoryName, location, searchedUserText, userDetails } = req.body;
     const reqId = Math.random().toString(36).slice(2, 8);
+    const leadSettings = await getSettings();
+    const rawSearchText = searchedUserText?.trim?.() || "";
 
-    if (!searchedUserText || !searchedUserText.trim()) {
+    if (leadSettings.lead_guard_search_text_required !== false && !rawSearchText) {
       return res.status(400).json({
         success: false,
         message: "Search text is mandatory"
       });
     }
 
-    const cleanSearchText = searchedUserText.trim().toLowerCase();
+    const cleanSearchText = (rawSearchText || categoryName?.trim?.() || "all categories").toLowerCase();
     const normalizedLocation = location?.toLowerCase().trim() || "global";
 
     const isValidUser =
@@ -217,7 +224,7 @@ export const logSearchAction = async (req, res) => {
           finalCategoryName = wordMatches[0].categoryName || wordMatches[0].category;
           matchedCategoryFromSearch = wordMatches[0];
         } else {
-          finalCategoryName = searchedUserText;
+          finalCategoryName = rawSearchText || categoryName || "all categories";
         }
       }
     }
@@ -235,16 +242,23 @@ export const logSearchAction = async (req, res) => {
     // ── Anonymous path ────────────────────────────────────────────────────────
     if (!isValidUser) {
       const fingerprint = anonFingerprint(req);
-      const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
+      const anonymousDedupeMinutes = nonNegativeInteger(
+        leadSettings.lead_guard_anonymous_dedupe_minutes,
+        5
+      );
+      let recentAnon = null;
 
-      const recentAnon = await searchLogModel.findOne({
-        categoryName: finalCategoryName,
-        location: normalizedLocation,
-        searchedUserText: cleanSearchText,
-        isAnonymous: true,
-        anonFingerprint: fingerprint,
-        createdAt: { $gte: fiveMinAgo }
-      });
+      if (leadSettings.lead_guard_anonymous_dedupe_enabled !== false && anonymousDedupeMinutes > 0) {
+        const anonDedupeSince = new Date(Date.now() - anonymousDedupeMinutes * 60 * 1000);
+        recentAnon = await searchLogModel.findOne({
+          categoryName: finalCategoryName,
+          location: normalizedLocation,
+          searchedUserText: cleanSearchText,
+          isAnonymous: true,
+          anonFingerprint: fingerprint,
+          createdAt: { $gte: anonDedupeSince }
+        });
+      }
 
       if (!recentAnon) {
         await createSearchLog({
@@ -268,14 +282,22 @@ export const logSearchAction = async (req, res) => {
 
     // ── Identified user path ──────────────────────────────────────────────────
 
-    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-    const recentLog = await searchLogModel.findOne({
-      categoryName: { $regex: `^${finalCategoryName}$`, $options: "i" },
-      location: normalizedLocation,
-      "userDetails.mobileNumber1": userDetails.mobileNumber1,
-      searchedUserText: cleanSearchText,
-      createdAt: { $gte: fiveMinutesAgo }
-    });
+    const userDedupeMinutes = nonNegativeInteger(
+      leadSettings.lead_guard_user_dedupe_minutes,
+      5
+    );
+    let recentLog = null;
+
+    if (leadSettings.lead_guard_user_dedupe_enabled !== false && userDedupeMinutes > 0) {
+      const userDedupeSince = new Date(Date.now() - userDedupeMinutes * 60 * 1000);
+      recentLog = await searchLogModel.findOne({
+        categoryName: { $regex: `^${finalCategoryName}$`, $options: "i" },
+        location: normalizedLocation,
+        "userDetails.mobileNumber1": userDetails.mobileNumber1,
+        searchedUserText: cleanSearchText,
+        createdAt: { $gte: userDedupeSince }
+      });
+    }
     if (recentLog?.whatsapp) {
       return res.status(200).json({
         success: true,
@@ -337,10 +359,11 @@ export const logSearchAction = async (req, res) => {
 
     const uniqueCategoryMatchValues = [...new Set(categoryMatchValues)];
 
-    const searchMatchQuery = {
-      businessesLive: true,
-      $and: []
-    };
+    const searchMatchQuery = { $and: [] };
+
+    if (leadSettings.lead_guard_live_business_only !== false) {
+      searchMatchQuery.businessesLive = true;
+    }
 
     // Add location filter
     if (normalizedLocation && normalizedLocation !== "global") {
@@ -402,7 +425,7 @@ export const logSearchAction = async (req, res) => {
 
     };
 
-    const waSettings = await getSettings();
+    const waSettings = leadSettings;
 
     let businessSendSuccess = false;
 
@@ -758,6 +781,7 @@ export const sendEnquiryLead = async (req, res) => {
       customerMobile,
       customerEmail
     };
+    const leadSettings = await getSettings();
 
     // If businessId provided, send to that specific business (existing behaviour)
     if (businessId) {
@@ -807,7 +831,11 @@ export const sendEnquiryLead = async (req, res) => {
       }
     };
 
-    const searchMatchQuery = { businessesLive: true };
+    const searchMatchQuery = {};
+
+    if (leadSettings.lead_guard_live_business_only !== false) {
+      searchMatchQuery.businessesLive = true;
+    }
 
     if (normalizedLocation && normalizedLocation !== "global") {
       searchMatchQuery.location = { $regex: `^${escapeRegex(normalizedLocation)}$`, $options: "i" };

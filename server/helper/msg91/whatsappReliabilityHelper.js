@@ -1,14 +1,20 @@
 import mongoose from "mongoose";
 import whatsappMessageAuditModel from "../../model/msg91Model/whatsappMessageAuditModel.js";
 import whatsappRecipientHealthModel from "../../model/msg91Model/whatsappRecipientHealthModel.js";
+import { getSettings } from "../systemSettings/settingsService.js";
 
 const VALID_STATUS = new Set(["queued", "sent", "delivered", "read", "failed", "hold", "skipped"]);
 const SUCCESS_STATUSES = new Set(["sent", "delivered", "read"]);
 const BUSINESS_LEAD_TEMPLATE = "business_lead_alert_v2";
-const DAILY_BUSINESS_LEAD_LIMIT = 3;
-const BUSINESS_LEAD_COOLDOWN_MS = 45 * 60 * 1000;
+const DEFAULT_DAILY_BUSINESS_LEAD_LIMIT = 3;
+const DEFAULT_BUSINESS_LEAD_COOLDOWN_MINUTES = 45;
 const INVALID_SUPPRESSION_MS = 30 * 24 * 60 * 60 * 1000;
 const ECOSYSTEM_SUPPRESSION_MS = 24 * 60 * 60 * 1000;
+
+const nonNegativeInteger = (value, fallback) => {
+  const number = Number(value);
+  return Number.isFinite(number) && number >= 0 ? Math.floor(number) : fallback;
+};
 
 export const normalizeWhatsAppMobile = (value) => {
   if (!value) {
@@ -336,14 +342,19 @@ export const evaluateWhatsAppSend = async ({
     return { allowed: false, mobile: "", skipReason: normalized.reason };
   }
 
+  const settings = await getSettings();
   const health = await whatsappRecipientHealthModel.findOne({ mobile: normalized.mobile }).lean();
   const now = new Date();
 
-  if (health?.whatsappInvalid) {
+  if (settings.whatsapp_recipient_health_guard_enabled !== false && health?.whatsappInvalid) {
     return { allowed: false, mobile: normalized.mobile, skipReason: "recipient_marked_invalid" };
   }
 
-  if (health?.suppressedUntil && new Date(health.suppressedUntil) > now) {
+  if (
+    settings.whatsapp_recipient_health_guard_enabled !== false &&
+    health?.suppressedUntil &&
+    new Date(health.suppressedUntil) > now
+  ) {
     return {
       allowed: false,
       mobile: normalized.mobile,
@@ -363,32 +374,50 @@ export const evaluateWhatsAppSend = async ({
     status: { $ne: "skipped" },
   };
 
-  const todayCount = await whatsappMessageAuditModel.countDocuments(baseQuery);
-  if (todayCount >= DAILY_BUSINESS_LEAD_LIMIT) {
-    return { allowed: false, mobile: normalized.mobile, skipReason: "daily_business_lead_cap" };
+  if (settings.whatsapp_business_lead_daily_cap_enabled !== false) {
+    const dailyLimit = nonNegativeInteger(
+      settings.whatsapp_business_lead_daily_cap,
+      DEFAULT_DAILY_BUSINESS_LEAD_LIMIT
+    );
+    const todayCount = await whatsappMessageAuditModel.countDocuments(baseQuery);
+    if (dailyLimit > 0 && todayCount >= dailyLimit) {
+      return { allowed: false, mobile: normalized.mobile, skipReason: "daily_business_lead_cap" };
+    }
   }
 
-  const duplicate = await whatsappMessageAuditModel.findOne({
-    ...baseQuery,
-    sourceType: sourceType || "search_lead",
-    category: category || "",
-    location: location || "",
-    customerMobile: customerMobile || "",
-  }).lean();
+  if (settings.whatsapp_business_lead_duplicate_guard_enabled !== false) {
+    const duplicate = await whatsappMessageAuditModel.findOne({
+      ...baseQuery,
+      sourceType: sourceType || "search_lead",
+      category: category || "",
+      location: location || "",
+      customerMobile: customerMobile || "",
+    }).lean();
 
-  if (duplicate) {
-    return { allowed: false, mobile: normalized.mobile, skipReason: "duplicate_category_location_customer_today" };
+    if (duplicate) {
+      return { allowed: false, mobile: normalized.mobile, skipReason: "duplicate_category_location_customer_today" };
+    }
   }
 
-  const recent = await whatsappMessageAuditModel.findOne({
-    recipientMobile: normalized.mobile,
-    templateName: BUSINESS_LEAD_TEMPLATE,
-    status: { $in: ["queued", "sent", "delivered", "read", "hold", "failed"] },
-    createdAt: { $gte: new Date(Date.now() - BUSINESS_LEAD_COOLDOWN_MS) },
-  }).lean();
+  if (settings.whatsapp_business_lead_cooldown_enabled !== false) {
+    const cooldownMinutes = nonNegativeInteger(
+      settings.whatsapp_business_lead_cooldown_minutes,
+      DEFAULT_BUSINESS_LEAD_COOLDOWN_MINUTES
+    );
+    if (cooldownMinutes <= 0) {
+      return { allowed: true, mobile: normalized.mobile, skipReason: "" };
+    }
 
-  if (recent) {
-    return { allowed: false, mobile: normalized.mobile, skipReason: "recipient_cooldown_45_minutes" };
+    const recent = await whatsappMessageAuditModel.findOne({
+      recipientMobile: normalized.mobile,
+      templateName: BUSINESS_LEAD_TEMPLATE,
+      status: { $in: ["queued", "sent", "delivered", "read", "hold", "failed"] },
+      createdAt: { $gte: new Date(Date.now() - cooldownMinutes * 60 * 1000) },
+    }).lean();
+
+    if (recent) {
+      return { allowed: false, mobile: normalized.mobile, skipReason: `recipient_cooldown_${cooldownMinutes}_minutes` };
+    }
   }
 
   return { allowed: true, mobile: normalized.mobile, skipReason: "" };
