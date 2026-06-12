@@ -36,6 +36,7 @@ export const getAllGmapsLeads =
         status = 'all',
         min_rating = '',
         has_phone = '',
+        details_fetched = '',
         search = '',
         business_status = 'OPERATIONAL',
       } = filters;
@@ -49,6 +50,7 @@ export const getAllGmapsLeads =
         status,
         min_rating,
         has_phone: has_phone ? 'true' : '',
+        details_fetched: details_fetched ? 'true' : '',
         search,
         business_status,
       }).toString();

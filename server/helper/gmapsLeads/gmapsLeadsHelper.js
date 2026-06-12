@@ -16,6 +16,7 @@ export const viewAllGmapsLeads = async ({
   status = "all",
   min_rating = "",
   has_phone = "",
+  details_fetched = "",
   search = "",
   business_status = "OPERATIONAL",
 }) => {
@@ -28,7 +29,18 @@ export const viewAllGmapsLeads = async ({
     }
 
     if (massclick_location) {
-      query.massclick_location = massclick_location;
+      const normalizedLocation = String(massclick_location).trim().toLowerCase();
+      if (["trichy", "tiruchirappalli", "trichy / tiruchirappalli"].includes(normalizedLocation)) {
+        query.massclick_location = {
+          $in: [
+            /^trichy$/i,
+            /^tiruchirappalli$/i,
+            /^trichy \/ tiruchirappalli$/i,
+          ],
+        };
+      } else {
+        query.massclick_location = massclick_location;
+      }
     }
 
     if (search_sector) {
@@ -55,6 +67,10 @@ export const viewAllGmapsLeads = async ({
 
     if (has_phone === "true" || has_phone === true) {
       query.phone = { $ne: null };
+    }
+
+    if (details_fetched === "true" || details_fetched === true) {
+      query.details_fetched = true;
     }
 
     if (search) {
@@ -160,9 +176,22 @@ export const getGmapsLeadsDistincts = async () => {
       slug,
       name: slugToName[slug] || slug,
     }));
+    const normalizedLocations = [
+      ...new Set(
+        locations
+          .filter(Boolean)
+          .map((location) => {
+            const normalized = String(location).trim().toLowerCase();
+            if (["trichy", "tiruchirappalli"].includes(normalized)) {
+              return "Trichy / Tiruchirappalli";
+            }
+            return location;
+          })
+      ),
+    ].sort();
 
     return {
-      locations: locations.filter(Boolean).sort(),
+      locations: normalizedLocations,
       sectors: sectors.filter(Boolean).sort(),
       categories,
     };

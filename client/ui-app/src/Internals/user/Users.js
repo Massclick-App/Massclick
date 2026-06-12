@@ -1,5 +1,6 @@
 import { createScopedClassNames } from "../../utils/createScopedClassNames";
 import React, { useEffect, useState, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { getAllUsers, createUser, editUser, deleteUser } from "../../redux/actions/userAction.js";
 import { getAllRoles } from "../../redux/actions/rolesAction.js";
@@ -13,6 +14,8 @@ import AdminViewTabs from "../../components/AdminViewTabs.js";
 const cx = createScopedClassNames(styles);
 export default function User() {
   const dispatch = useDispatch();
+  const [searchParams] = useSearchParams();
+  const initialStatusFilter = searchParams.get("status") || "all";
   const fileInputRef = useRef();
   const [preview, setPreview] = useState(null);
   const {
@@ -44,9 +47,9 @@ export default function User() {
   });
   const salesManagers = users.filter(user => user.role === "SalesManager");
   useEffect(() => {
-    dispatch(getAllUsers());
+    dispatch(getAllUsers({ options: { status: initialStatusFilter } }));
     dispatch(getAllRoles());
-  }, [dispatch]);
+  }, [dispatch, initialStatusFilter]);
   const handleChange = e => {
     const {
       name,
@@ -161,7 +164,7 @@ export default function User() {
     setDeleteDialogOpen(false);
     setSelectedUser(null);
   };
-  const rows = users.filter(user => user.isActive).map((user, index) => {
+  const rows = users.map((user, index) => {
     const managedOfficers = user.role === 'SalesManager' ? (user.salesBy || []).map(officerId => users.find(u => u._id === officerId)?.userName).filter(name => name).join(', ') || 'None' : '-';
     return {
       id: user._id || index,
@@ -355,7 +358,7 @@ export default function User() {
       <Box sx={{
       width: "100%"
     }}>
-        <CustomizedTable data={rows} columns={userList} total={total} fetchData={(pageNo, pageSize, options) => dispatch(getAllUsers({
+        <CustomizedTable data={rows} columns={userList} total={total} initialStatusFilter={initialStatusFilter} fetchData={(pageNo, pageSize, options) => dispatch(getAllUsers({
         pageNo,
         pageSize,
         options

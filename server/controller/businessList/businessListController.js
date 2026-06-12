@@ -128,7 +128,10 @@ export const viewAllBusinessListAction = async (req, res) => {
 
     const search = (req.query.search || "").trim();
     const status = req.query.status || "all";
+    const liveStatus = (req.query.liveStatus || "").trim();
     const category = (req.query.category || "").trim();
+    const location = (req.query.location || "").trim();
+    const paymentStatus = (req.query.paymentStatus || "").trim();
     const createdFrom = (req.query.createdFrom || "").trim();
     const createdTo = (req.query.createdTo || "").trim();
     const sortBy = req.query.sortBy || "createdAt";
@@ -141,7 +144,10 @@ export const viewAllBusinessListAction = async (req, res) => {
       pageSize,
       search,
       status,
+      liveStatus,
       category,
+      location,
+      paymentStatus,
       createdFrom,
       createdTo,
       sortBy,

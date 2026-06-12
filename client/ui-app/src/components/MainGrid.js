@@ -75,8 +75,7 @@ export default function MainGrid() {
     };
   };
 
-  const getMonthRange = (monthIndex) => {
-    const year = new Date().getFullYear();
+  const getMonthRange = (monthIndex, year = new Date().getFullYear()) => {
     const start = new Date(year, monthIndex, 1);
     const end = new Date(year, monthIndex + 1, 0, 23, 59, 59, 999);
     return {
@@ -88,9 +87,14 @@ export default function MainGrid() {
   const getCardFilterParams = (filter = cardFilter) => {
     if (filter.type === "active") return { status: "active" };
     if (filter.type === "inactive") return { status: "inactive" };
+    if (filter.type === "live") return { liveStatus: "live" };
+    if (filter.type === "pendingLive") return { liveStatus: "pending" };
     if (filter.type === "today") return getTodayRange();
-    if (filter.type === "month" && Number.isInteger(filter.monthIndex)) return getMonthRange(filter.monthIndex);
+    if (filter.type === "month" && Number.isInteger(filter.monthIndex)) return getMonthRange(filter.monthIndex, filter.year);
     if (filter.type === "category" && filter.value) return { category: filter.value };
+    if (filter.type === "location" && filter.value) return { location: filter.value };
+    if (filter.type === "payment" && filter.value) return { paymentStatus: filter.value };
+    if (filter.type === "search" && filter.value) return { search: filter.value };
     return {};
   };
 
@@ -339,8 +343,6 @@ export default function MainGrid() {
 
   return (
     <Box sx={{ width: '100%', maxWidth: { sm: '100%', md: '1700px' } }}>
-      <AdminAnalyticsPanel />
-
       <Paper
         elevation={0}
         sx={{
@@ -358,6 +360,8 @@ export default function MainGrid() {
         </Typography>
         <BusinessCard activeFilter={cardFilter.type} onCardClick={handleCardFilter} />
       </Paper>
+      <AdminAnalyticsPanel activeFilter={cardFilter} onFilterClick={handleCardFilter} />
+
 
       <Grid elevation={3} sx={{ p: 3, borderRadius: 2 }} ref={tableSectionRef}>
         {cardFilter.type !== "all" && (
@@ -396,9 +400,12 @@ export default function MainGrid() {
                 getAllBusinessList({
                   pageNo,
                   pageSize,
-                  search: options.search || "",
+                  liveStatus: cardParams.liveStatus || "",
                   status: cardParams.status || options.status || "all",
                   category: cardParams.category || "",
+                  location: cardParams.location || "",
+                  paymentStatus: cardParams.paymentStatus || "",
+                  search: cardParams.search || options.search || "",
                   createdFrom: cardParams.createdFrom || "",
                   createdTo: cardParams.createdTo || "",
                   sortBy: options.sortBy || null,

@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useSearchParams } from "react-router-dom";
 import { getAllStartProjects, editStartProject } from "../../redux/actions/startProjectAction.js";
 import CustomizedTable from "../../components/Table/CustomizedTable.js";
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Box, Typography, Grid, Chip, Avatar } from "@mui/material";
@@ -8,6 +9,8 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ErrorIcon from "@mui/icons-material/Error";
 export default function EnquiryPage() {
   const dispatch = useDispatch();
+  const [searchParams] = useSearchParams();
+  const statusFilter = searchParams.get("status") || "all";
   const {
     projects = []
   } = useSelector(state => state.startProjectReducer || {});
@@ -43,6 +46,11 @@ export default function EnquiryPage() {
     if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
     return (parts[0].charAt(0) + parts[1].charAt(0)).toUpperCase();
   };
+  const filteredProjects = projects.filter((project) => {
+    if (statusFilter === "open") return project.isActive !== false;
+    if (statusFilter === "closed") return project.isActive === false;
+    return true;
+  });
   const totalEnquiries = projects.length;
   const openEnquiries = projects.filter(p => p.isActive !== false).length;
   const closedEnquiries = projects.filter(p => p.isActive === false).length;
@@ -304,7 +312,15 @@ export default function EnquiryPage() {
       </Box>
 
       {/* Table */}
-      <CustomizedTable title="All Enquiries" columns={columns} data={projects} total={totalEnquiries} fetchData={handleFetchData} enableSearch={true} enableStatusFilter={false} />
+      <CustomizedTable
+        title={statusFilter === "open" ? "Open Enquiries" : statusFilter === "closed" ? "Closed Enquiries" : "All Enquiries"}
+        columns={columns}
+        data={filteredProjects}
+        total={filteredProjects.length}
+        fetchData={handleFetchData}
+        enableSearch={true}
+        enableStatusFilter={false}
+      />
 
       {/* Details Modal */}
       <Dialog open={openDetails} onClose={handleCloseDetails} maxWidth="sm" fullWidth PaperProps={{

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Alert,
   Box,
@@ -55,6 +56,7 @@ const palette = {
 
 const formatNumber = (value) => numberFormatter.format(Number(value || 0));
 const formatCurrency = (value) => currencyFormatter.format(Number(value || 0));
+const readableStatus = (value) => String(value || "NO_STATUS").replaceAll("_", " ");
 
 const getPercent = (value, total) => {
   if (!total) return 0;
@@ -69,9 +71,62 @@ const compactDate = (value) => {
   });
 };
 
-function MetricCard({ color, icon: Icon, label, value, helper, progress }) {
+const isSameFilter = (activeFilter, filter) => {
+  if (!activeFilter || !filter) return false;
+  return activeFilter.type === filter.type &&
+    (filter.value === undefined || activeFilter.value === filter.value) &&
+    (filter.monthIndex === undefined || activeFilter.monthIndex === filter.monthIndex) &&
+    (filter.year === undefined || activeFilter.year === filter.year);
+};
+
+const getMonthFilter = (item) => {
+  const monthIndex = Number(String(item?.key || "").split("-")[1]) - 1;
+  if (!item || !Number.isInteger(item.year) || !Number.isInteger(monthIndex) || monthIndex < 0) {
+    return null;
+  }
+
+  return {
+    type: "month",
+    label: `${item.month} ${item.year} Businesses`,
+    monthIndex,
+    year: item.year,
+  };
+};
+
+function clickableSx(isActive) {
+  return {
+    cursor: "pointer",
+    borderColor: isActive ? palette.ink : palette.line,
+    boxShadow: isActive ? "0 12px 24px rgba(23, 32, 51, 0.12)" : "none",
+    transform: isActive ? "translateY(-2px)" : "none",
+    transition: "transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease",
+    "&:hover": {
+      transform: "translateY(-3px)",
+      boxShadow: "0 12px 24px rgba(23, 32, 51, 0.10)",
+    },
+    "&:focus-visible": {
+      outline: "3px solid rgba(234, 109, 17, 0.28)",
+      outlineOffset: 3,
+    },
+  };
+}
+
+function MetricCard({ color, icon: Icon, label, value, helper, progress, filter, to, activeFilter, onFilterClick, onNavigate }) {
+  const clickable = Boolean((filter && onFilterClick) || (to && onNavigate));
+  const isActive = isSameFilter(activeFilter, filter);
+  const handleClick = () => {
+    if (filter && onFilterClick) {
+      onFilterClick(filter);
+      return;
+    }
+    if (to && onNavigate) onNavigate(to);
+  };
+
   return (
     <Paper
+      component={clickable ? "button" : "div"}
+      type={clickable ? "button" : undefined}
+      onClick={clickable ? handleClick : undefined}
       elevation={0}
       sx={{
         border: `1px solid ${palette.line}`,
@@ -82,6 +137,10 @@ function MetricCard({ color, icon: Icon, label, value, helper, progress }) {
         flexDirection: "column",
         justifyContent: "space-between",
         bgcolor: "#fff",
+        width: "100%",
+        textAlign: "left",
+        font: "inherit",
+        ...(clickable ? clickableSx(isActive) : {}),
       }}
     >
       <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1.5}>
@@ -184,7 +243,8 @@ function EmptyState({ label }) {
   );
 }
 
-export default function AdminAnalyticsPanel() {
+export default function AdminAnalyticsPanel({ activeFilter, onFilterClick }) {
+  const navigate = useNavigate();
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -223,6 +283,7 @@ export default function AdminAnalyticsPanel() {
         icon: StorefrontRoundedIcon,
         color: palette.orange,
         progress: activeRate,
+        filter: { type: "all", label: "Total Businesses" },
       },
       {
         label: "Live listings",
@@ -231,6 +292,7 @@ export default function AdminAnalyticsPanel() {
         icon: PublicRoundedIcon,
         color: palette.green,
         progress: liveRate,
+        filter: { type: "live", label: "Live Listings" },
       },
       {
         label: "Admin users",
@@ -239,6 +301,7 @@ export default function AdminAnalyticsPanel() {
         icon: PersonRoundedIcon,
         color: palette.blue,
         progress: getPercent(totals.activeUsers, totals.users),
+        to: "/dashboard/user?status=all",
       },
       {
         label: "Enquiries",
@@ -247,6 +310,7 @@ export default function AdminAnalyticsPanel() {
         icon: SearchRoundedIcon,
         color: palette.purple,
         progress: getPercent(totals.enquiriesLast30Days, totals.enquiries),
+        to: "/dashboard/enquiry?status=all",
       },
       {
         label: "GMaps leads",
@@ -255,6 +319,7 @@ export default function AdminAnalyticsPanel() {
         icon: MapRoundedIcon,
         color: "#0f766e",
         progress: phoneReadyRate,
+        to: "/dashboard/gmaps-leads",
       },
       {
         label: "Paid conversions",
@@ -263,9 +328,16 @@ export default function AdminAnalyticsPanel() {
         icon: PaidRoundedIcon,
         color: palette.red,
         progress: getPercent(totals.successfulPayments, totals.businesses),
+        filter: { type: "payment", label: "Payment: SUCCESS", value: "SUCCESS" },
       },
     ];
   }, [totals]);
+
+  const handleMonthClick = (item) => {
+    const payload = item?.activePayload?.[0]?.payload || item?.payload || item;
+    const filter = getMonthFilter(payload);
+    if (filter) onFilterClick?.(filter);
+  };
 
   if (loading && !report) {
     return (
@@ -363,7 +435,13 @@ export default function AdminAnalyticsPanel() {
         }}
       >
         {metricCards.map((card) => (
-          <MetricCard key={card.label} {...card} />
+          <MetricCard
+            key={card.label}
+            {...card}
+            activeFilter={activeFilter}
+            onFilterClick={onFilterClick}
+            onNavigate={navigate}
+          />
         ))}
       </Box>
 
@@ -388,9 +466,14 @@ export default function AdminAnalyticsPanel() {
           }
         >
           {report?.monthlyTrend?.length ? (
+            <>
             <Box sx={{ height: 320 }}>
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={report.monthlyTrend} margin={{ top: 8, right: 12, left: -20, bottom: 0 }}>
+                <AreaChart
+                  data={report.monthlyTrend}
+                  margin={{ top: 8, right: 12, left: -20, bottom: 0 }}
+                  onClick={handleMonthClick}
+                >
                   <defs>
                     <linearGradient id="adminBusinessTrend" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor={palette.orange} stopOpacity={0.45} />
@@ -408,10 +491,64 @@ export default function AdminAnalyticsPanel() {
                     strokeWidth={3}
                     fill="url(#adminBusinessTrend)"
                     activeDot={{ r: 6 }}
+                    cursor="pointer"
                   />
                 </AreaChart>
               </ResponsiveContainer>
             </Box>
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: {
+                  xs: "repeat(2, minmax(0, 1fr))",
+                  sm: "repeat(4, minmax(0, 1fr))",
+                  lg: "repeat(6, minmax(0, 1fr))",
+                },
+                gap: 1,
+                mt: 1.5,
+              }}
+            >
+              {report.monthlyTrend.map((item) => {
+                const filter = getMonthFilter(item);
+                const isActive = isSameFilter(activeFilter, filter);
+                return (
+                  <Box
+                    key={item.key}
+                    component="button"
+                    type="button"
+                    onClick={() => filter && onFilterClick?.(filter)}
+                    sx={{
+                      border: `1px solid ${isActive ? palette.orange : palette.line}`,
+                      borderRadius: 1.25,
+                      bgcolor: isActive ? "#fff7ed" : "#fff",
+                      color: palette.ink,
+                      cursor: "pointer",
+                      font: "inherit",
+                      p: 1,
+                      textAlign: "left",
+                      transition: "border-color 0.18s ease, background-color 0.18s ease, transform 0.18s ease",
+                      "&:hover": {
+                        borderColor: palette.orange,
+                        bgcolor: "#fff7ed",
+                        transform: "translateY(-1px)",
+                      },
+                      "&:focus-visible": {
+                        outline: "3px solid rgba(234, 109, 17, 0.28)",
+                        outlineOffset: 2,
+                      },
+                    }}
+                  >
+                    <Typography sx={{ fontSize: 12, fontWeight: 850, color: isActive ? palette.orange : palette.muted }}>
+                      {item.month} {item.year}
+                    </Typography>
+                    <Typography sx={{ fontSize: 16, fontWeight: 850, mt: 0.25 }}>
+                      {formatNumber(item.businesses)}
+                    </Typography>
+                  </Box>
+                );
+              })}
+            </Box>
+            </>
           ) : (
             <EmptyState label="No monthly business data" />
           )}
@@ -420,13 +557,29 @@ export default function AdminAnalyticsPanel() {
         <Panel title="Operating pulse" subtitle="Current admin workload">
           <Stack spacing={1.35}>
             {[
-              ["Pending business approval", totals.pendingBusinesses, palette.orange],
+              ["Pending business approval", totals.pendingBusinesses, palette.orange, { type: "pendingLive", label: "Pending Business Approval" }],
               ["Unread searches", totals.unreadSearches, palette.blue],
               ["Searches in 7 days", totals.searchesLast7Days, palette.purple],
-              ["GMaps imported", totals.gmapsImported, palette.green],
-              ["Details fetched", totals.gmapsDetailsFetched, "#0f766e"],
-            ].map(([label, value, color]) => (
-              <Box key={label}>
+              ["GMaps imported", totals.gmapsImported, palette.green, null, "/dashboard/gmaps-leads?status=imported"],
+              ["Details fetched", totals.gmapsDetailsFetched, "#0f766e", null, "/dashboard/gmaps-leads?details_fetched=true"],
+            ].map(([label, value, color, filter, to]) => {
+              const clickable = Boolean((filter && onFilterClick) || to);
+              return (
+              <Box
+                key={label}
+                component={clickable ? "button" : "div"}
+                type={clickable ? "button" : undefined}
+                onClick={clickable ? () => (filter ? onFilterClick(filter) : navigate(to)) : undefined}
+                sx={{
+                  width: "100%",
+                  p: 0,
+                  border: 0,
+                  bgcolor: "transparent",
+                  textAlign: "left",
+                  font: "inherit",
+                  ...(clickable ? clickableSx(isSameFilter(activeFilter, filter)) : {}),
+                }}
+              >
                 <Stack direction="row" justifyContent="space-between" spacing={1}>
                   <Typography sx={{ color: palette.muted, fontSize: 13, fontWeight: 700 }}>{label}</Typography>
                   <Typography sx={{ color: palette.ink, fontSize: 13, fontWeight: 850 }}>
@@ -445,7 +598,8 @@ export default function AdminAnalyticsPanel() {
                   }}
                 />
               </Box>
-            ))}
+            );
+            })}
           </Stack>
         </Panel>
       </Box>
@@ -474,7 +628,19 @@ export default function AdminAnalyticsPanel() {
                     tick={{ fontSize: 12 }}
                   />
                   <Tooltip formatter={(value) => [formatNumber(value), "Businesses"]} />
-                  <Bar dataKey="count" fill={palette.blue} radius={[0, 6, 6, 0]} barSize={18} />
+                  <Bar
+                    dataKey="count"
+                    fill={palette.blue}
+                    radius={[0, 6, 6, 0]}
+                    barSize={18}
+                    cursor="pointer"
+                    onClick={(item) => {
+                      const payload = item?.payload || item;
+                      if (payload?.name) {
+                        onFilterClick?.({ type: "category", label: `Category: ${payload.name}`, value: payload.name });
+                      }
+                    }}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </Box>
@@ -488,7 +654,21 @@ export default function AdminAnalyticsPanel() {
             {(report?.topLocations || []).slice(0, 8).map((item, index) => {
               const pct = getPercent(item.count, totals.businesses);
               return (
-                <Box key={item.name}>
+                <Box
+                  key={item.name}
+                  component="button"
+                  type="button"
+                  onClick={() => onFilterClick?.({ type: "location", label: `Location: ${item.name}`, value: item.name })}
+                  sx={{
+                    width: "100%",
+                    p: 0,
+                    border: 0,
+                    bgcolor: "transparent",
+                    textAlign: "left",
+                    font: "inherit",
+                    ...clickableSx(isSameFilter(activeFilter, { type: "location", value: item.name })),
+                  }}
+                >
                   <Stack direction="row" alignItems="center" spacing={1.25}>
                     <Typography sx={{ width: 24, color: palette.muted, fontSize: 12, fontWeight: 850 }}>
                       {String(index + 1).padStart(2, "0")}
@@ -537,15 +717,30 @@ export default function AdminAnalyticsPanel() {
           <Stack divider={<Divider />} spacing={0}>
             {(report?.paymentBreakdown || []).map((item) => (
               <Stack
+                component="button"
+                type="button"
                 key={item.status}
                 direction="row"
                 justifyContent="space-between"
                 alignItems="center"
-                sx={{ py: 1.15 }}
+                onClick={() => onFilterClick?.({
+                  type: "payment",
+                  label: `Payment: ${readableStatus(item.status)}`,
+                  value: item.status || "NO_STATUS",
+                })}
+                sx={{
+                  py: 1.15,
+                  width: "100%",
+                  border: 0,
+                  bgcolor: "transparent",
+                  textAlign: "left",
+                  font: "inherit",
+                  ...clickableSx(isSameFilter(activeFilter, { type: "payment", value: item.status || "NO_STATUS" })),
+                }}
               >
                 <Box>
                   <Typography sx={{ color: palette.ink, fontSize: 14, fontWeight: 850 }}>
-                    {String(item.status).replaceAll("_", " ")}
+                    {readableStatus(item.status)}
                   </Typography>
                   <Typography sx={{ color: palette.muted, fontSize: 12 }}>
                     {formatCurrency(item.amount)}
@@ -562,12 +757,27 @@ export default function AdminAnalyticsPanel() {
           <Stack divider={<Divider />} spacing={0}>
             {(report?.recentBusinesses || []).map((item) => (
               <Stack
+                component="button"
+                type="button"
                 key={item._id}
                 direction={{ xs: "column", sm: "row" }}
                 justifyContent="space-between"
                 alignItems={{ xs: "flex-start", sm: "center" }}
                 spacing={1}
-                sx={{ py: 1.15 }}
+                onClick={() => onFilterClick?.({
+                  type: "search",
+                  label: `Business: ${item.businessName || "Untitled business"}`,
+                  value: item.businessName || "",
+                })}
+                sx={{
+                  py: 1.15,
+                  width: "100%",
+                  border: 0,
+                  bgcolor: "transparent",
+                  textAlign: "left",
+                  font: "inherit",
+                  ...clickableSx(isSameFilter(activeFilter, { type: "search", value: item.businessName || "" })),
+                }}
               >
                 <Box sx={{ minWidth: 0 }}>
                   <Typography noWrap sx={{ color: palette.ink, fontSize: 14, fontWeight: 850 }}>
