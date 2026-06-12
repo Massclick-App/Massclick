@@ -136,6 +136,9 @@ const BusinessList = React.memo(() => {
   const {
     searchSuggestion = []
   } = useSelector(state => state.userClientReducer || {});
+  const {
+    users = []
+  } = useSelector(state => state.userReducer || {});
   const [showCategorySuggest, setShowCategorySuggest] = useState(false);
   const [showLocationSuggest, setShowLocationSuggest] = useState(false);
   const [locationSuggestions, setLocationSuggestions] = useState([]);
@@ -198,6 +201,29 @@ const BusinessList = React.memo(() => {
     has_phone: false,
     status: 'available',
   });
+
+  const getObjectId = (value) => {
+    if (!value) return "";
+    if (typeof value === "object") return value.$oid || value._id || value.id || "";
+    return String(value);
+  };
+
+  const getUserDisplayName = (user) =>
+    user?.userName || user?.name || user?.fullName || user?.emailId || user?.email || "";
+
+  const getCreatedByDisplayName = (createdBy) => {
+    if (!createdBy) return "—";
+
+    if (typeof createdBy === "object") {
+      const populatedName = getUserDisplayName(createdBy);
+      if (populatedName) return populatedName;
+    }
+
+    const createdById = getObjectId(createdBy);
+    const user = users.find((u) => getObjectId(u._id) === createdById);
+
+    return getUserDisplayName(user) || "—";
+  };
 
   const handlePayNow = row => {
     const amount = 1;
@@ -505,7 +531,7 @@ const BusinessList = React.memo(() => {
     }));
     dispatch(businessCategorySearch(""));
     dispatch(getAllUsersClient());
-    dispatch(getAllUsers());
+    dispatch(getAllUsers({ pageNo: 1, pageSize: 1000 }));
     dispatch(checkPhonePeStatus());
   }, [dispatch]);
 
@@ -1500,6 +1526,7 @@ const BusinessList = React.memo(() => {
     filters: bl.filters && typeof bl.filters === "object" ? bl.filters : {},
     mniDetails: bl.mniDetails || [],
     payment: bl.payment || [],
+    createdBy: bl.createdBy,
     qrImage: bl.qrCode?.qrImage || null,
     qrDownloads: bl.qrDownloads || [],
     amountPaid: bl.amountPaid || false,
@@ -1532,6 +1559,10 @@ const BusinessList = React.memo(() => {
   }, {
     id: "category",
     label: "Category"
+  }, {
+    id: "createdBy",
+    label: "Created By",
+    renderCell: value => getCreatedByDisplayName(value)
   }, {
     id: "mniDetails",
     label: "Category Group",

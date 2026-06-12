@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { alpha } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import Box from '@mui/material/Box';
@@ -21,6 +21,22 @@ const xThemeComponents = {
   // ...datePickersCustomizations,
   // ...treeViewCustomizations,
 };
+
+const DashboardRouteFallback = () => (
+  <Box
+    sx={{
+      width: '100%',
+      minHeight: 240,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      color: 'text.secondary',
+      fontWeight: 600,
+    }}
+  >
+    Loading page...
+  </Box>
+);
 
 export default function Dashboard(props) {
   return (
@@ -45,7 +61,9 @@ export default function Dashboard(props) {
           >
             <Stack spacing={2} sx={{ alignItems: 'center', mx: 3, pb: 5, mt: { xs: 8, md: 0 } }}>
               <Header />
-              <Outlet />
+              <Suspense fallback={<DashboardRouteFallback />}>
+                <Outlet />
+              </Suspense>
             </Stack>
           </Box>
         </Box>
