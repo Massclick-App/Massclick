@@ -28,6 +28,7 @@ import PolicyPage from "../clientComponent/userMenu/PolicyPage/PolicyPage.js";
 import FeedbackPage from "../clientComponent/userMenu/FeedbackPage/FeedBackPage.js";
 import HelpPage from "../clientComponent/userMenu/HelpPage/HelpPage.js";
 import LeadsNotificationModal from "./leadsNotification/leadsNotification.js";
+import { getDisplayableLeadNotifications } from "./leadsNotification/leadNotificationUtils.js";
 import { fetchMatchedLeads } from "../../redux/actions/leadsAction.js";
 import styles from "./categoryBar.module.css";
 import MRPPage from "./MRP/mrp.js";
@@ -135,6 +136,7 @@ const CategoryBar = () => {
   const {
     leads: leadsData
   } = useSelector(state => state.leads);
+  const notificationLeads = useMemo(() => getDisplayableLeadNotifications(leadsData), [leadsData]);
   useEffect(() => {
     const mobile = localStorage.getItem("mobileNumber");
     if (mobile) {
@@ -228,7 +230,7 @@ const CategoryBar = () => {
           </IconButton>
 
           <IconButton className={cx("iconButtonPrimary")} onClick={() => setIsNotificationModalOpen(true)}>
-            <Badge badgeContent={leadsData.length} color="error">
+            <Badge badgeContent={notificationLeads.length} color="error">
               <NotificationsIcon />
             </Badge>
           </IconButton>

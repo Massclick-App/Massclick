@@ -12,6 +12,7 @@ import LocationOnIcon from "@mui/icons-material/LocationOn";
 import { fetchMatchedLeads } from "../../../redux/actions/leadsAction";
 import styles from "./leadsNotification.module.css";
 import { updateSearchLogRead } from "../../../redux/actions/businessListAction";
+import { getDisplayableLeadNotifications, getLeadUser, hasValue } from "./leadNotificationUtils";
 const cx = createScopedClassNames(styles);
 const LeadsNotificationModal = ({
   open,
@@ -24,6 +25,7 @@ const LeadsNotificationModal = ({
     leads: leadsData,
     loading
   } = useSelector(state => state.leads);
+  const displayLeads = getDisplayableLeadNotifications(leadsData);
   useEffect(() => {
     if (open) {
       dispatch(fetchMatchedLeads());
@@ -39,7 +41,7 @@ const LeadsNotificationModal = ({
     return new Date(time).toLocaleDateString();
   };
   const handleRead = async lead => {
-    const user = lead.userDetails?.[0] || {};
+    const user = getLeadUser(lead);
     const normalizedLead = {
       ...lead,
       ...user
@@ -92,23 +94,23 @@ const LeadsNotificationModal = ({
       }}>
             <CircularProgress />
           </Box> : !selectedLead ? <ul className={cx("ln-modern-list")}>
-            {leadsData.length === 0 ? <Typography sx={{
+            {displayLeads.length === 0 ? <Typography sx={{
           p: 3,
           textAlign: "center",
           color: "#999"
         }}>
                 No notifications found
-              </Typography> : leadsData.map(lead => {
-          const user = lead.userDetails?.[0] || {};
+              </Typography> : displayLeads.map(lead => {
+          const user = getLeadUser(lead);
           const isRead = lead.isRead === true || readItems.includes(lead._id);
           return <li key={lead._id} className={cx(`ln-modern-item ${isRead ? "read" : "unread"}`)} onClick={() => handleRead(lead)}>
                     <div className={cx("ln-modern-avatar")}>
-                      {(user.userName || "U").charAt(0).toUpperCase()}
+                      {user.userName.charAt(0).toUpperCase()}
                     </div>
 
                     <div className={cx("ln-modern-body")}>
                       <span className={cx("ln-modern-title")}>
-                        <strong>{user.userName || "Unknown"}</strong> searched{" "}
+                        <strong>{user.userName}</strong> searched{" "}
                         <strong>"{lead.searchedUserText}"</strong>
                       </span>
 
@@ -154,48 +156,48 @@ const LeadsNotificationModal = ({
               <Box sx={{
             p: 2
           }}>
-                <Box className={cx("ln-row")}>
+                {hasValue(selectedLead.mobileNumber1) && <Box className={cx("ln-row")}>
                   <PhoneIphoneIcon sx={{
                 color: "#F7941D"
               }} />
                   <strong>Mobile:</strong>&nbsp;
-                  {selectedLead.mobileNumber1 || "N/A"}
-                </Box>
-                <Box className={cx("ln-row")}>
+                  {selectedLead.mobileNumber1}
+                </Box>}
+                {hasValue(selectedLead.email) && <Box className={cx("ln-row")}>
                   <AttachEmailIcon sx={{
                 color: "#F7941D"
               }} />
                   <strong>Email:</strong>&nbsp;
-                  {selectedLead.email || "N/A"}
-                </Box>
-                <Box className={cx("ln-row")}>
+                  {selectedLead.email}
+                </Box>}
+                {hasValue(selectedLead.categoryName) && <Box className={cx("ln-row")}>
                   <CategoryIcon sx={{
                 color: "#F7941D"
               }} />
                   <strong>Category:</strong>&nbsp;
                   {selectedLead.categoryName}
-                </Box>
-                <Box className={cx("ln-row")}>
+                </Box>}
+                {hasValue(selectedLead.searchedUserText) && <Box className={cx("ln-row")}>
                   <CategoryIcon sx={{
                 color: "#F7941D"
               }} />
                   <strong>Searched:</strong>&nbsp;
                   {selectedLead.searchedUserText}
-                </Box>
-                <Box className={cx("ln-row")}>
+                </Box>}
+                {hasValue(selectedLead.location) && <Box className={cx("ln-row")}>
                   <LocationOnIcon sx={{
                 color: "#F7941D"
               }} />
                   <strong>Location:</strong>&nbsp;
                   {selectedLead.location}
-                </Box>
-                <Box className={cx("ln-row")}>
+                </Box>}
+                {hasValue(selectedLead.createdAt) && <Box className={cx("ln-row")}>
                   <AccessTimeIcon sx={{
                 color: "#F7941D"
               }} />
                   <strong>Created:</strong>&nbsp;
                   {new Date(selectedLead.createdAt).toLocaleString()}
-                </Box>
+                </Box>}
               </Box>
             </Paper>
           </Box>}
