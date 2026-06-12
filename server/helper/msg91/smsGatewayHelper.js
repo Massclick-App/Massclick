@@ -477,7 +477,7 @@ const compactBusinessLine = (biz, index) => {
     : biz.contactList || biz.whatsappNumber || "N/A";
   const phone = contact.toString().replace(/\D/g, "").slice(-10) || "N/A";
   const name = truncateValue(biz.businessName || "Business", 28);
-  const area = truncateValue(biz.location || biz.street || biz.address || "Area", 24);
+  const area = truncateValue(biz.street || biz.location || biz.address || "Area", 24);
 
   return truncateValue(`${index + 1}. ${name} | ${area} | ${phone}`, 90);
 };
