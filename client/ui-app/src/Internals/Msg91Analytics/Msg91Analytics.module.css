@@ -1,0 +1,427 @@
+.page {
+  min-height: 100%;
+  padding: 18px;
+  background: #f6f7f9;
+  color: #17202a;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 1.55rem;
+  font-weight: 750;
+}
+
+.header p {
+  margin: 4px 0 0;
+  color: #617084;
+  font-size: 0.92rem;
+}
+
+.headerActions,
+.filterButtons,
+.rowActions,
+.pagination,
+.recipientFilters {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.page button {
+  border: 1px solid #cfd7e2;
+  background: #ffffff;
+  color: #17202a;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 0.86rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.page button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.primary {
+  border-color: #f36c21;
+  background: #f36c21;
+  color: #ffffff;
+}
+
+.error {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border: 1px solid #f3b7b7;
+  background: #fff2f2;
+  color: #a01818;
+  border-radius: 6px;
+}
+
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(130px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.kpi,
+.panel,
+.filters {
+  border: 1px solid #dfe4eb;
+  background: #ffffff;
+  border-radius: 8px;
+}
+
+.kpi {
+  padding: 12px;
+  min-width: 0;
+}
+
+.kpi span,
+.kpi small {
+  display: block;
+  color: #69788d;
+  font-size: 0.78rem;
+}
+
+.kpi strong {
+  display: block;
+  margin: 5px 0 2px;
+  font-size: 1.45rem;
+  line-height: 1.1;
+}
+
+.green strong {
+  color: #12805c;
+}
+
+.red strong {
+  color: #bd2424;
+}
+
+.amber strong {
+  color: #9b5a00;
+}
+
+.violet strong {
+  color: #6741a6;
+}
+
+.filters {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(130px, 1fr));
+  gap: 10px;
+  padding: 12px;
+  margin-bottom: 14px;
+}
+
+.filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: #5d6b7b;
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.filters input,
+.filters select,
+.recipientFilters input,
+.recipientFilters select {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid #cfd7e2;
+  border-radius: 6px;
+  padding: 7px 9px;
+  background: #ffffff;
+  color: #17202a;
+  font-size: 0.88rem;
+  box-sizing: border-box;
+}
+
+.filterButtons {
+  align-self: end;
+}
+
+.gridTwo,
+.gridThree {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.gridTwo {
+  grid-template-columns: 1.1fr 0.9fr;
+}
+
+.gridThree {
+  grid-template-columns: 1.3fr 0.85fr 0.85fr;
+}
+
+.panel {
+  padding: 12px;
+  min-width: 0;
+}
+
+.panelTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.panelTitle h2 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 750;
+}
+
+.panelTitle span {
+  color: #6b7888;
+  font-size: 0.82rem;
+}
+
+.trendList,
+.rankList {
+  display: grid;
+  gap: 7px;
+}
+
+.trendRow,
+.rankList div {
+  display: grid;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+  font-size: 0.84rem;
+}
+
+.trendRow {
+  grid-template-columns: 92px 1fr 52px;
+}
+
+.rankList div {
+  grid-template-columns: 1fr auto;
+  border-bottom: 1px solid #edf0f4;
+  padding-bottom: 7px;
+}
+
+.trendBar {
+  display: flex;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #edf0f4;
+}
+
+.trendBar i,
+.trendBar b,
+.trendBar em {
+  display: block;
+  min-width: 2px;
+}
+
+.trendBar i {
+  background: #21a67a;
+}
+
+.trendBar b {
+  background: #d94848;
+}
+
+.trendBar em {
+  background: #d89a21;
+}
+
+.compactTable,
+.tableWrap {
+  width: 100%;
+  overflow: auto;
+}
+
+.page table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.page th,
+.page td {
+  border-bottom: 1px solid #edf0f4;
+  padding: 9px 8px;
+  text-align: left;
+  vertical-align: top;
+  font-size: 0.82rem;
+}
+
+.page th {
+  color: #59677a;
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.auditTable {
+  min-width: 1180px;
+}
+
+.auditTable tbody tr {
+  cursor: pointer;
+}
+
+.auditTable tbody tr:hover {
+  background: #faf7f3;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 0.74rem;
+  font-weight: 750;
+}
+
+.success {
+  background: #e7f8f0;
+  color: #137a58;
+}
+
+.failed {
+  background: #ffe9e9;
+  color: #b82323;
+}
+
+.skipped {
+  background: #fff4dc;
+  color: #8b5400;
+}
+
+.hold {
+  background: #f0eafb;
+  color: #5c3b98;
+}
+
+.neutral {
+  background: #edf1f5;
+  color: #526173;
+}
+
+.detailRow td {
+  background: #fbfcfe;
+}
+
+.detailGrid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(120px, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.detailGrid div {
+  display: grid;
+  gap: 3px;
+}
+
+.detailGrid strong {
+  color: #5f6d80;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+}
+
+.detailGrid span {
+  font-size: 0.82rem;
+}
+
+.page pre {
+  max-height: 260px;
+  margin: 0;
+  padding: 10px;
+  overflow: auto;
+  border-radius: 6px;
+  background: #111827;
+  color: #e5e7eb;
+  font-size: 0.76rem;
+}
+
+.pagination {
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.recipientFilters {
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.recipientFilters input,
+.recipientFilters select {
+  width: 180px;
+}
+
+.rowActions {
+  white-space: nowrap;
+}
+
+.rowActions button {
+  padding: 6px 8px;
+  font-size: 0.76rem;
+}
+
+.empty {
+  padding: 14px;
+  color: #738196;
+  font-size: 0.88rem;
+  text-align: center;
+}
+
+@media (max-width: 1200px) {
+  .kpiGrid,
+  .filters {
+    grid-template-columns: repeat(3, minmax(150px, 1fr));
+  }
+
+  .gridTwo,
+  .gridThree {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .page {
+    padding: 12px;
+  }
+
+  .header {
+    flex-direction: column;
+  }
+
+  .headerActions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .headerActions button {
+    flex: 1;
+  }
+
+  .kpiGrid,
+  .filters {
+    grid-template-columns: 1fr;
+  }
+
+  .detailGrid {
+    grid-template-columns: 1fr;
+  }
+}

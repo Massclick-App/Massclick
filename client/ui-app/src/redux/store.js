@@ -31,6 +31,7 @@ import categoryDisplaySettingsReducer from './reducers/categoryDisplaySettingsRe
 import globalLoaderReducer from './reducers/globalLoaderReducer.js';
 import eventReducer from './reducers/eventReducer.js';
 import gmapsLeadsReducer from './reducers/gmapsLeadsReducer.js';
+import msg91AnalyticsReducer from './reducers/msg91AnalyticsReducer.js';
 
 const rootReducer = combineReducers({
   auth: authReducer,
@@ -64,6 +65,7 @@ const rootReducer = combineReducers({
   globalLoader: globalLoaderReducer,
   event: eventReducer,
   gmapsLeadsReducer: gmapsLeadsReducer,
+  msg91Analytics: msg91AnalyticsReducer,
 });
 
 let storeInstance = null;

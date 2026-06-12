@@ -256,7 +256,12 @@ export const sendMrpLeads = async (mrpId) => {
 
     try {
       if (mrpSettings.whatsapp_mni_lead_alert) {
-        await sendMniBusinessLead(mobile, leadData);
+        await sendMniBusinessLead(mobile, leadData, {
+          sourceType: "mni",
+          sourceId: mrp._id,
+          businessId: biz._id,
+          businessName: biz.businessName,
+        });
       }
 
       await businessListModel.updateOne(
@@ -330,7 +335,13 @@ export const sendMrpLeads = async (mrpId) => {
         sourceBusiness.businessName,
         location,
         mrp.categoryId,
-        businesses
+        businesses,
+        {
+          sourceType: "mni",
+          sourceId: mrp._id,
+          businessId: sourceBusiness._id,
+          businessName: sourceBusiness.businessName,
+        }
       );
 
     } catch (err) {
