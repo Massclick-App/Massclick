@@ -34,6 +34,7 @@ import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import ClassIcon from '@mui/icons-material/Class';
 import FeaturedVideoIcon from '@mui/icons-material/FeaturedVideo';
 import TravelExploreIcon from '@mui/icons-material/TravelExplore';
+import MarkEmailReadIcon from '@mui/icons-material/MarkEmailRead';
 import { fetchChatUnreadCount, getAdminChatToken } from "../services/chatService";
 import { connectSocket } from "../services/socketService";
 
@@ -67,6 +68,7 @@ const MENU_SECTIONS = [
       { text: "MNI", icon: StorefrontIcon, path: "/dashboard/mni-data" },
       { text: "Notifications", icon: NotificationsIcon, path: "/dashboard/fcm-marketing" },
       { text: "GMaps Leads", icon: TravelExploreIcon, path: "/dashboard/gmaps-leads" },
+      { text: "MSG91 Analytics", icon: MarkEmailReadIcon, path: "/dashboard/msg91-analytics" },
     ]
   },
   {

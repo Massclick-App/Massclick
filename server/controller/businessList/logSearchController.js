@@ -4,6 +4,7 @@ import CategoryModel from "../../model/category/categoryModel.js";
 import { getSignedUrlByKey } from "../../s3Uploder.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
 import { sendBusinessesToCustomer, sendBusinessLead, sendEnquiryBusinessLead } from "../../helper/msg91/smsGatewayHelper.js";
+import { evaluateWhatsAppSend, markWhatsAppSkipped } from "../../helper/msg91/whatsappReliabilityHelper.js";
 import { getSettings } from "../../helper/systemSettings/settingsService.js";
 import searchLogModel from "../../model/businessList/searchLogModel.js";
 import userModel from "../../model/msg91Model/usersModels.js";
@@ -470,8 +471,45 @@ export const logSearchAction = async (req, res) => {
       try {
 
         if (waSettings.whatsapp_business_lead_alert) {
+          const sendPolicy = await evaluateWhatsAppSend({
+            mobile: cleanMobile,
+            template: "business_lead_alert_v2",
+            sourceType: "search_lead",
+            category: leadData.searchText,
+            location: leadData.location,
+            customerMobile: leadData.customerMobile,
+          });
+
+          if (!sendPolicy.allowed) {
+            await markWhatsAppSkipped(
+              {
+                templateName: "business_lead_alert_v2",
+                sourceType: "search_lead",
+                sourceId: savedLog._id,
+                recipientMobile: sendPolicy.mobile || cleanMobile,
+                category: leadData.searchText,
+                location: leadData.location,
+                customerName: leadData.customerName,
+                customerMobile: leadData.customerMobile,
+                businessId: business._id,
+                businessName: business.businessName,
+              },
+              sendPolicy.skipReason
+            );
+            console.warn(
+              `[WhatsApp] skipped ${business.businessName} ${cleanMobile}: ${sendPolicy.skipReason}`
+            );
+            continue;
+          }
+
           await withRetry(
-            () => sendBusinessLead(cleanMobile, leadData),
+            () =>
+              sendBusinessLead(sendPolicy.mobile, leadData, {
+                sourceType: "search_lead",
+                sourceId: savedLog._id,
+                businessId: business._id,
+                businessName: business.businessName,
+              }),
             `Business WhatsApp ${business.businessName} ${cleanMobile}`
           );
         } else {
@@ -535,7 +573,11 @@ export const logSearchAction = async (req, res) => {
 
         if (waSettings.whatsapp_customer_business_list) {
           await withRetry(
-            () => sendBusinessesToCustomer(cleanCustomerMobile, leadData, businesses),
+            () =>
+              sendBusinessesToCustomer(cleanCustomerMobile, leadData, businesses, {
+                sourceType: "customer_list",
+                sourceId: savedLog._id,
+              }),
             `Customer WhatsApp ${cleanCustomerMobile}`
           );
         } else {
@@ -729,7 +771,11 @@ export const sendEnquiryLead = async (req, res) => {
       }
 
       const mobile = business.whatsappNumber || business.contactList?.[0];
-      await sendEnquiryBusinessLead(mobile, leadData);
+      await sendEnquiryBusinessLead(mobile, leadData, {
+        sourceType: "enquiry",
+        businessId: business._id,
+        businessName: business.businessName,
+      });
 
       return res.status(200).json({
         success: true,
@@ -775,7 +821,11 @@ export const sendEnquiryLead = async (req, res) => {
       const mobile = b.whatsappNumber || b.contactList?.[0];
       if (!mobile) continue;
       try {
-        await sendEnquiryBusinessLead(mobile, leadData);
+        await sendEnquiryBusinessLead(mobile, leadData, {
+          sourceType: "enquiry",
+          businessId: b._id,
+          businessName: b.businessName,
+        });
         notified.push({ businessName: b.businessName, mobile });
         await wait(300);
       } catch (err) {
