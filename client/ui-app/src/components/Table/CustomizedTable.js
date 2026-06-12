@@ -13,14 +13,16 @@ const CustomizedTable = ({
   fetchData,
   onSelectRows,
   enableStatusFilter = true,
-  enableSearch = true
+  enableSearch = true,
+  initialSearchQuery = "",
+  initialStatusFilter = "all"
 }) => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [selected, setSelected] = useState([]);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
   const debouncedSearch = useDebounce(searchQuery, 400);
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState(initialStatusFilter);
   const [sortConfig, setSortConfig] = useState({
     orderBy: null,
     order: "asc"
@@ -34,6 +36,12 @@ const CustomizedTable = ({
       setIsScrolled(e.target.scrollTop > 0);
     }, 60);
   }, []);
+  useEffect(() => {
+    setSearchQuery(initialSearchQuery);
+  }, [initialSearchQuery]);
+  useEffect(() => {
+    setStatusFilter(initialStatusFilter);
+  }, [initialStatusFilter]);
   useEffect(() => {
     const options = {
       search: debouncedSearch,

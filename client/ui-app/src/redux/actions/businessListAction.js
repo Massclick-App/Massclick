@@ -102,7 +102,10 @@ export const getAllBusinessList = ({
   pageSize = 10,
   search = "",
   status = "all",
+  liveStatus = "",
   category = "",
+  location = "",
+  paymentStatus = "",
   createdFrom = "",
   createdTo = "",
   sortBy = null,
@@ -118,7 +121,10 @@ export const getAllBusinessList = ({
     params.append("pageSize", pageSize);
     if (search) params.append("search", search);
     if (status && status !== "all") params.append("status", status);
+    if (liveStatus) params.append("liveStatus", liveStatus);
     if (category) params.append("category", category);
+    if (location) params.append("location", location);
+    if (paymentStatus) params.append("paymentStatus", paymentStatus);
     if (createdFrom) params.append("createdFrom", createdFrom);
     if (createdTo) params.append("createdTo", createdTo);
     if (sortBy) params.append("sortBy", sortBy);

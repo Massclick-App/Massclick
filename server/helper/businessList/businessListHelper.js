@@ -315,6 +315,24 @@ function escapeRegex(text) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+const isTrichyAlias = (value = "") => {
+  const normalized = String(value).toLowerCase().trim();
+  return ["trichy", "tiruchirappalli", "trichy / tiruchirappalli"].includes(normalized);
+};
+
+const getLocationQuery = (location = "") => {
+  if (isTrichyAlias(location)) {
+    return {
+      $in: [
+        new RegExp(`^${escapeRegex("trichy")}$`, "i"),
+        new RegExp(`^${escapeRegex("tiruchirappalli")}$`, "i"),
+      ],
+    };
+  }
+
+  return { $regex: `^${escapeRegex(location)}$`, $options: "i" };
+};
+
 export const viewAllBusinessList = async ({
   role,
   userId,
@@ -322,7 +340,10 @@ export const viewAllBusinessList = async ({
   pageSize,
   search,
   status,
+  liveStatus,
   category,
+  location,
+  paymentStatus,
   createdFrom,
   createdTo,
   sortBy,
@@ -359,8 +380,30 @@ export const viewAllBusinessList = async ({
 
   if (status === "active") query.activeBusinesses = true;
   if (status === "inactive") query.activeBusinesses = false;
+  if (liveStatus === "live") query.businessesLive = true;
+  if (liveStatus === "pending") query.businessesLive = false;
 
-  if (category) query.category = category;
+  if (category) query.category = { $regex: `^${escapeRegex(category)}$`, $options: "i" };
+  if (location) query.location = getLocationQuery(location);
+  if (paymentStatus) {
+    if (paymentStatus === "NO_STATUS") {
+      query.$and = [
+        ...(query.$and || []),
+        {
+          $or: [
+            { payment: { $exists: false } },
+            { payment: { $size: 0 } },
+            { "payment.paymentStatus": { $exists: false } }
+          ]
+        }
+      ];
+    } else {
+      query["payment.paymentStatus"] = {
+        $regex: `^${escapeRegex(paymentStatus)}$`,
+        $options: "i"
+      };
+    }
+  }
 
   if (createdFrom || createdTo) {
     query.createdAt = {};
@@ -1040,6 +1083,23 @@ const buildMonthSeries = (rows = [], monthsBack = 12) => {
   return buckets;
 };
 
+const dashboardLocationNameExpression = {
+  $switch: {
+    branches: [
+      {
+        case: {
+          $in: [
+            { $toLower: { $trim: { input: { $ifNull: ["$location", ""] } } } },
+            ["trichy", "tiruchirappalli"],
+          ],
+        },
+        then: "Trichy / Tiruchirappalli",
+      },
+    ],
+    default: { $ifNull: ["$location", "Unknown"] },
+  },
+};
+
 export const getAdminAnalyticsReportHelper = async ({ role, userId }) => {
   const businessQuery = await buildDashboardQuery({ role, userId });
   const now = new Date();
@@ -1168,7 +1228,7 @@ export const getAdminAnalyticsReportHelper = async ({ role, userId }) => {
     ]),
     businessListModel.aggregate([
       { $match: businessQuery },
-      { $group: { _id: "$location", count: { $sum: 1 } } },
+      { $group: { _id: dashboardLocationNameExpression, count: { $sum: 1 } } },
       { $sort: { count: -1 } },
       { $limit: 8 },
     ]),

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useSnackbar } from 'notistack';
 import { createScopedClassNames } from '../../utils/createScopedClassNames';
 import styles from './gmapsLeads.module.css';
@@ -44,6 +44,7 @@ function StatusBadge({ lead }) {
 export default function GmapsLeads() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { enqueueSnackbar } = useSnackbar();
 
   const { leads, total, stats, distincts, loading } = useSelector(
@@ -55,16 +56,19 @@ export default function GmapsLeads() {
   const [pageSize, setPageSize] = useState(20);
 
   // Filter state (applied = what was last submitted)
-  const [filters, setFilters] = useState({
+  const getInitialFilters = useCallback(() => ({
     massclick_location: '',
     search_sector: '',
     massclick_category: '',
-    status: 'all',
+    status: searchParams.get('status') || 'all',
     min_rating: '',
-    has_phone: false,
+    has_phone: searchParams.get('has_phone') === 'true',
+    details_fetched: searchParams.get('details_fetched') === 'true',
     search: '',
     business_status: 'OPERATIONAL',
-  });
+  }), [searchParams]);
+
+  const [filters, setFilters] = useState(getInitialFilters);
   const [appliedFilters, setAppliedFilters] = useState(filters);
 
   // Button loading state per lead id
@@ -99,6 +103,7 @@ export default function GmapsLeads() {
       status: 'all',
       min_rating: '',
       has_phone: false,
+      details_fetched: false,
       search: '',
       business_status: 'OPERATIONAL',
     };
@@ -286,6 +291,19 @@ export default function GmapsLeads() {
                 onChange={handleFilterChange}
               />
               <span>Has Phone</span>
+            </label>
+          </div>
+
+          <div className={cx('filter-field')}>
+            <label>&nbsp;</label>
+            <label className={cx('filter-toggle')}>
+              <input
+                type="checkbox"
+                name="details_fetched"
+                checked={filters.details_fetched}
+                onChange={handleFilterChange}
+              />
+              <span>Details fetched</span>
             </label>
           </div>
 
