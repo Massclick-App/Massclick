@@ -770,7 +770,15 @@ export const sendEnquiryLead = async (req, res) => {
         });
       }
 
-      const mobile = business.whatsappNumber || business.contactList?.[0];
+      const mobile = extractIndianMobiles([business.whatsappNumber, business.contactList])[0];
+
+      if (!mobile) {
+        return res.status(400).json({
+          success: false,
+          message: "Business does not have a valid enquiry mobile"
+        });
+      }
+
       await sendEnquiryBusinessLead(mobile, leadData, {
         sourceType: "enquiry",
         businessId: business._id,
@@ -789,7 +797,7 @@ export const sendEnquiryLead = async (req, res) => {
     const normalizedLocation = (location || "global").toLowerCase().trim();
     const categoryText = (category || "").toLowerCase().trim();
 
-    const escapeRegex = (text = "") => text.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&");
+    const escapeRegex = (text = "") => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
     const getCategoryRegex = (val) => {
       try {
@@ -818,7 +826,7 @@ export const sendEnquiryLead = async (req, res) => {
 
     const notified = [];
     for (const b of businesses) {
-      const mobile = b.whatsappNumber || b.contactList?.[0];
+      const mobile = extractIndianMobiles([b.whatsappNumber, b.contactList])[0];
       if (!mobile) continue;
       try {
         await sendEnquiryBusinessLead(mobile, leadData, {

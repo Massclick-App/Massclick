@@ -39,7 +39,7 @@ const CUSTOMER_BUSINESS_LIST_TEMPLATE_VARIANTS = {
       baseValues[0],
       baseValues[1],
       baseValues[2],
-      rows.filter((value) => value && value !== "-").join("\n\n") || "-",
+      rows.filter((value) => value && value !== "-").join(" | ") || "-",
     ],
   },
   en: {
