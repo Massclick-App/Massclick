@@ -477,7 +477,7 @@ const compactBusinessLine = (biz, index) => {
     : biz.contactList || biz.whatsappNumber || "N/A";
   const phone = contact.toString().replace(/\D/g, "").slice(-10) || "N/A";
   const name = truncateValue(biz.businessName || "Business", 28);
-  const area = truncateValue(biz.location || biz.street || biz.address || "Area", 24);
+  const area = truncateValue(biz.street || biz.location || biz.address || "Area", 24);
 
   return truncateValue(`${index + 1}. ${name} | ${area} | ${phone}`, 90);
 };
@@ -591,13 +591,16 @@ export const sendBusinessesToCustomer = async (
     });
 
     const sendMode = context.customerListSendMode === "single" ? "single" : "split";
+    const totalMatchedBusinesses = uniqueBusinesses.length;
     const finalBusinesses = uniqueBusinesses.slice(0, sendMode === "single" ? 5 : 10);
     const firstBatch = finalBusinesses.slice(0, 5);
     const secondBatch = finalBusinesses.slice(5, 10);
     const baseValues = getCustomerListBaseValues(lead);
-    const firstMessageVariant = getCustomerBusinessListVariant(
-      context.firstLanguageCode || "en_US"
-    );
+    const shouldUseSingleEnTemplate =
+      totalMatchedBusinesses <= 5 || finalBusinesses.length <= 5;
+    const firstMessageVariant = shouldUseSingleEnTemplate
+      ? getCustomerBusinessListVariant(context.singleBatchLanguageCode || "en")
+      : getCustomerBusinessListVariant(context.firstLanguageCode || "en_US");
     const requestedSecondMessageVariant = getCustomerBusinessListVariant(
       context.secondLanguageCode || "en"
     );
@@ -673,7 +676,7 @@ export const sendBusinessesToCustomer = async (
         secondMessageVariant,
         baseValues,
         secondBatch,
-        5
+        0
       );
       const hasBusinessRows = values2.slice(3).some((value) => value && value !== "-");
       if (hasBusinessRows) {

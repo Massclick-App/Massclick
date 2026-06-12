@@ -1,10 +1,23 @@
 import { createHash } from "crypto";
-import { createSearchLog, getAllSearchLogs, getMatchedSearchLogs, updateSearchData, getTopTrendingCategories } from "../../helper/businessList/logSearchHelper.js";
+import {
+  createSearchLog,
+  getAllSearchLogs,
+  getMatchedSearchLogs,
+  updateSearchData,
+  getTopTrendingCategories,
+} from "../../helper/businessList/logSearchHelper.js";
 import CategoryModel from "../../model/category/categoryModel.js";
 import { getSignedUrlByKey } from "../../s3Uploder.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
-import { sendBusinessesToCustomer, sendBusinessLead, sendEnquiryBusinessLead } from "../../helper/msg91/smsGatewayHelper.js";
-import { evaluateWhatsAppSend, markWhatsAppSkipped } from "../../helper/msg91/whatsappReliabilityHelper.js";
+import {
+  sendBusinessesToCustomer,
+  sendBusinessLead,
+  sendEnquiryBusinessLead,
+} from "../../helper/msg91/smsGatewayHelper.js";
+import {
+  evaluateWhatsAppSend,
+  markWhatsAppSkipped,
+} from "../../helper/msg91/whatsappReliabilityHelper.js";
 import { getSettings } from "../../helper/systemSettings/settingsService.js";
 import searchLogModel from "../../model/businessList/searchLogModel.js";
 import userModel from "../../model/msg91Model/usersModels.js";
@@ -70,7 +83,7 @@ const withRetry = async (fn, label, attempts = 3) => {
       lastError = error;
       console.error(
         `${label} failed attempt ${attempt}/${attempts}:`,
-        error.response?.data || error.message
+        error.response?.data || error.message,
       );
 
       if (attempt < attempts) {
@@ -82,8 +95,7 @@ const withRetry = async (fn, label, attempts = 3) => {
   throw lastError;
 };
 
-const escapeRegex = (text = "") =>
-  text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const escapeRegex = (text = "") => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const getDynamicCategoryRegex = (value = "") => {
   let text = value.toLowerCase().trim();
@@ -92,14 +104,14 @@ const getDynamicCategoryRegex = (value = "") => {
 
   const spellingMap = {
     "nursery garden": "nursary garden",
-    "nursery": "nursary"
+    nursery: "nursary",
   };
 
   if (spellingMap[text]) {
     text = spellingMap[text];
   }
 
-  let singular = text;  
+  let singular = text;
 
   if (text.endsWith("ies")) {
     singular = text.slice(0, -3) + "y";
@@ -124,7 +136,7 @@ const getDynamicCategoryRegex = (value = "") => {
     escapeRegex(text),
     escapeRegex(singular),
     escapeRegex(plural1),
-    escapeRegex(plural2)
+    escapeRegex(plural2),
   ];
 
   const uniqueWords = [...new Set(words)];
@@ -139,14 +151,21 @@ export const logSearchAction = async (req, res) => {
     const leadSettings = await getSettings();
     const rawSearchText = searchedUserText?.trim?.() || "";
 
-    if (leadSettings.lead_guard_search_text_required !== false && !rawSearchText) {
+    if (
+      leadSettings.lead_guard_search_text_required !== false &&
+      !rawSearchText
+    ) {
       return res.status(400).json({
         success: false,
-        message: "Search text is mandatory"
+        message: "Search text is mandatory",
       });
     }
 
-    const cleanSearchText = (rawSearchText || categoryName?.trim?.() || "all categories").toLowerCase();
+    const cleanSearchText = (
+      rawSearchText ||
+      categoryName?.trim?.() ||
+      "all categories"
+    ).toLowerCase();
     const normalizedLocation = location?.toLowerCase().trim() || "global";
 
     const isValidUser =
@@ -172,18 +191,22 @@ export const logSearchAction = async (req, res) => {
         .replace(/(^-|-$)+/g, "");
 
       const validCategory = await CategoryModel.findOne({
-        slug: categorySlugFromInput
+        slug: categorySlugFromInput,
       }).lean();
 
       if (validCategory) {
-        finalCategoryName = validCategory.categoryName || validCategory.category;
+        finalCategoryName =
+          validCategory.categoryName || validCategory.category;
         matchedCategoryFromSearch = validCategory;
       }
     }
 
     // If no valid category from categoryName, search using the same logic as enhanced suggestions endpoint
     if (!finalCategoryName) {
-      const escapedSearch = cleanSearchText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const escapedSearch = cleanSearchText.replace(
+        /[.*+?^${}()|[\]\\]/g,
+        "\\$&",
+      );
 
       // Use the exact same matching logic as getEnhancedSuggestionsController
       const topMatches = await CategoryModel.aggregate([
@@ -194,14 +217,15 @@ export const logSearchAction = async (req, res) => {
               { category: { $regex: escapedSearch, $options: "i" } },
               { categoryName: { $regex: escapedSearch, $options: "i" } },
               { keywords: { $regex: escapedSearch, $options: "i" } },
-            ]
-          }
+            ],
+          },
         },
-        { $limit: 1 }
+        { $limit: 1 },
       ]);
 
       if (topMatches.length > 0) {
-        finalCategoryName = topMatches[0].categoryName || topMatches[0].category;
+        finalCategoryName =
+          topMatches[0].categoryName || topMatches[0].category;
         matchedCategoryFromSearch = topMatches[0];
       } else {
         // Fallback: try word-by-word matching
@@ -212,16 +236,22 @@ export const logSearchAction = async (req, res) => {
               isActive: true,
               $or: [
                 { category: { $regex: searchWords.join("|"), $options: "i" } },
-                { categoryName: { $regex: searchWords.join("|"), $options: "i" } },
-                { keywords: { $regex: searchWords.join("|"), $options: "i" } }
-              ]
-            }
+                {
+                  categoryName: {
+                    $regex: searchWords.join("|"),
+                    $options: "i",
+                  },
+                },
+                { keywords: { $regex: searchWords.join("|"), $options: "i" } },
+              ],
+            },
           },
-          { $limit: 1 }
+          { $limit: 1 },
         ]);
 
         if (wordMatches.length > 0) {
-          finalCategoryName = wordMatches[0].categoryName || wordMatches[0].category;
+          finalCategoryName =
+            wordMatches[0].categoryName || wordMatches[0].category;
           matchedCategoryFromSearch = wordMatches[0];
         } else {
           finalCategoryName = rawSearchText || categoryName || "all categories";
@@ -236,7 +266,13 @@ export const logSearchAction = async (req, res) => {
 
     const category = await CategoryModel.findOne(
       { slug: categorySlug },
-      { category: 1, categoryName: 1, categoryImages: 1, categoryImageKey: 1, liveImageKey: 1 }
+      {
+        category: 1,
+        categoryName: 1,
+        categoryImages: 1,
+        categoryImageKey: 1,
+        liveImageKey: 1,
+      },
     ).lean();
 
     // ── Anonymous path ────────────────────────────────────────────────────────
@@ -244,19 +280,24 @@ export const logSearchAction = async (req, res) => {
       const fingerprint = anonFingerprint(req);
       const anonymousDedupeMinutes = nonNegativeInteger(
         leadSettings.lead_guard_anonymous_dedupe_minutes,
-        5
+        5,
       );
       let recentAnon = null;
 
-      if (leadSettings.lead_guard_anonymous_dedupe_enabled !== false && anonymousDedupeMinutes > 0) {
-        const anonDedupeSince = new Date(Date.now() - anonymousDedupeMinutes * 60 * 1000);
+      if (
+        leadSettings.lead_guard_anonymous_dedupe_enabled !== false &&
+        anonymousDedupeMinutes > 0
+      ) {
+        const anonDedupeSince = new Date(
+          Date.now() - anonymousDedupeMinutes * 60 * 1000,
+        );
         recentAnon = await searchLogModel.findOne({
           categoryName: finalCategoryName,
           location: normalizedLocation,
           searchedUserText: cleanSearchText,
           isAnonymous: true,
           anonFingerprint: fingerprint,
-          createdAt: { $gte: anonDedupeSince }
+          createdAt: { $gte: anonDedupeSince },
         });
       }
 
@@ -276,7 +317,7 @@ export const logSearchAction = async (req, res) => {
         success: true,
         anonymous: true,
         message: "Anonymous search logged",
-        detectedCategory: finalCategoryName
+        detectedCategory: finalCategoryName,
       });
     }
 
@@ -284,46 +325,53 @@ export const logSearchAction = async (req, res) => {
 
     const userDedupeMinutes = nonNegativeInteger(
       leadSettings.lead_guard_user_dedupe_minutes,
-      5
+      5,
     );
     let recentLog = null;
 
-    if (leadSettings.lead_guard_user_dedupe_enabled !== false && userDedupeMinutes > 0) {
-      const userDedupeSince = new Date(Date.now() - userDedupeMinutes * 60 * 1000);
+    if (
+      leadSettings.lead_guard_user_dedupe_enabled !== false &&
+      userDedupeMinutes > 0
+    ) {
+      const userDedupeSince = new Date(
+        Date.now() - userDedupeMinutes * 60 * 1000,
+      );
       recentLog = await searchLogModel.findOne({
         categoryName: { $regex: `^${finalCategoryName}$`, $options: "i" },
         location: normalizedLocation,
         "userDetails.mobileNumber1": userDetails.mobileNumber1,
         searchedUserText: cleanSearchText,
-        createdAt: { $gte: userDedupeSince }
+        createdAt: { $gte: userDedupeSince },
       });
     }
     if (recentLog?.whatsapp) {
       return res.status(200).json({
         success: true,
         message: "Lead already sent recently",
-        detectedCategory: finalCategoryName
+        detectedCategory: finalCategoryName,
       });
     }
 
-    const savedLog = recentLog || await createSearchLog({
-      categoryName: finalCategoryName,
-      searchedUserText: cleanSearchText,
-      location: normalizedLocation,
-      userDetails: [
-        {
-          userName: userDetails.userName,
-          mobileNumber1: userDetails.mobileNumber1,
-          mobileNumber2: userDetails.mobileNumber2 || "",
-          email: userDetails.email || ""
-        }
-      ],
-      whatsapp: false,
-      isAnonymous: false,
-    });
+    const savedLog =
+      recentLog ||
+      (await createSearchLog({
+        categoryName: finalCategoryName,
+        searchedUserText: cleanSearchText,
+        location: normalizedLocation,
+        userDetails: [
+          {
+            userName: userDetails.userName,
+            mobileNumber1: userDetails.mobileNumber1,
+            mobileNumber2: userDetails.mobileNumber2 || "",
+            email: userDetails.email || "",
+          },
+        ],
+        whatsapp: false,
+        isAnonymous: false,
+      }));
 
     const locationGroups = {
-      trichy: ["trichy", "tiruchirappalli"]
+      trichy: ["trichy", "tiruchirappalli"],
     };
 
     let locationList = [normalizedLocation];
@@ -371,8 +419,8 @@ export const logSearchAction = async (req, res) => {
       const aliases = districtAliasMap[locKey] || [locKey];
       searchMatchQuery.$and.push({
         $or: aliases.map((l) => ({
-          location: { $regex: `^${escapeRegex(normalize(l))}$`, $options: "i" }
-        }))
+          location: { $regex: `^${escapeRegex(normalize(l))}$`, $options: "i" },
+        })),
       });
     }
 
@@ -380,11 +428,8 @@ export const logSearchAction = async (req, res) => {
       searchMatchQuery.$and.push({
         $or: uniqueCategoryMatchValues.flatMap((value) => {
           const categoryRegex = getDynamicCategoryRegex(value);
-          return [
-            { category: categoryRegex },
-            { keywords: categoryRegex }
-          ];
-        })
+          return [{ category: categoryRegex }, { keywords: categoryRegex }];
+        }),
       });
     }
 
@@ -393,26 +438,31 @@ export const logSearchAction = async (req, res) => {
     }
 
     // Find matching businesses (limit to top 10)
-    const businesses = await businessListModel.find(
-      searchMatchQuery,
-      { businessName: 1, category: 1, keywords: 1, contactList: 1, whatsappNumber: 1, location: 1, street: 1, plotNumber: 1, averageRating: 1 }
-    )
+    const businesses = await businessListModel
+      .find(searchMatchQuery, {
+        businessName: 1,
+        category: 1,
+        keywords: 1,
+        contactList: 1,
+        whatsappNumber: 1,
+        location: 1,
+        street: 1,
+        plotNumber: 1,
+        averageRating: 1,
+      })
       .sort({ amountPaid: -1, paidDate: -1, averageRating: -1, createdAt: -1 })
       .limit(10)
       .lean();
 
     if (!businesses.length) {
-
       return res.status(200).json({
         success: true,
         message: "Lead stored but no businesses found",
-        detectedCategory: finalCategoryName
+        detectedCategory: finalCategoryName,
       });
-
     }
 
     const leadData = {
-
       searchText: finalCategoryName,
 
       location: normalizedLocation,
@@ -421,8 +471,7 @@ export const logSearchAction = async (req, res) => {
 
       customerMobile: userDetails.mobileNumber1,
 
-      email: userDetails.email || ""
-
+      email: userDetails.email || "",
     };
 
     const waSettings = leadSettings;
@@ -434,43 +483,70 @@ export const logSearchAction = async (req, res) => {
     const notifiedBusinesses = [];
 
     for (const business of businesses) {
-      const ownerMobile = extractIndianMobiles([business.contactList, business.whatsappNumber])[0];
+      const ownerMobile = extractIndianMobiles([
+        business.contactList,
+        business.whatsappNumber,
+      ])[0];
       if (!ownerMobile) continue;
-      const mobile10 = ownerMobile.startsWith("91") && ownerMobile.length === 12
-        ? ownerMobile.slice(2)
-        : ownerMobile;
-      emitToRoom(buildRoom.business(mobile10), WS_EVENTS.LEAD_ANALYTICS_UPDATE, {
-        category: finalCategoryName,
-        location: normalizedLocation,
-        ts: new Date().toISOString(),
-      });
+      const mobile10 =
+        ownerMobile.startsWith("91") && ownerMobile.length === 12
+          ? ownerMobile.slice(2)
+          : ownerMobile;
+      emitToRoom(
+        buildRoom.business(mobile10),
+        WS_EVENTS.LEAD_ANALYTICS_UPDATE,
+        {
+          category: finalCategoryName,
+          location: normalizedLocation,
+          ts: new Date().toISOString(),
+        },
+      );
     }
 
     const ownerMobiles = businesses
-      .flatMap(b => extractIndianMobiles([b.contactList, b.whatsappNumber]))
+      .flatMap((b) => extractIndianMobiles([b.contactList, b.whatsappNumber]))
       .filter(Boolean);
 
-    console.log("[FCM] businesses found:", businesses.length, "| owner mobiles resolved:", ownerMobiles.length, ownerMobiles);
+    console.log(
+      "[FCM] businesses found:",
+      businesses.length,
+      "| owner mobiles resolved:",
+      ownerMobiles.length,
+      ownerMobiles,
+    );
 
     // userModel stores mobileNumber1 as 10-digit (no 91 prefix); strip prefix for the DB query
-    const ownerMobilesForDB = ownerMobiles.map(m =>
-      m.startsWith("91") && m.length === 12 ? m.slice(2) : m
+    const ownerMobilesForDB = ownerMobiles.map((m) =>
+      m.startsWith("91") && m.length === 12 ? m.slice(2) : m,
     );
-    console.log("[FCM] querying userModel with 10-digit mobiles:", ownerMobilesForDB);
+    console.log(
+      "[FCM] querying userModel with 10-digit mobiles:",
+      ownerMobilesForDB,
+    );
 
     const ownerUsersMap = new Map();
     if (ownerMobilesForDB.length > 0) {
       const now = new Date();
-      const ownerUsers = await userModel.find(
-        { mobileNumber1: { $in: ownerMobilesForDB }, "fcmTokens.isActive": true },
-        { mobileNumber1: 1, fcmTokens: 1 }
-      ).lean();
-      console.log("[FCM] users with active fcmTokens found in DB:", ownerUsers.length);
+      const ownerUsers = await userModel
+        .find(
+          {
+            mobileNumber1: { $in: ownerMobilesForDB },
+            "fcmTokens.isActive": true,
+          },
+          { mobileNumber1: 1, fcmTokens: 1 },
+        )
+        .lean();
+      console.log(
+        "[FCM] users with active fcmTokens found in DB:",
+        ownerUsers.length,
+      );
       for (const u of ownerUsers) {
         const activeTokens = u.fcmTokens.filter(
-          t => t.isActive && new Date(t.expiresAt) > now
+          (t) => t.isActive && new Date(t.expiresAt) > now,
         );
-        console.log(`[FCM] user ${u.mobileNumber1}: total tokens=${u.fcmTokens.length}, active+valid=${activeTokens.length}`);
+        console.log(
+          `[FCM] user ${u.mobileNumber1}: total tokens=${u.fcmTokens.length}, active+valid=${activeTokens.length}`,
+        );
         if (activeTokens.length > 0) {
           // Key by 12-digit (91-prefixed) to match what the business loop uses
           ownerUsersMap.set("91" + u.mobileNumber1, activeTokens);
@@ -481,168 +557,175 @@ export const logSearchAction = async (req, res) => {
     }
 
     for (const business of businesses) {
-
-      const businessMobiles = extractIndianMobiles([business.contactList, business.whatsappNumber]);
+      const businessMobiles = extractIndianMobiles([
+        business.contactList,
+        business.whatsappNumber,
+      ]);
 
       if (!businessMobiles.length) {
-        console.warn("[WhatsApp] no valid business mobile:", business.businessName);
+        console.warn(
+          "[WhatsApp] no valid business mobile:",
+          business.businessName,
+        );
         continue;
       }
 
       for (const cleanMobile of businessMobiles) {
+        try {
+          if (waSettings.whatsapp_business_lead_alert) {
+            const sendPolicy = await evaluateWhatsAppSend({
+              mobile: cleanMobile,
+              template: "business_lead_alert_v2",
+              sourceType: "search_lead",
+              category: leadData.searchText,
+              location: leadData.location,
+              customerMobile: leadData.customerMobile,
+            });
 
-      try {
+            if (!sendPolicy.allowed) {
+              await markWhatsAppSkipped(
+                {
+                  templateName: "business_lead_alert_v2",
+                  sourceType: "search_lead",
+                  sourceId: savedLog._id,
+                  recipientMobile: sendPolicy.mobile || cleanMobile,
+                  category: leadData.searchText,
+                  location: leadData.location,
+                  customerName: leadData.customerName,
+                  customerMobile: leadData.customerMobile,
+                  businessId: business._id,
+                  businessName: business.businessName,
+                },
+                sendPolicy.skipReason,
+              );
+              console.warn(
+                `[WhatsApp] skipped ${business.businessName} ${cleanMobile}: ${sendPolicy.skipReason}`,
+              );
+              continue;
+            }
 
-        if (waSettings.whatsapp_business_lead_alert) {
-          const sendPolicy = await evaluateWhatsAppSend({
-            mobile: cleanMobile,
-            template: "business_lead_alert_v2",
-            sourceType: "search_lead",
-            category: leadData.searchText,
-            location: leadData.location,
-            customerMobile: leadData.customerMobile,
-          });
-
-          if (!sendPolicy.allowed) {
-            await markWhatsAppSkipped(
-              {
-                templateName: "business_lead_alert_v2",
-                sourceType: "search_lead",
-                sourceId: savedLog._id,
-                recipientMobile: sendPolicy.mobile || cleanMobile,
-                category: leadData.searchText,
-                location: leadData.location,
-                customerName: leadData.customerName,
-                customerMobile: leadData.customerMobile,
-                businessId: business._id,
-                businessName: business.businessName,
-              },
-              sendPolicy.skipReason
+            await withRetry(
+              () =>
+                sendBusinessLead(sendPolicy.mobile, leadData, {
+                  sourceType: "search_lead",
+                  sourceId: savedLog._id,
+                  businessId: business._id,
+                  businessName: business.businessName,
+                }),
+              `Business WhatsApp ${business.businessName} ${cleanMobile}`,
             );
-            console.warn(
-              `[WhatsApp] skipped ${business.businessName} ${cleanMobile}: ${sendPolicy.skipReason}`
-            );
+          } else {
+            console.warn("[WhatsApp] business lead alert disabled in settings");
             continue;
           }
 
-          await withRetry(
-            () =>
-              sendBusinessLead(sendPolicy.mobile, leadData, {
-                sourceType: "search_lead",
-                sourceId: savedLog._id,
-                businessId: business._id,
-                businessName: business.businessName,
-              }),
-            `Business WhatsApp ${business.businessName} ${cleanMobile}`
+          businessSendSuccess = true;
+
+          notifiedBusinesses.push({
+            businessName: business.businessName,
+
+            mobile: cleanMobile,
+          });
+
+          await wait(500);
+        } catch (err) {
+          console.error(
+            "Business WhatsApp failed after retries:",
+
+            err.response?.data || err.message,
           );
-        } else {
-          console.warn("[WhatsApp] business lead alert disabled in settings");
-          continue;
         }
 
-        businessSendSuccess = true;
-
-        notifiedBusinesses.push({
-
-          businessName: business.businessName,
-
-          mobile: cleanMobile
-
-        });
-
-        await wait(500);
-
-      } catch (err) {
-
-        console.error(
-
-          "Business WhatsApp failed after retries:",
-
-          err.response?.data || err.message
-
+        // Send FCM push to this business owner's active devices (fire-and-forget)
+        const ownerTokens = ownerUsersMap.get(cleanMobile);
+        console.log(
+          `[FCM] ${business.businessName} (${cleanMobile}): tokens to notify=${ownerTokens?.length ?? 0}`,
         );
-
-      }
-
-      // Send FCM push to this business owner's active devices (fire-and-forget)
-      const ownerTokens = ownerUsersMap.get(cleanMobile);
-      console.log(`[FCM] ${business.businessName} (${cleanMobile}): tokens to notify=${ownerTokens?.length ?? 0}`);
-      if (ownerTokens && ownerTokens.length > 0) {
-        const fcmTitle = "New Lead Alert 🔔";
-        const fcmBody = `Someone searched "${finalCategoryName}" in ${normalizedLocation}. Check your leads now!`;
-        const fcmData = {
-          type: "lead",
-          category: finalCategoryName,
-          location: normalizedLocation,
-        };
-        for (const tokenObj of ownerTokens) {
-          console.log(`[FCM] sending to token ${tokenObj.token.slice(0, 20)}... (platform: ${tokenObj.platform})`);
-          sendFCMNotification(tokenObj.token, fcmTitle, fcmBody, fcmData)
-            .then(() => console.log(`[FCM] push sent OK → ${business.businessName}`))
-            .catch(err => console.error(`[FCM] push failed → ${business.businessName}:`, err.message));
+        if (ownerTokens && ownerTokens.length > 0) {
+          const fcmTitle = "New Lead Alert 🔔";
+          const fcmBody = `Someone searched "${finalCategoryName}" in ${normalizedLocation}. Check your leads now!`;
+          const fcmData = {
+            type: "lead",
+            category: finalCategoryName,
+            location: normalizedLocation,
+          };
+          for (const tokenObj of ownerTokens) {
+            console.log(
+              `[FCM] sending to token ${tokenObj.token.slice(0, 20)}... (platform: ${tokenObj.platform})`,
+            );
+            sendFCMNotification(tokenObj.token, fcmTitle, fcmBody, fcmData)
+              .then(() =>
+                console.log(`[FCM] push sent OK → ${business.businessName}`),
+              )
+              .catch((err) =>
+                console.error(
+                  `[FCM] push failed → ${business.businessName}:`,
+                  err.message,
+                ),
+              );
+          }
+        } else {
+          console.log(
+            `[FCM] no tokens for ${business.businessName} — push skipped`,
+          );
         }
-      } else {
-        console.log(`[FCM] no tokens for ${business.businessName} — push skipped`);
       }
-
     }
-
-    }
-    const cleanCustomerMobile = extractIndianMobiles(userDetails.mobileNumber1)[0];
+    const cleanCustomerMobile = extractIndianMobiles(
+      userDetails.mobileNumber1,
+    )[0];
 
     if (cleanCustomerMobile) {
-
       try {
-
         if (waSettings.whatsapp_customer_business_list) {
           await withRetry(
             () =>
-              sendBusinessesToCustomer(cleanCustomerMobile, leadData, businesses, {
-                sourceType: "customer_list",
-                sourceId: savedLog._id,
-                customerListSendMode: waSettings.whatsapp_customer_business_list_send_mode || "split",
-              }),
-            `Customer WhatsApp ${cleanCustomerMobile}`
+              sendBusinessesToCustomer(
+                cleanCustomerMobile,
+                leadData,
+                businesses,
+                {
+                  sourceType: "customer_list",
+                  sourceId: savedLog._id,
+                  customerListSendMode:
+                    waSettings.whatsapp_customer_business_list_send_mode ||
+                    "split",
+                },
+              ),
+            `Customer WhatsApp ${cleanCustomerMobile}`,
           );
         } else {
-          console.warn("[WhatsApp] customer business list disabled in settings");
+          console.warn(
+            "[WhatsApp] customer business list disabled in settings",
+          );
           return res.status(202).json({
             success: true,
             message: "Lead stored but customer WhatsApp is disabled",
             detectedCategory: finalCategoryName,
             totalBusinesses: businesses.length,
             notifiedBusinesses,
-            whatsappUpdated: false
+            whatsappUpdated: false,
           });
         }
 
         customerSendSuccess = true;
-
-      }
-
-      catch (err) {
-
+      } catch (err) {
         console.error(
-
           "Customer WhatsApp failed",
 
-          err.response?.data || err.message
-
+          err.response?.data || err.message,
         );
-
       }
-
     }
 
     const whatsappUpdated = businessSendSuccess && customerSendSuccess;
 
     await searchLogModel.updateOne(
       { _id: savedLog._id },
-      { whatsapp: whatsappUpdated }
+      { whatsapp: whatsappUpdated },
     );
 
     return res.status(202).json({
-
       success: true,
 
       message: whatsappUpdated
@@ -655,26 +738,17 @@ export const logSearchAction = async (req, res) => {
 
       notifiedBusinesses,
 
-      whatsappUpdated
-
+      whatsappUpdated,
     });
-
-  }
-
-  catch (error) {
-
+  } catch (error) {
     console.error("Error logging search:", error);
 
     return res.status(500).json({
-
       success: false,
 
-      message: "Server error"
-
+      message: "Server error",
     });
-
   }
-
 };
 
 export const viewLogSearchAction = async (req, res) => {
@@ -697,7 +771,6 @@ export const viewSearchAction = async (req, res) => {
 
     const logs = await getMatchedSearchLogs(category, keywords);
     res.status(200).json(logs);
-
   } catch (error) {
     console.error("Error fetching matched search logs:", error);
     res.status(500).json({ message: "Failed to fetch search logs" });
@@ -723,7 +796,6 @@ export const updateSearchAction = async (req, res) => {
       success: true,
       data: updatedLog,
     });
-
   } catch (error) {
     console.error("updateSearchAction error:", error);
     return res.status(500).json({ message: error.message });
@@ -734,36 +806,50 @@ export const getTrendingSearchesAction = async (req, res) => {
   try {
     const trending = await getTopTrendingCategories(10);
 
-    const formatted = trending.map(item => ({
+    const formatted = trending.map((item) => ({
       _id: item._id,
       categoryName: item.categoryName || item.category,
       totalSearches: item.totalSearches,
-      categoryImageKey: item.categoryImageKey ? getSignedUrlByKey(item.categoryImageKey) : "",
-      liveImageKey: item.liveImageKey ? getSignedUrlByKey(item.liveImageKey) : "",
+      categoryImageKey: item.categoryImageKey
+        ? getSignedUrlByKey(item.categoryImageKey)
+        : "",
+      liveImageKey: item.liveImageKey
+        ? getSignedUrlByKey(item.liveImageKey)
+        : "",
       categoryImages: {
-        webHero: item.categoryImages?.webHero ? getSignedUrlByKey(item.categoryImages.webHero) : "",
-        webCard: item.categoryImages?.webCard ? getSignedUrlByKey(item.categoryImages.webCard) : "",
-        webThumbnail: item.categoryImages?.webThumbnail ? getSignedUrlByKey(item.categoryImages.webThumbnail) : "",
-        mobileVertical: item.categoryImages?.mobileVertical ? getSignedUrlByKey(item.categoryImages.mobileVertical) : "",
-        mobileCard: item.categoryImages?.mobileCard ? getSignedUrlByKey(item.categoryImages.mobileCard) : "",
-        mobileThumbnail: item.categoryImages?.mobileThumbnail ? getSignedUrlByKey(item.categoryImages.mobileThumbnail) : ""
-      }
+        webHero: item.categoryImages?.webHero
+          ? getSignedUrlByKey(item.categoryImages.webHero)
+          : "",
+        webCard: item.categoryImages?.webCard
+          ? getSignedUrlByKey(item.categoryImages.webCard)
+          : "",
+        webThumbnail: item.categoryImages?.webThumbnail
+          ? getSignedUrlByKey(item.categoryImages.webThumbnail)
+          : "",
+        mobileVertical: item.categoryImages?.mobileVertical
+          ? getSignedUrlByKey(item.categoryImages.mobileVertical)
+          : "",
+        mobileCard: item.categoryImages?.mobileCard
+          ? getSignedUrlByKey(item.categoryImages.mobileCard)
+          : "",
+        mobileThumbnail: item.categoryImages?.mobileThumbnail
+          ? getSignedUrlByKey(item.categoryImages.mobileThumbnail)
+          : "",
+      },
     }));
 
     return res.status(200).json({
       success: true,
-      data: formatted
+      data: formatted,
     });
-
   } catch (error) {
     console.error("getTrendingSearchesAction error:", error);
     return res.status(500).json({
       success: false,
-      message: "Failed to fetch trending searches"
+      message: "Failed to fetch trending searches",
     });
   }
 };
-
 
 export const sendEnquiryLead = async (req, res) => {
   try {
@@ -773,14 +859,14 @@ export const sendEnquiryLead = async (req, res) => {
       location,
       customerName,
       customerMobile,
-      customerEmail
+      customerEmail,
     } = req.body;
     const leadData = {
       category,
       location,
       customerName,
       customerMobile,
-      customerEmail
+      customerEmail,
     };
     const leadSettings = await getSettings();
 
@@ -791,16 +877,19 @@ export const sendEnquiryLead = async (req, res) => {
       if (!business) {
         return res.status(404).json({
           success: false,
-          message: "Business not found"
+          message: "Business not found",
         });
       }
 
-      const mobile = extractIndianMobiles([business.whatsappNumber, business.contactList])[0];
+      const mobile = extractIndianMobiles([
+        business.whatsappNumber,
+        business.contactList,
+      ])[0];
 
       if (!mobile) {
         return res.status(400).json({
           success: false,
-          message: "Business does not have a valid enquiry mobile"
+          message: "Business does not have a valid enquiry mobile",
         });
       }
 
@@ -814,7 +903,7 @@ export const sendEnquiryLead = async (req, res) => {
         success: true,
         message: "Lead sent to business",
         totalBusinesses: 1,
-        notifiedBusinesses: [{ businessName: business.businessName, mobile }]
+        notifiedBusinesses: [{ businessName: business.businessName, mobile }],
       });
     }
 
@@ -822,7 +911,8 @@ export const sendEnquiryLead = async (req, res) => {
     const normalizedLocation = (location || "global").toLowerCase().trim();
     const categoryText = (category || "").toLowerCase().trim();
 
-    const escapeRegex = (text = "") => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const escapeRegex = (text = "") =>
+      text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
     const getCategoryRegex = (val) => {
       try {
@@ -839,18 +929,38 @@ export const sendEnquiryLead = async (req, res) => {
     }
 
     if (normalizedLocation && normalizedLocation !== "global") {
-      searchMatchQuery.location = { $regex: `^${escapeRegex(normalizedLocation)}$`, $options: "i" };
+      searchMatchQuery.location = {
+        $regex: `^${escapeRegex(normalizedLocation)}$`,
+        $options: "i",
+      };
     }
 
     if (categoryText) {
       const categoryRegex = getCategoryRegex(categoryText);
-      searchMatchQuery.$or = [{ category: categoryRegex }, { keywords: categoryRegex }];
+      searchMatchQuery.$or = [
+        { category: categoryRegex },
+        { keywords: categoryRegex },
+      ];
     }
 
-    const businesses = await businessListModel.find(searchMatchQuery, { businessName: 1, contactList: 1, whatsappNumber: 1, location: 1 }).limit(10).lean();
+    const businesses = await businessListModel
+      .find(searchMatchQuery, {
+        businessName: 1,
+        contactList: 1,
+        whatsappNumber: 1,
+        location: 1,
+      })
+      .limit(10)
+      .lean();
 
     if (!businesses.length) {
-      return res.status(200).json({ success: true, message: "No businesses found for this enquiry", totalBusinesses: 0 });
+      return res
+        .status(200)
+        .json({
+          success: true,
+          message: "No businesses found for this enquiry",
+          totalBusinesses: 0,
+        });
     }
 
     const notified = [];
@@ -874,13 +984,12 @@ export const sendEnquiryLead = async (req, res) => {
       success: true,
       message: "Lead sent to matching businesses",
       totalBusinesses: businesses.length,
-      notifiedBusinesses: notified
+      notifiedBusinesses: notified,
     });
-
   } catch (err) {
     console.log(err);
     res.status(500).json({
-      success: false
+      success: false,
     });
   }
 };

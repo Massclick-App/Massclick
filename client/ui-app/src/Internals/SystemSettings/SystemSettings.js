@@ -41,6 +41,52 @@ const TtlBadge = ({
   if (ttl < 3600) return <span className={cx("ttl-badge ttl-medium")}>{Math.floor(ttl / 60)}m</span>;
   return <span className={cx("ttl-badge ttl-long")}>{Math.floor(ttl / 3600)}h</span>;
 };
+const HelpHint = ({
+  text
+}) => {
+  if (!text) return null;
+  return <span className={cx("help-hint")} tabIndex={0} role="note" aria-label={text} onClick={e => e.stopPropagation()} onMouseDown={e => e.stopPropagation()}>
+      <span className={cx("help-hint-icon")}>?</span>
+      <span className={cx("help-hint-bubble")}>{text}</span>
+    </span>;
+};
+const FIELD_HELP = {
+  app_maintenance_mode: "Turns the whole app into maintenance mode. Users are blocked until this is disabled.",
+  otp_real_enabled: "When enabled, OTPs go through MSG91. When disabled, OTP verification uses the bypass/dev behavior.",
+  whatsapp_business_lead_alert: "Sends a WhatsApp lead alert to matched business owners when a customer searches.",
+  whatsapp_customer_business_list: "Sends the matched business list back to the customer after their search.",
+  whatsapp_customer_business_list_send_mode: "Single sends one customer message with up to 5 businesses. Split sends two messages with up to 10 businesses.",
+  whatsapp_mni_lead_alert: "Sends MNI requirement alerts to matched businesses.",
+  whatsapp_mni_customer_list: "Sends the matched MNI business result list to the requesting customer.",
+  whatsapp_login_welcome: "Sends a welcome WhatsApp message after a customer's first login.",
+  lead_guard_search_text_required: "Blocks lead creation when the search text is empty.",
+  lead_guard_anonymous_dedupe_enabled: "Prevents repeated anonymous searches from being logged too often.",
+  lead_guard_user_dedupe_enabled: "Prevents the same customer from repeatedly triggering the same lead in a short window.",
+  lead_guard_live_business_only: "When enabled, only businesses marked live are eligible for lead matching.",
+  whatsapp_business_lead_daily_cap_enabled: "Limits how many WhatsApp lead alerts one business number can receive in a day.",
+  whatsapp_business_lead_duplicate_guard_enabled: "Stops the same business receiving the same customer/category/location lead again on the same day.",
+  whatsapp_business_lead_cooldown_enabled: "Adds a waiting period before the same business number can receive another lead WhatsApp.",
+  whatsapp_recipient_health_guard_enabled: "Skips WhatsApp recipients marked invalid or temporarily suppressed after delivery failures.",
+  logging_enabled: "Master switch for application logging controls.",
+  logging_fcm_debug: "Enables extra logs for Firebase push notification delivery.",
+  logging_sms_debug: "Enables extra logs for SMS and WhatsApp gateway calls.",
+  logging_seo_debug: "Enables extra logs for SEO metadata and content operations.",
+  logging_db_queries: "Enables extra logs around database-heavy operations.",
+  logging_level: "Controls how much detail the server writes to logs.",
+  app_android_latest_version: "Latest Android version available to users.",
+  app_android_min_version: "Oldest Android version allowed before users must update.",
+  app_android_update_url: "Play Store URL shown when Android users need an update.",
+  app_ios_latest_version: "Latest iOS version available to users.",
+  app_ios_min_version: "Oldest iOS version allowed before users must update.",
+  app_ios_update_url: "App Store URL shown when iOS users need an update.",
+  app_release_notes: "Short update notes shown with version/update messaging.",
+  lead_guard_anonymous_dedupe_minutes: "How many minutes anonymous duplicate search logs are suppressed.",
+  lead_guard_user_dedupe_minutes: "How many minutes duplicate customer leads are suppressed.",
+  whatsapp_business_lead_daily_cap: "Maximum WhatsApp lead alerts one business number can receive per day.",
+  whatsapp_business_lead_cooldown_minutes: "How many minutes to wait before sending another lead WhatsApp to the same business number.",
+  redis_enabled: "Controls whether Redis-backed cache behavior is enabled.",
+  cache_type: "Select which cache group should be invalidated.",
+};
 const validateVersionFormat = version => {
   if (!version) return null;
   const semverRegex = /^\d+\.\d+(\.\d+)?(-[a-zA-Z0-9]+)?(\+[a-zA-Z0-9]+)?$/;
@@ -669,7 +715,10 @@ export default function SystemSettings() {
                 <ConstructionIcon />
               </div>
               <div className={cx("compact-header-text")}>
-                <div className={cx("compact-title")}>Maintenance Mode</div>
+                <div className={cx("label-with-help compact-title")}>
+                  <span>Maintenance Mode</span>
+                  <HelpHint text={FIELD_HELP.app_maintenance_mode} />
+                </div>
                 <div className={cx("compact-subtitle")}>{maintenanceOn ? 'BLOCKING USERS' : 'Disabled'}</div>
               </div>
             </div>
@@ -703,7 +752,10 @@ export default function SystemSettings() {
               desc
             }) => <div key={key} className={cx("toggle-item")} onClick={() => toggle(key)}>
                     <div className={cx("toggle-item-info")}>
-                      <div className={cx("toggle-item-label")}>{label}</div>
+                      <div className={cx("label-with-help toggle-item-label")}>
+                        <span>{label}</span>
+                        <HelpHint text={FIELD_HELP[key]} />
+                      </div>
                       <div className={cx("toggle-item-desc")}>{desc}</div>
                     </div>
                     <label className={cx("toggle-switch")}>
@@ -749,7 +801,10 @@ export default function SystemSettings() {
                   placeholder,
                   colSpan
                 }) => <div key={key} className={cx(`form-field ${colSpan === 2 ? 'span-2' : ''}`)}>
-                        <label className={cx("form-label")}>{label}</label>
+                        <label className={cx("label-with-help form-label")}>
+                          <span>{label}</span>
+                          <HelpHint text={FIELD_HELP[key]} />
+                        </label>
                         <input type="text" className={cx(`form-input ${validationErrors[key] ? 'error' : ''}`)} value={local[key] ?? ""} onChange={e => setText(key, e.target.value)} placeholder={placeholder} />
                         {validationErrors[key] && <div className={cx("input-error")}>{validationErrors[key]}</div>}
                       </div>)}
@@ -762,7 +817,10 @@ export default function SystemSettings() {
             <div className={cx("section-group")}>
               <div className={cx("section-label")}>Release Notes</div>
               <div className={cx("form-field")}>
-                <label className={cx("form-label")}>What's new</label>
+                <label className={cx("label-with-help form-label")}>
+                  <span>What's new</span>
+                  <HelpHint text={FIELD_HELP.app_release_notes} />
+                </label>
                 <textarea className={cx(`form-input ${validationErrors.app_release_notes ? 'error' : ''}`)} value={local.app_release_notes ?? ""} onChange={e => setText("app_release_notes", e.target.value)} placeholder="Bug fixes and improvements..." rows={3} />
                 {validationErrors.app_release_notes && <div className={cx("input-error")}>{validationErrors.app_release_notes}</div>}
               </div>
@@ -773,7 +831,10 @@ export default function SystemSettings() {
             <div className={cx("section-group")}>
               <div className={cx("section-label")}>Logging</div>
               <div className={cx("form-field")}>
-                <label className={cx("form-label")}>Log Level</label>
+                <label className={cx("label-with-help form-label")}>
+                  <span>Log Level</span>
+                  <HelpHint text={FIELD_HELP.logging_level} />
+                </label>
                 <select className={cx("form-input")} value={local.logging_level ?? "info"} onChange={e => setText("logging_level", e.target.value)}>
                   <option value="off">Off</option>
                   <option value="error">Error</option>
@@ -789,7 +850,10 @@ export default function SystemSettings() {
             <div className={cx("section-group")}>
               <div className={cx("section-label")}>WhatsApp Customer Delivery</div>
               <div className={cx("form-field")}>
-                <label className={cx("form-label")}>Customer Business List Mode</label>
+                <label className={cx("label-with-help form-label")}>
+                  <span>Customer Business List Mode</span>
+                  <HelpHint text={FIELD_HELP.whatsapp_customer_business_list_send_mode} />
+                </label>
                 <select className={cx(`form-input ${validationErrors.whatsapp_customer_business_list_send_mode ? 'error' : ''}`)} value={local.whatsapp_customer_business_list_send_mode ?? "split"} onChange={e => setText("whatsapp_customer_business_list_send_mode", e.target.value)}>
                   <option value="single">Single message</option>
                   <option value="split">Split messages</option>
@@ -808,7 +872,10 @@ export default function SystemSettings() {
                 label,
                 placeholder
               }) => <div key={key} className={cx("form-field")}>
-                    <label className={cx("form-label")}>{label}</label>
+                    <label className={cx("label-with-help form-label")}>
+                      <span>{label}</span>
+                      <HelpHint text={FIELD_HELP[key]} />
+                    </label>
                     <input type="number" min={NUMBER_FIELD_RULES[key].min} max={NUMBER_FIELD_RULES[key].max} step="1" className={cx(`form-input ${validationErrors[key] ? 'error' : ''}`)} value={local[key] ?? ""} onChange={e => setNumber(key, e.target.value)} placeholder={placeholder} />
                     {validationErrors[key] && <div className={cx("input-error")}>{validationErrors[key]}</div>}
                   </div>)}
@@ -831,7 +898,10 @@ export default function SystemSettings() {
               <div className={cx("form-field")} style={{
               marginTop: 12
             }}>
-                <label className={cx("form-label")}>Redis Enabled</label>
+                <label className={cx("label-with-help form-label")}>
+                  <span>Redis Enabled</span>
+                  <HelpHint text={FIELD_HELP.redis_enabled} />
+                </label>
                 <div style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -851,7 +921,10 @@ export default function SystemSettings() {
             <div className={cx("section-group")}>
               <div className={cx("section-label")}>Clear Cache</div>
               <div className={cx("form-field")}>
-                <label className={cx("form-label")}>Cache Type</label>
+                <label className={cx("label-with-help form-label")}>
+                  <span>Cache Type</span>
+                  <HelpHint text={FIELD_HELP.cache_type} />
+                </label>
                 <select className={cx("form-input")} value={selectedCache} onChange={e => setSelectedCache(e.target.value)} disabled={cacheClearing}>
                   {CACHE_TYPES.map(cache => <option key={cache.value} value={cache.value}>{cache.label}</option>)}
                 </select>
