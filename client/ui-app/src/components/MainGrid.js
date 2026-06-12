@@ -40,6 +40,29 @@ export default function MainGrid() {
 
   const dispatch = useDispatch();
 
+  const getObjectId = (value) => {
+    if (!value) return "";
+    if (typeof value === "object") return value.$oid || value._id || value.id || "";
+    return String(value);
+  };
+
+  const getUserDisplayName = (user) =>
+    user?.userName || user?.name || user?.fullName || user?.emailId || user?.email || "";
+
+  const getCreatedByDisplayName = (createdBy) => {
+    if (!createdBy) return "—";
+
+    if (typeof createdBy === "object") {
+      const populatedName = getUserDisplayName(createdBy);
+      if (populatedName) return populatedName;
+    }
+
+    const createdById = getObjectId(createdBy);
+    const user = users.find((u) => getObjectId(u._id) === createdById);
+
+    return getUserDisplayName(user) || "—";
+  };
+
   const getTodayRange = () => {
     const start = new Date();
     start.setHours(0, 0, 0, 0);
@@ -83,7 +106,7 @@ export default function MainGrid() {
   useEffect(() => {
     dispatch(getAllBusinessList());
     dispatch(getAllLocation());
-    dispatch(getAllUsers());
+    dispatch(getAllUsers({ pageNo: 1, pageSize: 1000 }));
   }, [dispatch]);
 
   const rows = businessList.map((bl) => ({
@@ -152,19 +175,7 @@ export default function MainGrid() {
     {
       id: "createdBy",
       label: "Created By",
-      renderCell: (value) => {
-        if (!value) return "—";
-
-        const createdById =
-          typeof value === "object" && value.$oid ? value.$oid : value;
-        const user = users.find((u) => {
-          const userId =
-            typeof u._id === "object" && u._id.$oid ? u._id.$oid : u._id;
-          return userId === createdById;
-        });
-
-        return user ? user.userName : "—";
-      },
+      renderCell: (value) => getCreatedByDisplayName(value),
     },
     {
       id: "qrCode",

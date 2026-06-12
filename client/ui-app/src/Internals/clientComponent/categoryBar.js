@@ -185,70 +185,70 @@ const CategoryBar = () => {
     }
   };
   return <header className={cx("categoryBarContainer")}>
-            <div className={cx("categoryBarContent")}>
+    <div className={cx("categoryBarContent")}>
 
-                <div className={cx("logoGroup")}>
-                    <div className={cx("logoWrapper")}>
-                        <img src="/header.png" alt="Massclick Logo" className={cx("logoImage")} onClick={() => window.location.href = "/"} />
-                    </div>
-                    <div className={cx("brandingText")}>
-                        <img src={MassclickIndiaLogo} alt="Massclick India" className={cx("brandLogo")} onClick={() => window.location.href = "/"} />
-                    </div>
-                </div>
+      <div className={cx("logoGroup")}>
+        <div className={cx("logoWrapper")}>
+          <img src="/header.png" alt="Massclick Logo" className={cx("logoImage")} onClick={() => window.location.href = "/"} />
+        </div>
+        <div className={cx("brandingText")}>
+          <img src={MassclickIndiaLogo} alt="Massclick India" className={cx("brandLogo")} onClick={() => window.location.href = "/"} />
+        </div>
+      </div>
 
-                <nav className={cx("desktopNav")}>
-                    <div className={cx("categoryButtons")}>
-                        {categories.map((category, index) => <button key={index} className={cx("categoryButton")} onClick={() => handleCategoryClick(category.name)}>
-                                {category.icon}
-                                <span>{category.name}</span>
-                            </button>)}
-                    </div>
-                </nav>
+      <nav className={cx("desktopNav")}>
+        <div className={cx("categoryButtons")}>
+          {categories.map((category, index) => <button key={index} className={cx("categoryButton")} onClick={() => handleCategoryClick(category.name)}>
+            {category.icon}
+            <span>{category.name}</span>
+          </button>)}
+        </div>
+      </nav>
 
-                <div className={cx("actionButtons")}>
+      <div className={cx("actionButtons")}>
 
-                    <IconButton className={cx("mobileMenuButton")} onClick={handleMenuClick}>
-                        <MenuIcon />
-                    </IconButton>
+        <IconButton className={cx("mobileMenuButton")} onClick={handleMenuClick}>
+          <MenuIcon />
+        </IconButton>
 
-                    {!isLoggedIn ? <button className={cx("authButton loginButton")} onClick={() => setIsModalOpen(true)}>
-                            <LoginIcon />
-                            <span className={cx("loginText")}>Login / Sign Up</span>
-                        </button> : <>
-                            <IconButton onClick={openDrawer} className={cx("iconButtonPrimary")}>
-                                <Avatar src={profileImageUrl} sx={{
+        {!isLoggedIn ? <button className={cx("authButton loginButton")} onClick={() => setIsModalOpen(true)}>
+          <LoginIcon />
+          <span className={cx("loginText")}>Login / Sign Up</span>
+        </button> : <>
+          <IconButton onClick={openDrawer} className={cx("iconButtonPrimary")}>
+            <Avatar src={profileImageUrl} sx={{
               width: 34,
               height: 34,
               bgcolor: 'secondary.main'
             }}>
-                                    {userName ? userName[0].toUpperCase() : <AccountCircleIcon sx={{
+              {userName ? userName[0].toUpperCase() : <AccountCircleIcon sx={{
                 color: 'white'
               }} />}
-                                </Avatar>
-                            </IconButton>
+            </Avatar>
+          </IconButton>
 
-                            <IconButton className={cx("iconButtonPrimary")} onClick={() => setIsNotificationModalOpen(true)}>
-                                <Badge badgeContent={leadsData.length} color="error">
-                                    <NotificationsIcon />
-                                </Badge>
-                            </IconButton>
-                        </>}
-                </div>
-            </div>
+          <IconButton className={cx("iconButtonPrimary")} onClick={() => setIsNotificationModalOpen(true)}>
+            <Badge badgeContent={leadsData.length} color="error">
+              <NotificationsIcon />
+            </Badge>
+          </IconButton>
+        </>}
+      </div>
+    </div>
 
-            <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
-                {categories.map((category, index) => <MenuItem key={index} onClick={() => handleCategoryClick(category.name)}>
-                        {category.icon}
-                        <span style={{
+    <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
+      {categories.map((category, index) => <MenuItem key={index} onClick={() => handleCategoryClick(category.name)}>
+        {category.icon}
+        <span style={{
           marginLeft: 10
         }}>{category.name}</span>
-                    </MenuItem>)}
-            </Menu>
+      </MenuItem>)}
+    </Menu>
 
-            <AddBusinessModal open={isModalOpen} handleClose={() => setIsModalOpen(false)} />
+    <AddBusinessModal open={isModalOpen} handleClose={() => setIsModalOpen(false)} />
 
-            <LeadsNotificationModal open={isNotificationModalOpen} onClose={() => setIsNotificationModalOpen(false)} />
-        </header>;
+    <LeadsNotificationModal open={isNotificationModalOpen} onClose={() => setIsNotificationModalOpen(false)} />
+  </header>;
 };
 export default CategoryBar;
 export const categoryBarHelpers = {
