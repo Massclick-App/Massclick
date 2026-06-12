@@ -591,13 +591,16 @@ export const sendBusinessesToCustomer = async (
     });
 
     const sendMode = context.customerListSendMode === "single" ? "single" : "split";
+    const totalMatchedBusinesses = uniqueBusinesses.length;
     const finalBusinesses = uniqueBusinesses.slice(0, sendMode === "single" ? 5 : 10);
     const firstBatch = finalBusinesses.slice(0, 5);
     const secondBatch = finalBusinesses.slice(5, 10);
     const baseValues = getCustomerListBaseValues(lead);
-    const firstMessageVariant = getCustomerBusinessListVariant(
-      context.firstLanguageCode || "en_US"
-    );
+    const shouldUseSingleEnTemplate =
+      totalMatchedBusinesses <= 5 || finalBusinesses.length <= 5;
+    const firstMessageVariant = shouldUseSingleEnTemplate
+      ? getCustomerBusinessListVariant(context.singleBatchLanguageCode || "en")
+      : getCustomerBusinessListVariant(context.firstLanguageCode || "en_US");
     const requestedSecondMessageVariant = getCustomerBusinessListVariant(
       context.secondLanguageCode || "en"
     );
