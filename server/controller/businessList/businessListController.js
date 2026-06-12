@@ -377,6 +377,137 @@ const districtAliasMap = {
   trichy: ["tiruchirappalli", "trichy"],
 };
 
+const categoryIntentStopWords = new Set([
+  "a",
+  "an",
+  "and",
+  "around",
+  "at",
+  "best",
+  "for",
+  "in",
+  "me",
+  "near",
+  "nearby",
+  "of",
+  "service",
+  "services",
+  "the",
+  "to",
+]);
+
+const categoryIntentNormalize = (text = "") =>
+  String(text)
+    .toLowerCase()
+    .trim()
+    .replace(/&/g, " and ")
+    .replace(/[-_]/g, " ")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ");
+
+const categoryIntentTokens = (text = "") =>
+  categoryIntentNormalize(text).split(" ").filter(Boolean);
+
+const hasCategoryIntentToken = (text = "", token = "") => {
+  const tokens = categoryIntentTokens(text);
+  if (tokens.includes(token)) return true;
+
+  if (token.endsWith("s")) {
+    return tokens.includes(token.slice(0, -1));
+  }
+
+  return tokens.includes(`${token}s`);
+};
+
+const scoreCategoryIntent = (candidate, rawTerm) => {
+  const query = categoryIntentNormalize(rawTerm);
+  const allTokens = categoryIntentTokens(query);
+  const meaningfulTokens = allTokens.filter((token) => !categoryIntentStopWords.has(token));
+  const requiredTokens = meaningfulTokens.length > 0 ? meaningfulTokens : allTokens;
+
+  if (requiredTokens.length === 0) return 0;
+
+  const categoryText = categoryIntentNormalize(candidate.category);
+  const descriptionText = categoryIntentNormalize(candidate.description);
+  const keywords = Array.isArray(candidate.keywords) ? candidate.keywords : [];
+  const keywordTexts = keywords.map((keyword) => categoryIntentNormalize(keyword));
+  const searchableText = [categoryText, descriptionText, ...keywordTexts].join(" ");
+
+  if (!requiredTokens.every((token) => hasCategoryIntentToken(searchableText, token))) {
+    return 0;
+  }
+
+  let score = 0;
+
+  if (categoryText === query) score += 200;
+  if (keywordTexts.some((keyword) => keyword === query)) score += 180;
+  if (categoryText.includes(query)) score += 90;
+  if (keywordTexts.some((keyword) => keyword.includes(query))) score += 80;
+
+  const keywordWithAllTokens = keywordTexts.some((keyword) =>
+    allTokens.every((token) => hasCategoryIntentToken(keyword, token))
+  );
+  if (keywordWithAllTokens) score += 70;
+
+  for (const token of requiredTokens) {
+    if (hasCategoryIntentToken(categoryText, token)) score += 30;
+    if (keywordTexts.some((keyword) => hasCategoryIntentToken(keyword, token))) score += 20;
+    if (hasCategoryIntentToken(descriptionText, token)) score += 5;
+  }
+
+  const matchedAllQueryTokens = allTokens.every((token) => hasCategoryIntentToken(searchableText, token));
+  if (allTokens.length > requiredTokens.length && matchedAllQueryTokens) {
+    score += 35;
+  }
+
+  return score;
+};
+
+const resolveCategoryIntent = async (term, escapeRegex) => {
+  const exactPattern = `^${escapeRegex(term)}$`;
+  const exactMatch = await categoryModel.findOne(
+    {
+      $or: [
+        { category: { $regex: exactPattern, $options: "i" } },
+        { keywords: { $regex: exactPattern, $options: "i" } }
+      ],
+      isActive: true
+    },
+    { category: 1 }
+  );
+
+  if (exactMatch) return exactMatch.category;
+
+  const requiredTokens = categoryIntentTokens(term).filter(
+    (token) => !categoryIntentStopWords.has(token)
+  );
+
+  if (requiredTokens.length === 0) return "";
+
+  const tokenRegex = requiredTokens.map(escapeRegex).join("|");
+  const candidates = await categoryModel.find(
+    {
+      isActive: true,
+      $or: [
+        { category: { $regex: tokenRegex, $options: "i" } },
+        { keywords: { $regex: tokenRegex, $options: "i" } },
+        { description: { $regex: tokenRegex, $options: "i" } }
+      ]
+    },
+    { category: 1, keywords: 1, description: 1 }
+  ).limit(50);
+
+  const bestMatch = candidates
+    .map((candidate) => ({
+      category: candidate.category,
+      score: scoreCategoryIntent(candidate, term),
+    }))
+    .filter((candidate) => candidate.score > 0)
+    .sort((a, b) => b.score - a.score)[0];
+
+  return bestMatch?.category || "";
+};
+
 export const getEnhancedSuggestionsController = async (req, res) => {
   try {
     const search = (req.query.search || "").trim();
@@ -470,6 +601,10 @@ export const mainSearchController = async (req, res) => {
     location = normalize(location);
     category = normalize(category);
 
+    if (["all districts", "enter location manually"].includes(location)) {
+      location = "";
+    }
+
     // Pagination
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const pageSize = Math.min(50, Math.max(1, parseInt(req.query.pageSize) || 20));
@@ -480,26 +615,16 @@ export const mainSearchController = async (req, res) => {
     const lng = parseFloat(req.query.lng);
     const hasGeo = !isNaN(lat) && !isNaN(lng) && !(lat === 0 && lng === 0);
 
+    const escapeRegex = (text = "") => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
     // Resolve category from term if not provided
     if (!category && term) {
-      const escapeForCat = (text = "") => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const matchedCategory = await categoryModel.findOne(
-        {
-          $or: [
-            { category: { $regex: `^${escapeForCat(term)}$`, $options: "i" } },
-            { keywords: { $regex: `^${escapeForCat(term)}$`, $options: "i" } }
-          ],
-          isActive: true
-        },
-        { category: 1 }
-      );
+      const matchedCategory = await resolveCategoryIntent(term, escapeRegex);
       if (matchedCategory) {
-        category = matchedCategory.category;
+        category = matchedCategory;
         term = "";
       }
     }
-
-    const escapeRegex = (text = "") => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
     const matchQuery = { businessesLive: true, $and: [] };
 
