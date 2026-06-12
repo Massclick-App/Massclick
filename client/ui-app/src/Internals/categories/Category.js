@@ -52,6 +52,23 @@ import AdminViewTabs from "../../components/AdminViewTabs.js";
 const cx = createScopedClassNames(styles);
 const API_URL = process.env.REACT_APP_API_URL;
 
+const HelpHint = ({ text }) => {
+  if (!text) return null;
+  return (
+    <span
+      className={cx("help-hint")}
+      tabIndex={0}
+      role="note"
+      aria-label={text}
+      onClick={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+    >
+      <span className={cx("help-hint-icon")}>?</span>
+      <span className={cx("help-hint-bubble")}>{text}</span>
+    </span>
+  );
+};
+
 // Image variant configuration with size constraints
 const IMAGE_VARIANTS = {
   webHero: {
@@ -131,6 +148,42 @@ const FILTER_TYPE_COPY = {
   radio: "One value only, useful for sort or fixed choices.",
   toggle: "Simple yes/no filter.",
   range: "Numeric min and max filter.",
+};
+const FIELD_HELP = {
+  customer_filters:
+    "These filters are shown to customers on the public search form. Build the filter here, then attach it to the category.",
+  build_filter:
+    "Create or edit one filter at a time. Use a preset for common filters, or fill the fields manually.",
+  filter_label:
+    "The user-facing label customers will read in the search form.",
+  filter_key:
+    "The internal field key saved in the database and sent through the API. Use lowercase letters and underscores.",
+  filter_type:
+    "Multi select allows several answers, single select allows one, toggle is yes or no, and range uses min/max numbers.",
+  filter_options:
+    "Add one option per value for multi select or single select filters. Press Enter after each option.",
+  filter_min:
+    "Smallest allowed value for a range filter.",
+  filter_max:
+    "Largest allowed value for a range filter.",
+  filter_unit:
+    "Shown beside the range values, such as INR, km, or years.",
+  filter_required:
+    "If enabled, customers must answer this filter before submitting.",
+  filter_visible:
+    "If disabled, the filter stays saved but is hidden from the customer-facing UI.",
+  category_name:
+    "The public category name people search for.",
+  category_type:
+    "Primary categories are top-level. Sub categories need a parent sub category type.",
+  sub_category_type:
+    "Choose the parent group for a sub category so it is organized correctly.",
+  keywords:
+    "Add search phrases customers might type. These help category suggestions and matching.",
+  title:
+    "The page or card title shown in the admin and public detail views.",
+  description:
+    "Longer descriptive copy for the category page.",
 };
 const FILTER_PRESETS = [
   {
@@ -1487,7 +1540,10 @@ export default function Category() {
               </div>
 
               <div className={cx("category-form-input-group")}>
-                <label className={cx("category-input-label")}>Category</label>
+                <label className={cx("category-input-label label-with-help")}>
+                  <span>Category</span>
+                  <HelpHint text={FIELD_HELP.category_name} />
+                </label>
                 <input
                   type="text"
                   name="category"
@@ -1503,9 +1559,7 @@ export default function Category() {
               </div>
 
               <div className={cx("category-form-input-group")}>
-                <label className={cx("category-input-label")}>
-                  Slug (Auto)
-                </label>
+                <label className={cx("category-input-label")}>Slug (Auto)</label>
                 <input
                   type="text"
                   name="slug"
@@ -1516,8 +1570,9 @@ export default function Category() {
               </div>
 
               <div className={cx("category-form-input-group")}>
-                <label className={cx("category-input-label")}>
-                  Category Type
+                <label className={cx("category-input-label label-with-help")}>
+                  <span>Category Type</span>
+                  <HelpHint text={FIELD_HELP.category_type} />
                 </label>
                 <select
                   name="categoryType"
@@ -1540,8 +1595,9 @@ export default function Category() {
 
               {formData.categoryType === "Sub Category" && (
                 <div className={cx("category-form-input-group")}>
-                  <label className={cx("category-input-label")}>
-                    Sub Category Type
+                  <label className={cx("category-input-label label-with-help")}>
+                    <span>Sub Category Type</span>
+                    <HelpHint text={FIELD_HELP.sub_category_type} />
                   </label>
                   <select
                     name="subCategoryType"
@@ -1567,7 +1623,10 @@ export default function Category() {
               )}
 
               <div className={cx("category-form-input-group")}>
-                <label className={cx("category-input-label")}>Title</label>
+                <label className={cx("category-input-label label-with-help")}>
+                  <span>Title</span>
+                  <HelpHint text={FIELD_HELP.title} />
+                </label>
                 <input
                   type="text"
                   name="title"
@@ -1597,7 +1656,10 @@ export default function Category() {
                     mb: 0.5,
                   }}
                 >
-                  <label className={cx("category-input-label")}>Keywords</label>
+                  <label className={cx("category-input-label label-with-help")}>
+                    <span>Keywords</span>
+                    <HelpHint text={FIELD_HELP.keywords} />
+                  </label>
                   <Button
                     size="small"
                     variant="outlined"
@@ -2381,7 +2443,10 @@ export default function Category() {
                 )}
               >
                 <div className={cx("category-section-title")}>
-                  <span>Customer filters</span>
+                  <span className={cx("label-with-help")}>
+                    <span>Customer filters</span>
+                    <HelpHint text={FIELD_HELP.customer_filters} />
+                  </span>
                   <small>{formData.filterConfig.length} configured</small>
                 </div>
 
@@ -2405,11 +2470,17 @@ export default function Category() {
                         />
                         <Typography
                           variant="subtitle2"
-                          sx={{ fontWeight: 700 }}
+                          sx={{
+                            fontWeight: 700,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 0.6,
+                          }}
                         >
                           {editingFilterIndex === null
                             ? "Build filter"
                             : "Edit filter"}
+                          <HelpHint text={FIELD_HELP.build_filter} />
                         </Typography>
                       </Box>
                       {editingFilterIndex !== null && (
@@ -2457,7 +2528,10 @@ export default function Category() {
 
                     <div className={cx("filter-control-grid")}>
                       <label className={cx("filter-field")}>
-                        <span>Label</span>
+                        <span className={cx("label-with-help")}>
+                          <span>Label</span>
+                          <HelpHint text={FIELD_HELP.filter_label} />
+                        </span>
                         <input
                           className={cx("filter-input")}
                           value={filterDraft.label}
@@ -2471,7 +2545,10 @@ export default function Category() {
                         />
                       </label>
                       <label className={cx("filter-field")}>
-                        <span>Key</span>
+                        <span className={cx("label-with-help")}>
+                          <span>Key</span>
+                          <HelpHint text={FIELD_HELP.filter_key} />
+                        </span>
                         <input
                           className={cx("filter-input")}
                           value={filterDraft.key}
@@ -2487,7 +2564,10 @@ export default function Category() {
                         />
                       </label>
                       <label className={cx("filter-field filter-type-field")}>
-                        <span>Type</span>
+                        <span className={cx("label-with-help")}>
+                          <span>Type</span>
+                          <HelpHint text={FIELD_HELP.filter_type} />
+                        </span>
                         <select
                           className={cx("filter-select")}
                           value={filterDraft.type}
@@ -2523,7 +2603,10 @@ export default function Category() {
 
                     {["multiselect", "radio"].includes(filterDraft.type) && (
                       <div className={cx("filter-options-field")}>
-                        <span>Options</span>
+                        <span className={cx("label-with-help")}>
+                          <span>Options</span>
+                          <HelpHint text={FIELD_HELP.filter_options} />
+                        </span>
                         <Autocomplete
                           multiple
                           freeSolo
@@ -2572,7 +2655,10 @@ export default function Category() {
                     {filterDraft.type === "range" && (
                       <div className={cx("filter-range-grid")}>
                         <label className={cx("filter-field")}>
-                          <span>Min</span>
+                          <span className={cx("label-with-help")}>
+                            <span>Min</span>
+                            <HelpHint text={FIELD_HELP.filter_min} />
+                          </span>
                           <input
                             className={cx("filter-input")}
                             type="number"
@@ -2587,7 +2673,10 @@ export default function Category() {
                           />
                         </label>
                         <label className={cx("filter-field")}>
-                          <span>Max</span>
+                          <span className={cx("label-with-help")}>
+                            <span>Max</span>
+                            <HelpHint text={FIELD_HELP.filter_max} />
+                          </span>
                           <input
                             className={cx("filter-input")}
                             type="number"
@@ -2602,7 +2691,10 @@ export default function Category() {
                           />
                         </label>
                         <label className={cx("filter-field")}>
-                          <span>Unit</span>
+                          <span className={cx("label-with-help")}>
+                            <span>Unit</span>
+                            <HelpHint text={FIELD_HELP.filter_unit} />
+                          </span>
                           <input
                             className={cx("filter-input")}
                             value={filterDraft.unit}
@@ -2632,7 +2724,10 @@ export default function Category() {
                             }
                             sx={{ p: 0.35 }}
                           />
-                          Required
+                          <span className={cx("label-with-help")}>
+                            <span>Required</span>
+                            <HelpHint text={FIELD_HELP.filter_required} />
+                          </span>
                         </label>
                         <label>
                           <Checkbox
@@ -2650,7 +2745,10 @@ export default function Category() {
                               "&.Mui-checked": { color: "#2f6f5e" },
                             }}
                           />
-                          Visible
+                          <span className={cx("label-with-help")}>
+                            <span>Visible</span>
+                            <HelpHint text={FIELD_HELP.filter_visible} />
+                          </span>
                         </label>
                       </div>
 

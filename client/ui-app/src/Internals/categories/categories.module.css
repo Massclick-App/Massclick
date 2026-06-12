@@ -75,6 +75,8 @@
 .category-form-input-group {
   display: flex;
   flex-direction: column;
+  position: relative;
+  overflow: visible;
 }
 
 .category-input-label {
@@ -82,6 +84,103 @@
   color: var(--color-text-secondary);
   margin-bottom: 6px;
   font-weight: 600;
+}
+
+.label-with-help {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  position: relative;
+  z-index: 20;
+}
+
+.help-hint {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  z-index: 30;
+}
+
+.help-hint-icon {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #e0f2fe;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: help;
+}
+
+.help-hint-bubble {
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%;
+  width: min(300px, 70vw);
+  transform: translateY(-50%) translateX(4px);
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  padding: 10px 12px;
+  border-radius: 18px;
+  background: #ffffff;
+  color: var(--color-text-primary);
+  border: 1px solid #dbeafe;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-transform: none;
+  letter-spacing: 0;
+  white-space: normal;
+  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
+  z-index: 5000;
+}
+
+.help-hint-bubble::before,
+.help-hint-bubble::after {
+  content: "";
+  position: absolute;
+  background: #ffffff;
+  border: 1px solid #dbeafe;
+  border-radius: 50%;
+  box-shadow: 0 6px 12px rgba(15, 23, 42, 0.08);
+}
+
+.help-hint-bubble::before {
+  width: 10px;
+  height: 10px;
+  left: -7px;
+  top: calc(50% - 5px);
+}
+
+.help-hint-bubble::after {
+  width: 6px;
+  height: 6px;
+  left: -13px;
+  top: calc(50% - 3px);
+}
+
+.help-hint:hover .help-hint-bubble,
+.help-hint:focus .help-hint-bubble,
+.help-hint:focus-within .help-hint-bubble {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(-50%) translateX(0);
+}
+
+.help-hint:hover,
+.help-hint:focus,
+.help-hint:focus-within {
+  z-index: 6000;
 }
 
 .category-text-input,
@@ -337,6 +436,7 @@
   grid-template-columns: minmax(340px, 0.85fr) minmax(360px, 1fr);
   gap: 14px;
   margin-top: 10px;
+  overflow: visible;
 }
 
 .filter-builder-panel,
@@ -346,10 +446,19 @@
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   background: #f8fafc;
+  position: relative;
+  overflow: visible;
 }
 
 .filter-list-panel {
   background: #ffffff;
+}
+
+.filter-builder-panel:hover,
+.filter-builder-panel:focus-within,
+.filter-list-panel:hover,
+.filter-list-panel:focus-within {
+  z-index: 20;
 }
 
 .filter-control-grid {
@@ -371,6 +480,21 @@
   min-width: 0;
   flex-direction: column;
   gap: 5px;
+  position: relative;
+  overflow: visible;
+  z-index: 0;
+}
+
+.filter-field:hover,
+.filter-field:focus-within,
+.filter-options-field:hover,
+.filter-options-field:focus-within {
+  z-index: 4000;
+}
+
+.filter-options-field:hover,
+.filter-options-field:focus-within {
+  z-index: 7000;
 }
 
 .filter-field span,
@@ -411,12 +535,19 @@
   margin-bottom: 12px;
 }
 
+.filter-options-field .MuiAutocomplete-root {
+  position: relative;
+  z-index: 0;
+}
+
 .filter-builder-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
   padding-top: 2px;
+  position: relative;
+  z-index: 0;
 }
 
 .filter-flags,
@@ -424,6 +555,13 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  position: relative;
+  z-index: 0;
+}
+
+.filter-flags:hover,
+.filter-flags:focus-within {
+  z-index: 9000;
 }
 
 .filter-flags label {
