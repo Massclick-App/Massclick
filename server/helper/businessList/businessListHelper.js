@@ -8,6 +8,7 @@ import userModel from "../../model/userModel.js";
 import QRCode from "qrcode";
 import categoryModel from "../../model/category/categoryModel.js";
 import gmapsLeadsModel from "../../model/gmapsLeads/gmapsLeadsModel.js";
+import enquiryModel from "../../model/enquiry/enquiryModel.js";
 
 // Silently mark any gmaps lead with a matching phone as imported
 const autoMarkGmapsLeadImported = async (contact) => {
@@ -984,6 +985,263 @@ export const getDashboardChartsHelper = async ({ role, userId }) => {
   ]);
 
   return { monthly, categories };
+};
+
+const buildDashboardQuery = async ({ role, userId }) => {
+  if (role === "SuperAdmin") return {};
+
+  if (role === "SalesManager") {
+    const manager = await userModel.findById(userId).lean();
+    const salesOfficerIds = manager?.salesBy || [];
+
+    return {
+      createdBy: {
+        $in: [
+          new mongoose.Types.ObjectId(userId),
+          ...salesOfficerIds.map((id) => new mongoose.Types.ObjectId(id)),
+        ],
+      },
+    };
+  }
+
+  if (role === "SalesOfficer") {
+    return { createdBy: new mongoose.Types.ObjectId(userId) };
+  }
+
+  if (["client", "PublicUser", "user"].includes(role)) {
+    return { isActive: true };
+  }
+
+  return {};
+};
+
+const monthLabels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+const buildMonthSeries = (rows = [], monthsBack = 12) => {
+  const now = new Date();
+  const buckets = [];
+
+  for (let index = monthsBack - 1; index >= 0; index -= 1) {
+    const date = new Date(now.getFullYear(), now.getMonth() - index, 1);
+    buckets.push({
+      key: `${date.getFullYear()}-${date.getMonth() + 1}`,
+      month: monthLabels[date.getMonth()],
+      year: date.getFullYear(),
+      businesses: 0,
+    });
+  }
+
+  rows.forEach((row) => {
+    const key = `${row._id.year}-${row._id.month}`;
+    const bucket = buckets.find((item) => item.key === key);
+    if (bucket) bucket.businesses = row.count;
+  });
+
+  return buckets;
+};
+
+export const getAdminAnalyticsReportHelper = async ({ role, userId }) => {
+  const businessQuery = await buildDashboardQuery({ role, userId });
+  const now = new Date();
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+  const startOfSevenDays = new Date(now);
+  startOfSevenDays.setDate(startOfSevenDays.getDate() - 7);
+  const startOfThirtyDays = new Date(now);
+  startOfThirtyDays.setDate(startOfThirtyDays.getDate() - 30);
+  const startOfYear = new Date(now.getFullYear(), 0, 1);
+
+  const [
+    totalBusinesses,
+    activeBusinesses,
+    liveBusinesses,
+    todayBusinesses,
+    thirtyDayBusinesses,
+    userCounts,
+    categoryCounts,
+    locationCounts,
+    enquiryCounts,
+    searchCounts,
+    gmapsStats,
+    paymentStats,
+    monthlyRows,
+    topCategories,
+    topLocations,
+    recentBusinesses,
+  ] = await Promise.all([
+    businessListModel.countDocuments(businessQuery),
+    businessListModel.countDocuments({ ...businessQuery, activeBusinesses: true }),
+    businessListModel.countDocuments({ ...businessQuery, businessesLive: true }),
+    businessListModel.countDocuments({ ...businessQuery, createdAt: { $gte: startOfToday } }),
+    businessListModel.countDocuments({ ...businessQuery, createdAt: { $gte: startOfThirtyDays } }),
+    userModel.aggregate([
+      { $group: { _id: "$isActive", count: { $sum: 1 } } },
+    ]),
+    categoryModel.aggregate([
+      { $group: { _id: "$isActive", count: { $sum: 1 } } },
+    ]),
+    locationModel.aggregate([
+      { $group: { _id: "$isActive", count: { $sum: 1 } } },
+    ]),
+    enquiryModel.aggregate([
+      {
+        $group: {
+          _id: null,
+          total: { $sum: 1 },
+          last30Days: {
+            $sum: { $cond: [{ $gte: ["$submittedAt", startOfThirtyDays] }, 1, 0] },
+          },
+        },
+      },
+    ]),
+    SearchLogModel.aggregate([
+      {
+        $group: {
+          _id: null,
+          total: { $sum: 1 },
+          unread: { $sum: { $cond: [{ $eq: ["$isRead", false] }, 1, 0] } },
+          last7Days: {
+            $sum: { $cond: [{ $gte: ["$createdAt", startOfSevenDays] }, 1, 0] },
+          },
+        },
+      },
+    ]),
+    gmapsLeadsModel.aggregate([
+      {
+        $group: {
+          _id: null,
+          total: { $sum: 1 },
+          imported: { $sum: { $cond: [{ $eq: ["$imported_to_main", true] }, 1, 0] } },
+          withPhone: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $ne: ["$phone", null] },
+                    { $ne: ["$phone", ""] },
+                  ],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+          detailsFetched: { $sum: { $cond: [{ $eq: ["$details_fetched", true] }, 1, 0] } },
+        },
+      },
+    ]),
+    businessListModel.aggregate([
+      { $match: businessQuery },
+      { $unwind: { path: "$payment", preserveNullAndEmptyArrays: false } },
+      {
+        $group: {
+          _id: "$payment.paymentStatus",
+          count: { $sum: 1 },
+          amount: {
+            $sum: {
+              $ifNull: ["$payment.totalAmount", { $ifNull: ["$payment.amount", 0] }],
+            },
+          },
+        },
+      },
+    ]),
+    businessListModel.aggregate([
+      {
+        $match: {
+          ...businessQuery,
+          createdAt: { $gte: new Date(now.getFullYear(), now.getMonth() - 11, 1) },
+        },
+      },
+      {
+        $group: {
+          _id: { year: { $year: "$createdAt" }, month: { $month: "$createdAt" } },
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { "_id.year": 1, "_id.month": 1 } },
+    ]),
+    businessListModel.aggregate([
+      { $match: businessQuery },
+      { $group: { _id: "$category", count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 8 },
+    ]),
+    businessListModel.aggregate([
+      { $match: businessQuery },
+      { $group: { _id: "$location", count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 8 },
+    ]),
+    businessListModel.find(
+      businessQuery,
+      { businessName: 1, category: 1, location: 1, createdAt: 1, activeBusinesses: 1, businessesLive: 1 }
+    )
+      .sort({ createdAt: -1 })
+      .limit(6)
+      .lean(),
+  ]);
+
+  const activeUsers = userCounts.find((row) => row._id === true)?.count || 0;
+  const totalUsers = userCounts.reduce((sum, row) => sum + row.count, 0);
+  const activeCategories = categoryCounts.find((row) => row._id === true)?.count || 0;
+  const totalCategories = categoryCounts.reduce((sum, row) => sum + row.count, 0);
+  const activeLocations = locationCounts.find((row) => row._id === true)?.count || 0;
+  const totalLocations = locationCounts.reduce((sum, row) => sum + row.count, 0);
+  const enquirySummary = enquiryCounts[0] || { total: 0, last30Days: 0 };
+  const searchSummary = searchCounts[0] || { total: 0, unread: 0, last7Days: 0 };
+  const gmapsSummary = gmapsStats[0] || { total: 0, imported: 0, withPhone: 0, detailsFetched: 0 };
+  const successfulPayments = paymentStats
+    .filter((row) => ["SUCCESS", "PAID", "paid", "success"].includes(row._id))
+    .reduce((sum, row) => sum + row.count, 0);
+  const paymentRevenue = paymentStats
+    .filter((row) => ["SUCCESS", "PAID", "paid", "success"].includes(row._id))
+    .reduce((sum, row) => sum + row.amount, 0);
+
+  return {
+    generatedAt: new Date().toISOString(),
+    scope: role || "unknown",
+    totals: {
+      businesses: totalBusinesses,
+      activeBusinesses,
+      inactiveBusinesses: Math.max(totalBusinesses - activeBusinesses, 0),
+      liveBusinesses,
+      pendingBusinesses: Math.max(totalBusinesses - liveBusinesses, 0),
+      todayBusinesses,
+      thirtyDayBusinesses,
+      users: totalUsers,
+      activeUsers,
+      categories: totalCategories,
+      activeCategories,
+      locations: totalLocations,
+      activeLocations,
+      enquiries: enquirySummary.total,
+      enquiriesLast30Days: enquirySummary.last30Days,
+      searches: searchSummary.total,
+      unreadSearches: searchSummary.unread,
+      searchesLast7Days: searchSummary.last7Days,
+      gmapsLeads: gmapsSummary.total,
+      gmapsImported: gmapsSummary.imported,
+      gmapsWithPhone: gmapsSummary.withPhone,
+      gmapsDetailsFetched: gmapsSummary.detailsFetched,
+      successfulPayments,
+      paymentRevenue,
+    },
+    monthlyTrend: buildMonthSeries(monthlyRows),
+    topCategories: topCategories.map((row) => ({ name: row._id || "Uncategorised", count: row.count })),
+    topLocations: topLocations.map((row) => ({ name: row._id || "Unknown", count: row.count })),
+    paymentBreakdown: paymentStats.map((row) => ({
+      status: row._id || "NO_STATUS",
+      count: row.count,
+      amount: row.amount,
+    })),
+    recentBusinesses,
+    yearToDate: {
+      businesses: await businessListModel.countDocuments({
+        ...businessQuery,
+        createdAt: { $gte: startOfYear },
+      }),
+    },
+  };
 };
 
 

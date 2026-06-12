@@ -1,8 +1,7 @@
-import React, { useEffect, lazy, Suspense, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import Grid from '@mui/material/Grid';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import Skeleton from '@mui/material/Skeleton';
 
 import { useSelector, useDispatch } from "react-redux";
 import { getAllBusinessList, toggleBusinessStatus, trackQrDownload } from "../redux/actions/businessListAction";
@@ -14,14 +13,14 @@ import Tooltip from "@mui/material/Tooltip";
 import IconButton from '@mui/material/IconButton';
 import {
   Avatar,
-
+  Paper,
+  Typography,
 } from "@mui/material";
 
+import AdminAnalyticsPanel from './adminAnalytics/AdminAnalyticsPanel.js';
 import BusinessCard from './businessCard/businessCard.js';
 import CustomizedTable from './Table/CustomizedTable.js';
 import { createPhonePePayment } from '../redux/actions/phonePayAction.js';
-
-const ChartUserByBusiness = lazy(() => import('../components/homePageChart/ChartUserByCountry.js'));
 
 export default function MainGrid() {
   const { enqueueSnackbar } = useSnackbar();
@@ -329,16 +328,26 @@ export default function MainGrid() {
 
   return (
     <Box sx={{ width: '100%', maxWidth: { sm: '100%', md: '1700px' } }}>
-      <Box sx={{ width: '100%', mb: 2 }}>
+      <AdminAnalyticsPanel />
+
+      <Paper
+        elevation={0}
+        sx={{
+          width: '100%',
+          mt: 2,
+          mb: 2,
+          p: 2,
+          border: '1px solid #e5e9f0',
+          borderRadius: 2,
+          bgcolor: '#fff',
+        }}
+      >
+        <Typography sx={{ fontSize: 18, fontWeight: 800, color: '#172033', mb: 1.5 }}>
+          Business drill-down
+        </Typography>
         <BusinessCard activeFilter={cardFilter.type} onCardClick={handleCardFilter} />
-      </Box>
-      <Grid container spacing={2} columns={12} sx={{ mb: 2 }}>
-        <Grid size={{ xs: 12, md: 12 }}>
-          <Suspense fallback={<Skeleton variant="rectangular" height={400} />}>
-            <ChartUserByBusiness activeFilter={cardFilter} onChartClick={handleCardFilter} />
-          </Suspense>
-        </Grid>
-      </Grid><br />
+      </Paper>
+
       <Grid elevation={3} sx={{ p: 3, borderRadius: 2 }} ref={tableSectionRef}>
         {cardFilter.type !== "all" && (
           <Box sx={{

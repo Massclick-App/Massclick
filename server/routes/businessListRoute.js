@@ -1,6 +1,6 @@
 import express from 'express'
 
-import { addBusinessListAction, viewBusinessListAction,getBusinessBySlugAction, getSuggestionsController, getEnhancedSuggestionsController, mainSearchController, nearbyBusinessesController, viewAllBusinessListAction,viewAllBusinessAction, updateBusinessListAction, deleteBusinessListAction, activeBusinessListAction, viewAllClientBusinessListAction, viewBusinessByCategory, findBusinessByMobileAction, dashboardSummaryAction, dashboardChartsAction, getPendingBusinessAction, trackQrDownload, updateBusinessBadgesAction } from "../controller/businessList/businessListController.js"
+import { addBusinessListAction, viewBusinessListAction,getBusinessBySlugAction, getSuggestionsController, getEnhancedSuggestionsController, mainSearchController, nearbyBusinessesController, viewAllBusinessListAction,viewAllBusinessAction, updateBusinessListAction, deleteBusinessListAction, activeBusinessListAction, viewAllClientBusinessListAction, viewBusinessByCategory, findBusinessByMobileAction, dashboardSummaryAction, dashboardChartsAction, adminAnalyticsReportAction, getPendingBusinessAction, trackQrDownload, updateBusinessBadgesAction } from "../controller/businessList/businessListController.js"
 import { oauthAuthentication } from '../helper/oauthHelper.js';
 import { logSearchAction, viewLogSearchAction, viewSearchAction, updateSearchAction, getTrendingSearchesAction, sendEnquiryLead } from "../controller/businessList/logSearchController.js"
 import { cacheMiddleware } from '../middleware/cacheMiddleware.js';
@@ -38,6 +38,7 @@ router.get('/api/businesslist/category', cacheMiddleware({ expirySeconds: 3600, 
 router.get("/api/businesslist/findByMobile/:mobile", cacheMiddleware({ expirySeconds: 1800, keyPrefix: 'mobile' }), findBusinessByMobileAction);
 router.get('/api/businesslist/dashboard-summary', oauthAuthentication, cacheMiddleware({ expirySeconds: 600, keyPrefix: 'dashboard-summary' }), dashboardSummaryAction);
 router.get('/api/businesslist/dashboard-charts', oauthAuthentication, cacheMiddleware({ expirySeconds: 600, keyPrefix: 'dashboard-charts' }), dashboardChartsAction);
+router.get('/api/businesslist/admin-analytics-report', oauthAuthentication, cacheMiddleware({ expirySeconds: 300, keyPrefix: 'admin-analytics-report' }), adminAnalyticsReportAction);
 router.get(
   '/api/businesslist/pendingbusiness',
   oauthAuthentication,

@@ -1,4 +1,4 @@
-import { createBusinessList, viewBusinessList, findBusinessBySlug, viewAllBusiness, getDashboardChartsHelper, getPendingBusinessList, findBusinessesByCategory, getDashboardSummaryHelper, findBusinessByMobile, viewAllBusinessList, viewAllClientBusinessList, updateBusinessList, getTrendingSearches, deleteBusinessList, activeBusinessList } from "../../helper/businessList/businessListHelper.js";
+import { createBusinessList, viewBusinessList, findBusinessBySlug, viewAllBusiness, getDashboardChartsHelper, getPendingBusinessList, findBusinessesByCategory, getDashboardSummaryHelper, getAdminAnalyticsReportHelper, findBusinessByMobile, viewAllBusinessList, viewAllClientBusinessList, updateBusinessList, getTrendingSearches, deleteBusinessList, activeBusinessList } from "../../helper/businessList/businessListHelper.js";
 import { BAD_REQUEST } from "../../errorCodes.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
 import { getSignedUrlByKey } from "../../s3Uploder.js";
@@ -886,6 +886,25 @@ export const dashboardChartsAction = async (req, res) => {
   } catch (error) {
     console.error("Dashboard Charts Error:", error);
     return res.status(500).send({ message: "Chart data fetch failed" });
+  }
+};
+
+export const adminAnalyticsReportAction = async (req, res) => {
+  try {
+    const { userRole, userId } = req.authUser;
+
+    const report = await getAdminAnalyticsReportHelper({
+      role: userRole,
+      userId,
+    });
+
+    return res.send({
+      success: true,
+      report,
+    });
+  } catch (error) {
+    console.error("Admin Analytics Report Error:", error);
+    return res.status(500).send({ message: error.message });
   }
 };
 
