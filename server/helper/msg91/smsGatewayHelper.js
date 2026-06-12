@@ -57,6 +57,7 @@ const CUSTOMER_BUSINESS_LIST_TEMPLATE_VARIANTS = {
 
   en: {
     languageCode: "en",
+    requiresButtonUrl: true,
     lines: [
       "Hello {{1}},",
       "",
@@ -94,6 +95,22 @@ const CUSTOMER_BUSINESS_LIST_TEMPLATE_VARIANTS = {
       rows[4] || "-",
     ],
   },
+};
+
+const getCustomerBusinessListButtonUrl = (context = {}) =>
+  cleanValue(
+    context.customerListButtonUrl ||
+    process.env.MSG91_CUSTOMER_LIST_BUTTON_URL ||
+    process.env.PUBLIC_BASE_URL ||
+    "https://massclick.in/"
+  );
+
+const canUseCustomerBusinessListVariant = (variant, context = {}) => {
+  if (!variant?.requiresButtonUrl) return true;
+  return Boolean(
+    getCustomerBusinessListButtonUrl(context) &&
+    getCustomerBusinessListButtonUrl(context) !== "-"
+  );
 };
 
 const getMsg91ErrorMessage = (data, fallback) => {
@@ -581,35 +598,56 @@ export const sendBusinessesToCustomer = async (
     const firstMessageVariant = getCustomerBusinessListVariant(
       context.firstLanguageCode || "en_US"
     );
-    const secondMessageVariant = getCustomerBusinessListVariant(
+    const requestedSecondMessageVariant = getCustomerBusinessListVariant(
       context.secondLanguageCode || "en"
     );
+    const secondMessageVariant = canUseCustomerBusinessListVariant(
+      requestedSecondMessageVariant,
+      context
+    )
+      ? requestedSecondMessageVariant
+      : CUSTOMER_BUSINESS_LIST_TEMPLATE_VARIANTS.en_US;
 
-    const createPayload = (variant, values) => ({
-      integrated_number: MSG91_WHATSAPP_NUMBER,
-      content_type: "template",
-      payload: {
-        messaging_product: "whatsapp",
-        type: "template",
-        template: {
-          name: "customer_business_list_v1",
-          language: {
-            code: variant.languageCode,
-            policy: "deterministic",
-          },
-          namespace: MSG91_WHATSAPP_NAMESPACE,
-          to_and_components: [
-            {
-              to: [recipientMobile],
-              components: values.reduce((acc, value, index) => {
-                acc[`body_${index + 1}`] = { type: "text", value };
-                return acc;
-              }, {}),
+    const createPayload = (variant, values) => {
+      const components = values.reduce((acc, value, index) => {
+        acc[`body_${index + 1}`] = { type: "text", value };
+        return acc;
+      }, {});
+
+      if (variant.requiresButtonUrl) {
+        const buttonUrlValue = getCustomerBusinessListButtonUrl(context);
+        if (buttonUrlValue && buttonUrlValue !== "-") {
+          components.button_2 = {
+            subtype: "url",
+            type: "text",
+            value: buttonUrlValue,
+          };
+        }
+      }
+
+      return {
+        integrated_number: MSG91_WHATSAPP_NUMBER,
+        content_type: "template",
+        payload: {
+          messaging_product: "whatsapp",
+          type: "template",
+          template: {
+            name: "customer_business_list_v1",
+            language: {
+              code: variant.languageCode,
+              policy: "deterministic",
             },
-          ],
+            namespace: MSG91_WHATSAPP_NAMESPACE,
+            to_and_components: [
+              {
+                to: [recipientMobile],
+                components,
+              },
+            ],
+          },
         },
-      },
-    });
+      };
+    };
 
     const auditContext = {
       ...context,

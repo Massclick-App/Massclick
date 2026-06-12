@@ -12,7 +12,7 @@ export const Collections = {
     STARTPROJECT: 'startproject',
     MESSAGE91: 'message91',
     MSG91WHATSAPPAUDIT: 'msg91_whatsapp_audits',
-    MSG91RECIPIENTHEALTH: 'msg91_recipient_health',
+    MSG91RECIPIENTHEALTH: 'msg91_recipient_healths',
     MSGUSERS: 'msgusers',
     LOCATIONIP: 'locationip',
     PAYMENT: 'payment',
