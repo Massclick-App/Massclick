@@ -52,6 +52,7 @@ export const getCategoryBasedLeads = async (mobileNumber) => {
         },
         { searchedUserText: categoryWordRegex },
       ],
+      "userDetails.mobileNumber1": { $ne: normalizedMobile },
     })
       .sort({ createdAt: -1 })
       .lean();

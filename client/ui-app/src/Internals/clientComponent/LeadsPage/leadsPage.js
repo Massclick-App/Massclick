@@ -6,6 +6,7 @@ import { fetchMatchedLeads } from "../../../redux/actions/leadsAction";
 import { useNavigate } from "react-router-dom";
 import CardsSearch from "../CardsSearch/CardsSearch";
 import styles from "./leadsPage.module.css";
+import { isOwnLeadUser } from "../leadsNotification/leadNotificationUtils";
 const cx = createScopedClassNames(styles);
 function StatCard({
   label,
@@ -57,7 +58,7 @@ export default function LeadsPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const mobileNumber = localStorage.getItem("mobileNumber");
-  const authUser = useSelector(state => state.otp.viewResponse) || {};
+  const authUser = useSelector(state => state.otp.viewResponse) || null;
   const {
     leads: backendLeads = []
   } = useSelector(state => state.leads);
@@ -65,7 +66,7 @@ export default function LeadsPage() {
     businessName,
     businessLocation,
     businessCategory
-  } = authUser;
+  } = authUser || {};
   const hasBusinessCategory = businessCategory?.category && businessCategory.category.trim() !== "";
   const [range, setRange] = useState("all");
   const [repeatOnly, setRepeatOnly] = useState(false);
@@ -81,6 +82,7 @@ export default function LeadsPage() {
       const searchedText = log.searchedUserText || "";
       if (Array.isArray(log.userDetails)) {
         log.userDetails.forEach(u => {
+          if (isOwnLeadUser(u, authUser || {})) return;
           users.push({
             ...u,
             time: createdAt,
@@ -96,7 +98,7 @@ export default function LeadsPage() {
       unique[key] = true;
       return true;
     });
-  }, [backendLeads]);
+  }, [backendLeads, authUser]);
   const {
     filteredUsers,
     todayCount,

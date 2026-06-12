@@ -12,7 +12,7 @@ import LocationOnIcon from "@mui/icons-material/LocationOn";
 import { fetchMatchedLeads } from "../../../redux/actions/leadsAction";
 import styles from "./leadsNotification.module.css";
 import { updateSearchLogRead } from "../../../redux/actions/businessListAction";
-import { getDisplayableLeadNotifications, getLeadUser, hasValue } from "./leadNotificationUtils";
+import { getCurrentLeadViewer, getDisplayableLeadNotifications, getLeadUser, hasValue } from "./leadNotificationUtils";
 const cx = createScopedClassNames(styles);
 const LeadsNotificationModal = ({
   open,
@@ -25,7 +25,7 @@ const LeadsNotificationModal = ({
     leads: leadsData,
     loading
   } = useSelector(state => state.leads);
-  const displayLeads = getDisplayableLeadNotifications(leadsData);
+  const displayLeads = getDisplayableLeadNotifications(leadsData, getCurrentLeadViewer());
   useEffect(() => {
     if (open) {
       dispatch(fetchMatchedLeads());
