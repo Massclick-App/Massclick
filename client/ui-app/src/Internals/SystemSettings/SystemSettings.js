@@ -59,6 +59,10 @@ const validateLoggingLevel = level => {
   const validLevels = ['off', 'error', 'warn', 'info', 'debug'];
   return validLevels.includes(level) ? null : "Invalid logging level";
 };
+const validateCustomerListSendMode = mode => {
+  const validModes = ['single', 'split'];
+  return validModes.includes(mode) ? null : "Invalid customer list send mode";
+};
 const NUMBER_FIELD_RULES = {
   lead_guard_anonymous_dedupe_minutes: {
     min: 0,
@@ -81,6 +85,7 @@ const getFieldValidationError = (key, value) => {
   if (key.includes('_version') || key === 'app_release_notes') return validateVersionFormat(value);
   if (key.includes('_url')) return validateUrl(value);
   if (key === 'logging_level') return validateLoggingLevel(value);
+  if (key === 'whatsapp_customer_business_list_send_mode') return validateCustomerListSendMode(value);
   if (NUMBER_FIELD_RULES[key]) {
     const number = Number(value);
     const rule = NUMBER_FIELD_RULES[key];
@@ -284,7 +289,7 @@ const GUARD_LIMIT_FIELDS = [{
 }];
 const ALL_BOOL_KEYS = TOGGLE_GROUPS.flatMap(g => g.items.map(i => i.key));
 const ALL_NUMBER_KEYS = GUARD_LIMIT_FIELDS.map(field => field.key);
-const ALL_KEYS = [...ALL_BOOL_KEYS, ...ALL_NUMBER_KEYS, "app_maintenance_mode", "app_android_latest_version", "app_android_min_version", "app_android_update_url", "app_ios_latest_version", "app_ios_min_version", "app_ios_update_url", "app_release_notes", "logging_level", "redis_enabled"];
+const ALL_KEYS = [...ALL_BOOL_KEYS, ...ALL_NUMBER_KEYS, "app_maintenance_mode", "app_android_latest_version", "app_android_min_version", "app_android_update_url", "app_ios_latest_version", "app_ios_min_version", "app_ios_update_url", "app_release_notes", "logging_level", "whatsapp_customer_business_list_send_mode", "redis_enabled"];
 export default function SystemSettings() {
   const dispatch = useDispatch();
   const {
@@ -776,6 +781,20 @@ export default function SystemSettings() {
                   <option value="info">Info</option>
                   <option value="debug">Debug</option>
                 </select>
+              </div>
+            </div>
+
+            {/* WhatsApp Customer Delivery */}
+            <div className={cx("section-divider")}></div>
+            <div className={cx("section-group")}>
+              <div className={cx("section-label")}>WhatsApp Customer Delivery</div>
+              <div className={cx("form-field")}>
+                <label className={cx("form-label")}>Customer Business List Mode</label>
+                <select className={cx(`form-input ${validationErrors.whatsapp_customer_business_list_send_mode ? 'error' : ''}`)} value={local.whatsapp_customer_business_list_send_mode ?? "split"} onChange={e => setText("whatsapp_customer_business_list_send_mode", e.target.value)}>
+                  <option value="single">Single message</option>
+                  <option value="split">Split messages</option>
+                </select>
+                {validationErrors.whatsapp_customer_business_list_send_mode && <div className={cx("input-error")}>{validationErrors.whatsapp_customer_business_list_send_mode}</div>}
               </div>
             </div>
 

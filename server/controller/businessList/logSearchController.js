@@ -600,6 +600,7 @@ export const logSearchAction = async (req, res) => {
               sendBusinessesToCustomer(cleanCustomerMobile, leadData, businesses, {
                 sourceType: "customer_list",
                 sourceId: savedLog._id,
+                customerListSendMode: waSettings.whatsapp_customer_business_list_send_mode || "split",
               }),
             `Customer WhatsApp ${cleanCustomerMobile}`
           );

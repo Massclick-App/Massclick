@@ -88,6 +88,7 @@ export const updateSystemSettingsAction = async (req, res) => {
       "app_ios_update_url",
       "app_release_notes",
       "logging_level",
+      "whatsapp_customer_business_list_send_mode",
     ];
 
     const numberFields = [
@@ -126,6 +127,22 @@ export const updateSystemSettingsAction = async (req, res) => {
 
     for (const key of stringFields) {
       if (key in req.body) updates[key] = String(req.body[key]).trim();
+    }
+
+    const validCustomerListSendModes = ["single", "split"];
+    if (
+      "whatsapp_customer_business_list_send_mode" in req.body &&
+      !validCustomerListSendModes.includes(req.body.whatsapp_customer_business_list_send_mode)
+    ) {
+      await logger.warn(`Invalid customer list send mode attempted`, {
+        admin: adminEmail,
+        attemptedMode: req.body.whatsapp_customer_business_list_send_mode,
+        validModes: validCustomerListSendModes
+      });
+      return res.status(400).json({
+        success: false,
+        message: `Invalid customer list send mode. Must be one of: ${validCustomerListSendModes.join(', ')}`
+      });
     }
 
     for (const key of numberFields) {

@@ -4,6 +4,7 @@ export const SYSTEM_SETTINGS_DEFAULTS = {
   otp_real_enabled: true,
   whatsapp_business_lead_alert: true,
   whatsapp_customer_business_list: true,
+  whatsapp_customer_business_list_send_mode: "split",
   whatsapp_mni_lead_alert: true,
   whatsapp_mni_customer_list: true,
   whatsapp_login_welcome: true,

@@ -10,6 +10,11 @@ const systemSettingsSchema = new mongoose.Schema(
 
     // WhatsApp: send top-10 business list to the searching customer
     whatsapp_customer_business_list: { type: Boolean, default: true },
+    whatsapp_customer_business_list_send_mode: {
+      type: String,
+      enum: ["single", "split"],
+      default: "split",
+    },
 
     // WhatsApp: send MNI requirement alert to matching business
     whatsapp_mni_lead_alert: { type: Boolean, default: true },

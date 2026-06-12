@@ -573,7 +573,8 @@ export const sendBusinessesToCustomer = async (
       }
     });
 
-    const finalBusinesses = uniqueBusinesses.slice(0, 10);
+    const sendMode = context.customerListSendMode === "single" ? "single" : "split";
+    const finalBusinesses = uniqueBusinesses.slice(0, sendMode === "single" ? 5 : 10);
     const firstBatch = finalBusinesses.slice(0, 5);
     const secondBatch = finalBusinesses.slice(5, 10);
     const baseValues = getCustomerListBaseValues(lead);
@@ -629,7 +630,7 @@ export const sendBusinessesToCustomer = async (
     );
     await postWhatsAppTemplate(createPayload(firstMessageVariant, values1), auditContext);
 
-    if (secondBatch.length > 0) {
+    if (sendMode === "split" && secondBatch.length > 0) {
       const values2 = trimCustomerListForTemplateLimit(
         secondMessageVariant,
         baseValues,
