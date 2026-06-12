@@ -20,6 +20,20 @@ const systemSettingsSchema = new mongoose.Schema(
     // WhatsApp: send welcome message to new users on first login
     whatsapp_login_welcome: { type: Boolean, default: true },
 
+    // Lead guard controls
+    lead_guard_search_text_required: { type: Boolean, default: true },
+    lead_guard_anonymous_dedupe_enabled: { type: Boolean, default: true },
+    lead_guard_anonymous_dedupe_minutes: { type: Number, default: 5, min: 0 },
+    lead_guard_user_dedupe_enabled: { type: Boolean, default: true },
+    lead_guard_user_dedupe_minutes: { type: Number, default: 5, min: 0 },
+    lead_guard_live_business_only: { type: Boolean, default: true },
+    whatsapp_business_lead_daily_cap_enabled: { type: Boolean, default: true },
+    whatsapp_business_lead_daily_cap: { type: Number, default: 3, min: 0 },
+    whatsapp_business_lead_duplicate_guard_enabled: { type: Boolean, default: true },
+    whatsapp_business_lead_cooldown_enabled: { type: Boolean, default: true },
+    whatsapp_business_lead_cooldown_minutes: { type: Number, default: 45, min: 0 },
+    whatsapp_recipient_health_guard_enabled: { type: Boolean, default: true },
+
     // App Version Management
     app_android_latest_version: { type: String, default: "1.0.0" },
     app_android_min_version: { type: String, default: "1.0.0" },

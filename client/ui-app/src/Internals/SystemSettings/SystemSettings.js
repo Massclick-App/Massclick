@@ -18,6 +18,7 @@ const CloudSyncIcon = () => <span>☁️</span>;
 const DebugIcon = () => <span>🔍</span>;
 const DatabaseIcon = () => <span>🗄️</span>;
 const AlertIcon = () => <span>⚡</span>;
+const GuardIcon = () => <span>🛡️</span>;
 const formatUptime = seconds => {
   if (!seconds) return '—';
   const d = Math.floor(seconds / 86400);
@@ -58,10 +59,35 @@ const validateLoggingLevel = level => {
   const validLevels = ['off', 'error', 'warn', 'info', 'debug'];
   return validLevels.includes(level) ? null : "Invalid logging level";
 };
+const NUMBER_FIELD_RULES = {
+  lead_guard_anonymous_dedupe_minutes: {
+    min: 0,
+    max: 1440
+  },
+  lead_guard_user_dedupe_minutes: {
+    min: 0,
+    max: 1440
+  },
+  whatsapp_business_lead_daily_cap: {
+    min: 0,
+    max: 100
+  },
+  whatsapp_business_lead_cooldown_minutes: {
+    min: 0,
+    max: 1440
+  }
+};
 const getFieldValidationError = (key, value) => {
   if (key.includes('_version') || key === 'app_release_notes') return validateVersionFormat(value);
   if (key.includes('_url')) return validateUrl(value);
   if (key === 'logging_level') return validateLoggingLevel(value);
+  if (NUMBER_FIELD_RULES[key]) {
+    const number = Number(value);
+    const rule = NUMBER_FIELD_RULES[key];
+    if (!Number.isInteger(number) || number < rule.min || number > rule.max) {
+      return `Use a whole number from ${rule.min} to ${rule.max}`;
+    }
+  }
   return null;
 };
 const CACHE_TYPES = [{
@@ -136,6 +162,43 @@ const TOGGLE_GROUPS = [{
     desc: "First login message"
   }]
 }, {
+  label: "Lead Guards",
+  icon: GuardIcon,
+  color: "#0ea5e9",
+  items: [{
+    key: "lead_guard_search_text_required",
+    label: "Require Search Text",
+    desc: "Block empty search leads"
+  }, {
+    key: "lead_guard_anonymous_dedupe_enabled",
+    label: "Anonymous Dedup",
+    desc: "Limit repeat anonymous logs"
+  }, {
+    key: "lead_guard_user_dedupe_enabled",
+    label: "Customer Dedup",
+    desc: "Avoid repeat customer leads"
+  }, {
+    key: "lead_guard_live_business_only",
+    label: "Live Businesses Only",
+    desc: "Send to active listings"
+  }, {
+    key: "whatsapp_business_lead_daily_cap_enabled",
+    label: "Daily Business Cap",
+    desc: "Limit sends per business"
+  }, {
+    key: "whatsapp_business_lead_duplicate_guard_enabled",
+    label: "Duplicate WhatsApp Guard",
+    desc: "Same customer/category/day"
+  }, {
+    key: "whatsapp_business_lead_cooldown_enabled",
+    label: "Recipient Cooldown",
+    desc: "Pause rapid WhatsApp sends"
+  }, {
+    key: "whatsapp_recipient_health_guard_enabled",
+    label: "Recipient Health Guard",
+    desc: "Skip invalid/suppressed numbers"
+  }]
+}, {
   label: "Logging",
   icon: DebugIcon,
   color: "#a855f7",
@@ -202,8 +265,26 @@ const PLATFORM_SECTIONS = [{
     colSpan: 2
   }]
 }];
+const GUARD_LIMIT_FIELDS = [{
+  key: "lead_guard_anonymous_dedupe_minutes",
+  label: "Anonymous Dedup Minutes",
+  placeholder: "5"
+}, {
+  key: "lead_guard_user_dedupe_minutes",
+  label: "Customer Dedup Minutes",
+  placeholder: "5"
+}, {
+  key: "whatsapp_business_lead_daily_cap",
+  label: "Daily Leads Per Business",
+  placeholder: "3"
+}, {
+  key: "whatsapp_business_lead_cooldown_minutes",
+  label: "Recipient Cooldown Minutes",
+  placeholder: "45"
+}];
 const ALL_BOOL_KEYS = TOGGLE_GROUPS.flatMap(g => g.items.map(i => i.key));
-const ALL_KEYS = [...ALL_BOOL_KEYS, "app_maintenance_mode", "app_android_latest_version", "app_android_min_version", "app_android_update_url", "app_ios_latest_version", "app_ios_min_version", "app_ios_update_url", "app_release_notes", "logging_level", "redis_enabled"];
+const ALL_NUMBER_KEYS = GUARD_LIMIT_FIELDS.map(field => field.key);
+const ALL_KEYS = [...ALL_BOOL_KEYS, ...ALL_NUMBER_KEYS, "app_maintenance_mode", "app_android_latest_version", "app_android_min_version", "app_android_update_url", "app_ios_latest_version", "app_ios_min_version", "app_ios_update_url", "app_release_notes", "logging_level", "redis_enabled"];
 export default function SystemSettings() {
   const dispatch = useDispatch();
   const {
@@ -286,6 +367,27 @@ export default function SystemSettings() {
         delete newErrors[key];
         return newErrors;
       }
+    });
+  };
+  const setNumber = (key, val) => {
+    const nextValue = val === "" ? "" : Number(val);
+    setLocal(p => ({
+      ...p,
+      [key]: nextValue
+    }));
+    const error = val === "" ? "Required" : getFieldValidationError(key, nextValue);
+    setValidationErrors(prev => {
+      if (error) {
+        return {
+          ...prev,
+          [key]: error
+        };
+      }
+      const newErrors = {
+        ...prev
+      };
+      delete newErrors[key];
+      return newErrors;
     });
   };
   const filteredKeys = redisKeys.filter(({
@@ -674,6 +776,23 @@ export default function SystemSettings() {
                   <option value="info">Info</option>
                   <option value="debug">Debug</option>
                 </select>
+              </div>
+            </div>
+
+            {/* Lead Guard Limits */}
+            <div className={cx("section-divider")}></div>
+            <div className={cx("section-group")}>
+              <div className={cx("section-label")}>Lead Guard Limits</div>
+              <div className={cx("form-grid")}>
+                {GUARD_LIMIT_FIELDS.map(({
+                key,
+                label,
+                placeholder
+              }) => <div key={key} className={cx("form-field")}>
+                    <label className={cx("form-label")}>{label}</label>
+                    <input type="number" min={NUMBER_FIELD_RULES[key].min} max={NUMBER_FIELD_RULES[key].max} step="1" className={cx(`form-input ${validationErrors[key] ? 'error' : ''}`)} value={local[key] ?? ""} onChange={e => setNumber(key, e.target.value)} placeholder={placeholder} />
+                    {validationErrors[key] && <div className={cx("input-error")}>{validationErrors[key]}</div>}
+                  </div>)}
               </div>
             </div>
 

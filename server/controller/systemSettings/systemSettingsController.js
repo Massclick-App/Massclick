@@ -1,5 +1,5 @@
 import systemSettingsModel from "../../model/systemSettings/systemSettingsModel.js";
-import { invalidateCache } from "../../helper/systemSettings/settingsService.js";
+import { SYSTEM_SETTINGS_DEFAULTS, invalidateCache } from "../../helper/systemSettings/settingsService.js";
 import { getIO } from "../../websocket/ioInstance.js";
 import { WS_EVENTS } from "../../websocket/constants.js";
 import { createLogger } from "../../utils/logger.js";
@@ -36,7 +36,7 @@ export const getSystemSettingsAction = async (req, res) => {
       summary: settingsSummary
     });
 
-    return res.status(200).json({ success: true, data: settings });
+    return res.status(200).json({ success: true, data: { ...SYSTEM_SETTINGS_DEFAULTS, ...settings } });
   } catch (error) {
     const adminEmail = req.authUser?.email || "anonymous";
     await logger.error("getSystemSettingsAction error", error, { admin: adminEmail });
@@ -62,6 +62,14 @@ export const updateSystemSettingsAction = async (req, res) => {
       "whatsapp_mni_lead_alert",
       "whatsapp_mni_customer_list",
       "whatsapp_login_welcome",
+      "lead_guard_search_text_required",
+      "lead_guard_anonymous_dedupe_enabled",
+      "lead_guard_user_dedupe_enabled",
+      "lead_guard_live_business_only",
+      "whatsapp_business_lead_daily_cap_enabled",
+      "whatsapp_business_lead_duplicate_guard_enabled",
+      "whatsapp_business_lead_cooldown_enabled",
+      "whatsapp_recipient_health_guard_enabled",
       "app_maintenance_mode",
       "logging_enabled",
       "logging_fcm_debug",
@@ -81,6 +89,20 @@ export const updateSystemSettingsAction = async (req, res) => {
       "app_release_notes",
       "logging_level",
     ];
+
+    const numberFields = [
+      "lead_guard_anonymous_dedupe_minutes",
+      "lead_guard_user_dedupe_minutes",
+      "whatsapp_business_lead_daily_cap",
+      "whatsapp_business_lead_cooldown_minutes",
+    ];
+
+    const numberFieldRules = {
+      lead_guard_anonymous_dedupe_minutes: { min: 0, max: 1440 },
+      lead_guard_user_dedupe_minutes: { min: 0, max: 1440 },
+      whatsapp_business_lead_daily_cap: { min: 0, max: 100 },
+      whatsapp_business_lead_cooldown_minutes: { min: 0, max: 1440 },
+    };
 
     // Validate logging_level enum
     const validLogLevels = ['off', 'error', 'warn', 'info', 'debug'];
@@ -104,6 +126,33 @@ export const updateSystemSettingsAction = async (req, res) => {
 
     for (const key of stringFields) {
       if (key in req.body) updates[key] = String(req.body[key]).trim();
+    }
+
+    for (const key of numberFields) {
+      if (!(key in req.body)) continue;
+
+      const numericValue = Number(req.body[key]);
+      const rules = numberFieldRules[key];
+
+      if (
+        !Number.isFinite(numericValue) ||
+        !Number.isInteger(numericValue) ||
+        numericValue < rules.min ||
+        numericValue > rules.max
+      ) {
+        await logger.warn(`Invalid numeric system setting attempted`, {
+          admin: adminEmail,
+          field: key,
+          value: req.body[key],
+          rules
+        });
+        return res.status(400).json({
+          success: false,
+          message: `${key} must be an integer between ${rules.min} and ${rules.max}`
+        });
+      }
+
+      updates[key] = numericValue;
     }
 
     if (!Object.keys(updates).length) {
@@ -191,7 +240,7 @@ export const updateSystemSettingsAction = async (req, res) => {
       }
     }
 
-    return res.status(200).json({ success: true, data: settings });
+    return res.status(200).json({ success: true, data: { ...SYSTEM_SETTINGS_DEFAULTS, ...settings } });
   } catch (error) {
     const adminEmail = req.authUser?.email || "admin";
     await logger.error("updateSystemSettingsAction error", error, {

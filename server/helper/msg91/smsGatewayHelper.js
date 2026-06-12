@@ -10,19 +10,28 @@ import {
   recordWhatsAppAttempt,
 } from "./whatsappReliabilityHelper.js";
 
-const logger = createLogger('SMS');
-const MSG91_WHATSAPP_BULK_URL = "https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/";
+const logger = createLogger("SMS");
+const MSG91_WHATSAPP_BULK_URL =
+  "https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/";
 const MSG91_WHATSAPP_NUMBER = process.env.MSG91_WHATSAPP_SENDER_ID;
 const MSG91_WHATSAPP_NAMESPACE = process.env.MSG91_TEMPLATE_NAMESPACE;
 const CUSTOMER_BUSINESS_LIST_TEMPLATE_MAX_CHARS = 1024;
-// Keep these aligned with the approved MSG91 template copy for exact pre-send length checks.
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TEMPLATE VARIANT DEFINITIONS
+// Keep these aligned with the approved MSG91 template copy for exact
+// pre-send length checks.
+// ─────────────────────────────────────────────────────────────────────────────
 const CUSTOMER_BUSINESS_LIST_TEMPLATE_VARIANTS = {
   en_US: {
     languageCode: "en_US",
+    templateName: "customer_business_list_v1",
+    // {{1}} customerName | {{2}} serviceType | {{3}} location
+    // {{4}} all businesses pipe-joined into a single variable
     lines: [
       "Hello {{1}},",
       "",
-      "Here are the verified businesses for \"{{2}}\" in {{3}}:",
+      'Here are the verified businesses for "{{2}}" in {{3}}:',
       "",
       "{{4}}",
       "",
@@ -35,19 +44,40 @@ const CUSTOMER_BUSINESS_LIST_TEMPLATE_VARIANTS = {
       "Thank you,",
       "Massclick",
     ],
+    /**
+     * @param {string[]} baseValues - [customerName, serviceType, location]
+     * @param {string[]} rows       - business name strings (any length)
+     * @returns {string[]}          - exactly 4 values for {{1}}–{{4}}
+     */
     buildValues: (baseValues, rows) => [
-      baseValues[0],
-      baseValues[1],
-      baseValues[2],
-      rows.filter((value) => value && value !== "-").join("\n\n") || "-",
+      baseValues[0], // {{1}} customerName
+      baseValues[1], // {{2}} serviceType
+      baseValues[2], // {{3}} location
+      rows.filter((v) => v && v !== "-").join(" | ") || "-", // {{4}} pipe-joined
     ],
+    /**
+     * Maps buildValues output → MSG91 components object.
+     * en_US has no button variable.
+     * @param {string[]} values - output of buildValues (length 4)
+     * @returns {object}
+     */
+    buildComponents: (values) => ({
+      body_1: { type: "text", value: values[0] },
+      body_2: { type: "text", value: values[1] },
+      body_3: { type: "text", value: values[2] },
+      body_4: { type: "text", value: values[3] },
+    }),
   },
+
   en: {
     languageCode: "en",
+    templateName: "customer_business_list_v1",
+    // {{1}} customerName | {{2}} serviceType | {{3}} location
+    // {{4}}–{{8}} individual business rows (one per slot)
     lines: [
       "Hello {{1}},",
       "",
-      "Thank you for your interest in \"{{2}}\" services in {{3}}.",
+      'Thank you for your interest in "{{2}}" services in {{3}}.',
       "",
       "We have found some verified and trusted businesses for your requirement.",
       "Please check the details below:",
@@ -70,18 +100,47 @@ const CUSTOMER_BUSINESS_LIST_TEMPLATE_VARIANTS = {
       "Thank you,",
       "Massclick",
     ],
+    /**
+     * @param {string[]} baseValues - [customerName, serviceType, location]
+     * @param {string[]} rows       - up to 5 business name strings
+     * @returns {string[]}          - exactly 8 values for {{1}}–{{8}}
+     */
     buildValues: (baseValues, rows) => [
-      baseValues[0],
-      baseValues[1],
-      baseValues[2],
-      rows[0] || "-",
-      rows[1] || "-",
-      rows[2] || "-",
-      rows[3] || "-",
-      rows[4] || "-",
+      baseValues[0],  // {{1}} customerName
+      baseValues[1],  // {{2}} serviceType
+      baseValues[2],  // {{3}} location
+      rows[0] || "-", // {{4}}
+      rows[1] || "-", // {{5}}
+      rows[2] || "-", // {{6}}
+      rows[3] || "-", // {{7}}
+      rows[4] || "-", // {{8}}
     ],
+    /**
+     * Maps buildValues output → MSG91 components object.
+     * en variant includes an optional button_2 URL variable.
+     * @param {string[]} values   - output of buildValues (length 8)
+     * @param {string}   [ctaUrl] - optional CTA URL for button_2
+     * @returns {object}
+     */
+    buildComponents: (values, ctaUrl) => ({
+      body_1: { type: "text", value: values[0] },
+      body_2: { type: "text", value: values[1] },
+      body_3: { type: "text", value: values[2] },
+      body_4: { type: "text", value: values[3] },
+      body_5: { type: "text", value: values[4] },
+      body_6: { type: "text", value: values[5] },
+      body_7: { type: "text", value: values[6] },
+      body_8: { type: "text", value: values[7] },
+      ...(ctaUrl && {
+        button_2: { subtype: "url", type: "text", value: ctaUrl },
+      }),
+    }),
   },
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MSG91 HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
 
 const getMsg91ErrorMessage = (data, fallback) => {
   if (!data) return fallback;
@@ -122,31 +181,33 @@ const getTemplateMeta = (payload = {}) => {
 
 const postWhatsAppTemplate = async (payload, context = {}) => {
   const meta = getTemplateMeta(payload);
-  const auditId = context.auditId || (await recordWhatsAppAttempt({
-    ...context,
-    ...meta,
-    templateName: context.templateName || meta.templateName,
-    recipientMobile: context.recipientMobile || meta.recipientMobile,
-    payloadPreview: context.payloadPreview || meta.payloadPreview,
-  }))._id;
+  const auditId =
+    context.auditId ||
+    (
+      await recordWhatsAppAttempt({
+        ...context,
+        ...meta,
+        templateName: context.templateName || meta.templateName,
+        recipientMobile: context.recipientMobile || meta.recipientMobile,
+        payloadPreview: context.payloadPreview || meta.payloadPreview,
+      })
+    )._id;
 
   try {
-    const response = await axios.post(
-      MSG91_WHATSAPP_BULK_URL,
-      payload,
-      {
-        headers: {
-          authkey: process.env.MSG91_AUTH_KEY,
-          "Content-Type": "application/json"
-        }
-      }
-    );
+    const response = await axios.post(MSG91_WHATSAPP_BULK_URL, payload, {
+      headers: {
+        authkey: process.env.MSG91_AUTH_KEY,
+        "Content-Type": "application/json",
+      },
+    });
 
     assertMsg91Success(response, context.templateName || meta.templateName);
     await markWhatsAppSent(auditId, response.data);
     return response;
   } catch (error) {
-    await markWhatsAppFailed(auditId, error, { retryCount: context.retryCount || 0 });
+    await markWhatsAppFailed(auditId, error, {
+      retryCount: context.retryCount || 0,
+    });
     throw error;
   }
 };
@@ -167,11 +228,10 @@ const getValidMobileOrSkip = async (mobile, context = {}) => {
   return normalized.mobile;
 };
 
-// const MSG91_AUTHKEY = process.env.MSG91_AUTHKEY;
-// const MSG91_FLOW_ID = process.env.MSG91_WHATSAPP_FLOW_ID; 
-// const MSG91_SENDER = process.env.MSG91_WHATSAPP_SENDER; 
+// ─────────────────────────────────────────────────────────────────────────────
+// OTP
+// ─────────────────────────────────────────────────────────────────────────────
 
-// Send OTP
 export const sendOtp = async (number) => {
   try {
     const authKey = process.env.MSG91_AUTH_KEY;
@@ -189,10 +249,7 @@ export const sendOtp = async (number) => {
 
     const response = await axios.post(
       baseUrl,
-      {
-        mobile: `91${cleanNumber}`,
-        template_id: templateId
-      },
+      { mobile: `91${cleanNumber}`, template_id: templateId },
       {
         headers: {
           authkey: authKey,
@@ -205,16 +262,21 @@ export const sendOtp = async (number) => {
       throw new Error(response.data.message || "Failed to send OTP.");
     }
 
-    await logger.smsDebug("OTP sent successfully", { phoneNumber: cleanNumber, response: response.data });
+    await logger.smsDebug("OTP sent successfully", {
+      phoneNumber: cleanNumber,
+      response: response.data,
+    });
     return { success: true, apiResponse: response.data };
   } catch (error) {
-    await logger.warn("Error sending OTP", { phoneNumber: number, error: error.message });
+    await logger.warn("Error sending OTP", {
+      phoneNumber: number,
+      error: error.message,
+    });
     console.error("Error sending OTP:", error.response?.data || error.message);
     throw error;
   }
 };
 
-// Verify OTP
 export const verifyOtp = async (number, otp) => {
   try {
     const authKey = process.env.MSG91_AUTH_KEY;
@@ -235,10 +297,7 @@ export const verifyOtp = async (number, otp) => {
 
     const response = await axios.post(
       verifyUrl,
-      {
-        mobile: `91${cleanNumber}`,
-        otp: otp
-      },
+      { mobile: `91${cleanNumber}`, otp },
       {
         headers: {
           authkey: authKey,
@@ -250,14 +309,22 @@ export const verifyOtp = async (number, otp) => {
     const { type, message } = response.data;
 
     if (type === "success" || message === "Mobile no. already verified") {
-      await logger.smsDebug("OTP verified successfully", { phoneNumber: cleanNumber });
+      await logger.smsDebug("OTP verified successfully", {
+        phoneNumber: cleanNumber,
+      });
       return { success: true, apiResponse: response.data };
     }
 
     throw new Error(message || "OTP verification failed.");
   } catch (error) {
-    await logger.warn("Error verifying OTP", { phoneNumber: number, error: error.message });
-    console.error("Error verifying OTP:", error.response?.data || error.message);
+    await logger.warn("Error verifying OTP", {
+      phoneNumber: number,
+      error: error.message,
+    });
+    console.error(
+      "Error verifying OTP:",
+      error.response?.data || error.message
+    );
     throw error;
   }
 };
@@ -271,14 +338,13 @@ export const fakesendOtp = async (number) => {
 
     console.log(`[DUMMY] OTP would be sent to ${cleanNumber}`);
 
-    // Simulate successful response
     return {
       success: true,
       apiResponse: {
         type: "success",
         message: "OTP sent successfully (DUMMY MODE)",
-        mobile: `91${cleanNumber}`
-      }
+        mobile: `91${cleanNumber}`,
+      },
     };
   } catch (error) {
     console.error("Error sending OTP:", error.message);
@@ -286,7 +352,6 @@ export const fakesendOtp = async (number) => {
   }
 };
 
-// Verify OTP (Dummy - accepts any OTP)
 export const fakeverifyOtp = async (number, otp) => {
   try {
     const cleanNumber = number.replace(/\D/g, "");
@@ -298,16 +363,17 @@ export const fakeverifyOtp = async (number, otp) => {
       throw new Error("OTP is required for verification.");
     }
 
-    console.log(`[DUMMY] Verifying OTP for ${cleanNumber} - OTP: ${otp} (ANY OTP ACCEPTED)`);
+    console.log(
+      `[DUMMY] Verifying OTP for ${cleanNumber} - OTP: ${otp} (ANY OTP ACCEPTED)`
+    );
 
-    // Always succeed - accept any OTP
     return {
       success: true,
       apiResponse: {
         type: "success",
         message: "OTP verified successfully (DUMMY MODE)",
-        mobile: `91${cleanNumber}`
-      }
+        mobile: `91${cleanNumber}`,
+      },
     };
   } catch (error) {
     console.error("Error verifying OTP:", error.message);
@@ -315,7 +381,15 @@ export const fakeverifyOtp = async (number, otp) => {
   }
 };
 
-export const sendWhatsAppMessage = async (ownerMobile, lead = {}, context = {}) => {
+// ─────────────────────────────────────────────────────────────────────────────
+// BUSINESS LEAD ALERTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const sendWhatsAppMessage = async (
+  ownerMobile,
+  lead = {},
+  context = {}
+) => {
   const cleanMobile = await getValidMobileOrSkip(ownerMobile, {
     ...context,
     templateName: "business_lead_alert_v1",
@@ -334,25 +408,28 @@ export const sendWhatsAppMessage = async (ownerMobile, lead = {}, context = {}) 
       type: "template",
       template: {
         name: "business_lead_alert_v1",
-        language: {
-          code: "en_US",
-          policy: "deterministic"
-        },
+        language: { code: "en_US", policy: "deterministic" },
         namespace: process.env.MSG91_TEMPLATE_NAMESPACE,
         to_and_components: [
           {
             to: [cleanMobile],
             components: {
-              body_1: { type: "text", value: lead.searchText || lead.message || "N/A" },
+              body_1: {
+                type: "text",
+                value: lead.searchText || lead.message || "N/A",
+              },
               body_2: { type: "text", value: lead.location || "N/A" },
-              body_3: { type: "text", value: lead.customerName || lead.name || "N/A" },
+              body_3: {
+                type: "text",
+                value: lead.customerName || lead.name || "N/A",
+              },
               body_4: { type: "text", value: lead.customerMobile || "N/A" },
-              body_5: { type: "text", value: lead.email || "Not Provided" }
-            }
-          }
-        ]
-      }
-    }
+              body_5: { type: "text", value: lead.email || "Not Provided" },
+            },
+          },
+        ],
+      },
+    },
   };
 
   const response = await postWhatsAppTemplate(payload, {
@@ -369,7 +446,11 @@ export const sendWhatsAppMessage = async (ownerMobile, lead = {}, context = {}) 
   return response.data;
 };
 
-export const sendBusinessLead = async (cleanMobile, lead = {}, context = {}) => {
+export const sendBusinessLead = async (
+  cleanMobile,
+  lead = {},
+  context = {}
+) => {
   const recipientMobile = await getValidMobileOrSkip(cleanMobile, {
     ...context,
     templateName: "business_lead_alert_v2",
@@ -388,10 +469,7 @@ export const sendBusinessLead = async (cleanMobile, lead = {}, context = {}) => 
       type: "template",
       template: {
         name: "business_lead_alert_v2",
-        language: {
-          code: "en",
-          policy: "deterministic"
-        },
+        language: { code: "en", policy: "deterministic" },
         namespace: process.env.MSG91_TEMPLATE_NAMESPACE,
         to_and_components: [
           {
@@ -401,12 +479,12 @@ export const sendBusinessLead = async (cleanMobile, lead = {}, context = {}) => 
               body_2: { type: "text", value: lead.location },
               body_3: { type: "text", value: lead.customerName },
               body_4: { type: "text", value: lead.customerMobile },
-              body_5: { type: "text", value: lead.email || "Not Provided" }
-            }
-          }
-        ]
-      }
-    }
+              body_5: { type: "text", value: lead.email || "Not Provided" },
+            },
+          },
+        ],
+      },
+    },
   };
 
   const response = await postWhatsAppTemplate(payload, {
@@ -423,21 +501,23 @@ export const sendBusinessLead = async (cleanMobile, lead = {}, context = {}) => 
   return response.data;
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// CUSTOMER BUSINESS LIST — shared helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
 const cleanValue = (val) => {
   if (!val || val === "-") return "-";
 
   return val
     .toString()
-    .replace(/\n/g, " ")   // â— REMOVE NEWLINES
-    .replace(/\s+/g, " ")  // normalize spaces
+    .replace(/\n/g, " ")  // remove newlines
+    .replace(/\s+/g, " ") // normalize spaces
     .trim();
 };
 
 const truncateValue = (val, maxLength) => {
   const cleaned = cleanValue(val);
-
   if (cleaned === "-" || cleaned.length <= maxLength) return cleaned;
-
   return `${cleaned.slice(0, Math.max(0, maxLength - 3)).trim()}...`;
 };
 
@@ -445,10 +525,13 @@ const compactBusinessLine = (biz, index) => {
   const contact = Array.isArray(biz.contactList)
     ? biz.contactList[0]
     : biz.contactList || biz.whatsappNumber || "N/A";
-  const phone = contact.toString().replace(/\D/g, "").slice(-10) || "N/A";
+  const phone =
+    contact.toString().replace(/\D/g, "").slice(-10) || "N/A";
   const name = truncateValue(biz.businessName || "Business", 28);
-  const area = truncateValue(biz.location || biz.street || biz.address || "Area", 24);
-
+  const area = truncateValue(
+    biz.location || biz.street || biz.address || "Area",
+    24
+  );
   return truncateValue(`${index + 1}. ${name} | ${area} | ${phone}`, 90);
 };
 
@@ -460,12 +543,10 @@ const getCustomerListBaseValues = (lead = {}) => [
 
 const getCustomerBusinessRows = (list, startIndex = 0) => {
   const values = [];
-
   for (let i = 0; i < 5; i++) {
     const biz = list[i];
     values.push(biz ? compactBusinessLine(biz, startIndex + i) : "-");
   }
-
   return values;
 };
 
@@ -474,12 +555,23 @@ const getCustomerBusinessListVariant = (languageCode = "en_US") =>
   CUSTOMER_BUSINESS_LIST_TEMPLATE_VARIANTS.en_US;
 
 const renderCustomerBusinessListText = (variant, values = []) =>
-  variant.lines.map((line) =>
-    line.replace(/\{\{(\d+)\}\}/g, (_, index) => cleanValue(values[Number(index) - 1] || "-"))
-  ).join("\n");
+  variant.lines
+    .map((line) =>
+      line.replace(
+        /\{\{(\d+)\}\}/g,
+        (_, index) => cleanValue(values[Number(index) - 1] || "-")
+      )
+    )
+    .join("\n");
 
-const trimCustomerListForTemplateLimit = (variant, baseValues, businesses, startIndex) => {
+const trimCustomerListForTemplateLimit = (
+  variant,
+  baseValues,
+  businesses,
+  startIndex
+) => {
   const rows = getCustomerBusinessRows(businesses, startIndex);
+
   const getRenderedLength = (currentRows) =>
     renderCustomerBusinessListText(
       variant,
@@ -487,16 +579,22 @@ const trimCustomerListForTemplateLimit = (variant, baseValues, businesses, start
     ).length;
 
   while (
-    rows.some((value) => value !== "-") &&
+    rows.some((v) => v !== "-") &&
     getRenderedLength(rows) > CUSTOMER_BUSINESS_LIST_TEMPLATE_MAX_CHARS
   ) {
-    const lastIndex = rows.map((value) => value !== "-").lastIndexOf(true);
+    const lastIndex = rows.map((v) => v !== "-").lastIndexOf(true);
     if (lastIndex === -1) break;
     rows[lastIndex] = "-";
   }
 
   return variant.buildValues(baseValues, rows);
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// sendBusinessesToCustomer
+// Sends up to 2 WhatsApp messages (first batch en_US, second batch en)
+// each carrying up to 5 businesses, trimmed to stay within 1 024 chars.
+// ─────────────────────────────────────────────────────────────────────────────
 
 export const sendBusinessesToCustomer = async (
   cleanMobile,
@@ -515,6 +613,7 @@ export const sendBusinessesToCustomer = async (
       customerMobile: lead.customerMobile || cleanMobile || "",
     });
 
+    // ── location normalisation ────────────────────────────────────────────
     const normalize = (text = "") => text.toLowerCase().trim();
     const locationGroups = {
       trichy: ["trichy", "tiruchirappalli"],
@@ -534,26 +633,24 @@ export const sendBusinessesToCustomer = async (
     }
 
     const filteredBusinesses = businesses.filter((biz) => {
-      const location = normalize(
+      const loc = normalize(
         `${biz.fullAddress || ""} ${biz.area || ""} ${biz.city || ""} ${biz.state || ""}`
       );
-
-      if (groupKey) {
-        return locationGroups[groupKey].some((alias) => location.includes(alias));
-      }
-
-      return location.includes(leadLocationRaw);
+      return groupKey
+        ? locationGroups[groupKey].some((alias) => loc.includes(alias))
+        : loc.includes(leadLocationRaw);
     });
 
-    const sourceList = filteredBusinesses.length > 0 ? filteredBusinesses : businesses;
+    const sourceList =
+      filteredBusinesses.length > 0 ? filteredBusinesses : businesses;
+
+    // ── dedup ─────────────────────────────────────────────────────────────
     const uniqueBusinesses = [];
     const seen = new Set();
-
     sourceList.forEach((biz) => {
       const key = normalize(
         `${biz.businessName || biz.name || ""}|${biz.area || ""}|${biz.mobile || biz.contact || ""}`
       );
-
       if (!seen.has(key)) {
         seen.add(key);
         uniqueBusinesses.push(biz);
@@ -564,6 +661,7 @@ export const sendBusinessesToCustomer = async (
     const firstBatch = finalBusinesses.slice(0, 5);
     const secondBatch = finalBusinesses.slice(5, 10);
     const baseValues = getCustomerListBaseValues(lead);
+
     const firstMessageVariant = getCustomerBusinessListVariant(
       context.firstLanguageCode || "en_US"
     );
@@ -571,14 +669,15 @@ export const sendBusinessesToCustomer = async (
       context.secondLanguageCode || "en"
     );
 
-    const createPayload = (variant, values) => ({
+    // ── FIXED: use variant.buildComponents instead of ad-hoc reducer ──────
+    const createPayload = (variant, values, ctaUrl) => ({
       integrated_number: MSG91_WHATSAPP_NUMBER,
       content_type: "template",
       payload: {
         messaging_product: "whatsapp",
         type: "template",
         template: {
-          name: "customer_business_list_v1",
+          name: variant.templateName,
           language: {
             code: variant.languageCode,
             policy: "deterministic",
@@ -587,10 +686,7 @@ export const sendBusinessesToCustomer = async (
           to_and_components: [
             {
               to: [recipientMobile],
-              components: values.reduce((acc, value, index) => {
-                acc[`body_${index + 1}`] = { type: "text", value };
-                return acc;
-              }, {}),
+              components: variant.buildComponents(values, ctaUrl),
             },
           ],
         },
@@ -608,14 +704,19 @@ export const sendBusinessesToCustomer = async (
       customerMobile: lead.customerMobile || cleanMobile || "",
     };
 
+    // ── first message (en_US, batch 0–4) ─────────────────────────────────
     const values1 = trimCustomerListForTemplateLimit(
       firstMessageVariant,
       baseValues,
       firstBatch,
       0
     );
-    await postWhatsAppTemplate(createPayload(firstMessageVariant, values1), auditContext);
+    await postWhatsAppTemplate(
+      createPayload(firstMessageVariant, values1),
+      auditContext
+    );
 
+    // ── second message (en, batch 5–9) — only if there are rows ──────────
     if (secondBatch.length > 0) {
       const values2 = trimCustomerListForTemplateLimit(
         secondMessageVariant,
@@ -623,9 +724,15 @@ export const sendBusinessesToCustomer = async (
         secondBatch,
         5
       );
-      const hasBusinessRows = values2.slice(3).some((value) => value && value !== "-");
+      const hasBusinessRows = values2
+        .slice(3)
+        .some((v) => v && v !== "-");
+
       if (hasBusinessRows) {
-        await postWhatsAppTemplate(createPayload(secondMessageVariant, values2), auditContext);
+        await postWhatsAppTemplate(
+          createPayload(secondMessageVariant, values2, context.ctaUrl),
+          auditContext
+        );
       }
     }
 
@@ -652,7 +759,16 @@ export const sendBusinessesToCustomer = async (
     throw error;
   }
 };
-export const sendMniBusinessLead = async (cleanMobile, lead = {}, context = {}) => {
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MNI TEMPLATES
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const sendMniBusinessLead = async (
+  cleanMobile,
+  lead = {},
+  context = {}
+) => {
   const recipientMobile = await getValidMobileOrSkip(cleanMobile, {
     ...context,
     templateName: "mni_requirement_alert_v1",
@@ -671,10 +787,7 @@ export const sendMniBusinessLead = async (cleanMobile, lead = {}, context = {}) 
       type: "template",
       template: {
         name: "mni_requirement_alert_v1",
-        language: {
-          code: "en_US",
-          policy: "deterministic",
-        },
+        language: { code: "en_US", policy: "deterministic" },
         namespace: MSG91_WHATSAPP_NAMESPACE,
         to_and_components: [
           {
@@ -772,10 +885,7 @@ export const sendCustomerBusinessList = async (
       type: "template",
       template: {
         name: "mni_customer_business_list_v1",
-        language: {
-          code: "en_US",
-          policy: "deterministic",
-        },
+        language: { code: "en_US", policy: "deterministic" },
         namespace: MSG91_WHATSAPP_NAMESPACE,
         to_and_components: [
           {
@@ -808,7 +918,15 @@ export const sendCustomerBusinessList = async (
   return response.data;
 };
 
-export const sendLoginWelcomeMessage = async (mobile, userName, context = {}) => {
+// ─────────────────────────────────────────────────────────────────────────────
+// OTHER TEMPLATES
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const sendLoginWelcomeMessage = async (
+  mobile,
+  userName,
+  context = {}
+) => {
   const recipientMobile = await getValidMobileOrSkip(mobile, {
     ...context,
     templateName: "login_welcome_massclick",
@@ -825,10 +943,7 @@ export const sendLoginWelcomeMessage = async (mobile, userName, context = {}) =>
       type: "template",
       template: {
         name: "login_welcome_massclick",
-        language: {
-          code: "en_US",
-          policy: "deterministic",
-        },
+        language: { code: "en_US", policy: "deterministic" },
         namespace: MSG91_WHATSAPP_NAMESPACE,
         to_and_components: [
           {
@@ -855,7 +970,11 @@ export const sendLoginWelcomeMessage = async (mobile, userName, context = {}) =>
   return response.data;
 };
 
-export const sendEnquiryBusinessLead = async (mobile, lead = {}, context = {}) => {
+export const sendEnquiryBusinessLead = async (
+  mobile,
+  lead = {},
+  context = {}
+) => {
   const recipientMobile = await getValidMobileOrSkip(mobile, {
     ...context,
     templateName: "enquiry_business_lead_v1",
@@ -874,10 +993,7 @@ export const sendEnquiryBusinessLead = async (mobile, lead = {}, context = {}) =
       type: "template",
       template: {
         name: "enquiry_business_lead_v1",
-        language: {
-          code: "en",
-          policy: "deterministic",
-        },
+        language: { code: "en", policy: "deterministic" },
         namespace: MSG91_WHATSAPP_NAMESPACE,
         to_and_components: [
           {
@@ -908,4 +1024,3 @@ export const sendEnquiryBusinessLead = async (mobile, lead = {}, context = {}) =
 
   return response;
 };
-

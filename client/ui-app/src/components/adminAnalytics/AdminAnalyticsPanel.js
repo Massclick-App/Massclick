@@ -207,7 +207,7 @@ export default function AdminAnalyticsPanel() {
     fetchReport();
   }, [fetchReport]);
 
-  const totals = report?.totals || {};
+  const totals = useMemo(() => report?.totals || {}, [report]);
   const generatedAt = report?.generatedAt ? new Date(report.generatedAt) : null;
 
   const metricCards = useMemo(() => {
