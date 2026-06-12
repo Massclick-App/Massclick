@@ -676,7 +676,7 @@ export const sendBusinessesToCustomer = async (
         secondMessageVariant,
         baseValues,
         secondBatch,
-        5
+        0
       );
       const hasBusinessRows = values2.slice(3).some((value) => value && value !== "-");
       if (hasBusinessRows) {
