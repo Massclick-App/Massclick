@@ -1,10 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
+  exportMsg91AnalyticsCsv,
+  fetchMsg91FilterOptions,
   fetchMsg91Audit,
   fetchMsg91Dashboard,
   fetchMsg91Recipients,
   reviewMsg91Recipient,
+  searchMsg91Businesses,
   unsuppressMsg91Recipient,
 } from "../../redux/actions/msg91AnalyticsAction.js";
 import styles from "./Msg91Analytics.module.css";
@@ -21,6 +24,7 @@ const initialFilters = {
   status: "",
   sourceType: "",
   failureReason: "",
+  businessId: "",
   category: "",
   location: "",
   recipientMobile: "",
@@ -29,6 +33,13 @@ const initialFilters = {
 
 const statusOptions = ["queued", "sent", "delivered", "read", "failed", "hold", "skipped"];
 const sourceOptions = ["search_lead", "customer_list", "mni", "enquiry", "welcome", "manual"];
+
+const businessLabel = (business = {}) => [
+  business.businessName || business.name || "Unnamed business",
+  business.location,
+  business.category,
+  business.clientId,
+].filter(Boolean).join(" - ");
 
 const formatNumber = (value) => Number(value || 0).toLocaleString("en-IN");
 const formatMoney = (value) => Number(value || 0).toLocaleString("en-IN", {
@@ -83,11 +94,15 @@ export default function Msg91Analytics() {
     recipientsLoading,
     error,
   } = useSelector((state) => state.msg91Analytics);
-
   const [filters, setFilters] = useState(initialFilters);
   const [appliedFilters, setAppliedFilters] = useState(initialFilters);
   const [expandedAuditId, setExpandedAuditId] = useState("");
   const [recipientFilter, setRecipientFilter] = useState({ mobile: "", suppressed: "", invalid: "" });
+  const [exportLoading, setExportLoading] = useState(false);
+  const [filterOptions, setFilterOptions] = useState({ templates: [], locations: [], categories: [] });
+  const [businessSearch, setBusinessSearch] = useState("");
+  const [businessOptions, setBusinessOptions] = useState([]);
+  const [businessLoading, setBusinessLoading] = useState(false);
 
   useEffect(() => {
     dispatch(fetchMsg91Dashboard(appliedFilters));
@@ -97,6 +112,54 @@ export default function Msg91Analytics() {
   useEffect(() => {
     dispatch(fetchMsg91Recipients({ pageNo: 1, pageSize: 25, filters: { mobile: "", suppressed: "", invalid: "" } }));
   }, [dispatch]);
+
+  useEffect(() => {
+    let ignore = false;
+    const loadOptions = async () => {
+      try {
+        const options = await fetchMsg91FilterOptions({
+          from: filters.from,
+          to: filters.to,
+          businessId: filters.businessId,
+        });
+        if (!ignore) {
+          setFilterOptions({
+            templates: options.templates || [],
+            locations: options.locations || [],
+            categories: options.categories || [],
+          });
+        }
+      } catch (optionError) {
+        console.error("MSG91 filter options failed:", optionError);
+      }
+    };
+
+    loadOptions();
+    return () => {
+      ignore = true;
+    };
+  }, [filters.from, filters.to, filters.businessId]);
+
+  useEffect(() => {
+    let ignore = false;
+    const timer = setTimeout(async () => {
+      setBusinessLoading(true);
+      try {
+        const businesses = await searchMsg91Businesses({ search: businessSearch, limit: 30 });
+        if (!ignore) setBusinessOptions(businesses);
+      } catch (businessError) {
+        console.error("MSG91 business search failed:", businessError);
+        if (!ignore) setBusinessOptions([]);
+      } finally {
+        if (!ignore) setBusinessLoading(false);
+      }
+    }, 250);
+
+    return () => {
+      ignore = true;
+      clearTimeout(timer);
+    };
+  }, [businessSearch]);
 
   const statusCounts = summary?.statusCounts || {};
   const templates = summary?.templates || [];
@@ -112,6 +175,7 @@ export default function Msg91Analytics() {
   const clearFilters = () => {
     setFilters(initialFilters);
     setAppliedFilters(initialFilters);
+    setBusinessSearch("");
   };
 
   const changeAuditPage = (direction) => {
@@ -123,39 +187,35 @@ export default function Msg91Analytics() {
     dispatch(fetchMsg91Recipients({ pageNo: 1, pageSize: 25, filters: recipientFilter }));
   };
 
-  const exportCsv = () => {
-    const headers = [
-      "createdAt",
-      "templateName",
-      "sourceType",
-      "status",
-      "recipientMobile",
-      "customerMobile",
-      "category",
-      "location",
-      "businessName",
-      "failureCode",
-      "failureReason",
-      "skippedReason",
-    ];
-
-    const lines = audit.map((row) =>
-      headers
-        .map((key) => `"${String(row[key] || "").replace(/"/g, '""')}"`)
-        .join(",")
-    );
-
-    const blob = new Blob([[headers.join(","), ...lines].join("\n")], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `msg91-audit-${Date.now()}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
+  const exportCsv = async () => {
+    setExportLoading(true);
+    try {
+      const response = await exportMsg91AnalyticsCsv(filters);
+      const disposition = response.headers?.["content-disposition"] || "";
+      const fileNameMatch = disposition.match(/filename="?([^"]+)"?/i);
+      const fileName = fileNameMatch?.[1] || `MassClick-Leads-Report-${Date.now()}.xlsx`;
+      const url = URL.createObjectURL(response.data);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (downloadError) {
+      console.error("MSG91 CSV export failed:", downloadError);
+      window.alert(downloadError.response?.data?.message || "Excel export failed. Please try again.");
+    } finally {
+      setExportLoading(false);
+    }
   };
 
   const updateFilter = (key, value) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const selectBusiness = (businessId) => {
+    const business = businessOptions.find((item) => String(item._id) === String(businessId));
+    setFilters((prev) => ({ ...prev, businessId }));
+    if (business) setBusinessSearch(businessLabel(business));
   };
 
   return (
@@ -166,7 +226,9 @@ export default function Msg91Analytics() {
           <p>WhatsApp audit, failures, skips, recipient health, and delivery outcomes.</p>
         </div>
         <div className={styles.headerActions}>
-          <button type="button" onClick={exportCsv}>Export CSV</button>
+          <button type="button" onClick={exportCsv} disabled={exportLoading}>
+            {exportLoading ? "Exporting..." : "Export Excel"}
+          </button>
           <button type="button" className={styles.primary} onClick={applyFilters}>Refresh</button>
         </div>
       </div>
@@ -193,7 +255,12 @@ export default function Msg91Analytics() {
         </label>
         <label>
           Template
-          <input value={filters.template} onChange={(event) => updateFilter("template", event.target.value)} placeholder="business_lead_alert_v2" />
+          <select value={filters.template} onChange={(event) => updateFilter("template", event.target.value)}>
+            <option value="">All templates</option>
+            {filterOptions.templates.map((template) => (
+              <option key={template} value={template}>{template}</option>
+            ))}
+          </select>
         </label>
         <label>
           Status
@@ -213,13 +280,55 @@ export default function Msg91Analytics() {
           Failure
           <input value={filters.failureReason} onChange={(event) => updateFilter("failureReason", event.target.value)} placeholder="131026" />
         </label>
+        <label className={styles.wideFilter}>
+          Business Person
+          <div className={styles.businessSearch}>
+            <input
+              value={businessSearch}
+              onChange={(event) => {
+                setBusinessSearch(event.target.value);
+                updateFilter("businessId", "");
+              }}
+              placeholder="Type business name, client ID, mobile, category, or location"
+            />
+            {filters.businessId && (
+              <button
+                type="button"
+                onClick={() => {
+                  updateFilter("businessId", "");
+                  setBusinessSearch("");
+                }}
+              >
+                Clear business
+              </button>
+            )}
+            <select value={filters.businessId} onChange={(event) => selectBusiness(event.target.value)}>
+              <option value="">{businessLoading ? "Searching..." : "All matching businesses"}</option>
+              {businessOptions.map((business) => (
+                <option key={business._id} value={business._id}>
+                  {businessLabel(business)}
+                </option>
+              ))}
+            </select>
+          </div>
+        </label>
         <label>
           Category
-          <input value={filters.category} onChange={(event) => updateFilter("category", event.target.value)} />
+          <select value={filters.category} onChange={(event) => updateFilter("category", event.target.value)}>
+            <option value="">All categories</option>
+            {filterOptions.categories.map((category) => (
+              <option key={category} value={category}>{category}</option>
+            ))}
+          </select>
         </label>
         <label>
           Location
-          <input value={filters.location} onChange={(event) => updateFilter("location", event.target.value)} />
+          <select value={filters.location} onChange={(event) => updateFilter("location", event.target.value)}>
+            <option value="">All locations</option>
+            {filterOptions.locations.map((location) => (
+              <option key={location} value={location}>{location}</option>
+            ))}
+          </select>
         </label>
         <label>
           Recipient

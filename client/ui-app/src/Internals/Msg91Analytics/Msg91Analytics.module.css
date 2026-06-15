@@ -153,6 +153,29 @@
   align-self: end;
 }
 
+.wideFilter {
+  grid-column: span 2;
+}
+
+.businessSearch {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px;
+}
+
+.businessSearch input,
+.businessSearch select {
+  min-width: 0;
+}
+
+.businessSearch select {
+  grid-column: 1 / -1;
+}
+
+.businessSearch button {
+  white-space: nowrap;
+}
+
 .gridTwo,
 .gridThree {
   display: grid;
@@ -419,6 +442,18 @@
   .kpiGrid,
   .filters {
     grid-template-columns: 1fr;
+  }
+
+  .wideFilter {
+    grid-column: auto;
+  }
+
+  .businessSearch {
+    grid-template-columns: 1fr;
+  }
+
+  .businessSearch select {
+    grid-column: auto;
   }
 
   .detailGrid {

@@ -18,7 +18,7 @@ const authHeaders = () => ({
   Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
 });
 
-const buildParams = (values = {}) => {
+export const buildMsg91AnalyticsParams = (values = {}) => {
   const params = new URLSearchParams();
 
   Object.entries(values).forEach(([key, value]) => {
@@ -34,7 +34,7 @@ export const fetchMsg91Dashboard = (filters = {}) => async (dispatch) => {
   dispatch({ type: FETCH_MSG91_DASHBOARD_REQUEST });
 
   try {
-    const query = buildParams(filters);
+    const query = buildMsg91AnalyticsParams(filters);
     const suffix = query ? `?${query}` : "";
     const [summary, timeseries, failures] = await Promise.all([
       axiosInstance.get(`${API_URL}/admin/msg91-analytics/summary${suffix}`, {
@@ -70,7 +70,7 @@ export const fetchMsg91Audit =
     dispatch({ type: FETCH_MSG91_AUDIT_REQUEST });
 
     try {
-      const query = buildParams({ ...filters, pageNo, pageSize });
+      const query = buildMsg91AnalyticsParams({ ...filters, pageNo, pageSize });
       const response = await axiosInstance.get(
         `${API_URL}/admin/msg91-analytics/audit?${query}`,
         { headers: authHeaders() }
@@ -99,7 +99,7 @@ export const fetchMsg91Recipients =
     dispatch({ type: FETCH_MSG91_RECIPIENTS_REQUEST });
 
     try {
-      const query = buildParams({ ...filters, pageNo, pageSize });
+      const query = buildMsg91AnalyticsParams({ ...filters, pageNo, pageSize });
       const response = await axiosInstance.get(
         `${API_URL}/admin/msg91-analytics/recipients?${query}`,
         { headers: authHeaders() }
@@ -142,4 +142,37 @@ export const unsuppressMsg91Recipient = (mobile) => async (dispatch) => {
 
   dispatch({ type: UPDATE_MSG91_RECIPIENT_SUCCESS, payload: response.data.data });
   return response.data.data;
+};
+
+export const exportMsg91AnalyticsCsv = async (filters = {}) => {
+  const query = buildMsg91AnalyticsParams(filters);
+  const response = await axiosInstance.get(
+    `${API_URL}/admin/msg91-analytics/export-csv${query ? `?${query}` : ""}`,
+    {
+      headers: authHeaders(),
+      responseType: "blob",
+    }
+  );
+
+  return response;
+};
+
+export const fetchMsg91FilterOptions = async (filters = {}) => {
+  const query = buildMsg91AnalyticsParams(filters);
+  const response = await axiosInstance.get(
+    `${API_URL}/admin/msg91-analytics/filter-options${query ? `?${query}` : ""}`,
+    { headers: authHeaders() }
+  );
+
+  return response.data.data || {};
+};
+
+export const searchMsg91Businesses = async ({ search = "", limit = 25 } = {}) => {
+  const query = buildMsg91AnalyticsParams({ search, limit });
+  const response = await axiosInstance.get(
+    `${API_URL}/admin/msg91-analytics/businesses${query ? `?${query}` : ""}`,
+    { headers: authHeaders() }
+  );
+
+  return response.data.data || [];
 };
