@@ -2,7 +2,6 @@ import { createScopedClassNames } from "../../../utils/createScopedClassNames";
 import React, { useState, useMemo, useEffect, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
-import { logSearchActivity } from "../../../redux/actions/businessListAction";
 import { fetchHomeCategories } from "../../../redux/actions/categoryAction";
 import { getPlaceholderImage, handleImageError } from "../../../utils/placeholderImage";
 import { navigateToSearchResult } from "../../../utils/searchResultNavigation";
@@ -77,9 +76,6 @@ const FeaturedServicesSection = () => {
       email: authUser?.email
     };
 
-    // Log the search activity
-    dispatch(logSearchActivity(categoryName, locationName, userDetails, categoryName, true));
-
     // Use centralized navigation
     navigateToSearchResult({
       searchTerm: categoryName,
@@ -88,7 +84,7 @@ const FeaturedServicesSection = () => {
       dispatch,
       isKnownCategory: true,
       // This is a known category from featured services
-      logAlreadySent: true,
+      logAlreadySent: false,
       userDetails
     });
   };

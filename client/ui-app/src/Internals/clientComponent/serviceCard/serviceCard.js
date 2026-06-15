@@ -3,7 +3,6 @@ import React, { useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { Helmet } from "react-helmet-async";
-import { logSearchActivity } from "../../../redux/actions/businessListAction";
 import { fetchServiceCards } from "../../../redux/actions/categoryAction";
 import { navigateToSearchResult } from "../../../utils/searchResultNavigation";
 import { Skeleton } from "@mui/material";
@@ -79,7 +78,6 @@ const ServiceCardsGrid = () => {
       mobileNumber2: authUser?.mobileNumber2,
       email: authUser?.email
     };
-    dispatch(logSearchActivity(categoryName, locationName, userDetails, categoryName, true));
     navigateToSearchResult({
       searchTerm: categoryName,
       location: locationName,
@@ -87,7 +85,7 @@ const ServiceCardsGrid = () => {
       dispatch,
       isKnownCategory: true,
       // Service card - known category
-      logAlreadySent: true,
+      logAlreadySent: false,
       userDetails
     });
   };

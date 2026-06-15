@@ -11,7 +11,6 @@ import KeyboardDoubleArrowLeftIcon from '@mui/icons-material/KeyboardDoubleArrow
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import styles from "./topTourist.module.css";
 import { fetchTopTouristPlaces } from '../../../redux/actions/categoryAction';
-import { logSearchActivity } from "../../../redux/actions/businessListAction";
 import { navigateToSearchResult } from "../../../utils/searchResultNavigation";
 const cx = createScopedClassNames(styles);
 const staticFallbackMap = {
@@ -68,14 +67,13 @@ const TopTourist = () => {
       mobileNumber2: authUser?.mobileNumber2,
       email: authUser?.email
     };
-    dispatch(logSearchActivity(categoryName, locationName, userDetails, categoryName, true));
     navigateToSearchResult({
       searchTerm: categoryName,
       location: locationName,
       navigate,
       dispatch,
       isKnownCategory: true,
-      logAlreadySent: true,
+      logAlreadySent: false,
       userDetails
     });
   };

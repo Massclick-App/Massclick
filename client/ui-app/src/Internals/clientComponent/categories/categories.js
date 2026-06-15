@@ -6,7 +6,6 @@ import { Helmet } from "react-helmet-async";
 import CardsSearch from "../CardsSearch/CardsSearch";
 import { handleImageError } from "../../../utils/placeholderImage";
 import styles from "./categories.module.css";
-import { logSearchActivity } from "../../../redux/actions/businessListAction";
 import { fetchSubCategories } from "../../../redux/actions/categoryAction";
 import { navigateToSearchResult } from "../../../utils/searchResultNavigation";
 import { fetchSeoMeta } from "../../../redux/actions/seoAction.js";
@@ -77,7 +76,6 @@ const CategoriesPage = () => {
       mobileNumber2: authUser?.mobileNumber2 || "",
       email: authUser?.email || ""
     };
-    dispatch(logSearchActivity(sub.name, location || "Global", userDetails, sub.name, true));
     navigateToSearchResult({
       searchTerm: sub.name,
       location: location || "Global",
@@ -85,7 +83,7 @@ const CategoriesPage = () => {
       dispatch,
       isKnownCategory: true,
       // Subcategory selection - known category
-      logAlreadySent: true,
+      logAlreadySent: false,
       userDetails
     });
   };
