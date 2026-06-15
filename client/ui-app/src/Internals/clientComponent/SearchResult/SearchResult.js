@@ -182,6 +182,7 @@ const SearchResults = React.memo(() => {
       searchLoggedRef.current = true;
       return;
     }
+    if (!safeStateResults && loading) return;
     const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
     const userDetails = {
       userName: authUser?.userName,
@@ -189,9 +190,19 @@ const SearchResults = React.memo(() => {
       mobileNumber2: authUser?.mobileNumber2,
       email: authUser?.email
     };
-    dispatch(logSearchActivity(normalizedSearchTerm || "All Categories", locationText || "Global", userDetails, normalizedSearchTerm));
+    const matchedBusinessIds = results.map((business) => business?._id).filter(Boolean);
+    dispatch(
+      logSearchActivity(
+        normalizedSearchTerm || "All Categories",
+        locationText || "Global",
+        userDetails,
+        normalizedSearchTerm,
+        isKnownCategory,
+        matchedBusinessIds
+      )
+    );
     searchLoggedRef.current = true;
-  }, [dispatch, normalizedSearchTerm, locationText, stateLogSent]);
+  }, [dispatch, normalizedSearchTerm, locationText, stateLogSent, isKnownCategory, results, safeStateResults, loading]);
 
   useEffect(() => {
     logSearch();

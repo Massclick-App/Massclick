@@ -50,7 +50,7 @@ const PopularCategoriesLink = () => {
       mobileNumber2: authUser?.mobileNumber2,
       email: authUser?.email
     };
-    dispatch(logSearchActivity(keyword, selectedDistrict || "Global", userDetails, keyword));
+    dispatch(logSearchActivity("", selectedDistrict || "Global", userDetails, keyword, false));
     navigateToSearchResult({
       searchTerm: keyword,
       location: selectedDistrict || "Global",
@@ -75,7 +75,7 @@ const PopularCategoriesLink = () => {
       mobileNumber2: authUser?.mobileNumber2,
       email: authUser?.email
     };
-    dispatch(logSearchActivity(categoryName, selectedDistrict || "Global", userDetails, categoryName));
+    dispatch(logSearchActivity(categoryName, selectedDistrict || "Global", userDetails, categoryName, true));
     navigateToSearchResult({
       searchTerm: categoryName,
       location: selectedDistrict || "Global",

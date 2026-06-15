@@ -79,7 +79,7 @@ const ServiceCardsGrid = () => {
       mobileNumber2: authUser?.mobileNumber2,
       email: authUser?.email
     };
-    dispatch(logSearchActivity(categoryName, locationName, userDetails, categoryName));
+    dispatch(logSearchActivity(categoryName, locationName, userDetails, categoryName, true));
     navigateToSearchResult({
       searchTerm: categoryName,
       location: locationName,

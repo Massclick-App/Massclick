@@ -121,7 +121,7 @@ const CardCarousel = () => {
         mobileNumber2: user.mobileNumber2 || "",
         email: user.email || ""
       };
-      dispatch(logSearchActivity(categoryName, locationName, userDetails, categoryName));
+      dispatch(logSearchActivity(categoryName, locationName, userDetails, categoryName, true));
       const enquiryPayload = {
         category: categoryName,
         categorySlug: categoryName.toLowerCase().replace(/\s+/g, "-"),

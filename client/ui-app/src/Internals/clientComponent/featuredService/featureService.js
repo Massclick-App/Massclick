@@ -78,7 +78,7 @@ const FeaturedServicesSection = () => {
     };
 
     // Log the search activity
-    dispatch(logSearchActivity(categoryName, locationName, userDetails, categoryName));
+    dispatch(logSearchActivity(categoryName, locationName, userDetails, categoryName, true));
 
     // Use centralized navigation
     navigateToSearchResult({

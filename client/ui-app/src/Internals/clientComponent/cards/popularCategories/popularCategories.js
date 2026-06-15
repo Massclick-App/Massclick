@@ -64,7 +64,7 @@ const PopularCategoriesDrawer = ({
       mobileNumber2: authUser?.mobileNumber2,
       email: authUser?.email
     };
-    dispatch(logSearchActivity(cat.name, selectedDistrict || "Global", userDetails, cat.name));
+    dispatch(logSearchActivity(cat.name, selectedDistrict || "Global", userDetails, cat.name, true));
     navigateToSearchResult({
       searchTerm: cat.name,
       location: selectedDistrict || "Global",

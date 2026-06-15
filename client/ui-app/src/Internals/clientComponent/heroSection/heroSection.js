@@ -241,7 +241,7 @@ const HeroSection = React.memo(({
     const key = `${cleanedTerm}-${location}-${userDetails.mobileNumber1}`;
     const logSent = shouldSendSearch(key);
     if (logSent) {
-      dispatch(logSearchActivity(cleanedTerm, location, userDetails, cleanedTerm));
+      dispatch(logSearchActivity("", location, userDetails, cleanedTerm, false));
     }
 
     // Use centralized navigation with normalized data

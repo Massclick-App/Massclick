@@ -77,7 +77,7 @@ const CategoriesPage = () => {
       mobileNumber2: authUser?.mobileNumber2 || "",
       email: authUser?.email || ""
     };
-    dispatch(logSearchActivity(sub.name, location || "Global", userDetails, sub.name));
+    dispatch(logSearchActivity(sub.name, location || "Global", userDetails, sub.name, true));
     navigateToSearchResult({
       searchTerm: sub.name,
       location: location || "Global",
