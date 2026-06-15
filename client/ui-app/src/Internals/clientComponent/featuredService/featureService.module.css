@@ -6,8 +6,8 @@
   align-items: stretch;
   column-gap: 28px;
   row-gap: 32px;
-  padding: 35px var(--section-padding-h) 20px;
-  max-width: var(--section-max-width);
+  padding: 35px clamp(18px, 2.4vw, 44px) 20px;
+  max-width: 1820px;
   width: 100%;
   margin: 0 auto;
   position: relative;
@@ -19,7 +19,7 @@
 /* Card - Icon only */
 .service-card {
   width: 100%;
-  max-width: 145px;
+  max-width: 160px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -68,7 +68,7 @@
   overflow: hidden;
   text-overflow: clip;
   width: 100%;
-  max-width: 130px;
+  max-width: 100%;
   margin: 0;
   padding: 0 4px;
   display: block;
@@ -105,7 +105,8 @@
     max-height: 2.4em;
     overflow: hidden;
     white-space: normal;
-    word-break: break-word;
+    word-break: normal;
+    overflow-wrap: normal;
     max-width: 100%;
     width: 100%;
     display: block;
@@ -117,11 +118,11 @@
     grid-template-columns: repeat(5, 1fr);
     column-gap: 20px;
     row-gap: 30px;
-    padding: 28px var(--section-padding-h) 18px;
+    padding: 28px clamp(18px, 2.4vw, 36px) 18px;
   }
 
   .service-card {
-    max-width: 128px;
+    max-width: 140px;
   }
 
   .service-icons {
@@ -134,6 +135,7 @@
   .service-name {
     font-size: 0.9rem;
     max-height: 2.6em;
+    max-width: 100%;
   }
 }
 
@@ -142,11 +144,11 @@
     grid-template-columns: repeat(7, 1fr);
     column-gap: 22px;
     row-gap: 30px;
-    padding: 32px var(--section-padding-h) 20px;
+    padding: 32px clamp(18px, 2.4vw, 40px) 20px;
   }
 
   .service-card {
-    max-width: 134px;
+    max-width: 148px;
   }
 
   .service-icons {
@@ -159,6 +161,7 @@
   .service-name {
     font-size: 0.95rem;
     max-height: 2.7em;
+    max-width: 100%;
   }
 }
 
@@ -167,11 +170,11 @@
     grid-template-columns: repeat(8, 1fr);
     column-gap: 24px;
     row-gap: 31px;
-    padding: 32px var(--section-padding-h) 20px;
+    padding: 32px clamp(18px, 2.4vw, 42px) 20px;
   }
 
   .service-card {
-    max-width: 137px;
+    max-width: 152px;
   }
 
   .service-icons {
@@ -184,6 +187,7 @@
   .service-name {
     font-size: 1rem;
     max-height: 2.8em;
+    max-width: 100%;
   }
 }
 
@@ -192,11 +196,11 @@
     grid-template-columns: repeat(8, 1fr);
     column-gap: 22px;
     row-gap: 30px;
-    padding: 32px var(--section-padding-h) 20px;
+    padding: 32px clamp(18px, 2.4vw, 42px) 20px;
   }
 
   .service-card {
-    max-width: 134px;
+    max-width: 148px;
   }
 
   .service-icons {
@@ -209,6 +213,7 @@
   .service-name {
     font-size: 0.95rem;
     max-height: 2.7em;
+    max-width: 100%;
   }
 }
 
@@ -217,11 +222,11 @@
     grid-template-columns: repeat(9, 1fr);
     column-gap: 24px;
     row-gap: 31px;
-    padding: 34px var(--section-padding-h) 20px;
+    padding: 34px clamp(18px, 2.4vw, 44px) 20px;
   }
 
   .service-card {
-    max-width: 137px;
+    max-width: 154px;
   }
 
   .service-icons {
@@ -234,6 +239,7 @@
   .service-name {
     font-size: 1rem;
     max-height: 2.8em;
+    max-width: 100%;
   }
 }
 
@@ -242,11 +248,11 @@
     grid-template-columns: repeat(10, 1fr);
     column-gap: 26px;
     row-gap: 31px;
-    padding: 35px var(--section-padding-h) 20px;
+    padding: 35px clamp(18px, 2.4vw, 44px) 20px;
   }
 
   .service-card {
-    max-width: 142px;
+    max-width: 160px;
   }
 
   .service-icons {
@@ -259,6 +265,7 @@
   .service-name {
     font-size: 1.05rem;
     max-height: 2.9em;
+    max-width: 100%;
   }
 }
 
@@ -267,11 +274,11 @@
     grid-template-columns: repeat(10, 1fr);
     column-gap: 28px;
     row-gap: 32px;
-    padding: 35px var(--section-padding-h) 20px;
+    padding: 35px clamp(18px, 2.4vw, 44px) 20px;
   }
 
   .service-card {
-    max-width: 145px;
+    max-width: 160px;
   }
 
   .service-icons {
