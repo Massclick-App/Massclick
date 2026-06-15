@@ -6,6 +6,7 @@ export const PAGE_REGISTRY = [
   { path: '/dashboard/seo',                 label: 'SEO Management' },
   { path: '/dashboard/seopagecontent',      label: 'SEO Page Content' },
   { path: '/dashboard/seopagecontentblogs', label: 'SEO Blogs' },
+  { path: '/dashboard/data-analytics',      label: 'Data Analytics' },
   { path: '/dashboard/enquiry',             label: 'Enquiry' },
   { path: '/dashboard/advertisements',      label: 'Advertisements' },
   { path: '/dashboard/mni-data',            label: 'MNI Data' },

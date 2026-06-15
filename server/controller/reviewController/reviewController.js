@@ -5,7 +5,10 @@ import {
   markHelpfulHelper,
   reportReviewHelper
 } from "../../helper/reviewHelper/reviewHelper.js";
-import { invalidateReviewCache } from "../../utils/cacheInvalidation.js";
+import {
+  invalidateReviewCache,
+  invalidateSearchCache
+} from "../../utils/cacheInvalidation.js";
 
 export const addReviewAction = async (req, res) => {
   try {
@@ -15,6 +18,7 @@ export const addReviewAction = async (req, res) => {
     });
 
     await invalidateReviewCache();
+    await invalidateSearchCache();
     res.status(200).json({ success: true, data: result });
   } catch (err) {
     res.status(400).json({ message: err.message });
@@ -72,6 +76,8 @@ export const markHelpfulAction = async (req, res) => {
 export const reportReviewAction = async (req, res) => {
   try {
     await reportReviewHelper({ reviewId: req.params.reviewId });
+    await invalidateReviewCache();
+    await invalidateSearchCache();
     res.status(200).json({ success: true });
   } catch (err) {
     res.status(400).json({ message: err.message });

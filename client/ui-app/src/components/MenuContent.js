@@ -26,6 +26,7 @@ import ArticleIcon from '@mui/icons-material/Article';
 import StorefrontIcon from '@mui/icons-material/Storefront';
 import NewspaperIcon from '@mui/icons-material/Newspaper';
 import SearchIcon from '@mui/icons-material/Search';
+import AnalyticsRoundedIcon from '@mui/icons-material/AnalyticsRounded';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import SettingsIcon from '@mui/icons-material/Settings';
 import GavelIcon from '@mui/icons-material/Gavel';
@@ -65,6 +66,7 @@ const MENU_SECTIONS = [
       { text: "Enquiries", icon: MailOutlineIcon, path: "/dashboard/enquiry" },
       { text: "Care Chat", icon: HeadsetMicIcon, path: "/dashboard/customer-care", badgeKey: "chat" },
       { text: "Ads", icon: NotificationsIcon, path: "/dashboard/advertisements" },
+      { text: "Data Analytics", icon: AnalyticsRoundedIcon, path: "/dashboard/data-analytics" },
       { text: "MNI", icon: StorefrontIcon, path: "/dashboard/mni-data" },
       { text: "Notifications", icon: NotificationsIcon, path: "/dashboard/fcm-marketing" },
       { text: "GMaps Leads", icon: TravelExploreIcon, path: "/dashboard/gmaps-leads" },

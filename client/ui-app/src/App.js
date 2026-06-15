@@ -76,6 +76,7 @@ const GlobalDrawer = lazy(() => import(/* webpackChunkName: "drawer" */ './Inter
 const SeoData = lazy(() => import(/* webpackChunkName: "admin-seo" */ './Internals/seoData/seoData.js'));
 const SeoPageContent = lazy(() => import(/* webpackChunkName: "admin-seo-content" */ './Internals/seoData/seoPageContent/seoPageContent.js'));
 const SeoPageContentBlogs = lazy(() => import(/* webpackChunkName: "admin-seo-blogs" */ './Internals/seoData/seoPageContentBlog/seoPageContentBlog.js'));
+const AdminDataAnalytics = lazy(() => import(/* webpackChunkName: "admin-data-analytics" */ './components/adminAnalytics/AdminDataAnalytics.js'));
 
 const MRPDatas = lazy(() => import(/* webpackChunkName: "admin-mrp" */ './Internals/MRPDATA/mrpData.js'));
 const FCMMarketing = lazy(() => import(/* webpackChunkName: "admin-fcm" */ './Internals/FCMMarketing/FCMMarketing.js'));
@@ -208,6 +209,7 @@ function AppRoutes({
                 <Route path="seo" element={<SeoData />} />
                 <Route path="seopagecontent" element={<SeoPageContent />} />
                 <Route path="seopagecontentblogs" element={<SeoPageContentBlogs />} />
+                <Route path="data-analytics" element={<AdminDataAnalytics />} />
                 <Route path="enquiry" element={<EnquiryPage />} />
                 <Route path="customer-care" element={<AdminCustomerCareChat />} />
                 <Route path="advertisements" element={<AdvertisementPage />} />
