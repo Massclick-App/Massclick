@@ -183,8 +183,8 @@ export const logSearchAction = async (req, res) => {
       userDetails.mobileNumber1 &&
       userDetails.mobileNumber1.trim();
 
-    const escapeRegex = (text = "") =>
-      text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    // const escapeRegex = (text = "") =>
+    //   text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
     // ── Resolve category used for analytics / lead grouping ────
     let finalCategoryName = "";
@@ -366,8 +366,8 @@ export const logSearchAction = async (req, res) => {
         .replace(/[-_]/g, " ")
         .replace(/\s+/g, " ");
 
-    const escapeRegex = (text = "") =>
-      text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    // const escapeRegex = (text = "") =>
+    //   text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
     const categoryMatchValues = [
       finalCategoryName,
@@ -919,8 +919,8 @@ export const sendEnquiryLead = async (req, res) => {
     const normalizedLocation = (location || "global").toLowerCase().trim();
     const categoryText = (category || "").toLowerCase().trim();
 
-    const escapeRegex = (text = "") =>
-      text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    // const escapeRegex = (text = "") =>
+    //   text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
     const getCategoryRegex = (val) => {
       try {
