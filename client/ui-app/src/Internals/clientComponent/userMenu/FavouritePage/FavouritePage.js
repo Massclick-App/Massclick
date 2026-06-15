@@ -75,7 +75,8 @@ export default function FavoritesPage() {
             const loc = createSlug(business.location || "");
             const name = createSlug(business.businessName || "");
             const businessUrl = `/business/${loc}/${name}/${business._id}`;
-            const rating = typeof business.averageRating === "number" ? business.averageRating.toFixed(1) : "0.0";
+            const averageRating = Number(business.averageRating);
+            const rating = Number.isFinite(averageRating) && averageRating > 0 ? averageRating : null;
             return <Cards key={business._id} businessId={business._id} index={index} title={business.businessName} phone={business.contact} whatsappNumber={business.whatsappNumber || business.contact} address={business.globalAddress || business.location} details={business.description} imageSrc={business.bannerImage || ""} rating={rating} reviews={business.totalReviews || 0} category={business.category} to={businessUrl} state={{
               id: business._id
             }} />;

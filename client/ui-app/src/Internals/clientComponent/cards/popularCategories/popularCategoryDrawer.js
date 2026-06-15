@@ -119,7 +119,8 @@ const CategoryDynamicPage = () => {
       <div className={cx("restaurants-list-wrapper")}>
 
         {businessList.map(business => {
-        const averageRating = typeof business.averageRating === "number" ? business.averageRating.toFixed(1) : "0.0";
+        const ratingValue = Number(business.averageRating);
+        const averageRating = Number.isFinite(ratingValue) && ratingValue > 0 ? ratingValue : null;
         const totalRatings = typeof business.totalReviews === "number" ? business.totalReviews : 0;
         const businessUrl = `/${createSlug(realDistrict)}/${createSlug(business.businessName)}/${business._id}`;
         return <CardDesign key={business._id} businessId={business._id} title={business.businessName} phone={business.contact} whatsapp={business.whatsappNumber} address={business.location} details={`Experience: ${business.experience} | Category: ${business.category}`} imageSrc={business.bannerImage || getPlaceholderImage()} rating={averageRating} reviews={totalRatings} to={businessUrl} state={{

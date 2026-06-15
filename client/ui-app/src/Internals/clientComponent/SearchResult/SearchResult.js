@@ -652,7 +652,7 @@ const SearchResults = React.memo(() => {
 
               <div className={cx("business-list", `business-list--${viewMode}`)}>
                 {results.map((business, idx) => {
-                  const averageRating = typeof business.averageRating === "number" ? business.averageRating.toFixed(1) : "0.0";
+                  const averageRating = Number(business.averageRating);
                   const totalRatings = typeof business.totalReviews === "number" ? business.totalReviews : 0;
                   const businessUrl = `/business/${createSlug(business.location)}/${createSlug(business.businessName)}/${business._id}`;
                   return (
@@ -663,7 +663,7 @@ const SearchResults = React.memo(() => {
                         phone={business.contact}
                         whatsappNumber={business.whatsappNumber}
                         contactList={business.contactList}
-                        rating={averageRating}
+                        rating={Number.isFinite(averageRating) && averageRating > 0 ? averageRating : null}
                         reviews={totalRatings}
                         address={business.location}
                         experience={business.experience}
@@ -717,7 +717,7 @@ const SearchResults = React.memo(() => {
                             title={b.businessName}
                             phone={b.contact}
                             whatsappNumber={b.whatsappNumber}
-                            rating={typeof b.averageRating === "number" ? b.averageRating.toFixed(1) : "0.0"}
+                            rating={Number.isFinite(Number(b.averageRating)) && Number(b.averageRating) > 0 ? Number(b.averageRating) : null}
                             reviews={b.totalReviews || 0}
                             address={b.location}
                             experience={b.experience}

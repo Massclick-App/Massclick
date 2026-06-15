@@ -264,13 +264,32 @@ export const findBusinessesByCategory = async (category, district) => {
 
     {
       $addFields: {
-        totalReviews: { $size: "$reviews" }
+        activeReviews: {
+          $filter: {
+            input: "$reviews",
+            as: "review",
+            cond: { $eq: ["$$review.status", "ACTIVE"] }
+          }
+        }
+      }
+    },
+
+    {
+      $addFields: {
+        totalReviews: { $size: "$activeReviews" },
+        averageRating: {
+          $round: [
+            { $ifNull: [{ $avg: "$activeReviews.rating" }, 0] },
+            1
+          ]
+        }
       }
     },
 
     {
       $project: {
-        reviews: 0
+        reviews: 0,
+        activeReviews: 0
       }
     }
   ]);

@@ -1,6 +1,7 @@
 import { createScopedClassNames } from "../../../utils/createScopedClassNames";
 // BusinessDetail.jsx
 import React, { useEffect, useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import { Helmet } from "react-helmet-async";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { getPlaceholderImage } from "../../../utils/placeholderImage";
@@ -26,6 +27,10 @@ import NoteAltIcon from "@mui/icons-material/NoteAlt";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 import StarIcon from "@mui/icons-material/Star";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import VerifiedRoundedIcon from "@mui/icons-material/VerifiedRounded";
+import WorkspacePremiumRoundedIcon from "@mui/icons-material/WorkspacePremiumRounded";
+import DiamondRoundedIcon from "@mui/icons-material/DiamondRounded";
+import LocalFireDepartmentRoundedIcon from "@mui/icons-material/LocalFireDepartmentRounded";
 import LanguageIcon from "@mui/icons-material/Language";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import CloseIcon from "@mui/icons-material/Close";
@@ -106,6 +111,7 @@ const BusinessDetail = React.memo(() => {
   } = useSelector(state => state.businessListReducer);
   const reviewState = useSelector(state => state.reviews || {});
   const totalReview = reviewState.total || 0;
+  const loadedReviews = Array.isArray(reviewState.reviews) ? reviewState.reviews : [];
   const favoriteIds = useSelector(state => state.favorites.favoriteIds);
   const togglingIds = useSelector(state => state.favorites.togglingIds);
   const favUser = getAuthUser();
@@ -132,6 +138,8 @@ const BusinessDetail = React.memo(() => {
   const [showFullHours, setShowFullHours] = useState(false);
   const [showShareOptions, setShowShareOptions] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
+  const [showCertificate, setShowCertificate] = useState(false);
+  const [activeCertificate, setActiveCertificate] = useState("verified");
   const [activeTab, setActiveTab] = useState("Overview");
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showAllKeywords, setShowAllKeywords] = useState(false);
@@ -144,6 +152,14 @@ const BusinessDetail = React.memo(() => {
   const servicesRef = useRef(null);
   const photosRef = useRef(null);
   const reviewsRef = useRef(null);
+  useEffect(() => {
+    if (!showCertificate) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [showCertificate]);
   useEffect(() => {
     if (id) {
       dispatch(getBusinessDetailsById(id));
@@ -195,7 +211,21 @@ const BusinessDetail = React.memo(() => {
   const formattedWebsite = website && website.startsWith("http") ? website : `https://${website}`;
   const addressParts = [business.plotNumber, business.street, business.location].filter(Boolean);
   const fullAddress = addressParts.length > 0 ? addressParts.join(", ") : "Address not available";
-  const displayedAverageRating = business.averageRating ? business.averageRating.toFixed(1) : "0.0";
+  const loadedReviewRatings = loadedReviews
+    .map(review => Number(review.rating))
+    .filter(value => Number.isFinite(value) && value > 0);
+  const loadedAverageRating = loadedReviewRatings.length > 0
+    ? loadedReviewRatings.reduce((sum, value) => sum + value, 0) / loadedReviewRatings.length
+    : null;
+  const storedAverageRating = Number(business.averageRating);
+  const averageRatingValue = Number.isFinite(storedAverageRating) && storedAverageRating > 0
+    ? storedAverageRating
+    : loadedAverageRating;
+  const displayedAverageRating = averageRatingValue ? averageRatingValue.toFixed(1) : "New";
+  const effectiveTotalReview = Math.max(Number(business.totalReviews) || 0, totalReview, loadedReviewRatings.length);
+  const ratingSummaryLabel = effectiveTotalReview > 0
+    ? `${effectiveTotalReview} rating${effectiveTotalReview !== 1 ? "s" : ""}`
+    : "No ratings yet";
   // const totalRatings = business?.reviews?.length || 0;
 
   const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -219,7 +249,44 @@ const BusinessDetail = React.memo(() => {
   };
   const quickFactsRaw = [fullAddress, getTodayHours(), business.experience ? `${business.experience}+ Years in Business` : null, business.restaurantOptions || null];
   const quickFacts = quickFactsRaw.filter(Boolean);
-  const heroHighlights = [business.category, getTodayHours(), business.experience ? `${business.experience}+ years experience` : null].filter(Boolean);
+  const isVerified = !!business.verification?.isVerified;
+  const certificateType = business.verification?.certificateType || business.verification?.verificationType;
+  const isTrusted = !!(business.badges?.isTrusted || business.badges?.isTrust || business.verification?.isTrusted || certificateType === "trust");
+  const statusBadges = [
+    isVerified && { key: "verified", label: "Verified", icon: <VerifiedRoundedIcon />, className: "business-CardDetails-statusBadge--verified", certificateKey: "verified" },
+    isTrusted && { key: "trust", label: "Trust Certificate", icon: <WorkspacePremiumRoundedIcon />, className: "business-CardDetails-statusBadge--trust", certificateKey: "trust" },
+    business.badges?.isFeatured && { key: "featured", label: "Featured", icon: <WorkspacePremiumRoundedIcon />, className: "business-CardDetails-statusBadge--featured" },
+    business.badges?.isSponsored && { key: "sponsored", label: "Sponsored", icon: <DiamondRoundedIcon />, className: "business-CardDetails-statusBadge--sponsored" },
+    business.badges?.isTrending && { key: "trending", label: "Trending", icon: <LocalFireDepartmentRoundedIcon />, className: "business-CardDetails-statusBadge--trending" }
+  ].filter(Boolean);
+  const currentCertificate = activeCertificate === "trust"
+    ? {
+        key: "trust",
+        eyebrow: "Certificate of",
+        label: "Trust",
+        copy: "has been certified as a trusted member of MassClick",
+        detailWord: "trusted",
+        icon: <WorkspacePremiumRoundedIcon />
+      }
+    : {
+        key: "verified",
+        eyebrow: "",
+        label: "Verified",
+        copy: "has been verified by MassClick",
+        detailWord: "verified",
+        icon: <VerifiedRoundedIcon />
+      };
+  const certificateLabels = statusBadges
+    .filter(item => item.key === "verified" || item.key === "trust")
+    .map(item => item.label);
+  const availableCertificateBadges = statusBadges.filter(item => item.certificateKey);
+  const heroHighlights = [
+    business.category,
+    isVerified ? "Verified" : null,
+    isTrusted ? "Trust Certificate" : null,
+    getTodayHours(),
+    business.experience ? `${business.experience}+ years experience` : null
+  ].filter(Boolean);
   const rawKeywords = Array.isArray(business.keywords) ? business.keywords : typeof business.keywords === "string" ? business.keywords.split(",") : [];
   const businessKeywords = Array.from(new Set(rawKeywords.map(keyword => String(keyword).trim()).filter(Boolean)));
   const visibleKeywords = showAllKeywords ? businessKeywords : businessKeywords.slice(0, 10);
@@ -338,6 +405,30 @@ const BusinessDetail = React.memo(() => {
       alert("Copy failed. Browser does not support clipboard.");
     }
   };
+  const handleCertificateClick = type => e => {
+    e.preventDefault();
+    e.stopPropagation();
+    setActiveCertificate(type);
+    setShowCertificate(true);
+  };
+  const handleCloseCertificate = e => {
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
+    setShowCertificate(false);
+  };
+  const renderStatusBadge = badge => {
+    const className = cx("business-CardDetails-statusBadge", badge.className);
+    if (badge.certificateKey) {
+      return <button key={badge.key} type="button" className={className} onClick={handleCertificateClick(badge.certificateKey)} aria-label={`Open MassClick ${badge.label} certificate for ${business.businessName}`}>
+          {badge.icon}
+          {badge.label}
+        </button>;
+    }
+    return <span key={badge.key} className={className}>
+        {badge.icon}
+        {badge.label}
+      </span>;
+  };
   const handleShowNumberClick = e => {
     if (e && e.preventDefault) e.preventDefault();
     setShowContactModal(true);
@@ -419,8 +510,8 @@ const BusinessDetail = React.memo(() => {
       country: "IN"
     },
     category: business.category,
-    averageRating: business.averageRating,
-    totalReviews: totalReview,
+    averageRating: averageRatingValue,
+    totalReviews: effectiveTotalReview,
     openingHours: business.openingHours,
     socialProfiles: {
       facebook: business.facebook,
@@ -453,6 +544,66 @@ const BusinessDetail = React.memo(() => {
         {breadcrumbSchema && <script type="application/ld+json">{JSON.stringify(breadcrumbSchema)}</script>}
       </Helmet>
       <CardsSearch />
+      {showCertificate && createPortal(
+        <div
+          className={cx("business-CardDetails-certificateOverlay", `business-CardDetails-certificateOverlay--${currentCertificate.key}`)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={`business-carddetails-certificate-${business._id || id}`}
+          onClick={handleCloseCertificate}
+        >
+          <div className={cx("business-CardDetails-certificateFrame")} onClick={e => e.stopPropagation()}>
+            <button
+              type="button"
+              className={cx("business-CardDetails-certificateClose")}
+              aria-label="Close certificate"
+              onClick={handleCloseCertificate}
+            >
+              <CloseIcon />
+            </button>
+            <div className={cx("business-CardDetails-certificatePaper", `business-CardDetails-certificatePaper--${currentCertificate.key}`)}>
+              {availableCertificateBadges.length > 1 && <div className={cx("business-CardDetails-certificateTabs")} aria-label="Certificate type">
+                  {availableCertificateBadges.map(badge => <button
+                      key={badge.key}
+                      type="button"
+                      className={cx("business-CardDetails-certificateTab", activeCertificate === badge.certificateKey && "business-CardDetails-certificateTab--active")}
+                      onClick={handleCertificateClick(badge.certificateKey)}
+                    >
+                      {badge.icon}
+                      {badge.label}
+                    </button>)}
+                </div>}
+              {currentCertificate.eyebrow && <p className={cx("business-CardDetails-certificateEyebrow")}>{currentCertificate.eyebrow}</p>}
+              <div className={cx("business-CardDetails-certificateMark")}>
+                {currentCertificate.icon}
+                <span>{currentCertificate.label}</span>
+              </div>
+              <h2 id={`business-carddetails-certificate-${business._id || id}`} className={cx("business-CardDetails-certificateTitle")}>
+                {business.businessName}
+              </h2>
+              <p className={cx("business-CardDetails-certificateLocation")}>{fullAddress}</p>
+              <p className={cx("business-CardDetails-certificateStatus")}>{currentCertificate.copy}</p>
+              {currentCertificate.key === "trust" && <div className={cx("business-CardDetails-certificateStars")} aria-label="Trusted rating">
+                  <StarIcon /><StarIcon /><StarIcon /><StarIcon /><StarIcon />
+                </div>}
+              <div className={cx("business-CardDetails-certificateDivider")} />
+              <p className={cx("business-CardDetails-certificateCopy")}>
+                Following details of the company have been <strong>{currentCertificate.detailWord}</strong>
+              </p>
+              <div className={cx("business-CardDetails-certificateChecks")}>
+                {["Business Proof", "Business Address", "Mobile Number", "Email ID"].map(item => <div key={item} className={cx("business-CardDetails-certificateCheck")}>
+                    <CheckCircleIcon />
+                    <span>{item}</span>
+                  </div>)}
+              </div>
+              <div className={cx("business-CardDetails-certificateBrand")}>
+                <span>Mass</span><strong>Click</strong>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
       <div className={cx("business-CardDetails-pageWrapper")}>
         <Breadcrumbs items={[{
         label: "Home",
@@ -484,11 +635,13 @@ const BusinessDetail = React.memo(() => {
                   </span>
                   <StarIcon className={cx("business-CardDetails-heroRatingStar")} />
                   <span className={cx("business-CardDetails-heroRatingCount")}>
-                    {totalReview} rating
-                    {totalReview !== 1 ? "s" : ""}
+                    {ratingSummaryLabel}
                   </span>
                 </div>
               </div>
+              {statusBadges.length > 0 && <div className={cx("business-CardDetails-statusRow business-CardDetails-statusRow--hero")}>
+                  {statusBadges.map(renderStatusBadge)}
+                </div>}
               <p className={cx("business-CardDetails-heroAddress")}>
                 {fullAddress}
               </p>
@@ -517,16 +670,20 @@ const BusinessDetail = React.memo(() => {
               </h2>
 
               <div className={cx("business-CardDetails-ratingRow")}>
-                <span className={cx("business-CardDetails-ratingBadge")}>
+                <span className={cx("business-CardDetails-ratingBadge", displayedAverageRating === "New" && "business-CardDetails-ratingBadge--new")}>
                   {displayedAverageRating} <StarIcon />
                 </span>
                 <span className={cx("business-CardDetails-ratingText")}>
-                  {totalReview} ratings ·{" "}
+                  {ratingSummaryLabel} ·{" "}
                   <button type="button">
                     Claim this business
                   </button>
                 </span>
               </div>
+
+              {statusBadges.length > 0 && <div className={cx("business-CardDetails-statusRow")}>
+                  {statusBadges.map(renderStatusBadge)}
+                </div>}
 
               <div className={cx("business-CardDetails-quickFactsRow")}>
                 {quickFacts.map((fact, index) => <span key={index} className={cx("business-CardDetails-quickFactItem")}>
@@ -603,7 +760,7 @@ const BusinessDetail = React.memo(() => {
                 <div className={cx("business-CardDetails-ratingInput")}>
                   <Tooltip title="Click to rate this business" arrow placement="top">
                     <div>
-                      <UserRatingWidget businessId={business._id} initialValue={business.averageRating || 0} currentRatings={business.ratings || []} />
+                      <UserRatingWidget businessId={business._id} initialValue={averageRatingValue || 0} currentRatings={business.ratings || []} />
                     </div>
                   </Tooltip>
                 </div>
@@ -650,6 +807,14 @@ const BusinessDetail = React.memo(() => {
                     </span>
                     <span className={cx("business-CardDetails-infoValue")}>
                       {business.category || "N/A"}
+                    </span>
+                  </div>
+                  <div className={cx("business-CardDetails-infoItem")}>
+                    <span className={cx("business-CardDetails-infoLabel")}>
+                      Certificates
+                    </span>
+                    <span className={cx("business-CardDetails-infoValue")}>
+                      {certificateLabels.length > 0 ? certificateLabels.join(", ") : "Not verified yet"}
                     </span>
                   </div>
                   {business.category?.toLowerCase().includes("bank") && business.contactList && <div className={cx("business-CardDetails-infoItem")}>
@@ -711,7 +876,7 @@ const BusinessDetail = React.memo(() => {
                 <h2>Reviews & Ratings</h2>
 
                 <div className={cx("business-CardDetails-startReview")}>
-                  <UserRatingWidget businessId={business._id} initialValue={business.averageRating || 0} />
+                  <UserRatingWidget businessId={business._id} initialValue={averageRatingValue || 0} />
                 </div>
 
                 <ReviewList businessId={business._id} />
@@ -733,6 +898,9 @@ const BusinessDetail = React.memo(() => {
                 </span>
                 <h3>{business.businessName}</h3>
                 <p>{business.category || "Local business"}</p>
+                {statusBadges.length > 0 && <div className={cx("business-CardDetails-statusRow business-CardDetails-statusRow--sidebar")}>
+                    {statusBadges.map(renderStatusBadge)}
+                  </div>}
                 <button onClick={handleShowNumberClick} className={cx("business-CardDetails-sidebarPrimaryBtn")}>
                   <PhoneIcon />
                   Show Number

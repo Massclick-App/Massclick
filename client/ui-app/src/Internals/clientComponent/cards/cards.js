@@ -30,6 +30,18 @@ let favoritesInitialized = false;
 
 const MAX_FILTER_BADGES = 3;
 
+function getDisplayRating(value) {
+  const ratingValue = Number(value);
+  if (!Number.isFinite(ratingValue) || ratingValue <= 0) return "New";
+  return ratingValue.toFixed(1);
+}
+
+function getReviewCount(value) {
+  if (Array.isArray(value)) return value.length;
+  const reviewValue = Number(value);
+  return Number.isFinite(reviewValue) && reviewValue > 0 ? reviewValue : 0;
+}
+
 function formatDistance(km) {
   if (typeof km !== "number" || isNaN(km)) return null;
   return km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`;
@@ -125,12 +137,11 @@ const Cards = ({
     }
   }, [isLoggedIn, businessId, dispatch]);
 
-  const safeRating = typeof rating === "object"
-    ? Array.isArray(rating) ? rating.length : 0
-    : rating || 0;
-  const safeReviews = typeof reviews === "object"
-    ? Array.isArray(reviews) ? reviews.length : 0
-    : reviews || 0;
+  const safeRating = getDisplayRating(rating);
+  const safeReviews = getReviewCount(reviews);
+  const reviewsLabel = safeReviews > 0
+    ? `${safeReviews} rating${safeReviews !== 1 ? "s" : ""}`
+    : "No ratings yet";
   const filterBadges = getFilterBadges(filters, filterConfig);
   const distanceLabel = formatDistance(distance);
   const priceFilterDisabled = filterConfig.some(
@@ -385,8 +396,8 @@ const Cards = ({
                   })()}
                 </div>
                 <div className={cx("card-meta")}>
-                  <span className={cx("rating-badge")}><StarRoundedIcon style={{ fontSize: 13 }} />{safeRating}</span>
-                  <span className={cx("reviews-text")}>{safeReviews} ratings</span>
+                  <span className={cx("rating-badge", safeRating === "New" && "rating-badge--new")}><StarRoundedIcon style={{ fontSize: 13 }} />{safeRating}</span>
+                  <span className={cx("reviews-text")}>{reviewsLabel}</span>
                   {category && <span className={cx("category-pill")}>{category}</span>}
                   {distanceLabel && <span className={cx("distance-chip")}>{distanceLabel}</span>}
                 </div>
@@ -423,8 +434,8 @@ const Cards = ({
                   })()}
                 </div>
                 <div className={cx("card-meta")}>
-                  <span className={cx("rating-badge")}><StarRoundedIcon style={{ fontSize: 13 }} />{safeRating}</span>
-                  <span className={cx("reviews-text")}>{safeReviews} ratings</span>
+                  <span className={cx("rating-badge", safeRating === "New" && "rating-badge--new")}><StarRoundedIcon style={{ fontSize: 13 }} />{safeRating}</span>
+                  <span className={cx("reviews-text")}>{reviewsLabel}</span>
                   {category && <span className={cx("category-pill")}>{category}</span>}
                   {distanceLabel && <span className={cx("distance-chip")}>{distanceLabel}</span>}
                 </div>

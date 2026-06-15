@@ -553,9 +553,7 @@ export const mainSearchController = async (req, res) => {
     }
 
     // Universal filters
-    if (req.query.minRating) {
-      matchQuery.$and.push({ averageRating: { $gte: parseFloat(req.query.minRating) } });
-    }
+    const minRatingValue = Number(req.query.minRating);
     if (req.query.verified === "true") {
       matchQuery.$and.push({ "verification.isVerified": true });
     }
@@ -652,7 +650,24 @@ export const mainSearchController = async (req, res) => {
       },
       {
         $addFields: {
-          totalReviews: { $size: "$reviews" },
+          activeReviews: {
+            $filter: {
+              input: "$reviews",
+              as: "review",
+              cond: { $eq: ["$$review.status", "ACTIVE"] }
+            }
+          },
+        }
+      },
+      {
+        $addFields: {
+          totalReviews: { $size: "$activeReviews" },
+          averageRating: {
+            $round: [
+              { $ifNull: [{ $avg: "$activeReviews.rating" }, 0] },
+              1
+            ]
+          },
           categoryPriority: {
             $cond: [
               category ? {
@@ -664,6 +679,9 @@ export const mainSearchController = async (req, res) => {
           }
         }
       },
+      ...(Number.isFinite(minRatingValue) && minRatingValue > 0 ? [
+        { $match: { averageRating: { $gte: minRatingValue } } }
+      ] : []),
       ...geoStages,
       {
         $sort: useNearestSort
@@ -678,13 +696,26 @@ export const mainSearchController = async (req, res) => {
       },
       { $skip: skip },
       { $limit: pageSize },
-      { $project: { reviews: 0, categoryPriority: 0, textScore: 0, _distanceSort: 0 } }
+      { $project: { reviews: 0, activeReviews: 0, categoryPriority: 0, textScore: 0, _distanceSort: 0 } }
     ];
 
-    const [results, total] = await Promise.all([
+    const usesComputedRatingFilter = Number.isFinite(minRatingValue) && minRatingValue > 0;
+    const totalPipeline = pipeline
+      .filter(stage =>
+        !Object.prototype.hasOwnProperty.call(stage, "$skip") &&
+        !Object.prototype.hasOwnProperty.call(stage, "$limit") &&
+        !Object.prototype.hasOwnProperty.call(stage, "$sort") &&
+        !Object.prototype.hasOwnProperty.call(stage, "$project")
+      )
+      .concat({ $count: "total" });
+
+    const [results, totalResult] = await Promise.all([
       businessListModel.aggregate(pipeline),
-      businessListModel.countDocuments(matchQuery)
+      usesComputedRatingFilter
+        ? businessListModel.aggregate(totalPipeline)
+        : businessListModel.countDocuments(matchQuery)
     ]);
+    const total = usesComputedRatingFilter ? totalResult[0]?.total || 0 : totalResult;
 
     // Sign image URLs
     results.forEach((b) => {
@@ -731,9 +762,45 @@ export const nearbyBusinessesController = async (req, res) => {
       {
         $project: {
           businessName: 1, category: 1, location: 1, bannerImageKey: 1,
-          averageRating: 1, totalReviews: 1, verification: 1, badges: 1,
+          verification: 1, badges: 1,
           contact: 1, whatsappNumber: 1, filters: 1, experience: 1, slug: 1,
           distance: { $round: [{ $divide: ["$distanceMeters", 1000] }, 2] }
+        }
+      },
+      {
+        $lookup: {
+          from: "businessreviews",
+          localField: "_id",
+          foreignField: "businessId",
+          as: "reviews"
+        }
+      },
+      {
+        $addFields: {
+          activeReviews: {
+            $filter: {
+              input: "$reviews",
+              as: "review",
+              cond: { $eq: ["$$review.status", "ACTIVE"] }
+            }
+          }
+        }
+      },
+      {
+        $addFields: {
+          totalReviews: { $size: "$activeReviews" },
+          averageRating: {
+            $round: [
+              { $ifNull: [{ $avg: "$activeReviews.rating" }, 0] },
+              1
+            ]
+          }
+        }
+      },
+      {
+        $project: {
+          reviews: 0,
+          activeReviews: 0
         }
       }
     ];
