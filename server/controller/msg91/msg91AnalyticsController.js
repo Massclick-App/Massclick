@@ -1,12 +1,17 @@
 import mongoose from "mongoose";
 import { deflateRawSync } from "zlib";
 import businessListModel from "../../model/businessList/businessListModel.js";
+import searchLogModel from "../../model/businessList/searchLogModel.js";
 import whatsappMessageAuditModel from "../../model/msg91Model/whatsappMessageAuditModel.js";
 import whatsappRecipientHealthModel from "../../model/msg91Model/whatsappRecipientHealthModel.js";
 import { updateWhatsAppDeliveryStatus } from "../../helper/msg91/whatsappReliabilityHelper.js";
 
 const STATUS_VALUES = ["queued", "sent", "delivered", "read", "failed", "hold", "skipped"];
 const SUCCESS_STATUSES = ["sent", "delivered", "read"];
+const REPORT_TYPES = {
+  BUSINESS_SEARCH_LEADS: "business_search_leads",
+  MNI_LEADS: "mni_leads",
+};
 
 const parseDate = (value, fallback) => {
   if (!value) return fallback;
@@ -26,9 +31,15 @@ const buildAuditQuery = (query = {}) => {
   const { from, to } = getDateRange(query);
   const filter = { createdAt: { $gte: from, $lte: to } };
 
+  if (query.reportType === REPORT_TYPES.MNI_LEADS) {
+    filter.sourceType = "mni";
+  } else if (query.reportType === REPORT_TYPES.BUSINESS_SEARCH_LEADS) {
+    filter.sourceType = "search_lead";
+  }
+
   if (query.template) filter.templateName = query.template;
   if (query.status) filter.status = query.status;
-  if (query.sourceType) filter.sourceType = query.sourceType;
+  if (query.sourceType && !query.reportType) filter.sourceType = query.sourceType;
   if (query.businessId && mongoose.Types.ObjectId.isValid(query.businessId)) {
     filter.businessId = new mongoose.Types.ObjectId(query.businessId);
   }
@@ -38,6 +49,24 @@ const buildAuditQuery = (query = {}) => {
   if (query.recipientMobile) filter.recipientMobile = { $regex: query.recipientMobile.replace(/\D/g, ""), $options: "i" };
   if (query.customerMobile) filter.customerMobile = { $regex: query.customerMobile.replace(/\D/g, ""), $options: "i" };
   if (query.failureReason) filter.failureReason = { $regex: query.failureReason, $options: "i" };
+
+  return filter;
+};
+
+const buildResolvedAuditQuery = async (query = {}) => {
+  const filter = buildAuditQuery(query);
+
+  if (query.mniGroup) {
+    const businessFilter = {
+      "mniDetails.categoryGroup": {
+        $regex: `^${escapeRegex(query.mniGroup)}$`,
+        $options: "i",
+      },
+    };
+
+    const businessIds = await businessListModel.distinct("_id", businessFilter);
+    filter.businessId = { $in: businessIds };
+  }
 
   return filter;
 };
@@ -63,11 +92,91 @@ const excelDate = (value) => {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "-";
   return date.toLocaleString("en-IN", {
+    timeZone: "Asia/Kolkata",
     year: "numeric",
     month: "short",
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
+  });
+};
+
+const getPayloadTextValue = (payloadPreview = {}, key) => {
+  const value = payloadPreview?.[key]?.value;
+  return value === undefined || value === null ? "" : String(value);
+};
+
+const enrichRowsWithSearchUserDetails = async (rows = []) => {
+  const sourceIds = rows
+    .filter((row) => row.sourceType === "search_lead" && row.sourceId)
+    .map((row) => row.sourceId);
+
+  if (!sourceIds.length) {
+    return rows.map((row) => ({
+      ...row,
+      customerMobile2: "",
+      customerEmail: getPayloadTextValue(row.payloadPreview, "body_5"),
+      searchedUserText: row.category || "",
+    }));
+  }
+
+  const logs = await searchLogModel
+    .find(
+      { _id: { $in: sourceIds } },
+      { userDetails: 1, searchedUserText: 1, categoryName: 1 }
+    )
+    .lean();
+
+  const logsById = new Map(logs.map((log) => [String(log._id), log]));
+
+  return rows.map((row) => {
+    const log = logsById.get(String(row.sourceId));
+    const user = Array.isArray(log?.userDetails) ? log.userDetails[0] : null;
+
+    return {
+      ...row,
+      customerName: row.customerName || user?.userName || "",
+      customerMobile: row.customerMobile || user?.mobileNumber1 || "",
+      customerMobile2: user?.mobileNumber2 || "",
+      customerEmail: user?.email || getPayloadTextValue(row.payloadPreview, "body_5"),
+      searchedUserText: log?.searchedUserText || log?.categoryName || row.category || "",
+      place: row.location || "",
+    };
+  });
+};
+
+const enrichRowsWithBusinessMniDetails = async (rows = []) => {
+  const businessIds = rows
+    .filter((row) => row.businessId)
+    .map((row) => row.businessId);
+
+  if (!businessIds.length) {
+    return rows.map((row) => ({
+      ...row,
+      businessGroup: "",
+      businessGroupLocation: "",
+    }));
+  }
+
+  const businesses = await businessListModel
+    .find(
+      { _id: { $in: businessIds } },
+      { mniDetails: 1 }
+    )
+    .lean();
+
+  const businessesById = new Map(businesses.map((business) => [String(business._id), business]));
+
+  return rows.map((row) => {
+    const business = businessesById.get(String(row.businessId));
+    const mni = Array.isArray(business?.mniDetails) ? business.mniDetails[0] : null;
+
+    return {
+      ...row,
+      businessGroup: mni?.categoryGroup || "",
+      businessGroupLocation: mni?.categoryGroupLocation || "",
+      place: row.location || mni?.categoryGroupLocation || "",
+    };
   });
 };
 
@@ -215,8 +324,9 @@ const buildXlsxWorkbook = ({ rows, categorySummary, businessSummary, meta }) => 
     { height: 22, values: [{ value: `${meta.business} | ${meta.from} to ${meta.to}`, style: 2 }, "", "", "", "", "", ""] },
     { height: 10, values: ["", "", "", "", "", "", ""] },
     { height: 22, values: [{ value: "Report Filters", style: 3 }, "", "", "", "", "", ""] },
-    { values: [{ value: "Business", style: 4 }, { value: meta.business, style: 7 }, { value: "Template", style: 4 }, { value: meta.template, style: 7 }, { value: "Location", style: 4 }, { value: meta.location, style: 7 }] },
+    { values: [{ value: "Report Type", style: 4 }, { value: meta.reportType, style: 7 }, { value: "Business", style: 4 }, { value: meta.business, style: 7 }, { value: "Location", style: 4 }, { value: meta.location, style: 7 }] },
     { values: [{ value: "From Date", style: 4 }, { value: meta.from, style: 7 }, { value: "To Date", style: 4 }, { value: meta.to, style: 7 }, { value: "Generated", style: 4 }, { value: generatedAt, style: 7 }] },
+    { values: [{ value: "MNI Group", style: 4 }, { value: meta.mniGroup, style: 7 }, "", "", "", "", ""] },
     { height: 10, values: ["", "", "", "", "", "", ""] },
     { height: 20, values: [{ value: "Executive Summary", style: 3 }, "", "", "", "", "", ""] },
     { height: 26, values: [{ value: "Successful Leads Sent", style: 5 }, { value: "Unique Customer Persons", style: 5 }, { value: "Business Numbers Got Leads", style: 5 }, { value: "Lead Categories", style: 5 }, "", "", ""] },
@@ -264,17 +374,21 @@ const buildXlsxWorkbook = ({ rows, categorySummary, businessSummary, meta }) => 
   ];
 
   const detailRows = [
-    { height: 30, values: [{ value: "Successful Lead Details", style: 1 }, "", "", "", "", "", "", "", "", "", ""] },
+    { height: 30, values: [{ value: "Successful Lead Details", style: 1 }, "", "", "", "", "", "", "", "", "", "", "", "", "", ""] },
     { values: [
       { value: "S.No", style: 8 },
       { value: "Lead Date", style: 8 },
       { value: "Business Name", style: 8 },
+      { value: "Business Group", style: 8 },
       { value: "Category", style: 8 },
+      { value: "Customer Search Text", style: 8 },
       { value: "Location", style: 8 },
-      { value: "Template", style: 8 },
+      { value: "Place", style: 8 },
       { value: "Lead Source", style: 8 },
       { value: "Customer Name", style: 8 },
       { value: "Customer Mobile", style: 8 },
+      { value: "Customer Alt Mobile", style: 8 },
+      { value: "Customer Email", style: 8 },
       { value: "Business Mobile", style: 8 },
       { value: "Sent Time", style: 8 },
     ] },
@@ -283,12 +397,16 @@ const buildXlsxWorkbook = ({ rows, categorySummary, businessSummary, meta }) => 
         { value: index + 1, style: 10 },
         { value: excelDate(row.createdAt), style: 7 },
         { value: row.businessName || "-", style: 7 },
+        { value: row.businessGroup || "-", style: 7 },
         { value: row.category || "-", style: 7 },
+        { value: row.searchedUserText || "-", style: 7 },
         { value: row.location || "-", style: 7 },
-        { value: row.templateName || "-", style: 7 },
+        { value: row.place || row.businessGroupLocation || row.location || "-", style: 7 },
         { value: row.sourceType || "-", style: 7 },
         { value: row.customerName || "-", style: 7 },
         { value: row.customerMobile || "-", style: 11 },
+        { value: row.customerMobile2 || "-", style: 11 },
+        { value: row.customerEmail || "-", style: 7 },
         { value: row.recipientMobile || "-", style: 11 },
         { value: excelDate(row.sentAt || row.deliveredAt || row.readAt || row.createdAt), style: 7 },
       ],
@@ -296,10 +414,10 @@ const buildXlsxWorkbook = ({ rows, categorySummary, businessSummary, meta }) => 
   ];
 
   const sheets = [
-    { name: "Overview", path: "xl/worksheets/sheet1.xml", xml: buildWorksheetXml({ rows: overviewRows, columns: [18, 32, 20, 24, 20, 28, 16], merges: ["A1:G1", "A2:G2", "A4:G4", "A8:G8", "A12:G12"], freezeRow: 13 }) },
+    { name: "Overview", path: "xl/worksheets/sheet1.xml", xml: buildWorksheetXml({ rows: overviewRows, columns: [18, 32, 20, 24, 20, 28, 16], merges: ["A1:G1", "A2:G2", "A4:G4", "A9:G9", "A13:G13"], freezeRow: 14 }) },
     { name: "Category Summary", path: "xl/worksheets/sheet2.xml", xml: buildWorksheetXml({ rows: categoryRows, columns: [10, 34, 18, 18, 18], merges: ["A1:E1"], freezeRow: 2 }) },
     { name: "Business Summary", path: "xl/worksheets/sheet3.xml", xml: buildWorksheetXml({ rows: businessRows, columns: [10, 42, 18, 18, 50], merges: ["A1:E1"], freezeRow: 2 }) },
-    { name: "Lead Details", path: "xl/worksheets/sheet4.xml", xml: buildWorksheetXml({ rows: detailRows, columns: [8, 22, 36, 24, 18, 28, 18, 24, 18, 18, 22], merges: ["A1:K1"], freezeRow: 2 }) },
+    { name: "Lead Details", path: "xl/worksheets/sheet4.xml", xml: buildWorksheetXml({ rows: detailRows, columns: [8, 22, 36, 20, 24, 28, 18, 18, 18, 24, 18, 18, 30, 18, 22], merges: ["A1:O1"], freezeRow: 2 }) },
   ];
 
   const workbookXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -402,9 +520,9 @@ const countByStatus = (statusCounts = []) => {
 
 export const getMsg91AnalyticsSummaryAction = async (req, res) => {
   try {
-    const filter = buildAuditQuery(req.query);
+    const filter = await buildResolvedAuditQuery(req.query);
 
-    const [statusAgg, templateAgg, sourceAgg, costAgg, topCategories, topLocations, topRecipients, topFailedRecipients, topSuppressedRecipients] = await Promise.all([
+    const [statusAgg, templateAgg, sourceAgg, costAgg, topCategories, topLocations, topGroups, topRecipients, topFailedRecipients, topSuppressedRecipients] = await Promise.all([
       whatsappMessageAuditModel.aggregate([
         { $match: filter },
         { $group: { _id: "$status", count: { $sum: 1 } } },
@@ -433,6 +551,28 @@ export const getMsg91AnalyticsSummaryAction = async (req, res) => {
         { $match: { ...filter, location: { $ne: "" } } },
         { $group: { _id: "$location", total: { $sum: 1 } } },
         { $sort: { total: -1 } },
+        { $limit: 10 },
+      ]),
+      whatsappMessageAuditModel.aggregate([
+        { $match: filter },
+        {
+          $lookup: {
+            from: businessListModel.collection.name,
+            localField: "businessId",
+            foreignField: "_id",
+            as: "business",
+          },
+        },
+        { $unwind: "$business" },
+        { $unwind: "$business.mniDetails" },
+        { $match: { "business.mniDetails.categoryGroup": { $nin: [null, ""] } } },
+        {
+          $group: {
+            _id: "$business.mniDetails.categoryGroup",
+            total: { $sum: 1 },
+          },
+        },
+        { $sort: { total: -1, _id: 1 } },
         { $limit: 10 },
       ]),
       whatsappMessageAuditModel.aggregate([
@@ -534,6 +674,7 @@ export const getMsg91AnalyticsSummaryAction = async (req, res) => {
         cost: costAgg[0] || { totalCost: 0, chargedRows: 0 },
         topCategories,
         topLocations,
+        topGroups,
         topRecipients,
         topFailedRecipients,
         topSuppressedRecipients,
@@ -546,13 +687,13 @@ export const getMsg91AnalyticsSummaryAction = async (req, res) => {
 
 export const getMsg91AnalyticsTimeseriesAction = async (req, res) => {
   try {
-    const filter = buildAuditQuery(req.query);
+    const filter = await buildResolvedAuditQuery(req.query);
     const rows = await whatsappMessageAuditModel.aggregate([
       { $match: filter },
       {
         $group: {
           _id: {
-            date: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+            date: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt", timezone: "Asia/Kolkata" } },
             status: "$status",
           },
           count: { $sum: 1 },
@@ -580,7 +721,7 @@ export const getMsg91AnalyticsTimeseriesAction = async (req, res) => {
 
 export const getMsg91AnalyticsFailuresAction = async (req, res) => {
   try {
-    const filter = { ...buildAuditQuery(req.query), status: "failed" };
+    const filter = { ...(await buildResolvedAuditQuery(req.query)), status: "failed" };
     const data = await whatsappMessageAuditModel.aggregate([
       { $match: filter },
       {
@@ -605,7 +746,7 @@ export const getMsg91AnalyticsFailuresAction = async (req, res) => {
 
 export const getMsg91AnalyticsAuditAction = async (req, res) => {
   try {
-    const filter = buildAuditQuery(req.query);
+    const filter = await buildResolvedAuditQuery(req.query);
     const pageNo = Math.max(Number(req.query.pageNo) || 1, 1);
     const pageSize = Math.min(Math.max(Number(req.query.pageSize) || 25, 1), 100);
 
@@ -619,7 +760,10 @@ export const getMsg91AnalyticsAuditAction = async (req, res) => {
       whatsappMessageAuditModel.countDocuments(filter),
     ]);
 
-    return res.json({ success: true, data: list, total, pageNo, pageSize });
+    const rowsWithUserDetails = await enrichRowsWithSearchUserDetails(list);
+    const enrichedList = await enrichRowsWithBusinessMniDetails(rowsWithUserDetails);
+
+    return res.json({ success: true, data: enrichedList, total, pageNo, pageSize });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }
@@ -627,17 +771,23 @@ export const getMsg91AnalyticsAuditAction = async (req, res) => {
 
 export const getMsg91AnalyticsFilterOptionsAction = async (req, res) => {
   try {
-    const baseFilter = buildAuditQuery({
+    const baseFilter = await buildResolvedAuditQuery({
       ...req.query,
       template: "",
       location: "",
       category: "",
+      mniGroup: "",
     });
 
-    const [templates, locations, categories] = await Promise.all([
+    const [templates, locations, categories, mniGroups] = await Promise.all([
       whatsappMessageAuditModel.distinct("templateName", baseFilter),
       whatsappMessageAuditModel.distinct("location", baseFilter),
       whatsappMessageAuditModel.distinct("category", baseFilter),
+      businessListModel.distinct("mniDetails.categoryGroup", {
+        "mniDetails.categoryGroup": { $nin: [null, ""] },
+        ...(req.query.location ? { location: { $regex: req.query.location, $options: "i" } } : {}),
+        ...(req.query.category ? { category: { $regex: req.query.category, $options: "i" } } : {}),
+      }),
     ]);
 
     return res.json({
@@ -646,6 +796,7 @@ export const getMsg91AnalyticsFilterOptionsAction = async (req, res) => {
         templates: templates.filter(Boolean).sort(),
         locations: locations.filter(Boolean).sort(),
         categories: categories.filter(Boolean).sort(),
+        mniGroups: mniGroups.filter(Boolean).sort(),
       },
     });
   } catch (error) {
@@ -696,7 +847,7 @@ export const searchMsg91AnalyticsBusinessesAction = async (req, res) => {
 
 export const exportMsg91AnalyticsCsvAction = async (req, res) => {
   try {
-    const filter = buildAuditQuery({ ...req.query, status: "", failureReason: "" });
+    const filter = await buildResolvedAuditQuery({ ...req.query, status: "", failureReason: "" });
     filter.status = { $in: SUCCESS_STATUSES };
     const { from, to } = getDateRange(req.query);
     const maxRows = Math.min(Math.max(Number(req.query.limit) || 25000, 1), 100000);
@@ -739,18 +890,22 @@ export const exportMsg91AnalyticsCsvAction = async (req, res) => {
       selectedBusinessName = business?.businessName || business?.name || selectedBusinessName;
     }
 
+    const rowsWithUserDetails = await enrichRowsWithSearchUserDetails(rows);
+    const enrichedRows = await enrichRowsWithBusinessMniDetails(rowsWithUserDetails);
     const fromStamp = from.toISOString().slice(0, 10);
     const toStamp = to.toISOString().slice(0, 10);
-    const fileName = `${safeFilePart(selectedBusinessName)}-${fromStamp}-to-${toStamp}-Leads-Report.xlsx`;
+    const reportTypeLabel = req.query.reportType === REPORT_TYPES.MNI_LEADS ? "MNI-Leads" : "BusinessSearchLeads";
+    const fileName = `${safeFilePart(selectedBusinessName)}-${reportTypeLabel}-${fromStamp}-to-${toStamp}-Leads-Report.xlsx`;
     const workbookBuffer = buildXlsxWorkbook({
-      rows,
+      rows: enrichedRows,
       categorySummary,
       businessSummary,
       meta: {
         from: excelDate(from),
         to: excelDate(to),
         business: selectedBusinessName,
-        template: req.query.template || "All Templates",
+        reportType: reportTypeLabel,
+        mniGroup: req.query.mniGroup || "All Groups",
         location: req.query.location || "All Locations",
       },
     });
