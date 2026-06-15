@@ -171,7 +171,21 @@ const CardsSearch = ({
     const key = `${logValue}-${location}-${userDetails.mobileNumber1}`;
     const logSent = shouldSendSearch(key);
     if (logSent) {
-      dispatch(logSearchActivity(logValue, location, userDetails, searchInput));
+      const matchedBusinessIds = Array.isArray(results?.results)
+        ? results.results.map((business) => business?._id).filter(Boolean)
+        : Array.isArray(results)
+          ? results.map((business) => business?._id).filter(Boolean)
+          : [];
+      dispatch(
+        logSearchActivity(
+          "",
+          location,
+          userDetails,
+          searchInput,
+          false,
+          matchedBusinessIds
+        )
+      );
     }
 
     // Use centralized navigation with normalized data

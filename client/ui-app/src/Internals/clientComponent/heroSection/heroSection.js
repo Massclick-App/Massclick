@@ -5,14 +5,13 @@ import LocationOnIcon from "@mui/icons-material/LocationOn";
 import MicIcon from "@mui/icons-material/Mic";
 import HistoryToggleOffIcon from "@mui/icons-material/HistoryToggleOff";
 import { useDispatch, useSelector } from "react-redux";
-import { getAllSearchLogs, getBackendSuggestions, logSearchActivity } from "../../../redux/actions/businessListAction";
+import { getAllSearchLogs, getBackendSuggestions } from "../../../redux/actions/businessListAction";
 import { navigateToSearchResult } from "../../../utils/searchResultNavigation";
 import { detectDistrict } from "../../../redux/actions/locationAction";
 // import backgroundImage from "../../../assets/background9.jpg";
 // import backgroundImage from "../../../assets/background.png";
 import { useNavigate } from "react-router-dom";
 import styles from "./hero.module.css";
-import { shouldSendSearch } from "../../../utils/searchLock.js";
 const cx = createScopedClassNames(styles);
 const CategoryDropdown = React.memo(({
   label,
@@ -238,12 +237,6 @@ const HeroSection = React.memo(({
       mobileNumber2: authUser?.mobileNumber2,
       email: authUser?.email
     };
-    const key = `${cleanedTerm}-${location}-${userDetails.mobileNumber1}`;
-    const logSent = shouldSendSearch(key);
-    if (logSent) {
-      dispatch(logSearchActivity(cleanedTerm, location, userDetails, cleanedTerm));
-    }
-
     // Use centralized navigation with normalized data
     navigateToSearchResult({
       searchTerm: cleanedTerm,
@@ -252,7 +245,7 @@ const HeroSection = React.memo(({
       dispatch,
       isKnownCategory: false,
       // User typed search - use flexible term search
-      logAlreadySent: logSent,
+      logAlreadySent: false,
       userDetails
     });
   };

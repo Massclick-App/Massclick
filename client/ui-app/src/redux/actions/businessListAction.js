@@ -307,14 +307,28 @@ export const deleteBusinessList = (id) => async (dispatch) => {
   }
 };
 
-export const logSearchActivity = (categoryName, location, userDetails, searchedUserText = "") =>
+export const logSearchActivity = (
+  categoryName,
+  location,
+  userDetails,
+  searchedUserText = "",
+  isKnownCategory = false,
+  matchedBusinessIds = []
+) =>
   async (dispatch) => {
     try {
       const token = await dispatch(getClientToken());
 
       await axiosInstance.post(
         `${API_URL}/businesslist/log-search`,
-        { categoryName, location, searchedUserText, userDetails },
+        {
+          categoryName: isKnownCategory ? categoryName : "",
+          location,
+          searchedUserText,
+          userDetails,
+          isKnownCategory,
+          matchedBusinessIds,
+        },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 

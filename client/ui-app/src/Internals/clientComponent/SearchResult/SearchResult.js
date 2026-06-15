@@ -121,6 +121,7 @@ const SearchResults = React.memo(() => {
   const [totalResults, setTotalResults] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [initialSearchResolved, setInitialSearchResolved] = useState(Boolean(safeStateResults));
 
   // ─── Nearby section ──────────────────────────────────────────────────────────
   const [nearbyResults, setNearbyResults] = useState([]);
@@ -156,6 +157,7 @@ const SearchResults = React.memo(() => {
     setTotalResults(0);
     setHasMore(false);
     setNearbyResults([]);
+    setInitialSearchResolved(Boolean(safeStateResults));
     loadingPagesRef.current.clear();
   }, [normalizedSearchTerm, locationText]);
 
@@ -182,6 +184,7 @@ const SearchResults = React.memo(() => {
       searchLoggedRef.current = true;
       return;
     }
+    if (!initialSearchResolved) return;
     const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
     const userDetails = {
       userName: authUser?.userName,
@@ -189,9 +192,19 @@ const SearchResults = React.memo(() => {
       mobileNumber2: authUser?.mobileNumber2,
       email: authUser?.email
     };
-    dispatch(logSearchActivity(normalizedSearchTerm || "All Categories", locationText || "Global", userDetails, normalizedSearchTerm));
+    const matchedBusinessIds = results.map((business) => business?._id).filter(Boolean);
+    dispatch(
+      logSearchActivity(
+        normalizedSearchTerm || "All Categories",
+        locationText || "Global",
+        userDetails,
+        normalizedSearchTerm,
+        isKnownCategory,
+        matchedBusinessIds
+      )
+    );
     searchLoggedRef.current = true;
-  }, [dispatch, normalizedSearchTerm, locationText, stateLogSent]);
+  }, [dispatch, normalizedSearchTerm, locationText, stateLogSent, isKnownCategory, results, initialSearchResolved]);
 
   useEffect(() => {
     logSearch();
@@ -235,6 +248,7 @@ const SearchResults = React.memo(() => {
       setResults(safeStateResults);
       setTotalResults(safeStateResults.length);
       setHasMore(false); // state results are a snapshot — no pagination
+      setInitialSearchResolved(true);
       stateAppliedRef.current = true;
       return;
     }
@@ -252,6 +266,7 @@ const SearchResults = React.memo(() => {
       setTotalResults(normalized.total || 0);
       setHasMore(normalized.hasMore || false);
       setCurrentPage(1);
+      setInitialSearchResolved(true);
       loadingPagesRef.current.clear();
     });
   }, [safeStateResults, normalizedSearchTerm, locationText, isKnownCategory, dispatch]); // eslint-disable-line
@@ -275,6 +290,7 @@ const SearchResults = React.memo(() => {
       setTotalResults(normalized.total || 0);
       setHasMore(normalized.hasMore || false);
       setCurrentPage(1);
+      setInitialSearchResolved(true);
       loadingPagesRef.current.clear();
     });
   }, [normalizedActiveFilters, hasActiveFilters, sortBy, normalizedSearchTerm, locationText, isKnownCategory, userGeo, dispatch]); // eslint-disable-line

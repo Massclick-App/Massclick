@@ -3,7 +3,6 @@ import React, { useMemo, useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { IndianRupee, BriefcaseBusiness, Clapperboard, Handshake, MapPinned, PackageCheck, ReceiptText, Sparkles, Stethoscope, Utensils, Wrench } from "lucide-react";
-import { logSearchActivity } from "../../../redux/actions/businessListAction";
 import { navigateToSearchResult } from "../../../utils/searchResultNavigation";
 import { fetchPopularCategoryContent } from "../../../redux/actions/categoryAction";
 import styles from "./popularCategories.module.css";
@@ -50,15 +49,14 @@ const PopularCategoriesLink = () => {
       mobileNumber2: authUser?.mobileNumber2,
       email: authUser?.email
     };
-    dispatch(logSearchActivity(keyword, selectedDistrict || "Global", userDetails, keyword));
     navigateToSearchResult({
       searchTerm: keyword,
       location: selectedDistrict || "Global",
       navigate,
       dispatch,
       isKnownCategory: false,
-      // Popular category - known category
-      logAlreadySent: true,
+      // Popular keyword chip - flexible term search
+      logAlreadySent: false,
       userDetails
     });
   };
@@ -75,13 +73,13 @@ const PopularCategoriesLink = () => {
       mobileNumber2: authUser?.mobileNumber2,
       email: authUser?.email
     };
-    dispatch(logSearchActivity(categoryName, selectedDistrict || "Global", userDetails, categoryName));
     navigateToSearchResult({
       searchTerm: categoryName,
       location: selectedDistrict || "Global",
       navigate,
       dispatch,
-      logAlreadySent: true,
+      isKnownCategory: true,
+      logAlreadySent: false,
       userDetails
     });
   };

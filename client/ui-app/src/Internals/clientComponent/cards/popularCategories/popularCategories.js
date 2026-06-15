@@ -7,7 +7,6 @@ import { getPlaceholderImage, handleImageError } from "../../../../utils/placeho
 import Drawer from "@mui/material/Drawer";
 import CloseIcon from "@mui/icons-material/Close";
 import SearchIcon from "@mui/icons-material/Search";
-import { logSearchActivity } from "../../../../redux/actions/businessListAction";
 import { fetchPopularCategories } from "../../../../redux/actions/categoryAction";
 import { navigateToSearchResult } from "../../../../utils/searchResultNavigation";
 
@@ -64,7 +63,6 @@ const PopularCategoriesDrawer = ({
       mobileNumber2: authUser?.mobileNumber2,
       email: authUser?.email
     };
-    dispatch(logSearchActivity(cat.name, selectedDistrict || "Global", userDetails, cat.name));
     navigateToSearchResult({
       searchTerm: cat.name,
       location: selectedDistrict || "Global",
@@ -72,7 +70,7 @@ const PopularCategoriesDrawer = ({
       dispatch,
       isKnownCategory: true,
       // Popular category drawer - known category
-      logAlreadySent: true,
+      logAlreadySent: false,
       userDetails
     });
     setDrawerOpen(false);

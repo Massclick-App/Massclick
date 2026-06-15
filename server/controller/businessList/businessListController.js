@@ -478,7 +478,7 @@ const scoreCategoryIntent = (candidate, rawTerm) => {
   return score;
 };
 
-const resolveCategoryIntent = async (term, escapeRegex) => {
+export const resolveCategoryIntent = async (term, escapeRegex) => {
   const exactPattern = `^${escapeRegex(term)}$`;
   const exactMatch = await categoryModel.findOne(
     {

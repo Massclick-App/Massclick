@@ -6,6 +6,7 @@ import {
   updateSearchData,
   getTopTrendingCategories,
 } from "../../helper/businessList/logSearchHelper.js";
+import { resolveCategoryIntent } from "./businessListController.js";
 import CategoryModel from "../../model/category/categoryModel.js";
 import { getSignedUrlByKey } from "../../s3Uploder.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
@@ -146,7 +147,14 @@ const getDynamicCategoryRegex = (value = "") => {
 
 export const logSearchAction = async (req, res) => {
   try {
-    const { categoryName, location, searchedUserText, userDetails } = req.body;
+    const {
+      categoryName,
+      location,
+      searchedUserText,
+      userDetails,
+      isKnownCategory = false,
+      matchedBusinessIds = [],
+    } = req.body;
     const reqId = Math.random().toString(36).slice(2, 8);
     const leadSettings = await getSettings();
     const rawSearchText = searchedUserText?.trim?.() || "";
@@ -175,16 +183,21 @@ export const logSearchAction = async (req, res) => {
       userDetails.mobileNumber1 &&
       userDetails.mobileNumber1.trim();
 
-    // ── Resolve category using enhanced suggestions logic (top result only) ────
+    // const escapeRegex = (text = "") =>
+    //   text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+    // ── Resolve category used for analytics / lead grouping ────
     let finalCategoryName = "";
     let matchedCategoryFromSearch = null;
 
-    // First, try to match against categoryName if provided
     if (
+      isKnownCategory &&
       categoryName &&
       categoryName.trim() &&
       categoryName.toLowerCase() !== "all categories"
     ) {
+      finalCategoryName = categoryName.trim();
+
       const categorySlugFromInput = categoryName
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
@@ -195,67 +208,28 @@ export const logSearchAction = async (req, res) => {
       }).lean();
 
       if (validCategory) {
-        finalCategoryName =
-          validCategory.categoryName || validCategory.category;
         matchedCategoryFromSearch = validCategory;
       }
     }
 
-    // If no valid category from categoryName, search using the same logic as enhanced suggestions endpoint
     if (!finalCategoryName) {
-      const escapedSearch = cleanSearchText.replace(
-        /[.*+?^${}()|[\]\\]/g,
-        "\\$&",
+      const resolvedCategory = await resolveCategoryIntent(
+        cleanSearchText,
+        escapeRegex
       );
 
-      // Use the exact same matching logic as getEnhancedSuggestionsController
-      const topMatches = await CategoryModel.aggregate([
-        {
-          $match: {
-            isActive: true,
-            $or: [
-              { category: { $regex: escapedSearch, $options: "i" } },
-              { categoryName: { $regex: escapedSearch, $options: "i" } },
-              { keywords: { $regex: escapedSearch, $options: "i" } },
-            ],
-          },
-        },
-        { $limit: 1 },
-      ]);
-
-      if (topMatches.length > 0) {
-        finalCategoryName =
-          topMatches[0].categoryName || topMatches[0].category;
-        matchedCategoryFromSearch = topMatches[0];
-      } else {
-        // Fallback: try word-by-word matching
-        const searchWords = cleanSearchText.split(" ");
-        const wordMatches = await CategoryModel.aggregate([
+      if (resolvedCategory) {
+        finalCategoryName = resolvedCategory;
+        matchedCategoryFromSearch = await CategoryModel.findOne(
           {
-            $match: {
-              isActive: true,
-              $or: [
-                { category: { $regex: searchWords.join("|"), $options: "i" } },
-                {
-                  categoryName: {
-                    $regex: searchWords.join("|"),
-                    $options: "i",
-                  },
-                },
-                { keywords: { $regex: searchWords.join("|"), $options: "i" } },
-              ],
-            },
-          },
-          { $limit: 1 },
-        ]);
-
-        if (wordMatches.length > 0) {
-          finalCategoryName =
-            wordMatches[0].categoryName || wordMatches[0].category;
-          matchedCategoryFromSearch = wordMatches[0];
-        } else {
-          finalCategoryName = rawSearchText || categoryName || "all categories";
-        }
+            $or: [
+              { category: { $regex: `^${escapeRegex(resolvedCategory)}$`, $options: "i" } },
+              { categoryName: { $regex: `^${escapeRegex(resolvedCategory)}$`, $options: "i" } },
+            ],
+          }
+        ).lean();
+      } else {
+        finalCategoryName = rawSearchText || categoryName || "all categories";
       }
     }
 
@@ -392,8 +366,8 @@ export const logSearchAction = async (req, res) => {
         .replace(/[-_]/g, " ")
         .replace(/\s+/g, " ");
 
-    const escapeRegex = (text = "") =>
-      text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    // const escapeRegex = (text = "") =>
+    //   text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
     const categoryMatchValues = [
       finalCategoryName,
@@ -438,21 +412,55 @@ export const logSearchAction = async (req, res) => {
     }
 
     // Find matching businesses (limit to top 10)
-    const businesses = await businessListModel
-      .find(searchMatchQuery, {
-        businessName: 1,
-        category: 1,
-        keywords: 1,
-        contactList: 1,
-        whatsappNumber: 1,
-        location: 1,
-        street: 1,
-        plotNumber: 1,
-        averageRating: 1,
-      })
-      .sort({ amountPaid: -1, paidDate: -1, averageRating: -1, createdAt: -1 })
-      .limit(10)
-      .lean();
+    let businesses = [];
+
+    if (Array.isArray(matchedBusinessIds) && matchedBusinessIds.length > 0) {
+      const orderedIds = matchedBusinessIds
+        .map((id) => id?.toString?.())
+        .filter(Boolean)
+        .slice(0, 10);
+
+      const fetchedBusinesses = await businessListModel
+        .find(
+          { _id: { $in: orderedIds } },
+          {
+            businessName: 1,
+            category: 1,
+            keywords: 1,
+            contactList: 1,
+            whatsappNumber: 1,
+            location: 1,
+            street: 1,
+            plotNumber: 1,
+            averageRating: 1,
+          }
+        )
+        .lean();
+
+      const businessById = new Map(
+        fetchedBusinesses.map((business) => [business._id.toString(), business])
+      );
+
+      businesses = orderedIds
+        .map((id) => businessById.get(id))
+        .filter(Boolean);
+    } else {
+      businesses = await businessListModel
+        .find(searchMatchQuery, {
+          businessName: 1,
+          category: 1,
+          keywords: 1,
+          contactList: 1,
+          whatsappNumber: 1,
+          location: 1,
+          street: 1,
+          plotNumber: 1,
+          averageRating: 1,
+        })
+        .sort({ amountPaid: -1, paidDate: -1, averageRating: -1, createdAt: -1 })
+        .limit(10)
+        .lean();
+    }
 
     if (!businesses.length) {
       return res.status(200).json({
@@ -911,8 +919,8 @@ export const sendEnquiryLead = async (req, res) => {
     const normalizedLocation = (location || "global").toLowerCase().trim();
     const categoryText = (category || "").toLowerCase().trim();
 
-    const escapeRegex = (text = "") =>
-      text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    // const escapeRegex = (text = "") =>
+    //   text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
     const getCategoryRegex = (val) => {
       try {
