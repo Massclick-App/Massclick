@@ -18,6 +18,7 @@ const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 const toDateInput = (date) => date.toISOString().slice(0, 10);
 
 const initialFilters = {
+  reportType: "business_search_leads",
   from: toDateInput(thirtyDaysAgo),
   to: toDateInput(today),
   template: "",
@@ -25,6 +26,7 @@ const initialFilters = {
   sourceType: "",
   failureReason: "",
   businessId: "",
+  mniGroup: "",
   category: "",
   location: "",
   recipientMobile: "",
@@ -32,7 +34,10 @@ const initialFilters = {
 };
 
 const statusOptions = ["queued", "sent", "delivered", "read", "failed", "hold", "skipped"];
-const sourceOptions = ["search_lead", "customer_list", "mni", "enquiry", "welcome", "manual"];
+const reportTypeOptions = [
+  { value: "business_search_leads", label: "BusinessSearchLeads" },
+  { value: "mni_leads", label: "MNI Leads" },
+];
 
 const businessLabel = (business = {}) => [
   business.businessName || business.name || "Unnamed business",
@@ -99,7 +104,7 @@ export default function Msg91Analytics() {
   const [expandedAuditId, setExpandedAuditId] = useState("");
   const [recipientFilter, setRecipientFilter] = useState({ mobile: "", suppressed: "", invalid: "" });
   const [exportLoading, setExportLoading] = useState(false);
-  const [filterOptions, setFilterOptions] = useState({ templates: [], locations: [], categories: [] });
+  const [filterOptions, setFilterOptions] = useState({ templates: [], locations: [], categories: [], mniGroups: [] });
   const [businessSearch, setBusinessSearch] = useState("");
   const [businessOptions, setBusinessOptions] = useState([]);
   const [businessLoading, setBusinessLoading] = useState(false);
@@ -120,13 +125,17 @@ export default function Msg91Analytics() {
         const options = await fetchMsg91FilterOptions({
           from: filters.from,
           to: filters.to,
+          reportType: filters.reportType,
           businessId: filters.businessId,
+          location: filters.location,
+          category: filters.category,
         });
         if (!ignore) {
           setFilterOptions({
             templates: options.templates || [],
             locations: options.locations || [],
             categories: options.categories || [],
+            mniGroups: options.mniGroups || [],
           });
         }
       } catch (optionError) {
@@ -138,7 +147,7 @@ export default function Msg91Analytics() {
     return () => {
       ignore = true;
     };
-  }, [filters.from, filters.to, filters.businessId]);
+  }, [filters.from, filters.to, filters.reportType, filters.businessId, filters.location, filters.category]);
 
   useEffect(() => {
     let ignore = false;
@@ -163,6 +172,8 @@ export default function Msg91Analytics() {
 
   const statusCounts = summary?.statusCounts || {};
   const templates = summary?.templates || [];
+  const isMniMode = filters.reportType === "mni_leads";
+  const appliedIsMniMode = appliedFilters.reportType === "mni_leads";
   const maxDailyTotal = useMemo(
     () => Math.max(...(timeseries || []).map((row) => row.total || 0), 1),
     [timeseries]
@@ -209,7 +220,18 @@ export default function Msg91Analytics() {
   };
 
   const updateFilter = (key, value) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
+    setFilters((prev) => {
+      if (key === "reportType") {
+        return {
+          ...initialFilters,
+          reportType: value,
+          from: prev.from,
+          to: prev.to,
+        };
+      }
+
+      return { ...prev, [key]: value };
+    });
   };
 
   const selectBusiness = (businessId) => {
@@ -223,7 +245,7 @@ export default function Msg91Analytics() {
       <div className={styles.header}>
         <div>
           <h1>MSG91 Analytics</h1>
-          <p>WhatsApp audit, failures, skips, recipient health, and delivery outcomes.</p>
+          <p>{appliedIsMniMode ? "MNI WhatsApp leads by business group, location, and category." : "Business search WhatsApp leads, failures, skips, and delivery outcomes."}</p>
         </div>
         <div className={styles.headerActions}>
           <button type="button" onClick={exportCsv} disabled={exportLoading}>
@@ -246,6 +268,20 @@ export default function Msg91Analytics() {
 
       <section className={styles.filters}>
         <label>
+          Report Type
+          <select
+            value={filters.reportType}
+            onChange={(event) => {
+              setBusinessSearch("");
+              updateFilter("reportType", event.target.value);
+            }}
+          >
+            {reportTypeOptions.map((type) => (
+              <option key={type.value} value={type.value}>{type.label}</option>
+            ))}
+          </select>
+        </label>
+        <label>
           From
           <input type="date" value={filters.from} onChange={(event) => updateFilter("from", event.target.value)} />
         </label>
@@ -253,15 +289,17 @@ export default function Msg91Analytics() {
           To
           <input type="date" value={filters.to} onChange={(event) => updateFilter("to", event.target.value)} />
         </label>
-        <label>
-          Template
-          <select value={filters.template} onChange={(event) => updateFilter("template", event.target.value)}>
-            <option value="">All templates</option>
-            {filterOptions.templates.map((template) => (
-              <option key={template} value={template}>{template}</option>
-            ))}
-          </select>
-        </label>
+        {!isMniMode && (
+          <label>
+            Template
+            <select value={filters.template} onChange={(event) => updateFilter("template", event.target.value)}>
+              <option value="">All templates</option>
+              {filterOptions.templates.map((template) => (
+                <option key={template} value={template}>{template}</option>
+              ))}
+            </select>
+          </label>
+        )}
         <label>
           Status
           <select value={filters.status} onChange={(event) => updateFilter("status", event.target.value)}>
@@ -269,49 +307,57 @@ export default function Msg91Analytics() {
             {statusOptions.map((status) => <option key={status} value={status}>{status}</option>)}
           </select>
         </label>
-        <label>
-          Source
-          <select value={filters.sourceType} onChange={(event) => updateFilter("sourceType", event.target.value)}>
-            <option value="">All</option>
-            {sourceOptions.map((source) => <option key={source} value={source}>{source}</option>)}
-          </select>
-        </label>
-        <label>
-          Failure
-          <input value={filters.failureReason} onChange={(event) => updateFilter("failureReason", event.target.value)} placeholder="131026" />
-        </label>
-        <label className={styles.wideFilter}>
-          Business Person
-          <div className={styles.businessSearch}>
-            <input
-              value={businessSearch}
-              onChange={(event) => {
-                setBusinessSearch(event.target.value);
-                updateFilter("businessId", "");
-              }}
-              placeholder="Type business name, client ID, mobile, category, or location"
-            />
-            {filters.businessId && (
-              <button
-                type="button"
-                onClick={() => {
-                  updateFilter("businessId", "");
-                  setBusinessSearch("");
-                }}
-              >
-                Clear business
-              </button>
-            )}
-            <select value={filters.businessId} onChange={(event) => selectBusiness(event.target.value)}>
-              <option value="">{businessLoading ? "Searching..." : "All matching businesses"}</option>
-              {businessOptions.map((business) => (
-                <option key={business._id} value={business._id}>
-                  {businessLabel(business)}
-                </option>
+        {!isMniMode && (
+          <>
+            <label>
+              Failure
+              <input value={filters.failureReason} onChange={(event) => updateFilter("failureReason", event.target.value)} placeholder="131026" />
+            </label>
+            <label className={styles.wideFilter}>
+              Business Person
+              <div className={styles.businessSearch}>
+                <input
+                  value={businessSearch}
+                  onChange={(event) => {
+                    setBusinessSearch(event.target.value);
+                    updateFilter("businessId", "");
+                  }}
+                  placeholder="Type business name, client ID, mobile, category, or location"
+                />
+                {filters.businessId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      updateFilter("businessId", "");
+                      setBusinessSearch("");
+                    }}
+                  >
+                    Clear business
+                  </button>
+                )}
+                <select value={filters.businessId} onChange={(event) => selectBusiness(event.target.value)}>
+                  <option value="">{businessLoading ? "Searching..." : "All matching businesses"}</option>
+                  {businessOptions.map((business) => (
+                    <option key={business._id} value={business._id}>
+                      {businessLabel(business)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </label>
+          </>
+        )}
+        {isMniMode && (
+          <label>
+            Business Group
+            <select value={filters.mniGroup} onChange={(event) => updateFilter("mniGroup", event.target.value)}>
+              <option value="">All MNI groups</option>
+              {filterOptions.mniGroups.map((group) => (
+                <option key={group} value={group}>{group}</option>
               ))}
             </select>
-          </div>
-        </label>
+          </label>
+        )}
         <label>
           Category
           <select value={filters.category} onChange={(event) => updateFilter("category", event.target.value)}>
@@ -397,36 +443,50 @@ export default function Msg91Analytics() {
       </section>
 
       <section className={styles.gridThree}>
-        <div className={styles.panel}>
-          <div className={styles.panelTitle}><h2>Template Performance</h2></div>
-          <div className={styles.compactTable}>
-            <table>
-              <thead><tr><th>Template</th><th>Total</th><th>Success</th><th>Failed</th><th>Cost</th></tr></thead>
-              <tbody>
-                {templates.map((row) => (
-                  <tr key={row._id || "unknown"}>
-                    <td>{row._id || "unknown"}</td>
-                    <td>{formatNumber(row.total)}</td>
-                    <td>{formatNumber(row.success)}</td>
-                    <td>{formatNumber(row.failed)}</td>
-                    <td>Rs {formatMoney(row.cost)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {!templates.length && <TableEmpty text="No template data." />}
+        {appliedIsMniMode ? (
+          <div className={styles.panel}>
+            <div className={styles.panelTitle}><h2>Business Groups</h2></div>
+            <div className={styles.rankList}>
+              {(summary?.topGroups || []).map((item) => (
+                <div key={item._id || "unknown"}><span>{item._id || "unknown"}</span><strong>{formatNumber(item.total)}</strong></div>
+              ))}
+              {!(summary?.topGroups || []).length && <TableEmpty text="No MNI group data." />}
+            </div>
           </div>
-        </div>
+        ) : (
+          <>
+            <div className={styles.panel}>
+              <div className={styles.panelTitle}><h2>Template Performance</h2></div>
+              <div className={styles.compactTable}>
+                <table>
+                  <thead><tr><th>Template</th><th>Total</th><th>Success</th><th>Failed</th><th>Cost</th></tr></thead>
+                  <tbody>
+                    {templates.map((row) => (
+                      <tr key={row._id || "unknown"}>
+                        <td>{row._id || "unknown"}</td>
+                        <td>{formatNumber(row.total)}</td>
+                        <td>{formatNumber(row.success)}</td>
+                        <td>{formatNumber(row.failed)}</td>
+                        <td>Rs {formatMoney(row.cost)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {!templates.length && <TableEmpty text="No template data." />}
+              </div>
+            </div>
 
-        <div className={styles.panel}>
-          <div className={styles.panelTitle}><h2>Source Types</h2></div>
-          <div className={styles.rankList}>
-            {(summary?.sourceTypes || []).map((item) => (
-              <div key={item._id || "unknown"}><span>{item._id || "unknown"}</span><strong>{formatNumber(item.total)}</strong></div>
-            ))}
-            {!(summary?.sourceTypes || []).length && <TableEmpty text="No source-type data." />}
-          </div>
-        </div>
+            <div className={styles.panel}>
+              <div className={styles.panelTitle}><h2>Lead Source</h2></div>
+              <div className={styles.rankList}>
+                {(summary?.sourceTypes || []).map((item) => (
+                  <div key={item._id || "unknown"}><span>{item._id || "unknown"}</span><strong>{formatNumber(item.total)}</strong></div>
+                ))}
+                {!(summary?.sourceTypes || []).length && <TableEmpty text="No source data." />}
+              </div>
+            </div>
+          </>
+        )}
 
         <div className={styles.panel}>
           <div className={styles.panelTitle}><h2>Categories</h2></div>
@@ -507,6 +567,7 @@ export default function Msg91Analytics() {
                 <th>Customer</th>
                 <th>Category</th>
                 <th>Location</th>
+                <th>Place</th>
                 <th>Business</th>
                 <th>Reason</th>
               </tr>
@@ -523,12 +584,13 @@ export default function Msg91Analytics() {
                     <td>{row.customerMobile || "-"}</td>
                     <td>{row.category || "-"}</td>
                     <td>{row.location || "-"}</td>
+                    <td>{row.place || row.businessGroupLocation || row.location || "-"}</td>
                     <td>{row.businessName || "-"}</td>
                     <td>{row.failureCode || row.failureReason || row.skippedReason || "-"}</td>
                   </tr>
                   {expandedAuditId === row._id && (
                     <tr className={styles.detailRow}>
-                      <td colSpan="10">
+                      <td colSpan="11">
                         <div className={styles.detailGrid}>
                           <div><strong>Request ID</strong><span>{row.requestId || row.uuid || "-"}</span></div>
                           <div><strong>Sent</strong><span>{formatDateTime(row.sentAt)}</span></div>
