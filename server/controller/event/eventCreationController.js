@@ -39,6 +39,7 @@ export const viewAllEventCreationAction = async (req, res) => {
     const pageSize = parseInt(req.query.pageSize) || 10;
     const search = req.query.search || "";
     const status = req.query.status || "all";
+    const isActive = req.query.isActive || "true";
     const sortBy = req.query.sortBy || "createdAt";
     const sortOrder = req.query.sortOrder === "asc" ? 1 : -1;
 
@@ -47,6 +48,7 @@ export const viewAllEventCreationAction = async (req, res) => {
       pageSize,
       search,
       status,
+      isActive,
       sortBy,
       sortOrder
     });

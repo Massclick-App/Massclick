@@ -276,10 +276,10 @@ export const getAllEventCreation = ({ pageNo = 1, pageSize = 10, options = {} } 
   dispatch({ type: FETCH_EVENT_CREATION_REQUEST });
   try {
     const token = await getValidToken(dispatch);
-    const { search = "", status = "all", sortBy = "", sortOrder = "" } = options;
+    const { search = "", status = "all", sortBy = "", sortOrder = "", isActive = true } = options;
 
     const response = await axiosInstance.get(
-      `${API_URL}/event-creation/viewall?pageNo=${pageNo}&pageSize=${pageSize}&search=${search}&status=${status}&sortBy=${sortBy}&sortOrder=${sortOrder}`,
+      `${API_URL}/event-creation/viewall?pageNo=${pageNo}&pageSize=${pageSize}&search=${search}&status=${status}&sortBy=${sortBy}&sortOrder=${sortOrder}&isActive=${isActive}`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
 

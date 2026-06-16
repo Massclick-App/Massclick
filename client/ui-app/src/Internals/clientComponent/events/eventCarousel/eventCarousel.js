@@ -137,6 +137,7 @@ export default function EventCarousel({
         pageNo: 1,
         pageSize: 60,
         options: {
+          isActive: true,
           status: "all",
           sortBy: "startDate",
           sortOrder: "asc",

@@ -134,10 +134,10 @@ export const viewEventCreation = async (eventId) => {
 
 export const viewAllEventCreation = async (options = {}) => {
   try {
-    const { pageNo = 1, pageSize = 10, search = "", status = "all", sortBy = "createdAt", sortOrder = -1 } = options;
+    const { pageNo = 1, pageSize = 10, search = "", status = "all", sortBy = "createdAt", sortOrder = -1, isActive = true } = options;
 
     const skip = (pageNo - 1) * pageSize;
-    const query = { isActive: true };
+    const query = { isActive: isActive === "true" };
 
     if (search) {
       query.$or = [
