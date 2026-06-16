@@ -2,7 +2,19 @@ import { createScopedClassNames } from "../../../utils/createScopedClassNames";
 import React, { useMemo, useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { IndianRupee, BriefcaseBusiness, Clapperboard, Handshake, MapPinned, PackageCheck, ReceiptText, Sparkles, Stethoscope, Utensils, Wrench } from "lucide-react";
+import {
+  IndianRupee,
+  BriefcaseBusiness,
+  Clapperboard,
+  Handshake,
+  MapPinned,
+  PackageCheck,
+  ReceiptText,
+  Sparkles,
+  Stethoscope,
+  Utensils,
+  Wrench,
+} from "lucide-react";
 import { navigateToSearchResult } from "../../../utils/searchResultNavigation";
 import { fetchPopularCategoryContent } from "../../../redux/actions/categoryAction";
 import styles from "./popularCategories.module.css";
@@ -18,7 +30,7 @@ const serviceIcons = {
   package: PackageCheck,
   realEstate: IndianRupee,
   repair: Wrench,
-  spa: Sparkles
+  spa: Sparkles,
 };
 const PopularCategoriesLink = () => {
   const dispatch = useDispatch();
@@ -26,8 +38,10 @@ const PopularCategoriesLink = () => {
   const {
     tabs = [],
     services: popularCategoriesServices = [],
-    linkSections: popularCategoriesLinkSections = []
-  } = useSelector(state => state.categoryReducer.popularCategoryContent || {});
+    linkSections: popularCategoriesLinkSections = [],
+  } = useSelector(
+    (state) => state.categoryReducer.popularCategoryContent || {},
+  );
   const [activeCategory, setActiveCategory] = useState("");
   useEffect(() => {
     dispatch(fetchPopularCategoryContent());
@@ -37,17 +51,21 @@ const PopularCategoriesLink = () => {
       setActiveCategory(tabs[0].category);
     }
   }, [tabs, activeCategory]);
-  const selectedDistrict = useSelector(state => state.locationReducer.selectedDistrict);
+  const selectedDistrict = useSelector(
+    (state) => state.locationReducer.selectedDistrict,
+  );
   const activeKeywords = useMemo(() => {
-    return tabs.find(item => item.category === activeCategory)?.keywords || [];
+    return (
+      tabs.find((item) => item.category === activeCategory)?.keywords || []
+    );
   }, [activeCategory, tabs]);
-  const handleKeywordClick = keyword => {
+  const handleKeywordClick = (keyword) => {
     const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
     const userDetails = {
       userName: authUser?.userName,
       mobileNumber1: authUser?.mobileNumber1,
       mobileNumber2: authUser?.mobileNumber2,
-      email: authUser?.email
+      email: authUser?.email,
     };
     navigateToSearchResult({
       searchTerm: keyword,
@@ -57,10 +75,10 @@ const PopularCategoriesLink = () => {
       isKnownCategory: false,
       // Popular keyword chip - flexible term search
       logAlreadySent: false,
-      userDetails
+      userDetails,
     });
   };
-  const handleServiceClick = service => {
+  const handleServiceClick = (service) => {
     if (service.route) {
       navigate(service.route);
       return;
@@ -71,7 +89,7 @@ const PopularCategoriesLink = () => {
       userName: authUser?.userName,
       mobileNumber1: authUser?.mobileNumber1,
       mobileNumber2: authUser?.mobileNumber2,
-      email: authUser?.email
+      email: authUser?.email,
     };
     navigateToSearchResult({
       searchTerm: categoryName,
@@ -80,14 +98,20 @@ const PopularCategoriesLink = () => {
       dispatch,
       isKnownCategory: true,
       logAlreadySent: false,
-      userDetails
+      userDetails,
     });
   };
   if (!tabs.length) return null;
-  return <section className={cx("popular-categories-links")} aria-label="Popular Categories">
+  return (
+    <section
+      className={cx("popular-categories-links")}
+      aria-label="Popular Categories"
+    >
       <div className={cx("popular-categories-links__inner")}>
         <div className={cx("popular-categories-links__header")}>
-          <h2 className={cx("popular-categories-links__title")}>Popular Categories</h2>
+          <h2 className={cx("popular-categories-links__title")}>
+            Popular Categories
+          </h2>
           <span className={cx("popular-categories-links__meta")}>
             {activeKeywords.length} searches
           </span>
@@ -95,30 +119,57 @@ const PopularCategoriesLink = () => {
 
         <div className={cx("popular-categories-links__tabs")} role="tablist">
           {tabs.map((item, index) => {
-          const isActive = item.category === activeCategory;
-          return <button key={`${item.category}-${index}`} type="button" className={cx(`popular-categories-links__tab${isActive ? " popular-categories-links__tab--active" : ""}`)} role="tab" aria-selected={isActive} onClick={() => setActiveCategory(item.category)}>
+            const isActive = item.category === activeCategory;
+            return (
+              <button
+                key={`${item.category}-${index}`}
+                type="button"
+                className={cx(
+                  `popular-categories-links__tab${isActive ? " popular-categories-links__tab--active" : ""}`,
+                )}
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => setActiveCategory(item.category)}
+              >
                 {item.category}
-              </button>;
-        })}
+              </button>
+            );
+          })}
         </div>
 
         <div className={cx("popular-categories-links__keywords")}>
-          {activeKeywords.map((keyword, index) => <button key={`${activeCategory}-${keyword}-${index}`} type="button" className={cx("popular-categories-links__keyword")} onClick={() => handleKeywordClick(keyword)}>
+          {activeKeywords.map((keyword, index) => (
+            <button
+              key={`${activeCategory}-${keyword}-${index}`}
+              type="button"
+              className={cx("popular-categories-links__keyword")}
+              onClick={() => handleKeywordClick(keyword)}
+            >
               {keyword}
-            </button>)}
+            </button>
+          ))}
         </div>
       </div>
 
       <div className={cx("popular-categories-links__services")}>
         <h2 className={cx("popular-categories-links__servicesTitle")}>
-          Some of our services that will prove useful to you on a day-to-day basis are :
+          Some of our services that will prove useful to you on a day-to-day
+          basis are :
         </h2>
 
         <div className={cx("popular-categories-links__servicesGrid")}>
           {popularCategoriesServices.map((service, index) => {
-          const Icon = serviceIcons[service.icon] || Sparkles;
-          return <article className={cx("popular-categories-links__service")} key={service._id || `${service.title}-${index}`}>
-                <button type="button" className={cx("popular-categories-links__serviceHead")} onClick={() => handleServiceClick(service)}>
+            const Icon = serviceIcons[service.icon] || Sparkles;
+            return (
+              <article
+                className={cx("popular-categories-links__service")}
+                key={service._id || `${service.title}-${index}`}
+              >
+                <button
+                  type="button"
+                  className={cx("popular-categories-links__serviceHead")}
+                  onClick={() => handleServiceClick(service)}
+                >
                   <span className={cx("popular-categories-links__serviceIcon")}>
                     <Icon size={24} strokeWidth={1.7} />
                   </span>
@@ -128,13 +179,18 @@ const PopularCategoriesLink = () => {
                 <p className={cx("popular-categories-links__serviceText")}>
                   {service.description}
                 </p>
-              </article>;
-        })}
+              </article>
+            );
+          })}
         </div>
       </div>
 
       <div className={cx("popular-categories-links__collections")}>
-        {popularCategoriesLinkSections.map((section, sectionIndex) => <article className={cx("popular-categories-links__collection")} key={`${section.title}-${sectionIndex}`}>
+        {popularCategoriesLinkSections.map((section, sectionIndex) => (
+          <article
+            className={cx("popular-categories-links__collection")}
+            key={`${section.title}-${sectionIndex}`}
+          >
             <div className={cx("popular-categories-links__collectionHeader")}>
               <h3 className={cx("popular-categories-links__collectionTitle")}>
                 {section.title}
@@ -145,12 +201,21 @@ const PopularCategoriesLink = () => {
             </div>
 
             <div className={cx("popular-categories-links__inlineLinks")}>
-              {section.keywords.map((keyword, keywordIndex) => <button key={`${section.title}-${keyword}-${keywordIndex}`} type="button" className={cx("popular-categories-links__inlineLink")} onClick={() => handleKeywordClick(keyword)}>
+              {section.keywords.map((keyword, keywordIndex) => (
+                <button
+                  key={`${section.title}-${keyword}-${keywordIndex}`}
+                  type="button"
+                  className={cx("popular-categories-links__inlineLink")}
+                  onClick={() => handleKeywordClick(keyword)}
+                >
                   {keyword}
-                </button>)}
+                </button>
+              ))}
             </div>
-          </article>)}
+          </article>
+        ))}
       </div>
-    </section>;
+    </section>
+  );
 };
 export default PopularCategoriesLink;

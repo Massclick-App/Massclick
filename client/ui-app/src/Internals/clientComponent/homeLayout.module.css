@@ -1,7 +1,7 @@
 .home-page {
   --home-max-width: 1720px;
   --home-edge: clamp(48px, 8vw, 128px);
-  --home-page-bg: #f5f7fa;
+  --home-page-bg: #ffffff;
 
   /* ── Section design tokens (inherited by all child components) ── */
   --section-max-width: 1720px;

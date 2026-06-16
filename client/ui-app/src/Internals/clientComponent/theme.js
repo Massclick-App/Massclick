@@ -5,7 +5,7 @@ const theme = createTheme({
         primary: { main: '#2196F3', dark: '#1976D2' },
         secondary: { main: '#FF5722', contrastText: '#fff' },
         text: { primary: '#333333', secondary: '#666666' },
-        background: { default: '#F5F5F5', paper: '#FFFFFF' },
+        background: { default: '#ffffff', paper: '#ffffff' },
         orangeBar: { main: '#FF8A2C', contrastText: '#fff' },
         blueServiceCard: { main: '#2196F3', contrastText: '#fff' },
         greenServiceCard: { main: '#4CAF50', contrastText: '#fff' },
