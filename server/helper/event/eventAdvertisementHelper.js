@@ -96,7 +96,7 @@ export const viewEventAdvertisement = async (advertisementId) => {
 
 export const viewAllEventAdvertisement = async (options = {}) => {
   try {
-    const { pageNo = 1, pageSize = 10, search = "", status = "active", sortBy = "createdAt", sortOrder = -1 } = options;
+    const { pageNo = 1, pageSize = 10, search = "", status = "all", sortBy = "createdAt", sortOrder = -1 } = options;
 
     const skip = (pageNo - 1) * pageSize;
     const query = { displayPosition: "HOME_POPUP" };
