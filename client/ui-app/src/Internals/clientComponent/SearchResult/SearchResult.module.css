@@ -285,6 +285,26 @@ section.seo-header-content.premium-section {
   align-self: flex-start;
 }
 
+@media (max-width: 1440px) {
+  .search-layout {
+    gap: clamp(16px, 1.8vw, 26px);
+  }
+
+  .filter-column {
+    width: 230px;
+  }
+
+  .ads-column {
+    width: 260px;
+  }
+}
+
+@media (max-width: 1320px) {
+  .ads-column {
+    display: none;
+  }
+}
+
 
 .results-toolbar {
   display: flex;
