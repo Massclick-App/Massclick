@@ -273,14 +273,14 @@ export default function EventCarousel({
           <p>{subheading}</p>
         </div>
 
-        <button
+        {/* <button
           type="button"
           className={cx("eventCarousel-viewAll")}
           onClick={() => navigate("/events")}
         >
           View All Events
           <ArrowRight size={16} aria-hidden="true" />
-        </button>
+        </button> */}
       </div>
 
       <div className={cx("eventCarousel-categories")} aria-label="Event categories">

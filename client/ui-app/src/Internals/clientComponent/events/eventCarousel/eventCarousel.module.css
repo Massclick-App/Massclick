@@ -5,7 +5,7 @@
   --eventCarousel-muted: #667085;
   --eventCarousel-line: #ffe0c2;
   --eventCarousel-surface: #ffffff;
-  --eventCarousel-soft: #fff7ed;
+  --eventCarousel-soft: #ffffff;
   width: 100%;
   max-width: var(--section-max-width);
   margin: 0 auto;
@@ -13,9 +13,9 @@
   border: 1px solid var(--eventCarousel-line);
   border-radius: 8px;
   background:
-    linear-gradient(180deg, rgba(255, 247, 237, 0.55), rgba(255, 255, 255, 0.96)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.96)),
     var(--eventCarousel-surface);
-  box-shadow: var(--section-shadow);
+  /* box-shadow: var(--section-shadow); */
   font-family: "Inter", system-ui, sans-serif;
   box-sizing: border-box;
 }
@@ -177,7 +177,7 @@
   border: 1px solid #e7ebf0;
   border-radius: 14px;
   background: #fff;
-  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+  /* box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08); */
   scroll-snap-align: start;
   display: flex;
   align-items: stretch;
@@ -205,7 +205,7 @@
 .eventCarousel-card:hover,
 .eventCarousel-categoryCard:hover {
   border-color: var(--eventCarousel-orange);
-  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.15);
+  /* box-shadow: 0 14px 32px rgba(15, 23, 42, 0.15); */
   transform: translateY(-4px);
 }
 
