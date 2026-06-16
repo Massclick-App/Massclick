@@ -467,6 +467,21 @@ export default function EventCreation() {
       ),
     },
     {
+      id: "isActive",
+      label: "Active",
+      renderCell: (value) => (
+        <span
+          className={cx(`eventCreation-status ${
+            value
+              ? "eventCreation-status--active"
+              : "eventCreation-status--inactive"
+          }`)}
+        >
+          {value ? "Active" : "Inactive"}
+        </span>
+      ),
+    },
+    {
       id: "action",
       label: "Action",
       renderCell: (_, row) => (

@@ -134,10 +134,24 @@ export const viewEventCreation = async (eventId) => {
 
 export const viewAllEventCreation = async (options = {}) => {
   try {
-    const { pageNo = 1, pageSize = 10, search = "", status = "all", sortBy = "createdAt", sortOrder = -1, isActive = true } = options;
+    const {
+      pageNo = 1,
+      pageSize = 10,
+      search = "",
+      status = "all",
+      sortBy = "createdAt",
+      sortOrder = -1,
+      isActive,
+    } = options;
 
     const skip = (pageNo - 1) * pageSize;
-    const query = { isActive: isActive === "true" };
+
+    const query = {};
+
+    // Apply only when explicitly passed
+    if (isActive !== undefined) {
+      query.isActive = isActive === "true";
+    }
 
     if (search) {
       query.$or = [
@@ -160,7 +174,7 @@ export const viewAllEventCreation = async (options = {}) => {
       .find(query)
       .populate([
         { path: "eventCategory", select: "categoryName slug" },
-        { path: "eventLocation", select: "locationName city" }
+        { path: "eventLocation", select: "locationName city" },
       ])
       .sort(sortQuery)
       .skip(skip)
