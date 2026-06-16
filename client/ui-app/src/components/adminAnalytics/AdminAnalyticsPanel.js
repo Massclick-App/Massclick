@@ -385,7 +385,7 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick }) {
                 Admin analytics
               </Typography>
               <Typography sx={{ color: palette.muted, fontSize: 14, mt: 0.5 }}>
-                Dev DB report across listings, leads, searches, users, and payments.
+                DB report across listings, leads, searches, users, and payments.
               </Typography>
             </Box>
           </Stack>

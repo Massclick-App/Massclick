@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { deflateRawSync } from "zlib";
 import businessListModel from "../../model/businessList/businessListModel.js";
+import mrpModel from "../../model/MRP/mrpModel.js";
 import searchLogModel from "../../model/businessList/searchLogModel.js";
 import whatsappMessageAuditModel from "../../model/msg91Model/whatsappMessageAuditModel.js";
 import whatsappRecipientHealthModel from "../../model/msg91Model/whatsappRecipientHealthModel.js";
@@ -12,6 +13,8 @@ const REPORT_TYPES = {
   BUSINESS_SEARCH_LEADS: "business_search_leads",
   MNI_LEADS: "mni_leads",
 };
+const MNI_LEAD_TEMPLATES = ["mni_requirement_alert_v1", "mni_customer_business_list_v1"];
+const BUSINESS_SEARCH_LEAD_TEMPLATES = ["business_lead_alert_v2", "customer_business_list_v1"];
 
 const parseDate = (value, fallback) => {
   if (!value) return fallback;
@@ -33,8 +36,10 @@ const buildAuditQuery = (query = {}) => {
 
   if (query.reportType === REPORT_TYPES.MNI_LEADS) {
     filter.sourceType = "mni";
+    filter.templateName = { $in: MNI_LEAD_TEMPLATES };
   } else if (query.reportType === REPORT_TYPES.BUSINESS_SEARCH_LEADS) {
-    filter.sourceType = "search_lead";
+    filter.sourceType = { $in: ["search_lead", "customer_list"] };
+    filter.templateName = { $in: BUSINESS_SEARCH_LEAD_TEMPLATES };
   }
 
   if (query.template) filter.templateName = query.template;
@@ -106,6 +111,16 @@ const getPayloadTextValue = (payloadPreview = {}, key) => {
   return value === undefined || value === null ? "" : String(value);
 };
 
+const getLeadDirection = (row = {}) => {
+  if (row.templateName === "mni_requirement_alert_v1" || row.templateName === "business_lead_alert_v2") {
+    return "Customer requirement sent to business";
+  }
+  if (row.templateName === "mni_customer_business_list_v1" || row.templateName === "customer_business_list_v1") {
+    return "Business list sent to customer";
+  }
+  return row.sourceType || "WhatsApp lead message";
+};
+
 const enrichRowsWithSearchUserDetails = async (rows = []) => {
   const sourceIds = rows
     .filter((row) => row.sourceType === "search_lead" && row.sourceId)
@@ -141,6 +156,51 @@ const enrichRowsWithSearchUserDetails = async (rows = []) => {
       customerEmail: user?.email || getPayloadTextValue(row.payloadPreview, "body_5"),
       searchedUserText: log?.searchedUserText || log?.categoryName || row.category || "",
       place: row.location || "",
+    };
+  });
+};
+
+const enrichRowsWithMniSourceDetails = async (rows = []) => {
+  const sourceIds = rows
+    .filter((row) => row.sourceType === "mni" && row.sourceId)
+    .map((row) => row.sourceId);
+
+  if (!sourceIds.length) return rows;
+
+  const mrpRows = await mrpModel
+    .find(
+      { _id: { $in: sourceIds } },
+      {
+        contactDetails: 1,
+        businessSnapshot: 1,
+        categoryId: 1,
+        location: 1,
+        description: 1,
+        createdAt: 1,
+      }
+    )
+    .lean();
+
+  const mrpById = new Map(mrpRows.map((mrp) => [String(mrp._id), mrp]));
+
+  return rows.map((row) => {
+    const mrp = mrpById.get(String(row.sourceId));
+    if (!mrp) return row;
+
+    return {
+      ...row,
+      leadRequirement: mrp.description || row.leadRequirement || getPayloadTextValue(row.payloadPreview, "body_4"),
+      leadCreatedAt: mrp.createdAt || row.createdAt,
+      searchedUserText: row.searchedUserText || mrp.categoryId || row.category || "",
+      category: row.category || mrp.categoryId || "",
+      location: row.location || mrp.location || "",
+      customerMobile: row.customerMobile || mrp.contactDetails || "",
+      customerName: row.customerName || mrp.businessSnapshot?.businessName || "",
+      customerEmail: row.customerEmail || mrp.businessSnapshot?.email || "",
+      customerBusinessName: mrp.businessSnapshot?.businessName || "",
+      customerBusinessLocation: mrp.businessSnapshot?.location || "",
+      customerBusinessCategory: mrp.businessSnapshot?.category || "",
+      customerBusinessContact: mrp.businessSnapshot?.contact || mrp.businessSnapshot?.contactList || mrp.businessSnapshot?.whatsappNumber || "",
     };
   });
 };
@@ -225,6 +285,8 @@ const buildWorksheetXml = ({ rows, columns, merges = [], freezeRow = 0 }) => `
   ${merges.length ? `<mergeCells count="${merges.length}">${merges.map((ref) => `<mergeCell ref="${ref}"/>`).join("")}</mergeCells>` : ""}
   <pageMargins left="0.4" right="0.4" top="0.6" bottom="0.6" header="0.3" footer="0.3"/>
 </worksheet>`.trim();
+
+const shiftMergeRef = (ref, rowOffset) => ref.replace(/([A-Z]+)(\d+)/g, (_, column, row) => `${column}${Number(row) + rowOffset}`);
 
 const crcTable = Array.from({ length: 256 }, (_, index) => {
   let crc = index;
@@ -374,7 +436,7 @@ const buildXlsxWorkbook = ({ rows, categorySummary, businessSummary, meta }) => 
   ];
 
   const detailRows = [
-    { height: 30, values: [{ value: "Successful Lead Details", style: 1 }, "", "", "", "", "", "", "", "", "", "", "", "", "", ""] },
+    { height: 30, values: [{ value: "Lead Details", style: 1 }, "", "", "", "", "", "", "", "", "", "", "", "", "", ""] },
     { values: [
       { value: "S.No", style: 8 },
       { value: "Lead Date", style: 8 },
@@ -413,11 +475,36 @@ const buildXlsxWorkbook = ({ rows, categorySummary, businessSummary, meta }) => 
     })),
   ];
 
+  const reportRows = [];
+  const reportMerges = [];
+  const appendReportSection = (sectionRows, sectionMerges = []) => {
+    if (reportRows.length) {
+      reportRows.push({ height: 12, values: ["", "", "", "", "", "", "", "", "", "", "", "", "", "", ""] });
+    }
+    const rowOffset = reportRows.length;
+    reportRows.push(...sectionRows);
+    reportMerges.push(...sectionMerges.map((ref) => shiftMergeRef(ref, rowOffset)));
+  };
+
+  appendReportSection(
+    overviewRows,
+    ["A1:G1", "A2:G2", "A4:G4", "A9:G9", "A13:G13"]
+  );
+  appendReportSection(categoryRows, ["A1:E1"]);
+  appendReportSection(businessRows, ["A1:E1"]);
+  appendReportSection(detailRows, ["A1:O1"]);
+
   const sheets = [
-    { name: "Overview", path: "xl/worksheets/sheet1.xml", xml: buildWorksheetXml({ rows: overviewRows, columns: [18, 32, 20, 24, 20, 28, 16], merges: ["A1:G1", "A2:G2", "A4:G4", "A9:G9", "A13:G13"], freezeRow: 14 }) },
-    { name: "Category Summary", path: "xl/worksheets/sheet2.xml", xml: buildWorksheetXml({ rows: categoryRows, columns: [10, 34, 18, 18, 18], merges: ["A1:E1"], freezeRow: 2 }) },
-    { name: "Business Summary", path: "xl/worksheets/sheet3.xml", xml: buildWorksheetXml({ rows: businessRows, columns: [10, 42, 18, 18, 50], merges: ["A1:E1"], freezeRow: 2 }) },
-    { name: "Lead Details", path: "xl/worksheets/sheet4.xml", xml: buildWorksheetXml({ rows: detailRows, columns: [8, 22, 36, 20, 24, 28, 18, 18, 18, 24, 18, 18, 30, 18, 22], merges: ["A1:O1"], freezeRow: 2 }) },
+    {
+      name: "Report",
+      path: "xl/worksheets/sheet1.xml",
+      xml: buildWorksheetXml({
+        rows: reportRows,
+        columns: [10, 34, 36, 24, 24, 28, 18, 18, 18, 24, 18, 18, 30, 18, 22],
+        merges: reportMerges,
+        freezeRow: 0,
+      }),
+    },
   ];
 
   const workbookXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -761,7 +848,8 @@ export const getMsg91AnalyticsAuditAction = async (req, res) => {
     ]);
 
     const rowsWithUserDetails = await enrichRowsWithSearchUserDetails(list);
-    const enrichedList = await enrichRowsWithBusinessMniDetails(rowsWithUserDetails);
+    const rowsWithMniDetails = await enrichRowsWithMniSourceDetails(rowsWithUserDetails);
+    const enrichedList = await enrichRowsWithBusinessMniDetails(rowsWithMniDetails);
 
     return res.json({ success: true, data: enrichedList, total, pageNo, pageSize });
   } catch (error) {
@@ -848,7 +936,8 @@ export const searchMsg91AnalyticsBusinessesAction = async (req, res) => {
 export const exportMsg91AnalyticsCsvAction = async (req, res) => {
   try {
     const filter = await buildResolvedAuditQuery({ ...req.query, status: "", failureReason: "" });
-    filter.status = { $in: SUCCESS_STATUSES };
+    if (req.query.status) filter.status = req.query.status;
+    if (req.query.failureReason) filter.failureReason = { $regex: req.query.failureReason, $options: "i" };
     const { from, to } = getDateRange(req.query);
     const maxRows = Math.min(Math.max(Number(req.query.limit) || 25000, 1), 100000);
 
@@ -864,6 +953,10 @@ export const exportMsg91AnalyticsCsvAction = async (req, res) => {
           $group: {
             _id: { category: "$category" },
             totalLeads: { $sum: 1 },
+            successLeads: { $sum: { $cond: [{ $in: ["$status", SUCCESS_STATUSES] }, 1, 0] } },
+            failedLeads: { $sum: { $cond: [{ $eq: ["$status", "failed"] }, 1, 0] } },
+            skippedLeads: { $sum: { $cond: [{ $eq: ["$status", "skipped"] }, 1, 0] } },
+            holdLeads: { $sum: { $cond: [{ $eq: ["$status", "hold"] }, 1, 0] } },
             uniqueCustomers: { $addToSet: "$customerMobile" },
             uniqueRecipients: { $addToSet: "$recipientMobile" },
           },
@@ -876,6 +969,10 @@ export const exportMsg91AnalyticsCsvAction = async (req, res) => {
           $group: {
             _id: { businessName: "$businessName" },
             totalLeads: { $sum: 1 },
+            successLeads: { $sum: { $cond: [{ $in: ["$status", SUCCESS_STATUSES] }, 1, 0] } },
+            failedLeads: { $sum: { $cond: [{ $eq: ["$status", "failed"] }, 1, 0] } },
+            skippedLeads: { $sum: { $cond: [{ $eq: ["$status", "skipped"] }, 1, 0] } },
+            holdLeads: { $sum: { $cond: [{ $eq: ["$status", "hold"] }, 1, 0] } },
             uniqueCustomers: { $addToSet: "$customerMobile" },
             categories: { $addToSet: "$category" },
           },
@@ -891,7 +988,8 @@ export const exportMsg91AnalyticsCsvAction = async (req, res) => {
     }
 
     const rowsWithUserDetails = await enrichRowsWithSearchUserDetails(rows);
-    const enrichedRows = await enrichRowsWithBusinessMniDetails(rowsWithUserDetails);
+    const rowsWithMniDetails = await enrichRowsWithMniSourceDetails(rowsWithUserDetails);
+    const enrichedRows = await enrichRowsWithBusinessMniDetails(rowsWithMniDetails);
     const fromStamp = from.toISOString().slice(0, 10);
     const toStamp = to.toISOString().slice(0, 10);
     const reportTypeLabel = req.query.reportType === REPORT_TYPES.MNI_LEADS ? "MNI-Leads" : "BusinessSearchLeads";
