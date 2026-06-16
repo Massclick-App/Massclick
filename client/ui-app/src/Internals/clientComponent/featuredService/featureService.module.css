@@ -41,7 +41,7 @@
   object-fit: contain;
   flex-shrink: 0;
   display: block;
-  background-color: #f8f8f8;
+  background-color: #ffffff;
   padding: 16px;
   border: 1.5px solid #e8e8e8;
   border-radius: 18px;
@@ -50,7 +50,7 @@
 }
 
 .service-card:hover .service-icons {
-  border-color: #ff6b00;
+  border-color: #ff8c39;
   box-shadow: 0 4px 12px rgba(255, 107, 0, 0.15);
 }
 

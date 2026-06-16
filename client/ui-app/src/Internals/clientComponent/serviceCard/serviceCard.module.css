@@ -9,12 +9,14 @@
     gap: 16px;
     background: #ffffff;
     border-radius: var(--section-radius);
-    box-shadow: var(--section-shadow);
+    border: 1px solid rgba(17, 24, 39, 0.08);
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);   
+    /* box-shadow: var(--section-shadow); */
     box-sizing: border-box;
 }
 
 .service-cards-container .category-card {
-    background-color: #f8fafc;
+    background-color: #ffffff;
     border-radius: 12px;
     box-shadow: none;
     padding: 18px;
@@ -24,7 +26,7 @@
     display: flex;
     flex-direction: column;
     transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
-    border: 1px solid rgba(226, 232, 240, 0.95);
+    /* border: 1px solid rgba(226, 232, 240, 0.95); */
     outline: 2px solid transparent;
     contain: layout style paint;
     will-change: transform, box-shadow;
@@ -87,7 +89,6 @@
 
 .service-cards-container .item-card:hover {
     transform: scale(1.02);
-    background-color: #fff4ee;
     color: #ff7a3d;
 }
 

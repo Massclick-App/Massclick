@@ -13,7 +13,9 @@
 .ts__inner {
   background: #ffffff;
   border-radius: var(--section-radius);
-  box-shadow: var(--section-shadow);
+  border: 1px solid rgba(17, 24, 39, 0.08);
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+  /* box-shadow: var(--section-shadow); */
   padding: 28px var(--section-padding-h) 24px;
   position: relative;
   overflow: hidden;
@@ -28,8 +30,8 @@
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at 0% 0%,    #ffe6c7 0, transparent 52%),
-    radial-gradient(circle at 100% 100%, #ffe0cf 0, transparent 52%);
+    radial-gradient(circle at 0% 0%,    #ffffff 0, transparent 52%),
+    radial-gradient(circle at 100% 100%, #ffffff 0, transparent 52%);
   opacity: 0.5;
   pointer-events: none;
 }
@@ -59,9 +61,10 @@
 }
 
 .ts__subtitle {
-  margin: 4px 0 0;
-  font-size: 0.88rem;
-  color: #6b7280;
+  font-size: 1rem;
+  margin-top: 6px;
+  color: #6c757d;
+  font-weight: 500;
 }
 
 .ts__view-all {
@@ -148,7 +151,6 @@
   border-radius: 14px;
   background: #fff;
   border: 1.5px solid rgba(226, 232, 240, 0.85);
-  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
   overflow: hidden;
 
   display: flex;
@@ -160,7 +162,6 @@
 
 .ts__card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.15);
   border-color: #f97316;
 }
 
