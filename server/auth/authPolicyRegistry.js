@@ -60,8 +60,7 @@ const POLICY_LIST = [
     method: "GET",
     path: "/api/otp_users",
     allowedActorTypes: ["customer", "admin"],
-    ownership: "self-only",
-    adminOverride: true,
+    ownership: "admin-managed",
   },
   {
     key: "otp.profile.delete",
