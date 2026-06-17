@@ -1,5 +1,5 @@
 import { createScopedClassNames } from "../../utils/createScopedClassNames";
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useDeferredValue } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchSystemSettings, updateSystemSettings } from "../../redux/actions/systemSettingsAction.js";
 import { fetchRedisStatus, invalidateCache, clearAllCaches, fetchRedisKeys, deleteRedisKeys, fetchRedisInfo, flushRedisDb, deleteRedisPattern } from "../../redux/actions/cacheActions.js";
@@ -31,6 +31,34 @@ const formatUptime = seconds => {
 const globToRegex = pattern => {
   const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&');
   return new RegExp('^' + escaped.replace(/\*/g, '.*').replace(/\?/g, '.') + '$');
+};
+const getRedisKeyNamespace = key => {
+  const delimiterIndex = key.search(/[:/]/);
+  if (delimiterIndex === -1) return "misc";
+  return key.slice(0, delimiterIndex).toLowerCase();
+};
+const formatRedisKeyNamespace = namespace => namespace === "misc" ? "Unscoped" : namespace;
+const doesRedisKeyMatch = (key, query, matchMode) => {
+  if (!query) return true;
+  const normalizedKey = key.toLowerCase();
+  const normalizedQuery = query.toLowerCase();
+  if (matchMode === "exact") return normalizedKey === normalizedQuery;
+  if (matchMode === "startsWith") return normalizedKey.startsWith(normalizedQuery);
+  return normalizedKey.includes(normalizedQuery);
+};
+const scoreRedisKeyMatch = (key, query, matchMode) => {
+  if (!query) return key.length;
+  const normalizedKey = key.toLowerCase();
+  const normalizedQuery = query.toLowerCase();
+  let score = 0;
+  if (normalizedKey === normalizedQuery) score += 1000;
+  if (normalizedKey.startsWith(normalizedQuery)) score += 500;
+  const index = normalizedKey.indexOf(normalizedQuery);
+  if (index >= 0) score += Math.max(0, 250 - index);
+  if (matchMode === "exact" && normalizedKey === normalizedQuery) score += 500;
+  if (matchMode === "startsWith" && normalizedKey.startsWith(normalizedQuery)) score += 250;
+  score += Math.max(0, 80 - Math.min(key.length, 80));
+  return score;
 };
 const TtlBadge = ({
   ttl
@@ -364,8 +392,11 @@ export default function SystemSettings() {
   const [selectedCache, setSelectedCache] = useState("seo-meta");
   const [validationErrors, setValidationErrors] = useState({});
   const [selectedKeys, setSelectedKeys] = useState(new Set());
-  const [keyFilter, setKeyFilter] = useState("");
+  const [keyNamespace, setKeyNamespace] = useState("all");
+  const [keySearch, setKeySearch] = useState("");
+  const [keyMatchMode, setKeyMatchMode] = useState("contains");
   const [patternInput, setPatternInput] = useState("");
+  const deferredKeySearch = useDeferredValue(keySearch.trim());
   useEffect(() => {
     dispatch(fetchSystemSettings());
   }, [dispatch]);
@@ -441,9 +472,39 @@ export default function SystemSettings() {
       return newErrors;
     });
   };
-  const filteredKeys = redisKeys.filter(({
-    key
-  }) => !keyFilter || key.toLowerCase().includes(keyFilter.toLowerCase()));
+  const keyNamespaceOptions = useMemo(() => {
+    const counts = new Map();
+    redisKeys.forEach(({
+      key
+    }) => {
+      const namespace = getRedisKeyNamespace(key);
+      counts.set(namespace, (counts.get(namespace) || 0) + 1);
+    });
+    return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([value, count]) => ({
+      value,
+      count,
+      label: formatRedisKeyNamespace(value)
+    }));
+  }, [redisKeys]);
+  const filteredKeys = useMemo(() => {
+    const query = deferredKeySearch;
+    return [...redisKeys].filter(({
+      key
+    }) => {
+      if (keyNamespace !== "all" && getRedisKeyNamespace(key) !== keyNamespace) return false;
+      return doesRedisKeyMatch(key, query, keyMatchMode);
+    }).sort((a, b) => {
+      if (!query) {
+        const namespaceCompare = getRedisKeyNamespace(a.key).localeCompare(getRedisKeyNamespace(b.key));
+        if (namespaceCompare !== 0) return namespaceCompare;
+        return a.key.localeCompare(b.key);
+      }
+      const scoreDelta = scoreRedisKeyMatch(b.key, query, keyMatchMode) - scoreRedisKeyMatch(a.key, query, keyMatchMode);
+      if (scoreDelta !== 0) return scoreDelta;
+      return a.key.localeCompare(b.key);
+    });
+  }, [redisKeys, deferredKeySearch, keyNamespace, keyMatchMode]);
+  const selectedNamespaceLabel = keyNamespace === "all" ? "All namespaces" : formatRedisKeyNamespace(keyNamespace);
   const toggleKey = key => {
     setSelectedKeys(prev => {
       const next = new Set(prev);
@@ -567,6 +628,11 @@ export default function SystemSettings() {
         open: false
       })), 3000);
     }
+  };
+  const resetKeyBrowserFilters = () => {
+    setKeyNamespace("all");
+    setKeySearch("");
+    setKeyMatchMode("contains");
   };
   const dirty = settings && local ? ALL_KEYS.some(k => local[k] !== settings[k]) : false;
   const hasValidationErrors = Object.keys(validationErrors).length > 0;
@@ -1030,13 +1096,27 @@ export default function SystemSettings() {
           <div className={cx("compact-header-text")}>
             <div className={cx("compact-title")}>Redis Key Browser</div>
             <div className={cx("compact-subtitle")}>
-              {keysLoading ? 'Loading...' : `${redisKeys.length} keys in database`}
+              {keysLoading ? 'Loading...' : `${filteredKeys.length} of ${redisKeys.length} keys shown | ${selectedNamespaceLabel}`}
             </div>
           </div>
           <div className={cx("key-browser-toolbar")}>
-            <input type="text" className={cx("form-input key-filter-input")} placeholder="Filter keys…" value={keyFilter} onChange={e => setKeyFilter(e.target.value)} />
+            <select className={cx("form-input key-namespace-select")} value={keyNamespace} onChange={e => setKeyNamespace(e.target.value)}>
+              <option value="all">All namespaces ({redisKeys.length})</option>
+              {keyNamespaceOptions.map(option => <option key={option.value} value={option.value}>
+                  {option.label} ({option.count})
+                </option>)}
+            </select>
+            <input type="text" className={cx("form-input key-search-input")} placeholder="Search keys by name, suffix, or part of the key" value={keySearch} onChange={e => setKeySearch(e.target.value)} />
+            <select className={cx("form-input key-match-select")} value={keyMatchMode} onChange={e => setKeyMatchMode(e.target.value)}>
+              <option value="contains">Contains</option>
+              <option value="startsWith">Starts with</option>
+              <option value="exact">Exact</option>
+            </select>
+            <button className={cx("btn btn-secondary btn-sm")} onClick={resetKeyBrowserFilters} disabled={keysLoading && !keySearch && keyNamespace === "all" && keyMatchMode === "contains"}>
+              Reset
+            </button>
             <button className={cx("btn btn-secondary btn-sm")} onClick={() => dispatch(fetchRedisKeys())} disabled={keysLoading}>
-              {keysLoading ? '…' : '↻ Refresh'}
+              {keysLoading ? 'Loading...' : 'Refresh'}
             </button>
           </div>
         </div>
@@ -1044,25 +1124,25 @@ export default function SystemSettings() {
         {/* Pattern Delete Row */}
         <div className={cx("pattern-delete-row")}>
           <span className={cx("pattern-delete-label")}>Pattern delete</span>
-          <input type="text" className={cx("form-input pattern-delete-input")} placeholder="e.g.  seo:*  or  cache:/api/*" value={patternInput} onChange={e => setPatternInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleDeletePattern()} />
+          <input type="text" className={cx("form-input pattern-delete-input")} placeholder="e.g. seo:* or cache:/api/*" value={patternInput} onChange={e => setPatternInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleDeletePattern()} />
           {patternInput && <span className={cx("pattern-match-count")}>
               {patternMatchCount} match{patternMatchCount !== 1 ? 'es' : ''}
             </span>}
           <button className={cx("btn btn-sm btn-danger")} onClick={handleDeletePattern} disabled={!patternInput || patternMatchCount === 0 || patternDeleting}>
-            {patternDeleting ? 'Deleting…' : 'Delete Matching'}
+            {patternDeleting ? 'Deleting...' : 'Delete Matching'}
           </button>
         </div>
 
         {selectedKeys.size > 0 && <div className={cx("key-selection-bar")}>
             <span className={cx("key-selection-count")}>{selectedKeys.size} selected</span>
             <button className={cx("btn btn-sm btn-danger")} onClick={handleDeleteSelectedKeys} disabled={keysDeleting}>
-              {keysDeleting ? 'Deleting…' : '🗑 Delete Selected'}
+              {keysDeleting ? 'Deleting...' : 'Delete Selected'}
             </button>
           </div>}
 
         <div className={cx("key-browser-table-wrap")}>
-          {keysLoading ? <div className={cx("key-browser-empty")}>Loading keys…</div> : filteredKeys.length === 0 ? <div className={cx("key-browser-empty")}>
-              {keyFilter ? 'No keys match your filter' : 'No keys in Redis'}
+          {keysLoading ? <div className={cx("key-browser-empty")}>Loading keys...</div> : filteredKeys.length === 0 ? <div className={cx("key-browser-empty")}>
+              {keySearch || keyNamespace !== "all" ? 'No keys match your search' : 'No keys in Redis'}
             </div> : <table className={cx("key-browser-table")}>
               <thead>
                 <tr>

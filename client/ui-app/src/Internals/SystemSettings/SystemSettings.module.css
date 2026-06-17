@@ -1124,15 +1124,29 @@ textarea.form-input {
 .key-browser-toolbar {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   margin-left: auto;
   flex-wrap: wrap;
+  justify-content: flex-end;
+  flex: 1 1 520px;
 }
 
-.key-filter-input {
-  width: 220px;
-  padding: 6px 10px;
+.key-browser-toolbar .form-input {
+  min-height: 34px;
   font-size: 12px;
+}
+
+.key-namespace-select {
+  width: 180px;
+}
+
+.key-search-input {
+  flex: 1 1 320px;
+  min-width: 220px;
+}
+
+.key-match-select {
+  width: 140px;
 }
 
 .key-selection-bar {
