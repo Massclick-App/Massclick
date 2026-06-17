@@ -66,6 +66,10 @@
     flex-direction: column;
 }
 
+.user-col-span-all {
+    grid-column: 1 / -1;
+}
+
 .user-input-label {
     font-size: 0.95rem;
     color: var(--color-text-secondary);
@@ -167,6 +171,28 @@
     background-color: var(--color-disabled-orange);
     cursor: not-allowed;
     box-shadow: none;
+}
+
+.user-upload-section {
+    margin-top: 0;
+}
+
+.user-upload-content {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.user-upload-button {
+    background-color: var(--color-primary-orange) !important;
+    border-radius: 10px !important;
+    box-shadow: none !important;
+    font-weight: 600 !important;
+    text-transform: none !important;
+}
+
+.user-upload-button:hover {
+    background-color: var(--color-primary-hover) !important;
 }
 
 .user-cancel-button {
@@ -271,19 +297,19 @@
     width: 100%;
   }
 
-  .upload-section {
+  .user-upload-section {
     flex-direction: column;
     align-items: flex-start;
     gap: 12px;
   }
 
-  .upload-content {
+  .user-upload-content {
     display: flex;
     flex-direction: column;
     gap: 10px;
   }
 
-  .submit-button {
+  .user-submit-button {
     width: 100%;
   }
 }
@@ -317,7 +343,7 @@
     font-size: 0.8rem;
   }
 
-  .upload-section {
+  .user-upload-section {
     gap: 10px;
   }
 
@@ -352,16 +378,16 @@
     gap: 12px;
   }
 
-  .submit-button {
+  .user-submit-button {
     font-size: 0.9rem;
     padding: 9px;
   }
 
-  .upload-content {
+  .user-upload-content {
     width: 100%;
   }
 
-  .upload-button {
+  .user-upload-button {
     width: 100%;
     justify-content: center;
   }
