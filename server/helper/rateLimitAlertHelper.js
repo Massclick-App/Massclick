@@ -304,6 +304,7 @@ const sendRateLimitEmail = async ({ fromAddress, fromName, recipients, subject, 
   }
 
   const socket = await createSmtpConnection({ host, port });
+  let secureSocket = null;
 
   try {
     const localHostname = process.env.SMTP_CLIENT_HOSTNAME || os.hostname() || "localhost";
@@ -312,7 +313,7 @@ const sendRateLimitEmail = async ({ fromAddress, fromName, recipients, subject, 
     await sendSmtpCommand(socket, `EHLO ${localHostname}`, [250]);
     await sendSmtpCommand(socket, "STARTTLS", [220]);
 
-    const secureSocket = tls.connect({
+    secureSocket = tls.connect({
       socket,
       servername: host,
       rejectUnauthorized: true,
@@ -356,6 +357,9 @@ const sendRateLimitEmail = async ({ fromAddress, fromName, recipients, subject, 
 
     return true;
   } finally {
+    if (secureSocket && !secureSocket.destroyed) {
+      secureSocket.destroy();
+    }
     socket.destroy();
   }
 };
