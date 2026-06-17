@@ -296,10 +296,9 @@ const sendRateLimitEmail = async ({ fromAddress, fromName, recipients, subject, 
   const host = getConfiguredSmtpHost();
   const port = getConfiguredPort();
   const user = getSmtpUser();
-  const password = getSmtpPassword().replace(/\s+/g, "");
+  const password = getSmtpPassword();
 
   if (!host || !port || !user || !password || !fromAddress || !recipients.length) {
-    console.warn("[RateLimitAlert] SMTP alert skipped: missing host, port, credentials, sender, or recipients");
     return false;
   }
 
@@ -434,7 +433,6 @@ export const sendRateLimitAlert = async ({
     });
     return false;
   } catch (error) {
-    console.warn("[RateLimitAlert] SMTP send failed:", error.message);
     await logger.warn("Failed to send rate limit alert email", {
       error: error.message,
       ruleName,
