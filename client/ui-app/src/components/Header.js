@@ -37,7 +37,7 @@ useEffect(() => {
   fetchChatUnreadCount().then((data) => setChatUnreadCount(data?.admin || 0)).catch(() => setChatUnreadCount(0));
 
   const authSnapshot = getAuthSnapshot();
-  const token = authSnapshot.admin.accessToken || authSnapshot.customer.token;
+  const token = authSnapshot.admin.accessToken;
   if (!token) return;
 
   const ws = connectSocket(token);

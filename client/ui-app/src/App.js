@@ -1,5 +1,5 @@
 import React, { useState, useEffect, lazy, Suspense, memo } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { relogin } from './redux/actions/authAction.js';
 import { clientLogin } from './redux/actions/clientAuthAction.js';
@@ -7,7 +7,6 @@ import { fetchMatchedLeads } from './redux/actions/leadsAction.js';
 import { setMaintenanceModeOn, setMaintenanceModeOff } from './redux/reducers/maintenanceReducer.js';
 import { connectSocket } from './services/socketService.js';
 import {
-  AUTH_STATE_EVENT,
   clearAdminSession,
   getAdminAccessToken,
   getAuthSnapshot,
@@ -146,10 +145,18 @@ const ComingSoon = ({ title }) => (
 
 function AppRoutes({
   isAuthenticated,
+  authReady,
   setIsAuthenticated,
   openLoginModal,
   setOpenLoginModal,
 }) {
+  const location = useLocation();
+  const pathname = location.pathname || "";
+  const isAdminSurface = pathname === "/admin" || pathname.startsWith("/dashboard");
+  const authSnapshot = getAuthSnapshot();
+  const shouldHoldAdminRoute =
+    !authReady && isAdminSurface && Boolean(authSnapshot.admin.refreshToken);
+
   const footerRoutes = [
     ['aboutus', <AboutUsPage />],
     ['testimonials', <Testimonials />],
@@ -170,12 +177,14 @@ function AppRoutes({
 
   return (
     <>
-      <Suspense fallback={<DynamicLoader />}>
-        <GlobalDrawer />
-        <FloatingAdCard />
-        <HomePopupAd />
-        <FloatingButtons onRequireLogin={() => setOpenLoginModal(true)} />
-      </Suspense>
+      {!isAdminSurface && (
+        <Suspense fallback={<DynamicLoader />}>
+          <GlobalDrawer />
+          <FloatingAdCard />
+          <HomePopupAd />
+          <FloatingButtons onRequireLogin={() => setOpenLoginModal(true)} />
+        </Suspense>
+      )}
 
       <Suspense fallback={<DynamicLoader />}>
         <Routes>
@@ -183,10 +192,14 @@ function AppRoutes({
           <Route
             path="/admin"
             element={
+              shouldHoldAdminRoute ? null : isAuthenticated ? (
+                <Navigate to="/dashboard" replace />
+              ) : (
               <Login
                 setIsAuthenticated={setIsAuthenticated}
                 isAuthenticated={isAuthenticated}
               />
+              )
             }
           />
           <Route path="/leads" element={<LeadsPage />} />
@@ -227,7 +240,7 @@ function AppRoutes({
             element={<BusinessDetails />}
           />
 
-          <Route element={<PrivateRoute isAuthenticated={isAuthenticated} />}>
+          <Route element={<PrivateRoute isAuthenticated={isAuthenticated} isReady={authReady} />}>
             <Route path="/dashboard" element={<Dashboard />}>
 
               <Route index element={<MainGrid />} />
@@ -267,10 +280,12 @@ function AppRoutes({
         </Routes>
 
         {/* Login Modal */}
-        <OTPLoginModal
-          open={openLoginModal}
-          handleClose={() => setOpenLoginModal(false)}
-        />
+        {!isAdminSurface && (
+          <OTPLoginModal
+            open={openLoginModal}
+            handleClose={() => setOpenLoginModal(false)}
+          />
+        )}
       </Suspense>
     </>
   );
@@ -279,59 +294,82 @@ function AppRoutes({
 /* -------------------------------- App ------------------------------------ */
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [authChecked, setAuthChecked] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
   const [openLoginModal, setOpenLoginModal] = useState(false);
 
   const dispatch = useDispatch();
 
-  /* Fast Auth Check - Synchronous, non-blocking */
+  /* Initial auth snapshot */
   useEffect(() => {
     setIsAuthenticated(getAuthSnapshot().admin.isAuthenticated);
-    setAuthChecked(true);
   }, []);
+
+  /* Admin session bootstrap */
+  useEffect(() => {
+    let cancelled = false;
+
+    const bootstrapAdminSession = async () => {
+      const snapshot = getAuthSnapshot();
+
+      if (!snapshot.admin.refreshToken) {
+        if (!cancelled) {
+          setAuthReady(true);
+        }
+        return;
+      }
+
+      try {
+        const result = await dispatch(relogin());
+        if (!cancelled) {
+          setIsAuthenticated(Boolean(result?.accessToken));
+        }
+      } catch (error) {
+        if (!cancelled) {
+          clearAdminSession();
+          setIsAuthenticated(false);
+        }
+      } finally {
+        if (!cancelled) {
+          setAuthReady(true);
+        }
+      }
+    };
+
+    bootstrapAdminSession();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [dispatch]);
 
   useEffect(() => {
     const unsubscribe = subscribeAuthState((snapshot) => {
       setIsAuthenticated(snapshot.admin.isAuthenticated);
     });
 
-    const handleAuthEvent = () => {
-      setIsAuthenticated(getAuthSnapshot().admin.isAuthenticated);
-    };
-
-    window.addEventListener(AUTH_STATE_EVENT, handleAuthEvent);
     return () => {
       unsubscribe();
-      window.removeEventListener(AUTH_STATE_EVENT, handleAuthEvent);
     };
   }, []);
 
-  /* Deferred Auth & Data Loading - After first paint */
+  /* Deferred public bootstrap */
   useEffect(() => {
-    const loadDataAfterPaint = async () => {
-      const authSnapshot = getAuthSnapshot();
-
+    const loadPublicBootstrap = async () => {
       try {
         await dispatch(clientLogin());
-
-        if (authSnapshot.admin.accessToken && authSnapshot.admin.refreshToken) {
-          const result = await dispatch(relogin());
-          if (result?.accessToken) {
-            setIsAuthenticated(true);
-          }
-        }
       } catch (error) {
-        clearAdminSession();
-        setIsAuthenticated(false);
+        // Public-client bootstrap failures should not destabilize admin auth routes.
       }
 
-      dispatch(fetchMatchedLeads());
+      if (!window.location.pathname.startsWith("/dashboard") && window.location.pathname !== "/admin") {
+        dispatch(fetchMatchedLeads());
+      }
     };
 
-    if (authChecked) {
-      scheduleIdleCallback(loadDataAfterPaint, { timeout: 3000 });
+    if (authReady) {
+      scheduleIdleCallback(loadPublicBootstrap, { timeout: 3000 });
     }
-  }, [dispatch, authChecked]);
+  }, [dispatch, authReady]);
 
   /* WebSocket Listener for Maintenance Mode */
   useEffect(() => {
@@ -392,6 +430,7 @@ function App() {
 
             <AppRoutes
               isAuthenticated={isAuthenticated}
+              authReady={authReady}
               setIsAuthenticated={setIsAuthenticated}
               openLoginModal={openLoginModal}
               setOpenLoginModal={setOpenLoginModal}
