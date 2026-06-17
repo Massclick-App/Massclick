@@ -6,8 +6,8 @@ import { requireAdminAuth, requireAuthPolicy } from '../auth/authMiddleware.js';
 const router = express.Router();
 
 router.use('/api/otp', otpRateLimit);
-router.use('/api/otp_user', otpRateLimit);
-router.use('/api/leadssend', leadRateLimit);
+// router.use('/api/otp_user', otpRateLimit);
+// router.use('/api/leadssend', leadRateLimit);
 
 router.post('/api/otp/send',  requestOtp);
 router.post('/api/otp/verify',  verifyOtpAndLogin);
