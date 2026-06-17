@@ -9,7 +9,7 @@ import { connectSocket } from './services/socketService.js';
 
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-import { SnackbarProvider } from 'notistack';
+import { SnackbarProvider, useSnackbar } from 'notistack';
 
 import theme from './Internals/clientComponent/theme.js';
 import PrivateRoute from './PrivateRoute';
@@ -104,6 +104,30 @@ const DynamicLoader = memo(() => {
 
   // Show minimal shimmer for other pages
   return <ShimmerSkeleton />;
+});
+
+const RateLimitNotifier = memo(() => {
+  const { enqueueSnackbar } = useSnackbar();
+
+  useEffect(() => {
+    const handleRateLimit = (event) => {
+      const detail = event?.detail || {};
+      const waitText = detail.retryAfterSeconds
+        ? ` Try again in ${detail.retryAfterSeconds} second${detail.retryAfterSeconds === 1 ? "" : "s"}.`
+        : "";
+
+      enqueueSnackbar(`${detail.message || "Too many requests."}${waitText}`, {
+        variant: "warning",
+        preventDuplicate: true,
+        autoHideDuration: 6000,
+      });
+    };
+
+    window.addEventListener("api:rate-limited", handleRateLimit);
+    return () => window.removeEventListener("api:rate-limited", handleRateLimit);
+  }, [enqueueSnackbar]);
+
+  return null;
 });
 
 const ComingSoon = ({ title }) => (
@@ -341,6 +365,7 @@ function App() {
           autoHideDuration={4000}
           preventDuplicate
         >
+          <RateLimitNotifier />
           <Router>
             <RouteChangeTracker />
             <ScrollToTop />

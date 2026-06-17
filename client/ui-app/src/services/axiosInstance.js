@@ -88,6 +88,38 @@ const processQueue = (error, token = null) => {
   failedQueue = [];
 };
 
+const parseRetryAfterSeconds = (response) => {
+  const rawValue = response?.data?.retryAfterSeconds ?? response?.headers?.["retry-after"];
+  const parsed = Number(rawValue);
+
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return null;
+  }
+
+  return Math.ceil(parsed);
+};
+
+const notifyRateLimited = (error) => {
+  if (typeof window === "undefined") return;
+
+  const response = error?.response;
+  const retryAfterSeconds = parseRetryAfterSeconds(response);
+  const message =
+    response?.data?.message ||
+    "You are sending requests too quickly. Please wait a moment and try again.";
+
+  window.dispatchEvent(
+    new CustomEvent("api:rate-limited", {
+      detail: {
+        message,
+        retryAfterSeconds,
+        status: response?.status || 429,
+        path: getRequestPath(error?.config?.url),
+      },
+    })
+  );
+};
+
 // Request interceptor - add token to headers and show loader
 axiosInstance.interceptors.request.use(
   (config) => {
@@ -124,6 +156,11 @@ axiosInstance.interceptors.response.use(
   (error) => {
     activeRequests = Math.max(0, activeRequests - 1);
     hideGlobalLoader();
+
+    if (error.response?.status === 429) {
+      notifyRateLimited(error);
+      return Promise.reject(error);
+    }
 
     const originalRequest = error.config;
 

@@ -1,7 +1,12 @@
 import express from 'express';
 import { requestOtp, verifyOtpAndLogin, updateOtpUser, viewOtpUser, viewAllOtpUsers, deleteOtpUser, logUserSearch  } from '../controller/msg91/msg91Controller.js';
 import { sendOtpAction, sendWhatsAppForLead, sendWhatsAppToLeadsBulk, verifyOtpAction,fakesendOtpAction, fakeverifyOtpAction} from '../controller/msg91/smsGatewayController.js';
+import { leadRateLimit, otpRateLimit } from '../middleware/rateLimitMiddleware.js';
 const router = express.Router();
+
+router.use('/api/otp', otpRateLimit);
+router.use('/api/otp_user', otpRateLimit);
+router.use('/api/leadssend', leadRateLimit);
 
 router.post('/api/otp/send',  requestOtp);
 router.post('/api/otp/verify',  verifyOtpAndLogin);

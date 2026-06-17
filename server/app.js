@@ -9,6 +9,7 @@ import helmet from "helmet";
 
 import { metricsMiddleware } from "./utils/metricsMiddleware.js";
 import { initRedis } from "./utils/redisClient.js";
+import { apiRateLimit } from "./middleware/rateLimitMiddleware.js";
 import wellKnownRoutes from "./routes/wellKnownRoutes.js";
 import { ssrMiddleware } from "./middleware/ssrMiddleware.js";
 import { maintenanceModeMiddleware } from "./middleware/maintenanceModeMiddleware.js";
@@ -94,6 +95,7 @@ app.use(metricsMiddleware);
 app.use(wellKnownRoutes);
 
 app.use(maintenanceModeMiddleware);
+app.use("/api", apiRateLimit);
 
 app.use("/", sitemapRoutes);
 app.use("/", userRoutes);
