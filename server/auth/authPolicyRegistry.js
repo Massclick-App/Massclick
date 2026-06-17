@@ -59,7 +59,7 @@ const POLICY_LIST = [
     key: "otp.profile.list",
     method: "GET",
     path: "/api/otp_users",
-    allowedActorTypes: ["customer", "admin"],
+    allowedActorTypes: ["admin"],
     ownership: "admin-managed",
   },
   {

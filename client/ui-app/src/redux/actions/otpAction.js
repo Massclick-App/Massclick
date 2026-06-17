@@ -1,37 +1,20 @@
-import axiosInstance from "../../services/axiosInstance.js";
+import axiosInstance from '../../services/axiosInstance.js';
 import {
   clearCustomerSession,
   getCustomerToken,
-  getCustomerUser,
   recordAuthFailure,
   setCustomerSession,
 } from "../../auth/authStore.js";
 import {
-  SEND_OTP_REQUEST,
-  SEND_OTP_SUCCESS,
-  SEND_OTP_FAILURE,
-  VERIFY_OTP_REQUEST,
-  VERIFY_OTP_SUCCESS,
-  VERIFY_OTP_FAILURE,
+  SEND_OTP_REQUEST, SEND_OTP_SUCCESS, SEND_OTP_FAILURE,
+  VERIFY_OTP_REQUEST, VERIFY_OTP_SUCCESS, VERIFY_OTP_FAILURE,
   USER_LOGOUT,
-  UPDATE_OTP_USER_REQUEST,
-  UPDATE_OTP_USER_SUCCESS,
-  UPDATE_OTP_USER_FAILURE,
-  VIEW_OTP_USER_REQUEST,
-  VIEW_OTP_USER_SUCCESS,
-  VIEW_OTP_USER_FAILURE,
-  VIEWALL_OTP_USER_REQUEST,
-  VIEWALL_OTP_USER_SUCCESS,
-  VIEWALL_OTP_USER_FAILURE,
-  LOG_USER_SEARCH_REQUEST,
-  LOG_USER_SEARCH_SUCCESS,
-  LOG_USER_SEARCH_FAILURE,
-  SEND_WHATSAPP_ALL_REQUEST,
-  SEND_WHATSAPP_ALL_SUCCESS,
-  SEND_WHATSAPP_ALL_FAILURE,
-  SEND_WHATSAPP_REQUEST,
-  SEND_WHATSAPP_SUCCESS,
-  SEND_WHATSAPP_FAILURE,
+  UPDATE_OTP_USER_REQUEST, UPDATE_OTP_USER_SUCCESS, UPDATE_OTP_USER_FAILURE,
+  VIEW_OTP_USER_REQUEST, VIEW_OTP_USER_SUCCESS, VIEW_OTP_USER_FAILURE,
+  VIEWALL_OTP_USER_REQUEST, VIEWALL_OTP_USER_SUCCESS, VIEWALL_OTP_USER_FAILURE,
+   LOG_USER_SEARCH_REQUEST, LOG_USER_SEARCH_SUCCESS,LOG_USER_SEARCH_FAILURE,
+   SEND_WHATSAPP_ALL_REQUEST, SEND_WHATSAPP_ALL_SUCCESS, SEND_WHATSAPP_ALL_FAILURE,
+   SEND_WHATSAPP_REQUEST, SEND_WHATSAPP_SUCCESS, SEND_WHATSAPP_FAILURE
 } from "../actions/userActionTypes";
 
 const API_URL = process.env.REACT_APP_API_URL;
@@ -39,13 +22,11 @@ const API_URL = process.env.REACT_APP_API_URL;
 export const sendOtp = (phoneNumber) => async (dispatch) => {
   dispatch({ type: SEND_OTP_REQUEST });
   try {
-    const response = await axiosInstance.post(`${API_URL}/otp_user/send-otp`, {
-      phoneNumber,
-    });
+    const response = await axiosInstance.post(`${API_URL}/otp_user/send-otp`, { phoneNumber });
 
     dispatch({ type: SEND_OTP_SUCCESS, payload: response.data });
 
-    return response.data;
+    return response.data; 
   } catch (error) {
     const errPayload = error.response?.data || { message: error.message };
     dispatch({ type: SEND_OTP_FAILURE, payload: errPayload });
@@ -53,42 +34,41 @@ export const sendOtp = (phoneNumber) => async (dispatch) => {
   }
 };
 
-export const verifyOtp =
-  (mobile, otp, userName = "") =>
-  async (dispatch) => {
-    dispatch({ type: VERIFY_OTP_REQUEST });
+export const verifyOtp = (mobile, otp, userName = "") => async (dispatch) => {
+  dispatch({ type: VERIFY_OTP_REQUEST });
 
-    try {
-      const response = await axiosInstance.post(
-        `${API_URL}/otp_user/verify-otp`,
-        { phoneNumber: mobile, otp, userName },
-        { headers: { "Content-Type": "application/json" } },
-      );
+  try {
+    const response = await axiosInstance.post(
+      `${API_URL}/otp_user/verify-otp`,
+      { phoneNumber: mobile, otp, userName },
+      { headers: { "Content-Type": "application/json" } }
+    );
 
-      const token = response.data.token;
-      const user = response.data.user;
+    const token = response.data.token;
+    const user = response.data.user;
 
-      if (token) {
-        setCustomerSession({ token, user });
-      }
-      dispatch({ type: VERIFY_OTP_SUCCESS, payload: response.data });
-      return response.data;
-    } catch (error) {
-      recordAuthFailure("customer-otp-verify", error);
-      const errPayload = error.response?.data || { message: error.message };
-      dispatch({ type: VERIFY_OTP_FAILURE, payload: errPayload });
-      throw error;
+    if (token) {
+      setCustomerSession({ token, user });
     }
-  };
+    dispatch({ type: VERIFY_OTP_SUCCESS, payload: response.data });
+    return response.data;
+
+  } catch (error) {
+    recordAuthFailure("customer-otp-verify", error);
+    const errPayload = error.response?.data || { message: error.message };
+    dispatch({ type: VERIFY_OTP_FAILURE, payload: errPayload });
+    throw error;
+  }
+};
 
 export const updateOtpUser = (mobile, data) => async (dispatch) => {
   dispatch({ type: UPDATE_OTP_USER_REQUEST });
 
   try {
     const response = await axiosInstance.put(
-      `${API_URL}/otp_user_update/${mobile}`,
+      `${API_URL}/otp_user_update/${mobile}`,   
       data,
-      { headers: { "Content-Type": "application/json" } },
+      { headers: { "Content-Type": "application/json" } }
     );
 
     dispatch({
@@ -115,9 +95,11 @@ export const updateOtpUser = (mobile, data) => async (dispatch) => {
 };
 
 export const viewOtpUser = (mobile) => async (dispatch) => {
+
   dispatch({ type: VIEW_OTP_USER_REQUEST });
 
   try {
+
     const response = await axiosInstance.get(`${API_URL}/otp_user/${mobile}`);
 
     const user = response.data.user;
@@ -135,7 +117,9 @@ export const viewOtpUser = (mobile) => async (dispatch) => {
     });
 
     return user;
+
   } catch (error) {
+
     dispatch({
       type: VIEW_OTP_USER_FAILURE,
       payload: error.response?.data || error.message,
@@ -143,25 +127,11 @@ export const viewOtpUser = (mobile) => async (dispatch) => {
   }
 };
 
-export const getAuthUser = () => {
-  return getCustomerUser();
-};
-
-const getHeaders = () => {
-  const token = getCustomerToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
-};
-
 export const viewAllOtpUsers = () => async (dispatch) => {
-  const user = getAuthUser();
-  if (!user?._id) return;
-
   dispatch({ type: VIEWALL_OTP_USER_REQUEST });
   try {
-    const response = await axiosInstance.get(`${API_URL}/otp_users`, {
-      headers: getHeaders(),
-    });
-    dispatch({ type: VIEWALL_OTP_USER_SUCCESS, payload: response.data.users });
+    const response = await axiosInstance.get(`${API_URL}/otp_users`);
+    dispatch({ type: VIEWALL_OTP_USER_SUCCESS, payload: response.data.users, });
     return response.data.users;
   } catch (error) {
     const errPayload = error.response?.data || error.message;
@@ -175,35 +145,32 @@ export const userLogout = () => (dispatch) => {
   dispatch({ type: USER_LOGOUT });
 };
 
-export const logUserSearch =
-  (_userId, query, location, category) => async (dispatch) => {
-    dispatch({ type: LOG_USER_SEARCH_REQUEST });
 
-    try {
-      const response = await axiosInstance.post(
-        `${API_URL}/otp_user/log-search`,
-        {
-          query,
-          location,
-          category,
-        },
-      );
+export const logUserSearch = (_userId, query, location, category) => async (dispatch) => {
+  dispatch({ type: LOG_USER_SEARCH_REQUEST });
 
-      dispatch({
-        type: LOG_USER_SEARCH_SUCCESS,
-        payload: response.data,
-      });
+  try {
+    const response = await axiosInstance.post(`${API_URL}/otp_user/log-search`, {
+      query,
+      location,
+      category
+    });
 
-      return response.data;
-    } catch (error) {
-      const errPayload = error.response?.data || { message: error.message };
-      dispatch({
-        type: LOG_USER_SEARCH_FAILURE,
-        payload: errPayload,
-      });
-      throw error;
-    }
-  };
+    dispatch({
+      type: LOG_USER_SEARCH_SUCCESS,
+      payload: response.data,
+    });
+
+    return response.data;
+  } catch (error) {
+    const errPayload = error.response?.data || { message: error.message };
+    dispatch({
+      type: LOG_USER_SEARCH_FAILURE,
+      payload: errPayload,
+    });
+    throw error;
+  }
+};
 
 export const sendWhatsAppForLead = (leadId) => async (dispatch) => {
   dispatch({ type: SEND_WHATSAPP_REQUEST });
@@ -212,50 +179,55 @@ export const sendWhatsAppForLead = (leadId) => async (dispatch) => {
     const res = await axiosInstance.post(
       `${API_URL}/leadssend/whatsapp`,
       { leadId },
-      { headers: { "Content-Type": "application/json" } },
+      { headers: { "Content-Type": "application/json" } }
     );
 
     dispatch({
       type: SEND_WHATSAPP_SUCCESS,
       payload: {
         leadId,
-        response: res.data,
-      },
+        response: res.data
+      }
     });
 
     return res.data;
+
   } catch (error) {
     dispatch({
       type: SEND_WHATSAPP_FAILURE,
-      payload: error.response?.data || error.message,
+      payload: error.response?.data || error.message
     });
     throw error;
   }
 };
 
-export const sendWhatsAppToLeadsBulk =
-  (leadIds = []) =>
-  async (dispatch) => {
-    dispatch({ type: SEND_WHATSAPP_ALL_REQUEST });
 
-    try {
-      const res = await axiosInstance.post(
-        `${API_URL}/leadssend/whatsappall`,
-        { leadIds },
-        { headers: { "Content-Type": "application/json" } },
-      );
+export const sendWhatsAppToLeadsBulk = (leadIds = []) => async (dispatch) => {
+  dispatch({ type: SEND_WHATSAPP_ALL_REQUEST });
 
-      dispatch({
-        type: SEND_WHATSAPP_ALL_SUCCESS,
-        payload: res.data,
-      });
+  try {
+    const res = await axiosInstance.post(
+      `${API_URL}/leadssend/whatsappall`,
+      { leadIds },
+      { headers: { "Content-Type": "application/json" } }
+    );
 
-      return res.data;
-    } catch (error) {
-      dispatch({
-        type: SEND_WHATSAPP_ALL_FAILURE,
-        payload: error.response?.data || error.message,
-      });
-      throw error;
-    }
-  };
+    dispatch({
+      type: SEND_WHATSAPP_ALL_SUCCESS,
+      payload: res.data
+    });
+
+    return res.data;
+
+  } catch (error) {
+    dispatch({
+      type: SEND_WHATSAPP_ALL_FAILURE,
+      payload: error.response?.data || error.message
+    });
+    throw error;
+  }
+};
+
+
+
+
