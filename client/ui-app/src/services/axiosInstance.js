@@ -1,4 +1,12 @@
 import axios from 'axios';
+import {
+  clearAdminSession,
+  getAdminAccessToken,
+  getAdminRefreshToken,
+  recordAuthFailure,
+  recordTokenRefresh,
+  setAdminSession,
+} from "../auth/authStore.js";
 
 const API_URL = process.env.REACT_APP_API_URL;
 const CLIENT_ID = process.env.REACT_APP_OAUTH_CLIENT_ID;
@@ -58,16 +66,8 @@ const isAdminArea = () => {
 };
 
 const clearAdminAuth = () => {
-  [
-    'accessToken',
-    'refreshToken',
-    'accessTokenExpiresAt',
-    'userRole',
-    'userName',
-    'allowedPages',
-  ].forEach((key) => localStorage.removeItem(key));
-
   delete axiosInstance.defaults.headers.common.Authorization;
+  clearAdminSession();
 };
 
 const redirectToAdminLoginIfNeeded = () => {
@@ -132,7 +132,7 @@ axiosInstance.interceptors.request.use(
     const hasAuthorizationHeader = config.headers.Authorization || config.headers.authorization;
 
     if (!isReloginRequest(config.url) && !hasAuthorizationHeader) {
-      const accessToken = localStorage.getItem('accessToken');
+      const accessToken = getAdminAccessToken();
       if (accessToken) {
         config.headers.Authorization = `Bearer ${accessToken}`;
       }
@@ -179,10 +179,11 @@ axiosInstance.interceptors.response.use(
       isRefreshing = true;
 
       const qs = require('qs');
-      const refreshToken = localStorage.getItem('refreshToken');
+      const refreshToken = getAdminRefreshToken();
 
       if (!refreshToken) {
         clearAdminAuth();
+        recordAuthFailure("admin-refresh", error);
         redirectToAdminLoginIfNeeded();
         return Promise.reject(error);
       }
@@ -202,9 +203,13 @@ axiosInstance.interceptors.response.use(
           const { accessToken, refreshToken: newRefreshToken, accessTokenExpiresAt } = response.data;
 
           console.log('[Auth] Access token refreshed — notifying socket');
-          localStorage.setItem('accessToken', accessToken);
-          localStorage.setItem('refreshToken', newRefreshToken);
-          localStorage.setItem('accessTokenExpiresAt', accessTokenExpiresAt);
+          setAdminSession({
+            accessToken,
+            refreshToken: newRefreshToken,
+            accessTokenExpiresAt,
+            user: response.data.user,
+          });
+          recordTokenRefresh("adminOAuth", { source: "axios-401-retry" });
 
           // Notify the socket layer so the next reconnect uses the new token.
           // We dispatch an event instead of importing socketService directly
@@ -218,6 +223,7 @@ axiosInstance.interceptors.response.use(
         })
         .catch((err) => {
           processQueue(err, null);
+          recordAuthFailure("admin-refresh", err);
           clearAdminAuth();
           redirectToAdminLoginIfNeeded();
           return Promise.reject(err);

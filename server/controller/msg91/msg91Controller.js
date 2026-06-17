@@ -3,6 +3,12 @@ import User from "../../model/msg91Model/usersModels.js";
 import jwt from "jsonwebtoken";
 // 1. IMPORT S3 UTILITIES
 import { uploadImageToS3, getSignedUrlByKey } from "../../s3Uploder.js";
+import {
+  assertSelfOnlyMobileAccess,
+  resolveEffectiveSubjectId,
+} from "../../auth/authMiddleware.js";
+import { logAuthAuditEvent } from "../../auth/authAuditStore.js";
+import { resolveAuthActorFromToken } from "../../auth/authResolver.js";
 
 const JWT_SECRET = process.env.JWT_SECRET
 
@@ -38,6 +44,15 @@ export const verifyOtpAndLogin = async (req, res) => {
             JWT_SECRET,
             { expiresIn: "100y" }
         );
+        const actor = await resolveAuthActorFromToken(token, { source: "otp-login" });
+        logAuthAuditEvent({
+            eventType: "login",
+            actor,
+            source: "otp-login",
+            req,
+            statusCode: 200,
+            message: "Customer OTP session created",
+        });
 
         const userObject = user.toObject();
         if (userObject.profileImageKey) {
@@ -53,6 +68,7 @@ export const verifyOtpAndLogin = async (req, res) => {
 export const updateOtpUser = async (req, res) => {
   try {
     const { mobile } = req.params;
+    assertSelfOnlyMobileAccess(req);
     const updateData = { ...req.body };
 
     const user = await User.findOne({ mobileNumber1: mobile });
@@ -178,6 +194,7 @@ export const updateOtpUser = async (req, res) => {
 export const viewOtpUser = async (req, res) => {
     try {
         const { mobile } = req.params;
+        assertSelfOnlyMobileAccess(req);
 
         const user = await User.findOne({ mobileNumber1: mobile }).lean();
 
@@ -230,7 +247,11 @@ export const deleteOtpUser = async (req, res) => {
 };
 export const logUserSearch = async (req, res) => {
     try {
-        const { userId, query, location, category } = req.body;
+        const { query, location, category } = req.body;
+        const userId = resolveEffectiveSubjectId(req, {
+            allowAdminOverride: true,
+            fieldNames: ["userId"],
+        });
 
         if (!userId || !query) {
             return res.status(400).json({ success: false, message: "UserId and query required" });

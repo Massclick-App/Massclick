@@ -751,6 +751,7 @@ const SearchResults = React.memo(() => {
                             filterConfig={filterConfig}
                             distance={typeof b.distance === "number" ? b.distance : null}
                             viewMode="grid"
+                            cardVariant="nearby"
                             index={idx}
                           />
                         </div>

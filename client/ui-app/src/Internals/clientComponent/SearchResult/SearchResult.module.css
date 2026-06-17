@@ -802,12 +802,14 @@ section.seo-header-content.premium-section {
 
 .nearby-strip {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
   gap: 16px;
+  align-items: start;
 }
 
 .nearby-card {
   min-width: 0;
+  height: 100%;
 }
 
 @media (max-width: 680px) {

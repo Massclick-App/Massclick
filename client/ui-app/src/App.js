@@ -6,6 +6,13 @@ import { clientLogin } from './redux/actions/clientAuthAction.js';
 import { fetchMatchedLeads } from './redux/actions/leadsAction.js';
 import { setMaintenanceModeOn, setMaintenanceModeOff } from './redux/reducers/maintenanceReducer.js';
 import { connectSocket } from './services/socketService.js';
+import {
+  AUTH_STATE_EVENT,
+  clearAdminSession,
+  getAdminAccessToken,
+  getAuthSnapshot,
+  subscribeAuthState,
+} from './auth/authStore.js';
 
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -84,6 +91,7 @@ const SystemSettings = lazy(() => import(/* webpackChunkName: "admin-settings" *
 const CategoryDisplaySettings = lazy(() => import(/* webpackChunkName: "admin-cat-display" */ './Internals/CategoryDisplaySettings/CategoryDisplaySettings.js'));
 const GmapsLeads = lazy(() => import(/* webpackChunkName: "admin-gmaps-leads" */ './Internals/gmapsLeads/GmapsLeads.js'));
 const Msg91Analytics = lazy(() => import(/* webpackChunkName: "admin-msg91-analytics" */ './Internals/Msg91Analytics/Msg91Analytics.js'));
+const AuthConsole = lazy(() => import(/* webpackChunkName: "admin-auth-console" */ './Internals/AuthConsole/AuthConsole.js'));
 
 const FloatingButtons = lazy(() => import(/* webpackChunkName: "floating-buttons" */ './Internals/clientComponent/floating/floatingButtons.js'));
 const FloatingAdCard = lazy(() => import(/* webpackChunkName: "floating-ad" */ './Internals/clientComponent/floating/floatingAdCard.js'));
@@ -246,6 +254,7 @@ function AppRoutes({
                 <Route path="fcm-marketing" element={<FCMMarketing />} />
                 <Route path="user" element={<User />} />
                 <Route path="roles" element={<Roles />} />
+                <Route path="auth-console" element={<AuthConsole />} />
                 <Route path="system-settings" element={<SystemSettings />} />
                 <Route path="category-display" element={<CategoryDisplaySettings />} />
                 <Route path="gmaps-leads" element={<GmapsLeads />} />
@@ -277,35 +286,42 @@ function App() {
 
   /* Fast Auth Check - Synchronous, non-blocking */
   useEffect(() => {
-    const accessToken = localStorage.getItem('accessToken');
-
-    if (accessToken) {
-      setIsAuthenticated(true);
-    }
-
+    setIsAuthenticated(getAuthSnapshot().admin.isAuthenticated);
     setAuthChecked(true);
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = subscribeAuthState((snapshot) => {
+      setIsAuthenticated(snapshot.admin.isAuthenticated);
+    });
+
+    const handleAuthEvent = () => {
+      setIsAuthenticated(getAuthSnapshot().admin.isAuthenticated);
+    };
+
+    window.addEventListener(AUTH_STATE_EVENT, handleAuthEvent);
+    return () => {
+      unsubscribe();
+      window.removeEventListener(AUTH_STATE_EVENT, handleAuthEvent);
+    };
   }, []);
 
   /* Deferred Auth & Data Loading - After first paint */
   useEffect(() => {
     const loadDataAfterPaint = async () => {
-      const accessToken = localStorage.getItem('accessToken');
-      const refreshToken = localStorage.getItem('refreshToken');
-      const clientAccessToken = localStorage.getItem('clientAccessToken');
+      const authSnapshot = getAuthSnapshot();
 
       try {
-        if (clientAccessToken) {
-          await dispatch(clientLogin());
-        }
+        await dispatch(clientLogin());
 
-        if (accessToken && refreshToken) {
+        if (authSnapshot.admin.accessToken && authSnapshot.admin.refreshToken) {
           const result = await dispatch(relogin());
           if (result?.accessToken) {
             setIsAuthenticated(true);
           }
         }
       } catch (error) {
-        localStorage.clear();
+        clearAdminSession();
         setIsAuthenticated(false);
       }
 
@@ -321,7 +337,7 @@ function App() {
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    const token = localStorage.getItem('accessToken');
+    const token = getAdminAccessToken();
     if (!token) return;
 
     try {

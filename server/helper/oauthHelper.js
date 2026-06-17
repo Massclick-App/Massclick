@@ -1,18 +1,10 @@
 import OAuth2Server from 'oauth2-server';
 import oauthModel from '../model/oauthModel.js';
 import clientModel from '../model/clientModel.js';
-import { UNAUTHORIZED } from "../errorCodes.js";
+import { createHttpAuthMiddleware } from "../auth/authMiddleware.js";
 import { userValidation } from '../helper/loginHelper.js';
-import mongoose from 'mongoose';
 import crypto from 'crypto';
-import userModel from '../model/userModel.js';
-import rolesModel from '../model/roles/rolesModel.js';
-
-const getAllowedPages = async (roleName) => {
-  if (!roleName || roleName === 'client') return [];
-  const roleDoc = await rolesModel.findOne({ roleName, isActive: true }).lean();
-  return Array.isArray(roleDoc?.permissions) ? roleDoc.permissions : [];
-};
+import { getRolePermissions } from "../auth/authRoles.js";
 
 // ── Request context store ─────────────────────────────────────────────────────
 let _currentRequestBody = {};
@@ -49,7 +41,7 @@ const saveToken = async (token, client, user) => {
   const userId = user?.userId || crypto.randomBytes(16).toString('hex');
   const isClientCredentials = !token.refreshToken;
   const userRole = user?.role || user?.userRole || 'client';
-  const allowedPages = await getAllowedPages(userRole);
+  const allowedPages = await getRolePermissions(userRole);
 
   const tokenData = {
     accessToken: token.accessToken,
@@ -141,23 +133,10 @@ export const oauthtoken = new OAuth2Server({
 
 // ---------- AUTH MIDDLEWARE ----------
 export const oauthAuthentication = async (req, res, next) => {
-  const request = new OAuth2Server.Request(req);
-  const response = new OAuth2Server.Response(res);
-  try {
-    const token = await oauthtoken.authenticate(request, response);
-    const userId = token.user?.userId;
-    if (mongoose.Types.ObjectId.isValid(userId)) {
-      const latestUser = await userModel.findById(userId).lean();
-      if (latestUser) {
-      token.user.userRole = latestUser.role;
-      token.user.allowedPages = await getAllowedPages(latestUser.role);
-    }
-    }
-    req.authUser = token.user;
-    next();
-  } catch (err) {
-    return res.status(UNAUTHORIZED.code).send({ error: err.message });
-  }
+  return createHttpAuthMiddleware({
+    allowedActorTypes: ["admin", "publicClient"],
+    source: "oauth-http",
+  })(req, res, next);
 };
 
 // ---------- LOGOUT ----------

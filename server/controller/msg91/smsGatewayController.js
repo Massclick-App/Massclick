@@ -6,6 +6,8 @@ import businessListModel from "../../model/businessList/businessListModel.js";
 import searchLogModel from "../../model/businessList/searchLogModel.js";
 import { sendWhatsAppMessage, sendLoginWelcomeMessage } from "../../helper/msg91/smsGatewayHelper.js";
 import { getSettings } from "../../helper/systemSettings/settingsService.js";
+import { logAuthAuditEvent } from "../../auth/authAuditStore.js";
+import { resolveAuthActorFromToken } from "../../auth/authResolver.js";
 
 export const sendOtpAction = async (req, res) => {
   const { phoneNumber } = req.body;
@@ -124,6 +126,15 @@ export const verifyOtpAction = async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: "999y" }
     );
+    const actor = await resolveAuthActorFromToken(token, { source: "otp-login" });
+    logAuthAuditEvent({
+      eventType: "login",
+      actor,
+      source: "otp-login",
+      req,
+      statusCode: 200,
+      message: "Customer OTP session created",
+    });
 
     const userObj = user.toObject();
     if (userObj.profileImageKey) {
@@ -257,6 +268,15 @@ export const fakeverifyOtpAction = async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: "999y" }
     );
+    const actor = await resolveAuthActorFromToken(token, { source: "otp-login" });
+    logAuthAuditEvent({
+      eventType: "login",
+      actor,
+      source: "otp-login",
+      req,
+      statusCode: 200,
+      message: "Customer OTP session created",
+    });
 
     const userObj = user.toObject();
     if (userObj.profileImageKey) {

@@ -1,5 +1,11 @@
 import axiosInstance from '../../services/axiosInstance.js';
 import {
+  clearCustomerSession,
+  getCustomerToken,
+  recordAuthFailure,
+  setCustomerSession,
+} from "../../auth/authStore.js";
+import {
   SEND_OTP_REQUEST, SEND_OTP_SUCCESS, SEND_OTP_FAILURE,
   VERIFY_OTP_REQUEST, VERIFY_OTP_SUCCESS, VERIFY_OTP_FAILURE,
   USER_LOGOUT,
@@ -42,16 +48,13 @@ export const verifyOtp = (mobile, otp, userName = "") => async (dispatch) => {
     const user = response.data.user;
 
     if (token) {
-      localStorage.setItem("authToken", token);
-      axiosInstance.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+      setCustomerSession({ token, user });
     }
-if (user) {
-  localStorage.setItem("authUser", JSON.stringify(user));
-}
     dispatch({ type: VERIFY_OTP_SUCCESS, payload: response.data });
     return response.data;
 
   } catch (error) {
+    recordAuthFailure("customer-otp-verify", error);
     const errPayload = error.response?.data || { message: error.message };
     dispatch({ type: VERIFY_OTP_FAILURE, payload: errPayload });
     throw error;
@@ -74,7 +77,10 @@ export const updateOtpUser = (mobile, data) => async (dispatch) => {
     });
 
     if (response.data?.user) {
-      localStorage.setItem("authUser", JSON.stringify(response.data.user));
+      setCustomerSession({
+        token: getCustomerToken(),
+        user: response.data.user,
+      });
     }
 
     return response.data;
@@ -99,7 +105,10 @@ export const viewOtpUser = (mobile) => async (dispatch) => {
     const user = response.data.user;
 
     if (user) {
-      localStorage.setItem("authUser", JSON.stringify(user));
+      setCustomerSession({
+        token: getCustomerToken(),
+        user,
+      });
     }
 
     dispatch({
@@ -132,18 +141,16 @@ export const viewAllOtpUsers = () => async (dispatch) => {
 };
 
 export const userLogout = () => (dispatch) => {
-  localStorage.removeItem("authToken");
-  delete axiosInstance.defaults.headers.common["Authorization"];
+  clearCustomerSession();
   dispatch({ type: USER_LOGOUT });
 };
 
 
-export const logUserSearch = (userId, query, location, category) => async (dispatch) => {
+export const logUserSearch = (_userId, query, location, category) => async (dispatch) => {
   dispatch({ type: LOG_USER_SEARCH_REQUEST });
 
   try {
     const response = await axiosInstance.post(`${API_URL}/otp_user/log-search`, {
-      userId,
       query,
       location,
       category

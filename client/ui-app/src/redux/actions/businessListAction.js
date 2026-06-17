@@ -23,6 +23,7 @@ import {
   SEND_ENQUIRY_LEAD_REQUEST, SEND_ENQUIRY_LEAD_SUCCESS, SEND_ENQUIRY_LEAD_FAILURE,
 } from "../actions/userActionTypes.js";
 import { getClientToken } from "./clientAuthAction.js";
+import { clearPublicClientSession } from "../../auth/authStore.js";
 const API_URL = process.env.REACT_APP_API_URL;
 
 const getValidToken = async (dispatch) => {
@@ -388,7 +389,7 @@ export const getAllSearchLogs = () => async (dispatch) => {
     });
   } catch (error) {
     if (error.response?.status === 401) {
-      localStorage.clear();
+      clearPublicClientSession();
     }
 
     dispatch({

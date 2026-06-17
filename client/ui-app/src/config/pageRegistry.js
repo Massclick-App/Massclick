@@ -14,5 +14,6 @@ export const PAGE_REGISTRY = [
   { path: '/dashboard/fcm-marketing',       label: 'Push Notify' },
   { path: '/dashboard/user',                label: 'Users' },
   { path: '/dashboard/roles',               label: 'Roles' },
+  { path: '/dashboard/auth-console',        label: 'Auth Console' },
   { path: '/dashboard/system-settings',     label: 'System Settings' },
 ];

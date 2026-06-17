@@ -10,43 +10,29 @@ import {
   sendSingleNotificationAction,
   sendBulkNotificationAction
 } from '../controller/fcmNotificationController.js';
-import { oauthAuthentication } from '../helper/oauthHelper.js';
-import jwt from 'jsonwebtoken';
+import { requireAdminAuth, requireAuthPolicy } from '../auth/authMiddleware.js';
 
 const router = express.Router();
 
-const jwtAuthentication = (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Missing token' });
-  }
-  try {
-    req.authUser = jwt.verify(authHeader.slice(7), process.env.JWT_SECRET);
-    next();
-  } catch {
-    return res.status(401).json({ error: 'Invalid token' });
-  }
-};
-
 // Register web push subscription server-side (uses JWT from OTP login)
-router.post('/api/fcm-token/web-register', jwtAuthentication, registerWebPushTokenAction);
+router.post('/api/fcm-token/web-register', requireAuthPolicy('fcm.web-register'), registerWebPushTokenAction);
 
 // Save new FCM token
-router.post('/api/fcm-token/save', oauthAuthentication, saveFCMTokenAction);
+router.post('/api/fcm-token/save', requireAuthPolicy('fcm.save'), saveFCMTokenAction);
 
 // Refresh FCM token (remove old, save new)
-router.put('/api/fcm-token/refresh/:userId/:oldToken', oauthAuthentication, refreshFCMTokenAction);
+router.put('/api/fcm-token/refresh/:userId/:oldToken', requireAuthPolicy('fcm.refresh'), refreshFCMTokenAction);
 
 // Remove FCM token
-router.delete('/api/fcm-token/remove/:userId/:token', oauthAuthentication, removeFCMTokenAction);
+router.delete('/api/fcm-token/remove/:userId/:token', requireAuthPolicy('fcm.remove'), removeFCMTokenAction);
 
 // Get all active FCM tokens for a user
-router.get('/api/fcm-token/:userId', oauthAuthentication, getActiveFCMTokensAction);
+router.get('/api/fcm-token/:userId', requireAdminAuth('fcm.list'), getActiveFCMTokensAction);
 
 // Send a single FCM notification
-router.post('/api/fcm-token/send-single', oauthAuthentication, sendSingleNotificationAction);
+router.post('/api/fcm-token/send-single', requireAdminAuth('fcm.send-single'), sendSingleNotificationAction);
 
 // Send bulk FCM notifications
-router.post('/api/fcm-token/send-bulk', oauthAuthentication, sendBulkNotificationAction);
+router.post('/api/fcm-token/send-bulk', requireAdminAuth('fcm.send-bulk'), sendBulkNotificationAction);
 
 export default router;

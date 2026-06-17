@@ -143,17 +143,12 @@ const OTPLoginModal = ({ open, handleClose }) => {
             const res = await dispatch(verifyOtp(mobileNumber, finalOtp, userName));
 
             if (res.token) {
-                localStorage.setItem("authToken", res.token);
-                window.dispatchEvent(new Event("authChange"));
-
                 enqueueSnackbar("Login successfully!", {
                     variant: "success",
                     autoHideDuration: 3000,
                 });
 
-                if (res.user?._id) {
-                    registerWebFCMToken(res.user._id, res.token);
-                }
+                await registerWebFCMToken();
                 handleClose();
             }
         } catch (error) {

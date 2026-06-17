@@ -5,9 +5,11 @@ import {
   getLeadsTrends,
   getTopSearches,
 } from "../../helper/leadsData/leadsDataHelper.js";
+import { assertSelfOnlyMobileAccess } from "../../auth/authMiddleware.js";
 
 export const getLeadsByMobileAction = async (req, res) => {
   try {
+    assertSelfOnlyMobileAccess(req, { paramName: "mobileNumber" });
     const { mobileNumber } = req.params;
     const data = await getCategoryBasedLeads(mobileNumber);
     return res.status(200).json({ success: true, data });
@@ -19,6 +21,7 @@ export const getLeadsByMobileAction = async (req, res) => {
 
 export const getLeadsAnalyticsSummaryAction = async (req, res) => {
   try {
+    assertSelfOnlyMobileAccess(req, { paramName: "mobileNumber" });
     const { mobileNumber } = req.params;
     const data = await getLeadsAnalyticsSummary(mobileNumber);
     return res.status(200).json({ success: true, data });
@@ -30,6 +33,7 @@ export const getLeadsAnalyticsSummaryAction = async (req, res) => {
 
 export const getLeadsTrendsAction = async (req, res) => {
   try {
+    assertSelfOnlyMobileAccess(req, { paramName: "mobileNumber" });
     const { mobileNumber } = req.params;
     const days = Math.min(parseInt(req.query.days) || 30, 90);
     const data = await getLeadsTrends(mobileNumber, days);
@@ -42,6 +46,7 @@ export const getLeadsTrendsAction = async (req, res) => {
 
 export const getTopSearchesAction = async (req, res) => {
   try {
+    assertSelfOnlyMobileAccess(req, { paramName: "mobileNumber" });
     const { mobileNumber } = req.params;
     const limit = Math.min(parseInt(req.query.limit) || 10, 50);
     const data = await getTopSearches(mobileNumber, limit);

@@ -7,6 +7,8 @@ import {
   oauthtoken,
   setRequestContext,       // ✅ ADD
 } from "../helper/oauthHelper.js";
+import { logAuthAuditEvent } from "../auth/authAuditStore.js";
+import { resolveAuthActorFromToken } from "../auth/authResolver.js";
 
 // ---------- PASSWORD LOGIN ----------
 export const oauthAction = async (req, res) => {
@@ -14,6 +16,15 @@ export const oauthAction = async (req, res) => {
     const request = new OAuth2Server.Request(req);
     const response = new OAuth2Server.Response(res);
     const token = await oauthtoken.token(request, response);
+    const actor = await resolveAuthActorFromToken(token.accessToken, { source: "oauth-login" });
+    logAuthAuditEvent({
+      eventType: "login",
+      actor,
+      source: "oauth-login",
+      req,
+      statusCode: 200,
+      message: "Admin session created",
+    });
     return res.status(200).json(token);
   } catch (error) {
     return res.status(400).json({ error: error.message });
@@ -28,6 +39,15 @@ export const oauthClientAction = async (req, res) => {
     const request = new OAuth2Server.Request(req);
     const response = new OAuth2Server.Response(res);
     const token = await oauthtoken.token(request, response);
+    const actor = await resolveAuthActorFromToken(token.accessToken, { source: "oauth-client" });
+    logAuthAuditEvent({
+      eventType: "login",
+      actor,
+      source: "oauth-client",
+      req,
+      statusCode: 200,
+      message: "Public client session created",
+    });
     res.json(token);
   } catch (error) {
     return res.status(400).json({ error: error.message });
@@ -40,6 +60,15 @@ export const oauthReAction = async (req, res) => {
     const request = new OAuth2Server.Request(req);
     const response = new OAuth2Server.Response(res);
     const token = await oauthtoken.token(request, response);
+    const actor = await resolveAuthActorFromToken(token.accessToken, { source: "oauth-refresh" });
+    logAuthAuditEvent({
+      eventType: "refresh",
+      actor,
+      source: "oauth-refresh",
+      req,
+      statusCode: 200,
+      message: "OAuth session refreshed",
+    });
     res.json(token);
   } catch (error) {
     return res.status(400).json({ error: error.message });
@@ -65,10 +94,27 @@ export const logoutAction = async (req, res) => {
     if (!accessToken) {
       return res.status(UNAUTHORIZED.code).json({ error: "No token provided." });
     }
+    const actor = await resolveAuthActorFromToken(accessToken, { source: "oauth-logout" });
     const result = await logoutUsers(accessToken);
     if (!result) {
       return res.status(BAD_REQUEST.code).json({ error: "Logout failed" });
     }
+    logAuthAuditEvent({
+      eventType: "logout",
+      actor,
+      source: "oauth-logout",
+      req,
+      statusCode: 200,
+      message: "Session logged out",
+    });
+    logAuthAuditEvent({
+      eventType: "revocation",
+      actor,
+      source: "oauth-logout",
+      req,
+      statusCode: 200,
+      message: "Session token revoked",
+    });
     res.status(200).json({ message: "Logout successful" });
   } catch (error) {
     return res.status(BAD_REQUEST.code).json({ error: error.message });
