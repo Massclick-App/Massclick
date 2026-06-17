@@ -2,14 +2,16 @@
 import React, { useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { Navigate } from "react-router-dom";
+import { getAuthSnapshot } from "./auth/authStore.js";
 import { logout } from "./redux/actions/authAction.js";
 
 const ProtectedRoute = ({ children }) => {
   const dispatch = useDispatch();
 
   useEffect(() => {
-    const token = localStorage.getItem("accessToken");
-    const expiry = localStorage.getItem("accessTokenExpiresAt");
+    const { admin } = getAuthSnapshot();
+    const token = admin.accessToken;
+    const expiry = admin.expiresAt;
 
     if (!token || !expiry || new Date(expiry).getTime() <= Date.now()) {
       dispatch(logout());
@@ -24,8 +26,9 @@ const ProtectedRoute = ({ children }) => {
     }
   }, [dispatch]);
 
-  const token = localStorage.getItem("accessToken");
-  const expiry = localStorage.getItem("accessTokenExpiresAt");
+  const { admin } = getAuthSnapshot();
+  const token = admin.accessToken;
+  const expiry = admin.expiresAt;
 
   if (!token || !expiry || new Date(expiry).getTime() <= Date.now()) {
     return <Navigate to="/" replace />; 

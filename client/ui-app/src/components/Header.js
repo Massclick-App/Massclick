@@ -13,6 +13,7 @@ import OptionsMenu from "./OptionsMenu.js";
 import NotificationModal from "./notificationModel.js";
 import { connectSocket } from "../services/socketService.js";
 import { fetchChatUnreadCount } from "../services/chatService.js";
+import { getAuthSnapshot } from "../auth/authStore.js";
 
 const RECENT_DAYS = 7;
 
@@ -35,7 +36,8 @@ useEffect(() => {
   dispatch(getAllEventCreation({ pageNo: 1, pageSize: 25, options: { sortBy: "createdAt", sortOrder: "desc" } }));
   fetchChatUnreadCount().then((data) => setChatUnreadCount(data?.admin || 0)).catch(() => setChatUnreadCount(0));
 
-  const token = localStorage.getItem("accessToken") || localStorage.getItem("authToken");
+  const authSnapshot = getAuthSnapshot();
+  const token = authSnapshot.admin.accessToken;
   if (!token) return;
 
   const ws = connectSocket(token);

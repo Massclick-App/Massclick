@@ -38,6 +38,7 @@ import TravelExploreIcon from '@mui/icons-material/TravelExplore';
 import MarkEmailReadIcon from '@mui/icons-material/MarkEmailRead';
 import { fetchChatUnreadCount, getAdminChatToken } from "../services/chatService";
 import { connectSocket } from "../services/socketService";
+import { getAuthSnapshot } from "../auth/authStore.js";
 
 const SUPERADMIN = 'SuperAdmin';
 
@@ -89,6 +90,7 @@ const MENU_SECTIONS = [
       { text: "Roles", icon: AdminPanelSettingsIcon, path: "/dashboard/roles" },
       { text: "Display", icon: CategoryIcon, path: "/dashboard/category-display" },
       { text: "Terms", icon: GavelIcon, path: "/dashboard/terms-conditions-data" },
+      { text: "Auth Console", icon: SettingsIcon, path: "/dashboard/auth-console" },
       { text: "Config", icon: SettingsIcon, path: "/dashboard/system-settings" },
     ]
   },
@@ -100,14 +102,15 @@ export default function SideMenu({ onItemClick }) {
   const theme = useTheme();
   const isTabletDown = useMediaQuery(theme.breakpoints.down("md"));
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const authSnapshot = getAuthSnapshot();
 
   const userRole =
     useSelector((state) => state.auth?.user?.userRole) ||
-    localStorage.getItem("userRole") || "";
+    authSnapshot.admin.userRole || "";
 
   const allowedPages =
     useSelector((state) => state.auth?.allowedPages) ||
-    JSON.parse(localStorage.getItem("allowedPages") || "[]");
+    authSnapshot.admin.allowedPages;
 
   const isSuperAdmin = userRole === SUPERADMIN;
   const [chatUnread, setChatUnread] = useState(0);

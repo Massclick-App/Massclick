@@ -1,15 +1,21 @@
 import React, { useState, useEffect, lazy, Suspense, memo } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { relogin } from './redux/actions/authAction.js';
 import { clientLogin } from './redux/actions/clientAuthAction.js';
 import { fetchMatchedLeads } from './redux/actions/leadsAction.js';
 import { setMaintenanceModeOn, setMaintenanceModeOff } from './redux/reducers/maintenanceReducer.js';
 import { connectSocket } from './services/socketService.js';
+import {
+  clearAdminSession,
+  getAdminAccessToken,
+  getAuthSnapshot,
+  subscribeAuthState,
+} from './auth/authStore.js';
 
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-import { SnackbarProvider } from 'notistack';
+import { SnackbarProvider, useSnackbar } from 'notistack';
 
 import theme from './Internals/clientComponent/theme.js';
 import PrivateRoute from './PrivateRoute';
@@ -20,7 +26,7 @@ import { userMenuItems } from './Internals/clientComponent/categoryBar.js';
 
 import ShimmerSkeleton from './Internals/clientComponent/shimmerSkeleton.js';
 import GlobalLoaderWrapper from './Internals/clientComponent/common/GlobalLoaderWrapper.js';
-import VideoPreloader from './components/VideoPreloader.js';
+import { scheduleIdleCallback } from './utils/scheduleIdleCallback.js';
 
 const Dashboard = lazy(() => import(/* webpackChunkName: "admin-dashboard" */ './Dashboard'));
 const Login = lazy(() => import(/* webpackChunkName: "admin-login" */ './Internals/Login/login.js'));
@@ -84,6 +90,7 @@ const SystemSettings = lazy(() => import(/* webpackChunkName: "admin-settings" *
 const CategoryDisplaySettings = lazy(() => import(/* webpackChunkName: "admin-cat-display" */ './Internals/CategoryDisplaySettings/CategoryDisplaySettings.js'));
 const GmapsLeads = lazy(() => import(/* webpackChunkName: "admin-gmaps-leads" */ './Internals/gmapsLeads/GmapsLeads.js'));
 const Msg91Analytics = lazy(() => import(/* webpackChunkName: "admin-msg91-analytics" */ './Internals/Msg91Analytics/Msg91Analytics.js'));
+const AuthConsole = lazy(() => import(/* webpackChunkName: "admin-auth-console" */ './Internals/AuthConsole/AuthConsole.js'));
 
 const FloatingButtons = lazy(() => import(/* webpackChunkName: "floating-buttons" */ './Internals/clientComponent/floating/floatingButtons.js'));
 const FloatingAdCard = lazy(() => import(/* webpackChunkName: "floating-ad" */ './Internals/clientComponent/floating/floatingAdCard.js'));
@@ -106,6 +113,30 @@ const DynamicLoader = memo(() => {
   return <ShimmerSkeleton />;
 });
 
+const RateLimitNotifier = memo(() => {
+  const { enqueueSnackbar } = useSnackbar();
+
+  useEffect(() => {
+    const handleRateLimit = (event) => {
+      const detail = event?.detail || {};
+      const waitText = detail.retryAfterSeconds
+        ? ` Try again in ${detail.retryAfterSeconds} second${detail.retryAfterSeconds === 1 ? "" : "s"}.`
+        : "";
+
+      enqueueSnackbar(`${detail.message || "Too many requests."}${waitText}`, {
+        variant: "warning",
+        preventDuplicate: true,
+        autoHideDuration: 6000,
+      });
+    };
+
+    window.addEventListener("api:rate-limited", handleRateLimit);
+    return () => window.removeEventListener("api:rate-limited", handleRateLimit);
+  }, [enqueueSnackbar]);
+
+  return null;
+});
+
 const ComingSoon = ({ title }) => (
   <div style={{ textAlign: 'center', marginTop: '20%' }}>
     <h2>{title} Page Coming Soon!</h2>
@@ -114,10 +145,18 @@ const ComingSoon = ({ title }) => (
 
 function AppRoutes({
   isAuthenticated,
+  authReady,
   setIsAuthenticated,
   openLoginModal,
   setOpenLoginModal,
 }) {
+  const location = useLocation();
+  const pathname = location.pathname || "";
+  const isAdminSurface = pathname === "/admin" || pathname.startsWith("/dashboard");
+  const authSnapshot = getAuthSnapshot();
+  const shouldHoldAdminRoute =
+    !authReady && isAdminSurface && Boolean(authSnapshot.admin.refreshToken);
+
   const footerRoutes = [
     ['aboutus', <AboutUsPage />],
     ['testimonials', <Testimonials />],
@@ -138,12 +177,14 @@ function AppRoutes({
 
   return (
     <>
-      <Suspense fallback={<DynamicLoader />}>
-        <GlobalDrawer />
-        <FloatingAdCard />
-        <HomePopupAd />
-        <FloatingButtons onRequireLogin={() => setOpenLoginModal(true)} />
-      </Suspense>
+      {!isAdminSurface && (
+        <Suspense fallback={<DynamicLoader />}>
+          <GlobalDrawer />
+          <FloatingAdCard />
+          <HomePopupAd />
+          <FloatingButtons onRequireLogin={() => setOpenLoginModal(true)} />
+        </Suspense>
+      )}
 
       <Suspense fallback={<DynamicLoader />}>
         <Routes>
@@ -151,10 +192,14 @@ function AppRoutes({
           <Route
             path="/admin"
             element={
+              shouldHoldAdminRoute ? null : isAuthenticated ? (
+                <Navigate to="/dashboard" replace />
+              ) : (
               <Login
                 setIsAuthenticated={setIsAuthenticated}
                 isAuthenticated={isAuthenticated}
               />
+              )
             }
           />
           <Route path="/leads" element={<LeadsPage />} />
@@ -195,7 +240,7 @@ function AppRoutes({
             element={<BusinessDetails />}
           />
 
-          <Route element={<PrivateRoute isAuthenticated={isAuthenticated} />}>
+          <Route element={<PrivateRoute isAuthenticated={isAuthenticated} isReady={authReady} />}>
             <Route path="/dashboard" element={<Dashboard />}>
 
               <Route index element={<MainGrid />} />
@@ -222,6 +267,7 @@ function AppRoutes({
                 <Route path="fcm-marketing" element={<FCMMarketing />} />
                 <Route path="user" element={<User />} />
                 <Route path="roles" element={<Roles />} />
+                <Route path="auth-console" element={<AuthConsole />} />
                 <Route path="system-settings" element={<SystemSettings />} />
                 <Route path="category-display" element={<CategoryDisplaySettings />} />
                 <Route path="gmaps-leads" element={<GmapsLeads />} />
@@ -234,10 +280,12 @@ function AppRoutes({
         </Routes>
 
         {/* Login Modal */}
-        <OTPLoginModal
-          open={openLoginModal}
-          handleClose={() => setOpenLoginModal(false)}
-        />
+        {!isAdminSurface && (
+          <OTPLoginModal
+            open={openLoginModal}
+            handleClose={() => setOpenLoginModal(false)}
+          />
+        )}
       </Suspense>
     </>
   );
@@ -246,58 +294,88 @@ function AppRoutes({
 /* -------------------------------- App ------------------------------------ */
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [authChecked, setAuthChecked] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
   const [openLoginModal, setOpenLoginModal] = useState(false);
 
   const dispatch = useDispatch();
 
-  /* Fast Auth Check - Synchronous, non-blocking */
+  /* Initial auth snapshot */
   useEffect(() => {
-    const accessToken = localStorage.getItem('accessToken');
-
-    if (accessToken) {
-      setIsAuthenticated(true);
-    }
-
-    setAuthChecked(true);
+    setIsAuthenticated(getAuthSnapshot().admin.isAuthenticated);
   }, []);
 
-  /* Deferred Auth & Data Loading - After first paint */
+  /* Admin session bootstrap */
   useEffect(() => {
-    const loadDataAfterPaint = async () => {
-      const accessToken = localStorage.getItem('accessToken');
-      const refreshToken = localStorage.getItem('refreshToken');
-      const clientAccessToken = localStorage.getItem('clientAccessToken');
+    let cancelled = false;
 
-      try {
-        if (clientAccessToken) {
-          await dispatch(clientLogin());
-        }
+    const bootstrapAdminSession = async () => {
+      const snapshot = getAuthSnapshot();
 
-        if (accessToken && refreshToken) {
-          const result = await dispatch(relogin());
-          if (result?.accessToken) {
-            setIsAuthenticated(true);
-          }
+      if (!snapshot.admin.refreshToken) {
+        if (!cancelled) {
+          setAuthReady(true);
         }
-      } catch (error) {
-        localStorage.clear();
-        setIsAuthenticated(false);
+        return;
       }
 
-      dispatch(fetchMatchedLeads());
+      try {
+        const result = await dispatch(relogin());
+        if (!cancelled) {
+          setIsAuthenticated(Boolean(result?.accessToken));
+        }
+      } catch (error) {
+        if (!cancelled) {
+          clearAdminSession();
+          setIsAuthenticated(false);
+        }
+      } finally {
+        if (!cancelled) {
+          setAuthReady(true);
+        }
+      }
     };
 
-    if (authChecked) {
-      requestIdleCallback(loadDataAfterPaint, { timeout: 3000 });
+    bootstrapAdminSession();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [dispatch]);
+
+  useEffect(() => {
+    const unsubscribe = subscribeAuthState((snapshot) => {
+      setIsAuthenticated(snapshot.admin.isAuthenticated);
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  /* Deferred public bootstrap */
+  useEffect(() => {
+    const loadPublicBootstrap = async () => {
+      try {
+        await dispatch(clientLogin());
+      } catch (error) {
+        // Public-client bootstrap failures should not destabilize admin auth routes.
+      }
+
+      if (!window.location.pathname.startsWith("/dashboard") && window.location.pathname !== "/admin") {
+        dispatch(fetchMatchedLeads());
+      }
+    };
+
+    if (authReady) {
+      scheduleIdleCallback(loadPublicBootstrap, { timeout: 3000 });
     }
-  }, [dispatch, authChecked]);
+  }, [dispatch, authReady]);
 
   /* WebSocket Listener for Maintenance Mode */
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    const token = localStorage.getItem('accessToken');
+    const token = getAdminAccessToken();
     if (!token) return;
 
     try {
@@ -341,6 +419,7 @@ function App() {
           autoHideDuration={4000}
           preventDuplicate
         >
+          <RateLimitNotifier />
           <Router>
             <RouteChangeTracker />
             <ScrollToTop />
@@ -351,6 +430,7 @@ function App() {
 
             <AppRoutes
               isAuthenticated={isAuthenticated}
+              authReady={authReady}
               setIsAuthenticated={setIsAuthenticated}
               openLoginModal={openLoginModal}
               setOpenLoginModal={setOpenLoginModal}

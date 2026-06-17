@@ -13,7 +13,15 @@ const firebaseConfig = {
 const VAPID_KEY = 'BGQ0OCJil87bcnelmazt2Kh5HPivTIEsYuWSN1-9IxGYIjwqbjLVbn_9bnOfiG-Iv7y_ituUYV3v7QrydEyl2UE';
 
 const app = initializeApp(firebaseConfig);
-export const messaging = getMessaging(app);
+let messaging = null;
+
+try {
+  messaging = getMessaging(app);
+} catch (error) {
+  console.warn('[FCM] Messaging unavailable in this browser:', error?.message || error);
+}
+
+export { messaging };
 
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -27,6 +35,11 @@ function urlBase64ToUint8Array(base64String) {
 }
 
 export async function requestPushSubscription() {
+  if (!messaging) {
+    console.warn('[FCM] Messaging is not available in this browser');
+    return null;
+  }
+
   if (!('Notification' in window) || !('PushManager' in window)) {
     console.warn('[FCM] Push notifications not supported in this browser');
     return null;

@@ -9,6 +9,7 @@ import helmet from "helmet";
 
 import { metricsMiddleware } from "./utils/metricsMiddleware.js";
 import { initRedis } from "./utils/redisClient.js";
+import { apiRateLimit } from "./middleware/rateLimitMiddleware.js";
 import wellKnownRoutes from "./routes/wellKnownRoutes.js";
 import { ssrMiddleware } from "./middleware/ssrMiddleware.js";
 import { maintenanceModeMiddleware } from "./middleware/maintenanceModeMiddleware.js";
@@ -47,6 +48,7 @@ import eventAdvertisementRoute from "./routes/eventAdvertisementRoute.js";
 import eventCreationRoute from "./routes/eventCreationRoute.js";
 import gmapsLeadsRoutes from "./routes/gmapsLeadsRoute.js";
 import chatRoutes from "./routes/chatRoutes.js";
+import authAdminRoutes from "./routes/authAdminRoutes.js";
 import { startFCMScheduler } from "./scheduler/fcmScheduler.js";
 
 dotenv.config();
@@ -94,6 +96,7 @@ app.use(metricsMiddleware);
 app.use(wellKnownRoutes);
 
 app.use(maintenanceModeMiddleware);
+app.use("/api", apiRateLimit);
 
 app.use("/", sitemapRoutes);
 app.use("/", userRoutes);
@@ -129,6 +132,7 @@ app.use("/", eventAdvertisementRoute);
 app.use("/", eventCreationRoute);
 app.use("/", gmapsLeadsRoutes);
 app.use("/", chatRoutes);
+app.use("/", authAdminRoutes);
 app.use(express.static(CLIENT_BUILD_PATH, {
   index: false,
   maxAge: "365d",

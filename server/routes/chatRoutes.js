@@ -13,8 +13,11 @@ import {
   requireChatAdmin,
   requireChatCustomer,
 } from "../helper/chatAuthHelper.js";
+import { chatRateLimit } from "../middleware/rateLimitMiddleware.js";
 
 const router = express.Router();
+
+router.use("/api/chat", chatRateLimit);
 
 router.post(
   "/api/chat/conversations/start",

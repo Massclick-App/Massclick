@@ -5,12 +5,15 @@ import { oauthAuthentication } from '../helper/oauthHelper.js';
 import { logSearchAction, viewLogSearchAction, viewSearchAction, updateSearchAction, getTrendingSearchesAction, sendEnquiryLead } from "../controller/businessList/logSearchController.js"
 import { cacheMiddleware } from '../middleware/cacheMiddleware.js';
 import { validateBusiness } from '../middleware/validationMiddleware.js';
+import { businessListRateLimit } from '../middleware/rateLimitMiddleware.js';
 
 const router = express.Router();
 
 const searchCache = cacheMiddleware({ expirySeconds: 1800 }); // 30 min cache
 const suggestionsCache = cacheMiddleware({ expirySeconds: 3600, keyPrefix: 'suggestions' }); // 1 hour cache
 const trendsCache = cacheMiddleware({ expirySeconds: 7200, keyPrefix: 'trends' }); // 2 hours cache
+
+router.use('/api/businesslist', businessListRateLimit);
 
 router.post('/api/businesslist/create', oauthAuthentication, validateBusiness, addBusinessListAction);
 router.get("/api/business/by-slug", getBusinessBySlugAction);

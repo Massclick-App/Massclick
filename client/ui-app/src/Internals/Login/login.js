@@ -26,9 +26,9 @@ export default function Login({
   useEffect(() => {
     if (auth.user && auth.accessToken) {
       setIsAuthenticated(true);
-      navigate("/dashboard");
+      navigate("/dashboard", { replace: true });
     }
-  }, [auth, navigate, setIsAuthenticated]);
+  }, [auth.user, auth.accessToken, navigate, setIsAuthenticated]);
   return <div className={cx("corp-shell")}>
       <div className={cx("corp-container")}>
 

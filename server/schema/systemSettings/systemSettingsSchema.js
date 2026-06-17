@@ -5,6 +5,25 @@ const systemSettingsSchema = new mongoose.Schema(
     // OTP — true = real MSG91, false = bypass (fake OTP, any code accepted)
     otp_real_enabled: { type: Boolean, default: true },
 
+    // Rate limiting controls
+    rate_limit_enabled: { type: Boolean, default: true },
+    rate_limit_api_limit: { type: Number, default: 900, min: 1 },
+    rate_limit_api_window_minutes: { type: Number, default: 15, min: 1 },
+    rate_limit_auth_limit: { type: Number, default: 20, min: 1 },
+    rate_limit_auth_window_minutes: { type: Number, default: 15, min: 1 },
+    rate_limit_otp_limit: { type: Number, default: 5, min: 1 },
+    rate_limit_otp_window_minutes: { type: Number, default: 10, min: 1 },
+    rate_limit_businesslist_limit: { type: Number, default: 240, min: 1 },
+    rate_limit_businesslist_window_minutes: { type: Number, default: 10, min: 1 },
+    rate_limit_chat_limit: { type: Number, default: 120, min: 1 },
+    rate_limit_chat_window_minutes: { type: Number, default: 15, min: 1 },
+    rate_limit_lead_limit: { type: Number, default: 30, min: 1 },
+    rate_limit_lead_window_minutes: { type: Number, default: 15, min: 1 },
+    rate_limit_enquiry_limit: { type: Number, default: 120, min: 1 },
+    rate_limit_enquiry_window_minutes: { type: Number, default: 15, min: 1 },
+    rate_limit_payment_limit: { type: Number, default: 20, min: 1 },
+    rate_limit_payment_window_minutes: { type: Number, default: 15, min: 1 },
+
     // WhatsApp: notify matching business owners when a customer searches
     whatsapp_business_lead_alert: { type: Boolean, default: true },
 

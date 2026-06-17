@@ -100,6 +100,31 @@
   font-size: 0.78rem;
 }
 
+.base-card--nearby.base-card--grid {
+  min-height: 0;
+}
+
+.base-card--nearby.base-card--grid .card-content {
+  min-height: 0;
+  padding: 14px;
+}
+
+.base-card--nearby.base-card--grid .cardpage-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.base-card--nearby.base-card--grid .card-action-button {
+  min-width: 0;
+  padding-inline: 8px;
+  font-size: 0.75rem;
+}
+
+.base-card--nearby.base-card--grid .enquiry-button {
+  grid-column: 1 / -1;
+}
+
 /* ================================ */
 /* LARGE CARD — magazine grid       */
 /* ================================ */

@@ -81,6 +81,23 @@ const HelpHint = ({
 const FIELD_HELP = {
   app_maintenance_mode: "Turns the whole app into maintenance mode. Users are blocked until this is disabled.",
   otp_real_enabled: "When enabled, OTPs go through MSG91. When disabled, OTP verification uses the bypass/dev behavior.",
+  rate_limit_enabled: "Master switch for all API rate limiting. Turn this off to bypass the limiter completely.",
+  rate_limit_api_limit: "Maximum number of requests allowed for the global /api safety net.",
+  rate_limit_api_window_minutes: "How many minutes the global /api safety net should count requests for.",
+  rate_limit_auth_limit: "Maximum login attempts allowed before throttling /api/oauth requests.",
+  rate_limit_auth_window_minutes: "Window size in minutes for OAuth login throttling.",
+  rate_limit_otp_limit: "Maximum OTP send/verify requests allowed before throttling.",
+  rate_limit_otp_window_minutes: "Window size in minutes for OTP throttling.",
+  rate_limit_businesslist_limit: "Maximum business-list requests allowed before throttling.",
+  rate_limit_businesslist_window_minutes: "Window size in minutes for business-list searches and related reads.",
+  rate_limit_chat_limit: "Maximum chat requests allowed before throttling.",
+  rate_limit_chat_window_minutes: "Window size in minutes for chat rate limiting.",
+  rate_limit_lead_limit: "Maximum lead-send requests allowed before throttling.",
+  rate_limit_lead_window_minutes: "Window size in minutes for lead submission throttling.",
+  rate_limit_enquiry_limit: "Maximum admin enquiry requests allowed before throttling.",
+  rate_limit_enquiry_window_minutes: "Window size in minutes for enquiry/admin throttling.",
+  rate_limit_payment_limit: "Maximum PhonePe/payment requests allowed before throttling.",
+  rate_limit_payment_window_minutes: "Window size in minutes for payment throttling.",
   whatsapp_business_lead_alert: "Sends a WhatsApp lead alert to matched business owners when a customer searches.",
   whatsapp_customer_business_list: "Sends the matched business list back to the customer after their search.",
   whatsapp_customer_business_list_send_mode: "Single sends one customer message with up to 5 businesses. Split sends two messages with up to 10 businesses.",
@@ -138,6 +155,70 @@ const validateCustomerListSendMode = mode => {
   return validModes.includes(mode) ? null : "Invalid customer list send mode";
 };
 const NUMBER_FIELD_RULES = {
+  rate_limit_api_limit: {
+    min: 1,
+    max: 100000
+  },
+  rate_limit_api_window_minutes: {
+    min: 1,
+    max: 1440
+  },
+  rate_limit_auth_limit: {
+    min: 1,
+    max: 100000
+  },
+  rate_limit_auth_window_minutes: {
+    min: 1,
+    max: 1440
+  },
+  rate_limit_otp_limit: {
+    min: 1,
+    max: 100000
+  },
+  rate_limit_otp_window_minutes: {
+    min: 1,
+    max: 1440
+  },
+  rate_limit_businesslist_limit: {
+    min: 1,
+    max: 100000
+  },
+  rate_limit_businesslist_window_minutes: {
+    min: 1,
+    max: 1440
+  },
+  rate_limit_chat_limit: {
+    min: 1,
+    max: 100000
+  },
+  rate_limit_chat_window_minutes: {
+    min: 1,
+    max: 1440
+  },
+  rate_limit_lead_limit: {
+    min: 1,
+    max: 100000
+  },
+  rate_limit_lead_window_minutes: {
+    min: 1,
+    max: 1440
+  },
+  rate_limit_enquiry_limit: {
+    min: 1,
+    max: 100000
+  },
+  rate_limit_enquiry_window_minutes: {
+    min: 1,
+    max: 1440
+  },
+  rate_limit_payment_limit: {
+    min: 1,
+    max: 100000
+  },
+  rate_limit_payment_window_minutes: {
+    min: 1,
+    max: 1440
+  },
   lead_guard_anonymous_dedupe_minutes: {
     min: 0,
     max: 1440
@@ -361,8 +442,73 @@ const GUARD_LIMIT_FIELDS = [{
   label: "Recipient Cooldown Minutes",
   placeholder: "45"
 }];
-const ALL_BOOL_KEYS = TOGGLE_GROUPS.flatMap(g => g.items.map(i => i.key));
-const ALL_NUMBER_KEYS = GUARD_LIMIT_FIELDS.map(field => field.key);
+const RATE_LIMIT_FIELDS = [{
+  key: "rate_limit_api_limit",
+  label: "Global API Requests",
+  placeholder: "900"
+}, {
+  key: "rate_limit_api_window_minutes",
+  label: "Global API Window (minutes)",
+  placeholder: "15"
+}, {
+  key: "rate_limit_auth_limit",
+  label: "OAuth Login Attempts",
+  placeholder: "20"
+}, {
+  key: "rate_limit_auth_window_minutes",
+  label: "OAuth Window (minutes)",
+  placeholder: "15"
+}, {
+  key: "rate_limit_otp_limit",
+  label: "OTP Requests",
+  placeholder: "5"
+}, {
+  key: "rate_limit_otp_window_minutes",
+  label: "OTP Window (minutes)",
+  placeholder: "10"
+}, {
+  key: "rate_limit_businesslist_limit",
+  label: "Business List Requests",
+  placeholder: "240"
+}, {
+  key: "rate_limit_businesslist_window_minutes",
+  label: "Business List Window (minutes)",
+  placeholder: "10"
+}, {
+  key: "rate_limit_chat_limit",
+  label: "Chat Requests",
+  placeholder: "120"
+}, {
+  key: "rate_limit_chat_window_minutes",
+  label: "Chat Window (minutes)",
+  placeholder: "15"
+}, {
+  key: "rate_limit_lead_limit",
+  label: "Lead Requests",
+  placeholder: "30"
+}, {
+  key: "rate_limit_lead_window_minutes",
+  label: "Lead Window (minutes)",
+  placeholder: "15"
+}, {
+  key: "rate_limit_enquiry_limit",
+  label: "Enquiry/Admin Requests",
+  placeholder: "120"
+}, {
+  key: "rate_limit_enquiry_window_minutes",
+  label: "Enquiry/Admin Window (minutes)",
+  placeholder: "15"
+}, {
+  key: "rate_limit_payment_limit",
+  label: "Payment Requests",
+  placeholder: "20"
+}, {
+  key: "rate_limit_payment_window_minutes",
+  label: "Payment Window (minutes)",
+  placeholder: "15"
+}];
+const ALL_BOOL_KEYS = [...TOGGLE_GROUPS.flatMap(g => g.items.map(i => i.key)), "rate_limit_enabled"];
+const ALL_NUMBER_KEYS = [...GUARD_LIMIT_FIELDS.map(field => field.key), ...RATE_LIMIT_FIELDS.map(field => field.key)];
 const ALL_KEYS = [...ALL_BOOL_KEYS, ...ALL_NUMBER_KEYS, "app_maintenance_mode", "app_android_latest_version", "app_android_min_version", "app_android_update_url", "app_ios_latest_version", "app_ios_min_version", "app_ios_update_url", "app_release_notes", "logging_level", "whatsapp_customer_business_list_send_mode", "redis_enabled"];
 export default function SystemSettings() {
   const dispatch = useDispatch();
@@ -908,6 +1054,45 @@ export default function SystemSettings() {
                   <option value="info">Info</option>
                   <option value="debug">Debug</option>
                 </select>
+              </div>
+            </div>
+
+            {/* Rate Limiting */}
+            <div className={cx("section-divider")}></div>
+            <div className={cx("section-group")}>
+              <div className={cx("section-label")}>Rate Limiting</div>
+              <div className={cx("form-field")} style={{
+              marginBottom: 16
+            }}>
+                <label className={cx("label-with-help form-label")}>
+                  <span>Enable Rate Limiting</span>
+                  <HelpHint text={FIELD_HELP.rate_limit_enabled} />
+                </label>
+                <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8
+              }}>
+                  <label className={cx("toggle-switch")}>
+                    <input type="checkbox" checked={!!local?.rate_limit_enabled} onChange={() => toggle("rate_limit_enabled")} />
+                    <span className={cx("toggle-switch-slider")}></span>
+                  </label>
+                  <span className={cx("redis-toggle-text")}>{local?.rate_limit_enabled ? 'On' : 'Off'}</span>
+                </div>
+              </div>
+              <div className={cx("form-grid")}>
+                {RATE_LIMIT_FIELDS.map(({
+                key,
+                label,
+                placeholder
+              }) => <div key={key} className={cx("form-field")}>
+                    <label className={cx("label-with-help form-label")}>
+                      <span>{label}</span>
+                      <HelpHint text={FIELD_HELP[key]} />
+                    </label>
+                    <input type="number" min={NUMBER_FIELD_RULES[key].min} max={NUMBER_FIELD_RULES[key].max} step="1" className={cx(`form-input ${validationErrors[key] ? 'error' : ''}`)} value={local[key] ?? ""} onChange={e => setNumber(key, e.target.value)} placeholder={placeholder} />
+                    {validationErrors[key] && <div className={cx("input-error")}>{validationErrors[key]}</div>}
+                  </div>)}
               </div>
             </div>
 

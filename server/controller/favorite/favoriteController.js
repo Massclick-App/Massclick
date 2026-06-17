@@ -6,14 +6,15 @@ import {
 } from "../../helper/favorite/favoriteHelper.js";
 import { BAD_REQUEST, NOT_FOUND, CONFLICT } from "../../errorCodes.js";
 import { getSignedUrlByKey } from "../../s3Uploder.js";
+import { resolveEffectiveSubjectId } from "../../auth/authMiddleware.js";
 
 export const addFavoriteAction = async (req, res) => {
   try {
-    const { businessId, userId } = req.body;
-
-    if (!userId) {
-      return res.status(BAD_REQUEST.code).send({ message: "User ID required" });
-    }
+    const { businessId } = req.body;
+    const userId = resolveEffectiveSubjectId(req, {
+      allowAdminOverride: true,
+      fieldNames: ["userId"],
+    });
 
     if (!businessId) {
       return res.status(BAD_REQUEST.code).send({ message: "Business ID required" });
@@ -33,11 +34,11 @@ export const addFavoriteAction = async (req, res) => {
 
 export const removeFavoriteAction = async (req, res) => {
   try {
-    const { businessId, userId } = req.body;
-
-    if (!userId) {
-      return res.status(BAD_REQUEST.code).send({ message: "User ID required" });
-    }
+    const { businessId } = req.body;
+    const userId = resolveEffectiveSubjectId(req, {
+      allowAdminOverride: true,
+      fieldNames: ["userId"],
+    });
 
     if (!businessId) {
       return res.status(BAD_REQUEST.code).send({ message: "Business ID required" });
@@ -57,11 +58,10 @@ export const removeFavoriteAction = async (req, res) => {
 
 export const listFavoritesAction = async (req, res) => {
   try {
-    const { userId } = req.query;
-
-    if (!userId) {
-      return res.status(BAD_REQUEST.code).send({ message: "User ID required" });
-    }
+    const userId = resolveEffectiveSubjectId(req, {
+      allowAdminOverride: true,
+      fieldNames: ["userId"],
+    });
 
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
@@ -88,11 +88,10 @@ export const listFavoritesAction = async (req, res) => {
 export const checkFavoriteAction = async (req, res) => {
   try {
     const { businessId } = req.query;
-    const { userId } = req.query;
-
-    if (!userId) {
-      return res.status(BAD_REQUEST.code).send({ message: "User ID required" });
-    }
+    const userId = resolveEffectiveSubjectId(req, {
+      allowAdminOverride: true,
+      fieldNames: ["userId"],
+    });
 
     if (!businessId) {
       return res.status(BAD_REQUEST.code).send({ message: "Business ID required" });

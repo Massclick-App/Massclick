@@ -57,6 +57,7 @@ export const updateSystemSettingsAction = async (req, res) => {
 
     const booleanFields = [
       "otp_real_enabled",
+      "rate_limit_enabled",
       "whatsapp_business_lead_alert",
       "whatsapp_customer_business_list",
       "whatsapp_mni_lead_alert",
@@ -92,6 +93,22 @@ export const updateSystemSettingsAction = async (req, res) => {
     ];
 
     const numberFields = [
+      "rate_limit_api_limit",
+      "rate_limit_api_window_minutes",
+      "rate_limit_auth_limit",
+      "rate_limit_auth_window_minutes",
+      "rate_limit_otp_limit",
+      "rate_limit_otp_window_minutes",
+      "rate_limit_businesslist_limit",
+      "rate_limit_businesslist_window_minutes",
+      "rate_limit_chat_limit",
+      "rate_limit_chat_window_minutes",
+      "rate_limit_lead_limit",
+      "rate_limit_lead_window_minutes",
+      "rate_limit_enquiry_limit",
+      "rate_limit_enquiry_window_minutes",
+      "rate_limit_payment_limit",
+      "rate_limit_payment_window_minutes",
       "lead_guard_anonymous_dedupe_minutes",
       "lead_guard_user_dedupe_minutes",
       "whatsapp_business_lead_daily_cap",
@@ -99,6 +116,22 @@ export const updateSystemSettingsAction = async (req, res) => {
     ];
 
     const numberFieldRules = {
+      rate_limit_api_limit: { min: 1, max: 100000 },
+      rate_limit_api_window_minutes: { min: 1, max: 1440 },
+      rate_limit_auth_limit: { min: 1, max: 100000 },
+      rate_limit_auth_window_minutes: { min: 1, max: 1440 },
+      rate_limit_otp_limit: { min: 1, max: 100000 },
+      rate_limit_otp_window_minutes: { min: 1, max: 1440 },
+      rate_limit_businesslist_limit: { min: 1, max: 100000 },
+      rate_limit_businesslist_window_minutes: { min: 1, max: 1440 },
+      rate_limit_chat_limit: { min: 1, max: 100000 },
+      rate_limit_chat_window_minutes: { min: 1, max: 1440 },
+      rate_limit_lead_limit: { min: 1, max: 100000 },
+      rate_limit_lead_window_minutes: { min: 1, max: 1440 },
+      rate_limit_enquiry_limit: { min: 1, max: 100000 },
+      rate_limit_enquiry_window_minutes: { min: 1, max: 1440 },
+      rate_limit_payment_limit: { min: 1, max: 100000 },
+      rate_limit_payment_window_minutes: { min: 1, max: 1440 },
       lead_guard_anonymous_dedupe_minutes: { min: 0, max: 1440 },
       lead_guard_user_dedupe_minutes: { min: 0, max: 1440 },
       whatsapp_business_lead_daily_cap: { min: 0, max: 100 },

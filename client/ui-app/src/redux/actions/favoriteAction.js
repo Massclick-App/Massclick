@@ -1,4 +1,5 @@
 import axiosInstance from '../../services/axiosInstance.js';
+import { getCustomerToken, getCustomerUser } from "../../auth/authStore.js";
 
 const API_URL = process.env.REACT_APP_API_URL;
 
@@ -13,15 +14,11 @@ export const REMOVE_FAVORITE_SUCCESS = "REMOVE_FAVORITE_SUCCESS";
 export const REMOVE_FAVORITE_FAILURE = "REMOVE_FAVORITE_FAILURE";
 
 export const getAuthUser = () => {
-  try {
-    return JSON.parse(localStorage.getItem("authUser")) || null;
-  } catch {
-    return null;
-  }
+  return getCustomerUser();
 };
 
 const getHeaders = () => {
-  const token = localStorage.getItem("authToken");
+  const token = getCustomerToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
@@ -32,7 +29,7 @@ export const fetchFavorites = (page = 1, limit = 50) => async (dispatch) => {
   dispatch({ type: FETCH_FAVORITES_REQUEST });
   try {
     const { data } = await axiosInstance.get(`${API_URL}/favorites/list`, {
-      params: { userId: user._id, page, limit },
+      params: { page, limit },
       headers: getHeaders(),
     });
     dispatch({ type: FETCH_FAVORITES_SUCCESS, payload: data.favorites || [] });
@@ -52,7 +49,7 @@ export const addFavorite = (businessId) => async (dispatch) => {
   try {
     await axiosInstance.post(
       `${API_URL}/favorites/add`,
-      { userId: user._id, businessId },
+      { businessId },
       { headers: getHeaders() }
     );
     dispatch({ type: ADD_FAVORITE_SUCCESS, payload: businessId });
@@ -76,7 +73,7 @@ export const removeFavorite = (businessId) => async (dispatch) => {
   try {
     await axiosInstance.post(
       `${API_URL}/favorites/remove`,
-      { userId: user._id, businessId },
+      { businessId },
       { headers: getHeaders() }
     );
     dispatch({ type: REMOVE_FAVORITE_SUCCESS, payload: businessId });

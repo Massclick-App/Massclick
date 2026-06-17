@@ -113,6 +113,7 @@ const Cards = ({
   filterConfig = [],
   distance = null,
   viewMode = "list",
+  cardVariant = "",
   ...props
 }) => {
   const navigate = useNavigate();
@@ -350,7 +351,7 @@ const Cards = ({
         document.body
       )}
       <Link to={to} state={props.state} className={cx("card-link")}>
-        <div className={cx("base-card", `base-card--${viewMode}`)}>
+        <div className={cx("base-card", `base-card--${viewMode}`, cardVariant && `base-card--${cardVariant}`)}>
 
           {/* Image */}
           <div className={cx("card-image-wrapper")}>

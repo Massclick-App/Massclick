@@ -1,21 +1,19 @@
 import { saveFCMToken, removeFCMToken, getActiveFCMTokens } from '../helper/fcmTokenHelper.js';
 import { BAD_REQUEST, OK } from '../errorCodes.js';
 import { ObjectId } from 'mongodb';
+import { resolveEffectiveSubjectId } from '../auth/authMiddleware.js';
 /**
  * Register web push subscription
  * POST /api/fcm-token/web-register
- * Body: { userId, endpoint, auth, p256dh }
+ * Body: { endpoint, auth, p256dh }
  */
 export const registerWebPushTokenAction = async (req, res) => {
   try {
-    const { userId, endpoint, auth, p256dh } = req.body;
+    const { endpoint, auth, p256dh } = req.body;
+    const userId = resolveEffectiveSubjectId(req);
 
-    if (!userId || !endpoint || !auth || !p256dh) {
-      return res.status(BAD_REQUEST.code).json({ message: 'Missing required fields: userId, endpoint, auth, p256dh' });
-    }
-
-    if (!ObjectId.isValid(userId)) {
-      return res.status(BAD_REQUEST.code).json({ message: 'Invalid user ID format' });
+    if (!endpoint || !auth || !p256dh) {
+      return res.status(BAD_REQUEST.code).json({ message: 'Missing required fields: endpoint, auth, p256dh' });
     }
 
     const subscriptionToken = JSON.stringify({ endpoint, auth, p256dh });
@@ -38,7 +36,6 @@ export const registerWebPushTokenAction = async (req, res) => {
  * Save or update FCM token for a user
  * POST /api/fcm-token/save
  * Body: {
- *   userId: string,
  *   token: string,
  *   deviceName: string (optional),
  *   platform: 'android' | 'ios' | 'web'
@@ -46,10 +43,11 @@ export const registerWebPushTokenAction = async (req, res) => {
  */
 export const saveFCMTokenAction = async (req, res) => {
   try {
-    const { userId: requestUserId, token, deviceName, platform } = req.body;
-    
-    // Use the userId from request body directly if it's a valid ObjectId
-    const userId = requestUserId?.toString().trim();
+    const { token, deviceName, platform } = req.body;
+    const userId = resolveEffectiveSubjectId(req, {
+      allowAdminOverride: true,
+      fieldNames: ["userId"],
+    });
 
     console.log('saveFCMTokenAction request:', {
       requestUserId: userId,
@@ -57,9 +55,9 @@ export const saveFCMTokenAction = async (req, res) => {
       platform
     });
 
-    if (!userId || !token || !platform) {
+    if (!token || !platform) {
       return res.status(BAD_REQUEST.code).json({
-        message: 'Missing required fields: userId, token, platform',
+        message: 'Missing required fields: token, platform',
         code: BAD_REQUEST.code
       });
     }
@@ -101,12 +99,16 @@ export const saveFCMTokenAction = async (req, res) => {
  */
 export const refreshFCMTokenAction = async (req, res) => {
   try {
-    const { userId, oldToken } = req.params;
+    const { oldToken } = req.params;
     const { newToken, deviceName } = req.body;
+    const userId = resolveEffectiveSubjectId(req, {
+      allowAdminOverride: true,
+      fieldNames: ["userId"],
+    });
 
-    if (!userId || !oldToken || !newToken) {
+    if (!oldToken || !newToken) {
       return res.status(BAD_REQUEST.code).json({
-        message: 'Missing required parameters: userId, oldToken, newToken',
+        message: 'Missing required parameters: oldToken, newToken',
         code: BAD_REQUEST.code
       });
     }
@@ -140,11 +142,15 @@ export const refreshFCMTokenAction = async (req, res) => {
  */
 export const removeFCMTokenAction = async (req, res) => {
   try {
-    const { userId, token } = req.params;
+    const { token } = req.params;
+    const userId = resolveEffectiveSubjectId(req, {
+      allowAdminOverride: true,
+      fieldNames: ["userId"],
+    });
 
-    if (!userId || !token) {
+    if (!token) {
       return res.status(BAD_REQUEST.code).json({
-        message: 'Missing required parameters: userId, token',
+        message: 'Missing required parameters: token',
         code: BAD_REQUEST.code
       });
     }
@@ -170,7 +176,10 @@ export const removeFCMTokenAction = async (req, res) => {
  */
 export const getActiveFCMTokensAction = async (req, res) => {
   try {
-    const { userId } = req.params;
+    const userId = resolveEffectiveSubjectId(req, {
+      allowAdminOverride: true,
+      fieldNames: ["userId"],
+    });
 
     if (!userId) {
       return res.status(BAD_REQUEST.code).json({

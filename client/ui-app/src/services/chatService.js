@@ -1,4 +1,5 @@
 import axiosInstance from "./axiosInstance";
+import { getAdminAccessToken, getCustomerToken } from "../auth/authStore.js";
 
 const API_URL = process.env.REACT_APP_API_URL;
 
@@ -43,8 +44,8 @@ const retryWithBackoff = async (fn, maxRetries = 3, baseDelay = 1000) => {
   throw lastError;
 };
 
-export const getCustomerChatToken = () => localStorage.getItem("authToken");
-export const getAdminChatToken = () => localStorage.getItem("accessToken");
+export const getCustomerChatToken = () => getCustomerToken();
+export const getAdminChatToken = () => getAdminAccessToken();
 
 export const startChatConversation = (token = getCustomerChatToken()) =>
   axiosInstance

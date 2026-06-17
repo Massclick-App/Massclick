@@ -1,6 +1,13 @@
 import axiosInstance from '../../services/axiosInstance.js';
 import qs from 'qs';
 import { getPendingBusinessList } from './businessListAction.js';
+import {
+  clearAdminSession,
+  getAdminAccessToken,
+  getAdminRefreshToken,
+  recordAuthFailure,
+  setAdminSession,
+} from "../../auth/authStore.js";
 
 export const LOGIN_REQUEST = 'LOGIN_REQUEST';
 export const LOGIN_SUCCESS = 'LOGIN_SUCCESS';
@@ -39,11 +46,12 @@ export const login = (userName, password) => async (dispatch) => {
     const { accessToken, refreshToken, user = {} } = response.data;
 
         console.log("result", response.data);
-    localStorage.setItem('accessToken', accessToken);
-    localStorage.setItem('refreshToken', refreshToken);
-    localStorage.setItem('userRole', user?.userRole || '');
-    localStorage.setItem('userName', user?.userName || user?.email || '');
-    localStorage.setItem('allowedPages', JSON.stringify(user?.allowedPages || []));
+    setAdminSession({
+      accessToken,
+      refreshToken,
+      accessTokenExpiresAt: response.data.accessTokenExpiresAt,
+      user,
+    });
 
     dispatch({
       type: LOGIN_SUCCESS,
@@ -53,6 +61,7 @@ export const login = (userName, password) => async (dispatch) => {
     // Fetch pending businesses for the logged-in user
     dispatch(getPendingBusinessList());
   } catch (error) {
+    recordAuthFailure("admin-login", error);
     dispatch({
       type: LOGIN_FAILURE,
       payload: error.response?.data?.error || error.message,
@@ -63,7 +72,7 @@ export const login = (userName, password) => async (dispatch) => {
 export const relogin = () => async (dispatch) => {
   dispatch({ type: RELOGIN_REQUEST });
   try {
-    const refreshToken = localStorage.getItem("refreshToken");
+    const refreshToken = getAdminRefreshToken();
 
     const data = qs.stringify({
       grant_type: 'refresh_token',
@@ -79,11 +88,12 @@ export const relogin = () => async (dispatch) => {
     const { accessToken, accessTokenExpiresAt, refreshToken: newRefreshToken, user } = response.data;
 
     console.log("result", response.data);
-    localStorage.setItem("accessToken", accessToken);
-    localStorage.setItem("refreshToken", newRefreshToken);
-    localStorage.setItem("accessTokenExpiresAt", accessTokenExpiresAt);
-    localStorage.setItem("userRole", user?.userRole || '');
-    localStorage.setItem("allowedPages", JSON.stringify(user?.allowedPages || []));
+    setAdminSession({
+      accessToken,
+      refreshToken: newRefreshToken,
+      accessTokenExpiresAt,
+      user,
+    });
 
     dispatch({
       type: RELOGIN_SUCCESS,
@@ -95,6 +105,7 @@ export const relogin = () => async (dispatch) => {
 
     return response.data;
   } catch (error) {
+    recordAuthFailure("admin-relogin", error);
     const message =
       error.response?.data?.error || 
       error.response?.data?.message ||
@@ -109,7 +120,7 @@ export const relogin = () => async (dispatch) => {
 };
 
 export const logout = () => async (dispatch) => {
-  const token = localStorage.getItem("accessToken");
+  const token = getAdminAccessToken();
 
   try {
     if (token) {
@@ -121,21 +132,8 @@ export const logout = () => async (dispatch) => {
   } catch (err) {
     // Error silently caught
   } finally {
-    const keysToRemove = [
-      "accessToken",
-      "refreshToken",
-      "accessTokenExpiresAt",
-      "userRole",
-      "userName",
-      "allowedPages",
-    ];
-
-    keysToRemove.forEach((key) => localStorage.removeItem(key));
-
-    localStorage.clear();
-    sessionStorage.clear();
-
     delete axiosInstance.defaults.headers.common["Authorization"];
+    clearAdminSession();
 
     dispatch({ type: LOGOUT });
 

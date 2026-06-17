@@ -1,5 +1,10 @@
 // clientAuthActions.js
 import axiosInstance from '../../services/axiosInstance.js';
+import {
+  clearPublicClientSession,
+  ensureWebDeviceId,
+  setPublicClientSession,
+} from "../../auth/authStore.js";
 
 export const CLIENT_AUTH_REQUEST = "CLIENT_AUTH_REQUEST";
 export const CLIENT_AUTH_SUCCESS = "CLIENT_AUTH_SUCCESS";
@@ -14,11 +19,7 @@ export const clientLogin = () => async (dispatch) => {
   dispatch({ type: CLIENT_AUTH_REQUEST });
 
   try {
-    let deviceId = localStorage.getItem("device_id");
-    if (!deviceId) {
-      deviceId = `web_${Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)}`;
-      localStorage.setItem("device_id", deviceId);
-    }
+    const deviceId = ensureWebDeviceId();
 
     const params = new URLSearchParams();
     params.append("grant_type", "client_credentials");
@@ -38,9 +39,12 @@ export const clientLogin = () => async (dispatch) => {
 
     const { accessToken, refreshToken, accessTokenExpiresAt } = response.data;
 
-    localStorage.setItem("clientAccessToken", accessToken);
-    localStorage.setItem("clientRefreshToken", refreshToken);
-    localStorage.setItem("clientAccessTokenExpiresAt", accessTokenExpiresAt);
+    setPublicClientSession({
+      accessToken,
+      refreshToken,
+      accessTokenExpiresAt,
+      deviceId,
+    });
 
     dispatch({
       type: CLIENT_AUTH_SUCCESS,
@@ -70,9 +74,7 @@ export const getClientToken = () => async (dispatch) => {
       const result = await dispatch(clientLogin());
       clientAccessToken = result.accessToken;
     } catch (loginError) {
-      localStorage.removeItem("clientAccessToken");
-      localStorage.removeItem("clientRefreshToken");
-      localStorage.removeItem("clientAccessTokenExpiresAt");
+      clearPublicClientSession();
 
       throw loginError;
     }
@@ -83,9 +85,7 @@ export const getClientToken = () => async (dispatch) => {
 
 export const clientLogout = () => async (dispatch) => {
   try {
-    localStorage.removeItem("clientAccessToken");
-    localStorage.removeItem("clientRefreshToken");
-    localStorage.removeItem("clientAccessTokenExpiresAt");
+    clearPublicClientSession();
   } finally {
     dispatch({ type: CLIENT_LOGOUT });
   }
