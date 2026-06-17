@@ -118,9 +118,9 @@ export default function GlobalDrawer() {
   };
 
   useEffect(() => {
-    if (isUserLoggedIn()) {
-      dispatch(viewAllOtpUsers());
-    }
+    // if (isUserLoggedIn()) {
+    //   dispatch(viewAllOtpUsers());
+    // }
   }, [dispatch]);
 
   return (
