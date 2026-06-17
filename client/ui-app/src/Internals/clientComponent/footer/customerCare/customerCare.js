@@ -49,7 +49,7 @@ const contactLeads = [{
 }, {
   id: 2,
   role: "HR Contact",
-  phone: "+91 93454 98086",
+  phone: "+91 8438986740",
   icon: CallIcon,
   note: "People operations and partnership support"
 }];

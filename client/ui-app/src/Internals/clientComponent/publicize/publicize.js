@@ -488,7 +488,7 @@ export default function PublicizePage() {
   return (
     <main className={cx("publicize-wrapper")}>
       <header className={cx("topbar")}>
-        <div className={cx("logo")}>
+        <div className={cx("logo")} onClick={() => window.location.href = "/"}>
           Mass<span>click</span>
         </div>
         <nav className={cx("nav-links")} aria-label="Publicize sections">

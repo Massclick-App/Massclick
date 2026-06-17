@@ -43,6 +43,7 @@
   font-weight: 900;
   letter-spacing: 0;
   color: var(--brand-blue);
+  cursor: pointer;
 }
 
 .logo span {
