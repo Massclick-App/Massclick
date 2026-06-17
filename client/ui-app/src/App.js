@@ -20,7 +20,6 @@ import { userMenuItems } from './Internals/clientComponent/categoryBar.js';
 
 import ShimmerSkeleton from './Internals/clientComponent/shimmerSkeleton.js';
 import GlobalLoaderWrapper from './Internals/clientComponent/common/GlobalLoaderWrapper.js';
-import VideoPreloader from './components/VideoPreloader.js';
 import { scheduleIdleCallback } from './utils/scheduleIdleCallback.js';
 
 const Dashboard = lazy(() => import(/* webpackChunkName: "admin-dashboard" */ './Dashboard'));

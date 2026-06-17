@@ -357,6 +357,11 @@ const LandingPage = React.memo(() => {
   useEffect(() => {
     import("../../firebase")
       .then(({ messaging, onMessage }) => {
+        if (!messaging || typeof onMessage !== "function") {
+          console.warn("[FCM] Skipping foreground messaging setup in this browser");
+          return undefined;
+        }
+
         const unsubscribe = onMessage(messaging, (payload) => {
           console.log("[FCM] Foreground message received:", payload);
           const { title, body, image } = payload.notification || {};
