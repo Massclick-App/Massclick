@@ -1,5 +1,6 @@
 import { getRedisClient, isRedisConnected } from "../utils/redisClient.js";
 import { getSettings } from "../helper/systemSettings/settingsService.js";
+import { sendRateLimitAlert } from "../helper/rateLimitAlertHelper.js";
 
 const localBuckets = new Map();
 
@@ -79,6 +80,19 @@ export const createRateLimit = ({
     const rejectRequest = (count) => {
       setHeaders(count);
       res.setHeader("Retry-After", String(retryAfterSeconds));
+      void sendRateLimitAlert({
+        ruleName: keyPrefix,
+        message,
+        limit,
+        windowMs,
+        count,
+        clientIp,
+        method: req.method,
+        path: req.originalUrl || req.url,
+        retryAfterSeconds,
+        resetAt,
+        bucketKey,
+      });
       return res.status(429).json({
         message,
         retryAfterSeconds,
