@@ -1,4 +1,5 @@
 import { getRedisClient, isRedisConnected } from "../utils/redisClient.js";
+import { getSettings } from "../helper/systemSettings/settingsService.js";
 
 const localBuckets = new Map();
 
@@ -41,6 +42,16 @@ const getClientIp = (req) => {
   }
 
   return normalizeIp(req.ip || req.socket?.remoteAddress || req.connection?.remoteAddress);
+};
+
+const resolveSettingNumber = (value, fallback, min = 1, max = Number.MAX_SAFE_INTEGER) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+
+  const next = Math.floor(parsed);
+  if (next < min) return fallback;
+  if (next > max) return max;
+  return next;
 };
 
 export const createRateLimit = ({
@@ -113,58 +124,108 @@ export const createRateLimit = ({
   };
 };
 
-export const apiRateLimit = createRateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 900,
-  keyPrefix: "api",
-  message: "API rate limit exceeded. Please slow down and try again.",
-});
+const RATE_LIMIT_RULES = {
+  api: {
+    limitKey: "rate_limit_api_limit",
+    windowKey: "rate_limit_api_window_minutes",
+    fallbackLimit: 900,
+    fallbackWindowMinutes: 15,
+    message: "API rate limit exceeded. Please slow down and try again.",
+    keyPrefix: "api",
+  },
+  businesslist: {
+    limitKey: "rate_limit_businesslist_limit",
+    windowKey: "rate_limit_businesslist_window_minutes",
+    fallbackLimit: 240,
+    fallbackWindowMinutes: 10,
+    message: "Business list requests are being throttled. Please slow down.",
+    keyPrefix: "businesslist",
+  },
+  auth: {
+    limitKey: "rate_limit_auth_limit",
+    windowKey: "rate_limit_auth_window_minutes",
+    fallbackLimit: 20,
+    fallbackWindowMinutes: 15,
+    message: "Too many authentication attempts. Please wait and try again.",
+    keyPrefix: "auth",
+  },
+  otp: {
+    limitKey: "rate_limit_otp_limit",
+    windowKey: "rate_limit_otp_window_minutes",
+    fallbackLimit: 5,
+    fallbackWindowMinutes: 10,
+    message: "Too many OTP requests. Please wait before trying again.",
+    keyPrefix: "otp",
+  },
+  chat: {
+    limitKey: "rate_limit_chat_limit",
+    windowKey: "rate_limit_chat_window_minutes",
+    fallbackLimit: 120,
+    fallbackWindowMinutes: 15,
+    message: "Chat actions are being rate limited. Please slow down.",
+    keyPrefix: "chat",
+  },
+  lead: {
+    limitKey: "rate_limit_lead_limit",
+    windowKey: "rate_limit_lead_window_minutes",
+    fallbackLimit: 30,
+    fallbackWindowMinutes: 15,
+    message: "Lead submission is temporarily rate limited. Please try again later.",
+    keyPrefix: "lead",
+  },
+  admin: {
+    limitKey: "rate_limit_enquiry_limit",
+    windowKey: "rate_limit_enquiry_window_minutes",
+    fallbackLimit: 120,
+    fallbackWindowMinutes: 15,
+    message: "Admin requests are being rate limited. Please slow down.",
+    keyPrefix: "admin",
+  },
+  payment: {
+    limitKey: "rate_limit_payment_limit",
+    windowKey: "rate_limit_payment_window_minutes",
+    fallbackLimit: 20,
+    fallbackWindowMinutes: 15,
+    message: "Payment requests are being rate limited. Please try again later.",
+    keyPrefix: "payment",
+  },
+};
 
-export const businessListRateLimit = createRateLimit({
-  windowMs: 10 * 60 * 1000,
-  limit: 240,
-  keyPrefix: "businesslist",
-  message: "Business list requests are being throttled. Please slow down.",
-});
+const createConfiguredRateLimit = (ruleName) => async (req, res, next) => {
+  const rule = RATE_LIMIT_RULES[ruleName];
+  if (!rule) return next();
 
-export const authRateLimit = createRateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 20,
-  keyPrefix: "auth",
-  message: "Too many authentication attempts. Please wait and try again.",
-});
+  try {
+    const settings = await getSettings();
+    if (settings?.rate_limit_enabled === false) {
+      return next();
+    }
 
-export const otpRateLimit = createRateLimit({
-  windowMs: 10 * 60 * 1000,
-  limit: 5,
-  keyPrefix: "otp",
-  message: "Too many OTP requests. Please wait before trying again.",
-});
+    const limit = resolveSettingNumber(settings?.[rule.limitKey], rule.fallbackLimit, 1, 100000);
+    const windowMinutes = resolveSettingNumber(settings?.[rule.windowKey], rule.fallbackWindowMinutes, 1, 1440);
 
-export const chatRateLimit = createRateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 120,
-  keyPrefix: "chat",
-  message: "Chat actions are being rate limited. Please slow down.",
-});
+    return createRateLimit({
+      windowMs: windowMinutes * 60 * 1000,
+      limit,
+      message: rule.message,
+      keyPrefix: rule.keyPrefix,
+    })(req, res, next);
+  } catch (error) {
+    console.warn(`[RateLimit] Failed to load settings for ${ruleName}: ${error.message}`);
+    return createRateLimit({
+      windowMs: rule.fallbackWindowMinutes * 60 * 1000,
+      limit: rule.fallbackLimit,
+      message: rule.message,
+      keyPrefix: rule.keyPrefix,
+    })(req, res, next);
+  }
+};
 
-export const leadRateLimit = createRateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 30,
-  keyPrefix: "lead",
-  message: "Lead submission is temporarily rate limited. Please try again later.",
-});
-
-export const adminRateLimit = createRateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 120,
-  keyPrefix: "admin",
-  message: "Admin requests are being rate limited. Please slow down.",
-});
-
-export const paymentRateLimit = createRateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 20,
-  keyPrefix: "payment",
-  message: "Payment requests are being rate limited. Please try again later.",
-});
+export const apiRateLimit = createConfiguredRateLimit("api");
+export const businessListRateLimit = createConfiguredRateLimit("businesslist");
+export const authRateLimit = createConfiguredRateLimit("auth");
+export const otpRateLimit = createConfiguredRateLimit("otp");
+export const chatRateLimit = createConfiguredRateLimit("chat");
+export const leadRateLimit = createConfiguredRateLimit("lead");
+export const adminRateLimit = createConfiguredRateLimit("admin");
+export const paymentRateLimit = createConfiguredRateLimit("payment");
