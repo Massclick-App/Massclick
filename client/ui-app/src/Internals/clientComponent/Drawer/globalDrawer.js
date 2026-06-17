@@ -12,7 +12,11 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { useDrawer } from "./drawerContext";
-import { getUserMenuLabel, isBusinessPeopleUser, userMenuItems } from "../categoryBar.js";
+import {
+  getUserMenuLabel,
+  isBusinessPeopleUser,
+  userMenuItems,
+} from "../categoryBar.js";
 import { useNavigate } from "react-router-dom";
 import { styled } from "@mui/material/styles";
 import { useDispatch, useSelector } from "react-redux";
@@ -26,7 +30,6 @@ const formatUiName = (name) => {
     .replace(/\b\w/g, (char) => char.toUpperCase())
     .trim();
 };
-
 
 const DrawerContainer = styled("div")(({ theme }) => ({
   width: "100%",
@@ -64,7 +67,6 @@ export default function GlobalDrawer() {
   const { isDrawerOpen, closeDrawer } = useDrawer();
   const navigate = useNavigate();
   const dispatch = useDispatch();
-
 
   const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
   const userName = authUser?.userName || "Guest User";
@@ -104,8 +106,21 @@ export default function GlobalDrawer() {
     if (item.path) navigate(item.path);
   };
 
+  const isUserLoggedIn = () => {
+    try {
+      const storedUser = localStorage.getItem("authUser");
+      if (!storedUser) return false;
+      const parsedUser = JSON.parse(storedUser);
+      return !!parsedUser?.mobileNumber1Verified;
+    } catch {
+      return false;
+    }
+  };
+
   useEffect(() => {
-    dispatch(viewAllOtpUsers());
+    if (isUserLoggedIn()) {
+      dispatch(viewAllOtpUsers());
+    }
   }, [dispatch]);
 
   return (
@@ -113,7 +128,7 @@ export default function GlobalDrawer() {
       anchor="right"
       open={isDrawerOpen}
       onClose={closeDrawer}
-      onOpen={() => { }}
+      onOpen={() => {}}
       disableSwipeToOpen
       sx={{
         zIndex: (theme) => theme.zIndex.modal + 20,
@@ -141,8 +156,8 @@ export default function GlobalDrawer() {
             closeDrawer();
             navigate("/");
           }}
-
-          sx={{ cursor: "pointer" }}>
+          sx={{ cursor: "pointer" }}
+        >
           <Avatar
             src={UserDetail?.profileImage || undefined}
             sx={{
@@ -151,7 +166,7 @@ export default function GlobalDrawer() {
               bgcolor: "#F7941D",
               fontSize: "1.4rem",
               fontWeight: 700,
-              objectFit: "cover"
+              objectFit: "cover",
             }}
           >
             {!UserDetail?.profileImage && userName.charAt(0).toUpperCase()}
@@ -176,7 +191,9 @@ export default function GlobalDrawer() {
                 navigate("/user_edit-profile");
               }}
             >
-              {isBusinessPeopleUser(currentUser) ? "View Business" : "View Profile"}
+              {isBusinessPeopleUser(currentUser)
+                ? "View Business"
+                : "View Profile"}
             </Typography>
           </Box>
           <CloseIcon
