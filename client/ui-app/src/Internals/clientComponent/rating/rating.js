@@ -54,8 +54,20 @@ export default function UserRatingWidget({
   };
     return (
         <>
-            <Box sx={{ display: 'flex', alignItems: 'center', flexDirection: 'column' }}>
-                <p style={{ margin: '0 0 5px 0', fontSize: '16px', color: '#FF8C00' }}>Click to Rate</p>
+            <Box sx={{
+                alignItems: 'center',
+                background: 'linear-gradient(135deg, #ffffff 0%, #fff7ed 48%, #eff6ff 100%)',
+                border: '1px solid #e5edf7',
+                borderRadius: '14px',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.85)',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                minHeight: 112,
+                px: 2,
+                py: 1.5,
+            }}>
+                <p style={{ margin: '0 0 6px 0', fontSize: '13px', fontWeight: 800, color: '#c2410c', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Start your review</p>
                 <Rating
                     name="user-rating-input"
                     value={value}
@@ -69,15 +81,30 @@ export default function UserRatingWidget({
                     sx={{
                         '& .MuiRating-icon': {
                             fontSize: '2rem',
+                            marginInline: '1px',
                         },
                         '& .MuiRating-iconFilled, & .MuiRating-iconHover': {
                             color: CUSTOM_STAR_COLOR,
+                        },
+                        '& .MuiRating-iconEmpty': {
+                            color: '#cbd5e1',
                         },
                     }}
                 />
 
                 {value !== null && (
-                    <Box sx={{ mt: 1, fontSize: '14px', color: '#1a73e8' }}>
+                    <Box sx={{
+                        background: '#ffffff',
+                        border: '1px solid #dbeafe',
+                        borderRadius: '999px',
+                        color: '#0f5fd7',
+                        fontSize: '13px',
+                        fontWeight: 800,
+                        lineHeight: 1,
+                        mt: 1,
+                        px: 1.4,
+                        py: 0.75,
+                    }}>
                         {labels[hover !== -1 ? hover : value] || 'Rate Now'}
                     </Box>
                 )}

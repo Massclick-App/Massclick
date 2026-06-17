@@ -5,6 +5,9 @@ import {
 
 } from "../../../redux/actions/reviewAction";
 import ReviewCard from "./reviewCard";
+import { createScopedClassNames } from "../../../utils/createScopedClassNames";
+import styles from "./reviewReplayBox.module.css";
+const cx = createScopedClassNames(styles);
 
 export default function ReviewList({ businessId }) {
   const dispatch = useDispatch();
@@ -16,11 +19,20 @@ export default function ReviewList({ businessId }) {
   
   useEffect(() => {
     dispatch(getBusinessReviews(businessId));
-  }, [businessId]);
+  }, [dispatch, businessId]);
+
+  const reviewItems = Array.isArray(reviews) ? reviews : [];
 
   return (
-    <>
-      {reviews.map(review => (
+    <div className={cx("review-list")}>
+      {reviewItems.length === 0 && (
+        <div className={cx("review-empty")}>
+          <strong>No reviews yet</strong>
+          <span>Be the first customer to share an experience with this business.</span>
+        </div>
+      )}
+
+      {reviewItems.map(review => (
         <ReviewCard
           key={review._id}
           review={review}
@@ -29,11 +41,10 @@ export default function ReviewList({ businessId }) {
         />))}
 
       {hasMore && (
-        <button onClick={() => dispatch(getBusinessReviews(businessId, "latest", 2))}>
+        <button className={cx("review-load-more")} onClick={() => dispatch(getBusinessReviews(businessId, "latest", 2))}>
           Load More
         </button>
       )}
-    </>
+    </div>
   );
 }
-

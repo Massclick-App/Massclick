@@ -184,7 +184,7 @@ export default function User() {
     id: "userProfile",
     label: "User Profile",
     renderCell: value => value ? <Avatar src={value} alt="User" /> : "-"
-  }, {
+  }, {    
     id: "userName",
     label: "User Name"
   }, {
@@ -314,9 +314,9 @@ export default function User() {
               {errors.managedBy && <p className={cx("user-error-text")}>{errors.managedBy}</p>}
             </div>}
 
-          <div className={cx("form-input-group col-span-all upload-section")}>
-            <div className={cx("upload-content")}>
-              <Button variant="contained" startIcon={<CloudUploadIcon />} component="label" className={cx("upload-button")}>
+          <div className={cx("user-form-input-group user-col-span-all user-upload-section")}>
+            <div className={cx("user-upload-content")}>
+              <Button variant="contained" startIcon={<CloudUploadIcon />} component="label" className={cx("user-upload-button")}>
                 Upload Image
                 <input type="file" accept="image/*" hidden ref={fileInputRef} onChange={handleImageChange} />
               </Button>
@@ -324,10 +324,8 @@ export default function User() {
               width: 56,
               height: 56
             }} />}
-              <div style={{
-              marginBottom: "10px"
-            }}>
-                <button type="submit" className={cx("submit-button")} disabled={loading}>
+              <div>
+                <button type="submit" className={cx("user-submit-button")} disabled={loading}>
                   {loading ? <CircularProgress size={24} color="inherit" /> : isEditMode ? "Update User" : "Create User"}
                 </button>
               </div>
