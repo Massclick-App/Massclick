@@ -7,6 +7,7 @@ import { Provider } from 'react-redux';
 import { DrawerProvider } from './Internals/clientComponent/Drawer/drawerContext.js';
 import { HelmetProvider } from "react-helmet-async";
 import { setAxiosStore } from './services/axiosInstance.js'; // Initialize axios store reference
+import { scheduleIdleCallback } from './utils/scheduleIdleCallback.js';
 
 // Set the store reference for axios global loader
 setAxiosStore(store);
@@ -35,10 +36,10 @@ root.render(
 // Load analytics asynchronously after page interaction to avoid blocking
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
-    requestIdleCallback(loadAnalytics, { timeout: 5000 });
+    scheduleIdleCallback(loadAnalytics, { timeout: 5000 });
   });
 } else {
-  requestIdleCallback(loadAnalytics, { timeout: 5000 });
+  scheduleIdleCallback(loadAnalytics, { timeout: 5000 });
 }
 
 reportWebVitals();
