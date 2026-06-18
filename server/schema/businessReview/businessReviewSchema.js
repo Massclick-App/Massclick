@@ -21,6 +21,13 @@ const businessReviewSchema = new Schema({
     default: "Anonymous"
   },
 
+  userMobile: {
+    type: String,
+    trim: true,
+    index: true,
+    default: ""
+  },
+
   rating: {
     type: Number,
     required: true,
@@ -88,5 +95,7 @@ const businessReviewSchema = new Schema({
     default: Date.now
   }
 });
+
+businessReviewSchema.index({ businessId: 1, userMobile: 1, status: 1 });
 
 export default businessReviewSchema;

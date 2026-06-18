@@ -1,7 +1,38 @@
 import businessListModel from "../../model/businessList/businessListModel.js";
 import businessReviewModel from "../../model/businessReview/businessReviewModel.js";
-import { uploadImageToS3, getSignedUrlByKey } from "../../s3Uploder.js";
 import mongoose from "mongoose";
+
+const normalizeMobile = (value = "") => {
+  const digits = String(value || "").replace(/\D/g, "");
+  return digits.length >= 10 ? digits.slice(-10) : digits;
+};
+
+const getBusinessMobiles = (business = {}) => {
+  return [business.contactList, business.contact, business.whatsappNumber]
+    .flatMap((value) => Array.isArray(value) ? value : [value])
+    .map(normalizeMobile)
+    .filter(Boolean);
+};
+
+const assertBusinessOwner = async ({ businessId, userMobile }) => {
+  if (!mongoose.Types.ObjectId.isValid(businessId)) {
+    throw new Error("Invalid business ID");
+  }
+
+  const business = await businessListModel
+    .findById(businessId)
+    .select("contact contactList whatsappNumber")
+    .lean();
+
+  if (!business) throw new Error("Business not found");
+
+  const normalizedUserMobile = normalizeMobile(userMobile);
+  const businessMobiles = getBusinessMobiles(business);
+
+  if (!normalizedUserMobile || !businessMobiles.includes(normalizedUserMobile)) {
+    throw new Error("Only the business owner can do this action");
+  }
+};
 
 const updateBusinessRatingSummary = async (businessId) => {
   const stats = await businessReviewModel.aggregate([
@@ -35,7 +66,7 @@ const updateBusinessRatingSummary = async (businessId) => {
 };
 
 export const addReviewHelper = async ({ businessId, reviewData }) => {
-  const { userId, userName, rating, ratingExperience, ratingLove, ratingPhotos } = reviewData;
+  const { userId, userName, userMobile, rating, ratingExperience, ratingLove, ratingPhotos } = reviewData;
 
   if (!mongoose.Types.ObjectId.isValid(businessId)) {
     throw new Error("Invalid business ID");
@@ -46,21 +77,30 @@ export const addReviewHelper = async ({ businessId, reviewData }) => {
   }
 
   const userObjectId = new mongoose.Types.ObjectId(userId);
+  const normalizedUserMobile = normalizeMobile(userMobile);
+
+  if (!normalizedUserMobile) {
+    throw new Error("Verified mobile number is required to review");
+  }
 
   const alreadyReviewed = await businessReviewModel.findOne({
     businessId,
-    userId: userObjectId,
+    $or: [
+      { userId: userObjectId },
+      { userMobile: normalizedUserMobile }
+    ],
     status: "ACTIVE"
   });
 
   if (alreadyReviewed) {
-    throw new Error("You already reviewed this business");
+    throw new Error("This mobile number already reviewed this business");
   }
 
   const review = await businessReviewModel.create({
     businessId,
     userId: userObjectId,
     userName: userName || "Anonymous",
+    userMobile: normalizedUserMobile,
     rating: Number(rating),
     ratingExperience,
     ratingLove: ratingLove || [],
@@ -104,13 +144,19 @@ export const getReviewsHelper = async ({
   };
 };
 
-export const addReplyHelper = async ({ reviewId, userId, userName, role, message }) => {
+export const addReplyHelper = async ({ businessId, reviewId, userId, userName, userMobile, role, message }) => {
   if (!mongoose.Types.ObjectId.isValid(userId)) {
     throw new Error("Invalid user ID");
   }
 
   const review = await businessReviewModel.findById(reviewId);
   if (!review) throw new Error("Review not found");
+
+  if (String(review.businessId) !== String(businessId)) {
+    throw new Error("Review does not belong to this business");
+  }
+
+  await assertBusinessOwner({ businessId, userMobile });
 
   review.replies.push({
     userId: new mongoose.Types.ObjectId(userId),
@@ -145,9 +191,15 @@ export const markHelpfulHelper = async ({ reviewId, userId }) => {
 };
 
 
-export const reportReviewHelper = async ({ reviewId }) => {
+export const reportReviewHelper = async ({ businessId, reviewId, userMobile }) => {
   const review = await businessReviewModel.findById(reviewId);
   if (!review) throw new Error("Review not found");
+
+  if (String(review.businessId) !== String(businessId)) {
+    throw new Error("Review does not belong to this business");
+  }
+
+  await assertBusinessOwner({ businessId, userMobile });
 
   review.status = "REPORTED";
   await review.save();

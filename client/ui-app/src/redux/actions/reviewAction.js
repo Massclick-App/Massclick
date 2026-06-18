@@ -128,7 +128,7 @@ export const markReviewHelpful =
 
 
 export const reportReview =
-  (businessId, reviewId) =>
+  (businessId, reviewId, payload = {}) =>
     async (dispatch) => {
 
       dispatch({ type: REPORT_REVIEW_REQUEST });
@@ -138,7 +138,7 @@ export const reportReview =
 
         await axiosInstance.post(
           `${API_URL}/business/${businessId}/reviews/${reviewId}/report`,
-          {},
+          payload,
           { headers: { Authorization: `Bearer ${token}` } }
         );
 
@@ -152,5 +152,6 @@ export const reportReview =
           type: REPORT_REVIEW_FAILURE,
           payload: error.response?.data || error.message
         });
+        throw error;
       }
     };

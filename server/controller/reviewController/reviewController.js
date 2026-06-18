@@ -43,9 +43,11 @@ export const getReviewsAction = async (req, res) => {
 export const addReplyAction = async (req, res) => {
   try {
     const reply = await addReplyHelper({
+      businessId: req.params.businessId,
       reviewId: req.params.reviewId,
       userId: req.body.userId,
       userName: req.body.userName,
+      userMobile: req.body.userMobile,
       role: req.body.role || "OWNER",
       message: req.body.message
     });
@@ -75,7 +77,11 @@ export const markHelpfulAction = async (req, res) => {
 
 export const reportReviewAction = async (req, res) => {
   try {
-    await reportReviewHelper({ reviewId: req.params.reviewId });
+    await reportReviewHelper({
+      businessId: req.params.businessId,
+      reviewId: req.params.reviewId,
+      userMobile: req.body.userMobile
+    });
     await invalidateReviewCache();
     await invalidateSearchCache();
     res.status(200).json({ success: true });

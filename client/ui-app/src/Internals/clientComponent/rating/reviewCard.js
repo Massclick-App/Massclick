@@ -10,14 +10,20 @@ import { useDispatch } from "react-redux";
 import { markReviewHelpful, reportReview } from "../../../redux/actions/reviewAction";
 import ReplyBox from "./reviewReplayBox";
 import OTPLoginModal from "../AddBusinessModel";
+import { useSnackbar } from "notistack";
 import styles from "./reviewReplayBox.module.css";
 const cx = createScopedClassNames(styles);
+const normalizeMobile = value => {
+  const digits = String(value || "").replace(/\D/g, "");
+  return digits.length >= 10 ? digits.slice(-10) : digits;
+};
 export default function ReviewCard({
   review,
   businessId,
   business
 }) {
   const dispatch = useDispatch();
+  const { enqueueSnackbar } = useSnackbar();
   const [showReplyBox, setShowReplyBox] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
@@ -25,7 +31,10 @@ export default function ReviewCard({
   const isLoggedIn = !!authUser?._id && authUser?.mobileNumber1Verified;
   const alreadyHelpful = review.helpfulBy?.some(id => String(id) === String(authUser._id));
   const ownerBusinessIds = [authUser?.businessId, authUser?.business?._id, authUser?.business, authUser?.managedBusinessId].filter(Boolean).map(String);
-  const isOwner = authUser?.businessPeople === true && (ownerBusinessIds.includes(String(businessId)) || authUser?.businessName === business?.businessName);
+  const userMobile = localStorage.getItem("mobileNumber") || authUser.mobileNumber1 || authUser.mobileNumber2 || "";
+  const normalizedUserMobile = normalizeMobile(userMobile);
+  const businessMobiles = [business?.contactList, business?.contact, business?.whatsappNumber].map(normalizeMobile).filter(Boolean);
+  const isOwner = authUser?.businessPeople === true && (ownerBusinessIds.includes(String(businessId)) || authUser?.businessName === business?.businessName || businessMobiles.includes(normalizedUserMobile));
   const handleHelpful = () => {
     if (!isLoggedIn) {
       setShowLoginModal(true);
@@ -34,9 +43,24 @@ export default function ReviewCard({
     if (alreadyHelpful) return;
     dispatch(markReviewHelpful(businessId, review._id, authUser._id));
   };
-  const handleReport = () => {
-    if (!isOwner) return;
-    dispatch(reportReview(businessId, review._id));
+  const handleReplyClick = () => {
+    if (!isOwner) {
+      enqueueSnackbar("Only the business owner can reply to reviews.", { variant: "warning" });
+      return;
+    }
+    setShowReplyBox(prev => !prev);
+  };
+  const handleReport = async () => {
+    if (!isOwner) {
+      enqueueSnackbar("Only the business owner can report reviews for this listing.", { variant: "warning" });
+      return;
+    }
+    try {
+      await dispatch(reportReview(businessId, review._id, { userMobile }));
+      enqueueSnackbar("Review reported.", { variant: "success" });
+    } catch (error) {
+      enqueueSnackbar(error.response?.data?.message || "Failed to report review.", { variant: "error" });
+    }
   };
   return <div className={cx("review-card")}>
 
@@ -68,15 +92,15 @@ export default function ReviewCard({
           Helpful ({review.helpfulCount || 0})
         </button>
 
-        {isOwner && <button className={cx("review-action-btn")} onClick={() => setShowReplyBox(prev => !prev)}>
+        <button className={cx("review-action-btn")} onClick={handleReplyClick}>
             <ChatBubbleOutlineIcon fontSize="small" />
             Reply
-          </button>}
+          </button>
 
-        {isOwner && <button className={cx("review-action-btn report")} onClick={handleReport}>
+        <button className={cx("review-action-btn report")} onClick={handleReport}>
             <ReportOutlinedIcon fontSize="small" />
             Report
-          </button>}
+          </button>
       </div>
 
       {review.replies?.length > 0 && <div className={cx("owner-reply")}>
@@ -85,7 +109,7 @@ export default function ReviewCard({
           {review.replies.map((reply, index) => <p key={index}>{reply.message}</p>)}
         </div>}
 
-      {isOwner && showReplyBox && <ReplyBox businessId={businessId} reviewId={review._id} onClose={() => setShowReplyBox(false)} />}
+      {isOwner && showReplyBox && <ReplyBox businessId={businessId} reviewId={review._id} userMobile={userMobile} onClose={() => setShowReplyBox(false)} />}
       <OTPLoginModal open={showLoginModal} handleClose={() => setShowLoginModal(false)} />
     </div>;
 }

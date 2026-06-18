@@ -18,6 +18,7 @@ import Button from '@mui/material/Button';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import OTPLoginModal from '../AddBusinessModel';
 import Tooltip from "@mui/material/Tooltip";
+import { useSnackbar } from "notistack";
 const cx = createScopedClassNames(styles);
 const labels = {
   0.5: 'Useless',
@@ -38,6 +39,7 @@ const WriteReviewPage = () => {
   } = useParams();
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { enqueueSnackbar } = useSnackbar();
   const initialRating = parseFloat(ratingValue) || 0;
   const {
     businessDetails,
@@ -105,12 +107,17 @@ const WriteReviewPage = () => {
   };
   const handleSubmitReview = async () => {
     const storedUser = JSON.parse(localStorage.getItem("authUser") || "{}");
+    const userMobile = localStorage.getItem("mobileNumber") || storedUser.mobileNumber1 || storedUser.mobileNumber2 || "";
     if (!storedUser?._id) {
       setShowLoginModal(true);
       return;
     }
+    if (!userMobile) {
+      enqueueSnackbar("Verified mobile number is required to submit a review.", { variant: "warning" });
+      return;
+    }
     if (!rating || reviewText.length < 5) {
-      alert("Please provide a rating and at least 5 characters.");
+      enqueueSnackbar("Please provide a rating and at least 5 characters.", { variant: "warning" });
       return;
     }
     setIsSubmitting(true);
@@ -122,6 +129,7 @@ const WriteReviewPage = () => {
     const newReview = {
       userId: storedUser._id,
       userName: storedUser.userName,
+      userMobile,
       rating,
       ratingExperience: reviewText,
       ratingLove: selectedTags || [],
@@ -131,7 +139,7 @@ const WriteReviewPage = () => {
       await dispatch(createReview(businessId, newReview));
       setShowSuccessModal(true);
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to submit review");
+      enqueueSnackbar(err.response?.data?.message || "Failed to submit review", { variant: "error" });
     } finally {
       setIsSubmitting(false);
     }
