@@ -7,20 +7,20 @@ import styles from "./SystemSettings.module.css";
 
 // Icons
 const cx = createScopedClassNames(styles);
-const SettingsIcon = () => <span>⚙️</span>;
-const SmsIcon = () => <span>📱</span>;
-const WhatsAppIcon = () => <span>💬</span>;
-const SystemUpdateAltIcon = () => <span>🔄</span>;
-const ConstructionIcon = () => <span>🔧</span>;
-const AndroidIcon = () => <span>🤖</span>;
-const PhoneIphoneIcon = () => <span>📱</span>;
-const CloudSyncIcon = () => <span>☁️</span>;
-const DebugIcon = () => <span>🔍</span>;
-const DatabaseIcon = () => <span>🗄️</span>;
-const AlertIcon = () => <span>⚡</span>;
-const GuardIcon = () => <span>🛡️</span>;
+const SettingsIcon = () => <span>{"\u2699\uFE0F"}</span>;
+const SmsIcon = () => <span>{"\uD83D\uDCF1"}</span>;
+const WhatsAppIcon = () => <span>{"\uD83D\uDCAC"}</span>;
+const SystemUpdateAltIcon = () => <span>{"\uD83D\uDD04"}</span>;
+const ConstructionIcon = () => <span>{"\uD83D\uDD27"}</span>;
+const AndroidIcon = () => <span>{"\uD83E\uDD16"}</span>;
+const PhoneIphoneIcon = () => <span>{"\uD83D\uDCF1"}</span>;
+const CloudSyncIcon = () => <span>{"\u2601\uFE0F"}</span>;
+const DebugIcon = () => <span>{"\uD83D\uDD0D"}</span>;
+const DatabaseIcon = () => <span>{"\uD83D\uDDD1\uFE0F"}</span>;
+const AlertIcon = () => <span>{"\u26A1"}</span>;
+const GuardIcon = () => <span>{"\uD83D\uDEE1\uFE0F"}</span>;
 const formatUptime = seconds => {
-  if (!seconds) return '—';
+  if (!seconds) return "\u2014";
   const d = Math.floor(seconds / 86400);
   const h = Math.floor(seconds % 86400 / 3600);
   const m = Math.floor(seconds % 3600 / 60);
@@ -64,7 +64,7 @@ const TtlBadge = ({
   ttl
 }) => {
   if (ttl === -2) return <span className={cx("ttl-badge ttl-expired")}>expired</span>;
-  if (ttl === -1) return <span className={cx("ttl-badge ttl-forever")}>∞</span>;
+  if (ttl === -1) return <span className={cx("ttl-badge ttl-forever")}>{"\u221E"}</span>;
   if (ttl < 60) return <span className={cx("ttl-badge ttl-soon")}>{ttl}s</span>;
   if (ttl < 3600) return <span className={cx("ttl-badge ttl-medium")}>{Math.floor(ttl / 60)}m</span>;
   return <span className={cx("ttl-badge ttl-long")}>{Math.floor(ttl / 3600)}h</span>;
@@ -384,6 +384,7 @@ const TOGGLE_GROUPS = [{
     desc: "Database ops"
   }]
 }];
+const [OTP_GROUP, WHATSAPP_GROUP, LEAD_GUARD_GROUP, LOGGING_GROUP] = TOGGLE_GROUPS;
 const PLATFORM_SECTIONS = [{
   platform: "Android",
   icon: AndroidIcon,
@@ -401,7 +402,7 @@ const PLATFORM_SECTIONS = [{
   }, {
     key: "app_android_update_url",
     label: "Play Store URL",
-    placeholder: "https://play.google.com/…",
+    placeholder: "https://play.google.com/...",
     colSpan: 2
   }]
 }, {
@@ -421,7 +422,7 @@ const PLATFORM_SECTIONS = [{
   }, {
     key: "app_ios_update_url",
     label: "App Store URL",
-    placeholder: "https://apps.apple.com/…",
+    placeholder: "https://apps.apple.com/...",
     colSpan: 2
   }]
 }];
@@ -510,6 +511,55 @@ const RATE_LIMIT_FIELDS = [{
 const ALL_BOOL_KEYS = [...TOGGLE_GROUPS.flatMap(g => g.items.map(i => i.key)), "rate_limit_enabled"];
 const ALL_NUMBER_KEYS = [...GUARD_LIMIT_FIELDS.map(field => field.key), ...RATE_LIMIT_FIELDS.map(field => field.key)];
 const ALL_KEYS = [...ALL_BOOL_KEYS, ...ALL_NUMBER_KEYS, "app_maintenance_mode", "app_android_latest_version", "app_android_min_version", "app_android_update_url", "app_ios_latest_version", "app_ios_min_version", "app_ios_update_url", "app_release_notes", "logging_level", "whatsapp_customer_business_list_send_mode", "redis_enabled"];
+const SETTINGS_SECTIONS = [{
+  key: "operations",
+  label: "Operations",
+  description: "Maintenance mode and server logging controls.",
+  icon: ConstructionIcon,
+  color: "#ef4444",
+  fieldKeys: ["app_maintenance_mode", "logging_enabled", "logging_fcm_debug", "logging_sms_debug", "logging_seo_debug", "logging_db_queries", "logging_level"]
+}, {
+  key: "messaging",
+  label: "Messaging",
+  description: "OTP, WhatsApp automation, and customer delivery behavior.",
+  icon: WhatsAppIcon,
+  color: "#22c55e",
+  fieldKeys: ["otp_real_enabled", "whatsapp_business_lead_alert", "whatsapp_customer_business_list", "whatsapp_mni_lead_alert", "whatsapp_mni_customer_list", "whatsapp_login_welcome", "whatsapp_customer_business_list_send_mode"]
+}, {
+  key: "leadGuards",
+  label: "Lead Guards",
+  description: "Search hygiene, duplicate protection, and send limits.",
+  icon: GuardIcon,
+  color: "#0ea5e9",
+  fieldKeys: ["lead_guard_search_text_required", "lead_guard_anonymous_dedupe_enabled", "lead_guard_user_dedupe_enabled", "lead_guard_live_business_only", "whatsapp_business_lead_daily_cap_enabled", "whatsapp_business_lead_duplicate_guard_enabled", "whatsapp_business_lead_cooldown_enabled", "whatsapp_recipient_health_guard_enabled", ...GUARD_LIMIT_FIELDS.map(field => field.key)]
+}, {
+  key: "versions",
+  label: "App Releases",
+  description: "Android, iOS, and release note settings.",
+  icon: SystemUpdateAltIcon,
+  color: "#f97316",
+  fieldKeys: ["app_android_latest_version", "app_android_min_version", "app_android_update_url", "app_ios_latest_version", "app_ios_min_version", "app_ios_update_url", "app_release_notes"]
+}, {
+  key: "rateLimits",
+  label: "Rate Limits",
+  description: "API and workflow throttling windows and limits.",
+  icon: AlertIcon,
+  color: "#a855f7",
+  fieldKeys: ["rate_limit_enabled", ...RATE_LIMIT_FIELDS.map(field => field.key)]
+}, {
+  key: "cache",
+  label: "Cache",
+  description: "Redis availability plus targeted cache clearing.",
+  icon: CloudSyncIcon,
+  color: "#14b8a6",
+  fieldKeys: ["redis_enabled"]
+}];
+const FIELD_SECTION_MAP = SETTINGS_SECTIONS.reduce((acc, section) => {
+  section.fieldKeys.forEach(fieldKey => {
+    acc[fieldKey] = section.key;
+  });
+  return acc;
+}, {});
 export default function SystemSettings() {
   const dispatch = useDispatch();
   const {
@@ -542,6 +592,7 @@ export default function SystemSettings() {
   const [keySearch, setKeySearch] = useState("");
   const [keyMatchMode, setKeyMatchMode] = useState("contains");
   const [patternInput, setPatternInput] = useState("");
+  const [activeSection, setActiveSection] = useState(SETTINGS_SECTIONS[0].key);
   const deferredKeySearch = useDeferredValue(keySearch.trim());
   useEffect(() => {
     dispatch(fetchSystemSettings());
@@ -691,7 +742,7 @@ export default function SystemSettings() {
     }
   }, [patternInput, redisKeys]);
   const handleFlushDb = async () => {
-    if (!window.confirm('⚠️ FLUSH ENTIRE REDIS DATABASE?\n\nThis permanently deletes ALL keys and cannot be undone.')) return;
+    if (!window.confirm('FLUSH ENTIRE REDIS DATABASE?\n\nThis permanently deletes ALL keys and cannot be undone.')) return;
     if (!window.confirm('Second confirmation: Wipe all Redis data right now?')) return;
     try {
       const result = await dispatch(flushRedisDb());
@@ -784,6 +835,10 @@ export default function SystemSettings() {
   const hasValidationErrors = Object.keys(validationErrors).length > 0;
   const handleSave = async () => {
     if (hasValidationErrors) {
+      const firstInvalidField = Object.keys(validationErrors).find(key => validationErrors[key]);
+      if (firstInvalidField && FIELD_SECTION_MAP[firstInvalidField]) {
+        setActiveSection(FIELD_SECTION_MAP[firstInvalidField]);
+      }
       setSnack({
         open: true,
         message: "Fix validation errors",
@@ -873,6 +928,363 @@ export default function SystemSettings() {
   if (error) return <div className={cx("error-box")}>{error}</div>;
   const maintenanceOn = !!local.app_maintenance_mode;
   const enabledCount = ALL_BOOL_KEYS.filter(k => !!local[k]).length;
+  const sectionNavItems = SETTINGS_SECTIONS.map(section => {
+    const activeToggleCount = section.fieldKeys.filter(key => typeof local[key] === "boolean" && !!local[key]).length;
+    const changedCount = section.fieldKeys.filter(key => settings && local[key] !== settings[key]).length;
+    const errorCount = section.fieldKeys.filter(key => validationErrors[key]).length;
+    let detail = `${section.fieldKeys.length} control${section.fieldKeys.length === 1 ? "" : "s"}`;
+    if (errorCount > 0) {
+      detail = `${errorCount} issue${errorCount === 1 ? "" : "s"} to review`;
+    } else if (changedCount > 0) {
+      detail = `${changedCount} unsaved change${changedCount === 1 ? "" : "s"}`;
+    } else if (activeToggleCount > 0) {
+      detail = `${activeToggleCount} toggle${activeToggleCount === 1 ? "" : "s"} active`;
+    }
+    return {
+      ...section,
+      activeToggleCount,
+      changedCount,
+      errorCount,
+      detail
+    };
+  });
+  const activeSectionMeta = sectionNavItems.find(section => section.key === activeSection) || sectionNavItems[0];
+  const renderToggleGroupCard = group => <div key={group.label} className={cx("compact-card panel-card")}>
+      <div className={cx("compact-card-header")}>
+        <div className={cx("compact-icon")} style={{
+        background: group.color
+      }}>
+          <group.icon />
+        </div>
+        <div className={cx("compact-header-text")}>
+          <div className={cx("compact-title")}>{group.label}</div>
+          <div className={cx("compact-subtitle")}>
+            {group.items.filter(item => local[item.key]).length} of {group.items.length} enabled
+          </div>
+        </div>
+      </div>
+      <div className={cx("compact-card-items")}>
+        {group.items.map(({
+        key,
+        label,
+        desc
+      }) => <div key={key} className={cx("toggle-item")} onClick={() => toggle(key)}>
+            <div className={cx("toggle-item-info")}>
+              <div className={cx("label-with-help toggle-item-label")}>
+                <span>{label}</span>
+                <HelpHint text={FIELD_HELP[key]} />
+              </div>
+              <div className={cx("toggle-item-desc")}>{desc}</div>
+            </div>
+            <label className={cx("toggle-switch")}>
+              <input type="checkbox" checked={!!local[key]} onChange={() => toggle(key)} />
+              <span className={cx("toggle-switch-slider")} style={{
+            '--color': group.color
+          }}></span>
+            </label>
+          </div>)}
+      </div>
+    </div>;
+  const renderMaintenanceCard = () => <div className={cx(`compact-card maintenance-card panel-card ${maintenanceOn ? 'active' : ''}`)}>
+      <div className={cx("compact-card-header")}>
+        <div className={cx("compact-icon")} style={{
+        background: maintenanceOn ? '#ef4444' : '#6b7280'
+      }}>
+          <ConstructionIcon />
+        </div>
+        <div className={cx("compact-header-text")}>
+          <div className={cx("label-with-help compact-title")}>
+            <span>Maintenance Mode</span>
+            <HelpHint text={FIELD_HELP.app_maintenance_mode} />
+          </div>
+          <div className={cx("compact-subtitle")}>{maintenanceOn ? 'BLOCKING USERS' : 'Disabled'}</div>
+        </div>
+      </div>
+      <div className={cx("compact-card-body")}>
+        <label className={cx("toggle-switch")}>
+          <input type="checkbox" checked={maintenanceOn} onChange={() => toggle("app_maintenance_mode")} />
+          <span className={cx("toggle-switch-slider")} style={{
+          '--color': '#ef4444'
+        }}></span>
+        </label>
+      </div>
+    </div>;
+  const renderActiveSection = () => {
+    switch (activeSection) {
+      case "operations":
+        return <div className={cx("panel-stack")}>
+            {renderMaintenanceCard()}
+            {renderToggleGroupCard(LOGGING_GROUP)}
+            <div className={cx("compact-card panel-card")}>
+              <div className={cx("compact-card-header")}>
+                <div className={cx("compact-icon")} style={{
+                background: '#7c3aed'
+              }}>
+                  <DebugIcon />
+                </div>
+                <div className={cx("compact-header-text")}>
+                  <div className={cx("compact-title")}>Logging Level</div>
+                  <div className={cx("compact-subtitle")}>Control how much detail is written to logs</div>
+                </div>
+              </div>
+              <div className={cx("section-group")}>
+                <div className={cx("form-field")}>
+                  <label className={cx("label-with-help form-label")}>
+                    <span>Log Level</span>
+                    <HelpHint text={FIELD_HELP.logging_level} />
+                  </label>
+                  <select className={cx("form-input")} value={local.logging_level ?? "info"} onChange={e => setText("logging_level", e.target.value)}>
+                    <option value="off">Off</option>
+                    <option value="error">Error</option>
+                    <option value="warn">Warn</option>
+                    <option value="info">Info</option>
+                    <option value="debug">Debug</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>;
+      case "messaging":
+        return <div className={cx("panel-stack")}>
+            {renderToggleGroupCard(OTP_GROUP)}
+            {renderToggleGroupCard(WHATSAPP_GROUP)}
+            <div className={cx("compact-card panel-card")}>
+              <div className={cx("compact-card-header")}>
+                <div className={cx("compact-icon")} style={{
+                background: '#16a34a'
+              }}>
+                  <WhatsAppIcon />
+                </div>
+                <div className={cx("compact-header-text")}>
+                  <div className={cx("compact-title")}>Customer Delivery</div>
+                  <div className={cx("compact-subtitle")}>Control how business matches reach the customer</div>
+                </div>
+              </div>
+              <div className={cx("section-group")}>
+                <div className={cx("form-field")}>
+                  <label className={cx("label-with-help form-label")}>
+                    <span>Customer Business List Mode</span>
+                    <HelpHint text={FIELD_HELP.whatsapp_customer_business_list_send_mode} />
+                  </label>
+                  <select className={cx(`form-input ${validationErrors.whatsapp_customer_business_list_send_mode ? 'error' : ''}`)} value={local.whatsapp_customer_business_list_send_mode ?? "split"} onChange={e => setText("whatsapp_customer_business_list_send_mode", e.target.value)}>
+                    <option value="single">Single message</option>
+                    <option value="split">Split messages</option>
+                  </select>
+                  {validationErrors.whatsapp_customer_business_list_send_mode && <div className={cx("input-error")}>{validationErrors.whatsapp_customer_business_list_send_mode}</div>}
+                </div>
+              </div>
+            </div>
+          </div>;
+      case "leadGuards":
+        return <div className={cx("panel-stack")}>
+            {renderToggleGroupCard(LEAD_GUARD_GROUP)}
+            <div className={cx("compact-card panel-card")}>
+              <div className={cx("compact-card-header")}>
+                <div className={cx("compact-icon")} style={{
+                background: '#0284c7'
+              }}>
+                  <GuardIcon />
+                </div>
+                <div className={cx("compact-header-text")}>
+                  <div className={cx("compact-title")}>Lead Guard Limits</div>
+                  <div className={cx("compact-subtitle")}>Tune dedupe windows, daily caps, and cooldowns</div>
+                </div>
+              </div>
+              <div className={cx("section-group")}>
+                <div className={cx("form-grid")}>
+                  {GUARD_LIMIT_FIELDS.map(({
+                  key,
+                  label,
+                  placeholder
+                }) => <div key={key} className={cx("form-field")}>
+                      <label className={cx("label-with-help form-label")}>
+                        <span>{label}</span>
+                        <HelpHint text={FIELD_HELP[key]} />
+                      </label>
+                      <input type="number" min={NUMBER_FIELD_RULES[key].min} max={NUMBER_FIELD_RULES[key].max} step="1" className={cx(`form-input ${validationErrors[key] ? 'error' : ''}`)} value={local[key] ?? ""} onChange={e => setNumber(key, e.target.value)} placeholder={placeholder} />
+                      {validationErrors[key] && <div className={cx("input-error")}>{validationErrors[key]}</div>}
+                    </div>)}
+                </div>
+              </div>
+            </div>
+          </div>;
+      case "versions":
+        return <div className={cx("compact-card version-card panel-card")}>
+            <div className={cx("compact-card-header")}>
+              <div className={cx("compact-icon")} style={{
+              background: '#f97316'
+            }}>
+                <SystemUpdateAltIcon />
+              </div>
+              <div className={cx("compact-header-text")}>
+                <div className={cx("compact-title")}>Version Management</div>
+                <div className={cx("compact-subtitle")}>Keep update rules aligned across both mobile apps</div>
+              </div>
+            </div>
+
+            {PLATFORM_SECTIONS.map(({
+            platform,
+            icon: PlatformIcon,
+            fields
+          }) => <React.Fragment key={platform}>
+                <div className={cx("platform-group")}>
+                  <div className={cx("platform-header")}>
+                    <PlatformIcon /> {platform}
+                  </div>
+                  <div className={cx("form-grid")}>
+                    {fields.map(({
+                  key,
+                  label,
+                  placeholder,
+                  colSpan
+                }) => <div key={key} className={cx(`form-field ${colSpan === 2 ? 'span-2' : ''}`)}>
+                        <label className={cx("label-with-help form-label")}>
+                          <span>{label}</span>
+                          <HelpHint text={FIELD_HELP[key]} />
+                        </label>
+                        <input type="text" className={cx(`form-input ${validationErrors[key] ? 'error' : ''}`)} value={local[key] ?? ""} onChange={e => setText(key, e.target.value)} placeholder={placeholder} />
+                        {validationErrors[key] && <div className={cx("input-error")}>{validationErrors[key]}</div>}
+                      </div>)}
+                  </div>
+                </div>
+              </React.Fragment>)}
+
+            <div className={cx("section-divider")}></div>
+            <div className={cx("section-group")}>
+              <div className={cx("section-label")}>Release Notes</div>
+              <div className={cx("form-field")}>
+                <label className={cx("label-with-help form-label")}>
+                  <span>What's new</span>
+                  <HelpHint text={FIELD_HELP.app_release_notes} />
+                </label>
+                <textarea className={cx(`form-input ${validationErrors.app_release_notes ? 'error' : ''}`)} value={local.app_release_notes ?? ""} onChange={e => setText("app_release_notes", e.target.value)} placeholder="Bug fixes and improvements..." rows={3} />
+                {validationErrors.app_release_notes && <div className={cx("input-error")}>{validationErrors.app_release_notes}</div>}
+              </div>
+            </div>
+          </div>;
+      case "rateLimits":
+        return <div className={cx("compact-card panel-card")}>
+            <div className={cx("compact-card-header")}>
+              <div className={cx("compact-icon")} style={{
+              background: '#a855f7'
+            }}>
+                <AlertIcon />
+              </div>
+              <div className={cx("compact-header-text")}>
+                <div className={cx("compact-title")}>Rate Limiting</div>
+                <div className={cx("compact-subtitle")}>Protect public and admin APIs from abuse</div>
+              </div>
+            </div>
+            <div className={cx("section-group")}>
+              <div className={cx("form-field panel-inline-control")}>
+                <label className={cx("label-with-help form-label")}>
+                  <span>Enable Rate Limiting</span>
+                  <HelpHint text={FIELD_HELP.rate_limit_enabled} />
+                </label>
+                <div className={cx("inline-toggle-row")}>
+                  <label className={cx("toggle-switch")}>
+                    <input type="checkbox" checked={!!local?.rate_limit_enabled} onChange={() => toggle("rate_limit_enabled")} />
+                    <span className={cx("toggle-switch-slider")} style={{
+                    '--color': '#a855f7'
+                  }}></span>
+                  </label>
+                  <span className={cx("redis-toggle-text")}>{local?.rate_limit_enabled ? 'On' : 'Off'}</span>
+                </div>
+              </div>
+              <div className={cx("form-grid")}>
+                {RATE_LIMIT_FIELDS.map(({
+                key,
+                label,
+                placeholder
+              }) => <div key={key} className={cx("form-field")}>
+                    <label className={cx("label-with-help form-label")}>
+                      <span>{label}</span>
+                      <HelpHint text={FIELD_HELP[key]} />
+                    </label>
+                    <input type="number" min={NUMBER_FIELD_RULES[key].min} max={NUMBER_FIELD_RULES[key].max} step="1" className={cx(`form-input ${validationErrors[key] ? 'error' : ''}`)} value={local[key] ?? ""} onChange={e => setNumber(key, e.target.value)} placeholder={placeholder} />
+                    {validationErrors[key] && <div className={cx("input-error")}>{validationErrors[key]}</div>}
+                  </div>)}
+              </div>
+            </div>
+          </div>;
+      case "cache":
+        return <div className={cx("panel-stack")}>
+            <div className={cx("compact-card panel-card")}>
+              <div className={cx("compact-card-header")}>
+                <div className={cx("compact-icon")} style={{
+                background: '#14b8a6'
+              }}>
+                  <CloudSyncIcon />
+                </div>
+                <div className={cx("compact-header-text")}>
+                  <div className={cx("compact-title")}>Redis Availability</div>
+                  <div className={cx("compact-subtitle")}>Decide whether Redis-backed cache behavior is active</div>
+                </div>
+              </div>
+              <div className={cx("section-group")}>
+                <div className={cx("redis-status")}>
+                  <div className={cx("redis-indicator")} style={{
+                  background: redisStatus?.redis_connected ? '#10b981' : '#ef4444'
+                }}></div>
+                  <div className={cx("redis-info")}>
+                    <div className={cx("redis-status-text")}>{redisStatus?.status || "CHECKING"}</div>
+                    <div className={cx("redis-message")}>{redisStatus?.message}</div>
+                  </div>
+                </div>
+                <div className={cx("form-field panel-inline-control")}>
+                  <label className={cx("label-with-help form-label")}>
+                    <span>Redis Enabled</span>
+                    <HelpHint text={FIELD_HELP.redis_enabled} />
+                  </label>
+                  <div className={cx("inline-toggle-row")}>
+                    <label className={cx("toggle-switch")}>
+                      <input type="checkbox" checked={!!local?.redis_enabled} onChange={() => toggle("redis_enabled")} />
+                      <span className={cx("toggle-switch-slider")} style={{
+                      '--color': '#14b8a6'
+                    }}></span>
+                    </label>
+                    <span className={cx("redis-toggle-text")}>{local?.redis_enabled ? 'Active' : 'Disabled'}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className={cx("compact-card panel-card")}>
+              <div className={cx("compact-card-header")}>
+                <div className={cx("compact-icon")} style={{
+                background: '#0f766e'
+              }}>
+                  <DatabaseIcon />
+                </div>
+                <div className={cx("compact-header-text")}>
+                  <div className={cx("compact-title")}>Clear Cache</div>
+                  <div className={cx("compact-subtitle")}>Invalidate one cache bucket or force a full clear</div>
+                </div>
+              </div>
+              <div className={cx("section-group")}>
+                <div className={cx("form-field")}>
+                  <label className={cx("label-with-help form-label")}>
+                    <span>Cache Type</span>
+                    <HelpHint text={FIELD_HELP.cache_type} />
+                  </label>
+                  <select className={cx("form-input")} value={selectedCache} onChange={e => setSelectedCache(e.target.value)} disabled={cacheClearing}>
+                    {CACHE_TYPES.map(cache => <option key={cache.value} value={cache.value}>{cache.label}</option>)}
+                  </select>
+                </div>
+                <div className={cx("button-group")}>
+                  <button className={cx("btn btn-primary btn-sm")} onClick={handleClearCache} disabled={cacheClearing}>
+                    {cacheClearing ? "Clearing..." : "Clear Selected"}
+                  </button>
+                  <button className={cx("btn btn-secondary btn-sm")} onClick={handleClearAllCaches} disabled={cacheClearing}>
+                    {cacheClearing ? "Clearing..." : "Clear All"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>;
+      default:
+        return null;
+    }
+  };
   return <div className={cx("settings-container")}>
       {/* Hero */}
       <div className={cx("hero")}>
@@ -914,285 +1326,76 @@ export default function SystemSettings() {
           </button>
         </div>}
 
-      {/* Main Grid */}
-      <div className={cx("grid-layout")}>
-        {/* Left Column */}
-        <div className={cx("left-column")}>
-          {/* Maintenance Card */}
-          <div className={cx(`compact-card maintenance-card ${maintenanceOn ? 'active' : ''}`)}>
-            <div className={cx("compact-card-header")}>
-              <div className={cx("compact-icon")} style={{
-              background: maintenanceOn ? '#ef4444' : '#6b7280'
-            }}>
-                <ConstructionIcon />
-              </div>
-              <div className={cx("compact-header-text")}>
-                <div className={cx("label-with-help compact-title")}>
-                  <span>Maintenance Mode</span>
-                  <HelpHint text={FIELD_HELP.app_maintenance_mode} />
-                </div>
-                <div className={cx("compact-subtitle")}>{maintenanceOn ? 'BLOCKING USERS' : 'Disabled'}</div>
+      {/* Settings Workspace */}
+      <div className={cx("settings-workspace")}>
+        <aside className={cx("settings-sidebar")}>
+          <div className={cx("sidebar-card")}>
+            <div className={cx("sidebar-card-header")}>
+              <div>
+                <div className={cx("sidebar-card-title")}>Settings Areas</div>
+                <div className={cx("sidebar-card-subtitle")}>Open one focused section instead of scrolling through the full form.</div>
               </div>
             </div>
-            <div className={cx("compact-card-body")}>
-              <label className={cx("toggle-switch")}>
-                <input type="checkbox" checked={maintenanceOn} onChange={() => toggle("app_maintenance_mode")} />
-                <span className={cx("toggle-switch-slider")}></span>
-              </label>
+            <div className={cx("section-nav-list")}>
+              {sectionNavItems.map(section => <button key={section.key} type="button" className={cx(`section-nav-button ${activeSection === section.key ? 'active' : ''}`)} style={{
+              '--section-color': section.color
+            }} onClick={() => setActiveSection(section.key)}>
+                  <span className={cx("section-nav-icon")}><section.icon /></span>
+                  <span className={cx("section-nav-copy")}>
+                    <span className={cx("section-nav-title-row")}>
+                      <span className={cx("section-nav-title")}>{section.label}</span>
+                      {section.errorCount > 0 && <span className={cx("section-nav-pill danger")}>{section.errorCount}</span>}
+                      {section.errorCount === 0 && section.changedCount > 0 && <span className={cx("section-nav-pill warning")}>{section.changedCount}</span>}
+                    </span>
+                    <span className={cx("section-nav-description")}>{section.description}</span>
+                    <span className={cx("section-nav-detail")}>{section.detail}</span>
+                  </span>
+                </button>)}
             </div>
           </div>
 
-          {/* Toggle Groups */}
-          {TOGGLE_GROUPS.map(group => <div key={group.label} className={cx("compact-card")}>
-              <div className={cx("compact-card-header")}>
-                <div className={cx("compact-icon")} style={{
-              background: group.color
-            }}>
-                  <group.icon />
-                </div>
-                <div className={cx("compact-header-text")}>
-                  <div className={cx("compact-title")}>{group.label}</div>
-                  <div className={cx("compact-subtitle")}>
-                    {group.items.filter(i => local[i.key]).length} of {group.items.length} enabled
-                  </div>
-                </div>
+          <div className={cx("sidebar-card summary-card")}>
+            <div className={cx("sidebar-card-title")}>Quick Health</div>
+            <div className={cx("summary-list")}>
+              <div className={cx("summary-row")}>
+                <span className={cx("summary-label")}>Unsaved</span>
+                <span className={cx(`summary-value ${dirty ? 'warning' : 'success'}`)}>{dirty ? 'Yes' : 'No'}</span>
               </div>
-              <div className={cx("compact-card-items")}>
-                {group.items.map(({
-              key,
-              label,
-              desc
-            }) => <div key={key} className={cx("toggle-item")} onClick={() => toggle(key)}>
-                    <div className={cx("toggle-item-info")}>
-                      <div className={cx("label-with-help toggle-item-label")}>
-                        <span>{label}</span>
-                        <HelpHint text={FIELD_HELP[key]} />
-                      </div>
-                      <div className={cx("toggle-item-desc")}>{desc}</div>
-                    </div>
-                    <label className={cx("toggle-switch")}>
-                      <input type="checkbox" checked={!!local[key]} onChange={() => toggle(key)} />
-                      <span className={cx("toggle-switch-slider")} style={{
-                  '--color': group.color
-                }}></span>
-                    </label>
-                  </div>)}
+              <div className={cx("summary-row")}>
+                <span className={cx("summary-label")}>Validation</span>
+                <span className={cx(`summary-value ${hasValidationErrors ? 'danger' : 'success'}`)}>{hasValidationErrors ? `${Object.keys(validationErrors).length} issues` : 'Clean'}</span>
               </div>
-            </div>)}
-        </div>
-
-        {/* Right Column */}
-        <div className={cx("right-column")}>
-          {/* Version Management */}
-          <div className={cx("compact-card version-card")}>
-            <div className={cx("compact-card-header")}>
-              <div className={cx("compact-icon")} style={{
-              background: '#f97316'
-            }}>
-                <SystemUpdateAltIcon />
+              <div className={cx("summary-row")}>
+                <span className={cx("summary-label")}>Redis</span>
+                <span className={cx(`summary-value ${redisStatus?.redis_connected ? 'success' : 'danger'}`)}>{redisStatus?.redis_connected ? 'Connected' : 'Offline'}</span>
               </div>
-              <div className={cx("compact-header-text")}>
-                <div className={cx("compact-title")}>Version Management</div>
-              </div>
-            </div>
-
-            {PLATFORM_SECTIONS.map(({
-            platform,
-            icon: PlatformIcon,
-            color,
-            fields
-          }, idx) => <React.Fragment key={platform}>
-                <div className={cx("platform-group")}>
-                  <div className={cx("platform-header")}>
-                    <PlatformIcon /> {platform}
-                  </div>
-                  <div className={cx("form-grid")}>
-                    {fields.map(({
-                  key,
-                  label,
-                  placeholder,
-                  colSpan
-                }) => <div key={key} className={cx(`form-field ${colSpan === 2 ? 'span-2' : ''}`)}>
-                        <label className={cx("label-with-help form-label")}>
-                          <span>{label}</span>
-                          <HelpHint text={FIELD_HELP[key]} />
-                        </label>
-                        <input type="text" className={cx(`form-input ${validationErrors[key] ? 'error' : ''}`)} value={local[key] ?? ""} onChange={e => setText(key, e.target.value)} placeholder={placeholder} />
-                        {validationErrors[key] && <div className={cx("input-error")}>{validationErrors[key]}</div>}
-                      </div>)}
-                  </div>
-                </div>
-              </React.Fragment>)}
-
-            {/* Release Notes */}
-            <div className={cx("section-divider")}></div>
-            <div className={cx("section-group")}>
-              <div className={cx("section-label")}>Release Notes</div>
-              <div className={cx("form-field")}>
-                <label className={cx("label-with-help form-label")}>
-                  <span>What's new</span>
-                  <HelpHint text={FIELD_HELP.app_release_notes} />
-                </label>
-                <textarea className={cx(`form-input ${validationErrors.app_release_notes ? 'error' : ''}`)} value={local.app_release_notes ?? ""} onChange={e => setText("app_release_notes", e.target.value)} placeholder="Bug fixes and improvements..." rows={3} />
-                {validationErrors.app_release_notes && <div className={cx("input-error")}>{validationErrors.app_release_notes}</div>}
-              </div>
-            </div>
-
-            {/* Logging */}
-            <div className={cx("section-divider")}></div>
-            <div className={cx("section-group")}>
-              <div className={cx("section-label")}>Logging</div>
-              <div className={cx("form-field")}>
-                <label className={cx("label-with-help form-label")}>
-                  <span>Log Level</span>
-                  <HelpHint text={FIELD_HELP.logging_level} />
-                </label>
-                <select className={cx("form-input")} value={local.logging_level ?? "info"} onChange={e => setText("logging_level", e.target.value)}>
-                  <option value="off">Off</option>
-                  <option value="error">Error</option>
-                  <option value="warn">Warn</option>
-                  <option value="info">Info</option>
-                  <option value="debug">Debug</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Rate Limiting */}
-            <div className={cx("section-divider")}></div>
-            <div className={cx("section-group")}>
-              <div className={cx("section-label")}>Rate Limiting</div>
-              <div className={cx("form-field")} style={{
-              marginBottom: 16
-            }}>
-                <label className={cx("label-with-help form-label")}>
-                  <span>Enable Rate Limiting</span>
-                  <HelpHint text={FIELD_HELP.rate_limit_enabled} />
-                </label>
-                <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8
-              }}>
-                  <label className={cx("toggle-switch")}>
-                    <input type="checkbox" checked={!!local?.rate_limit_enabled} onChange={() => toggle("rate_limit_enabled")} />
-                    <span className={cx("toggle-switch-slider")}></span>
-                  </label>
-                  <span className={cx("redis-toggle-text")}>{local?.rate_limit_enabled ? 'On' : 'Off'}</span>
-                </div>
-              </div>
-              <div className={cx("form-grid")}>
-                {RATE_LIMIT_FIELDS.map(({
-                key,
-                label,
-                placeholder
-              }) => <div key={key} className={cx("form-field")}>
-                    <label className={cx("label-with-help form-label")}>
-                      <span>{label}</span>
-                      <HelpHint text={FIELD_HELP[key]} />
-                    </label>
-                    <input type="number" min={NUMBER_FIELD_RULES[key].min} max={NUMBER_FIELD_RULES[key].max} step="1" className={cx(`form-input ${validationErrors[key] ? 'error' : ''}`)} value={local[key] ?? ""} onChange={e => setNumber(key, e.target.value)} placeholder={placeholder} />
-                    {validationErrors[key] && <div className={cx("input-error")}>{validationErrors[key]}</div>}
-                  </div>)}
-              </div>
-            </div>
-
-            {/* WhatsApp Customer Delivery */}
-            <div className={cx("section-divider")}></div>
-            <div className={cx("section-group")}>
-              <div className={cx("section-label")}>WhatsApp Customer Delivery</div>
-              <div className={cx("form-field")}>
-                <label className={cx("label-with-help form-label")}>
-                  <span>Customer Business List Mode</span>
-                  <HelpHint text={FIELD_HELP.whatsapp_customer_business_list_send_mode} />
-                </label>
-                <select className={cx(`form-input ${validationErrors.whatsapp_customer_business_list_send_mode ? 'error' : ''}`)} value={local.whatsapp_customer_business_list_send_mode ?? "split"} onChange={e => setText("whatsapp_customer_business_list_send_mode", e.target.value)}>
-                  <option value="single">Single message</option>
-                  <option value="split">Split messages</option>
-                </select>
-                {validationErrors.whatsapp_customer_business_list_send_mode && <div className={cx("input-error")}>{validationErrors.whatsapp_customer_business_list_send_mode}</div>}
-              </div>
-            </div>
-
-            {/* Lead Guard Limits */}
-            <div className={cx("section-divider")}></div>
-            <div className={cx("section-group")}>
-              <div className={cx("section-label")}>Lead Guard Limits</div>
-              <div className={cx("form-grid")}>
-                {GUARD_LIMIT_FIELDS.map(({
-                key,
-                label,
-                placeholder
-              }) => <div key={key} className={cx("form-field")}>
-                    <label className={cx("label-with-help form-label")}>
-                      <span>{label}</span>
-                      <HelpHint text={FIELD_HELP[key]} />
-                    </label>
-                    <input type="number" min={NUMBER_FIELD_RULES[key].min} max={NUMBER_FIELD_RULES[key].max} step="1" className={cx(`form-input ${validationErrors[key] ? 'error' : ''}`)} value={local[key] ?? ""} onChange={e => setNumber(key, e.target.value)} placeholder={placeholder} />
-                    {validationErrors[key] && <div className={cx("input-error")}>{validationErrors[key]}</div>}
-                  </div>)}
-              </div>
-            </div>
-
-            {/* Redis */}
-            <div className={cx("section-divider")}></div>
-            <div className={cx("section-group")}>
-              <div className={cx("section-label")}>Cache</div>
-              <div className={cx("redis-status")}>
-                <div className={cx("redis-indicator")} style={{
-                background: redisStatus?.redis_connected ? '#10b981' : '#ef4444'
-              }}></div>
-                <div className={cx("redis-info")}>
-                  <div className={cx("redis-status-text")}>{redisStatus?.status || "CHECKING"}</div>
-                  <div className={cx("redis-message")}>{redisStatus?.message}</div>
-                </div>
-              </div>
-              <div className={cx("form-field")} style={{
-              marginTop: 12
-            }}>
-                <label className={cx("label-with-help form-label")}>
-                  <span>Redis Enabled</span>
-                  <HelpHint text={FIELD_HELP.redis_enabled} />
-                </label>
-                <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8
-              }}>
-                  <label className={cx("toggle-switch")}>
-                    <input type="checkbox" checked={!!local?.redis_enabled} onChange={() => toggle("redis_enabled")} />
-                    <span className={cx("toggle-switch-slider")}></span>
-                  </label>
-                  <span className={cx("redis-toggle-text")}>{local?.redis_enabled ? 'Active' : 'Disabled'}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Cache Management */}
-            <div className={cx("section-divider")}></div>
-            <div className={cx("section-group")}>
-              <div className={cx("section-label")}>Clear Cache</div>
-              <div className={cx("form-field")}>
-                <label className={cx("label-with-help form-label")}>
-                  <span>Cache Type</span>
-                  <HelpHint text={FIELD_HELP.cache_type} />
-                </label>
-                <select className={cx("form-input")} value={selectedCache} onChange={e => setSelectedCache(e.target.value)} disabled={cacheClearing}>
-                  {CACHE_TYPES.map(cache => <option key={cache.value} value={cache.value}>{cache.label}</option>)}
-                </select>
-              </div>
-              <div className={cx("button-group")}>
-                <button className={cx("btn btn-primary btn-sm")} onClick={handleClearCache} disabled={cacheClearing}>
-                  {cacheClearing ? "Clearing..." : "Clear Selected"}
-                </button>
-                <button className={cx("btn btn-secondary btn-sm")} onClick={handleClearAllCaches} disabled={cacheClearing}>
-                  {cacheClearing ? "Clearing..." : "⚠️ Clear All"}
-                </button>
+              <div className={cx("summary-row")}>
+                <span className={cx("summary-label")}>Selected Keys</span>
+                <span className={cx("summary-value neutral")}>{selectedKeys.size}</span>
               </div>
             </div>
           </div>
-        </div>
+        </aside>
+
+        <section className={cx("settings-panel-shell")}>
+          <div className={cx("settings-panel-header")}>
+            <div>
+              <div className={cx("settings-panel-eyebrow")}>Focused Editor</div>
+              <h2 className={cx("settings-panel-title")}>{activeSectionMeta.label}</h2>
+              <p className={cx("settings-panel-subtitle")}>{activeSectionMeta.description}</p>
+            </div>
+            <div className={cx("settings-panel-metrics")}>
+              <span className={cx("panel-metric-chip")}>{activeSectionMeta.fieldKeys.length} controls</span>
+              {activeSectionMeta.activeToggleCount > 0 && <span className={cx("panel-metric-chip success")}>{activeSectionMeta.activeToggleCount} active</span>}
+              {activeSectionMeta.changedCount > 0 && <span className={cx("panel-metric-chip warning")}>{activeSectionMeta.changedCount} unsaved</span>}
+              {activeSectionMeta.errorCount > 0 && <span className={cx("panel-metric-chip danger")}>{activeSectionMeta.errorCount} issue{activeSectionMeta.errorCount === 1 ? "" : "s"}</span>}
+            </div>
+          </div>
+          <div className={cx("settings-panel-content")}>
+            {renderActiveSection()}
+          </div>
+        </section>
       </div>
-
       {/* Redis Server Stats */}
       <div className={cx("compact-card redis-stats-card")}>
         <div className={cx("compact-card-header")} style={{
@@ -1216,10 +1419,10 @@ export default function SystemSettings() {
             dispatch(fetchRedisInfo());
             dispatch(fetchRedisKeys());
           }} disabled={infoLoading || keysLoading}>
-              {infoLoading ? '…' : '↻ Refresh'}
+              {infoLoading ? '...' : 'Refresh'}
             </button>
             <button className={cx("btn btn-sm btn-danger")} onClick={handleFlushDb} disabled={flushing || !redisInfo?.connected} title="Wipe all Redis keys">
-              {flushing ? 'Flushing…' : '⚠ Flush DB'}
+              {flushing ? 'Flushing...' : 'Flush DB'}
             </button>
           </div>
         </div>
@@ -1227,15 +1430,15 @@ export default function SystemSettings() {
         {redisInfo?.connected ? <div className={cx("redis-stats-grid")}>
             <div className={cx("redis-stat-item")}>
               <div className={cx("redis-stat-label")}>Memory Used</div>
-              <div className={cx("redis-stat-value")}>{redisInfo.used_memory_human ?? '—'}</div>
+              <div className={cx("redis-stat-value")}>{redisInfo.used_memory_human ?? "\u2014"}</div>
             </div>
             <div className={cx("redis-stat-item")}>
               <div className={cx("redis-stat-label")}>Peak Memory</div>
-              <div className={cx("redis-stat-value")}>{redisInfo.used_memory_peak_human ?? '—'}</div>
+              <div className={cx("redis-stat-value")}>{redisInfo.used_memory_peak_human ?? "\u2014"}</div>
             </div>
             <div className={cx("redis-stat-item")}>
               <div className={cx("redis-stat-label")}>Connected Clients</div>
-              <div className={cx("redis-stat-value")}>{redisInfo.connected_clients ?? '—'}</div>
+              <div className={cx("redis-stat-value")}>{redisInfo.connected_clients ?? "\u2014"}</div>
             </div>
             <div className={cx("redis-stat-item")}>
               <div className={cx("redis-stat-label")}>Uptime</div>
@@ -1248,23 +1451,23 @@ export default function SystemSettings() {
             <div className={cx("redis-stat-item")}>
               <div className={cx("redis-stat-label")}>Cache Hit Rate</div>
               <div className={cx("redis-stat-value")}>
-                {redisInfo.hit_rate !== null ? `${redisInfo.hit_rate}%` : '—'}
+                {redisInfo.hit_rate !== null ? `${redisInfo.hit_rate}%` : "\u2014"}
               </div>
             </div>
             <div className={cx("redis-stat-item")}>
               <div className={cx("redis-stat-label")}>Commands Processed</div>
-              <div className={cx("redis-stat-value")}>{redisInfo.total_commands_processed?.toLocaleString() ?? '—'}</div>
+              <div className={cx("redis-stat-value")}>{redisInfo.total_commands_processed?.toLocaleString() ?? "\u2014"}</div>
             </div>
             <div className={cx("redis-stat-item")}>
               <div className={cx("redis-stat-label")}>Keyspace Hits</div>
-              <div className={cx("redis-stat-value")}>{redisInfo.keyspace_hits?.toLocaleString() ?? '—'}</div>
+              <div className={cx("redis-stat-value")}>{redisInfo.keyspace_hits?.toLocaleString() ?? "\u2014"}</div>
             </div>
             <div className={cx("redis-stat-item")}>
               <div className={cx("redis-stat-label")}>Keyspace Misses</div>
-              <div className={cx("redis-stat-value")}>{redisInfo.keyspace_misses?.toLocaleString() ?? '—'}</div>
+              <div className={cx("redis-stat-value")}>{redisInfo.keyspace_misses?.toLocaleString() ?? "\u2014"}</div>
             </div>
           </div> : <div className={cx("redis-stats-unavailable")}>
-            {infoLoading ? 'Loading server info…' : 'Redis not connected — stats unavailable'}
+            {infoLoading ? 'Loading server info...' : 'Redis not connected — stats unavailable'}
           </div>}
       </div>
 
@@ -1384,7 +1587,8 @@ export default function SystemSettings() {
         <button className={cx("snackbar-close")} onClick={() => setSnack(s => ({
         ...s,
         open: false
-      }))}>✕</button>
+      }))}>×</button>
       </div>
     </div>;
 }
+
