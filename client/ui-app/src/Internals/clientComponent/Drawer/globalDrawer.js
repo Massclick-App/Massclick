@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import {
   SwipeableDrawer,
   Box,
@@ -19,8 +19,6 @@ import {
 } from "../categoryBar.js";
 import { useNavigate } from "react-router-dom";
 import { styled } from "@mui/material/styles";
-import { useDispatch, useSelector } from "react-redux";
-import { viewAllOtpUsers } from "../../../redux/actions/otpAction";
 
 const formatUiName = (name) => {
   if (!name) return "";
@@ -66,26 +64,12 @@ const EmailText = styled(Typography)(({ theme }) => ({
 export default function GlobalDrawer() {
   const { isDrawerOpen, closeDrawer } = useDrawer();
   const navigate = useNavigate();
-  const dispatch = useDispatch();
 
   const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
   const userName = authUser?.userName || "Guest User";
   const userEmail = authUser?.email || "No Email";
 
-  const otpState = useSelector((state) => state.otp) || {};
-  const allUsers = Array.isArray(otpState.viewAllResponse)
-    ? otpState.viewAllResponse
-    : [];
-
-  const mobileNumber = localStorage.getItem("mobileNumber");
-
-  const UserDetail =
-    allUsers.find((u) => u.mobileNumber1 === mobileNumber) || {};
-
-  const currentUser = {
-    ...authUser,
-    ...UserDetail,
-  };
+  const currentUser = authUser;
 
   const handleLogout = () => {
     localStorage.removeItem("authToken");
@@ -105,23 +89,6 @@ export default function GlobalDrawer() {
     closeDrawer();
     if (item.path) navigate(item.path);
   };
-
-  const isUserLoggedIn = () => {
-    try {
-      const storedUser = localStorage.getItem("authUser");
-      if (!storedUser) return false;
-      const parsedUser = JSON.parse(storedUser);
-      return !!parsedUser?.mobileNumber1Verified;
-    } catch {
-      return false;
-    }
-  };
-
-  useEffect(() => {
-    if (isUserLoggedIn()) {
-      dispatch(viewAllOtpUsers());
-    }
-  }, [dispatch]);
 
   return (
     <SwipeableDrawer
@@ -159,7 +126,7 @@ export default function GlobalDrawer() {
           sx={{ cursor: "pointer" }}
         >
           <Avatar
-            src={UserDetail?.profileImage || undefined}
+            src={currentUser?.profileImage || undefined}
             sx={{
               width: 58,
               height: 58,
@@ -169,7 +136,7 @@ export default function GlobalDrawer() {
               objectFit: "cover",
             }}
           >
-            {!UserDetail?.profileImage && userName.charAt(0).toUpperCase()}
+            {!currentUser?.profileImage && userName.charAt(0).toUpperCase()}
           </Avatar>
           <Box>
             <NameText>{userName}</NameText>
