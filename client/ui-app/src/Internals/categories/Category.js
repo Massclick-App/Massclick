@@ -51,6 +51,52 @@ import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import AdminViewTabs from "../../components/AdminViewTabs.js";
 const cx = createScopedClassNames(styles);
 const API_URL = process.env.REACT_APP_API_URL;
+const CATEGORY_PAGE_FETCH_SIZE = 100;
+
+const fetchAllCategoriesPageWise = async ({
+  status = "active",
+  search = "",
+  sortBy = "",
+  sortOrder = "",
+} = {}) => {
+  const token = localStorage.getItem("accessToken");
+  const collected = [];
+  let pageNo = 1;
+  let total = null;
+
+  while (true) {
+    const query = new URLSearchParams({
+      pageNo: String(pageNo),
+      pageSize: String(CATEGORY_PAGE_FETCH_SIZE),
+      status,
+    });
+
+    if (search) query.set("search", search);
+    if (sortBy) query.set("sortBy", sortBy);
+    if (sortOrder) query.set("sortOrder", sortOrder);
+
+    const res = await axiosInstance.get(`${API_URL}/category/viewall?${query.toString()}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const pageData = Array.isArray(res.data?.data) ? res.data.data : [];
+    collected.push(...pageData);
+
+    const nextTotal = Number(res.data?.total);
+    if (Number.isFinite(nextTotal) && nextTotal >= 0) {
+      total = nextTotal;
+    }
+
+    if (pageData.length < CATEGORY_PAGE_FETCH_SIZE) break;
+    if (total !== null && collected.length >= total) break;
+
+    pageNo += 1;
+  }
+
+  return collected;
+};
 
 const HelpHint = ({ text }) => {
   if (!text) return null;
@@ -1073,16 +1119,7 @@ export default function Category() {
   const findDuplicates = async () => {
     setDupLoading(true);
     try {
-      const token = localStorage.getItem("accessToken");
-      const response = await axiosInstance.get(
-        `${API_URL}/category/viewall?pageNo=1&pageSize=9999&status=active`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      );
-      const allCats = response.data.data || [];
+      const allCats = await fetchAllCategoriesPageWise({ status: "active" });
       setAllCatsCache(allCats);
       const groups = computeDupGroups(allCats, dupMode);
       setDupDialog({
@@ -1216,16 +1253,7 @@ export default function Category() {
     if (!editMode) {
       setCreateWarningLoading(true);
       try {
-        const token = localStorage.getItem("accessToken");
-        const res = await axiosInstance.get(
-          `${API_URL}/category/viewall?pageNo=1&pageSize=9999&status=active`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          },
-        );
-        const allCats = res.data.data || [];
+        const allCats = await fetchAllCategoriesPageWise({ status: "active" });
         const matchIds = new Set();
         ["exact", "similar", "semantic"].forEach((mode) => {
           const newKey = getCatKey(formData.category, mode);

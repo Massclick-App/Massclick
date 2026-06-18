@@ -3,6 +3,7 @@ import {
   clearAdminSession,
   getAdminAccessToken,
   getAdminRefreshToken,
+  getCustomerToken,
   recordAuthFailure,
   recordTokenRefresh,
   setAdminSession,
@@ -12,6 +13,16 @@ const API_URL = process.env.REACT_APP_API_URL;
 const CLIENT_ID = process.env.REACT_APP_OAUTH_CLIENT_ID;
 const CLIENT_SECRET = process.env.REACT_APP_OAUTH_CLIENT_SECRET;
 const ADMIN_PATH_PREFIXES = ['/admin', '/dashboard'];
+const CUSTOMER_AUTH_PATHS = [
+  /^\/api\/otp_user(\/|$)/,
+  /^\/api\/leadsData(\/|$)/,
+  /^\/api\/favorites(\/|$)/,
+  /^\/api\/fcm-token(\/|$)/,
+  /^\/api\/chat(\/|$)/,
+  /^\/api\/rating(\/|$)/,
+  /^\/api\/reviews?(\/|$)/,
+  /^\/api\/search(\/|$)/,
+];
 
 export const axiosInstance = axios.create({
   baseURL: API_URL,
@@ -59,6 +70,8 @@ const getRequestPath = (url) => {
 };
 
 const isReloginRequest = (url) => getRequestPath(url) === '/oauth/relogin';
+
+const isCustomerAuthRequest = (pathname) => CUSTOMER_AUTH_PATHS.some((pattern) => pattern.test(pathname));
 
 const isAdminArea = () => {
   if (typeof window === 'undefined') return false;
@@ -132,9 +145,16 @@ axiosInstance.interceptors.request.use(
     const hasAuthorizationHeader = config.headers.Authorization || config.headers.authorization;
 
     if (!isReloginRequest(config.url) && !hasAuthorizationHeader) {
-      const accessToken = getAdminAccessToken();
-      if (accessToken) {
-        config.headers.Authorization = `Bearer ${accessToken}`;
+      const requestPath = getRequestPath(config.url);
+      const adminAccessToken = getAdminAccessToken();
+      const customerToken = getCustomerToken();
+
+      if (isCustomerAuthRequest(requestPath) && customerToken) {
+        config.headers.Authorization = `Bearer ${customerToken}`;
+      } else if (adminAccessToken) {
+        config.headers.Authorization = `Bearer ${adminAccessToken}`;
+      } else if (customerToken) {
+        config.headers.Authorization = `Bearer ${customerToken}`;
       }
     }
     return config;

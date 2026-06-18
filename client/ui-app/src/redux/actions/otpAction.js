@@ -1,6 +1,7 @@
 import axiosInstance from '../../services/axiosInstance.js';
 import {
   clearCustomerSession,
+  getAdminAccessToken,
   getCustomerToken,
   recordAuthFailure,
   setCustomerSession,
@@ -95,6 +96,14 @@ export const updateOtpUser = (mobile, data) => async (dispatch) => {
 };
 
 export const viewOtpUser = (mobile) => async (dispatch) => {
+  const customerToken = getCustomerToken();
+  if (!customerToken) {
+    dispatch({
+      type: VIEW_OTP_USER_FAILURE,
+      payload: { error: "AUTH_REQUIRED", message: "Customer session not found" },
+    });
+    return null;
+  }
 
   dispatch({ type: VIEW_OTP_USER_REQUEST });
 
@@ -128,6 +137,13 @@ export const viewOtpUser = (mobile) => async (dispatch) => {
 };
 
 export const viewAllOtpUsers = () => async (dispatch) => {
+  const adminToken = getAdminAccessToken();
+  if (!adminToken) {
+    const errPayload = { error: "AUTH_REQUIRED", message: "Admin session not found" };
+    dispatch({ type: VIEWALL_OTP_USER_FAILURE, payload: errPayload });
+    return [];
+  }
+
   dispatch({ type: VIEWALL_OTP_USER_REQUEST });
   try {
     const response = await axiosInstance.get(`${API_URL}/otp_users`);

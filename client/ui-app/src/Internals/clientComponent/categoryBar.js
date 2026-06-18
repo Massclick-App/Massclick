@@ -142,7 +142,8 @@ const CategoryBar = () => {
   );
   useEffect(() => {
     const mobile = localStorage.getItem("mobileNumber");
-    if (mobile) {
+    const token = localStorage.getItem("authToken");
+    if (mobile && token) {
       dispatch(viewOtpUser(mobile));
     }
     dispatch(fetchMatchedLeads());

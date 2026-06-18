@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import {
   SwipeableDrawer,
   Box,
@@ -12,11 +12,13 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { useDrawer } from "./drawerContext";
-import { getUserMenuLabel, isBusinessPeopleUser, userMenuItems } from "../categoryBar.js";
+import {
+  getUserMenuLabel,
+  isBusinessPeopleUser,
+  userMenuItems,
+} from "../categoryBar.js";
 import { useNavigate } from "react-router-dom";
 import { styled } from "@mui/material/styles";
-import { useDispatch, useSelector } from "react-redux";
-import { viewAllOtpUsers } from "../../../redux/actions/otpAction";
 
 const formatUiName = (name) => {
   if (!name) return "";
@@ -26,7 +28,6 @@ const formatUiName = (name) => {
     .replace(/\b\w/g, (char) => char.toUpperCase())
     .trim();
 };
-
 
 const DrawerContainer = styled("div")(({ theme }) => ({
   width: "100%",
@@ -63,27 +64,12 @@ const EmailText = styled(Typography)(({ theme }) => ({
 export default function GlobalDrawer() {
   const { isDrawerOpen, closeDrawer } = useDrawer();
   const navigate = useNavigate();
-  const dispatch = useDispatch();
-
 
   const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
   const userName = authUser?.userName || "Guest User";
   const userEmail = authUser?.email || "No Email";
 
-  const otpState = useSelector((state) => state.otp) || {};
-  const allUsers = Array.isArray(otpState.viewAllResponse)
-    ? otpState.viewAllResponse
-    : [];
-
-  const mobileNumber = localStorage.getItem("mobileNumber");
-
-  const UserDetail =
-    allUsers.find((u) => u.mobileNumber1 === mobileNumber) || {};
-
-  const currentUser = {
-    ...authUser,
-    ...UserDetail,
-  };
+  const currentUser = authUser;
 
   const handleLogout = () => {
     localStorage.removeItem("authToken");
@@ -104,16 +90,12 @@ export default function GlobalDrawer() {
     if (item.path) navigate(item.path);
   };
 
-  useEffect(() => {
-    dispatch(viewAllOtpUsers());
-  }, [dispatch]);
-
   return (
     <SwipeableDrawer
       anchor="right"
       open={isDrawerOpen}
       onClose={closeDrawer}
-      onOpen={() => { }}
+      onOpen={() => {}}
       disableSwipeToOpen
       sx={{
         zIndex: (theme) => theme.zIndex.modal + 20,
@@ -141,20 +123,20 @@ export default function GlobalDrawer() {
             closeDrawer();
             navigate("/");
           }}
-
-          sx={{ cursor: "pointer" }}>
+          sx={{ cursor: "pointer" }}
+        >
           <Avatar
-            src={UserDetail?.profileImage || undefined}
+            src={currentUser?.profileImage || undefined}
             sx={{
               width: 58,
               height: 58,
               bgcolor: "#F7941D",
               fontSize: "1.4rem",
               fontWeight: 700,
-              objectFit: "cover"
+              objectFit: "cover",
             }}
           >
-            {!UserDetail?.profileImage && userName.charAt(0).toUpperCase()}
+            {!currentUser?.profileImage && userName.charAt(0).toUpperCase()}
           </Avatar>
           <Box>
             <NameText>{userName}</NameText>
@@ -176,7 +158,9 @@ export default function GlobalDrawer() {
                 navigate("/user_edit-profile");
               }}
             >
-              {isBusinessPeopleUser(currentUser) ? "View Business" : "View Profile"}
+              {isBusinessPeopleUser(currentUser)
+                ? "View Business"
+                : "View Profile"}
             </Typography>
           </Box>
           <CloseIcon

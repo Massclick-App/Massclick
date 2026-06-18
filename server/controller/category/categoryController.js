@@ -41,8 +41,11 @@ export const viewCategoryAction = async (req, res) => {
 
 export const viewAllCategoryAction = async (req, res) => {
   try {
-    const pageNo = parseInt(req.query.pageNo) || 1;
-    const pageSize = parseInt(req.query.pageSize) || 10;
+    const pageNo = Math.max(1, parseInt(req.query.pageNo, 10) || 1);
+    const pageSize = Math.min(
+      Math.max(1, parseInt(req.query.pageSize, 10) || 10),
+      100
+    );
 
     const search = req.query.search || "";
     const status = req.query.status || "all";
@@ -62,7 +65,10 @@ export const viewAllCategoryAction = async (req, res) => {
       data: list,
       total,
       pageNo,
-      pageSize
+      pageSize,
+      totalPages: Math.max(1, Math.ceil(total / pageSize)),
+      hasNextPage: pageNo * pageSize < total,
+      hasPrevPage: pageNo > 1
     });
 
   } catch (error) {

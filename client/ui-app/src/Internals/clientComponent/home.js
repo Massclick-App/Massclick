@@ -403,8 +403,9 @@ const LandingPage = React.memo(() => {
   useEffect(() => {
     const mobile = localStorage.getItem("mobileNumber");
     const token = localStorage.getItem("authToken");
-    if (!mobile) return;
-    dispatch(viewOtpUser(mobile));
+    if (mobile && token) {
+      dispatch(viewOtpUser(mobile));
+    }
     if (!token) return;
     const ws = connectSocket(token);
     const onLeadUpdate = () => {

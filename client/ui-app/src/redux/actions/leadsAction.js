@@ -4,7 +4,7 @@ import {
   MATCH_LEADS_SUCCESS,
   MATCH_LEADS_FAILURE,
 } from "./userActionTypes";
-import { getClientToken } from "./clientAuthAction.js";
+import { getCustomerToken, getCustomerUser } from "../../auth/authStore.js";
 
 const API_URL = process.env.REACT_APP_API_URL;
 
@@ -12,14 +12,16 @@ export const fetchMatchedLeads = () => async (dispatch) => {
   dispatch({ type: MATCH_LEADS_REQUEST });
 
   try {
-    const mobileNumber = localStorage.getItem("mobileNumber");
-    if (!mobileNumber) {
-      throw new Error("Mobile number not found");
-    }
+    const customerUser = getCustomerUser();
+    const mobileNumber = localStorage.getItem("mobileNumber") || customerUser?.mobileNumber1;
+    const token = getCustomerToken();
 
-    const token = await dispatch(getClientToken());
-    if (!token) {
-      throw new Error("Access token missing");
+    if (!mobileNumber || !token) {
+      dispatch({
+        type: MATCH_LEADS_SUCCESS,
+        payload: [],
+      });
+      return null;
     }
 
     const response = await axiosInstance.get(
