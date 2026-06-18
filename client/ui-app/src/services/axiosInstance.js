@@ -148,8 +148,12 @@ axiosInstance.interceptors.request.use(
       const requestPath = getRequestPath(config.url);
       const adminAccessToken = getAdminAccessToken();
       const customerToken = getCustomerToken();
+      const shouldPreferAdminChatToken =
+        requestPath.startsWith('/api/chat') &&
+        isAdminArea() &&
+        Boolean(adminAccessToken);
 
-      if (isCustomerAuthRequest(requestPath) && customerToken) {
+      if (isCustomerAuthRequest(requestPath) && customerToken && !shouldPreferAdminChatToken) {
         config.headers.Authorization = `Bearer ${customerToken}`;
       } else if (adminAccessToken) {
         config.headers.Authorization = `Bearer ${adminAccessToken}`;

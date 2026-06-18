@@ -258,7 +258,10 @@ export default function AdminCustomerCareChat() {
         if (msgConvId && currentSelectedId === msgConvId) {
           LOG('chat:message:new — appending message to chat window');
           setMessages((prev) => mergeMessage(prev, payload.message));
-          markChatRead({ conversationId: currentSelectedId }).catch((err) => {
+          markChatRead({
+            conversationId: currentSelectedId,
+            token: getAdminChatToken(),
+          }).catch((err) => {
             WARN('markChatRead failed after new message:', err.message);
           });
           scrollToEnd();
@@ -320,7 +323,11 @@ export default function AdminCustomerCareChat() {
     setSendError(null);
     try {
       // No explicit token — axiosInstance interceptor injects fresh accessToken automatically
-      const result = await sendChatMessageApi({ conversationId: selected.id, text });
+      const result = await sendChatMessageApi({
+        conversationId: selected.id,
+        text,
+        token: getAdminChatToken(),
+      });
       LOG('handleSend: success — message id:', result.message?.id);
       setSelected(result.conversation);
       setConversations((prev) => upsertConversation(prev, result.conversation));
@@ -347,6 +354,7 @@ export default function AdminCustomerCareChat() {
     const updated = await updateChatConversationStatus({
       conversationId: selected.id,
       status: nextStatus,
+      token: getAdminChatToken(),
     });
     setSelected(updated);
     setConversations((prev) => upsertConversation(prev, updated));
