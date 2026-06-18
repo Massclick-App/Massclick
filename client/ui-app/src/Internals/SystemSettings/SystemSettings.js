@@ -7,18 +7,18 @@ import styles from "./SystemSettings.module.css";
 
 // Icons
 const cx = createScopedClassNames(styles);
-const SettingsIcon = () => <span>{"\u2699\uFE0F"}</span>;
-const SmsIcon = () => <span>{"\uD83D\uDCF1"}</span>;
-const WhatsAppIcon = () => <span>{"\uD83D\uDCAC"}</span>;
-const SystemUpdateAltIcon = () => <span>{"\uD83D\uDD04"}</span>;
-const ConstructionIcon = () => <span>{"\uD83D\uDD27"}</span>;
-const AndroidIcon = () => <span>{"\uD83E\uDD16"}</span>;
-const PhoneIphoneIcon = () => <span>{"\uD83D\uDCF1"}</span>;
-const CloudSyncIcon = () => <span>{"\u2601\uFE0F"}</span>;
-const DebugIcon = () => <span>{"\uD83D\uDD0D"}</span>;
-const DatabaseIcon = () => <span>{"\uD83D\uDDD1\uFE0F"}</span>;
-const AlertIcon = () => <span>{"\u26A1"}</span>;
-const GuardIcon = () => <span>{"\uD83D\uDEE1\uFE0F"}</span>;
+const SettingsIcon = () => <span>⚙️</span>;
+const SmsIcon = () => <span>📱</span>;
+const WhatsAppIcon = () => <span>💬</span>;
+const SystemUpdateAltIcon = () => <span>🔄</span>;
+const ConstructionIcon = () => <span>🔧</span>;
+const AndroidIcon = () => <span>🤖</span>;
+const PhoneIphoneIcon = () => <span>📱</span>;
+const CloudSyncIcon = () => <span>☁️</span>;
+const DebugIcon = () => <span>🔍</span>;
+const DatabaseIcon = () => <span>🗄️</span>;
+const AlertIcon = () => <span>⚡</span>;
+const GuardIcon = () => <span>🛡️</span>;
 const formatUptime = seconds => {
   if (!seconds) return "\u2014";
   const d = Math.floor(seconds / 86400);
