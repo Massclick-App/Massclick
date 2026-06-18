@@ -41,6 +41,10 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  if (shouldBypassRequest(url)) {
+    return;
+  }
+
   if (isImageRequest(request)) {
     event.respondWith(cacheFirstStrategy(request, IMAGE_CACHE));
     return;
@@ -52,6 +56,10 @@ self.addEventListener('fetch', (event) => {
 function isImageRequest(request) {
   return /\.(png|jpg|jpeg|gif|webp|svg)$/i.test(request.url) ||
          request.destination === 'image';
+}
+
+function shouldBypassRequest(url) {
+  return url.pathname.startsWith('/api/');
 }
 
 function cacheFirstStrategy(request, cacheName) {

@@ -1,5 +1,6 @@
 import systemSettingsModel from "../model/systemSettings/systemSettingsModel.js";
 import { createLogger } from "../utils/logger.js";
+import { extractBearerToken, resolveAuthActorFromToken } from "../auth/authResolver.js";
 
 const logger = createLogger("MAINTENANCE_MODE");
 
@@ -19,6 +20,18 @@ const SETTINGS_CACHE_TTL = 5000; // Cache for 5 seconds
 
 const isWhitelisted = (path) => {
   return MAINTENANCE_WHITELIST.some(pattern => pattern.test(path));
+};
+
+const getAdminActorFromRequest = async (req) => {
+  const token = extractBearerToken(req.headers?.authorization || req.headers?.Authorization || "");
+  if (!token) return null;
+
+  try {
+    const actor = await resolveAuthActorFromToken(token, { source: "maintenance-bypass" });
+    return actor?.actorType === "admin" ? actor : null;
+  } catch {
+    return null;
+  }
 };
 
 const getSystemSettings = async () => {
@@ -51,6 +64,11 @@ export const maintenanceModeMiddleware = async (req, res, next) => {
     const settings = await getSystemSettings();
 
     if (settings?.app_maintenance_mode) {
+      const adminActor = await getAdminActorFromRequest(req);
+      if (adminActor) {
+        return next();
+      }
+
       const userAgent = req.headers["user-agent"] || "unknown";
       const ip = req.ip || req.connection.remoteAddress;
 

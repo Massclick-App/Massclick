@@ -1,5 +1,8 @@
 const INITIAL_STATE = {
   isMaintenanceMode: false,
+  message: "",
+  detail: "",
+  retryAfter: null,
   lastUpdated: null,
 };
 
@@ -12,12 +15,21 @@ export const maintenanceReducer = (state = INITIAL_STATE, action) => {
       return {
         ...state,
         isMaintenanceMode: true,
+        message: action.payload?.message || state.message || "Service Unavailable",
+        detail:
+          action.payload?.detail ||
+          state.detail ||
+          "We're making a few improvements right now. We'll be back soon.",
+        retryAfter: action.payload?.retryAfter ?? state.retryAfter ?? null,
         lastUpdated: new Date().toISOString(),
       };
     case MAINTENANCE_MODE_OFF:
       return {
         ...state,
         isMaintenanceMode: false,
+        message: "",
+        detail: "",
+        retryAfter: null,
         lastUpdated: new Date().toISOString(),
       };
     default:
@@ -26,8 +38,9 @@ export const maintenanceReducer = (state = INITIAL_STATE, action) => {
 };
 
 // Action creators
-export const setMaintenanceModeOn = () => ({
+export const setMaintenanceModeOn = (payload) => ({
   type: MAINTENANCE_MODE_ON,
+  payload,
 });
 
 export const setMaintenanceModeOff = () => ({

@@ -8,6 +8,7 @@ import {
   recordTokenRefresh,
   setAdminSession,
 } from "../auth/authStore.js";
+import { setMaintenanceModeOn } from "../redux/reducers/maintenanceReducer.js";
 
 const API_URL = process.env.REACT_APP_API_URL;
 const CLIENT_ID = process.env.REACT_APP_OAUTH_CLIENT_ID;
@@ -73,6 +74,15 @@ const isReloginRequest = (url) => getRequestPath(url) === '/oauth/relogin';
 
 const isCustomerAuthRequest = (pathname) => CUSTOMER_AUTH_PATHS.some((pattern) => pattern.test(pathname));
 
+const MAINTENANCE_BYPASS_PATHS = [
+  /^\/api\/app-version(\/|$)/,
+  /^\/api\/admin\/system-settings(\/|$)/,
+  /^\/api\/oauth(\/|$)/,
+];
+
+const canBypassMaintenanceGuard = (pathname) =>
+  MAINTENANCE_BYPASS_PATHS.some((pattern) => pattern.test(pathname));
+
 const isAdminArea = () => {
   if (typeof window === 'undefined') return false;
   return ADMIN_PATH_PREFIXES.some((path) => window.location.pathname.startsWith(path));
@@ -133,6 +143,44 @@ const notifyRateLimited = (error) => {
   );
 };
 
+const syncMaintenanceModeFromError = (error) => {
+  const response = error?.response;
+  if (!store || response?.status !== 503 || !response?.data?.maintenanceMode) {
+    return;
+  }
+
+  try {
+    store.dispatch(
+      setMaintenanceModeOn({
+        message: response.data.message,
+        detail: response.data.detail,
+        retryAfter: response.data.retryAfter ?? null,
+      })
+    );
+  } catch (dispatchError) {
+    console.warn("Error syncing maintenance mode state:", dispatchError);
+  }
+};
+
+const createMaintenanceModeError = (config) => {
+  const maintenanceState = store?.getState?.()?.maintenance || {};
+  const error = new Error('MAINTENANCE_MODE_ACTIVE');
+  error.config = config;
+  error.response = {
+    status: 503,
+    data: {
+      success: false,
+      message: maintenanceState.message || 'Service Unavailable',
+      detail:
+        maintenanceState.detail ||
+        'The system is currently in maintenance mode. Please try again later.',
+      maintenanceMode: true,
+      retryAfter: maintenanceState.retryAfter ?? null,
+    },
+  };
+  return error;
+};
+
 // Request interceptor - add token to headers and show loader
 axiosInstance.interceptors.request.use(
   (config) => {
@@ -143,9 +191,19 @@ axiosInstance.interceptors.request.use(
     // Also preserve explicit Authorization headers, such as public client tokens.
     config.headers = config.headers || {};
     const hasAuthorizationHeader = config.headers.Authorization || config.headers.authorization;
+    const requestPath = getRequestPath(config.url);
+
+    if (
+      store?.getState?.()?.maintenance?.isMaintenanceMode &&
+      !isAdminArea() &&
+      !canBypassMaintenanceGuard(requestPath)
+    ) {
+      activeRequests = Math.max(0, activeRequests - 1);
+      hideGlobalLoader();
+      return Promise.reject(createMaintenanceModeError(config));
+    }
 
     if (!isReloginRequest(config.url) && !hasAuthorizationHeader) {
-      const requestPath = getRequestPath(config.url);
       const adminAccessToken = getAdminAccessToken();
       const customerToken = getCustomerToken();
       const shouldPreferAdminChatToken =
@@ -180,6 +238,7 @@ axiosInstance.interceptors.response.use(
   (error) => {
     activeRequests = Math.max(0, activeRequests - 1);
     hideGlobalLoader();
+    syncMaintenanceModeFromError(error);
 
     if (error.response?.status === 429) {
       notifyRateLimited(error);
