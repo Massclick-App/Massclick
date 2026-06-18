@@ -8,7 +8,6 @@ import { setMaintenanceModeOn, setMaintenanceModeOff } from './redux/reducers/ma
 import { connectSocket } from './services/socketService.js';
 import {
   clearAdminSession,
-  getAdminAccessToken,
   getAuthSnapshot,
   subscribeAuthState,
 } from './auth/authStore.js';
@@ -142,6 +141,12 @@ const ComingSoon = ({ title }) => (
     <h2>{title} Page Coming Soon!</h2>
   </div>
 );
+
+const getRealtimeSocketToken = (snapshot = getAuthSnapshot()) =>
+  snapshot?.admin?.accessToken ||
+  snapshot?.customer?.token ||
+  snapshot?.publicClient?.accessToken ||
+  null;
 
 function AppRoutes({
   isAuthenticated,
@@ -294,6 +299,7 @@ function AppRoutes({
 /* -------------------------------- App ------------------------------------ */
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [realtimeSocketToken, setRealtimeSocketToken] = useState(() => getRealtimeSocketToken());
   const [authReady, setAuthReady] = useState(false);
   const [openLoginModal, setOpenLoginModal] = useState(false);
 
@@ -301,7 +307,9 @@ function App() {
 
   /* Initial auth snapshot */
   useEffect(() => {
-    setIsAuthenticated(getAuthSnapshot().admin.isAuthenticated);
+    const snapshot = getAuthSnapshot();
+    setIsAuthenticated(snapshot.admin.isAuthenticated);
+    setRealtimeSocketToken(getRealtimeSocketToken(snapshot));
   }, []);
 
   /* Admin session bootstrap */
@@ -345,6 +353,7 @@ function App() {
   useEffect(() => {
     const unsubscribe = subscribeAuthState((snapshot) => {
       setIsAuthenticated(snapshot.admin.isAuthenticated);
+      setRealtimeSocketToken(getRealtimeSocketToken(snapshot));
     });
 
     return () => {
@@ -373,13 +382,10 @@ function App() {
 
   /* WebSocket Listener for Maintenance Mode */
   useEffect(() => {
-    if (!isAuthenticated) return;
-
-    const token = getAdminAccessToken();
-    if (!token) return;
+    if (!realtimeSocketToken) return;
 
     try {
-      const ws = connectSocket(token);
+      const ws = connectSocket(realtimeSocketToken);
 
       const handleMaintenanceMode = (data) => {
         if (data?.active) {
@@ -401,7 +407,7 @@ function App() {
     } catch (error) {
       console.warn('Failed to set up maintenance mode listener:', error);
     }
-  }, [isAuthenticated, dispatch]);
+  }, [realtimeSocketToken, dispatch]);
 
   return (
     <ThemeProvider theme={theme}>
