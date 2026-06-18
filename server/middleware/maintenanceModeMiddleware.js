@@ -22,6 +22,14 @@ const isWhitelisted = (path) => {
   return MAINTENANCE_WHITELIST.some(pattern => pattern.test(path));
 };
 
+const isApiRequest = (req) => req.path?.startsWith("/api/");
+
+const isDocumentNavigation = (req) => {
+  const method = (req.method || "GET").toUpperCase();
+  const accept = String(req.headers?.accept || "");
+  return (method === "GET" || method === "HEAD") && accept.includes("text/html");
+};
+
 const getAdminActorFromRequest = async (req) => {
   const token = extractBearerToken(req.headers?.authorization || req.headers?.Authorization || "");
   if (!token) return null;
@@ -58,6 +66,12 @@ export const maintenanceModeMiddleware = async (req, res, next) => {
   try {
     // Skip whitelist check
     if (isWhitelisted(req.path)) {
+      return next();
+    }
+
+    // Let browser page requests reach static/SSR so the frontend can render
+    // a proper maintenance experience instead of raw JSON in the tab.
+    if (!isApiRequest(req) && isDocumentNavigation(req)) {
       return next();
     }
 
