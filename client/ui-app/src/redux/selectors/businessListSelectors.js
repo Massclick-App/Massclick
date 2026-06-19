@@ -29,6 +29,18 @@ export const selectBackendSuggestions = createSelector(
   (state) => state.backendSuggestions || []
 );
 
+export const selectBackendSuggestionsMeta = createSelector(
+  [selectBusinessListState],
+  (state) => ({
+    loading: state.backendSuggestionsLoading || false,
+    hasMore: state.backendSuggestionsHasMore || false,
+    page: state.backendSuggestionsPage || 0,
+    limit: state.backendSuggestionsLimit || 10,
+    total: state.backendSuggestionsTotal || 0,
+    query: state.backendSuggestionsQuery || "",
+  })
+);
+
 export const selectBusinessCount = createSelector(
   [selectBusinesses],
   (businesses) => businesses.length

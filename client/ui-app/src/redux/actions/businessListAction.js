@@ -399,8 +399,36 @@ export const getAllSearchLogs = () => async (dispatch) => {
   }
 };
 
-export const getBackendSuggestions = (search) => async (dispatch) => {
-  dispatch({ type: SUGGESTION_BUSINESS_REQUEST });
+export const getBackendSuggestions = (searchOrOptions, extraOptions = {}) => async (dispatch) => {
+  const options = typeof searchOrOptions === "string"
+    ? { search: searchOrOptions, ...extraOptions }
+    : (searchOrOptions || {});
+  const search = String(options.search || "").trim();
+  const page = Math.max(1, Number(options.page) || 1);
+  const limit = Math.min(25, Math.max(1, Number(options.limit) || 10));
+  const append = Boolean(options.append);
+
+  dispatch({
+    type: SUGGESTION_BUSINESS_REQUEST,
+    meta: { append, query: search, page, limit }
+  });
+
+  if (search.length < 2) {
+    const emptyPayload = {
+      items: [],
+      page: 1,
+      limit,
+      total: 0,
+      hasMore: false,
+      query: search
+    };
+    dispatch({
+      type: SUGGESTION_BUSINESS_SUCCESS,
+      payload: emptyPayload,
+      meta: { append: false, query: search, page: 1, limit }
+    });
+    return emptyPayload;
+  }
 
   try {
     const token = await dispatch(getClientToken());
@@ -409,19 +437,41 @@ export const getBackendSuggestions = (search) => async (dispatch) => {
       `${API_URL}/businesslist/suggestions`,
       {
         headers: { Authorization: `Bearer ${token}` },
-        params: { search },
+        params: { search, page, limit },
       }
     );
 
+    const raw = response.data;
+    const normalized = Array.isArray(raw)
+      ? {
+          items: raw,
+          page,
+          limit,
+          total: raw.length,
+          hasMore: raw.length >= limit,
+          query: search
+        }
+      : {
+          items: Array.isArray(raw?.items) ? raw.items : [],
+          page: Number(raw?.page) || page,
+          limit: Number(raw?.limit) || limit,
+          total: Number(raw?.total) || 0,
+          hasMore: Boolean(raw?.hasMore),
+          query: String(raw?.query || search)
+        };
+
     dispatch({
       type: SUGGESTION_BUSINESS_SUCCESS,
-      payload: response.data || [],
+      payload: normalized,
+      meta: { append, query: search, page, limit }
     });
 
+    return normalized;
   } catch (error) {
     dispatch({
       type: SUGGESTION_BUSINESS_FAILURE,
       payload: error.response?.data || error.message,
+      meta: { append, query: search, page, limit }
     });
   }
 };

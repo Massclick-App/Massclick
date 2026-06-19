@@ -52,6 +52,12 @@ const initialState = {
   trendingLoading: false,
   trendingError: null,
   backendSuggestions: [],
+  backendSuggestionsLoading: false,
+  backendSuggestionsHasMore: false,
+  backendSuggestionsPage: 0,
+  backendSuggestionsLimit: 10,
+  backendSuggestionsTotal: 0,
+  backendSuggestionsQuery: "",
   backendSearchResults: [],
 
   searchLogs: [],
@@ -448,13 +454,86 @@ export default function businessListReducer(state = initialState, action) {
       };
 
     case SUGGESTION_BUSINESS_REQUEST:
-      return { ...state, loading: true };
+      return {
+        ...state,
+        loading: true,
+        backendSuggestionsLoading: true,
+        ...(action.meta?.append
+          ? {}
+          : {
+              backendSuggestions: [],
+              backendSuggestionsHasMore: false,
+              backendSuggestionsPage: 0,
+              backendSuggestionsTotal: 0,
+              backendSuggestionsQuery: action.meta?.query || "",
+              backendSuggestionsLimit: action.meta?.limit || state.backendSuggestionsLimit,
+            }),
+      };
 
     case SUGGESTION_BUSINESS_SUCCESS:
-      return { ...state, loading: false, backendSuggestions: action.payload };
+      {
+        const items = Array.isArray(action.payload)
+          ? action.payload
+          : Array.isArray(action.payload?.items)
+            ? action.payload.items
+            : [];
+        const append = Boolean(action.meta?.append);
+        const merged = append
+          ? [...state.backendSuggestions, ...items].filter((item, index, list) => {
+              const key = [
+                item?.category,
+                item?.businessName,
+                item?.location,
+              ].map((value) => String(value || "").trim().toLowerCase()).join("|");
+              return list.findIndex((candidate) => {
+                const candidateKey = [
+                  candidate?.category,
+                  candidate?.businessName,
+                  candidate?.location,
+                ].map((value) => String(value || "").trim().toLowerCase()).join("|");
+                return candidateKey === key;
+              }) === index;
+            })
+          : items;
+
+        return {
+          ...state,
+          loading: false,
+          backendSuggestionsLoading: false,
+          backendSuggestions: merged,
+          backendSuggestionsHasMore: Array.isArray(action.payload)
+            ? false
+            : Boolean(action.payload?.hasMore),
+          backendSuggestionsPage: Array.isArray(action.payload)
+            ? (items.length ? 1 : 0)
+            : Number(action.payload?.page) || 0,
+          backendSuggestionsLimit: Array.isArray(action.payload)
+            ? items.length
+            : Number(action.payload?.limit) || state.backendSuggestionsLimit,
+          backendSuggestionsTotal: Array.isArray(action.payload)
+            ? items.length
+            : Number(action.payload?.total) || 0,
+          backendSuggestionsQuery: Array.isArray(action.payload)
+            ? (action.meta?.query || "")
+            : String(action.payload?.query || action.meta?.query || ""),
+        };
+      }
 
     case SUGGESTION_BUSINESS_FAILURE:
-      return { ...state, loading: false, backendSuggestions: [] };
+      return {
+        ...state,
+        loading: false,
+        backendSuggestionsLoading: false,
+        ...(action.meta?.append
+          ? {}
+          : {
+              backendSuggestions: [],
+              backendSuggestionsHasMore: false,
+              backendSuggestionsPage: 0,
+              backendSuggestionsTotal: 0,
+              backendSuggestionsQuery: action.meta?.query || "",
+            }),
+      };
 
     case SEARCH_BUSINESS_REQUEST:
       return { ...state, loading: true };

@@ -10,7 +10,7 @@ import { navigateToSearchResult } from "../../../utils/searchResultNavigation";
 import Tooltip from "@mui/material/Tooltip";
 import { categoryBarHelpers } from "../categoryBar";
 import { Box, Button, IconButton } from "@mui/material";
-import { selectSearchLogs, selectBackendSuggestions } from "../../../redux/selectors";
+import { selectSearchLogs, selectBackendSuggestions, selectBackendSuggestionsMeta } from "../../../redux/selectors";
 import MicIcon from "@mui/icons-material/Mic";
 import SearchIcon from "@mui/icons-material/Search";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
@@ -21,36 +21,55 @@ import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import { useDrawer } from "../Drawer/drawerContext";
 import { shouldSendSearch } from "../../../utils/searchLock";
 const cx = createScopedClassNames(styles);
+const DEFAULT_LOCATION = "Trichy";
+const SUGGESTION_PAGE_SIZE = 10;
+const isMongoObjectId = value => /^[a-f\d]{24}$/i.test(String(value || "").trim());
 const CategoryDropdown = ({
+  label,
   options,
-  setSearchTerm,
-  closeDropdown
+  onSelect,
+  onReachEnd,
+  hasMore = false,
+  isLoadingMore = false
 }) => {
-  const MAX_HEIGHT_PX = 200;
-  const handleOptionClick = value => {
-    setSearchTerm(value);
-    closeDropdown();
-    document.activeElement.blur();
+  const MAX_HEIGHT_PX = 220;
+  const getOptionLabel = option => {
+    if (typeof option === "string") return option;
+    if (!option || typeof option !== "object") return "";
+    return String(option.category || option.categoryName || option.businessName || option.location || option.locationName || option.name || "").trim();
   };
-  if (!options || options.length === 0) return null;
+  const visibleOptions = (options || []).filter(option => {
+    const label = getOptionLabel(option);
+    return label && !isMongoObjectId(label);
+  });
+  const handleScroll = event => {
+    if (!onReachEnd || !hasMore || isLoadingMore) return;
+    const {
+      scrollTop,
+      scrollHeight,
+      clientHeight
+    } = event.currentTarget;
+    if (scrollHeight - scrollTop - clientHeight <= 24) {
+      onReachEnd();
+    }
+  };
+  if (visibleOptions.length === 0) return null;
   return <div className={cx("category-custom-dropdown")}>
-      <div className={cx("trending-label")}>RECENT SEARCHES</div>
-
+      <div className={cx("trending-label")}>{label}</div>
       <div className={cx("options-list-container")} style={{
       maxHeight: `${MAX_HEIGHT_PX}px`
-    }}>
-        {options.map((option, index) => <div key={index} className={cx("option-item")} onClick={() => handleOptionClick(option)} style={{
-        display: "flex",
-        alignItems: "center",
-        padding: "4px 8px",
-        cursor: "pointer"
-      }}>
-            <HistoryToggleOffIcon style={{
-          marginRight: "6px",
-          color: "#ff7b00"
-        }} />
-            <span>{option}</span>
-          </div>)}
+    }} onScroll={handleScroll}>
+        {visibleOptions.map((option, index) => {
+        const displayText = getOptionLabel(option);
+        return <div key={index} className={cx("option-item")} onClick={() => onSelect(option)}>
+              {label.toLowerCase().includes("location") ? <LocationOnIcon className={cx("option-icon")} /> : label === "RECENT SEARCHES" ? <HistoryToggleOffIcon className={cx("option-icon")} /> : <SearchIcon className={cx("option-icon")} />}
+              <span className={cx("option-text-main")}>{displayText}</span>
+              {label === "RECENT SEARCHES" && typeof option !== "string" && (option.category || option.categoryName) && <span className={cx("option-text-sub")}>{option.category || option.categoryName}</span>}
+            </div>;
+      })}
+        {isLoadingMore && <div className={cx("option-item")}>
+            <span className={cx("option-text-main")}>Loading more...</span>
+          </div>}
       </div>
     </div>;
 };
@@ -58,6 +77,11 @@ const CardsSearch = ({
   isScrolled = true,
   locationName: propLocationName,
   setLocationName: propSetLocationName,
+  searchTerm: propSearchTerm,
+  setSearchTerm: propSetSearchTerm,
+  setCategoryName: propSetCategoryName,
+  committedLocationName,
+  committedSearchTerm,
   setSearchResults
 }) => {
   const dispatch = useDispatch();
@@ -67,17 +91,53 @@ const CardsSearch = ({
   } = useDrawer();
   const searchLogs = useSelector(selectSearchLogs);
   const backendSuggestions = useSelector(selectBackendSuggestions);
-  const [internalLocationName, setInternalLocationName] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
+  const {
+    loading: backendSuggestionsLoading,
+    hasMore: backendSuggestionsHasMore,
+    page: backendSuggestionsPage,
+    query: backendSuggestionsQuery
+  } = useSelector(selectBackendSuggestionsMeta);
+  const [internalLocationName, setInternalLocationName] = useState(localStorage.getItem("selectedLocation") || DEFAULT_LOCATION);
+  const [internalSearchTerm, setInternalSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const locationName = propLocationName ?? internalLocationName;
   const setLocationName = propSetLocationName ?? setInternalLocationName;
+  const searchTerm = propSearchTerm ?? internalSearchTerm;
+  const setSearchTerm = propSetSearchTerm ?? setInternalSearchTerm;
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState(false);
   const categoryRef = useRef(null);
   const locationRef = useRef(null);
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [debouncedLocation, setDebouncedLocation] = useState("");
+  const normalizeComparable = value => String(value || "").trim().replace(/\s+/g, " ").toLowerCase();
+  const hasPendingSearch = normalizeComparable(committedSearchTerm) !== normalizeComparable(searchTerm) || normalizeComparable(committedLocationName || DEFAULT_LOCATION) !== normalizeComparable(locationName || DEFAULT_LOCATION);
+  const requestSuggestions = (query, {
+    page = 1,
+    append = false
+  } = {}) => dispatch(getBackendSuggestions({
+    search: query,
+    page,
+    limit: SUGGESTION_PAGE_SIZE,
+    append
+  }));
+  const maybeLoadMoreSuggestions = query => {
+    const normalizedQuery = String(query || "").trim();
+    if (!normalizedQuery || backendSuggestionsLoading || !backendSuggestionsHasMore) return;
+    if (backendSuggestionsQuery !== normalizedQuery) return;
+    requestSuggestions(normalizedQuery, {
+      page: backendSuggestionsPage + 1,
+      append: true
+    });
+  };
+  useEffect(() => {
+    const nextLocation = String(locationName || "").trim() || DEFAULT_LOCATION;
+    localStorage.setItem("selectedLocation", nextLocation);
+    dispatch({
+      type: "SET_SELECTED_DISTRICT",
+      payload: nextLocation
+    });
+  }, [dispatch, locationName]);
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchTerm || ""), 200);
     return () => clearTimeout(t);
@@ -90,15 +150,23 @@ const CardsSearch = ({
     dispatch(getAllSearchLogs());
   }, [dispatch]);
   useEffect(() => {
-    if (debouncedSearch.trim().length >= 2) {
-      dispatch(getBackendSuggestions(debouncedSearch.trim()));
-    }
-  }, [debouncedSearch, dispatch]);
+    if (!isCategoryDropdownOpen) return;
+    dispatch(getBackendSuggestions({
+      search: debouncedSearch.trim(),
+      page: 1,
+      limit: SUGGESTION_PAGE_SIZE,
+      append: false
+    }));
+  }, [debouncedSearch, dispatch, isCategoryDropdownOpen]);
   useEffect(() => {
-    if (debouncedLocation.trim().length >= 2) {
-      dispatch(getBackendSuggestions(debouncedLocation.trim()));
-    }
-  }, [debouncedLocation, dispatch]);
+    if (!isLocationDropdownOpen) return;
+    dispatch(getBackendSuggestions({
+      search: debouncedLocation.trim(),
+      page: 1,
+      limit: SUGGESTION_PAGE_SIZE,
+      append: false
+    }));
+  }, [debouncedLocation, dispatch, isLocationDropdownOpen]);
   useEffect(() => {
     const handleClickOutside = e => {
       if (categoryRef.current && !categoryRef.current.contains(e.target)) {
@@ -112,7 +180,7 @@ const CardsSearch = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
   const capitalizeWords = str => str.toLowerCase().split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
-  const categoryOptions = [...new Set((searchLogs || []).map(log => log.categoryName ? capitalizeWords(log.categoryName) : "").filter(Boolean))];
+  const categoryOptions = [...new Set((searchLogs || []).map(log => log.categoryName ? capitalizeWords(log.categoryName) : "").filter(value => value && !isMongoObjectId(value)))];
   const suggestionCategories = (() => {
     if (!backendSuggestions.length) return [];
     const seen = new Set();
@@ -120,10 +188,12 @@ const CardsSearch = ({
     backendSuggestions.forEach(item => {
       const val = item.category;
       if (!val) return;
-      const key = val.toLowerCase();
+      const text = String(val).trim();
+      if (!text || isMongoObjectId(text)) return;
+      const key = text.toLowerCase();
       if (!seen.has(key)) {
         seen.add(key);
-        list.push(val);
+        list.push(text);
       }
     });
     return list;
@@ -136,10 +206,12 @@ const CardsSearch = ({
       const locFields = [item.location, item.locationDetails, item.street, item.plotNumber, item.pincode];
       locFields.forEach(loc => {
         if (!loc) return;
-        const key = loc.toLowerCase();
+        const text = String(loc).trim();
+        if (!text || isMongoObjectId(text)) return;
+        const key = text.toLowerCase();
         if (!seen.has(key)) {
           seen.add(key);
-          list.push(loc);
+          list.push(text);
         }
       });
     });
@@ -148,7 +220,10 @@ const CardsSearch = ({
   const handleSearch = async e => {
     e?.preventDefault?.();
     const searchInput = searchTerm.trim();
-    const location = locationName.trim();
+    const location = (locationName || DEFAULT_LOCATION).trim();
+    if (!locationName?.trim()) {
+      setLocationName(location);
+    }
 
     // Always send user input as term, not category
     // Category should only be sent if explicitly selected from dropdown
@@ -230,78 +305,55 @@ const CardsSearch = ({
               <input className={cx("cards-custom-input")} placeholder="Enter location manually..." value={locationName} onChange={e => {
               setLocationName(e.target.value);
               setIsLocationDropdownOpen(true);
-            }} onFocus={() => setIsLocationDropdownOpen(true)} />
+              setIsCategoryDropdownOpen(false);
+            }} onFocus={() => {
+              setIsLocationDropdownOpen(true);
+              setIsCategoryDropdownOpen(false);
+            }} />
 
-              {isLocationDropdownOpen && parsedLocationSuggestions.length > 0 && locationName.trim().length >= 1 && <div className={cx("category-custom-dropdown")} style={{
-              zIndex: 10000
-            }}>
-                    <div className={cx("trending-label")}>LOCATION SUGGESTIONS</div>
-
-                    <div className={cx("options-list-container")}>
-                      {parsedLocationSuggestions.map((loc, idx) => <div key={idx} className={cx("option-item")} onClick={() => {
-                  setLocationName(loc);
-                  setIsLocationDropdownOpen(false);
-                  document.activeElement.blur();
-                }} style={{
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center"
-                }}>
-                          <LocationOnIcon style={{
-                    marginRight: 6,
-                    color: "#ff7b00"
-                  }} />
-                          <span>{loc}</span>
-                        </div>)}
-                    </div>
-                  </div>}
+              {isLocationDropdownOpen && locationName.trim().length >= 1 && <CategoryDropdown label="LOCATION SUGGESTIONS" options={parsedLocationSuggestions} onReachEnd={() => maybeLoadMoreSuggestions(locationName.trim())} hasMore={backendSuggestionsHasMore && backendSuggestionsQuery === locationName.trim()} isLoadingMore={backendSuggestionsLoading && backendSuggestionsQuery === locationName.trim()} onSelect={val => {
+              const chosen = typeof val === "string" ? val : String(val);
+              setLocationName(chosen);
+              setIsLocationDropdownOpen(false);
+              document.activeElement.blur();
+            }} />}
             </div>
 
             <div className={cx("cards-input-group cards-search-group")} ref={categoryRef}>
               <input className={cx("cards-custom-input")} placeholder="Search for..." value={searchTerm} onChange={e => {
               setSearchTerm(e.target.value);
+              propSetCategoryName?.(e.target.value);
               setIsCategoryDropdownOpen(true);
-            }} onFocus={() => setIsCategoryDropdownOpen(true)} />
-              {isCategoryDropdownOpen && searchTerm.trim().length < 2 && <CategoryDropdown options={categoryOptions} setSearchTerm={val => {
-              setSearchTerm(val);
-              setIsCategoryDropdownOpen(false);
-              document.activeElement.blur();
-            }} closeDropdown={() => {
+              setIsLocationDropdownOpen(false);
+            }} onFocus={() => {
+              setIsCategoryDropdownOpen(true);
+              setIsLocationDropdownOpen(false);
+            }} />
+              {isCategoryDropdownOpen && searchTerm.trim().length < 2 && <CategoryDropdown label="RECENT SEARCHES" options={categoryOptions} onSelect={val => {
+              const chosen = typeof val === "string" ? val : String(val);
+              setSearchTerm(chosen);
+              propSetCategoryName?.(chosen);
               setIsCategoryDropdownOpen(false);
               document.activeElement.blur();
             }} />}
 
-              {isCategoryDropdownOpen && searchTerm.trim().length >= 2 && <div className={cx("category-custom-dropdown")} style={{
-              zIndex: 10000
-            }}>
-                  <div className={cx("trending-label")}>SUGGESTIONS</div>
-
-                  <div className={cx("options-list-container")}>
-                    {suggestionCategories.slice(0, 10).map((suggestion, idx) => <div key={idx} className={cx("option-item")} onClick={() => {
-                  setSearchTerm(suggestion);
-                  setIsCategoryDropdownOpen(false);
-                  document.activeElement.blur();
-                }} style={{
-                  display: "flex",
-                  alignItems: "center",
-                  padding: "4px 8px",
-                  cursor: "pointer"
-                }}>
-                        <SearchIcon style={{
-                    marginRight: 6,
-                    color: "#ff7b00"
-                  }} />
-                        <span>{suggestion}</span>
-                      </div>)}
-                  </div>
-                </div>}
+              {isCategoryDropdownOpen && searchTerm.trim().length >= 2 && <CategoryDropdown label="SUGGESTIONS" options={suggestionCategories} onReachEnd={() => maybeLoadMoreSuggestions(searchTerm.trim())} hasMore={backendSuggestionsHasMore && backendSuggestionsQuery === searchTerm.trim()} isLoadingMore={backendSuggestionsLoading && backendSuggestionsQuery === searchTerm.trim()} onSelect={val => {
+              const chosen = typeof val === "string" ? val : String(val);
+              setSearchTerm(chosen);
+              propSetCategoryName?.(chosen);
+              setIsCategoryDropdownOpen(false);
+              document.activeElement.blur();
+            }} />}
 
               <MicIcon className={cx("input-adornment end")} />
             </div>
 
-            <button className={cx("search-btn")} onClick={handleSearch} aria-label="Search">
-              <SearchIcon />
-            </button>
+            <div className={cx("search-action")}>
+              <button className={cx("search-btn", hasPendingSearch && "search-btn-pending")} onClick={handleSearch} aria-label="Search" title={hasPendingSearch ? "Click search to update the listing" : "Search"}>
+                <SearchIcon />
+              </button>
+              {hasPendingSearch && <span className={cx("search-hint")}>Click search to update results</span>}
+            </div>
           </div>
 
           <Box sx={{

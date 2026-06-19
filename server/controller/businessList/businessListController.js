@@ -196,16 +196,26 @@ export const viewBusinessByCategory = async (req, res) => {
 export const getSuggestionsController = async (req, res) => {
   try {
     const search = (req.query.search || "").trim();
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(25, Math.max(1, parseInt(req.query.limit, 10) || 10));
+    const skip = (page - 1) * limit;
 
     if (search.length < 2) {
-      return res.send([]);
+      return res.send({
+        items: [],
+        total: 0,
+        page,
+        limit,
+        hasMore: false,
+        query: search
+      });
     }
 
     const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const startsWithPattern = `^${escapedSearch}`;
     const containsPattern = escapedSearch;
 
-    const suggestions = await businessListModel.aggregate([
+    const [suggestionResult] = await businessListModel.aggregate([
       {
         $match: {
           businessesLive: true,
@@ -270,98 +280,107 @@ export const getSuggestionsController = async (req, res) => {
               ],
               default: 3
             }
+          },
+          normalizedCategory: {
+            $toLower: {
+              $trim: {
+                input: { $ifNull: ["$category", ""] }
+              }
+            }
           }
         }
       },
 
       {
-        $sort: { priority: 1 }
+        $sort: { priority: 1, normalizedCategory: 1, businessName: 1, _id: 1 }
       },
 
       {
-        $limit: 15
+        $group: {
+          _id: "$normalizedCategory",
+          businessName: { $first: "$businessName" },
+          category: { $first: "$category" },
+          location: { $first: "$location" },
+          priority: { $first: "$priority" },
+          bannerImageKey: { $first: { $ifNull: ["$bannerImageKey", ""] } }
+        }
       },
 
       {
-        $lookup: {
-          from: "categories",
-          let: { businessCategory: "$category" },
-          pipeline: [
+        $facet: {
+          metadata: [
+            { $count: "total" }
+          ],
+          items: [
+            { $sort: { priority: 1, category: 1 } },
+            { $skip: skip },
+            { $limit: limit },
             {
-              $match: {
-                $expr: {
-                  $regexMatch: {
-                    input: "$category",
-                    regex: "$$businessCategory",
-                    options: "i"
+              $lookup: {
+                from: "categories",
+                let: { businessCategory: "$category" },
+                pipeline: [
+                  {
+                    $match: {
+                      $expr: {
+                        $regexMatch: {
+                          input: "$category",
+                          regex: "$$businessCategory",
+                          options: "i"
+                        }
+                      }
+                    }
                   }
+                ],
+                as: "categoryData"
+              }
+            },
+            {
+              $unwind: {
+                path: "$categoryData",
+                preserveNullAndEmptyArrays: true
+              }
+            },
+            {
+              $project: {
+                _id: 0,
+                businessName: 1,
+                category: 1,
+                location: 1,
+                priority: 1,
+                bannerImageKey: 1,
+                categoryImageKey: {
+                  $ifNull: ["$categoryData.categoryImageKey", ""]
                 }
               }
             }
-          ],
-          as: "categoryData"
-        }
-      },
-
-      {
-        $unwind: {
-          path: "$categoryData",
-          preserveNullAndEmptyArrays: true
-        }
-      },
-
-      {
-        $project: {
-          _id: 0,
-          businessName: 1,
-          category: 1,
-          location: 1,
-          priority: 1,
-
-          // business banner
-          bannerImageKey: { $ifNull: ["$bannerImageKey", ""] },
-
-          // category image (from matched category document)
-          categoryImageKey: {
-            $ifNull: ["$categoryData.categoryImageKey", ""]
-          }
+          ]
         }
       }
     ]);
 
     // 🔹 Deduplicate by category (show unique categories only)
-    const seen = new Set();
-    const uniqueSuggestions = [];
+    const total = suggestionResult?.metadata?.[0]?.total || 0;
+    const suggestions = Array.isArray(suggestionResult?.items) ? suggestionResult.items : [];
+    const items = suggestions.map((item) => ({
+      businessName: item.businessName,
+      category: item.category,
+      location: item.location,
+      priority: item.priority,
+      bannerImageKey: item.bannerImageKey,
+      bannerImage: item.bannerImageKey ? getSignedUrlByKey(item.bannerImageKey) : "",
+      categoryImageKey: item.categoryImageKey,
+      categoryImage: item.categoryImageKey ? getSignedUrlByKey(item.categoryImageKey) : ""
+    }));
 
-    suggestions.forEach((item) => {
-      const categoryKey = (item.category || "").toLowerCase();
-
-      if (categoryKey && !seen.has(categoryKey)) {
-        seen.add(categoryKey);
-        uniqueSuggestions.push(item);
-      }
+    return res.send({
+      items,
+      total,
+      page,
+      limit,
+      hasMore: skip + items.length < total,
+      query: search
     });
-
-    const finalData = uniqueSuggestions.map((item) => {
-      return {
-        businessName: item.businessName,
-        category: item.category,
-        location: item.location,
-        priority: item.priority,
-
-        bannerImageKey: item.bannerImageKey,
-        bannerImage: item.bannerImageKey
-          ? getSignedUrlByKey(item.bannerImageKey)
-          : "",
-
-        categoryImageKey: item.categoryImageKey,
-        categoryImage: item.categoryImageKey
-          ? getSignedUrlByKey(item.categoryImageKey)
-          : ""
-      };
-    });
-
-    return res.send(finalData);
 
   } catch (err) {
     console.log(err);
