@@ -611,7 +611,7 @@ export default function AdminDataAnalytics() {
   }, [combinedRows, search, selectedLocation]);
 
   return (
-    <Box sx={{ width: "100%", p: { xs: 1.5, md: 2 }, bgcolor: "#f3f6fb", minHeight: "100%" }}>
+    <Box sx={{ width: "100%", p: { xs: 1.5, md: 2 }, bgcolor: "#ffffff", minHeight: "100%" }}>
       <Paper
         elevation={0}
         sx={{
