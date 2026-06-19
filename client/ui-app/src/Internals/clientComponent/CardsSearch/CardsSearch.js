@@ -21,6 +21,7 @@ import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import { useDrawer } from "../Drawer/drawerContext";
 import { shouldSendSearch } from "../../../utils/searchLock";
 const cx = createScopedClassNames(styles);
+const DEFAULT_LOCATION = "Trichy";
 const CategoryDropdown = ({
   options,
   setSearchTerm,
@@ -58,6 +59,9 @@ const CardsSearch = ({
   isScrolled = true,
   locationName: propLocationName,
   setLocationName: propSetLocationName,
+  searchTerm: propSearchTerm,
+  setSearchTerm: propSetSearchTerm,
+  setCategoryName: propSetCategoryName,
   setSearchResults
 }) => {
   const dispatch = useDispatch();
@@ -67,17 +71,27 @@ const CardsSearch = ({
   } = useDrawer();
   const searchLogs = useSelector(selectSearchLogs);
   const backendSuggestions = useSelector(selectBackendSuggestions);
-  const [internalLocationName, setInternalLocationName] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
+  const [internalLocationName, setInternalLocationName] = useState(localStorage.getItem("selectedLocation") || DEFAULT_LOCATION);
+  const [internalSearchTerm, setInternalSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const locationName = propLocationName ?? internalLocationName;
   const setLocationName = propSetLocationName ?? setInternalLocationName;
+  const searchTerm = propSearchTerm ?? internalSearchTerm;
+  const setSearchTerm = propSetSearchTerm ?? setInternalSearchTerm;
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState(false);
   const categoryRef = useRef(null);
   const locationRef = useRef(null);
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [debouncedLocation, setDebouncedLocation] = useState("");
+  useEffect(() => {
+    const nextLocation = String(locationName || "").trim() || DEFAULT_LOCATION;
+    localStorage.setItem("selectedLocation", nextLocation);
+    dispatch({
+      type: "SET_SELECTED_DISTRICT",
+      payload: nextLocation
+    });
+  }, [dispatch, locationName]);
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchTerm || ""), 200);
     return () => clearTimeout(t);
@@ -148,7 +162,10 @@ const CardsSearch = ({
   const handleSearch = async e => {
     e?.preventDefault?.();
     const searchInput = searchTerm.trim();
-    const location = locationName.trim();
+    const location = (locationName || DEFAULT_LOCATION).trim();
+    if (!locationName?.trim()) {
+      setLocationName(location);
+    }
 
     // Always send user input as term, not category
     // Category should only be sent if explicitly selected from dropdown
@@ -260,10 +277,12 @@ const CardsSearch = ({
             <div className={cx("cards-input-group cards-search-group")} ref={categoryRef}>
               <input className={cx("cards-custom-input")} placeholder="Search for..." value={searchTerm} onChange={e => {
               setSearchTerm(e.target.value);
+              propSetCategoryName?.(e.target.value);
               setIsCategoryDropdownOpen(true);
             }} onFocus={() => setIsCategoryDropdownOpen(true)} />
               {isCategoryDropdownOpen && searchTerm.trim().length < 2 && <CategoryDropdown options={categoryOptions} setSearchTerm={val => {
               setSearchTerm(val);
+              propSetCategoryName?.(val);
               setIsCategoryDropdownOpen(false);
               document.activeElement.blur();
             }} closeDropdown={() => {
@@ -279,6 +298,7 @@ const CardsSearch = ({
                   <div className={cx("options-list-container")}>
                     {suggestionCategories.slice(0, 10).map((suggestion, idx) => <div key={idx} className={cx("option-item")} onClick={() => {
                   setSearchTerm(suggestion);
+                  propSetCategoryName?.(suggestion);
                   setIsCategoryDropdownOpen(false);
                   document.activeElement.blur();
                 }} style={{

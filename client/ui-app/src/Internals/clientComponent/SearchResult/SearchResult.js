@@ -36,6 +36,7 @@ import axiosInstance from "../../../services/axiosInstance.js";
 import { getClientToken } from "../../../redux/actions/clientAuthAction.js";
 import { generateSearchResultsPageSchema, generateBreadcrumbSchema, generateOrganizationSchema, generateWebsiteSchema, generateFAQSchema } from "../../../utils/seoSchemaGenerators";
 const cx = createScopedClassNames(styles);
+const DEFAULT_LOCATION = "Trichy";
 const createSlug = (text = "") => text.toLowerCase().trim().replace(/&/g, "and").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 const isActiveFilterValue = (value) =>
   Array.isArray(value)
@@ -90,6 +91,8 @@ const SearchResults = React.memo(() => {
   const safeStateResults = Array.isArray(stateResults) ? stateResults : null;
   const searchText = displayName;
   const normalizedSearchTerm = searchTerm;
+  const [searchInput, setSearchInput] = useState(displayName || searchTerm || "");
+  const [locationInput, setLocationInput] = useState(locationText || DEFAULT_LOCATION);
 
   const locationSlug = createSlug(locationText);
   const searchSlug = createSlug(normalizedSearchTerm);
@@ -140,11 +143,18 @@ const SearchResults = React.memo(() => {
       setOpenLoginModal(true);
     }
   }, []);
+  useEffect(() => {
+    setSearchInput(displayName || searchTerm || "");
+    setLocationInput(locationText || DEFAULT_LOCATION);
+    if (locationText) {
+      localStorage.setItem("selectedLocation", locationText);
+    }
+  }, [displayName, searchTerm, locationText]);
 
   const searchLoggedRef = useRef(false);
   useEffect(() => {
     searchLoggedRef.current = false;
-  }, [normalizedSearchTerm, locationText]);
+  }, [normalizedSearchTerm, locationText, safeStateResults]);
 
   // Reset all pagination/search state when the search context changes
   useEffect(() => {
@@ -159,7 +169,7 @@ const SearchResults = React.memo(() => {
     setNearbyResults([]);
     setInitialSearchResolved(Boolean(safeStateResults));
     loadingPagesRef.current.clear();
-  }, [normalizedSearchTerm, locationText]);
+  }, [normalizedSearchTerm, locationText, safeStateResults]);
 
   // Reset pagination when filters or sort change (but not the search term itself)
   useEffect(() => {
@@ -470,7 +480,7 @@ const SearchResults = React.memo(() => {
 
   if (error) {
     return <>
-        <CardsSearch />
+        <CardsSearch locationName={locationInput} setLocationName={setLocationInput} searchTerm={searchInput} setSearchTerm={setSearchInput} />
         <div className={cx("no-results-container")}>
           <h1>{searchText} in {locationText}</h1>
           <p>Something went wrong</p>
@@ -536,7 +546,7 @@ const SearchResults = React.memo(() => {
       </Helmet>
 
       <div className={cx("results-page")}>
-        <CardsSearch />
+        <CardsSearch locationName={locationInput} setLocationName={setLocationInput} searchTerm={searchInput} setSearchTerm={setSearchInput} />
         <main>
         <div className={cx("page-spacing")} />
         <div className={cx("results-container banner-section")}>
