@@ -13,6 +13,7 @@ import { detectDistrict } from "../../../redux/actions/locationAction";
 import { useNavigate } from "react-router-dom";
 import styles from "./hero.module.css";
 const cx = createScopedClassNames(styles);
+const DEFAULT_LOCATION = "Trichy";
 const CategoryDropdown = React.memo(({
   label,
   options,
@@ -81,17 +82,21 @@ const HeroSection = React.memo(({
   const [isListening, setIsListening] = useState(false);
   const [voiceLang] = useState("en-IN");
   useEffect(() => {
-    const savedLocation = localStorage.getItem("selectedLocation");
-    if (savedLocation) {
-      setLocationName(savedLocation);
+    const applyLocation = value => {
+      setLocationName(value);
+      localStorage.setItem("selectedLocation", value);
       dispatch({
         type: "SET_SELECTED_DISTRICT",
-        payload: savedLocation
+        payload: value
       });
+    };
+    const savedLocation = localStorage.getItem("selectedLocation");
+    if (savedLocation) {
+      applyLocation(savedLocation);
       return;
     }
     if (!navigator.geolocation) {
-      setLocationName("All Districts");
+      applyLocation(DEFAULT_LOCATION);
       return;
     }
     navigator.geolocation.getCurrentPosition(async ({
@@ -102,23 +107,19 @@ const HeroSection = React.memo(({
           latitude: coords.latitude,
           longitude: coords.longitude
         }));
-        const autoDistrict = result?.district || "All Districts";
-        setLocationName(autoDistrict);
-        localStorage.setItem("selectedLocation", autoDistrict);
-        dispatch({
-          type: "SET_SELECTED_DISTRICT",
-          payload: autoDistrict
-        });
+        const detectedDistrict = String(result?.district || "").trim();
+        const autoDistrict = detectedDistrict && detectedDistrict.toLowerCase() !== "all districts" ? detectedDistrict : DEFAULT_LOCATION;
+        applyLocation(autoDistrict);
       } catch {
-        setLocationName("All Districts");
+        applyLocation(DEFAULT_LOCATION);
       }
     }, () => {
-      setLocationName("All Districts");
+      applyLocation(DEFAULT_LOCATION);
     }, {
       enableHighAccuracy: true,
       timeout: 10000
     });
-  }, [dispatch]);
+  }, [dispatch, setLocationName]);
   useEffect(() => {
     dispatch(getAllSearchLogs());
   }, [dispatch]);

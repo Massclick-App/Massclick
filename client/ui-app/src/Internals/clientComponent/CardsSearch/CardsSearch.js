@@ -21,36 +21,33 @@ import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import { useDrawer } from "../Drawer/drawerContext";
 import { shouldSendSearch } from "../../../utils/searchLock";
 const cx = createScopedClassNames(styles);
+const DEFAULT_LOCATION = "Trichy";
 const CategoryDropdown = ({
+  label,
   options,
-  setSearchTerm,
-  closeDropdown
+  onSelect
 }) => {
-  const MAX_HEIGHT_PX = 200;
-  const handleOptionClick = value => {
-    setSearchTerm(value);
-    closeDropdown();
-    document.activeElement.blur();
+  const MAX_HEIGHT_PX = 220;
+  const getOptionLabel = option => {
+    if (typeof option === "string") return option;
+    if (!option || typeof option !== "object") return "";
+    return String(option.category || option.categoryName || option.businessName || option.location || option.locationName || option.name || "").trim();
   };
-  if (!options || options.length === 0) return null;
+  const visibleOptions = (options || []).filter(option => getOptionLabel(option));
+  if (visibleOptions.length === 0) return null;
   return <div className={cx("category-custom-dropdown")}>
-      <div className={cx("trending-label")}>RECENT SEARCHES</div>
-
+      <div className={cx("trending-label")}>{label}</div>
       <div className={cx("options-list-container")} style={{
       maxHeight: `${MAX_HEIGHT_PX}px`
     }}>
-        {options.map((option, index) => <div key={index} className={cx("option-item")} onClick={() => handleOptionClick(option)} style={{
-        display: "flex",
-        alignItems: "center",
-        padding: "4px 8px",
-        cursor: "pointer"
-      }}>
-            <HistoryToggleOffIcon style={{
-          marginRight: "6px",
-          color: "#ff7b00"
-        }} />
-            <span>{option}</span>
-          </div>)}
+        {visibleOptions.map((option, index) => {
+        const displayText = getOptionLabel(option);
+        return <div key={index} className={cx("option-item")} onClick={() => onSelect(option)}>
+              {label.toLowerCase().includes("location") ? <LocationOnIcon className={cx("option-icon")} /> : label === "RECENT SEARCHES" ? <HistoryToggleOffIcon className={cx("option-icon")} /> : <SearchIcon className={cx("option-icon")} />}
+              <span className={cx("option-text-main")}>{displayText}</span>
+              {label === "RECENT SEARCHES" && typeof option !== "string" && (option.category || option.categoryName) && <span className={cx("option-text-sub")}>{option.category || option.categoryName}</span>}
+            </div>;
+      })}
       </div>
     </div>;
 };
@@ -58,6 +55,11 @@ const CardsSearch = ({
   isScrolled = true,
   locationName: propLocationName,
   setLocationName: propSetLocationName,
+  searchTerm: propSearchTerm,
+  setSearchTerm: propSetSearchTerm,
+  setCategoryName: propSetCategoryName,
+  committedLocationName,
+  committedSearchTerm,
   setSearchResults
 }) => {
   const dispatch = useDispatch();
@@ -67,17 +69,29 @@ const CardsSearch = ({
   } = useDrawer();
   const searchLogs = useSelector(selectSearchLogs);
   const backendSuggestions = useSelector(selectBackendSuggestions);
-  const [internalLocationName, setInternalLocationName] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
+  const [internalLocationName, setInternalLocationName] = useState(localStorage.getItem("selectedLocation") || DEFAULT_LOCATION);
+  const [internalSearchTerm, setInternalSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const locationName = propLocationName ?? internalLocationName;
   const setLocationName = propSetLocationName ?? setInternalLocationName;
+  const searchTerm = propSearchTerm ?? internalSearchTerm;
+  const setSearchTerm = propSetSearchTerm ?? setInternalSearchTerm;
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState(false);
   const categoryRef = useRef(null);
   const locationRef = useRef(null);
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [debouncedLocation, setDebouncedLocation] = useState("");
+  const normalizeComparable = value => String(value || "").trim().replace(/\s+/g, " ").toLowerCase();
+  const hasPendingSearch = normalizeComparable(committedSearchTerm) !== normalizeComparable(searchTerm) || normalizeComparable(committedLocationName || DEFAULT_LOCATION) !== normalizeComparable(locationName || DEFAULT_LOCATION);
+  useEffect(() => {
+    const nextLocation = String(locationName || "").trim() || DEFAULT_LOCATION;
+    localStorage.setItem("selectedLocation", nextLocation);
+    dispatch({
+      type: "SET_SELECTED_DISTRICT",
+      payload: nextLocation
+    });
+  }, [dispatch, locationName]);
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchTerm || ""), 200);
     return () => clearTimeout(t);
@@ -148,7 +162,10 @@ const CardsSearch = ({
   const handleSearch = async e => {
     e?.preventDefault?.();
     const searchInput = searchTerm.trim();
-    const location = locationName.trim();
+    const location = (locationName || DEFAULT_LOCATION).trim();
+    if (!locationName?.trim()) {
+      setLocationName(location);
+    }
 
     // Always send user input as term, not category
     // Category should only be sent if explicitly selected from dropdown
@@ -232,76 +249,45 @@ const CardsSearch = ({
               setIsLocationDropdownOpen(true);
             }} onFocus={() => setIsLocationDropdownOpen(true)} />
 
-              {isLocationDropdownOpen && parsedLocationSuggestions.length > 0 && locationName.trim().length >= 1 && <div className={cx("category-custom-dropdown")} style={{
-              zIndex: 10000
-            }}>
-                    <div className={cx("trending-label")}>LOCATION SUGGESTIONS</div>
-
-                    <div className={cx("options-list-container")}>
-                      {parsedLocationSuggestions.map((loc, idx) => <div key={idx} className={cx("option-item")} onClick={() => {
-                  setLocationName(loc);
-                  setIsLocationDropdownOpen(false);
-                  document.activeElement.blur();
-                }} style={{
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center"
-                }}>
-                          <LocationOnIcon style={{
-                    marginRight: 6,
-                    color: "#ff7b00"
-                  }} />
-                          <span>{loc}</span>
-                        </div>)}
-                    </div>
-                  </div>}
+              {isLocationDropdownOpen && locationName.trim().length >= 1 && <CategoryDropdown label="LOCATION SUGGESTIONS" options={parsedLocationSuggestions} onSelect={val => {
+              const chosen = typeof val === "string" ? val : String(val);
+              setLocationName(chosen);
+              setIsLocationDropdownOpen(false);
+              document.activeElement.blur();
+            }} />}
             </div>
 
             <div className={cx("cards-input-group cards-search-group")} ref={categoryRef}>
               <input className={cx("cards-custom-input")} placeholder="Search for..." value={searchTerm} onChange={e => {
               setSearchTerm(e.target.value);
+              propSetCategoryName?.(e.target.value);
               setIsCategoryDropdownOpen(true);
             }} onFocus={() => setIsCategoryDropdownOpen(true)} />
-              {isCategoryDropdownOpen && searchTerm.trim().length < 2 && <CategoryDropdown options={categoryOptions} setSearchTerm={val => {
-              setSearchTerm(val);
-              setIsCategoryDropdownOpen(false);
-              document.activeElement.blur();
-            }} closeDropdown={() => {
+              {isCategoryDropdownOpen && searchTerm.trim().length < 2 && <CategoryDropdown label="RECENT SEARCHES" options={categoryOptions} onSelect={val => {
+              const chosen = typeof val === "string" ? val : String(val);
+              setSearchTerm(chosen);
+              propSetCategoryName?.(chosen);
               setIsCategoryDropdownOpen(false);
               document.activeElement.blur();
             }} />}
 
-              {isCategoryDropdownOpen && searchTerm.trim().length >= 2 && <div className={cx("category-custom-dropdown")} style={{
-              zIndex: 10000
-            }}>
-                  <div className={cx("trending-label")}>SUGGESTIONS</div>
-
-                  <div className={cx("options-list-container")}>
-                    {suggestionCategories.slice(0, 10).map((suggestion, idx) => <div key={idx} className={cx("option-item")} onClick={() => {
-                  setSearchTerm(suggestion);
-                  setIsCategoryDropdownOpen(false);
-                  document.activeElement.blur();
-                }} style={{
-                  display: "flex",
-                  alignItems: "center",
-                  padding: "4px 8px",
-                  cursor: "pointer"
-                }}>
-                        <SearchIcon style={{
-                    marginRight: 6,
-                    color: "#ff7b00"
-                  }} />
-                        <span>{suggestion}</span>
-                      </div>)}
-                  </div>
-                </div>}
+              {isCategoryDropdownOpen && searchTerm.trim().length >= 2 && <CategoryDropdown label="SUGGESTIONS" options={suggestionCategories.slice(0, 10)} onSelect={val => {
+              const chosen = typeof val === "string" ? val : String(val);
+              setSearchTerm(chosen);
+              propSetCategoryName?.(chosen);
+              setIsCategoryDropdownOpen(false);
+              document.activeElement.blur();
+            }} />}
 
               <MicIcon className={cx("input-adornment end")} />
             </div>
 
-            <button className={cx("search-btn")} onClick={handleSearch} aria-label="Search">
-              <SearchIcon />
-            </button>
+            <div className={cx("search-action")}>
+              <button className={cx("search-btn", hasPendingSearch && "search-btn-pending")} onClick={handleSearch} aria-label="Search" title={hasPendingSearch ? "Click search to update the listing" : "Search"}>
+                <SearchIcon />
+              </button>
+              {hasPendingSearch && <span className={cx("search-hint")}>Click search to update results</span>}
+            </div>
           </div>
 
           <Box sx={{

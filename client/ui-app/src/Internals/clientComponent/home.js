@@ -393,7 +393,7 @@ const LandingPage = React.memo(() => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [locationName, setLocationName] = useState(
-    localStorage.getItem("selectedLocation") || "trichy",
+    localStorage.getItem("selectedLocation") || "Trichy",
   );
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryName, setCategoryName] = useState("");
