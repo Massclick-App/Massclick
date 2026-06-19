@@ -68,6 +68,7 @@ export const markHelpfulAction = async (req, res) => {
       userId
     });
 
+    await invalidateReviewCache();
     res.send({ success: true, review });
   } catch (err) {
     res.status(400).send({ message: err.message });
