@@ -51,6 +51,24 @@ const cleanFilterValues = (filters = {}) =>
     return cleaned;
   }, {});
 
+const readAuthUser = () => {
+  try {
+    return JSON.parse(localStorage.getItem("authUser") || "null") || {};
+  } catch {
+    return {};
+  }
+};
+
+const buildSearchUserDetails = (authUser = {}) => ({
+  userName: authUser?.userName,
+  mobileNumber1: authUser?.mobileNumber1,
+  mobileNumber2: authUser?.mobileNumber2,
+  email: authUser?.email
+});
+
+const getSearchLogIdentity = (authUser = {}) =>
+  authUser?._id || authUser?.mobileNumber1 || authUser?.mobileNumber2 || authUser?.email || "anonymous";
+
 const GoogleAd = () => {
   useEffect(() => {
     try {
@@ -151,10 +169,13 @@ const SearchResults = React.memo(() => {
     }
   }, [displayName, searchTerm, locationText]);
 
-  const searchLoggedRef = useRef(false);
+  const lastLoggedIdentityRef = useRef(null);
   useEffect(() => {
-    searchLoggedRef.current = false;
-  }, [normalizedSearchTerm, locationText, safeStateResults]);
+    const authUser = readAuthUser();
+    lastLoggedIdentityRef.current = stateLogSent
+      ? getSearchLogIdentity(authUser)
+      : null;
+  }, [normalizedSearchTerm, locationText, safeStateResults, stateLogSent]);
 
   // Reset all pagination/search state when the search context changes
   useEffect(() => {
@@ -189,19 +210,12 @@ const SearchResults = React.memo(() => {
   }, [geoStatus, sortBy]);
 
   const logSearch = useCallback(() => {
-    if (searchLoggedRef.current) return;
-    if (stateLogSent) {
-      searchLoggedRef.current = true;
-      return;
-    }
     if (!initialSearchResolved) return;
-    const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
-    const userDetails = {
-      userName: authUser?.userName,
-      mobileNumber1: authUser?.mobileNumber1,
-      mobileNumber2: authUser?.mobileNumber2,
-      email: authUser?.email
-    };
+    const authUser = readAuthUser();
+    const currentIdentity = getSearchLogIdentity(authUser);
+    if (lastLoggedIdentityRef.current === currentIdentity) return;
+
+    const userDetails = buildSearchUserDetails(authUser);
     const matchedBusinessIds = results.map((business) => business?._id).filter(Boolean);
     dispatch(
       logSearchActivity(
@@ -213,8 +227,8 @@ const SearchResults = React.memo(() => {
         matchedBusinessIds
       )
     );
-    searchLoggedRef.current = true;
-  }, [dispatch, normalizedSearchTerm, locationText, stateLogSent, isKnownCategory, results, initialSearchResolved]);
+    lastLoggedIdentityRef.current = currentIdentity;
+  }, [dispatch, normalizedSearchTerm, locationText, isKnownCategory, results, initialSearchResolved]);
 
   useEffect(() => {
     logSearch();
@@ -222,7 +236,7 @@ const SearchResults = React.memo(() => {
 
   useEffect(() => {
     const handleAuthChange = () => {
-      if (!searchLoggedRef.current) logSearch();
+      logSearch();
     };
     window.addEventListener("authChange", handleAuthChange);
     return () => window.removeEventListener("authChange", handleAuthChange);
