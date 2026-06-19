@@ -22,6 +22,7 @@ import { useDrawer } from "../Drawer/drawerContext";
 import { shouldSendSearch } from "../../../utils/searchLock";
 const cx = createScopedClassNames(styles);
 const DEFAULT_LOCATION = "Trichy";
+const isMongoObjectId = value => /^[a-f\d]{24}$/i.test(String(value || "").trim());
 const CategoryDropdown = ({
   label,
   options,
@@ -33,7 +34,10 @@ const CategoryDropdown = ({
     if (!option || typeof option !== "object") return "";
     return String(option.category || option.categoryName || option.businessName || option.location || option.locationName || option.name || "").trim();
   };
-  const visibleOptions = (options || []).filter(option => getOptionLabel(option));
+  const visibleOptions = (options || []).filter(option => {
+    const label = getOptionLabel(option);
+    return label && !isMongoObjectId(label);
+  });
   if (visibleOptions.length === 0) return null;
   return <div className={cx("category-custom-dropdown")}>
       <div className={cx("trending-label")}>{label}</div>
@@ -126,7 +130,7 @@ const CardsSearch = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
   const capitalizeWords = str => str.toLowerCase().split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
-  const categoryOptions = [...new Set((searchLogs || []).map(log => log.categoryName ? capitalizeWords(log.categoryName) : "").filter(Boolean))];
+  const categoryOptions = [...new Set((searchLogs || []).map(log => log.categoryName ? capitalizeWords(log.categoryName) : "").filter(value => value && !isMongoObjectId(value)))];
   const suggestionCategories = (() => {
     if (!backendSuggestions.length) return [];
     const seen = new Set();
@@ -134,10 +138,12 @@ const CardsSearch = ({
     backendSuggestions.forEach(item => {
       const val = item.category;
       if (!val) return;
-      const key = val.toLowerCase();
+      const text = String(val).trim();
+      if (!text || isMongoObjectId(text)) return;
+      const key = text.toLowerCase();
       if (!seen.has(key)) {
         seen.add(key);
-        list.push(val);
+        list.push(text);
       }
     });
     return list;
@@ -150,10 +156,12 @@ const CardsSearch = ({
       const locFields = [item.location, item.locationDetails, item.street, item.plotNumber, item.pincode];
       locFields.forEach(loc => {
         if (!loc) return;
-        const key = loc.toLowerCase();
+        const text = String(loc).trim();
+        if (!text || isMongoObjectId(text)) return;
+        const key = text.toLowerCase();
         if (!seen.has(key)) {
           seen.add(key);
-          list.push(loc);
+          list.push(text);
         }
       });
     });
