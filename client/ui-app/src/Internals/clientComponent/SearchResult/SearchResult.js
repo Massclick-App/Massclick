@@ -480,7 +480,7 @@ const SearchResults = React.memo(() => {
 
   if (error) {
     return <>
-        <CardsSearch locationName={locationInput} setLocationName={setLocationInput} searchTerm={searchInput} setSearchTerm={setSearchInput} />
+        <CardsSearch locationName={locationInput} setLocationName={setLocationInput} searchTerm={searchInput} setSearchTerm={setSearchInput} committedLocationName={locationText} committedSearchTerm={searchText} />
         <div className={cx("no-results-container")}>
           <h1>{searchText} in {locationText}</h1>
           <p>Something went wrong</p>
@@ -546,7 +546,7 @@ const SearchResults = React.memo(() => {
       </Helmet>
 
       <div className={cx("results-page")}>
-        <CardsSearch locationName={locationInput} setLocationName={setLocationInput} searchTerm={searchInput} setSearchTerm={setSearchInput} />
+        <CardsSearch locationName={locationInput} setLocationName={setLocationInput} searchTerm={searchInput} setSearchTerm={setSearchInput} committedLocationName={locationText} committedSearchTerm={searchText} />
         <main>
         <div className={cx("page-spacing")} />
         <div className={cx("results-container banner-section")}>
