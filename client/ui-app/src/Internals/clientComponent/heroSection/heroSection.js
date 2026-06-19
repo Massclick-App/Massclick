@@ -14,10 +14,15 @@ import { useNavigate } from "react-router-dom";
 import styles from "./hero.module.css";
 const cx = createScopedClassNames(styles);
 const DEFAULT_LOCATION = "Trichy";
+const SUGGESTION_PAGE_SIZE = 10;
+const isObjectId = s => /^[a-f\d]{24}$/i.test(String(s || "").trim());
 const CategoryDropdown = React.memo(({
   label,
   options,
-  onSelect
+  onSelect,
+  onReachEnd,
+  hasMore = false,
+  isLoadingMore = false
 }) => {
   const MAX_HEIGHT_PX = 220;
   const getOptionLabel = option => {
@@ -33,7 +38,21 @@ const CategoryDropdown = React.memo(({
       ""
     ).trim();
   };
-  const visibleOptions = (options || []).filter(option => getOptionLabel(option));
+  const visibleOptions = (options || []).filter(option => {
+    const labelText = getOptionLabel(option);
+    return labelText && !isObjectId(labelText);
+  });
+  const handleScroll = event => {
+    if (!onReachEnd || !hasMore || isLoadingMore) return;
+    const {
+      scrollTop,
+      scrollHeight,
+      clientHeight
+    } = event.currentTarget;
+    if (scrollHeight - scrollTop - clientHeight <= 24) {
+      onReachEnd();
+    }
+  };
   if (visibleOptions.length === 0) return null;
   return <div className={cx("category-custom-dropdown")} style={{
     zIndex: 10000
@@ -42,7 +61,7 @@ const CategoryDropdown = React.memo(({
       <div className={cx("options-list-container")} style={{
       maxHeight: `${MAX_HEIGHT_PX}px`,
       overflowY: "auto"
-    }}>
+    }} onScroll={handleScroll}>
         {visibleOptions.map((option, index) => {
         const displayText = getOptionLabel(option);
         return <div key={index} className={cx("option-item")} onClick={() => onSelect(option)}>
@@ -53,6 +72,9 @@ const CategoryDropdown = React.memo(({
               {label === "RECENT SEARCHES" && typeof option !== "string" && (option.category || option.categoryName) && <span className={cx("option-text-sub")}>{option.category || option.categoryName}</span>}
             </div>;
       })}
+        {isLoadingMore && <div className={cx("option-item")}>
+            <span className={cx("option-text-main")}>Loading more...</span>
+          </div>}
       </div>
     </div>;
 });
@@ -76,8 +98,30 @@ const HeroSection = React.memo(({
   const businessState = useSelector(state => state.businessListReducer);
   const {
     searchLogs = [],
-    backendSuggestions = []
+    backendSuggestions = [],
+    backendSuggestionsLoading = false,
+    backendSuggestionsHasMore = false,
+    backendSuggestionsPage = 0,
+    backendSuggestionsQuery = ""
   } = businessState;
+  const requestSuggestions = (query, {
+    page = 1,
+    append = false
+  } = {}) => dispatch(getBackendSuggestions({
+    search: query,
+    page,
+    limit: SUGGESTION_PAGE_SIZE,
+    append
+  }));
+  const maybeLoadMoreSuggestions = query => {
+    const normalizedQuery = String(query || "").trim();
+    if (!normalizedQuery || backendSuggestionsLoading || !backendSuggestionsHasMore) return;
+    if (backendSuggestionsQuery !== normalizedQuery) return;
+    requestSuggestions(normalizedQuery, {
+      page: backendSuggestionsPage + 1,
+      append: true
+    });
+  };
   const recognitionRef = useRef(null);
   const [isListening, setIsListening] = useState(false);
   const [voiceLang] = useState("en-IN");
@@ -140,20 +184,27 @@ const HeroSection = React.memo(({
     return () => clearTimeout(t);
   }, [searchTerm]);
   useEffect(() => {
-    if (debouncedSearch.trim().length >= 2) {
-      dispatch(getBackendSuggestions(debouncedSearch));
-    }
-  }, [debouncedSearch, dispatch]);
+    if (!isDropdownOpen) return;
+    dispatch(getBackendSuggestions({
+      search: debouncedSearch.trim(),
+      page: 1,
+      limit: SUGGESTION_PAGE_SIZE,
+      append: false
+    }));
+  }, [debouncedSearch, dispatch, isDropdownOpen]);
   useEffect(() => {
     const t = setTimeout(() => setDebouncedLocation(locationName || ""), 250);
     return () => clearTimeout(t);
   }, [locationName]);
   useEffect(() => {
-    if (debouncedLocation.trim().length >= 2) {
-      dispatch(getBackendSuggestions(debouncedLocation));
-    }
-  }, [debouncedLocation, dispatch]);
-  const isObjectId = s => /^[a-f\d]{24}$/i.test(s);
+    if (!showLocationDropdown) return;
+    dispatch(getBackendSuggestions({
+      search: debouncedLocation.trim(),
+      page: 1,
+      limit: SUGGESTION_PAGE_SIZE,
+      append: false
+    }));
+  }, [debouncedLocation, dispatch, showLocationDropdown]);
   const recentSearchOptions = [...new Set((searchLogs || []).map(log => log.categoryName ? log.categoryName.trim() : "").filter(name => name && !isObjectId(name)))];
   const suggestionCategories = (() => {
     if (!Array.isArray(backendSuggestions) || backendSuggestions.length === 0) return [];
@@ -163,7 +214,7 @@ const HeroSection = React.memo(({
       const val = item.category || item.categoryName || item.name;
       if (!val) return;
       const text = String(val).trim();
-      if (!text) return;
+      if (!text || isObjectId(text)) return;
       const key = text.toLowerCase();
       if (!seen.has(key)) {
         seen.add(key);
@@ -181,7 +232,7 @@ const HeroSection = React.memo(({
       locFields.forEach(loc => {
         if (!loc) return;
         const text = String(loc).trim();
-        if (!text) return;
+        if (!text || isObjectId(text)) return;
         const key = text.toLowerCase();
         if (!seen.has(key)) {
           seen.add(key);
@@ -312,9 +363,13 @@ const HeroSection = React.memo(({
               payload: value
             });
             setShowLocationDropdown(true);
-          }} onFocus={() => setShowLocationDropdown(true)} />
+            setIsDropdownOpen(false);
+          }} onFocus={() => {
+            setShowLocationDropdown(true);
+            setIsDropdownOpen(false);
+          }} />
 
-            {showLocationDropdown && parsedLocationSuggestions.length > 0 && <CategoryDropdown label="LOCATION SUGGESTIONS" options={parsedLocationSuggestions} onSelect={val => {
+            {showLocationDropdown && parsedLocationSuggestions.length > 0 && <CategoryDropdown label="LOCATION SUGGESTIONS" options={parsedLocationSuggestions} onReachEnd={() => maybeLoadMoreSuggestions(locationName.trim())} hasMore={backendSuggestionsHasMore && backendSuggestionsQuery === locationName.trim()} isLoadingMore={backendSuggestionsLoading && backendSuggestionsQuery === locationName.trim()} onSelect={val => {
             const chosen = typeof val === "string" ? val : String(val);
             setLocationName(chosen);
             localStorage.setItem("selectedLocation", chosen);
@@ -331,7 +386,11 @@ const HeroSection = React.memo(({
             setSearchTerm(e.target.value);
             setCategoryName(e.target.value);
             setIsDropdownOpen(true);
-          }} onFocus={() => setIsDropdownOpen(true)} />
+            setShowLocationDropdown(false);
+          }} onFocus={() => {
+            setIsDropdownOpen(true);
+            setShowLocationDropdown(false);
+          }} />
 
             {isDropdownOpen && searchTerm.trim().length < 2 && <CategoryDropdown label="RECENT SEARCHES" options={recentSearchOptions} onSelect={val => {
             const chosen = typeof val === "string" ? val : String(val);
@@ -340,7 +399,7 @@ const HeroSection = React.memo(({
             setIsDropdownOpen(false);
           }} />}
 
-            {isDropdownOpen && searchTerm.trim().length >= 2 && <CategoryDropdown label="SUGGESTIONS" options={suggestionCategories} onSelect={val => {
+            {isDropdownOpen && searchTerm.trim().length >= 2 && <CategoryDropdown label="SUGGESTIONS" options={suggestionCategories} onReachEnd={() => maybeLoadMoreSuggestions(searchTerm.trim())} hasMore={backendSuggestionsHasMore && backendSuggestionsQuery === searchTerm.trim()} isLoadingMore={backendSuggestionsLoading && backendSuggestionsQuery === searchTerm.trim()} onSelect={val => {
             const chosen = typeof val === "string" ? val : String(val);
             setSearchTerm(chosen);
             if (setCategoryName) setCategoryName(chosen);

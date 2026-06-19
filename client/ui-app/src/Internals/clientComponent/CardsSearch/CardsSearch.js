@@ -10,7 +10,7 @@ import { navigateToSearchResult } from "../../../utils/searchResultNavigation";
 import Tooltip from "@mui/material/Tooltip";
 import { categoryBarHelpers } from "../categoryBar";
 import { Box, Button, IconButton } from "@mui/material";
-import { selectSearchLogs, selectBackendSuggestions } from "../../../redux/selectors";
+import { selectSearchLogs, selectBackendSuggestions, selectBackendSuggestionsMeta } from "../../../redux/selectors";
 import MicIcon from "@mui/icons-material/Mic";
 import SearchIcon from "@mui/icons-material/Search";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
@@ -22,11 +22,15 @@ import { useDrawer } from "../Drawer/drawerContext";
 import { shouldSendSearch } from "../../../utils/searchLock";
 const cx = createScopedClassNames(styles);
 const DEFAULT_LOCATION = "Trichy";
+const SUGGESTION_PAGE_SIZE = 10;
 const isMongoObjectId = value => /^[a-f\d]{24}$/i.test(String(value || "").trim());
 const CategoryDropdown = ({
   label,
   options,
-  onSelect
+  onSelect,
+  onReachEnd,
+  hasMore = false,
+  isLoadingMore = false
 }) => {
   const MAX_HEIGHT_PX = 220;
   const getOptionLabel = option => {
@@ -38,12 +42,23 @@ const CategoryDropdown = ({
     const label = getOptionLabel(option);
     return label && !isMongoObjectId(label);
   });
+  const handleScroll = event => {
+    if (!onReachEnd || !hasMore || isLoadingMore) return;
+    const {
+      scrollTop,
+      scrollHeight,
+      clientHeight
+    } = event.currentTarget;
+    if (scrollHeight - scrollTop - clientHeight <= 24) {
+      onReachEnd();
+    }
+  };
   if (visibleOptions.length === 0) return null;
   return <div className={cx("category-custom-dropdown")}>
       <div className={cx("trending-label")}>{label}</div>
       <div className={cx("options-list-container")} style={{
       maxHeight: `${MAX_HEIGHT_PX}px`
-    }}>
+    }} onScroll={handleScroll}>
         {visibleOptions.map((option, index) => {
         const displayText = getOptionLabel(option);
         return <div key={index} className={cx("option-item")} onClick={() => onSelect(option)}>
@@ -52,6 +67,9 @@ const CategoryDropdown = ({
               {label === "RECENT SEARCHES" && typeof option !== "string" && (option.category || option.categoryName) && <span className={cx("option-text-sub")}>{option.category || option.categoryName}</span>}
             </div>;
       })}
+        {isLoadingMore && <div className={cx("option-item")}>
+            <span className={cx("option-text-main")}>Loading more...</span>
+          </div>}
       </div>
     </div>;
 };
@@ -73,6 +91,12 @@ const CardsSearch = ({
   } = useDrawer();
   const searchLogs = useSelector(selectSearchLogs);
   const backendSuggestions = useSelector(selectBackendSuggestions);
+  const {
+    loading: backendSuggestionsLoading,
+    hasMore: backendSuggestionsHasMore,
+    page: backendSuggestionsPage,
+    query: backendSuggestionsQuery
+  } = useSelector(selectBackendSuggestionsMeta);
   const [internalLocationName, setInternalLocationName] = useState(localStorage.getItem("selectedLocation") || DEFAULT_LOCATION);
   const [internalSearchTerm, setInternalSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -88,6 +112,24 @@ const CardsSearch = ({
   const [debouncedLocation, setDebouncedLocation] = useState("");
   const normalizeComparable = value => String(value || "").trim().replace(/\s+/g, " ").toLowerCase();
   const hasPendingSearch = normalizeComparable(committedSearchTerm) !== normalizeComparable(searchTerm) || normalizeComparable(committedLocationName || DEFAULT_LOCATION) !== normalizeComparable(locationName || DEFAULT_LOCATION);
+  const requestSuggestions = (query, {
+    page = 1,
+    append = false
+  } = {}) => dispatch(getBackendSuggestions({
+    search: query,
+    page,
+    limit: SUGGESTION_PAGE_SIZE,
+    append
+  }));
+  const maybeLoadMoreSuggestions = query => {
+    const normalizedQuery = String(query || "").trim();
+    if (!normalizedQuery || backendSuggestionsLoading || !backendSuggestionsHasMore) return;
+    if (backendSuggestionsQuery !== normalizedQuery) return;
+    requestSuggestions(normalizedQuery, {
+      page: backendSuggestionsPage + 1,
+      append: true
+    });
+  };
   useEffect(() => {
     const nextLocation = String(locationName || "").trim() || DEFAULT_LOCATION;
     localStorage.setItem("selectedLocation", nextLocation);
@@ -108,15 +150,23 @@ const CardsSearch = ({
     dispatch(getAllSearchLogs());
   }, [dispatch]);
   useEffect(() => {
-    if (debouncedSearch.trim().length >= 2) {
-      dispatch(getBackendSuggestions(debouncedSearch.trim()));
-    }
-  }, [debouncedSearch, dispatch]);
+    if (!isCategoryDropdownOpen) return;
+    dispatch(getBackendSuggestions({
+      search: debouncedSearch.trim(),
+      page: 1,
+      limit: SUGGESTION_PAGE_SIZE,
+      append: false
+    }));
+  }, [debouncedSearch, dispatch, isCategoryDropdownOpen]);
   useEffect(() => {
-    if (debouncedLocation.trim().length >= 2) {
-      dispatch(getBackendSuggestions(debouncedLocation.trim()));
-    }
-  }, [debouncedLocation, dispatch]);
+    if (!isLocationDropdownOpen) return;
+    dispatch(getBackendSuggestions({
+      search: debouncedLocation.trim(),
+      page: 1,
+      limit: SUGGESTION_PAGE_SIZE,
+      append: false
+    }));
+  }, [debouncedLocation, dispatch, isLocationDropdownOpen]);
   useEffect(() => {
     const handleClickOutside = e => {
       if (categoryRef.current && !categoryRef.current.contains(e.target)) {
@@ -255,9 +305,13 @@ const CardsSearch = ({
               <input className={cx("cards-custom-input")} placeholder="Enter location manually..." value={locationName} onChange={e => {
               setLocationName(e.target.value);
               setIsLocationDropdownOpen(true);
-            }} onFocus={() => setIsLocationDropdownOpen(true)} />
+              setIsCategoryDropdownOpen(false);
+            }} onFocus={() => {
+              setIsLocationDropdownOpen(true);
+              setIsCategoryDropdownOpen(false);
+            }} />
 
-              {isLocationDropdownOpen && locationName.trim().length >= 1 && <CategoryDropdown label="LOCATION SUGGESTIONS" options={parsedLocationSuggestions} onSelect={val => {
+              {isLocationDropdownOpen && locationName.trim().length >= 1 && <CategoryDropdown label="LOCATION SUGGESTIONS" options={parsedLocationSuggestions} onReachEnd={() => maybeLoadMoreSuggestions(locationName.trim())} hasMore={backendSuggestionsHasMore && backendSuggestionsQuery === locationName.trim()} isLoadingMore={backendSuggestionsLoading && backendSuggestionsQuery === locationName.trim()} onSelect={val => {
               const chosen = typeof val === "string" ? val : String(val);
               setLocationName(chosen);
               setIsLocationDropdownOpen(false);
@@ -270,7 +324,11 @@ const CardsSearch = ({
               setSearchTerm(e.target.value);
               propSetCategoryName?.(e.target.value);
               setIsCategoryDropdownOpen(true);
-            }} onFocus={() => setIsCategoryDropdownOpen(true)} />
+              setIsLocationDropdownOpen(false);
+            }} onFocus={() => {
+              setIsCategoryDropdownOpen(true);
+              setIsLocationDropdownOpen(false);
+            }} />
               {isCategoryDropdownOpen && searchTerm.trim().length < 2 && <CategoryDropdown label="RECENT SEARCHES" options={categoryOptions} onSelect={val => {
               const chosen = typeof val === "string" ? val : String(val);
               setSearchTerm(chosen);
@@ -279,7 +337,7 @@ const CardsSearch = ({
               document.activeElement.blur();
             }} />}
 
-              {isCategoryDropdownOpen && searchTerm.trim().length >= 2 && <CategoryDropdown label="SUGGESTIONS" options={suggestionCategories.slice(0, 10)} onSelect={val => {
+              {isCategoryDropdownOpen && searchTerm.trim().length >= 2 && <CategoryDropdown label="SUGGESTIONS" options={suggestionCategories} onReachEnd={() => maybeLoadMoreSuggestions(searchTerm.trim())} hasMore={backendSuggestionsHasMore && backendSuggestionsQuery === searchTerm.trim()} isLoadingMore={backendSuggestionsLoading && backendSuggestionsQuery === searchTerm.trim()} onSelect={val => {
               const chosen = typeof val === "string" ? val : String(val);
               setSearchTerm(chosen);
               propSetCategoryName?.(chosen);
