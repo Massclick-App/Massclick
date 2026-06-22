@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import {
-  ArrowRight,
   CalendarDays,
   ChevronLeft,
   ChevronRight,
@@ -358,7 +357,7 @@ export default function EventCarousel({
                   >
                     <div className={cx("eventCarousel-media")}>
                       {category.image ? (
-                        <img src={category.image} alt={category.name} loading="lazy" />
+                        <img src={category.image} alt={category.name} loading="lazy" decoding="async" width="320" height="320" />
                       ) : (
                         <div className={cx("eventCarousel-mediaFallback")}>
                           {category.name}
@@ -416,7 +415,7 @@ export default function EventCarousel({
                 <article key={event._id} className={cx("eventCarousel-card")}>
                   <div className={cx("eventCarousel-media")}>
                     {image ? (
-                      <img src={image} alt={event.eventName} loading="lazy" />
+                      <img src={image} alt={event.eventName} loading="lazy" decoding="async" width="320" height="320" />
                     ) : (
                       <div className={cx("eventCarousel-mediaFallback")}>
                         {categoryName}

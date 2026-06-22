@@ -175,7 +175,7 @@ const TrendingSearchesCarousel = () => {
             return <Link key={index} to={`/${districtSlug}/${categorySlug}`} className={cx("ts__card")}>
 
                   <div className={cx("ts__card-img-wrap")}>
-                    <img src={service.categoryImageKey || service.categoryImages?.webCard || service.categoryImages?.webHero || ""} alt={formatDisplayName(service.categoryName)} className={cx("ts__card-img")} loading="lazy" />
+                    <img src={service.categoryImageKey || service.categoryImages?.webCard || service.categoryImages?.webHero || ""} alt={formatDisplayName(service.categoryName)} className={cx("ts__card-img")} loading="lazy" decoding="async" width="144" height="144" />
                     <div className={cx("ts__card-img-overlay")} />
                   </div>
 

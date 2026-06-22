@@ -278,6 +278,7 @@ const CardsSearch = ({
   };
   const handleOpenModal = () => setIsModalOpen(true);
   const handleCloseModal = () => setIsModalOpen(false);
+  const goHome = () => navigate("/");
   const loggedIn = categoryBarHelpers.checkLogin();
   return <>
       <header className={cx("search-header")} style={{
@@ -290,11 +291,15 @@ const CardsSearch = ({
           <div className={cx("logo-section")}>
             <div className={cx("logo-circle")}>
               <Tooltip title="Go to Home Page" arrow>
-                <img src="/apple-touch-icon.png" alt="Logo" className={cx("logo-image")} onClick={() => window.location.href = "/"} />
+                <button type="button" className={cx("logo-button")} onClick={goHome} aria-label="Go to Massclick home">
+                  <img src="/apple-touch-icon.png" alt="Massclick home" className={cx("logo-image")} width="48" height="48" decoding="async" />
+                </button>
               </Tooltip>
             </div>
             <div className={cx("brandingText")}>
-              <img src={MassclickIndiaLogo} alt="Massclick India" className={cx("brandLogo")} onClick={() => window.location.href = "/"} />
+              <button type="button" className={cx("logo-button logo-button--brand")} onClick={goHome} aria-label="Go to Massclick home">
+                <img src={MassclickIndiaLogo} alt="Massclick India" className={cx("brandLogo")} width="180" height="44" decoding="async" />
+              </button>
             </div>
           </div>
 
@@ -345,7 +350,7 @@ const CardsSearch = ({
               document.activeElement.blur();
             }} />}
 
-              <MicIcon className={cx("input-adornment end")} />
+              <MicIcon className={cx("input-adornment end")} aria-hidden="true" />
             </div>
 
             <div className={cx("search-action")}>

@@ -190,15 +190,20 @@ const CategoryBar = () => {
       navigate("/business-enquiry");
     }
   };
+  const goHome = () => navigate("/");
   return <header className={cx("categoryBarContainer")}>
     <div className={cx("categoryBarContent")}>
 
       <div className={cx("logoGroup")}>
         <div className={cx("logoWrapper")}>
-          <img src="/header.png" alt="Massclick Logo" className={cx("logoImage")} onClick={() => window.location.href = "/"} />
+          <button type="button" className={cx("logoButton")} onClick={goHome} aria-label="Go to Massclick home">
+            <img src="/header.png" alt="Massclick Logo" className={cx("logoImage")} width="44" height="44" decoding="async" />
+          </button>
         </div>
         <div className={cx("brandingText")}>
-          <img src={MassclickIndiaLogo} alt="Massclick India" className={cx("brandLogo")} onClick={() => window.location.href = "/"} />
+          <button type="button" className={cx("logoButton")} onClick={goHome} aria-label="Go to Massclick home">
+            <img src={MassclickIndiaLogo} alt="Massclick India" className={cx("brandLogo")} width="180" height="44" decoding="async" />
+          </button>
         </div>
       </div>
 
@@ -213,7 +218,7 @@ const CategoryBar = () => {
 
       <div className={cx("actionButtons")}>
 
-        <IconButton className={cx("mobileMenuButton")} onClick={handleMenuClick}>
+        <IconButton className={cx("mobileMenuButton")} onClick={handleMenuClick} aria-label="Open quick links menu">
           <MenuIcon />
         </IconButton>
 
@@ -221,7 +226,7 @@ const CategoryBar = () => {
           <LoginIcon />
           <span className={cx("loginText")}>Login / Sign Up</span>
         </button> : <>
-          <IconButton onClick={openDrawer} className={cx("iconButtonPrimary")}>
+          <IconButton onClick={openDrawer} className={cx("iconButtonPrimary")} aria-label="Open user menu">
             <Avatar src={profileImageUrl} sx={{
               width: 34,
               height: 34,
@@ -233,7 +238,7 @@ const CategoryBar = () => {
             </Avatar>
           </IconButton>
 
-          <IconButton className={cx("iconButtonPrimary")} onClick={() => setIsNotificationModalOpen(true)}>
+          <IconButton className={cx("iconButtonPrimary")} onClick={() => setIsNotificationModalOpen(true)} aria-label="Open notifications">
             <Badge badgeContent={notificationLeads.length} color="error">
               <NotificationsIcon />
             </Badge>
