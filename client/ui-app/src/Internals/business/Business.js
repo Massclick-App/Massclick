@@ -3290,16 +3290,16 @@ const BusinessList = React.memo(() => {
                   Clear Draft
                 </button>
               )}
-              {!editMode && (
-                <button
-                  type="button"
-                  className={cx("draft-action-button secondary")}
-                  onClick={handleCreateDemoBusiness}
-                  disabled={loading || demoSubmitting}
-                >
-                  {demoSubmitting ? "Creating Demo..." : "Create Demo"}
-                </button>
-              )}
+              {/* {!editMode && ( */}
+                {/* // <button */}
+                {/* //   type="button" */}
+                {/* //   className={cx("draft-action-button secondary")} */}
+                {/* //   onClick={handleCreateDemoBusiness} */}
+                {/* //   disabled={loading || demoSubmitting} */}
+                {/* // > */}
+                {/* //   {demoSubmitting ? "Creating Demo..." : "Create Demo"} */}
+                {/* // </button> */}
+              {/* // )} */}
               {activeStep === 0 && (
                 <Button
                   variant="outlined"
