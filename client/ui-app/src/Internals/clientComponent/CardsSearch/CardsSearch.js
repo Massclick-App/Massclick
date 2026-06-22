@@ -108,6 +108,7 @@ const CardsSearch = ({
   const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState(false);
   const categoryRef = useRef(null);
   const locationRef = useRef(null);
+  const headerRef = useRef(null);
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [debouncedLocation, setDebouncedLocation] = useState("");
   const normalizeComparable = value => String(value || "").trim().replace(/\s+/g, " ").toLowerCase();
@@ -178,6 +179,32 @@ const CardsSearch = ({
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+  useEffect(() => {
+    const headerNode = headerRef.current;
+    if (!headerNode) return undefined;
+
+    const rootStyle = document.documentElement.style;
+    const updateHeaderHeight = () => {
+      const nextHeight = Math.ceil(headerNode.getBoundingClientRect().height);
+      rootStyle.setProperty("--cards-search-height", `${nextHeight}px`);
+    };
+
+    updateHeaderHeight();
+
+    let resizeObserver;
+    if (typeof ResizeObserver !== "undefined") {
+      resizeObserver = new ResizeObserver(updateHeaderHeight);
+      resizeObserver.observe(headerNode);
+    }
+
+    window.addEventListener("resize", updateHeaderHeight);
+
+    return () => {
+      window.removeEventListener("resize", updateHeaderHeight);
+      resizeObserver?.disconnect();
+      rootStyle.removeProperty("--cards-search-height");
+    };
   }, []);
   const capitalizeWords = str => str.toLowerCase().split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
   const categoryOptions = [...new Set((searchLogs || []).map(log => log.categoryName ? capitalizeWords(log.categoryName) : "").filter(value => value && !isMongoObjectId(value)))];
@@ -281,7 +308,7 @@ const CardsSearch = ({
   const goHome = () => navigate("/");
   const loggedIn = categoryBarHelpers.checkLogin();
   return <>
-      <header className={cx("search-header")} style={{
+      <header ref={headerRef} className={cx("search-header")} style={{
       backdropFilter: "blur(8px)",
       visibility: isScrolled ? 'visible' : 'hidden',
       display: isScrolled ? 'block' : 'none'
@@ -356,12 +383,13 @@ const CardsSearch = ({
             <div className={cx("search-action")}>
               <button className={cx("search-btn", hasPendingSearch && "search-btn-pending")} onClick={handleSearch} aria-label="Search" title={hasPendingSearch ? "Click search to update the listing" : "Search"}>
                 <SearchIcon />
+                <span>Search</span>
               </button>
               {hasPendingSearch && <span className={cx("search-hint")}>Click search to update results</span>}
             </div>
           </div>
 
-          <Box sx={{
+          <Box className={cx("header-actions")} sx={{
           display: "flex",
           alignItems: "center"
         }}>

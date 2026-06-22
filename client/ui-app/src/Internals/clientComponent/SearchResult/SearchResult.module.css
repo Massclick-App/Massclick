@@ -12,6 +12,7 @@
   --space-md: 20px;
   --space-lg: 32px;
   --space-xl: 48px;
+  --sticky-search-offset: calc(var(--cards-search-height, 84px) + 14px);
   --text-primary: #0f172a;
   --text-secondary: #475569;
   --surface: #ffffff;
@@ -24,6 +25,7 @@
     linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(248, 250, 252, 0.96) 34%, #eef3f8 100%);
   min-height: 100vh;
   padding: 1px 0 0;
+  scroll-padding-top: calc(var(--sticky-search-offset) + 8px);
 }
 
 /* ============================= */
@@ -269,7 +271,8 @@ section.seo-header-content.premium-section {
   width: 260px;
   flex-shrink: 0;
   position: sticky;
-  top: 80px;
+  top: var(--sticky-search-offset);
+  align-self: flex-start;
 }
 
 .results-column {
@@ -281,8 +284,70 @@ section.seo-header-content.premium-section {
   width: 300px;
   flex-shrink: 0;
   position: sticky;
-  top: 80px;
+  top: var(--sticky-search-offset);
   align-self: flex-start;
+}
+
+.advertisement-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 24px 22px;
+  border-radius: 18px;
+  background:
+    linear-gradient(145deg, rgba(255, 140, 0, 0.98) 0%, rgba(245, 124, 0, 0.95) 52%, rgba(234, 88, 12, 0.95) 100%);
+  color: #fff;
+  box-shadow: 0 18px 34px rgba(194, 65, 12, 0.22);
+  overflow: hidden;
+}
+
+.advertisement-label {
+  display: inline-flex;
+  align-self: flex-start;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.advertisement-title {
+  margin: 0;
+  font-size: 26px;
+  line-height: 1.1;
+  font-weight: 800;
+  color: #fff;
+}
+
+.advertisement-copy {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.advertisement-link {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 999px;
+  background: #fff;
+  color: #c2410c;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.advertisement-link:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(124, 45, 18, 0.18);
 }
 
 @media (max-width: 1440px) {

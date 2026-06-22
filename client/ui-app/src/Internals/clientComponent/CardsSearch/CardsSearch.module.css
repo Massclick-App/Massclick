@@ -20,6 +20,13 @@
 .brandingText {
     display: flex;
     align-items: center;
+    min-width: 0;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
 }
 
 .logo-button {
@@ -220,6 +227,7 @@
     align-items: center;
     gap: 1rem;
     flex-shrink: 0;
+    min-width: 0;
 }
 
 .logo-circle {
@@ -373,6 +381,10 @@
     cursor: pointer;
     transition: all 0.3s ease;
     box-shadow: 0 5px 15px rgba(255, 123, 0, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
 }
 
 .search-btn:hover {
@@ -450,13 +462,30 @@
 
 @media (max-width: 1024px) {
 
-    /* FIX: allow wrapping when space is low */
     .search-header-content {
         flex-wrap: wrap;
+        align-items: center;
+        gap: 12px;
     }
 
     .search-area {
-        display: none !important;
+        display: flex !important;
+        order: 3;
+        width: 100%;
+        max-width: none;
+        margin-left: 0;
+        padding: 10px 12px;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .search-action {
+        margin-left: auto;
+    }
+
+    .cards-location-group,
+    .cards-search-group {
+        flex: 1 1 280px;
     }
 }
 
@@ -467,23 +496,104 @@
 }
 
 @media (max-width: 768px) {
-
-    .logo-text {
-        display: none;
+    .search-header {
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 250, 245, 0.98) 100%);
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
     }
 
     .search-header-content {
         justify-content: space-between;
         flex-wrap: wrap;
-        /* FIX */
+        align-items: center;
+        gap: 12px;
+        padding: 12px 14px 18px;
     }
 
     .search-area {
+        display: flex !important;
+        flex-wrap: wrap;
+        flex: 0 0 100%;
+        width: min(100%, 330px);
+        max-width: 330px;
+        padding: 0;
+        border-radius: 0;
+        gap: 12px;
+        background: transparent;
+        border: none;
+        box-shadow: none;
+        order: 3;
+        margin: 26px auto 0;
+    }
+
+    .brandingText {
+        min-width: 0;
+        flex: 1 1 auto;
+    }
+
+    .brandLogo {
+        height: 32px;
+        max-width: 140px;
+    }
+
+    .header-actions {
+        align-self: center;
+        margin-left: auto;
+    }
+
+    .header-actions :global(.MuiButton-root),
+    .header-actions :global(.MuiIconButton-root) {
+        min-width: 44px;
+        min-height: 44px;
+        border-radius: 14px;
+    }
+
+    .cards-location-group,
+    .cards-search-group {
+        width: 100%;
+        min-width: 0;
+        flex: 1 1 100%;
+        height: 56px;
+        border-radius: 12px;
+        border: 1.5px solid #ececec;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+    }
+
+    .cards-custom-input {
+        font-size: 15px;
+        padding: 0 42px;
+    }
+
+    .search-action {
+        width: 100%;
+        align-items: stretch;
+        margin-left: 0;
+    }
+
+    .search-btn {
+        width: 100%;
+        height: 50px;
+        border-radius: 12px;
+        padding: 0 18px;
+        font-size: 0.96rem;
+        font-weight: 700;
+        letter-spacing: 0.01em;
+        box-shadow: 0 8px 20px rgba(255, 123, 0, 0.4);
+    }
+
+    .search-btn span {
         display: none;
+    }
+
+    .search-btn svg {
+        font-size: 24px;
     }
 
     .search-hint {
         display: none;
+        max-width: none;
+        padding: 2px 4px 0;
+        white-space: normal;
+        text-align: center;
     }
 
     .mobile-only {
@@ -496,10 +606,9 @@
     .search-header-content {
         flex-direction: row;
         justify-content: space-between;
-        padding: 10px 15px;
-
-        /* FIX */
+        padding: 10px 12px 12px;
         flex-wrap: wrap;
+        gap: 10px;
     }
 
     .logo-circle {
@@ -511,5 +620,32 @@
         font-size: 0.8rem;
         padding: 6px 15px;
         border-radius: 20px;
+    }
+
+    .brandLogo {
+        height: 28px;
+        max-width: 120px;
+    }
+
+    .search-area {
+        gap: 8px;
+        width: min(100%, 318px);
+        max-width: 318px;
+        margin-top: 22px;
+    }
+
+    .cards-location-group,
+    .cards-search-group {
+        height: 52px;
+        border-radius: 12px;
+    }
+
+    .cards-custom-input {
+        font-size: 14px;
+    }
+
+    .search-btn {
+        height: 50px;
+        border-radius: 12px;
     }
 }
