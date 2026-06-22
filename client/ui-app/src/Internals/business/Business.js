@@ -6,7 +6,7 @@ import { useDispatch, useSelector } from "react-redux";
 import InputValidator from "../validators/inputValidator.js";
 import { getAllBusinessList, createBusinessList, editBusinessList, deleteBusinessList, trackQrDownload, updateBusinessBadges } from "../../redux/actions/businessListAction";
 import { getAllLocation, createLocation } from "../../redux/actions/locationAction";
-import { getAllCategory, createCategory, editCategory, businessCategorySearch } from "../../redux/actions/categoryAction";
+import { getAllCategory, businessCategorySearch } from "../../redux/actions/categoryAction";
 import { getAllUsersClient, getUserClientSuggestion } from "../../redux/actions/userClientAction.js";
 import { getAllUsers } from "../../redux/actions/userAction.js";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
@@ -331,23 +331,6 @@ const BusinessList = React.memo(() => {
     } catch (err) {
       console.error("Upload failed:", err);
     }
-  };
-  const fieldsToCheck = ["keywords", "slug", "seoTitle", "seoDescription", "title", "description"];
-  const getUpdatedCategoryFields = (existing, current) => {
-    const updates = {};
-    fieldsToCheck.forEach(field => {
-      if (Array.isArray(current[field])) {
-        const newValues = current[field].map(k => k.trim().toLowerCase()).filter(k => !existing[field]?.map(e => e.trim().toLowerCase()).includes(k));
-        if (newValues.length > 0) {
-          updates[field] = [...existing[field], ...newValues];
-        }
-      } else {
-        if (current[field] && current[field] !== existing[field]) {
-          updates[field] = current[field];
-        }
-      }
-    });
-    return updates;
   };
   const defaultOpeningHours = [{
     day: "Monday",
@@ -1199,7 +1182,11 @@ const BusinessList = React.memo(() => {
     return `${error.label}: ${error.message}${example}${suggestion}`;
   };
   const passOrMessage = (condition, message) => condition ? true : message;
-  const getBusinessValidationRules = data => {
+  const getBusinessValidationRules = (data, {
+    bannerPreview = preview,
+    uploadedKycFiles = kycFiles,
+    isEditing = editMode
+  } = {}) => {
     const latitudeRaw = data.geoLocation?.coordinates?.[1];
     const longitudeRaw = data.geoLocation?.coordinates?.[0];
     const socialRules = [
@@ -1256,8 +1243,8 @@ const BusinessList = React.memo(() => {
       { field: "geoLatitude", label: "Latitude", required: true, example: "13.0827", suggestion: "Use the latitude copied from Google Maps.", getValue: () => latitudeRaw, validate: value => passOrMessage(Number.isFinite(Number(value)) && Number(value) >= -90 && Number(value) <= 90, "must be a number between -90 and 90.") },
       { field: "geoLongitude", label: "Longitude", required: true, example: "80.2707", suggestion: "Use the longitude copied from Google Maps.", getValue: () => longitudeRaw, validate: value => passOrMessage(Number.isFinite(Number(value)) && Number(value) >= -180 && Number(value) <= 180, "must be a number between -180 and 180.") },
       { field: "website", label: "Website", required: true, example: "https://example.com", suggestion: "Use the official website URL.", validate: value => isValidUrl(value) || "must be a valid http or https URL." },
-      { field: "bannerImage", label: "Business banner image", required: true, example: "shop-front.jpg", suggestion: "Upload a clear shop, logo, or business image.", getValue: source => preview || source.bannerImage },
-      { field: "kycDocuments", label: "KYC document", required: true, example: "GST certificate or shop proof", suggestion: "Upload at least one verification document.", getValue: source => editMode ? [...(source.kycDocuments || []), ...kycFiles] : kycFiles },
+      { field: "bannerImage", label: "Business banner image", required: true, example: "shop-front.jpg", suggestion: "Upload a clear shop, logo, or business image.", getValue: source => bannerPreview || source.bannerImage },
+      { field: "kycDocuments", label: "KYC document", required: true, example: "GST certificate or shop proof", suggestion: "Upload at least one verification document.", getValue: source => isEditing ? [...(source.kycDocuments || []), ...uploadedKycFiles] : uploadedKycFiles },
       { field: "businessDetails", label: "Business details", required: true, example: "We provide electrical repairs, wiring, and inverter service in Chennai.", suggestion: "Write at least 20 useful characters.", getValue: source => stripHtml(source.businessDetails), validate: value => value.length >= 20 || "must be at least 20 characters." },
       { field: "category", label: "Category", step: 1, required: true, example: "Electricians", suggestion: "Pick or type the closest business category." },
       { field: "keywords", label: "Keywords", step: 1, required: true, example: "electrician, wiring, inverter repair", suggestion: "Add at least one search keyword.", getValue: source => source.keywords },
@@ -1271,8 +1258,8 @@ const BusinessList = React.memo(() => {
       ...openingHourRules
     ];
   };
-  const validateBusinessEntryData = data => {
-    return getBusinessValidationRules(data).reduce((errors, rule) => {
+  const validateBusinessEntryData = (data, validationContext = {}) => {
+    return getBusinessValidationRules(data, validationContext).reduce((errors, rule) => {
       const value = rule.getValue ? rule.getValue(data) : data[rule.field];
       const empty = isEmptyFilterValue(value);
 
@@ -1623,10 +1610,6 @@ const BusinessList = React.memo(() => {
     [error.field]: getValidationMessage(error)
   }), {});
   const getFirstErrorStep = errors => typeof errors[0]?.step === "number" ? errors[0].step : 0;
-  const getActiveValidationErrors = (cleanedFormData, forceBypassFields = []) => {
-    const bypassed = new Set([...forceBypassedFields, ...forceBypassFields]);
-    return validateBusinessEntryData(cleanedFormData).filter(error => !bypassed.has(error.field));
-  };
   const showBusinessValidationErrors = validationErrors => {
     setActiveStep(getFirstErrorStep(validationErrors));
     setFieldErrors(buildFieldErrorMap(validationErrors));
@@ -1635,8 +1618,22 @@ const BusinessList = React.memo(() => {
       variant: "error"
     });
   };
-  const saveBusiness = async ({ forceBypassFields = [], skipDuplicateCheck = false } = {}) => {
-    const cleanedFormData = getCleanBusinessFormData(formData);
+  const saveBusiness = async ({
+    forceBypassFields = [],
+    skipDuplicateCheck = false,
+    draftFormData = null,
+    draftBusinessDetails = null,
+    draftKycFiles = null
+  } = {}) => {
+    const sourceFormData = draftFormData || formData;
+    const sourceBusinessDetails = draftBusinessDetails ?? businessvalue;
+    const sourceKycFiles = draftKycFiles ?? kycFiles;
+    const cleanedFormData = getCleanBusinessFormData(sourceFormData);
+    const validationContext = {
+      bannerPreview: draftFormData ? sourceFormData.bannerImage : preview,
+      uploadedKycFiles: sourceKycFiles,
+      isEditing: draftFormData ? false : editMode
+    };
     const bypassFields = getUniqueFields(forceBypassFields).filter(isForceBypassableField);
     const duplicateSignature = getDuplicateCheckSignature(cleanedFormData);
     const duplicateMatches = getPotentialDuplicateMatches(cleanedFormData);
@@ -1655,7 +1652,10 @@ const BusinessList = React.memo(() => {
       return;
     }
 
-    const validationErrors = getActiveValidationErrors(cleanedFormData, bypassFields);
+    const validationErrors = validateBusinessEntryData(cleanedFormData, validationContext).filter(error => {
+      const bypassed = new Set([...forceBypassedFields, ...bypassFields]);
+      return !bypassed.has(error.field);
+    });
 
     if (validationErrors.length > 0) {
       showBusinessValidationErrors(validationErrors);
@@ -1686,7 +1686,7 @@ const BusinessList = React.memo(() => {
       });
       return;
     }
-    const kycBase64 = await Promise.all(kycFiles.map(file => new Promise((resolve, reject) => {
+    const kycBase64 = await Promise.all(sourceKycFiles.map(file => new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(reader.result);
       reader.onerror = reject;
@@ -1705,31 +1705,10 @@ const BusinessList = React.memo(() => {
         country: "N/A"
       }));
     }
-    const existingCategory = category.find(cat => String(cat.category || "").toLowerCase() === String(cleanedFormData.category || "").toLowerCase());
-    if (existingCategory) {
-      const updates = getUpdatedCategoryFields(existingCategory, cleanedFormData);
-      if (Object.keys(updates).length > 0) {
-        await dispatch(editCategory(existingCategory._id, {
-          ...updates,
-          category: existingCategory.category || cleanedFormData.category,
-          name: existingCategory.category || cleanedFormData.category
-        }));
-      }
-    } else {
-      await dispatch(createCategory({
-        category: cleanedFormData.category,
-        keywords: cleanedFormData.keywords || [],
-        slug: cleanedFormData.slug || "",
-        seoTitle: cleanedFormData.seoTitle || "",
-        seoDescription: cleanedFormData.seoDescription || "",
-        title: cleanedFormData.title || "",
-        description: cleanedFormData.description || ""
-      }));
-    }
     const payload = {
       ...cleanedFormData,
       name: cleanedFormData.businessName,
-      businessDetails: businessvalue,
+      businessDetails: sourceBusinessDetails,
       kycDocuments: kycBase64,
       geoLocation: {
         type: "Point",
