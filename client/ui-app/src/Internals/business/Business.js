@@ -1,5 +1,5 @@
 import { createScopedClassNames } from "../../utils/createScopedClassNames";
-import React, { useEffect, useState, useRef, lazy, Suspense, useCallback } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "../../services/axiosInstance.js";
 import { useDispatch, useSelector } from "react-redux";
@@ -41,17 +41,125 @@ import Tooltip from "@mui/material/Tooltip";
 import styles from "./business.module.css";
 import GooglePlacesInput from "../../components/GooglePlacesInput/GooglePlacesInput";
 import AdminViewTabs from "../../components/AdminViewTabs.js";
+import "quill/dist/quill.snow.css";
 const cx = createScopedClassNames(styles);
 const FORCE_BYPASS_BLOCKED_FIELDS = new Set(["businessName", "category", "location"]);
 const BUSINESS_LOCAL_DRAFT_KEY = "massclick.business.createDraft";
-const ReactQuill = lazy(() => import('react-quill').then(m => {
-  require('react-quill/dist/quill.snow.css');
-  return {
-    default: m.default
-  };
-}));
+const DEMO_PNG_DATA_URL = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9s0qDbgAAAAASUVORK5CYII=";
 const ORANGE_PRIMARY = '#FF8C00';
 const ORANGE_HOVER = '#D97800';
+const QUILL_MODULES = {
+  toolbar: [[{
+    header: "1"
+  }, {
+    header: "2"
+  }], ["bold", "italic", "underline", "strike"], [{
+    list: "ordered"
+  }, {
+    list: "bullet"
+  }], ["link", "image", "video"], ["clean"]]
+};
+const QUILL_FORMATS = ["header", "bold", "italic", "underline", "strike", "list", "bullet", "link", "image", "video"];
+
+const normalizeQuillHtml = value =>
+  value === "<p><br></p>" ? "" : value || "";
+
+const QuillEditor = ({
+  value,
+  onChange,
+  modules,
+  formats,
+  placeholder,
+  style
+}) => {
+  const editorRef = useRef(null);
+  const quillRef = useRef(null);
+  const changeHandlerRef = useRef(onChange);
+  const syncInProgressRef = useRef(false);
+
+  useEffect(() => {
+    changeHandlerRef.current = onChange;
+  }, [onChange]);
+
+  useEffect(() => {
+    let mounted = true;
+    let textChangeHandler = null;
+
+    const loadEditor = async () => {
+      const {
+        default: Quill
+      } = await import("quill");
+
+      if (!mounted || !editorRef.current || quillRef.current) {
+        return;
+      }
+
+      const quill = new Quill(editorRef.current, {
+        theme: "snow",
+        modules,
+        formats,
+        placeholder
+      });
+
+      quillRef.current = quill;
+      syncInProgressRef.current = true;
+      if (value) {
+        quill.clipboard.dangerouslyPasteHTML(value);
+      } else {
+        quill.setText("");
+      }
+      syncInProgressRef.current = false;
+
+      textChangeHandler = () => {
+        if (syncInProgressRef.current) {
+          return;
+        }
+        changeHandlerRef.current?.(normalizeQuillHtml(quill.root.innerHTML));
+      };
+
+      quill.on("text-change", textChangeHandler);
+    };
+
+    loadEditor();
+
+    return () => {
+      mounted = false;
+      if (quillRef.current && textChangeHandler) {
+        quillRef.current.off("text-change", textChangeHandler);
+      }
+      quillRef.current = null;
+      if (editorRef.current) {
+        editorRef.current.innerHTML = "";
+      }
+    };
+  }, [formats, modules, placeholder, value]);
+
+  useEffect(() => {
+    const quill = quillRef.current;
+    if (!quill) {
+      return;
+    }
+
+    const nextHtml = normalizeQuillHtml(value);
+    const currentHtml = normalizeQuillHtml(quill.root.innerHTML);
+
+    if (nextHtml === currentHtml) {
+      return;
+    }
+
+    syncInProgressRef.current = true;
+    if (nextHtml) {
+      quill.clipboard.dangerouslyPasteHTML(nextHtml);
+    } else {
+      quill.setText("");
+    }
+    syncInProgressRef.current = false;
+  }, [value]);
+
+  return <div style={style}>
+      <div ref={editorRef} />
+    </div>;
+};
 const ColorlibConnector = styled(StepConnector)(({
   theme
 }) => ({
@@ -461,23 +569,12 @@ const BusinessList = React.memo(() => {
   const [duplicateBypassSignature, setDuplicateBypassSignature] = useState("");
   const [localDraftMeta, setLocalDraftMeta] = useState(null);
   const [preview, setPreview] = useState(null);
+  const [demoSubmitting, setDemoSubmitting] = useState(false);
   const [badgeUpdateLoading, setBadgeUpdateLoading] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState({
     open: false,
     id: null
   });
-  const modules = {
-    toolbar: [[{
-      'header': '1'
-    }, {
-      'header': '2'
-    }], ['bold', 'italic', 'underline', 'strike'], [{
-      'list': 'ordered'
-    }, {
-      'list': 'bullet'
-    }], ['link', 'image', 'video'], ['clean']]
-  };
-  const formats = ["header", "bold", "italic", "underline", "strike", "list", "bullet", "link", "image", "video"];
   const isForceBypassableField = field => Boolean(field) && !FORCE_BYPASS_BLOCKED_FIELDS.has(field);
   const getUniqueFields = fields => [...new Set((fields || []).filter(Boolean))];
   const clearForceBypassForFields = useCallback(fields => {
@@ -1181,6 +1278,52 @@ const BusinessList = React.memo(() => {
     const suggestion = error.suggestion ? ` Suggestion: ${error.suggestion}` : "";
     return `${error.label}: ${error.message}${example}${suggestion}`;
   };
+  const revokePreviewUrls = useCallback(files => {
+    (files || []).forEach(file => {
+      if (typeof file?.preview === "string" && file.preview.startsWith("blob:")) {
+        URL.revokeObjectURL(file.preview);
+      }
+    });
+  }, []);
+  const buildDemoSvgMarkup = useCallback((headline, subline) => `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="demoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fff7ed" />
+      <stop offset="100%" stop-color="#fed7aa" />
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#demoGradient)" />
+  <rect x="56" y="56" width="1088" height="518" rx="28" fill="#ffffff" opacity="0.95" />
+  <text x="100" y="250" fill="#9a3412" font-family="Arial, sans-serif" font-size="42" font-weight="700">${headline}</text>
+  <text x="100" y="320" fill="#7c2d12" font-family="Arial, sans-serif" font-size="28">${subline}</text>
+  <text x="100" y="420" fill="#ea580c" font-family="Arial, sans-serif" font-size="22">MassClick automated demo asset</text>
+</svg>`, []);
+  const buildDemoImageAsset = useCallback((filename, headline, subline) => {
+    const svgMarkup = buildDemoSvgMarkup(headline, subline);
+    const file = new File([svgMarkup], filename, {
+      type: "image/svg+xml"
+    });
+    file.preview = URL.createObjectURL(file);
+    return {
+      file,
+      dataUrl: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgMarkup)}`
+    };
+  }, [buildDemoSvgMarkup]);
+  const buildDemoDataUrlAsset = useCallback((filename, dataUrl) => {
+    const [meta, base64Payload] = String(dataUrl || "").split(",");
+    const mimeType = meta?.match(/data:(.*?);base64/)?.[1] || "application/octet-stream";
+    const binary = atob(base64Payload || "");
+    const bytes = Uint8Array.from(binary, char => char.charCodeAt(0));
+    const file = new File([bytes], filename, {
+      type: mimeType
+    });
+    file.preview = URL.createObjectURL(file);
+    return {
+      file,
+      dataUrl
+    };
+  }, []);
   const passOrMessage = (condition, message) => condition ? true : message;
   const getBusinessValidationRules = (data, {
     bannerPreview = preview,
@@ -1804,6 +1947,112 @@ const BusinessList = React.memo(() => {
       }
     } finally {
       setBadgeUpdateLoading(false);
+    }
+  };
+  const handleCreateDemoBusiness = async () => {
+    if (editMode || loading || demoSubmitting) {
+      return;
+    }
+
+    setDemoSubmitting(true);
+
+    const uniqueSuffix = `${Date.now()}`.slice(-6);
+    const demoLocation = normalizeText(location?.[0]?.city || location?.[0]?.district || "Chennai");
+    const demoCategory = `Demo Services ${uniqueSuffix}`;
+    const demoBusinessName = `MassClick Demo Business ${uniqueSuffix}`;
+    const demoTitle = `${demoBusinessName} in ${demoLocation}`;
+    const demoSeoDescription = `Automated demo listing for ${demoBusinessName} in ${demoLocation}, created to verify the business create flow end to end.`;
+    const demoBanner = buildDemoImageAsset(`business-demo-banner-${uniqueSuffix}.svg`, demoBusinessName, `${demoLocation} demo listing`);
+    const demoKyc = buildDemoDataUrlAsset(`business-demo-kyc-${uniqueSuffix}.png`, DEMO_PNG_DATA_URL);
+    const demoOpeningHours = defaultOpeningHours.map(hour => ({
+      ...hour,
+      open: "09:00",
+      close: "18:00",
+      isClosed: false,
+      is24Hours: false
+    }));
+    const demoBusinessDetails = `<p>${demoBusinessName} is an automated sample business created from the admin panel to verify the create, validation, and payment workflow.</p>`;
+    const demoFormData = {
+      ...createEmptyBusinessFormData(),
+      clientId: `DEMO-${uniqueSuffix} - Codex Test`,
+      businessName: demoBusinessName,
+      plotNumber: "12A",
+      street: "Demo Street",
+      pincode: "600001",
+      globalAddress: `12A Demo Street, ${demoLocation}, Tamil Nadu 600001`,
+      email: `demo.business.${uniqueSuffix}@massclick.test`,
+      contact: `90001${uniqueSuffix}`,
+      contactList: `90002${uniqueSuffix}`,
+      gstin: "33ABCDE1234F1Z5",
+      whatsappNumber: `90003${uniqueSuffix}`,
+      experience: "5",
+      location: demoLocation,
+      category: demoCategory,
+      keywords: ["demo business", "test listing", "massclick automation"],
+      slug: `massclick-demo-business-${uniqueSuffix}`,
+      seoTitle: `${demoBusinessName} | Demo listing`,
+      seoDescription: demoSeoDescription,
+      title: demoTitle,
+      description: "Auto-generated demo listing used to verify the business onboarding flow.",
+      bannerImage: demoBanner.dataUrl,
+      googleMap: "https://maps.google.com/?q=13.0827,80.2707",
+      website: `https://demo-${uniqueSuffix}.massclick.test`,
+      facebook: `https://facebook.com/massclick-demo-${uniqueSuffix}`,
+      instagram: `https://instagram.com/massclick_demo_${uniqueSuffix}`,
+      youtube: `https://youtube.com/@massclickdemo${uniqueSuffix}`,
+      pinterest: `https://pinterest.com/massclickdemo${uniqueSuffix}`,
+      twitter: `https://x.com/massclickdemo${uniqueSuffix}`,
+      linkedin: `https://linkedin.com/company/massclick-demo-${uniqueSuffix}`,
+      businessDetails: demoBusinessDetails,
+      openingHours: demoOpeningHours,
+      geoLocation: {
+        type: "Point",
+        coordinates: ["80.2707", "13.0827"]
+      },
+      filters: {},
+      badges: {
+        isFeatured: false,
+        isSponsored: false,
+        isTrending: false,
+        priorityScore: 0,
+      },
+      verification: {
+        isVerified: false,
+        verificationType: "ADMIN",
+      },
+    };
+
+    revokePreviewUrls(kycFiles);
+    setEditMode(false);
+    setEditId(null);
+    setDuplicateBypassSignature("");
+    setFieldErrors({});
+    setForceBypassedFields([]);
+    setWarnLevel(0);
+    setWarnDialog(false);
+    setDuplicateReview({
+      open: false,
+      matches: [],
+      signature: "",
+      action: "save"
+    });
+    setCategoryKeywordSuggestions([]);
+    setInputKeyword("");
+    setPreview(demoBanner.dataUrl);
+    setBusinessValue(demoBusinessDetails);
+    setFormData(demoFormData);
+    setKycFiles([demoKyc.file]);
+    setActiveStep(steps.length - 2);
+
+    try {
+      await saveBusiness({
+        draftFormData: demoFormData,
+        draftBusinessDetails: demoBusinessDetails,
+        draftKycFiles: [demoKyc.file],
+        skipDuplicateCheck: true
+      });
+    } finally {
+      setDemoSubmitting(false);
     }
   };
 
@@ -2528,11 +2777,9 @@ const BusinessList = React.memo(() => {
 
           <div className={cx("form-input-group col-span-all")}>
             <label className={cx("input-label")}>📝 Business Details</label>
-            <Suspense fallback={<CircularProgress />}>
-              <ReactQuill theme="snow" value={businessvalue} onChange={handleBusinessChange} modules={modules} formats={formats} placeholder="Type business details here..." style={{
-                height: "200px"
-              }} />
-            </Suspense>
+            <QuillEditor value={businessvalue} onChange={handleBusinessChange} modules={QUILL_MODULES} formats={QUILL_FORMATS} placeholder="Type business details here..." style={{
+              height: "200px"
+            }} />
           </div><br />
 
           <div className={cx("form-input-group col-span-all")}>
@@ -3040,6 +3287,16 @@ const BusinessList = React.memo(() => {
               {localDraftMeta && (
                 <button type="button" className={cx("draft-action-button ghost")} onClick={() => clearLocalDraft(true)}>
                   Clear Draft
+                </button>
+              )}
+              {!editMode && (
+                <button
+                  type="button"
+                  className={cx("draft-action-button secondary")}
+                  onClick={handleCreateDemoBusiness}
+                  disabled={loading || demoSubmitting}
+                >
+                  {demoSubmitting ? "Creating Demo..." : "Create Demo"}
                 </button>
               )}
               {activeStep === 0 && (

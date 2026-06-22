@@ -145,9 +145,14 @@ export const createBusinessList = async (reqBody = {}) => {
 
 export const findBusinessBySlug = async ({ location, slug }) => {
   try {
+    const normalizedSlug = String(slug || "").trim().toLowerCase();
+    const businessNamePattern = String(slug || "").replace(/-/g, " ");
     const business = await businessListModel.findOne({
       location: new RegExp(`^${location}$`, "i"),
-      businessName: new RegExp(slug.replace(/-/g, " "), "i"),
+      $or: [
+        { slug: new RegExp(`^${normalizedSlug}$`, "i") },
+        { businessName: new RegExp(`^${businessNamePattern}$`, "i") }
+      ],
       isActive: true,
       businessesLive: true,
     }).lean();
@@ -723,6 +728,12 @@ export const updateBusinessList = async (id, data) => {
 
       business.amountPaid = true;
       business.paidDate = new Date();
+      business.businessesLive = true;
+      business.subscription = {
+        ...(business.subscription?.toObject?.() || business.subscription || {}),
+        isActive: true,
+        startDate: business.subscription?.startDate || new Date(),
+      };
 
       const location = normalizeMniLocation(business.location);
       const paidCount = await businessListModel.countDocuments({
