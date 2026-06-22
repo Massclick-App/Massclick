@@ -84,17 +84,18 @@ const QuillEditor = ({
   useEffect(() => {
     let mounted = true;
     let textChangeHandler = null;
+    const editorNode = editorRef.current;
 
     const loadEditor = async () => {
       const {
         default: Quill
       } = await import("quill");
 
-      if (!mounted || !editorRef.current || quillRef.current) {
+      if (!mounted || !editorNode || quillRef.current) {
         return;
       }
 
-      const quill = new Quill(editorRef.current, {
+      const quill = new Quill(editorNode, {
         theme: "snow",
         modules,
         formats,
@@ -128,8 +129,8 @@ const QuillEditor = ({
         quillRef.current.off("text-change", textChangeHandler);
       }
       quillRef.current = null;
-      if (editorRef.current) {
-        editorRef.current.innerHTML = "";
+      if (editorNode) {
+        editorNode.innerHTML = "";
       }
     };
   }, [formats, modules, placeholder, value]);
