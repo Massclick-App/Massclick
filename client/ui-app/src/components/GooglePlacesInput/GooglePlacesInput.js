@@ -7,7 +7,7 @@ const GooglePlacesInput = ({ onPlaceSelect, placeholder = 'Type business name or
   const [loading, setLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [error, setError] = useState('');
-  const mapsLoaded = useGoogleMapsScript();
+  const { loaded: mapsLoaded, error: mapsLoadError } = useGoogleMapsScript();
   const onPlaceSelectRef = useRef(onPlaceSelect);
   const containerRef = useRef(null);
 
@@ -46,6 +46,14 @@ const GooglePlacesInput = ({ onPlaceSelect, placeholder = 'Type business name or
       setLoading(false);
     }
   }, [query, mapsLoaded]);
+
+  useEffect(() => {
+    if (mapsLoadError) {
+      setSuggestions([]);
+      setShowDropdown(false);
+      setError(mapsLoadError);
+    }
+  }, [mapsLoadError]);
 
   const handleSelect = useCallback(async (suggestion) => {
     setShowDropdown(false);
@@ -97,7 +105,8 @@ const GooglePlacesInput = ({ onPlaceSelect, placeholder = 'Type business name or
           value={query}
           onChange={e => { setQuery(e.target.value); setError(''); }}
           onKeyDown={e => e.key === 'Enter' && handleSearch()}
-          placeholder={mapsLoaded ? placeholder : 'Loading Google Maps...'}
+          placeholder={mapsLoaded ? placeholder : 'Google Places unavailable'}
+          disabled={!mapsLoaded}
           style={{
             flex: 1,
             padding: '10px 14px',
@@ -105,8 +114,8 @@ const GooglePlacesInput = ({ onPlaceSelect, placeholder = 'Type business name or
             borderRadius: '8px',
             fontSize: '14px',
             outline: 'none',
-            backgroundColor: '#fff8f0',
-            color: '#333',
+            backgroundColor: mapsLoaded ? '#fff8f0' : '#f5f5f5',
+            color: mapsLoaded ? '#333' : '#777',
             boxSizing: 'border-box'
           }}
           onFocus={e => e.target.style.borderColor = '#D97800'}

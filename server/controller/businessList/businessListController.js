@@ -37,10 +37,12 @@ export const addBusinessListAction = async (req, res) => {
     console.error("Error in addBusinessListAction:", error);
 
     if (error.name === "ValidationError") {
-      return res.status(400).send(error.message);
+      return res.status(400).send({ message: error.message });
     }
 
-    return res.status(400).send("Error saving Business.");
+    return res.status(400).send({
+      message: error.message || "Error saving Business."
+    });
   }
 };
 

@@ -1043,6 +1043,11 @@ const BusinessList = React.memo(() => {
     const haversine = Math.sin(deltaLatitude / 2) ** 2 + Math.cos(latitudeA) * Math.cos(latitudeB) * Math.sin(deltaLongitude / 2) ** 2;
     return 2 * earthRadiusKm * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
   };
+  const toSortedUniqueTextOptions = values => Array.from(new Set(
+    (values || [])
+      .map(value => normalizeText(typeof value === "string" || typeof value === "number" ? value : value ?? ""))
+      .filter(Boolean)
+  )).sort((left, right) => String(left).localeCompare(String(right), undefined, { sensitivity: "base" }));
   const getPotentialDuplicateMatches = cleanedFormData => {
     const currentId = editMode ? getObjectId(editId) : "";
     const candidatePhones = getPhoneCandidates(cleanedFormData);
@@ -1764,15 +1769,20 @@ const BusinessList = React.memo(() => {
       setActiveStep(3);
     } catch (err) {
       console.error("Error saving business:", err);
+      const backendPayload = err.response?.data;
 
       // Handle backend validation errors
-      if (err.response?.data?.errors) {
-        const errorMessages = err.response.data.errors.map(e => `${e.field}: ${e.message}`).join('\n');
+      if (backendPayload?.errors) {
+        const errorMessages = backendPayload.errors.map(e => `${e.field}: ${e.message}`).join('\n');
         enqueueSnackbar(`Validation errors:\n${errorMessages}`, {
           variant: "error"
         });
-      } else if (err.response?.data?.message) {
-        enqueueSnackbar(err.response.data.message, {
+      } else if (typeof backendPayload === "string" && backendPayload.trim()) {
+        enqueueSnackbar(backendPayload, {
+          variant: "error"
+        });
+      } else if (backendPayload?.message) {
+        enqueueSnackbar(backendPayload.message, {
           variant: "error"
         });
       } else {
@@ -1909,12 +1919,12 @@ const BusinessList = React.memo(() => {
   }));
 
   const filteredRows = getFilteredRows();
-  const categoryOptions = Array.from(new Set(
-    [...category, ...searchCategory].map(c => c?.category).filter(Boolean)
-  )).sort((a, b) => a.localeCompare(b));
-  const locationOptions = Array.from(new Set(
-    location.map(l => l?.city || l?.district || l?.location || l?.name).filter(Boolean)
-  )).sort((a, b) => a.localeCompare(b));
+  const categoryOptions = toSortedUniqueTextOptions(
+    [...category, ...searchCategory].map(c => c?.category)
+  );
+  const locationOptions = toSortedUniqueTextOptions(
+    location.map(l => l?.city || l?.district || l?.location || l?.name)
+  );
 
   const businessListTable = [{
     id: "clientId",
