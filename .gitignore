@@ -92,3 +92,5 @@ MSG91_EXPORT_ANALYSIS_REPORT_2026-06-01_to_2026-06-11.md
 MSG91_LEADS_CONTEXT.md
 /server/reports
 /extensions
+/s3-backups
+client/ui-app/src/Internals/seoData/metaseoData.json

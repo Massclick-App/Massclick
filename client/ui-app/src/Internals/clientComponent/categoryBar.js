@@ -8,7 +8,6 @@ import { IconButton, Menu, MenuItem, Avatar } from "@mui/material";
 import PublishedWithChangesIcon from '@mui/icons-material/PublishedWithChanges';
 import Badge from "@mui/material/Badge";
 import { Notifications as NotificationsIcon, Mail as MailIcon, Menu as MenuIcon, AccountCircle as AccountCircleIcon, ExitToApp as ExitToAppIcon } from "@mui/icons-material";
-import MassclickIndiaLogo from "../../assets/Massclick-India.webp";
 import AppRegistrationIcon from '@mui/icons-material/AppRegistration';
 import LoginIcon from '@mui/icons-material/Login';
 import DashboardIcon from "@mui/icons-material/Dashboard";
@@ -205,7 +204,7 @@ const CategoryBar = () => {
         </div>
         <div className={cx("brandingText")}>
           <button type="button" className={cx("logoButton")} onClick={goHome} aria-label="Go to Massclick home">
-            <img src={MassclickIndiaLogo} alt="Massclick India" className={cx("brandLogo")} width="180" height="44" decoding="async" />
+            <img src="/Massclick-India.webp" alt="Massclick India" className={cx("brandLogo")} width="180" height="44" decoding="async" fetchPriority="high" loading="eager" />
           </button>
         </div>
       </div>
