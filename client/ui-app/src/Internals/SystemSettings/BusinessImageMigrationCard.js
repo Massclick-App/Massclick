@@ -15,6 +15,8 @@ const formatNumber = (value) => Number(value || 0).toLocaleString();
 const statusLabel = {
   queued: "Queued",
   running: "Running",
+  paused: "Paused",
+  cancelled: "Cancelled",
   completed: "Completed",
   completed_with_errors: "Completed with errors",
   failed: "Failed",
@@ -23,6 +25,8 @@ const statusLabel = {
 const statusTone = {
   queued: "neutral",
   running: "warning",
+  paused: "neutral",
+  cancelled: "neutral",
   completed: "success",
   completed_with_errors: "warning",
   failed: "danger",
@@ -41,6 +45,8 @@ export default function BusinessImageMigrationCard() {
   const [latestJob, setLatestJob] = useState(null);
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
+  const [pausing, setPausing] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [deleteOriginals, setDeleteOriginals] = useState(true);
   const [batchSize, setBatchSize] = useState(100);
@@ -109,11 +115,16 @@ export default function BusinessImageMigrationCard() {
     return Math.max(0, Math.min(100, Math.round((businessesDone / totalBusinesses) * 100)));
   }, [businessesDone, totalBusinesses]);
   const active = ["queued", "running"].includes(latestJob?.status);
+  const paused = latestJob?.status === "paused";
+  const cancellable = ["queued", "running", "paused"].includes(latestJob?.status);
 
   const startMigration = async () => {
-    const baseMessage = deleteOriginals
-      ? "This will convert all old business images to WebP, update DB keys, and delete the old S3 originals after each success."
-      : "This will convert all old business images to WebP and update DB keys, but it will keep the original S3 files.";
+    const isResume = paused;
+    const baseMessage = isResume
+      ? "This will resume the paused migration from the last processed business."
+      : deleteOriginals
+        ? "This will convert all old business images to WebP, update DB keys, and delete the old S3 originals after each success."
+        : "This will convert all old business images to WebP and update DB keys, but it will keep the original S3 files.";
 
     if (!window.confirm(`${baseMessage} Continue?`)) {
       return;
@@ -138,11 +149,65 @@ export default function BusinessImageMigrationCard() {
       );
 
       setLatestJob(response.data?.data || null);
-      setNote(response.data?.alreadyRunning ? "An existing migration job is already running." : "Migration job started.");
+      if (response.data?.resumed) {
+        setNote("Paused migration resumed.");
+      } else if (response.data?.alreadyRunning) {
+        setNote("An existing migration job is already running.");
+      } else {
+        setNote("Migration job started.");
+      }
     } catch (error) {
       setNote(error.response?.data?.message || error.message || "Failed to start migration");
     } finally {
       setStarting(false);
+    }
+  };
+
+  const pauseMigration = async () => {
+    if (!window.confirm("Pause the migration? It will stop after the current business finishes and can be resumed later.")) {
+      return;
+    }
+
+    setPausing(true);
+    setNote("");
+
+    try {
+      const response = await axiosInstance.post(
+        `${API_URL}/admin/system-settings/businesslist-webp-migration/pause`,
+        {},
+        { headers: authHeaders() }
+      );
+
+      setLatestJob(response.data?.data || null);
+      setNote("Migration paused.");
+    } catch (error) {
+      setNote(error.response?.data?.message || error.message || "Failed to pause migration");
+    } finally {
+      setPausing(false);
+    }
+  };
+
+  const cancelMigration = async () => {
+    if (!window.confirm("Cancel the migration? It will stop and mark the job as cancelled. You can start a new run later if needed.")) {
+      return;
+    }
+
+    setCancelling(true);
+    setNote("");
+
+    try {
+      const response = await axiosInstance.post(
+        `${API_URL}/admin/system-settings/businesslist-webp-migration/cancel`,
+        {},
+        { headers: authHeaders() }
+      );
+
+      setLatestJob(response.data?.data || null);
+      setNote("Migration cancelled.");
+    } catch (error) {
+      setNote(error.response?.data?.message || error.message || "Failed to cancel migration");
+    } finally {
+      setCancelling(false);
     }
   };
 
@@ -207,9 +272,25 @@ export default function BusinessImageMigrationCard() {
           type="button"
           className={cx("action-button primary")}
           onClick={startMigration}
-          disabled={starting || active}
+          disabled={starting || active && !paused}
         >
-          {starting ? "Starting..." : active ? "Migration Running" : "Start Migration"}
+          {starting ? (paused ? "Resuming..." : "Starting...") : paused ? "Resume Migration" : active ? "Migration Running" : "Start Migration"}
+        </button>
+        <button
+          type="button"
+          className={cx("action-button secondary")}
+          onClick={pauseMigration}
+          disabled={pausing || !["running", "queued"].includes(latestJob?.status)}
+        >
+          {pausing ? "Pausing..." : "Pause"}
+        </button>
+        <button
+          type="button"
+          className={cx("action-button danger")}
+          onClick={cancelMigration}
+          disabled={cancelling || !cancellable}
+        >
+          {cancelling ? "Cancelling..." : "Cancel"}
         </button>
         <button
           type="button"

@@ -37,6 +37,7 @@ const TARGET_FIELDS = [
 ];
 
 const activeJobIds = new Set();
+const STOPPED_STATUS = new Set(["paused", "cancelled", "completed", "completed_with_errors", "failed"]);
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -233,6 +234,45 @@ const updateJob = async (jobId, patch) => {
   });
 };
 
+const getLatestJobControlState = async (jobId) => {
+  const job = await businessWebpMigrationJobModel
+    .findById(jobId)
+    .select("status lastProcessedBusinessId")
+    .lean();
+
+  if (!job) {
+    throw new Error("Migration job not found");
+  }
+
+  return job;
+};
+
+const shouldStopForControlState = (status) => STOPPED_STATUS.has(status);
+
+const scheduleBusinessWebpMigration = (jobId) => {
+  const launch = (remainingWaitMs = 30000) => {
+    if (!jobId) {
+      return;
+    }
+
+    if (!activeJobIds.has(jobId)) {
+      runBusinessWebpMigration(jobId).catch((error) => {
+        console.error("Business WebP migration crashed:", error);
+      });
+      return;
+    }
+
+    if (remainingWaitMs <= 0) {
+      console.warn("Business WebP migration is still active; skipping restart for now.");
+      return;
+    }
+
+    setTimeout(() => launch(remainingWaitMs - 1000), 1000);
+  };
+
+  setTimeout(() => launch(), 0);
+};
+
 const processBusiness = async (business, job, cache) => {
   const changedPaths = [];
   const failedEntries = [];
@@ -398,13 +438,34 @@ export const startBusinessWebpMigration = async ({
   retryCount = 3,
   createdBy = null,
 } = {}) => {
-  const activeJob = await businessWebpMigrationJobModel.findOne({
+  const runningJob = await businessWebpMigrationJobModel.findOne({
     jobType: JOB_TYPE,
     status: { $in: ["queued", "running"] },
   }).sort({ createdAt: -1 }).lean();
 
-  if (activeJob) {
-    return { job: activeJob, alreadyRunning: true };
+  if (runningJob) {
+    return { job: runningJob, alreadyRunning: true, resumed: false };
+  }
+
+  const pausedJob = await businessWebpMigrationJobModel.findOne({
+    jobType: JOB_TYPE,
+    status: "paused",
+  }).sort({ createdAt: -1 });
+
+  if (pausedJob) {
+    pausedJob.status = "running";
+    pausedJob.startedAt = pausedJob.startedAt || new Date();
+    pausedJob.lastHeartbeatAt = new Date();
+    pausedJob.lastError = "";
+    await pausedJob.save();
+
+    scheduleBusinessWebpMigration(String(pausedJob._id));
+
+    return {
+      job: pausedJob.toObject ? pausedJob.toObject() : pausedJob,
+      alreadyRunning: false,
+      resumed: true,
+    };
   }
 
   const candidateBusinesses = await businessListModel.countDocuments(buildQuery());
@@ -444,9 +505,7 @@ export const startBusinessWebpMigration = async ({
   });
 
   setImmediate(() => {
-    runBusinessWebpMigration(String(jobDoc._id)).catch((error) => {
-      console.error("Business WebP migration crashed:", error);
-    });
+    scheduleBusinessWebpMigration(String(jobDoc._id));
   });
 
   return { job: jobDoc.toObject ? jobDoc.toObject() : jobDoc, alreadyRunning: false };
@@ -482,32 +541,75 @@ export const runBusinessWebpMigration = async (jobId) => {
     jobRecord.status = "running";
     jobRecord.startedAt = jobRecord.startedAt || new Date();
     jobRecord.lastHeartbeatAt = new Date();
+    jobRecord.lastError = "";
     await jobRecord.save();
 
     const cursor = businessListModel
-      .find(buildQuery(), {
+      .find({
+        ...buildQuery(),
+        ...(jobRecord.lastProcessedBusinessId
+          ? { _id: { $gt: jobRecord.lastProcessedBusinessId } }
+          : {}),
+      }, {
         bannerImageKey: 1,
         businessImagesKey: 1,
         kycDocumentsKey: 1,
         qrCode: 1,
         businessName: 1,
       })
+      .sort({ _id: 1 })
       .lean()
       .cursor({ batchSize: jobRecord.options?.batchSize || 100 });
 
     for await (const business of cursor) {
+      const controlState = await getLatestJobControlState(jobId);
+      if (shouldStopForControlState(controlState.status)) {
+        jobRecord.status = controlState.status;
+        jobRecord.lastProcessedBusinessId = controlState.lastProcessedBusinessId || jobRecord.lastProcessedBusinessId || "";
+        if (controlState.status === "cancelled") {
+          jobRecord.cancelledAt = jobRecord.cancelledAt || new Date();
+          jobRecord.finishedAt = jobRecord.finishedAt || new Date();
+        }
+        if (controlState.status === "paused") {
+          jobRecord.pausedAt = jobRecord.pausedAt || new Date();
+        }
+        jobRecord.lastHeartbeatAt = new Date();
+        await jobRecord.save().catch(() => {});
+        break;
+      }
+
       const result = await processBusiness(business, jobRecord, cache);
       jobRecord.failures = [...jobRecord.failures, ...result.failures].slice(0, 25);
       jobRecord.summary.totalDocumentsTouched += 1;
       if (result.changed) {
         jobRecord.summary.totalDocumentsWithChanges += 1;
       }
+      jobRecord.lastProcessedBusinessId = String(business._id);
 
       await updateJob(jobId, {
         progress: jobRecord.progress,
         summary: jobRecord.summary,
         failures: jobRecord.failures.slice(0, 25),
+        lastProcessedBusinessId: jobRecord.lastProcessedBusinessId,
       });
+    }
+
+    const finalControlState = await getLatestJobControlState(jobId);
+    if (finalControlState.status === "paused") {
+      jobRecord.status = "paused";
+      jobRecord.pausedAt = jobRecord.pausedAt || new Date();
+      jobRecord.lastHeartbeatAt = new Date();
+      await jobRecord.save();
+      return jobRecord.toObject();
+    }
+
+    if (finalControlState.status === "cancelled") {
+      jobRecord.status = "cancelled";
+      jobRecord.cancelledAt = jobRecord.cancelledAt || new Date();
+      jobRecord.finishedAt = jobRecord.finishedAt || new Date();
+      jobRecord.lastHeartbeatAt = new Date();
+      await jobRecord.save();
+      return jobRecord.toObject();
     }
 
     jobRecord.status =
@@ -533,4 +635,39 @@ export const runBusinessWebpMigration = async (jobId) => {
   }
 
   return jobRecord.toObject();
+};
+
+export const pauseBusinessWebpMigration = async () => {
+  const job = await businessWebpMigrationJobModel.findOne({
+    jobType: JOB_TYPE,
+    status: "running",
+  }).sort({ createdAt: -1 });
+
+  if (!job) {
+    return null;
+  }
+
+  job.status = "paused";
+  job.pausedAt = new Date();
+  job.lastHeartbeatAt = new Date();
+  await job.save();
+  return job.toObject();
+};
+
+export const cancelBusinessWebpMigration = async () => {
+  const job = await businessWebpMigrationJobModel.findOne({
+    jobType: JOB_TYPE,
+    status: { $in: ["queued", "running", "paused"] },
+  }).sort({ createdAt: -1 });
+
+  if (!job) {
+    return null;
+  }
+
+  job.status = "cancelled";
+  job.cancelledAt = new Date();
+  job.finishedAt = new Date();
+  job.lastHeartbeatAt = new Date();
+  await job.save();
+  return job.toObject();
 };

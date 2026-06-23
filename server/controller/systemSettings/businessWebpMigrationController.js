@@ -1,4 +1,6 @@
 import {
+  cancelBusinessWebpMigration,
+  pauseBusinessWebpMigration,
   getBusinessWebpMigrationJobById,
   getLatestBusinessWebpMigrationJob,
   startBusinessWebpMigration,
@@ -27,12 +29,61 @@ export const startBusinessWebpMigrationAction = async (req, res) => {
       success: true,
       data: result.job,
       alreadyRunning: result.alreadyRunning,
+      resumed: Boolean(result.resumed),
     });
   } catch (error) {
     console.error("startBusinessWebpMigrationAction error:", error);
     return res.status(500).json({
       success: false,
       message: error.message || "Failed to start migration",
+    });
+  }
+};
+
+export const pauseBusinessWebpMigrationAction = async (req, res) => {
+  try {
+    const job = await pauseBusinessWebpMigration();
+
+    if (!job) {
+      return res.status(404).json({
+        success: false,
+        message: "No running migration job found",
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: job,
+    });
+  } catch (error) {
+    console.error("pauseBusinessWebpMigrationAction error:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to pause migration",
+    });
+  }
+};
+
+export const cancelBusinessWebpMigrationAction = async (req, res) => {
+  try {
+    const job = await cancelBusinessWebpMigration();
+
+    if (!job) {
+      return res.status(404).json({
+        success: false,
+        message: "No migration job found to cancel",
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: job,
+    });
+  } catch (error) {
+    console.error("cancelBusinessWebpMigrationAction error:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to cancel migration",
     });
   }
 };

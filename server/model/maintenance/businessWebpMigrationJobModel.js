@@ -38,7 +38,7 @@ const businessWebpMigrationJobSchema = new mongoose.Schema(
     jobType: { type: String, default: "business-webp-migration", index: true },
     status: {
       type: String,
-      enum: ["queued", "running", "completed", "completed_with_errors", "failed"],
+      enum: ["queued", "running", "paused", "cancelled", "completed", "completed_with_errors", "failed"],
       default: "queued",
       index: true,
     },
@@ -56,9 +56,12 @@ const businessWebpMigrationJobSchema = new mongoose.Schema(
       email: { type: String, default: "" },
     },
     startedAt: { type: Date, default: null },
+    pausedAt: { type: Date, default: null },
+    cancelledAt: { type: Date, default: null },
     finishedAt: { type: Date, default: null },
     lastHeartbeatAt: { type: Date, default: null },
     lastError: { type: String, default: "" },
+    lastProcessedBusinessId: { type: String, default: "" },
     summary: {
       totalDocumentsTouched: { type: Number, default: 0 },
       totalDocumentsWithChanges: { type: Number, default: 0 },

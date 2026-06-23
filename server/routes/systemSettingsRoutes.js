@@ -6,8 +6,10 @@ import {
 import { oauthAuthentication } from "../helper/oauthHelper.js";
 import { requireAdminAuth } from "../auth/authMiddleware.js";
 import {
+  cancelBusinessWebpMigrationAction,
   getBusinessWebpMigrationJobAction,
   getLatestBusinessWebpMigrationJobAction,
+  pauseBusinessWebpMigrationAction,
   startBusinessWebpMigrationAction,
 } from "../controller/systemSettings/businessWebpMigrationController.js";
 
@@ -19,6 +21,16 @@ router.post(
   "/api/admin/system-settings/businesslist-webp-migration/start",
   requireAdminAuth(),
   startBusinessWebpMigrationAction
+);
+router.post(
+  "/api/admin/system-settings/businesslist-webp-migration/pause",
+  requireAdminAuth(),
+  pauseBusinessWebpMigrationAction
+);
+router.post(
+  "/api/admin/system-settings/businesslist-webp-migration/cancel",
+  requireAdminAuth(),
+  cancelBusinessWebpMigrationAction
 );
 router.get(
   "/api/admin/system-settings/businesslist-webp-migration/latest",
