@@ -1,5 +1,5 @@
-const CACHE_NAME = 'massclick-v1';
-const IMAGE_CACHE = 'massclick-images-v1';
+const CACHE_NAME = 'massclick-v2';
+const IMAGE_CACHE = 'massclick-images-v2';
 const urlsToCache = [
   '/',
   '/index.html',
