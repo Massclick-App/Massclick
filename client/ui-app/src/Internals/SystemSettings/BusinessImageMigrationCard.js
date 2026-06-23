@@ -272,7 +272,7 @@ export default function BusinessImageMigrationCard() {
           type="button"
           className={cx("action-button primary")}
           onClick={startMigration}
-          disabled={starting || active && !paused}
+          disabled={starting || (active && !paused)}
         >
           {starting ? (paused ? "Resuming..." : "Starting...") : paused ? "Resume Migration" : active ? "Migration Running" : "Start Migration"}
         </button>
