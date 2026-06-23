@@ -68,7 +68,8 @@ export const userMenuItems = [{
   name: "MNI",
   path: "/user_mni",
   icon: <BusinessCenterIcon color="action" />,
-  component: MRPPage
+  component: MRPPage,
+  businessPeopleOnly: true
 }, {
   name: "User Favorites",
   path: "/user_favorites",
@@ -108,6 +109,8 @@ export const userMenuItems = [{
   path: "/",
   icon: <ExitToAppIcon color="action" />
 }];
+export const getVisibleUserMenuItems = (user = {}) =>
+  userMenuItems.filter((item) => !item.businessPeopleOnly || isBusinessPeopleUser(user));
 const CategoryBar = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();

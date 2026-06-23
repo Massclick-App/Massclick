@@ -1,6 +1,7 @@
 import axiosInstance from '../../services/axiosInstance.js';
 import {
   FETCH_BUSINESS_REQUEST, FETCH_BUSINESS_SUCCESS, FETCH_BUSINESS_FAILURE,
+  EXPORT_BUSINESS_REQUEST, EXPORT_BUSINESS_SUCCESS, EXPORT_BUSINESS_FAILURE,
   CREATE_BUSINESS_REQUEST, CREATE_BUSINESS_SUCCESS, CREATE_BUSINESS_FAILURE,
   EDIT_BUSINESS_REQUEST, EDIT_BUSINESS_SUCCESS, EDIT_BUSINESS_FAILURE,
   DELETE_BUSINESS_REQUEST, DELETE_BUSINESS_SUCCESS, DELETE_BUSINESS_FAILURE,
@@ -31,6 +32,91 @@ const getValidToken = async (dispatch) => {
   if (!token) token = await dispatch(getClientToken());
   if (!token) throw new Error("No valid token found");
   return token;
+};
+
+const downloadBlob = (blob, filename) => {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
+
+const getDownloadFilename = (contentDisposition, fallback) => {
+  const match = String(contentDisposition || "").match(/filename\*?=(?:UTF-8''|")?([^";]+)/i);
+  return match ? decodeURIComponent(match[1].replace(/"/g, "")) : fallback;
+};
+
+const getBlobErrorMessage = async (error) => {
+  const data = error.response?.data;
+  if (!(data instanceof Blob)) {
+    return error.response?.data?.message || error.message;
+  }
+
+  try {
+    const text = await data.text();
+    const parsed = JSON.parse(text);
+    return parsed?.message || error.message;
+  } catch {
+    return error.message;
+  }
+};
+
+export const exportBusinessList = ({
+  search = "",
+  searchTerm = "",
+  category = "",
+  location = "",
+  paymentStatus = "all",
+  status = "all",
+  liveStatus = "",
+  createdFrom = "",
+  createdTo = "",
+  sortBy = "createdAt",
+  sortOrder = "desc",
+} = {}) => async (dispatch) => {
+  dispatch({ type: EXPORT_BUSINESS_REQUEST });
+
+  try {
+    const token = await getValidToken(dispatch);
+    const params = new URLSearchParams();
+    if (search) params.append("search", search);
+    if (searchTerm) params.append("searchTerm", searchTerm);
+    if (category) params.append("category", category);
+    if (location) params.append("location", location);
+    if (paymentStatus && paymentStatus !== "all") params.append("paymentStatus", paymentStatus);
+    if (status && status !== "all") params.append("status", status);
+    if (liveStatus) params.append("liveStatus", liveStatus);
+    if (createdFrom) params.append("createdFrom", createdFrom);
+    if (createdTo) params.append("createdTo", createdTo);
+    if (sortBy) params.append("sortBy", sortBy);
+    if (sortOrder) params.append("sortOrder", sortOrder);
+
+    const stamp = new Date().toISOString().slice(0, 10);
+    const response = await axiosInstance.get(`${API_URL}/businesslist/export?${params.toString()}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      responseType: "blob",
+      timeout: 120000,
+    });
+    const filename = getDownloadFilename(
+      response.headers?.["content-disposition"],
+      `massclick-business-directory-${stamp}.xlsx`
+    );
+    downloadBlob(response.data, filename);
+
+    const exportedCount = Number(response.headers?.["x-export-row-count"] || 0);
+    const payload = { exportedCount, filename };
+
+    dispatch({ type: EXPORT_BUSINESS_SUCCESS, payload });
+    return payload;
+  } catch (error) {
+    const message = await getBlobErrorMessage(error);
+    dispatch({ type: EXPORT_BUSINESS_FAILURE, payload: message });
+    throw new Error(message);
+  }
 };
 
 export const trackQrDownload = (businessId) => async (dispatch) => {

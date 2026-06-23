@@ -21,7 +21,7 @@ import PrivateRoute from './PrivateRoute';
 import PermissionRoute from './PermissionRoute';
 import ScrollToTop from './scrollTop.js';
 import RouteChangeTracker from './RouteChangeTracker.js';
-import { userMenuItems } from './Internals/clientComponent/categoryBar.js';
+import { isBusinessPeopleUser, userMenuItems } from './Internals/clientComponent/categoryBar.js';
 
 import ShimmerSkeleton from './Internals/clientComponent/shimmerSkeleton.js';
 import GlobalLoaderWrapper from './Internals/clientComponent/common/GlobalLoaderWrapper.js';
@@ -142,6 +142,14 @@ const ComingSoon = ({ title }) => (
   </div>
 );
 
+const getStoredCustomerUser = () => {
+  try {
+    return JSON.parse(localStorage.getItem("authUser") || "{}") || {};
+  } catch {
+    return {};
+  }
+};
+
 const getRealtimeSocketToken = (snapshot = getAuthSnapshot()) =>
   snapshot?.admin?.accessToken ||
   snapshot?.customer?.token ||
@@ -221,11 +229,13 @@ function AppRoutes({
           {userMenuItems.map((item) => {
             const Component =
               item.component || (() => <ComingSoon title={item.name} />);
+            const isBlockedBusinessRoute =
+              item.businessPeopleOnly && !isBusinessPeopleUser(getStoredCustomerUser());
             return (
               <Route
                 key={item.path}
                 path={item.path}
-                element={<Component />}
+                element={isBlockedBusinessRoute ? <Navigate to="/user_dashboard" replace /> : <Component />}
               />
             );
           })}
