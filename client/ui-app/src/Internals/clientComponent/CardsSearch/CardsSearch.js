@@ -198,23 +198,20 @@ const CardsSearch = ({
     if (!headerNode) return undefined;
 
     const rootStyle = document.documentElement.style;
-    const updateHeaderHeight = () => {
-      const nextHeight = Math.ceil(headerNode.getBoundingClientRect().height);
-      rootStyle.setProperty("--cards-search-height", `${nextHeight}px`);
-    };
-
-    updateHeaderHeight();
-
     let resizeObserver;
     if (typeof ResizeObserver !== "undefined") {
-      resizeObserver = new ResizeObserver(updateHeaderHeight);
+      resizeObserver = new ResizeObserver(entries => {
+        const entry = entries[0];
+        if (!entry) return;
+        const nextHeight = Math.ceil(entry.borderBoxSize?.[0]?.blockSize || entry.contentRect.height || headerNode.offsetHeight || 0);
+        if (nextHeight > 0) {
+          rootStyle.setProperty("--cards-search-height", `${nextHeight}px`);
+        }
+      });
       resizeObserver.observe(headerNode);
     }
 
-    window.addEventListener("resize", updateHeaderHeight);
-
     return () => {
-      window.removeEventListener("resize", updateHeaderHeight);
       resizeObserver?.disconnect();
       rootStyle.removeProperty("--cards-search-height");
     };

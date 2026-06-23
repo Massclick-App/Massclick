@@ -3,6 +3,7 @@ import React, { useEffect, useState, useMemo, useDeferredValue } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchSystemSettings, updateSystemSettings } from "../../redux/actions/systemSettingsAction.js";
 import { fetchRedisStatus, invalidateCache, clearAllCaches, fetchRedisKeys, deleteRedisKeys, fetchRedisInfo, flushRedisDb, deleteRedisPattern } from "../../redux/actions/cacheActions.js";
+import BusinessImageMigrationCard from "./BusinessImageMigrationCard.js";
 import styles from "./SystemSettings.module.css";
 
 // Icons
@@ -19,6 +20,7 @@ const DebugIcon = () => <span>🔍</span>;
 const DatabaseIcon = () => <span>🗄️</span>;
 const AlertIcon = () => <span>⚡</span>;
 const GuardIcon = () => <span>🛡️</span>;
+const MediaCleanupIcon = () => <span>🧹</span>;
 const formatUptime = seconds => {
   if (!seconds) return "\u2014";
   const d = Math.floor(seconds / 86400);
@@ -553,6 +555,14 @@ const SETTINGS_SECTIONS = [{
   icon: CloudSyncIcon,
   color: "#14b8a6",
   fieldKeys: ["redis_enabled"]
+}, {
+  key: "mediaCleanup",
+  label: "Media Cleanup",
+  description: "Convert legacy business images to WebP and retire old S3 originals.",
+  detailOverride: "WebP migration and cleanup",
+  icon: MediaCleanupIcon,
+  color: "#f97316",
+  fieldKeys: []
 }];
 const FIELD_SECTION_MAP = SETTINGS_SECTIONS.reduce((acc, section) => {
   section.fieldKeys.forEach(fieldKey => {
@@ -932,7 +942,7 @@ export default function SystemSettings() {
     const activeToggleCount = section.fieldKeys.filter(key => typeof local[key] === "boolean" && !!local[key]).length;
     const changedCount = section.fieldKeys.filter(key => settings && local[key] !== settings[key]).length;
     const errorCount = section.fieldKeys.filter(key => validationErrors[key]).length;
-    let detail = `${section.fieldKeys.length} control${section.fieldKeys.length === 1 ? "" : "s"}`;
+    let detail = section.detailOverride || `${section.fieldKeys.length} control${section.fieldKeys.length === 1 ? "" : "s"}`;
     if (errorCount > 0) {
       detail = `${errorCount} issue${errorCount === 1 ? "" : "s"} to review`;
     } else if (changedCount > 0) {
@@ -1280,6 +1290,10 @@ export default function SystemSettings() {
                 </div>
               </div>
             </div>
+          </div>;
+      case "mediaCleanup":
+        return <div className={cx("panel-stack")}>
+            <BusinessImageMigrationCard />
           </div>;
       default:
         return null;

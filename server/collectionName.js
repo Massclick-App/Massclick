@@ -36,7 +36,8 @@ export const Collections = {
     EVENTCREATION: 'eventcreation',
     GMAPSLEADS: 'gmaps_leads',
     CHATCONVERSATION: 'chatconversations',
-    CHATMESSAGE: 'chatmessages'
+    CHATMESSAGE: 'chatmessages',
+    BUSINESSWEBPMIGRATIONJOB: 'business_webp_migration_jobs'
 };
 
 export const {
@@ -77,5 +78,6 @@ export const {
     EVENTCREATION,
     GMAPSLEADS,
     CHATCONVERSATION,
-    CHATMESSAGE
+    CHATMESSAGE,
+    BUSINESSWEBPMIGRATIONJOB
 } = Collections;
