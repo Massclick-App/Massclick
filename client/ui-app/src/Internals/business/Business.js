@@ -578,6 +578,100 @@ const BusinessList = React.memo(() => {
   });
   const isForceBypassableField = field => Boolean(field) && !FORCE_BYPASS_BLOCKED_FIELDS.has(field);
   const getUniqueFields = fields => [...new Set((fields || []).filter(Boolean))];
+  function resetToCreateBusinessState({
+    nextView = "form",
+    nextStep = 0,
+    prefill = null,
+    syncDraftMeta = true,
+    scroll = true
+  } = {}) {
+    const baseFormData = createEmptyBusinessFormData();
+    const source = prefill && typeof prefill === "object" ? prefill : {};
+    const nextFormData = {
+      ...baseFormData,
+      ...source,
+      filters: source.filters && typeof source.filters === "object" ? source.filters : {},
+      badges: {
+        ...baseFormData.badges,
+        ...(source.badges || {})
+      },
+      verification: {
+        ...baseFormData.verification,
+        ...(source.verification || {})
+      },
+      geoLocation: {
+        type: "Point",
+        coordinates: Array.isArray(source.geoLocation?.coordinates)
+          ? source.geoLocation.coordinates.map(value => String(value ?? ""))
+          : [...baseFormData.geoLocation.coordinates]
+      },
+      openingHours: Array.isArray(source.openingHours) && source.openingHours.length > 0
+        ? source.openingHours.map(hour => ({
+          day: hour.day || "",
+          open: hour.open || "",
+          close: hour.close || "",
+          isClosed: Boolean(hour.isClosed),
+          is24Hours: Boolean(hour.is24Hours)
+        }))
+        : baseFormData.openingHours
+    };
+
+    revokePreviewUrls(kycFiles);
+    setEditMode(false);
+    setEditId(null);
+    setFormData(nextFormData);
+    setBusinessValue(nextFormData.businessDetails || "");
+    setPreview(nextFormData.bannerImage || null);
+    setKycFiles([]);
+    setFieldErrors({});
+    setForceBypassedFields([]);
+    setWarnLevel(0);
+    setWarnDialog(false);
+    setPossibleDuplicateMatches([]);
+    setDuplicateReview({
+      open: false,
+      matches: [],
+      signature: "",
+      action: "save"
+    });
+    setDuplicateBypassSignature("");
+    setCategoryKeywordSuggestions([]);
+    setInputKeyword("");
+    setActiveView(nextView);
+    setActiveStep(nextStep);
+
+    if (syncDraftMeta) {
+      const draft = getStoredBusinessDraft();
+      setLocalDraftMeta(draft?.savedAt ? { savedAt: draft.savedAt } : null);
+    } else {
+      setLocalDraftMeta(null);
+    }
+
+    if (scroll) {
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+      });
+    }
+  }
+
+  const handleAdminViewChange = nextView => {
+    if (nextView === "list") {
+      if (editMode) {
+        resetToCreateBusinessState({
+          nextView: "list",
+          scroll: false
+        });
+        return;
+      }
+
+      setActiveView("list");
+      return;
+    }
+
+    setActiveView("form");
+  };
+
   const clearForceBypassForFields = useCallback(fields => {
     const names = Array.isArray(fields) ? fields : [fields];
     setForceBypassedFields(prev => prev.filter(field => !names.includes(field)));
@@ -657,23 +751,23 @@ const BusinessList = React.memo(() => {
       c.slug === leadToImport.massclick_category ||
       String(c.category || '').toLowerCase() === String(leadToImport.search_query || '').toLowerCase()
     );
-    setFormData(prev => ({
-      ...prev,
-      businessName: leadToImport.name || '',
-      contact: leadToImport.phone || '',
-      contactList: leadToImport.phone || '',
-      whatsappNumber: leadToImport.phone || '',
-      website: leadToImport.website || '',
-      location: leadToImport.massclick_location || '',
-      globalAddress: leadToImport.formatted_address || '',
-      geoLocation: {
-        type: 'Point',
-        coordinates: [String(lng || ''), String(lat || '')]
-      },
-      category: matchedCategory?.category || '',
-    }));
-    setActiveView('form');
-    setActiveStep(0);
+    resetToCreateBusinessState({
+      syncDraftMeta: false,
+      prefill: {
+        businessName: leadToImport.name || '',
+        contact: leadToImport.phone || '',
+        contactList: leadToImport.phone || '',
+        whatsappNumber: leadToImport.phone || '',
+        website: leadToImport.website || '',
+        location: leadToImport.massclick_location || '',
+        globalAddress: leadToImport.formatted_address || '',
+        geoLocation: {
+          type: 'Point',
+          coordinates: [String(lng || ''), String(lat || '')]
+        },
+        category: matchedCategory?.category || '',
+      }
+    });
     enqueueSnackbar(`Pre-filled from GMaps: ${leadToImport.name}`, { variant: 'info' });
   }, [leadToImport]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -728,27 +822,27 @@ const BusinessList = React.memo(() => {
       c.slug === lead.massclick_category ||
       String(c.category || '').toLowerCase() === String(lead.search_query || '').toLowerCase()
     );
-    setFormData(prev => ({
-      ...prev,
-      businessName: lead.name || '',
-      contact: lead.phone || '',
-      contactList: lead.phone || '',
-      whatsappNumber: lead.phone || '',
-      website: lead.website || '',
-      location: lead.massclick_location || '',
-      globalAddress: lead.formatted_address || '',
-      geoLocation: {
-        type: 'Point',
-        coordinates: [String(lng || ''), String(lat || '')],
-      },
-      category: matchedCategory?.category || '',
-    }));
+    resetToCreateBusinessState({
+      syncDraftMeta: false,
+      prefill: {
+        businessName: lead.name || '',
+        contact: lead.phone || '',
+        contactList: lead.phone || '',
+        whatsappNumber: lead.phone || '',
+        website: lead.website || '',
+        location: lead.massclick_location || '',
+        globalAddress: lead.formatted_address || '',
+        geoLocation: {
+          type: 'Point',
+          coordinates: [String(lng || ''), String(lat || '')],
+        },
+        category: matchedCategory?.category || '',
+      }
+    });
     dispatch(setGmapsLeadToImport(lead));
     setGmapsPickerOpen(false);
-    setActiveView('form');
-    setActiveStep(0);
     enqueueSnackbar(`Pre-filled: ${lead.name}`, { variant: 'info' });
-  }, [category, dispatch, enqueueSnackbar]);
+  }, [category, dispatch, enqueueSnackbar]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ===== FILTER & SEARCH HANDLERS =====
   const normalizeSearchValue = value => String(value ?? "")
@@ -1606,6 +1700,18 @@ const BusinessList = React.memo(() => {
     setEditId(row.id);
     setDuplicateBypassSignature("");
     setLocalDraftMeta(null);
+    setFieldErrors({});
+    setForceBypassedFields([]);
+    setWarnLevel(0);
+    setWarnDialog(false);
+    setDuplicateReview({
+      open: false,
+      matches: [],
+      signature: "",
+      action: "save"
+    });
+    setCategoryKeywordSuggestions([]);
+    setInputKeyword("");
     setFormData({
       clientId: row.clientId || "",
       businessName: row.businessName || "",
@@ -3253,7 +3359,7 @@ const BusinessList = React.memo(() => {
   const bypassableFieldErrorCount = Object.keys(fieldErrors).filter(isForceBypassableField).length;
   const currentDuplicateSignature = getDuplicateCheckSignature(getCleanBusinessFormData(formData));
   return <div className={cx("business-page")}>
-    <AdminViewTabs activeView={activeView} onChange={setActiveView} isEditing={editMode} createLabel="Business" listLabel="Directory" listCount={filteredRows.length} />
+    <AdminViewTabs activeView={activeView} onChange={handleAdminViewChange} isEditing={editMode} createLabel="Business" listLabel="Directory" listCount={filteredRows.length} />
 
     {activeView === "form" && <>
       <div className={cx("business-card")} style={{
