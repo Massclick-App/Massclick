@@ -1,0 +1,373 @@
+.migration-card {
+  background: linear-gradient(180deg, #ffffff 0%, #fffdf8 100%);
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  padding: 18px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  display: grid;
+  gap: 16px;
+}
+
+.migration-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.migration-eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 10px;
+  font-weight: 800;
+  color: #f97316;
+  margin-bottom: 6px;
+}
+
+.migration-title {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.15;
+  color: #0f172a;
+}
+
+.migration-subtitle {
+  margin: 6px 0 0;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.55;
+  max-width: 70ch;
+}
+
+.status-chip {
+  flex-shrink: 0;
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border: 1px solid transparent;
+}
+
+.status-chip.neutral {
+  background: #f8fafc;
+  color: #475569;
+  border-color: #e2e8f0;
+}
+
+.status-chip.warning {
+  background: #fffbeb;
+  color: #92400e;
+  border-color: #fde68a;
+}
+
+.status-chip.success {
+  background: #ecfdf5;
+  color: #166534;
+  border-color: #bbf7d0;
+}
+
+.status-chip.danger {
+  background: #fef2f2;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+
+.migration-warning {
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.10) 0%, rgba(249, 115, 22, 0.04) 100%);
+  border: 1px solid rgba(249, 115, 22, 0.18);
+  border-radius: 14px;
+  padding: 12px 14px;
+  color: #7c2d12;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.migration-controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.checkbox-row {
+  grid-column: span 3;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #ffffff;
+  color: #334155;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.checkbox-row input {
+  margin-top: 2px;
+  width: 16px;
+  height: 16px;
+  accent-color: #f97316;
+  flex-shrink: 0;
+}
+
+.field-row {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.field-row span {
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.field-row input {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 9px 10px;
+  font: inherit;
+  color: #0f172a;
+  background: #fff;
+}
+
+.field-row input:focus {
+  outline: none;
+  border-color: #f97316;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.12);
+}
+
+.migration-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.action-button {
+  border: none;
+  border-radius: 12px;
+  padding: 11px 16px;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+
+.action-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.action-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.action-button.primary {
+  color: #fff;
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  box-shadow: 0 10px 18px rgba(249, 115, 22, 0.18);
+}
+
+.action-button.secondary {
+  color: #0f172a;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.action-button.danger {
+  color: #b91c1c;
+  background: #fff1f2;
+  border: 1px solid #fecdd3;
+}
+
+.inline-note {
+  font-size: 12px;
+  color: #0f766e;
+  background: #ecfeff;
+  border: 1px solid #a5f3fc;
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.migration-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.summary-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.summary-value {
+  font-size: 20px;
+  font-weight: 900;
+  color: #0f172a;
+  line-height: 1.1;
+  margin-bottom: 4px;
+}
+
+.summary-label {
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.progress-wrap {
+  display: grid;
+  gap: 8px;
+}
+
+.progress-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #334155;
+}
+
+.progress-bar {
+  height: 12px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #f97316 0%, #fb923c 55%, #fbbf24 100%);
+  transition: width 0.25s ease;
+}
+
+.details-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.details-grid.compact {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.details-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 11px 12px;
+}
+
+.details-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 800;
+  color: #94a3b8;
+  margin-bottom: 5px;
+}
+
+.details-value {
+  font-size: 12px;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.error-box {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+  border-radius: 14px;
+  padding: 12px 14px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.failure-block {
+  display: grid;
+  gap: 10px;
+}
+
+.failure-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: #b91c1c;
+}
+
+.failure-list {
+  display: grid;
+  gap: 8px;
+}
+
+.failure-item {
+  background: #fff7f7;
+  border: 1px solid #fecaca;
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+
+.failure-name {
+  font-size: 13px;
+  font-weight: 800;
+  color: #7f1d1d;
+  margin-bottom: 4px;
+}
+
+.failure-path {
+  font-size: 11px;
+  color: #9f1239;
+  font-family: Consolas, "Liberation Mono", Menlo, monospace;
+  margin-bottom: 4px;
+}
+
+.failure-message {
+  font-size: 12px;
+  color: #7f1d1d;
+  line-height: 1.45;
+}
+
+@media (max-width: 1100px) {
+  .migration-controls,
+  .migration-summary,
+  .details-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .checkbox-row {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 720px) {
+  .migration-card {
+    padding: 16px;
+  }
+
+  .migration-header {
+    flex-direction: column;
+  }
+
+  .migration-controls,
+  .migration-summary,
+  .details-grid,
+  .details-grid.compact {
+    grid-template-columns: 1fr;
+  }
+
+  .checkbox-row {
+    grid-column: span 1;
+  }
+}

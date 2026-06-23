@@ -12,6 +12,7 @@
   --space-md: 20px;
   --space-lg: 32px;
   --space-xl: 48px;
+  --cards-search-height: 84px;
   --sticky-search-offset: calc(var(--cards-search-height, 84px) + 14px);
   --text-primary: #0f172a;
   --text-secondary: #475569;
@@ -73,6 +74,10 @@
 
 /* Small Mobile */
 @media (max-width: 480px) {
+  .results-page {
+    --cards-search-height: 150px;
+  }
+
   .main-seo-heading {
     font-size: 20px;
     line-height: 1.35;

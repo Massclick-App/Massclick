@@ -15,7 +15,6 @@ import MicIcon from "@mui/icons-material/Mic";
 import SearchIcon from "@mui/icons-material/Search";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import HistoryToggleOffIcon from "@mui/icons-material/HistoryToggleOff";
-import MassclickIndiaLogo from "../../../assets/Massclick-India.webp";
 import AddBusinessModel from "../AddBusinessModel";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import { useDrawer } from "../Drawer/drawerContext";
@@ -199,23 +198,20 @@ const CardsSearch = ({
     if (!headerNode) return undefined;
 
     const rootStyle = document.documentElement.style;
-    const updateHeaderHeight = () => {
-      const nextHeight = Math.ceil(headerNode.getBoundingClientRect().height);
-      rootStyle.setProperty("--cards-search-height", `${nextHeight}px`);
-    };
-
-    updateHeaderHeight();
-
     let resizeObserver;
     if (typeof ResizeObserver !== "undefined") {
-      resizeObserver = new ResizeObserver(updateHeaderHeight);
+      resizeObserver = new ResizeObserver(entries => {
+        const entry = entries[0];
+        if (!entry) return;
+        const nextHeight = Math.ceil(entry.borderBoxSize?.[0]?.blockSize || entry.contentRect.height || headerNode.offsetHeight || 0);
+        if (nextHeight > 0) {
+          rootStyle.setProperty("--cards-search-height", `${nextHeight}px`);
+        }
+      });
       resizeObserver.observe(headerNode);
     }
 
-    window.addEventListener("resize", updateHeaderHeight);
-
     return () => {
-      window.removeEventListener("resize", updateHeaderHeight);
       resizeObserver?.disconnect();
       rootStyle.removeProperty("--cards-search-height");
     };
@@ -339,7 +335,7 @@ const CardsSearch = ({
             </div>
             <div className={cx("brandingText")}>
               <button type="button" className={cx("logo-button logo-button--brand")} onClick={goHome} aria-label="Go to Massclick home">
-                <img src={MassclickIndiaLogo} alt="Massclick India" className={cx("brandLogo")} width="180" height="44" decoding="async" />
+                <img src="/Massclick-India.webp" alt="Massclick India" className={cx("brandLogo")} width="180" height="44" decoding="async" fetchPriority="high" loading="eager" />
               </button>
             </div>
           </div>
