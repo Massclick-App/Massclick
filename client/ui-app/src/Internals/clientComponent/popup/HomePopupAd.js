@@ -23,6 +23,8 @@ const BRAND_ORANGE = "#ff7a00";
 const BRAND_ORANGE_DARK = "#e65f00";
 const BRAND_NAVY = "#06155d";
 const SURFACE_DARK = "#0b1020";
+const DESKTOP_POPUP_IMAGE = { width: 800, height: 600 };
+const MOBILE_POPUP_IMAGE = { width: 480, height: 640 };
 
 const getSeenKey = (adId) => `popup_seen_${adId}`;
 
@@ -196,38 +198,66 @@ const AdCta = ({ href, onClose, compact = false }) => {
   );
 };
 
-const AdImage = ({ ad, imageSrc, onClose, desktop = false }) => (
-  <Box
-    component={ad.redirectUrl ? "a" : "div"}
-    href={ad.redirectUrl || undefined}
-    target={ad.redirectUrl ? "_blank" : undefined}
-    rel={ad.redirectUrl ? "noopener noreferrer" : undefined}
-    onClick={ad.redirectUrl ? onClose : undefined}
-    sx={{
-      display: "grid",
-      placeItems: "center",
-      cursor: ad.redirectUrl ? "pointer" : "default",
-      lineHeight: 0,
-      bgcolor: SURFACE_DARK,
-      overflow: "hidden",
-      textDecoration: "none",
-      minHeight: desktop ? 280 : 220,
-    }}
-  >
+const getAdImageDimensions = (ad, desktop) => {
+  if (!desktop && ad.mobileBannerImage) {
+    return MOBILE_POPUP_IMAGE;
+  }
+
+  return DESKTOP_POPUP_IMAGE;
+};
+
+const AdImage = ({ ad, imageSrc, onClose, desktop = false }) => {
+  const { width, height } = getAdImageDimensions(ad, desktop);
+  const maxViewportHeight = desktop ? "68vh" : "58vh";
+
+  return (
     <Box
-      component="img"
-      src={imageSrc}
-      alt={ad.title || "Advertisement"}
+      component={ad.redirectUrl ? "a" : "div"}
+      href={ad.redirectUrl || undefined}
+      target={ad.redirectUrl ? "_blank" : undefined}
+      rel={ad.redirectUrl ? "noopener noreferrer" : undefined}
+      onClick={ad.redirectUrl ? onClose : undefined}
       sx={{
-        width: "100%",
-        height: "auto",
-        maxHeight: desktop ? "68vh" : "58vh",
-        display: "block",
-        objectFit: "contain",
+        display: "grid",
+        placeItems: "center",
+        cursor: ad.redirectUrl ? "pointer" : "default",
+        lineHeight: 0,
+        bgcolor: SURFACE_DARK,
+        overflow: "hidden",
+        textDecoration: "none",
+        minHeight: desktop ? 280 : 220,
+        px: desktop ? 0 : 1.5,
+        pb: desktop ? 0 : 1.5,
       }}
-    />
-  </Box>
-);
+    >
+      <Box
+        sx={{
+          width: `min(100%, calc(${maxViewportHeight} * ${width} / ${height}))`,
+          aspectRatio: `${width} / ${height}`,
+          overflow: "hidden",
+          display: "block",
+        }}
+      >
+        <Box
+          component="img"
+          src={imageSrc}
+          alt={ad.title || "Advertisement"}
+          width={width}
+          height={height}
+          loading="eager"
+          decoding="async"
+          fetchPriority="high"
+          sx={{
+            width: "100%",
+            height: "100%",
+            display: "block",
+            objectFit: "contain",
+          }}
+        />
+      </Box>
+    </Box>
+  );
+};
 
 const AdFooter = ({ ad, onClose, compact = false }) => {
   if (!ad.title && !ad.redirectUrl) return null;

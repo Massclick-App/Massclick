@@ -174,10 +174,10 @@ const CardCarousel = () => {
               </p>
             </div>
             <div className={cx("popular-search__controls")}>
-              <button type="button" className={cx("popular-search__control popular-search__control--left")} onClick={() => scrollByCard("left")}>
+              <button type="button" className={cx("popular-search__control popular-search__control--left")} onClick={() => scrollByCard("left")} aria-label="Scroll popular searches left">
                 <KeyboardDoubleArrowLeftIcon />
               </button>
-              <button type="button" className={cx("popular-search__control popular-search__control--right")} onClick={() => scrollByCard("right")}>
+              <button type="button" className={cx("popular-search__control popular-search__control--right")} onClick={() => scrollByCard("right")} aria-label="Scroll popular searches right">
                 <KeyboardDoubleArrowRightIcon />
               </button>
             </div>
@@ -189,7 +189,7 @@ const CardCarousel = () => {
               "--accent-color": card.accent
             }}>
                   {card.image ? <div className={cx("popular-search__card-image-wrapper")}>
-                      <img src={card.image} alt={card.alt} className={cx("popular-search__card-image")} />
+                      <img src={card.image} alt={card.alt} className={cx("popular-search__card-image")} width="640" height="360" loading="lazy" decoding="async" />
                       <div className={cx("popular-search__card-overlay")} />
                     </div> : <div className={cx("popular-search__card-image-wrapper popular-search__card-image-wrapper--empty")}>
                     </div>}

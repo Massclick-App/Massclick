@@ -1,12 +1,12 @@
 import { createScopedClassNames } from "../../utils/createScopedClassNames";
-import React, { useEffect, useState, useRef, lazy, Suspense, useCallback } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "../../services/axiosInstance.js";
 import { useDispatch, useSelector } from "react-redux";
 import InputValidator from "../validators/inputValidator.js";
 import { getAllBusinessList, createBusinessList, editBusinessList, deleteBusinessList, trackQrDownload, updateBusinessBadges, exportBusinessList } from "../../redux/actions/businessListAction";
 import { getAllLocation, createLocation } from "../../redux/actions/locationAction";
-import { getAllCategory, createCategory, editCategory, businessCategorySearch } from "../../redux/actions/categoryAction";
+import { getAllCategory, businessCategorySearch } from "../../redux/actions/categoryAction";
 import { getAllUsersClient, getUserClientSuggestion } from "../../redux/actions/userClientAction.js";
 import { getAllUsers } from "../../redux/actions/userAction.js";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
@@ -42,16 +42,126 @@ import Tooltip from "@mui/material/Tooltip";
 import styles from "./business.module.css";
 import GooglePlacesInput from "../../components/GooglePlacesInput/GooglePlacesInput";
 import AdminViewTabs from "../../components/AdminViewTabs.js";
+import "quill/dist/quill.snow.css";
 const cx = createScopedClassNames(styles);
 const FORCE_BYPASS_BLOCKED_FIELDS = new Set(["businessName", "category", "location"]);
-const ReactQuill = lazy(() => import('react-quill').then(m => {
-  require('react-quill/dist/quill.snow.css');
-  return {
-    default: m.default
-  };
-}));
+const BUSINESS_LOCAL_DRAFT_KEY = "massclick.business.createDraft";
+const DEMO_PNG_DATA_URL = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9s0qDbgAAAAASUVORK5CYII=";
 const ORANGE_PRIMARY = '#FF8C00';
 const ORANGE_HOVER = '#D97800';
+const QUILL_MODULES = {
+  toolbar: [[{
+    header: "1"
+  }, {
+    header: "2"
+  }], ["bold", "italic", "underline", "strike"], [{
+    list: "ordered"
+  }, {
+    list: "bullet"
+  }], ["link", "image", "video"], ["clean"]]
+};
+const QUILL_FORMATS = ["header", "bold", "italic", "underline", "strike", "list", "bullet", "link", "image", "video"];
+
+const normalizeQuillHtml = value =>
+  value === "<p><br></p>" ? "" : value || "";
+
+const QuillEditor = ({
+  value,
+  onChange,
+  modules,
+  formats,
+  placeholder,
+  style
+}) => {
+  const editorRef = useRef(null);
+  const quillRef = useRef(null);
+  const changeHandlerRef = useRef(onChange);
+  const syncInProgressRef = useRef(false);
+
+  useEffect(() => {
+    changeHandlerRef.current = onChange;
+  }, [onChange]);
+
+  useEffect(() => {
+    let mounted = true;
+    let textChangeHandler = null;
+    const editorNode = editorRef.current;
+
+    const loadEditor = async () => {
+      const {
+        default: Quill
+      } = await import("quill");
+
+      if (!mounted || !editorNode || quillRef.current) {
+        return;
+      }
+
+      const quill = new Quill(editorNode, {
+        theme: "snow",
+        modules,
+        formats,
+        placeholder
+      });
+
+      quillRef.current = quill;
+      syncInProgressRef.current = true;
+      if (value) {
+        quill.clipboard.dangerouslyPasteHTML(value);
+      } else {
+        quill.setText("");
+      }
+      syncInProgressRef.current = false;
+
+      textChangeHandler = () => {
+        if (syncInProgressRef.current) {
+          return;
+        }
+        changeHandlerRef.current?.(normalizeQuillHtml(quill.root.innerHTML));
+      };
+
+      quill.on("text-change", textChangeHandler);
+    };
+
+    loadEditor();
+
+    return () => {
+      mounted = false;
+      if (quillRef.current && textChangeHandler) {
+        quillRef.current.off("text-change", textChangeHandler);
+      }
+      quillRef.current = null;
+      if (editorNode) {
+        editorNode.innerHTML = "";
+      }
+    };
+  }, [formats, modules, placeholder, value]);
+
+  useEffect(() => {
+    const quill = quillRef.current;
+    if (!quill) {
+      return;
+    }
+
+    const nextHtml = normalizeQuillHtml(value);
+    const currentHtml = normalizeQuillHtml(quill.root.innerHTML);
+
+    if (nextHtml === currentHtml) {
+      return;
+    }
+
+    syncInProgressRef.current = true;
+    if (nextHtml) {
+      quill.clipboard.dangerouslyPasteHTML(nextHtml);
+    } else {
+      quill.setText("");
+    }
+    syncInProgressRef.current = false;
+  }, [value]);
+
+  return <div style={style}>
+      <div ref={editorRef} />
+    </div>;
+};
 const ColorlibConnector = styled(StepConnector)(({
   theme
 }) => ({
@@ -266,6 +376,25 @@ const BusinessList = React.memo(() => {
     });
   };
   const handleNext = () => {
+    if (activeStep === 0) {
+      const cleanedFormData = getCleanBusinessFormData(formData);
+      const duplicateSignature = getDuplicateCheckSignature(cleanedFormData);
+      const duplicateMatches = getPotentialDuplicateMatches(cleanedFormData);
+
+      if (duplicateMatches.length > 0 && duplicateBypassSignature !== duplicateSignature) {
+        setDuplicateReview({
+          open: true,
+          matches: duplicateMatches,
+          signature: duplicateSignature,
+          action: "step-lock"
+        });
+        enqueueSnackbar("Duplicate restriction triggered in Step 1. Resolve it or save as draft locally.", {
+          variant: "warning"
+        });
+        return;
+      }
+    }
+
     setActiveStep(prevActiveStep => prevActiveStep + 1);
     window.scrollTo({
       top: 0,
@@ -313,23 +442,6 @@ const BusinessList = React.memo(() => {
     } catch (err) {
       console.error("Upload failed:", err);
     }
-  };
-  const fieldsToCheck = ["keywords", "slug", "seoTitle", "seoDescription", "title", "description"];
-  const getUpdatedCategoryFields = (existing, current) => {
-    const updates = {};
-    fieldsToCheck.forEach(field => {
-      if (Array.isArray(current[field])) {
-        const newValues = current[field].map(k => k.trim().toLowerCase()).filter(k => !existing[field]?.map(e => e.trim().toLowerCase()).includes(k));
-        if (newValues.length > 0) {
-          updates[field] = [...existing[field], ...newValues];
-        }
-      } else {
-        if (current[field] && current[field] !== existing[field]) {
-          updates[field] = current[field];
-        }
-      }
-    });
-    return updates;
   };
   const defaultOpeningHours = [{
     day: "Monday",
@@ -392,7 +504,7 @@ const BusinessList = React.memo(() => {
       data: null
     });
   };
-  const [formData, setFormData] = useState({
+  const createEmptyBusinessFormData = () => ({
     clientId: "",
     businessName: "",
     plotNumber: "",
@@ -424,7 +536,7 @@ const BusinessList = React.memo(() => {
     linkedin: "",
     businessDetails: "",
     kycDocuments: [],
-    openingHours: defaultOpeningHours,
+    openingHours: defaultOpeningHours.map(hour => ({ ...hour })),
     geoLocation: {
       type: "Point",
       coordinates: ["", ""]
@@ -441,32 +553,127 @@ const BusinessList = React.memo(() => {
       verificationType: "ADMIN",
     },
   });
+  const [formData, setFormData] = useState({
+    ...createEmptyBusinessFormData()
+  });
   const [categoryFilterConfig, setCategoryFilterConfig] = useState([]);
   const [filterConfigLoading, setFilterConfigLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
   const [forceBypassedFields, setForceBypassedFields] = useState([]);
   const [warnLevel, setWarnLevel] = useState(0);
   const [warnDialog, setWarnDialog] = useState(false);
+  const [possibleDuplicateMatches, setPossibleDuplicateMatches] = useState([]);
+  const [duplicateReview, setDuplicateReview] = useState({
+    open: false,
+    matches: [],
+    signature: "",
+    action: "save"
+  });
+  const [duplicateBypassSignature, setDuplicateBypassSignature] = useState("");
+  const [localDraftMeta, setLocalDraftMeta] = useState(null);
   const [preview, setPreview] = useState(null);
+  const [demoSubmitting, setDemoSubmitting] = useState(false);
   const [badgeUpdateLoading, setBadgeUpdateLoading] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState({
     open: false,
     id: null
   });
-  const modules = {
-    toolbar: [[{
-      'header': '1'
-    }, {
-      'header': '2'
-    }], ['bold', 'italic', 'underline', 'strike'], [{
-      'list': 'ordered'
-    }, {
-      'list': 'bullet'
-    }], ['link', 'image', 'video'], ['clean']]
-  };
-  const formats = ["header", "bold", "italic", "underline", "strike", "list", "bullet", "link", "image", "video"];
   const isForceBypassableField = field => Boolean(field) && !FORCE_BYPASS_BLOCKED_FIELDS.has(field);
   const getUniqueFields = fields => [...new Set((fields || []).filter(Boolean))];
+  function resetToCreateBusinessState({
+    nextView = "form",
+    nextStep = 0,
+    prefill = null,
+    syncDraftMeta = true,
+    scroll = true
+  } = {}) {
+    const baseFormData = createEmptyBusinessFormData();
+    const source = prefill && typeof prefill === "object" ? prefill : {};
+    const nextFormData = {
+      ...baseFormData,
+      ...source,
+      filters: source.filters && typeof source.filters === "object" ? source.filters : {},
+      badges: {
+        ...baseFormData.badges,
+        ...(source.badges || {})
+      },
+      verification: {
+        ...baseFormData.verification,
+        ...(source.verification || {})
+      },
+      geoLocation: {
+        type: "Point",
+        coordinates: Array.isArray(source.geoLocation?.coordinates)
+          ? source.geoLocation.coordinates.map(value => String(value ?? ""))
+          : [...baseFormData.geoLocation.coordinates]
+      },
+      openingHours: Array.isArray(source.openingHours) && source.openingHours.length > 0
+        ? source.openingHours.map(hour => ({
+          day: hour.day || "",
+          open: hour.open || "",
+          close: hour.close || "",
+          isClosed: Boolean(hour.isClosed),
+          is24Hours: Boolean(hour.is24Hours)
+        }))
+        : baseFormData.openingHours
+    };
+
+    revokePreviewUrls(kycFiles);
+    setEditMode(false);
+    setEditId(null);
+    setFormData(nextFormData);
+    setBusinessValue(nextFormData.businessDetails || "");
+    setPreview(nextFormData.bannerImage || null);
+    setKycFiles([]);
+    setFieldErrors({});
+    setForceBypassedFields([]);
+    setWarnLevel(0);
+    setWarnDialog(false);
+    setPossibleDuplicateMatches([]);
+    setDuplicateReview({
+      open: false,
+      matches: [],
+      signature: "",
+      action: "save"
+    });
+    setDuplicateBypassSignature("");
+    setCategoryKeywordSuggestions([]);
+    setInputKeyword("");
+    setActiveView(nextView);
+    setActiveStep(nextStep);
+
+    if (syncDraftMeta) {
+      const draft = getStoredBusinessDraft();
+      setLocalDraftMeta(draft?.savedAt ? { savedAt: draft.savedAt } : null);
+    } else {
+      setLocalDraftMeta(null);
+    }
+
+    if (scroll) {
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+      });
+    }
+  }
+
+  const handleAdminViewChange = nextView => {
+    if (nextView === "list") {
+      if (editMode) {
+        resetToCreateBusinessState({
+          nextView: "list",
+          scroll: false
+        });
+        return;
+      }
+
+      setActiveView("list");
+      return;
+    }
+
+    setActiveView("form");
+  };
+
   const clearForceBypassForFields = useCallback(fields => {
     const names = Array.isArray(fields) ? fields : [fields];
     setForceBypassedFields(prev => prev.filter(field => !names.includes(field)));
@@ -546,23 +753,23 @@ const BusinessList = React.memo(() => {
       c.slug === leadToImport.massclick_category ||
       String(c.category || '').toLowerCase() === String(leadToImport.search_query || '').toLowerCase()
     );
-    setFormData(prev => ({
-      ...prev,
-      businessName: leadToImport.name || '',
-      contact: leadToImport.phone || '',
-      contactList: leadToImport.phone || '',
-      whatsappNumber: leadToImport.phone || '',
-      website: leadToImport.website || '',
-      location: leadToImport.massclick_location || '',
-      globalAddress: leadToImport.formatted_address || '',
-      geoLocation: {
-        type: 'Point',
-        coordinates: [String(lng || ''), String(lat || '')]
-      },
-      category: matchedCategory?.category || '',
-    }));
-    setActiveView('form');
-    setActiveStep(0);
+    resetToCreateBusinessState({
+      syncDraftMeta: false,
+      prefill: {
+        businessName: leadToImport.name || '',
+        contact: leadToImport.phone || '',
+        contactList: leadToImport.phone || '',
+        whatsappNumber: leadToImport.phone || '',
+        website: leadToImport.website || '',
+        location: leadToImport.massclick_location || '',
+        globalAddress: leadToImport.formatted_address || '',
+        geoLocation: {
+          type: 'Point',
+          coordinates: [String(lng || ''), String(lat || '')]
+        },
+        category: matchedCategory?.category || '',
+      }
+    });
     enqueueSnackbar(`Pre-filled from GMaps: ${leadToImport.name}`, { variant: 'info' });
   }, [leadToImport]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -617,27 +824,27 @@ const BusinessList = React.memo(() => {
       c.slug === lead.massclick_category ||
       String(c.category || '').toLowerCase() === String(lead.search_query || '').toLowerCase()
     );
-    setFormData(prev => ({
-      ...prev,
-      businessName: lead.name || '',
-      contact: lead.phone || '',
-      contactList: lead.phone || '',
-      whatsappNumber: lead.phone || '',
-      website: lead.website || '',
-      location: lead.massclick_location || '',
-      globalAddress: lead.formatted_address || '',
-      geoLocation: {
-        type: 'Point',
-        coordinates: [String(lng || ''), String(lat || '')],
-      },
-      category: matchedCategory?.category || '',
-    }));
+    resetToCreateBusinessState({
+      syncDraftMeta: false,
+      prefill: {
+        businessName: lead.name || '',
+        contact: lead.phone || '',
+        contactList: lead.phone || '',
+        whatsappNumber: lead.phone || '',
+        website: lead.website || '',
+        location: lead.massclick_location || '',
+        globalAddress: lead.formatted_address || '',
+        geoLocation: {
+          type: 'Point',
+          coordinates: [String(lng || ''), String(lat || '')],
+        },
+        category: matchedCategory?.category || '',
+      }
+    });
     dispatch(setGmapsLeadToImport(lead));
     setGmapsPickerOpen(false);
-    setActiveView('form');
-    setActiveStep(0);
     enqueueSnackbar(`Pre-filled: ${lead.name}`, { variant: 'info' });
-  }, [category, dispatch, enqueueSnackbar]);
+  }, [category, dispatch, enqueueSnackbar]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ===== FILTER & SEARCH HANDLERS =====
   const normalizeSearchValue = value => String(value ?? "")
@@ -917,10 +1124,203 @@ const BusinessList = React.memo(() => {
     updateLiveValidation(nextData, coordinateIndex === 1 ? "geoLatitude" : "geoLongitude");
   };
   const normalizeText = value => String(value ?? "").trim().replace(/\s+/g, " ");
+  const getStoredBusinessDraft = () => {
+    try {
+      const rawDraft = localStorage.getItem(BUSINESS_LOCAL_DRAFT_KEY);
+      if (!rawDraft) return null;
+      const parsedDraft = JSON.parse(rawDraft);
+      return parsedDraft && typeof parsedDraft === "object" ? parsedDraft : null;
+    } catch {
+      return null;
+    }
+  };
   const normalizeCategoryKey = value => normalizeText(value).toLowerCase();
+  const normalizeLooseText = value => normalizeCategoryKey(value).replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
   const toCategorySlug = value => normalizeCategoryKey(value).replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
   const stripHtml = value => normalizeText(String(value ?? "").replace(/<[^>]*>/g, " ").replace(/&nbsp;/gi, " "));
   const digitsOnly = value => String(value ?? "").replace(/\D/g, "");
+  const createBigramList = value => {
+    const compact = normalizeLooseText(value).replace(/\s+/g, "");
+    if (compact.length < 2) return compact ? [compact] : [];
+    const grams = [];
+    for (let index = 0; index < compact.length - 1; index += 1) {
+      grams.push(compact.slice(index, index + 2));
+    }
+    return grams;
+  };
+  const getTokenSimilarity = (left, right) => {
+    const leftTokens = normalizeLooseText(left).split(" ").filter(Boolean);
+    const rightTokens = normalizeLooseText(right).split(" ").filter(Boolean);
+    if (!leftTokens.length || !rightTokens.length) return 0;
+    const leftSet = new Set(leftTokens);
+    const rightSet = new Set(rightTokens);
+    let sharedCount = 0;
+    leftSet.forEach(token => {
+      if (rightSet.has(token)) sharedCount += 1;
+    });
+    return sharedCount / Math.max(leftSet.size, rightSet.size);
+  };
+  const getDiceSimilarity = (left, right) => {
+    const leftBigrams = createBigramList(left);
+    const rightBigrams = createBigramList(right);
+    if (!leftBigrams.length || !rightBigrams.length) return 0;
+    const remaining = [...rightBigrams];
+    let overlap = 0;
+    leftBigrams.forEach(bigram => {
+      const matchIndex = remaining.indexOf(bigram);
+      if (matchIndex >= 0) {
+        overlap += 1;
+        remaining.splice(matchIndex, 1);
+      }
+    });
+    return (2 * overlap) / (leftBigrams.length + rightBigrams.length);
+  };
+  const getTextSimilarity = (left, right) => {
+    const leftValue = normalizeLooseText(left);
+    const rightValue = normalizeLooseText(right);
+    if (!leftValue || !rightValue) return 0;
+    if (leftValue === rightValue) return 1;
+    if (leftValue.includes(rightValue) || rightValue.includes(leftValue)) return 0.93;
+    return Math.max(getTokenSimilarity(leftValue, rightValue), getDiceSimilarity(leftValue, rightValue));
+  };
+  const getPhoneCandidates = data => [...new Set([
+    digitsOnly(data.contact),
+    digitsOnly(data.contactList),
+    digitsOnly(data.whatsappNumber)
+  ].filter(number => number.length >= 10))];
+  const getDuplicateCheckSignature = data => [
+    normalizeLooseText(data.businessName),
+    normalizeLooseText(data.location),
+    normalizeLooseText(data.plotNumber),
+    normalizeLooseText(data.street),
+    normalizeLooseText(data.globalAddress),
+    normalizeLooseText(data.pincode),
+    normalizeLooseText(data.category),
+    ...getPhoneCandidates(data),
+    ...((Array.isArray(data.geoLocation?.coordinates) ? data.geoLocation.coordinates : ["", ""]).map(value => normalizeText(value)))
+  ].join("|");
+  const getCoordinatesFromSource = source => {
+    const [longitudeRaw = "", latitudeRaw = ""] = Array.isArray(source?.geoLocation?.coordinates) ? source.geoLocation.coordinates : ["", ""];
+    const longitude = Number(longitudeRaw);
+    const latitude = Number(latitudeRaw);
+    if (!Number.isFinite(longitude) || !Number.isFinite(latitude)) return null;
+    return {
+      latitude,
+      longitude
+    };
+  };
+  const getDistanceInKm = (leftCoords, rightCoords) => {
+    if (!leftCoords || !rightCoords) return null;
+    const toRadians = degrees => degrees * (Math.PI / 180);
+    const earthRadiusKm = 6371;
+    const deltaLatitude = toRadians(rightCoords.latitude - leftCoords.latitude);
+    const deltaLongitude = toRadians(rightCoords.longitude - leftCoords.longitude);
+    const latitudeA = toRadians(leftCoords.latitude);
+    const latitudeB = toRadians(rightCoords.latitude);
+    const haversine = Math.sin(deltaLatitude / 2) ** 2 + Math.cos(latitudeA) * Math.cos(latitudeB) * Math.sin(deltaLongitude / 2) ** 2;
+    return 2 * earthRadiusKm * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
+  };
+  const toSortedUniqueTextOptions = values => Array.from(new Set(
+    (values || [])
+      .map(value => normalizeText(typeof value === "string" || typeof value === "number" ? value : value ?? ""))
+      .filter(Boolean)
+  )).sort((left, right) => String(left).localeCompare(String(right), undefined, { sensitivity: "base" }));
+  const getPotentialDuplicateMatches = cleanedFormData => {
+    const currentId = editMode ? getObjectId(editId) : "";
+    const candidatePhones = getPhoneCandidates(cleanedFormData);
+    const candidateCoords = getCoordinatesFromSource(cleanedFormData);
+    const minimumSignalsPresent = [
+      cleanedFormData.businessName,
+      cleanedFormData.globalAddress,
+      cleanedFormData.street,
+      cleanedFormData.location,
+      cleanedFormData.pincode,
+      ...candidatePhones
+    ].some(value => normalizeText(value).length >= 3);
+
+    if (!minimumSignalsPresent) return [];
+
+    return (businessList || []).filter(item => item?.isActive !== false).map(item => {
+      const businessId = getObjectId(item?._id || item?.id);
+      if (currentId && businessId === currentId) return null;
+
+      const existingPhones = getPhoneCandidates(item || {});
+      const matchingPhones = candidatePhones.filter(number => existingPhones.includes(number));
+      const nameSimilarity = getTextSimilarity(cleanedFormData.businessName, item?.businessName);
+      const addressSimilarity = getTextSimilarity(
+        `${cleanedFormData.plotNumber} ${cleanedFormData.street} ${cleanedFormData.globalAddress}`,
+        `${item?.plotNumber || ""} ${item?.street || ""} ${item?.globalAddress || ""}`
+      );
+      const streetSimilarity = getTextSimilarity(cleanedFormData.street, item?.street);
+      const sameLocation = normalizeLooseText(cleanedFormData.location) && normalizeLooseText(cleanedFormData.location) === normalizeLooseText(item?.location);
+      const samePincode = normalizeText(cleanedFormData.pincode) && normalizeText(cleanedFormData.pincode) === normalizeText(item?.pincode);
+      const sameCategory = normalizeLooseText(cleanedFormData.category) && normalizeLooseText(cleanedFormData.category) === normalizeLooseText(item?.category);
+      const samePlotNumber = normalizeLooseText(cleanedFormData.plotNumber) && normalizeLooseText(cleanedFormData.plotNumber) === normalizeLooseText(item?.plotNumber);
+      const distanceKm = getDistanceInKm(candidateCoords, getCoordinatesFromSource(item));
+      const reasons = [];
+      let score = 0;
+
+      if (matchingPhones.length > 0) {
+        score += 5;
+        reasons.push(`same phone number (${matchingPhones[0]})`);
+      }
+      if (nameSimilarity >= 0.96) {
+        score += 4;
+        reasons.push("same business name");
+      } else if (nameSimilarity >= 0.8) {
+        score += 3;
+        reasons.push("very similar business name");
+      }
+      if (addressSimilarity >= 0.92) {
+        score += 3;
+        reasons.push("same full address");
+      } else if (addressSimilarity >= 0.75) {
+        score += 2;
+        reasons.push("very similar address");
+      }
+      if (streetSimilarity >= 0.88) {
+        score += 1.5;
+        reasons.push("same street");
+      }
+      if (sameLocation) {
+        score += 1.25;
+        reasons.push("same location");
+      }
+      if (samePincode) {
+        score += 1.25;
+        reasons.push("same pincode");
+      }
+      if (sameCategory) {
+        score += 0.75;
+        reasons.push("same category");
+      }
+      if (samePlotNumber && (addressSimilarity >= 0.55 || streetSimilarity >= 0.6)) {
+        score += 1;
+        reasons.push("same plot or shop number");
+      }
+      if (typeof distanceKm === "number" && distanceKm <= 0.2) {
+        score += 2;
+        reasons.push(distanceKm <= 0.05 ? "same map coordinates" : "very close map coordinates");
+      }
+      if (nameSimilarity >= 0.7 && (sameLocation || samePincode || addressSimilarity >= 0.6)) {
+        score += 1;
+      }
+
+      const isLikelyDuplicate = score >= 5.5 || (matchingPhones.length > 0 && (nameSimilarity >= 0.55 || addressSimilarity >= 0.55 || sameLocation || samePincode));
+      if (!isLikelyDuplicate) return null;
+
+      return {
+        id: businessId || item?._id,
+        businessName: item?.businessName || "Untitled business",
+        category: item?.category || "—",
+        location: item?.location || "—",
+        globalAddress: item?.globalAddress || `${item?.plotNumber || ""} ${item?.street || ""}`.trim() || "—",
+        contact: item?.contact || item?.contactList || item?.whatsappNumber || "—",
+        score,
+        reasons: [...new Set(reasons)].slice(0, 4)
+      };
+    }).filter(Boolean).sort((left, right) => right.score - left.score).slice(0, 5);
+  };
   const isValidUrl = value => {
     try {
       const url = new URL(String(value ?? "").trim());
@@ -975,8 +1375,58 @@ const BusinessList = React.memo(() => {
     const suggestion = error.suggestion ? ` Suggestion: ${error.suggestion}` : "";
     return `${error.label}: ${error.message}${example}${suggestion}`;
   };
+  const revokePreviewUrls = useCallback(files => {
+    (files || []).forEach(file => {
+      if (typeof file?.preview === "string" && file.preview.startsWith("blob:")) {
+        URL.revokeObjectURL(file.preview);
+      }
+    });
+  }, []);
+  const buildDemoSvgMarkup = useCallback((headline, subline) => `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="demoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fff7ed" />
+      <stop offset="100%" stop-color="#fed7aa" />
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#demoGradient)" />
+  <rect x="56" y="56" width="1088" height="518" rx="28" fill="#ffffff" opacity="0.95" />
+  <text x="100" y="250" fill="#9a3412" font-family="Arial, sans-serif" font-size="42" font-weight="700">${headline}</text>
+  <text x="100" y="320" fill="#7c2d12" font-family="Arial, sans-serif" font-size="28">${subline}</text>
+  <text x="100" y="420" fill="#ea580c" font-family="Arial, sans-serif" font-size="22">MassClick automated demo asset</text>
+</svg>`, []);
+  const buildDemoImageAsset = useCallback((filename, headline, subline) => {
+    const svgMarkup = buildDemoSvgMarkup(headline, subline);
+    const file = new File([svgMarkup], filename, {
+      type: "image/svg+xml"
+    });
+    file.preview = URL.createObjectURL(file);
+    return {
+      file,
+      dataUrl: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgMarkup)}`
+    };
+  }, [buildDemoSvgMarkup]);
+  const buildDemoDataUrlAsset = useCallback((filename, dataUrl) => {
+    const [meta, base64Payload] = String(dataUrl || "").split(",");
+    const mimeType = meta?.match(/data:(.*?);base64/)?.[1] || "application/octet-stream";
+    const binary = atob(base64Payload || "");
+    const bytes = Uint8Array.from(binary, char => char.charCodeAt(0));
+    const file = new File([bytes], filename, {
+      type: mimeType
+    });
+    file.preview = URL.createObjectURL(file);
+    return {
+      file,
+      dataUrl
+    };
+  }, []);
   const passOrMessage = (condition, message) => condition ? true : message;
-  const getBusinessValidationRules = data => {
+  const getBusinessValidationRules = (data, {
+    bannerPreview = preview,
+    uploadedKycFiles = kycFiles,
+    isEditing = editMode
+  } = {}) => {
     const latitudeRaw = data.geoLocation?.coordinates?.[1];
     const longitudeRaw = data.geoLocation?.coordinates?.[0];
     const socialRules = [
@@ -1033,8 +1483,8 @@ const BusinessList = React.memo(() => {
       { field: "geoLatitude", label: "Latitude", required: true, example: "13.0827", suggestion: "Use the latitude copied from Google Maps.", getValue: () => latitudeRaw, validate: value => passOrMessage(Number.isFinite(Number(value)) && Number(value) >= -90 && Number(value) <= 90, "must be a number between -90 and 90.") },
       { field: "geoLongitude", label: "Longitude", required: true, example: "80.2707", suggestion: "Use the longitude copied from Google Maps.", getValue: () => longitudeRaw, validate: value => passOrMessage(Number.isFinite(Number(value)) && Number(value) >= -180 && Number(value) <= 180, "must be a number between -180 and 180.") },
       { field: "website", label: "Website", required: true, example: "https://example.com", suggestion: "Use the official website URL.", validate: value => isValidUrl(value) || "must be a valid http or https URL." },
-      { field: "bannerImage", label: "Business banner image", required: true, example: "shop-front.jpg", suggestion: "Upload a clear shop, logo, or business image.", getValue: source => preview || source.bannerImage },
-      { field: "kycDocuments", label: "KYC document", required: true, example: "GST certificate or shop proof", suggestion: "Upload at least one verification document.", getValue: source => editMode ? [...(source.kycDocuments || []), ...kycFiles] : kycFiles },
+      { field: "bannerImage", label: "Business banner image", required: true, example: "shop-front.jpg", suggestion: "Upload a clear shop, logo, or business image.", getValue: source => bannerPreview || source.bannerImage },
+      { field: "kycDocuments", label: "KYC document", required: true, example: "GST certificate or shop proof", suggestion: "Upload at least one verification document.", getValue: source => isEditing ? [...(source.kycDocuments || []), ...uploadedKycFiles] : uploadedKycFiles },
       { field: "businessDetails", label: "Business details", required: true, example: "We provide electrical repairs, wiring, and inverter service in Chennai.", suggestion: "Write at least 20 useful characters.", getValue: source => stripHtml(source.businessDetails), validate: value => value.length >= 20 || "must be at least 20 characters." },
       { field: "category", label: "Category", step: 1, required: true, example: "Electricians", suggestion: "Pick or type the closest business category." },
       { field: "keywords", label: "Keywords", step: 1, required: true, example: "electrician, wiring, inverter repair", suggestion: "Add at least one search keyword.", getValue: source => source.keywords },
@@ -1048,8 +1498,8 @@ const BusinessList = React.memo(() => {
       ...openingHourRules
     ];
   };
-  const validateBusinessEntryData = data => {
-    return getBusinessValidationRules(data).reduce((errors, rule) => {
+  const validateBusinessEntryData = (data, validationContext = {}) => {
+    return getBusinessValidationRules(data, validationContext).reduce((errors, rule) => {
       const value = rule.getValue ? rule.getValue(data) : data[rule.field];
       const empty = isEmptyFilterValue(value);
 
@@ -1090,6 +1540,123 @@ const BusinessList = React.memo(() => {
       return next;
     });
   };
+  const saveDraftToLocal = () => {
+    if (editMode) {
+      enqueueSnackbar("Local drafts are only available while creating a new business.", {
+        variant: "info"
+      });
+      return;
+    }
+
+    const cleanedFormData = getCleanBusinessFormData({
+      ...formData,
+      businessDetails: businessvalue
+    });
+    const draftPayload = {
+      savedAt: new Date().toISOString(),
+      activeStep,
+      formData: {
+        ...cleanedFormData,
+        bannerImage: preview || cleanedFormData.bannerImage || "",
+        businessDetails: businessvalue,
+        kycDocuments: []
+      }
+    };
+
+    localStorage.setItem(BUSINESS_LOCAL_DRAFT_KEY, JSON.stringify(draftPayload));
+    setLocalDraftMeta({ savedAt: draftPayload.savedAt });
+    enqueueSnackbar("Draft saved locally on this browser.", {
+      variant: "success"
+    });
+  };
+  const clearLocalDraft = (showMessage = true) => {
+    localStorage.removeItem(BUSINESS_LOCAL_DRAFT_KEY);
+    setLocalDraftMeta(null);
+    if (showMessage) {
+      enqueueSnackbar("Local business draft cleared.", {
+        variant: "info"
+      });
+    }
+  };
+  const restoreDraftFromLocal = () => {
+    if (editMode) return;
+
+    const draft = getStoredBusinessDraft();
+    if (!draft?.formData) {
+      enqueueSnackbar("No saved local draft found.", {
+        variant: "info"
+      });
+      setLocalDraftMeta(null);
+      return;
+    }
+
+    const baseFormData = createEmptyBusinessFormData();
+    const restoredFormData = {
+      ...baseFormData,
+      ...draft.formData,
+      filters: draft.formData.filters && typeof draft.formData.filters === "object" ? draft.formData.filters : {},
+      badges: {
+        ...baseFormData.badges,
+        ...(draft.formData.badges || {})
+      },
+      verification: {
+        ...baseFormData.verification,
+        ...(draft.formData.verification || {})
+      },
+      geoLocation: {
+        type: "Point",
+        coordinates: Array.isArray(draft.formData.geoLocation?.coordinates)
+          ? draft.formData.geoLocation.coordinates.map(value => String(value ?? ""))
+          : ["", ""]
+      },
+      openingHours: Array.isArray(draft.formData.openingHours) && draft.formData.openingHours.length > 0
+        ? draft.formData.openingHours.map(hour => ({
+          day: hour.day || "",
+          open: hour.open || "",
+          close: hour.close || "",
+          isClosed: Boolean(hour.isClosed),
+          is24Hours: Boolean(hour.is24Hours)
+        }))
+        : baseFormData.openingHours
+    };
+
+    setEditMode(false);
+    setEditId(null);
+    setFormData(restoredFormData);
+    setBusinessValue(restoredFormData.businessDetails || "");
+    setPreview(restoredFormData.bannerImage || null);
+    setKycFiles([]);
+    setFieldErrors({});
+    setForceBypassedFields([]);
+    setWarnLevel(0);
+    setWarnDialog(false);
+    setDuplicateReview({
+      open: false,
+      matches: [],
+      signature: "",
+      action: "save"
+    });
+    setDuplicateBypassSignature("");
+    setActiveView("form");
+    setActiveStep(Number.isInteger(draft.activeStep) ? Math.max(0, Math.min(draft.activeStep, steps.length - 2)) : 0);
+    setLocalDraftMeta(draft.savedAt ? { savedAt: draft.savedAt } : null);
+    enqueueSnackbar("Local draft restored.", {
+      variant: "success"
+    });
+  };
+  useEffect(() => {
+    if (editMode) return;
+    const draft = getStoredBusinessDraft();
+    if (draft?.savedAt) {
+      setLocalDraftMeta({ savedAt: draft.savedAt });
+    } else {
+      setLocalDraftMeta(null);
+    }
+  }, [editMode, activeView]);
+  useEffect(() => {
+    const cleanedFormData = getCleanBusinessFormData(formData);
+    setPossibleDuplicateMatches(getPotentialDuplicateMatches(cleanedFormData));
+  }, [formData, businessList, editId, editMode]); // eslint-disable-line react-hooks/exhaustive-deps
   const selectedKeywordValues = Array.isArray(formData.keywords) ? formData.keywords : [];
   const availableKeywordSuggestions = categoryKeywordSuggestions.filter(keyword => !selectedKeywordValues.some(
     selectedKeyword => String(selectedKeyword).toLowerCase() === String(keyword).toLowerCase()
@@ -1133,6 +1700,20 @@ const BusinessList = React.memo(() => {
     setEditMode(true);
     setActiveView("form");
     setEditId(row.id);
+    setDuplicateBypassSignature("");
+    setLocalDraftMeta(null);
+    setFieldErrors({});
+    setForceBypassedFields([]);
+    setWarnLevel(0);
+    setWarnDialog(false);
+    setDuplicateReview({
+      open: false,
+      matches: [],
+      signature: "",
+      action: "save"
+    });
+    setCategoryKeywordSuggestions([]);
+    setInputKeyword("");
     setFormData({
       clientId: row.clientId || "",
       businessName: row.businessName || "",
@@ -1281,10 +1862,6 @@ const BusinessList = React.memo(() => {
     [error.field]: getValidationMessage(error)
   }), {});
   const getFirstErrorStep = errors => typeof errors[0]?.step === "number" ? errors[0].step : 0;
-  const getActiveValidationErrors = (cleanedFormData, forceBypassFields = []) => {
-    const bypassed = new Set([...forceBypassedFields, ...forceBypassFields]);
-    return validateBusinessEntryData(cleanedFormData).filter(error => !bypassed.has(error.field));
-  };
   const showBusinessValidationErrors = validationErrors => {
     setActiveStep(getFirstErrorStep(validationErrors));
     setFieldErrors(buildFieldErrorMap(validationErrors));
@@ -1293,10 +1870,44 @@ const BusinessList = React.memo(() => {
       variant: "error"
     });
   };
-  const saveBusiness = async ({ forceBypassFields = [] } = {}) => {
-    const cleanedFormData = getCleanBusinessFormData(formData);
+  const saveBusiness = async ({
+    forceBypassFields = [],
+    skipDuplicateCheck = false,
+    draftFormData = null,
+    draftBusinessDetails = null,
+    draftKycFiles = null
+  } = {}) => {
+    const sourceFormData = draftFormData || formData;
+    const sourceBusinessDetails = draftBusinessDetails ?? businessvalue;
+    const sourceKycFiles = draftKycFiles ?? kycFiles;
+    const cleanedFormData = getCleanBusinessFormData(sourceFormData);
+    const validationContext = {
+      bannerPreview: draftFormData ? sourceFormData.bannerImage : preview,
+      uploadedKycFiles: sourceKycFiles,
+      isEditing: draftFormData ? false : editMode
+    };
     const bypassFields = getUniqueFields(forceBypassFields).filter(isForceBypassableField);
-    const validationErrors = getActiveValidationErrors(cleanedFormData, bypassFields);
+    const duplicateSignature = getDuplicateCheckSignature(cleanedFormData);
+    const duplicateMatches = getPotentialDuplicateMatches(cleanedFormData);
+
+    if (!skipDuplicateCheck && duplicateMatches.length > 0 && duplicateBypassSignature !== duplicateSignature) {
+      setActiveStep(0);
+      setDuplicateReview({
+        open: true,
+        matches: duplicateMatches,
+        signature: duplicateSignature,
+        action: "save"
+      });
+      enqueueSnackbar("A very similar business already exists. Review the matches before saving.", {
+        variant: "warning"
+      });
+      return;
+    }
+
+    const validationErrors = validateBusinessEntryData(cleanedFormData, validationContext).filter(error => {
+      const bypassed = new Set([...forceBypassedFields, ...bypassFields]);
+      return !bypassed.has(error.field);
+    });
 
     if (validationErrors.length > 0) {
       showBusinessValidationErrors(validationErrors);
@@ -1327,7 +1938,7 @@ const BusinessList = React.memo(() => {
       });
       return;
     }
-    const kycBase64 = await Promise.all(kycFiles.map(file => new Promise((resolve, reject) => {
+    const kycBase64 = await Promise.all(sourceKycFiles.map(file => new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(reader.result);
       reader.onerror = reject;
@@ -1346,31 +1957,10 @@ const BusinessList = React.memo(() => {
         country: "N/A"
       }));
     }
-    const existingCategory = category.find(cat => String(cat.category || "").toLowerCase() === String(cleanedFormData.category || "").toLowerCase());
-    if (existingCategory) {
-      const updates = getUpdatedCategoryFields(existingCategory, cleanedFormData);
-      if (Object.keys(updates).length > 0) {
-        await dispatch(editCategory(existingCategory._id, {
-          ...updates,
-          category: existingCategory.category || cleanedFormData.category,
-          name: existingCategory.category || cleanedFormData.category
-        }));
-      }
-    } else {
-      await dispatch(createCategory({
-        category: cleanedFormData.category,
-        keywords: cleanedFormData.keywords || [],
-        slug: cleanedFormData.slug || "",
-        seoTitle: cleanedFormData.seoTitle || "",
-        seoDescription: cleanedFormData.seoDescription || "",
-        title: cleanedFormData.title || "",
-        description: cleanedFormData.description || ""
-      }));
-    }
     const payload = {
       ...cleanedFormData,
       name: cleanedFormData.businessName,
-      businessDetails: businessvalue,
+      businessDetails: sourceBusinessDetails,
       kycDocuments: kycBase64,
       geoLocation: {
         type: "Point",
@@ -1404,19 +1994,26 @@ const BusinessList = React.memo(() => {
         dispatch(clearGmapsLeadImport());
       }
       dispatch(getAllBusinessList());
+      setDuplicateBypassSignature("");
+      clearLocalDraft(false);
       setForceBypassedFields([]);
       setActiveStep(3);
     } catch (err) {
       console.error("Error saving business:", err);
+      const backendPayload = err.response?.data;
 
       // Handle backend validation errors
-      if (err.response?.data?.errors) {
-        const errorMessages = err.response.data.errors.map(e => `${e.field}: ${e.message}`).join('\n');
+      if (backendPayload?.errors) {
+        const errorMessages = backendPayload.errors.map(e => `${e.field}: ${e.message}`).join('\n');
         enqueueSnackbar(`Validation errors:\n${errorMessages}`, {
           variant: "error"
         });
-      } else if (err.response?.data?.message) {
-        enqueueSnackbar(err.response.data.message, {
+      } else if (typeof backendPayload === "string" && backendPayload.trim()) {
+        enqueueSnackbar(backendPayload, {
+          variant: "error"
+        });
+      } else if (backendPayload?.message) {
+        enqueueSnackbar(backendPayload.message, {
           variant: "error"
         });
       } else {
@@ -1461,10 +2058,131 @@ const BusinessList = React.memo(() => {
       setBadgeUpdateLoading(false);
     }
   };
+  const handleCreateDemoBusiness = async () => {
+    if (editMode || loading || demoSubmitting) {
+      return;
+    }
+
+    setDemoSubmitting(true);
+
+    const uniqueSuffix = `${Date.now()}`.slice(-6);
+    const demoLocation = normalizeText(location?.[0]?.city || location?.[0]?.district || "Chennai");
+    const demoCategory = `Demo Services ${uniqueSuffix}`;
+    const demoBusinessName = `MassClick Demo Business ${uniqueSuffix}`;
+    const demoTitle = `${demoBusinessName} in ${demoLocation}`;
+    const demoSeoDescription = `Automated demo listing for ${demoBusinessName} in ${demoLocation}, created to verify the business create flow end to end.`;
+    const demoBanner = buildDemoImageAsset(`business-demo-banner-${uniqueSuffix}.svg`, demoBusinessName, `${demoLocation} demo listing`);
+    const demoKyc = buildDemoDataUrlAsset(`business-demo-kyc-${uniqueSuffix}.png`, DEMO_PNG_DATA_URL);
+    const demoOpeningHours = defaultOpeningHours.map(hour => ({
+      ...hour,
+      open: "09:00",
+      close: "18:00",
+      isClosed: false,
+      is24Hours: false
+    }));
+    const demoBusinessDetails = `<p>${demoBusinessName} is an automated sample business created from the admin panel to verify the create, validation, and payment workflow.</p>`;
+    const demoFormData = {
+      ...createEmptyBusinessFormData(),
+      clientId: `DEMO-${uniqueSuffix} - Codex Test`,
+      businessName: demoBusinessName,
+      plotNumber: "12A",
+      street: "Demo Street",
+      pincode: "600001",
+      globalAddress: `12A Demo Street, ${demoLocation}, Tamil Nadu 600001`,
+      email: `demo.business.${uniqueSuffix}@massclick.test`,
+      contact: `90001${uniqueSuffix}`,
+      contactList: `90002${uniqueSuffix}`,
+      gstin: "33ABCDE1234F1Z5",
+      whatsappNumber: `90003${uniqueSuffix}`,
+      experience: "5",
+      location: demoLocation,
+      category: demoCategory,
+      keywords: ["demo business", "test listing", "massclick automation"],
+      slug: `massclick-demo-business-${uniqueSuffix}`,
+      seoTitle: `${demoBusinessName} | Demo listing`,
+      seoDescription: demoSeoDescription,
+      title: demoTitle,
+      description: "Auto-generated demo listing used to verify the business onboarding flow.",
+      bannerImage: demoBanner.dataUrl,
+      googleMap: "https://maps.google.com/?q=13.0827,80.2707",
+      website: `https://demo-${uniqueSuffix}.massclick.test`,
+      facebook: `https://facebook.com/massclick-demo-${uniqueSuffix}`,
+      instagram: `https://instagram.com/massclick_demo_${uniqueSuffix}`,
+      youtube: `https://youtube.com/@massclickdemo${uniqueSuffix}`,
+      pinterest: `https://pinterest.com/massclickdemo${uniqueSuffix}`,
+      twitter: `https://x.com/massclickdemo${uniqueSuffix}`,
+      linkedin: `https://linkedin.com/company/massclick-demo-${uniqueSuffix}`,
+      businessDetails: demoBusinessDetails,
+      openingHours: demoOpeningHours,
+      geoLocation: {
+        type: "Point",
+        coordinates: ["80.2707", "13.0827"]
+      },
+      filters: {},
+      badges: {
+        isFeatured: false,
+        isSponsored: false,
+        isTrending: false,
+        priorityScore: 0,
+      },
+      verification: {
+        isVerified: false,
+        verificationType: "ADMIN",
+      },
+    };
+
+    revokePreviewUrls(kycFiles);
+    setEditMode(false);
+    setEditId(null);
+    setDuplicateBypassSignature("");
+    setFieldErrors({});
+    setForceBypassedFields([]);
+    setWarnLevel(0);
+    setWarnDialog(false);
+    setDuplicateReview({
+      open: false,
+      matches: [],
+      signature: "",
+      action: "save"
+    });
+    setCategoryKeywordSuggestions([]);
+    setInputKeyword("");
+    setPreview(demoBanner.dataUrl);
+    setBusinessValue(demoBusinessDetails);
+    setFormData(demoFormData);
+    setKycFiles([demoKyc.file]);
+    setActiveStep(steps.length - 2);
+
+    try {
+      await saveBusiness({
+        draftFormData: demoFormData,
+        draftBusinessDetails: demoBusinessDetails,
+        draftKycFiles: [demoKyc.file],
+        skipDuplicateCheck: true
+      });
+    } finally {
+      setDemoSubmitting(false);
+    }
+  };
 
   const handleSubmit = async e => {
     e.preventDefault();
     await saveBusiness();
+  };
+  const handleDuplicateOverride = async () => {
+    const approvedSignature = duplicateReview.signature;
+    const reviewAction = duplicateReview.action;
+    setDuplicateReview({
+      open: false,
+      matches: [],
+      signature: "",
+      action: "save"
+    });
+    if (reviewAction === "step-lock") {
+      return;
+    }
+    setDuplicateBypassSignature(approvedSignature);
+    await saveBusiness({ skipDuplicateCheck: true });
   };
   const warnMessages = [
     null,
@@ -1538,12 +2256,12 @@ const BusinessList = React.memo(() => {
   }));
 
   const filteredRows = getFilteredRows();
-  const categoryOptions = Array.from(new Set(
-    [...category, ...searchCategory].map(c => c?.category).filter(Boolean)
-  )).sort((a, b) => a.localeCompare(b));
-  const locationOptions = Array.from(new Set(
-    location.map(l => l?.city || l?.district || l?.location || l?.name).filter(Boolean)
-  )).sort((a, b) => a.localeCompare(b));
+  const categoryOptions = toSortedUniqueTextOptions(
+    [...category, ...searchCategory].map(c => c?.category)
+  );
+  const locationOptions = toSortedUniqueTextOptions(
+    location.map(l => l?.city || l?.district || l?.location || l?.name)
+  );
 
   const mapBusinessToRow = (bl, index = 0) => ({
     id: bl._id || index,
@@ -2610,11 +3328,9 @@ const BusinessList = React.memo(() => {
 
           <div className={cx("form-input-group col-span-all")}>
             <label className={cx("input-label")}>📝 Business Details</label>
-            <Suspense fallback={<CircularProgress />}>
-              <ReactQuill theme="snow" value={businessvalue} onChange={handleBusinessChange} modules={modules} formats={formats} placeholder="Type business details here..." style={{
-                height: "200px"
-              }} />
-            </Suspense>
+            <QuillEditor value={businessvalue} onChange={handleBusinessChange} modules={QUILL_MODULES} formats={QUILL_FORMATS} placeholder="Type business details here..." style={{
+              height: "200px"
+            }} />
           </div><br />
 
           <div className={cx("form-input-group col-span-all")}>
@@ -3085,8 +3801,9 @@ const BusinessList = React.memo(() => {
     }
   };
   const bypassableFieldErrorCount = Object.keys(fieldErrors).filter(isForceBypassableField).length;
+  const currentDuplicateSignature = getDuplicateCheckSignature(getCleanBusinessFormData(formData));
   return <div className={cx("business-page")}>
-    <AdminViewTabs activeView={activeView} onChange={setActiveView} isEditing={editMode} createLabel="Business" listLabel="Directory" listCount={filteredRows.length} />
+    <AdminViewTabs activeView={activeView} onChange={handleAdminViewChange} isEditing={editMode} createLabel="Business" listLabel="Directory" listCount={filteredRows.length} />
 
     {activeView === "form" && <>
       <div className={cx("business-card")} style={{
@@ -3110,26 +3827,110 @@ const BusinessList = React.memo(() => {
           <h2 className={cx("card-title")} style={{ margin: 0 }}>
             {editMode ? `Edit Business (${steps[activeStep]})` : `Add New Business (${steps[activeStep]})`}
           </h2>
-          {!editMode && activeStep === 0 && (
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<TravelExploreIcon />}
-              onClick={openGmapsPicker}
-              sx={{
-                borderColor: '#ff8c42',
-                color: '#ff8c42',
-                fontSize: '0.8rem',
-                textTransform: 'none',
-                '&:hover': { borderColor: '#e67a2e', bgcolor: '#fff5ee' }
-              }}
-            >
-              Fill from GMaps
-            </Button>
+          {!editMode && (
+            <div className={cx("draft-actions-bar")}>
+              <button type="button" className={cx("draft-action-button")} onClick={saveDraftToLocal}>
+                Save Draft
+              </button>
+              <button type="button" className={cx("draft-action-button secondary")} onClick={restoreDraftFromLocal}>
+                Restore Draft
+              </button>
+              {localDraftMeta && (
+                <button type="button" className={cx("draft-action-button ghost")} onClick={() => clearLocalDraft(true)}>
+                  Clear Draft
+                </button>
+              )}
+              {/* {!editMode && ( */}
+                {/* // <button */}
+                {/* //   type="button" */}
+                {/* //   className={cx("draft-action-button secondary")} */}
+                {/* //   onClick={handleCreateDemoBusiness} */}
+                {/* //   disabled={loading || demoSubmitting} */}
+                {/* // > */}
+                {/* //   {demoSubmitting ? "Creating Demo..." : "Create Demo"} */}
+                {/* // </button> */}
+              {/* // )} */}
+              {activeStep === 0 && (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<TravelExploreIcon />}
+                  onClick={openGmapsPicker}
+                  sx={{
+                    borderColor: '#ff8c42',
+                    color: '#ff8c42',
+                    fontSize: '0.8rem',
+                    textTransform: 'none',
+                    '&:hover': { borderColor: '#e67a2e', bgcolor: '#fff5ee' }
+                  }}
+                >
+                  Fill from GMaps
+                </Button>
+              )}
+            </div>
           )}
         </div>
+        {!editMode && (
+          <div className={cx("draft-meta-row")}>
+            <span>
+              Draft is stored only in this browser on this machine.
+            </span>
+            <span>
+              {localDraftMeta?.savedAt
+                ? `Last saved: ${new Date(localDraftMeta.savedAt).toLocaleString()}`
+                : "No local draft saved yet."}
+            </span>
+            <span>KYC file uploads are not included in local draft restore.</span>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit}>
+          {activeStep === 0 && possibleDuplicateMatches.length > 0 && (
+            <div className={cx("duplicate-warning-panel")}>
+              <div className={cx("duplicate-warning-header")}>
+                <strong>This business probably already exists.</strong>
+                <span className={cx("duplicate-lock-note")}>
+                  Restriction: Step 2 is locked until this is reviewed.
+                </span>
+              </div>
+              <p className={cx("duplicate-warning-copy")}>
+                We found {possibleDuplicateMatches.length} active business{possibleDuplicateMatches.length === 1 ? "" : "es"} with matching name, location, address, phone, or map details. Do not continue to the next step until you confirm this is not a duplicate.
+              </p>
+              <div className={cx("duplicate-match-list")}>
+                {possibleDuplicateMatches.slice(0, 3).map(match => (
+                  <div key={match.id} className={cx("duplicate-match-card")}>
+                    <div className={cx("duplicate-match-name-row")}>
+                      <span className={cx("duplicate-match-name")}>{match.businessName}</span>
+                      <span className={cx("duplicate-match-score")}>{Math.round(match.score * 10) / 10} pts</span>
+                    </div>
+                    <p className={cx("duplicate-match-meta")}>
+                      {match.location} • {match.category} • {match.contact}
+                    </p>
+                    <p className={cx("duplicate-match-meta")}>{match.globalAddress}</p>
+                    <div className={cx("duplicate-reason-list")}>
+                      {match.reasons.map(reason => (
+                        <span key={`${match.id}-${reason}`} className={cx("duplicate-reason-chip")}>{reason}</span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className={cx("duplicate-warning-actions")}>
+                <button
+                  type="button"
+                  className={cx("duplicate-review-button")}
+                  onClick={() => setDuplicateReview({
+                    open: true,
+                    matches: possibleDuplicateMatches,
+                    signature: currentDuplicateSignature,
+                    action: "step-lock"
+                  })}
+                >
+                  Review Restriction
+                </button>
+              </div>
+            </div>
+          )}
           {Object.keys(fieldErrors).length > 0 && (
             <div className={cx("validation-panel")}>
               <strong>Fix these fields:</strong>
@@ -3282,6 +4083,98 @@ const BusinessList = React.memo(() => {
         <Button color="warning" variant="contained" onClick={handleWarnConfirm} disabled={loading}>
           {loading ? <CircularProgress size={20} color="inherit" /> : warnMessages[warnLevel + 1]?.confirm}
         </Button>
+      </DialogActions>
+    </Dialog>
+
+    <Dialog
+      open={duplicateReview.open}
+      onClose={() => setDuplicateReview({
+        open: false,
+        matches: [],
+        signature: "",
+        action: "save"
+      })}
+      maxWidth="md"
+      fullWidth
+    >
+      <DialogTitle sx={{ color: "#B42318", fontWeight: 800 }}>
+        {duplicateReview.action === "step-lock" ? "Restriction: Similar Business Found in Step 1" : "Restriction: Similar Business Already Exists"}
+      </DialogTitle>
+      <DialogContent dividers>
+        <Typography variant="body2" sx={{ mb: 2, color: "#7A271A" }}>
+          {duplicateReview.action === "step-lock"
+            ? "MassClick found businesses that are too similar to this Step 1 entry. The form will stay on Step 1 until you change the details or keep a local draft for later."
+            : "MassClick found existing businesses that look too similar to this entry. Please verify them before creating a new business, otherwise you may create a duplicate listing."}
+        </Typography>
+        <Box sx={{ display: "grid", gap: 1.5 }}>
+          {duplicateReview.matches.map(match => (
+            <Box
+              key={match.id}
+              sx={{
+                border: "1px solid #FECACA",
+                borderRadius: 2,
+                background: "#FFF7F7",
+                p: 2
+              }}
+            >
+              <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, flexWrap: "wrap" }}>
+                <Typography sx={{ fontWeight: 800, color: "#111827" }}>{match.businessName}</Typography>
+                <Typography sx={{ fontWeight: 700, color: "#B42318" }}>Match score: {Math.round(match.score * 10) / 10}</Typography>
+              </Box>
+              <Typography variant="body2" sx={{ mt: 0.75, color: "#475467" }}>
+                {match.location} • {match.category} • {match.contact}
+              </Typography>
+              <Typography variant="body2" sx={{ mt: 0.5, color: "#475467" }}>
+                {match.globalAddress}
+              </Typography>
+              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75, mt: 1.25 }}>
+                {match.reasons.map(reason => (
+                  <Chip
+                    key={`${match.id}-${reason}`}
+                    label={reason}
+                    size="small"
+                    sx={{
+                      backgroundColor: "#FEE4E2",
+                      color: "#B42318",
+                      fontWeight: 700
+                    }}
+                  />
+                ))}
+              </Box>
+            </Box>
+          ))}
+        </Box>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={() => setDuplicateReview({
+          open: false,
+          matches: [],
+          signature: "",
+          action: "save"
+        })} color="secondary">
+          {duplicateReview.action === "step-lock" ? "Stay on Step 1" : "Go Back"}
+        </Button>
+        {duplicateReview.action === "step-lock" ? (
+          <Button
+            color="warning"
+            variant="contained"
+            onClick={() => {
+              saveDraftToLocal();
+              setDuplicateReview({
+                open: false,
+                matches: [],
+                signature: "",
+                action: "save"
+              });
+            }}
+          >
+            Save Draft Locally
+          </Button>
+        ) : (
+          <Button color="error" variant="contained" onClick={handleDuplicateOverride} disabled={loading}>
+            {loading ? <CircularProgress size={20} color="inherit" /> : "Create Anyway"}
+          </Button>
+        )}
       </DialogActions>
     </Dialog>
 

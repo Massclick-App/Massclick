@@ -1,5 +1,5 @@
 import { createScopedClassNames } from "../../utils/createScopedClassNames";
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { viewOtpUser } from "../../redux/actions/otpAction.js";
@@ -9,7 +9,6 @@ import PublishedWithChangesIcon from '@mui/icons-material/PublishedWithChanges';
 import Badge from "@mui/material/Badge";
 import { Notifications as NotificationsIcon, Mail as MailIcon, Menu as MenuIcon, AccountCircle as AccountCircleIcon, ExitToApp as ExitToAppIcon } from "@mui/icons-material";
 import MassclickIndiaLogo from "../../assets/Massclick-India.webp";
-import AddBusinessModal from "./AddBusinessModel.js";
 import AppRegistrationIcon from '@mui/icons-material/AppRegistration';
 import LoginIcon from '@mui/icons-material/Login';
 import DashboardIcon from "@mui/icons-material/Dashboard";
@@ -20,18 +19,19 @@ import HeadsetMicIcon from "@mui/icons-material/HeadsetMic";
 import PolicyIcon from "@mui/icons-material/Policy";
 import FeedbackIcon from "@mui/icons-material/Feedback";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
-import DashboardPage from "../clientComponent/userMenu/DashboardPage/Dashboard.js";
-import FavoritesPage from "../clientComponent/userMenu/FavouritePage/FavouritePage.js";
-import EditProfilePage from "../clientComponent/userMenu/EditProfile/EditProfilePage.js";
-import CustomerServicePage from "../clientComponent/userMenu/CustomerService/CustomerServicePage.js";
-import PolicyPage from "../clientComponent/userMenu/PolicyPage/PolicyPage.js";
-import FeedbackPage from "../clientComponent/userMenu/FeedbackPage/FeedBackPage.js";
-import HelpPage from "../clientComponent/userMenu/HelpPage/HelpPage.js";
-import LeadsNotificationModal from "./leadsNotification/leadsNotification.js";
 import { getDisplayableLeadNotifications } from "./leadsNotification/leadNotificationUtils.js";
 import { fetchMatchedLeads } from "../../redux/actions/leadsAction.js";
 import styles from "./categoryBar.module.css";
-import MRPPage from "./MRP/mrp.js";
+const AddBusinessModal = lazy(() => import("./AddBusinessModel.js"));
+const DashboardPage = lazy(() => import("../clientComponent/userMenu/DashboardPage/Dashboard.js"));
+const FavoritesPage = lazy(() => import("../clientComponent/userMenu/FavouritePage/FavouritePage.js"));
+const EditProfilePage = lazy(() => import("../clientComponent/userMenu/EditProfile/EditProfilePage.js"));
+const CustomerServicePage = lazy(() => import("../clientComponent/userMenu/CustomerService/CustomerServicePage.js"));
+const PolicyPage = lazy(() => import("../clientComponent/userMenu/PolicyPage/PolicyPage.js"));
+const FeedbackPage = lazy(() => import("../clientComponent/userMenu/FeedbackPage/FeedBackPage.js"));
+const HelpPage = lazy(() => import("../clientComponent/userMenu/HelpPage/HelpPage.js"));
+const LeadsNotificationModal = lazy(() => import("./leadsNotification/leadsNotification.js"));
+const MRPPage = lazy(() => import("./MRP/mrp.js"));
 const cx = createScopedClassNames(styles);
 export const isBusinessPeopleUser = (user = {}) => user?.businessPeople === true;
 export const getUserMenuLabel = (item, user = {}) => {
@@ -193,15 +193,20 @@ const CategoryBar = () => {
       navigate("/business-enquiry");
     }
   };
+  const goHome = () => navigate("/");
   return <header className={cx("categoryBarContainer")}>
     <div className={cx("categoryBarContent")}>
 
       <div className={cx("logoGroup")}>
         <div className={cx("logoWrapper")}>
-          <img src="/header.png" alt="Massclick Logo" className={cx("logoImage")} onClick={() => window.location.href = "/"} />
+          <button type="button" className={cx("logoButton")} onClick={goHome} aria-label="Go to Massclick home">
+            <img src="/header.png" alt="Massclick Logo" className={cx("logoImage")} width="44" height="44" decoding="async" />
+          </button>
         </div>
         <div className={cx("brandingText")}>
-          <img src={MassclickIndiaLogo} alt="Massclick India" className={cx("brandLogo")} onClick={() => window.location.href = "/"} />
+          <button type="button" className={cx("logoButton")} onClick={goHome} aria-label="Go to Massclick home">
+            <img src={MassclickIndiaLogo} alt="Massclick India" className={cx("brandLogo")} width="180" height="44" decoding="async" />
+          </button>
         </div>
       </div>
 
@@ -216,7 +221,7 @@ const CategoryBar = () => {
 
       <div className={cx("actionButtons")}>
 
-        <IconButton className={cx("mobileMenuButton")} onClick={handleMenuClick}>
+        <IconButton className={cx("mobileMenuButton")} onClick={handleMenuClick} aria-label="Open quick links menu">
           <MenuIcon />
         </IconButton>
 
@@ -224,7 +229,7 @@ const CategoryBar = () => {
           <LoginIcon />
           <span className={cx("loginText")}>Login / Sign Up</span>
         </button> : <>
-          <IconButton onClick={openDrawer} className={cx("iconButtonPrimary")}>
+          <IconButton onClick={openDrawer} className={cx("iconButtonPrimary")} aria-label="Open user menu">
             <Avatar src={profileImageUrl} sx={{
               width: 34,
               height: 34,
@@ -236,7 +241,7 @@ const CategoryBar = () => {
             </Avatar>
           </IconButton>
 
-          <IconButton className={cx("iconButtonPrimary")} onClick={() => setIsNotificationModalOpen(true)}>
+          <IconButton className={cx("iconButtonPrimary")} onClick={() => setIsNotificationModalOpen(true)} aria-label="Open notifications">
             <Badge badgeContent={notificationLeads.length} color="error">
               <NotificationsIcon />
             </Badge>
@@ -254,9 +259,13 @@ const CategoryBar = () => {
       </MenuItem>)}
     </Menu>
 
-    <AddBusinessModal open={isModalOpen} handleClose={() => setIsModalOpen(false)} />
+    <Suspense fallback={null}>
+      <AddBusinessModal open={isModalOpen} handleClose={() => setIsModalOpen(false)} />
+    </Suspense>
 
-    <LeadsNotificationModal open={isNotificationModalOpen} onClose={() => setIsNotificationModalOpen(false)} />
+    <Suspense fallback={null}>
+      <LeadsNotificationModal open={isNotificationModalOpen} onClose={() => setIsNotificationModalOpen(false)} />
+    </Suspense>
   </header>;
 };
 export default CategoryBar;

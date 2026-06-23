@@ -440,6 +440,69 @@
   padding-bottom: 8px;
 }
 
+.draft-actions-bar {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.draft-action-button {
+  background: #ff8c00;
+  border: 0;
+  border-radius: 999px;
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 800;
+  min-height: 36px;
+  padding: 8px 14px;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.draft-action-button:hover {
+  background: #d97800;
+  transform: translateY(-1px);
+}
+
+.draft-action-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+  transform: none;
+}
+
+.draft-action-button.secondary {
+  background: #fff3e0;
+  border: 1px solid #fdba74;
+  color: #c2410c;
+}
+
+.draft-action-button.secondary:hover {
+  background: #ffe4bf;
+}
+
+.draft-action-button.ghost {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+}
+
+.draft-action-button.ghost:hover {
+  background: #eef2f7;
+}
+
+.draft-meta-row {
+  color: #6b7280;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.79rem;
+  font-weight: 600;
+  gap: 10px 18px;
+  margin-bottom: 18px;
+}
+
 /* --- Section Styling --- */
 .section-header {
   display: flex;
@@ -618,6 +681,127 @@ textarea:focus,
   margin: 4px 0 0;
 }
 
+.duplicate-warning-panel {
+  background: linear-gradient(135deg, #fff1f0 0%, #fff8f3 100%);
+  border: 2px solid #f97066;
+  border-radius: 16px;
+  box-shadow: 0 16px 40px rgba(185, 28, 28, 0.12);
+  color: #7a271a;
+  grid-column: 1 / -1;
+  margin-bottom: 24px;
+  padding: 18px 20px;
+}
+
+.duplicate-warning-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.duplicate-warning-header strong {
+  color: #b42318;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.duplicate-lock-note {
+  color: #912018;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.duplicate-warning-copy {
+  font-size: 0.92rem;
+  line-height: 1.55;
+  margin: 0 0 14px;
+}
+
+.duplicate-match-list {
+  display: grid;
+  gap: 12px;
+}
+
+.duplicate-match-card {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.duplicate-match-name-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.duplicate-match-name {
+  color: #111827;
+  font-size: 0.96rem;
+  font-weight: 800;
+}
+
+.duplicate-match-score {
+  background: #fee4e2;
+  border-radius: 999px;
+  color: #b42318;
+  font-size: 0.74rem;
+  font-weight: 800;
+  padding: 5px 10px;
+}
+
+.duplicate-match-meta {
+  color: #6b2c22;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  margin: 6px 0 0;
+}
+
+.duplicate-reason-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.duplicate-reason-chip {
+  background: #fff1f0;
+  border: 1px solid #fecdca;
+  border-radius: 999px;
+  color: #b42318;
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 5px 9px;
+}
+
+.duplicate-warning-actions {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: 16px;
+}
+
+.duplicate-review-button {
+  background: #b42318;
+  border: 0;
+  border-radius: 10px;
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 800;
+  min-height: 42px;
+  padding: 10px 16px;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.duplicate-review-button:hover {
+  background: #912018;
+  transform: translateY(-1px);
+}
+
 .validation-actions {
   display: grid;
   gap: 6px;
@@ -663,6 +847,15 @@ textarea:focus,
     left: 12px;
     width: auto;
     max-height: 38vh;
+  }
+
+  .duplicate-warning-panel {
+    padding: 16px;
+  }
+
+  .duplicate-warning-actions,
+  .duplicate-review-button {
+    width: 100%;
   }
 }
 
@@ -889,6 +1082,19 @@ textarea:focus,
 
   .business-card {
     padding: 20px;
+  }
+
+  .draft-actions-bar {
+    justify-content: flex-start;
+  }
+
+  .draft-action-button {
+    width: 100%;
+  }
+
+  .draft-meta-row {
+    flex-direction: column;
+    gap: 6px;
   }
 
   .card-title {

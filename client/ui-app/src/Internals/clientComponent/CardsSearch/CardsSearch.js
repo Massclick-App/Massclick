@@ -20,6 +20,7 @@ import AddBusinessModel from "../AddBusinessModel";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import { useDrawer } from "../Drawer/drawerContext";
 import { shouldSendSearch } from "../../../utils/searchLock";
+import { scheduleIdleCallback } from "../../../utils/scheduleIdleCallback.js";
 const cx = createScopedClassNames(styles);
 const DEFAULT_LOCATION = "Trichy";
 const SUGGESTION_PAGE_SIZE = 10;
@@ -108,6 +109,7 @@ const CardsSearch = ({
   const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState(false);
   const categoryRef = useRef(null);
   const locationRef = useRef(null);
+  const headerRef = useRef(null);
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [debouncedLocation, setDebouncedLocation] = useState("");
   const normalizeComparable = value => String(value || "").trim().replace(/\s+/g, " ").toLowerCase();
@@ -147,7 +149,20 @@ const CardsSearch = ({
     return () => clearTimeout(t);
   }, [locationName]);
   useEffect(() => {
-    dispatch(getAllSearchLogs());
+    const idleHandle = scheduleIdleCallback(() => {
+      dispatch(getAllSearchLogs());
+    }, {
+      timeout: 2000
+    });
+
+    return () => {
+      if (typeof window.cancelIdleCallback === "function") {
+        window.cancelIdleCallback(idleHandle);
+        return;
+      }
+
+      window.clearTimeout(idleHandle);
+    };
   }, [dispatch]);
   useEffect(() => {
     if (!isCategoryDropdownOpen) return;
@@ -178,6 +193,32 @@ const CardsSearch = ({
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+  useEffect(() => {
+    const headerNode = headerRef.current;
+    if (!headerNode) return undefined;
+
+    const rootStyle = document.documentElement.style;
+    const updateHeaderHeight = () => {
+      const nextHeight = Math.ceil(headerNode.getBoundingClientRect().height);
+      rootStyle.setProperty("--cards-search-height", `${nextHeight}px`);
+    };
+
+    updateHeaderHeight();
+
+    let resizeObserver;
+    if (typeof ResizeObserver !== "undefined") {
+      resizeObserver = new ResizeObserver(updateHeaderHeight);
+      resizeObserver.observe(headerNode);
+    }
+
+    window.addEventListener("resize", updateHeaderHeight);
+
+    return () => {
+      window.removeEventListener("resize", updateHeaderHeight);
+      resizeObserver?.disconnect();
+      rootStyle.removeProperty("--cards-search-height");
+    };
   }, []);
   const capitalizeWords = str => str.toLowerCase().split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
   const categoryOptions = [...new Set((searchLogs || []).map(log => log.categoryName ? capitalizeWords(log.categoryName) : "").filter(value => value && !isMongoObjectId(value)))];
@@ -278,9 +319,10 @@ const CardsSearch = ({
   };
   const handleOpenModal = () => setIsModalOpen(true);
   const handleCloseModal = () => setIsModalOpen(false);
+  const goHome = () => navigate("/");
   const loggedIn = categoryBarHelpers.checkLogin();
   return <>
-      <header className={cx("search-header")} style={{
+      <header ref={headerRef} className={cx("search-header")} style={{
       backdropFilter: "blur(8px)",
       visibility: isScrolled ? 'visible' : 'hidden',
       display: isScrolled ? 'block' : 'none'
@@ -290,11 +332,15 @@ const CardsSearch = ({
           <div className={cx("logo-section")}>
             <div className={cx("logo-circle")}>
               <Tooltip title="Go to Home Page" arrow>
-                <img src="/apple-touch-icon.png" alt="Logo" className={cx("logo-image")} onClick={() => window.location.href = "/"} />
+                <button type="button" className={cx("logo-button")} onClick={goHome} aria-label="Go to Massclick home">
+                  <img src="/apple-touch-icon.png" alt="Massclick home" className={cx("logo-image")} width="48" height="48" decoding="async" />
+                </button>
               </Tooltip>
             </div>
             <div className={cx("brandingText")}>
-              <img src={MassclickIndiaLogo} alt="Massclick India" className={cx("brandLogo")} onClick={() => window.location.href = "/"} />
+              <button type="button" className={cx("logo-button logo-button--brand")} onClick={goHome} aria-label="Go to Massclick home">
+                <img src={MassclickIndiaLogo} alt="Massclick India" className={cx("brandLogo")} width="180" height="44" decoding="async" />
+              </button>
             </div>
           </div>
 
@@ -345,18 +391,19 @@ const CardsSearch = ({
               document.activeElement.blur();
             }} />}
 
-              <MicIcon className={cx("input-adornment end")} />
+              <MicIcon className={cx("input-adornment end")} aria-hidden="true" />
             </div>
 
             <div className={cx("search-action")}>
               <button className={cx("search-btn", hasPendingSearch && "search-btn-pending")} onClick={handleSearch} aria-label="Search" title={hasPendingSearch ? "Click search to update the listing" : "Search"}>
                 <SearchIcon />
+                <span>Search</span>
               </button>
               {hasPendingSearch && <span className={cx("search-hint")}>Click search to update results</span>}
             </div>
           </div>
 
-          <Box sx={{
+          <Box className={cx("header-actions")} sx={{
           display: "flex",
           alignItems: "center"
         }}>

@@ -69,23 +69,18 @@ const buildSearchUserDetails = (authUser = {}) => ({
 const getSearchLogIdentity = (authUser = {}) =>
   authUser?._id || authUser?.mobileNumber1 || authUser?.mobileNumber2 || authUser?.email || "anonymous";
 
-const GoogleAd = () => {
-  useEffect(() => {
-    try {
-      (window.adsbygoogle = window.adsbygoogle || []).push({});
-    } catch (e) {}
-  }, []);
-  return (
-    <ins
-      className="adsbygoogle"
-      style={{ display: "block" }}
-      data-ad-client="ca-pub-3217097513155005"
-      data-ad-slot="1401736258"
-      data-ad-format="auto"
-      data-full-width-responsive="true"
-    />
-  );
-};
+const AdvertisementBanner = () => (
+  <aside className={cx("advertisement-banner")} aria-label="Advertisement placement banner">
+    <span className={cx("advertisement-label")}>Advertisement</span>
+    <h3 className={cx("advertisement-title")}>Place your ad here</h3>
+    <p className={cx("advertisement-copy")}>
+      Contact us to showcase your business in this premium search result spot.
+    </p>
+    <a className={cx("advertisement-link")} href="/business-enquiry">
+      Contact Us
+    </a>
+  </aside>
+);
 
 const sanitizeSeoHtml = (html = "") => {
   return html.replace(/<h1(\s[^>]*)?>/gi, "<h2>").replace(/<\/h1>/gi, "</h2>");
@@ -789,7 +784,7 @@ const SearchResults = React.memo(() => {
             {/* Right ads column — only for single-column (list / table) modes */}
             {(viewMode === "list" || viewMode === "table") && (
               <div className={cx("ads-column")}>
-                <GoogleAd />
+                <AdvertisementBanner />
               </div>
             )}
           </div>

@@ -86,10 +86,10 @@ const TopTourist = () => {
         </div>
 
         <div className={cx("tourist-controls")}>
-          <button className={cx("tourist-arrow")} onClick={scrollLeft}>
+          <button type="button" className={cx("tourist-arrow")} onClick={scrollLeft} aria-label="Scroll tourist places left">
             <KeyboardDoubleArrowLeftIcon />
           </button>
-          <button className={cx("tourist-arrow")} onClick={scrollRight}>
+          <button type="button" className={cx("tourist-arrow")} onClick={scrollRight} aria-label="Scroll tourist places right">
             <KeyboardDoubleArrowRightIcon />
           </button>
         </div>
@@ -107,7 +107,7 @@ const TopTourist = () => {
           const href = place.path || `/${createSlug(locationName)}/${createSlug(categoryName)}`;
           return <Link key={index} to={href} className={cx("tourist-card")} onClick={event => handlePlaceClick(event, place)}>
                 {imgSrc && <div className={cx("tourist-img-wrapper")}>
-                    <img src={imgSrc} alt={place.alt} className={cx("tourist-img")} />
+                    <img src={imgSrc} alt={place.alt} className={cx("tourist-img")} width="600" height="400" loading="lazy" decoding="async" />
                   </div>}
                 <div className={cx("tourist-info")}>
                   <p className={cx("tourist-name")}>{place.name}</p>

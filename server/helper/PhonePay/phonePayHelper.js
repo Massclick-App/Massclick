@@ -160,16 +160,66 @@ export const checkPhonePeStatus = async (transactionId) => {
     );
 
     const status = response.data?.data?.state || "FAILED";
+    const normalizedPaymentStatus = status === "COMPLETED" ? "SUCCESS" : status;
+    const paymentDate = new Date();
 
     const updated = await paymentModel.findOneAndUpdate(
       { transactionId },
       {
-        paymentStatus: status === "COMPLETED" ? "SUCCESS" : status,
+        paymentStatus: normalizedPaymentStatus,
         responseData: response.data,
-        paymentDate: new Date(),
+        paymentDate,
       },
       { new: true }
     );
+
+    if (updated?.businessId) {
+      const paymentEntryPatch = {
+        "payment.$.paymentStatus": normalizedPaymentStatus,
+        "payment.$.paymentDate": paymentDate,
+        "payment.$.responseData": response.data,
+      };
+
+      if (normalizedPaymentStatus === "SUCCESS") {
+        paymentEntryPatch["payment.$.paid"] = true;
+      }
+
+      const businessResult = await businessListModel.updateOne(
+        {
+          _id: updated.businessId,
+          "payment.transactionId": transactionId,
+        },
+        {
+          $set: {
+            ...paymentEntryPatch,
+            ...(normalizedPaymentStatus === "SUCCESS"
+              ? {
+                  amountPaid: true,
+                  paidDate: paymentDate,
+                  businessesLive: true,
+                  "subscription.isActive": true,
+                  "subscription.startDate": paymentDate,
+                }
+              : {}),
+          },
+        }
+      );
+
+      if (!businessResult.matchedCount && normalizedPaymentStatus === "SUCCESS") {
+        await businessListModel.updateOne(
+          { _id: updated.businessId },
+          {
+            $set: {
+              amountPaid: true,
+              paidDate: paymentDate,
+              businessesLive: true,
+              "subscription.isActive": true,
+              "subscription.startDate": paymentDate,
+            },
+          }
+        );
+      }
+    }
 
     return {
       success: true,
