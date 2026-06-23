@@ -5,9 +5,10 @@ import LocationOnIcon from "@mui/icons-material/LocationOn";
 import MicIcon from "@mui/icons-material/Mic";
 import HistoryToggleOffIcon from "@mui/icons-material/HistoryToggleOff";
 import { useDispatch, useSelector } from "react-redux";
-import { getAllSearchLogs, getBackendSuggestions } from "../../../redux/actions/businessListAction";
+import { getBackendSuggestions } from "../../../redux/actions/businessListAction";
 import { navigateToSearchResult } from "../../../utils/searchResultNavigation";
 import { detectDistrict } from "../../../redux/actions/locationAction";
+import { scheduleIdleCallback } from "../../../utils/scheduleIdleCallback.js";
 // import backgroundImage from "../../../assets/background9.jpg";
 // import backgroundImage from "../../../assets/background.png";
 import { useNavigate } from "react-router-dom";
@@ -143,30 +144,40 @@ const HeroSection = React.memo(({
       applyLocation(DEFAULT_LOCATION);
       return;
     }
-    navigator.geolocation.getCurrentPosition(async ({
-      coords
-    }) => {
-      try {
-        const result = await dispatch(detectDistrict({
-          latitude: coords.latitude,
-          longitude: coords.longitude
-        }));
-        const detectedDistrict = String(result?.district || "").trim();
-        const autoDistrict = detectedDistrict && detectedDistrict.toLowerCase() !== "all districts" ? detectedDistrict : DEFAULT_LOCATION;
-        applyLocation(autoDistrict);
-      } catch {
+    const idleHandle = scheduleIdleCallback(() => {
+      navigator.geolocation.getCurrentPosition(async ({
+        coords
+      }) => {
+        try {
+          const result = await dispatch(detectDistrict({
+            latitude: coords.latitude,
+            longitude: coords.longitude
+          }));
+          const detectedDistrict = String(result?.district || "").trim();
+          const autoDistrict = detectedDistrict && detectedDistrict.toLowerCase() !== "all districts" ? detectedDistrict : DEFAULT_LOCATION;
+          applyLocation(autoDistrict);
+        } catch {
+          applyLocation(DEFAULT_LOCATION);
+        }
+      }, () => {
         applyLocation(DEFAULT_LOCATION);
-      }
-    }, () => {
-      applyLocation(DEFAULT_LOCATION);
+      }, {
+        enableHighAccuracy: true,
+        timeout: 10000
+      });
     }, {
-      enableHighAccuracy: true,
-      timeout: 10000
+      timeout: 2500
     });
+
+    return () => {
+      if (typeof window.cancelIdleCallback === "function") {
+        window.cancelIdleCallback(idleHandle);
+        return;
+      }
+
+      window.clearTimeout(idleHandle);
+    };
   }, [dispatch, setLocationName]);
-  useEffect(() => {
-    dispatch(getAllSearchLogs());
-  }, [dispatch]);
   useEffect(() => {
     const handleClickOutside = e => {
       if (categoryRef.current && !categoryRef.current.contains(e.target)) {

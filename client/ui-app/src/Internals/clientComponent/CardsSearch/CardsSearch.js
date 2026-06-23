@@ -20,6 +20,7 @@ import AddBusinessModel from "../AddBusinessModel";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import { useDrawer } from "../Drawer/drawerContext";
 import { shouldSendSearch } from "../../../utils/searchLock";
+import { scheduleIdleCallback } from "../../../utils/scheduleIdleCallback.js";
 const cx = createScopedClassNames(styles);
 const DEFAULT_LOCATION = "Trichy";
 const SUGGESTION_PAGE_SIZE = 10;
@@ -148,7 +149,20 @@ const CardsSearch = ({
     return () => clearTimeout(t);
   }, [locationName]);
   useEffect(() => {
-    dispatch(getAllSearchLogs());
+    const idleHandle = scheduleIdleCallback(() => {
+      dispatch(getAllSearchLogs());
+    }, {
+      timeout: 2000
+    });
+
+    return () => {
+      if (typeof window.cancelIdleCallback === "function") {
+        window.cancelIdleCallback(idleHandle);
+        return;
+      }
+
+      window.clearTimeout(idleHandle);
+    };
   }, [dispatch]);
   useEffect(() => {
     if (!isCategoryDropdownOpen) return;

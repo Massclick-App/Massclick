@@ -490,52 +490,6 @@ const LandingPage = React.memo(() => {
   }, [checkedLogin]);
   const handleMobileMenuClose = () => setMobileMenuOpen(false);
   const isSearching = searchResults && searchResults.length > 0;
-  const deferredSkeletonSections = (
-    <>
-      <Box className={cx("home-section")} sx={homeSectionSx}>
-        <SkeletonCarousel type="popular" />
-      </Box>
-
-      <Box className={cx("home-section")} sx={homeSectionSx}>
-        <SkeletonCarousel type="trending" />
-      </Box>
-
-      <Box className={cx("home-section")} sx={homeSectionSx}>
-        <SkeletonCarousel type="popular" />
-      </Box>
-
-      <Box
-        className={cx("home-section")}
-        sx={{
-          ...homeSectionSx,
-          minHeight: SKELETON_HEIGHTS.tourist.skeleton,
-        }}
-      >
-        <SkeletonGrid type="tourist" />
-      </Box>
-
-      <Box
-        className={cx("home-section")}
-        sx={{
-          ...homeSectionSx,
-          minHeight: SKELETON_HEIGHTS.blogs.skeleton,
-        }}
-      >
-        <SkeletonGrid type="blogs" />
-      </Box>
-
-      <Box
-        className={cx("home-section")}
-        sx={{
-          ...homeSectionSx,
-          minHeight: SKELETON_HEIGHTS.pageheader.skeleton,
-        }}
-      >
-        <SkeletonCards type="pageheader" />
-      </Box>
-
-    </>
-  );
   const deferredSections = (
     <>
       <Box className="home-section" sx={homeSectionSx}>
@@ -718,7 +672,7 @@ const LandingPage = React.memo(() => {
                   </Suspense>
                 </Box>
 
-                {showDeferredSections ? deferredSections : deferredSkeletonSections}
+                {showDeferredSections ? deferredSections : null}
               </>
             )}
           </Suspense>

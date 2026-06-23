@@ -1,5 +1,5 @@
 import { createScopedClassNames } from "../../utils/createScopedClassNames";
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { viewOtpUser } from "../../redux/actions/otpAction.js";
@@ -9,7 +9,6 @@ import PublishedWithChangesIcon from '@mui/icons-material/PublishedWithChanges';
 import Badge from "@mui/material/Badge";
 import { Notifications as NotificationsIcon, Mail as MailIcon, Menu as MenuIcon, AccountCircle as AccountCircleIcon, ExitToApp as ExitToAppIcon } from "@mui/icons-material";
 import MassclickIndiaLogo from "../../assets/Massclick-India.webp";
-import AddBusinessModal from "./AddBusinessModel.js";
 import AppRegistrationIcon from '@mui/icons-material/AppRegistration';
 import LoginIcon from '@mui/icons-material/Login';
 import DashboardIcon from "@mui/icons-material/Dashboard";
@@ -20,18 +19,19 @@ import HeadsetMicIcon from "@mui/icons-material/HeadsetMic";
 import PolicyIcon from "@mui/icons-material/Policy";
 import FeedbackIcon from "@mui/icons-material/Feedback";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
-import DashboardPage from "../clientComponent/userMenu/DashboardPage/Dashboard.js";
-import FavoritesPage from "../clientComponent/userMenu/FavouritePage/FavouritePage.js";
-import EditProfilePage from "../clientComponent/userMenu/EditProfile/EditProfilePage.js";
-import CustomerServicePage from "../clientComponent/userMenu/CustomerService/CustomerServicePage.js";
-import PolicyPage from "../clientComponent/userMenu/PolicyPage/PolicyPage.js";
-import FeedbackPage from "../clientComponent/userMenu/FeedbackPage/FeedBackPage.js";
-import HelpPage from "../clientComponent/userMenu/HelpPage/HelpPage.js";
-import LeadsNotificationModal from "./leadsNotification/leadsNotification.js";
 import { getDisplayableLeadNotifications } from "./leadsNotification/leadNotificationUtils.js";
 import { fetchMatchedLeads } from "../../redux/actions/leadsAction.js";
 import styles from "./categoryBar.module.css";
-import MRPPage from "./MRP/mrp.js";
+const AddBusinessModal = lazy(() => import("./AddBusinessModel.js"));
+const DashboardPage = lazy(() => import("../clientComponent/userMenu/DashboardPage/Dashboard.js"));
+const FavoritesPage = lazy(() => import("../clientComponent/userMenu/FavouritePage/FavouritePage.js"));
+const EditProfilePage = lazy(() => import("../clientComponent/userMenu/EditProfile/EditProfilePage.js"));
+const CustomerServicePage = lazy(() => import("../clientComponent/userMenu/CustomerService/CustomerServicePage.js"));
+const PolicyPage = lazy(() => import("../clientComponent/userMenu/PolicyPage/PolicyPage.js"));
+const FeedbackPage = lazy(() => import("../clientComponent/userMenu/FeedbackPage/FeedBackPage.js"));
+const HelpPage = lazy(() => import("../clientComponent/userMenu/HelpPage/HelpPage.js"));
+const LeadsNotificationModal = lazy(() => import("./leadsNotification/leadsNotification.js"));
+const MRPPage = lazy(() => import("./MRP/mrp.js"));
 const cx = createScopedClassNames(styles);
 export const isBusinessPeopleUser = (user = {}) => user?.businessPeople === true;
 export const getUserMenuLabel = (item, user = {}) => {
@@ -256,9 +256,13 @@ const CategoryBar = () => {
       </MenuItem>)}
     </Menu>
 
-    <AddBusinessModal open={isModalOpen} handleClose={() => setIsModalOpen(false)} />
+    <Suspense fallback={null}>
+      <AddBusinessModal open={isModalOpen} handleClose={() => setIsModalOpen(false)} />
+    </Suspense>
 
-    <LeadsNotificationModal open={isNotificationModalOpen} onClose={() => setIsNotificationModalOpen(false)} />
+    <Suspense fallback={null}>
+      <LeadsNotificationModal open={isNotificationModalOpen} onClose={() => setIsNotificationModalOpen(false)} />
+    </Suspense>
   </header>;
 };
 export default CategoryBar;
