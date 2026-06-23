@@ -13,9 +13,9 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import { useDrawer } from "./drawerContext";
 import {
+  getVisibleUserMenuItems,
   getUserMenuLabel,
   isBusinessPeopleUser,
-  userMenuItems,
 } from "../categoryBar.js";
 import { useNavigate } from "react-router-dom";
 import { styled } from "@mui/material/styles";
@@ -70,6 +70,7 @@ export default function GlobalDrawer() {
   const userEmail = authUser?.email || "No Email";
 
   const currentUser = authUser;
+  const visibleMenuItems = getVisibleUserMenuItems(currentUser);
 
   const handleLogout = () => {
     localStorage.removeItem("authToken");
@@ -179,7 +180,7 @@ export default function GlobalDrawer() {
         <Divider />
         <Box sx={{ flexGrow: 1, overflowY: "auto" }}>
           <List sx={{ padding: "10px 0" }}>
-            {userMenuItems.map((item, index) => (
+            {visibleMenuItems.map((item, index) => (
               <ListItem
                 key={index}
                 onClick={() => handleItemClick(item)}

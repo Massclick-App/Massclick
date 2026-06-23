@@ -1,5 +1,6 @@
 import {
   FETCH_BUSINESS_REQUEST, FETCH_BUSINESS_SUCCESS, FETCH_BUSINESS_FAILURE,
+  EXPORT_BUSINESS_REQUEST, EXPORT_BUSINESS_SUCCESS, EXPORT_BUSINESS_FAILURE,
   CREATE_BUSINESS_REQUEST, CREATE_BUSINESS_SUCCESS, CREATE_BUSINESS_FAILURE,
   EDIT_BUSINESS_REQUEST, EDIT_BUSINESS_SUCCESS, EDIT_BUSINESS_FAILURE,
   DELETE_BUSINESS_REQUEST, DELETE_BUSINESS_SUCCESS, DELETE_BUSINESS_FAILURE,
@@ -96,6 +97,9 @@ const initialState = {
   sendEnquiryLoading: false,
   sendEnquiryError: null,
   sendEnquiryResult: null,
+  exportLoading: false,
+  exportError: null,
+  exportResult: null,
 
 };
 
@@ -156,6 +160,29 @@ export default function businessListReducer(state = initialState, action) {
     case DELETE_BUSINESS_FAILURE:
     case ACTIVE_BUSINESS_FAILURE:
       return { ...state, loading: false, error: action.payload };
+
+    case EXPORT_BUSINESS_REQUEST:
+      return {
+        ...state,
+        exportLoading: true,
+        exportError: null,
+        exportResult: null,
+      };
+
+    case EXPORT_BUSINESS_SUCCESS:
+      return {
+        ...state,
+        exportLoading: false,
+        exportResult: action.payload,
+        exportError: null,
+      };
+
+    case EXPORT_BUSINESS_FAILURE:
+      return {
+        ...state,
+        exportLoading: false,
+        exportError: action.payload,
+      };
 
     case FETCH_VIEWBUSINESS_REQUEST:
       return { ...state, loading: true, error: null };

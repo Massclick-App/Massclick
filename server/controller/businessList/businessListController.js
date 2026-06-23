@@ -3,10 +3,12 @@ import { BAD_REQUEST } from "../../errorCodes.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
 import { getSignedUrlByKey } from "../../s3Uploder.js";
 import categoryModel from "../../model/category/categoryModel.js";
+import userModel from "../../model/userModel.js";
 import { emitToRoom } from "../../websocket/roomManager.js";
 import { buildRoom, WS_EVENTS } from "../../websocket/constants.js";
 import { getCache, setCache } from "../../utils/redisClient.js";
 import { invalidateSearchCache, invalidateDashboardCache, invalidateCategoryCache } from "../../utils/cacheInvalidation.js";
+import { buildBusinessExportWorkbook } from "../../utils/businessExportXlsx.js";
 
 export const addBusinessListAction = async (req, res) => {
   try {
@@ -396,6 +398,83 @@ export const getSuggestionsController = async (req, res) => {
 const districtAliasMap = {
   tiruchirappalli: ["tiruchirappalli", "trichy"],
   trichy: ["tiruchirappalli", "trichy"],
+};
+
+export const exportBusinessListAction = async (req, res) => {
+  try {
+    const { userRole, userId } = req.authUser;
+    const search = (req.query.search || "").trim();
+    const searchTerm = (req.query.searchTerm || "").trim();
+    const status = req.query.status || "all";
+    const liveStatus = (req.query.liveStatus || "").trim();
+    const category = (req.query.category || "").trim();
+    const location = (req.query.location || "").trim();
+    const paymentStatus = (req.query.paymentStatus || "all").trim();
+    const createdFrom = (req.query.createdFrom || "").trim();
+    const createdTo = (req.query.createdTo || "").trim();
+    const sortBy = req.query.sortBy || "createdAt";
+    const sortOrder = req.query.sortOrder === "asc" ? "asc" : "desc";
+
+    const { list } = await viewAllBusinessList({
+      role: userRole,
+      userId,
+      pageNo: 1,
+      pageSize: 100000,
+      search,
+      status,
+      liveStatus,
+      category: "",
+      location: "",
+      paymentStatus: "",
+      createdFrom,
+      createdTo,
+      sortBy,
+      sortOrder
+    });
+
+    const createdByIds = [
+      ...new Set(
+        list
+          .map((business) => business.createdBy?._id || business.createdBy)
+          .map((id) => String(id || ""))
+          .filter((id) => /^[a-f\d]{24}$/i.test(id))
+      ),
+    ];
+
+    const users = createdByIds.length
+      ? await userModel
+          .find({ _id: { $in: createdByIds } })
+          .select("userName name fullName emailId email")
+          .lean()
+      : [];
+    const usersById = new Map(users.map((user) => [String(user._id), user]));
+
+    const { buffer, rowCount } = buildBusinessExportWorkbook(list, {
+      usersById,
+      filters: {
+        searchTerm,
+        category,
+        location,
+        paymentStatus,
+      },
+    });
+
+    if (rowCount === 0) {
+      return res.status(404).send({ message: "No business data found for export." });
+    }
+
+    const stamp = new Date().toISOString().slice(0, 10);
+    const filename = `massclick-business-directory-${stamp}.xlsx`;
+
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.setHeader("Content-Length", buffer.length);
+    res.setHeader("X-Export-Row-Count", rowCount);
+    return res.send(buffer);
+  } catch (error) {
+    console.error("Error in exportBusinessListAction:", error);
+    return res.status(BAD_REQUEST.code).send({ message: error.message });
+  }
 };
 
 const categoryIntentStopWords = new Set([
