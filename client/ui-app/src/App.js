@@ -92,8 +92,10 @@ const Msg91Analytics = lazy(() => import(/* webpackChunkName: "admin-msg91-analy
 const AuthConsole = lazy(() => import(/* webpackChunkName: "admin-auth-console" */ './Internals/AuthConsole/AuthConsole.js'));
 
 const FloatingButtons = lazy(() => import(/* webpackChunkName: "floating-buttons" */ './Internals/clientComponent/floating/floatingButtons.js'));
-const FloatingAdCard = lazy(() => import(/* webpackChunkName: "floating-ad" */ './Internals/clientComponent/floating/floatingAdCard.js'));
-const HomePopupAd = lazy(() => import(/* webpackChunkName: "home-popup-ad" */ './Internals/clientComponent/popup/HomePopupAd.js'));
+// Google ad surfaces are intentionally disabled for now.
+// Uncomment these lines if you want to restore them later.
+// const FloatingAdCard = lazy(() => import(/* webpackChunkName: "floating-ad" */ './Internals/clientComponent/floating/floatingAdCard.js'));
+// const HomePopupAd = lazy(() => import(/* webpackChunkName: "home-popup-ad" */ './Internals/clientComponent/popup/HomePopupAd.js'));
 const OTPLoginModal = lazy(() => import(/* webpackChunkName: "otp-modal" */ './Internals/clientComponent/AddBusinessModel.js'));
 
 const CategoryRouter = lazy(() => import(/* webpackChunkName: "category-router" */ './Internals/clientComponent/categories/categoryRouter.js'));
@@ -151,6 +153,7 @@ const getRealtimeSocketToken = (snapshot = getAuthSnapshot()) =>
 function AppRoutes({
   isAuthenticated,
   authReady,
+  showGlobalChrome,
   setIsAuthenticated,
   openLoginModal,
   setOpenLoginModal,
@@ -182,11 +185,14 @@ function AppRoutes({
 
   return (
     <>
-      {!isAdminSurface && (
+      {!isAdminSurface && showGlobalChrome && (
         <Suspense fallback={<DynamicLoader />}>
           <GlobalDrawer />
+          {/* Google ad widgets are disabled for now. Re-enable when needed. */}
+          {/*
           <FloatingAdCard />
           <HomePopupAd />
+          */}
           <FloatingButtons onRequireLogin={() => setOpenLoginModal(true)} />
         </Suspense>
       )}
@@ -302,6 +308,7 @@ function App() {
   const [realtimeSocketToken, setRealtimeSocketToken] = useState(() => getRealtimeSocketToken());
   const [authReady, setAuthReady] = useState(false);
   const [openLoginModal, setOpenLoginModal] = useState(false);
+  const [showGlobalChrome, setShowGlobalChrome] = useState(false);
 
   const dispatch = useDispatch();
 
@@ -358,6 +365,22 @@ function App() {
 
     return () => {
       unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    const idleHandle = scheduleIdleCallback(
+      () => setShowGlobalChrome(true),
+      { timeout: 2500 },
+    );
+
+    return () => {
+      if (typeof window.cancelIdleCallback === "function") {
+        window.cancelIdleCallback(idleHandle);
+        return;
+      }
+
+      window.clearTimeout(idleHandle);
     };
   }, []);
 
@@ -437,6 +460,7 @@ function App() {
             <AppRoutes
               isAuthenticated={isAuthenticated}
               authReady={authReady}
+              showGlobalChrome={showGlobalChrome}
               setIsAuthenticated={setIsAuthenticated}
               openLoginModal={openLoginModal}
               setOpenLoginModal={setOpenLoginModal}

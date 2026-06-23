@@ -155,7 +155,7 @@ const ServiceCardsGrid = () => {
                 handleClick(item);
               }
             }}>
-                  <img src={imageUrl} alt={altText} title={item.name} className={cx("item-icon")} width={90} height={90} loading="eager" onError={e => {
+                  <img src={imageUrl} alt={altText} title={item.name} className={cx("item-icon")} width={90} height={90} loading="lazy" decoding="async" onError={e => {
                 e.target.onerror = null;
                 handleImageError(e);
               }} />

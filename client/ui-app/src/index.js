@@ -12,13 +12,20 @@ import { scheduleIdleCallback } from './utils/scheduleIdleCallback.js';
 // Set the store reference for axios global loader
 setAxiosStore(store);
 
-// Load Google Analytics after first paint to unblock main thread
-const loadAnalytics = async () => {
+// Load marketing scripts after first paint to unblock main thread
+const loadDeferredScripts = async () => {
   try {
-    const { loadGoogleAnalytics } = await import('./services/analyticsLoader');
+    const {
+      loadGoogleAnalytics,
+      loadGoogleTagManager,
+    } = await import('./services/analyticsLoader');
     loadGoogleAnalytics();
+    loadGoogleTagManager();
+    // Google AdSense is intentionally disabled for now.
+    // Uncomment the next line if ads are re-enabled later.
+    // loadAdSense();
   } catch (err) {
-    console.warn('Analytics loader error:', err);
+    console.warn('Deferred script loader error:', err);
   }
 };
 
@@ -36,10 +43,10 @@ root.render(
 // Load analytics asynchronously after page interaction to avoid blocking
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
-    scheduleIdleCallback(loadAnalytics, { timeout: 5000 });
+    scheduleIdleCallback(loadDeferredScripts, { timeout: 5000 });
   });
 } else {
-  scheduleIdleCallback(loadAnalytics, { timeout: 5000 });
+  scheduleIdleCallback(loadDeferredScripts, { timeout: 5000 });
 }
 
 reportWebVitals();

@@ -27,6 +27,7 @@ import {
   generateWebsiteSchema,
   generateOrganizationSchema,
 } from "../../utils/seoSchemaGenerators";
+import { scheduleIdleCallback } from "../../utils/scheduleIdleCallback.js";
 import styles from "./homeLayout.module.css";
 const cx = createScopedClassNames(styles);
 
@@ -346,6 +347,7 @@ const SkeletonGrid = ({ type }) => {
 const LandingPage = React.memo(() => {
   const dispatch = useDispatch();
   const [fcmNotif, setFcmNotif] = useState(null);
+  const [showDeferredSections, setShowDeferredSections] = useState(false);
   const { meta: seoMetaData } = useSelector((state) => state.seoReducer);
   useEffect(() => {
     dispatch(
@@ -355,31 +357,45 @@ const LandingPage = React.memo(() => {
     );
   }, [dispatch]);
   useEffect(() => {
-    import("../../firebase")
-      .then(({ messaging, onMessage }) => {
-        if (!messaging || typeof onMessage !== "function") {
-          console.warn("[FCM] Skipping foreground messaging setup in this browser");
-          return undefined;
-        }
+    const idleHandle = scheduleIdleCallback(
+      () => {
+        import("../../firebase")
+          .then(({ messaging, onMessage }) => {
+            if (!messaging || typeof onMessage !== "function") {
+              console.warn("[FCM] Skipping foreground messaging setup in this browser");
+              return undefined;
+            }
 
-        const unsubscribe = onMessage(messaging, (payload) => {
-          console.log("[FCM] Foreground message received:", payload);
-          const { title, body, image } = payload.notification || {};
-          const imageUrl = image || payload.data?.imageUrl || null;
-          console.log("[FCM] Showing in-app notification:", {
-            title,
-            body,
-            imageUrl,
-          });
-          setFcmNotif({
-            title: title || "MassClick",
-            body: body || "",
-            image: imageUrl,
-          });
-        });
-        return unsubscribe;
-      })
-      .catch((err) => console.warn("[FCM] Failed to load Firebase:", err));
+            const unsubscribe = onMessage(messaging, (payload) => {
+              console.log("[FCM] Foreground message received:", payload);
+              const { title, body, image } = payload.notification || {};
+              const imageUrl = image || payload.data?.imageUrl || null;
+              console.log("[FCM] Showing in-app notification:", {
+                title,
+                body,
+                imageUrl,
+              });
+              setFcmNotif({
+                title: title || "MassClick",
+                body: body || "",
+                image: imageUrl,
+              });
+            });
+            return unsubscribe;
+          })
+          .catch((err) => console.warn("[FCM] Failed to load Firebase:", err));
+      },
+      { timeout: 4000 },
+    );
+
+    return () => {
+      if (typeof window.cancelIdleCallback === "function") {
+        window.cancelIdleCallback(idleHandle);
+        return;
+      }
+
+      window.clearTimeout(idleHandle);
+    };
   }, []);
   const fallbackSeo = {
     title: "Massclick - India's Leading Local Search Platform",
@@ -400,6 +416,23 @@ const LandingPage = React.memo(() => {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [checkedLogin, setCheckedLogin] = useState(false);
   const heroSectionRef = useRef(null);
+
+  useEffect(() => {
+    const idleHandle = scheduleIdleCallback(
+      () => setShowDeferredSections(true),
+      { timeout: 3000 },
+    );
+
+    return () => {
+      if (typeof window.cancelIdleCallback === "function") {
+        window.cancelIdleCallback(idleHandle);
+        return;
+      }
+
+      window.clearTimeout(idleHandle);
+    };
+  }, []);
+
   useEffect(() => {
     const mobile = localStorage.getItem("mobileNumber");
     const token = localStorage.getItem("authToken");
@@ -457,6 +490,99 @@ const LandingPage = React.memo(() => {
   }, [checkedLogin]);
   const handleMobileMenuClose = () => setMobileMenuOpen(false);
   const isSearching = searchResults && searchResults.length > 0;
+  const deferredSkeletonSections = (
+    <>
+      <Box className={cx("home-section")} sx={homeSectionSx}>
+        <SkeletonCarousel type="popular" />
+      </Box>
+
+      <Box className={cx("home-section")} sx={homeSectionSx}>
+        <SkeletonCarousel type="trending" />
+      </Box>
+
+      <Box className={cx("home-section")} sx={homeSectionSx}>
+        <SkeletonCarousel type="popular" />
+      </Box>
+
+      <Box
+        className={cx("home-section")}
+        sx={{
+          ...homeSectionSx,
+          minHeight: SKELETON_HEIGHTS.tourist.skeleton,
+        }}
+      >
+        <SkeletonGrid type="tourist" />
+      </Box>
+
+      <Box
+        className={cx("home-section")}
+        sx={{
+          ...homeSectionSx,
+          minHeight: SKELETON_HEIGHTS.blogs.skeleton,
+        }}
+      >
+        <SkeletonGrid type="blogs" />
+      </Box>
+
+      <Box
+        className={cx("home-section")}
+        sx={{
+          ...homeSectionSx,
+          minHeight: SKELETON_HEIGHTS.pageheader.skeleton,
+        }}
+      >
+        <SkeletonCards type="pageheader" />
+      </Box>
+
+    </>
+  );
+  const deferredSections = (
+    <>
+      <Box className="home-section" sx={homeSectionSx}>
+        <Suspense fallback={<SkeletonCarousel type="popular" />}>
+          <EventCarousel locationLabel={locationName} />
+        </Suspense>
+      </Box>
+
+      {/* <Box className="home-section" sx={homeSectionSx}>
+        <Suspense fallback={<SkeletonCards type="service" />}>
+          <MassclickBanner />
+        </Suspense>
+      </Box> */}
+
+      <Box className={cx("home-section")} sx={homeSectionSx}>
+        <Suspense fallback={<SkeletonCarousel type="trending" />}>
+          <TrendingSearchesCarousel />
+        </Suspense>
+      </Box>
+
+      <Box className={cx("home-section")} sx={homeSectionSx}>
+        <Suspense fallback={<SkeletonCarousel type="popular" />}>
+          <CardCarousel />
+        </Suspense>
+      </Box>
+
+      <Box className={cx("home-section")} sx={homeSectionSx}>
+        <Suspense fallback={<SkeletonGrid type="tourist" />}>
+          <TopTourist />
+        </Suspense>
+      </Box>
+
+      <Box className={cx("home-section")} sx={homeSectionSx}>
+        <Suspense fallback={<SkeletonGrid type="blogs" />}>
+          <RelatedBlogs location={locationName} />
+        </Suspense>
+      </Box>
+
+      <Box className={cx("home-section")} sx={homeSectionSx}>
+        <Suspense fallback={<SkeletonCards type="pageheader" />}>
+          <PageHeaderContents />
+        </Suspense>
+      </Box>
+
+      <Footer />
+    </>
+  );
   const drawerContent = (
     <Box
       onClick={handleMobileMenuClose}
@@ -569,7 +695,7 @@ const LandingPage = React.memo(() => {
                     overflow: "visible",
                   }}
                 >
-                  <Suspense fallback={null}>
+                  <Suspense fallback={<SkeletonCards type="featured" />}>
                     <FeaturedServices />
                   </Suspense>
                 </Box>
@@ -580,54 +706,19 @@ const LandingPage = React.memo(() => {
                   </Suspense>
                 </Box>
 
-                <Box className="home-section" sx={homeSectionSx}>
-                  <Suspense fallback={<SkeletonCarousel type="popular" />}>
-                    <EventCarousel locationLabel={locationName} />
-                  </Suspense>
-                </Box>
-
-                {/* <Box className="home-section" sx={homeSectionSx}>
-                  <Suspense fallback={<SkeletonCards type="service" />}>
-                    <MassclickBanner />
-                  </Suspense>
-                </Box> */}
-
-                <Box className={cx("home-section")} sx={homeSectionSx}>
-                  <Suspense fallback={<SkeletonCarousel type="trending" />}>
-                    <TrendingSearchesCarousel />
-                  </Suspense>
-                </Box>
-
-                <Box className={cx("home-section")} sx={homeSectionSx}>
-                  <Suspense fallback={<SkeletonCarousel type="popular" />}>
-                    <CardCarousel />
-                  </Suspense>
-                </Box>
-
-                <Box className={cx("home-section")} sx={homeSectionSx}>
-                  <Suspense fallback={<SkeletonGrid type="tourist" />}>
-                    <TopTourist />
-                  </Suspense>
-                </Box>
-
-                <Box className={cx("home-section")} sx={homeSectionSx}>
-                  <Suspense fallback={<SkeletonGrid type="blogs" />}>
-                    <RelatedBlogs location={locationName} />
-                  </Suspense>
-                </Box>
-
-                <Box className={cx("home-section")} sx={homeSectionSx}>
-                  <Suspense fallback={<SkeletonCards type="pageheader" />}>
-                    <PageHeaderContents />
-                  </Suspense>
-                </Box>
-                <Box className={cx("home-section")} sx={homeSectionSx}>
+                <Box
+                  className={cx("home-section")}
+                  sx={{
+                    ...homeSectionSx,
+                    minHeight: { xs: 520, md: 620 },
+                  }}
+                >
                   <Suspense fallback={null}>
                     <PopularCategoriesLink />
                   </Suspense>
                 </Box>
 
-                <Footer />
+                {showDeferredSections ? deferredSections : deferredSkeletonSections}
               </>
             )}
           </Suspense>
