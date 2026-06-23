@@ -2,13 +2,13 @@
 .service-cards-container {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    align-items: stretch;
+    align-items: start;
     align-content: start;
     padding: 28px var(--section-padding-h) 24px;
     max-width: var(--section-max-width);
     margin: 0 auto;
     gap: 16px;
-    min-height: clamp(420px, 26vw, 560px);
+    min-height: auto;
     background: #ffffff;
     border-radius: var(--section-radius);
     border: 1px solid rgba(17, 24, 39, 0.08);
@@ -84,7 +84,7 @@
     text-decoration: none;
     color: #4b5563;
     padding: 8px 4px;
-    min-height: 112px;
+    min-height: 96px;
     border-radius: 8px;
     transition: background-color 0.2s, transform 0.2s, color 0.2s;
     width: 100%;
@@ -150,7 +150,7 @@
     }
 
     .service-cards-container .item-card {
-        min-height: 98px;
+        min-height: 90px;
     }
 
     .service-cards-container .item-name {
@@ -200,7 +200,7 @@
     }
 
     .service-cards-container .item-card {
-        min-height: 104px;
+        min-height: 92px;
     }
 }
 
@@ -216,7 +216,7 @@
     }
 
     .service-cards-container .item-card {
-        min-height: 112px;
+        min-height: 96px;
     }
     .service-cards-container .item-name {
         font-size: 0.82rem;

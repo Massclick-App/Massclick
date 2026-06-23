@@ -490,6 +490,8 @@ const LandingPage = React.memo(() => {
   }, [checkedLogin]);
   const handleMobileMenuClose = () => setMobileMenuOpen(false);
   const isSearching = searchResults && searchResults.length > 0;
+  // Keep the original visual order, but defer the below-the-fold sections until idle
+  // so the homepage stays faster on mobile and desktop.
   const deferredSections = (
     <>
       <Box className="home-section" sx={homeSectionSx}>
@@ -533,8 +535,6 @@ const LandingPage = React.memo(() => {
           <PageHeaderContents />
         </Suspense>
       </Box>
-
-      <Footer />
     </>
   );
   const drawerContent = (
@@ -660,6 +660,8 @@ const LandingPage = React.memo(() => {
                   </Suspense>
                 </Box>
 
+                {showDeferredSections ? deferredSections : null}
+
                 <Box
                   className={cx("home-section")}
                   sx={{
@@ -672,7 +674,7 @@ const LandingPage = React.memo(() => {
                   </Suspense>
                 </Box>
 
-                {showDeferredSections ? deferredSections : null}
+                <Footer />
               </>
             )}
           </Suspense>
