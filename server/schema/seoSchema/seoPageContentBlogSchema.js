@@ -30,6 +30,7 @@ const businessSchema = new mongoose.Schema(
     contact: String,
     contactList: String,
     experience: String,
+    bannerImageKey: String,
     bannerImage: String,
     category: String,
     location: String,

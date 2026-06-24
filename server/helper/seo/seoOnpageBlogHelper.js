@@ -1,4 +1,5 @@
 import seoPageContentBlogModel from "../../model/seoModel/seoPageContentBlogModel.js";
+import businessListModel from "../../model/businessList/businessListModel.js";
 import {
   uploadImageToS3,
   getSignedUrlByKey,
@@ -515,6 +516,35 @@ export const getSeoBlogBySlugService = async (slug) => {
         )
         .lean();
     }
+  }
+
+  if (result?.businessDetails?.length) {
+    const businessNames = result.businessDetails
+      .map((business) => business.businessName)
+      .filter(Boolean);
+
+    const businesses = await businessListModel
+      .find({
+        businessName: { $in: businessNames },
+        isActive: true,
+      })
+      .select("businessName bannerImageKey")
+      .lean();
+
+    const imageKeyByBusinessName = new Map(
+      businesses.map((business) => [
+        normalizeText(business.businessName),
+        business.bannerImageKey || "",
+      ])
+    );
+
+    result.businessDetails = result.businessDetails.map((business) => ({
+      ...business,
+      bannerImageKey:
+        business.bannerImageKey ||
+        imageKeyByBusinessName.get(normalizeText(business.businessName)) ||
+        "",
+    }));
   }
 
   return result ? mapSignedUrls(result) : null;
