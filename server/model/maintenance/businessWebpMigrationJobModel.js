@@ -16,6 +16,8 @@ const migrationProgressSchema = new mongoose.Schema(
   {
     businessesScanned: { type: Number, default: 0 },
     businessesUpdated: { type: Number, default: 0 },
+    documentsScanned: { type: Number, default: 0 },
+    documentsUpdated: { type: Number, default: 0 },
     imagesScanned: { type: Number, default: 0 },
     imagesConverted: { type: Number, default: 0 },
     imagesSkipped: { type: Number, default: 0 },
@@ -28,6 +30,7 @@ const migrationProgressSchema = new mongoose.Schema(
 const migrationTotalsSchema = new mongoose.Schema(
   {
     candidateBusinesses: { type: Number, default: 0 },
+    candidateDocuments: { type: Number, default: 0 },
     candidateImages: { type: Number, default: 0 },
   },
   { _id: false }
@@ -36,6 +39,8 @@ const migrationTotalsSchema = new mongoose.Schema(
 const businessWebpMigrationJobSchema = new mongoose.Schema(
   {
     jobType: { type: String, default: "business-webp-migration", index: true },
+    scopeKey: { type: String, default: "businessList", index: true },
+    scopeLabel: { type: String, default: "Business List" },
     status: {
       type: String,
       enum: ["queued", "running", "paused", "cancelled", "completed", "completed_with_errors", "failed"],
@@ -62,6 +67,7 @@ const businessWebpMigrationJobSchema = new mongoose.Schema(
     lastHeartbeatAt: { type: Date, default: null },
     lastError: { type: String, default: "" },
     lastProcessedBusinessId: { type: String, default: "" },
+    lastProcessedItemId: { type: String, default: "" },
     summary: {
       totalDocumentsTouched: { type: Number, default: 0 },
       totalDocumentsWithChanges: { type: Number, default: 0 },

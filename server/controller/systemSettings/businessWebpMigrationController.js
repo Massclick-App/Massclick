@@ -1,10 +1,10 @@
 import {
-  cancelBusinessWebpMigration,
-  pauseBusinessWebpMigration,
-  getBusinessWebpMigrationJobById,
-  getLatestBusinessWebpMigrationJob,
-  startBusinessWebpMigration,
-} from "../../helper/businessList/businessWebpMigrationHelper.js";
+  cancelWebpMigration,
+  getLatestWebpMigrationJob,
+  getWebpMigrationJobById,
+  pauseWebpMigration,
+  startWebpMigration,
+} from "../../helper/mediaCleanup/s3WebpMigrationHelper.js";
 
 const clampInteger = (value, min, max, fallback) => {
   const parsed = Number.parseInt(value, 10);
@@ -14,11 +14,13 @@ const clampInteger = (value, min, max, fallback) => {
 
 export const startBusinessWebpMigrationAction = async (req, res) => {
   try {
+    const scopeKey = req.body?.scopeKey || req.query?.scopeKey || "businessList";
     const deleteOriginals = req.body?.deleteOriginals !== false;
     const batchSize = clampInteger(req.body?.batchSize, 10, 500, 100);
     const retryCount = clampInteger(req.body?.retryCount, 1, 5, 3);
 
-    const result = await startBusinessWebpMigration({
+    const result = await startWebpMigration({
+      scopeKey,
       deleteOriginals,
       batchSize,
       retryCount,
@@ -42,7 +44,8 @@ export const startBusinessWebpMigrationAction = async (req, res) => {
 
 export const pauseBusinessWebpMigrationAction = async (req, res) => {
   try {
-    const job = await pauseBusinessWebpMigration();
+    const scopeKey = req.body?.scopeKey || req.query?.scopeKey || null;
+    const job = await pauseWebpMigration({ scopeKey });
 
     if (!job) {
       return res.status(404).json({
@@ -66,7 +69,8 @@ export const pauseBusinessWebpMigrationAction = async (req, res) => {
 
 export const cancelBusinessWebpMigrationAction = async (req, res) => {
   try {
-    const job = await cancelBusinessWebpMigration();
+    const scopeKey = req.body?.scopeKey || req.query?.scopeKey || null;
+    const job = await cancelWebpMigration({ scopeKey });
 
     if (!job) {
       return res.status(404).json({
@@ -90,7 +94,8 @@ export const cancelBusinessWebpMigrationAction = async (req, res) => {
 
 export const getLatestBusinessWebpMigrationJobAction = async (req, res) => {
   try {
-    const job = await getLatestBusinessWebpMigrationJob();
+    const scopeKey = req.query?.scopeKey || null;
+    const job = await getLatestWebpMigrationJob(scopeKey);
     return res.json({ success: true, data: job || null });
   } catch (error) {
     console.error("getLatestBusinessWebpMigrationJobAction error:", error);
@@ -104,7 +109,7 @@ export const getLatestBusinessWebpMigrationJobAction = async (req, res) => {
 export const getBusinessWebpMigrationJobAction = async (req, res) => {
   try {
     const { jobId } = req.params;
-    const job = await getBusinessWebpMigrationJobById(jobId);
+    const job = await getWebpMigrationJobById(jobId);
 
     if (!job) {
       return res.status(404).json({

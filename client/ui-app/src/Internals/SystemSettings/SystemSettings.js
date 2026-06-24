@@ -3,7 +3,7 @@ import React, { useEffect, useState, useMemo, useDeferredValue } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchSystemSettings, updateSystemSettings } from "../../redux/actions/systemSettingsAction.js";
 import { fetchRedisStatus, invalidateCache, clearAllCaches, fetchRedisKeys, deleteRedisKeys, fetchRedisInfo, flushRedisDb, deleteRedisPattern } from "../../redux/actions/cacheActions.js";
-import BusinessImageMigrationCard from "./BusinessImageMigrationCard.js";
+import S3WebpMigrationCard from "./S3WebpMigrationCard.js";
 import styles from "./SystemSettings.module.css";
 
 // Icons
@@ -1293,7 +1293,7 @@ export default function SystemSettings() {
           </div>;
       case "mediaCleanup":
         return <div className={cx("panel-stack")}>
-            <BusinessImageMigrationCard />
+            <S3WebpMigrationCard />
           </div>;
       default:
         return null;

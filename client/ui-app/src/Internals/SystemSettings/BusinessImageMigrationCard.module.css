@@ -139,6 +139,16 @@
   background: #fff;
 }
 
+.field-row select {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 9px 10px;
+  font: inherit;
+  color: #0f172a;
+  background: #fff;
+}
+
 .field-row input:focus {
   outline: none;
   border-color: #f97316;
@@ -193,6 +203,15 @@
   color: #0f766e;
   background: #ecfeff;
   border: 1px solid #a5f3fc;
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.scope-note {
+  font-size: 12px;
+  color: #334155;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
   border-radius: 12px;
   padding: 10px 12px;
 }
