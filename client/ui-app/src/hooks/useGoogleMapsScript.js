@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 
 const SCRIPT_ID = 'google-maps-places-script';
 let loadPromise = null;
-const GOOGLE_MAPS_API_KEY =
-  process.env.GOOGLE_MAPS_KEY || process.env.REACT_APP_GOOGLE_MAPS_KEY;
+const GOOGLE_MAPS_API_KEY = process.env.REACT_APP_GOOGLE_MAPS_KEY;
 
 export const useGoogleMapsScript = () => {
   const [loaded, setLoaded] = useState(() => !!window.google?.maps?.places);
