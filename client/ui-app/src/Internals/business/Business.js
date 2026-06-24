@@ -77,6 +77,7 @@ const QuillEditor = ({
   const quillRef = useRef(null);
   const changeHandlerRef = useRef(onChange);
   const syncInProgressRef = useRef(false);
+  const initialValueRef = useRef(value);
 
   useEffect(() => {
     changeHandlerRef.current = onChange;
@@ -105,8 +106,8 @@ const QuillEditor = ({
 
       quillRef.current = quill;
       syncInProgressRef.current = true;
-      if (value) {
-        quill.clipboard.dangerouslyPasteHTML(value);
+      if (initialValueRef.current) {
+        quill.clipboard.dangerouslyPasteHTML(initialValueRef.current);
       } else {
         quill.setText("");
       }
@@ -131,10 +132,15 @@ const QuillEditor = ({
       }
       quillRef.current = null;
       if (editorNode) {
+        const toolbarNode = editorNode.previousElementSibling;
+        if (toolbarNode?.classList.contains("ql-toolbar")) {
+          toolbarNode.remove();
+        }
+        editorNode.removeAttribute("class");
         editorNode.innerHTML = "";
       }
     };
-  }, [formats, modules, placeholder, value]);
+  }, [formats, modules, placeholder]);
 
   useEffect(() => {
     const quill = quillRef.current;
