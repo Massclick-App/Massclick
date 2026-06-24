@@ -204,7 +204,7 @@ const CategoryBar = () => {
         </div>
         <div className={cx("brandingText")}>
           <button type="button" className={cx("logoButton")} onClick={goHome} aria-label="Go to Massclick home">
-            <img src="/Massclick-India.webp" alt="Massclick India" className={cx("brandLogo")} width="180" height="44" decoding="async" fetchPriority="high" loading="eager" />
+            <img src="/Massclick-India.webp" alt="Massclick India" className={cx("brandLogo")} width="180" height="44" decoding="async" fetchpriority="high" loading="eager" />
           </button>
         </div>
       </div>

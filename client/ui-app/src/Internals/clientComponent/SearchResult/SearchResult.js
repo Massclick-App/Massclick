@@ -16,7 +16,7 @@ import ViewAgendaIcon from "@mui/icons-material/ViewAgenda";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import { Box, Chip, Drawer, Button } from "@mui/material";
 import styles from "./SearchResult.module.css";
-import CardsSearch from "../CardsSearch/CardsSearch";
+import StickySearchBar from '../StickySearchBar/StickySearchBar';
 import CardDesign from "../cards/cards.js";
 import SeoMeta from "../seo/seoMeta.js";
 import Footer from "../footer/footer.js";
@@ -91,6 +91,7 @@ const SearchResults = React.memo(() => {
   const urlParams = useParams();
   const locationState = useLocation();
   const [openLoginModal, setOpenLoginModal] = useState(false);
+  const [viewport, setViewport] = useState(window.innerWidth);
 
   const {
     searchTerm,
@@ -155,6 +156,12 @@ const SearchResults = React.memo(() => {
     if (!authUser) {
       setOpenLoginModal(true);
     }
+  }, []);
+
+  useEffect(() => {
+    const handleResize = () => setViewport(window.innerWidth);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
   useEffect(() => {
     setSearchInput(displayName || searchTerm || "");
@@ -457,6 +464,7 @@ const SearchResults = React.memo(() => {
   });
 
   const totalActiveCount = activeFilterChips.length + (sortBy !== "relevant" ? 1 : 0);
+  const isCompact = viewport < 1024;
   const viewOptions = [
     { value: "list", label: "List", icon: ViewListIcon },
     { value: "grid", label: "Grid", icon: ViewModuleIcon },
@@ -489,7 +497,7 @@ const SearchResults = React.memo(() => {
 
   if (error) {
     return <>
-        <CardsSearch locationName={locationInput} setLocationName={setLocationInput} searchTerm={searchInput} setSearchTerm={setSearchInput} committedLocationName={locationText} committedSearchTerm={searchText} />
+        <StickySearchBar locationName={locationInput} setLocationName={setLocationInput} searchTerm={searchInput} setSearchTerm={setSearchInput} committedLocationName={locationText} committedSearchTerm={searchText} />
         <div className={cx("no-results-container")}>
           <h1>{searchText} in {locationText}</h1>
           <p>Something went wrong</p>
@@ -555,7 +563,7 @@ const SearchResults = React.memo(() => {
       </Helmet>
 
       <div className={cx("results-page")}>
-        <CardsSearch locationName={locationInput} setLocationName={setLocationInput} searchTerm={searchInput} setSearchTerm={setSearchInput} committedLocationName={locationText} committedSearchTerm={searchText} />
+        <StickySearchBar locationName={locationInput} setLocationName={setLocationInput} searchTerm={searchInput} setSearchTerm={setSearchInput} committedLocationName={locationText} committedSearchTerm={searchText} />
         <main>
         <div className={cx("page-spacing")} />
         <div className={cx("results-container banner-section")}>
@@ -716,6 +724,7 @@ const SearchResults = React.memo(() => {
                         filterConfig={filterConfig}
                         distance={typeof business.distance === "number" ? business.distance : null}
                         viewMode={viewMode}
+                        compact={isCompact}
                         index={idx}
                       />
                     </div>
@@ -771,6 +780,7 @@ const SearchResults = React.memo(() => {
                             distance={typeof b.distance === "number" ? b.distance : null}
                             viewMode="grid"
                             cardVariant="nearby"
+                            compact={isCompact}
                             index={idx}
                           />
                         </div>

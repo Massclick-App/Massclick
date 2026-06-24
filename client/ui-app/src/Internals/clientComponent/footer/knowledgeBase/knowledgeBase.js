@@ -3,7 +3,7 @@ import React, { useEffect } from "react";
 import { Helmet } from "react-helmet-async";
 import styles from "./knowledgeBase.module.css";
 import Footer from '../footer';
-import CardsSearch from '../../CardsSearch/CardsSearch';
+import StickySearchBar from '../../../clientComponent/StickySearchBar/StickySearchBar';
 import SeoMeta from "../../seo/seoMeta";
 import { fetchSeoMeta } from "../../../../redux/actions/seoAction";
 import { useDispatch, useSelector } from "react-redux";
@@ -82,7 +82,7 @@ const KnowledgeBasePage = () => {
     return (
         <>
             <SeoMeta seoData={seoMetaData} fallback={fallbackSeo} />
-            <CardsSearch />
+            <StickySearchBar />
             
             <div className={cx("kb-container")}>
                 <section className={cx("kb-hero")}>

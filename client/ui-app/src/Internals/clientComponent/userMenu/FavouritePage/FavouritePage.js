@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import RefreshIcon from "@mui/icons-material/Refresh";
-import CardsSearch from "../../CardsSearch/CardsSearch";
+import StickySearchBar from '../../../clientComponent/StickySearchBar/StickySearchBar';
 import Footer from "../../footer/footer";
 import Cards from "../../cards/cards";
 import { fetchFavorites, getAuthUser } from "../../../../redux/actions/favoriteAction";
@@ -27,7 +27,7 @@ export default function FavoritesPage() {
     }
   }, [dispatch, isLoggedIn]);
   return <>
-      <CardsSearch />
+      <StickySearchBar />
 
       <div className={cx("fav-page")}>
 

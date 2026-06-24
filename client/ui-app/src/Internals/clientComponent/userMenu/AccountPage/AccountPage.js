@@ -1,5 +1,5 @@
 import { createScopedClassNames } from "../../../../utils/createScopedClassNames";
-import CardsSearch from '../../CardsSearch/CardsSearch';
+import StickySearchBar from '../../StickySearchBar/StickySearchBar';
 import Footer from '../../footer/footer';
 import styles from "./AccountPage.module.css";
 
@@ -13,7 +13,7 @@ const PinIcon = () => <span className={cx("input-icon")}>📌</span>; // Pincode
 
 export default function AccountPage() {
   return <>
- <CardsSearch />
+ <StickySearchBar />
  <div className={cx("account-details-container")}>
       <div className={cx("card-header")}>
         <h2 className={cx("card-title")}>Account Details</h2>

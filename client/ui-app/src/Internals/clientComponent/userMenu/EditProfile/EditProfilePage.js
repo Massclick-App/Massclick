@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import styles from "./EditProfile.module.css";
 import Footer from "../../footer/footer";
-import CardsSearch from "../../CardsSearch/CardsSearch";
+import StickySearchBar from '../../../clientComponent/StickySearchBar/StickySearchBar';
 import { viewOtpUser, updateOtpUser } from "../../../../redux/actions/otpAction";
 import { Alert, AlertTitle } from "@mui/material";
 import EditBusinessPage from "../EditBusiness/EditBusinessPage";
@@ -377,7 +377,7 @@ function MultiStepProfileForm() {
   };
   const progressPercent = Math.round((currentStep - 1) / (steps.length - 1) * 100);
   return <>
-      <CardsSearch />
+      <StickySearchBar />
       <br />
       <br />
       <br />

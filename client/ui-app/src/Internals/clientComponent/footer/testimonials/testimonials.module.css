@@ -1,235 +1,272 @@
-/* --- Testimonials Color Variables (Reference to original primary color) --- */
-:root {
-    --color-primary: #ff6600; /* Orange */
-    --color-text-dark: #212529;
-    --color-text-grey: #495057;
-    --color-background-light: #f8f9fa;
-    --color-card-background: #ffffff;
-    --color-shadow-medium: rgba(0, 0, 0, 0.1);
-    --font-family-primary: 'Inter', sans-serif;
+﻿.section-testimonials {
+    position: relative;
+    overflow: hidden;
+    padding: clamp(72px, 8vw, 112px) 20px;
+    background: transparent;
 }
 
+.section-shell {
+    position: relative;
+    z-index: 1;
+    max-width: 1200px;
+    margin: 0 auto;
+}
 
+.section-heading {
+    max-width: 780px;
+    margin: 0 auto 30px;
+    text-align: center;
+}
 
-.section-testimonials {
-    padding: 80px 20px;
-    background-color: var(--color-background-light);
-    font-family: var(--font-family-primary);
-    overflow: hidden; /* Crucial to hide cards outside the view */
+.section-eyebrow {
+    margin: 0 0 12px;
+    color: #f97316;
+    font-size: 0.82rem;
+    font-weight: 800;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
 }
 
 .section-title-testimonials {
-    font-size: 2.5rem;
+    margin: 0;
+    color: #111827;
+    font-size: clamp(2rem, 4vw, 3.6rem);
     font-weight: 800;
-    color: var(--color-text-dark);
-    text-align: center;
-    margin-bottom: 60px;
+    line-height: 1.05;
 }
 
 .highlight-text-testimonials {
-    color: var(--color-primary);
+    color: #ff6600;
 }
 
-/* --- Slider Container (The viewable window) --- */
+.section-description {
+    margin: 18px auto 0;
+    max-width: 680px;
+    color: #475569;
+    font-size: 1rem;
+    line-height: 1.75;
+}
+
 .slider-container {
+    position: relative;
     max-width: 1200px;
     margin: 0 auto;
-    position: relative;
-    overflow: hidden; /* Hides cards that are outside the current viewport */
-    padding: 0 40px; /* Space for control buttons to live outside the track on desktop */
 }
 
-/* --- Slider Track (The moving part) --- */
 .slider-track {
-    display: flex;
-    /* Must not wrap */
-    flex-wrap: nowrap; 
-    /* Ensures smooth animation for auto/manual scroll */
-    transition: transform 1s cubic-bezier(0.25, 0.8, 0.25, 1); 
-    gap: 30px;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 100%;
+    gap: 20px;
+    overflow-x: auto;
+    padding: 10px 6px 24px;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    overscroll-behavior-x: contain;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
 }
 
-/* ========================================================= */
-/* --- 2. Testimonial Card Styling (Height Reduced/High Quality) --- */
-/* ========================================================= */
+.slider-track::-webkit-scrollbar {
+    display: none;
+}
 
 .testimonial-card {
-    /* Base width: 100% minus the gap, for one card per view on mobile */
-    flex: 0 0 100%; 
-    max-width: 100%;
-    background-color: var(--color-card-background);
-    /* **HEIGHT REDUCTION CHANGE:** Reduced vertical padding */
-    padding: 30px 25px; 
-    border-radius: 12px;
-    box-shadow: 0 10px 30px var(--color-shadow-medium);
-    text-align: center;
+    position: relative;
+    min-height: 100%;
+    padding: 28px;
+    border: 1px solid rgba(255, 102, 0, 0.12);
+    border-radius: 28px;
+    background: transparent;
+    box-shadow: 0 18px 50px rgba(15, 23, 42, 0.08);
+    scroll-snap-align: center;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    gap: 22px;
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.testimonial-card:hover {
+    transform: translateY(-3px);
+    border-color: rgba(255, 102, 0, 0.25);
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.12);
+}
+
+.testimonial-top {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.testimonial-avatar {
+    width: 54px;
+    height: 54px;
+    border-radius: 18px;
+    display: grid;
+    place-items: center;
+    color: #ffffff;
+    font-size: 1.1rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #ff6600 0%, #fb923c 100%);
+    box-shadow: 0 12px 28px rgba(255, 102, 0, 0.28);
+}
+
+.testimonial-meta {
+    min-width: 0;
+}
+
+.author-name {
+    margin: 0;
+    color: #0f172a;
+    font-size: 1.08rem;
+    font-weight: 800;
+}
+
+.author-source {
+    margin: 4px 0 0;
+    color: #f97316;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
 }
 
 .testimonial-quote {
-    /* **HEIGHT REDUCTION CHANGE:** Slightly reduced font size for compactness */
-    font-size: 1.05rem; 
-    font-style: italic;
-    color: var(--color-text-grey);
-    /* Slightly tighter line height */
-    line-height: 1.6; 
-    /* Reduced margin below the quote */
-    margin-bottom: 20px; 
+    margin: 0;
+    color: #334155;
+    font-size: 1.03rem;
+    line-height: 1.9;
     position: relative;
-}
-
-.testimonial-quote::before,
-.testimonial-quote::after {
-    content: "”";
-    color: var(--color-primary);
-    font-size: 2rem; 
-    line-height: 0;
-    position: absolute;
-    opacity: 0.2;
+    padding: 4px 0 0;
 }
 
 .testimonial-quote::before {
     content: "“";
-    top: 5px;
-    left: 10px;
+    position: absolute;
+    top: -16px;
+    left: -2px;
+    color: rgba(255, 102, 0, 0.28);
+    font-size: 3.5rem;
+    font-weight: 800;
+    line-height: 1;
 }
 
-.testimonial-quote::after {
-    bottom: 5px;
-    right: 10px;
+.testimonial-accent {
+    margin-top: auto;
+    height: 4px;
+    width: 88px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #ff6600 0%, rgba(255, 102, 0, 0.08) 100%);
 }
-
-.testimonial-author-info {
-    border-top: 1px solid #eee;
-    padding-top: 10px; 
-}
-
-.author-name {
-    font-size: 1.2rem;
-    font-weight: 700;
-    color: var(--color-text-dark);
-    margin: 0;
-}
-
-.author-source {
-    font-size: 0.9rem;
-    color: var(--color-text-grey);
-    margin-top: 5px;
-}
-
-.author-company {
-    font-weight: 600;
-}
-
-.author-divider {
-    margin: 0 8px;
-    color: #ccc;
-}
-
-
-
 
 .slider-control {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
-    background-color: var(--color-primary);
-    color: var(--color-card-background);
+    width: 48px;
+    height: 48px;
     border: none;
     border-radius: 50%;
-    width: 45px;
-    height: 45px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    display: grid;
+    place-items: center;
+    color: #ffffff;
+    background: linear-gradient(135deg, #ff6600 0%, #fb923c 100%);
+    box-shadow: 0 16px 35px rgba(255, 102, 0, 0.28);
     cursor: pointer;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-    z-index: 10;
-    transition: background-color 0.3s ease;
+    z-index: 2;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
 }
 
 .slider-control:hover {
-    background-color: #e65100; /* Darker orange on hover */
+    transform: translateY(-50%) scale(1.05);
+    box-shadow: 0 18px 40px rgba(255, 102, 0, 0.34);
+}
+
+.slider-control:focus-visible,
+.indicator-dot:focus-visible {
+    outline: 3px solid rgba(255, 102, 0, 0.28);
+    outline-offset: 3px;
 }
 
 .slider-control.prev {
-    left: 0; /* Positioned by container padding on desktop */
+    left: -12px;
 }
 
 .slider-control.next {
-    right: 0; /* Positioned by container padding on desktop */
+    right: -12px;
 }
 
 .control-icon {
-    font-size: 1.5rem !important;
+    font-size: 1.6rem !important;
 }
 
-/* Indicators (Dots) */
 .slider-indicators {
-    text-align: center;
-    margin-top: 30px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin-top: 28px;
 }
 
 .indicator-dot {
-    width: 10px;
-    height: 10px;
-    background-color: #ccc;
-    border: none;
-    border-radius: 50%;
-    margin: 0 5px;
-    cursor: pointer;
-    transition: all 0.3s ease;
+    width: 11px;
+    height: 11px;
     padding: 0;
+    border: none;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.48);
+    cursor: pointer;
+    transition: width 0.25s ease, background-color 0.25s ease, transform 0.25s ease;
 }
 
 .indicator-dot.active {
-    width: 25px;
-    background-color: var(--color-primary);
-    border-radius: 5px;
+    width: 28px;
+    background: #ff6600;
 }
 
-
-
-
-/* Tablet (Screen width > 768px) */
 @media (min-width: 768px) {
-    .section-title-testimonials {
-        font-size: 3rem;
+    .slider-track {
+        grid-auto-columns: calc(50% - 10px);
+        gap: 24px;
     }
-    
-    .slider-container {
-        padding: 0 60px; /* More space for side controls */
-    }
-    
-    /* 2 cards visible on tablet */
+
     .testimonial-card {
-        flex: 0 0 calc(50% - 15px); /* 50% width minus half the gap (30px/2) */
+        padding: 30px;
     }
-    
+}
+
+@media (min-width: 1100px) {
+    .slider-track {
+        grid-auto-columns: calc(33.333% - 16px);
+        gap: 24px;
+    }
+}
+
+@media (max-width: 767px) {
+    .section-testimonials {
+        padding-inline: 14px;
+    }
+
+    .slider-control {
+        top: auto;
+        bottom: -12px;
+        transform: none;
+    }
+
+    .slider-control:hover {
+        transform: scale(1.05);
+    }
+
     .slider-control.prev {
-        left: 0;
+        left: 10px;
     }
-    
+
     .slider-control.next {
-        right: 0;
-    }
-}
-
-/* Desktop (Screen width > 1024px) */
-@media (min-width: 1024px) {
-    .section-title-testimonials {
-        font-size: 3.5rem;
+        right: 10px;
     }
 
-    /* 3 cards visible on desktop */
     .testimonial-card {
-        /* 100% / 3 cards = 33.33% - Gap reduction */
-        flex: 0 0 calc(33.33% - 20px); 
-    }
-    
-    .slider-container {
-        padding: 0 80px;
+        padding: 24px;
     }
 }
+

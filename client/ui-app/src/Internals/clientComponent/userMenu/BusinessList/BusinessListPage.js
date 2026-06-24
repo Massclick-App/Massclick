@@ -1,5 +1,5 @@
 import { createScopedClassNames } from "../../../../utils/createScopedClassNames";
-import CardsSearch from '../../CardsSearch/CardsSearch';
+import StickySearchBar from '../../StickySearchBar/StickySearchBar';
 import Footer from '../../footer/footer';
 import styles from "./BusinessList.module.css";
 const cx = createScopedClassNames(styles);
@@ -9,7 +9,7 @@ export default function BusinessListPage() {
     alert("Redirecting to PhonePe for secure payment...");
   };
   return <>
-  <CardsSearch /><br /><br /><br />
+  <StickySearchBar /><br /><br /><br />
       <div className={cx("cta-page-container")}>
         <div className={cx("listing-cta-card")}>
           <h3 className={cx("cta-title")}>List Your Business on</h3>

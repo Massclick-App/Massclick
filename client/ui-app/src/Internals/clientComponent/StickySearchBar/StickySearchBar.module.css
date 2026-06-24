@@ -1,0 +1,323 @@
+:root {
+  --brand: #ff7b00;
+  --brand-dark: #ff5a00;
+  --text-primary: #0f172a;
+  --text-muted: #64748b;
+  --border-light: #e2e8f0;
+  --bg-light: #ffffff;
+  --radius-md: 12px;
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 8px 20px rgba(255, 123, 0, 0.35);
+}
+
+/* ================================ */
+/* STICKY SEARCH CONTAINER          */
+/* ================================ */
+
+.sticky-search-container {
+  position: sticky;
+  top: 0;
+  z-index: 1100;
+  background: linear-gradient(180deg, #ffffff 0%, #fffaf5 100%);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+/* ================================ */
+/* STICKY SEARCH BAR                */
+/* ================================ */
+
+.sticky-search-bar {
+  padding: 10px 16px;
+  transition: all 0.25s ease;
+}
+
+.sticky-search-bar--focused {
+  padding: 12px 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* ================================ */
+/* LOCATION DISPLAY (Hidden by default) */
+/* ================================ */
+
+.location-display {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 0 0 8px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--border-light);
+  animation: slideDown 0.2s ease;
+}
+
+.sticky-search-bar--focused .location-display {
+  display: flex;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.location-display-icon {
+  color: var(--brand);
+  font-size: 18px !important;
+  flex-shrink: 0;
+}
+
+.location-display-text {
+  flex: 1;
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.location-display-btn {
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid var(--brand);
+  color: var(--brand);
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.location-display-btn:hover {
+  background: var(--brand);
+  color: #fff;
+}
+
+/* ================================ */
+/* SEARCH INPUT WRAPPER             */
+/* ================================ */
+
+.search-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: var(--bg-light);
+  border: 1.5px solid var(--border-light);
+  border-radius: var(--radius-md);
+  height: 48px;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.25s ease;
+}
+
+.search-input-wrapper:focus-within {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px rgba(255, 123, 0, 0.15);
+}
+
+.search-input-icon {
+  position: absolute;
+  left: 14px;
+  color: var(--brand);
+  font-size: 20px !important;
+  flex-shrink: 0;
+}
+
+.search-input-icon.location-icon {
+  color: #059669;
+}
+
+.search-input {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 0 44px 0 46px;
+  font-size: 14px;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-weight: 500;
+}
+
+.search-input::placeholder {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.search-input-clear {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  padding: 6px;
+  cursor: pointer;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.search-input-clear:hover {
+  color: var(--brand);
+}
+
+.search-input-clear {
+  right: 12px;
+}
+
+.search-input-clear svg {
+  font-size: 18px !important;
+}
+
+.location-back-btn {
+  position: absolute;
+  right: 14px;
+  background: none;
+  border: none;
+  padding: 6px 8px;
+  cursor: pointer;
+  color: #059669;
+  font-weight: 600;
+  font-size: 0.8rem;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.location-back-btn:hover {
+  color: #047857;
+  transform: translateX(-2px);
+}
+
+/* ================================ */
+/* DROPDOWN (Suggestions & Location) */
+/* ================================ */
+
+.dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 16px;
+  right: 16px;
+  background: var(--bg-light);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-light);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+  z-index: 10000;
+  overflow: hidden;
+  animation: dropdownSlideDown 0.2s ease;
+}
+
+@keyframes dropdownSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dropdown-label {
+  padding: 10px 14px 8px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  background: linear-gradient(180deg, #f8f4ff 0%, #fff 100%);
+  border-bottom: 1px solid #ede9fe;
+}
+
+.dropdown--location .dropdown-label {
+  color: #059669;
+}
+
+.dropdown--suggestion .dropdown-label {
+  color: #7c3aed;
+}
+
+.dropdown-list {
+  max-height: 280px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.dropdown-item {
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.02);
+}
+
+.dropdown-item:hover {
+  background: #f8fafc;
+}
+
+.dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.dropdown-icon {
+  color: var(--brand);
+  flex-shrink: 0;
+  font-size: 18px !important;
+}
+
+.dropdown--location .dropdown-icon {
+  color: #059669;
+}
+
+.dropdown-text {
+  flex: 1;
+  min-width: 0;
+  color: var(--text-primary);
+  font-size: 0.93rem;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dropdown-meta {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+/* ================================ */
+/* RESPONSIVE                       */
+/* ================================ */
+
+@media (max-width: 480px) {
+  .sticky-search-bar {
+    padding: 8px 12px;
+  }
+
+  .sticky-search-bar--focused {
+    padding: 10px 12px;
+  }
+
+  .search-input-wrapper {
+    height: 46px;
+  }
+
+  .search-input {
+    font-size: 13px;
+    padding: 0 40px 0 42px;
+  }
+
+  .dropdown {
+    left: 12px;
+    right: 12px;
+  }
+}

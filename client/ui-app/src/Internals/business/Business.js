@@ -35,6 +35,9 @@ import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import CollectionsBookmarkOutlinedIcon from '@mui/icons-material/CollectionsBookmarkOutlined';
 import TravelExploreIcon from '@mui/icons-material/TravelExplore';
+import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import { checkPhonePeStatus, createPhonePePayment } from "../../redux/actions/phonePayAction.js";
 import { updateGmapsLeadStatus, clearGmapsLeadImport, setGmapsLeadToImport } from "../../redux/actions/gmapsLeadsAction";
 import CustomizedTable from "../../components/Table/CustomizedTable.js";
@@ -44,7 +47,12 @@ import GooglePlacesInput from "../../components/GooglePlacesInput/GooglePlacesIn
 import AdminViewTabs from "../../components/AdminViewTabs.js";
 import "quill/dist/quill.snow.css";
 const cx = createScopedClassNames(styles);
-const FORCE_BYPASS_BLOCKED_FIELDS = new Set(["businessName", "category", "location"]);
+const LISTING_MODE = {
+  FREE: "free",
+  PAID: "paid"
+};
+const FORCE_BYPASS_BLOCKED_FIELDS = new Set(["businessName", "category", "location", "contact"]);
+const FREE_REQUIRED_FIELDS = new Set(["businessName", "category", "location", "contact"]);
 const BUSINESS_LOCAL_DRAFT_KEY = "massclick.business.createDraft";
 const DEMO_PNG_DATA_URL = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9s0qDbgAAAAASUVORK5CYII=";
 const ORANGE_PRIMARY = '#FF8C00';
@@ -239,6 +247,143 @@ ColorlibStepIcon.propTypes = {
 };
 const steps = ["Business Details", "Category", "Privacy Settings", "Payment"];
 const SEARCH_REFRESH_DELAY = 350;
+const PAID_STEP_FIELD_MAP = {
+  0: [
+    "clientId",
+    "businessName",
+    "plotNumber",
+    "street",
+    "pincode",
+    "location",
+    "globalAddress",
+    "email",
+    "contact",
+    "contactList",
+    "whatsappNumber",
+    "gstin",
+    "experience",
+    "googleMap",
+    "geoLatitude",
+    "geoLongitude",
+    "website",
+    "bannerImage",
+    "businessDetails"
+  ],
+  1: ["kycDocuments"],
+  2: ["category", "keywords", "title", "description", "seoTitle", "seoDescription", "slug"]
+};
+const FREE_STEP_FIELD_MAP = {
+  0: ["businessName", "location", "contact"],
+  2: ["category"]
+};
+const STEP_NOTIFICATION_CONTENT = {
+  1: {
+    free: {
+      title: "Next section: KYC documents",
+      body: "You can keep moving, but adding clear documents now makes review easier later."
+    },
+    paid: {
+      title: "Next section: KYC documents",
+      body: "Paid listings need at least one clear verification document before they can move forward."
+    }
+  },
+  2: {
+    free: {
+      title: "Next section: Category and SEO",
+      body: "This is a good place to tighten category, keywords, and search copy when you have it."
+    },
+    paid: {
+      title: "Next section: Category and SEO",
+      body: "Paid listings should finish category, keywords, and SEO details carefully for a complete profile."
+    }
+  },
+  3: {
+    free: {
+      title: "Final review",
+      body: "We'll validate the full form before saving and highlight anything still worth fixing."
+    },
+    paid: {
+      title: "Final review",
+      body: "We'll validate every paid-listing field now and show exact suggestions if anything is still missing."
+    }
+  }
+};
+const FORM_SECTION_FLOW = {
+  0: [
+    {
+      key: "clientBusiness",
+      title: "Client & Business Information",
+      body: "Next, add the core address details so the listing can be searched properly."
+    },
+    {
+      key: "address",
+      title: "Address Details",
+      body: "Now add the best contact numbers and email customers should use."
+    },
+    {
+      key: "contact",
+      title: "Contact Information",
+      body: "Next up is the business background so people know what this shop or service does."
+    },
+    {
+      key: "businessInfo",
+      title: "Business Information",
+      body: "Next, complete map and website details for better trust and discoverability."
+    },
+    {
+      key: "locationWeb",
+      title: "Location & Web Presence",
+      body: "Social profiles are optional, but helpful if the business already uses them."
+    },
+    {
+      key: "socialMedia",
+      title: "Social Media",
+      body: "Next, upload the banner and write a clean business description."
+    },
+    {
+      key: "bannerDetails",
+      title: "Business Banner & Details",
+      body: "Then set opening hours so visitors know exactly when the business is available."
+    },
+    {
+      key: "openingHours",
+      title: "Opening Hours",
+      body: "Last in this step: badges and visibility settings."
+    },
+    {
+      key: "badgesVisibility",
+      title: "Badges & Visibility"
+    }
+  ],
+  1: [
+    {
+      key: "kycDocuments",
+      title: "KYC Documents"
+    }
+  ],
+  2: [
+    {
+      key: "categorySeo",
+      title: "Category & SEO",
+      body: "Next, add strong keywords and tags so search matching gets better."
+    },
+    {
+      key: "keywordsTags",
+      title: "Keywords & Tags",
+      body: "Then shape how the listing title and description appear to customers."
+    },
+    {
+      key: "displaySeo",
+      title: "Display & SEO",
+      body: "Finish with SEO metadata, slug, and any required category filters."
+    },
+    {
+      key: "searchSeo",
+      title: "Search Engine Optimization"
+    }
+  ]
+};
+const getSectionRefKey = (step, sectionKey) => `${step}:${sectionKey}`;
 const BusinessList = React.memo(() => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -382,8 +527,9 @@ const BusinessList = React.memo(() => {
     });
   };
   const handleNext = () => {
+    const cleanedFormData = getCleanBusinessFormData(formData);
+
     if (activeStep === 0) {
-      const cleanedFormData = getCleanBusinessFormData(formData);
       const duplicateSignature = getDuplicateCheckSignature(cleanedFormData);
       const duplicateMatches = getPotentialDuplicateMatches(cleanedFormData);
 
@@ -394,6 +540,12 @@ const BusinessList = React.memo(() => {
           signature: duplicateSignature,
           action: "step-lock"
         });
+        showSideSuggestion({
+          title: "Review similar businesses before moving on",
+          body: "This record looks close to an existing business. Confirm it first so we avoid a duplicate listing.",
+          items: duplicateMatches.map(match => match.businessName),
+          tone: "warning"
+        });
         enqueueSnackbar("Duplicate restriction triggered in Step 1. Resolve it or save as draft locally.", {
           variant: "warning"
         });
@@ -401,7 +553,60 @@ const BusinessList = React.memo(() => {
       }
     }
 
-    setActiveStep(prevActiveStep => prevActiveStep + 1);
+    const stepValidationContext = {
+      bannerPreview: preview,
+      uploadedKycFiles: kycFiles,
+      isEditing: editMode
+    };
+    const stepErrors = getStepValidationErrors(
+      validateBusinessEntryData(cleanedFormData, stepValidationContext),
+      cleanedFormData,
+      activeStep,
+      listingMode
+    );
+
+    if (stepErrors.length > 0) {
+      setStepValidationTriggered(prev => ({
+        ...prev,
+        [activeStep]: true
+      }));
+      setFieldErrors(prev => ({
+        ...prev,
+        ...buildFieldErrorMap(stepErrors)
+      }));
+      showSideSuggestion({
+        title: listingMode === LISTING_MODE.PAID ? "Complete this section before continuing" : "A few core details still need attention",
+        body: listingMode === LISTING_MODE.PAID
+          ? "Paid listings need these details before the next section unlocks."
+          : "Free listings stay flexible, but these core details still block the next section.",
+        items: stepErrors.map(error => error.label),
+        tone: listingMode === LISTING_MODE.PAID ? "warning" : "info"
+      });
+      enqueueSnackbar(
+        listingMode === LISTING_MODE.PAID
+          ? "Finish the required details on this step to continue."
+          : "Please complete the required core details on this step.",
+        {
+          variant: listingMode === LISTING_MODE.PAID ? "warning" : "error"
+        }
+      );
+      return;
+    }
+
+    const nextStepIndex = activeStep + 1;
+    setStepValidationTriggered(prev => ({
+      ...prev,
+      [activeStep]: true
+    }));
+    setActiveStep(nextStepIndex);
+    const nextStepNotification = STEP_NOTIFICATION_CONTENT[nextStepIndex]?.[listingMode];
+    if (nextStepNotification) {
+      showSideSuggestion({
+        title: nextStepNotification.title,
+        body: nextStepNotification.body,
+        tone: "info"
+      });
+    }
     window.scrollTo({
       top: 0,
       behavior: "smooth"
@@ -414,6 +619,114 @@ const BusinessList = React.memo(() => {
       behavior: "smooth"
     });
   };
+  const getSectionFlowForStep = step => FORM_SECTION_FLOW[step] || [];
+  const getSectionNavigation = (step, sectionKey) => {
+    const stepSections = getSectionFlowForStep(step);
+    const currentIndex = stepSections.findIndex(section => section.key === sectionKey);
+
+    if (currentIndex < 0) {
+      return null;
+    }
+
+    const nextSection = stepSections[currentIndex + 1];
+    if (nextSection) {
+      return {
+        type: "section",
+        label: `Next: ${nextSection.title}`,
+        title: `Up next: ${nextSection.title}`,
+        body: nextSection.body || "Keep moving through the form one section at a time."
+      };
+    }
+
+    if (step === steps.length - 2) {
+      return {
+        type: "submit",
+        label: editMode ? "Save Business" : "Final Next"
+      };
+    }
+
+    if (step < steps.length - 2) {
+      const nextStepIndex = step + 1;
+      const nextStepNotification = STEP_NOTIFICATION_CONTENT[nextStepIndex]?.[listingMode];
+      return {
+        type: "step",
+        label: `Next: ${steps[nextStepIndex]}`,
+        title: nextStepNotification?.title || `Next step: ${steps[nextStepIndex]}`,
+        body: nextStepNotification?.body || "Move ahead when you're ready."
+      };
+    }
+
+    return null;
+  };
+  const handleSectionAdvance = (step, sectionKey) => {
+    const navigation = getSectionNavigation(step, sectionKey);
+    if (!navigation) {
+      return;
+    }
+
+    if (navigation.type === "section") {
+      const stepSections = getSectionFlowForStep(step);
+      const currentIndex = stepSections.findIndex(section => section.key === sectionKey);
+      const nextSection = currentIndex >= 0 ? stepSections[currentIndex + 1] : null;
+
+      showSideSuggestion({
+        title: navigation.title,
+        body: navigation.body,
+        tone: "info"
+      });
+      const nextSectionNode = nextSection ? sectionRefs.current[getSectionRefKey(step, nextSection.key)] : null;
+      if (nextSectionNode?.scrollIntoView) {
+        nextSectionNode.scrollIntoView({
+          behavior: "smooth",
+          block: "start"
+        });
+      }
+      return;
+    }
+
+    if (navigation.type === "submit") {
+      businessFormRef.current?.requestSubmit?.();
+      return;
+    }
+
+    handleNext();
+  };
+  const renderSectionAdvanceButton = (step, sectionKey) => {
+    const navigation = getSectionNavigation(step, sectionKey);
+
+    if (!navigation || activeStep >= steps.length - 1) {
+      return null;
+    }
+
+    return (
+      <div className={cx("col-span-all", "section-nav-row")}>
+        <button
+          type="button"
+          className={cx("step-nav-button", "section-next-button")}
+          onClick={() => handleSectionAdvance(step, sectionKey)}
+          disabled={navigation.type === "submit" && loading}
+        >
+          <span>{navigation.label}</span>
+          <SkipNextIcon fontSize="small" />
+        </button>
+      </div>
+    );
+  };
+  const renderSectionIntro = (step, sectionKey, title, subtitle) => (
+    <div
+      className={cx("col-span-all", "form-section-anchor")}
+      ref={node => {
+        const refKey = getSectionRefKey(step, sectionKey);
+        if (node) {
+          sectionRefs.current[refKey] = node;
+        } else {
+          delete sectionRefs.current[refKey];
+        }
+      }}
+    >
+      <SectionHeader title={title} subtitle={subtitle} />
+    </div>
+  );
   const handleGalleryImageChange = e => {
     const files = Array.from(e.target.files);
     const readers = files.map(file => {
@@ -566,6 +879,7 @@ const BusinessList = React.memo(() => {
   const [filterConfigLoading, setFilterConfigLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
   const [forceBypassedFields, setForceBypassedFields] = useState([]);
+  const [listingMode, setListingMode] = useState(LISTING_MODE.FREE);
   const [warnLevel, setWarnLevel] = useState(0);
   const [warnDialog, setWarnDialog] = useState(false);
   const [possibleDuplicateMatches, setPossibleDuplicateMatches] = useState([]);
@@ -580,12 +894,81 @@ const BusinessList = React.memo(() => {
   const [preview, setPreview] = useState(null);
   const [demoSubmitting, setDemoSubmitting] = useState(false);
   const [badgeUpdateLoading, setBadgeUpdateLoading] = useState(false);
+  const [postCreatePaidStatus, setPostCreatePaidStatus] = useState("idle");
+  const [postCreateBusinessName, setPostCreateBusinessName] = useState("");
+  const [stepValidationTriggered, setStepValidationTriggered] = useState({});
+  const [sideSuggestion, setSideSuggestion] = useState({
+    open: false,
+    title: "",
+    body: "",
+    items: [],
+    tone: "info"
+  });
+  const businessFormRef = useRef(null);
+  const sectionRefs = useRef({});
   const [deleteDialog, setDeleteDialog] = useState({
     open: false,
     id: null
   });
   const isForceBypassableField = field => Boolean(field) && !FORCE_BYPASS_BLOCKED_FIELDS.has(field);
   const getUniqueFields = fields => [...new Set((fields || []).filter(Boolean))];
+  const getPaidStepFieldNames = useCallback((data, step) => {
+    const fields = [...(PAID_STEP_FIELD_MAP[step] || [])];
+
+    if (step === 0) {
+      (data?.openingHours || []).forEach(hour => {
+        if (!hour?.isClosed && !hour?.is24Hours && hour?.day) {
+          fields.push(`openingHours.${hour.day}`);
+        }
+      });
+    }
+
+    if (step === 2) {
+      (categoryFilterConfig || []).forEach(filter => {
+        if (filter?.isRequired && filter?.key) {
+          fields.push(`filters.${filter.key}`);
+        }
+      });
+    }
+
+    return getUniqueFields(fields);
+  }, [categoryFilterConfig]);
+  const getFreeBlockingFieldsForStep = useCallback(step => getUniqueFields(FREE_STEP_FIELD_MAP[step] || []), []);
+  const getStepValidationErrors = useCallback((allErrors, data, step, mode) => {
+    const relevantFields = mode === LISTING_MODE.PAID
+      ? new Set(getPaidStepFieldNames(data, step))
+      : new Set(getFreeBlockingFieldsForStep(step));
+
+    return allErrors.filter(error => relevantFields.has(error.field));
+  }, [getFreeBlockingFieldsForStep, getPaidStepFieldNames]);
+  const getFieldError = field => fieldErrors[field];
+  const getInputClassName = (baseClass, field) => cx(baseClass, getFieldError(field) && "error");
+  const renderFieldError = field => (
+    getFieldError(field) ? <span className={cx("error-text")}>{getFieldError(field)}</span> : null
+  );
+  const showSideSuggestion = useCallback(({
+    title,
+    body,
+    items = [],
+    tone = "info"
+  }) => {
+    setSideSuggestion({
+      open: true,
+      title,
+      body,
+      items: getUniqueFields(items).slice(0, 6),
+      tone
+    });
+  }, []);
+  const getMarkPaidPayload = source => ({
+    name: source?.businessName,
+    businessName: source?.businessName,
+    category: source?.category,
+    location: source?.location,
+    payment: [{
+      amount: source?.subscription?.price || 1
+    }]
+  });
   function resetToCreateBusinessState({
     nextView = "form",
     nextStep = 0,
@@ -633,6 +1016,7 @@ const BusinessList = React.memo(() => {
     setKycFiles([]);
     setFieldErrors({});
     setForceBypassedFields([]);
+    setListingMode(LISTING_MODE.FREE);
     setWarnLevel(0);
     setWarnDialog(false);
     setPossibleDuplicateMatches([]);
@@ -645,6 +1029,16 @@ const BusinessList = React.memo(() => {
     setDuplicateBypassSignature("");
     setCategoryKeywordSuggestions([]);
     setInputKeyword("");
+    setPostCreatePaidStatus("idle");
+    setPostCreateBusinessName("");
+    setStepValidationTriggered({});
+    setSideSuggestion({
+      open: false,
+      title: "",
+      body: "",
+      items: [],
+      tone: "info"
+    });
     setActiveView(nextView);
     setActiveStep(nextStep);
 
@@ -1663,6 +2057,44 @@ const BusinessList = React.memo(() => {
     const cleanedFormData = getCleanBusinessFormData(formData);
     setPossibleDuplicateMatches(getPotentialDuplicateMatches(cleanedFormData));
   }, [formData, businessList, editId, editMode]); // eslint-disable-line react-hooks/exhaustive-deps
+  const liveValidationContext = {
+    bannerPreview: preview,
+    uploadedKycFiles: kycFiles,
+    isEditing: editMode
+  };
+  const cleanedLiveFormData = getCleanBusinessFormData(formData);
+  const currentValidationErrors = validateBusinessEntryData(cleanedLiveFormData, liveValidationContext);
+  const paidAllRequiredFields = getUniqueFields([
+    ...getPaidStepFieldNames(cleanedLiveFormData, 0),
+    ...getPaidStepFieldNames(cleanedLiveFormData, 1),
+    ...getPaidStepFieldNames(cleanedLiveFormData, 2)
+  ]);
+  const paidCurrentStepErrors = getStepValidationErrors(currentValidationErrors, cleanedLiveFormData, activeStep, LISTING_MODE.PAID);
+  const hasTriggeredCurrentPaidStep = Boolean(stepValidationTriggered[activeStep] || stepValidationTriggered.final);
+  const paidCompletedCount = Math.max(0, paidAllRequiredFields.length - getUniqueFields(
+    currentValidationErrors
+      .filter(error => paidAllRequiredFields.includes(error.field))
+      .map(error => error.field)
+  ).length);
+  const paidCompletionPercent = paidAllRequiredFields.length > 0
+    ? Math.round((paidCompletedCount / paidAllRequiredFields.length) * 100)
+    : 100;
+  useEffect(() => {
+  }, [activeStep, listingMode]);
+  useEffect(() => {
+    if (!sideSuggestion.open) {
+      return undefined;
+    }
+
+    const timer = setTimeout(() => {
+      setSideSuggestion(prev => ({
+        ...prev,
+        open: false
+      }));
+    }, 6000);
+
+    return () => clearTimeout(timer);
+  }, [sideSuggestion.open, sideSuggestion.title, sideSuggestion.body]);
   const selectedKeywordValues = Array.isArray(formData.keywords) ? formData.keywords : [];
   const availableKeywordSuggestions = categoryKeywordSuggestions.filter(keyword => !selectedKeywordValues.some(
     selectedKeyword => String(selectedKeyword).toLowerCase() === String(keyword).toLowerCase()
@@ -1720,6 +2152,10 @@ const BusinessList = React.memo(() => {
     });
     setCategoryKeywordSuggestions([]);
     setInputKeyword("");
+    setPostCreatePaidStatus("idle");
+    setPostCreateBusinessName(row.businessName || "");
+    setStepValidationTriggered({});
+    setListingMode(isBusinessPaid(row) ? LISTING_MODE.PAID : LISTING_MODE.FREE);
     setFormData({
       clientId: row.clientId || "",
       businessName: row.businessName || "",
@@ -1868,13 +2304,63 @@ const BusinessList = React.memo(() => {
     [error.field]: getValidationMessage(error)
   }), {});
   const getFirstErrorStep = errors => typeof errors[0]?.step === "number" ? errors[0].step : 0;
-  const showBusinessValidationErrors = validationErrors => {
+  const showBusinessValidationErrors = (validationErrors, {
+    mode = listingMode
+  } = {}) => {
+    setStepValidationTriggered(prev => ({
+      ...prev,
+      final: true,
+      [getFirstErrorStep(validationErrors)]: true
+    }));
     setActiveStep(getFirstErrorStep(validationErrors));
     setFieldErrors(buildFieldErrorMap(validationErrors));
-    const errorMessage = validationErrors.slice(0, 8).map(error => `- ${getValidationMessage(error)}`).join("\n");
-    enqueueSnackbar(`Please fix these fields before saving:\n${errorMessage}${validationErrors.length > 8 ? `\n- ${validationErrors.length - 8} more issue(s)` : ""}`, {
-      variant: "error"
+    showSideSuggestion({
+      title: mode === LISTING_MODE.PAID ? "Final check found a few missing details" : "Before saving, these details still need attention",
+      body: mode === LISTING_MODE.PAID
+        ? "We checked the full listing before the final step. Fix these items and try Next again."
+        : "You can review these items now, or use the existing bypass flow for non-core fields.",
+      items: validationErrors.map(error => error.label),
+      tone: mode === LISTING_MODE.PAID ? "warning" : "info"
     });
+    const errorMessage = validationErrors.slice(0, 8).map(error => `- ${getValidationMessage(error)}`).join("\n");
+    enqueueSnackbar(
+      mode === LISTING_MODE.PAID
+        ? `Finish these details to continue:\n${errorMessage}${validationErrors.length > 8 ? `\n- ${validationErrors.length - 8} more issue(s)` : ""}`
+        : `Please fix these fields before saving:\n${errorMessage}${validationErrors.length > 8 ? `\n- ${validationErrors.length - 8} more issue(s)` : ""}`,
+      {
+        variant: mode === LISTING_MODE.PAID ? "warning" : "error"
+      }
+    );
+  };
+  const markBusinessAsPaidAfterCreate = async (businessId, sourceData) => {
+    if (!businessId) {
+      return false;
+    }
+
+    await dispatch(editBusinessList(businessId, getMarkPaidPayload(sourceData)));
+    return true;
+  };
+  const handleRetryPaidActivation = async () => {
+    if (!createdBusinessId) {
+      enqueueSnackbar("This business was created, but its record could not be found for paid activation.", {
+        variant: "error"
+      });
+      return;
+    }
+
+    try {
+      await markBusinessAsPaidAfterCreate(createdBusinessId, formData);
+      setPostCreatePaidStatus("paid");
+      enqueueSnackbar(`${postCreateBusinessName || formData.businessName || "Business"} marked as paid.`, {
+        variant: "success"
+      });
+      dispatch(getAllBusinessList());
+    } catch (error) {
+      console.error("Retry paid activation failed:", error);
+      enqueueSnackbar("Still unable to mark this business as paid. Please try again.", {
+        variant: "error"
+      });
+    }
   };
   const saveBusiness = async ({
     forceBypassFields = [],
@@ -1910,13 +2396,22 @@ const BusinessList = React.memo(() => {
       return;
     }
 
-    const validationErrors = validateBusinessEntryData(cleanedFormData, validationContext).filter(error => {
+    const allValidationErrors = validateBusinessEntryData(cleanedFormData, validationContext);
+    const validationErrors = allValidationErrors.filter(error => {
+      if (listingMode === LISTING_MODE.PAID) {
+        return true;
+      }
+
+      if (FREE_REQUIRED_FIELDS.has(error.field)) {
+        return true;
+      }
+
       const bypassed = new Set([...forceBypassedFields, ...bypassFields]);
       return !bypassed.has(error.field);
     });
 
     if (validationErrors.length > 0) {
-      showBusinessValidationErrors(validationErrors);
+      showBusinessValidationErrors(validationErrors, { mode: listingMode });
       return;
     }
     setFieldErrors({});
@@ -1977,6 +2472,13 @@ const BusinessList = React.memo(() => {
       let response;
       if (editMode && editId) {
         response = await dispatch(editBusinessList(editId, payload));
+        setPostCreateBusinessName(cleanedFormData.businessName);
+        setPostCreatePaidStatus(isBusinessPaid({
+          ...response,
+          amountPaid: response?.amountPaid,
+          paidDate: response?.paidDate,
+          payment: response?.payment
+        }) ? "paid" : "free");
         enqueueSnackbar(`${cleanedFormData.businessName} updated successfully!`, {
           variant: "success"
         });
@@ -1993,6 +2495,30 @@ const BusinessList = React.memo(() => {
         enqueueSnackbar(`${cleanedFormData.businessName} created successfully!`, {
           variant: "success"
         });
+        setPostCreateBusinessName(cleanedFormData.businessName);
+        if (listingMode === LISTING_MODE.PAID && businessId) {
+          try {
+            await markBusinessAsPaidAfterCreate(businessId, {
+              ...response,
+              ...cleanedFormData,
+              businessName: cleanedFormData.businessName,
+              category: cleanedFormData.category,
+              location: cleanedFormData.location
+            });
+            setPostCreatePaidStatus("paid");
+            enqueueSnackbar(`${cleanedFormData.businessName} marked as paid.`, {
+              variant: "success"
+            });
+          } catch (paymentError) {
+            console.error("Error marking created business as paid:", paymentError);
+            setPostCreatePaidStatus("failed");
+            enqueueSnackbar(`${cleanedFormData.businessName} was created, but it could not be marked as paid.`, {
+              variant: "error"
+            });
+          }
+        } else {
+          setPostCreatePaidStatus(listingMode === LISTING_MODE.FREE ? "free" : "idle");
+        }
       }
       // If this business was created from a GMaps lead, mark it as imported
       if (!editMode && leadToImport?._id) {
@@ -2197,6 +2723,10 @@ const BusinessList = React.memo(() => {
     { title: "Final confirmation", body: "You are about to save incomplete business data. Only proceed if you are certain.", confirm: "Save anyway" }
   ];
   const handleWarnConfirm = async () => {
+    if (listingMode === LISTING_MODE.PAID) {
+      setWarnDialog(false);
+      return;
+    }
     const nextLevel = warnLevel + 1;
     setWarnDialog(false);
     if (nextLevel < 3) {
@@ -2893,6 +3423,128 @@ const BusinessList = React.memo(() => {
         {subtitle && <p className={cx("section-subtitle")}>{subtitle}</p>}
       </div>
     </div>;
+  const renderListingModeSelector = () => (
+    <div className={cx("listing-mode-shell")}>
+      <div>
+        <p className={cx("listing-mode-eyebrow")}>Listing type</p>
+        <h3 className={cx("listing-mode-title")}>Choose how this business should be onboarded</h3>
+        <p className={cx("listing-mode-copy")}>
+          Free listings stay flexible. Paid listings guide the team through a polished, fully-complete profile before publishing.
+        </p>
+      </div>
+      <div className={cx("listing-mode-toggle")} role="tablist" aria-label="Listing mode">
+        {[{
+          value: LISTING_MODE.FREE,
+          title: "Free listing",
+          description: "Permissive flow with inline field errors and bypass for non-core details."
+        }, {
+          value: LISTING_MODE.PAID,
+          title: "Paid listing",
+          description: "Strict completion flow with guided progress and automatic paid activation."
+        }].map(option => (
+          <button
+            key={option.value}
+            type="button"
+            role="tab"
+            aria-selected={listingMode === option.value}
+            className={cx("listing-mode-option", listingMode === option.value && "active")}
+            onClick={() => {
+              setListingMode(option.value);
+              setFieldErrors({});
+              setForceBypassedFields([]);
+              setWarnDialog(false);
+              setWarnLevel(0);
+              setPostCreatePaidStatus("idle");
+            }}
+          >
+            <span className={cx("listing-mode-option-title")}>{option.title}</span>
+            <span className={cx("listing-mode-option-copy")}>{option.description}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+  const renderPaidAssistant = () => {
+    if (listingMode !== LISTING_MODE.PAID || activeStep >= steps.length - 1) {
+      return null;
+    }
+
+    return (
+      <div className={cx("paid-assistant-panel")}>
+        <div className={cx("paid-assistant-header")}>
+          <div>
+            <p className={cx("paid-assistant-eyebrow")}>Paid listing completion</p>
+            <h3 className={cx("paid-assistant-title")}>A polished paid profile is {paidCompletionPercent}% complete</h3>
+            <p className={cx("paid-assistant-copy")}>
+              {hasTriggeredCurrentPaidStep
+                ? paidCurrentStepErrors.length > 0
+                  ? "Use Next to keep moving. If something important is missing, we'll show a side suggestion with exactly what to fix."
+                  : "This step looks good. Use Next when you're ready for the following section."
+                : "Complete this section naturally. We'll only surface detailed suggestions when you press Next or run the final check."}
+            </p>
+          </div>
+          <div className={cx("paid-assistant-meter")}>
+            <span>{paidCompletedCount}/{paidAllRequiredFields.length}</span>
+            <strong>{paidCompletionPercent}%</strong>
+          </div>
+        </div>
+
+        <div className={cx("paid-progress-track")} aria-hidden="true">
+          <div className={cx("paid-progress-fill")} style={{ width: `${paidCompletionPercent}%` }} />
+        </div>
+
+        <div className={cx("paid-step-status-row")}>
+          {steps.slice(0, steps.length - 1).map((label, index) => {
+            const stepFields = getPaidStepFieldNames(cleanedLiveFormData, index);
+            const stepErrors = getStepValidationErrors(currentValidationErrors, cleanedLiveFormData, index, LISTING_MODE.PAID);
+            const isComplete = stepFields.length > 0 && stepErrors.length === 0;
+
+            return (
+              <div key={label} className={cx("paid-step-pill", activeStep === index && "active", isComplete && "complete")}>
+                {isComplete ? <CheckCircleRoundedIcon fontSize="small" /> : <InfoOutlinedIcon fontSize="small" />}
+                <span>{label}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+  const renderSideSuggestion = () => {
+    if (!sideSuggestion.open) {
+      return null;
+    }
+
+    return (
+      <aside className={cx("side-suggestion-shell", sideSuggestion.tone === "warning" && "side-suggestion-warning")} aria-live="polite">
+        <div className={cx("side-suggestion-head")}>
+          <div>
+            <p className={cx("side-suggestion-eyebrow")}>Next step guide</p>
+            <strong>{sideSuggestion.title}</strong>
+          </div>
+          <button
+            type="button"
+            className={cx("side-suggestion-dismiss")}
+            onClick={() => setSideSuggestion(prev => ({
+              ...prev,
+              open: false
+            }))}
+            aria-label="Dismiss step suggestion"
+          >
+            <CloseRoundedIcon fontSize="small" />
+          </button>
+        </div>
+        {sideSuggestion.body && <p className={cx("side-suggestion-copy")}>{sideSuggestion.body}</p>}
+        {sideSuggestion.items.length > 0 && (
+          <div className={cx("side-suggestion-items")}>
+            {sideSuggestion.items.map(item => (
+              <span key={item} className={cx("side-suggestion-chip")}>{item}</span>
+            ))}
+          </div>
+        )}
+      </aside>
+    );
+  };
 
   // ===== SEARCH PANEL COMPONENT =====
   const renderSearchPanel = () => (
@@ -3079,14 +3731,14 @@ const BusinessList = React.memo(() => {
     switch (step) {
       case 0:
         return <>
-          <SectionHeader title="Client & Business Information" subtitle="Basic details about your business" />
+          {renderSectionIntro(0, "clientBusiness", "Client & Business Information", "Basic details about your business")}
 
           <div className={cx("form-input-group")} style={{
             position: "relative"
           }}>
             <label htmlFor="clientId" className={cx("input-label")}>🔍 Client ID</label>
 
-            <input type="text" id="clientId" name="clientId" className={cx("text-input")} value={formData.clientId} placeholder="Type client ID or name..." onChange={e => {
+            <input type="text" id="clientId" name="clientId" className={getInputClassName("text-input", "clientId")} value={formData.clientId} placeholder="Type client ID or name..." onChange={e => {
               const value = e.target.value;
               const nextData = {
                 ...formData,
@@ -3110,6 +3762,7 @@ const BusinessList = React.memo(() => {
                 setShowSuggestions(true);
               }
             }} />
+            {renderFieldError("clientId")}
 
             {showSuggestions && searchSuggestion?.length > 0 && <ul className={cx("category-suggestion-box")}>
               {searchSuggestion.map(client => <li key={client._id} onClick={() => {
@@ -3130,11 +3783,13 @@ const BusinessList = React.memo(() => {
 
           <div className={cx("form-input-group")}>
             <label htmlFor="businessName" className={cx("input-label")}>🏢 Business Name</label>
-            <input type="text" id="businessName" name="businessName" className={cx("text-input")} value={formData.businessName} onChange={handleChange} />
+            <input type="text" id="businessName" name="businessName" className={getInputClassName("text-input", "businessName")} value={formData.businessName} onChange={handleChange} />
+            {renderFieldError("businessName")}
           </div>
 
+          {renderSectionAdvanceButton(0, "clientBusiness")}
           <div className={cx("form-divider")}></div>
-          <SectionHeader title="Address Details" subtitle="Business location information" />
+          {renderSectionIntro(0, "address", "Address Details", "Business location information")}
 
           <div className={cx("form-input-group col-span-all")}>
             <label className={cx("input-label")}>🔍 Search Address (Auto-fill)</label>
@@ -3146,24 +3801,27 @@ const BusinessList = React.memo(() => {
 
           <div className={cx("form-input-group")}>
             <label htmlFor="plotNumber" className={cx("input-label")}>📍 Plot Number</label>
-            <input type="text" id="plotNumber" name="plotNumber" className={cx("text-input")} value={formData.plotNumber} onChange={handleChange} />
+            <input type="text" id="plotNumber" name="plotNumber" className={getInputClassName("text-input", "plotNumber")} value={formData.plotNumber} onChange={handleChange} />
+            {renderFieldError("plotNumber")}
           </div>
 
           <div className={cx("form-input-group")}>
             <label htmlFor="street" className={cx("input-label")}>🛣️ Street</label>
-            <input type="text" id="street" name="street" className={cx("text-input")} value={formData.street} onChange={handleChange} placeholder="Enter street address" />
+            <input type="text" id="street" name="street" className={getInputClassName("text-input", "street")} value={formData.street} onChange={handleChange} placeholder="Enter street address" />
+            {renderFieldError("street")}
           </div>
 
           <div className={cx("form-input-group")}>
             <label htmlFor="pincode" className={cx("input-label")}>📮 Pincode *</label>
-            <input type="text" id="pincode" name="pincode" className={cx("text-input")} value={formData.pincode} onChange={handleChange} placeholder="Enter 6-digit pincode" required />
+            <input type="text" id="pincode" name="pincode" className={getInputClassName("text-input", "pincode")} value={formData.pincode} onChange={handleChange} placeholder="Enter 6-digit pincode" required />
+            {renderFieldError("pincode")}
           </div>
 
           <div className={cx("form-input-group")} style={{
             position: "relative"
           }}>
             <label htmlFor="location" className={cx("input-label")}>Location</label>
-            <input type="text" id="location" name="location" autoComplete="off" className={cx("text-input")} value={formData.location} placeholder="Type to search location..." onChange={e => {
+            <input type="text" id="location" name="location" autoComplete="off" className={getInputClassName("text-input", "location")} value={formData.location} placeholder="Type to search location..." onChange={e => {
               const value = e.target.value;
               const nextData = {
                 ...formData,
@@ -3211,74 +3869,90 @@ const BusinessList = React.memo(() => {
                 {loc.state ? ` — ${loc.state}` : ""}
               </li>)}
             </ul>}
+            {renderFieldError("location")}
           </div>
 
           <div className={cx("form-input-group")}>
             <label htmlFor="address2" className={cx("input-label")}>Global Address</label>
-            <input type="text" id="globalAddress" name="globalAddress" className={cx("text-input")} value={formData.globalAddress} onChange={handleChange} />
+            <input type="text" id="globalAddress" name="globalAddress" className={getInputClassName("text-input", "globalAddress")} value={formData.globalAddress} onChange={handleChange} />
+            {renderFieldError("globalAddress")}
           </div>
 
+          {renderSectionAdvanceButton(0, "address")}
           <div className={cx("form-divider")}></div>
-          <SectionHeader title="Contact Information" subtitle="How customers can reach you" />
+          {renderSectionIntro(0, "contact", "Contact Information", "How customers can reach you")}
 
           <div className={cx("form-input-group")}>
             <label htmlFor="email" className={cx("input-label")}>📧 Email</label>
-            <input type="email" id="email" name="email" className={cx("text-input")} value={formData.email} onChange={handleChange} placeholder="business@example.com" />
+            <input type="email" id="email" name="email" className={getInputClassName("text-input", "email")} value={formData.email} onChange={handleChange} placeholder="business@example.com" />
+            {renderFieldError("email")}
           </div>
 
           <div className={cx("form-input-group")}>
             <label htmlFor="contact" className={cx("input-label")}>📞 Phone</label>
-            <input type="text" id="contact" name="contact" className={cx("text-input")} value={formData.contact} onChange={handleChange} />
+            <input type="text" id="contact" name="contact" className={getInputClassName("text-input", "contact")} value={formData.contact} onChange={handleChange} />
+            {renderFieldError("contact")}
           </div>
 
           <div className={cx("form-input-group")}>
             <label htmlFor="contactList" className={cx("input-label")}>☎️ Enquiry Number</label>
-            <input type="text" id="contactList" name="contactList" className={cx("text-input")} value={formData.contactList} onChange={handleChange} placeholder="Alternate contact number" />
+            <input type="text" id="contactList" name="contactList" className={getInputClassName("text-input", "contactList")} value={formData.contactList} onChange={handleChange} placeholder="Alternate contact number" />
+            {renderFieldError("contactList")}
           </div>
 
           <div className={cx("form-input-group")}>
             <label htmlFor="whatsappNumber" className={cx("input-label")}>💬 WhatsApp Number</label>
-            <input type="text" id="whatsappNumber" name="whatsappNumber" className={cx("text-input")} value={formData.whatsappNumber} onChange={handleChange} placeholder="Business WhatsApp number" />
+            <input type="text" id="whatsappNumber" name="whatsappNumber" className={getInputClassName("text-input", "whatsappNumber")} value={formData.whatsappNumber} onChange={handleChange} placeholder="Business WhatsApp number" />
+            {renderFieldError("whatsappNumber")}
           </div>
 
+          {renderSectionAdvanceButton(0, "contact")}
           <div className={cx("form-divider")}></div>
-          <SectionHeader title="Business Information" subtitle="Additional business details" />
+          {renderSectionIntro(0, "businessInfo", "Business Information", "Additional business details")}
 
           <div className={cx("form-input-group")}>
             <label htmlFor="gstin" className={cx("input-label")}>🏛️ GSTIN</label>
-            <input type="text" id="gstin" name="gstin" className={cx("text-input")} value={formData.gstin} onChange={handleChange} placeholder="Enter GST registration number" />
+            <input type="text" id="gstin" name="gstin" className={getInputClassName("text-input", "gstin")} value={formData.gstin} onChange={handleChange} placeholder="Enter GST registration number" />
+            {renderFieldError("gstin")}
           </div>
 
           <div className={cx("form-input-group")}>
             <label htmlFor="experience" className={cx("input-label")}>⭐ Experience (Years)</label>
-            <input type="text" id="experience" name="experience" className={cx("text-input")} value={formData.experience} onChange={handleChange} />
+            <input type="text" id="experience" name="experience" className={getInputClassName("text-input", "experience")} value={formData.experience} onChange={handleChange} />
+            {renderFieldError("experience")}
           </div>
 
+          {renderSectionAdvanceButton(0, "businessInfo")}
           <div className={cx("form-divider")}></div>
-          <SectionHeader title="Location & Web Presence" subtitle="Map and website links" />
+          {renderSectionIntro(0, "locationWeb", "Location & Web Presence", "Map and website links")}
 
           <div className={cx("form-input-group")}>
             <label htmlFor="googleMap" className={cx("input-label")}>🗺️ Google Map Link</label>
-            <input type="text" id="googleMap" name="googleMap" className={cx("text-input")} value={formData.googleMap} onChange={handleChange} placeholder="https://maps.google.com/..." />
+            <input type="text" id="googleMap" name="googleMap" className={getInputClassName("text-input", "googleMap")} value={formData.googleMap} onChange={handleChange} placeholder="https://maps.google.com/..." />
+            {renderFieldError("googleMap")}
           </div>
 
           <div className={cx("form-input-group")}>
             <label htmlFor="geoLatitude" className={cx("input-label")}>Latitude *</label>
-            <input type="number" id="geoLatitude" className={cx("text-input")} value={formData.geoLocation?.coordinates?.[1] ?? ""} onChange={e => handleGeoCoordinateChange(1, e.target.value)} placeholder="Example: 13.0827" step="any" min="-90" max="90" required />
+            <input type="number" id="geoLatitude" className={getInputClassName("text-input", "geoLatitude")} value={formData.geoLocation?.coordinates?.[1] ?? ""} onChange={e => handleGeoCoordinateChange(1, e.target.value)} placeholder="Example: 13.0827" step="any" min="-90" max="90" required />
+            {renderFieldError("geoLatitude")}
           </div>
 
           <div className={cx("form-input-group")}>
             <label htmlFor="geoLongitude" className={cx("input-label")}>Longitude *</label>
-            <input type="number" id="geoLongitude" className={cx("text-input")} value={formData.geoLocation?.coordinates?.[0] ?? ""} onChange={e => handleGeoCoordinateChange(0, e.target.value)} placeholder="Example: 80.2707" step="any" min="-180" max="180" required />
+            <input type="number" id="geoLongitude" className={getInputClassName("text-input", "geoLongitude")} value={formData.geoLocation?.coordinates?.[0] ?? ""} onChange={e => handleGeoCoordinateChange(0, e.target.value)} placeholder="Example: 80.2707" step="any" min="-180" max="180" required />
+            {renderFieldError("geoLongitude")}
           </div>
 
           <div className={cx("form-input-group")}>
             <label htmlFor="website" className={cx("input-label")}>🌐 Website</label>
-            <input type="text" id="website" name="website" className={cx("text-input")} value={formData.website} onChange={handleChange} placeholder="https://example.com" />
+            <input type="text" id="website" name="website" className={getInputClassName("text-input", "website")} value={formData.website} onChange={handleChange} placeholder="https://example.com" />
+            {renderFieldError("website")}
           </div>
 
+          {renderSectionAdvanceButton(0, "locationWeb")}
           <div className={cx("form-divider")}></div>
-          <SectionHeader title="Social Media" subtitle="Connect your social profiles" />
+          {renderSectionIntro(0, "socialMedia", "Social Media", "Connect your social profiles")}
 
           <div className={cx("social-media-grid")}>
             {[{
@@ -3311,12 +3985,14 @@ const BusinessList = React.memo(() => {
               label
             }) => <div className={cx("form-input-group")} key={field}>
                 <label htmlFor={field} className={cx("input-label")}>{icon} {label}</label>
-                <input type="text" id={field} name={field} className={cx("text-input")} value={formData[field]} onChange={handleChange} placeholder={`Your ${label} profile URL`} />
+                <input type="text" id={field} name={field} className={getInputClassName("text-input", field)} value={formData[field]} onChange={handleChange} placeholder={`Your ${label} profile URL`} />
+                {renderFieldError(field)}
               </div>)}
           </div>
 
+          {renderSectionAdvanceButton(0, "socialMedia")}
           <div className={cx("form-divider")}></div>
-          <SectionHeader title="Business Banner & Details" subtitle="Upload banner image and describe your business" />
+          {renderSectionIntro(0, "bannerDetails", "Business Banner & Details", "Upload banner image and describe your business")}
 
           <div className={cx("form-input-group col-span-all upload-section")}>
             <label className={cx("input-label")}>🖼️ Banner Image</label>
@@ -3330,6 +4006,7 @@ const BusinessList = React.memo(() => {
                 height: 56
               }} className={cx("preview-avatar")} />}
             </div>
+            {renderFieldError("bannerImage")}
           </div>
 
           <div className={cx("form-input-group col-span-all")}>
@@ -3337,18 +4014,21 @@ const BusinessList = React.memo(() => {
             <QuillEditor value={businessvalue} onChange={handleBusinessChange} modules={QUILL_MODULES} formats={QUILL_FORMATS} placeholder="Type business details here..." style={{
               height: "200px"
             }} />
-          </div><br />
+            {renderFieldError("businessDetails")}
+          </div>
+          {renderSectionAdvanceButton(0, "bannerDetails")}
+          <div className={cx("form-divider")}></div>
+          {renderSectionIntro(0, "openingHours", "Opening Hours", "Set business hours for each day")}
 
           <div className={cx("form-input-group col-span-all")}>
-            <SectionHeader title="Opening Hours" subtitle="Set business hours for each day" />
             <div className={cx("opening-hours-container")}>
               {formData.openingHours.map((hour, index) => <div key={hour.day} className={cx("opening-hours-row")} data-closed={hour.isClosed} data-247={hour.is24Hours}>
                 <div className={cx("day-label")}>{hour.day}</div>
 
                 <div className={cx("time-group")}>
-                  <input type="time" value={hour.is24Hours ? "00:00" : hour.open} onChange={e => handleOpeningHourChange(index, "open", e.target.value)} disabled={hour.isClosed || hour.is24Hours} className={cx("text-input")} placeholder="Open Time" />
+                  <input type="time" value={hour.is24Hours ? "00:00" : hour.open} onChange={e => handleOpeningHourChange(index, "open", e.target.value)} disabled={hour.isClosed || hour.is24Hours} className={getInputClassName("text-input", `openingHours.${hour.day}`)} placeholder="Open Time" />
 
-                  <input type="time" value={hour.is24Hours ? "23:59" : hour.close} onChange={e => handleOpeningHourChange(index, "close", e.target.value)} disabled={hour.isClosed || hour.is24Hours} className={cx("text-input")} placeholder="Close Time" />
+                  <input type="time" value={hour.is24Hours ? "23:59" : hour.close} onChange={e => handleOpeningHourChange(index, "close", e.target.value)} disabled={hour.isClosed || hour.is24Hours} className={getInputClassName("text-input", `openingHours.${hour.day}`)} placeholder="Close Time" />
                 </div>
 
                 <div style={{
@@ -3376,10 +4056,14 @@ const BusinessList = React.memo(() => {
                 </div>
               </div>)}
             </div>
+            {formData.openingHours.map(hour => getFieldError(`openingHours.${hour.day}`) ? (
+              <span key={hour.day} className={cx("error-text")}>{getFieldError(`openingHours.${hour.day}`)}</span>
+            ) : null)}
           </div>
 
+          {renderSectionAdvanceButton(0, "openingHours")}
           <div className={cx("form-divider")}></div>
-          <SectionHeader title="Badges & Visibility" subtitle="Control how this listing is highlighted" />
+          {renderSectionIntro(0, "badgesVisibility", "Badges & Visibility", "Control how this listing is highlighted")}
 
           <div className={cx("form-input-group col-span-all")}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}>
@@ -3428,10 +4112,11 @@ const BusinessList = React.memo(() => {
               )}
             </div>
           </div>
+          {renderSectionAdvanceButton(0, "badgesVisibility")}
         </>;
       case 1:
         return <>
-          <SectionHeader title="KYC Documents" subtitle="Upload identity proof and business documents" />
+          {renderSectionIntro(1, "kycDocuments", "KYC Documents", "Upload identity proof and business documents")}
           <div className={cx("form-input-group col-span-all")}>
             <label className={cx("input-label")}>📄 Upload Documents (PDF, PNG, JPG)</label>
 
@@ -3477,18 +4162,20 @@ const BusinessList = React.memo(() => {
                 </div>
               </div>)}
             </div>
+            {renderFieldError("kycDocuments")}
           </div>
+          {renderSectionAdvanceButton(1, "kycDocuments")}
         </>;
       case 2:
         return <>
-          <SectionHeader title="Category & SEO" subtitle="Categorize your business and optimize for search" />
+          {renderSectionIntro(2, "categorySeo", "Category & SEO", "Categorize your business and optimize for search")}
 
           <div className={cx("form-input-group")} style={{
             position: "relative"
           }}>
             <label className={cx("input-label")}>🏷️ Category</label>
 
-            <input type="text" className={cx("text-input")} placeholder="Search category..." value={formData.category} onChange={e => {
+            <input type="text" className={getInputClassName("text-input", "category")} placeholder="Search category..." value={formData.category} onChange={e => {
               const value = e.target.value;
               const nextData = {
                 ...formData,
@@ -3534,10 +4221,12 @@ const BusinessList = React.memo(() => {
                 {cat.category}
               </li>)}
             </ul>}
+            {renderFieldError("category")}
           </div>
 
+          {renderSectionAdvanceButton(2, "categorySeo")}
           <div className={cx("form-divider")}></div>
-          <SectionHeader title="Keywords & Tags" subtitle="Help customers find you with relevant keywords" />
+          {renderSectionIntro(2, "keywordsTags", "Keywords & Tags", "Help customers find you with relevant keywords")}
 
           <div className={cx("category-form-input-group")} style={{
             marginTop: "0px"
@@ -3616,32 +4305,39 @@ const BusinessList = React.memo(() => {
                 </button>
               </div>
             </div>
+            {renderFieldError("keywords")}
           </div>
 
+          {renderSectionAdvanceButton(2, "keywordsTags")}
           <div className={cx("form-divider")}></div>
-          <SectionHeader title="Display & SEO" subtitle="How your business appears online" />
+          {renderSectionIntro(2, "displaySeo", "Display & SEO", "How your business appears online")}
 
           <div className={cx("form-input-group")}>
             <label className={cx("input-label")}>👁️ Display Title</label>
-            <input type="text" name="title" className={cx("text-input")} value={formData.title} onChange={handleChange} placeholder="How your business appears to customers" />
+            <input type="text" name="title" className={getInputClassName("text-input", "title")} value={formData.title} onChange={handleChange} placeholder="How your business appears to customers" />
+            {renderFieldError("title")}
           </div>
 
           <div className={cx("form-input-group col-span-all")}>
             <label className={cx("input-label")}>📖 Display Description</label>
-            <textarea name="description" className={cx("textarea-input")} value={formData.description} rows={3} onChange={handleChange} placeholder="A brief description of your business" />
+            <textarea name="description" className={getInputClassName("textarea-input", "description")} value={formData.description} rows={3} onChange={handleChange} placeholder="A brief description of your business" />
+            {renderFieldError("description")}
           </div>
 
+          {renderSectionAdvanceButton(2, "displaySeo")}
           <div className={cx("form-divider")}></div>
-          <SectionHeader title="Search Engine Optimization" subtitle="Improve your search visibility" />
+          {renderSectionIntro(2, "searchSeo", "Search Engine Optimization", "Improve your search visibility")}
 
           <div className={cx("form-input-group col-span-all")}>
             <label className={cx("input-label")}>🔍 SEO Title</label>
-            <input type="text" name="seoTitle" className={cx("text-input")} value={formData.seoTitle} onChange={handleChange} placeholder="Meta title for search engines (50-60 characters)" />
+            <input type="text" name="seoTitle" className={getInputClassName("text-input", "seoTitle")} value={formData.seoTitle} onChange={handleChange} placeholder="Meta title for search engines (50-60 characters)" />
+            {renderFieldError("seoTitle")}
           </div>
 
           <div className={cx("form-input-group col-span-all")}>
             <label className={cx("input-label")}>📝 SEO Description</label>
-            <textarea name="seoDescription" className={cx("textarea-input")} value={formData.seoDescription} rows={2} onChange={handleChange} placeholder="Meta description for search engines (150-160 characters)" />
+            <textarea name="seoDescription" className={getInputClassName("textarea-input", "seoDescription")} value={formData.seoDescription} rows={2} onChange={handleChange} placeholder="Meta description for search engines (150-160 characters)" />
+            {renderFieldError("seoDescription")}
           </div>
 
           {["restaurants", "hotels"].includes(formData.category?.toLowerCase()) && <>
@@ -3692,7 +4388,7 @@ const BusinessList = React.memo(() => {
                   )}
 
                   {fc.type === "radio" && (
-                    <select className={cx("select-input")} value={getFilterValue(fc)}
+                    <select className={getInputClassName("select-input", `filters.${fc.key}`)} value={getFilterValue(fc)}
                       onChange={e => handleFilterChange(fc.key, e.target.value || null)}>
                       <option value="">-- Select {fc.label} --</option>
                       {(fc.options || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
@@ -3727,14 +4423,17 @@ const BusinessList = React.memo(() => {
                       />
                     </Box>
                   )}
+                  {renderFieldError(`filters.${fc.key}`)}
                 </div>
               ))}
             </>
           )}
           <div className={cx("form-input-group col-span-all")}>
             <label className={cx("input-label")}>📍 Slug (URL-friendly name)</label>
-            <input type="text" name="slug" className={cx("text-input")} value={formData.slug} onChange={handleChange} placeholder="business-name-here" />
+            <input type="text" name="slug" className={getInputClassName("text-input", "slug")} value={formData.slug} onChange={handleChange} placeholder="business-name-here" />
+            {renderFieldError("slug")}
           </div>
+          {renderSectionAdvanceButton(2, "searchSeo")}
         </>;
       case 3:
         return <>
@@ -3765,12 +4464,15 @@ const BusinessList = React.memo(() => {
                 color: "#333",
                 mb: 1
               }}>
-                List Your Business on{" "}
-                <Box component="span" sx={{
-                  color: "#f57c00"
-                }}>
-                  MassClick
-                </Box>
+                {editMode
+                  ? `${postCreateBusinessName || formData.businessName || "This business"} was updated successfully`
+                  : listingMode === LISTING_MODE.PAID
+                  ? postCreatePaidStatus === "paid"
+                    ? `${postCreateBusinessName || "This business"} is now live as a paid listing`
+                    : postCreatePaidStatus === "failed"
+                      ? `${postCreateBusinessName || "This business"} was created, but paid activation still needs attention`
+                      : "List Your Business on MassClick"
+                  : `${postCreateBusinessName || "Your business"} was created successfully`}
               </Typography>
 
               <Typography sx={{
@@ -3781,23 +4483,63 @@ const BusinessList = React.memo(() => {
                 },
                 mb: 3
               }}>
-                Just ₹ 99/- + GST
+                {editMode
+                  ? "Changes saved"
+                  : listingMode === LISTING_MODE.PAID
+                  ? postCreatePaidStatus === "paid"
+                    ? "Paid activation completed"
+                    : postCreatePaidStatus === "failed"
+                      ? "Created successfully, but not marked as paid"
+                      : "Just Rs. 99/- + GST"
+                  : "Free listing draft saved"}
               </Typography>
 
-              <Button variant="contained" onClick={handlePayNow} sx={{
-                backgroundColor: "#f57c00",
-                color: "#fff",
-                fontWeight: 600,
-                textTransform: "none",
-                px: 4,
-                py: 1.2,
-                borderRadius: "6px",
-                "&:hover": {
-                  backgroundColor: "#e66b00"
-                }
-              }}>
-                Pay Now
-              </Button>
+              {!editMode && listingMode === LISTING_MODE.PAID && postCreatePaidStatus === "failed" ? (
+                <Button variant="contained" onClick={handleRetryPaidActivation} sx={{
+                  backgroundColor: "#f57c00",
+                  color: "#fff",
+                  fontWeight: 600,
+                  textTransform: "none",
+                  px: 4,
+                  py: 1.2,
+                  borderRadius: "6px",
+                  "&:hover": {
+                    backgroundColor: "#e66b00"
+                  }
+                }}>
+                  Mark as Paid Now
+                </Button>
+              ) : !editMode && listingMode === LISTING_MODE.PAID && postCreatePaidStatus !== "paid" ? (
+                <Button variant="contained" onClick={handlePayNow} sx={{
+                  backgroundColor: "#f57c00",
+                  color: "#fff",
+                  fontWeight: 600,
+                  textTransform: "none",
+                  px: 4,
+                  py: 1.2,
+                  borderRadius: "6px",
+                  "&:hover": {
+                    backgroundColor: "#e66b00"
+                  }
+                }}>
+                  Pay Now
+                </Button>
+              ) : (
+                <Button variant="contained" onClick={() => navigate("/dashboard/business")} sx={{
+                  backgroundColor: "#f57c00",
+                  color: "#fff",
+                  fontWeight: 600,
+                  textTransform: "none",
+                  px: 4,
+                  py: 1.2,
+                  borderRadius: "6px",
+                  "&:hover": {
+                    backgroundColor: "#e66b00"
+                  }
+                }}>
+                  View Directory
+                </Button>
+              )}
 
             </Box>
           </Box>
@@ -3809,6 +4551,7 @@ const BusinessList = React.memo(() => {
   const bypassableFieldErrorCount = Object.keys(fieldErrors).filter(isForceBypassableField).length;
   const currentDuplicateSignature = getDuplicateCheckSignature(getCleanBusinessFormData(formData));
   return <div className={cx("business-page")}>
+    {renderSideSuggestion()}
     <AdminViewTabs activeView={activeView} onChange={handleAdminViewChange} isEditing={editMode} createLabel="Business" listLabel="Directory" listCount={filteredRows.length} />
 
     {activeView === "form" && <>
@@ -3876,6 +4619,8 @@ const BusinessList = React.memo(() => {
             </div>
           )}
         </div>
+        {!editMode && renderListingModeSelector()}
+        {renderPaidAssistant()}
         {!editMode && (
           <div className={cx("draft-meta-row")}>
             <span>
@@ -3890,9 +4635,9 @@ const BusinessList = React.memo(() => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit}>
+        <form ref={businessFormRef} onSubmit={handleSubmit}>
           {activeStep === 0 && possibleDuplicateMatches.length > 0 && (
-            <div className={cx("duplicate-warning-panel")}>
+            <div className={cx("duplicate-warning-panel", listingMode === LISTING_MODE.PAID && "paid-mode-duplicate-panel")}>
               <div className={cx("duplicate-warning-header")}>
                 <strong>This business probably already exists.</strong>
                 <span className={cx("duplicate-lock-note")}>
@@ -3937,8 +4682,8 @@ const BusinessList = React.memo(() => {
               </div>
             </div>
           )}
-          {Object.keys(fieldErrors).length > 0 && (
-            <div className={cx("validation-panel")}>
+          {listingMode === LISTING_MODE.FREE && Object.keys(fieldErrors).length > 0 && (
+            <div className={cx("validation-panel", "free-mode-validation-panel")}>
               <strong>Fix these fields:</strong>
               {Object.values(fieldErrors).slice(0, 6).map((message, index) => (
                 <p key={`${message}-${index}`}>{message}</p>
@@ -3969,35 +4714,13 @@ const BusinessList = React.memo(() => {
           }}>
             {activeStep > 0 && activeStep < steps.length - 1 && <div style={{
               display: "flex",
-              justifyContent: "flex-start",
-              marginBottom: "-88px"
+              justifyContent: "flex-start"
             }}>
-              <button type="button" className={cx("submit-button")} onClick={handleBack}>
+              <button type="button" className={cx("step-nav-button", "secondary")} onClick={handleBack}>
                 <SkipPreviousIcon />
+                Back
               </button>
             </div>}
-
-            {activeStep < steps.length - 2 ? <div style={{
-              width: "100%",
-              display: "flex",
-              justifyContent: "flex-end"
-            }}>
-              <button type="button" className={cx("submit-button")} onClick={handleNext} style={{
-                marginLeft: "auto",
-                display: "flex",
-                justifyContent: "flex-end",
-                marginTop: "28px"
-              }}>
-                <SkipNextIcon />
-              </button>
-            </div> : activeStep === steps.length - 2 ? <button type="submit" className={cx("submit-button")} disabled={loading} style={{
-              marginLeft: "auto",
-              display: "flex",
-              justifyContent: "flex-end",
-              marginTop: "28px"
-            }}>
-              {loading ? <CircularProgress size={24} color="inherit" /> : editMode ? "Update" : "Create"}
-            </button> : null}
           </div>
         </form>
       </div>

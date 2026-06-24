@@ -16,7 +16,7 @@ import RocketLaunchIcon from '@mui/icons-material/RocketLaunch';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import SupportAgentIcon from '@mui/icons-material/SupportAgent';
 import styles from "./webDevSection.module.css";
-import CardsSearch from '../../CardsSearch/CardsSearch';
+import StickySearchBar from '../../StickySearchBar/StickySearchBar';
 import Footer from '../footer';
 import EnquiryImage from '../../../../assets/enquiry.png';
 const cx = createScopedClassNames(styles);
@@ -145,7 +145,7 @@ const WebDevSection = () => {
             </Helmet>
             <SeoMeta seoData={seoMetaData} fallback={fallbackSeo} />
 
-            <CardsSearch /><br /><br /><br />
+            <StickySearchBar /><br /><br /><br />
 
             <Container maxWidth="xl" sx={{
       padding: {

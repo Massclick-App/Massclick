@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { useDispatch } from "react-redux";
 import { createStartProject } from "../../../redux/actions/startProjectAction.js";
 import { User, Phone, Mail, Building, Globe, AlertCircle } from "lucide-react";
-import CardsSearch from "../CardsSearch/CardsSearch";
+import StickySearchBar from '../StickySearchBar/StickySearchBar';
 import styles from "./businessEnquiry.module.css";
 import businessImage from "../../../assets/businessimage.jpg";
 import businessChain from "../../../assets/businesschain.jpg";
@@ -247,7 +247,7 @@ const BusinessEnquiry = () => {
             </div>;
   };
   return <>
-            <CardsSearch /><br /><br /><br /><br />
+            <StickySearchBar /><br /><br /><br /><br />
 
             <div className={cx("enquiry-wrapper")}>
 

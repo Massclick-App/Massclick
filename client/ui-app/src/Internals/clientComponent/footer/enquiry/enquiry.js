@@ -5,7 +5,7 @@ import styles from "./enquiry.module.css";
 import Alert from '@mui/material/Alert';
 import SendIcon from '@mui/icons-material/Send';
 import EnquiryImage from '../../../../assets/enquiry.png';
-import CardsSearch from '../../CardsSearch/CardsSearch';
+import StickySearchBar from '../../../clientComponent/StickySearchBar/StickySearchBar';
 import Footer from '../footer';
 import { useDispatch, useSelector } from "react-redux";
 import { createEnquiry } from "../../../../redux/actions/enquiryAction";
@@ -133,7 +133,7 @@ const EnquiryNow = () => {
                 {breadcrumbSchema && <script type="application/ld+json">{JSON.stringify(breadcrumbSchema)}</script>}
             </Helmet>
             <SeoMeta seoData={seoMetaData} fallback={fallbackSeo} />
-            <CardsSearch /><br /><br /><br />
+            <StickySearchBar /><br /><br /><br />
             <section className={cx("enquiry-hero-banner")} style={{
       backgroundImage: `linear-gradient(rgba(255,102,0,0.7), rgba(255,102,0,0.7)), url(${EnquiryImage})`
     }}>

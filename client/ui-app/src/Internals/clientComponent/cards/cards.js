@@ -114,6 +114,7 @@ const Cards = ({
   distance = null,
   viewMode = "list",
   cardVariant = "",
+  compact = false,
   ...props
 }) => {
   const navigate = useNavigate();
@@ -351,7 +352,7 @@ const Cards = ({
         document.body
       )}
       <Link to={to} state={props.state} className={cx("card-link")}>
-        <div className={cx("base-card", `base-card--${viewMode}`, cardVariant && `base-card--${cardVariant}`)}>
+        <div className={cx("base-card", `base-card--${viewMode}`, cardVariant && `base-card--${cardVariant}`, compact && "base-card--compact")}>
 
           {/* Image */}
           <div className={cx("card-image-wrapper")}>

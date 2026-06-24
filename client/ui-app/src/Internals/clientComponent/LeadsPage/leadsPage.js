@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { viewOtpUser } from "../../../redux/actions/otpAction";
 import { fetchMatchedLeads } from "../../../redux/actions/leadsAction";
 import { useNavigate } from "react-router-dom";
-import CardsSearch from "../CardsSearch/CardsSearch";
+import StickySearchBar from '../../clientComponent/StickySearchBar/StickySearchBar';
 import styles from "./leadsPage.module.css";
 import { isOwnLeadUser } from "../leadsNotification/leadNotificationUtils";
 const cx = createScopedClassNames(styles);
@@ -150,7 +150,7 @@ export default function LeadsPage() {
   if (!hasBusinessCategory) {
     return <div className={cx("lp-root")}>
         <div className={cx("lp-search-shell")}>
-          <CardsSearch />
+          <StickySearchBar />
         </div>
         <main className={cx("lp-container")}>
           <section className={cx("lp-card")} style={{
@@ -176,7 +176,7 @@ export default function LeadsPage() {
   const qualityLabel = leadsCount === 0 ? "No data yet" : leadsCount > 20 || repeatCount > 5 ? "High quality" : leadsCount > 5 ? "Moderate quality" : "Low quality";
   return <div className={cx("lp-root")}>
       <div className={cx("lp-search-shell")}>
-        <CardsSearch />
+        <StickySearchBar />
       </div>
       <main className={cx("lp-container")}>
         <section className={cx("lp-card")}>

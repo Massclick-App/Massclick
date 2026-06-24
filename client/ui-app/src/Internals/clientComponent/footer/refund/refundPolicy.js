@@ -5,7 +5,7 @@ import { useDispatch, useSelector } from "react-redux";
 import CancelIcon from '@mui/icons-material/Cancel';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
 import GavelIcon from '@mui/icons-material/Gavel';
-import CardsSearch from '../../CardsSearch/CardsSearch';
+import StickySearchBar from '../../StickySearchBar/StickySearchBar';
 import Footer from '../footer';
 import SeoMeta from "../../seo/seoMeta";
 import { fetchSeoMeta } from "../../../../redux/actions/seoAction";
@@ -59,7 +59,7 @@ const RefundPolicy = () => {
   };
   return <>
             <SeoMeta seoData={seoMetaData} fallback={fallbackSeo} />
-            <CardsSearch />
+            <StickySearchBar />
             <section className={cx("section-refund-policy")}>
                 <div className={cx("refund-header-wrapper")}>
                     <h2 className={cx("section-title-refund")}>Official <span className={cx("highlight-text-refund")}>Refund Policy</span></h2>
