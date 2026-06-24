@@ -5,7 +5,7 @@ import styles from "./seo.module.css";
 import SeoImage from '../../../../assets/seo1.jpg';
 import searchGraphic from '../../../../assets/seo.jpg';
 import Footer from '../footer';
-import CardsSearch from '../../CardsSearch/CardsSearch';
+import StickySearchBar from '../../StickySearchBar/StickySearchBar';
 import SeoMeta from "../../seo/seoMeta";
 import { fetchSeoMeta } from "../../../../redux/actions/seoAction";
 import { useDispatch, useSelector } from "react-redux";
@@ -50,7 +50,7 @@ const Seo = () => {
 
             <SeoMeta seoData={seoMetaData} fallback={fallbackSeo} />
 
-            <CardsSearch /><br /><br /><br />
+            <StickySearchBar /><br /><br /><br />
             <div className={cx("seo-container")}>
 
                 {/* 1. Hero Section */}

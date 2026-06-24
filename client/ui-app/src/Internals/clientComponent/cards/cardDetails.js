@@ -10,7 +10,7 @@ import { useSnackbar } from "notistack";
 import { getBusinessDetailsById, getBusinessDetailsBySlug, editBusinessList } from "../../../redux/actions/businessListAction";
 import styles from "./cardDetails.module.css";
 import UserRatingWidget from "../rating/rating";
-import CardsSearch from "../../clientComponent/CardsSearch/CardsSearch";
+import StickySearchBar from '../StickySearchBar/StickySearchBar';
 import Breadcrumbs from "../Breadcrumbs/Breadcrumbs.js";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
@@ -177,14 +177,14 @@ const BusinessDetail = React.memo(() => {
   }, [dispatch, business?._id]);
   if (businessDetailsLoading) {
     return <>
-        <CardsSearch />
+        <StickySearchBar />
         <GlobalSkeleton type="details" />
         <Footer />
       </>;
   }
   if (businessDetailsError) {
     return <>
-        <CardsSearch />
+        <StickySearchBar />
         <div className={cx("business-CardDetails-pageWrapper")}>
           <p style={{
           color: "red"
@@ -195,7 +195,7 @@ const BusinessDetail = React.memo(() => {
   }
   if (!business) {
     return <>
-        <CardsSearch />
+        <StickySearchBar />
         <div className={cx("business-CardDetails-pageWrapper")}>
           <p>No business found for this ID.</p>
         </div>
@@ -543,7 +543,7 @@ const BusinessDetail = React.memo(() => {
         {localBusinessSchema && <script type="application/ld+json">{JSON.stringify(localBusinessSchema)}</script>}
         {breadcrumbSchema && <script type="application/ld+json">{JSON.stringify(breadcrumbSchema)}</script>}
       </Helmet>
-      <CardsSearch />
+      <StickySearchBar />
       {showCertificate && createPortal(
         <div
           className={cx("business-CardDetails-certificateOverlay", `business-CardDetails-certificateOverlay--${currentCertificate.key}`)}

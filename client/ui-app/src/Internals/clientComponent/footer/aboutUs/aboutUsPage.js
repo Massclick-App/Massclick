@@ -12,7 +12,7 @@ import PeopleIcon from '@mui/icons-material/People';
 import BusinessCenterIcon from '@mui/icons-material/BusinessCenter';
 import Footer from '../footer';
 import AboutUs from '../../../../assets/aboutus.jpg';
-import CardsSearch from '../../CardsSearch/CardsSearch';
+import StickySearchBar from '../../StickySearchBar/StickySearchBar';
 import SeoMeta from "../../seo/seoMeta";
 import { fetchSeoMeta } from "../../../../redux/actions/seoAction";
 import { generateAboutPageSchema, generateBreadcrumbSchema } from "../../../../utils/seoSchemaGenerators";
@@ -97,7 +97,7 @@ const AboutUsPage = () => {
                 {breadcrumbSchema && <script type="application/ld+json">{JSON.stringify(breadcrumbSchema)}</script>}
             </Helmet>
             <SeoMeta seoData={seoMetaData} fallback={fallbackSeo} />
-            <CardsSearch /><br /><br /><br />
+            <StickySearchBar /><br /><br /><br />
 
             <div className={cx("about-us-page-container")}>
 

@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import styles from "./feedback.module.css";
 import StarIcon from '@mui/icons-material/Star';
 import Footer from '../footer';
-import CardsSearch from '../../CardsSearch/CardsSearch';
+import StickySearchBar from '../../../clientComponent/StickySearchBar/StickySearchBar';
 import SeoMeta from "../../seo/seoMeta";
 import { fetchSeoMeta } from "../../../../redux/actions/seoAction";
 const cx = createScopedClassNames(styles);
@@ -90,7 +90,7 @@ const FeedbackComponent = () => {
   return <>
             <SeoMeta seoData={seoMetaData} fallback={fallbackSeo} />
 
-            <CardsSearch /><br /><br /><br />
+            <StickySearchBar /><br /><br /><br />
 
             <section className={cx("section-feedback-grid")}>
                 <div className={cx("feedback-header-wrapper")}>

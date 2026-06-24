@@ -107,6 +107,7 @@
 .base-card--nearby.base-card--grid .card-content {
   min-height: 0;
   padding: 14px;
+  overflow: visible;
 }
 
 .base-card--nearby.base-card--grid .cardpage-actions {
@@ -123,6 +124,21 @@
 
 .base-card--nearby.base-card--grid .enquiry-button {
   grid-column: 1 / -1;
+}
+
+.base-card--compact.base-card--nearby.base-card--grid .card-content {
+  padding: 10px 12px;
+  gap: 6px;
+}
+
+.base-card--compact.base-card--nearby.base-card--grid .cardpage-actions {
+  gap: 6px;
+}
+
+.base-card--compact.base-card--nearby.base-card--grid .card-action-button {
+  min-height: 32px;
+  padding: 6px 8px;
+  font-size: 0.72rem;
 }
 
 /* ================================ */
@@ -1091,8 +1107,134 @@
 }
 
 /* ================================ */
+/* COMPACT MODE — responsive density */
+/* ================================ */
+
+.base-card--compact {
+  height: auto;
+  overflow: visible;
+}
+
+.base-card--compact.base-card--list {
+  flex-direction: column;
+}
+
+.base-card--compact.base-card--list .card-image-wrapper {
+  width: 100%;
+  height: 160px;
+}
+
+.base-card--compact.base-card--list .list-content {
+  height: auto;
+  overflow: visible;
+  flex-direction: column;
+}
+
+.base-card--compact.base-card--list .list-info {
+  overflow: visible;
+  padding: 12px 14px;
+  gap: 6px;
+}
+
+.base-card--compact.base-card--list .list-actions {
+  width: 100%;
+  flex-direction: row;
+  border-left: none;
+  border-top: 1px solid #f1f5f9;
+  padding: 8px 14px 12px;
+  gap: 6px;
+  justify-content: stretch;
+}
+
+.base-card--compact.base-card--list .list-actions .card-action-button {
+  flex: 1;
+  min-height: 36px;
+  padding: 6px 8px;
+  font-size: 0.76rem;
+}
+
+.base-card--compact .card-title {
+  font-size: 1rem;
+  line-height: 1.3;
+  max-height: 2.6em;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.base-card--compact .card-address-inline {
+  max-height: 2.9em;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.base-card--compact .card-status-row {
+  display: none;
+}
+
+.base-card--compact .category-pill {
+  display: none;
+}
+
+.base-card--compact .filter-badges {
+  display: none;
+}
+
+.base-card--compact.base-card--grid {
+  min-height: auto;
+}
+
+.base-card--compact.base-card--grid .card-content {
+  min-height: auto;
+  overflow: visible;
+}
+
+.base-card--compact.base-card--large {
+  min-height: auto;
+}
+
+.base-card--compact.base-card--large .card-content {
+  min-height: auto;
+  overflow: visible;
+}
+
+/* ================================ */
 /* RESPONSIVE                       */
 /* ================================ */
+
+@media (max-width: 1024px) {
+  .base-card--list .card-image-wrapper {
+    width: 160px;
+  }
+
+  .base-card--list .list-info {
+    padding: 10px 12px;
+    gap: 6px;
+  }
+
+  .base-card--list .list-actions {
+    width: 110px;
+    padding: 10px 8px;
+    gap: 6px;
+  }
+
+  .base-card--list .card-title {
+    font-size: 0.95rem;
+  }
+
+  .base-card--list .card-meta {
+    gap: 5px;
+  }
+
+  .base-card--list .card-action-button {
+    min-height: 36px;
+    padding: 6px 6px;
+    font-size: 0.75rem;
+  }
+}
 
 @media (max-width: 992px) {
   .card-image-wrapper {
@@ -1133,6 +1275,14 @@
   .base-card {
     flex-direction: column;
     height: auto;
+  }
+
+  .base-card--compact .card-status-row {
+    display: flex;
+  }
+
+  .base-card--compact .category-pill {
+    display: inline-flex;
   }
 
   .base-card--table {

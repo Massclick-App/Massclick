@@ -6,7 +6,7 @@ import SupportAgentIcon from '@mui/icons-material/SupportAgent';
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import CallIcon from '@mui/icons-material/Call';
 import BusinessCenterIcon from '@mui/icons-material/BusinessCenter';
-import CardsSearch from '../../CardsSearch/CardsSearch';
+import StickySearchBar from '../../../clientComponent/StickySearchBar/StickySearchBar';
 import Footer from '../footer';
 import SeoMeta from "../../seo/seoMeta";
 import { fetchSeoMeta } from "../../../../redux/actions/seoAction";
@@ -116,7 +116,7 @@ const CustomerCareComponent = () => {
   };
   return <>
             <SeoMeta seoData={seoMetaData} fallback={fallbackSeo} />
-            <CardsSearch /><br /><br /><br />
+            <StickySearchBar /><br /><br /><br />
             <section className={cx("section-customer-care")}>
                 <div className={cx("care-header-wrapper")}>
                     <h2 className={cx("section-title-care")}>Dedicated Customer Care</h2>

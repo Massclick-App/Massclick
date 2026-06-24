@@ -8,7 +8,7 @@ import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import { getBusinessDetailsById } from '../../../redux/actions/businessListAction';
 import { createReview } from '../../../redux/actions/reviewAction';
 import styles from "./submitReview.module.css";
-import CardsSearch from '../CardsSearch/CardsSearch';
+import StickySearchBar from '../CardsSearch/CardsSearch';
 import Footer from '../footer/footer';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
@@ -58,13 +58,13 @@ const WriteReviewPage = () => {
   }, [dispatch, businessId]);
   if (businessDetailsLoading) {
     return <>
-      <CardsSearch />
+      <StickySearchBar />
       <Footer />
     </>;
   }
   if (businessDetailsError) {
     return <>
-      <CardsSearch />
+      <StickySearchBar />
       <p style={{
         textAlign: "center",
         marginTop: "50px",
@@ -78,7 +78,7 @@ const WriteReviewPage = () => {
   const business = businessDetails;
   if (!business) {
     return <>
-      <CardsSearch />
+      <StickySearchBar />
       <p style={{
         textAlign: "center",
         marginTop: "50px"
@@ -146,7 +146,7 @@ const WriteReviewPage = () => {
   };
   const isSubmitDisabled = isSubmitting || !rating || reviewText.length < 5;
   return <>
-      <CardsSearch /><br /><br /><br />
+      <StickySearchBar /><br /><br /><br />
 
       <div className={cx("write-review-container")}>
 

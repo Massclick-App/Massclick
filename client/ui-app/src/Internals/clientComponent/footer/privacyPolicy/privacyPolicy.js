@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import styles from "./privacyPolicy.module.css"; // New CSS file
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
-import CardsSearch from '../../CardsSearch/CardsSearch';
+import StickySearchBar from '../../StickySearchBar/StickySearchBar';
 import Footer from '../footer';
 import SeoMeta from "../../seo/seoMeta";
 import { fetchSeoMeta } from "../../../../redux/actions/seoAction";
@@ -114,7 +114,7 @@ const PrivacyPolicy = () => {
   };
   return <>
             <SeoMeta seoData={seoMetaData} fallback={fallbackSeo} />
-            <CardsSearch />
+            <StickySearchBar />
             <section className={cx("section-privacy")}>
                 <div className={cx("privacy-header-wrapper")}>
                     <h2 className={cx("section-title-privacy")}>Our <span className={cx("highlight-text-privacy")}>Privacy Policy</span></h2>

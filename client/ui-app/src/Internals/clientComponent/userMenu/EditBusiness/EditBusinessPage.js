@@ -2,7 +2,7 @@ import { createScopedClassNames } from "../../../../utils/createScopedClassNames
 import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Alert, AlertTitle, Autocomplete, Box, Button, Chip, Step, StepLabel, Stepper, TextField } from "@mui/material";
-import CardsSearch from "../../CardsSearch/CardsSearch";
+import StickySearchBar from '../../StickySearchBar/StickySearchBar';
 import Footer from "../../footer/footer";
 import { editBusinessList, findBusinessByMobile } from "../../../../redux/actions/businessListAction";
 import { businessCategorySearch } from "../../../../redux/actions/categoryAction";
@@ -543,7 +543,7 @@ export default function EditBusinessPage() {
       </div>;
   };
   return <>
-      <CardsSearch />
+      <StickySearchBar />
       <div className={cx("edit-business-page")}>
         <div className={cx("edit-business-container")}>
           <div className={cx("edit-business-header")}>

@@ -16,7 +16,7 @@ import {
 import { Helmet } from "react-helmet-async";
 import HeroSection from "../clientComponent/heroSection/heroSection.js";
 import CategoryBar from "../clientComponent/categoryBar";
-import CardsSearch from "./CardsSearch/CardsSearch";
+import StickySearchBar from './StickySearchBar/StickySearchBar';
 import OTPLoginModel from "./AddBusinessModel.js";
 import { viewOtpUser } from "../../redux/actions/otpAction.js";
 import { fetchMatchedLeads } from "../../redux/actions/leadsAction.js";
@@ -612,7 +612,7 @@ const LandingPage = React.memo(() => {
 
         <CategoryBar />
 
-        <CardsSearch
+        <StickySearchBar
           isScrolled={isScrolled}
           locationName={locationName}
           setLocationName={setLocationName}

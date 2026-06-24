@@ -6,7 +6,7 @@ import styles from "./graphicDesign.module.css";
 import graphic1 from '../../../../assets/graphic.jpg';
 import graphic2 from '../../../../assets/graphic1.jpg';
 import Footer from '../footer';
-import CardsSearch from '../../CardsSearch/CardsSearch';
+import StickySearchBar from '../../../clientComponent/StickySearchBar/StickySearchBar';
 import height from '../../../../assets/height.jpg';
 import SeoMeta from "../../seo/seoMeta";
 import { fetchSeoMeta } from "../../../../redux/actions/seoAction";
@@ -49,7 +49,7 @@ const GraphicDesign = () => {
                 {breadcrumbSchema && <script type="application/ld+json">{JSON.stringify(breadcrumbSchema)}</script>}
             </Helmet>
             <SeoMeta seoData={seoMetaData} fallback={fallbackSeo} />
-            <CardsSearch /><br /><br /><br />
+            <StickySearchBar /><br /><br /><br />
             <div className={cx("graphic-design-container")}>
                 {/* 1. Graphic Design Hero/Intro Section */}
                 <div className={cx("graphic-design-intro-section")}>

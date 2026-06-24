@@ -4,7 +4,7 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { getPlaceholderImage } from "../../../../utils/placeholderImage";
 import styles from "./popularCategories.module.css";
-import CardsSearch from "../../CardsSearch/CardsSearch";
+import StickySearchBar from '../../../StickySearchBar/StickySearchBar';
 import CardDesign from "../cards";
 import TopBannerAds from "../../banners/topBanner/topBanner";
 import { getBusinessByCategory } from "../../../../redux/actions/businessListAction";
@@ -79,7 +79,7 @@ const CategoryDynamicPage = () => {
   }
   return <>
 
-      <CardsSearch />
+      <StickySearchBar />
 
 
       <div className={cx("page-spacing")} />

@@ -2,7 +2,7 @@ import { createScopedClassNames } from "../../../../utils/createScopedClassNames
 import React, { useState, useMemo } from 'react';
 import styles from "./portfolio.module.css";
 import LaunchIcon from '@mui/icons-material/Launch';
-import CardsSearch from '../../CardsSearch/CardsSearch';
+import StickySearchBar from '../../../clientComponent/StickySearchBar/StickySearchBar';
 import Footer from '../footer';
 import geoPark from "../../../../assets/portfolio/geopark.webp";
 import ginfraBricks from "../../../../assets/portfolio/ginfrabricks.webp";
@@ -107,7 +107,7 @@ const Portfolio = () => {
     return projectData.filter(project => project.category === activeFilter);
   }, [activeFilter]);
   return <>
-            <CardsSearch /><br /><br /><br />
+            <StickySearchBar /><br /><br /><br />
             <section className={cx("section-portfolio")}>
                 <div className={cx("portfolio-header-wrapper")}>
                     <h2 className={cx("section-title-portfolio")}>Our <span className={cx("highlight-text-portfolio")}>Successful</span> Projects</h2>

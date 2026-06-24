@@ -7,7 +7,7 @@ import LocationOnIcon from "@mui/icons-material/LocationOn";
 import PhoneIcon from "@mui/icons-material/Phone";
 import CategoryIcon from "@mui/icons-material/Category";
 import styles from "./mrp.module.css";
-import CardsSearch from '../CardsSearch/CardsSearch';
+import StickySearchBar from '../StickySearchBar/StickySearchBar';
 import { createMRP, searchMrpBusiness, searchMrpCategory, getAllMRP, sendMrpLeads } from '../../../redux/actions/mrpAction';
 import MRPInsights from './mrpInsights/mrpInsights';
 import MRPCategoryChart from './mrpChart/mrpCategoryChart';
@@ -141,7 +141,7 @@ export default function MRPPage() {
     }
   };
   return <>
-    <CardsSearch />
+    <StickySearchBar />
     <div className={cx("page-spacing-mrp")} />
 
     <section className={cx("mrp-container")}>

@@ -8,7 +8,7 @@ import { viewOtpUser } from "../../../../redux/actions/otpAction.js";
 import { Phone as PhoneIcon, WhatsApp as WhatsAppIcon, Email as EmailIcon, Share as ShareIcon, NotificationsActive as NoteIcon, AccessAlarm as ReminderIcon, StarRate as StarIcon, Verified as VerifiedIcon, Cancel as CancelIcon, ArrowBackIosNew as BackIcon } from "@mui/icons-material";
 import ListIcon from '@mui/icons-material/List';
 import { Button, Modal, Box, Typography, Chip, IconButton } from "@mui/material";
-import CardsSearch from "../../CardsSearch/CardsSearch";
+import StickySearchBar from '../../../clientComponent/StickySearchBar/StickySearchBar';
 import { updateOtpUser } from "../../../../redux/actions/otpAction.js";
 const cx = createScopedClassNames(styles);
 const LeadsCardHistory = () => {
@@ -159,7 +159,7 @@ const LeadsCardHistory = () => {
   };
   return <>
       <div className={cx("lh-search-shell")}>
-        <CardsSearch />
+        <StickySearchBar />
       </div>
 
       <main className={cx("lh-container")}>

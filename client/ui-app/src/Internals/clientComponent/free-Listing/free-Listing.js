@@ -1,7 +1,7 @@
-import CardsSearch from '../CardsSearch/CardsSearch';
+import StickySearchBar from '../CardsSearch/CardsSearch';
 export default function FreeListingPage() {
   return <>
-    <CardsSearch /><br /><br /><br /><br />
+    <StickySearchBar /><br /><br /><br /><br />
     <div>Coming Soon</div>
     </>;
 }

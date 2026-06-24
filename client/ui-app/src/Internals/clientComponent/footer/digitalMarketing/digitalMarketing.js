@@ -5,7 +5,7 @@ import { Helmet } from 'react-helmet-async';
 import { createStartProject } from '../../../../redux/actions/startProjectAction';
 import styles from "./digitalMarketing.module.css";
 import Footer from '../footer';
-import CardsSearch from '../../CardsSearch/CardsSearch';
+import StickySearchBar from '../../../clientComponent/StickySearchBar/StickySearchBar';
 import SeoMeta from "../../seo/seoMeta";
 import { fetchSeoMeta } from "../../../../redux/actions/seoAction";
 import { generateServiceSchema, generateBreadcrumbSchema } from "../../../../utils/seoSchemaGenerators";
@@ -122,7 +122,7 @@ const DigitalMarketing = () => {
 
             <SeoMeta seoData={seoMetaData} fallback={fallbackSeo} />
 
-            <CardsSearch /><br /><br /><br /><br />
+            <StickySearchBar /><br /><br /><br /><br />
             <div className={cx("digital-marketing-page")}>
                 {/* Section 1: Digital Marketing Intro */}
                 <section className={cx("dm-intro-section")}>

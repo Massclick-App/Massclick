@@ -1,5 +1,5 @@
 import { createScopedClassNames } from "../../../../utils/createScopedClassNames";
-import CardsSearch from '../../CardsSearch/CardsSearch';
+import StickySearchBar from '../../StickySearchBar/StickySearchBar';
 import Footer from '../../footer/footer';
 import styles from "./DashboardPage.module.css";
 const cx = createScopedClassNames(styles);
@@ -35,7 +35,7 @@ const ShareIcon = ({
 }) => <span className={className}>🔗</span>;
 export default function DashboardPage() {
   return <>
-  <CardsSearch /><br /><br /><br />
+  <StickySearchBar /><br /><br /><br />
     <div className={cx("dashboard-page-container")}>
       <h1 className={cx("dashboard-main-title")}>Analytics Overview</h1>
       <hr className={cx("title-separator")} />

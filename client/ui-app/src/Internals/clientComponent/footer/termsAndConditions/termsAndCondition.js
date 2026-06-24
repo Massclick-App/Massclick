@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import styles from "./termsAndCondition.module.css";
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
-import CardsSearch from '../../CardsSearch/CardsSearch';
+import StickySearchBar from '../../StickySearchBar/StickySearchBar';
 import Footer from '../footer';
 import SeoMeta from "../../seo/seoMeta";
 import { fetchSeoMeta } from "../../../../redux/actions/seoAction";
@@ -126,7 +126,7 @@ const TermsAndConditions = () => {
   };
   return <>
             <SeoMeta seoData={seoMetaData} fallback={fallbackSeo} />
-            <CardsSearch /><br /><br /><br />
+            <StickySearchBar /><br /><br /><br />
             <section className={cx("section-terms")}>
                 <div className={cx("terms-header-wrapper")}>
                     <h2 className={cx("section-title-terms")}>Our Standard <span className={cx("highlight-text-terms")}>Terms & Conditions</span></h2>
