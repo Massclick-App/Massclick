@@ -3,7 +3,6 @@ import React, { useEffect, useState, useMemo, useDeferredValue } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchSystemSettings, updateSystemSettings } from "../../redux/actions/systemSettingsAction.js";
 import { fetchRedisStatus, invalidateCache, clearAllCaches, fetchRedisKeys, deleteRedisKeys, fetchRedisInfo, flushRedisDb, deleteRedisPattern } from "../../redux/actions/cacheActions.js";
-import S3WebpMigrationCard from "./S3WebpMigrationCard.js";
 import styles from "./SystemSettings.module.css";
 
 // Icons
@@ -20,7 +19,7 @@ const DebugIcon = () => <span>🔍</span>;
 const DatabaseIcon = () => <span>🗄️</span>;
 const AlertIcon = () => <span>⚡</span>;
 const GuardIcon = () => <span>🛡️</span>;
-const MediaCleanupIcon = () => <span>🧹</span>;
+// const MediaCleanupIcon = () => <span>🧹</span>;
 const formatUptime = seconds => {
   if (!seconds) return "\u2014";
   const d = Math.floor(seconds / 86400);
@@ -555,14 +554,6 @@ const SETTINGS_SECTIONS = [{
   icon: CloudSyncIcon,
   color: "#14b8a6",
   fieldKeys: ["redis_enabled"]
-}, {
-  key: "mediaCleanup",
-  label: "Media Cleanup",
-  description: "Convert legacy business images to WebP and retire old S3 originals.",
-  detailOverride: "WebP migration and cleanup",
-  icon: MediaCleanupIcon,
-  color: "#f97316",
-  fieldKeys: []
 }];
 const FIELD_SECTION_MAP = SETTINGS_SECTIONS.reduce((acc, section) => {
   section.fieldKeys.forEach(fieldKey => {
@@ -1291,10 +1282,11 @@ export default function SystemSettings() {
               </div>
             </div>
           </div>;
-      case "mediaCleanup":
-        return <div className={cx("panel-stack")}>
-            <S3WebpMigrationCard />
-          </div>;
+      // Temporarily hidden. Uncomment to restore the media cleanup panel.
+      // case "mediaCleanup":
+      //   return <div className={cx("panel-stack")}>
+      //       <S3WebpMigrationCard />
+      //     </div>;
       default:
         return null;
     }
