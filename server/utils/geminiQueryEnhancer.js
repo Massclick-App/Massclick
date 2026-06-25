@@ -6,6 +6,10 @@ const GEMINI_API_URL =
 const CACHE_TTL = 60 * 60 * 24; // 24 hours
 const TIMEOUT_MS = 2000;
 
+// After a 429, skip Gemini for this many ms to avoid hammering the quota
+let rateLimitedUntil = 0;
+const RATE_LIMIT_BACKOFF_MS = 60 * 1000; // 1 minute
+
 const buildPrompt = (term, category) => {
   const categoryHint = category ? `Category: ${category}` : "Category: general business";
   return `You are a search keyword expander for a local Indian business directory.
@@ -32,6 +36,11 @@ export const enhanceSearchQuery = async (term, category = "") => {
     // Redis miss is fine, continue
   }
 
+  if (Date.now() < rateLimitedUntil) {
+    console.log(`[Gemini] skipping — rate limited for ${Math.ceil((rateLimitedUntil - Date.now()) / 1000)}s more`);
+    return term;
+  }
+
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
@@ -49,7 +58,12 @@ export const enhanceSearchQuery = async (term, category = "") => {
     clearTimeout(timer);
 
     if (!response.ok) {
-      console.warn(`[Gemini] API error ${response.status} for term "${term}" — using original`);
+      if (response.status === 429) {
+        rateLimitedUntil = Date.now() + RATE_LIMIT_BACKOFF_MS;
+        console.warn(`[Gemini] rate limited (429) — pausing Gemini for 60s`);
+      } else {
+        console.warn(`[Gemini] API error ${response.status} for term "${term}" — using original`);
+      }
       return term;
     }
 
