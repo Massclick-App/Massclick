@@ -58,11 +58,13 @@ export const enhanceSearchQuery = async (term, category = "") => {
     clearTimeout(timer);
 
     if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      const reason = body?.error?.message || JSON.stringify(body);
       if (response.status === 429) {
         rateLimitedUntil = Date.now() + RATE_LIMIT_BACKOFF_MS;
-        console.warn(`[Gemini] rate limited (429) — pausing Gemini for 60s`);
+        console.warn(`[Gemini] rate limited (429) — pausing 60s | reason: ${reason}`);
       } else {
-        console.warn(`[Gemini] API error ${response.status} for term "${term}" — using original`);
+        console.warn(`[Gemini] API error ${response.status} — ${reason}`);
       }
       return term;
     }
