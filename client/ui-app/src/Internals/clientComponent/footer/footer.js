@@ -8,6 +8,7 @@ import InstagramIcon from "@mui/icons-material/Instagram";
 import YouTubeIcon from "@mui/icons-material/YouTube";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 const cx = createScopedClassNames(styles);
+
 const Footer = () => {
   const FooterLink = ({ children, to = "#" }) => (
     <li className={cx("footer-link-item")}>

@@ -81,7 +81,12 @@ const BlogDetail = () => {
   };
   const makeSlug = (text = "") => text.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
   const formattedContent = useMemo(() => {
-    if (!blog?.pageContent) return "";
+    if (!blog?.pageContent) {
+      return {
+        introduction: "",
+        body: ""
+      };
+    }
     const parser = new DOMParser();
     const doc = parser.parseFromString(blog.pageContent, "text/html");
     const headings = doc.querySelectorAll("h2, h3");
@@ -95,11 +100,35 @@ const BlogDetail = () => {
       if (text.toLowerCase() === "introduction") {
         const parent = firstStrong.closest("p");
         if (parent) {
-          parent.innerHTML = `<h2 id="${makeSlug(text)}">${text}</h2>`;
+          const introductionHeading = doc.createElement("h2");
+          introductionHeading.id = makeSlug(text);
+          introductionHeading.textContent = text;
+          parent.replaceWith(introductionHeading);
         }
       }
     }
-    return doc.body.innerHTML;
+    const introductionHeading = doc.getElementById("introduction");
+    if (!introductionHeading) {
+      return {
+        introduction: "",
+        body: doc.body.innerHTML
+      };
+    }
+
+    const introductionNodes = [introductionHeading];
+    let nextNode = introductionHeading.nextElementSibling;
+    while (nextNode && !nextNode.matches("h2, h3")) {
+      introductionNodes.push(nextNode);
+      nextNode = nextNode.nextElementSibling;
+    }
+
+    const introductionContainer = doc.createElement("div");
+    introductionNodes.forEach(node => introductionContainer.appendChild(node));
+
+    return {
+      introduction: introductionContainer.innerHTML,
+      body: doc.body.innerHTML
+    };
   }, [blog]);
   const tocItems = useMemo(() => {
     if (!blog?.pageContent) return [];
@@ -240,125 +269,125 @@ const BlogDetail = () => {
     switch (block.type) {
       case "table":
         return <div key={block.id} className={cx("content-block table-block")}>
-            <div className={cx("table-container")}>
-              <table className={cx("data-table")}>
-                <tbody>
-                  {block.rows.map((row, rIdx) => <tr key={rIdx}>
-                      {row.map((cell, cIdx) => <td key={cIdx}>{cell}</td>)}
-                    </tr>)}
-                </tbody>
-              </table>
-            </div>
-          </div>;
+          <div className={cx("table-container")}>
+            <table className={cx("data-table")}>
+              <tbody>
+                {block.rows.map((row, rIdx) => <tr key={rIdx}>
+                  {row.map((cell, cIdx) => <td key={cIdx}>{cell}</td>)}
+                </tr>)}
+              </tbody>
+            </table>
+          </div>
+        </div>;
       case "code":
         return <div key={block.id} className={cx("content-block code-block")}>
-            <div className={cx("code-block-display")}>
-              <div className={cx("code-label")}>{block.language}</div>
-              <pre>
-                <code>{block.content}</code>
-              </pre>
-            </div>
-          </div>;
+          <div className={cx("code-block-display")}>
+            <div className={cx("code-label")}>{block.language}</div>
+            <pre>
+              <code>{block.content}</code>
+            </pre>
+          </div>
+        </div>;
       case "video":
         return <div key={block.id} className={cx("content-block video-block")}>
-            <div className={cx("video-embed")}>
-              <iframe width="100%" height="400" src={block.url.includes("youtube.com") || block.url.includes("youtu.be") ? `https://www.youtube.com/embed/${block.url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/)?.[1]}` : block.url.includes("vimeo.com") ? `https://player.vimeo.com/video/${block.url.match(/vimeo\.com\/(\d+)/)?.[1]}` : block.url} frameBorder="0" allowFullScreen title="Embedded Video"></iframe>
-            </div>
-          </div>;
+          <div className={cx("video-embed")}>
+            <iframe width="100%" height="400" src={block.url.includes("youtube.com") || block.url.includes("youtu.be") ? `https://www.youtube.com/embed/${block.url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/)?.[1]}` : block.url.includes("vimeo.com") ? `https://player.vimeo.com/video/${block.url.match(/vimeo\.com\/(\d+)/)?.[1]}` : block.url} frameBorder="0" allowFullScreen title="Embedded Video"></iframe>
+          </div>
+        </div>;
       case "callout":
         return <div key={block.id} className={cx("content-block callout-block")}>
-            <div className={cx(`callout callout-${block.calloutType}`)}>
-              <span className={cx("callout-icon")}>
-                {block.calloutType === "info" && "ℹ️"}
-                {block.calloutType === "warning" && "⚠️"}
-                {block.calloutType === "success" && "✅"}
-                {block.calloutType === "error" && "❌"}
-                {block.calloutType === "tip" && "💡"}
-              </span>
-              <p>{block.text}</p>
-            </div>
-          </div>;
+          <div className={cx(`callout callout-${block.calloutType}`)}>
+            <span className={cx("callout-icon")}>
+              {block.calloutType === "info" && "ℹ️"}
+              {block.calloutType === "warning" && "⚠️"}
+              {block.calloutType === "success" && "✅"}
+              {block.calloutType === "error" && "❌"}
+              {block.calloutType === "tip" && "💡"}
+            </span>
+            <p>{block.text}</p>
+          </div>
+        </div>;
       case "statistics":
         return <div key={block.id} className={cx("content-block statistics-block")}>
-            <div className={cx("statistics-grid")}>
-              {block.items.map((stat, idx) => <div key={idx} className={cx("stat-card")}>
-                  <div className={cx("stat-value")}>{stat.value}</div>
-                  <div className={cx("stat-label")}>{stat.label}</div>
-                </div>)}
-            </div>
-          </div>;
+          <div className={cx("statistics-grid")}>
+            {block.items.map((stat, idx) => <div key={idx} className={cx("stat-card")}>
+              <div className={cx("stat-value")}>{stat.value}</div>
+              <div className={cx("stat-label")}>{stat.label}</div>
+            </div>)}
+          </div>
+        </div>;
       case "testimonial":
         return <div key={block.id} className={cx("content-block testimonial-block")}>
-            <div className={cx("testimonial-card")}>
-              <div className={cx("testimonial-text")}>"{block.text}"</div>
-              <div className={cx("testimonial-author")}>
-                {block.image && <img src={block.image} alt={block.name} />}
-                <div>
-                  <div className={cx("author-name")}>{block.name}</div>
-                  {block.role && <div className={cx("author-role")}>{block.role}</div>}
-                </div>
+          <div className={cx("testimonial-card")}>
+            <div className={cx("testimonial-text")}>"{block.text}"</div>
+            <div className={cx("testimonial-author")}>
+              {block.image && <img src={block.image} alt={block.name} />}
+              <div>
+                <div className={cx("author-name")}>{block.name}</div>
+                {block.role && <div className={cx("author-role")}>{block.role}</div>}
               </div>
             </div>
-          </div>;
+          </div>
+        </div>;
       case "steps":
         return <div key={block.id} className={cx("content-block steps-block")}>
-            <div className={cx("steps-container")}>
-              {block.items.map((step, idx) => <div key={idx} className={cx("step-item")}>
-                  <div className={cx("step-number")}>{idx + 1}</div>
-                  <div className={cx("step-content")}>
-                    <h4>{step.title}</h4>
-                    {step.description && <p>{step.description}</p>}
-                  </div>
-                </div>)}
-            </div>
-          </div>;
+          <div className={cx("steps-container")}>
+            {block.items.map((step, idx) => <div key={idx} className={cx("step-item")}>
+              <div className={cx("step-number")}>{idx + 1}</div>
+              <div className={cx("step-content")}>
+                <h4>{step.title}</h4>
+                {step.description && <p>{step.description}</p>}
+              </div>
+            </div>)}
+          </div>
+        </div>;
       case "accordion":
         return <div key={block.id} className={cx("content-block accordion-block")}>
-            <div className={cx("accordion-container")}>
-              {block.items.map((item, idx) => <div key={idx} className={cx("accordion-item")}>
-                  <div className={cx("accordion-title")}>
-                    <span>{item.title}</span>
-                    <span>▼</span>
-                  </div>
-                  <div className={cx("accordion-content")}>{item.content}</div>
-                </div>)}
-            </div>
-          </div>;
+          <div className={cx("accordion-container")}>
+            {block.items.map((item, idx) => <div key={idx} className={cx("accordion-item")}>
+              <div className={cx("accordion-title")}>
+                <span>{item.title}</span>
+                <span>▼</span>
+              </div>
+              <div className={cx("accordion-content")}>{item.content}</div>
+            </div>)}
+          </div>
+        </div>;
       case "button":
         return <div key={block.id} className={cx("content-block button-block")}>
-            <div className={cx("button-container")}>
-              {block.url ? <a href={block.url} target="_blank" rel="noopener noreferrer" className={cx(`cta-button btn-${block.style}`)}>
-                  {block.text}
-                </a> : <button className={cx(`cta-button btn-${block.style}`)}>{block.text}</button>}
-            </div>
-          </div>;
+          <div className={cx("button-container")}>
+            {block.url ? <a href={block.url} target="_blank" rel="noopener noreferrer" className={cx(`cta-button btn-${block.style}`)}>
+              {block.text}
+            </a> : <button className={cx(`cta-button btn-${block.style}`)}>{block.text}</button>}
+          </div>
+        </div>;
       case "features":
         return <div key={block.id} className={cx("content-block features-block")}>
-            <div className={cx("features-grid")}>
-              {block.items.map((feature, idx) => <div key={idx} className={cx("feature-card")}>
-                  <div className={cx("feature-icon")}>{feature.icon}</div>
-                  <h4>{feature.title}</h4>
-                  {feature.description && <p>{feature.description}</p>}
-                </div>)}
-            </div>
-          </div>;
+          <div className={cx("features-grid")}>
+            {block.items.map((feature, idx) => <div key={idx} className={cx("feature-card")}>
+              <div className={cx("feature-icon")}>{feature.icon}</div>
+              <h4>{feature.title}</h4>
+              {feature.description && <p>{feature.description}</p>}
+            </div>)}
+          </div>
+        </div>;
       case "prosCons":
         return <div key={block.id} className={cx("content-block proscons-block")}>
-            <div className={cx("proscons-container")}>
-              <div className={cx("pros-column")}>
-                <h4>✅ Pros</h4>
-                <ul>
-                  {block.pros.map((pro, idx) => <li key={idx}>{pro}</li>)}
-                </ul>
-              </div>
-              <div className={cx("cons-column")}>
-                <h4>❌ Cons</h4>
-                <ul>
-                  {block.cons.map((con, idx) => <li key={idx}>{con}</li>)}
-                </ul>
-              </div>
+          <div className={cx("proscons-container")}>
+            <div className={cx("pros-column")}>
+              <h4>✅ Pros</h4>
+              <ul>
+                {block.pros.map((pro, idx) => <li key={idx}>{pro}</li>)}
+              </ul>
             </div>
-          </div>;
+            <div className={cx("cons-column")}>
+              <h4>❌ Cons</h4>
+              <ul>
+                {block.cons.map((con, idx) => <li key={idx}>{con}</li>)}
+              </ul>
+            </div>
+          </div>
+        </div>;
       default:
         return null;
     }
@@ -407,25 +436,25 @@ const BlogDetail = () => {
     url: canonical
   }]);
   return <>
-      <Helmet>
-        <title>{metaTitle}</title>
-        <meta name="description" content={metaDescription} />
-        <meta name="keywords" content={metaKeywords} />
-        <link rel="canonical" href={canonical} />
-        <meta property="og:title" content={metaTitle} />
-        <meta property="og:description" content={metaDescription} />
-        <meta property="og:url" content={canonical} />
-        <meta property="og:type" content="article" />
-        {blog?.ogImage && <meta property="og:image" content={blog.ogImage} />}
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content={metaTitle} />
-        <meta name="twitter:description" content={metaDescription} />
-        {blog?.ogImage && <meta name="twitter:image" content={blog.ogImage} />}
-        {articleSchema && <script type="application/ld+json">{JSON.stringify(articleSchema)}</script>}
-        {breadcrumbSchema && <script type="application/ld+json">{JSON.stringify(breadcrumbSchema)}</script>}
-      </Helmet>
-      <Navbar tags={blog?.tags} location={blog?.location} />
-      <main>
+    <Helmet>
+      <title>{metaTitle}</title>
+      <meta name="description" content={metaDescription} />
+      <meta name="keywords" content={metaKeywords} />
+      <link rel="canonical" href={canonical} />
+      <meta property="og:title" content={metaTitle} />
+      <meta property="og:description" content={metaDescription} />
+      <meta property="og:url" content={canonical} />
+      <meta property="og:type" content="article" />
+      {blog?.ogImage && <meta property="og:image" content={blog.ogImage} />}
+      <meta name="twitter:card" content="summary_large_image" />
+      <meta name="twitter:title" content={metaTitle} />
+      <meta name="twitter:description" content={metaDescription} />
+      {blog?.ogImage && <meta name="twitter:image" content={blog.ogImage} />}
+      {articleSchema && <script type="application/ld+json">{JSON.stringify(articleSchema)}</script>}
+      {breadcrumbSchema && <script type="application/ld+json">{JSON.stringify(breadcrumbSchema)}</script>}
+    </Helmet>
+    <Navbar tags={blog?.tags} location={blog?.location} />
+    <main>
       <div className={cx("reading-progress")} aria-hidden="true">
         <span style={{
           width: `${readingProgress}%`
@@ -452,9 +481,9 @@ const BlogDetail = () => {
                 {blog.category || "Guide"}
               </span>
               {blog.location && <span>
-                  <PlaceIcon />
-                  {blog.location}
-                </span>}
+                <PlaceIcon />
+                {blog.location}
+              </span>}
             </div>
 
             <div className={cx("blog-header")}>
@@ -463,13 +492,13 @@ const BlogDetail = () => {
 
               <div className={cx("blog-meta")}>
                 {publishedDate && <span>
-                    <CalendarTodayIcon />
-                    Published {publishedDate}
-                  </span>}
+                  <CalendarTodayIcon />
+                  Published {publishedDate}
+                </span>}
                 {updatedDate && <span>
-                    <TrendingUpIcon />
-                    Updated {updatedDate}
-                  </span>}
+                  <TrendingUpIcon />
+                  Updated {updatedDate}
+                </span>}
                 <span>
                   <VisibilityIcon />
                   {blog.views || 48} views
@@ -520,94 +549,101 @@ const BlogDetail = () => {
           </div>
         </div>
 
+        {blog.businessDetails?.length > 0 && <div className={cx("business-section")}>
+
+          <h2 className={cx("business-title")}>Popular Businesses</h2>
+
+          <div className={cx("business-grid")}>
+            {blog.businessDetails.map((b, index) => <article className={cx("business-card")} key={b._id || b.businessName || index}>
+
+              <div className={cx("business-header")}>
+                <h3>{b.businessName}</h3>
+
+                <button type="button" className={cx("call-btn")} onClick={() => openContactPopover(b)}>
+                  <PhoneIcon />
+                  Call
+                </button>
+              </div>
+
+              <img src={b.bannerImage || getPlaceholderImage()} alt={b.businessName} className={cx("business-img")} loading="lazy" onError={event => {
+                event.currentTarget.onerror = null;
+                event.currentTarget.src = getPlaceholderImage();
+              }} />
+
+              <p className={cx("business-desc")}>
+                {b.businessName} is one of the best {b.category} in {b.location}.
+              </p>
+
+              <div className={cx("business-info")}>
+
+                <div>
+                  <strong>Experience</strong>
+                  <p>{b.experience || "-"}</p>
+                </div>
+
+                <div>
+                  <strong>Category</strong>
+                  <p>{b.category || "-"}</p>
+                </div>
+
+                <div>
+                  <strong>Contact</strong>
+                  <p>{b.contact || "-"}</p>
+                </div>
+              </div>
+              <div className={cx("business-address")}>
+                <strong>Address</strong>
+                <p>{b.street || b.location || "-"}</p>
+              </div>
+
+            </article>)}
+          </div>
+
+        </div>}
+
+        {formattedContent.introduction && <div className={cx("introduction-section")}>
+          <div className={cx("blog-content introduction-content")} onClick={handleContentClick} dangerouslySetInnerHTML={{
+            __html: formattedContent.introduction
+          }} />
+        </div>}
+
         <div className={cx("blog-grid")}>
 
           <div className={cx("blog-content-area")}>
 
             <div className={cx("blog-content")} onClick={handleContentClick} dangerouslySetInnerHTML={{
-              __html: formattedContent || "<p>No content available</p>"
+              __html: formattedContent.body || (!formattedContent.introduction ? "<p>No content available</p>" : "")
             }} />
 
             {blog.contentBlocks?.length > 0 && <div className={cx("content-blocks-section")}>
-                {blog.contentBlocks.map(block => renderContentBlock(block))}
-              </div>}
+              {blog.contentBlocks.map(block => renderContentBlock(block))}
+            </div>}
 
             {blog.pageImages?.length > 1 && <div className={cx("image-grid")}>
-                {blog.pageImages.slice(1).map((img, i) => <img key={i} src={img} alt={`${blog.heading} supporting visual ${i + 2}`} />)}
-              </div>}
-
-            {blog.businessDetails?.length > 0 && <div className={cx("business-section")}>
-
-                <h2 className={cx("business-title")}>Popular Businesses</h2>
-
-                {blog.businessDetails.map((b, index) => <div className={cx("business-card")} key={index}>
-
-                    <div className={cx("business-header")}>
-                      <h3>{b.businessName}</h3>
-
-                      <button type="button" className={cx("call-btn")} onClick={() => openContactPopover(b)}>
-                        Call Now
-                      </button>
-                    </div>
-
-                    {b.bannerImage && <img src={b.bannerImage || "https://dummyimage.com/600x400/e2e8f0/64748b&text=No+Image"} alt={b.businessName} className={cx("business-img")} loading="lazy" onError={event => {
-                  event.currentTarget.onerror = null;
-                  event.currentTarget.src = "https://dummyimage.com/600x400/e2e8f0/64748b&text=No+Image";
-                }} />}
-
-                    <p className={cx("business-desc")}>
-                      {b.businessName} is one of the best {b.category} in {b.location}.
-                    </p>
-
-                    <div className={cx("business-info")}>
-
-                      <div>
-                        <strong>Experience</strong>
-                        <p>{b.experience || "-"}</p>
-                      </div>
-
-                      <div>
-                        <strong>Category</strong>
-                        <p>{b.category}</p>
-                      </div>
-
-                      <div>
-                        <strong>Contact</strong>
-                        <p>{b.contact}</p>
-                      </div>
-
-                    </div>
-
-                    <div className={cx("business-address")}>
-                      <strong>Address</strong>
-                      <p>{b.street}</p>
-                    </div>
-
-                  </div>)}
-
-              </div>}
+              {blog.pageImages.slice(1).map((img, i) => <img key={i} src={img} alt={`${blog.heading} supporting visual ${i + 2}`} />)}
+            </div>}
 
             {blog.faq?.length > 0 && <div className={cx("faq-section")}>
 
-                <h2 className={cx("faq-title")} id="frequently-asked-questions">
-                  Frequently Asked Questions
-                </h2>
+              <h2 className={cx("faq-title")} id="frequently-asked-questions">
+                Frequently Asked Questions
+              </h2>
 
-                <div className={cx("faq-wrapper")}>
-                  {blog.faq.map((item, index) => <div className={cx("faq-item")} key={index}>
+              <div className={cx("faq-wrapper")}>
+                {blog.faq.map((item, index) => <div className={cx("faq-item")} key={index}>
 
-                      <h3 className={cx("faq-question")}>
-                        {item.question}
-                      </h3>
+                  <h3 className={cx("faq-question")}>
+                    {item.question}
+                  </h3>
 
-                      <p className={cx("faq-answer")} dangerouslySetInnerHTML={{
+                  <p className={cx("faq-answer")} dangerouslySetInnerHTML={{
                     __html: renderFaqAnswer(item.answer, item.links)
                   }} />
 
-                    </div>)}
-                </div>
+                </div>)}
+              </div>
 
-              </div>}
+            </div>}
 
             <div className={cx("comment-box")}>
               <h3>Comments (0)</h3>
@@ -655,8 +691,8 @@ const BlogDetail = () => {
 
               <ul>
                 {tocItems.map((item, index) => <li key={index} onClick={() => scrollToSection(item.id)}>
-                    {item.title}
-                  </li>)}
+                  {item.title}
+                </li>)}
               </ul>
             </div>
 
@@ -685,11 +721,11 @@ const BlogDetail = () => {
                   const categorySlug = (blog.category || tag).toLowerCase().trim().replace(/\s+/g, "-");
                   window.location.href = `https://massclick.in/${locationSlug}/${categorySlug}`;
                 }}>
-                      {tag}
-                    </span>) : <>
-                    <span>{blog.category}</span>
-                    <span>{blog.location}</span>
-                  </>}
+                  {tag}
+                </span>) : <>
+                  <span>{blog.category}</span>
+                  <span>{blog.location}</span>
+                </>}
 
               </div>
             </div>
@@ -698,39 +734,39 @@ const BlogDetail = () => {
 
         </div>
       </div>
-      </main>
+    </main>
 
-      {selectedContact && <div className={cx("contact-popover-backdrop")} role="presentation" onClick={closeContactPopover}>
-          <div className={cx("contact-popover")} role="dialog" aria-modal="true" aria-labelledby="contact-popover-title" onClick={event => event.stopPropagation()}>
-            <button type="button" className={cx("contact-popover-close")} aria-label="Close contact details" onClick={closeContactPopover}>
-              <CloseIcon />
-            </button>
+    {selectedContact && <div className={cx("contact-popover-backdrop")} role="presentation" onClick={closeContactPopover}>
+      <div className={cx("contact-popover")} role="dialog" aria-modal="true" aria-labelledby="contact-popover-title" onClick={event => event.stopPropagation()}>
+        <button type="button" className={cx("contact-popover-close")} aria-label="Close contact details" onClick={closeContactPopover}>
+          <CloseIcon />
+        </button>
 
-            <div className={cx("contact-popover-icon")}>
-              <PhoneIcon />
-            </div>
+        <div className={cx("contact-popover-icon")}>
+          <PhoneIcon />
+        </div>
 
-            <span className={cx("contact-popover-eyebrow")}>Contact number</span>
-            <h3 id="contact-popover-title">{selectedContact.businessName}</h3>
-            <p>{selectedContact.category} in {selectedContact.location}</p>
+        <span className={cx("contact-popover-eyebrow")}>Contact number</span>
+        <h3 id="contact-popover-title">{selectedContact.businessName}</h3>
+        <p>{selectedContact.category} in {selectedContact.location}</p>
 
-            <div className={cx("contact-number-box")}>
-              <span>{selectedContact.contact || "Not available"}</span>
-            </div>
+        <div className={cx("contact-number-box")}>
+          <span>{selectedContact.contact || "Not available"}</span>
+        </div>
 
-            <div className={cx("contact-popover-actions")}>
-              {selectedContact.contact && <a href={`tel:${selectedContact.contact}`} className={cx("contact-call-link")}>
-                  <PhoneIcon />
-                  Call Now
-                </a>}
+        <div className={cx("contact-popover-actions")}>
+          {selectedContact.contact && <a href={`tel:${selectedContact.contact}`} className={cx("contact-call-link")}>
+            <PhoneIcon />
+            Call Now
+          </a>}
 
-              <button type="button" className={cx("contact-copy-btn")} onClick={copyContactNumber}>
-                {copiedContact ? <DoneIcon /> : <ContentCopyIcon />}
-                {copiedContact ? "Copied" : "Copy Number"}
-              </button>
-            </div>
-          </div>
-        </div>}
-    </>;
+          <button type="button" className={cx("contact-copy-btn")} onClick={copyContactNumber}>
+            {copiedContact ? <DoneIcon /> : <ContentCopyIcon />}
+            {copiedContact ? "Copied" : "Copy Number"}
+          </button>
+        </div>
+      </div>
+    </div>}
+  </>;
 };
 export default BlogDetail;

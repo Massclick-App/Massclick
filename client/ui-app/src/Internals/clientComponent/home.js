@@ -90,6 +90,12 @@ const FeaturedServices = lazy(
 const ServiceCardsGrid = lazy(
   () => import("../clientComponent/serviceCard/serviceCard.js"),
 );
+const LeadAwareness = lazy(
+  () => import("./leadAwareness/LeadAwareness.js"),
+);
+const TwoWayAwareness = lazy(
+  () => import("./twoWayAwareness/TwoWayAwareness.js"),
+);
 const EventCarousel = lazy(
   () => import("./events/eventCarousel/eventCarousel.js"),
 );
@@ -344,6 +350,18 @@ const SkeletonGrid = ({ type }) => {
     </Grid>
   );
 };
+
+const isUserLoggedIn = () => {
+  try {
+    const storedUser = localStorage.getItem("authUser");
+    if (!storedUser) return false;
+    const parsedUser = JSON.parse(storedUser);
+    return Boolean(parsedUser?.mobileNumber1Verified);
+  } catch {
+    return false;
+  }
+};
+
 const LandingPage = React.memo(() => {
   const dispatch = useDispatch();
   const [fcmNotif, setFcmNotif] = useState(null);
@@ -415,6 +433,10 @@ const LandingPage = React.memo(() => {
   const [categoryName, setCategoryName] = useState("");
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [checkedLogin, setCheckedLogin] = useState(false);
+  const [loginReminder, setLoginReminder] = useState(false);
+  const [customerLoggedIn, setCustomerLoggedIn] = useState(() =>
+    isUserLoggedIn(),
+  );
   const heroSectionRef = useRef(null);
 
   useEffect(() => {
@@ -450,16 +472,15 @@ const LandingPage = React.memo(() => {
       ws.off("lead:analytics:update", onLeadUpdate);
     };
   }, [dispatch]);
-  const isUserLoggedIn = () => {
-    try {
-      const storedUser = localStorage.getItem("authUser");
-      if (!storedUser) return false;
-      const parsedUser = JSON.parse(storedUser);
-      return !!parsedUser?.mobileNumber1Verified;
-    } catch {
-      return false;
-    }
-  };
+  useEffect(() => {
+    const refreshLoginState = () => {
+      const loggedIn = isUserLoggedIn();
+      setCustomerLoggedIn(loggedIn);
+      if (loggedIn) setLoginReminder(false);
+    };
+    window.addEventListener("authChange", refreshLoginState);
+    return () => window.removeEventListener("authChange", refreshLoginState);
+  }, []);
   useEffect(() => {
     if (!heroSectionRef.current) return;
     const observer = new IntersectionObserver(
@@ -655,6 +676,16 @@ const LandingPage = React.memo(() => {
                 </Box>
 
                 <Box className={cx("home-section")} sx={homeSectionSx}>
+                  <Suspense fallback={null}>
+                    <LeadAwareness
+                      isLoggedIn={customerLoggedIn}
+                      emphasizeLogin={loginReminder}
+                      onLoginRequest={() => setShowLoginModal(true)}
+                    />
+                  </Suspense>
+                </Box>
+
+                <Box className={cx("home-section")} sx={homeSectionSx}>
                   <Suspense fallback={<SkeletonCards type="service" />}>
                     <ServiceCardsGrid />
                   </Suspense>
@@ -674,6 +705,15 @@ const LandingPage = React.memo(() => {
                   </Suspense>
                 </Box>
 
+                <Box className={cx("home-section")} sx={homeSectionSx}>
+                  <Suspense fallback={null}>
+                    <TwoWayAwareness
+                      isLoggedIn={customerLoggedIn}
+                      onLoginRequest={() => setShowLoginModal(true)}
+                    />
+                  </Suspense>
+                </Box>
+
                 <Footer />
               </>
             )}
@@ -683,6 +723,7 @@ const LandingPage = React.memo(() => {
         <OTPLoginModel
           open={showLoginModal}
           handleClose={() => setShowLoginModal(false)}
+          onMaybeLater={() => setLoginReminder(true)}
         />
       </Box>
 
