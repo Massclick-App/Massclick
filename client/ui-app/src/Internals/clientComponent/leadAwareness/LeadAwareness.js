@@ -12,8 +12,13 @@ import { createScopedClassNames } from "../../../utils/createScopedClassNames";
 import styles from "./LeadAwareness.module.css";
 
 const cx = createScopedClassNames(styles);
+const WHATSAPP_PHONE_NUMBER = "917358673203";
+const WHATSAPP_MESSAGE = "Yes";
+const ENCODED_WHATSAPP_MESSAGE = encodeURIComponent(WHATSAPP_MESSAGE);
 const WHATSAPP_CHAT_URL =
-  "https://wa.me/917358673203?text=Yes";
+  `https://wa.me/${WHATSAPP_PHONE_NUMBER}?text=${ENCODED_WHATSAPP_MESSAGE}`;
+const WHATSAPP_BUSINESS_CHAT_URL =
+  `intent://send/?phone=${WHATSAPP_PHONE_NUMBER}&text=${ENCODED_WHATSAPP_MESSAGE}#Intent;scheme=whatsapp;package=com.whatsapp.w4b;end`;
 
 const LeadAwareness = ({
   isLoggedIn = false,
@@ -74,15 +79,27 @@ const LeadAwareness = ({
           <span>7358673203</span>
         </a>
         {isLoggedIn ? (
-          <a
-            className={cx("active-status")}
-            href={WHATSAPP_CHAT_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <CheckCircle2 size={20} strokeWidth={2.2} aria-hidden="true" />
-            Yes, open WhatsApp
-          </a>
+          <>
+            <a
+              className={cx("active-status")}
+              href={WHATSAPP_CHAT_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <CheckCircle2 size={20} strokeWidth={2.2} aria-hidden="true" />
+              Yes, open WhatsApp
+            </a>
+            <a
+              className={cx("active-status")}
+              href={WHATSAPP_BUSINESS_CHAT_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Open MassClick WhatsApp Business chat with 7358673203"
+            >
+              <MessageCircle size={17} strokeWidth={2.3} aria-hidden="true" />
+              Open Business WhatsApp
+            </a>
+          </>
         ) : (
           <button
             type="button"
