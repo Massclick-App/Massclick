@@ -7,8 +7,7 @@ import SeoPageContentForm from "./pageContentBlogForm";
 import { viewAllSeoPageContentBlogs, createSeoPageContentBlogs, updateSeoPageContentBlogs, deleteSeoPageContentBlogs } from "../../../redux/actions/seoPageContentBlogAction";
 import { getAllLocation, createLocation } from "../../../redux/actions/locationAction.js";
 import { Box, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, Button, Chip } from "@mui/material";
-import EditRoundedIcon from "@mui/icons-material/EditRounded";
-import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import CustomizedTable from "../../../components/Table/CustomizedTable";
 import styles from "./seoPageContentBlog.module.css";
@@ -150,18 +149,12 @@ export default function SeoPageContentBlogs() {
   }, {
     id: "action",
     label: "Action",
-    renderCell: (_, row) => <div className={cx("table-actions")}>
-          <IconButton onClick={() => handleEdit(row.id)}>
-            <EditRoundedIcon />
-          </IconButton>
-
-          <IconButton color="error" onClick={() => {
-        setSelectedRow(row);
-        setDeleteDialogOpen(true);
-      }}>
-            <DeleteOutlineRoundedIcon />
-          </IconButton>
-        </div>
+    renderCell: (_, row) => (
+      <Box sx={{ display: "flex", gap: "14px", alignItems: "center" }}>
+        <EditOutlined onClick={() => handleEdit(row.id)} style={{ fontSize: 17, color: "#3b82f6", cursor: "pointer" }} />
+        <DeleteOutlined onClick={() => { setSelectedRow(row); setDeleteDialogOpen(true); }} style={{ fontSize: 17, color: "#ef4444", cursor: "pointer" }} />
+      </Box>
+    )
   }];
   return <div className={cx("seo-shell")}>
       <div className={cx("seo-container")}>

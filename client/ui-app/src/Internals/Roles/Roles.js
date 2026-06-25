@@ -3,8 +3,7 @@ import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { getAllRoles, createRoles, editRoles, deleteRoles } from "../../redux/actions/rolesAction";
 import { Box, Button, Typography, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, Checkbox, FormControlLabel, Chip } from "@mui/material";
-import EditRoundedIcon from "@mui/icons-material/EditRounded";
-import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import styles from "./roles.module.css";
 import CustomizedTable from "../../components/Table/CustomizedTable";
 import { PAGE_REGISTRY } from "../../config/pageRegistry";
@@ -132,19 +131,18 @@ export default function Roles() {
   }, {
     id: "permissions",
     label: "Pages",
-    renderCell: (_, row) => <Box sx={{
-      display: 'flex',
-      flexWrap: 'wrap',
-      gap: 0.5,
-      maxWidth: 340
-    }}>
-                    {toArray(row.permissions).map(path => {
-        const page = PAGE_REGISTRY.find(p => p.path === path);
-        return <Chip key={path} label={page?.label || path} size="small" sx={{
-          fontSize: '0.7rem'
-        }} />;
-      })}
-                </Box>
+    renderCell: (_, row) => {
+      const perms = toArray(row.permissions);
+      const visible = perms.slice(0, 4);
+      const extra = perms.length - 4;
+      return <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, maxWidth: 300 }}>
+        {visible.map(path => {
+          const page = PAGE_REGISTRY.find(p => p.path === path);
+          return <Chip key={path} label={page?.label || path} size="small" sx={{ fontSize: '0.68rem' }} />;
+        })}
+        {extra > 0 && <Chip label={`+${extra}`} size="small" sx={{ fontSize: '0.68rem', bgcolor: '#f3f4f6', color: '#6b7280' }} />}
+      </Box>;
+    }
   }, {
     id: "description",
     label: "Description"
@@ -154,17 +152,12 @@ export default function Roles() {
   }, {
     id: "action",
     label: "Action",
-    renderCell: (_, row) => <div style={{
-      display: "flex",
-      gap: "8px"
-    }}>
-                    <IconButton color="primary" size="small" onClick={() => handleEdit(row)}>
-                        <EditRoundedIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton color="error" size="small" onClick={() => handleDeleteClick(row)}>
-                        <DeleteOutlineRoundedIcon fontSize="small" />
-                    </IconButton>
-                </div>
+    renderCell: (_, row) => (
+      <Box sx={{ display: "flex", gap: "14px", alignItems: "center" }}>
+        <EditOutlined onClick={() => handleEdit(row)} style={{ fontSize: 17, color: "#3b82f6", cursor: "pointer" }} />
+        <DeleteOutlined onClick={() => handleDeleteClick(row)} style={{ fontSize: 17, color: "#ef4444", cursor: "pointer" }} />
+      </Box>
+    )
   }];
   const textFields = [{
     label: "Role Name",

@@ -24,6 +24,7 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Drawer,
   TextField,
   Autocomplete,
   Chip,
@@ -35,8 +36,12 @@ import {
   Slider,
   Tooltip,
 } from "@mui/material";
-import EditRoundedIcon from "@mui/icons-material/EditRounded";
-import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import {
+  EditOutlined,
+  DeleteOutlined,
+  EyeOutlined,
+  EyeInvisibleOutlined,
+} from "@ant-design/icons";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import CustomizedTable from "../../components/Table/CustomizedTable";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
@@ -46,8 +51,6 @@ import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 import KeyboardArrowUpRoundedIcon from "@mui/icons-material/KeyboardArrowUpRounded";
 import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
-import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
-import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import AdminViewTabs from "../../components/AdminViewTabs.js";
 const cx = createScopedClassNames(styles);
 const API_URL = process.env.REACT_APP_API_URL;
@@ -75,11 +78,14 @@ const fetchAllCategoriesPageWise = async ({
     if (sortBy) query.set("sortBy", sortBy);
     if (sortOrder) query.set("sortOrder", sortOrder);
 
-    const res = await axiosInstance.get(`${API_URL}/category/viewall?${query.toString()}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
+    const res = await axiosInstance.get(
+      `${API_URL}/category/viewall?${query.toString()}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       },
-    });
+    );
 
     const pageData = Array.isArray(res.data?.data) ? res.data.data : [];
     collected.push(...pageData);
@@ -200,36 +206,29 @@ const FIELD_HELP = {
     "These filters are shown to customers on the public search form. Build the filter here, then attach it to the category.",
   build_filter:
     "Create or edit one filter at a time. Use a preset for common filters, or fill the fields manually.",
-  filter_label:
-    "The user-facing label customers will read in the search form.",
+  filter_label: "The user-facing label customers will read in the search form.",
   filter_key:
     "The internal field key saved in the database and sent through the API. Use lowercase letters and underscores.",
   filter_type:
     "Multi select allows several answers, single select allows one, toggle is yes or no, and range uses min/max numbers.",
   filter_options:
     "Add one option per value for multi select or single select filters. Press Enter after each option.",
-  filter_min:
-    "Smallest allowed value for a range filter.",
-  filter_max:
-    "Largest allowed value for a range filter.",
-  filter_unit:
-    "Shown beside the range values, such as INR, km, or years.",
+  filter_min: "Smallest allowed value for a range filter.",
+  filter_max: "Largest allowed value for a range filter.",
+  filter_unit: "Shown beside the range values, such as INR, km, or years.",
   filter_required:
     "If enabled, customers must answer this filter before submitting.",
   filter_visible:
     "If disabled, the filter stays saved but is hidden from the customer-facing UI.",
-  category_name:
-    "The public category name people search for.",
+  category_name: "The public category name people search for.",
   category_type:
     "Primary categories are top-level. Sub categories need a parent sub category type.",
   sub_category_type:
     "Choose the parent group for a sub category so it is organized correctly.",
   keywords:
     "Add search phrases customers might type. These help category suggestions and matching.",
-  title:
-    "The page or card title shown in the admin and public detail views.",
-  description:
-    "Longer descriptive copy for the category page.",
+  title: "The page or card title shown in the admin and public detail views.",
+  description: "Longer descriptive copy for the category page.",
 };
 const FILTER_PRESETS = [
   {
@@ -384,6 +383,7 @@ export default function Category() {
   } = useSelector((state) => state.categoryReducer || {});
   const fileInputRef = useRef();
   const liveImageInputRef = useRef();
+  const [detailRow, setDetailRow] = useState(null);
   const [errors, setErrors] = useState({});
   const [filterDraft, setFilterDraft] = useState(() => getEmptyFilterDraft());
   const [filterDraftError, setFilterDraftError] = useState("");
@@ -1377,14 +1377,14 @@ export default function Category() {
               <Avatar
                 src={normalizeImageUrl(image)}
                 alt={row.category}
-                sx={{ width: 42, height: 42, borderRadius: 1.5 }}
+                sx={{ width: 32, height: 32, borderRadius: 1 }}
               />
             ) : (
               <Avatar
                 sx={{
-                  width: 42,
-                  height: 42,
-                  borderRadius: 1.5,
+                  width: 32,
+                  height: 32,
+                  borderRadius: 1,
                   bgcolor: "#fff3e0",
                   color: "#c25f00",
                   fontWeight: 800,
@@ -1471,26 +1471,11 @@ export default function Category() {
       id: "action",
       label: "",
       renderCell: (_, row) => (
-        <div className={cx("category-table-actions")}>
-          <Tooltip title="Edit category">
-            <IconButton
-              color="primary"
-              size="small"
-              onClick={() => handleEdit(row)}
-            >
-              <EditRoundedIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Delete category">
-            <IconButton
-              color="error"
-              size="small"
-              onClick={() => handleDelete(row)}
-            >
-              <DeleteOutlineRoundedIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-        </div>
+        <Box sx={{ display: "flex", gap: "14px", alignItems: "center" }}>
+          <EyeOutlined onClick={() => setDetailRow(row)} style={{ fontSize: 17, color: "#ff7a00", cursor: "pointer" }} />
+          <EditOutlined onClick={() => handleEdit(row)} style={{ fontSize: 17, color: "#3b82f6", cursor: "pointer" }} />
+          <DeleteOutlined onClick={() => handleDelete(row)} style={{ fontSize: 17, color: "#ef4444", cursor: "pointer" }} />
+        </Box>
       ),
     },
   ];
@@ -1587,7 +1572,9 @@ export default function Category() {
               </div>
 
               <div className={cx("category-form-input-group")}>
-                <label className={cx("category-input-label")}>Slug (Auto)</label>
+                <label className={cx("category-input-label")}>
+                  Slug (Auto)
+                </label>
                 <input
                   type="text"
                   name="slug"
@@ -2969,17 +2956,29 @@ export default function Category() {
                                     isEnabled ? "Hide from UI" : "Show in UI"
                                   }
                                 >
-                                  <IconButton
-                                    size="small"
-                                    onClick={() => handleToggleFilterEnabled(i)}
-                                    color={isEnabled ? "success" : "default"}
-                                  >
-                                    {isEnabled ? (
-                                      <VisibilityRoundedIcon fontSize="small" />
-                                    ) : (
-                                      <VisibilityOffRoundedIcon fontSize="small" />
-                                    )}
-                                  </IconButton>
+                                  {isEnabled ? (
+                                    <EyeOutlined
+                                      onClick={() =>
+                                        handleToggleFilterEnabled(i)
+                                      }
+                                      style={{
+                                        fontSize: 16,
+                                        color: "#22c55e",
+                                        cursor: "pointer",
+                                      }}
+                                    />
+                                  ) : (
+                                    <EyeInvisibleOutlined
+                                      onClick={() =>
+                                        handleToggleFilterEnabled(i)
+                                      }
+                                      style={{
+                                        fontSize: 16,
+                                        color: "#9ca3af",
+                                        cursor: "pointer",
+                                      }}
+                                    />
+                                  )}
                                 </Tooltip>
                                 <Tooltip title="Move up">
                                   <span>
@@ -3015,7 +3014,7 @@ export default function Category() {
                                     color="primary"
                                     onClick={() => handleEditFilterField(i)}
                                   >
-                                    <EditRoundedIcon fontSize="small" />
+                                    <EditOutlined style={{ fontSize: 16 }} />
                                   </IconButton>
                                 </Tooltip>
                                 <Tooltip title="Remove">
@@ -3024,7 +3023,7 @@ export default function Category() {
                                     color="error"
                                     onClick={() => handleRemoveFilterField(i)}
                                   >
-                                    <DeleteOutlineRoundedIcon fontSize="small" />
+                                    <DeleteOutlined style={{ fontSize: 16 }} />
                                   </IconButton>
                                 </Tooltip>
                               </Box>
@@ -3362,20 +3361,22 @@ export default function Category() {
                           >
                             ▼
                           </IconButton>
-                          <IconButton
-                            size="small"
-                            color="primary"
+                          <EditOutlined
                             onClick={() => handleEditFilterField(i)}
-                          >
-                            <EditRoundedIcon fontSize="small" />
-                          </IconButton>
-                          <IconButton
-                            size="small"
-                            color="error"
+                            style={{
+                              fontSize: 17,
+                              color: "#3b82f6",
+                              cursor: "pointer",
+                            }}
+                          />
+                          <DeleteOutlined
                             onClick={() => handleRemoveFilterField(i)}
-                          >
-                            <DeleteOutlineRoundedIcon fontSize="small" />
-                          </IconButton>
+                            style={{
+                              fontSize: 17,
+                              color: "#ef4444",
+                              cursor: "pointer",
+                            }}
+                          />
                         </Box>
                       );
                     })}
@@ -3476,7 +3477,6 @@ export default function Category() {
               </Button>
             </div>
 
-            <div className={cx("category-table-surface")}>
               <CustomizedTable
                 title="Categories"
                 data={lookupRows}
@@ -3492,8 +3492,7 @@ export default function Category() {
                   )
                 }
               />
-            </div>
-          </div>
+            </div>\
         </>
       )}
 
@@ -4240,6 +4239,100 @@ export default function Category() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Category Detail Drawer */}
+      <Drawer anchor="right" open={Boolean(detailRow)} onClose={() => setDetailRow(null)}
+        PaperProps={{ sx: { width: 460, p: 0 } }}>
+        {detailRow && (() => {
+          const row = detailRow;
+          const SLabel = ({ children }) => (
+            <Typography sx={{ fontSize: "0.7rem", fontWeight: 600, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.06em", mb: 0.25 }}>
+              {children}
+            </Typography>
+          );
+          const DRow = ({ label, value }) => {
+            if (!value || value === "-") return null;
+            return (
+              <Box sx={{ mb: 1.5 }}>
+                <SLabel>{label}</SLabel>
+                <Typography sx={{ fontSize: "0.85rem", color: "#1f2937" }}>{value}</Typography>
+              </Box>
+            );
+          };
+          const images = row.categoryImages || {};
+          const imageEntries = Object.entries(images).filter(([, url]) => url);
+          return (
+            <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
+              {/* Header */}
+              <Box sx={{ p: 2.5, bgcolor: "#fff7ed", borderBottom: "1px solid #e0e6ed", display: "flex", gap: 2, alignItems: "center", flexShrink: 0 }}>
+                <Avatar src={row.categoryImage || images.webCard || images.webThumbnail} alt={row.category}
+                  sx={{ width: 52, height: 52, borderRadius: 1.5 }} variant="square" />
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Typography sx={{ fontWeight: 700, fontSize: "1rem", color: "#1f2937" }}>{row.category}</Typography>
+                  <Box sx={{ display: "flex", gap: 0.75, flexWrap: "wrap", mt: 0.5 }}>
+                    {row.categoryType && <Chip label={row.categoryType} size="small" sx={{ fontSize: "0.7rem", bgcolor: "#fff7ed", color: "#c2410c", border: "1px solid #fed7aa" }} />}
+                    {row.subCategoryType && <Chip label={row.subCategoryType} size="small" sx={{ fontSize: "0.7rem" }} />}
+                  </Box>
+                </Box>
+                <Button size="small" variant="outlined" onClick={() => { setDetailRow(null); handleEdit(row); }}
+                  sx={{ fontSize: "0.75rem", textTransform: "none", borderColor: "#ff7a00", color: "#ff7a00", "&:hover": { borderColor: "#d46900", bgcolor: "#fff7ed" }, flexShrink: 0 }}>
+                  Edit
+                </Button>
+              </Box>
+
+              <Box sx={{ flex: 1, overflowY: "auto", p: 2.5 }}>
+                {/* Basic Info */}
+                <Typography sx={{ fontSize: "0.7rem", fontWeight: 700, color: "#ff7a00", textTransform: "uppercase", letterSpacing: "0.08em", mb: 1.5 }}>Basic Info</Typography>
+                <DRow label="Display Title" value={row.title} />
+                <DRow label="Slug" value={row.slug} />
+                <DRow label="Description" value={row.description} />
+                <Divider sx={{ my: 2 }} />
+
+                {/* SEO */}
+                <Typography sx={{ fontSize: "0.7rem", fontWeight: 700, color: "#ff7a00", textTransform: "uppercase", letterSpacing: "0.08em", mb: 1.5 }}>SEO</Typography>
+                <DRow label="SEO Title" value={row.seoTitle} />
+                <DRow label="SEO Description" value={row.seoDescription} />
+                {row.keywords && row.keywords !== "-" && (
+                  <Box sx={{ mb: 1.5 }}>
+                    <SLabel>Keywords</SLabel>
+                    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mt: 0.5 }}>
+                      {row.keywords.split(",").map((k, i) => (
+                        <Chip key={i} label={k.trim()} size="small" sx={{ fontSize: "0.7rem" }} />
+                      ))}
+                    </Box>
+                  </Box>
+                )}
+                {Array.isArray(row.filterConfig) && row.filterConfig.length > 0 && (
+                  <>
+                    <Divider sx={{ my: 2 }} />
+                    <Typography sx={{ fontSize: "0.7rem", fontWeight: 700, color: "#ff7a00", textTransform: "uppercase", letterSpacing: "0.08em", mb: 1.5 }}>Filters ({row.filterConfig.length})</Typography>
+                    {row.filterConfig.map((f, i) => (
+                      <Box key={i} sx={{ mb: 1, px: 1.5, py: 1, bgcolor: "#f9fafb", borderRadius: 1, border: "0.5px solid #e5e7eb" }}>
+                        <Typography sx={{ fontSize: "0.82rem", fontWeight: 500, color: "#1f2937" }}>{f.label || f.key}</Typography>
+                        {f.type && <Typography sx={{ fontSize: "0.72rem", color: "#6b7280" }}>{f.type}</Typography>}
+                      </Box>
+                    ))}
+                  </>
+                )}
+                {imageEntries.length > 0 && (
+                  <>
+                    <Divider sx={{ my: 2 }} />
+                    <Typography sx={{ fontSize: "0.7rem", fontWeight: 700, color: "#ff7a00", textTransform: "uppercase", letterSpacing: "0.08em", mb: 1.5 }}>Images</Typography>
+                    <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1 }}>
+                      {imageEntries.map(([variant, url]) => (
+                        <Box key={variant} sx={{ textAlign: "center" }}>
+                          <img src={url} alt={variant} style={{ width: "100%", height: 80, objectFit: "cover", borderRadius: 6, border: "0.5px solid #e5e7eb" }} />
+                          <Typography sx={{ fontSize: "0.68rem", color: "#9ca3af", mt: 0.5 }}>{variant}</Typography>
+                        </Box>
+                      ))}
+                    </Box>
+                  </>
+                )}
+              </Box>
+            </Box>
+          );
+        })()}
+      </Drawer>
     </div>
   );
 }

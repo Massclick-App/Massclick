@@ -18,6 +18,7 @@ import CategoryIcon from '@mui/icons-material/Category';
 import VerifiedUserIcon from "@mui/icons-material/VerifiedUser";
 import {
   Box, Button, Typography, CircularProgress, IconButton, Avatar, Dialog, DialogTitle, DialogContent, DialogActions,
+  Drawer, Divider,
   // Stepper Imports:
   Stack, Stepper, Step, StepLabel, Chip, Checkbox, FormControlLabel, RadioGroup, Radio, Slider, FormGroup, Switch
 } from "@mui/material";
@@ -34,6 +35,7 @@ import StepConnector, { stepConnectorClasses } from '@mui/material/StepConnector
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import CollectionsBookmarkOutlinedIcon from '@mui/icons-material/CollectionsBookmarkOutlined';
+import { EyeOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import TravelExploreIcon from '@mui/icons-material/TravelExplore';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
@@ -471,6 +473,7 @@ const BusinessList = React.memo(() => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [inputKeyword, setInputKeyword] = useState("");
   const [categoryKeywordSuggestions, setCategoryKeywordSuggestions] = useState([]);
+  const [detailRow, setDetailRow] = useState(null);
 
   // Search & Filter States
   const [searchTerm, setSearchTerm] = useState("");
@@ -3339,175 +3342,89 @@ const BusinessList = React.memo(() => {
   };
 
   const businessListTable = [{
-    id: "clientId",
-    label: "Client ID"
-  }, {
     id: "bannerImage",
-    label: "Banner Image",
-    renderCell: value => value ? <Avatar src={value} alt="Banner" /> : "-"
+    label: "",
+    renderCell: (value, row) => (
+      <Avatar src={value} alt={row.businessName} sx={{ width: 36, height: 36, borderRadius: 1 }} variant="square" />
+    )
   }, {
     id: "businessName",
-    label: "Business Name"
+    label: "Business",
+    renderCell: (value, row) => (
+      <Box>
+        <Typography sx={{ fontWeight: 700, fontSize: "0.82rem", color: "#1f2937", lineHeight: 1.3 }}>
+          {value || "—"}
+        </Typography>
+        <Typography sx={{ fontSize: "0.7rem", color: "#9ca3af", fontWeight: 400 }}>
+          {row.clientId}
+        </Typography>
+      </Box>
+    )
   }, {
     id: "location",
-    label: "Location Name"
+    label: "Location"
   }, {
     id: "category",
     label: "Category"
   }, {
-    id: "createdBy",
-    label: "Created By",
-    renderCell: value => getCreatedByDisplayName(value)
-  }, {
-    id: "mniDetails",
-    label: "Category Group",
-    renderCell: value => {
-      if (!Array.isArray(value) || value.length === 0) return "—";
-      const groups = value.map(item => item?.categoryGroup).filter(Boolean);
-      return groups.length > 0 ? groups.join(", ") : "—";
-    }
-  }, {
-    id: "qrCode",
-    label: "Review QR",
-    renderCell: (_, row) => {
-      if (!row.qrImage) return "—";
-      const handleDownload = async () => {
-        try {
-          const link = document.createElement("a");
-          link.href = row.qrImage;
-          link.target = "_blank";
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          await dispatch(trackQrDownload(row._id));
-          enqueueSnackbar("QR downloaded successfully", {
-            variant: "success"
-          });
-        } catch (err) {
-          enqueueSnackbar("Download failed", {
-            variant: "error"
-          });
-        }
-      };
-      const lastDownload = row.qrDownloads?.length > 0 ? new Date(row.qrDownloads[row.qrDownloads.length - 1].downloadedAt).toLocaleString() : "Not Downloaded";
-      return <Box sx={{
-        textAlign: "center"
-      }}>
-        <Avatar src={row.qrImage} sx={{
-          width: 60,
-          height: 60,
-          margin: "0 auto"
-        }} />
-        <Typography variant="caption" sx={{
-          display: "block",
-          mt: 1
-        }}>
-          {row.qrText}
-        </Typography>
-        <Typography variant="caption" sx={{
-          display: "block",
-          mt: 1
-        }}>
-          Last: {lastDownload}
-        </Typography>
-        <Button size="small" variant="contained" sx={{
-          mt: 1
-        }} onClick={handleDownload}>
-          Download
-        </Button>
-      </Box>;
-    }
-  }, {
     id: "payment",
-    label: "Payment",
-    renderCell: (value, row) => {
+    label: "Status",
+    renderCell: (_, row) => {
+      const isPaid = Boolean(row.amountPaid);
       const handleMarkPaid = async () => {
-        if (!row?._id) return;
+        if (isPaid || !row?._id) return;
         try {
-          const payload = {
-            name: row.businessName,
-            businessName: row.businessName,
-            category: row.category,
-            location: row.location,
-            payment: [{
-              amount: row?.subscription?.price || 1
-            }]
-          };
-          await dispatch(editBusinessList(row._id, payload));
-          enqueueSnackbar(`${row.businessName} marked as paid`, {
-            variant: "success"
-          });
+          await dispatch(editBusinessList(row._id, {
+            name: row.businessName, businessName: row.businessName,
+            category: row.category, location: row.location,
+            payment: [{ amount: row?.subscription?.price || 1 }]
+          }));
+          enqueueSnackbar(`${row.businessName} marked as paid`, { variant: "success" });
           dispatch(getAllBusinessList());
-        } catch (error) {
-          console.error(error);
-          enqueueSnackbar("Payment failed. Please try again!", {
-            variant: "error"
-          });
+        } catch {
+          enqueueSnackbar("Payment failed. Please try again!", { variant: "error" });
         }
       };
       const paidDateValue = row.paidDate?.$date ? row.paidDate.$date : row.paidDate;
       const formattedDate = paidDateValue ? new Date(paidDateValue).toLocaleString("en-IN", {
-        timeZone: "Asia/Kolkata",
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: true
+        timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric",
+        hour: "2-digit", minute: "2-digit", hour12: true
       }) : null;
-      const isPaid = Boolean(row.amountPaid);
-      return <Box sx={{
-        textAlign: "center"
-      }}>
-
-        <Tooltip title={isPaid ? `Paid on ${formattedDate}` : "Click to mark as paid"} arrow>
-          <span>
-            <IconButton color={isPaid ? "success" : "warning"} onClick={!isPaid ? handleMarkPaid : undefined} disabled={isPaid} sx={{
-              transition: "transform 0.2s ease",
-              "&:hover": {
-                transform: !isPaid ? "scale(1.15)" : "none"
-              }
+      return (
+        <Box sx={{ display: "flex", justifyContent: "center" }}>
+          <Tooltip title={isPaid ? `Paid on ${formattedDate}` : "Click to mark as paid"} arrow>
+            <Box onClick={!isPaid ? handleMarkPaid : undefined} sx={{
+              display: "inline-flex", alignItems: "center",
+              px: 1.5, py: 0.4, borderRadius: "16px",
+              fontSize: "0.72rem", fontWeight: 700,
+              bgcolor: isPaid ? "#d1fae5" : "#fef3c7",
+              color: isPaid ? "#065f46" : "#92400e",
+              cursor: isPaid ? "default" : "pointer",
+              transition: "opacity 0.15s",
+              "&:hover": !isPaid ? { opacity: 0.75 } : {},
             }}>
-              {isPaid ? <PaidIcon /> : <PendingIcon />}
-            </IconButton>
-          </span>
-        </Tooltip>
-
-        <Typography variant="caption" display="block" sx={{
-          color: isPaid ? "green" : "orange",
-          fontWeight: 600
-        }}>
-          {isPaid ? "Paid" : "Pending"}
-        </Typography>
-
-        {formattedDate && <Typography variant="caption" display="block" sx={{
-          color: "#666"
-        }}>
-          {formattedDate}
-        </Typography>}
-
-      </Box>;
+              {isPaid ? "Paid" : "Pending"}
+            </Box>
+          </Tooltip>
+        </Box>
+      );
     }
   }, {
-    id: "action",
+    id: "_actions",
     label: "Action",
-    renderCell: (_, row) => <div style={{
-      display: "flex",
-      gap: "8px"
-    }}>
-      <IconButton color="primary" size="small" onClick={() => handleEdit(row)}>
-        <EditRoundedIcon fontSize="small" />
-      </IconButton>
-      <IconButton color="error" size="small" onClick={() => handleDelete(row)}>
-        <DeleteOutlineRoundedIcon fontSize="small" />
-      </IconButton>
-    </div>
-  }, {
-    id: "gallery",
-    label: "Gallery",
-    renderCell: (_, row) => <IconButton color="primary" onClick={() => handleOpenGallery(row._id)}>
-      <CollectionsBookmarkOutlinedIcon />
-    </IconButton>
+    renderCell: (_, row) => (
+      <Box sx={{ display: "flex", gap: "14px", alignItems: "center" }}>
+        <Tooltip title="View details" arrow>
+          <EyeOutlined onClick={() => setDetailRow(row)} style={{ fontSize: 18, color: "#ff7a00", cursor: "pointer" }} />
+        </Tooltip>
+        <Tooltip title="Edit" arrow>
+          <EditOutlined onClick={() => handleEdit(row)} style={{ fontSize: 17, color: "#3b82f6", cursor: "pointer" }} />
+        </Tooltip>
+        <Tooltip title="Delete" arrow>
+          <DeleteOutlined onClick={() => handleDelete(row)} style={{ fontSize: 17, color: "#ef4444", cursor: "pointer" }} />
+        </Tooltip>
+      </Box>
+    )
   }];
   const SectionHeader = ({
     icon: Icon,
@@ -4445,6 +4362,240 @@ const BusinessList = React.memo(() => {
         </Box>
       </div>
     </>}
+
+    {/* Business Detail Drawer */}
+    <Drawer anchor="right" open={Boolean(detailRow)} onClose={() => setDetailRow(null)} PaperProps={{ sx: { width: 460 } }}>
+      {detailRow && (() => {
+        const row = detailRow;
+        const isPaid = Boolean(row.amountPaid);
+        const paidDateValue = row.paidDate?.$date ? row.paidDate.$date : row.paidDate;
+        const formattedDate = paidDateValue ? new Date(paidDateValue).toLocaleString("en-IN", {
+          timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric",
+          hour: "2-digit", minute: "2-digit", hour12: true
+        }) : null;
+        const lastDownload = row.qrDownloads?.length > 0
+          ? new Date(row.qrDownloads[row.qrDownloads.length - 1].downloadedAt).toLocaleString()
+          : "Never";
+        const categoryGroups = Array.isArray(row.mniDetails)
+          ? row.mniDetails.map(i => i?.categoryGroup).filter(Boolean).join(", ") || "—"
+          : "—";
+        const socialLinks = [
+          { label: "Website", value: row.website },
+          { label: "Google Map", value: row.googleMap },
+          { label: "Facebook", value: row.facebook },
+          { label: "Instagram", value: row.instagram },
+          { label: "YouTube", value: row.youtube },
+          { label: "Pinterest", value: row.pinterest },
+          { label: "Twitter / X", value: row.twitter },
+          { label: "LinkedIn", value: row.linkedin },
+        ].filter(s => s.value && s.value !== "-");
+        const keywords = Array.isArray(row.keywords)
+          ? row.keywords.map(k => typeof k === "string" ? k.trim() : k?.keyword || k).filter(Boolean)
+          : String(row.keywords || "").split(",").map(k => k.trim()).filter(Boolean);
+
+        const handleDownloadQR = async () => {
+          try {
+            const link = document.createElement("a");
+            link.href = row.qrImage;
+            link.target = "_blank";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            await dispatch(trackQrDownload(row._id));
+            enqueueSnackbar("QR downloaded", { variant: "success" });
+          } catch {
+            enqueueSnackbar("Download failed", { variant: "error" });
+          }
+        };
+        const handleMarkPaid = async () => {
+          try {
+            await dispatch(editBusinessList(row._id, {
+              name: row.businessName, businessName: row.businessName,
+              category: row.category, location: row.location,
+              payment: [{ amount: row?.subscription?.price || 1 }]
+            }));
+            enqueueSnackbar(`${row.businessName} marked as paid`, { variant: "success" });
+            dispatch(getAllBusinessList());
+            setDetailRow(null);
+          } catch {
+            enqueueSnackbar("Payment failed", { variant: "error" });
+          }
+        };
+
+        const SLabel = ({ children }) => (
+          <Typography sx={{ fontSize: "0.63rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.8px", color: "#9ca3af", mb: 0.75 }}>
+            {children}
+          </Typography>
+        );
+        const DRow = ({ label, value }) => (
+          !value || value === "-" ? null :
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", py: 0.55, borderBottom: "1px solid #f3f4f6" }}>
+            <Typography sx={{ fontSize: "0.77rem", color: "#6b7280", fontWeight: 500, flexShrink: 0, mr: 2 }}>{label}</Typography>
+            <Typography sx={{ fontSize: "0.77rem", color: "#1f2937", fontWeight: 600, textAlign: "right", wordBreak: "break-word", maxWidth: "65%" }}>{value}</Typography>
+          </Box>
+        );
+
+        return (
+          <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
+
+            {/* Header */}
+            <Box sx={{ p: 2.5, bgcolor: "#fff7ed", borderBottom: "1px solid #e0e6ed", display: "flex", gap: 2, alignItems: "flex-start", flexShrink: 0 }}>
+              <Avatar src={row.bannerImage} alt={row.businessName} sx={{ width: 56, height: 56, borderRadius: 1.5 }} variant="square" />
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography sx={{ fontWeight: 700, fontSize: "0.95rem", color: "#1f2937", lineHeight: 1.3 }}>
+                  {row.businessName || "—"}
+                </Typography>
+                <Typography sx={{ fontSize: "0.72rem", color: "#9ca3af", mt: 0.3 }}>{row.clientId}</Typography>
+                <Box sx={{ display: "flex", gap: 0.5, mt: 0.75, flexWrap: "wrap" }}>
+                  {row.verification?.isVerified && <Box sx={{ px: 1, py: 0.25, borderRadius: "10px", bgcolor: "#dbeafe", color: "#1d4ed8", fontSize: "0.63rem", fontWeight: 700 }}>✓ Verified</Box>}
+                  {row.badges?.isFeatured && <Box sx={{ px: 1, py: 0.25, borderRadius: "10px", bgcolor: "#fef3c7", color: "#92400e", fontSize: "0.63rem", fontWeight: 700 }}>★ Featured</Box>}
+                  {row.badges?.isSponsored && <Box sx={{ px: 1, py: 0.25, borderRadius: "10px", bgcolor: "#f3e8ff", color: "#7c3aed", fontSize: "0.63rem", fontWeight: 700 }}>Sponsored</Box>}
+                  {row.badges?.isTrending && <Box sx={{ px: 1, py: 0.25, borderRadius: "10px", bgcolor: "#fee2e2", color: "#991b1b", fontSize: "0.63rem", fontWeight: 700 }}>🔥 Trending</Box>}
+                </Box>
+              </Box>
+              <IconButton size="small" onClick={() => setDetailRow(null)}>
+                <CloseRoundedIcon fontSize="small" />
+              </IconButton>
+            </Box>
+
+            {/* Body */}
+            <Box sx={{ flex: 1, overflowY: "auto", p: 2.5, display: "flex", flexDirection: "column", gap: 2 }}>
+
+              {/* Contact */}
+              <Box>
+                <SLabel>Contact</SLabel>
+                <DRow label="Email" value={row.email} />
+                <DRow label="Phone" value={row.contact} />
+                <DRow label="WhatsApp" value={row.whatsappNumber} />
+                <DRow label="Created By" value={getCreatedByDisplayName(row.createdBy)} />
+              </Box>
+
+              <Divider />
+
+              {/* Address */}
+              <Box>
+                <SLabel>Address</SLabel>
+                <DRow label="Location" value={row.location} />
+                <DRow label="Plot / Street" value={[row.plotNumber, row.street].filter(v => v && v !== "-").join(", ") || null} />
+                <DRow label="Pincode" value={row.pincode} />
+                <DRow label="Full Address" value={row.globalAddress} />
+              </Box>
+
+              <Divider />
+
+              {/* Business Info */}
+              <Box>
+                <SLabel>Business Info</SLabel>
+                <DRow label="Category" value={row.category} />
+                <DRow label="Category Group" value={categoryGroups} />
+                <DRow label="GSTIN" value={row.gstin} />
+                <DRow label="Experience" value={row.experience} />
+                {row.description && row.description !== "-" && (
+                  <Box sx={{ py: 0.75 }}>
+                    <Typography sx={{ fontSize: "0.72rem", color: "#6b7280", fontWeight: 500, mb: 0.4 }}>Description</Typography>
+                    <Typography sx={{ fontSize: "0.77rem", color: "#1f2937", lineHeight: 1.55 }}>{row.description}</Typography>
+                  </Box>
+                )}
+              </Box>
+
+              {socialLinks.length > 0 && <>
+                <Divider />
+                <Box>
+                  <SLabel>Web & Social</SLabel>
+                  {socialLinks.map(({ label, value }) => <DRow key={label} label={label} value={value} />)}
+                </Box>
+              </>}
+
+              {(row.seoTitle || row.title || row.slug || keywords.length > 0) && <>
+                <Divider />
+                <Box>
+                  <SLabel>SEO</SLabel>
+                  <DRow label="Display Title" value={row.title} />
+                  <DRow label="SEO Title" value={row.seoTitle} />
+                  <DRow label="Slug" value={row.slug} />
+                  <DRow label="SEO Description" value={row.seoDescription} />
+                  {keywords.length > 0 && (
+                    <Box sx={{ py: 0.6 }}>
+                      <Typography sx={{ fontSize: "0.72rem", color: "#6b7280", fontWeight: 500, mb: 0.5 }}>Keywords</Typography>
+                      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+                        {keywords.slice(0, 12).map((kw, i) => (
+                          <Box key={i} sx={{ px: 1, py: 0.3, borderRadius: "10px", bgcolor: "#f3f4f6", fontSize: "0.69rem", color: "#374151", fontWeight: 500 }}>
+                            {kw}
+                          </Box>
+                        ))}
+                      </Box>
+                    </Box>
+                  )}
+                </Box>
+              </>}
+
+              <Divider />
+
+              {/* Payment */}
+              <Box>
+                <SLabel>Payment</SLabel>
+                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 0.5 }}>
+                  <Box sx={{
+                    display: "inline-flex", alignItems: "center", px: 1.5, py: 0.5,
+                    borderRadius: "16px", fontSize: "0.75rem", fontWeight: 700,
+                    bgcolor: isPaid ? "#d1fae5" : "#fef3c7",
+                    color: isPaid ? "#065f46" : "#92400e"
+                  }}>
+                    {isPaid ? "Paid" : "Pending"}
+                  </Box>
+                  {!isPaid && (
+                    <Button size="small" variant="contained" onClick={handleMarkPaid}
+                      sx={{ bgcolor: "#ff7a00", "&:hover": { bgcolor: "#d46900" }, fontSize: "0.75rem", textTransform: "none" }}>
+                      Mark as Paid
+                    </Button>
+                  )}
+                </Box>
+                {formattedDate && <Typography sx={{ fontSize: "0.75rem", color: "#6b7280", mt: 0.5 }}>Paid on {formattedDate}</Typography>}
+              </Box>
+
+              {row.qrImage && <>
+                <Divider />
+                <Box>
+                  <SLabel>Review QR</SLabel>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                    <Avatar src={row.qrImage} variant="square" sx={{ width: 64, height: 64, borderRadius: 1 }} />
+                    <Box>
+                      <Typography sx={{ fontSize: "0.75rem", color: "#6b7280", mb: 0.75 }}>Last: {lastDownload}</Typography>
+                      <Button size="small" variant="outlined" onClick={handleDownloadQR}
+                        sx={{ fontSize: "0.75rem", textTransform: "none", borderColor: "#ff7a00", color: "#ff7a00", "&:hover": { borderColor: "#d46900", bgcolor: "#fff7ed" } }}>
+                        Download QR
+                      </Button>
+                    </Box>
+                  </Box>
+                </Box>
+              </>}
+
+              <Divider />
+
+              {/* Actions */}
+              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", pb: 1 }}>
+                <Button size="small" variant="outlined" startIcon={<EditOutlined />}
+                  onClick={() => { setDetailRow(null); handleEdit(row); }}
+                  sx={{ textTransform: "none", fontSize: "0.8rem" }}>
+                  Edit
+                </Button>
+                <Button size="small" variant="outlined" startIcon={<CollectionsBookmarkOutlinedIcon fontSize="small" />}
+                  onClick={() => { setDetailRow(null); handleOpenGallery(row._id); }}
+                  sx={{ textTransform: "none", fontSize: "0.8rem" }}>
+                  Gallery
+                </Button>
+                <Button size="small" variant="outlined" color="error" startIcon={<DeleteOutlined />}
+                  onClick={() => { setDetailRow(null); handleDelete(row); }}
+                  sx={{ textTransform: "none", fontSize: "0.8rem" }}>
+                  Delete
+                </Button>
+              </Box>
+
+            </Box>
+          </Box>
+        );
+      })()}
+    </Drawer>
 
     <Dialog open={warnDialog} onClose={() => setWarnDialog(false)} maxWidth="xs" fullWidth>
       <DialogTitle sx={{ color: "#D97800", fontWeight: 700 }}>

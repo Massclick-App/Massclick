@@ -3,9 +3,8 @@ import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import InputValidator from "../validators/inputValidator.js";
 import { getAllUsersClient, createUserClient, editUserClient, deleteUserClient } from "../../redux/actions/userClientAction.js";
-import { Box, Button, Typography, CircularProgress, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, Alert, AlertTitle } from "@mui/material";
-import EditRoundedIcon from "@mui/icons-material/EditRounded";
-import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import { Box, Button, Typography, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, Alert, AlertTitle } from "@mui/material";
+import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import CheckCircleOutlineRoundedIcon from "@mui/icons-material/CheckCircleOutlineRounded";
 import styles from "./clients.module.css";
 import CustomizedTable from "../../components/Table/CustomizedTable.js";
@@ -227,17 +226,12 @@ export default function UserClients() {
   }, {
     id: "action",
     label: "Action",
-    renderCell: (_, row) => <div style={{
-      display: "flex",
-      gap: "8px"
-    }}>
-          <IconButton color="primary" size="small" onClick={() => handleEdit(row)}>
-            <EditRoundedIcon fontSize="small" />
-          </IconButton>
-          <IconButton color="error" size="small" onClick={() => handleDeleteClick(row)}>
-            <DeleteOutlineRoundedIcon fontSize="small" />
-          </IconButton>
-        </div>
+    renderCell: (_, row) => (
+      <Box sx={{ display: "flex", gap: "14px", alignItems: "center" }}>
+        <EditOutlined onClick={() => handleEdit(row)} style={{ fontSize: 17, color: "#3b82f6", cursor: "pointer" }} />
+        <DeleteOutlined onClick={() => handleDeleteClick(row)} style={{ fontSize: 17, color: "#ef4444", cursor: "pointer" }} />
+      </Box>
+    )
   }];
   const fields = [{
     label: "Name",

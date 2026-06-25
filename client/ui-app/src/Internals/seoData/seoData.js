@@ -5,8 +5,7 @@ import { createSeo, editSeo, deleteSeo, getAllSeo } from "../../redux/actions/se
 import { getAllLocation, createLocation } from "../../redux/actions/locationAction.js";
 import { useSnackbar } from "notistack";
 import { Box, Button, Typography, CircularProgress, IconButton, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
-import EditRoundedIcon from "@mui/icons-material/EditRounded";
-import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { fetchSeoCategorySuggestions } from "../../redux/actions/seoAction.js";
 import CustomizedTable from "../../components/Table/CustomizedTable.js";
 import styles from "./seoData.module.css";
@@ -212,14 +211,12 @@ export default function SeoData() {
   }, {
     id: "action",
     label: "Action",
-    renderCell: (_, row) => <>
-          <IconButton color="primary" onClick={() => handleEdit(row)}>
-            <EditRoundedIcon />
-          </IconButton>
-          <IconButton color="error" onClick={() => handleDeleteClick(row)}>
-            <DeleteOutlineRoundedIcon />
-          </IconButton>
-        </>
+    renderCell: (_, row) => (
+      <Box sx={{ display: "flex", gap: "14px", alignItems: "center" }}>
+        <EditOutlined onClick={() => handleEdit(row)} style={{ fontSize: 17, color: "#3b82f6", cursor: "pointer" }} />
+        <DeleteOutlined onClick={() => handleDeleteClick(row)} style={{ fontSize: 17, color: "#ef4444", cursor: "pointer" }} />
+      </Box>
+    )
   }];
   const fields = [{
     label: "Page Type",

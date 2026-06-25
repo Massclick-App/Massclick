@@ -11,7 +11,7 @@ import {
   sendChatMessageApi,
   startChatConversation,
 } from "../../services/chatService";
-import { AUTH_EXPIRED_EVENT, connectSocket, getSocket } from "../../services/socketService";
+import { AUTH_EXPIRED_EVENT, connectSocket } from "../../services/socketService";
 import styles from "./CustomerChatPanel.module.css";
 
 const LOG = (...args) => console.log('[CustomerChat]', ...args);
@@ -52,6 +52,7 @@ export default function CustomerChatPanel({
 
   const token = getCustomerChatToken();
   const isLoggedIn = Boolean(token);
+  const conversationId = conversation?.id;
 
   useEffect(() => {
     const refreshAuth = () => setAuthVersion((value) => value + 1);
@@ -129,15 +130,15 @@ export default function CustomerChatPanel({
   }, []);
 
   useEffect(() => {
-    if (!open || !isLoggedIn || !conversation?.id) return undefined;
+    if (!open || !isLoggedIn || !conversationId) return undefined;
 
-    LOG('Socket effect: open=%s | isLoggedIn=%s | conversationId=%s', open, isLoggedIn, conversation.id);
+    LOG('Socket effect: open=%s | isLoggedIn=%s | conversationId=%s', open, isLoggedIn, conversationId);
     // Pass getter function — Socket.IO calls it fresh on every reconnect attempt
     const socket = connectSocket(() => getCustomerChatToken());
 
     const emitJoinRoom = () => {
-      LOG('Emitting chat:join for conversation:', conversation.id);
-      socket?.emit("chat:join", { conversationId: conversation.id });
+      LOG('Emitting chat:join for conversation:', conversationId);
+      socket?.emit("chat:join", { conversationId });
     };
 
     const handleConnect = () => {
@@ -153,12 +154,12 @@ export default function CustomerChatPanel({
       setConnected(true);
       setShowOfflineWarning(false);
       setAuthExpired(false);
-      if (conversation?.id) {
+      if (conversationId) {
         try {
           LOG('Reloading conversation after reconnect');
           const updated = await startChatConversation(getCustomerChatToken());
           setConversation(updated);
-          const history = await fetchChatMessages({ conversationId: conversation.id, token: getCustomerChatToken() });
+          const history = await fetchChatMessages({ conversationId, token: getCustomerChatToken() });
           LOG('Reloaded %d messages after reconnect', history.data?.length ?? 0);
           setMessages(history.data || []);
           emitJoinRoom();
@@ -175,13 +176,13 @@ export default function CustomerChatPanel({
 
     const handleMessage = (payload) => {
       try {
-        const matchesConv = payload?.conversation?.id === conversation.id;
-        const matchesMsg = String(payload?.message?.conversationId) === conversation.id;
+        const matchesConv = payload?.conversation?.id === conversationId;
+        const matchesMsg = String(payload?.message?.conversationId) === conversationId;
         LOG('chat:message:new — matchesConv:', matchesConv, '| matchesMsg:', matchesMsg, '| from:', payload?.message?.senderType);
         if (matchesConv || matchesMsg) {
-          setConversation(payload.conversation || conversation);
+          setConversation((currentConversation) => payload.conversation || currentConversation);
           setMessages((prev) => mergeMessage(prev, payload.message));
-          markChatRead({ conversationId: conversation.id, token: getCustomerChatToken() }).catch((err) => {
+          markChatRead({ conversationId, token: getCustomerChatToken() }).catch((err) => {
             WARN('markChatRead after new message failed:', err.message);
           });
           scrollToEnd();
@@ -195,7 +196,7 @@ export default function CustomerChatPanel({
     const handleConversation = (nextConversation) => {
       try {
         LOG('chat:conversation:updated — id:', nextConversation?.id, '| status:', nextConversation?.status);
-        if (nextConversation?.id === conversation.id) setConversation(nextConversation);
+        if (nextConversation?.id === conversationId) setConversation(nextConversation);
       } catch (err) {
         ERR('handleConversation error:', err);
       }
@@ -213,15 +214,15 @@ export default function CustomerChatPanel({
     socket?.on("chat:conversation:updated", handleConversation);
 
     return () => {
-      LOG('Socket effect cleanup — leaving conversation room:', conversation.id);
-      socket?.emit("chat:leave", { conversationId: conversation.id });
+      LOG('Socket effect cleanup — leaving conversation room:', conversationId);
+      socket?.emit("chat:leave", { conversationId });
       socket?.off("connect", handleConnect);
       socket?.off("reconnect", handleReconnect);
       socket?.off("disconnect", handleDisconnect);
       socket?.off("chat:message:new", handleMessage);
       socket?.off("chat:conversation:updated", handleConversation);
     };
-  }, [conversation?.id, isLoggedIn, open, scrollToEnd, token]);
+  }, [conversationId, isLoggedIn, open, scrollToEnd, token]);
 
   const handleSend = async () => {
     const text = input.trim();

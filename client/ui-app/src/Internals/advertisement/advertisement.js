@@ -6,8 +6,7 @@ import { businessCategorySearch } from "../../redux/actions/categoryAction";
 import CustomizedTable from "../../components/Table/CustomizedTable";
 import Cropper from "react-easy-crop";
 import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Slider, Typography } from "@mui/material";
-import EditRoundedIcon from "@mui/icons-material/EditRounded";
-import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import styles from "./advertisement.module.css";
 import AdminViewTabs from "../../components/AdminViewTabs.js";
@@ -441,14 +440,12 @@ export default function AdvertisementPage() {
   }, {
     id: "action",
     label: "Action",
-    renderCell: (_, row) => <div className={cx("table-actions")}>
-          <button onClick={() => handleEdit(row)}>
-            <EditRoundedIcon fontSize="small" />
-          </button>
-          <button className={cx("danger")} onClick={() => handleDelete(row)}>
-            <DeleteOutlineRoundedIcon fontSize="small" />
-          </button>
-        </div>
+    renderCell: (_, row) => (
+      <Box sx={{ display: "flex", gap: "14px", alignItems: "center" }}>
+        <EditOutlined onClick={() => handleEdit(row)} style={{ fontSize: 17, color: "#3b82f6", cursor: "pointer" }} />
+        <DeleteOutlined onClick={() => handleDelete(row)} style={{ fontSize: 17, color: "#ef4444", cursor: "pointer" }} />
+      </Box>
+    )
   }];
   const isTopBanner = formData.position === "TOP_BANNER";
   const isCommonTopBanner = isTopBanner && formData.category === COMMON_TOP_BANNER_CATEGORY;

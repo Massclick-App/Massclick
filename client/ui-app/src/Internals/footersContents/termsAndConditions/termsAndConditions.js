@@ -4,9 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { getAllTermsAndConditions, createTermsAndConditions, editTermsAndConditions, deleteTermsAndConditions } from "../../../redux/actions/footerContents/termsAndConditionsAction";
 import { Box, Button, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
-import EditRoundedIcon from "@mui/icons-material/EditRounded";
-import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
-import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
@@ -143,17 +141,12 @@ export default function TermsAndConditionsDatas() {
   }, {
     id: "action",
     label: "Action",
-    renderCell: (_, row) => <div className={cx("terms-table-actions")}>
-          <IconButton onClick={() => handleEdit(row.id)}>
-            <EditRoundedIcon />
-          </IconButton>
-          <IconButton color="error" onClick={() => {
-        setSelectedId(row.id);
-        setDeleteOpen(true);
-      }}>
-            <DeleteOutlineRoundedIcon />
-          </IconButton>
-        </div>
+    renderCell: (_, row) => (
+      <Box sx={{ display: "flex", gap: "14px", alignItems: "center" }}>
+        <EditOutlined onClick={() => handleEdit(row.id)} style={{ fontSize: 17, color: "#3b82f6", cursor: "pointer" }} />
+        <DeleteOutlined onClick={() => { setSelectedId(row.id); setDeleteOpen(true); }} style={{ fontSize: 17, color: "#ef4444", cursor: "pointer" }} />
+      </Box>
+    )
   }];
   return <div className={cx("terms-page")}>
       <div className={cx("terms-container")}>
@@ -194,7 +187,7 @@ export default function TermsAndConditionsDatas() {
                   </div>
 
                   <IconButton type="button" className={cx("terms-delete")} onClick={() => removeItem(index)}>
-                    <DeleteOutlineIcon />
+                    <DeleteOutlined style={{ fontSize: 16 }} />
                   </IconButton>
                 </div>)}
             </div>

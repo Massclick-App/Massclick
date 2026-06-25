@@ -63,11 +63,11 @@ export default function EnquiryPage() {
           <Box sx={{
         display: "flex",
         alignItems: "center",
-        gap: 1
+        gap: 0.75
       }}>
             <Avatar sx={{
-          width: 32,
-          height: 32,
+          width: 28,
+          height: 28,
           backgroundColor: "#ff7a00"
         }}>
               {getInitials(row.fullName || row.businessName)}

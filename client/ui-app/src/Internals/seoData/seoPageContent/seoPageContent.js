@@ -4,8 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { viewAllSeoPageContent, createSeoPageContent, updateSeoPageContent, deleteSeoPageContent } from "../../../redux/actions/seoPageContentAction.js";
 import { getAllLocation, createLocation } from "../../../redux/actions/locationAction.js";
 import { Box, CircularProgress, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, Button } from "@mui/material";
-import EditRoundedIcon from "@mui/icons-material/EditRounded";
-import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 import CustomizedTable from "../../../components/Table/CustomizedTable.js";
@@ -140,29 +139,12 @@ export default function SeoPageContent() {
   }, {
     id: "action",
     label: "Action",
-    renderCell: (_, row) => <>
-                    <IconButton onClick={() => {
-        setEditingId(row.id);
-        setFormData(row);
-        setCategoryInput(row.category || "");
-        setShowLocationSuggest(false);
-        setLocationSuggestions([]);
-        setActiveView("form");
-        window.scrollTo({
-          top: 0,
-          behavior: "smooth"
-        });
-      }}>
-                        <EditRoundedIcon />
-                    </IconButton>
-
-                    <IconButton color="error" onClick={() => {
-        setSelectedRow(row);
-        setDeleteDialogOpen(true);
-      }}>
-                        <DeleteOutlineRoundedIcon />
-                    </IconButton>
-                </>
+    renderCell: (_, row) => (
+      <Box sx={{ display: "flex", gap: "14px", alignItems: "center" }}>
+        <EditOutlined onClick={() => { setEditingId(row.id); setFormData(row); setCategoryInput(row.category || ""); setShowLocationSuggest(false); setLocationSuggestions([]); setActiveView("form"); window.scrollTo({ top: 0, behavior: "smooth" }); }} style={{ fontSize: 17, color: "#3b82f6", cursor: "pointer" }} />
+        <DeleteOutlined onClick={() => { setSelectedRow(row); setDeleteDialogOpen(true); }} style={{ fontSize: 17, color: "#ef4444", cursor: "pointer" }} />
+      </Box>
+    )
   }];
   return <div className={cx("seo-shell")}>
             <div className={cx("seo-container")}>

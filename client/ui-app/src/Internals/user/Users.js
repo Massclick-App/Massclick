@@ -6,8 +6,7 @@ import { getAllUsers, createUser, editUser, deleteUser } from "../../redux/actio
 import { getAllRoles } from "../../redux/actions/rolesAction.js";
 import { Box, Button, CircularProgress, Typography, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, Avatar } from "@mui/material";
 import styles from "./user.module.css";
-import EditRoundedIcon from '@mui/icons-material/EditRounded';
-import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
+import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import CustomizedTable from "../../components/Table/CustomizedTable.js";
 import AdminViewTabs from "../../components/AdminViewTabs.js";
@@ -183,7 +182,7 @@ export default function User() {
   const userList = [{
     id: "userProfile",
     label: "User Profile",
-    renderCell: value => value ? <Avatar src={value} alt="User" /> : "-"
+    renderCell: value => value ? <Avatar src={value} alt="User" sx={{ width: 32, height: 32 }} /> : "-"
   }, {    
     id: "userName",
     label: "User Name"
@@ -218,17 +217,12 @@ export default function User() {
   }, {
     id: "action",
     label: "Action",
-    renderCell: (_, row) => <div style={{
-      display: "flex",
-      gap: "8px"
-    }}>
-          <IconButton color="primary" size="small" onClick={() => handleEdit(row)}>
-            <EditRoundedIcon fontSize="small" />
-          </IconButton>
-          <IconButton color="error" size="small" onClick={() => handleDeleteClick(row)}>
-            <DeleteOutlineRoundedIcon fontSize="small" />
-          </IconButton>
-        </div>
+    renderCell: (_, row) => (
+      <Box sx={{ display: "flex", gap: "14px", alignItems: "center" }}>
+        <EditOutlined onClick={() => handleEdit(row)} style={{ fontSize: 17, color: "#3b82f6", cursor: "pointer" }} />
+        <DeleteOutlined onClick={() => handleDeleteClick(row)} style={{ fontSize: 17, color: "#ef4444", cursor: "pointer" }} />
+      </Box>
+    )
   }];
 
   // Modified fields array: Role is removed to be manually placed in the form

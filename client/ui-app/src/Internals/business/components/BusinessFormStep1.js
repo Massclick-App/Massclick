@@ -72,7 +72,7 @@ const BusinessFormStep1 = ({
                   {file.name || `Document ${index + 1}`}
                 </Typography>
                 <IconButton color="error" onClick={() => handleRemoveFile(index)}>
-                  <DeleteOutlineRoundedIcon fontSize="small" />
+                  <DeleteOutlineRoundedIcon />
                 </IconButton>
 
                 <div style={{ marginTop: "5px" }}>
@@ -106,7 +106,7 @@ const BusinessFormStep1 = ({
                       View Full
                     </Button>
                     <IconButton color="error" onClick={() => handleRemoveFile(index)}>
-                      <DeleteOutlineRoundedIcon fontSize="small" />
+                      <DeleteOutlineRoundedIcon />
                     </IconButton>
                   </div>
                 </div>

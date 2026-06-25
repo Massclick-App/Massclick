@@ -7,6 +7,7 @@ import userModel from "../../model/userModel.js";
 import { emitToRoom } from "../../websocket/roomManager.js";
 import { buildRoom, WS_EVENTS } from "../../websocket/constants.js";
 import { getCache, setCache } from "../../utils/redisClient.js";
+import { enhanceSearchQuery } from "../../utils/geminiQueryEnhancer.js";
 import { invalidateSearchCache, invalidateDashboardCache, invalidateCategoryCache } from "../../utils/cacheInvalidation.js";
 import { buildBusinessExportWorkbook } from "../../utils/businessExportXlsx.js";
 
@@ -739,6 +740,11 @@ export const mainSearchController = async (req, res) => {
         category = matchedCategory;
         term = "";
       }
+    }
+
+    // Expand search term with Gemini synonyms before hitting MongoDB text index
+    if (term) {
+      term = await enhanceSearchQuery(term, category);
     }
 
     const matchQuery = { businessesLive: true, $and: [] };

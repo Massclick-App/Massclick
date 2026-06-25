@@ -1,6 +1,6 @@
 import { createScopedClassNames } from "../../utils/createScopedClassNames";
 import React, { useState, useEffect, useRef } from "react";
-import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, Paper, Checkbox, Box } from "@mui/material";
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, Paper, Box } from "@mui/material";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import styles from "./CustomizedTable.module.css";
 import useDebounce from "./useDebounce.js";
@@ -23,20 +23,17 @@ const CustomizedTable = ({
   data = [],
   total = 0,
   fetchData,
-  onSelectRows,
   enableStatusFilter = true,
   enableSearch = true,
   initialSearchQuery = "",
   initialStatusFilter = "all",
   loading = false,
-  bulkActions = [],
   onRowClick = null,
   statusOptions = null,
   renderEmpty = null,
 }) => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [selected, setSelected] = useState([]);
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
   const debouncedSearch = useDebounce(searchQuery, 400);
   const [statusFilter, setStatusFilter] = useState(initialStatusFilter);
@@ -56,15 +53,12 @@ const CustomizedTable = ({
   useEffect(() => { setStatusFilter(initialStatusFilter); }, [initialStatusFilter]);
 
   useEffect(() => {
-    const options = {
+    fetchData(page + 1, rowsPerPage, {
       search: debouncedSearch,
       status: statusFilter,
       sortBy: sortConfig.orderBy,
       sortOrder: sortConfig.order,
-    };
-    fetchData(page + 1, rowsPerPage, options);
-    setSelected([]);
-    if (onSelectRows) onSelectRows([]);
+    });
   }, [page, rowsPerPage, debouncedSearch, statusFilter, sortConfig]);
 
   const handleChangePage = (_, newPage) => setPage(newPage);
@@ -72,32 +66,6 @@ const CustomizedTable = ({
     setRowsPerPage(parseInt(e.target.value, 10));
     setPage(0);
   };
-
-  const handleSelectAll = e => {
-    if (e.target.checked) {
-      const allIds = data.map(row => row._id);
-      setSelected(allIds);
-      onSelectRows?.(allIds);
-    } else {
-      setSelected([]);
-      onSelectRows?.([]);
-    }
-  };
-
-  const handleSelectRow = id => {
-    const newSelected = selected.includes(id)
-      ? selected.filter(x => x !== id)
-      : [...selected, id];
-    setSelected(newSelected);
-    onSelectRows?.(newSelected);
-  };
-
-  const clearSelection = () => {
-    setSelected([]);
-    onSelectRows?.([]);
-  };
-
-  const isSelected = id => selected.includes(id);
 
   const handleSort = columnId => {
     setSortConfig(prev => {
@@ -119,9 +87,6 @@ const CustomizedTable = ({
     if (col?.renderCell) return col.renderCell(value, row);
     return value ?? "-";
   };
-
-  const allVisibleSelected = data.length > 0 && data.every(row => selected.includes(row._id));
-  const hasSelection = selected.length > 0;
 
   return (
     <Paper className={cx(`custom-table-container ${isScrolled ? "table-scrolled" : ""}`)}>
@@ -166,39 +131,11 @@ const CustomizedTable = ({
         </div>
       </div>
 
-      {hasSelection && (
-        <div className={cx("selection-bar")}>
-          <span className={cx("selection-count")}>{selected.length} selected</span>
-          <div className={cx("selection-actions")}>
-            {bulkActions.map((action, i) => (
-              <button
-                key={i}
-                className={cx("bulk-action-btn")}
-                style={action.color ? { "--action-color": action.color } : undefined}
-                onClick={() => action.onClick(selected)}
-              >
-                {action.icon && <span className={cx("bulk-action-icon")}>{action.icon}</span>}
-                {action.label}
-              </button>
-            ))}
-            <button className={cx("selection-clear")} onClick={clearSelection}>✕ Clear</button>
-          </div>
-        </div>
-      )}
-
       <TableContainer className={cx("table-wrapper")} onScroll={e => throttledScrollRef.current?.(e)}>
         <Table stickyHeader className={cx("custom-table")}>
 
           <TableHead>
             <TableRow className={cx("custom-header-row")}>
-              <TableCell padding="checkbox" className={cx("checkbox-cell sticky-checkbox")}>
-                <Checkbox
-                  checked={allVisibleSelected}
-                  indeterminate={hasSelection && !allVisibleSelected}
-                  onChange={handleSelectAll}
-                  disabled={loading}
-                />
-              </TableCell>
               {columns.map(col => (
                 <TableCell key={col.id} className={cx("custom-header-cell")} onClick={() => handleSort(col.id)}>
                   <span className={cx("header-content")}>
@@ -214,9 +151,6 @@ const CustomizedTable = ({
             {loading ? (
               Array.from({ length: rowsPerPage }).map((_, i) => (
                 <TableRow key={`sk-${i}`} className={cx("skeleton-row")}>
-                  <TableCell padding="checkbox" className={cx("checkbox-cell")}>
-                    <div className={cx("skeleton-cell skeleton-checkbox")} />
-                  </TableCell>
                   {columns.map((col, ci) => (
                     <TableCell key={col.id} className={cx("custom-body-cell")}>
                       <div className={cx("skeleton-cell")} style={{ width: getSkeletonWidth(ci) }} />
@@ -226,7 +160,7 @@ const CustomizedTable = ({
               ))
             ) : data.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={columns.length + 1} className={cx("empty-cell")}>
+                <TableCell colSpan={columns.length} className={cx("empty-cell")}>
                   {renderEmpty ? renderEmpty() : (
                     <div className={cx("empty-state")}>
                       <span className={cx("empty-icon")}>📭</span>
@@ -237,29 +171,19 @@ const CustomizedTable = ({
                 </TableCell>
               </TableRow>
             ) : (
-              data.map(row => {
-                const selectedRow = isSelected(row._id);
-                return (
-                  <TableRow
-                    key={row._id}
-                    className={cx(`custom-row ${selectedRow ? "selected-row" : ""} ${onRowClick ? "clickable-row" : ""}`)}
-                    onClick={onRowClick ? () => onRowClick(row) : undefined}
-                  >
-                    <TableCell
-                      padding="checkbox"
-                      className={cx("checkbox-cell")}
-                      onClick={onRowClick ? e => e.stopPropagation() : undefined}
-                    >
-                      <Checkbox checked={selectedRow} onChange={() => handleSelectRow(row._id)} />
+              data.map(row => (
+                <TableRow
+                  key={row._id}
+                  className={cx(`custom-row ${onRowClick ? "clickable-row" : ""}`)}
+                  onClick={onRowClick ? () => onRowClick(row) : undefined}
+                >
+                  {columns.map(col => (
+                    <TableCell key={col.id} className={cx("custom-body-cell")}>
+                      {renderCellContent(row[col.id], col.id, row)}
                     </TableCell>
-                    {columns.map(col => (
-                      <TableCell key={col.id} className={cx("custom-body-cell")}>
-                        {renderCellContent(row[col.id], col.id, row)}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                );
-              })
+                  ))}
+                </TableRow>
+              ))
             )}
           </TableBody>
 

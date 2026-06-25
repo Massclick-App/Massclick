@@ -4,8 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { getAllLocation, createLocation, editLocation, deleteLocation } from "../../redux/actions/locationAction.js";
 import styles from "./location.module.css";
 import { Box, Button, Typography, CircularProgress, IconButton, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
-import EditRoundedIcon from "@mui/icons-material/EditRounded";
-import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import CustomizedTable from "../../components/Table/CustomizedTable.js";
 import AdminViewTabs from "../../components/AdminViewTabs.js";
 const cx = createScopedClassNames(styles);
@@ -156,17 +155,12 @@ export default function Location() {
   }, {
     id: "action",
     label: "Action",
-    renderCell: (_, row) => <div style={{
-      display: "flex",
-      gap: "8px"
-    }}>
-                    <IconButton color="primary" size="small" onClick={() => handleEdit(row)}>
-                        <EditRoundedIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton color="error" size="small" onClick={() => handleDeleteClick(row)}>
-                        <DeleteOutlineRoundedIcon fontSize="small" />
-                    </IconButton>
-                </div>
+    renderCell: (_, row) => (
+      <Box sx={{ display: "flex", gap: "14px", alignItems: "center" }}>
+        <EditOutlined onClick={() => handleEdit(row)} style={{ fontSize: 17, color: "#3b82f6", cursor: "pointer" }} />
+        <DeleteOutlined onClick={() => handleDeleteClick(row)} style={{ fontSize: 17, color: "#ef4444", cursor: "pointer" }} />
+      </Box>
+    )
   }];
   const fields = [{
     label: "Country",
