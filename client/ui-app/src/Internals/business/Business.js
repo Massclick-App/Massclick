@@ -708,6 +708,7 @@ const BusinessList = React.memo(() => {
       return;
     }
   };
+  
   const renderSectionAdvanceButton = (step, sectionKey) => {
     const navigation = getSectionNavigation(step, sectionKey);
     const currentStep = SECTION_TO_STEP[activeSection];

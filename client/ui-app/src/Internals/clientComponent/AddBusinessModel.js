@@ -63,7 +63,7 @@ const LogoComponent = () => (
     </Box>
 );
 
-const OTPLoginModal = ({ open, handleClose }) => {
+const OTPLoginModal = ({ open, handleClose, onMaybeLater }) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const [mobileNumber, setMobileNumber] = React.useState('');
@@ -79,6 +79,10 @@ const OTPLoginModal = ({ open, handleClose }) => {
 
     const dispatch = useDispatch();
     const { enqueueSnackbar } = useSnackbar();
+    const handleMaybeLater = () => {
+        onMaybeLater?.();
+        handleClose();
+    };
 
     React.useEffect(() => {
         const storedMobile = localStorage.getItem("mobileNumber");
@@ -261,16 +265,45 @@ const OTPLoginModal = ({ open, handleClose }) => {
                 <Typography
                     variant="body1"
                     sx={{
-                        mb: 4,
+                        mb: 2,
                         color: '#64748b',
                         fontSize: '0.95rem',
+                        textAlign: 'center',
                     }}
                 >
-                    {otpSent ? 'Enter the 4-digit code sent to your phone' : 'Login for a seamless experience'}
+                    {otpSent
+                        ? 'Enter the 4-digit code sent to your phone'
+                        : 'Verify your mobile number to activate two-way WhatsApp connections'}
                 </Typography>
 
                 {!otpSent ? (
                     <>
+                        <Box
+                            sx={{
+                                width: '100%',
+                                mb: 3,
+                                p: 1.6,
+                                boxSizing: 'border-box',
+                                border: '1px solid rgba(255, 123, 0, 0.2)',
+                                borderRadius: '12px',
+                                background: 'rgba(255, 247, 237, 0.78)',
+                            }}
+                        >
+                            <Typography
+                                sx={{
+                                    color: '#9a3412',
+                                    fontSize: '0.78rem',
+                                    fontWeight: 700,
+                                    lineHeight: 1.55,
+                                    textAlign: 'center',
+                                }}
+                            >
+                                Login is required: customers receive matched businesses and
+                                business owners receive customer leads only after mobile
+                                verification.
+                            </Typography>
+                        </Box>
+
                         <Box sx={{ width: '100%', mb: 3 }}>
                             <TextField
                                 fullWidth
@@ -628,7 +661,7 @@ const OTPLoginModal = ({ open, handleClose }) => {
                 <Link
                     component="button"
                     variant="body2"
-                    onClick={handleClose}
+                    onClick={handleMaybeLater}
                     sx={{
                         mt: 3,
                         mb: 2,
@@ -639,7 +672,7 @@ const OTPLoginModal = ({ open, handleClose }) => {
                         fontWeight: 500,
                     }}
                 >
-                    Maybe Later
+                    Maybe Later — remind me on the home page
                 </Link>
 
                 <Typography

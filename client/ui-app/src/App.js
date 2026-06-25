@@ -322,6 +322,13 @@ function App() {
 
   const dispatch = useDispatch();
 
+  useEffect(() => {
+    const openCustomerLogin = () => setOpenLoginModal(true);
+    window.addEventListener("massclick:request-login", openCustomerLogin);
+    return () =>
+      window.removeEventListener("massclick:request-login", openCustomerLogin);
+  }, []);
+
   /* Initial auth snapshot */
   useEffect(() => {
     const snapshot = getAuthSnapshot();
