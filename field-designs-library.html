@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Complete Field Designs Library</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: #fafafa;
+            padding: 40px 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 50px;
+            font-size: 36px;
+            color: #1a1a1a;
+        }
+
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+            gap: 32px;
+            margin-bottom: 60px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 28px;
+            border: 1px solid #e5e5e5;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        }
+
+        .card h3 {
+            font-size: 15px;
+            font-weight: 700;
+            color: #ff8c00;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid #ff8c00;
+            padding-bottom: 10px;
+        }
+
+        /* ========== 1. CLASSIC TEXT INPUT ========== */
+        .field-classic label {
+            display: block;
+            font-size: 13px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin-bottom: 8px;
+        }
+
+        .field-classic input {
+            width: 100%;
+            padding: 12px 14px;
+            border: 2px solid #e5e5e5;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .field-classic input:focus {
+            outline: none;
+            border-color: #ff8c00;
+            background: #fffbf7;
+        }
+
+        /* ========== 2. MINIMAL INPUT ========== */
+        .field-minimal input {
+            width: 100%;
+            padding: 8px 0;
+            border: none;
+            border-bottom: 1px solid #ddd;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .field-minimal input:focus {
+            outline: none;
+            border-bottom-color: #ff8c00;
+        }
+
+        .field-minimal label {
+            display: block;
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        /* ========== 3. FILLED INPUT ========== */
+        .field-filled input {
+            width: 100%;
+            padding: 14px 14px;
+            background: #f5f5f5;
+            border: 1px solid #f5f5f5;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .field-filled input:focus {
+            outline: none;
+            background: white;
+            border-color: #ff8c00;
+        }
+
+        .field-filled label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        /* ========== 4. OUTLINE THICK ========== */
+        .field-thick input {
+            width: 100%;
+            padding: 13px 16px;
+            border: 3px solid #f0f0f0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+
+        .field-thick input:focus {
+            outline: none;
+            border-color: #ff8c00;
+            background: #fffbf7;
+        }
+
+        .field-thick label {
+            display: block;
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            color: #1a1a1a;
+        }
+
+        /* ========== 5. ROUNDED PILL ========== */
+        .field-pill input {
+            width: 100%;
+            padding: 12px 18px;
+            border: 1px solid #ddd;
+            border-radius: 999px;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .field-pill input:focus {
+            outline: none;
+            border-color: #ff8c00;
+            box-shadow: 0 0 0 3px rgba(255, 140, 0, 0.1);
+        }
+
+        .field-pill label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        /* ========== 6. WITH LABEL ON LEFT ========== */
+        .field-side {
+            display: grid;
+            grid-template-columns: 80px 1fr;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .field-side label {
+            font-size: 13px;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .field-side input {
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .field-side input:focus {
+            outline: none;
+            border-color: #ff8c00;
+            background: #fffbf7;
+        }
+
+        /* ========== 7. FLOATING LABEL ========== */
+        .field-float {
+            position: relative;
+            margin-bottom: 8px;
+        }
+
+        .field-float input {
+            width: 100%;
+            padding: 16px 12px 8px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .field-float label {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            background: white;
+            padding: 0 4px;
+            font-size: 14px;
+            color: #999;
+            transition: all 0.2s;
+        }
+
+        .field-float input:focus ~ label,
+        .field-float input:not(:placeholder-shown) ~ label {
+            top: -8px;
+            left: 8px;
+            font-size: 12px;
+            color: #ff8c00;
+            font-weight: 600;
+            background: white;
+        }
+
+        /* ========== 8. WITH ICON ========== */
+        .field-icon {
+            position: relative;
+        }
+
+        .field-icon input {
+            width: 100%;
+            padding: 12px 12px 12px 40px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .field-icon input:focus {
+            outline: none;
+            border-color: #ff8c00;
+        }
+
+        .field-icon::before {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 16px;
+            pointer-events: none;
+        }
+
+        .field-icon label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        /* ========== 9. COUNTER ========== */
+        .field-counter {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .field-counter input {
+            flex: 1;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .field-counter button {
+            padding: 10px 12px;
+            background: #f0f0f0;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .field-counter button:hover {
+            background: #ff8c00;
+            color: white;
+            border-color: #ff8c00;
+        }
+
+        /* ========== 10. TOGGLE SWITCH ========== */
+        .field-toggle {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 48px;
+            height: 28px;
+            background: #ddd;
+            border-radius: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .toggle-switch.active {
+            background: #ff8c00;
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            background: white;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: all 0.3s;
+        }
+
+        .toggle-switch.active::after {
+            left: 22px;
+        }
+
+        .field-toggle label {
+            margin: 0;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        /* ========== 11. RADIO GROUP ========== */
+        .radio-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .radio-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .radio-item:hover {
+            background: #f9f9f9;
+        }
+
+        .radio-item input[type="radio"] {
+            accent-color: #ff8c00;
+            cursor: pointer;
+        }
+
+        .radio-item label {
+            margin: 0;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        /* ========== 12. CHECKBOX GROUP ========== */
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .checkbox-item:hover {
+            background: #f9f9f9;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            accent-color: #ff8c00;
+            cursor: pointer;
+        }
+
+        .checkbox-item label {
+            margin: 0;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        /* ========== 13. SLIDER ========== */
+        .field-slider {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .field-slider label {
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .field-slider input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #f0f0f0;
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        .field-slider input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #ff8c00;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(255, 140, 0, 0.3);
+        }
+
+        .field-slider input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #ff8c00;
+            cursor: pointer;
+            border: none;
+        }
+
+        .slider-value {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            background: #f9f9f9;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        /* ========== 14. SELECT DROPDOWN ========== */
+        .field-select select {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23999'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            background-size: 16px;
+            padding-right: 36px;
+            cursor: pointer;
+        }
+
+        .field-select select:focus {
+            outline: none;
+            border-color: #ff8c00;
+        }
+
+        .field-select label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        /* ========== 15. TEXTAREA ========== */
+        .field-textarea textarea {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .field-textarea textarea:focus {
+            outline: none;
+            border-color: #ff8c00;
+            background: #fffbf7;
+        }
+
+        .field-textarea label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .textarea-hint {
+            font-size: 12px;
+            color: #999;
+            margin-top: 6px;
+        }
+
+        /* ========== 16. SEGMENTED CONTROL ========== */
+        .segmented-group {
+            display: flex;
+            gap: 1px;
+            background: #e5e5e5;
+            border-radius: 6px;
+            padding: 2px;
+        }
+
+        .segment-btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            background: white;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.2s;
+            border-radius: 4px;
+        }
+
+        .segment-btn.active {
+            background: #ff8c00;
+            color: white;
+        }
+
+        /* ========== 17. TAGS INPUT ========== */
+        .tags-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background: white;
+            min-height: 44px;
+            align-content: flex-start;
+        }
+
+        .tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: #ff8c00;
+            color: white;
+            border-radius: 999px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .tag-remove {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 0;
+        }
+
+        /* ========== 18. DATE INPUT ========== */
+        .field-date input {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .field-date input:focus {
+            outline: none;
+            border-color: #ff8c00;
+        }
+
+        .field-date label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        /* ========== 19. SEARCH INPUT ========== */
+        .field-search {
+            position: relative;
+        }
+
+        .field-search input {
+            width: 100%;
+            padding: 12px 12px 12px 40px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .field-search input:focus {
+            outline: none;
+            border-color: #ff8c00;
+        }
+
+        .field-search::before {
+            content: '🔍';
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            pointer-events: none;
+        }
+
+        /* ========== 20. CURRENCY INPUT ========== */
+        .field-currency {
+            position: relative;
+            display: flex;
+            gap: 0;
+        }
+
+        .currency-symbol {
+            padding: 12px 12px;
+            background: #f0f0f0;
+            border: 1px solid #ddd;
+            border-radius: 6px 0 0 6px;
+            font-weight: 600;
+            color: #999;
+        }
+
+        .field-currency input {
+            flex: 1;
+            padding: 12px 14px;
+            border: 1px solid #ddd;
+            border-left: none;
+            border-radius: 0 6px 6px 0;
+            font-size: 14px;
+        }
+
+        .field-currency input:focus {
+            outline: none;
+            border-color: #ff8c00;
+        }
+
+        /* ========== 21. FILE UPLOAD ========== */
+        .field-file {
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .field-file:hover {
+            border-color: #ff8c00;
+            background: #fffbf7;
+        }
+
+        .field-file input {
+            display: none;
+        }
+
+        .field-file-label {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+
+        .field-file-icon {
+            font-size: 32px;
+        }
+
+        .field-file-text {
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .field-file-hint {
+            font-size: 12px;
+            color: #999;
+        }
+
+        /* ========== 22. COLOR PICKER ========== */
+        .field-color {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .field-color input[type="color"] {
+            width: 60px;
+            height: 60px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .color-code {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .color-code label {
+            font-size: 12px;
+            color: #999;
+            margin: 0;
+        }
+
+        .color-code input {
+            padding: 6px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: monospace;
+            width: 100px;
+        }
+
+        /* ========== DEMO HELPERS ========== */
+        .demo-title {
+            font-size: 12px;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        .demo-row {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Complete Field Designs Library</h1>
+
+        <div class="gallery">
+            <!-- 1. Classic -->
+            <div class="card">
+                <h3>1. Classic Input</h3>
+                <div class="demo-title">Standard bordered input</div>
+                <div class="field-classic">
+                    <label>Full Name</label>
+                    <input type="text" placeholder="Enter your name">
+                </div>
+            </div>
+
+            <!-- 2. Minimal -->
+            <div class="card">
+                <h3>2. Minimal Underline</h3>
+                <div class="demo-title">Elegant bottom border only</div>
+                <div class="field-minimal">
+                    <label>Email</label>
+                    <input type="email" placeholder="your@email.com">
+                </div>
+            </div>
+
+            <!-- 3. Filled -->
+            <div class="card">
+                <h3>3. Filled Background</h3>
+                <div class="demo-title">Material design style</div>
+                <div class="field-filled">
+                    <label>Username</label>
+                    <input type="text" placeholder="@username">
+                </div>
+            </div>
+
+            <!-- 4. Thick -->
+            <div class="card">
+                <h3>4. Thick Outline</h3>
+                <div class="demo-title">Heavy border emphasis</div>
+                <div class="field-thick">
+                    <label>Business Name</label>
+                    <input type="text" placeholder="Your business">
+                </div>
+            </div>
+
+            <!-- 5. Pill -->
+            <div class="card">
+                <h3>5. Pill Shape</h3>
+                <div class="demo-title">Rounded capsule design</div>
+                <div class="field-pill">
+                    <label>Search</label>
+                    <input type="text" placeholder="What are you looking for?">
+                </div>
+            </div>
+
+            <!-- 6. Side Label -->
+            <div class="card">
+                <h3>6. Label on Side</h3>
+                <div class="demo-title">Compact inline layout</div>
+                <div class="field-side">
+                    <label>Price:</label>
+                    <input type="text" placeholder="0.00">
+                </div>
+            </div>
+
+            <!-- 7. Floating Label -->
+            <div class="card">
+                <h3>7. Floating Label</h3>
+                <div class="demo-title">Label floats on focus</div>
+                <div class="field-float">
+                    <input type="text" placeholder=" ">
+                    <label>Phone Number</label>
+                </div>
+            </div>
+
+            <!-- 8. With Icon -->
+            <div class="card">
+                <h3>8. With Icon</h3>
+                <div class="demo-title">Leading icon indicator</div>
+                <div class="field-icon" style="--icon: '📧';">
+                    <label>Email Address</label>
+                    <input type="email" placeholder="contact@business.com">
+                </div>
+            </div>
+
+            <!-- 9. Counter -->
+            <div class="card">
+                <h3>9. Counter Control</h3>
+                <div class="demo-title">Increment/decrement buttons</div>
+                <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 8px;">Quantity</label>
+                <div class="field-counter">
+                    <button>−</button>
+                    <input type="number" value="1" min="0">
+                    <button>+</button>
+                </div>
+            </div>
+
+            <!-- 10. Toggle Switch -->
+            <div class="card">
+                <h3>10. Toggle Switch</h3>
+                <div class="demo-title">On/off switch control</div>
+                <div class="field-toggle">
+                    <div class="toggle-switch active"></div>
+                    <label>Enable notifications</label>
+                </div>
+            </div>
+
+            <!-- 11. Radio Group -->
+            <div class="card">
+                <h3>11. Radio Group</h3>
+                <div class="demo-title">Single choice selection</div>
+                <div class="radio-group">
+                    <div class="radio-item">
+                        <input type="radio" id="opt1" name="choice" checked>
+                        <label for="opt1">Option A</label>
+                    </div>
+                    <div class="radio-item">
+                        <input type="radio" id="opt2" name="choice">
+                        <label for="opt2">Option B</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 12. Checkbox Group -->
+            <div class="card">
+                <h3>12. Checkbox Group</h3>
+                <div class="demo-title">Multiple choice selection</div>
+                <div class="checkbox-group">
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="ch1" checked>
+                        <label for="ch1">Feature A</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="ch2">
+                        <label for="ch2">Feature B</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 13. Slider -->
+            <div class="card">
+                <h3>13. Slider Range</h3>
+                <div class="demo-title">Continuous value control</div>
+                <div class="field-slider">
+                    <label>Priority Score</label>
+                    <input type="range" min="0" max="100" value="45">
+                    <div class="slider-value">
+                        <span>0</span>
+                        <strong style="color: #ff8c00;">45</strong>
+                        <span>100</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 14. Select Dropdown -->
+            <div class="card">
+                <h3>14. Select Dropdown</h3>
+                <div class="demo-title">Dropdown menu selection</div>
+                <div class="field-select">
+                    <label>Category</label>
+                    <select>
+                        <option>Select category...</option>
+                        <option>Restaurant</option>
+                        <option>Retail</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- 15. Textarea -->
+            <div class="card">
+                <h3>15. Textarea</h3>
+                <div class="demo-title">Multi-line text input</div>
+                <div class="field-textarea">
+                    <label>Description</label>
+                    <textarea placeholder="Tell us more..."></textarea>
+                    <div class="textarea-hint">Max 500 characters</div>
+                </div>
+            </div>
+
+            <!-- 16. Segmented Control -->
+            <div class="card">
+                <h3>16. Segmented Control</h3>
+                <div class="demo-title">Tab-like selection</div>
+                <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 8px;">View</label>
+                <div class="segmented-group">
+                    <button class="segment-btn active">Daily</button>
+                    <button class="segment-btn">Weekly</button>
+                    <button class="segment-btn">Monthly</button>
+                </div>
+            </div>
+
+            <!-- 17. Tags Input -->
+            <div class="card">
+                <h3>17. Tags Input</h3>
+                <div class="demo-title">Multi-value with badges</div>
+                <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 8px;">Keywords</label>
+                <div class="tags-container">
+                    <div class="tag">React <button class="tag-remove">×</button></div>
+                    <div class="tag">Design <button class="tag-remove">×</button></div>
+                </div>
+            </div>
+
+            <!-- 18. Date Input -->
+            <div class="card">
+                <h3>18. Date Picker</h3>
+                <div class="demo-title">Date selection field</div>
+                <div class="field-date">
+                    <label>Start Date</label>
+                    <input type="date">
+                </div>
+            </div>
+
+            <!-- 19. Search Input -->
+            <div class="card">
+                <h3>19. Search Field</h3>
+                <div class="demo-title">Search with icon</div>
+                <div class="field-search">
+                    <input type="text" placeholder="Search businesses...">
+                </div>
+            </div>
+
+            <!-- 20. Currency Input -->
+            <div class="card">
+                <h3>20. Currency Input</h3>
+                <div class="demo-title">With currency symbol</div>
+                <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 8px;">Price</label>
+                <div class="field-currency">
+                    <div class="currency-symbol">$</div>
+                    <input type="number" placeholder="0.00" step="0.01">
+                </div>
+            </div>
+
+            <!-- 21. File Upload -->
+            <div class="card">
+                <h3>21. File Upload</h3>
+                <div class="demo-title">Drag & drop area</div>
+                <div class="field-file">
+                    <input type="file" id="fileInput">
+                    <label for="fileInput" class="field-file-label">
+                        <div class="field-file-icon">📎</div>
+                        <div class="field-file-text">Drop files here</div>
+                        <div class="field-file-hint">or click to browse</div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- 22. Color Picker -->
+            <div class="card">
+                <h3>22. Color Picker</h3>
+                <div class="demo-title">Color selection</div>
+                <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 8px;">Theme Color</label>
+                <div class="field-color">
+                    <input type="color" value="#ff8c00">
+                    <div class="color-code">
+                        <label>HEX</label>
+                        <input type="text" value="#ff8c00">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

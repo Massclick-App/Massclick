@@ -35,9 +35,6 @@ const BusinessFormSection = ({
               <h3 className={cx("section-title")}>{title}</h3>
               {subtitle && <p className={cx("section-subtitle")}>{subtitle}</p>}
             </div>
-            <span className={cx("section-collapse-icon")}>
-              {isCollapsed ? '▼' : '▲'}
-            </span>
           </button>
           {isDisabled && (
             <div className={cx("section-disabled-overlay")}>

@@ -24,6 +24,7 @@ const BusinessFormStep0 = ({
   QUILL_MODULES,
   QUILL_FORMATS,
   QuillEditor,
+  location,
   locationSuggestions,
   showLocationSuggest,
   setFormData,
@@ -37,6 +38,8 @@ const BusinessFormStep0 = ({
   activeSection,
   handleSectionAdvance,
   getSectionNavigation,
+  getSectionRefKey,
+  getSectionIsDisabled,
 }) => {
   const sections = [
     { key: "clientBusiness", title: "Client & Business Information", subtitle: "Basic details about your business" },
@@ -184,7 +187,8 @@ const BusinessFormStep0 = ({
               const value = e.target.value;
               setFormData((prev) => ({ ...prev, location: value }));
               if (value.length >= 1) {
-                const filtered = locationSuggestions.filter(
+                const allLocations = location || [];
+                const filtered = allLocations.filter(
                   (loc) => loc.city?.toLowerCase().includes(value.toLowerCase()) || loc.district?.toLowerCase().includes(value.toLowerCase())
                 );
                 setLocationSuggestions(filtered);
@@ -197,7 +201,8 @@ const BusinessFormStep0 = ({
             onBlur={() => setTimeout(() => setShowLocationSuggest(false), 200)}
             onFocus={() => {
               if (formData.location.length >= 1) {
-                const filtered = locationSuggestions.filter(
+                const allLocations = location || [];
+                const filtered = allLocations.filter(
                   (loc) => loc.city?.toLowerCase().includes(formData.location.toLowerCase()) || loc.district?.toLowerCase().includes(formData.location.toLowerCase())
                 );
                 setLocationSuggestions(filtered);
@@ -451,13 +456,14 @@ const BusinessFormStep0 = ({
   const renderBadgesVisibility = () => (
     <>
       {renderSectionIntro(
-        "Visibility controls",
+        "Visibility & verification controls",
         "Use badges sparingly and deliberately. These values can make the listing feel featured without overwhelming the profile.",
         "Priority tuning"
       )}
 
       <div className={cx("section-grid", "section-grid-2")}>
         <div className={fieldClass("field-span-full", "field-surface")}>
+          <label style={{ fontWeight: 600, marginBottom: "12px", display: "block" }}>Listing Badges</label>
           <div className={cx("badge-row")}>
             {[
               { key: "isFeatured", label: "Featured", color: "#d97706", bg: "#fef3c7" },
@@ -477,8 +483,45 @@ const BusinessFormStep0 = ({
 
         <div className={fieldClass()}>
           <label className={cx("input-label")}>Priority Score</label>
-          <input type="number" min="0" max="100" className={cx("text-input")} value={formData.badges?.priorityScore ?? 0} onChange={(e) => setFormData((prev) => ({ ...prev, badges: { ...prev.badges, priorityScore: Number(e.target.value) } }))} placeholder="0-100, higher = boosted in results" />
+          <input
+            type="number"
+            min="0"
+            max="100"
+            className={cx("text-input")}
+            value={formData.badges?.priorityScore ?? 0}
+            onChange={(e) => setFormData((prev) => ({ ...prev, badges: { ...prev.badges, priorityScore: Number(e.target.value) } }))}
+            placeholder="0-100, higher = boosted in results"
+          />
           <p className={cx("helper-note")}>Higher scores can surface the listing more prominently in some views.</p>
+        </div>
+
+        <div className={fieldClass("field-span-full", "field-surface")}>
+          <label style={{ fontWeight: 600, marginBottom: "12px", display: "block" }}>Verification Status</label>
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+              <input
+                type="checkbox"
+                checked={formData.verification?.isVerified || false}
+                onChange={(e) => setFormData((prev) => ({ ...prev, verification: { ...prev.verification, isVerified: e.target.checked } }))}
+              />
+              <span style={{ fontWeight: 500 }}>Mark as Verified</span>
+            </label>
+
+            <div style={{ marginLeft: "28px", paddingTop: "8px", borderTop: "1px solid #e5e7eb" }}>
+              <label style={{ display: "block", marginBottom: "8px", fontSize: "12px", fontWeight: 600, color: "#666" }}>Verification Type</label>
+              <select
+                value={formData.verification?.verificationType || "ADMIN"}
+                onChange={(e) => setFormData((prev) => ({ ...prev, verification: { ...prev.verification, verificationType: e.target.value } }))}
+                disabled={!formData.verification?.isVerified}
+                style={{ padding: "8px", borderRadius: "4px", border: "1px solid #d1d5db", width: "100%", cursor: formData.verification?.isVerified ? "pointer" : "not-allowed" }}
+              >
+                <option value="ADMIN">Admin Verified</option>
+                <option value="DOCUMENT">Document Verified</option>
+                <option value="PHONE">Phone Verified</option>
+                <option value="BUSINESS">Business Verified</option>
+              </select>
+            </div>
+          </div>
         </div>
       </div>
     </>
@@ -498,6 +541,7 @@ const BusinessFormStep0 = ({
 
   const activeSection_obj = sections.find((s) => s.key === activeSection);
   const navigation = activeSection_obj && getSectionNavigation ? getSectionNavigation(0, activeSection_obj.key) : null;
+  const isDisabled = activeSection_obj && getSectionIsDisabled ? getSectionIsDisabled(0, activeSection_obj.key) : false;
 
   return (
     <>
@@ -509,7 +553,7 @@ const BusinessFormStep0 = ({
             title={activeSection_obj.title}
             subtitle={activeSection_obj.subtitle}
             isCollapsed={false}
-            isDisabled={false}
+            isDisabled={isDisabled}
             onToggleCollapse={() => {}}
             showAdvanceButton={!!navigation}
             onAdvance={() => handleSectionAdvance(0, activeSection_obj.key)}

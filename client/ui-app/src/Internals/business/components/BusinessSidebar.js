@@ -22,7 +22,7 @@ const SECTION_ORDER = [
   { key: "payment", title: "Payment", step: 3 },
 ];
 
-const BusinessSidebar = ({ activeSection, onSectionChange, sectionStatus = {} }) => {
+const BusinessSidebar = ({ activeSection, onSectionChange, sectionStatus = {}, getSectionIsDisabled }) => {
   return (
     <div className={cx("business-sidebar")}>
       <div className={cx("sidebar-header")}>
@@ -32,17 +32,24 @@ const BusinessSidebar = ({ activeSection, onSectionChange, sectionStatus = {} })
       <div className={cx("sidebar-sections")}>
         {SECTION_ORDER.map((section, index) => {
           const status = sectionStatus[section.key];
+          const isDisabled = getSectionIsDisabled ? getSectionIsDisabled(section.step, section.key) : false;
+          const isLocked = isDisabled;
+
           return (
             <button
               key={section.key}
               className={cx("sidebar-item", {
                 active: activeSection === section.key,
+                disabled: isLocked,
               })}
-              onClick={() => onSectionChange(section.key)}
+              onClick={() => !isLocked && onSectionChange(section.key)}
               type="button"
+              disabled={isLocked}
+              title={isLocked ? "Complete previous section to unlock" : undefined}
             >
               <span className={cx("sidebar-item-number")}>{index + 1}</span>
               <span className={cx("sidebar-item-title")}>{section.title}</span>
+              {isLocked && <span className={cx("sidebar-lock-icon")}>🔒</span>}
               {status && (
                 <span
                   className={cx(

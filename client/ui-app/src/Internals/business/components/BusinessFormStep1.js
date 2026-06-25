@@ -15,12 +15,10 @@ const BusinessFormStep1 = ({
   handleSectionAdvance,
   getSectionNavigation,
   getSectionRefKey,
-  collapsedSections,
-  toggleSectionCollapsed,
+  getSectionIsDisabled,
   renderFieldError,
 }) => {
-  const refKey = getSectionRefKey(1, "kycDocuments");
-  const isCollapsed = collapsedSections[refKey] ?? false;
+  const isDisabled = getSectionIsDisabled ? getSectionIsDisabled(1, "kycDocuments") : false;
   const navigation = getSectionNavigation ? getSectionNavigation(1, "kycDocuments") : null;
 
   return (
@@ -30,9 +28,9 @@ const BusinessFormStep1 = ({
         sectionKey="kycDocuments"
         title="KYC Documents"
         subtitle="Upload identity proof and business documents"
-        isCollapsed={isCollapsed}
-        isDisabled={false}
-        onToggleCollapse={() => toggleSectionCollapsed(1, "kycDocuments")}
+        isCollapsed={false}
+        isDisabled={isDisabled}
+        onToggleCollapse={() => {}}
         showAdvanceButton={!!navigation}
         onAdvance={() => handleSectionAdvance(1, "kycDocuments")}
         advanceLabel={navigation?.label || "Next"}

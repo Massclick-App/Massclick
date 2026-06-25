@@ -511,6 +511,24 @@
   flex-shrink: 0;
 }
 
+@media (max-width: 1180px) {
+  .web-header,
+  .web-header.sticky-search-bar {
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .search-area {
+    order: 3;
+    flex: 1 1 100%;
+  }
+
+  .header-actions {
+    margin-left: auto;
+  }
+}
+
 .cards-input-group .category-custom-dropdown {
   position: absolute;
   top: calc(100% + 8px);
