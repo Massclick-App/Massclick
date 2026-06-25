@@ -1,7 +1,7 @@
 import { getCache, setCache } from "./redisClient.js";
 
 const GEMINI_API_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent";
 
 const CACHE_TTL = 60 * 60 * 24; // 24 hours
 const TIMEOUT_MS = 2000;
