@@ -1,6 +1,4 @@
 import React from "react";
-import Autocomplete from "@mui/material/Autocomplete";
-import TextField from "@mui/material/TextField";
 import { createScopedClassNames } from "../../../utils/createScopedClassNames";
 import BusinessFormSection from "./BusinessFormSection";
 import styles from "../business.module.css";
@@ -38,42 +36,30 @@ const BusinessFormStep2 = ({
     { key: "keywordsTags", title: "Keywords & Tags", subtitle: "Seed terms for internal and external search" },
     { key: "displaySeo", title: "Display & SEO", subtitle: "How the listing appears to visitors" },
     { key: "searchSeo", title: "Search Engine Optimization", subtitle: "Meta details and filters" },
+    { key: "preview", title: "Preview & Submit", subtitle: "Review all details before creating your business" },
   ];
 
-  // Handle category changes: auto-fill SEO fields and load keyword suggestions
   React.useEffect(() => {
-    if (!formData.category) {
-      if (setCategoryKeywordSuggestions) setCategoryKeywordSuggestions([]);
+    if (!setCategoryKeywordSuggestions) {
       return;
     }
 
-    const selected = category.find(cat => cat.category === formData.category);
+    const selected = category.find((cat) => cat.category === formData.category);
+    const nextSuggestions = Array.isArray(selected?.keywords) ? selected.keywords : [];
 
-    if (selected) {
-      // Auto-fill SEO fields from selected category
-      const nextData = {
-        ...formData,
-        slug: selected.slug || formData.slug,
-        seoTitle: selected.seoTitle || formData.seoTitle,
-        seoDescription: selected.seoDescription || formData.seoDescription,
-        title: selected.title || formData.title,
-        description: selected.description || formData.description,
-      };
+    setCategoryKeywordSuggestions((previousSuggestions) => {
+      const normalizedPrevious = Array.isArray(previousSuggestions) ? previousSuggestions : [];
 
-      // Only update if something actually changed
-      if (JSON.stringify(nextData) !== JSON.stringify(formData)) {
-        setFormData(nextData);
-        if (updateLiveValidation) {
-          updateLiveValidation(nextData, ['slug', 'seoTitle', 'seoDescription', 'title', 'description']);
-        }
+      if (
+        normalizedPrevious.length === nextSuggestions.length &&
+        normalizedPrevious.every((keyword, index) => keyword === nextSuggestions[index])
+      ) {
+        return normalizedPrevious;
       }
 
-      // Load keyword suggestions for this category
-      if (setCategoryKeywordSuggestions && Array.isArray(selected.keywords)) {
-        setCategoryKeywordSuggestions(selected.keywords);
-      }
-    }
-  }, [formData.category, category, setFormData, setCategoryKeywordSuggestions, updateLiveValidation, formData]);
+      return nextSuggestions;
+    });
+  }, [formData.category, category, setCategoryKeywordSuggestions]);
 
   const renderSectionIntro = (eyebrow, summary, stat) => (
     <div className={cx("section-intro")}>
@@ -113,83 +99,184 @@ const BusinessFormStep2 = ({
           </select>
           {renderFieldError("category")}
         </div>
+      </div>
+    </>
+  );
 
-        <div className={fieldClass()}>
-          <label className={cx("input-label")}>Keywords</label>
-          <Autocomplete
-            multiple
-            options={categoryKeywordSuggestions}
-            value={formData.keywords || []}
-            onChange={(event, newValue) => {
-              setFormData((prev) => ({ ...prev, keywords: newValue }));
-              if (updateLiveValidation) {
-                updateLiveValidation({ ...formData, keywords: newValue }, 'keywords');
-              }
-            }}
-            onInputChange={(event, value, reason) => {
-              if (reason === "input") {
-                if (setInputKeyword) setInputKeyword(value);
-              } else if (reason === "clear") {
-                if (setInputKeyword) setInputKeyword("");
-              }
-            }}
-            inputValue={inputKeyword || ""}
-            freeSolo
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                placeholder="Add keywords..."
-                className={getInputClassName("text-input", "keywords")}
-              />
-            )}
-          />
-          {renderFieldError("keywords")}
+  const renderKeywordsTags = () => {
+    const selectedKeywords = Array.isArray(formData.keywords) ? formData.keywords : [];
+    const availableSuggestions = (categoryKeywordSuggestions || []).filter(
+      (kw) => !selectedKeywords.some((sel) => String(sel).toLowerCase() === String(kw).toLowerCase())
+    );
+
+    const addKeywordChip = (keyword) => {
+      const clean = keyword.trim().toLowerCase();
+      if (!clean) return;
+      if (selectedKeywords.some((kw) => String(kw).toLowerCase() === clean)) return;
+
+      const updated = [...selectedKeywords, clean];
+      setFormData((prev) => ({ ...prev, keywords: updated }));
+      if (updateLiveValidation) {
+        updateLiveValidation({ ...formData, keywords: updated }, "keywords");
+      }
+      setInputKeyword("");
+    };
+
+    const removeKeywordChip = (keyword) => {
+      const updated = selectedKeywords.filter((kw) => kw !== keyword);
+      setFormData((prev) => ({ ...prev, keywords: updated }));
+      if (updateLiveValidation) {
+        updateLiveValidation({ ...formData, keywords: updated }, "keywords");
+      }
+    };
+
+    const addAllSuggestions = () => {
+      const updated = [...new Set([...selectedKeywords, ...availableSuggestions])];
+      setFormData((prev) => ({ ...prev, keywords: updated }));
+      if (updateLiveValidation) {
+        updateLiveValidation({ ...formData, keywords: updated }, "keywords");
+      }
+    };
+
+    return (
+      <>
+        {renderSectionIntro(
+          "Keyword expansion",
+          "Use category suggestions or add custom keywords to improve discoverability in search.",
+          "Search breadth"
+        )}
+
+        <div className={fieldClass("field-span-full")}>
+          {/* Category Suggestions Panel */}
+          {categoryKeywordSuggestions && categoryKeywordSuggestions.length > 0 && (
+            <div className={cx("keyword-suggestion-panel")}>
+              <div className={cx("keyword-panel-header")}>
+                <span style={{ fontWeight: 600 }}>Category keyword suggestions</span>
+                <button
+                  type="button"
+                  onClick={addAllSuggestions}
+                  disabled={availableSuggestions.length === 0}
+                  style={{
+                    padding: "6px 12px",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    background: availableSuggestions.length > 0 ? "#ff8c00" : "#ccc",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: availableSuggestions.length > 0 ? "pointer" : "not-allowed",
+                  }}
+                >
+                  Add all
+                </button>
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "16px" }}>
+                {availableSuggestions.length > 0 ? (
+                  availableSuggestions.map((keyword) => (
+                    <button
+                      key={keyword}
+                      type="button"
+                      onClick={() => addKeywordChip(keyword)}
+                      style={{
+                        padding: "6px 12px",
+                        fontSize: "13px",
+                        fontWeight: 500,
+                        background: "#f0f0f0",
+                        border: "1px solid #ddd",
+                        borderRadius: "4px",
+                        cursor: "pointer",
+                        transition: "all 0.2s",
+                      }}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.background = "#fff9f0";
+                        e.currentTarget.style.borderColor = "#ff8c00";
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.background = "#f0f0f0";
+                        e.currentTarget.style.borderColor = "#ddd";
+                      }}
+                    >
+                      + {keyword}
+                    </button>
+                  ))
+                ) : (
+                  <span style={{ fontSize: "13px", color: "#999" }}>All suggestions are selected.</span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Selected Keywords Panel */}
+          <div className={cx("selected-keywords-panel")}>
+            <div className={cx("keyword-panel-header")}>
+              <span style={{ fontWeight: 600 }}>Selected keywords</span>
+              <small style={{ fontSize: "12px", color: "#666" }}>{selectedKeywords.length} selected</small>
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "16px" }}>
+              {selectedKeywords.length > 0 ? (
+                selectedKeywords.map((keyword) => (
+                  <button
+                    key={keyword}
+                    type="button"
+                    onClick={() => removeKeywordChip(keyword)}
+                    title={`Remove ${keyword}`}
+                    style={{
+                      padding: "6px 12px",
+                      fontSize: "13px",
+                      fontWeight: 500,
+                      background: "#ff8c00",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: "4px",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      transition: "all 0.2s",
+                    }}
+                    onMouseOver={(e) => (e.currentTarget.style.background = "#e67e00")}
+                    onMouseOut={(e) => (e.currentTarget.style.background = "#ff8c00")}
+                  >
+                    <span>{keyword}</span>
+                    <span style={{ fontWeight: 700, cursor: "pointer" }}>×</span>
+                  </button>
+                ))
+              ) : (
+                <span style={{ fontSize: "13px", color: "#999" }}>No keywords selected yet.</span>
+              )}
+            </div>
+          </div>
+
+          {/* Custom Keyword Input */}
+          <div style={{ display: "flex", gap: "8px" }}>
+            <input
+              type="text"
+              value={inputKeyword || ""}
+              onChange={(e) => setInputKeyword(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  addKeywordChip(inputKeyword);
+                }
+              }}
+              placeholder="Type a custom keyword"
+              className={cx("text-input")}
+              style={{ flex: 1 }}
+            />
+            <button
+              type="button"
+              onClick={() => addKeywordChip(inputKeyword)}
+              className={cx("step-nav-button")}
+              style={{ padding: "10px 20px", minWidth: "100px" }}
+            >
+              Add
+            </button>
+          </div>
+          <p className={cx("helper-note")}>Press Enter or click Add to add custom keywords.</p>
         </div>
-      </div>
-    </>
-  );
-
-  const renderKeywordsTags = () => (
-    <>
-      {renderSectionIntro(
-        "Keyword expansion",
-        "Use this area for extra terms that do not fit in the main keyword picker. Keep the phrases clean and discoverable.",
-        "Search breadth"
-      )}
-
-      <div className={fieldClass("field-span-full")}>
-        <label className={cx("input-label")}>Additional Tags (comma-separated)</label>
-        <TextField
-          multiline
-          rows={4}
-          placeholder="Add more tags or keywords separated by commas..."
-          value={formData.keywords?.join(", ") || ""}
-          onChange={(e) => {
-            const input = e.target.value;
-            const keywords = input
-              .split(",")
-              .map(kw => kw.trim())
-              .filter(kw => kw.length > 0)
-              .map(kw => kw.toLowerCase());
-
-            setFormData((prev) => ({
-              ...prev,
-              keywords: [...new Set(keywords)] // Remove duplicates
-            }));
-
-            if (updateLiveValidation) {
-              updateLiveValidation(
-                { ...formData, keywords: [...new Set(keywords)] },
-                'keywords'
-              );
-            }
-          }}
-          fullWidth
-        />
-        <p className={cx("helper-note")}>Keywords separated by commas. Duplicates are automatically removed.</p>
-      </div>
-    </>
-  );
+      </>
+    );
+  };
 
   const renderDisplaySeo = () => (
     <>
@@ -284,16 +371,21 @@ const BusinessFormStep2 = ({
         </div>
 
         {categoryFilterConfig && categoryFilterConfig.length > 0 && (
-          <div className={fieldClass("field-span-full", "field-surface")}>
-            <label className={cx("input-label")}>Category Filters</label>
-            <div className={cx("filter-config-container")} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-              {categoryFilterConfig.map((filter) => {
-                const filterValue = getFilterValue ? getFilterValue(filter) : formData.filters?.[filter.key];
+          <>
+            <div className={fieldClass("field-span-full")}>
+              <h3 style={{ fontSize: "16px", fontWeight: 700, color: "#333", marginBottom: "16px", paddingBottom: "12px", borderBottom: "2px solid #ff8c00" }}>
+                Category Filters {formData.category && <span style={{ fontSize: "14px", color: "#666", fontWeight: 500 }}>— {formData.category}</span>}
+              </h3>
+            </div>
 
-                // CHECKBOX type
-                if (filter.type === "checkbox" || !filter.type) {
-                  return (
-                    <label key={filter.key} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 12px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "#fff", cursor: "pointer", fontWeight: 600 }}>
+            {categoryFilterConfig.map((filter) => {
+              const filterValue = getFilterValue ? getFilterValue(filter) : formData.filters?.[filter.key];
+
+              // CHECKBOX / TOGGLE type
+              if (filter.type === "checkbox" || filter.type === "toggle" || !filter.type) {
+                return (
+                  <div key={filter.key} className={fieldClass()}>
+                    <label style={{ display: "flex", alignItems: "center", gap: "12px", padding: "12px", background: "#f9f9f9", borderRadius: "6px", border: "1px solid #e5e5e5", cursor: "pointer", transition: "all 0.2s" }} onMouseEnter={(e) => { e.currentTarget.style.background = "#f0f0f0"; e.currentTarget.style.borderColor = "#ff8c00"; }} onMouseLeave={(e) => { e.currentTarget.style.background = "#f9f9f9"; e.currentTarget.style.borderColor = "#e5e5e5"; }}>
                       <input
                         type="checkbox"
                         checked={!!filterValue}
@@ -307,115 +399,180 @@ const BusinessFormStep2 = ({
                             }));
                           }
                         }}
+                        style={{ width: "18px", height: "18px", accentColor: "#ff8c00", cursor: "pointer" }}
                       />
-                      {filter.label || filter.key} {filter.isRequired && <span style={{ color: "#dc2626" }}>*</span>}
+                      <span style={{ fontWeight: 600, fontSize: "14px", color: "#333" }}>
+                        {filter.label || filter.key}
+                        {filter.isRequired && <span style={{ color: "#dc2626", marginLeft: "4px" }}>*</span>}
+                      </span>
                     </label>
-                  );
-                }
+                  </div>
+                );
+              }
 
-                // MULTISELECT type
-                if (filter.type === "multiselect") {
-                  const options = Array.isArray(filter.options) ? filter.options : [];
-                  const selectedValues = Array.isArray(filterValue) ? filterValue : [];
+              // MULTISELECT type - Chip based
+              if (filter.type === "multiselect") {
+                const options = Array.isArray(filter.options) ? filter.options : [];
+                const selectedValues = Array.isArray(filterValue) ? filterValue : [];
 
-                  return (
-                    <div key={filter.key} style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "#fff" }}>
-                      <label style={{ fontWeight: 600, marginBottom: "8px", display: "block" }}>
-                        {filter.label || filter.key} {filter.isRequired && <span style={{ color: "#dc2626" }}>*</span>}
-                      </label>
-                      <select
-                        multiple
-                        value={selectedValues}
+                return (
+                  <div key={filter.key} className={fieldClass("field-span-full")}>
+                    <label className={cx("input-label")}>
+                      {filter.label || filter.key}
+                      {filter.isRequired && <span style={{ color: "#dc2626" }}>*</span>}
+                    </label>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "12px" }}>
+                      {options.map((opt) => {
+                        const isSelected = selectedValues.includes(opt);
+                        return (
+                          <button
+                            key={opt}
+                            type="button"
+                            onClick={() => {
+                              const updated = isSelected
+                                ? selectedValues.filter((v) => v !== opt)
+                                : [...selectedValues, opt];
+                              if (handleFilterChange) {
+                                handleFilterChange(filter.key, updated);
+                              } else {
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  filters: { ...prev.filters, [filter.key]: updated },
+                                }));
+                              }
+                            }}
+                            style={{
+                              padding: "8px 14px",
+                              borderRadius: "6px",
+                              fontSize: "13px",
+                              fontWeight: isSelected ? 600 : 500,
+                              background: isSelected ? "#ff8c00" : "#f0f0f0",
+                              color: isSelected ? "#fff" : "#333",
+                              border: isSelected ? "2px solid #ff8c00" : "2px solid #e5e5e5",
+                              cursor: "pointer",
+                              transition: "all 0.2s",
+                            }}
+                            onMouseEnter={(e) => {
+                              if (!isSelected) {
+                                e.currentTarget.style.background = "#f9f9f9";
+                                e.currentTarget.style.borderColor = "#ff8c00";
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              if (!isSelected) {
+                                e.currentTarget.style.background = "#f0f0f0";
+                                e.currentTarget.style.borderColor = "#e5e5e5";
+                              }
+                            }}
+                          >
+                            {opt}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              }
+
+              // RADIO type - Button group
+              if (filter.type === "radio") {
+                const options = Array.isArray(filter.options) ? filter.options : [];
+
+                return (
+                  <div key={filter.key} className={fieldClass("field-span-full")}>
+                    <label className={cx("input-label")}>
+                      {filter.label || filter.key}
+                      {filter.isRequired && <span style={{ color: "#dc2626" }}>*</span>}
+                    </label>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                      {options.map((opt) => {
+                        const isSelected = filterValue === opt;
+                        return (
+                          <button
+                            key={opt}
+                            type="button"
+                            onClick={() => {
+                              if (handleFilterChange) {
+                                handleFilterChange(filter.key, opt);
+                              } else {
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  filters: { ...prev.filters, [filter.key]: opt },
+                                }));
+                              }
+                            }}
+                            style={{
+                              padding: "8px 14px",
+                              borderRadius: "6px",
+                              fontSize: "13px",
+                              fontWeight: isSelected ? 600 : 500,
+                              background: isSelected ? "#ff8c00" : "#f0f0f0",
+                              color: isSelected ? "#fff" : "#333",
+                              border: isSelected ? "2px solid #ff8c00" : "2px solid #e5e5e5",
+                              cursor: "pointer",
+                              transition: "all 0.2s",
+                            }}
+                            onMouseEnter={(e) => {
+                              if (!isSelected) {
+                                e.currentTarget.style.background = "#f9f9f9";
+                                e.currentTarget.style.borderColor = "#ff8c00";
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              if (!isSelected) {
+                                e.currentTarget.style.background = "#f0f0f0";
+                                e.currentTarget.style.borderColor = "#e5e5e5";
+                              }
+                            }}
+                          >
+                            {opt}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              }
+
+              // RANGE type - Slider with value display
+              if (filter.type === "range") {
+                const numValue = Number.isFinite(Number(filterValue)) ? Number(filterValue) : (filter.min ?? 0);
+                const minVal = filter.min ?? 0;
+                const maxVal = filter.max ?? 100;
+                const unit = filter.unit || "";
+
+                return (
+                  <div key={filter.key} className={fieldClass("field-span-full")}>
+                    <label className={cx("input-label")}>
+                      {filter.label || filter.key}
+                      {filter.isRequired && <span style={{ color: "#dc2626" }}>*</span>}
+                    </label>
+                    <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                      <input
+                        type="range"
+                        min={minVal}
+                        max={maxVal}
+                        value={numValue}
                         onChange={(e) => {
-                          const selected = Array.from(e.target.selectedOptions, option => option.value);
+                          const val = Number(e.target.value);
                           if (handleFilterChange) {
-                            handleFilterChange(filter.key, selected);
+                            handleFilterChange(filter.key, val);
                           } else {
                             setFormData((prev) => ({
                               ...prev,
-                              filters: { ...prev.filters, [filter.key]: selected },
+                              filters: { ...prev.filters, [filter.key]: val },
                             }));
                           }
                         }}
-                        style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #d1d5db" }}
-                      >
-                        {options.map((opt) => (
-                          <option key={opt} value={opt}>{opt}</option>
-                        ))}
-                      </select>
+                        style={{ flex: 1, height: "6px", borderRadius: "3px", background: "#e5e5e5", outline: "none", accentColor: "#ff8c00" }}
+                      />
+                      <span style={{ fontWeight: 700, minWidth: "70px", textAlign: "right", fontSize: "14px", color: "#ff8c00", padding: "6px 12px", background: "#fffbf7", borderRadius: "4px", border: "1px solid #fed7aa" }}>
+                        {numValue}{unit}
+                      </span>
                     </div>
-                  );
-                }
-
-                // RADIO type
-                if (filter.type === "radio") {
-                  const options = Array.isArray(filter.options) ? filter.options : [];
-
-                  return (
-                    <div key={filter.key} style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "#fff" }}>
-                      <label style={{ fontWeight: 600, marginBottom: "8px", display: "block" }}>
-                        {filter.label || filter.key} {filter.isRequired && <span style={{ color: "#dc2626" }}>*</span>}
-                      </label>
-                      <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                        {options.map((opt) => (
-                          <label key={opt} style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
-                            <input
-                              type="radio"
-                              name={filter.key}
-                              value={opt}
-                              checked={filterValue === opt}
-                              onChange={(e) => {
-                                if (handleFilterChange) {
-                                  handleFilterChange(filter.key, e.target.value);
-                                } else {
-                                  setFormData((prev) => ({
-                                    ...prev,
-                                    filters: { ...prev.filters, [filter.key]: e.target.value },
-                                  }));
-                                }
-                              }}
-                            />
-                            {opt}
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                }
-
-                // RANGE type
-                if (filter.type === "range") {
-                  const numValue = Number.isFinite(Number(filterValue)) ? Number(filterValue) : (filter.min ?? 0);
-
-                  return (
-                    <div key={filter.key} style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "#fff" }}>
-                      <label style={{ fontWeight: 600, marginBottom: "8px", display: "block" }}>
-                        {filter.label || filter.key} {filter.isRequired && <span style={{ color: "#dc2626" }}>*</span>}
-                      </label>
-                      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                        <input
-                          type="range"
-                          min={filter.min ?? 0}
-                          max={filter.max ?? 100}
-                          value={numValue}
-                          onChange={(e) => {
-                            const val = Number(e.target.value);
-                            if (handleFilterChange) {
-                              handleFilterChange(filter.key, val);
-                            } else {
-                              setFormData((prev) => ({
-                                ...prev,
-                                filters: { ...prev.filters, [filter.key]: val },
-                              }));
-                            }
-                          }}
-                          style={{ flex: 1 }}
-                        />
-                        <span style={{ fontWeight: 600, minWidth: "60px" }}>{numValue}</span>
-                      </div>
-                    </div>
-                  );
-                }
+                  </div>
+                );
+              }
 
                 // Default: render as checkbox if type is unknown
                 return (
@@ -438,18 +595,135 @@ const BusinessFormStep2 = ({
                   </label>
                 );
               })}
+            </>
+          )}
+      </div>
+    </>
+  );
+
+  const renderPreview = () => {
+    console.log("DEBUG: renderPreview called, formData =", formData);
+    return (
+    <>
+      {renderSectionIntro(
+        "Final review",
+        "Review all the details you've entered. Everything looks good? Click Submit to create your business listing.",
+        "Ready to go"
+      )}
+
+      <div className={cx("section-grid")}>
+        {/* DEBUG: Show formData JSON */}
+        <div className={fieldClass("field-span-full", "field-surface")} style={{ background: "#fffbf7", padding: "12px", borderRadius: "6px", marginBottom: "16px", border: "1px solid #fed7aa" }}>
+          <small style={{ color: "#ff8c00", fontSize: "11px", fontWeight: 700 }}>✓ DEBUG - Form Data Loaded:</small>
+          <pre style={{ fontSize: "10px", overflow: "auto", maxHeight: "150px", margin: "6px 0 0 0", background: "#fff", padding: "8px", borderRadius: "4px", border: "1px solid #fed7aa" }}>
+            {Object.keys(formData).filter(k => formData[k]).slice(0, 15).map(k => `${k}: ${JSON.stringify(formData[k]).substring(0, 50)}`).join('\n')}
+          </pre>
+        </div>
+
+        {/* Basic Business Details */}
+        {formData.businessName && (
+          <div className={fieldClass("field-span-full", "field-surface")}>
+            <h3 style={{ fontSize: "14px", fontWeight: 700, marginBottom: "16px", color: "#333" }}>📋 Business Profile</h3>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "16px" }}>
+              <div>
+                <small style={{ color: "#666", fontSize: "12px" }}>Business Name</small>
+                <p style={{ margin: "4px 0 0 0", fontSize: "15px", fontWeight: 600, color: "#ff8c00" }}>{formData.businessName}</p>
+              </div>
+              <div>
+                <small style={{ color: "#666", fontSize: "12px" }}>Location</small>
+                <p style={{ margin: "4px 0 0 0", fontSize: "15px", fontWeight: 600 }}>{formData.location || "—"}</p>
+              </div>
+              <div>
+                <small style={{ color: "#666", fontSize: "12px" }}>Contact</small>
+                <p style={{ margin: "4px 0 0 0", fontSize: "14px" }}>{formData.contact || formData.email || "—"}</p>
+              </div>
+              <div>
+                <small style={{ color: "#666", fontSize: "12px" }}>Category</small>
+                <p style={{ margin: "4px 0 0 0", fontSize: "15px", fontWeight: 600 }}>{formData.category || "—"}</p>
+              </div>
             </div>
+          </div>
+        )}
+
+        {/* Keywords */}
+        {formData.keywords && formData.keywords.length > 0 && (
+          <div className={fieldClass("field-span-full", "field-surface")}>
+            <h3 style={{ fontSize: "14px", fontWeight: 700, marginBottom: "16px", color: "#333" }}>🔑 Keywords</h3>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+              {formData.keywords.map((kw) => (
+                <span key={kw} style={{ padding: "6px 12px", background: "#fffbf7", border: "1px solid #fed7aa", borderRadius: "6px", fontSize: "13px", fontWeight: 500, color: "#ff8c00" }}>
+                  {kw}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Display Details */}
+        {(formData.title || formData.description) && (
+          <div className={fieldClass("field-span-full", "field-surface")}>
+            <h3 style={{ fontSize: "14px", fontWeight: 700, marginBottom: "16px", color: "#333" }}>📝 Display Details</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              {formData.title && (
+                <div>
+                  <small style={{ color: "#666", fontSize: "12px" }}>Title</small>
+                  <p style={{ margin: "4px 0 0 0", fontSize: "14px", fontWeight: 500 }}>{formData.title}</p>
+                </div>
+              )}
+              {formData.description && (
+                <div>
+                  <small style={{ color: "#666", fontSize: "12px" }}>Description</small>
+                  <p style={{ margin: "4px 0 0 0", fontSize: "13px", lineHeight: "1.5", color: "#555" }}>{formData.description}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* SEO Details */}
+        {(formData.seoTitle || formData.seoDescription || formData.slug) && (
+          <div className={fieldClass("field-span-full", "field-surface")}>
+            <h3 style={{ fontSize: "14px", fontWeight: 700, marginBottom: "16px", color: "#333" }}>🔍 SEO Details</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              {formData.seoTitle && (
+                <div>
+                  <small style={{ color: "#666", fontSize: "12px" }}>SEO Title</small>
+                  <p style={{ margin: "4px 0 0 0", fontSize: "14px" }}>{formData.seoTitle}</p>
+                </div>
+              )}
+              {formData.seoDescription && (
+                <div>
+                  <small style={{ color: "#666", fontSize: "12px" }}>SEO Description</small>
+                  <p style={{ margin: "4px 0 0 0", fontSize: "13px", lineHeight: "1.5", color: "#555" }}>{formData.seoDescription}</p>
+                </div>
+              )}
+              {formData.slug && (
+                <div>
+                  <small style={{ color: "#666", fontSize: "12px" }}>URL Slug</small>
+                  <p style={{ margin: "4px 0 0 0", fontSize: "13px", fontFamily: "monospace", background: "#f5f5f5", padding: "6px 10px", borderRadius: "4px" }}>{formData.slug}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!formData.businessName && (
+          <div className={fieldClass("field-span-full")} style={{ textAlign: "center", padding: "40px 20px", color: "#999" }}>
+            <p>No data entered yet. Complete the form sections above to see preview.</p>
           </div>
         )}
       </div>
     </>
-  );
+    );
+  };
 
   const sectionRenderers = {
     categorySeo: renderCategorySeo,
     keywordsTags: renderKeywordsTags,
     displaySeo: renderDisplaySeo,
     searchSeo: renderSearchSeo,
+    preview: renderPreview,
   };
 
   const activeSection_obj = sections.find((s) => s.key === activeSection);

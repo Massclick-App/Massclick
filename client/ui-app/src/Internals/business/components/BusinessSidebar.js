@@ -19,7 +19,7 @@ const SECTION_ORDER = [
   { key: "keywordsTags", title: "Keywords", step: 2 },
   { key: "displaySeo", title: "Display & SEO", step: 2 },
   { key: "searchSeo", title: "SEO", step: 2 },
-  { key: "payment", title: "Payment", step: 3 },
+  { key: "preview", title: "Preview", step: 2 },
 ];
 
 const BusinessSidebar = ({ activeSection, onSectionChange, sectionStatus = {}, getSectionIsDisabled }) => {
@@ -38,10 +38,11 @@ const BusinessSidebar = ({ activeSection, onSectionChange, sectionStatus = {}, g
           return (
             <button
               key={section.key}
-              className={cx("sidebar-item", {
-                active: activeSection === section.key,
-                disabled: isLocked,
-              })}
+              className={cx(
+                "sidebar-item",
+                activeSection === section.key ? "active" : "",
+                isLocked ? "disabled" : ""
+              )}
               onClick={() => !isLocked && onSectionChange(section.key)}
               type="button"
               disabled={isLocked}

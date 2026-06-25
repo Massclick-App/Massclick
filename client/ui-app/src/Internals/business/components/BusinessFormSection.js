@@ -9,9 +9,7 @@ const BusinessFormSection = ({
   sectionKey,
   title,
   subtitle,
-  isCollapsed,
   isDisabled,
-  onToggleCollapse,
   children,
   showAdvanceButton = true,
   onAdvance,
@@ -21,21 +19,13 @@ const BusinessFormSection = ({
   return (
     <div className={cx("form-section-wrapper", "section-panel")}>
       <div
-        className={cx("col-span-all", "form-section-anchor", isCollapsed && "section-collapsed")}
+        className={cx("col-span-all", "form-section-anchor")}
       >
-        <div className={cx("section-header", isDisabled && "disabled", isCollapsed && "collapsed")}>
-          <button
-            type="button"
-            className={cx("section-header-button")}
-            onClick={onToggleCollapse}
-            disabled={isDisabled}
-            aria-expanded={!isCollapsed}
-          >
-            <div className={cx("section-title-group")}>
-              <h3 className={cx("section-title")}>{title}</h3>
-              {subtitle && <p className={cx("section-subtitle")}>{subtitle}</p>}
-            </div>
-          </button>
+        <div className={cx("section-header", isDisabled && "disabled")}>
+          <div className={cx("section-title-group")}>
+            <h3 className={cx("section-title")}>{title}</h3>
+            {subtitle && <p className={cx("section-subtitle")}>{subtitle}</p>}
+          </div>
           {isDisabled && (
             <div className={cx("section-disabled-overlay")}>
               Complete previous section to unlock
@@ -44,7 +34,7 @@ const BusinessFormSection = ({
         </div>
       </div>
 
-      {!isCollapsed && !isDisabled && (
+      {!isDisabled && (
         <div className={cx("form-section-content")}>
           {children}
           {showAdvanceButton && onAdvance && (

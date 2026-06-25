@@ -1,10 +1,11 @@
 import React from "react";
-import { Button, Avatar } from "@mui/material";
+import { Button, Avatar, Autocomplete, TextField } from "@mui/material";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import { createScopedClassNames } from "../../../utils/createScopedClassNames";
 import GooglePlacesInput from "../../../components/GooglePlacesInput/GooglePlacesInput";
 import BusinessFormSection from "./BusinessFormSection";
 import styles from "../business.module.css";
+import { getAllUsersClient } from "../../../redux/actions/userClientAction";
 
 const cx = createScopedClassNames(styles);
 
@@ -31,6 +32,7 @@ const BusinessFormStep0 = ({
   setShowLocationSuggest,
   setLocationSuggestions,
   searchSuggestion,
+  userClient,
   showSuggestions,
   setShowSuggestions,
   dispatch,
@@ -41,6 +43,13 @@ const BusinessFormStep0 = ({
   getSectionRefKey,
   getSectionIsDisabled,
 }) => {
+  React.useEffect(() => {
+    // Load all clients when component mounts
+    if (dispatch) {
+      dispatch(getAllUsersClient());
+    }
+  }, [dispatch]);
+
   const sections = [
     { key: "clientBusiness", title: "Client & Business Information", subtitle: "Basic details about your business" },
     { key: "address", title: "Address Details", subtitle: "Business location information" },
@@ -74,52 +83,47 @@ const BusinessFormStep0 = ({
       )}
 
       <div className={cx("section-grid", "section-grid-wide-left")}>
-        <div className={fieldClass("field-span-7")} style={{ position: "relative" }}>
+        <div className={fieldClass("field-span-7")}>
           <label htmlFor="clientId" className={cx("input-label")}>Client ID</label>
-          <input
-            type="text"
-            id="clientId"
-            name="clientId"
-            className={getInputClassName("text-input", "clientId")}
-            value={formData.clientId}
-            placeholder="Type client ID or name..."
-            onChange={(e) => {
-              const value = e.target.value;
-              setFormData((prev) => ({ ...prev, clientId: value }));
-              if (value.length >= 2) {
-                dispatch(getUserClientSuggestion(value));
-                setShowSuggestions(true);
-              } else {
-                setShowSuggestions(false);
-              }
+          <Autocomplete
+            options={userClient || []}
+            getOptionLabel={(option) => `${option.clientId} — ${option.name}`}
+            value={
+              userClient?.find((c) => c.clientId === formData.clientId) || null
+            }
+            onChange={(event, newValue) => {
+              setFormData((prev) => ({
+                ...prev,
+                clientId: newValue ? newValue.clientId : ""
+              }));
             }}
-            onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-            onFocus={() => {
-              if (formData.clientId.length >= 2) {
-                setShowSuggestions(true);
-              }
+            freeSolo={false}
+            disableClearable={false}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                placeholder="Search and select a client"
+                size="small"
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    padding: "6px !important",
+                    borderRadius: "6px",
+                    fontSize: "14px",
+                  },
+                }}
+              />
+            )}
+            slotProps={{
+              paper: {
+                sx: {
+                  maxHeight: "300px",
+                  borderRadius: "6px",
+                  border: "1px solid #e5e5e5",
+                },
+              },
             }}
           />
           {renderFieldError("clientId")}
-          {showSuggestions && searchSuggestion?.length > 0 && (
-            <ul className={cx("category-suggestion-box")}>
-              {searchSuggestion.map((client) => (
-                <li
-                  key={client._id}
-                  onClick={() => {
-                    setFormData((prev) => ({
-                      ...prev,
-                      clientId: `${client.clientId} — ${client.name}`,
-                    }));
-                    setShowSuggestions(false);
-                  }}
-                  style={{ padding: "12px", cursor: "pointer", borderBottom: "1px solid #eee" }}
-                >
-                  <strong>{client.clientId}</strong> — {client.name}
-                </li>
-              ))}
-            </ul>
-          )}
         </div>
 
         <div className={fieldClass("field-span-5")}>
@@ -175,60 +179,29 @@ const BusinessFormStep0 = ({
 
         <div className={fieldClass()}>
           <label htmlFor="location" className={cx("input-label")}>Location</label>
-          <input
-            type="text"
+          <select
             id="location"
             name="location"
-            autoComplete="off"
-            className={getInputClassName("text-input", "location")}
+            className={getInputClassName("select-input", "location")}
             value={formData.location}
-            placeholder="Type to search location..."
             onChange={(e) => {
-              const value = e.target.value;
-              setFormData((prev) => ({ ...prev, location: value }));
-              if (value.length >= 1) {
-                const allLocations = location || [];
-                const filtered = allLocations.filter(
-                  (loc) => loc.city?.toLowerCase().includes(value.toLowerCase()) || loc.district?.toLowerCase().includes(value.toLowerCase())
-                );
-                setLocationSuggestions(filtered);
-                setShowLocationSuggest(true);
-              } else {
-                setShowLocationSuggest(false);
-                setLocationSuggestions([]);
-              }
+              setFormData((prev) => ({ ...prev, location: e.target.value }));
             }}
-            onBlur={() => setTimeout(() => setShowLocationSuggest(false), 200)}
-            onFocus={() => {
-              if (formData.location.length >= 1) {
-                const allLocations = location || [];
-                const filtered = allLocations.filter(
-                  (loc) => loc.city?.toLowerCase().includes(formData.location.toLowerCase()) || loc.district?.toLowerCase().includes(formData.location.toLowerCase())
+          >
+            <option value="">Select a location</option>
+            {location && location.length > 0 ? (
+              location.map((loc) => {
+                const displayName = loc.city || loc.district;
+                return (
+                  <option key={loc._id} value={displayName}>
+                    {displayName}{loc.state ? ` — ${loc.state}` : ""}
+                  </option>
                 );
-                setLocationSuggestions(filtered);
-                setShowLocationSuggest(filtered.length > 0);
-              }
-            }}
-          />
-          {showLocationSuggest && locationSuggestions.length > 0 && (
-            <ul className={cx("category-suggestion-box")}>
-              {locationSuggestions.map((loc) => (
-                <li
-                  key={loc._id}
-                  onClick={() => {
-                    const nextLocation = loc.city || loc.district;
-                    setFormData((prev) => ({ ...prev, location: nextLocation }));
-                    setShowLocationSuggest(false);
-                    setLocationSuggestions([]);
-                  }}
-                  style={{ padding: "10px", cursor: "pointer", borderBottom: "1px solid #eee" }}
-                >
-                  {loc.city}{loc.district && loc.district !== loc.city ? `, ${loc.district}` : ""}
-                  {loc.state ? ` — ${loc.state}` : ""}
-                </li>
-              ))}
-            </ul>
-          )}
+              })
+            ) : (
+              <option disabled>No locations available</option>
+            )}
+          </select>
           {renderFieldError("location")}
         </div>
 
@@ -456,32 +429,90 @@ const BusinessFormStep0 = ({
   const renderBadgesVisibility = () => (
     <>
       {renderSectionIntro(
-        "Visibility & verification controls",
-        "Use badges sparingly and deliberately. These values can make the listing feel featured without overwhelming the profile.",
-        "Priority tuning"
+        "Badges & Visibility",
+        "Control how this listing is highlighted"
       )}
 
-      <div className={cx("section-grid", "section-grid-2")}>
-        <div className={fieldClass("field-span-full", "field-surface")}>
-          <label style={{ fontWeight: 600, marginBottom: "12px", display: "block" }}>Listing Badges</label>
-          <div className={cx("badge-row")}>
+      <div className={cx("section-grid")}>
+        {/* Badge Toggles */}
+        <div className={fieldClass("field-span-full")}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}>
             {[
-              { key: "isFeatured", label: "Featured", color: "#d97706", bg: "#fef3c7" },
-              { key: "isSponsored", label: "Sponsored", color: "#7c3aed", bg: "#ede9fe" },
-              { key: "isTrending", label: "Trending", color: "#dc2626", bg: "#fee2e2" },
+              { key: "isFeatured", label: "⭐ Featured", color: "#d97706", bg: "#fef3c7" },
+              { key: "isSponsored", label: "💎 Sponsored", color: "#7c3aed", bg: "#ede9fe" },
+              { key: "isTrending", label: "🔥 Trending", color: "#dc2626", bg: "#fee2e2" },
+              { key: "isTrust", label: "🛡️ Trusted", color: "#059669", bg: "#d1fae5" },
             ].map(({ key, label, color, bg }) => {
               const on = !!formData.badges?.[key];
               return (
-                <label key={key} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 14px", borderRadius: "8px", border: `1.5px solid ${on ? color : "#e0e0e0"}`, background: on ? bg : "#fafafa", cursor: "pointer", userSelect: "none", fontWeight: 600, fontSize: "13px", color: on ? color : "#555" }}>
-                  <input type="checkbox" checked={on} onChange={(e) => setFormData((prev) => ({ ...prev, badges: { ...prev.badges, [key]: e.target.checked } }))} style={{ accentColor: color }} />
+                <label
+                  key={key}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    padding: "8px 14px",
+                    borderRadius: "8px",
+                    border: `1.5px solid ${on ? color : "#e0e0e0"}`,
+                    background: on ? bg : "#fafafa",
+                    cursor: "pointer",
+                    userSelect: "none",
+                    fontWeight: 600,
+                    fontSize: "13px",
+                    color: on ? color : "#555",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={on}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        badges: { ...prev.badges, [key]: e.target.checked },
+                      }))
+                    }
+                    style={{ accentColor: color }}
+                  />
                   {label}
                 </label>
               );
             })}
+
+            {/* Verified Badge */}
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                padding: "8px 14px",
+                borderRadius: "8px",
+                border: `1.5px solid ${formData.verification?.isVerified ? "#2563eb" : "#e0e0e0"}`,
+                background: formData.verification?.isVerified ? "#dbeafe" : "#fafafa",
+                cursor: "pointer",
+                userSelect: "none",
+                fontWeight: 600,
+                fontSize: "13px",
+                color: formData.verification?.isVerified ? "#2563eb" : "#555",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={!!formData.verification?.isVerified}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    verification: { ...prev.verification, isVerified: e.target.checked },
+                  }))
+                }
+                style={{ accentColor: "#2563eb" }}
+              />
+              ✅ Verified
+            </label>
           </div>
         </div>
 
-        <div className={fieldClass()}>
+        {/* Priority Score */}
+        <div className={fieldClass("field-span-full")}>
           <label className={cx("input-label")}>Priority Score</label>
           <input
             type="number"
@@ -489,40 +520,38 @@ const BusinessFormStep0 = ({
             max="100"
             className={cx("text-input")}
             value={formData.badges?.priorityScore ?? 0}
-            onChange={(e) => setFormData((prev) => ({ ...prev, badges: { ...prev.badges, priorityScore: Number(e.target.value) } }))}
-            placeholder="0-100, higher = boosted in results"
+            onChange={(e) =>
+              setFormData((prev) => ({
+                ...prev,
+                badges: { ...prev.badges, priorityScore: Number(e.target.value) },
+              }))
+            }
+            placeholder="0–100, higher = boosted in results"
           />
           <p className={cx("helper-note")}>Higher scores can surface the listing more prominently in some views.</p>
         </div>
 
-        <div className={fieldClass("field-span-full", "field-surface")}>
-          <label style={{ fontWeight: 600, marginBottom: "12px", display: "block" }}>Verification Status</label>
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
-              <input
-                type="checkbox"
-                checked={formData.verification?.isVerified || false}
-                onChange={(e) => setFormData((prev) => ({ ...prev, verification: { ...prev.verification, isVerified: e.target.checked } }))}
-              />
-              <span style={{ fontWeight: 500 }}>Mark as Verified</span>
-            </label>
-
-            <div style={{ marginLeft: "28px", paddingTop: "8px", borderTop: "1px solid #e5e7eb" }}>
-              <label style={{ display: "block", marginBottom: "8px", fontSize: "12px", fontWeight: 600, color: "#666" }}>Verification Type</label>
-              <select
-                value={formData.verification?.verificationType || "ADMIN"}
-                onChange={(e) => setFormData((prev) => ({ ...prev, verification: { ...prev.verification, verificationType: e.target.value } }))}
-                disabled={!formData.verification?.isVerified}
-                style={{ padding: "8px", borderRadius: "4px", border: "1px solid #d1d5db", width: "100%", cursor: formData.verification?.isVerified ? "pointer" : "not-allowed" }}
-              >
-                <option value="ADMIN">Admin Verified</option>
-                <option value="DOCUMENT">Document Verified</option>
-                <option value="PHONE">Phone Verified</option>
-                <option value="BUSINESS">Business Verified</option>
-              </select>
-            </div>
+        {/* Verification Type (conditional) */}
+        {formData.verification?.isVerified && (
+          <div className={fieldClass("field-span-full")}>
+            <label className={cx("input-label")}>Verification Type</label>
+            <select
+              value={formData.verification?.verificationType || "ADMIN"}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  verification: { ...prev.verification, verificationType: e.target.value },
+                }))
+              }
+              className={cx("select-input")}
+            >
+              <option value="ADMIN">Admin Verified</option>
+              <option value="DOCUMENT">Document Verified</option>
+              <option value="PHONE">Phone Verified</option>
+              <option value="BUSINESS">Business Verified</option>
+            </select>
           </div>
-        </div>
+        )}
       </div>
     </>
   );

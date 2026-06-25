@@ -59,8 +59,7 @@ const SECTION_TO_STEP = {
   clientBusiness: 0, address: 0, contact: 0, businessInfo: 0, locationWeb: 0,
   socialMedia: 0, bannerDetails: 0, openingHours: 0, badgesVisibility: 0,
   kycDocuments: 1,
-  categorySeo: 2, keywordsTags: 2, displaySeo: 2, searchSeo: 2,
-  payment: 3
+  categorySeo: 2, keywordsTags: 2, displaySeo: 2, searchSeo: 2, preview: 2
 };
 const SECTION_ALL_FIELDS = {
   clientBusiness: ["clientId", "businessName"],
@@ -268,7 +267,7 @@ ColorlibStepIcon.propTypes = {
   completed: PropTypes.bool,
   icon: PropTypes.node
 };
-const steps = ["Business Details", "Category", "Privacy Settings", "Payment"];
+const steps = ["Business Details", "Category", "Privacy Settings"];
 const SEARCH_REFRESH_DELAY = 350;
 const PAID_STEP_FIELD_MAP = {
   0: [
@@ -400,6 +399,11 @@ const FORM_SECTION_FLOW = {
     {
       key: "searchSeo",
       title: "Search Engine Optimization"
+    },
+    {
+      key: "preview",
+      title: "Preview & Submit",
+      body: "Review all details before creating your business listing."
     }
   ]
 };
@@ -417,7 +421,8 @@ const BusinessList = React.memo(() => {
     exportLoading = false
   } = useSelector(state => state.businessListReducer || {});
   const {
-    searchSuggestion = []
+    searchSuggestion = [],
+    userClient = []
   } = useSelector(state => state.userClientReducer || {});
   const {
     users = []
@@ -441,7 +446,21 @@ const BusinessList = React.memo(() => {
   const [businessvalue, setBusinessValue] = useState("");
   const [editMode, setEditMode] = useState(false);
   const [activeView, setActiveView] = useState("list");
+  const [successData, setSuccessData] = useState(null);
   const [editId, setEditId] = useState(null);
+
+  // DEBUG: Log on mount and view changes
+  useEffect(() => {
+    console.log("🎯 Business Component Mounted/Updated", {
+      activeView,
+      editMode,
+      businessListLength: businessList?.length,
+      filteredRowsLength: filteredRows?.length,
+      successData: !!successData,
+      businessListData: businessList,
+      filteredRows
+    });
+  }, [activeView, editMode, businessList, successData]);
   const [newGalleryImages, setNewGalleryImages] = useState([]);
   const [createdBusinessId, setCreatedBusinessId] = useState(null);
   const [createUserId, setCreateUserId] = useState(null);
@@ -552,6 +571,14 @@ const BusinessList = React.memo(() => {
   };
   const getSectionFlowForStep = step => FORM_SECTION_FLOW[step] || [];
   const getSectionNavigation = (step, sectionKey) => {
+    // Preview section always shows Submit button
+    if (sectionKey === "preview") {
+      return {
+        type: "submit",
+        label: editMode ? "Save Business" : "Submit"
+      };
+    }
+
     const stepSections = getSectionFlowForStep(step);
     const currentIndex = stepSections.findIndex(section => section.key === sectionKey);
 
@@ -571,8 +598,10 @@ const BusinessList = React.memo(() => {
 
     if (step === steps.length - 2) {
       return {
-        type: "submit",
-        label: editMode ? "Save Business" : "Final Next"
+        type: "step",
+        label: `Next: ${steps[step + 1]}`,
+        title: `Next step: ${steps[step + 1]}`,
+        body: "Move ahead when you're ready."
       };
     }
 
@@ -609,7 +638,8 @@ const BusinessList = React.memo(() => {
       categorySeo: ["category", "keywords"],
       keywordsTags: [],
       displaySeo: [],
-      searchSeo: []
+      searchSeo: [],
+      preview: []
     }
   };
 
@@ -632,7 +662,8 @@ const BusinessList = React.memo(() => {
       categorySeo: ["category", "keywords"],
       keywordsTags: [],
       displaySeo: ["title", "description", "seoTitle", "seoDescription", "slug", "filters"],
-      searchSeo: []
+      searchSeo: [],
+      preview: []
     }
   };
 
@@ -653,21 +684,7 @@ const BusinessList = React.memo(() => {
   };
 
   const getSectionIsDisabled = (step, sectionKey) => {
-    // All sections within the same step are accessible
-    // Only block between steps (e.g., can't access Step 1 until Step 0 is complete)
-    const currentStepNumber = SECTION_TO_STEP[sectionKey];
-
-    // If accessing Step 0, always allow
-    if (currentStepNumber === 0) return false;
-
-    // If accessing Step 1+, only block if previous step is incomplete
-    // Check if we've moved past Step 0
-    if (currentStepNumber > 0) {
-      const previousStepSections = getSectionFlowForStep(currentStepNumber - 1);
-      const isStep0Complete = previousStepSections.every(s => getSectionIsComplete(currentStepNumber - 1, s.key));
-      return !isStep0Complete;
-    }
-
+    // All sections are fully accessible - no locking
     return false;
   };
 
@@ -1165,6 +1182,14 @@ const BusinessList = React.memo(() => {
     setActiveView("form");
   };
 
+  const handleSuccessReset = () => {
+    setSuccessData(null);
+    resetToCreateBusinessState({
+      nextView: "list",
+      scroll: true
+    });
+  };
+
   const clearForceBypassForFields = useCallback(fields => {
     const names = Array.isArray(fields) ? fields : [fields];
     setForceBypassedFields(prev => prev.filter(field => !names.includes(field)));
@@ -1220,17 +1245,19 @@ const BusinessList = React.memo(() => {
   // ===== AUTO-DRAFT FUNCTIONS =====
   const saveDraftToLocalStorage = useCallback((data) => {
     try {
-      const draft = {
-        formData: data,
+      // Save only essential fields to avoid exceeding localStorage quota
+      const essentialData = {
+        businessName: data.businessName,
+        clientId: data.clientId,
+        category: data.category,
         listingMode,
-        kycFiles: kycFiles.map(f => ({ name: f.name, type: f.type })),
         savedAt: new Date().toISOString(),
       };
-      localStorage.setItem(BUSINESS_LOCAL_DRAFT_KEY, JSON.stringify(draft));
+      localStorage.setItem(BUSINESS_LOCAL_DRAFT_KEY, JSON.stringify(essentialData));
     } catch (error) {
       console.error("Failed to save draft:", error);
     }
-  }, [listingMode, kycFiles]);
+  }, [listingMode]);
 
   const clearDraftFromLocalStorage = useCallback(() => {
     try {
@@ -2074,26 +2101,27 @@ const BusinessList = React.memo(() => {
       return;
     }
 
-    const cleanedFormData = getCleanBusinessFormData({
-      ...formData,
-      businessDetails: businessvalue
-    });
+    // Save only essential fields to avoid exceeding localStorage quota
     const draftPayload = {
       savedAt: new Date().toISOString(),
       activeStep: SECTION_TO_STEP[activeSection],
-      formData: {
-        ...cleanedFormData,
-        bannerImage: preview || cleanedFormData.bannerImage || "",
-        businessDetails: businessvalue,
-        kycDocuments: []
-      }
+      businessName: formData.businessName,
+      clientId: formData.clientId,
+      category: formData.category,
+      listingMode
     };
 
-    localStorage.setItem(BUSINESS_LOCAL_DRAFT_KEY, JSON.stringify(draftPayload));
-    setLocalDraftMeta({ savedAt: draftPayload.savedAt });
-    enqueueSnackbar("Draft saved locally on this browser.", {
-      variant: "success"
-    });
+    try {
+      localStorage.setItem(BUSINESS_LOCAL_DRAFT_KEY, JSON.stringify(draftPayload));
+      setLocalDraftMeta({ savedAt: draftPayload.savedAt });
+      enqueueSnackbar("Draft saved locally on this browser.", {
+        variant: "success"
+      });
+    } catch (error) {
+      enqueueSnackbar("Failed to save draft - storage full. Clear browser storage.", {
+        variant: "error"
+      });
+    }
   };
   const clearLocalDraft = (showMessage = true) => {
     clearDraftFromLocalStorage();
@@ -2651,6 +2679,15 @@ const BusinessList = React.memo(() => {
         } else {
           setPostCreatePaidStatus(listingMode === LISTING_MODE.FREE ? "free" : "idle");
         }
+
+        // Show success screen instead of payment section
+        setSuccessData({
+          businessName: cleanedFormData.businessName,
+          businessId,
+          isPaid: listingMode === LISTING_MODE.PAID,
+          listingMode
+        });
+        setActiveView("success");
       }
       // If this business was created from a GMaps lead, mark it as imported
       if (!editMode && leadToImport?._id) {
@@ -2661,7 +2698,6 @@ const BusinessList = React.memo(() => {
       setDuplicateBypassSignature("");
       clearLocalDraft(false);
       setForceBypassedFields([]);
-      setActiveSection("payment");
     } catch (err) {
       console.error("Error saving business:", err);
       const backendPayload = err.response?.data;
@@ -3858,7 +3894,188 @@ const BusinessList = React.memo(() => {
     </div>
   );
 
-  const renderStepContent = step => {
+  const renderPreviewField = (label, value) => {
+    if (!value) return null;
+    return (
+      <Box sx={{ mb: 2, pb: 2, borderBottom: "1px solid #f0f0f0" }}>
+        <Typography variant="caption" sx={{ color: "#666", fontWeight: 600, display: "block", mb: 0.5 }}>
+          {label}
+        </Typography>
+        {typeof value === "string" && value.includes("<") ? (
+          <Box dangerouslySetInnerHTML={{ __html: value }} sx={{ fontSize: "0.9rem" }} />
+        ) : Array.isArray(value) ? (
+          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+            {value.filter(v => v).map((item, idx) => (
+              <Chip key={idx} label={typeof item === "string" ? item : item?.label || JSON.stringify(item)} size="small" />
+            ))}
+          </Box>
+        ) : (
+          <Typography variant="body2">{String(value)}</Typography>
+        )}
+      </Box>
+    );
+  };
+
+  const renderStepContent = (step, sectionKey) => {
+    // Handle preview section
+    if (sectionKey === "preview") {
+      return (
+        <Box sx={{ p: 3, maxWidth: 1000, mx: "auto" }}>
+          <Typography variant="h5" sx={{ mb: 3, fontWeight: 600, color: "#333" }}>
+            📋 Complete Form Preview
+          </Typography>
+
+          {/* STEP 0: Business Information */}
+          <Box sx={{ mb: 4, p: 2.5, border: "1px solid #e0e0e0", borderRadius: 1.5, backgroundColor: "#fafafa" }}>
+            <Typography variant="h6" sx={{ mb: 2.5, fontWeight: 700, color: "#ff8c42" }}>
+              Step 1: Business Information
+            </Typography>
+
+            <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
+              {renderPreviewField("Client", formData.clientId)}
+              {renderPreviewField("Business Name", formData.businessName)}
+              {renderPreviewField("Plot Number", formData.plotNumber)}
+              {renderPreviewField("Street", formData.street)}
+              {renderPreviewField("Pincode", formData.pincode)}
+              {renderPreviewField("Global Address", formData.globalAddress)}
+              {renderPreviewField("Location", formData.location)}
+              {renderPreviewField("Email", formData.email)}
+              {renderPreviewField("Phone", formData.contact)}
+              {renderPreviewField("Contact List", formData.contactList)}
+              {renderPreviewField("WhatsApp Number", formData.whatsappNumber)}
+              {renderPreviewField("GSTIN", formData.gstin)}
+              {renderPreviewField("Experience", formData.experience)}
+              {renderPreviewField("Google Map Link", formData.googleMap)}
+              {renderPreviewField("Latitude", formData.geoLatitude || formData.geoLocation?.coordinates?.[1])}
+              {renderPreviewField("Longitude", formData.geoLongitude || formData.geoLocation?.coordinates?.[0])}
+              {renderPreviewField("Website", formData.website)}
+              {renderPreviewField("Facebook", formData.facebook)}
+              {renderPreviewField("Instagram", formData.instagram)}
+              {renderPreviewField("YouTube", formData.youtube)}
+              {renderPreviewField("Pinterest", formData.pinterest)}
+              {renderPreviewField("Twitter", formData.twitter)}
+              {renderPreviewField("LinkedIn", formData.linkedin)}
+            </Box>
+
+            {renderPreviewField("Business Details", formData.businessDetails)}
+
+            {formData.bannerImage && (
+              <Box sx={{ mb: 2, pb: 2, borderBottom: "1px solid #f0f0f0" }}>
+                <Typography variant="caption" sx={{ color: "#666", fontWeight: 600, display: "block", mb: 0.5 }}>
+                  Banner Image
+                </Typography>
+                <Box
+                  sx={{
+                    width: "100%",
+                    height: 250,
+                    backgroundImage: `url(${preview || formData.bannerImage})`,
+                    backgroundSize: "cover",
+                    backgroundPosition: "center",
+                    borderRadius: 1,
+                    border: "1px solid #e0e0e0"
+                  }}
+                />
+              </Box>
+            )}
+
+            {/* Opening Hours */}
+            {formData.openingHours && formData.openingHours.length > 0 && (
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="caption" sx={{ color: "#666", fontWeight: 600, display: "block", mb: 1 }}>
+                  Opening Hours
+                </Typography>
+                <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 1 }}>
+                  {formData.openingHours.map((hour, idx) => (
+                    <Box key={idx} sx={{ p: 1, backgroundColor: "#f5f5f5", borderRadius: 0.5, fontSize: "0.85rem" }}>
+                      <strong>{["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][idx]}</strong>
+                      {hour.is24Hours ? " - 24/7" : hour.isClosed ? " - Closed" : ` - ${hour.open} to ${hour.close}`}
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
+            )}
+          </Box>
+
+          {/* STEP 1: KYC Documents */}
+          <Box sx={{ mb: 4, p: 2.5, border: "1px solid #e0e0e0", borderRadius: 1.5, backgroundColor: "#fafafa" }}>
+            <Typography variant="h6" sx={{ mb: 2.5, fontWeight: 700, color: "#ff8c42" }}>
+              Step 2: KYC Documents
+            </Typography>
+            {kycFiles.length > 0 ? (
+              <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 2 }}>
+                {kycFiles.map((file, idx) => (
+                  <Box key={idx} sx={{ border: "1px solid #e0e0e0", borderRadius: 1, overflow: "hidden", backgroundColor: "#fff" }}>
+                    {file.preview && (
+                      <Box
+                        sx={{
+                          width: "100%",
+                          height: 180,
+                          backgroundImage: `url(${file.preview})`,
+                          backgroundSize: "cover",
+                          backgroundPosition: "center"
+                        }}
+                      />
+                    )}
+                    <Box sx={{ p: 1.5 }}>
+                      <Typography variant="caption" sx={{ display: "block", fontWeight: 600, mb: 0.5 }}>
+                        📄 {file.name}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: "#999" }}>
+                        {(file.size / 1024).toFixed(2)} KB
+                      </Typography>
+                    </Box>
+                  </Box>
+                ))}
+              </Box>
+            ) : (
+              <Typography variant="body2" sx={{ color: "#999" }}>No KYC documents uploaded</Typography>
+            )}
+          </Box>
+
+          {/* STEP 2: SEO & Category */}
+          <Box sx={{ mb: 4, p: 2.5, border: "1px solid #e0e0e0", borderRadius: 1.5, backgroundColor: "#fafafa" }}>
+            <Typography variant="h6" sx={{ mb: 2.5, fontWeight: 700, color: "#ff8c42" }}>
+              Step 3: SEO & Keywords
+            </Typography>
+
+            <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
+              {renderPreviewField("Category", formData.category)}
+              {renderPreviewField("Location Filter", formData.location)}
+              {renderPreviewField("Display Title", formData.title)}
+              {renderPreviewField("Display Description", formData.description)}
+              {renderPreviewField("SEO Title", formData.seoTitle)}
+              {renderPreviewField("SEO Description", formData.seoDescription)}
+              {renderPreviewField("Slug", formData.slug)}
+            </Box>
+
+            {renderPreviewField("Keywords & Tags", formData.keywords)}
+          </Box>
+
+          <Box sx={{ mt: 4, display: "flex", gap: 2 }}>
+            <Button
+              variant="outlined"
+              onClick={() => handleSectionChange("searchSeo")}
+              sx={{ flex: 1 }}
+            >
+              ← Back to Edit
+            </Button>
+            <Button
+              variant="contained"
+              type="submit"
+              onClick={handleSubmit}
+              sx={{
+                backgroundColor: "#ff8c42",
+                "&:hover": { backgroundColor: "#e67a2e" },
+                flex: 1
+              }}
+            >
+              {editMode ? "Save All Changes" : "Create Listing"}
+            </Button>
+          </Box>
+        </Box>
+      );
+    }
+
     switch (step) {
       case 0:
         return (
@@ -3892,6 +4109,7 @@ const BusinessList = React.memo(() => {
             setShowLocationSuggest={setShowLocationSuggest}
             setLocationSuggestions={setLocationSuggestions}
             searchSuggestion={searchSuggestion}
+            userClient={userClient}
             showSuggestions={showSuggestions}
             setShowSuggestions={setShowSuggestions}
             dispatch={dispatch}
@@ -4228,13 +4446,56 @@ const BusinessList = React.memo(() => {
             </div>
           )}
           <div className={cx("form-grid")}>
-            {renderStepContent(SECTION_TO_STEP[activeSection])}
+            {renderStepContent(SECTION_TO_STEP[activeSection], activeSection)}
           </div>
         </form>
           </div>
         </div>
       </div>
     </>}
+
+    {activeView === "success" && successData && (
+      <div className={cx("success-screen-container")}>
+        <div className={cx("success-screen-card")}>
+          <div className={cx("success-icon")}>✅</div>
+          <h1 className={cx("success-title")}>Business Created Successfully!</h1>
+
+          <div className={cx("success-details")}>
+            <p className={cx("success-business-name")}>{successData.businessName}</p>
+
+            {successData.isPaid ? (
+              <div className={cx("success-paid-badge")}>
+                <span className={cx("paid-badge-icon")}>💳</span>
+                <span>This is a PAID Business</span>
+              </div>
+            ) : (
+              <div className={cx("success-free-badge")}>
+                <span className={cx("free-badge-icon")}>🆓</span>
+                <span>This is a FREE Business</span>
+              </div>
+            )}
+          </div>
+
+          <div className={cx("success-message")}>
+            {successData.isPaid
+              ? "Your paid business listing is now live and will be highlighted in search results."
+              : "Your free business listing is now live in the directory."}
+          </div>
+
+          <div className={cx("success-business-id")}>
+            <small>Business ID: {successData.businessId}</small>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleSuccessReset}
+            className={cx("success-reset-button")}
+          >
+            Go to Directory
+          </button>
+        </div>
+      </div>
+    )}
 
     {activeView === "list" && <>
       {/* SEARCH SECTION */}
