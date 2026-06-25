@@ -7,8 +7,14 @@ import SearchIcon from "@mui/icons-material/Search";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import HistoryToggleOffIcon from "@mui/icons-material/HistoryToggleOff";
 import CloseIcon from "@mui/icons-material/Close";
+import LoginIcon from "@mui/icons-material/Login";
+import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import { getBackendSuggestions } from "../../../redux/actions/businessListAction";
 import { navigateToSearchResult } from "../../../utils/searchResultNavigation";
+import { Box, Button, IconButton, Tooltip } from "@mui/material";
+import { useDrawer } from "../Drawer/drawerContext";
+import { categoryBarHelpers } from "../categoryBar";
+import AddBusinessModel from "../AddBusinessModel";
 
 const cx = createScopedClassNames(styles);
 const DEFAULT_LOCATION = "Trichy";
@@ -90,6 +96,7 @@ const StickySearchBar = ({
 }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { openDrawer } = useDrawer();
   const searchInputRef = useRef(null);
   const barRef = useRef(null);
 
@@ -100,6 +107,8 @@ const StickySearchBar = ({
   const [locationInput, setLocationInput] = useState("");
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isWebView, setIsWebView] = useState(window.innerWidth > 768);
 
   const locationName = propLocationName ?? internalLocationName;
   const setLocationName = propSetLocationName ?? setInternalLocationName;
@@ -138,6 +147,12 @@ const StickySearchBar = ({
       append: false
     }));
   }, [locationInput, dispatch, isSelectingLocation]);
+
+  useEffect(() => {
+    const handleResize = () => setIsWebView(window.innerWidth > 768);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -208,8 +223,148 @@ const StickySearchBar = ({
     setIsCategoryDropdownOpen(false);
   };
 
+  const goHome = () => navigate("/");
+  const loggedIn = categoryBarHelpers.checkLogin();
+  const handleOpenModal = () => setIsModalOpen(true);
+  const handleCloseModal = () => setIsModalOpen(false);
+
   if (!isScrolled) return null;
 
+  // Web view layout
+  if (isWebView) {
+    return (
+      <div ref={barRef} className={cx("sticky-search-container", "web-view")}>
+        <header className={cx("sticky-search-bar", "web-header")}>
+          <div className={cx("logo-section")}>
+            <div className={cx("logo-circle")}>
+              <Tooltip title="Go to Home Page" arrow>
+                <button type="button" className={cx("logo-button")} onClick={goHome} aria-label="Go to Massclick home">
+                  <img src="/apple-touch-icon.png" alt="Massclick home" className={cx("logo-image")} width="48" height="48" decoding="async" />
+                </button>
+              </Tooltip>
+            </div>
+            <div className={cx("brandingText")}>
+              <button type="button" className={cx("logo-button", "logo-button--brand")} onClick={goHome} aria-label="Go to Massclick home">
+                <img src="/Massclick-India.webp" alt="Massclick India" className={cx("brandLogo")} width="180" height="44" decoding="async" loading="eager" />
+              </button>
+            </div>
+          </div>
+
+          <div className={cx("search-area")}>
+            <div className={cx("cards-input-group", "cards-location-group")}>
+              <LocationOnIcon className={cx("input-adornment", "start")} />
+              <input
+                className={cx("cards-custom-input")}
+                placeholder="Enter location..."
+                value={locationName}
+                onChange={(e) => {
+                  setLocationName(e.target.value);
+                  setIsSelectingLocation(true);
+                  setIsCategoryDropdownOpen(false);
+                }}
+                onFocus={() => {
+                  setIsSelectingLocation(true);
+                  setIsCategoryDropdownOpen(false);
+                }}
+              />
+              {isSelectingLocation && parsedLocationSuggestions.length > 0 && (
+                <Dropdown
+                  label="LOCATIONS"
+                  options={parsedLocationSuggestions}
+                  onSelect={handleLocationChange}
+                  type="location"
+                  isLoadingMore={backendSuggestionsLoading}
+                />
+              )}
+            </div>
+
+            <div className={cx("cards-input-group", "cards-search-group")}>
+              <SearchIcon className={cx("input-adornment", "start")} />
+              <input
+                className={cx("cards-custom-input")}
+                placeholder="Search for..."
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  propSetCategoryName?.(e.target.value);
+                  setIsCategoryDropdownOpen(true);
+                  setIsSelectingLocation(false);
+                }}
+                onFocus={() => {
+                  setIsCategoryDropdownOpen(true);
+                  setIsSelectingLocation(false);
+                }}
+              />
+              {isCategoryDropdownOpen && searchTerm.trim().length < 2 && (
+                <Dropdown
+                  label="RECENT SEARCHES"
+                  options={suggestionCategories}
+                  onSelect={handleSelectCategory}
+                  type="suggestion"
+                  isLoadingMore={backendSuggestionsLoading}
+                />
+              )}
+              {isCategoryDropdownOpen && searchTerm.trim().length >= 2 && (
+                <Dropdown
+                  label="SUGGESTIONS"
+                  options={suggestionCategories}
+                  onSelect={handleSelectCategory}
+                  type="suggestion"
+                  isLoadingMore={backendSuggestionsLoading}
+                />
+              )}
+            </div>
+
+            <button
+              className={cx("search-btn-web")}
+              onClick={() => handleSelectCategory(searchTerm)}
+              aria-label="Search"
+              title="Search"
+            >
+              <SearchIcon />
+              <span>Search</span>
+            </button>
+          </div>
+
+          <Box className={cx("header-actions")} sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            {!loggedIn ? (
+              <Button
+                variant="contained"
+                startIcon={<LoginIcon />}
+                onClick={handleOpenModal}
+                sx={{
+                  background: "linear-gradient(45deg, #FF6F00, #F7941D)",
+                  color: "white",
+                  textTransform: "none",
+                  fontSize: "0.95rem",
+                  borderRadius: "30px",
+                  px: 2.5,
+                  py: 0.9,
+                  whiteSpace: "nowrap",
+                  boxShadow: "0 8px 24px rgba(255, 123, 0, 0.35)",
+                  transition: "all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)",
+                  "&:hover": {
+                    background: "linear-gradient(45deg, #cc5a0f, #ff8a2d)",
+                    boxShadow: "0 12px 32px rgba(255, 123, 0, 0.45)",
+                  },
+                }}
+              >
+                Login / Sign Up
+              </Button>
+            ) : (
+              <IconButton onClick={openDrawer} aria-label="Open user menu">
+                <AccountCircleIcon sx={{ fontSize: 28 }} />
+              </IconButton>
+            )}
+          </Box>
+        </header>
+
+        <AddBusinessModel open={isModalOpen} handleClose={handleCloseModal} />
+      </div>
+    );
+  }
+
+  // Mobile view layout (original)
   return (
     <div ref={barRef} className={cx("sticky-search-container")}>
       <header className={cx("sticky-search-bar", isFocused && "sticky-search-bar--focused")}>

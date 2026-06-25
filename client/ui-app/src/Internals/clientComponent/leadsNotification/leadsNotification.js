@@ -67,18 +67,19 @@ const LeadsNotificationModal = ({
       borderBottom: "2px solid #ffe5c4",
       background: "linear-gradient(90deg, #fff, #fff7ef)"
     }}>
-        <Typography variant="h6" sx={{
+        <Box sx={{
         fontWeight: 800,
         color: "#F7941D",
         display: "flex",
         alignItems: "center",
-        gap: 1
+        gap: 1,
+        fontSize: 18
       }}>
           <NotificationsActiveIcon sx={{
           color: "#F7941D"
         }} />
           Notifications
-        </Typography>
+        </Box>
 
         <IconButton onClick={onClose}>
           <CloseIcon />
