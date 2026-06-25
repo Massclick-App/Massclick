@@ -15,9 +15,11 @@ const BusinessFormSection = ({
   children,
   showAdvanceButton = true,
   onAdvance,
+  advanceLabel = "Next",
+  advanceType = "next",
 }) => {
   return (
-    <div className={cx("form-section-wrapper")}>
+    <div className={cx("form-section-wrapper", "section-panel")}>
       <div
         className={cx("col-span-all", "form-section-anchor", isCollapsed && "section-collapsed")}
       >
@@ -52,10 +54,10 @@ const BusinessFormSection = ({
             <div className={cx("col-span-all", "section-nav-row")}>
               <button
                 type="button"
-                className={cx("step-nav-button", "section-next-button")}
+                className={cx("step-nav-button", "section-next-button", advanceType === "submit" && "section-submit-button")}
                 onClick={onAdvance}
               >
-                <span>Next</span>
+                <span>{advanceLabel}</span>
               </button>
             </div>
           )}

@@ -19,7 +19,7 @@ import VerifiedUserIcon from "@mui/icons-material/VerifiedUser";
 import {
   Box, Button, Typography, CircularProgress, IconButton, Avatar, Dialog, DialogTitle, DialogContent, DialogActions,
   // Stepper Imports:
-  Stack, Stepper, Step, StepLabel, Chip, Checkbox, FormControlLabel, RadioGroup, Radio, Slider, FormGroup
+  Stack, Stepper, Step, StepLabel, Chip, Checkbox, FormControlLabel, RadioGroup, Radio, Slider, FormGroup, Switch
 } from "@mui/material";
 import PaidIcon from '@mui/icons-material/Paid';
 import PendingIcon from '@mui/icons-material/Pending';
@@ -48,11 +48,31 @@ import AdminViewTabs from "../../components/AdminViewTabs.js";
 import BusinessFormStep0 from "./components/BusinessFormStep0";
 import BusinessFormStep1 from "./components/BusinessFormStep1";
 import BusinessFormStep2 from "./components/BusinessFormStep2";
+import BusinessSidebar from "./components/BusinessSidebar";
 import "quill/dist/quill.snow.css";
 const cx = createScopedClassNames(styles);
 const LISTING_MODE = {
   FREE: "free",
   PAID: "paid"
+};
+const SECTION_TO_STEP = {
+  clientBusiness: 0, address: 0, contact: 0, businessInfo: 0, locationWeb: 0,
+  socialMedia: 0, bannerDetails: 0, openingHours: 0, badgesVisibility: 0,
+  kycDocuments: 1,
+  categorySeo: 2, keywordsTags: 2, displaySeo: 2, searchSeo: 2,
+  payment: 3
+};
+const SECTION_ALL_FIELDS = {
+  clientBusiness: ["clientId", "businessName"],
+  address: ["plotNumber", "street", "pincode", "location", "globalAddress"],
+  contact: ["email", "contact", "contactList", "whatsappNumber"],
+  businessInfo: ["gstin", "experience"],
+  locationWeb: ["googleMap", "geoLatitude", "geoLongitude", "website"],
+  socialMedia: ["facebook", "instagram", "youtube", "pinterest", "twitter", "linkedin"],
+  bannerDetails: ["bannerImage", "businessDetails"],
+  categorySeo: ["category", "keywords"],
+  displaySeo: ["title", "description"],
+  searchSeo: ["seoTitle", "seoDescription", "slug"],
 };
 const FORCE_BYPASS_BLOCKED_FIELDS = new Set(["businessName", "category", "location", "contact"]);
 const FREE_REQUIRED_FIELDS = new Set(["businessName", "category", "location", "contact"]);
@@ -505,7 +525,7 @@ const BusinessList = React.memo(() => {
     }
     dispatch(createPhonePePayment(amount, userId, businessId));
   };
-  const [activeStep, setActiveStep] = useState(0);
+  const [activeSection, setActiveSection] = useState("clientBusiness");
   const [kycFiles, setKycFiles] = useState([]);
   const handleKycUpload = event => {
     clearForceBypassForFields("kycDocuments");
@@ -526,98 +546,9 @@ const BusinessList = React.memo(() => {
       return updatedFiles;
     });
   };
-  const handleNext = () => {
-    const cleanedFormData = getCleanBusinessFormData(formData);
-
-    if (activeStep === 0) {
-      const duplicateSignature = getDuplicateCheckSignature(cleanedFormData);
-      const duplicateMatches = getPotentialDuplicateMatches(cleanedFormData);
-
-      if (duplicateMatches.length > 0 && duplicateBypassSignature !== duplicateSignature) {
-        setDuplicateReview({
-          open: true,
-          matches: duplicateMatches,
-          signature: duplicateSignature,
-          action: "step-lock"
-        });
-        showSideSuggestion({
-          title: "Review similar businesses before moving on",
-          body: "This record looks close to an existing business. Confirm it first so we avoid a duplicate listing.",
-          items: duplicateMatches.map(match => match.businessName),
-          tone: "warning"
-        });
-        enqueueSnackbar("Duplicate restriction triggered in Step 1. Resolve it or save as draft locally.", {
-          variant: "warning"
-        });
-        return;
-      }
-    }
-
-    const stepValidationContext = {
-      bannerPreview: preview,
-      uploadedKycFiles: kycFiles,
-      isEditing: editMode
-    };
-    const stepErrors = getStepValidationErrors(
-      validateBusinessEntryData(cleanedFormData, stepValidationContext),
-      cleanedFormData,
-      activeStep,
-      listingMode
-    );
-
-    if (stepErrors.length > 0) {
-      setStepValidationTriggered(prev => ({
-        ...prev,
-        [activeStep]: true
-      }));
-      setFieldErrors(prev => ({
-        ...prev,
-        ...buildFieldErrorMap(stepErrors)
-      }));
-      showSideSuggestion({
-        title: listingMode === LISTING_MODE.PAID ? "Complete this section before continuing" : "A few core details still need attention",
-        body: listingMode === LISTING_MODE.PAID
-          ? "Paid listings need these details before the next section unlocks."
-          : "Free listings stay flexible, but these core details still block the next section.",
-        items: stepErrors.map(error => error.label),
-        tone: listingMode === LISTING_MODE.PAID ? "warning" : "info"
-      });
-      enqueueSnackbar(
-        listingMode === LISTING_MODE.PAID
-          ? "Finish the required details on this step to continue."
-          : "Please complete the required core details on this step.",
-        {
-          variant: listingMode === LISTING_MODE.PAID ? "warning" : "error"
-        }
-      );
-      return;
-    }
-
-    const nextStepIndex = activeStep + 1;
-    setStepValidationTriggered(prev => ({
-      ...prev,
-      [activeStep]: true
-    }));
-    setActiveStep(nextStepIndex);
-    const nextStepNotification = STEP_NOTIFICATION_CONTENT[nextStepIndex]?.[listingMode];
-    if (nextStepNotification) {
-      showSideSuggestion({
-        title: nextStepNotification.title,
-        body: nextStepNotification.body,
-        tone: "info"
-      });
-    }
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth"
-    });
-  };
-  const handleBack = () => {
-    setActiveStep(prevActiveStep => prevActiveStep - 1);
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth"
-    });
+  const handleSectionChange = (sectionKey) => {
+    setActiveSection(sectionKey);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
   const getSectionFlowForStep = step => FORM_SECTION_FLOW[step] || [];
   const getSectionNavigation = (step, sectionKey) => {
@@ -751,26 +682,23 @@ const BusinessList = React.memo(() => {
       const stepSections = getSectionFlowForStep(step);
       const currentIndex = stepSections.findIndex(section => section.key === sectionKey);
       const nextSection = currentIndex >= 0 ? stepSections[currentIndex + 1] : null;
-
       if (nextSection) {
-        const nextSectionKey = getSectionRefKey(step, nextSection.key);
-        setCollapsedSections(prev => ({
-          ...prev,
-          [nextSectionKey]: false
-        }));
+        handleSectionChange(nextSection.key);
       }
+      if (navigation.title) {
+        showSideSuggestion({ title: navigation.title, body: navigation.body, tone: "info" });
+      }
+      return;
+    }
 
-      showSideSuggestion({
-        title: navigation.title,
-        body: navigation.body,
-        tone: "info"
-      });
-      const nextSectionNode = nextSection ? sectionRefs.current[getSectionRefKey(step, nextSection.key)] : null;
-      if (nextSectionNode?.scrollIntoView) {
-        nextSectionNode.scrollIntoView({
-          behavior: "smooth",
-          block: "start"
-        });
+    if (navigation.type === "step") {
+      const nextStepIndex = step + 1;
+      const firstSection = FORM_SECTION_FLOW[nextStepIndex]?.[0]?.key;
+      if (firstSection) {
+        handleSectionChange(firstSection);
+      }
+      if (navigation.title) {
+        showSideSuggestion({ title: navigation.title, body: navigation.body, tone: "info" });
       }
       return;
     }
@@ -779,13 +707,12 @@ const BusinessList = React.memo(() => {
       businessFormRef.current?.requestSubmit?.();
       return;
     }
-
-    handleNext();
   };
   const renderSectionAdvanceButton = (step, sectionKey) => {
     const navigation = getSectionNavigation(step, sectionKey);
+    const currentStep = SECTION_TO_STEP[activeSection];
 
-    if (!navigation || activeStep >= steps.length - 1) {
+    if (!navigation || currentStep >= steps.length - 1) {
       return null;
     }
 
@@ -1156,7 +1083,8 @@ const BusinessList = React.memo(() => {
     });
     setCollapsedSections({});
     setActiveView(nextView);
-    setActiveStep(nextStep);
+    const sectionForStep = nextStep === 0 ? "clientBusiness" : nextStep === 1 ? "kycDocuments" : nextStep === 2 ? "categorySeo" : "payment";
+    setActiveSection(sectionForStep);
 
     if (syncDraftMeta) {
       const draft = getStoredBusinessDraft();
@@ -2105,7 +2033,7 @@ const BusinessList = React.memo(() => {
     });
     const draftPayload = {
       savedAt: new Date().toISOString(),
-      activeStep,
+      activeStep: SECTION_TO_STEP[activeSection],
       formData: {
         ...cleanedFormData,
         bannerImage: preview || cleanedFormData.bannerImage || "",
@@ -2189,7 +2117,9 @@ const BusinessList = React.memo(() => {
     });
     setDuplicateBypassSignature("");
     setActiveView("form");
-    setActiveStep(Number.isInteger(draft.activeStep) ? Math.max(0, Math.min(draft.activeStep, steps.length - 2)) : 0);
+    const draftStep = Number.isInteger(draft.activeStep) ? Math.max(0, Math.min(draft.activeStep, steps.length - 2)) : 0;
+    const defaultSection = draftStep === 0 ? "clientBusiness" : draftStep === 1 ? "kycDocuments" : "categorySeo";
+    setActiveSection(defaultSection);
     setLocalDraftMeta(draft.savedAt ? { savedAt: draft.savedAt } : null);
     enqueueSnackbar("Local draft restored.", {
       variant: "success"
@@ -2220,8 +2150,9 @@ const BusinessList = React.memo(() => {
     ...getPaidStepFieldNames(cleanedLiveFormData, 1),
     ...getPaidStepFieldNames(cleanedLiveFormData, 2)
   ]);
-  const paidCurrentStepErrors = getStepValidationErrors(currentValidationErrors, cleanedLiveFormData, activeStep, LISTING_MODE.PAID);
-  const hasTriggeredCurrentPaidStep = Boolean(stepValidationTriggered[activeStep] || stepValidationTriggered.final);
+  const currentStepFromSection = SECTION_TO_STEP[activeSection];
+  const paidCurrentStepErrors = getStepValidationErrors(currentValidationErrors, cleanedLiveFormData, currentStepFromSection, LISTING_MODE.PAID);
+  const hasTriggeredCurrentPaidStep = Boolean(stepValidationTriggered[currentStepFromSection] || stepValidationTriggered.final);
   const paidCompletedCount = Math.max(0, paidAllRequiredFields.length - getUniqueFields(
     currentValidationErrors
       .filter(error => paidAllRequiredFields.includes(error.field))
@@ -2231,7 +2162,7 @@ const BusinessList = React.memo(() => {
     ? Math.round((paidCompletedCount / paidAllRequiredFields.length) * 100)
     : 100;
   useEffect(() => {
-  }, [activeStep, listingMode]);
+  }, [activeSection, listingMode]);
   useEffect(() => {
     if (!sideSuggestion.open) {
       return undefined;
@@ -2359,7 +2290,7 @@ const BusinessList = React.memo(() => {
     });
     setBusinessValue(row.businessDetails || "");
     setPreview(row.bannerImage || null);
-    setActiveStep(0);
+    setActiveSection("clientBusiness");
     window.scrollTo({
       top: 0,
       behavior: "smooth"
@@ -2463,7 +2394,9 @@ const BusinessList = React.memo(() => {
       final: true,
       [getFirstErrorStep(validationErrors)]: true
     }));
-    setActiveStep(getFirstErrorStep(validationErrors));
+    const errorStep = getFirstErrorStep(validationErrors);
+    const sectionForErrorStep = errorStep === 0 ? "clientBusiness" : errorStep === 1 ? "kycDocuments" : errorStep === 2 ? "categorySeo" : "payment";
+    setActiveSection(sectionForErrorStep);
     setFieldErrors(buildFieldErrorMap(validationErrors));
     showSideSuggestion({
       title: mode === LISTING_MODE.PAID ? "Final check found a few missing details" : "Before saving, these details still need attention",
@@ -2534,7 +2467,7 @@ const BusinessList = React.memo(() => {
     const duplicateMatches = getPotentialDuplicateMatches(cleanedFormData);
 
     if (!skipDuplicateCheck && duplicateMatches.length > 0 && duplicateBypassSignature !== duplicateSignature) {
-      setActiveStep(0);
+      setActiveSection("clientBusiness");
       setDuplicateReview({
         open: true,
         matches: duplicateMatches,
@@ -2682,7 +2615,7 @@ const BusinessList = React.memo(() => {
       setDuplicateBypassSignature("");
       clearLocalDraft(false);
       setForceBypassedFields([]);
-      setActiveStep(3);
+      setActiveSection("payment");
     } catch (err) {
       console.error("Error saving business:", err);
       const backendPayload = err.response?.data;
@@ -2836,7 +2769,7 @@ const BusinessList = React.memo(() => {
     setBusinessValue(demoBusinessDetails);
     setFormData(demoFormData);
     setKycFiles([demoKyc.file]);
-    setActiveStep(steps.length - 2);
+    setActiveSection("categorySeo");
 
     try {
       await saveBusiness({
@@ -3591,49 +3524,33 @@ const BusinessList = React.memo(() => {
       </button>
       {isDisabled && <div className={cx("section-disabled-overlay")}>Complete previous section to unlock</div>}
     </div>;
-  const renderListingModeSelector = () => (
-    <div className={cx("listing-mode-shell")}>
-      <div>
-        <p className={cx("listing-mode-eyebrow")}>Listing type</p>
-        <h3 className={cx("listing-mode-title")}>Choose how this business should be onboarded</h3>
-        <p className={cx("listing-mode-copy")}>
-          Free listings stay flexible. Paid listings guide the team through a polished, fully-complete profile before publishing.
-        </p>
-      </div>
-      <div className={cx("listing-mode-toggle")} role="tablist" aria-label="Listing mode">
-        {[{
-          value: LISTING_MODE.FREE,
-          title: "Free listing",
-          description: "Permissive flow with inline field errors and bypass for non-core details."
-        }, {
-          value: LISTING_MODE.PAID,
-          title: "Paid listing",
-          description: "Strict completion flow with guided progress and automatic paid activation."
-        }].map(option => (
-          <button
-            key={option.value}
-            type="button"
-            role="tab"
-            aria-selected={listingMode === option.value}
-            className={cx("listing-mode-option", listingMode === option.value && "active")}
-            onClick={() => {
-              setListingMode(option.value);
-              setFieldErrors({});
-              setForceBypassedFields([]);
-              setWarnDialog(false);
-              setWarnLevel(0);
-              setPostCreatePaidStatus("idle");
-            }}
-          >
-            <span className={cx("listing-mode-option-title")}>{option.title}</span>
-            <span className={cx("listing-mode-option-copy")}>{option.description}</span>
-          </button>
-        ))}
-      </div>
+  const renderListingModeToggle = () => (
+    <div className={cx("listing-mode-switch")}>
+      <span className={cx("listing-mode-switch-label", listingMode === LISTING_MODE.FREE && "active")}>
+        Free
+      </span>
+      <Switch
+        checked={listingMode === LISTING_MODE.PAID}
+        onChange={(_, checked) => {
+          setListingMode(checked ? LISTING_MODE.PAID : LISTING_MODE.FREE);
+          setFieldErrors({});
+          setForceBypassedFields([]);
+          setWarnDialog(false);
+          setWarnLevel(0);
+          setPostCreatePaidStatus("idle");
+        }}
+        color="warning"
+        inputProps={{
+          "aria-label": "Toggle listing mode between free and paid"
+        }}
+      />
+      <span className={cx("listing-mode-switch-label", listingMode === LISTING_MODE.PAID && "active")}>
+        Paid
+      </span>
     </div>
   );
   const renderPaidAssistant = () => {
-    if (listingMode !== LISTING_MODE.PAID || activeStep >= steps.length - 1) {
+    if (listingMode !== LISTING_MODE.PAID || SECTION_TO_STEP[activeSection] >= steps.length - 1) {
       return null;
     }
 
@@ -3668,7 +3585,7 @@ const BusinessList = React.memo(() => {
             const isComplete = stepFields.length > 0 && stepErrors.length === 0;
 
             return (
-              <div key={label} className={cx("paid-step-pill", activeStep === index && "active", isComplete && "complete")}>
+              <div key={label} className={cx("paid-step-pill", SECTION_TO_STEP[activeSection] === index && "active", isComplete && "complete")}>
                 {isComplete ? <CheckCircleRoundedIcon fontSize="small" /> : <InfoOutlinedIcon fontSize="small" />}
                 <span>{label}</span>
               </div>
@@ -3911,6 +3828,7 @@ const BusinessList = React.memo(() => {
             getSectionIsDisabled={getSectionIsDisabled}
             toggleSectionCollapsed={toggleSectionCollapsed}
             handleSectionAdvance={handleSectionAdvance}
+            getSectionNavigation={getSectionNavigation}
             renderSectionContent={renderSectionContent}
             getInputClassName={getInputClassName}
             renderFieldError={renderFieldError}
@@ -3934,6 +3852,7 @@ const BusinessList = React.memo(() => {
             setShowSuggestions={setShowSuggestions}
             dispatch={dispatch}
             getUserClientSuggestion={getUserClientSuggestion}
+            activeSection={activeSection}
           />
         );
       case 1:
@@ -3943,6 +3862,7 @@ const BusinessList = React.memo(() => {
             handleKycUpload={handleKycUpload}
             handleRemoveFile={handleRemoveFile}
             handleSectionAdvance={handleSectionAdvance}
+            getSectionNavigation={getSectionNavigation}
             getSectionRefKey={getSectionRefKey}
             collapsedSections={collapsedSections}
             toggleSectionCollapsed={toggleSectionCollapsed}
@@ -3959,6 +3879,7 @@ const BusinessList = React.memo(() => {
             fieldErrors={fieldErrors}
             handleChange={handleChange}
             handleSectionAdvance={handleSectionAdvance}
+            getSectionNavigation={getSectionNavigation}
             getSectionRefKey={getSectionRefKey}
             getSectionIsComplete={getSectionIsComplete}
             getSectionIsDisabled={getSectionIsDisabled}
@@ -3968,6 +3889,7 @@ const BusinessList = React.memo(() => {
             categoryKeywordSuggestions={categoryKeywordSuggestions}
             inputKeyword={inputKeyword}
             setFormData={setFormData}
+            activeSection={activeSection}
           />
         );
 
@@ -4086,34 +4008,49 @@ const BusinessList = React.memo(() => {
   };
   const bypassableFieldErrorCount = Object.keys(fieldErrors).filter(isForceBypassableField).length;
   const currentDuplicateSignature = getDuplicateCheckSignature(getCleanBusinessFormData(formData));
+  const isFieldFilled = (field, data) => {
+    if (field === "geoLatitude") { const v = data.geoLocation?.coordinates?.[1]; return v != null && String(v).trim().length > 0; }
+    if (field === "geoLongitude") { const v = data.geoLocation?.coordinates?.[0]; return v != null && String(v).trim().length > 0; }
+    const value = data[field];
+    if (value == null) return false;
+    if (Array.isArray(value)) return value.length > 0;
+    return String(value).replace(/<[^>]*>/g, "").trim().length > 0;
+  };
+  const sectionStatus = {};
+  Object.entries(SECTION_TO_STEP).forEach(([key, step]) => {
+    if (step === 3) return;
+    if (key === "kycDocuments") {
+      sectionStatus[key] = { done: kycFiles.length > 0 ? 1 : 0, total: 1 };
+      return;
+    }
+    if (key === "openingHours") {
+      const hours = formData.openingHours || [];
+      const done = hours.filter(h => h.is24Hours || h.isClosed || (h.open && h.close)).length;
+      sectionStatus[key] = { done, total: hours.length || 7 };
+      return;
+    }
+    if (key === "badgesVisibility" || key === "keywordsTags") {
+      sectionStatus[key] = null;
+      return;
+    }
+    const fields = SECTION_ALL_FIELDS[key];
+    if (!fields) { sectionStatus[key] = null; return; }
+    const done = fields.filter(f => isFieldFilled(f, formData)).length;
+    sectionStatus[key] = { done, total: fields.length };
+  });
   return <div className={cx("business-page")}>
     {renderSideSuggestion()}
     <AdminViewTabs activeView={activeView} onChange={handleAdminViewChange} isEditing={editMode} createLabel="Business" listLabel="Directory" listCount={filteredRows.length} />
 
     {activeView === "form" && <>
-      <div className={cx("business-card")} style={{
-        marginBottom: '20px',
-        padding: '15px 30px',
-        boxShadow: 'none'
-      }}>
-        <Stack sx={{
-          width: '100%'
-        }} spacing={4}>
-          <Stepper alternativeLabel activeStep={activeStep} connector={<ColorlibConnector />}>
-            {steps.map(label => <Step key={label}>
-              <StepLabel StepIconComponent={ColorlibStepIcon}>{label}</StepLabel>
-            </Step>)}
-          </Stepper>
-        </Stack>
-      </div>
-
-      <div className={cx("business-card form-section")}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+      <div className={cx("form-top-bar")}>
+        <div className={cx("form-top-bar-title-row")}>
           <h2 className={cx("card-title")} style={{ margin: 0 }}>
-            {editMode ? `Edit Business (${steps[activeStep]})` : `Add New Business (${steps[activeStep]})`}
+            {editMode ? `Edit Business` : `Add New Business`}
           </h2>
           {!editMode && (
             <div className={cx("draft-actions-bar")}>
+              {!editMode && renderListingModeToggle()}
               <button type="button" className={cx("draft-action-button")} onClick={saveDraftToLocal}>
                 Save Draft
               </button>
@@ -4125,17 +4062,7 @@ const BusinessList = React.memo(() => {
                   Clear Draft
                 </button>
               )}
-              {/* {!editMode && ( */}
-                {/* // <button */}
-                {/* //   type="button" */}
-                {/* //   className={cx("draft-action-button secondary")} */}
-                {/* //   onClick={handleCreateDemoBusiness} */}
-                {/* //   disabled={loading || demoSubmitting} */}
-                {/* // > */}
-                {/* //   {demoSubmitting ? "Creating Demo..." : "Create Demo"} */}
-                {/* // </button> */}
-              {/* // )} */}
-              {activeStep === 0 && (
+              {SECTION_TO_STEP[activeSection] === 0 && (
                 <Button
                   variant="outlined"
                   size="small"
@@ -4155,10 +4082,9 @@ const BusinessList = React.memo(() => {
             </div>
           )}
         </div>
-        {!editMode && renderListingModeSelector()}
         {renderPaidAssistant()}
         {!editMode && (
-          <div className={cx("draft-meta-row")}>
+          <div className={cx("draft-meta-row")} style={{ marginBottom: 0 }}>
             <span>
               Draft is stored only in this browser on this machine.
             </span>
@@ -4170,9 +4096,15 @@ const BusinessList = React.memo(() => {
             <span>KYC file uploads are not included in local draft restore.</span>
           </div>
         )}
+      </div>
 
-        <form ref={businessFormRef} onSubmit={handleSubmit}>
-          {activeStep === 0 && possibleDuplicateMatches.length > 0 && (
+      <div className={cx("business-form-container")}>
+        <BusinessSidebar activeSection={activeSection} onSectionChange={handleSectionChange} sectionStatus={sectionStatus} />
+
+        <div className={cx("business-form-content")}>
+          <div className={cx("business-card")}>
+            <form ref={businessFormRef} onSubmit={handleSubmit}>
+          {SECTION_TO_STEP[activeSection] === 0 && possibleDuplicateMatches.length > 0 && (
             <div className={cx("duplicate-warning-panel", listingMode === LISTING_MODE.PAID && "paid-mode-duplicate-panel")}>
               <div className={cx("duplicate-warning-header")}>
                 <strong>This business probably already exists.</strong>
@@ -4240,25 +4172,11 @@ const BusinessList = React.memo(() => {
             </div>
           )}
           <div className={cx("form-grid")}>
-            {renderStepContent(activeStep)}
-          </div>
-
-          <div className={cx("col-span-all upload-section")} style={{
-            display: "flex",
-            justifyContent: "space-between",
-            marginTop: activeStep !== 3 ? "28px" : "150px"
-          }}>
-            {activeStep > 0 && activeStep < steps.length - 1 && <div style={{
-              display: "flex",
-              justifyContent: "flex-start"
-            }}>
-              <button type="button" className={cx("step-nav-button", "secondary")} onClick={handleBack}>
-                <SkipPreviousIcon />
-                Back
-              </button>
-            </div>}
+            {renderStepContent(SECTION_TO_STEP[activeSection])}
           </div>
         </form>
+          </div>
+        </div>
       </div>
     </>}
 
