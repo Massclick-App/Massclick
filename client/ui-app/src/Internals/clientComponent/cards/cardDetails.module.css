@@ -223,6 +223,7 @@
 .business-CardDetails-headerCard,
 .business-CardDetails-overviewCard,
 .business-CardDetails-infoBlock,
+.business-CardDetails-videosSection,
 .business-CardDetails-photosSection,
 .business-CardDetails-reviewsSection,
 .business-CardDetails-mapWrapper,
@@ -240,6 +241,7 @@
 .business-CardDetails-headerCard::before,
 .business-CardDetails-overviewCard::before,
 .business-CardDetails-infoBlock::before,
+.business-CardDetails-videosSection::before,
 .business-CardDetails-photosSection::before,
 .business-CardDetails-reviewsSection::before,
 .business-CardDetails-sidebarCard::before,
@@ -829,6 +831,7 @@ button.business-CardDetails-statusBadge:hover {
 
 .business-CardDetails-overviewCard h2,
 .business-CardDetails-infoBlock h2,
+.business-CardDetails-videosSection h2,
 .business-CardDetails-photosSection h2,
 .business-CardDetails-reviewsSection h2 {
   color: var(--bc-ink);
@@ -905,6 +908,117 @@ button.business-CardDetails-statusBadge:hover {
   font-size: 0.84rem;
   font-weight: 700;
   padding: 9px 13px;
+}
+
+.business-CardDetails-videoSectionHeader {
+  align-items: flex-end;
+  display: flex;
+  gap: 20px;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.business-CardDetails-videoSectionHeader h2 {
+  margin-bottom: 0;
+}
+
+.business-CardDetails-videoSectionHeader p {
+  color: var(--bc-muted);
+  font-size: 0.88rem;
+  margin: 0;
+}
+
+.business-CardDetails-videoEyebrow {
+  color: var(--bc-primary-dark);
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+
+.business-CardDetails-videoGrid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.business-CardDetails-videoCard {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.08);
+  min-width: 0;
+  overflow: hidden;
+}
+
+.business-CardDetails-videoPlayer,
+.business-CardDetails-videoPlaceholder {
+  aspect-ratio: 9 / 16;
+  background: #020617;
+  max-height: 440px;
+  width: 100%;
+}
+
+.business-CardDetails-videoPlayer {
+  display: block;
+  object-fit: contain;
+}
+
+.business-CardDetails-videoPlaceholder {
+  align-items: center;
+  color: #ffffff;
+  display: flex;
+  justify-content: center;
+}
+
+.business-CardDetails-videoPlaceholder svg {
+  font-size: 56px;
+}
+
+.business-CardDetails-videoBody {
+  align-items: flex-start;
+  display: flex;
+  gap: 14px;
+  justify-content: space-between;
+  padding: 14px;
+}
+
+.business-CardDetails-videoBody h3 {
+  color: var(--bc-ink);
+  font-size: 0.96rem;
+  font-weight: 800;
+  line-height: 1.4;
+  margin: 0 0 4px;
+}
+
+.business-CardDetails-videoBody span {
+  color: var(--bc-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.business-CardDetails-youtubeLink {
+  align-items: center;
+  background: #dc2626;
+  border-radius: 999px;
+  color: #ffffff;
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 0.78rem;
+  font-weight: 800;
+  gap: 6px;
+  padding: 8px 11px;
+  text-decoration: none;
+}
+
+.business-CardDetails-youtubeLink:hover {
+  background: #b91c1c;
+}
+
+.business-CardDetails-youtubeLink svg {
+  font-size: 18px;
 }
 
 .business-CardDetails-photoGrid {
@@ -1432,6 +1546,7 @@ button.business-CardDetails-statusBadge:hover {
   .business-CardDetails-headerCard,
   .business-CardDetails-overviewCard,
   .business-CardDetails-infoBlock,
+  .business-CardDetails-videosSection,
   .business-CardDetails-photosSection,
   .business-CardDetails-reviewsSection,
   .business-CardDetails-sidebarCard {
@@ -1463,6 +1578,22 @@ button.business-CardDetails-statusBadge:hover {
 
   .business-CardDetails-infoGrid {
     grid-template-columns: 1fr;
+  }
+
+  .business-CardDetails-videoSectionHeader,
+  .business-CardDetails-videoBody {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .business-CardDetails-videoGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .business-CardDetails-videoPlayer,
+  .business-CardDetails-videoPlaceholder {
+    aspect-ratio: 16 / 9;
+    max-height: none;
   }
 }
 

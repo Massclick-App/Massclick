@@ -35,6 +35,7 @@ import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import CollectionsBookmarkOutlinedIcon from '@mui/icons-material/CollectionsBookmarkOutlined';
 import TravelExploreIcon from '@mui/icons-material/TravelExplore';
+import VideoLibraryOutlinedIcon from '@mui/icons-material/VideoLibraryOutlined';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
@@ -57,6 +58,18 @@ const BUSINESS_LOCAL_DRAFT_KEY = "massclick.business.createDraft";
 const DEMO_PNG_DATA_URL = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9s0qDbgAAAAASUVORK5CYII=";
 const ORANGE_PRIMARY = '#FF8C00';
 const ORANGE_HOVER = '#D97800';
+const MAX_BUSINESS_VIDEOS = 3;
+const MAX_BUSINESS_VIDEO_SIZE = 10 * 1024 * 1024;
+const MAX_BUSINESS_VIDEO_DURATION = 60;
+const isValidYouTubeUrl = value => {
+  if (!String(value || "").trim()) return true;
+  try {
+    const hostname = new URL(value).hostname.replace(/^www\./, "").toLowerCase();
+    return ["youtube.com", "m.youtube.com", "youtu.be"].includes(hostname);
+  } catch {
+    return false;
+  }
+};
 const QUILL_MODULES = {
   toolbar: [[{
     header: "1"
@@ -526,6 +539,7 @@ const BusinessList = React.memo(() => {
       return updatedFiles;
     });
   };
+
   const handleNext = () => {
     const cleanedFormData = getCleanBusinessFormData(formData);
 
@@ -674,6 +688,7 @@ const BusinessList = React.memo(() => {
         body: navigation.body,
         tone: "info"
       });
+      
       const nextSectionNode = nextSection ? sectionRefs.current[getSectionRefKey(step, nextSection.key)] : null;
       if (nextSectionNode?.scrollIntoView) {
         nextSectionNode.scrollIntoView({
@@ -712,6 +727,7 @@ const BusinessList = React.memo(() => {
       </div>
     );
   };
+
   const renderSectionIntro = (step, sectionKey, title, subtitle) => (
     <div
       className={cx("col-span-all", "form-section-anchor")}
@@ -845,6 +861,7 @@ const BusinessList = React.memo(() => {
     title: "",
     description: "",
     bannerImage: "",
+    businessVideos: [],
     googleMap: "",
     website: "",
     facebook: "",
@@ -1764,6 +1781,17 @@ const BusinessList = React.memo(() => {
     pinterest: normalizeText(data.pinterest),
     twitter: normalizeText(data.twitter),
     linkedin: normalizeText(data.linkedin),
+    businessVideos: Array.isArray(data.businessVideos)
+      ? data.businessVideos.map(video => ({
+        _id: video._id,
+        title: normalizeText(video.title).slice(0, 100),
+        videoKey: normalizeText(video.videoKey),
+        videoUrl: normalizeText(video.videoUrl),
+        youtubeUrl: normalizeText(video.youtubeUrl),
+        duration: Number(video.duration) || 0,
+        videoData: video.videoData || "",
+      }))
+      : [],
     businessDetails: data.businessDetails,
     geoLocation: {
       type: "Point",
@@ -1959,6 +1987,13 @@ const BusinessList = React.memo(() => {
         ...cleanedFormData,
         bannerImage: preview || cleanedFormData.bannerImage || "",
         businessDetails: businessvalue,
+        businessVideos: (cleanedFormData.businessVideos || []).map(video => ({
+          title: video.title || "",
+          videoKey: video.videoKey || "",
+          videoUrl: video.videoKey ? video.videoUrl || "" : "",
+          youtubeUrl: video.youtubeUrl || "",
+          duration: Number(video.duration) || 0,
+        })),
         kycDocuments: []
       }
     };
@@ -2179,6 +2214,17 @@ const BusinessList = React.memo(() => {
       description: row.description || "",
       restaurantOptions: row.restaurantOptions || "",
       bannerImage: row.bannerImage || "",
+      businessVideos: Array.isArray(row.businessVideos)
+        ? row.businessVideos.map(video => ({
+          _id: video._id,
+          title: video.title || "",
+          videoKey: video.videoKey || "",
+          videoUrl: video.videoUrl || "",
+          youtubeUrl: video.youtubeUrl || "",
+          duration: Number(video.duration) || 0,
+          videoData: "",
+        }))
+        : [],
       googleMap: row.googleMap || "",
       website: row.website || "",
       facebook: row.facebook || "",
@@ -2299,6 +2345,106 @@ const BusinessList = React.memo(() => {
       reader.readAsDataURL(file);
     }
   };
+  const addBusinessVideo = () => {
+    setFormData(prev => {
+      if ((prev.businessVideos || []).length >= MAX_BUSINESS_VIDEOS) {
+        enqueueSnackbar(`You can add up to ${MAX_BUSINESS_VIDEOS} videos per business.`, {
+          variant: "info"
+        });
+        return prev;
+      }
+
+      return {
+        ...prev,
+        businessVideos: [
+          ...(prev.businessVideos || []),
+          {
+            title: "",
+            videoKey: "",
+            videoUrl: "",
+            youtubeUrl: "",
+            duration: 0,
+            videoData: "",
+          }
+        ]
+      };
+    });
+  };
+  const updateBusinessVideo = (index, field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      businessVideos: (prev.businessVideos || []).map((video, videoIndex) =>
+        videoIndex === index ? { ...video, [field]: value } : video
+      )
+    }));
+  };
+  const removeBusinessVideo = index => {
+    setFormData(prev => ({
+      ...prev,
+      businessVideos: (prev.businessVideos || []).filter((_, videoIndex) => videoIndex !== index)
+    }));
+  };
+  const handleBusinessVideoChange = async (index, event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    if (!["video/mp4", "video/webm"].includes(file.type)) {
+      enqueueSnackbar("Use an MP4 or WebM video.", { variant: "error" });
+      return;
+    }
+    if (file.size > MAX_BUSINESS_VIDEO_SIZE) {
+      enqueueSnackbar("Video must be 10 MB or smaller.", { variant: "error" });
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    try {
+      const duration = await new Promise((resolve, reject) => {
+        const video = document.createElement("video");
+        video.preload = "metadata";
+        video.onloadedmetadata = () => resolve(video.duration);
+        video.onerror = () => reject(new Error("Unable to read video metadata"));
+        video.src = objectUrl;
+      });
+
+      if (duration > MAX_BUSINESS_VIDEO_DURATION) {
+        enqueueSnackbar("Short videos must be 60 seconds or shorter.", {
+          variant: "error"
+        });
+        return;
+      }
+
+      const videoData = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      setFormData(prev => ({
+        ...prev,
+        businessVideos: (prev.businessVideos || []).map((video, videoIndex) =>
+          videoIndex === index
+            ? {
+              ...video,
+              title: video.title || file.name.replace(/\.[^.]+$/, ""),
+              videoData,
+              videoUrl: videoData,
+              duration: Math.round(duration),
+            }
+            : video
+        )
+      }));
+    } catch (error) {
+      console.error("Video selection failed:", error);
+      enqueueSnackbar("Unable to read this video. Please choose another file.", {
+        variant: "error"
+      });
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
+  };
   const buildFieldErrorMap = errors => errors.reduce((acc, error) => ({
     ...acc,
     [error.field]: getValidationMessage(error)
@@ -2373,6 +2519,24 @@ const BusinessList = React.memo(() => {
     const sourceBusinessDetails = draftBusinessDetails ?? businessvalue;
     const sourceKycFiles = draftKycFiles ?? kycFiles;
     const cleanedFormData = getCleanBusinessFormData(sourceFormData);
+    const invalidVideo = cleanedFormData.businessVideos.find(video =>
+      !video.videoKey && !video.videoData && !video.youtubeUrl
+    );
+    const invalidYouTubeVideo = cleanedFormData.businessVideos.find(video =>
+      !isValidYouTubeUrl(video.youtubeUrl)
+    );
+    if (invalidVideo) {
+      enqueueSnackbar("Each video entry needs an uploaded short or a YouTube link.", {
+        variant: "error"
+      });
+      return;
+    }
+    if (invalidYouTubeVideo) {
+      enqueueSnackbar("Use a valid youtube.com or youtu.be link for full videos.", {
+        variant: "error"
+      });
+      return;
+    }
     const validationContext = {
       bannerPreview: draftFormData ? sourceFormData.bannerImage : preview,
       uploadedKycFiles: sourceKycFiles,
@@ -4015,6 +4179,109 @@ const BusinessList = React.memo(() => {
               height: "200px"
             }} />
             {renderFieldError("businessDetails")}
+          </div>
+
+          <div className={cx("form-input-group col-span-all")}>
+            <div className={cx("video-manager-header")}>
+              <div>
+                <label className={cx("input-label", "video-manager-title")}>
+                  <VideoLibraryOutlinedIcon /> Business Videos
+                </label>
+                <p className={cx("video-manager-help")}>
+                  Add up to 3 shorts. Upload MP4/WebM videos up to 60 seconds and 10 MB, and optionally link the full YouTube video.
+                </p>
+              </div>
+              <button
+                type="button"
+                className={cx("video-add-button")}
+                onClick={addBusinessVideo}
+                disabled={(formData.businessVideos || []).length >= MAX_BUSINESS_VIDEOS}
+              >
+                Add video
+              </button>
+            </div>
+
+            {(formData.businessVideos || []).length === 0 ? (
+              <div className={cx("video-empty-state")}>
+                <VideoLibraryOutlinedIcon />
+                <span>No business videos added yet.</span>
+              </div>
+            ) : (
+              <div className={cx("video-editor-grid")}>
+                {formData.businessVideos.map((video, index) => (
+                  <article className={cx("video-editor-card")} key={video._id || `video-${index}`}>
+                    <div className={cx("video-preview-shell")}>
+                      {video.videoUrl || video.videoData ? (
+                        <video
+                          className={cx("video-preview")}
+                          src={video.videoData || video.videoUrl}
+                          controls
+                          preload="metadata"
+                        />
+                      ) : (
+                        <div className={cx("video-preview-placeholder")}>
+                          <VideoLibraryOutlinedIcon />
+                          <span>Up to 60 sec preview</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className={cx("video-editor-fields")}>
+                      <label className={cx("video-field-label")}>
+                        Video title
+                        <input
+                          className={cx("text-input")}
+                          type="text"
+                          value={video.title || ""}
+                          maxLength={100}
+                          onChange={event => updateBusinessVideo(index, "title", event.target.value)}
+                          placeholder="Example: A quick look at our service"
+                        />
+                      </label>
+
+                      <label className={cx("video-field-label")}>
+                        Full YouTube video
+                        <input
+                          className={cx("text-input")}
+                          type="url"
+                          value={video.youtubeUrl || ""}
+                          onChange={event => updateBusinessVideo(index, "youtubeUrl", event.target.value)}
+                          placeholder="https://www.youtube.com/watch?v=..."
+                        />
+                      </label>
+
+                      <div className={cx("video-editor-actions")}>
+                        <Button
+                          variant="contained"
+                          component="label"
+                          startIcon={<CloudUploadIcon />}
+                          className={cx("upload-button")}
+                        >
+                          {video.videoUrl || video.videoData ? "Replace short" : "Upload short"}
+                          <input
+                            type="file"
+                            hidden
+                            accept="video/mp4,video/webm"
+                            onChange={event => handleBusinessVideoChange(index, event)}
+                          />
+                        </Button>
+                        <button
+                          type="button"
+                          className={cx("video-remove-button")}
+                          onClick={() => removeBusinessVideo(index)}
+                        >
+                          <DeleteOutlineRoundedIcon />
+                          Remove
+                        </button>
+                        {video.duration > 0 && (
+                          <span className={cx("video-duration")}>{video.duration}s</span>
+                        )}
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
           </div>
           {renderSectionAdvanceButton(0, "bannerDetails")}
           <div className={cx("form-divider")}></div>

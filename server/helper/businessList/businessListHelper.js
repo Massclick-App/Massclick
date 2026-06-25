@@ -23,6 +23,83 @@ const autoMarkGmapsLeadImported = async (contact) => {
   }
 };
 
+const attachBusinessVideoUrls = (business) => {
+  if (!business || !Array.isArray(business.businessVideos)) return business;
+
+  business.businessVideos = business.businessVideos.map((video) => {
+    const normalizedVideo = video?.toObject?.() || video || {};
+    return {
+      ...normalizedVideo,
+      videoUrl: normalizedVideo.videoKey
+        ? getSignedUrlByKey(normalizedVideo.videoKey)
+        : "",
+    };
+  });
+
+  return business;
+};
+
+const normalizeYouTubeUrl = (value) => {
+  const youtubeUrl = String(value || "").trim();
+  if (!youtubeUrl) return "";
+
+  try {
+    const parsedUrl = new URL(youtubeUrl);
+    const hostname = parsedUrl.hostname.replace(/^www\./, "").toLowerCase();
+    if (!["youtube.com", "m.youtube.com", "youtu.be"].includes(hostname)) {
+      throw new Error("Full video link must be a valid YouTube URL");
+    }
+    return parsedUrl.toString().slice(0, 500);
+  } catch {
+    throw new Error("Full video link must be a valid YouTube URL");
+  }
+};
+
+const uploadBusinessVideos = async (videos = []) => {
+  if (!Array.isArray(videos)) return [];
+
+  const usableVideos = videos
+    .filter(video => video?.videoKey || video?.videoData || video?.youtubeUrl)
+    .slice(0, 3);
+
+  return Promise.all(usableVideos.map(async (video, index) => {
+    const requestedVideoKey = String(video?.videoKey || "").trim();
+    const existingVideoKey = requestedVideoKey.startsWith("businessList/videos/")
+      ? requestedVideoKey
+      : "";
+    const videoData = typeof video?.videoData === "string" ? video.videoData : "";
+    const duration = Number(video?.duration) || 0;
+    let videoKey = existingVideoKey;
+
+    if (videoData.startsWith("data:video/")) {
+      if (!/^data:video\/(mp4|webm);base64,/.test(videoData)) {
+        throw new Error("Business videos must be MP4 or WebM");
+      }
+      const encodedData = videoData.split(",", 2)[1] || "";
+      const estimatedBytes = Math.floor((encodedData.length * 3) / 4);
+      if (estimatedBytes > 10 * 1024 * 1024) {
+        throw new Error("Business videos must be 10 MB or smaller");
+      }
+      if (duration > 60) {
+        throw new Error("Business videos must be 60 seconds or shorter");
+      }
+      const uploadResult = await uploadImageToS3(
+        videoData,
+        `businessList/videos/short-${Date.now()}-${index}`,
+        { skipImageConversion: true }
+      );
+      videoKey = uploadResult.key;
+    }
+
+    return {
+      title: String(video?.title || "").trim().slice(0, 100),
+      videoKey,
+      youtubeUrl: normalizeYouTubeUrl(video?.youtubeUrl),
+      duration: Math.max(0, Math.min(60, duration)),
+    };
+  }));
+};
+
 // Auto-copy keywords from category when business is created
 export const copyKeywordsFromCategory = async (categoryName) => {
   try {
@@ -78,6 +155,9 @@ export const createBusinessList = async (reqBody = {}) => {
       delete reqBody.businessImages;
     }
 
+    if (Array.isArray(reqBody.businessVideos)) {
+      reqBody.businessVideos = await uploadBusinessVideos(reqBody.businessVideos);
+    }
 
     if (Array.isArray(reqBody.kycDocuments) && reqBody.kycDocuments.length > 0) {
       const kycDocumentsKey = await Promise.all(
@@ -130,6 +210,7 @@ export const createBusinessList = async (reqBody = {}) => {
     autoMarkGmapsLeadImported(savedBusiness.contact);
 
     const result = savedBusiness.toObject();
+    attachBusinessVideoUrls(result);
 
     result.qrCode.qrImage = getSignedUrlByKey(
       savedBusiness.qrCode.qrImageKey
@@ -175,7 +256,7 @@ export const findBusinessBySlug = async ({ location, slug }) => {
       );
     }
 
-    return business;
+    return attachBusinessVideoUrls(business);
   } catch (error) {
     console.error("❌ findBusinessBySlug error:", error);
     throw error;
@@ -194,8 +275,7 @@ export const viewBusinessList = async (id) => {
   if (business.kycDocumentsKey?.length > 0)
     business.kycDocuments = business.kycDocumentsKey.map((key) => getSignedUrlByKey(key));
 
-
-  return business;
+  return attachBusinessVideoUrls(business);
 };
 
 export const viewAllBusiness = async () => {
@@ -222,7 +302,7 @@ export const viewAllBusiness = async () => {
       );
     }
 
-    return business;
+    return attachBusinessVideoUrls(business);
   });
 
   return updatedBusinesses;
@@ -315,7 +395,7 @@ export const findBusinessesByCategory = async (category, district) => {
         getSignedUrlByKey(key)
       );
 
-    return business;
+    return attachBusinessVideoUrls(business);
   });
 };
 
@@ -331,7 +411,7 @@ export const viewAllClientBusinessList = async () => {
     }
     if (business.kycDocumentsKey?.length > 0)
       business.kycDocuments = business.kycDocumentsKey.map((key) => getSignedUrlByKey(key));
-    return business;
+    return attachBusinessVideoUrls(business);
   });
 };
 
@@ -528,7 +608,7 @@ export const viewAllBusinessList = async ({
       }
       business.locationDetails = business.location || "";
 
-      return business;
+      return attachBusinessVideoUrls(business);
     })
   );
 
@@ -681,6 +761,11 @@ export const updateBusinessList = async (id, data) => {
 
   delete data.businessImages;
 
+  if (Array.isArray(data.businessVideos)) {
+    business.businessVideos = await uploadBusinessVideos(data.businessVideos);
+  }
+
+  delete data.businessVideos;
 
   if (Array.isArray(data.kycDocuments)) {
     const oldKycKeys = Array.isArray(business.kycDocumentsKey)
@@ -782,6 +867,7 @@ export const updateBusinessList = async (id, data) => {
      6️⃣ FORMAT RESPONSE
   =============================== */
   const result = business.toObject();
+  attachBusinessVideoUrls(result);
 
   if (business.bannerImageKey) {
     result.bannerImage = getSignedUrlByKey(business.bannerImageKey);
@@ -854,7 +940,7 @@ export const activeBusinessList = async (id, newStatus) => {
 
   if (!business) throw new Error("Business not found");
 
-  return business;
+  return attachBusinessVideoUrls(business);
 };
 
 
@@ -898,7 +984,7 @@ export const findBusinessByMobile = async (mobile) => {
       );
     }
 
-    return business;
+    return attachBusinessVideoUrls(business);
   } catch (err) {
     console.error("Error in findBusinessByMobile:", err);
     throw err;

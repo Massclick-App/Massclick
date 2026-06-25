@@ -33,6 +33,21 @@ export const generateLocalBusinessSchema = (business) => {
     schema.image = business.image;
   }
 
+  const videos = Array.isArray(business.videos) ? business.videos : [];
+  if (videos.length > 0) {
+    schema.subjectOf = videos
+      .filter(video => video?.videoUrl || video?.youtubeUrl)
+      .map((video, index) => ({
+        "@type": "VideoObject",
+        name: video.title || `${business.businessName} video ${index + 1}`,
+        ...(business.description && { description: business.description }),
+        ...(video.videoUrl && { contentUrl: video.videoUrl }),
+        ...(video.youtubeUrl && { embedUrl: video.youtubeUrl }),
+        ...(Number(video.duration) > 0 && { duration: `PT${Math.round(Number(video.duration))}S` }),
+        ...(images[0] && { thumbnailUrl: images[0] }),
+      }));
+  }
+
   // Contact info
   if (business.telephone) {
     schema.telephone = business.telephone;

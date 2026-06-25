@@ -40,6 +40,7 @@ import LinkIcon from "@mui/icons-material/Link";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
+import PlayCircleOutlineIcon from "@mui/icons-material/PlayCircleOutline";
 import Tooltip from "@mui/material/Tooltip";
 import Footer from "../footer/footer";
 import ReviewList from "../rating/reviewList";
@@ -150,6 +151,7 @@ const BusinessDetail = React.memo(() => {
   const overviewRef = useRef(null);
   const quickInfoRef = useRef(null);
   const servicesRef = useRef(null);
+  const videosRef = useRef(null);
   const photosRef = useRef(null);
   const reviewsRef = useRef(null);
   useEffect(() => {
@@ -203,6 +205,9 @@ const BusinessDetail = React.memo(() => {
       </>;
   }
   const galleryImageSrcs = business.businessImages || [];
+  const businessVideos = Array.isArray(business.businessVideos)
+    ? business.businessVideos.filter(video => video?.videoUrl || video?.youtubeUrl)
+    : [];
   const fallbackImage = getPlaceholderImage();
   const firstImage = business.bannerImage || galleryImageSrcs[0] || null;
   const bannerImageSrc = mainImage || firstImage || fallbackImage;
@@ -461,6 +466,7 @@ const BusinessDetail = React.memo(() => {
     Overview: overviewRef,
     "Quick Info": quickInfoRef,
     Services: servicesRef,
+    Videos: videosRef,
     Photos: photosRef,
     Reviews: reviewsRef
   };
@@ -500,6 +506,7 @@ const BusinessDetail = React.memo(() => {
     businessName: business.businessName,
     description: business.description || business.businessDetails,
     images: [business.bannerImage, ...(galleryImageSrcs || [])].filter(Boolean),
+    videos: businessVideos,
     telephone: business.contact,
     email: business.email,
     website: business.website,
@@ -769,7 +776,7 @@ const BusinessDetail = React.memo(() => {
 
             <div className={cx("business-CardDetails-tabsWrapper")}>
               <div className={cx("business-CardDetails-tabs")}>
-                {["Overview", "Quick Info", "Services", "Photos", "Reviews"].map(tab => <span key={tab} className={cx("business-CardDetails-tab" + (activeTab === tab ? " business-CardDetails-tab--active" : ""))} onClick={() => handleTabClick(tab)}>
+                {["Overview", "Quick Info", "Services", ...(businessVideos.length > 0 ? ["Videos"] : []), "Photos", "Reviews"].map(tab => <span key={tab} className={cx("business-CardDetails-tab" + (activeTab === tab ? " business-CardDetails-tab--active" : ""))} onClick={() => handleTabClick(tab)}>
                     {tab}
                   </span>)}
               </div>
@@ -844,6 +851,55 @@ const BusinessDetail = React.memo(() => {
                       </li>)}
                   </ul> : <p>Services information is not available.</p>}
               </section>
+
+              {businessVideos.length > 0 && (
+                <section ref={videosRef} className={cx("business-CardDetails-videosSection")}>
+                  <div className={cx("business-CardDetails-videoSectionHeader")}>
+                    <div>
+                      <span className={cx("business-CardDetails-videoEyebrow")}>Watch & discover</span>
+                      <h2>Business Videos</h2>
+                    </div>
+                    <p>Short previews from {business.businessName}</p>
+                  </div>
+                  <div className={cx("business-CardDetails-videoGrid")}>
+                    {businessVideos.map((video, index) => (
+                      <article className={cx("business-CardDetails-videoCard")} key={video._id || `${video.videoUrl}-${index}`}>
+                        {video.videoUrl ? (
+                          <video
+                            className={cx("business-CardDetails-videoPlayer")}
+                            src={video.videoUrl}
+                            controls
+                            playsInline
+                            preload="metadata"
+                            aria-label={video.title || `${business.businessName} video ${index + 1}`}
+                          />
+                        ) : (
+                          <div className={cx("business-CardDetails-videoPlaceholder")}>
+                            <PlayCircleOutlineIcon />
+                          </div>
+                        )}
+                        <div className={cx("business-CardDetails-videoBody")}>
+                          <div>
+                            <h3>{video.title || `${business.businessName} short video`}</h3>
+                            {video.duration > 0 && <span>{video.duration} sec short</span>}
+                          </div>
+                          {video.youtubeUrl && (
+                            <a
+                              className={cx("business-CardDetails-youtubeLink")}
+                              href={video.youtubeUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              <PlayCircleOutlineIcon />
+                              Watch full video
+                            </a>
+                          )}
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </section>
+              )}
 
               <section ref={photosRef} className={cx("business-CardDetails-photosSection")}>
                 <h2>Photos</h2>

@@ -89,6 +89,13 @@ const mniSchema = new mongoose.Schema({
   ]
 });
 
+const businessVideoSchema = new mongoose.Schema({
+  title: { type: String, default: "" },
+  videoKey: { type: String, default: "" },
+  youtubeUrl: { type: String, default: "" },
+  duration: { type: Number, default: 0 },
+}, { _id: true });
+
 const businessListSchema = new mongoose.Schema({
   clientId: { type: String, default: '', },
   name: { type: String, default: '', },
@@ -132,6 +139,7 @@ const businessListSchema = new mongoose.Schema({
   description: { type: String, default: '' },
   bannerImageKey: { type: String, default: '' },
   businessImagesKey: [{ type: String, default: '' }],
+  businessVideos: { type: [businessVideoSchema], default: [] },
   qrCode: {
     qrText: { type: String, default: "" },
     qrImageKey: { type: String, default: "" },
