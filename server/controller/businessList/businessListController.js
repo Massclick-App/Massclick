@@ -7,7 +7,7 @@ import userModel from "../../model/userModel.js";
 import { emitToRoom } from "../../websocket/roomManager.js";
 import { buildRoom, WS_EVENTS } from "../../websocket/constants.js";
 import { getCache, setCache } from "../../utils/redisClient.js";
-import { enhanceSearchQuery } from "../../utils/geminiQueryEnhancer.js";
+import { enhanceSearchQuery, resolveCategory } from "../../utils/geminiQueryEnhancer.js";
 import { invalidateSearchCache, invalidateDashboardCache, invalidateCategoryCache } from "../../utils/cacheInvalidation.js";
 import { buildBusinessExportWorkbook } from "../../utils/businessExportXlsx.js";
 
@@ -736,20 +736,47 @@ export const mainSearchController = async (req, res) => {
 
     const escapeRegex = (text = "") => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-    // Resolve category from term if not provided
+    // ── Category resolution ───────────────────────────────────────────────────
     if (!category && term) {
-      const matchedCategory = await resolveCategoryIntent(term, escapeRegex);
-      if (matchedCategory) {
-        console.log(`[Search] term resolved to category:"${matchedCategory}" (term cleared)`);
-        category = matchedCategory;
+      // Step 1: fast keyword/regex match against category names & keywords
+      const keywordMatch = await resolveCategoryIntent(term, escapeRegex);
+      if (keywordMatch) {
+        console.log(`[Search] category via keyword match: "${keywordMatch}" (term cleared)`);
+        category = keywordMatch;
         term = "";
+      } else {
+        // Step 2: keyword match failed — ask Gemini to pick from available categories
+        console.log(`[Search] keyword match failed for "${term}" — trying Gemini category resolver`);
+        const CAT_CACHE_KEY = "gemini:category_list";
+        let allCategories = await getCache(CAT_CACHE_KEY).catch(() => null);
+        if (!allCategories) {
+          allCategories = await categoryModel
+            .find({ isActive: true }, { category: 1, keywords: 1, _id: 0 })
+            .lean();
+          await setCache(CAT_CACHE_KEY, allCategories, 60 * 60 * 6).catch(() => {}); // 6h cache
+          console.log(`[Search] loaded ${allCategories.length} categories from DB (cached 6h)`);
+        } else {
+          console.log(`[Search] loaded ${allCategories.length} categories from cache`);
+        }
+
+        const geminiCategory = await resolveCategory(term, allCategories);
+        if (geminiCategory) {
+          console.log(`[Search] category via Gemini: "${geminiCategory}" (term cleared)`);
+          category = geminiCategory;
+          term = "";
+        } else {
+          console.log(`[Search] no category resolved — falling back to text search for "${term}"`);
+        }
       }
     }
 
-    // Expand search term with Gemini synonyms before hitting MongoDB text index
+    // ── Keyword expansion ─────────────────────────────────────────────────────
+    // Only runs when a free-text term remains after category resolution
     if (term) {
       term = await enhanceSearchQuery(term, category);
     }
+
+    console.log(`[Search] final → term:"${term}" category:"${category}" location:"${location}" sort:${req.query.sortBy || "relevant"}`);
 
     const matchQuery = { businessesLive: true, $and: [] };
 
