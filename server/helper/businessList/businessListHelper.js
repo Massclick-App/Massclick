@@ -409,24 +409,28 @@ export const viewAllBusinessList = async ({
 
   if (category) query.category = { $regex: `^${escapeRegex(category)}$`, $options: "i" };
   if (location) query.location = getLocationQuery(location);
-  if (paymentStatus) {
-    if (paymentStatus === "NO_STATUS") {
-      query.$and = [
-        ...(query.$and || []),
-        {
-          $or: [
-            { payment: { $exists: false } },
-            { payment: { $size: 0 } },
-            { "payment.paymentStatus": { $exists: false } }
-          ]
-        }
-      ];
-    } else {
-      query["payment.paymentStatus"] = {
-        $regex: `^${escapeRegex(paymentStatus)}$`,
-        $options: "i"
-      };
-    }
+  if (paymentStatus === "paid") {
+    query.$and = [
+      ...(query.$and || []),
+      {
+        $or: [
+          { amountPaid: true },
+          { "payment.paymentStatus": "SUCCESS" },
+          { "payment.paid": true }
+        ]
+      }
+    ];
+  } else if (paymentStatus === "pending") {
+    query.$and = [
+      ...(query.$and || []),
+      {
+        $nor: [
+          { amountPaid: true },
+          { "payment.paymentStatus": "SUCCESS" },
+          { "payment.paid": true }
+        ]
+      }
+    ];
   }
 
   if (createdFrom || createdTo) {
