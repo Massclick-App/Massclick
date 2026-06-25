@@ -721,6 +721,9 @@ export const mainSearchController = async (req, res) => {
       location = "";
     }
 
+    const t0 = Date.now();
+    console.log(`[Search] term:"${term}" location:"${location}" category:"${category}" page:${req.query.page || 1} sort:${req.query.sortBy || "relevant"}`);
+
     // Pagination
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const pageSize = Math.min(50, Math.max(1, parseInt(req.query.pageSize) || 20));
@@ -737,6 +740,7 @@ export const mainSearchController = async (req, res) => {
     if (!category && term) {
       const matchedCategory = await resolveCategoryIntent(term, escapeRegex);
       if (matchedCategory) {
+        console.log(`[Search] term resolved to category:"${matchedCategory}" (term cleared)`);
         category = matchedCategory;
         term = "";
       }
@@ -830,6 +834,13 @@ export const mainSearchController = async (req, res) => {
     }
 
     if (matchQuery.$and.length === 0) delete matchQuery.$and;
+
+    const activeFlags = ["verified", "featured", "sponsored", "trending", "openNow"]
+      .filter(f => req.query[f] === "true");
+    const minR = Number(req.query.minRating);
+    if (Number.isFinite(minR) && minR > 0) activeFlags.push(`minRating:${minR}`);
+    if (hasGeo) activeFlags.push("geo");
+    if (activeFlags.length) console.log(`[Search] filters: ${activeFlags.join(" | ")}`);
 
     // Sort
     const sortByParam = req.query.sortBy || "relevant";
@@ -962,6 +973,7 @@ export const mainSearchController = async (req, res) => {
         : businessListModel.countDocuments(matchQuery)
     ]);
     const total = usesComputedRatingFilter ? totalResult[0]?.total || 0 : totalResult;
+    console.log(`[Search] → ${results.length} results (total:${total} hasMore:${page * pageSize < total}) in ${Date.now() - t0}ms`);
 
     // Sign image URLs
     results.forEach((b) => {
