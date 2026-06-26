@@ -3911,6 +3911,8 @@ const BusinessList = React.memo(() => {
             clearForceBypassForFields={clearForceBypassForFields}
             updateLiveValidation={updateLiveValidation}
             searchCategory={searchCategory}
+            dispatch={dispatch}
+            businessCategorySearch={businessCategorySearch}
           />
         );
 

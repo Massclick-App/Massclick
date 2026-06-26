@@ -1,4 +1,5 @@
 import React from "react";
+import { Autocomplete, TextField } from "@mui/material";
 import { createScopedClassNames } from "../../../utils/createScopedClassNames";
 import BusinessFormSection from "./BusinessFormSection";
 import styles from "../business.module.css";
@@ -30,7 +31,65 @@ const BusinessFormStep2 = ({
   clearForceBypassForFields,
   updateLiveValidation,
   searchCategory,
+  dispatch,
+  businessCategorySearch,
 }) => {
+  const [categorySearchInput, setCategorySearchInput] = React.useState("");
+
+  const handleCategorySearch = (event, value) => {
+    console.log("🔍 handleCategorySearch called with value:", value);
+    console.log("   searchCategory:", searchCategory);
+    console.log("   category length:", category?.length);
+    setCategorySearchInput(value);
+
+    // Only search if input is not empty and is a partial search (doesn't contain " — " which is the full label format)
+    if (value && value.trim().length > 0 && !value.includes(" — ") && dispatch) {
+      console.log("   → Dispatching businessCategorySearch");
+      dispatch(businessCategorySearch(value));
+    } else if (value && value.includes(" — ")) {
+      console.log("   → Skipped search (full label detected, this is post-selection)");
+    }
+  };
+
+  // Get all available options - merge search results with full category list to avoid losing searched categories
+  const allCategoryOptions = React.useMemo(() => {
+    if (categorySearchInput && searchCategory?.length > 0) {
+      // When searching, show search results
+      console.log("📋 Using searchCategory results");
+      return searchCategory;
+    }
+    // When not searching, show all categories AND keep any previously searched categories in the list
+    const mergedCategories = [...(category || [])];
+    if (searchCategory?.length > 0) {
+      // Add search results that aren't already in category list
+      searchCategory.forEach(searched => {
+        if (!mergedCategories.find(c => c.category === searched.category)) {
+          mergedCategories.push(searched);
+        }
+      });
+      console.log("📋 Merged search results with category");
+    }
+    console.log("📋 Using merged category list");
+    return mergedCategories;
+  }, [categorySearchInput, searchCategory, category]);
+
+  console.log("📋 allCategoryOptions computed:", {
+    categorySearchInput,
+    hasSuggestion: !!searchCategory?.length,
+    optionsLength: allCategoryOptions?.length
+  });
+
+  // Find the selected category object from all available options
+  const getSelectedCategory = () => {
+    const selected = formData.category ? allCategoryOptions.find((c) => c.category === formData.category) : null;
+    console.log("🎯 getSelectedCategory:", {
+      formDataCategory: formData.category,
+      foundCategory: selected ? { category: selected.category } : null,
+      allOptionsLength: allCategoryOptions?.length
+    });
+    if (!formData.category) return null;
+    return allCategoryOptions.find((c) => c.category === formData.category) || null;
+  };
   const sections = [
     { key: "categorySeo", title: "Category & SEO", subtitle: "Define the classification and search basics" },
     { key: "keywordsTags", title: "Keywords & Tags", subtitle: "Seed terms for internal and external search" },
@@ -84,19 +143,63 @@ const BusinessFormStep2 = ({
       <div className={cx("section-grid", "section-grid-2")}>
         <div className={fieldClass()}>
           <label className={cx("input-label")}>Category *</label>
-          <select
-            name="category"
-            className={getInputClassName("select-input", "category")}
-            value={formData.category}
-            onChange={handleChange}
-          >
-            <option value="">Select a category</option>
-            {category.map((cat) => (
-              <option key={cat._id} value={cat.category}>
-                {cat.category}
-              </option>
-            ))}
-          </select>
+          <Autocomplete
+            options={allCategoryOptions}
+            getOptionLabel={(option) => option.category || ""}
+            value={getSelectedCategory()}
+            onChange={(event, newValue) => {
+              console.log("✅ Category Autocomplete onChange:", {
+                newValue: newValue ? newValue.category : null,
+                currentFormDataCategory: formData.category
+              });
+              const nextData = {
+                ...formData,
+                category: newValue ? newValue.category : "",
+                keywords: [],
+                slug: newValue?.slug || "",
+                seoTitle: newValue?.seoTitle || "",
+                seoDescription: newValue?.seoDescription || "",
+                title: newValue?.title || "",
+                description: newValue?.description || ""
+              };
+              setFormData(nextData);
+              if (setCategoryKeywordSuggestions && newValue?.keywords) {
+                setCategoryKeywordSuggestions(Array.isArray(newValue.keywords) ? newValue.keywords : []);
+              } else {
+                setCategoryKeywordSuggestions([]);
+              }
+              updateLiveValidation(nextData, ["category", "keywords", "slug", "seoTitle", "seoDescription", "title", "description"]);
+              setCategorySearchInput("");
+            }}
+            onInputChange={handleCategorySearch}
+            inputValue={categorySearchInput}
+            isOptionEqualToValue={(option, value) => option.category === value.category}
+            freeSolo={false}
+            disableClearable={false}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                placeholder="Search and select a category"
+                size="small"
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    padding: "6px !important",
+                    borderRadius: "6px",
+                    fontSize: "14px",
+                  },
+                }}
+              />
+            )}
+            slotProps={{
+              paper: {
+                sx: {
+                  maxHeight: "300px",
+                  borderRadius: "6px",
+                  border: "1px solid #e5e5e5",
+                },
+              },
+            }}
+          />
           {renderFieldError("category")}
         </div>
       </div>

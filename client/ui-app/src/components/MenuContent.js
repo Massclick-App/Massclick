@@ -59,6 +59,7 @@ const MENU_SECTIONS = [
       { text: "SEO", icon: SearchIcon, path: "/dashboard/seo" },
       { text: "Pages", icon: ArticleIcon, path: "/dashboard/seopagecontent" },
       { text: "Blogs", icon: NewspaperIcon, path: "/dashboard/seopagecontentblogs" },
+      { text: "Authors", icon: CategoryIcon, path: "/dashboard/authors" },
     ]
   },
   {
