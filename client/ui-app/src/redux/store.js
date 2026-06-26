@@ -21,6 +21,7 @@ import enquiryNowReducer from './reducers/popularSearchesReducer.js';
 import reviewReducer from './reducers/reviewReducer.js';
 import publicizeReducer from './reducers/publicizeReducer.js';
 import seoPageContentBlogReducer from './reducers/seoPageContentBlogReducer.js';
+import authorMasterReducer from './reducers/authorMasterReducer.js';
 import termsAndConditionReducer from './reducers/footerContents/termsAndConditionsReducer.js';
 import favoriteReducer from './reducers/favoriteReducer.js';
 import fcmMarketingReducer from './reducers/fcmMarketingReducer.js';
@@ -51,6 +52,7 @@ const rootReducer = combineReducers({
   seoReducer,
   seoPageContentReducer,
   seoPageContentBlogReducer,
+  authorMasterReducer,
   mrp: mrpReducer,
   enquiryNow: enquiryNowReducer,
   reviews: reviewReducer,

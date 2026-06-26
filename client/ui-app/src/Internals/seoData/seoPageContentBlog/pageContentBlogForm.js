@@ -30,6 +30,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchBusinessSuggestion } from "../../../redux/actions/seoPageContentBlogAction";
 import { getAllLocation } from "../../../redux/actions/locationAction.js";
 import { fetchSeoCategorySuggestions } from "../../../redux/actions/seoAction.js";
+import { fetchAllAuthors } from "../../../redux/actions/authorMasterAction.js";
 
 import "react-quill/dist/quill.snow.css";
 import { createScopedClassNames } from "../../../utils/createScopedClassNames";
@@ -55,6 +56,9 @@ export default function SeoPageContentForm({
   const { location = [] } = useSelector((state) => state.locationReducer || {});
   const { categorySuggestions: seoCategorySuggestions = [] } = useSelector(
     (state) => state.seoReducer || {}
+  ) || {};
+  const { list: authors = [] } = useSelector(
+    (state) => state.authorMasterReducer || {}
   ) || {};
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -144,6 +148,7 @@ export default function SeoPageContentForm({
 
   useEffect(() => {
     dispatch(getAllLocation({ pageNo: 1, pageSize: 1000 }));
+    dispatch(fetchAllAuthors());
   }, [dispatch]);
 
   useEffect(() => {
@@ -570,7 +575,7 @@ export default function SeoPageContentForm({
     { label: "Location", key: "location" },
     { label: "Heading", key: "heading" },
     { label: "Excerpt", key: "excerpt" },
-    { label: "Author", key: "author" },
+    { label: "Author", key: "authorId", type: "select" },
     { label: "Experience", key: "experience" },
     { label: "Expert Category", key: "expertCategory" },
     { label: "Email", key: "email", type: "email" },
@@ -661,6 +666,22 @@ export default function SeoPageContentForm({
                     ))}
                   </ul>
                 )}
+              </>
+            ) : field.type === "select" ? (
+              <>
+                <select
+                  value={formData[field.key] || ""}
+                  onChange={(e) => updateField(field.key, e.target.value)}
+                  className={cx("seo-text-input")}
+                >
+                  <option value="">Select {field.label}</option>
+                  {authors.map((author) => (
+                    <option key={author._id} value={author._id}>
+                      {author.displayName}
+                    </option>
+                  ))}
+                </select>
+                <label>{field.label}</label>
               </>
             ) : (
               <>

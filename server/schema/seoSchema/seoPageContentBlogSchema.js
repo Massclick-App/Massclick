@@ -160,6 +160,12 @@ const seoPageContentBlogSchema = new mongoose.Schema(
       default: "5 min read",
     },
 
+    authorId: {
+      type: String,
+      default: null,
+      index: true,
+    },
+
     author: {
       type: String,
       default: "Admin",
