@@ -70,6 +70,7 @@ const TrendingSearchesCarousel = () => {
     const el = carouselRef.current;
     if (!el) return;
     const scrollLeft = el.scrollLeft;
+    scrollDimensionsRef.current.scrollLeft = scrollLeft;
     setActiveIndex(Math.round(scrollLeft / cardWidthRef.current));
   }, []);
   useEffect(() => {
@@ -78,8 +79,12 @@ const TrendingSearchesCarousel = () => {
     el.addEventListener("scroll", updateScrollState, {
       passive: true
     });
-    updateScrollState();
-    return () => el.removeEventListener("scroll", updateScrollState);
+    // Defer initial read past React's commit phase to avoid forced reflow
+    const raf = requestAnimationFrame(updateScrollState);
+    return () => {
+      el.removeEventListener("scroll", updateScrollState);
+      cancelAnimationFrame(raf);
+    };
   }, [updateScrollState, trendingList]);
 
   /* ── auto-scroll (uses cached dimensions) ── */
@@ -91,9 +96,10 @@ const TrendingSearchesCarousel = () => {
       if (!el) return;
       const {
         scrollWidth,
-        clientWidth
+        clientWidth,
+        scrollLeft
       } = scrollDimensionsRef.current;
-      if (el.scrollLeft >= scrollWidth - clientWidth - 8) {
+      if (scrollLeft >= scrollWidth - clientWidth - 8) {
         el.scrollTo({
           left: 0,
           behavior: "smooth"
