@@ -43,12 +43,78 @@ const BusinessFormStep0 = ({
   getSectionRefKey,
   getSectionIsDisabled,
 }) => {
+  const [clientSearchInput, setClientSearchInput] = React.useState("");
+
+  console.log("🔄 BusinessFormStep0 rendered:", {
+    clientId: formData.clientId,
+    clientSearchInput,
+    searchSuggestionLength: searchSuggestion?.length,
+    userClientLength: userClient?.length
+  });
+
   React.useEffect(() => {
     // Load all clients when component mounts
     if (dispatch) {
+      console.log("📥 useEffect: Loading all clients");
       dispatch(getAllUsersClient());
     }
   }, [dispatch]);
+
+  const handleClientSearch = (event, value) => {
+    console.log("🔍 handleClientSearch called with value:", value);
+    console.log("   searchSuggestion:", searchSuggestion);
+    console.log("   userClient length:", userClient?.length);
+    setClientSearchInput(value);
+
+    // Only search if input is not empty and is a partial search (doesn't contain " — " which is the full label format)
+    if (value && value.trim().length > 0 && !value.includes(" — ") && dispatch) {
+      console.log("   → Dispatching getUserClientSuggestion");
+      dispatch(getUserClientSuggestion(value));
+    } else if (value && value.includes(" — ")) {
+      console.log("   → Skipped search (full label detected, this is post-selection)");
+    }
+  };
+
+  // Get all available options - merge search results with user clients to avoid losing searched clients
+  const allOptions = React.useMemo(() => {
+    if (clientSearchInput && searchSuggestion?.length > 0) {
+      // When searching, show search results
+      console.log("📋 Using searchSuggestion results");
+      return searchSuggestion;
+    }
+    // When not searching, show all clients AND keep any previously searched clients in the list
+    const mergedClients = [...(userClient || [])];
+    if (searchSuggestion?.length > 0) {
+      // Add search results that aren't already in userClient list
+      searchSuggestion.forEach(searched => {
+        if (!mergedClients.find(u => u.clientId === searched.clientId)) {
+          mergedClients.push(searched);
+        }
+      });
+      console.log("📋 Merged search results with userClient");
+    }
+    console.log("📋 Using merged userClient list");
+    return mergedClients;
+  }, [clientSearchInput, searchSuggestion, userClient]);
+
+  console.log("📋 allOptions computed:", {
+    clientSearchInput,
+    hasSuggestion: !!searchSuggestion?.length,
+    optionsLength: allOptions?.length,
+    allOptions: allOptions?.map(c => ({ id: c.clientId, name: c.name }))
+  });
+
+  // Find the selected client object from all available options
+  const getSelectedClient = () => {
+    const selected = formData.clientId ? allOptions.find((c) => c.clientId === formData.clientId) : null;
+    console.log("🎯 getSelectedClient:", {
+      formDataClientId: formData.clientId,
+      foundClient: selected ? { id: selected.clientId, name: selected.name } : null,
+      allOptionsLength: allOptions?.length
+    });
+    if (!formData.clientId) return null;
+    return allOptions.find((c) => c.clientId === formData.clientId) || null;
+  };
 
   const sections = [
     { key: "clientBusiness", title: "Client & Business Information", subtitle: "Basic details about your business" },
@@ -86,17 +152,28 @@ const BusinessFormStep0 = ({
         <div className={fieldClass("field-span-7")}>
           <label htmlFor="clientId" className={cx("input-label")}>Client ID</label>
           <Autocomplete
-            options={userClient || []}
+            options={allOptions}
             getOptionLabel={(option) => `${option.clientId} — ${option.name}`}
-            value={
-              userClient?.find((c) => c.clientId === formData.clientId) || null
-            }
+            value={getSelectedClient()}
             onChange={(event, newValue) => {
-              setFormData((prev) => ({
-                ...prev,
-                clientId: newValue ? newValue.clientId : ""
-              }));
+              console.log("✅ Autocomplete onChange:", {
+                newValue: newValue ? { id: newValue.clientId, name: newValue.name } : null,
+                currentFormDataClientId: formData.clientId
+              });
+              setFormData((prev) => {
+                const updated = {
+                  ...prev,
+                  clientId: newValue ? newValue.clientId : ""
+                };
+                console.log("   → Updated formData:", { clientId: updated.clientId });
+                return updated;
+              });
+              console.log("   → Clearing search input");
+              setClientSearchInput("");
             }}
+            onInputChange={handleClientSearch}
+            inputValue={clientSearchInput}
+            isOptionEqualToValue={(option, value) => option.clientId === value.clientId}
             freeSolo={false}
             disableClearable={false}
             renderInput={(params) => (
