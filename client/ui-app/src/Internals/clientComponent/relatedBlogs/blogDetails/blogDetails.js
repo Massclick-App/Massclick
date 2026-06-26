@@ -57,6 +57,7 @@ const BlogDetail = () => {
         email: blog?.email,
         website: blog?.website,
         linkedin: blog?.linkedin,
+        profileLink: null,
       };
     }
 
@@ -69,6 +70,7 @@ const BlogDetail = () => {
         website: author.website || blog?.website,
         linkedin: author.linkedin || blog?.linkedin,
         expertCategory: author.expertCategory,
+        profileLink: author.slug ? `/author/${author.slug}` : null,
       };
     }
 
@@ -78,6 +80,7 @@ const BlogDetail = () => {
       email: blog?.email,
       website: blog?.website,
       linkedin: blog?.linkedin,
+      profileLink: null,
     };
   }, [blog, authors]);
   useEffect(() => {
@@ -705,7 +708,7 @@ const BlogDetail = () => {
               email={getAuthorData().email || "content@massclick.in"}
               website={getAuthorData().website}
               linkedin={getAuthorData().linkedin}
-              viewProfileLink={blog.authorProfileUrl || getAuthorData().website}
+              viewProfileLink={getAuthorData().profileLink || blog.authorProfileUrl || getAuthorData().website}
             />
 
           </div>

@@ -27,12 +27,18 @@ const cx = createScopedClassNames(styles);
 
 const defaultForm = {
   displayName: "",
-  email: "",
-  website: "",
-  linkedin: "",
+  title: "",
+  shortBio: "",
   bio: "",
   experience: "",
   expertCategory: "",
+  expertiseAreas: [],
+  specializations: [],
+  email: "",
+  phone: "",
+  website: "",
+  linkedin: "",
+  twitter: "",
 };
 
 export default function AuthorMaster() {
@@ -249,6 +255,18 @@ export default function AuthorMaster() {
               <div className={cx("form-row")}>
                 <div className={cx("form-group")}>
                   <TextField
+                    label="Title"
+                    value={formData.title}
+                    onChange={(e) =>
+                      setFormData({ ...formData, title: e.target.value })
+                    }
+                    fullWidth
+                    placeholder="e.g., Senior SEO Specialist"
+                  />
+                </div>
+
+                <div className={cx("form-group")}>
+                  <TextField
                     label="Expert Category"
                     value={formData.expertCategory}
                     onChange={(e) =>
@@ -261,7 +279,9 @@ export default function AuthorMaster() {
                     placeholder="e.g., SEO Specialist"
                   />
                 </div>
+              </div>
 
+              <div className={cx("form-row")}>
                 <div className={cx("form-group")}>
                   <TextField
                     label="Experience"
@@ -273,11 +293,51 @@ export default function AuthorMaster() {
                     placeholder="e.g., 10+ years"
                   />
                 </div>
+
+                <div className={cx("form-group")}>
+                  <TextField
+                    label="Phone"
+                    value={formData.phone}
+                    onChange={(e) =>
+                      setFormData({ ...formData, phone: e.target.value })
+                    }
+                    fullWidth
+                    placeholder="Contact phone number"
+                  />
+                </div>
+              </div>
+
+              <div className={cx("form-row")}>
+                <div className={cx("form-group")}>
+                  <TextField
+                    label="Twitter"
+                    value={formData.twitter}
+                    onChange={(e) =>
+                      setFormData({ ...formData, twitter: e.target.value })
+                    }
+                    fullWidth
+                    placeholder="Twitter handle or profile"
+                  />
+                </div>
               </div>
 
               <div className={cx("form-row", "full-width")}>
                 <TextField
-                  label="Biography"
+                  label="Short Bio"
+                  value={formData.shortBio}
+                  onChange={(e) =>
+                    setFormData({ ...formData, shortBio: e.target.value })
+                  }
+                  fullWidth
+                  multiline
+                  rows={2}
+                  placeholder="One-liner about the author (shown in previews)..."
+                />
+              </div>
+
+              <div className={cx("form-row", "full-width")}>
+                <TextField
+                  label="Full Biography"
                   value={formData.bio}
                   onChange={(e) =>
                     setFormData({ ...formData, bio: e.target.value })
@@ -285,7 +345,45 @@ export default function AuthorMaster() {
                   fullWidth
                   multiline
                   rows={4}
-                  placeholder="Write a brief bio about the author..."
+                  placeholder="Complete biography and background..."
+                />
+              </div>
+
+              <div className={cx("form-row", "full-width")}>
+                <TextField
+                  label="Expertise Areas (comma-separated)"
+                  value={formData.expertiseAreas?.join(", ") || ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      expertiseAreas: e.target.value
+                        .split(",")
+                        .map((area) => area.trim())
+                        .filter(Boolean),
+                    })
+                  }
+                  fullWidth
+                  placeholder="e.g., SEO, Content Marketing, Local SEO"
+                  helperText="Separate multiple areas with commas"
+                />
+              </div>
+
+              <div className={cx("form-row", "full-width")}>
+                <TextField
+                  label="Specializations (comma-separated)"
+                  value={formData.specializations?.join(", ") || ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      specializations: e.target.value
+                        .split(",")
+                        .map((spec) => spec.trim())
+                        .filter(Boolean),
+                    })
+                  }
+                  fullWidth
+                  placeholder="e.g., E-commerce, B2B, Healthcare"
+                  helperText="Separate multiple specializations with commas"
                 />
               </div>
             </section>

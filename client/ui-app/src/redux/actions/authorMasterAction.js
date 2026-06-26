@@ -154,3 +154,25 @@ export const deleteAuthor = (id) => async (dispatch) => {
     throw error;
   }
 };
+
+export const fetchAuthorBySlug = (slug) => async (dispatch) => {
+  dispatch({ type: FETCH_AUTHORS_REQUEST });
+
+  try {
+    const res = await axiosInstance.get(`${API}/author/profile/${slug}`);
+
+    dispatch({
+      type: FETCH_AUTHORS_SUCCESS,
+      payload: [res.data.data],
+    });
+
+    return res.data.data;
+  } catch (error) {
+    dispatch({
+      type: FETCH_AUTHORS_FAILURE,
+      payload: error.message,
+    });
+
+    throw error;
+  }
+};

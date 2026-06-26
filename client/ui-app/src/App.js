@@ -67,6 +67,7 @@ const PublicizePage = lazy(() => import(/* webpackChunkName: "publicize" */ './I
 const FreeListingPage = lazy(() => import(/* webpackChunkName: "free-listing" */ './Internals/clientComponent/free-Listing/free-Listing.js'));
 const LeadsCardHistory = lazy(() => import(/* webpackChunkName: "leads-history" */ './Internals/clientComponent/LeadsPage/leadsCards/leadsCards.js'));
 const BusinessEnquiry = lazy(() => import(/* webpackChunkName: "business-enquiry" */ './Internals/clientComponent/businessEnquiry/businessEnquiry.js'));
+const AuthorProfile = lazy(() => import(/* webpackChunkName: "author-profile" */ './Internals/clientComponent/authorProfile/authorProfile.js'));
 
 const EnquiryPage = lazy(() => import(/* webpackChunkName: "admin-enquiry" */ './Internals/enquiry-page/enquiry-page.js'));
 const AdminCustomerCareChat = lazy(() => import(/* webpackChunkName: "admin-customer-care-chat" */ './Internals/CustomerCareChat/AdminCustomerCareChat.js'));
@@ -240,6 +241,7 @@ function AppRoutes({
           <Route path="/payment-status/:transactionId" element={<PaymentStatus />} />
           <Route path="/write-review/:businessId/:ratingValue" element={<WriteReviewPage />} />
           <Route path="/blog/:slug" element={<BlogDetail />} />
+          <Route path="/author/:slug" element={<AuthorProfile />} />
 
           <Route path="/user_dashboard" element={<UserDashboardPage />} />
           <Route path="/user_edit-profile" element={<UserEditProfilePage />} />

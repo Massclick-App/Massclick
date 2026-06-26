@@ -181,3 +181,34 @@ export const searchAuthorsAction = async (req, res) => {
     return sendError(res, error, BAD_REQUEST.code);
   }
 };
+
+/* =====================================
+   GET AUTHOR BY SLUG (PUBLIC)
+===================================== */
+export const getAuthorBySlugAction = async (req, res) => {
+  try {
+    const { slug } = req.params;
+
+    if (!slug) {
+      throw new Error("Author slug is required");
+    }
+
+    const author = await authorMasterModel
+      .findOne({ slug: slug.toLowerCase(), isActive: true })
+      .lean();
+
+    if (!author) {
+      return res.status(404).send({
+        success: false,
+        message: "Author not found",
+      });
+    }
+
+    return res.send({
+      success: true,
+      data: author,
+    });
+  } catch (error) {
+    return sendError(res, error, BAD_REQUEST.code);
+  }
+};
