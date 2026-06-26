@@ -20,7 +20,7 @@ export const Collections = {
     SEODATAS: 'seodatas',
     SEOPAGECONTENT: 'seopagecontent',
     SEOPAGECONTENTBLOG: 'seopagecontentblog',
-    AUTHORMASTER: 'authormaster',
+    AUTHORMASTER: 'authormasters',
     MRPDATAS: 'mrpdatas',
     ENQUIRYNOWDATAS: 'enquirynowdatas',
     BUSINESSREVIEW: 'businessreview',
