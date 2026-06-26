@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { createScopedClassNames } from "../../../../utils/createScopedClassNames";
 import styles from "./authorCard.module.css";
 
@@ -104,7 +105,12 @@ const AuthorCard = ({
             </a>
           )}
 
-          {viewProfileLink && (
+          {viewProfileLink && viewProfileLink.startsWith("/") ? (
+            <Link to={viewProfileLink} className={cx("profile-link")}>
+              View Profile
+              <span className={cx("arrow")}>-&gt;</span>
+            </Link>
+          ) : viewProfileLink ? (
             <a
               href={withProtocol(viewProfileLink)}
               className={cx("profile-link")}
@@ -114,7 +120,7 @@ const AuthorCard = ({
               View Profile
               <span className={cx("arrow")}>-&gt;</span>
             </a>
-          )}
+          ) : null}
         </div>
       )}
 
