@@ -15,6 +15,8 @@ const setRateLimit = () => { rateLimitedUntil = Date.now() + RATE_LIMIT_BACKOFF_
 const rateLimitSecondsLeft = () => Math.ceil((rateLimitedUntil - Date.now()) / 1000);
 
 const callGemini = async (prompt, maxTokens = 80) => {
+  if (process.env.GEMINI_ENABLED === "false") return null;
+
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey || apiKey === "your_gemini_api_key_here") return null;
 
