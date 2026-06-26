@@ -4,6 +4,7 @@ import { useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { Helmet } from "react-helmet-async";
 import { fetchSeoBlogBySlug } from "../../../../redux/actions/seoPageContentBlogAction";
+import { fetchAllAuthors } from "../../../../redux/actions/authorMasterAction.js";
 import { throttle } from "../../../../utils/throttle";
 import { getPlaceholderImage } from "../../../../utils/placeholderImage";
 import { generateArticleSchema, generateBreadcrumbSchema } from "../../../../utils/seoSchemaGenerators";
@@ -38,11 +39,47 @@ const BlogDetail = () => {
     loading,
     error
   } = useSelector(state => state.seoPageContentBlogReducer);
+  const { list: authors = [] } = useSelector(state => state.authorMasterReducer || {});
+
   useEffect(() => {
     if (slug) {
       dispatch(fetchSeoBlogBySlug(slug));
     }
+    dispatch(fetchAllAuthors());
   }, [dispatch, slug]);
+
+  // Helper function to get author details by authorId
+  const getAuthorData = useCallback(() => {
+    if (!blog?.authorId) {
+      return {
+        name: blog?.author || "Massclick Editorial Team",
+        experience: blog?.experience,
+        email: blog?.email,
+        website: blog?.website,
+        linkedin: blog?.linkedin,
+      };
+    }
+
+    const author = authors.find(a => a._id === blog.authorId);
+    if (author) {
+      return {
+        name: author.displayName,
+        experience: author.experience || blog?.experience,
+        email: author.email || blog?.email,
+        website: author.website || blog?.website,
+        linkedin: author.linkedin || blog?.linkedin,
+        expertCategory: author.expertCategory,
+      };
+    }
+
+    return {
+      name: blog?.author || "Massclick Editorial Team",
+      experience: blog?.experience,
+      email: blog?.email,
+      website: blog?.website,
+      linkedin: blog?.linkedin,
+    };
+  }, [blog, authors]);
   useEffect(() => {
     const updateReadingProgress = () => {
       const scrollTop = window.scrollY || document.documentElement.scrollTop;
@@ -421,7 +458,7 @@ const BlogDetail = () => {
     image: blog.ogImageKey,
     datePublished: blog.createdAt,
     dateModified: blog.updatedAt,
-    author: blog.author
+    author: getAuthorData().name
   });
 
   // Generate Breadcrumb schema
@@ -658,17 +695,17 @@ const BlogDetail = () => {
 
             <AuthorCard
               variant="full-width"
-              name={blog.author || "Massclick Editorial Team"}
-              title={blog.expertCategory || "Content Expert"}
+              name={getAuthorData().name}
+              title={getAuthorData().expertCategory || blog.expertCategory || "Content Expert"}
               profileImage={blog.profileImage || getPlaceholderImage()}
-              bio={blog.experience || `${blog.author || "Massclick Editorial Team"} curates local business guides, service recommendations and city-focused insights to help readers make informed decisions faster.`}
+              bio={getAuthorData().experience || `${getAuthorData().name} curates local business guides, service recommendations and city-focused insights to help readers make informed decisions faster.`}
               expertiseAreas={blog.expertiseAreas || (blog.expertCategory ? [blog.expertCategory] : ["Local Guides", "Business Tips", "City Insights"])}
               bestFor={blog.bestFor || []}
               features={blog.features || []}
-              email={blog.email || blog.authorEmail || "content@massclick.in"}
-              website={blog.website}
-              linkedin={blog.linkedin}
-              viewProfileLink={blog.authorProfileUrl || blog.website}
+              email={getAuthorData().email || "content@massclick.in"}
+              website={getAuthorData().website}
+              linkedin={getAuthorData().linkedin}
+              viewProfileLink={blog.authorProfileUrl || getAuthorData().website}
             />
 
           </div>
@@ -677,13 +714,13 @@ const BlogDetail = () => {
 
             <AuthorCard
               variant="sidebar"
-              name={blog.author || "Admin"}
-              title={blog.expertCategory || "Content Creator"}
+              name={getAuthorData().name}
+              title={getAuthorData().expertCategory || blog.expertCategory || "Content Creator"}
               profileImage={blog.profileImage || getPlaceholderImage()}
               expertiseAreas={blog.expertiseAreas?.slice(0, 2) || (blog.expertCategory ? [blog.expertCategory] : ["Local Guides", "Business Tips"])}
-              email={blog.email}
-              website={blog.website}
-              linkedin={blog.linkedin}
+              email={getAuthorData().email}
+              website={getAuthorData().website}
+              linkedin={getAuthorData().linkedin}
             />
 
             <div className={cx("toc")}>

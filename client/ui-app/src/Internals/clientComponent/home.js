@@ -22,7 +22,6 @@ import { viewOtpUser } from "../../redux/actions/otpAction.js";
 import { fetchMatchedLeads } from "../../redux/actions/leadsAction.js";
 import SeoMeta from "./seo/seoMeta";
 import { fetchSeoMeta } from "../../redux/actions/seoAction";
-import { connectSocket } from "../../services/socketService.js";
 import {
   generateWebsiteSchema,
   generateOrganizationSchema,
@@ -462,15 +461,17 @@ const LandingPage = React.memo(() => {
       dispatch(viewOtpUser(mobile));
     }
     if (!token) return;
-    const ws = connectSocket(token);
-    const onLeadUpdate = () => {
-      dispatch(viewOtpUser(mobile));
-      dispatch(fetchMatchedLeads());
-    };
-    ws.on("lead:analytics:update", onLeadUpdate);
-    return () => {
-      ws.off("lead:analytics:update", onLeadUpdate);
-    };
+    let cleanup;
+    import("../../services/socketService.js").then(({ connectSocket }) => {
+      const ws = connectSocket(token);
+      const onLeadUpdate = () => {
+        dispatch(viewOtpUser(mobile));
+        dispatch(fetchMatchedLeads());
+      };
+      ws.on("lead:analytics:update", onLeadUpdate);
+      cleanup = () => ws.off("lead:analytics:update", onLeadUpdate);
+    });
+    return () => cleanup?.();
   }, [dispatch]);
   useEffect(() => {
     const refreshLoginState = () => {

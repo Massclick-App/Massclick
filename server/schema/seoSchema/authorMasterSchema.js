@@ -16,27 +16,24 @@ const authorMasterSchema = new mongoose.Schema(
       trim: true,
     },
 
-    email: {
+    slug: {
+      type: String,
+      unique: true,
+      index: true,
+      lowercase: true,
+      trim: true,
+    },
+
+    title: {
       type: String,
       default: "",
       trim: true,
     },
 
-    website: {
+    shortBio: {
       type: String,
       default: "",
       trim: true,
-    },
-
-    linkedin: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    profileImage: {
-      type: String,
-      default: "",
     },
 
     bio: {
@@ -57,6 +54,51 @@ const authorMasterSchema = new mongoose.Schema(
       trim: true,
     },
 
+    expertiseAreas: {
+      type: [String],
+      default: [],
+    },
+
+    specializations: {
+      type: [String],
+      default: [],
+    },
+
+    profileImage: {
+      type: String,
+      default: "",
+    },
+
+    email: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    phone: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    website: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    linkedin: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    twitter: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
     blogCount: {
       type: Number,
       default: 0,
@@ -70,5 +112,16 @@ const authorMasterSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+authorMasterSchema.pre("validate", function (next) {
+  if (!this.slug && this.displayName) {
+    this.slug = this.displayName
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+  }
+  next();
+});
 
 export default authorMasterSchema;

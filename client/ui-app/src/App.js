@@ -5,7 +5,6 @@ import { relogin } from './redux/actions/authAction.js';
 import { clientLogin } from './redux/actions/clientAuthAction.js';
 import { fetchMatchedLeads } from './redux/actions/leadsAction.js';
 import { setMaintenanceModeOn, setMaintenanceModeOff } from './redux/reducers/maintenanceReducer.js';
-import { connectSocket } from './services/socketService.js';
 import {
   clearAdminSession,
   getAuthSnapshot,
@@ -21,7 +20,7 @@ import PrivateRoute from './PrivateRoute';
 import PermissionRoute from './PermissionRoute';
 import ScrollToTop from './scrollTop.js';
 import RouteChangeTracker from './RouteChangeTracker.js';
-import { isBusinessPeopleUser, userMenuItems } from './Internals/clientComponent/categoryBar.js';
+import { isBusinessPeopleUser } from './utils/userUtils.js';
 
 import ShimmerSkeleton from './Internals/clientComponent/shimmerSkeleton.js';
 import GlobalLoaderWrapper from './Internals/clientComponent/common/GlobalLoaderWrapper.js';
@@ -91,6 +90,15 @@ const CategoryDisplaySettings = lazy(() => import(/* webpackChunkName: "admin-ca
 const GmapsLeads = lazy(() => import(/* webpackChunkName: "admin-gmaps-leads" */ './Internals/gmapsLeads/GmapsLeads.js'));
 const Msg91Analytics = lazy(() => import(/* webpackChunkName: "admin-msg91-analytics" */ './Internals/Msg91Analytics/Msg91Analytics.js'));
 const AuthConsole = lazy(() => import(/* webpackChunkName: "admin-auth-console" */ './Internals/AuthConsole/AuthConsole.js'));
+
+const UserDashboardPage = lazy(() => import(/* webpackChunkName: "user-dashboard" */ './Internals/clientComponent/userMenu/DashboardPage/Dashboard.js'));
+const UserEditProfilePage = lazy(() => import(/* webpackChunkName: "user-edit-profile" */ './Internals/clientComponent/userMenu/EditProfile/EditProfilePage.js'));
+const UserMRPPage = lazy(() => import(/* webpackChunkName: "user-mni" */ './Internals/clientComponent/MRP/mrp.js'));
+const UserFavoritesPage = lazy(() => import(/* webpackChunkName: "user-favorites" */ './Internals/clientComponent/userMenu/FavouritePage/FavouritePage.js'));
+const UserCustomerServicePage = lazy(() => import(/* webpackChunkName: "user-customer-service" */ './Internals/clientComponent/userMenu/CustomerService/CustomerServicePage.js'));
+const UserPolicyPage = lazy(() => import(/* webpackChunkName: "user-policy" */ './Internals/clientComponent/userMenu/PolicyPage/PolicyPage.js'));
+const UserFeedbackPage = lazy(() => import(/* webpackChunkName: "user-feedback" */ './Internals/clientComponent/userMenu/FeedbackPage/FeedBackPage.js'));
+const UserHelpPage = lazy(() => import(/* webpackChunkName: "user-help" */ './Internals/clientComponent/userMenu/HelpPage/HelpPage.js'));
 
 const FloatingButtons = lazy(() => import(/* webpackChunkName: "floating-buttons" */ './Internals/clientComponent/floating/floatingButtons.js'));
 // Google ad surfaces are intentionally disabled for now.
@@ -233,19 +241,17 @@ function AppRoutes({
           <Route path="/write-review/:businessId/:ratingValue" element={<WriteReviewPage />} />
           <Route path="/blog/:slug" element={<BlogDetail />} />
 
-          {userMenuItems.map((item) => {
-            const Component =
-              item.component || (() => <ComingSoon title={item.name} />);
-            const isBlockedBusinessRoute =
-              item.businessPeopleOnly && !isBusinessPeopleUser(getStoredCustomerUser());
-            return (
-              <Route
-                key={item.path}
-                path={item.path}
-                element={isBlockedBusinessRoute ? <Navigate to="/user_dashboard" replace /> : <Component />}
-              />
-            );
-          })}
+          <Route path="/user_dashboard" element={<UserDashboardPage />} />
+          <Route path="/user_edit-profile" element={<UserEditProfilePage />} />
+          <Route
+            path="/user_mni"
+            element={isBusinessPeopleUser(getStoredCustomerUser()) ? <UserMRPPage /> : <Navigate to="/user_dashboard" replace />}
+          />
+          <Route path="/user_favorites" element={<UserFavoritesPage />} />
+          <Route path="/user_customer-service" element={<UserCustomerServicePage />} />
+          <Route path="/user_policy" element={<UserPolicyPage />} />
+          <Route path="/user_feedback" element={<UserFeedbackPage />} />
+          <Route path="/user_help" element={<UserHelpPage />} />
 
           {footerRoutes.map(([path, element]) => (
             <Route key={path} path={path} element={element} />
@@ -426,29 +432,28 @@ function App() {
   useEffect(() => {
     if (!realtimeSocketToken) return;
 
-    try {
-      const ws = connectSocket(realtimeSocketToken);
-
-      const handleMaintenanceMode = (data) => {
-        if (data?.active) {
-          dispatch(setMaintenanceModeOn());
-        } else {
-          dispatch(setMaintenanceModeOff());
-        }
-      };
-
-      if (ws) {
-        ws.on('app:maintenance', handleMaintenanceMode);
-
-        return () => {
-          if (ws) {
-            ws.off('app:maintenance', handleMaintenanceMode);
-          }
-        };
+    let cleanup;
+    const handleMaintenanceMode = (data) => {
+      if (data?.active) {
+        dispatch(setMaintenanceModeOn());
+      } else {
+        dispatch(setMaintenanceModeOff());
       }
-    } catch (error) {
-      console.warn('Failed to set up maintenance mode listener:', error);
-    }
+    };
+
+    import('./services/socketService.js').then(({ connectSocket }) => {
+      try {
+        const ws = connectSocket(realtimeSocketToken);
+        if (ws) {
+          ws.on('app:maintenance', handleMaintenanceMode);
+          cleanup = () => ws.off('app:maintenance', handleMaintenanceMode);
+        }
+      } catch (error) {
+        console.warn('Failed to set up maintenance mode listener:', error);
+      }
+    });
+
+    return () => cleanup?.();
   }, [realtimeSocketToken, dispatch]);
 
   return (

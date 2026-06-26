@@ -1,5 +1,4 @@
 import axios from "axios";
-import { requestPushSubscription } from "../firebase";
 import { getCustomerToken, updateAuthDebug } from "../auth/authStore.js";
 
 const API_URL = process.env.REACT_APP_API_URL;
@@ -9,6 +8,7 @@ export async function registerWebFCMToken() {
   console.log("[FCM] registerWebFCMToken called - hasToken:", !!authToken);
 
   try {
+    const { requestPushSubscription } = await import("../firebase");
     const subscription = await requestPushSubscription();
     if (!subscription) {
       console.warn("[FCM] No push subscription - permission denied or browser not supported");
