@@ -1,25 +1,24 @@
 /**
  * Centralized Material-UI field configuration
  * Provides consistent sx objects for TextField, Select, and Autocomplete
+ * Optimized for compact, modern design matching original specifications
  */
 
 export const muiTextFieldSx = {
   width: '100%',
   '& .MuiOutlinedInput-root': {
+    height: '52px',
     borderRadius: '10px',
     backgroundColor: '#ffffff',
     transition: 'all 0.2s ease-in-out',
   },
   '& .MuiOutlinedInput-input': {
-    padding: '8px 14px',
+    padding: '16px 14px !important',
     fontSize: '1rem',
     height: '52px',
-    display: 'flex',
-    alignItems: 'center',
   },
   '& .MuiOutlinedInput-notchedOutline': {
     borderColor: '#e5e7eb',
-    borderWidth: '1px',
   },
   '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': {
     borderColor: '#d1d5db',
@@ -33,11 +32,6 @@ export const muiTextFieldSx = {
   },
   '& .MuiOutlinedInput-root.Mui-error .MuiOutlinedInput-notchedOutline': {
     borderColor: '#ef4444',
-    borderWidth: '1px',
-  },
-  '& .MuiOutlinedInput-root.Mui-error.Mui-focused .MuiOutlinedInput-notchedOutline': {
-    borderColor: '#ef4444',
-    borderWidth: '2px',
   },
   '& .MuiOutlinedInput-root.Mui-error': {
     backgroundColor: '#fef2f2',
@@ -55,46 +49,23 @@ export const muiTextFieldSx = {
     color: '#9ca3af',
     opacity: 1,
   },
-  '& .MuiFormLabel-root': {
-    fontSize: '0.9rem',
-    color: '#6b7280',
-    marginBottom: '6px',
-    fontWeight: 600,
-    transform: 'none',
-    position: 'relative',
-  },
-  '& .MuiFormLabel-root.Mui-focused': {
-    color: '#6b7280',
-  },
-  '& .MuiFormLabel-root.Mui-error': {
-    color: '#ef4444',
-  },
-  '& .MuiFormHelperText-root': {
-    marginTop: '4px',
-    marginLeft: '0',
-    fontSize: '0.8rem',
-    color: '#6b7280',
-  },
-  '& .MuiFormHelperText-root.Mui-error': {
-    color: '#ef4444',
-    fontWeight: 500,
-  },
 };
 
 export const muiSelectSx = {
   width: '100%',
   '& .MuiOutlinedInput-root': {
+    height: '52px',
     borderRadius: '10px',
     backgroundColor: '#ffffff',
     transition: 'all 0.2s ease-in-out',
   },
   '& .MuiOutlinedInput-input': {
-    padding: '8px 14px',
+    padding: '16px 14px !important',
+    fontSize: '1rem',
     height: '52px',
   },
   '& .MuiOutlinedInput-notchedOutline': {
     borderColor: '#e5e7eb',
-    borderWidth: '1px',
   },
   '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': {
     borderColor: '#d1d5db',
@@ -112,25 +83,23 @@ export const muiSelectSx = {
   '& .MuiOutlinedInput-root.Mui-error': {
     backgroundColor: '#fef2f2',
   },
-  '& .MuiOutlinedInput-root.Mui-disabled': {
-    backgroundColor: '#f9fafb',
-  },
 };
 
 export const muiAutocompleteSx = {
   width: '100%',
   '& .MuiOutlinedInput-root': {
+    height: '52px',
     borderRadius: '10px',
     backgroundColor: '#ffffff',
     transition: 'all 0.2s ease-in-out',
   },
   '& .MuiOutlinedInput-input': {
-    padding: '8px 14px',
+    padding: '16px 14px !important',
+    fontSize: '1rem',
     height: '52px',
   },
   '& .MuiOutlinedInput-notchedOutline': {
     borderColor: '#e5e7eb',
-    borderWidth: '1px',
   },
   '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': {
     borderColor: '#d1d5db',
@@ -153,18 +122,9 @@ export const muiAutocompleteSx = {
   '& .MuiAutocomplete-listbox': {
     padding: '4px 0',
   },
-  '& .MuiAutocomplete-option': {
-    padding: '8px 12px',
-    fontSize: '0.95rem',
-  },
-  '& [data-option-index][role="option"]': {
-    minHeight: 'auto',
-    padding: '8px 12px',
-  },
   '& .MuiChip-root': {
     backgroundColor: '#FFF3E0',
     borderRadius: '6px',
-    margin: '2px 4px',
   },
   '& .MuiChip-label': {
     color: '#FF8C00',
