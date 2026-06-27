@@ -1,0 +1,230 @@
+/* Shared MUI Form Field Styling - Common style for all admin pages */
+
+/* TextField & Select Base Styling */
+.muiTextField {
+  width: 100%;
+}
+
+.muiTextField :global(.MuiOutlinedInput-root) {
+  border-radius: 8px;
+  background-color: #ffffff;
+  transition: all 0.2s ease-in-out;
+}
+
+.muiTextField :global(.MuiOutlinedInput-input) {
+  padding: 12px 14px;
+  font-size: 1rem;
+  height: auto;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+}
+
+.muiTextField :global(.MuiOutlinedInput-notchedOutline) {
+  border-color: #e5e7eb;
+  border-width: 1px;
+}
+
+/* Focus State */
+.muiTextField :global(.MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline) {
+  border-color: #FF8C00;
+  border-width: 2px;
+}
+
+.muiTextField :global(.MuiOutlinedInput-root.Mui-focused) {
+  box-shadow: 0 0 0 3px rgba(255, 140, 0, 0.15);
+}
+
+/* Hover State */
+.muiTextField :global(.MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline) {
+  border-color: #d1d5db;
+}
+
+/* Error State */
+.muiTextField :global(.MuiOutlinedInput-root.Mui-error .MuiOutlinedInput-notchedOutline) {
+  border-color: #ef4444;
+  border-width: 1px;
+}
+
+.muiTextField :global(.MuiOutlinedInput-root.Mui-error.Mui-focused .MuiOutlinedInput-notchedOutline) {
+  border-color: #ef4444;
+  border-width: 2px;
+}
+
+.muiTextField :global(.MuiOutlinedInput-root.Mui-error) {
+  background-color: #fef2f2;
+}
+
+/* Disabled State */
+.muiTextField :global(.MuiOutlinedInput-root.Mui-disabled .MuiOutlinedInput-notchedOutline) {
+  border-color: #f3f4f6;
+}
+
+.muiTextField :global(.MuiOutlinedInput-root.Mui-disabled) {
+  background-color: #f9fafb;
+}
+
+.muiTextField :global(.MuiOutlinedInput-input.Mui-disabled) {
+  color: #9ca3af;
+}
+
+/* Label */
+.muiTextField :global(.MuiInputBase-input::placeholder) {
+  color: #9ca3af;
+  opacity: 1;
+}
+
+.muiTextField :global(.MuiFormLabel-root) {
+  font-size: 0.9rem;
+  color: #6b7280;
+  margin-bottom: 6px;
+  font-weight: 600;
+  transform: none;
+  position: relative;
+}
+
+.muiTextField :global(.MuiFormLabel-root.Mui-focused) {
+  color: #6b7280;
+}
+
+.muiTextField :global(.MuiFormLabel-root.Mui-error) {
+  color: #ef4444;
+}
+
+/* Helper Text */
+.muiTextField :global(.MuiFormHelperText-root) {
+  margin-top: 4px;
+  margin-left: 0;
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.muiTextField :global(.MuiFormHelperText-root.Mui-error) {
+  color: #ef4444;
+  font-weight: 500;
+}
+
+/* Select Component */
+.muiSelect {
+  width: 100%;
+}
+
+.muiSelect :global(.MuiOutlinedInput-root) {
+  border-radius: 8px;
+  background-color: #ffffff;
+  transition: all 0.2s ease-in-out;
+}
+
+.muiSelect :global(.MuiOutlinedInput-notchedOutline) {
+  border-color: #e5e7eb;
+  border-width: 1px;
+}
+
+.muiSelect :global(.MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline) {
+  border-color: #FF8C00;
+  border-width: 2px;
+}
+
+.muiSelect :global(.MuiOutlinedInput-root.Mui-focused) {
+  box-shadow: 0 0 0 3px rgba(255, 140, 0, 0.15);
+}
+
+.muiSelect :global(.MuiOutlinedInput-root.Mui-error .MuiOutlinedInput-notchedOutline) {
+  border-color: #ef4444;
+}
+
+.muiSelect :global(.MuiOutlinedInput-root.Mui-error) {
+  background-color: #fef2f2;
+}
+
+/* Autocomplete Component */
+.muiAutocomplete {
+  width: 100%;
+}
+
+.muiAutocomplete :global(.MuiAutocomplete-popper) {
+  border-radius: 8px;
+}
+
+.muiAutocomplete :global(.MuiAutocomplete-paper) {
+  border-radius: 8px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  max-height: 300px;
+}
+
+.muiAutocomplete :global(.MuiAutocomplete-listbox) {
+  padding: 4px 0;
+}
+
+.muiAutocomplete :global(.MuiAutocomplete-option) {
+  padding: 8px 12px;
+  font-size: 0.95rem;
+}
+
+.muiAutocomplete :global([data-option-index][role="option"]) {
+  min-height: auto;
+  padding: 8px 12px;
+}
+
+/* Chip (for multiselect/tags) */
+.muiAutocomplete :global(.MuiChip-root) {
+  background-color: #FFF3E0;
+  border-radius: 6px;
+  margin: 2px 4px;
+}
+
+.muiAutocomplete :global(.MuiChip-label) {
+  color: #FF8C00;
+  font-weight: 500;
+}
+
+.muiAutocomplete :global(.MuiChip-deleteIcon) {
+  color: #FF8C00;
+}
+
+.muiAutocomplete :global(.MuiChip-deleteIcon:hover) {
+  color: #D97800;
+}
+
+/* Form Field Wrapper Container */
+.fieldWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.fieldLabel {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.fieldRequired {
+  color: #ef4444;
+  font-weight: bold;
+}
+
+/* Form Input Group (container for multiple fields) */
+.formInputGroup {
+  display: grid;
+  gap: 16px;
+}
+
+/* Two column layout */
+.formInputGroup2Col {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+/* Three column layout */
+.formInputGroup3Col {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+/* Full width field */
+.formInputGroupFull {
+  grid-column: 1 / -1;
+}

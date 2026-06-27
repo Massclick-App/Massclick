@@ -10,6 +10,7 @@ import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import CustomizedTable from "../../components/Table/CustomizedTable.js";
 import AdminViewTabs from "../../components/AdminViewTabs.js";
+import { FormField, FormSelect } from "../../components/forms/index.js";
 const cx = createScopedClassNames(styles);
 export default function User() {
   const dispatch = useDispatch();
@@ -266,47 +267,56 @@ export default function User() {
         <form onSubmit={handleSubmit} className={cx("user-form-grid")}>
           {fields.map((field, i) => {
           const isPassword = field.type === "password";
-          return <div key={i} className={cx("user-form-input-group")}>
-                <label htmlFor={field.name} className={cx("user-input-label")}>
-                  {field.label}
-                </label>
-
-                {isPassword ? <div className={cx("password-wrapper")}>
-                    <input type={showPassword ? "text" : "password"} id={field.name} name={field.name} placeholder={isEditMode ? "Enter new password (optional)" : ""} value={formData.password || ""} onChange={handleChange} className={cx(`user-text-input ${errors.password ? "error" : ""}`)} autoComplete="new-password" />
-                    <button type="button" className={cx("password-toggle-btn")} onClick={() => setShowPassword(prev => !prev)}>
-                      {showPassword ? "Hide" : "Show"}
-                    </button>
-                  </div> : <input type={field.type} id={field.name} name={field.name} value={formData[field.name]} onChange={handleChange} className={cx(`user-text-input ${errors[field.name] ? "error" : ""}`)} />}
-                {errors[field.name] && <p className={cx("user-error-text")}>{errors[field.name]}</p>}
-              </div>;
+          return isPassword ? <div key={i} className={cx("password-wrapper")}>
+                <FormField
+                  label={field.label}
+                  name={field.name}
+                  type={showPassword ? "text" : "password"}
+                  value={formData.password || ""}
+                  onChange={handleChange}
+                  error={Boolean(errors.password)}
+                  helperText={errors[field.name] || ""}
+                  placeholder={isEditMode ? "Enter new password (optional)" : ""}
+                  required={field.required && !isEditMode}
+                />
+                <button type="button" className={cx("password-toggle-btn")} onClick={() => setShowPassword(prev => !prev)}>
+                  {showPassword ? "Hide" : "Show"}
+                </button>
+              </div> : <FormField
+              key={i}
+              label={field.label}
+              name={field.name}
+              type={field.type}
+              value={formData[field.name]}
+              onChange={handleChange}
+              error={Boolean(errors[field.name])}
+              helperText={errors[field.name] || ""}
+              required={field.required}
+            />;
         })}
 
-          {/* 1. Manually rendered Role field */}
-          <div className={cx("user-form-input-group")}>
-            <label htmlFor="role" className={cx("user-input-label")}>
-              Role
-            </label>
-            <select id="role" name="role" value={formData.role} onChange={handleChange} className={cx(`user-select-input ${errors.role ? "error" : ""}`)}>
-              <option value="">Select Role</option>
-              {roles.map(role => <option key={role._id} value={role.roleName}>
-                  {role.roleName}
-                </option>)}
-            </select>
-            {errors.role && <p className={cx("user-error-text")}>{errors.role}</p>}
-          </div>
+          {/* Role field */}
+          <FormSelect
+            label="Role"
+            name="role"
+            value={formData.role}
+            onChange={(e) => handleChange(e)}
+            options={roles.map(role => ({ value: role.roleName, label: role.roleName }))}
+            error={Boolean(errors.role)}
+            helperText={errors.role || ""}
+            required={true}
+          />
 
-          {formData.role === "SalesOfficer" && <div className={cx("user-form-input-group")}>
-              <label htmlFor="managedBy" className={cx("user-input-label")}>
-                Assigned Manager
-              </label>
-              <select id="managedBy" name="managedBy" value={formData.managedBy} onChange={handleChange} className={cx(`user-select-input ${errors.managedBy ? "error" : ""}`)}>
-                <option value="">Select Sales Manager</option>
-                {salesManagers.map(manager => <option key={manager._id} value={manager._id}>
-                    {manager.userName}
-                  </option>)}
-              </select>
-              {errors.managedBy && <p className={cx("user-error-text")}>{errors.managedBy}</p>}
-            </div>}
+          {formData.role === "SalesOfficer" && <FormSelect
+              label="Assigned Manager"
+              name="managedBy"
+              value={formData.managedBy}
+              onChange={(e) => handleChange(e)}
+              options={salesManagers.map(manager => ({ value: manager._id, label: manager.userName }))}
+              error={Boolean(errors.managedBy)}
+              helperText={errors.managedBy || ""}
+              required={true}
+            />}
 
           <div className={cx("user-form-input-group user-col-span-all user-upload-section")}>
             <div className={cx("user-upload-content")}>

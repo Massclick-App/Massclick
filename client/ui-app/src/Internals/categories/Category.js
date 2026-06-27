@@ -52,6 +52,7 @@ import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownR
 import KeyboardArrowUpRoundedIcon from "@mui/icons-material/KeyboardArrowUpRounded";
 import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 import AdminViewTabs from "../../components/AdminViewTabs.js";
+import { FormField, FormSelect, FormAutocomplete } from "../../components/forms/index.js";
 const cx = createScopedClassNames(styles);
 const API_URL = process.env.REACT_APP_API_URL;
 const CATEGORY_PAGE_FETCH_SIZE = 100;
@@ -1552,109 +1553,67 @@ export default function Category() {
                 <span>Details</span>
               </div>
 
-              <div className={cx("category-form-input-group")}>
-                <label className={cx("category-input-label label-with-help")}>
+              <FormField
+                label={<div className={cx("label-with-help")}>
                   <span>Category</span>
                   <HelpHint text={FIELD_HELP.category_name} />
-                </label>
-                <input
-                  type="text"
-                  name="category"
-                  className={cx(
-                    `category-text-input ${errors.category ? "category-error" : ""}`,
-                  )}
-                  value={formData.category}
-                  onChange={handleChange}
-                />
-                {errors.category && (
-                  <p className={cx("category-error-text")}>{errors.category}</p>
-                )}
-              </div>
+                </div>}
+                name="category"
+                value={formData.category}
+                onChange={handleChange}
+                error={Boolean(errors.category)}
+                helperText={errors.category || ""}
+              />
 
-              <div className={cx("category-form-input-group")}>
-                <label className={cx("category-input-label")}>
-                  Slug (Auto)
-                </label>
-                <input
-                  type="text"
-                  name="slug"
-                  className={cx("category-text-input")}
-                  value={formData.slug}
-                  readOnly
-                />
-              </div>
+              <FormField
+                label="Slug (Auto)"
+                name="slug"
+                value={formData.slug}
+                disabled={true}
+              />
 
-              <div className={cx("category-form-input-group")}>
-                <label className={cx("category-input-label label-with-help")}>
+              <FormSelect
+                label={<div className={cx("label-with-help")}>
                   <span>Category Type</span>
                   <HelpHint text={FIELD_HELP.category_type} />
-                </label>
-                <select
-                  name="categoryType"
-                  className={cx(
-                    `category-select-input ${errors.categoryType ? "category-error" : ""}`,
-                  )}
-                  value={formData.categoryType}
-                  onChange={handleChange}
-                >
-                  <option value="">-- Select Type --</option>
-                  <option value="Primary Category">Primary Category</option>
-                  <option value="Sub Category">Sub Category</option>
-                </select>
-                {errors.categoryType && (
-                  <p className={cx("category-error-text")}>
-                    {errors.categoryType}
-                  </p>
-                )}
-              </div>
+                </div>}
+                name="categoryType"
+                value={formData.categoryType}
+                onChange={handleChange}
+                options={[
+                  { value: "Primary Category", label: "Primary Category" },
+                  { value: "Sub Category", label: "Sub Category" }
+                ]}
+                error={Boolean(errors.categoryType)}
+                helperText={errors.categoryType || ""}
+              />
 
               {formData.categoryType === "Sub Category" && (
-                <div className={cx("category-form-input-group")}>
-                  <label className={cx("category-input-label label-with-help")}>
+                <FormSelect
+                  label={<div className={cx("label-with-help")}>
                     <span>Sub Category Type</span>
                     <HelpHint text={FIELD_HELP.sub_category_type} />
-                  </label>
-                  <select
-                    name="subCategoryType"
-                    className={cx(
-                      `category-select-input ${errors.subCategoryType ? "category-error" : ""}`,
-                    )}
-                    value={formData.subCategoryType}
-                    onChange={handleChange}
-                  >
-                    <option value="">-- Select Sub Category --</option>
-                    {subCategories.map((sub) => (
-                      <option key={sub} value={sub}>
-                        {sub}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.subCategoryType && (
-                    <p className={cx("category-error-text")}>
-                      {errors.subCategoryType}
-                    </p>
-                  )}
-                </div>
+                  </div>}
+                  name="subCategoryType"
+                  value={formData.subCategoryType}
+                  onChange={handleChange}
+                  options={subCategories.map((sub) => ({ value: sub, label: sub }))}
+                  error={Boolean(errors.subCategoryType)}
+                  helperText={errors.subCategoryType || ""}
+                />
               )}
 
-              <div className={cx("category-form-input-group")}>
-                <label className={cx("category-input-label label-with-help")}>
+              <FormField
+                label={<div className={cx("label-with-help")}>
                   <span>Title</span>
                   <HelpHint text={FIELD_HELP.title} />
-                </label>
-                <input
-                  type="text"
-                  name="title"
-                  className={cx(
-                    `category-text-input ${errors.title ? "category-error" : ""}`,
-                  )}
-                  value={formData.title}
-                  onChange={handleChange}
-                />
-                {errors.title && (
-                  <p className={cx("category-error-text")}>{errors.title}</p>
-                )}
-              </div>
+                </div>}
+                name="title"
+                value={formData.title}
+                onChange={handleChange}
+                error={Boolean(errors.title)}
+                helperText={errors.title || ""}
+              />
 
               <div
                 className={cx("category-section-title category-col-span-all")}

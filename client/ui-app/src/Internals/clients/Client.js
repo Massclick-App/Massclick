@@ -9,6 +9,7 @@ import CheckCircleOutlineRoundedIcon from "@mui/icons-material/CheckCircleOutlin
 import styles from "./clients.module.css";
 import CustomizedTable from "../../components/Table/CustomizedTable.js";
 import AdminViewTabs from "../../components/AdminViewTabs.js";
+import { FormField } from "../../components/forms/index.js";
 const cx = createScopedClassNames(styles);
 export default function UserClients() {
   const dispatch = useDispatch();
@@ -310,19 +311,18 @@ export default function UserClients() {
           </Alert>}
 
         <form onSubmit={handleSubmit} className={cx("client-form-grid")}>
-          {fields.map((field, i) => <div key={i} className={cx("client-form-input-group")}>
-              <label htmlFor={field.name} className={cx("client-input-label")}>
-                {field.label}
-                {field.required && <span className={cx("client-required-indicator")}>*</span>}
-              </label>
-              <input type={field.type} id={field.name} name={field.name} placeholder={field.placeholder} className={cx(`client-text-input ${errors[field.name] ? "error" : ""}`)} value={formData[field.name]} onChange={handleChange} aria-invalid={!!errors[field.name]} aria-describedby={errors[field.name] ? `${field.name}-error` : `${field.name}-helper`} />
-              {errors[field.name] && <p id={`${field.name}-error`} className={cx("client-error-text")}>
-                  ✗ {errors[field.name]}
-                </p>}
-              {!errors[field.name] && field.helper && <p id={`${field.name}-helper`} className={cx("client-helper-text")}>
-                  {field.helper}
-                </p>}
-            </div>)}
+          {fields.map((field, i) => <FormField
+              key={i}
+              label={field.label}
+              name={field.name}
+              type={field.type}
+              placeholder={field.placeholder}
+              value={formData[field.name]}
+              onChange={handleChange}
+              error={Boolean(errors[field.name])}
+              helperText={errors[field.name] || field.helper || ""}
+              required={field.required}
+            />)}
 
           <div className={cx("client-button-group col-span-all")}>
             <button type="submit" className={cx("client-submit-button")} disabled={loading}>
