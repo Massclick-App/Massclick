@@ -26,15 +26,15 @@ export const muiTextFieldSx = {
     borderColor: 'transparent',
   },
   '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': {
-    borderColor: 'rgba(129, 140, 248, 0.5)',
+    borderColor: 'rgba(255, 140, 0, 0.5)',
   },
   '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
-    borderColor: 'rgba(129, 140, 248, 1)',
+    borderColor: '#FF8C00',
     borderWidth: '2px',
   },
   '& .MuiOutlinedInput-root.Mui-focused': {
     backgroundColor: '#ffffff',
-    boxShadow: '0 0 0 5px rgba(129, 140, 248, 0.3)',
+    boxShadow: '0 0 0 5px rgba(255, 140, 0, 0.3)',
   },
   '& .MuiOutlinedInput-root.Mui-error .MuiOutlinedInput-notchedOutline': {
     borderColor: '#ef4444',
@@ -68,15 +68,15 @@ export const muiSelectSx = {
     borderColor: 'transparent',
   },
   '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': {
-    borderColor: 'rgba(129, 140, 248, 0.5)',
+    borderColor: 'rgba(255, 140, 0, 0.5)',
   },
   '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
-    borderColor: 'rgba(129, 140, 248, 1)',
+    borderColor: '#FF8C00',
     borderWidth: '2px',
   },
   '& .MuiOutlinedInput-root.Mui-focused': {
     backgroundColor: '#ffffff',
-    boxShadow: '0 0 0 5px rgba(129, 140, 248, 0.3)',
+    boxShadow: '0 0 0 5px rgba(255, 140, 0, 0.3)',
   },
   '& .MuiOutlinedInput-root.Mui-error .MuiOutlinedInput-notchedOutline': {
     borderColor: '#ef4444',
@@ -104,15 +104,15 @@ export const muiAutocompleteSx = {
     borderColor: 'transparent',
   },
   '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': {
-    borderColor: 'rgba(129, 140, 248, 0.5)',
+    borderColor: 'rgba(255, 140, 0, 0.5)',
   },
   '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
-    borderColor: 'rgba(129, 140, 248, 1)',
+    borderColor: '#FF8C00',
     borderWidth: '2px',
   },
   '& .MuiOutlinedInput-root.Mui-focused': {
     backgroundColor: '#ffffff',
-    boxShadow: '0 0 0 5px rgba(129, 140, 248, 0.3)',
+    boxShadow: '0 0 0 5px rgba(255, 140, 0, 0.3)',
   },
   '& .MuiAutocomplete-popper': {
     borderRadius: '10px',
@@ -123,17 +123,17 @@ export const muiAutocompleteSx = {
     maxHeight: '300px',
   },
   '& .MuiChip-root': {
-    backgroundColor: '#e0e7ff',
+    backgroundColor: '#FFF3E0',
     borderRadius: '6px',
   },
   '& .MuiChip-label': {
-    color: '#4f46e5',
+    color: '#FF8C00',
     fontWeight: 500,
   },
   '& .MuiChip-deleteIcon': {
-    color: '#4f46e5',
+    color: '#FF8C00',
   },
   '& .MuiChip-deleteIcon:hover': {
-    color: '#4338ca',
+    color: '#D97800',
   },
 };
