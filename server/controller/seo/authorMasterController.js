@@ -8,6 +8,14 @@ const sendError = (res, error, code = 400) => {
   });
 };
 
+const generateSlug = (displayName) => {
+  return displayName
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+};
+
 /* =====================================
    CREATE AUTHOR
 ===================================== */
@@ -30,6 +38,7 @@ export const createAuthorAction = async (req, res) => {
     const newAuthor = new authorMasterModel({
       name: name.toLowerCase().trim(),
       displayName: displayName.trim(),
+      slug: generateSlug(displayName),
       email: email || "",
       website: website || "",
       linkedin: linkedin || "",
@@ -107,7 +116,10 @@ export const updateAuthorAction = async (req, res) => {
       throw new Error("Author not found");
     }
 
-    if (displayName) author.displayName = displayName.trim();
+    if (displayName) {
+      author.displayName = displayName.trim();
+      author.slug = generateSlug(displayName);
+    }
     if (email !== undefined) author.email = email;
     if (website !== undefined) author.website = website;
     if (linkedin !== undefined) author.linkedin = linkedin;

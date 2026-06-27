@@ -708,7 +708,7 @@ const BlogDetail = () => {
               email={getAuthorData().email || "content@massclick.in"}
               website={getAuthorData().website}
               linkedin={getAuthorData().linkedin}
-              viewProfileLink={getAuthorData().profileLink || blog.authorProfileUrl || getAuthorData().website}
+              viewProfileLink={getAuthorData().profileLink}
             />
 
           </div>
@@ -724,6 +724,7 @@ const BlogDetail = () => {
               email={getAuthorData().email}
               website={getAuthorData().website}
               linkedin={getAuthorData().linkedin}
+              viewProfileLink={getAuthorData().profileLink}
             />
 
             <div className={cx("toc")}>
