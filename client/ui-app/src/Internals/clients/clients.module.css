@@ -87,24 +87,25 @@
 }
 
 .client-text-input {
-  height: 48px;
-  padding: 0 14px;
-  border: 2px solid var(--color-border);
-  border-radius: 8px;
-  background-color: var(--color-card-bg);
+  height: 45px;
+  padding: 0 12px;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  background-color: #f8fafc;
+  color: #0d0c22;
   font-size: 1rem;
-  transition: border-color 0.3s ease, box-shadow 0.3s ease, background-color 0.2s ease;
+  transition: all 0.5s ease;
 }
 
 .client-text-input:hover {
-  border-color: #d1d5db;
+  border-color: rgba(255, 140, 0, 0.5);
 }
 
 .client-text-input:focus {
   outline: none;
   border-color: var(--color-primary-orange);
-  box-shadow: 0 0 0 3px rgba(255, 140, 0, 0.15);
-  background-color: #fffbf7;
+  background-color: #ffffff;
+  box-shadow: 0 0 0 5px rgba(255, 140, 0, 0.3);
 }
 
 .client-text-input.error {

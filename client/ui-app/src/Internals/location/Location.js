@@ -7,7 +7,6 @@ import { Box, Button, Typography, CircularProgress, IconButton, Dialog, DialogTi
 import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import CustomizedTable from "../../components/Table/CustomizedTable.js";
 import AdminViewTabs from "../../components/AdminViewTabs.js";
-import { FormField } from "../../components/forms/index.js";
 const cx = createScopedClassNames(styles);
 export default function Location() {
   const dispatch = useDispatch();
@@ -216,15 +215,15 @@ export default function Location() {
                             <label htmlFor={name} className={cx("location-input-label")}>
                                 {label}
                             </label>
-                            <FormField
-                              hideLabel={true}
+                            <input
+                              type="text"
+                              id={name}
                               name={name}
+                              className={cx(`location-text-input ${errors[name] ? "error" : ""}`)}
                               value={formData[name]}
                               onChange={handleChange}
-                              error={Boolean(errors[name])}
-                              helperText={errors[name] || ""}
-                              required={true}
                             />
+                            {errors[name] && <p className={cx("location-error-text")}>{errors[name]}</p>}
                           </div>)}
 
                     <div className={cx("location-form-input-group location-col-span-all location-upload-section")}>

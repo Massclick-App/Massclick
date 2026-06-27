@@ -9,7 +9,6 @@ import CheckCircleOutlineRoundedIcon from "@mui/icons-material/CheckCircleOutlin
 import styles from "./clients.module.css";
 import CustomizedTable from "../../components/Table/CustomizedTable.js";
 import AdminViewTabs from "../../components/AdminViewTabs.js";
-import { FormField } from "../../components/forms/index.js";
 const cx = createScopedClassNames(styles);
 export default function UserClients() {
   const dispatch = useDispatch();
@@ -316,17 +315,21 @@ export default function UserClients() {
                 {field.label}
                 {field.required && <span className={cx("client-required-indicator")}>*</span>}
               </label>
-              <FormField
-                hideLabel={true}
-                name={field.name}
+              <input
                 type={field.type}
+                id={field.name}
+                name={field.name}
                 placeholder={field.placeholder}
+                className={cx(`client-text-input ${errors[field.name] ? "error" : ""}`)}
                 value={formData[field.name]}
                 onChange={handleChange}
-                error={Boolean(errors[field.name])}
-                helperText={errors[field.name] || field.helper || ""}
-                required={field.required}
               />
+              {errors[field.name] && <p id={`${field.name}-error`} className={cx("client-error-text")}>
+                  ✗ {errors[field.name]}
+                </p>}
+              {!errors[field.name] && field.helper && <p id={`${field.name}-helper`} className={cx("client-helper-text")}>
+                  {field.helper}
+                </p>}
             </div>)}
 
           <div className={cx("client-button-group col-span-all")}>
