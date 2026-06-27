@@ -1,34 +1,40 @@
 /**
  * Centralized Material-UI field configuration
- * Provides consistent sx objects for TextField, Select, and Autocomplete
- * Optimized for compact, modern design matching original specifications
+ * Modern minimalist design with light gray backgrounds and indigo focus
+ * Inspired by contemporary UI patterns (Uiverse.io)
  */
 
 export const muiTextFieldSx = {
   width: '100%',
   '& .MuiOutlinedInput-root': {
-    height: '52px',
+    height: '45px',
     borderRadius: '10px',
-    backgroundColor: '#ffffff',
-    transition: 'all 0.2s ease-in-out',
+    backgroundColor: '#f8fafc',
+    transition: 'all 0.5s ease',
   },
   '& .MuiOutlinedInput-input': {
-    padding: '16px 14px !important',
+    padding: '12px 14px !important',
     fontSize: '1rem',
-    height: '52px',
+    height: '45px',
+    color: '#0d0c22',
+  },
+  '& .MuiOutlinedInput-input::placeholder': {
+    color: '#94a3b8',
+    opacity: 1,
   },
   '& .MuiOutlinedInput-notchedOutline': {
-    borderColor: '#e5e7eb',
+    borderColor: 'transparent',
   },
   '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': {
-    borderColor: '#d1d5db',
+    borderColor: 'rgba(129, 140, 248, 0.5)',
   },
   '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
-    borderColor: '#FF8C00',
+    borderColor: 'rgba(129, 140, 248, 1)',
     borderWidth: '2px',
   },
   '& .MuiOutlinedInput-root.Mui-focused': {
-    boxShadow: '0 0 0 3px rgba(255, 140, 0, 0.15)',
+    backgroundColor: '#ffffff',
+    boxShadow: '0 0 0 5px rgba(129, 140, 248, 0.3)',
   },
   '& .MuiOutlinedInput-root.Mui-error .MuiOutlinedInput-notchedOutline': {
     borderColor: '#ef4444',
@@ -36,46 +42,41 @@ export const muiTextFieldSx = {
   '& .MuiOutlinedInput-root.Mui-error': {
     backgroundColor: '#fef2f2',
   },
-  '& .MuiOutlinedInput-root.Mui-disabled .MuiOutlinedInput-notchedOutline': {
-    borderColor: '#f3f4f6',
-  },
   '& .MuiOutlinedInput-root.Mui-disabled': {
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#f1f5f9',
   },
   '& .MuiOutlinedInput-input.Mui-disabled': {
-    color: '#9ca3af',
-  },
-  '& .MuiOutlinedInput-input::placeholder': {
-    color: '#9ca3af',
-    opacity: 1,
+    color: '#94a3b8',
   },
 };
 
 export const muiSelectSx = {
   width: '100%',
   '& .MuiOutlinedInput-root': {
-    height: '52px',
+    height: '45px',
     borderRadius: '10px',
-    backgroundColor: '#ffffff',
-    transition: 'all 0.2s ease-in-out',
+    backgroundColor: '#f8fafc',
+    transition: 'all 0.5s ease',
   },
   '& .MuiOutlinedInput-input': {
-    padding: '16px 14px !important',
+    padding: '12px 14px !important',
     fontSize: '1rem',
-    height: '52px',
+    height: '45px',
+    color: '#0d0c22',
   },
   '& .MuiOutlinedInput-notchedOutline': {
-    borderColor: '#e5e7eb',
+    borderColor: 'transparent',
   },
   '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': {
-    borderColor: '#d1d5db',
+    borderColor: 'rgba(129, 140, 248, 0.5)',
   },
   '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
-    borderColor: '#FF8C00',
+    borderColor: 'rgba(129, 140, 248, 1)',
     borderWidth: '2px',
   },
   '& .MuiOutlinedInput-root.Mui-focused': {
-    boxShadow: '0 0 0 3px rgba(255, 140, 0, 0.15)',
+    backgroundColor: '#ffffff',
+    boxShadow: '0 0 0 5px rgba(129, 140, 248, 0.3)',
   },
   '& .MuiOutlinedInput-root.Mui-error .MuiOutlinedInput-notchedOutline': {
     borderColor: '#ef4444',
@@ -88,52 +89,51 @@ export const muiSelectSx = {
 export const muiAutocompleteSx = {
   width: '100%',
   '& .MuiOutlinedInput-root': {
-    height: '52px',
+    height: '45px',
     borderRadius: '10px',
-    backgroundColor: '#ffffff',
-    transition: 'all 0.2s ease-in-out',
+    backgroundColor: '#f8fafc',
+    transition: 'all 0.5s ease',
   },
   '& .MuiOutlinedInput-input': {
-    padding: '16px 14px !important',
+    padding: '12px 14px !important',
     fontSize: '1rem',
-    height: '52px',
+    height: '45px',
+    color: '#0d0c22',
   },
   '& .MuiOutlinedInput-notchedOutline': {
-    borderColor: '#e5e7eb',
+    borderColor: 'transparent',
   },
   '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': {
-    borderColor: '#d1d5db',
+    borderColor: 'rgba(129, 140, 248, 0.5)',
   },
   '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
-    borderColor: '#FF8C00',
+    borderColor: 'rgba(129, 140, 248, 1)',
     borderWidth: '2px',
   },
   '& .MuiOutlinedInput-root.Mui-focused': {
-    boxShadow: '0 0 0 3px rgba(255, 140, 0, 0.15)',
+    backgroundColor: '#ffffff',
+    boxShadow: '0 0 0 5px rgba(129, 140, 248, 0.3)',
   },
   '& .MuiAutocomplete-popper': {
-    borderRadius: '8px',
+    borderRadius: '10px',
   },
   '& .MuiAutocomplete-paper': {
-    borderRadius: '8px',
+    borderRadius: '10px',
     boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
     maxHeight: '300px',
   },
-  '& .MuiAutocomplete-listbox': {
-    padding: '4px 0',
-  },
   '& .MuiChip-root': {
-    backgroundColor: '#FFF3E0',
+    backgroundColor: '#e0e7ff',
     borderRadius: '6px',
   },
   '& .MuiChip-label': {
-    color: '#FF8C00',
+    color: '#4f46e5',
     fontWeight: 500,
   },
   '& .MuiChip-deleteIcon': {
-    color: '#FF8C00',
+    color: '#4f46e5',
   },
   '& .MuiChip-deleteIcon:hover': {
-    color: '#D97800',
+    color: '#4338ca',
   },
 };
