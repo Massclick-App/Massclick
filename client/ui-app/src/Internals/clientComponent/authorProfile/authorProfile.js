@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { Helmet } from "react-helmet-async";
 import { fetchAuthorBySlug } from "../../../redux/actions/authorMasterAction.js";
@@ -10,6 +10,7 @@ import Navbar from "../relatedBlogs/relatedBlogNavbar/relatedBlogNavbar.js";
 import Footer from "../footer/footer.js";
 import { CircularProgress, Box } from "@mui/material";
 import { Link } from "react-router-dom";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import EmailIcon from "@mui/icons-material/Email";
 import PhoneIcon from "@mui/icons-material/Phone";
 import LanguageIcon from "@mui/icons-material/Language";
@@ -19,7 +20,10 @@ const cx = createScopedClassNames(styles);
 
 const AuthorProfile = () => {
   const { slug } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const dispatch = useDispatch();
+  const [referringBlog, setReferringBlog] = useState(null);
   const [authorData, setAuthorData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -30,6 +34,13 @@ const AuthorProfile = () => {
   const { list: blogList = [] } = useSelector(
     (state) => state.seoPageContentBlogReducer || {}
   );
+
+  useEffect(() => {
+    // Capture referring blog from state if navigating from blog details
+    if (location.state?.fromBlog) {
+      setReferringBlog(location.state.fromBlog);
+    }
+  }, [location.state]);
 
   useEffect(() => {
     const loadAuthor = async () => {
@@ -111,44 +122,45 @@ const AuthorProfile = () => {
       <Navbar />
 
       <main className={cx("profile-container")}>
-        {/* Hero Section */}
+        {/* Back to Blog Navigation */}
+        {referringBlog && (
+          <div className={cx("back-to-blog")}>
+            <button
+              onClick={() => navigate(-1)}
+              className={cx("back-button")}
+              aria-label="Back to blog"
+            >
+              <ArrowBackIcon />
+              Back to "{referringBlog.title}"
+            </button>
+          </div>
+        )}
+
+        {/* Compact Hero Section */}
         <section className={cx("hero-section")}>
           <div className={cx("hero-content")}>
-            <div className={cx("author-avatar")}>
-              <img
-                src={
-                  authorData.profileImage ||
-                  `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(
-                    authorData.displayName
-                  )}`
-                }
-                alt={authorData.displayName}
-                className={cx("avatar-image")}
-              />
-            </div>
-
-            <div className={cx("author-header")}>
+            <div className={cx("author-info")}>
               <h1 className={cx("author-name")}>{authorData.displayName}</h1>
 
               {authorData.title && (
                 <p className={cx("author-title")}>{authorData.title}</p>
               )}
 
-              {authorData.expertCategory && (
-                <span className={cx("expertise-badge")}>
-                  {authorData.expertCategory}
-                </span>
-              )}
+              <div className={cx("author-meta")}>
+                {authorData.expertCategory && (
+                  <span className={cx("expertise-badge")}>
+                    {authorData.expertCategory}
+                  </span>
+                )}
 
-              {authorData.experience && (
-                <p className={cx("experience")}>📚 {authorData.experience}</p>
-              )}
-
-              <div className={cx("blog-stats")}>
-                <span className={cx("stat")}>
-                  <strong>{authorData.blogCount}</strong> Articles Published
+                <span className={cx("article-count")}>
+                  <strong>{authorData.blogCount}</strong> Articles
                 </span>
               </div>
+
+              {authorData.experience && (
+                <p className={cx("experience")}>{authorData.experience}</p>
+              )}
             </div>
           </div>
         </section>
@@ -287,22 +299,10 @@ const AuthorProfile = () => {
                   style={{ textDecoration: "none" }}
                 >
                   <div className={cx("blog-card")}>
-                    <div className={cx("blog-image")}>
-                      <img
-                        src={
-                          blog.ogImageKey ||
-                          blog.pageImageKey?.[0] ||
-                          `https://via.placeholder.com/400x250?text=${encodeURIComponent(
-                            blog.heading
-                          )}`
-                        }
-                        alt={blog.heading}
-                      />
-                    </div>
                     <div className={cx("blog-content")}>
                       <h3>{blog.heading}</h3>
                       {blog.excerpt && (
-                        <p className={cx("excerpt")}>{blog.excerpt.substring(0, 120)}...</p>
+                        <p className={cx("excerpt")}>{blog.excerpt.substring(0, 100)}...</p>
                       )}
                       <div className={cx("blog-meta")}>
                         <span className={cx("category")}>{blog.category}</span>

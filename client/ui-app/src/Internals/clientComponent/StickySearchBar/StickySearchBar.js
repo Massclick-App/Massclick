@@ -9,8 +9,17 @@ import HistoryToggleOffIcon from "@mui/icons-material/HistoryToggleOff";
 import CloseIcon from "@mui/icons-material/Close";
 import LoginIcon from "@mui/icons-material/Login";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
-import { getBackendSuggestions } from "../../../redux/actions/businessListAction";
+import {
+  getAllSearchLogs,
+  getBackendSuggestions,
+  logSearchActivity,
+  performSearch
+} from "../../../redux/actions/businessListAction";
+import { logUserSearch } from "../../../redux/actions/otpAction";
+import { selectBackendSuggestions, selectBackendSuggestionsMeta, selectSearchLogs } from "../../../redux/selectors";
+import { shouldSendSearch } from "../../../utils/searchLock";
 import { navigateToSearchResult } from "../../../utils/searchResultNavigation";
+import { scheduleIdleCallback } from "../../../utils/scheduleIdleCallback.js";
 import { Box, Button, IconButton, Tooltip } from "@mui/material";
 import { useDrawer } from "../Drawer/drawerContext";
 import { categoryBarHelpers } from "../categoryBar";
@@ -107,6 +116,7 @@ const StickySearchBar = ({
   const [locationInput, setLocationInput] = useState("");
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [debouncedLocation, setDebouncedLocation] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isWebView, setIsWebView] = useState(window.innerWidth > 768);
 
@@ -114,9 +124,37 @@ const StickySearchBar = ({
   const setLocationName = propSetLocationName ?? setInternalLocationName;
   const searchTerm = propSearchTerm ?? internalSearchTerm;
   const setSearchTerm = propSetSearchTerm ?? setInternalSearchTerm;
+  const searchLogs = useSelector(selectSearchLogs);
+  const backendSuggestions = useSelector(selectBackendSuggestions);
+  const {
+    loading: backendSuggestionsLoading,
+    hasMore: backendSuggestionsHasMore,
+    page: backendSuggestionsPage,
+    query: backendSuggestionsQuery
+  } = useSelector(selectBackendSuggestionsMeta);
+  const locationSuggestionQuery = isWebView ? locationName : locationInput;
+  const normalizeComparable = value => String(value || "").trim().replace(/\s+/g, " ").toLowerCase();
+  const hasPendingSearch = normalizeComparable(committedSearchTerm) !== normalizeComparable(searchTerm) || normalizeComparable(committedLocationName || DEFAULT_LOCATION) !== normalizeComparable(locationName || DEFAULT_LOCATION);
 
-  const backendSuggestions = useSelector(state => state.businessListReducer?.backendSuggestions || []);
-  const backendSuggestionsLoading = useSelector(state => state.businessListReducer?.backendSuggestionsLoading || false);
+  const requestSuggestions = (query, {
+    page = 1,
+    append = false
+  } = {}) => dispatch(getBackendSuggestions({
+    search: query,
+    page,
+    limit: SUGGESTION_PAGE_SIZE,
+    append
+  }));
+
+  const maybeLoadMoreSuggestions = query => {
+    const normalizedQuery = String(query || "").trim();
+    if (!normalizedQuery || backendSuggestionsLoading || !backendSuggestionsHasMore) return;
+    if (backendSuggestionsQuery !== normalizedQuery) return;
+    requestSuggestions(normalizedQuery, {
+      page: backendSuggestionsPage + 1,
+      append: true
+    });
+  };
 
   useEffect(() => {
     localStorage.setItem("selectedLocation", locationName);
@@ -129,6 +167,28 @@ const StickySearchBar = ({
   }, [searchTerm]);
 
   useEffect(() => {
+    const t = setTimeout(() => setDebouncedLocation(locationSuggestionQuery || ""), 200);
+    return () => clearTimeout(t);
+  }, [locationSuggestionQuery]);
+
+  useEffect(() => {
+    const idleHandle = scheduleIdleCallback(() => {
+      dispatch(getAllSearchLogs());
+    }, {
+      timeout: 2000
+    });
+
+    return () => {
+      if (typeof window.cancelIdleCallback === "function") {
+        window.cancelIdleCallback(idleHandle);
+        return;
+      }
+
+      window.clearTimeout(idleHandle);
+    };
+  }, [dispatch]);
+
+  useEffect(() => {
     if (!isCategoryDropdownOpen || !debouncedSearch.trim()) return;
     dispatch(getBackendSuggestions({
       search: debouncedSearch.trim(),
@@ -139,14 +199,14 @@ const StickySearchBar = ({
   }, [debouncedSearch, dispatch, isCategoryDropdownOpen]);
 
   useEffect(() => {
-    if (!isSelectingLocation || !locationInput.trim()) return;
+    if (!isSelectingLocation || !debouncedLocation.trim()) return;
     dispatch(getBackendSuggestions({
-      search: locationInput.trim(),
+      search: debouncedLocation.trim(),
       page: 1,
       limit: SUGGESTION_PAGE_SIZE,
       append: false
     }));
-  }, [locationInput, dispatch, isSelectingLocation]);
+  }, [debouncedLocation, dispatch, isSelectingLocation]);
 
   useEffect(() => {
     const handleResize = () => setIsWebView(window.innerWidth > 768);
@@ -183,6 +243,8 @@ const StickySearchBar = ({
     });
     return list;
   })();
+
+  const recentSearchOptions = [...new Set((searchLogs || []).map(log => log.categoryName ? String(log.categoryName).trim() : "").filter(value => value && !isMongoObjectId(value)))];
 
   const parsedLocationSuggestions = (() => {
     if (!backendSuggestions.length) return [];
@@ -223,6 +285,77 @@ const StickySearchBar = ({
     setIsCategoryDropdownOpen(false);
   };
 
+  const handleSearch = async event => {
+    event?.preventDefault?.();
+    const searchInput = searchTerm.trim();
+    const location = (locationName || DEFAULT_LOCATION).trim();
+
+    if (!searchInput) {
+      setIsCategoryDropdownOpen(true);
+      searchInputRef.current?.focus();
+      return;
+    }
+
+    if (!locationName?.trim()) {
+      setLocationName(location);
+    }
+
+    propSetCategoryName?.(searchInput);
+    setIsCategoryDropdownOpen(false);
+    setIsSelectingLocation(false);
+    setIsFocused(false);
+
+    const response = await dispatch(performSearch(searchInput, location));
+    const results = response?.payload || [];
+    const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
+    const userId = authUser?._id;
+    const userDetails = {
+      userName: authUser?.userName,
+      mobileNumber1: authUser?.mobileNumber1,
+      mobileNumber2: authUser?.mobileNumber2,
+      email: authUser?.email
+    };
+    const logLocation = location || "Global";
+    const logValue = searchInput || "All Categories";
+
+    if (userId && searchInput) {
+      dispatch(logUserSearch(userId, searchInput, logLocation, logValue));
+    }
+
+    const key = `${logValue}-${location}-${userDetails.mobileNumber1}`;
+    const logSent = shouldSendSearch(key);
+
+    if (logSent) {
+      const matchedBusinessIds = Array.isArray(results?.results)
+        ? results.results.map(business => business?._id).filter(Boolean)
+        : Array.isArray(results)
+          ? results.map(business => business?._id).filter(Boolean)
+          : [];
+
+      dispatch(
+        logSearchActivity(
+          "",
+          location,
+          userDetails,
+          searchInput,
+          false,
+          matchedBusinessIds
+        )
+      );
+    }
+
+    navigateToSearchResult({
+      searchTerm: searchInput,
+      location,
+      navigate,
+      dispatch,
+      isKnownCategory: false,
+      results,
+      logAlreadySent: logSent,
+      userDetails
+    });
+  };
+
   const goHome = () => navigate("/");
   const loggedIn = categoryBarHelpers.checkLogin();
   const handleOpenModal = () => setIsModalOpen(true);
@@ -250,7 +383,7 @@ const StickySearchBar = ({
             </div>
           </div>
 
-          <div className={cx("search-area")}>
+          <form className={cx("search-area")} onSubmit={handleSearch}>
             <div className={cx("cards-input-group", "cards-location-group")}>
               <LocationOnIcon className={cx("input-adornment", "start")} />
               <input
@@ -271,9 +404,11 @@ const StickySearchBar = ({
                 <Dropdown
                   label="LOCATIONS"
                   options={parsedLocationSuggestions}
+                  onReachEnd={() => maybeLoadMoreSuggestions(locationName.trim())}
+                  hasMore={backendSuggestionsHasMore && backendSuggestionsQuery === locationName.trim()}
                   onSelect={handleLocationChange}
                   type="location"
-                  isLoadingMore={backendSuggestionsLoading}
+                  isLoadingMore={backendSuggestionsLoading && backendSuggestionsQuery === locationName.trim()}
                 />
               )}
             </div>
@@ -281,12 +416,12 @@ const StickySearchBar = ({
             <div className={cx("cards-input-group", "cards-search-group")}>
               <SearchIcon className={cx("input-adornment", "start")} />
               <input
+                ref={searchInputRef}
                 className={cx("cards-custom-input")}
-                placeholder="Search for..."
+                placeholder="Type a service, then press Enter or click Search"
                 value={searchTerm}
                 onChange={(e) => {
                   setSearchTerm(e.target.value);
-                  propSetCategoryName?.(e.target.value);
                   setIsCategoryDropdownOpen(true);
                   setIsSelectingLocation(false);
                 }}
@@ -298,33 +433,41 @@ const StickySearchBar = ({
               {isCategoryDropdownOpen && searchTerm.trim().length < 2 && (
                 <Dropdown
                   label="RECENT SEARCHES"
-                  options={suggestionCategories}
+                  options={recentSearchOptions}
                   onSelect={handleSelectCategory}
                   type="suggestion"
-                  isLoadingMore={backendSuggestionsLoading}
                 />
               )}
               {isCategoryDropdownOpen && searchTerm.trim().length >= 2 && (
                 <Dropdown
                   label="SUGGESTIONS"
                   options={suggestionCategories}
+                  onReachEnd={() => maybeLoadMoreSuggestions(searchTerm.trim())}
+                  hasMore={backendSuggestionsHasMore && backendSuggestionsQuery === searchTerm.trim()}
                   onSelect={handleSelectCategory}
                   type="suggestion"
-                  isLoadingMore={backendSuggestionsLoading}
+                  isLoadingMore={backendSuggestionsLoading && backendSuggestionsQuery === searchTerm.trim()}
                 />
               )}
             </div>
 
-            <button
-              className={cx("search-btn-web")}
-              onClick={() => handleSelectCategory(searchTerm)}
-              aria-label="Search"
-              title="Search"
-            >
-              <SearchIcon />
-              <span>Search</span>
-            </button>
-          </div>
+            <div className={cx("search-action-web")}>
+              <button
+                type="submit"
+                className={cx("search-btn-web", hasPendingSearch && "search-btn-web--pending")}
+                aria-label="Search"
+                title={hasPendingSearch ? "Press Enter or click Search to update results" : "Search"}
+              >
+                <SearchIcon />
+                <span>Search</span>
+              </button>
+              {hasPendingSearch && (
+                <span className={cx("search-hint-web")} aria-live="polite">
+                  Press Enter or click Search
+                </span>
+              )}
+            </div>
+          </form>
 
           <Box className={cx("header-actions")} sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             {!loggedIn ? (
@@ -391,7 +534,7 @@ const StickySearchBar = ({
               value={locationInput}
               onChange={e => setLocationInput(e.target.value)}
               onFocus={() => setIsFocused(true)}
-              onKeyPress={e => e.key === "Enter" && locationInput && handleLocationChange(locationInput)}
+              onKeyDown={e => e.key === "Enter" && locationInput && handleLocationChange(locationInput)}
               className={cx("search-input")}
               autoFocus
             />
@@ -416,7 +559,7 @@ const StickySearchBar = ({
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               onFocus={handleSearchFocus}
-              onKeyPress={e => e.key === "Enter" && handleSelectCategory(searchTerm)}
+              onKeyDown={e => e.key === "Enter" && handleSearch(e)}
               className={cx("search-input")}
             />
             {searchTerm && (

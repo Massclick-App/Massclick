@@ -106,7 +106,11 @@ const AuthorCard = ({
           )}
 
           {viewProfileLink && viewProfileLink.startsWith("/") ? (
-            <Link to={viewProfileLink} className={cx("profile-link")}>
+            <Link
+              to={viewProfileLink}
+              state={{ fromBlog: { title: name, slug: viewProfileLink.split('/').pop() } }}
+              className={cx("profile-link")}
+            >
               View Profile
               <span className={cx("arrow")}>-&gt;</span>
             </Link>

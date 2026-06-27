@@ -483,7 +483,6 @@ export default function businessListReducer(state = initialState, action) {
     case SUGGESTION_BUSINESS_REQUEST:
       return {
         ...state,
-        loading: true,
         backendSuggestionsLoading: true,
         ...(action.meta?.append
           ? {}
@@ -525,7 +524,6 @@ export default function businessListReducer(state = initialState, action) {
 
         return {
           ...state,
-          loading: false,
           backendSuggestionsLoading: false,
           backendSuggestions: merged,
           backendSuggestionsHasMore: Array.isArray(action.payload)
@@ -549,7 +547,6 @@ export default function businessListReducer(state = initialState, action) {
     case SUGGESTION_BUSINESS_FAILURE:
       return {
         ...state,
-        loading: false,
         backendSuggestionsLoading: false,
         ...(action.meta?.append
           ? {}
