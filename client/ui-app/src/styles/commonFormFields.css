@@ -1,0 +1,161 @@
+/* ========================================
+   COMMON FORM FIELDS STYLING
+   Used across all admin pages for consistency
+   ======================================== */
+
+:root {
+  --form-field-height: 45px;
+  --form-field-padding: 0 12px;
+  --form-field-bg: #f8fafc;
+  --form-field-border-default: transparent;
+  --form-field-border-focus: #FF8C00;
+  --form-field-border-hover: rgba(255, 140, 0, 0.5);
+  --form-field-border-error: #ef4444;
+  --form-field-bg-focus: #ffffff;
+  --form-field-shadow-focus: 0 0 0 5px rgba(255, 140, 0, 0.3);
+  --form-field-text-color: #0d0c22;
+  --form-field-text-placeholder: #94a3b8;
+  --form-field-bg-error: #fef2f2;
+}
+
+/* ========================================
+   TEXT INPUTS & SELECTS (COMMON)
+   ======================================== */
+
+.form-text-input,
+.form-select-input {
+  width: 100%;
+  height: var(--form-field-height);
+  padding: var(--form-field-padding);
+  font-size: 1rem;
+  border: 2px solid var(--form-field-border-default);
+  border-radius: 10px;
+  background-color: var(--form-field-bg);
+  color: var(--form-field-text-color);
+  transition: all 0.5s ease;
+  font-family: inherit;
+}
+
+.form-text-input::placeholder {
+  color: var(--form-field-text-placeholder);
+  opacity: 1;
+}
+
+.form-text-input:hover,
+.form-select-input:hover {
+  border-color: var(--form-field-border-hover);
+}
+
+.form-text-input:focus,
+.form-select-input:focus {
+  outline: none;
+  border-color: var(--form-field-border-focus);
+  background-color: var(--form-field-bg-focus);
+  box-shadow: var(--form-field-shadow-focus);
+}
+
+/* ========================================
+   ERROR STATES
+   ======================================== */
+
+.form-text-input.error,
+.form-select-input.error {
+  border-color: var(--form-field-border-error);
+  background-color: var(--form-field-bg-error);
+}
+
+/* ========================================
+   DISABLED STATES
+   ======================================== */
+
+.form-text-input:disabled,
+.form-select-input:disabled {
+  background-color: #f1f5f9;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+/* ========================================
+   FORM LABELS (COMMON)
+   ======================================== */
+
+.form-input-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #6b7280;
+  margin-bottom: 6px;
+  display: block;
+}
+
+.form-required-indicator {
+  color: var(--form-field-border-error);
+  font-weight: bold;
+  margin-left: 2px;
+}
+
+/* ========================================
+   ERROR TEXT
+   ======================================== */
+
+.form-error-text {
+  color: var(--form-field-border-error);
+  font-size: 0.8rem;
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+.form-helper-text {
+  color: #6b7280;
+  font-size: 0.8rem;
+  margin-top: 4px;
+  font-style: italic;
+}
+
+/* ========================================
+   FORM INPUT GROUP (CONTAINER)
+   ======================================== */
+
+.form-input-group {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ========================================
+   PASSWORD WRAPPER (FOR TOGGLE BUTTON)
+   ======================================== */
+
+.password-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-wrapper .form-text-input {
+  width: 100%;
+  padding-right: 50px;
+}
+
+.password-toggle-btn {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  color: #6b7280;
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  transition: color 0.3s ease;
+}
+
+.password-toggle-btn:hover {
+  color: var(--form-field-border-focus);
+}
+
+/* ========================================
+   RESPONSIVE & UTILITY
+   ======================================== */
+
+.form-text-input[readonly] {
+  background-color: #f1f5f9;
+  cursor: not-allowed;
+}

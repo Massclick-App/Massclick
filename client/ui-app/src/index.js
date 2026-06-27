@@ -1,5 +1,6 @@
 import ReactDOM from 'react-dom/client';
 import './index.css';
+import './styles/commonFormFields.css';
 import App from './App';
 import { store } from './redux/store.js';
 import reportWebVitals from './reportWebVitals';

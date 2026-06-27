@@ -1560,7 +1560,7 @@ export default function Category() {
                 <input
                   type="text"
                   name="category"
-                  className={cx(`category-text-input ${errors.category ? "category-error" : ""}`)}
+                  className={`form-text-input ${errors.category ? "error" : ""}`}
                   value={formData.category}
                   onChange={handleChange}
                 />
@@ -1573,7 +1573,7 @@ export default function Category() {
                 <input
                   type="text"
                   name="slug"
-                  className={cx("category-text-input")}
+                  className="form-text-input"
                   value={formData.slug}
                   readOnly
                 />
@@ -1586,7 +1586,7 @@ export default function Category() {
                 </label>
                 <select
                   name="categoryType"
-                  className={cx(`category-select-input ${errors.categoryType ? "category-error" : ""}`)}
+                  className={`form-select-input ${errors.categoryType ? "error" : ""}`}
                   value={formData.categoryType}
                   onChange={handleChange}
                 >
@@ -1604,7 +1604,7 @@ export default function Category() {
                   </label>
                   <select
                     name="subCategoryType"
-                    className={cx(`category-select-input ${errors.subCategoryType ? "category-error" : ""}`)}
+                    className={`form-select-input ${errors.subCategoryType ? "error" : ""}`}
                     value={formData.subCategoryType}
                     onChange={handleChange}
                   >
@@ -1626,7 +1626,7 @@ export default function Category() {
                 <input
                   type="text"
                   name="title"
-                  className={cx(`category-text-input ${errors.title ? "category-error" : ""}`)}
+                  className={`form-text-input ${errors.title ? "error" : ""}`}
                   value={formData.title}
                   onChange={handleChange}
                 />

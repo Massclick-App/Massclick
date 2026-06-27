@@ -320,14 +320,14 @@ export default function UserClients() {
                 id={field.name}
                 name={field.name}
                 placeholder={field.placeholder}
-                className={cx(`client-text-input ${errors[field.name] ? "error" : ""}`)}
+                className={`form-text-input ${errors[field.name] ? "error" : ""}`}
                 value={formData[field.name]}
                 onChange={handleChange}
               />
-              {errors[field.name] && <p id={`${field.name}-error`} className={cx("client-error-text")}>
+              {errors[field.name] && <p id={`${field.name}-error`} className="form-error-text">
                   ✗ {errors[field.name]}
                 </p>}
-              {!errors[field.name] && field.helper && <p id={`${field.name}-helper`} className={cx("client-helper-text")}>
+              {!errors[field.name] && field.helper && <p id={`${field.name}-helper`} className="form-helper-text">
                   {field.helper}
                 </p>}
             </div>)}

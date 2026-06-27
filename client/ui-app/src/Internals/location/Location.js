@@ -219,11 +219,11 @@ export default function Location() {
                               type="text"
                               id={name}
                               name={name}
-                              className={cx(`location-text-input ${errors[name] ? "error" : ""}`)}
+                              className={`form-text-input ${errors[name] ? "error" : ""}`}
                               value={formData[name]}
                               onChange={handleChange}
                             />
-                            {errors[name] && <p className={cx("location-error-text")}>{errors[name]}</p>}
+                            {errors[name] && <p className="form-error-text">{errors[name]}</p>}
                           </div>)}
 
                     <div className={cx("location-form-input-group location-col-span-all location-upload-section")}>

@@ -271,23 +271,23 @@ export default function User() {
                   {field.label}
                 </label>
 
-                {isPassword ? <div className={cx("password-wrapper")}>
+                {isPassword ? <div className="password-wrapper">
                     <input
                       type={showPassword ? "text" : "password"}
                       name={field.name}
-                      className={cx(`user-text-input ${errors.password ? "error" : ""}`)}
+                      className={`form-text-input ${errors.password ? "error" : ""}`}
                       value={formData.password || ""}
                       onChange={handleChange}
                       placeholder={isEditMode ? "Enter new password (optional)" : ""}
                       autoComplete="new-password"
                     />
-                    <button type="button" className={cx("password-toggle-btn")} onClick={() => setShowPassword(prev => !prev)}>
+                    <button type="button" className="password-toggle-btn" onClick={() => setShowPassword(prev => !prev)}>
                       {showPassword ? "Hide" : "Show"}
                     </button>
                   </div> : <input
                   type={field.type}
                   name={field.name}
-                  className={cx(`user-text-input ${errors[field.name] ? "error" : ""}`)}
+                  className={`form-text-input ${errors[field.name] ? "error" : ""}`}
                   value={formData[field.name]}
                   onChange={handleChange}
                 />}
@@ -301,7 +301,7 @@ export default function User() {
             </label>
             <select
               name="role"
-              className={cx(`user-select-input ${errors.role ? "error" : ""}`)}
+              className={`form-select-input ${errors.role ? "error" : ""}`}
               value={formData.role}
               onChange={handleChange}
             >
