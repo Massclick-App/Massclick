@@ -8,6 +8,14 @@ const sendError = (res, error, code = 400) => {
   });
 };
 
+const generateSlug = (displayName) => {
+  return displayName
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+};
+
 /* =====================================
    CREATE AUTHOR
 ===================================== */
