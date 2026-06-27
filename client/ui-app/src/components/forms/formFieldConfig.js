@@ -6,15 +6,14 @@
 export const muiTextFieldSx = {
   width: '100%',
   '& .MuiOutlinedInput-root': {
-    borderRadius: '8px',
+    borderRadius: '10px',
     backgroundColor: '#ffffff',
     transition: 'all 0.2s ease-in-out',
   },
   '& .MuiOutlinedInput-input': {
-    padding: '12px 14px',
+    padding: '8px 14px',
     fontSize: '1rem',
-    height: 'auto',
-    minHeight: '48px',
+    height: '52px',
     display: 'flex',
     alignItems: 'center',
   },
@@ -85,9 +84,13 @@ export const muiTextFieldSx = {
 export const muiSelectSx = {
   width: '100%',
   '& .MuiOutlinedInput-root': {
-    borderRadius: '8px',
+    borderRadius: '10px',
     backgroundColor: '#ffffff',
     transition: 'all 0.2s ease-in-out',
+  },
+  '& .MuiOutlinedInput-input': {
+    padding: '8px 14px',
+    height: '52px',
   },
   '& .MuiOutlinedInput-notchedOutline': {
     borderColor: '#e5e7eb',
@@ -117,9 +120,13 @@ export const muiSelectSx = {
 export const muiAutocompleteSx = {
   width: '100%',
   '& .MuiOutlinedInput-root': {
-    borderRadius: '8px',
+    borderRadius: '10px',
     backgroundColor: '#ffffff',
     transition: 'all 0.2s ease-in-out',
+  },
+  '& .MuiOutlinedInput-input': {
+    padding: '8px 14px',
+    height: '52px',
   },
   '& .MuiOutlinedInput-notchedOutline': {
     borderColor: '#e5e7eb',
