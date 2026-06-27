@@ -10,7 +10,6 @@ import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import CustomizedTable from "../../components/Table/CustomizedTable.js";
 import AdminViewTabs from "../../components/AdminViewTabs.js";
-import { FormField, FormSelect } from "../../components/forms/index.js";
 const cx = createScopedClassNames(styles);
 export default function User() {
   const dispatch = useDispatch();
@@ -273,29 +272,24 @@ export default function User() {
                 </label>
 
                 {isPassword ? <div className={cx("password-wrapper")}>
-                    <FormField
-                      hideLabel={true}
-                      name={field.name}
+                    <input
                       type={showPassword ? "text" : "password"}
+                      name={field.name}
+                      className={cx(`user-text-input ${errors.password ? "error" : ""}`)}
                       value={formData.password || ""}
                       onChange={handleChange}
-                      error={Boolean(errors.password)}
-                      helperText={errors[field.name] || ""}
                       placeholder={isEditMode ? "Enter new password (optional)" : ""}
-                      required={field.required && !isEditMode}
+                      autoComplete="new-password"
                     />
                     <button type="button" className={cx("password-toggle-btn")} onClick={() => setShowPassword(prev => !prev)}>
                       {showPassword ? "Hide" : "Show"}
                     </button>
-                  </div> : <FormField
-                  hideLabel={true}
-                  name={field.name}
+                  </div> : <input
                   type={field.type}
+                  name={field.name}
+                  className={cx(`user-text-input ${errors[field.name] ? "error" : ""}`)}
                   value={formData[field.name]}
                   onChange={handleChange}
-                  error={Boolean(errors[field.name])}
-                  helperText={errors[field.name] || ""}
-                  required={field.required}
                 />}
               </div>;
         })}
@@ -305,32 +299,34 @@ export default function User() {
             <label htmlFor="role" className={cx("user-input-label")}>
               Role
             </label>
-            <FormSelect
-              hideLabel={true}
+            <select
               name="role"
+              className={cx(`user-select-input ${errors.role ? "error" : ""}`)}
               value={formData.role}
-              onChange={(e) => handleChange(e)}
-              options={roles.map(role => ({ value: role.roleName, label: role.roleName }))}
-              error={Boolean(errors.role)}
-              helperText={errors.role || ""}
-              required={true}
-            />
+              onChange={handleChange}
+            >
+              <option value="">Select Role</option>
+              {roles.map(role => <option key={role._id} value={role.roleName}>
+                  {role.roleName}
+                </option>)}
+            </select>
           </div>
 
           {formData.role === "SalesOfficer" && <div className={cx("user-form-input-group")}>
               <label htmlFor="managedBy" className={cx("user-input-label")}>
                 Assigned Manager
               </label>
-              <FormSelect
-                hideLabel={true}
+              <select
                 name="managedBy"
+                className={cx(`user-select-input ${errors.managedBy ? "error" : ""}`)}
                 value={formData.managedBy}
-                onChange={(e) => handleChange(e)}
-                options={salesManagers.map(manager => ({ value: manager._id, label: manager.userName }))}
-                error={Boolean(errors.managedBy)}
-                helperText={errors.managedBy || ""}
-                required={true}
-              />
+                onChange={handleChange}
+              >
+                <option value="">Select Sales Manager</option>
+                {salesManagers.map(manager => <option key={manager._id} value={manager._id}>
+                    {manager.userName}
+                  </option>)}
+              </select>
             </div>}
 
           <div className={cx("user-form-input-group user-col-span-all user-upload-section")}>

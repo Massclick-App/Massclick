@@ -52,7 +52,6 @@ import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownR
 import KeyboardArrowUpRoundedIcon from "@mui/icons-material/KeyboardArrowUpRounded";
 import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 import AdminViewTabs from "../../components/AdminViewTabs.js";
-import { FormField, FormSelect, FormAutocomplete } from "../../components/forms/index.js";
 const cx = createScopedClassNames(styles);
 const API_URL = process.env.REACT_APP_API_URL;
 const CATEGORY_PAGE_FETCH_SIZE = 100;
@@ -1558,13 +1557,12 @@ export default function Category() {
                   <span>Category</span>
                   <HelpHint text={FIELD_HELP.category_name} />
                 </label>
-                <FormField
-                  hideLabel={true}
+                <input
+                  type="text"
                   name="category"
+                  className={cx(`category-text-input ${errors.category ? "category-error" : ""}`)}
                   value={formData.category}
                   onChange={handleChange}
-                  error={Boolean(errors.category)}
-                  helperText={errors.category || ""}
                 />
               </div>
 
@@ -1572,11 +1570,12 @@ export default function Category() {
                 <label className={cx("category-input-label")}>
                   Slug (Auto)
                 </label>
-                <FormField
-                  hideLabel={true}
+                <input
+                  type="text"
                   name="slug"
+                  className={cx("category-text-input")}
                   value={formData.slug}
-                  disabled={true}
+                  readOnly
                 />
               </div>
 
@@ -1585,18 +1584,16 @@ export default function Category() {
                   <span>Category Type</span>
                   <HelpHint text={FIELD_HELP.category_type} />
                 </label>
-                <FormSelect
-                  hideLabel={true}
+                <select
                   name="categoryType"
+                  className={cx(`category-select-input ${errors.categoryType ? "category-error" : ""}`)}
                   value={formData.categoryType}
                   onChange={handleChange}
-                  options={[
-                    { value: "Primary Category", label: "Primary Category" },
-                    { value: "Sub Category", label: "Sub Category" }
-                  ]}
-                  error={Boolean(errors.categoryType)}
-                  helperText={errors.categoryType || ""}
-                />
+                >
+                  <option value="">-- Select Type --</option>
+                  <option value="Primary Category">Primary Category</option>
+                  <option value="Sub Category">Sub Category</option>
+                </select>
               </div>
 
               {formData.categoryType === "Sub Category" && (
@@ -1605,15 +1602,19 @@ export default function Category() {
                     <span>Sub Category Type</span>
                     <HelpHint text={FIELD_HELP.sub_category_type} />
                   </label>
-                  <FormSelect
-                    hideLabel={true}
+                  <select
                     name="subCategoryType"
+                    className={cx(`category-select-input ${errors.subCategoryType ? "category-error" : ""}`)}
                     value={formData.subCategoryType}
                     onChange={handleChange}
-                    options={subCategories.map((sub) => ({ value: sub, label: sub }))}
-                    error={Boolean(errors.subCategoryType)}
-                    helperText={errors.subCategoryType || ""}
-                  />
+                  >
+                    <option value="">-- Select Sub Category --</option>
+                    {subCategories.map((sub) => (
+                      <option key={sub} value={sub}>
+                        {sub}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               )}
 
@@ -1622,13 +1623,12 @@ export default function Category() {
                   <span>Title</span>
                   <HelpHint text={FIELD_HELP.title} />
                 </label>
-                <FormField
-                  hideLabel={true}
+                <input
+                  type="text"
                   name="title"
+                  className={cx(`category-text-input ${errors.title ? "category-error" : ""}`)}
                   value={formData.title}
                   onChange={handleChange}
-                  error={Boolean(errors.title)}
-                  helperText={errors.title || ""}
                 />
               </div>
 
