@@ -16,20 +16,74 @@ const generateSlug = (displayName) => {
     .replace(/^-+|-+$/g, "");
 };
 
+const normalizeAuthorName = (value = "") => {
+  return String(value).toLowerCase().trim();
+};
+
+const normalizeStringField = (value) => {
+  if (value === undefined || value === null) return "";
+  return String(value).trim();
+};
+
+const normalizeStringArray = (value) => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => String(item || "").trim())
+    .filter(Boolean);
+};
+
+const escapeRegex = (value = "") => {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+};
+
+const buildAuthorVisibilityQuery = (query = {}) => {
+  const { includeInactive, isActive } = query;
+
+  if (includeInactive === "true" || isActive === "all" || isActive === "false") {
+    return {};
+  }
+
+  if (includeInactive === "only" || isActive === "inactive") {
+    return { isActive: false };
+  }
+
+  return { isActive: true };
+};
+
 /* =====================================
    CREATE AUTHOR
 ===================================== */
 
 export const createAuthorAction = async (req, res) => {
   try {
-    const { name, displayName, email, website, linkedin, bio, experience, expertCategory } = req.body;
+    const {
+      name,
+      displayName,
+      title,
+      shortBio,
+      bio,
+      experience,
+      expertCategory,
+      expertiseAreas,
+      specializations,
+      email,
+      phone,
+      website,
+      linkedin,
+      twitter,
+      profileImage,
+      isActive,
+    } = req.body;
 
-    if (!name || !displayName) {
-      throw new Error("Name and display name are required");
+    const normalizedDisplayName = normalizeStringField(displayName);
+    const normalizedName = normalizeAuthorName(name || normalizedDisplayName);
+
+    if (!normalizedDisplayName) {
+      throw new Error("Display name is required");
     }
 
     const existingAuthor = await authorMasterModel.findOne({
-      name: name.toLowerCase().trim(),
+      name: normalizedName,
     });
 
     if (existingAuthor) {
@@ -37,15 +91,23 @@ export const createAuthorAction = async (req, res) => {
     }
 
     const newAuthor = new authorMasterModel({
-      name: name.toLowerCase().trim(),
-      displayName: displayName.trim(),
-      slug: generateSlug(displayName),
-      email: email || "",
-      website: website || "",
-      linkedin: linkedin || "",
-      bio: bio || "",
-      experience: experience || "",
-      expertCategory: expertCategory || "",
+      name: normalizedName,
+      displayName: normalizedDisplayName,
+      slug: generateSlug(normalizedDisplayName),
+      title: normalizeStringField(title),
+      shortBio: normalizeStringField(shortBio),
+      bio: normalizeStringField(bio),
+      experience: normalizeStringField(experience),
+      expertCategory: normalizeStringField(expertCategory),
+      expertiseAreas: normalizeStringArray(expertiseAreas),
+      specializations: normalizeStringArray(specializations),
+      email: normalizeStringField(email),
+      phone: normalizeStringField(phone),
+      website: normalizeStringField(website),
+      linkedin: normalizeStringField(linkedin),
+      twitter: normalizeStringField(twitter),
+      profileImage: normalizeStringField(profileImage),
+      isActive: isActive !== undefined ? Boolean(isActive) : true,
     });
 
     await newAuthor.save();
@@ -65,9 +127,7 @@ export const createAuthorAction = async (req, res) => {
 ===================================== */
 export const getAllAuthorsAction = async (req, res) => {
   try {
-    const { isActive = true } = req.query;
-
-    const query = isActive !== "false" ? { isActive: true } : {};
+    const query = buildAuthorVisibilityQuery(req.query);
 
     const authors = await authorMasterModel.find(query).sort({ displayName: 1 });
 
@@ -109,7 +169,24 @@ export const getAuthorAction = async (req, res) => {
 export const updateAuthorAction = async (req, res) => {
   try {
     const { id } = req.params;
-    const { displayName, email, website, linkedin, bio, experience, expertCategory, isActive } = req.body;
+    const {
+      name,
+      displayName,
+      title,
+      shortBio,
+      bio,
+      experience,
+      expertCategory,
+      expertiseAreas,
+      specializations,
+      email,
+      phone,
+      website,
+      linkedin,
+      twitter,
+      profileImage,
+      isActive,
+    } = req.body;
 
     const author = await authorMasterModel.findById(id);
 
@@ -117,16 +194,40 @@ export const updateAuthorAction = async (req, res) => {
       throw new Error("Author not found");
     }
 
-    if (displayName) {
-      author.displayName = displayName.trim();
-      author.slug = generateSlug(displayName);
+    if (displayName !== undefined) {
+      const normalizedDisplayName = normalizeStringField(displayName);
+
+      if (!normalizedDisplayName) {
+        throw new Error("Display name is required");
+      }
+
+      const normalizedName = normalizeAuthorName(name || normalizedDisplayName);
+      const existingAuthor = await authorMasterModel.findOne({
+        _id: { $ne: id },
+        name: normalizedName,
+      });
+
+      if (existingAuthor) {
+        throw new Error("Author already exists");
+      }
+
+      author.name = normalizedName;
+      author.displayName = normalizedDisplayName;
+      author.slug = generateSlug(normalizedDisplayName);
     }
-    if (email !== undefined) author.email = email;
-    if (website !== undefined) author.website = website;
-    if (linkedin !== undefined) author.linkedin = linkedin;
-    if (bio !== undefined) author.bio = bio;
-    if (experience !== undefined) author.experience = experience;
-    if (expertCategory !== undefined) author.expertCategory = expertCategory;
+    if (title !== undefined) author.title = normalizeStringField(title);
+    if (shortBio !== undefined) author.shortBio = normalizeStringField(shortBio);
+    if (bio !== undefined) author.bio = normalizeStringField(bio);
+    if (experience !== undefined) author.experience = normalizeStringField(experience);
+    if (expertCategory !== undefined) author.expertCategory = normalizeStringField(expertCategory);
+    if (expertiseAreas !== undefined) author.expertiseAreas = normalizeStringArray(expertiseAreas);
+    if (specializations !== undefined) author.specializations = normalizeStringArray(specializations);
+    if (email !== undefined) author.email = normalizeStringField(email);
+    if (phone !== undefined) author.phone = normalizeStringField(phone);
+    if (website !== undefined) author.website = normalizeStringField(website);
+    if (linkedin !== undefined) author.linkedin = normalizeStringField(linkedin);
+    if (twitter !== undefined) author.twitter = normalizeStringField(twitter);
+    if (profileImage !== undefined) author.profileImage = normalizeStringField(profileImage);
     if (isActive !== undefined) author.isActive = isActive;
 
     await author.save();
@@ -174,14 +275,19 @@ export const searchAuthorsAction = async (req, res) => {
       throw new Error("Search query is required");
     }
 
+    const escapedQuery = escapeRegex(query.trim());
+    const visibilityQuery = buildAuthorVisibilityQuery(req.query);
+
     const authors = await authorMasterModel
       .find({
         $or: [
-          { displayName: { $regex: query, $options: "i" } },
-          { name: { $regex: query, $options: "i" } },
-          { email: { $regex: query, $options: "i" } },
+          { displayName: { $regex: escapedQuery, $options: "i" } },
+          { name: { $regex: escapedQuery, $options: "i" } },
+          { email: { $regex: escapedQuery, $options: "i" } },
+          { title: { $regex: escapedQuery, $options: "i" } },
+          { expertCategory: { $regex: escapedQuery, $options: "i" } },
         ],
-        isActive: true,
+        ...visibilityQuery,
       })
       .sort({ displayName: 1 })
       .limit(20);

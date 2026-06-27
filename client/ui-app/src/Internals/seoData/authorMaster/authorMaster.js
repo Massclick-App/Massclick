@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   fetchAllAuthors,
@@ -49,6 +49,7 @@ export default function AuthorMaster() {
   const { list = [], loading = false } = useSelector(
     (state) => state.authorMasterReducer || {}
   );
+  const fetchAdminAuthors = () => dispatch(fetchAllAuthors({ includeInactive: "true" }));
 
   const [formData, setFormData] = useState(defaultForm);
   const [editingId, setEditingId] = useState(null);
@@ -58,7 +59,7 @@ export default function AuthorMaster() {
   const [detailDrawer, setDetailDrawer] = useState(null);
 
   useEffect(() => {
-    dispatch(fetchAllAuthors());
+    dispatch(fetchAllAuthors({ includeInactive: "true" }));
   }, [dispatch]);
 
   const resetForm = () => {
@@ -82,7 +83,7 @@ export default function AuthorMaster() {
       }
 
       resetForm();
-      dispatch(fetchAllAuthors());
+      fetchAdminAuthors();
       setActiveView("list");
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {
@@ -444,7 +445,7 @@ export default function AuthorMaster() {
               data={rows}
               columns={columns}
               total={rows.length}
-              fetchData={() => dispatch(fetchAllAuthors())}
+              fetchData={fetchAdminAuthors}
             />
           </Box>
         )}
@@ -471,7 +472,7 @@ export default function AuthorMaster() {
               onClick={async () => {
                 await dispatch(deleteAuthor(selectedRow.id));
                 setDeleteDialogOpen(false);
-                dispatch(fetchAllAuthors());
+                fetchAdminAuthors();
               }}
             >
               Delete

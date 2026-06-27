@@ -27,11 +27,13 @@ const getToken = async (dispatch) => {
   return token;
 };
 
-export const fetchAllAuthors = () => async (dispatch) => {
+export const fetchAllAuthors = (options = {}) => async (dispatch) => {
   dispatch({ type: FETCH_AUTHORS_REQUEST });
 
   try {
-    const res = await axiosInstance.get(`${API}/author/all`);
+    const res = await axiosInstance.get(`${API}/author/all`, {
+      params: options,
+    });
 
     dispatch({
       type: FETCH_AUTHORS_SUCCESS,
@@ -49,12 +51,12 @@ export const fetchAllAuthors = () => async (dispatch) => {
   }
 };
 
-export const searchAuthors = (query) => async (dispatch) => {
+export const searchAuthors = (query, options = {}) => async (dispatch) => {
   dispatch({ type: SEARCH_AUTHORS_REQUEST });
 
   try {
     const res = await axiosInstance.get(`${API}/author/search`, {
-      params: { query },
+      params: { query, ...options },
     });
 
     dispatch({
