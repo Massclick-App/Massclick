@@ -19,13 +19,6 @@ const generateSlug = (displayName) => {
 /* =====================================
    CREATE AUTHOR
 ===================================== */
-const generateSlug = (displayName) => {
-  return displayName
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-};
 
 export const createAuthorAction = async (req, res) => {
   try {
