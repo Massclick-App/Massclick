@@ -267,7 +267,7 @@ export default function Msg91Analytics() {
       </section>
 
       <section className={styles.filters}>
-        <label>
+        <label className="form-input-label">
           Report Type
           <select
             value={filters.reportType}
@@ -275,24 +275,25 @@ export default function Msg91Analytics() {
               setBusinessSearch("");
               updateFilter("reportType", event.target.value);
             }}
+            className="form-select-input"
           >
             {reportTypeOptions.map((type) => (
               <option key={type.value} value={type.value}>{type.label}</option>
             ))}
           </select>
         </label>
-        <label>
+        <label className="form-input-label">
           From
-          <input type="date" value={filters.from} onChange={(event) => updateFilter("from", event.target.value)} />
+          <input type="date" value={filters.from} onChange={(event) => updateFilter("from", event.target.value)} className="form-text-input" />
         </label>
-        <label>
+        <label className="form-input-label">
           To
-          <input type="date" value={filters.to} onChange={(event) => updateFilter("to", event.target.value)} />
+          <input type="date" value={filters.to} onChange={(event) => updateFilter("to", event.target.value)} className="form-text-input" />
         </label>
         {!isMniMode && (
-          <label>
+          <label className="form-input-label">
             Template
-            <select value={filters.template} onChange={(event) => updateFilter("template", event.target.value)}>
+            <select value={filters.template} onChange={(event) => updateFilter("template", event.target.value)} className="form-select-input">
               <option value="">All templates</option>
               {filterOptions.templates.map((template) => (
                 <option key={template} value={template}>{template}</option>
@@ -300,20 +301,20 @@ export default function Msg91Analytics() {
             </select>
           </label>
         )}
-        <label>
+        <label className="form-input-label">
           Status
-          <select value={filters.status} onChange={(event) => updateFilter("status", event.target.value)}>
+          <select value={filters.status} onChange={(event) => updateFilter("status", event.target.value)} className="form-select-input">
             <option value="">All</option>
             {statusOptions.map((status) => <option key={status} value={status}>{status}</option>)}
           </select>
         </label>
         {!isMniMode && (
           <>
-            <label>
+            <label className="form-input-label">
               Failure
-              <input value={filters.failureReason} onChange={(event) => updateFilter("failureReason", event.target.value)} placeholder="131026" />
+              <input value={filters.failureReason} onChange={(event) => updateFilter("failureReason", event.target.value)} placeholder="131026" className="form-text-input" />
             </label>
-            <label className={styles.wideFilter}>
+            <label className={`${styles.wideFilter} form-input-label`}>
               Business Person
               <div className={styles.businessSearch}>
                 <input
@@ -323,6 +324,7 @@ export default function Msg91Analytics() {
                     updateFilter("businessId", "");
                   }}
                   placeholder="Type business name, client ID, mobile, category, or location"
+                  className="form-text-input"
                 />
                 {filters.businessId && (
                   <button
@@ -335,7 +337,7 @@ export default function Msg91Analytics() {
                     Clear business
                   </button>
                 )}
-                <select value={filters.businessId} onChange={(event) => selectBusiness(event.target.value)}>
+                <select value={filters.businessId} onChange={(event) => selectBusiness(event.target.value)} className="form-select-input">
                   <option value="">{businessLoading ? "Searching..." : "All matching businesses"}</option>
                   {businessOptions.map((business) => (
                     <option key={business._id} value={business._id}>
@@ -348,9 +350,9 @@ export default function Msg91Analytics() {
           </>
         )}
         {isMniMode && (
-          <label>
+          <label className="form-input-label">
             Business Group
-            <select value={filters.mniGroup} onChange={(event) => updateFilter("mniGroup", event.target.value)}>
+            <select value={filters.mniGroup} onChange={(event) => updateFilter("mniGroup", event.target.value)} className="form-select-input">
               <option value="">All MNI groups</option>
               {filterOptions.mniGroups.map((group) => (
                 <option key={group} value={group}>{group}</option>
@@ -358,31 +360,31 @@ export default function Msg91Analytics() {
             </select>
           </label>
         )}
-        <label>
+        <label className="form-input-label">
           Category
-          <select value={filters.category} onChange={(event) => updateFilter("category", event.target.value)}>
+          <select value={filters.category} onChange={(event) => updateFilter("category", event.target.value)} className="form-select-input">
             <option value="">All categories</option>
             {filterOptions.categories.map((category) => (
               <option key={category} value={category}>{category}</option>
             ))}
           </select>
         </label>
-        <label>
+        <label className="form-input-label">
           Location
-          <select value={filters.location} onChange={(event) => updateFilter("location", event.target.value)}>
+          <select value={filters.location} onChange={(event) => updateFilter("location", event.target.value)} className="form-select-input">
             <option value="">All locations</option>
             {filterOptions.locations.map((location) => (
               <option key={location} value={location}>{location}</option>
             ))}
           </select>
         </label>
-        <label>
+        <label className="form-input-label">
           Recipient
-          <input value={filters.recipientMobile} onChange={(event) => updateFilter("recipientMobile", event.target.value)} />
+          <input value={filters.recipientMobile} onChange={(event) => updateFilter("recipientMobile", event.target.value)} className="form-text-input" />
         </label>
-        <label>
+        <label className="form-input-label">
           Customer
-          <input value={filters.customerMobile} onChange={(event) => updateFilter("customerMobile", event.target.value)} />
+          <input value={filters.customerMobile} onChange={(event) => updateFilter("customerMobile", event.target.value)} className="form-text-input" />
         </label>
         <div className={styles.filterButtons}>
           <button type="button" className={styles.primary} onClick={applyFilters}>Apply</button>
@@ -621,12 +623,12 @@ export default function Msg91Analytics() {
           <span>{recipientsLoading ? "Loading" : `${formatNumber(recipientsTotal)} rows`}</span>
         </div>
         <div className={styles.recipientFilters}>
-          <input placeholder="Mobile" value={recipientFilter.mobile} onChange={(event) => setRecipientFilter((prev) => ({ ...prev, mobile: event.target.value }))} />
-          <select value={recipientFilter.suppressed} onChange={(event) => setRecipientFilter((prev) => ({ ...prev, suppressed: event.target.value }))}>
+          <input placeholder="Mobile" value={recipientFilter.mobile} onChange={(event) => setRecipientFilter((prev) => ({ ...prev, mobile: event.target.value }))} className="form-text-input" />
+          <select value={recipientFilter.suppressed} onChange={(event) => setRecipientFilter((prev) => ({ ...prev, suppressed: event.target.value }))} className="form-select-input">
             <option value="">Suppressed: all</option>
             <option value="true">Suppressed only</option>
           </select>
-          <select value={recipientFilter.invalid} onChange={(event) => setRecipientFilter((prev) => ({ ...prev, invalid: event.target.value }))}>
+          <select value={recipientFilter.invalid} onChange={(event) => setRecipientFilter((prev) => ({ ...prev, invalid: event.target.value }))} className="form-select-input">
             <option value="">Invalid: all</option>
             <option value="true">Invalid only</option>
           </select>
