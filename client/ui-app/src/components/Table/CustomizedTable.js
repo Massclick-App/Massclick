@@ -40,6 +40,7 @@ const CustomizedTable = ({
   const [sortConfig, setSortConfig] = useState({ orderBy: null, order: "asc" });
   const [isScrolled, setIsScrolled] = useState(false);
   const throttledScrollRef = useRef(null);
+  const searchInputRef = useRef(null);
 
   const resolvedStatusOptions = statusOptions ?? DEFAULT_STATUS_OPTIONS;
 
@@ -48,6 +49,18 @@ const CustomizedTable = ({
       setIsScrolled(e.target.scrollTop > 0);
     }, 60);
   }, []);
+
+  useEffect(() => {
+    if (!enableSearch) return;
+    const handleKeyDown = e => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [enableSearch]);
 
   useEffect(() => { setSearchQuery(initialSearchQuery); }, [initialSearchQuery]);
   useEffect(() => { setStatusFilter(initialStatusFilter); }, [initialStatusFilter]);
@@ -114,6 +127,7 @@ const CustomizedTable = ({
                 <path d="m21 21-4.34-4.34"></path>
               </svg>
               <input
+                ref={searchInputRef}
                 className={cx("cir-search__field")}
                 type="search"
                 placeholder="Search threads, contacts, replies"

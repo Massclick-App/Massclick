@@ -15,6 +15,8 @@ export default function UserClients() {
   const {
     userClient = [],
     total = 0,
+    pageNo: currentPageNo = 1,
+    pageSize: currentPageSize = 10,
     loading,
     error
   } = useSelector(state => state.userClientReducer || {});
@@ -33,9 +35,15 @@ export default function UserClients() {
   });
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [tableQuery, setTableQuery] = useState({
+    pageNo: 1,
+    pageSize: 10,
+    options: {}
+  });
   useEffect(() => {
-    dispatch(getAllUsersClient());
-  }, [dispatch]);
+    if (activeView !== "list") return;
+    dispatch(getAllUsersClient(tableQuery));
+  }, [activeView, dispatch, tableQuery]);
   const mapErrorToField = errorMessage => {
     const lowerError = errorMessage.toLowerCase();
     if (lowerError.includes('name') && !lowerError.includes('business')) return 'name';
@@ -127,12 +135,19 @@ export default function UserClients() {
     return {
       clientId: data.clientId,
       name: data.name,
+      emailId: data.emailId,
       email: data.emailId,
+      contact: data.contact,
       phone: data.contact,
       businessName: data.businessName,
       businessAddress: data.businessAddress
     };
   };
+  const refreshCurrentPage = () => dispatch(getAllUsersClient({
+    pageNo: currentPageNo,
+    pageSize: currentPageSize,
+    options: tableQuery.options
+  }));
   const handleSubmit = e => {
     e.preventDefault();
     if (!validateForm()) return;
@@ -142,7 +157,7 @@ export default function UserClients() {
         setSuccessMessage("✓ Client updated successfully!");
         setTimeout(() => setSuccessMessage(""), 3000);
         resetForm();
-        dispatch(getAllUsersClient());
+        refreshCurrentPage();
       }).catch(err => {
         console.error("Update client failed:", err);
         const backendErrors = parseBackendErrors(err);
@@ -155,7 +170,7 @@ export default function UserClients() {
         setSuccessMessage("✓ Client created successfully!");
         setTimeout(() => setSuccessMessage(""), 3000);
         resetForm();
-        dispatch(getAllUsersClient());
+        refreshCurrentPage();
       }).catch(err => {
         console.error("Create client failed:", err);
         const backendErrors = parseBackendErrors(err);
@@ -185,7 +200,7 @@ export default function UserClients() {
   const confirmDelete = () => {
     if (selectedUser) {
       dispatch(deleteUserClient(selectedUser.id)).then(() => {
-        dispatch(getAllUsersClient());
+        refreshCurrentPage();
         setDeleteDialogOpen(false);
         setSelectedUser(null);
       }).catch(err => console.error("Delete failed:", err));
@@ -197,10 +212,11 @@ export default function UserClients() {
   };
   const rows = userClient.filter(user => user.isActive).map((user, index) => ({
     id: user._id || index,
+    _id: user._id || index,
     clientId: user.clientId,
     name: user.name,
-    emailId: user.emailId,
-    contact: user.contact,
+    emailId: user.emailId || user.email || "-",
+    contact: user.contact || user.phone || "-",
     businessName: user.businessName || "-",
     businessAddress: user.businessAddress || "-",
     isActive: user.isActive
@@ -353,11 +369,11 @@ export default function UserClients() {
       <Box sx={{
       width: "100%"
     }}>
-        <CustomizedTable data={rows} columns={clientList} total={total} fetchData={(pageNo, pageSize, options) => dispatch(getAllUsersClient({
+        <CustomizedTable data={rows} columns={clientList} total={total} loading={loading} fetchData={(pageNo, pageSize, options) => setTableQuery({
         pageNo,
         pageSize,
         options
-      }))} />
+      })} />
       </Box>
       </>}
 
