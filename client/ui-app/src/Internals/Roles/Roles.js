@@ -2,7 +2,7 @@ import { createScopedClassNames } from "../../utils/createScopedClassNames";
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { getAllRoles, createRoles, editRoles, deleteRoles } from "../../redux/actions/rolesAction";
-import { Box, Button, Typography, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, Checkbox, FormControlLabel, Chip } from "@mui/material";
+import { Box, Button, Typography, Dialog, DialogTitle, DialogContent, DialogActions, Chip, Checkbox, FormControlLabel } from "@mui/material";
 import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import styles from "./roles.module.css";
 import CustomizedTable from "../../components/Table/CustomizedTable";

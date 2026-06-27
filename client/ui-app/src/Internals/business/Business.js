@@ -9,31 +9,20 @@ import { getAllLocation, createLocation } from "../../redux/actions/locationActi
 import { getAllCategory, businessCategorySearch } from "../../redux/actions/categoryAction";
 import { getAllUsersClient, getUserClientSuggestion } from "../../redux/actions/userClientAction.js";
 import { getAllUsers } from "../../redux/actions/userAction.js";
-import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import SkipNextIcon from '@mui/icons-material/SkipNext';
-import SkipPreviousIcon from '@mui/icons-material/SkipPrevious';
 import BusinessCenterIcon from '@mui/icons-material/BusinessCenter';
 import PrivacyTipIcon from '@mui/icons-material/PrivacyTip';
 import CategoryIcon from '@mui/icons-material/Category';
 import VerifiedUserIcon from "@mui/icons-material/VerifiedUser";
 import {
   Box, Button, Typography, CircularProgress, IconButton, Avatar, Dialog, DialogTitle, DialogContent, DialogActions,
-  Drawer, Divider,
-  // Stepper Imports:
-  Stack, Stepper, Step, StepLabel, Chip, Checkbox, FormControlLabel, RadioGroup, Radio, Slider, FormGroup
+  Drawer, Divider, Chip
 } from "@mui/material";
-import PaidIcon from '@mui/icons-material/Paid';
-import PendingIcon from '@mui/icons-material/Pending';
 import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined';
-import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
-import Autocomplete from "@mui/material/Autocomplete";
-import TextField from "@mui/material/TextField";
 import { useSnackbar } from 'notistack';
 import PropTypes from 'prop-types';
 import { styled } from '@mui/material/styles';
 import StepConnector, { stepConnectorClasses } from '@mui/material/StepConnector';
-import EditRoundedIcon from "@mui/icons-material/EditRounded";
-import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import CollectionsBookmarkOutlinedIcon from '@mui/icons-material/CollectionsBookmarkOutlined';
 import { EyeOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import TravelExploreIcon from '@mui/icons-material/TravelExplore';

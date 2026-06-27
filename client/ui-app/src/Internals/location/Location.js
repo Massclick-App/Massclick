@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { getAllLocation, createLocation, editLocation, deleteLocation } from "../../redux/actions/locationAction.js";
 import styles from "./location.module.css";
-import { Box, Button, Typography, CircularProgress, IconButton, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
+import { Box, Button, Typography, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
 import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import CustomizedTable from "../../components/Table/CustomizedTable.js";
 import AdminViewTabs from "../../components/AdminViewTabs.js";
