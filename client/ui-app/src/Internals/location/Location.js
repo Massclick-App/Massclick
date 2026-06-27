@@ -212,16 +212,20 @@ export default function Location() {
                     {fields.map(({
           label,
           name
-        }) => <FormField
-                            key={name}
-                            label={label}
-                            name={name}
-                            value={formData[name]}
-                            onChange={handleChange}
-                            error={Boolean(errors[name])}
-                            helperText={errors[name] || ""}
-                            required={true}
-                          />)}
+        }) => <div key={name} className={cx("location-form-input-group")}>
+                            <label htmlFor={name} className={cx("location-input-label")}>
+                                {label}
+                            </label>
+                            <FormField
+                              hideLabel={true}
+                              name={name}
+                              value={formData[name]}
+                              onChange={handleChange}
+                              error={Boolean(errors[name])}
+                              helperText={errors[name] || ""}
+                              required={true}
+                            />
+                          </div>)}
 
                     <div className={cx("location-form-input-group location-col-span-all location-upload-section")}>
                         <div className={cx("location-upload-content")}>

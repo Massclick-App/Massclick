@@ -311,18 +311,23 @@ export default function UserClients() {
           </Alert>}
 
         <form onSubmit={handleSubmit} className={cx("client-form-grid")}>
-          {fields.map((field, i) => <FormField
-              key={i}
-              label={field.label}
-              name={field.name}
-              type={field.type}
-              placeholder={field.placeholder}
-              value={formData[field.name]}
-              onChange={handleChange}
-              error={Boolean(errors[field.name])}
-              helperText={errors[field.name] || field.helper || ""}
-              required={field.required}
-            />)}
+          {fields.map((field, i) => <div key={i} className={cx("client-form-input-group")}>
+              <label htmlFor={field.name} className={cx("client-input-label")}>
+                {field.label}
+                {field.required && <span className={cx("client-required-indicator")}>*</span>}
+              </label>
+              <FormField
+                hideLabel={true}
+                name={field.name}
+                type={field.type}
+                placeholder={field.placeholder}
+                value={formData[field.name]}
+                onChange={handleChange}
+                error={Boolean(errors[field.name])}
+                helperText={errors[field.name] || field.helper || ""}
+                required={field.required}
+              />
+            </div>)}
 
           <div className={cx("client-button-group col-span-all")}>
             <button type="submit" className={cx("client-submit-button")} disabled={loading}>

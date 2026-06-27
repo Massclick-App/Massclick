@@ -31,12 +31,13 @@ const FormField = ({
   error = false,
   helperText = '',
   sx = {},
+  hideLabel = false,
   ...rest
 }) => {
   return (
     <TextField
       fullWidth
-      label={label}
+      label={hideLabel ? undefined : label}
       name={name}
       value={value}
       onChange={onChange}

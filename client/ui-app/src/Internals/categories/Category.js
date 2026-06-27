@@ -1553,67 +1553,84 @@ export default function Category() {
                 <span>Details</span>
               </div>
 
-              <FormField
-                label={<div className={cx("label-with-help")}>
+              <div className={cx("category-form-input-group")}>
+                <label className={cx("category-input-label label-with-help")}>
                   <span>Category</span>
                   <HelpHint text={FIELD_HELP.category_name} />
-                </div>}
-                name="category"
-                value={formData.category}
-                onChange={handleChange}
-                error={Boolean(errors.category)}
-                helperText={errors.category || ""}
-              />
+                </label>
+                <FormField
+                  hideLabel={true}
+                  name="category"
+                  value={formData.category}
+                  onChange={handleChange}
+                  error={Boolean(errors.category)}
+                  helperText={errors.category || ""}
+                />
+              </div>
 
-              <FormField
-                label="Slug (Auto)"
-                name="slug"
-                value={formData.slug}
-                disabled={true}
-              />
+              <div className={cx("category-form-input-group")}>
+                <label className={cx("category-input-label")}>
+                  Slug (Auto)
+                </label>
+                <FormField
+                  hideLabel={true}
+                  name="slug"
+                  value={formData.slug}
+                  disabled={true}
+                />
+              </div>
 
-              <FormSelect
-                label={<div className={cx("label-with-help")}>
+              <div className={cx("category-form-input-group")}>
+                <label className={cx("category-input-label label-with-help")}>
                   <span>Category Type</span>
                   <HelpHint text={FIELD_HELP.category_type} />
-                </div>}
-                name="categoryType"
-                value={formData.categoryType}
-                onChange={handleChange}
-                options={[
-                  { value: "Primary Category", label: "Primary Category" },
-                  { value: "Sub Category", label: "Sub Category" }
-                ]}
-                error={Boolean(errors.categoryType)}
-                helperText={errors.categoryType || ""}
-              />
+                </label>
+                <FormSelect
+                  hideLabel={true}
+                  name="categoryType"
+                  value={formData.categoryType}
+                  onChange={handleChange}
+                  options={[
+                    { value: "Primary Category", label: "Primary Category" },
+                    { value: "Sub Category", label: "Sub Category" }
+                  ]}
+                  error={Boolean(errors.categoryType)}
+                  helperText={errors.categoryType || ""}
+                />
+              </div>
 
               {formData.categoryType === "Sub Category" && (
-                <FormSelect
-                  label={<div className={cx("label-with-help")}>
+                <div className={cx("category-form-input-group")}>
+                  <label className={cx("category-input-label label-with-help")}>
                     <span>Sub Category Type</span>
                     <HelpHint text={FIELD_HELP.sub_category_type} />
-                  </div>}
-                  name="subCategoryType"
-                  value={formData.subCategoryType}
-                  onChange={handleChange}
-                  options={subCategories.map((sub) => ({ value: sub, label: sub }))}
-                  error={Boolean(errors.subCategoryType)}
-                  helperText={errors.subCategoryType || ""}
-                />
+                  </label>
+                  <FormSelect
+                    hideLabel={true}
+                    name="subCategoryType"
+                    value={formData.subCategoryType}
+                    onChange={handleChange}
+                    options={subCategories.map((sub) => ({ value: sub, label: sub }))}
+                    error={Boolean(errors.subCategoryType)}
+                    helperText={errors.subCategoryType || ""}
+                  />
+                </div>
               )}
 
-              <FormField
-                label={<div className={cx("label-with-help")}>
+              <div className={cx("category-form-input-group")}>
+                <label className={cx("category-input-label label-with-help")}>
                   <span>Title</span>
                   <HelpHint text={FIELD_HELP.title} />
-                </div>}
-                name="title"
-                value={formData.title}
-                onChange={handleChange}
-                error={Boolean(errors.title)}
-                helperText={errors.title || ""}
-              />
+                </label>
+                <FormField
+                  hideLabel={true}
+                  name="title"
+                  value={formData.title}
+                  onChange={handleChange}
+                  error={Boolean(errors.title)}
+                  helperText={errors.title || ""}
+                />
+              </div>
 
               <div
                 className={cx("category-section-title category-col-span-all")}

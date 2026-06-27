@@ -267,56 +267,71 @@ export default function User() {
         <form onSubmit={handleSubmit} className={cx("user-form-grid")}>
           {fields.map((field, i) => {
           const isPassword = field.type === "password";
-          return isPassword ? <div key={i} className={cx("password-wrapper")}>
-                <FormField
-                  label={field.label}
+          return <div key={i} className={cx("user-form-input-group")}>
+                <label htmlFor={field.name} className={cx("user-input-label")}>
+                  {field.label}
+                </label>
+
+                {isPassword ? <div className={cx("password-wrapper")}>
+                    <FormField
+                      hideLabel={true}
+                      name={field.name}
+                      type={showPassword ? "text" : "password"}
+                      value={formData.password || ""}
+                      onChange={handleChange}
+                      error={Boolean(errors.password)}
+                      helperText={errors[field.name] || ""}
+                      placeholder={isEditMode ? "Enter new password (optional)" : ""}
+                      required={field.required && !isEditMode}
+                    />
+                    <button type="button" className={cx("password-toggle-btn")} onClick={() => setShowPassword(prev => !prev)}>
+                      {showPassword ? "Hide" : "Show"}
+                    </button>
+                  </div> : <FormField
+                  hideLabel={true}
                   name={field.name}
-                  type={showPassword ? "text" : "password"}
-                  value={formData.password || ""}
+                  type={field.type}
+                  value={formData[field.name]}
                   onChange={handleChange}
-                  error={Boolean(errors.password)}
+                  error={Boolean(errors[field.name])}
                   helperText={errors[field.name] || ""}
-                  placeholder={isEditMode ? "Enter new password (optional)" : ""}
-                  required={field.required && !isEditMode}
-                />
-                <button type="button" className={cx("password-toggle-btn")} onClick={() => setShowPassword(prev => !prev)}>
-                  {showPassword ? "Hide" : "Show"}
-                </button>
-              </div> : <FormField
-              key={i}
-              label={field.label}
-              name={field.name}
-              type={field.type}
-              value={formData[field.name]}
-              onChange={handleChange}
-              error={Boolean(errors[field.name])}
-              helperText={errors[field.name] || ""}
-              required={field.required}
-            />;
+                  required={field.required}
+                />}
+              </div>;
         })}
 
           {/* Role field */}
-          <FormSelect
-            label="Role"
-            name="role"
-            value={formData.role}
-            onChange={(e) => handleChange(e)}
-            options={roles.map(role => ({ value: role.roleName, label: role.roleName }))}
-            error={Boolean(errors.role)}
-            helperText={errors.role || ""}
-            required={true}
-          />
-
-          {formData.role === "SalesOfficer" && <FormSelect
-              label="Assigned Manager"
-              name="managedBy"
-              value={formData.managedBy}
+          <div className={cx("user-form-input-group")}>
+            <label htmlFor="role" className={cx("user-input-label")}>
+              Role
+            </label>
+            <FormSelect
+              hideLabel={true}
+              name="role"
+              value={formData.role}
               onChange={(e) => handleChange(e)}
-              options={salesManagers.map(manager => ({ value: manager._id, label: manager.userName }))}
-              error={Boolean(errors.managedBy)}
-              helperText={errors.managedBy || ""}
+              options={roles.map(role => ({ value: role.roleName, label: role.roleName }))}
+              error={Boolean(errors.role)}
+              helperText={errors.role || ""}
               required={true}
-            />}
+            />
+          </div>
+
+          {formData.role === "SalesOfficer" && <div className={cx("user-form-input-group")}>
+              <label htmlFor="managedBy" className={cx("user-input-label")}>
+                Assigned Manager
+              </label>
+              <FormSelect
+                hideLabel={true}
+                name="managedBy"
+                value={formData.managedBy}
+                onChange={(e) => handleChange(e)}
+                options={salesManagers.map(manager => ({ value: manager._id, label: manager.userName }))}
+                error={Boolean(errors.managedBy)}
+                helperText={errors.managedBy || ""}
+                required={true}
+              />
+            </div>}
 
           <div className={cx("user-form-input-group user-col-span-all user-upload-section")}>
             <div className={cx("user-upload-content")}>

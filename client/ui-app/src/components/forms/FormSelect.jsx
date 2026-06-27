@@ -29,6 +29,7 @@ const FormSelect = ({
   error = false,
   helperText = '',
   sx = {},
+  hideLabel = false,
   ...rest
 }) => {
   // Handle both string options and {value, label} object options
@@ -49,12 +50,12 @@ const FormSelect = ({
 
   return (
     <FormControl fullWidth error={Boolean(error)}>
-      <InputLabel required={required}>{label}</InputLabel>
+      {!hideLabel && <InputLabel required={required}>{label}</InputLabel>}
       <Select
         name={name}
         value={value}
         onChange={onChange}
-        label={label}
+        label={hideLabel ? undefined : label}
         disabled={disabled}
         required={required}
         sx={{ ...muiSelectSx, ...sx }}
