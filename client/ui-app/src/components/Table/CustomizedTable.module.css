@@ -68,57 +68,71 @@
 }
 
 /* ── Search box ── */
-.search-box {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: #ffffff;
-  border: 1.5px solid var(--color-border);
-  border-radius: 999px;
-  padding: 5px 10px;
-  min-width: 220px;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.search-box:focus-within {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(255, 122, 0, 0.12);
-}
-
-.search-icon {
-  font-size: 1rem !important; /* !important: override MUI SvgIcon default size */
-  color: var(--color-text-light);
-  flex-shrink: 0;
-}
-
-.search-box input {
-  border: none;
-  outline: none;
-  font-size: 0.85rem;
-  width: 100%;
-  background: transparent;
-  color: var(--color-text-dark);
-}
-
-.search-clear {
+.cir-search {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 0.65rem;
-  color: var(--color-text-light);
-  padding: 2px 5px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  line-height: 1;
-  transition: background 0.15s ease, color 0.15s ease;
+  gap: 10px;
+  width: 320px;
+  height: 48px;
+  padding: 0 8px 0 18px;
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  box-shadow:
+    0 1px 1px rgba(14, 17, 22, 0.03),
+    0 18px 36px -22px rgba(14, 17, 22, 0.18);
+  font-family:
+    "Inter",
+    system-ui,
+    -apple-system,
+    sans-serif;
+  transition:
+    border-color 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 220ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.search-clear:hover {
-  background: rgba(0, 0, 0, 0.07);
+.cir-search__icon {
+  width: 16px;
+  height: 16px;
+  color: var(--color-text-light);
+  flex-shrink: 0;
+}
+
+.cir-search__field {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 14px;
   color: var(--color-text-dark);
+}
+
+.cir-search__field::placeholder {
+  color: #8a93a3;
+}
+
+.cir-search__kbd {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 10px;
+  background: #f3f6fa;
+  border: 1px solid #eef2f6;
+  border-radius: 999px;
+  font-family: "Inter", system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text-light);
+  letter-spacing: 0.02em;
+}
+
+.cir-search:focus-within {
+  border-color: var(--color-primary);
+  box-shadow:
+    0 0 0 3px rgba(255, 122, 0, 0.22),
+    0 18px 36px -22px rgba(14, 17, 22, 0.2);
 }
 
 /* ── Filter chips ── */

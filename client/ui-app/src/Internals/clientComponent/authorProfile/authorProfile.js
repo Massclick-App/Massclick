@@ -131,7 +131,7 @@ const AuthorProfile = () => {
               aria-label="Back to blog"
             >
               <ArrowBackIcon />
-              Back to "{referringBlog.title}"
+              Back
             </button>
           </div>
         )}

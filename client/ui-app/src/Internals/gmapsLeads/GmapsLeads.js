@@ -201,8 +201,8 @@ export default function GmapsLeads() {
 
           {/* Location */}
           <div className={cx('filter-field')}>
-            <label>Location</label>
-            <select name="massclick_location" value={filters.massclick_location} onChange={handleFilterChange}>
+            <label className={cx('form-input-label')}>Location</label>
+            <select name="massclick_location" value={filters.massclick_location} onChange={handleFilterChange} className={cx('form-select-input')}>
               <option value="">All Locations</option>
               {distincts.locations.map((loc) => (
                 <option key={loc} value={loc}>{loc}</option>
@@ -212,8 +212,8 @@ export default function GmapsLeads() {
 
           {/* Sector */}
           <div className={cx('filter-field')}>
-            <label>Sector</label>
-            <select name="search_sector" value={filters.search_sector} onChange={handleFilterChange}>
+            <label className={cx('form-input-label')}>Sector</label>
+            <select name="search_sector" value={filters.search_sector} onChange={handleFilterChange} className={cx('form-select-input')}>
               <option value="">All Sectors</option>
               {distincts.sectors.map((s) => (
                 <option key={s} value={s}>{s}</option>
@@ -223,8 +223,8 @@ export default function GmapsLeads() {
 
           {/* Category */}
           <div className={cx('filter-field')}>
-            <label>Category</label>
-            <select name="massclick_category" value={filters.massclick_category} onChange={handleFilterChange}>
+            <label className={cx('form-input-label')}>Category</label>
+            <select name="massclick_category" value={filters.massclick_category} onChange={handleFilterChange} className={cx('form-select-input')}>
               <option value="">All Categories</option>
               {(distincts.categories || []).map((c) => (
                 <option key={c.slug} value={c.slug}>{c.name}</option>
@@ -234,8 +234,8 @@ export default function GmapsLeads() {
 
           {/* Status */}
           <div className={cx('filter-field')}>
-            <label>Status</label>
-            <select name="status" value={filters.status} onChange={handleFilterChange}>
+            <label className={cx('form-input-label')}>Status</label>
+            <select name="status" value={filters.status} onChange={handleFilterChange} className={cx('form-select-input')}>
               <option value="all">All</option>
               <option value="available">🟢 Available</option>
               <option value="imported">🔵 Imported</option>
@@ -245,8 +245,8 @@ export default function GmapsLeads() {
 
           {/* Min Rating */}
           <div className={cx('filter-field')}>
-            <label>Min Rating</label>
-            <select name="min_rating" value={filters.min_rating} onChange={handleFilterChange}>
+            <label className={cx('form-input-label')}>Min Rating</label>
+            <select name="min_rating" value={filters.min_rating} onChange={handleFilterChange} className={cx('form-select-input')}>
               <option value="">Any</option>
               <option value="1">1★ +</option>
               <option value="2">2★ +</option>
@@ -258,8 +258,8 @@ export default function GmapsLeads() {
 
           {/* Business Status */}
           <div className={cx('filter-field')}>
-            <label>Biz Status</label>
-            <select name="business_status" value={filters.business_status} onChange={handleFilterChange}>
+            <label className={cx('form-input-label')}>Biz Status</label>
+            <select name="business_status" value={filters.business_status} onChange={handleFilterChange} className={cx('form-select-input')}>
               <option value="OPERATIONAL">Operational</option>
               <option value="">All</option>
               <option value="CLOSED_TEMPORARILY">Closed Temp</option>
@@ -269,7 +269,7 @@ export default function GmapsLeads() {
 
           {/* Search */}
           <div className={cx('filter-field')} style={{ minWidth: 200 }}>
-            <label>Search Name</label>
+            <label className={cx('form-input-label')}>Search Name</label>
             <input
               type="text"
               name="search"
@@ -277,6 +277,7 @@ export default function GmapsLeads() {
               value={filters.search}
               onChange={handleFilterChange}
               onKeyDown={handleSearchKeyDown}
+              className={cx('form-text-input')}
             />
           </div>
 

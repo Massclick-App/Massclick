@@ -463,9 +463,9 @@ export default function AdvertisementPage() {
 
         <form className={cx("ads-form")} onSubmit={handleSubmit}>
           <div className={cx("form-field")}>
-            <label>Title</label>
-            <input name="title" value={formData.title} onChange={handleChange} />
-            {errors.title && <span className={cx("error")}>{errors.title}</span>}
+            <label className={cx("form-input-label")}>Title</label>
+            <input name="title" value={formData.title} onChange={handleChange} className={cx(`form-text-input ${errors.title ? 'error' : ''}`)} />
+            {errors.title && <span className={cx("form-error-text")}>{errors.title}</span>}
           </div>
 
           <div className={cx("form-field")} style={{
@@ -478,7 +478,7 @@ export default function AdvertisementPage() {
                 Common banner for all categories
               </label>}
 
-            <input type="text" name="category" value={isCommonTopBanner ? COMMON_TOP_BANNER_LABEL : formData.category} placeholder="Search category..." disabled={isCommonTopBanner} onChange={e => {
+            <input type="text" name="category" value={isCommonTopBanner ? COMMON_TOP_BANNER_LABEL : formData.category} placeholder="Search category..." disabled={isCommonTopBanner} className={cx(`form-text-input ${errors.category ? 'error' : ''}`)} onChange={e => {
             const value = e.target.value;
             setFormData(prev => ({
               ...prev,
@@ -525,13 +525,13 @@ export default function AdvertisementPage() {
                   </li>)}
               </ul>}
 
-            {errors.category && <span className={cx("error")}>{errors.category}</span>}
+            {errors.category && <span className={cx("form-error-text")}>{errors.category}</span>}
           </div>
 
 
           <div className={cx("form-field")}>
-            <label>Position</label>
-            <select name="position" value={formData.position} onChange={handleChange}>
+            <label className={cx("form-input-label")}>Position</label>
+            <select name="position" value={formData.position} onChange={handleChange} className={cx("form-select-input")}>
               <option value="LIST_INLINE">List Inline</option>
               <option value="TOP_BANNER">Top Banner</option>
               <option value="SIDE_BANNER">Side Banner</option>
@@ -540,8 +540,8 @@ export default function AdvertisementPage() {
           </div>
 
           <div className={cx("form-field span-2")}>
-            <label>Redirect URL</label>
-            <input name="redirectUrl" value={formData.redirectUrl} onChange={handleChange} />
+            <label className={cx("form-input-label")}>Redirect URL</label>
+            <input name="redirectUrl" value={formData.redirectUrl} onChange={handleChange} className={cx("form-text-input")} />
           </div>
 
 
@@ -568,7 +568,7 @@ export default function AdvertisementPage() {
                 Selected image: {imageMeta.width} x {imageMeta.height} px
                 {isTopBanner ? ` -> saved as ${TOP_BANNER_RULES.recommended}` : ""}
               </span>}
-            {errors.bannerImage && <span className={cx("error")}>{errors.bannerImage}</span>}
+            {errors.bannerImage && <span className={cx("form-error-text")}>{errors.bannerImage}</span>}
 
             {needsMobileBanner && <div className={cx("mobile-banner-upload")}>
                 <label>Mobile Banner Image</label>
@@ -587,20 +587,20 @@ export default function AdvertisementPage() {
                 {mobileImageMeta && <span className={cx("image-meta")}>
                     Selected mobile image: {mobileImageMeta.width} x {mobileImageMeta.height} px -> saved as {MOBILE_TOP_BANNER_RULES.recommended}
                   </span>}
-                {errors.mobileBannerImage && <span className={cx("error")}>{errors.mobileBannerImage}</span>}
+                {errors.mobileBannerImage && <span className={cx("form-error-text")}>{errors.mobileBannerImage}</span>}
               </div>}
           </div>
 
           <div className={cx("form-field")}>
-            <label>Start Time <span style={{ fontWeight: 400, color: "#6b7280" }}>(IST)</span></label>
-            <input type="datetime-local" name="startTime" value={formData.startTime} onChange={handleChange} />
-            {errors.startTime && <span className={cx("error")}>{errors.startTime}</span>}
+            <label className={cx("form-input-label")}>Start Time <span style={{ fontWeight: 400, color: "#6b7280" }}>(IST)</span></label>
+            <input type="datetime-local" name="startTime" value={formData.startTime} onChange={handleChange} className={cx(`form-text-input ${errors.startTime ? 'error' : ''}`)} />
+            {errors.startTime && <span className={cx("form-error-text")}>{errors.startTime}</span>}
           </div>
 
           <div className={cx("form-field")}>
-            <label>End Time <span style={{ fontWeight: 400, color: "#6b7280" }}>(IST)</span></label>
-            <input type="datetime-local" name="endTime" value={formData.endTime} onChange={handleChange} />
-            {errors.endTime && <span className={cx("error")}>{errors.endTime}</span>}
+            <label className={cx("form-input-label")}>End Time <span style={{ fontWeight: 400, color: "#6b7280" }}>(IST)</span></label>
+            <input type="datetime-local" name="endTime" value={formData.endTime} onChange={handleChange} className={cx(`form-text-input ${errors.endTime ? 'error' : ''}`)} />
+            {errors.endTime && <span className={cx("form-error-text")}>{errors.endTime}</span>}
           </div>
 
           <div className={cx("form-actions span-3")}>

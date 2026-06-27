@@ -3452,38 +3452,41 @@ const BusinessList = React.memo(() => {
       </button>
       {isDisabled && <div className={cx("section-disabled-overlay")}>Complete previous section to unlock</div>}
     </div>;
+  const handleListingModeChange = (nextMode) => {
+    if (listingMode === nextMode) {
+      return;
+    }
+
+    setListingMode(nextMode);
+    setFieldErrors({});
+    setForceBypassedFields([]);
+    setWarnDialog(false);
+    setWarnLevel(0);
+    setPostCreatePaidStatus("idle");
+  };
   const renderListingModeToggle = () => (
-    <div className={cx("listing-mode-toggle-container")}>
-      <input
-        type="checkbox"
-        className={cx("toggle-input")}
-        checked={listingMode === LISTING_MODE.PAID}
-        onChange={(e) => {
-          setListingMode(e.target.checked ? LISTING_MODE.PAID : LISTING_MODE.FREE);
-          setFieldErrors({});
-          setForceBypassedFields([]);
-          setWarnDialog(false);
-          setWarnLevel(0);
-          setPostCreatePaidStatus("idle");
-        }}
-        aria-label="Toggle listing mode between free and paid"
-      />
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 292 142" className={cx("toggle")}>
-        <path d="M71 142C31.7878 142 0 110.212 0 71C0 31.7878 31.7878 0 71 0C110.212 0 119 30 146 30C173 30 182 0 221 0C260 0 292 31.7878 292 71C292 110.212 260.212 142 221 142C181.788 142 173 112 146 112C119 112 110.212 142 71 142Z" className={cx("toggle-background")}></path>
-        <rect rx="6" height="64" width="12" y="39" x="64" className={cx("toggle-icon", "on")}></rect>
-        <path d="M221 91C232.046 91 241 82.0457 241 71C241 59.9543 232.046 51 221 51C209.954 51 201 59.9543 201 71C201 82.0457 209.954 91 221 91ZM221 103C238.673 103 253 88.6731 253 71C253 53.3269 238.673 39 221 39C203.327 39 189 53.3269 189 71C189 88.6731 203.327 103 221 103Z" fillRule="evenodd" className={cx("toggle-icon", "off")}></path>
-        <g filter="url('#goo')">
-          <rect fill="#fff" rx="29" height="58" width="116" y="42" x="13" className={cx("toggle-circle-center")}></rect>
-          <rect fill="#fff" rx="58" height="114" width="114" y="14" x="14" className={cx("toggle-circle", "left")}></rect>
-          <rect fill="#fff" rx="58" height="114" width="114" y="14" x="164" className={cx("toggle-circle", "right")}></rect>
-        </g>
-        <filter id="goo">
-          <feGaussianBlur stdDeviation="10" result="blur" in="SourceGraphic"></feGaussianBlur>
-          <feColorMatrix result="goo" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -7" mode="matrix" in="blur"></feColorMatrix>
-        </filter>
-      </svg>
-      <span className={cx("toggle-label", listingMode === LISTING_MODE.FREE && "active")}>Free</span>
-      <span className={cx("toggle-label", listingMode === LISTING_MODE.PAID && "active")}>Paid</span>
+    <div className={cx("listing-mode-switch")}>
+      <span className={cx("listing-mode-switch-label")}>Listing Type</span>
+      <div className={cx("listing-mode-switch-track")} role="tablist" aria-label="Listing mode">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={listingMode === LISTING_MODE.FREE}
+          className={cx("listing-mode-switch-option", listingMode === LISTING_MODE.FREE && "active")}
+          onClick={() => handleListingModeChange(LISTING_MODE.FREE)}
+        >
+          Free
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={listingMode === LISTING_MODE.PAID}
+          className={cx("listing-mode-switch-option", listingMode === LISTING_MODE.PAID && "active")}
+          onClick={() => handleListingModeChange(LISTING_MODE.PAID)}
+        >
+          Paid
+        </button>
+      </div>
     </div>
   );
   const renderPaidAssistant = () => {
@@ -4077,7 +4080,7 @@ const BusinessList = React.memo(() => {
     {activeView === "form" && <>
       <div className={cx("form-top-bar")}>
         <div className={cx("form-top-bar-title-row")}>
-          <h2 className={cx("card-title")} style={{ margin: 0 }}>
+          <h2 className={cx("card-title")}>
             {editMode ? `Edit Business` : `Add New Business`}
           </h2>
           {!editMode && (

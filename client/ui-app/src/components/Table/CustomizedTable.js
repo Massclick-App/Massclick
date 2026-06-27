@@ -99,20 +99,30 @@ const CustomizedTable = ({
 
         <div className={cx("toolbar-right")}>
           {enableSearch && (
-            <div className={cx("search-box")}>
-              <SearchRoundedIcon className={cx("search-icon")} />
+            <label className={cx("cir-search")}>
+              <svg
+                className={cx("cir-search__icon")}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.34-4.34"></path>
+              </svg>
               <input
-                type="text"
-                placeholder="Search..."
+                className={cx("cir-search__field")}
+                type="search"
+                placeholder="Search threads, contacts, replies"
+                aria-label="Search"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
               />
-              {searchQuery && (
-                <button className={cx("search-clear")} onClick={() => setSearchQuery("")} aria-label="Clear search">
-                  ✕
-                </button>
-              )}
-            </div>
+              <kbd className={cx("cir-search__kbd")}>⌘ K</kbd>
+            </label>
           )}
 
           {enableStatusFilter && (

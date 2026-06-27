@@ -150,7 +150,7 @@ const BusinessFormStep0 = ({
 
       <div className={cx("section-grid", "section-grid-wide-left")}>
         <div className={fieldClass("field-span-7")}>
-          <label htmlFor="clientId" className={cx("input-label")}>Client ID</label>
+          <label htmlFor="clientId" className="form-input-label">Client ID</label>
           <Autocomplete
             options={allOptions}
             getOptionLabel={(option) => `${option.clientId} — ${option.name}`}
@@ -204,12 +204,12 @@ const BusinessFormStep0 = ({
         </div>
 
         <div className={fieldClass("field-span-5")}>
-          <label htmlFor="businessName" className={cx("input-label")}>Business Name</label>
+          <label htmlFor="businessName" className="form-input-label">Business Name</label>
           <input
             type="text"
             id="businessName"
             name="businessName"
-            className={getInputClassName("text-input", "businessName")}
+            className={`form-text-input ${fieldErrors.businessName ? "error" : ""}`}
             value={formData.businessName}
             onChange={handleChange}
           />
@@ -228,7 +228,7 @@ const BusinessFormStep0 = ({
       )}
 
       <div className={fieldClass("field-span-full", "field-surface")}>
-        <label className={cx("input-label")}>Search Address (Auto-fill)</label>
+        <label className="form-input-label">Search Address (Auto-fill)</label>
         <GooglePlacesInput onPlaceSelect={handlePlaceSelect} placeholder="Type business name or address to search..." />
         <small className={cx("helper-note")}>
           Selecting from suggestions auto-fills street, pincode, location and coordinates.
@@ -237,29 +237,29 @@ const BusinessFormStep0 = ({
 
       <div className={cx("section-grid", "section-grid-2")}>
         <div className={fieldClass()}>
-          <label htmlFor="plotNumber" className={cx("input-label")}>Plot Number</label>
-          <input type="text" id="plotNumber" name="plotNumber" className={getInputClassName("text-input", "plotNumber")} value={formData.plotNumber} onChange={handleChange} />
+          <label htmlFor="plotNumber" className="form-input-label">Plot Number</label>
+          <input type="text" id="plotNumber" name="plotNumber" className={`form-text-input ${fieldErrors.plotNumber ? "error" : ""}`} value={formData.plotNumber} onChange={handleChange} />
           {renderFieldError("plotNumber")}
         </div>
 
         <div className={fieldClass()}>
-          <label htmlFor="street" className={cx("input-label")}>Street</label>
-          <input type="text" id="street" name="street" className={getInputClassName("text-input", "street")} value={formData.street} onChange={handleChange} placeholder="Enter street address" />
+          <label htmlFor="street" className="form-input-label">Street</label>
+          <input type="text" id="street" name="street" className={`form-text-input ${fieldErrors.street ? "error" : ""}`} value={formData.street} onChange={handleChange} placeholder="Enter street address" />
           {renderFieldError("street")}
         </div>
 
         <div className={fieldClass()}>
-          <label htmlFor="pincode" className={cx("input-label")}>Pincode *</label>
-          <input type="text" id="pincode" name="pincode" className={getInputClassName("text-input", "pincode")} value={formData.pincode} onChange={handleChange} placeholder="Enter 6-digit pincode" required />
+          <label htmlFor="pincode" className="form-input-label">Pincode *</label>
+          <input type="text" id="pincode" name="pincode" className={`form-text-input ${fieldErrors.pincode ? "error" : ""}`} value={formData.pincode} onChange={handleChange} placeholder="Enter 6-digit pincode" required />
           {renderFieldError("pincode")}
         </div>
 
         <div className={fieldClass()}>
-          <label htmlFor="location" className={cx("input-label")}>Location</label>
+          <label htmlFor="location" className="form-input-label">Location</label>
           <select
             id="location"
             name="location"
-            className={getInputClassName("select-input", "location")}
+            className={`form-select-input ${fieldErrors.location ? "error" : ""}`}
             value={formData.location}
             onChange={(e) => {
               setFormData((prev) => ({ ...prev, location: e.target.value }));
@@ -283,8 +283,8 @@ const BusinessFormStep0 = ({
         </div>
 
         <div className={fieldClass("field-span-full")}>
-          <label htmlFor="globalAddress" className={cx("input-label")}>Global Address</label>
-          <input type="text" id="globalAddress" name="globalAddress" className={getInputClassName("text-input", "globalAddress")} value={formData.globalAddress} onChange={handleChange} />
+          <label htmlFor="globalAddress" className="form-input-label">Global Address</label>
+          <input type="text" id="globalAddress" name="globalAddress" className={`form-text-input ${fieldErrors.globalAddress ? "error" : ""}`} value={formData.globalAddress} onChange={handleChange} />
           {renderFieldError("globalAddress")}
         </div>
       </div>
@@ -301,26 +301,26 @@ const BusinessFormStep0 = ({
 
       <div className={cx("section-grid", "section-grid-2")}>
         <div className={fieldClass()}>
-          <label htmlFor="email" className={cx("input-label")}>Email</label>
-          <input type="email" id="email" name="email" className={getInputClassName("text-input", "email")} value={formData.email} onChange={handleChange} placeholder="business@example.com" />
+          <label htmlFor="email" className="form-input-label">Email</label>
+          <input type="email" id="email" name="email" className={`form-text-input ${fieldErrors.email ? "error" : ""}`} value={formData.email} onChange={handleChange} placeholder="business@example.com" />
           {renderFieldError("email")}
         </div>
 
         <div className={fieldClass()}>
-          <label htmlFor="contact" className={cx("input-label")}>Phone</label>
-          <input type="text" id="contact" name="contact" className={getInputClassName("text-input", "contact")} value={formData.contact} onChange={handleChange} />
+          <label htmlFor="contact" className="form-input-label">Phone</label>
+          <input type="text" id="contact" name="contact" className={`form-text-input ${fieldErrors.contact ? "error" : ""}`} value={formData.contact} onChange={handleChange} />
           {renderFieldError("contact")}
         </div>
 
         <div className={fieldClass()}>
-          <label htmlFor="contactList" className={cx("input-label")}>Enquiry Number</label>
-          <input type="text" id="contactList" name="contactList" className={getInputClassName("text-input", "contactList")} value={formData.contactList} onChange={handleChange} placeholder="Alternate contact number" />
+          <label htmlFor="contactList" className="form-input-label">Enquiry Number</label>
+          <input type="text" id="contactList" name="contactList" className={`form-text-input ${fieldErrors.contactList ? "error" : ""}`} value={formData.contactList} onChange={handleChange} placeholder="Alternate contact number" />
           {renderFieldError("contactList")}
         </div>
 
         <div className={fieldClass()}>
-          <label htmlFor="whatsappNumber" className={cx("input-label")}>WhatsApp Number</label>
-          <input type="text" id="whatsappNumber" name="whatsappNumber" className={getInputClassName("text-input", "whatsappNumber")} value={formData.whatsappNumber} onChange={handleChange} placeholder="Business WhatsApp number" />
+          <label htmlFor="whatsappNumber" className="form-input-label">WhatsApp Number</label>
+          <input type="text" id="whatsappNumber" name="whatsappNumber" className={`form-text-input ${fieldErrors.whatsappNumber ? "error" : ""}`} value={formData.whatsappNumber} onChange={handleChange} placeholder="Business WhatsApp number" />
           {renderFieldError("whatsappNumber")}
         </div>
       </div>
@@ -337,14 +337,14 @@ const BusinessFormStep0 = ({
 
       <div className={cx("section-grid", "section-grid-wide-left")}>
         <div className={fieldClass("field-span-8")}>
-          <label htmlFor="gstin" className={cx("input-label")}>GSTIN</label>
-          <input type="text" id="gstin" name="gstin" className={getInputClassName("text-input", "gstin")} value={formData.gstin} onChange={handleChange} placeholder="Enter GST registration number" />
+          <label htmlFor="gstin" className="form-input-label">GSTIN</label>
+          <input type="text" id="gstin" name="gstin" className={`form-text-input ${fieldErrors.gstin ? "error" : ""}`} value={formData.gstin} onChange={handleChange} placeholder="Enter GST registration number" />
           {renderFieldError("gstin")}
         </div>
 
         <div className={fieldClass("field-span-4")}>
-          <label htmlFor="experience" className={cx("input-label")}>Experience (Years)</label>
-          <input type="text" id="experience" name="experience" className={getInputClassName("text-input", "experience")} value={formData.experience} onChange={handleChange} />
+          <label htmlFor="experience" className="form-input-label">Experience (Years)</label>
+          <input type="text" id="experience" name="experience" className={`form-text-input ${fieldErrors.experience ? "error" : ""}`} value={formData.experience} onChange={handleChange} />
           {renderFieldError("experience")}
         </div>
       </div>
@@ -361,26 +361,26 @@ const BusinessFormStep0 = ({
 
       <div className={cx("section-grid", "section-grid-2")}>
         <div className={fieldClass("field-span-full")}>
-          <label htmlFor="googleMap" className={cx("input-label")}>Google Map Link</label>
-          <input type="text" id="googleMap" name="googleMap" className={getInputClassName("text-input", "googleMap")} value={formData.googleMap} onChange={handleChange} placeholder="https://maps.google.com/..." />
+          <label htmlFor="googleMap" className="form-input-label">Google Map Link</label>
+          <input type="text" id="googleMap" name="googleMap" className={`form-text-input ${fieldErrors.googleMap ? "error" : ""}`} value={formData.googleMap} onChange={handleChange} placeholder="https://maps.google.com/..." />
           {renderFieldError("googleMap")}
         </div>
 
         <div className={fieldClass()}>
-          <label htmlFor="geoLatitude" className={cx("input-label")}>Latitude *</label>
-          <input type="number" id="geoLatitude" className={getInputClassName("text-input", "geoLatitude")} value={formData.geoLocation?.coordinates?.[1] ?? ""} onChange={(e) => handleGeoCoordinateChange(1, e.target.value)} placeholder="Example: 13.0827" step="any" min="-90" max="90" required />
+          <label htmlFor="geoLatitude" className="form-input-label">Latitude *</label>
+          <input type="number" id="geoLatitude" className={`form-text-input ${fieldErrors.geoLatitude ? "error" : ""}`} value={formData.geoLocation?.coordinates?.[1] ?? ""} onChange={(e) => handleGeoCoordinateChange(1, e.target.value)} placeholder="Example: 13.0827" step="any" min="-90" max="90" required />
           {renderFieldError("geoLatitude")}
         </div>
 
         <div className={fieldClass()}>
-          <label htmlFor="geoLongitude" className={cx("input-label")}>Longitude *</label>
-          <input type="number" id="geoLongitude" className={getInputClassName("text-input", "geoLongitude")} value={formData.geoLocation?.coordinates?.[0] ?? ""} onChange={(e) => handleGeoCoordinateChange(0, e.target.value)} placeholder="Example: 80.2707" step="any" min="-180" max="180" required />
+          <label htmlFor="geoLongitude" className="form-input-label">Longitude *</label>
+          <input type="number" id="geoLongitude" className={`form-text-input ${fieldErrors.geoLongitude ? "error" : ""}`} value={formData.geoLocation?.coordinates?.[0] ?? ""} onChange={(e) => handleGeoCoordinateChange(0, e.target.value)} placeholder="Example: 80.2707" step="any" min="-180" max="180" required />
           {renderFieldError("geoLongitude")}
         </div>
 
         <div className={fieldClass("field-span-full")}>
-          <label htmlFor="website" className={cx("input-label")}>Website</label>
-          <input type="text" id="website" name="website" className={getInputClassName("text-input", "website")} value={formData.website} onChange={handleChange} placeholder="https://example.com" />
+          <label htmlFor="website" className="form-input-label">Website</label>
+          <input type="text" id="website" name="website" className={`form-text-input ${fieldErrors.website ? "error" : ""}`} value={formData.website} onChange={handleChange} placeholder="https://example.com" />
           {renderFieldError("website")}
         </div>
       </div>
@@ -405,7 +405,7 @@ const BusinessFormStep0 = ({
           { field: "linkedin", label: "LinkedIn" },
         ].map(({ field, label }) => (
           <div className={fieldClass("field-compact")} key={field}>
-            <label htmlFor={field} className={cx("input-label")}>{label}</label>
+            <label htmlFor={field} className="form-input-label">{label}</label>
             <input type="text" id={field} name={field} className={getInputClassName("text-input", field)} value={formData[field]} onChange={handleChange} placeholder={`Your ${label} profile URL`} />
             {renderFieldError(field)}
           </div>
@@ -426,7 +426,7 @@ const BusinessFormStep0 = ({
         <div className={fieldClass("field-span-full", "upload-section")}>
           <div className={cx("upload-panel")}>
             <div>
-              <label className={cx("input-label")}>Banner Image</label>
+              <label className="form-input-label">Banner Image</label>
               <p className={cx("upload-panel-copy")}>Choose a clean, high-resolution image that represents the business well.</p>
             </div>
             <div className={cx("upload-content")}>
@@ -441,7 +441,7 @@ const BusinessFormStep0 = ({
         </div>
 
         <div className={fieldClass("field-span-full")}>
-          <label className={cx("input-label")}>Business Details</label>
+          <label className="form-input-label">Business Details</label>
           <QuillEditor value={formDataBusinessDetails} onChange={handleBusinessChange} modules={QUILL_MODULES} formats={QUILL_FORMATS} placeholder="Type business details here..." style={{ height: "220px" }} />
           {renderFieldError("businessDetails")}
         </div>
@@ -590,7 +590,7 @@ const BusinessFormStep0 = ({
 
         {/* Priority Score */}
         <div className={fieldClass("field-span-full")}>
-          <label className={cx("input-label")}>Priority Score</label>
+          <label className="form-input-label">Priority Score</label>
           <input
             type="number"
             min="0"
@@ -611,7 +611,7 @@ const BusinessFormStep0 = ({
         {/* Verification Type (conditional) */}
         {formData.verification?.isVerified && (
           <div className={fieldClass("field-span-full")}>
-            <label className={cx("input-label")}>Verification Type</label>
+            <label className="form-input-label">Verification Type</label>
             <select
               value={formData.verification?.verificationType || "ADMIN"}
               onChange={(e) =>

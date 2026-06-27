@@ -243,7 +243,7 @@ export default function BusinessImageMigrationCard() {
         </label>
 
         <label className={cx("field-row")}>
-          <span>Batch size</span>
+          <span className={cx("form-input-label")}>Batch size</span>
           <input
             type="number"
             min="10"
@@ -251,11 +251,12 @@ export default function BusinessImageMigrationCard() {
             step="1"
             value={batchSize}
             onChange={(e) => setBatchSize(e.target.value)}
+            className={cx("form-text-input")}
           />
         </label>
 
         <label className={cx("field-row")}>
-          <span>Retries per image</span>
+          <span className={cx("form-input-label")}>Retries per image</span>
           <input
             type="number"
             min="1"
@@ -263,6 +264,7 @@ export default function BusinessImageMigrationCard() {
             step="1"
             value={retryCount}
             onChange={(e) => setRetryCount(e.target.value)}
+            className={cx("form-text-input")}
           />
         </label>
       </div>

@@ -1030,11 +1030,11 @@ export default function SystemSettings() {
               </div>
               <div className={cx("section-group")}>
                 <div className={cx("form-field")}>
-                  <label className={cx("label-with-help form-label")}>
+                  <label className={cx("label-with-help form-input-label")}>
                     <span>Log Level</span>
                     <HelpHint text={FIELD_HELP.logging_level} />
                   </label>
-                  <select className={cx("form-input")} value={local.logging_level ?? "info"} onChange={e => setText("logging_level", e.target.value)}>
+                  <select className={cx("form-select-input")} value={local.logging_level ?? "info"} onChange={e => setText("logging_level", e.target.value)}>
                     <option value="off">Off</option>
                     <option value="error">Error</option>
                     <option value="warn">Warn</option>
@@ -1063,15 +1063,15 @@ export default function SystemSettings() {
               </div>
               <div className={cx("section-group")}>
                 <div className={cx("form-field")}>
-                  <label className={cx("label-with-help form-label")}>
+                  <label className={cx("label-with-help form-input-label")}>
                     <span>Customer Business List Mode</span>
                     <HelpHint text={FIELD_HELP.whatsapp_customer_business_list_send_mode} />
                   </label>
-                  <select className={cx(`form-input ${validationErrors.whatsapp_customer_business_list_send_mode ? 'error' : ''}`)} value={local.whatsapp_customer_business_list_send_mode ?? "split"} onChange={e => setText("whatsapp_customer_business_list_send_mode", e.target.value)}>
+                  <select className={cx(`form-select-input ${validationErrors.whatsapp_customer_business_list_send_mode ? 'error' : ''}`)} value={local.whatsapp_customer_business_list_send_mode ?? "split"} onChange={e => setText("whatsapp_customer_business_list_send_mode", e.target.value)}>
                     <option value="single">Single message</option>
                     <option value="split">Split messages</option>
                   </select>
-                  {validationErrors.whatsapp_customer_business_list_send_mode && <div className={cx("input-error")}>{validationErrors.whatsapp_customer_business_list_send_mode}</div>}
+                  {validationErrors.whatsapp_customer_business_list_send_mode && <div className={cx("form-error-text")}>{validationErrors.whatsapp_customer_business_list_send_mode}</div>}
                 </div>
               </div>
             </div>
@@ -1098,12 +1098,12 @@ export default function SystemSettings() {
                   label,
                   placeholder
                 }) => <div key={key} className={cx("form-field")}>
-                      <label className={cx("label-with-help form-label")}>
+                      <label className={cx("label-with-help form-input-label")}>
                         <span>{label}</span>
                         <HelpHint text={FIELD_HELP[key]} />
                       </label>
-                      <input type="number" min={NUMBER_FIELD_RULES[key].min} max={NUMBER_FIELD_RULES[key].max} step="1" className={cx(`form-input ${validationErrors[key] ? 'error' : ''}`)} value={local[key] ?? ""} onChange={e => setNumber(key, e.target.value)} placeholder={placeholder} />
-                      {validationErrors[key] && <div className={cx("input-error")}>{validationErrors[key]}</div>}
+                      <input type="number" min={NUMBER_FIELD_RULES[key].min} max={NUMBER_FIELD_RULES[key].max} step="1" className={cx(`form-text-input ${validationErrors[key] ? 'error' : ''}`)} value={local[key] ?? ""} onChange={e => setNumber(key, e.target.value)} placeholder={placeholder} />
+                      {validationErrors[key] && <div className={cx("form-error-text")}>{validationErrors[key]}</div>}
                     </div>)}
                 </div>
               </div>
@@ -1139,12 +1139,12 @@ export default function SystemSettings() {
                   placeholder,
                   colSpan
                 }) => <div key={key} className={cx(`form-field ${colSpan === 2 ? 'span-2' : ''}`)}>
-                        <label className={cx("label-with-help form-label")}>
+                        <label className={cx("label-with-help form-input-label")}>
                           <span>{label}</span>
                           <HelpHint text={FIELD_HELP[key]} />
                         </label>
-                        <input type="text" className={cx(`form-input ${validationErrors[key] ? 'error' : ''}`)} value={local[key] ?? ""} onChange={e => setText(key, e.target.value)} placeholder={placeholder} />
-                        {validationErrors[key] && <div className={cx("input-error")}>{validationErrors[key]}</div>}
+                        <input type="text" className={cx(`form-text-input ${validationErrors[key] ? 'error' : ''}`)} value={local[key] ?? ""} onChange={e => setText(key, e.target.value)} placeholder={placeholder} />
+                        {validationErrors[key] && <div className={cx("form-error-text")}>{validationErrors[key]}</div>}
                       </div>)}
                   </div>
                 </div>
@@ -1154,12 +1154,12 @@ export default function SystemSettings() {
             <div className={cx("section-group")}>
               <div className={cx("section-label")}>Release Notes</div>
               <div className={cx("form-field")}>
-                <label className={cx("label-with-help form-label")}>
+                <label className={cx("label-with-help form-input-label")}>
                   <span>What's new</span>
                   <HelpHint text={FIELD_HELP.app_release_notes} />
                 </label>
-                <textarea className={cx(`form-input ${validationErrors.app_release_notes ? 'error' : ''}`)} value={local.app_release_notes ?? ""} onChange={e => setText("app_release_notes", e.target.value)} placeholder="Bug fixes and improvements..." rows={3} />
-                {validationErrors.app_release_notes && <div className={cx("input-error")}>{validationErrors.app_release_notes}</div>}
+                <textarea className={cx(`form-textarea ${validationErrors.app_release_notes ? 'error' : ''}`)} value={local.app_release_notes ?? ""} onChange={e => setText("app_release_notes", e.target.value)} placeholder="Bug fixes and improvements..." rows={3} />
+                {validationErrors.app_release_notes && <div className={cx("form-error-text")}>{validationErrors.app_release_notes}</div>}
               </div>
             </div>
           </div>;
@@ -1198,12 +1198,12 @@ export default function SystemSettings() {
                 label,
                 placeholder
               }) => <div key={key} className={cx("form-field")}>
-                    <label className={cx("label-with-help form-label")}>
+                    <label className={cx("label-with-help form-input-label")}>
                       <span>{label}</span>
                       <HelpHint text={FIELD_HELP[key]} />
                     </label>
-                    <input type="number" min={NUMBER_FIELD_RULES[key].min} max={NUMBER_FIELD_RULES[key].max} step="1" className={cx(`form-input ${validationErrors[key] ? 'error' : ''}`)} value={local[key] ?? ""} onChange={e => setNumber(key, e.target.value)} placeholder={placeholder} />
-                    {validationErrors[key] && <div className={cx("input-error")}>{validationErrors[key]}</div>}
+                    <input type="number" min={NUMBER_FIELD_RULES[key].min} max={NUMBER_FIELD_RULES[key].max} step="1" className={cx(`form-text-input ${validationErrors[key] ? 'error' : ''}`)} value={local[key] ?? ""} onChange={e => setNumber(key, e.target.value)} placeholder={placeholder} />
+                    {validationErrors[key] && <div className={cx("form-error-text")}>{validationErrors[key]}</div>}
                   </div>)}
               </div>
             </div>
@@ -1263,11 +1263,11 @@ export default function SystemSettings() {
               </div>
               <div className={cx("section-group")}>
                 <div className={cx("form-field")}>
-                  <label className={cx("label-with-help form-label")}>
+                  <label className={cx("label-with-help form-input-label")}>
                     <span>Cache Type</span>
                     <HelpHint text={FIELD_HELP.cache_type} />
                   </label>
-                  <select className={cx("form-input")} value={selectedCache} onChange={e => setSelectedCache(e.target.value)} disabled={cacheClearing}>
+                  <select className={cx("form-select-input")} value={selectedCache} onChange={e => setSelectedCache(e.target.value)} disabled={cacheClearing}>
                     {CACHE_TYPES.map(cache => <option key={cache.value} value={cache.value}>{cache.label}</option>)}
                   </select>
                 </div>
@@ -1494,14 +1494,14 @@ export default function SystemSettings() {
             </div>
           </div>
           <div className={cx("key-browser-toolbar")}>
-            <select className={cx("form-input key-namespace-select")} value={keyNamespace} onChange={e => setKeyNamespace(e.target.value)}>
+            <select className={cx("form-select-input key-namespace-select")} value={keyNamespace} onChange={e => setKeyNamespace(e.target.value)}>
               <option value="all">All namespaces ({redisKeys.length})</option>
               {keyNamespaceOptions.map(option => <option key={option.value} value={option.value}>
                   {option.label} ({option.count})
                 </option>)}
             </select>
-            <input type="text" className={cx("form-input key-search-input")} placeholder="Search keys by name, suffix, or part of the key" value={keySearch} onChange={e => setKeySearch(e.target.value)} />
-            <select className={cx("form-input key-match-select")} value={keyMatchMode} onChange={e => setKeyMatchMode(e.target.value)}>
+            <input type="text" className={cx("form-text-input key-search-input")} placeholder="Search keys by name, suffix, or part of the key" value={keySearch} onChange={e => setKeySearch(e.target.value)} />
+            <select className={cx("form-select-input key-match-select")} value={keyMatchMode} onChange={e => setKeyMatchMode(e.target.value)}>
               <option value="contains">Contains</option>
               <option value="startsWith">Starts with</option>
               <option value="exact">Exact</option>
@@ -1518,7 +1518,7 @@ export default function SystemSettings() {
         {/* Pattern Delete Row */}
         <div className={cx("pattern-delete-row")}>
           <span className={cx("pattern-delete-label")}>Pattern delete</span>
-          <input type="text" className={cx("form-input pattern-delete-input")} placeholder="e.g. seo:* or cache:/api/*" value={patternInput} onChange={e => setPatternInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleDeletePattern()} />
+          <input type="text" className={cx("form-text-input pattern-delete-input")} placeholder="e.g. seo:* or cache:/api/*" value={patternInput} onChange={e => setPatternInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleDeletePattern()} />
           {patternInput && <span className={cx("pattern-match-count")}>
               {patternMatchCount} match{patternMatchCount !== 1 ? 'es' : ''}
             </span>}
