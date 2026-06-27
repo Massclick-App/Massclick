@@ -303,7 +303,7 @@
   position: sticky;
   top: 0;
   z-index: 1100;
-  background: linear-gradient(180deg, #ffffff 0%, #fffaf5 100%);
+  background: #ffffff;
   backdrop-filter: blur(8px);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 }
@@ -413,8 +413,8 @@
   position: relative;
   display: flex;
   align-items: center;
-  background-color: #f4f2f2;
-  border: none;
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
   border-radius: 30px;
   height: 44px;
   flex: 1;
@@ -431,7 +431,7 @@
 }
 
 .cards-input-group:focus-within {
-  background-color: #f0eeee;
+  background-color: #ffffff;
   box-shadow: 0 0 1em rgba(0, 0, 0, 0.075);
 }
 
@@ -485,7 +485,7 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 2px 8px rgba(255, 123, 0, 0.2);
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   color: #fff;
   font-weight: 700;
@@ -496,12 +496,12 @@
 }
 
 .search-btn-web--pending {
-  box-shadow: 0 12px 32px rgba(255, 123, 0, 0.45);
+  box-shadow: 0 4px 12px rgba(255, 123, 0, 0.25);
 }
 
 .search-btn-web:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 28px rgba(255, 123, 0, 0.45);
+  box-shadow: 0 4px 12px rgba(255, 123, 0, 0.25);
 }
 
 .search-btn-web:active {

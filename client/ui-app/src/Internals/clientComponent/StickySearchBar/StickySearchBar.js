@@ -484,11 +484,11 @@ const StickySearchBar = ({
                   px: 2.5,
                   py: 0.9,
                   whiteSpace: "nowrap",
-                  boxShadow: "0 8px 24px rgba(255, 123, 0, 0.35)",
+                  boxShadow: "0 2px 8px rgba(255, 123, 0, 0.2)",
                   transition: "all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)",
                   "&:hover": {
                     background: "linear-gradient(45deg, #cc5a0f, #ff8a2d)",
-                    boxShadow: "0 12px 32px rgba(255, 123, 0, 0.45)",
+                    boxShadow: "0 4px 12px rgba(255, 123, 0, 0.25)",
                   },
                 }}
               >
