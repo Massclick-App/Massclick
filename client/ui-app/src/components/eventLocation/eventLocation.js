@@ -363,24 +363,25 @@ export default function EventLocation() {
         <form onSubmit={handleSubmit}>
           <div className={cx("eventLocation-grid")}>
             <div>
-              <label>Location Name *</label>
+              <label className="form-input-label">Location Name *</label>
 
               <input
                 type="text"
                 name="locationName"
                 value={formData.locationName}
                 onChange={handleChange}
+                className={`form-text-input ${errors.locationName ? "error" : ""}`}
               />
 
               {errors.locationName && (
-                <p className={cx("eventLocation-error-text")}>
+                <p className="form-error-text">
                   {errors.locationName}
                 </p>
               )}
             </div>
 
             <div>
-              <label>Slug</label>
+              <label className="form-input-label">Slug</label>
 
               <input
                 type="text"
@@ -388,66 +389,72 @@ export default function EventLocation() {
                 value={formData.slug}
                 readOnly
                 placeholder="Auto generated from location name"
+                className="form-text-input"
               />
             </div>
 
             <div className={cx("eventLocation-field--full")}>
-              <label>Address</label>
+              <label className="form-input-label">Address</label>
 
               <textarea
                 name="address"
                 value={formData.address}
                 onChange={handleChange}
                 rows="3"
+                className="form-textarea"
               />
             </div>
 
             <div>
-              <label>City</label>
+              <label className="form-input-label">City</label>
 
               <input
                 type="text"
                 name="city"
                 value={formData.city}
                 onChange={handleChange}
+                className="form-text-input"
               />
             </div>
 
             <div>
-              <label>State</label>
+              <label className="form-input-label">State</label>
 
               <input
                 type="text"
                 name="state"
                 value={formData.state}
                 onChange={handleChange}
+                className="form-text-input"
               />
             </div>
 
             <div>
-              <label>Country</label>
+              <label className="form-input-label">Country</label>
 
               <input
                 type="text"
                 name="country"
                 value={formData.country}
                 onChange={handleChange}
+                className="form-text-input"
               />
             </div>
 
             <div>
-              <label>Zip Code</label>
+              <label className="form-input-label">Zip Code</label>
 
               <input
                 type="text"
                 name="zipCode"
                 value={formData.zipCode}
                 onChange={handleChange}
+                className="form-text-input"
               />
             </div>
 
             <div>
-              <label>Latitude</label>
+              <label className="form-input-label">Latitude</label>
 
               <input
                 type="number"
@@ -455,17 +462,18 @@ export default function EventLocation() {
                 step="any"
                 value={formData.latitude}
                 onChange={handleChange}
+                className={`form-text-input ${errors.latitude ? "error" : ""}`}
               />
 
               {errors.latitude && (
-                <p className={cx("eventLocation-error-text")}>
+                <p className="form-error-text">
                   {errors.latitude}
                 </p>
               )}
             </div>
 
             <div>
-              <label>Longitude</label>
+              <label className="form-input-label">Longitude</label>
 
               <input
                 type="number"
@@ -473,17 +481,18 @@ export default function EventLocation() {
                 step="any"
                 value={formData.longitude}
                 onChange={handleChange}
+                className={`form-text-input ${errors.longitude ? "error" : ""}`}
               />
 
               {errors.longitude && (
-                <p className={cx("eventLocation-error-text")}>
+                <p className="form-error-text">
                   {errors.longitude}
                 </p>
               )}
             </div>
 
             <div>
-              <label>Capacity</label>
+              <label className="form-input-label">Capacity</label>
 
               <input
                 type="number"
@@ -491,17 +500,18 @@ export default function EventLocation() {
                 min="0"
                 value={formData.capacity}
                 onChange={handleChange}
+                className={`form-text-input ${errors.capacity ? "error" : ""}`}
               />
 
               {errors.capacity && (
-                <p className={cx("eventLocation-error-text")}>
+                <p className="form-error-text">
                   {errors.capacity}
                 </p>
               )}
             </div>
 
             <div className={cx("eventLocation-upload-field")}>
-              <label>Location Image</label>
+              <label className="form-input-label">Location Image</label>
 
               <div className={cx("eventLocation-upload-content")}>
                 <Button
@@ -531,13 +541,14 @@ export default function EventLocation() {
             </div>
 
             <div className={cx("eventLocation-field--full")}>
-              <label>Description</label>
+              <label className="form-input-label">Description</label>
 
               <textarea
                 name="description"
                 value={formData.description}
                 onChange={handleChange}
                 rows="4"
+                className="form-textarea"
               />
             </div>
 

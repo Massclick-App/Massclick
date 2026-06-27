@@ -378,24 +378,25 @@ export default function EventCategory() {
         <form onSubmit={handleSubmit}>
           <div className={cx("event-category-grid")}>
             <div>
-              <label>Category Name *</label>
+              <label className="form-input-label">Category Name *</label>
 
               <input
                 type="text"
                 name="categoryName"
                 value={formData.categoryName}
                 onChange={handleChange}
+                className={`form-text-input ${errors.categoryName ? "error" : ""}`}
               />
 
               {errors.categoryName && (
-                <p className={cx("eventCategory-error-text")}>
+                <p className="form-error-text">
                   {errors.categoryName}
                 </p>
               )}
             </div>
 
             <div>
-              <label>Slug</label>
+              <label className="form-input-label">Slug</label>
 
               <input
                 type="text"
@@ -403,11 +404,12 @@ export default function EventCategory() {
                 value={formData.slug}
                 readOnly
                 placeholder="Auto generated from category name"
+                className="form-text-input"
               />
             </div>
 
             <div className={cx("eventCategory-upload-field")}>
-              <label>Category Image</label>
+              <label className="form-input-label">Category Image</label>
 
               <div className={cx("eventCategory-upload-content")}>
                 <Button
@@ -437,7 +439,7 @@ export default function EventCategory() {
             </div>
 
             <div>
-              <label>Sort Order</label>
+              <label className="form-input-label">Sort Order</label>
 
               <input
                 type="number"
@@ -445,34 +447,36 @@ export default function EventCategory() {
                 min="0"
                 value={formData.sortOrder}
                 onChange={handleChange}
+                className="form-text-input"
               />
 
               {errors.sortOrder && (
-                <p className={cx("eventCategory-error-text")}>
+                <p className={cx("form-error-text")}>
                   {errors.sortOrder}
                 </p>
               )}
             </div>
 
             <div className={cx("event-category-field--full")}>
-              <label>Description</label>
+              <label className="form-input-label">Description</label>
 
               <textarea
                 name="description"
                 value={formData.description}
                 onChange={handleChange}
                 rows="4"
+                className={`form-textarea ${errors.description ? "error" : ""}`}
               />
 
               {errors.description && (
-                <p className={cx("eventCategory-error-text")}>
+                <p className={cx("form-error-text")}>
                   {errors.description}
                 </p>
               )}
             </div>
 
             <div className={cx("event-category-field--full eventCategory-keywords-field")}>
-              <label>Keywords</label>
+              <label className="form-input-label">Keywords</label>
 
               <Autocomplete
                 multiple
@@ -542,41 +546,43 @@ export default function EventCategory() {
               />
 
               {errors.keywords && (
-                <p className={cx("eventCategory-error-text")}>
+                <p className={cx("form-error-text")}>
                   {errors.keywords}
                 </p>
               )}
             </div>
 
             <div>
-              <label>SEO Title</label>
+              <label className="form-input-label">SEO Title</label>
 
               <input
                 type="text"
                 name="seoTitle"
                 value={formData.seoTitle}
                 onChange={handleChange}
+                className={`form-text-input ${errors.seoTitle ? "error" : ""}`}
               />
 
               {errors.seoTitle && (
-                <p className={cx("eventCategory-error-text")}>
+                <p className={cx("form-error-text")}>
                   {errors.seoTitle}
                 </p>
               )}
             </div>
 
             <div>
-              <label>SEO Description</label>
+              <label className="form-input-label">SEO Description</label>
 
               <textarea
                 name="seoDescription"
                 value={formData.seoDescription}
                 onChange={handleChange}
                 rows="3"
+                className={`form-textarea ${errors.seoDescription ? "error" : ""}`}
               />
 
               {errors.seoDescription && (
-                <p className={cx("eventCategory-error-text")}>
+                <p className={cx("form-error-text")}>
                   {errors.seoDescription}
                 </p>
               )}

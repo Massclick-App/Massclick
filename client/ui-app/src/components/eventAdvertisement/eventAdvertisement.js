@@ -544,42 +544,45 @@ export default function EventAdvertisement() {
           <form onSubmit={handleSubmit}>
             <div className={cx("eventAdvertisement-grid")}>
               <div>
-                <label>Popup Title *</label>
+                <label className="form-input-label">Popup Title *</label>
                 <input
                   type="text"
                   name="title"
                   value={formData.title}
                   onChange={handleChange}
+                  className={`form-text-input ${errors.title ? "error" : ""}`}
                 />
                 {errors.title && (
-                  <p className={cx("eventAdvertisement-error-text")}>
+                  <p className="form-error-text">
                     {errors.title}
                   </p>
                 )}
               </div>
 
               <div>
-                <label>Redirect URL</label>
+                <label className="form-input-label">Redirect URL</label>
                 <input
                   type="text"
                   name="redirectUrl"
                   value={formData.redirectUrl}
                   onChange={handleChange}
+                  className="form-text-input"
                 />
               </div>
 
               <div className={cx("eventAdvertisement-field--full")}>
-                <label>Popup Description</label>
+                <label className="form-input-label">Popup Description</label>
                 <textarea
                   name="description"
                   value={formData.description}
                   onChange={handleChange}
                   rows="4"
+                  className="form-textarea"
                 />
               </div>
 
               <div className={cx("eventAdvertisement-upload-field")}>
-                <label>Desktop Popup Image *</label>
+                <label className="form-input-label">Desktop Popup Image *</label>
                 <p className={cx("eventAdvertisement-upload-guidance")}>
                   {DESKTOP_POPUP_RULES.label}
                 </p>
@@ -623,14 +626,14 @@ export default function EventAdvertisement() {
                   </span>
                 )}
                 {errors.bannerImage && (
-                  <p className={cx("eventAdvertisement-error-text")}>
+                  <p className="form-error-text">
                     {errors.bannerImage}
                   </p>
                 )}
               </div>
 
               <div className={cx("eventAdvertisement-upload-field")}>
-                <label>Mobile Popup Image</label>
+                <label className="form-input-label">Mobile Popup Image</label>
                 <p className={cx("eventAdvertisement-upload-guidance")}>
                   {MOBILE_POPUP_RULES.label}
                 </p>
@@ -674,39 +677,41 @@ export default function EventAdvertisement() {
                   </span>
                 )}
                 {errors.mobileBannerImage && (
-                  <p className={cx("eventAdvertisement-error-text")}>
+                  <p className="form-error-text">
                     {errors.mobileBannerImage}
                   </p>
                 )}
               </div>
 
               <div>
-                <label>Start Date</label>
+                <label className="form-input-label">Start Date</label>
                 <input
                   type="date"
                   name="startDate"
                   value={formData.startDate}
                   onChange={handleChange}
+                  className="form-text-input"
                 />
               </div>
 
               <div>
-                <label>End Date</label>
+                <label className="form-input-label">End Date</label>
                 <input
                   type="date"
                   name="endDate"
                   value={formData.endDate}
                   onChange={handleChange}
+                  className={`form-text-input ${errors.endDate ? "error" : ""}`}
                 />
                 {errors.endDate && (
-                  <p className={cx("eventAdvertisement-error-text")}>
+                  <p className="form-error-text">
                     {errors.endDate}
                   </p>
                 )}
               </div>
 
               <div>
-                <label>Auto-close Duration</label>
+                <label className="form-input-label">Auto-close Duration</label>
                 <input
                   type="number"
                   name="displayDuration"
@@ -714,6 +719,7 @@ export default function EventAdvertisement() {
                   step="1"
                   value={formData.displayDuration}
                   onChange={handleChange}
+                  className="form-text-input"
                 />
                 <span className={cx("eventAdvertisement-help-text")}>
                   0 keeps the popup open until manually closed.
@@ -721,7 +727,7 @@ export default function EventAdvertisement() {
               </div>
 
               <div className={cx("eventAdvertisement-toggle")}>
-                <label htmlFor="homePopup-showConfetti">Show Confetti</label>
+                <label className="form-input-label" htmlFor="homePopup-showConfetti">Show Confetti</label>
                 <input
                   id="homePopup-showConfetti"
                   type="checkbox"
@@ -732,7 +738,7 @@ export default function EventAdvertisement() {
               </div>
 
               <div className={cx("eventAdvertisement-toggle")}>
-                <label htmlFor="homePopup-isActive">Active Popup</label>
+                <label className="form-input-label" htmlFor="homePopup-isActive">Active Popup</label>
                 <input
                   id="homePopup-isActive"
                   type="checkbox"

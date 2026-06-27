@@ -532,24 +532,25 @@ export default function EventCreation() {
         <form onSubmit={handleSubmit}>
           <div className={cx("eventCreation-grid")}>
             <div>
-              <label>Event Name *</label>
+              <label className="form-input-label">Event Name *</label>
 
               <input
                 type="text"
                 name="eventName"
                 value={formData.eventName}
                 onChange={handleChange}
+                className={`form-text-input ${errors.eventName ? "error" : ""}`}
               />
 
               {errors.eventName && (
-                <p className={cx("eventCreation-error-text")}>
+                <p className="form-error-text">
                   {errors.eventName}
                 </p>
               )}
             </div>
 
             <div>
-              <label>Slug</label>
+              <label className="form-input-label">Slug</label>
 
               <input
                 type="text"
@@ -557,16 +558,18 @@ export default function EventCreation() {
                 value={formData.slug}
                 readOnly
                 placeholder="Auto generated from event name"
+                className="form-text-input"
               />
             </div>
 
             <div>
-              <label>Event Category *</label>
+              <label className="form-input-label">Event Category *</label>
 
               <select
                 name="eventCategory"
                 value={formData.eventCategory}
                 onChange={handleChange}
+                className={`form-select-input ${errors.eventCategory ? "error" : ""}`}
               >
                 <option value="">Select category</option>
                 {categories.map((category) => (
@@ -580,19 +583,20 @@ export default function EventCreation() {
               </select>
 
               {errors.eventCategory && (
-                <p className={cx("eventCreation-error-text")}>
+                <p className="form-error-text">
                   {errors.eventCategory}
                 </p>
               )}
             </div>
 
             <div>
-              <label>Event Location *</label>
+              <label className="form-input-label">Event Location *</label>
 
               <select
                 name="eventLocation"
                 value={formData.eventLocation}
                 onChange={handleChange}
+                className={`form-select-input ${errors.eventLocation ? "error" : ""}`}
               >
                 <option value="">Select location</option>
                 {locations.map((location) => (
@@ -606,75 +610,80 @@ export default function EventCreation() {
               </select>
 
               {errors.eventLocation && (
-                <p className={cx("eventCreation-error-text")}>
+                <p className="form-error-text">
                   {errors.eventLocation}
                 </p>
               )}
             </div>
 
             <div>
-              <label>Start Date *</label>
+              <label className="form-input-label">Start Date *</label>
 
               <input
                 type="date"
                 name="startDate"
                 value={formData.startDate}
                 onChange={handleChange}
+                className={`form-text-input ${errors.startDate ? "error" : ""}`}
               />
 
               {errors.startDate && (
-                <p className={cx("eventCreation-error-text")}>
+                <p className="form-error-text">
                   {errors.startDate}
                 </p>
               )}
             </div>
 
             <div>
-              <label>End Date *</label>
+              <label className="form-input-label">End Date *</label>
 
               <input
                 type="date"
                 name="endDate"
                 value={formData.endDate}
                 onChange={handleChange}
+                className={`form-text-input ${errors.endDate ? "error" : ""}`}
               />
 
               {errors.endDate && (
-                <p className={cx("eventCreation-error-text")}>
+                <p className="form-error-text">
                   {errors.endDate}
                 </p>
               )}
             </div>
 
             <div>
-              <label>Start Time</label>
+              <label className="form-input-label">Start Time</label>
 
               <input
                 type="time"
                 name="startTime"
                 value={formData.startTime}
                 onChange={handleChange}
+                className="form-text-input"
               />
             </div>
 
             <div>
-              <label>End Time</label>
+              <label className="form-input-label">End Time</label>
 
               <input
                 type="time"
                 name="endTime"
                 value={formData.endTime}
                 onChange={handleChange}
+                className="form-text-input"
               />
             </div>
 
             <div>
-              <label>Event Type</label>
+              <label className="form-input-label">Event Type</label>
 
               <select
                 name="eventType"
                 value={formData.eventType}
                 onChange={handleChange}
+                className="form-select-input"
               >
                 <option value="physical">Physical</option>
                 <option value="virtual">Virtual</option>
@@ -683,12 +692,13 @@ export default function EventCreation() {
             </div>
 
             <div>
-              <label>Status</label>
+              <label className="form-input-label">Status</label>
 
               <select
                 name="status"
                 value={formData.status}
                 onChange={handleChange}
+                className="form-select-input"
               >
                 <option value="upcoming">Upcoming</option>
                 <option value="ongoing">Ongoing</option>
@@ -698,18 +708,19 @@ export default function EventCreation() {
             </div>
 
             <div className={cx("eventCreation-field--full")}>
-              <label>Description</label>
+              <label className="form-input-label">Description</label>
 
               <textarea
                 name="description"
                 value={formData.description}
                 onChange={handleChange}
                 rows="4"
+                className="form-textarea"
               />
             </div>
 
             <div className={cx("eventCreation-upload-field")}>
-              <label>Event Image</label>
+              <label className="form-input-label">Event Image</label>
 
               <div className={cx("eventCreation-upload-content")}>
                 <Button
@@ -739,7 +750,7 @@ export default function EventCreation() {
             </div>
 
             <div className={cx("eventCreation-upload-field")}>
-              <label>Banner Image</label>
+              <label className="form-input-label">Banner Image</label>
 
               <div className={cx("eventCreation-upload-content")}>
                 <Button
@@ -769,57 +780,61 @@ export default function EventCreation() {
             </div>
 
             <div>
-              <label>Organizer</label>
+              <label className="form-input-label">Organizer</label>
 
               <input
                 type="text"
                 name="organizer"
                 value={formData.organizer}
                 onChange={handleChange}
+                className="form-text-input"
               />
             </div>
 
             <div>
-              <label>Organizer Email</label>
+              <label className="form-input-label">Organizer Email</label>
 
               <input
                 type="email"
                 name="organizerEmail"
                 value={formData.organizerEmail}
                 onChange={handleChange}
+                className={`form-text-input ${errors.organizerEmail ? "error" : ""}`}
               />
 
               {errors.organizerEmail && (
-                <p className={cx("eventCreation-error-text")}>
+                <p className="form-error-text">
                   {errors.organizerEmail}
                 </p>
               )}
             </div>
 
             <div>
-              <label>Organizer Phone</label>
+              <label className="form-input-label">Organizer Phone</label>
 
               <input
                 type="text"
                 name="organizerPhone"
                 value={formData.organizerPhone}
                 onChange={handleChange}
+                className="form-text-input"
               />
             </div>
 
             <div>
-              <label>Registration URL</label>
+              <label className="form-input-label">Registration URL</label>
 
               <input
                 type="text"
                 name="registrationUrl"
                 value={formData.registrationUrl}
                 onChange={handleChange}
+                className="form-text-input"
               />
             </div>
 
             <div>
-              <label>Capacity</label>
+              <label className="form-input-label">Capacity</label>
 
               <input
                 type="number"
@@ -827,17 +842,18 @@ export default function EventCreation() {
                 min="0"
                 value={formData.capacity}
                 onChange={handleChange}
+                className={`form-text-input ${errors.capacity ? "error" : ""}`}
               />
 
               {errors.capacity && (
-                <p className={cx("eventCreation-error-text")}>
+                <p className="form-error-text">
                   {errors.capacity}
                 </p>
               )}
             </div>
 
             <div>
-              <label>Registered Participants</label>
+              <label className="form-input-label">Registered Participants</label>
 
               <input
                 type="number"
@@ -845,17 +861,18 @@ export default function EventCreation() {
                 min="0"
                 value={formData.registeredParticipants}
                 onChange={handleChange}
+                className={`form-text-input ${errors.registeredParticipants ? "error" : ""}`}
               />
 
               {errors.registeredParticipants && (
-                <p className={cx("eventCreation-error-text")}>
+                <p className="form-error-text">
                   {errors.registeredParticipants}
                 </p>
               )}
             </div>
 
             <div>
-              <label>Ticket Price</label>
+              <label className="form-input-label">Ticket Price</label>
 
               <input
                 type="number"
@@ -864,17 +881,18 @@ export default function EventCreation() {
                 step="0.01"
                 value={formData.ticketPrice}
                 onChange={handleChange}
+                className={`form-text-input ${errors.ticketPrice ? "error" : ""}`}
               />
 
               {errors.ticketPrice && (
-                <p className={cx("eventCreation-error-text")}>
+                <p className="form-error-text">
                   {errors.ticketPrice}
                 </p>
               )}
             </div>
 
             <div className={cx("eventCreation-field--full eventCreation-keywords-field")}>
-              <label>Keywords</label>
+              <label className="form-input-label">Keywords</label>
 
               <Autocomplete
                 multiple
@@ -945,29 +963,31 @@ export default function EventCreation() {
             </div>
 
             <div>
-              <label>SEO Title</label>
+              <label className="form-input-label">SEO Title</label>
 
               <input
                 type="text"
                 name="seoTitle"
                 value={formData.seoTitle}
                 onChange={handleChange}
+                className="form-text-input"
               />
             </div>
 
             <div>
-              <label>SEO Description</label>
+              <label className="form-input-label">SEO Description</label>
 
               <textarea
                 name="seoDescription"
                 value={formData.seoDescription}
                 onChange={handleChange}
                 rows="3"
+                className="form-textarea"
               />
             </div>
 
             <div className={cx("eventCreation-toggle")}>
-              <label htmlFor="eventCreation-isActive">
+              <label className="form-input-label" htmlFor="eventCreation-isActive">
                 Active Event
               </label>
 
@@ -981,7 +1001,7 @@ export default function EventCreation() {
             </div>
 
             <div className={cx("eventCreation-toggle")}>
-              <label htmlFor="eventCreation-isPublished">
+              <label className="form-input-label" htmlFor="eventCreation-isPublished">
                 Published
               </label>
 
