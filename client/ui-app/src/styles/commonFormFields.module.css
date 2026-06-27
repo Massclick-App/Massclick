@@ -152,6 +152,51 @@
 }
 
 /* ========================================
+   TEXTAREAS
+   ======================================== */
+
+.form-textarea {
+  width: 100%;
+  min-height: 100px;
+  padding: 12px;
+  font-size: 1rem;
+  border: 2px solid var(--form-field-border-default);
+  border-radius: 10px;
+  background-color: var(--form-field-bg);
+  color: var(--form-field-text-color);
+  transition: all 0.5s ease;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.form-textarea::placeholder {
+  color: var(--form-field-text-placeholder);
+  opacity: 1;
+}
+
+.form-textarea:hover {
+  border-color: var(--form-field-border-hover);
+}
+
+.form-textarea:focus {
+  outline: none;
+  border-color: var(--form-field-border-focus);
+  background-color: var(--form-field-bg-focus);
+  box-shadow: var(--form-field-shadow-focus);
+}
+
+.form-textarea.error {
+  border-color: var(--form-field-border-error);
+  background-color: var(--form-field-bg-error);
+}
+
+.form-textarea:disabled {
+  background-color: #f1f5f9;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+/* ========================================
    RESPONSIVE & UTILITY
    ======================================== */
 

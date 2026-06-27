@@ -249,8 +249,8 @@ export default function SeoData() {
         </h2>
         <form onSubmit={handleSubmit} className={cx("seo-form-grid")}>
           <div className={cx("seo-form-input-group category-search")}>
-            <label className={cx("seo-input-label")}>Category</label>
-            <input type="text" value={categoryInput} placeholder="Search category" className={cx("seo-text-input")} onChange={e => {
+            <label className="form-input-label">Category</label>
+            <input type="text" value={categoryInput} placeholder="Search category" className="form-text-input" onChange={e => {
             const value = e.target.value;
             setCategoryInput(value);
             setShowSuggestions(true);
@@ -275,8 +275,8 @@ export default function SeoData() {
               </ul>}
           </div>
           <div className={cx("seo-form-input-group category-search")}>
-            <label className={cx("seo-input-label")}>Location</label>
-            <input type="text" name="location" value={formData.location} placeholder="Search location" className={cx(`seo-text-input ${errors.location ? "error" : ""}`)} onChange={e => {
+            <label className="form-input-label">Location</label>
+            <input type="text" name="location" value={formData.location} placeholder="Search location" className={`form-text-input ${errors.location ? "error" : ""}`} onChange={e => {
             handleChange(e);
             updateLocationSuggestions(e.target.value);
           }} onFocus={() => updateLocationSuggestions(formData.location)} onBlur={() => setTimeout(() => setShowLocationSuggest(false), 150)} />
@@ -294,16 +294,16 @@ export default function SeoData() {
                     {loc.state ? ` - ${loc.state}` : ""}
                   </li>)}
               </ul>}
-            {errors.location && <p className={cx("seo-error-text")}>{errors.location}</p>}
+            {errors.location && <p className="form-error-text">{errors.location}</p>}
           </div>
           {fields.map(({
           label,
           name
         }) => <div key={name} className={cx("seo-form-input-group")}>
-              <label className={cx("seo-input-label")}>{label}</label>
-              {name === "description" ? <textarea name={name} value={formData[name]} onChange={handleChange} className={cx(`seo-textarea ${errors[name] ? "error" : ""}`)} /> : <input type="text" name={name} value={formData[name]} onChange={handleChange} className={cx(`seo-text-input ${errors[name] ? "error" : ""}`)} />}
+              <label className="form-input-label">{label}</label>
+              {name === "description" ? <textarea name={name} value={formData[name]} onChange={handleChange} className={`form-textarea ${errors[name] ? "error" : ""}`} /> : <input type="text" name={name} value={formData[name]} onChange={handleChange} className={`form-text-input ${errors[name] ? "error" : ""}`} />}
 
-              {errors[name] && <p className={cx("seo-error-text")}>{errors[name]}</p>}
+              {errors[name] && <p className="form-error-text">{errors[name]}</p>}
             </div>)}
 
           <div className={cx("seo-actions")}>
@@ -317,7 +317,7 @@ export default function SeoData() {
           </div>
         </form>
 
-        {error && <p className={cx("seo-error-text")}>
+        {error && <p className="form-error-text">
             {typeof error === "string" ? error : JSON.stringify(error)}
           </p>}
         </>}

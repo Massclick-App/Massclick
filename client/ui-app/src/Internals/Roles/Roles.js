@@ -181,9 +181,9 @@ export default function Roles() {
                 <h2 className={cx("role-card-title")}>{editingId ? "Edit Role" : "Add New Role"}</h2>
                 <form onSubmit={handleSubmit} className={cx("role-form-grid")}>
                     {textFields.map(field => <div key={field.name} className={cx("role-form-input-group")}>
-                            <label htmlFor={field.name} className={cx("role-input-label")}>{field.label}</label>
-                            <input type="text" id={field.name} name={field.name} value={formData[field.name]} onChange={handleChange} className={cx(`role-text-input ${errors[field.name] ? "error" : ""}`)} />
-                            {errors[field.name] && <p className={cx("role-error-text")}>{errors[field.name]}</p>}
+                            <label htmlFor={field.name} className="form-input-label">{field.label}</label>
+                            <input type="text" id={field.name} name={field.name} value={formData[field.name]} onChange={handleChange} className={`form-text-input ${errors[field.name] ? "error" : ""}`} />
+                            {errors[field.name] && <p className="form-error-text">{errors[field.name]}</p>}
                         </div>)}
 
                     {/* Page Permissions Picker */}

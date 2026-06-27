@@ -8,6 +8,8 @@
    See: src/styles/CSS_MODULES_GUIDELINES.md
 */
 
+@import url('./styles/commonFormFields.module.css');
+
 *,
 *::before,
 *::after {

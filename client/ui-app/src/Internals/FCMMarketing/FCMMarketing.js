@@ -551,8 +551,8 @@ export default function FCMMarketing() {
               Title <span className={cx("fcm-required")}>*</span>
               <span className={cx("fcm-char-count")}>{form.title.length}/65</span>
             </label>
-            <input className={cx(`fcm-input ${errors.title ? "fcm-input-error" : ""}`)} type="text" value={form.title} onChange={e => handleChange("title", e.target.value)} placeholder="e.g. Big Sale Today!" maxLength={65} />
-            {errors.title && <p className={cx("fcm-error-msg")}>{errors.title}</p>}
+            <input className={`form-text-input ${errors.title ? "error" : ""}`} type="text" value={form.title} onChange={e => handleChange("title", e.target.value)} placeholder="e.g. Big Sale Today!" maxLength={65} />
+            {errors.title && <p className="form-error-text">{errors.title}</p>}
           </div>
 
           {/* Body */}
@@ -561,8 +561,8 @@ export default function FCMMarketing() {
               Body <span className={cx("fcm-required")}>*</span>
               <span className={cx("fcm-char-count")}>{form.body.length}/200</span>
             </label>
-            <textarea className={cx(`fcm-textarea ${errors.body ? "fcm-input-error" : ""}`)} value={form.body} onChange={e => handleChange("body", e.target.value)} placeholder="e.g. Get 50% off on all services. Limited time offer!" maxLength={200} rows={3} />
-            {errors.body && <p className={cx("fcm-error-msg")}>{errors.body}</p>}
+            <textarea className={`form-textarea ${errors.body ? "error" : ""}`} value={form.body} onChange={e => handleChange("body", e.target.value)} placeholder="e.g. Get 50% off on all services. Limited time offer!" maxLength={200} rows={3} />
+            {errors.body && <p className="form-error-text">{errors.body}</p>}
           </div>
 
           {/* Image */}
@@ -607,19 +607,19 @@ export default function FCMMarketing() {
                     <span className={cx("fcm-upload-text")}>Click to upload image</span>
                     <span className={cx("fcm-upload-hint")}>PNG, JPG, WebP — max 3 MB</span>
                   </>}
-              </div> : <input className={cx(`fcm-input ${errors.imageUrl ? "fcm-input-error" : ""}`)} type="url" value={form.imageUrl} onChange={e => handleChange("imageUrl", e.target.value)} placeholder="https://example.com/banner.png" autoFocus />}
+              </div> : <input className={cx(`form-text-input ${errors.imageUrl ? "error" : ""}`)} type="url" value={form.imageUrl} onChange={e => handleChange("imageUrl", e.target.value)} placeholder="https://example.com/banner.png" autoFocus />}
 
             <input ref={fileInputRef} type="file" accept="image/*" style={{
             display: "none"
           }} onChange={handleImageFileSelect} />
-            {errors.imageUrl && <p className={cx("fcm-error-msg")}>{errors.imageUrl}</p>}
+            {errors.imageUrl && <p className={cx("form-error-text")}>{errors.imageUrl}</p>}
           </div>
 
           {/* Click Action */}
           <div className={cx("fcm-field")}>
             <label className={cx("fcm-label")}>Click Action URL <span className={cx("fcm-optional")}>(optional)</span></label>
-            <input className={cx(`fcm-input ${errors.clickAction ? "fcm-input-error" : ""}`)} type="url" value={form.clickAction} onChange={e => handleChange("clickAction", e.target.value)} placeholder="https://massclick.in/offers" />
-            {errors.clickAction && <p className={cx("fcm-error-msg")}>{errors.clickAction}</p>}
+            <input className={cx(`form-text-input ${errors.clickAction ? "error" : ""}`)} type="url" value={form.clickAction} onChange={e => handleChange("clickAction", e.target.value)} placeholder="https://massclick.in/offers" />
+            {errors.clickAction && <p className={cx("form-error-text")}>{errors.clickAction}</p>}
           </div>
 
           {/* Custom Data */}
@@ -633,8 +633,8 @@ export default function FCMMarketing() {
                 </button>}
             </div>
             {form.customData.map((row, idx) => <div key={idx} className={cx("fcm-custom-row")}>
-                <input className={cx(`fcm-input fcm-custom-key ${errors[`customData_${idx}`] ? "fcm-input-error" : ""}`)} placeholder="key" value={row.key} onChange={e => updateCustomDataRow(idx, "key", e.target.value)} />
-                <input className={cx(`fcm-input fcm-custom-val ${errors[`customData_${idx}`] ? "fcm-input-error" : ""}`)} placeholder="value" value={row.value} onChange={e => updateCustomDataRow(idx, "value", e.target.value)} />
+                <input className={cx(`form-text-input fcm-custom-key ${errors[`customData_${idx}`] ? "error" : ""}`)} placeholder="key" value={row.key} onChange={e => updateCustomDataRow(idx, "key", e.target.value)} />
+                <input className={cx(`form-text-input fcm-custom-val ${errors[`customData_${idx}`] ? "error" : ""}`)} placeholder="value" value={row.value} onChange={e => updateCustomDataRow(idx, "value", e.target.value)} />
                 <IconButton size="small" onClick={() => removeCustomDataRow(idx)} sx={{
               color: "#ef4444"
             }}>
@@ -642,7 +642,7 @@ export default function FCMMarketing() {
                 fontSize: 18
               }} />
                 </IconButton>
-                {errors[`customData_${idx}`] && <p className={cx("fcm-error-msg fcm-custom-error")}>{errors[`customData_${idx}`]}</p>}
+                {errors[`customData_${idx}`] && <p className={cx("form-error-text fcm-custom-error")}>{errors[`customData_${idx}`]}</p>}
               </div>)}
           </div>
 
@@ -667,7 +667,7 @@ export default function FCMMarketing() {
                     {p.label}
                   </button>)}
               </div>
-              {errors.targetPlatform && <p className={cx("fcm-error-msg")}>{errors.targetPlatform}</p>}
+              {errors.targetPlatform && <p className={cx("form-error-text")}>{errors.targetPlatform}</p>}
             </div>}
 
           {/* Specific User Search */}
@@ -696,7 +696,7 @@ export default function FCMMarketing() {
                 </div> : <div className={cx("fcm-user-search-wrap")} onBlur={e => {
             if (!e.currentTarget.contains(e.relatedTarget)) setShowDropdown(false);
           }}>
-                  <input className={cx(`fcm-input ${errors.targetUserId ? "fcm-input-error" : ""}`)} type="text" placeholder="Search by name or mobile..." value={userSearch} onChange={e => {
+                  <input className={cx(`form-text-input ${errors.targetUserId ? "error" : ""}`)} type="text" placeholder="Search by name or mobile..." value={userSearch} onChange={e => {
               setUserSearch(e.target.value);
               setShowDropdown(true);
             }} onFocus={() => setShowDropdown(true)} />
@@ -723,7 +723,7 @@ export default function FCMMarketing() {
                         </button>)}
                     </div>}
                 </div>}
-              {errors.targetUserId && <p className={cx("fcm-error-msg")}>{errors.targetUserId}</p>}
+              {errors.targetUserId && <p className={cx("form-error-text")}>{errors.targetUserId}</p>}
             </div>}
 
           {/* Audience count hint */}
@@ -768,14 +768,14 @@ export default function FCMMarketing() {
             }}>
                   Date &amp; Time <span className={cx("fcm-required")}>*</span>
                 </label>
-                <input className={cx(`fcm-input ${errors.scheduledAt ? "fcm-input-error" : ""}`)} type="datetime-local" value={scheduledAt} min={minScheduleDatetime()} onChange={e => {
+                <input className={cx(`form-text-input ${errors.scheduledAt ? "error" : ""}`)} type="datetime-local" value={scheduledAt} min={minScheduleDatetime()} onChange={e => {
               setScheduledAt(e.target.value);
               if (errors.scheduledAt) setErrors(p => ({
                 ...p,
                 scheduledAt: ""
               }));
             }} />
-                {errors.scheduledAt && <p className={cx("fcm-error-msg")}>{errors.scheduledAt}</p>}
+                {errors.scheduledAt && <p className={cx("form-error-text")}>{errors.scheduledAt}</p>}
               </div>}
           </div>
 
