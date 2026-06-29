@@ -2990,6 +2990,7 @@ const BusinessList = React.memo(() => {
     keywords: bl.keywords || [],
     restaurantOptions: bl.restaurantOptions || "",
     bannerImage: bl.bannerImage || null,
+    logoImage: bl.logoImage || null,
     businessImages: bl.businessImages || [],
     googleMap: bl.googleMap || "-",
     geoLocation: bl.geoLocation || {
@@ -3042,6 +3043,7 @@ const BusinessList = React.memo(() => {
     keywords: bl.keywords || [],
     restaurantOptions: bl.restaurantOptions || "",
     bannerImage: bl.bannerImage || null,
+    logoImage: bl.logoImage || null,
     businessImages: bl.businessImages || [],
     googleMap: bl.googleMap || "-",
     geoLocation: bl.geoLocation || {
@@ -3485,6 +3487,7 @@ const BusinessList = React.memo(() => {
   }, {
     id: "logoImage",
     label: "Logo",
+    width: 60,
     renderCell: (value, row) => (
       value ? (
         <Avatar
