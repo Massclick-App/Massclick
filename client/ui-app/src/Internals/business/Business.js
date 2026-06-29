@@ -463,6 +463,8 @@ const BusinessList = React.memo(() => {
   const [inputKeyword, setInputKeyword] = useState("");
   const [categoryKeywordSuggestions, setCategoryKeywordSuggestions] = useState([]);
   const [detailRow, setDetailRow] = useState(null);
+  const [imageModalOpen, setImageModalOpen] = useState(false);
+  const [selectedImageUrl, setSelectedImageUrl] = useState(null);
 
   // Search & Filter States
   const [searchTerm, setSearchTerm] = useState("");
@@ -3334,7 +3336,16 @@ const BusinessList = React.memo(() => {
     id: "bannerImage",
     label: "",
     renderCell: (value, row) => (
-      <Avatar src={value} alt={row.businessName} sx={{ width: 36, height: 36, borderRadius: 1 }} variant="square" />
+      <Avatar
+        src={value}
+        alt={row.businessName}
+        sx={{ width: 36, height: 36, borderRadius: 1, cursor: "pointer" }}
+        variant="square"
+        onClick={() => {
+          setSelectedImageUrl(value);
+          setImageModalOpen(true);
+        }}
+      />
     )
   }, {
     id: "businessName",
@@ -3355,6 +3366,15 @@ const BusinessList = React.memo(() => {
   }, {
     id: "category",
     label: "Category"
+  }, {
+    id: "categoryGroup",
+    label: "Category Group",
+    renderCell: (_, row) => {
+      const categoryGroups = Array.isArray(row.mniDetails)
+        ? row.mniDetails.map(i => i?.categoryGroup).filter(Boolean).join(", ") || "—"
+        : "—";
+      return <Typography sx={{ fontSize: "0.82rem", color: "#6b7280" }}>{categoryGroups}</Typography>;
+    }
   }, {
     id: "payment",
     label: "Status",
@@ -4367,7 +4387,13 @@ const BusinessList = React.memo(() => {
     </>}
 
     {/* Business Detail Drawer */}
-    <Drawer anchor="right" open={Boolean(detailRow)} onClose={() => setDetailRow(null)} PaperProps={{ sx: { width: 460 } }}>
+    <Dialog
+      open={Boolean(detailRow)}
+      onClose={() => setDetailRow(null)}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{ sx: { borderRadius: 3, maxHeight: "95vh", bgcolor: "#ffffff" } }}
+    >
       {detailRow && (() => {
         const row = detailRow;
         const isPaid = Boolean(row.amountPaid);
@@ -4426,179 +4452,292 @@ const BusinessList = React.memo(() => {
         };
 
         const SLabel = ({ children }) => (
-          <Typography sx={{ fontSize: "0.63rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.8px", color: "#9ca3af", mb: 0.75 }}>
+          <Typography sx={{ fontSize: "0.85rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: "1.2px", color: "#64748b", mb: 1.6, display: "flex", alignItems: "center", gap: 1 }}>
+            <Box sx={{ width: "3px", height: "3px", borderRadius: "50%", bgcolor: "#ff8c00" }} />
             {children}
           </Typography>
         );
         const DRow = ({ label, value }) => (
           !value || value === "-" ? null :
-          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", py: 0.55, borderBottom: "1px solid #f3f4f6" }}>
-            <Typography sx={{ fontSize: "0.77rem", color: "#6b7280", fontWeight: 500, flexShrink: 0, mr: 2 }}>{label}</Typography>
-            <Typography sx={{ fontSize: "0.77rem", color: "#1f2937", fontWeight: 600, textAlign: "right", wordBreak: "break-word", maxWidth: "65%" }}>{value}</Typography>
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", py: 1.1, paddingBottom: 1.1 }}>
+            <Typography sx={{ fontSize: "0.92rem", color: "#64748b", fontWeight: 600, flexShrink: 0, mr: 3 }}>{label}</Typography>
+            <Typography sx={{ fontSize: "0.92rem", color: "#0f172a", fontWeight: 600, textAlign: "right", wordBreak: "break-word", maxWidth: "50%" }}>{value}</Typography>
           </Box>
         );
 
         return (
-          <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
-
-            {/* Header */}
-            <Box sx={{ p: 2.5, bgcolor: "#fff7ed", borderBottom: "1px solid #e0e6ed", display: "flex", gap: 2, alignItems: "flex-start", flexShrink: 0 }}>
-              <Avatar src={row.bannerImage} alt={row.businessName} sx={{ width: 56, height: 56, borderRadius: 1.5 }} variant="square" />
-              <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Typography sx={{ fontWeight: 700, fontSize: "0.95rem", color: "#1f2937", lineHeight: 1.3 }}>
-                  {row.businessName || "—"}
-                </Typography>
-                <Typography sx={{ fontSize: "0.72rem", color: "#9ca3af", mt: 0.3 }}>{row.clientId}</Typography>
-                <Box sx={{ display: "flex", gap: 0.5, mt: 0.75, flexWrap: "wrap" }}>
-                  {row.verification?.isVerified && <Box sx={{ px: 1, py: 0.25, borderRadius: "10px", bgcolor: "#dbeafe", color: "#1d4ed8", fontSize: "0.63rem", fontWeight: 700 }}>✓ Verified</Box>}
-                  {row.badges?.isFeatured && <Box sx={{ px: 1, py: 0.25, borderRadius: "10px", bgcolor: "#fef3c7", color: "#92400e", fontSize: "0.63rem", fontWeight: 700 }}>★ Featured</Box>}
-                  {row.badges?.isSponsored && <Box sx={{ px: 1, py: 0.25, borderRadius: "10px", bgcolor: "#f3e8ff", color: "#7c3aed", fontSize: "0.63rem", fontWeight: 700 }}>Sponsored</Box>}
-                  {row.badges?.isTrending && <Box sx={{ px: 1, py: 0.25, borderRadius: "10px", bgcolor: "#fee2e2", color: "#991b1b", fontSize: "0.63rem", fontWeight: 700 }}>🔥 Trending</Box>}
+          <>
+            {/* Business Info Header - Polished */}
+            <Box sx={{ p: 4.5, bgcolor: "#ffffff", borderBottom: "1px solid #e8ecf1" }}>
+              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 2 }}>
+                <Box sx={{ flex: 1 }}>
+                  <Typography sx={{ fontWeight: 800, fontSize: "1.55rem", color: "#0f172a", mb: 0.6, letterSpacing: "-0.5px" }}>
+                    {row.businessName || "—"}
+                  </Typography>
+                  <Typography sx={{ fontSize: "0.92rem", color: "#64748b", fontWeight: 500 }}>
+                    ID: {row.clientId}
+                  </Typography>
                 </Box>
-              </Box>
-              <IconButton size="small" onClick={() => setDetailRow(null)}>
-                <CloseRoundedIcon fontSize="small" />
-              </IconButton>
-            </Box>
-
-            {/* Body */}
-            <Box sx={{ flex: 1, overflowY: "auto", p: 2.5, display: "flex", flexDirection: "column", gap: 2 }}>
-
-              {/* Contact */}
-              <Box>
-                <SLabel>Contact</SLabel>
-                <DRow label="Email" value={row.email} />
-                <DRow label="Phone" value={row.contact} />
-                <DRow label="WhatsApp" value={row.whatsappNumber} />
-                <DRow label="Created By" value={getCreatedByDisplayName(row.createdBy)} />
+                <IconButton size="small" onClick={() => setDetailRow(null)} sx={{ mt: -1 }}>
+                  <CloseRoundedIcon fontSize="small" />
+                </IconButton>
               </Box>
 
-              <Divider />
-
-              {/* Address */}
-              <Box>
-                <SLabel>Address</SLabel>
-                <DRow label="Location" value={row.location} />
-                <DRow label="Plot / Street" value={[row.plotNumber, row.street].filter(v => v && v !== "-").join(", ") || null} />
-                <DRow label="Pincode" value={row.pincode} />
-                <DRow label="Full Address" value={row.globalAddress} />
-              </Box>
-
-              <Divider />
-
-              {/* Business Info */}
-              <Box>
-                <SLabel>Business Info</SLabel>
-                <DRow label="Category" value={row.category} />
-                <DRow label="Category Group" value={categoryGroups} />
-                <DRow label="GSTIN" value={row.gstin} />
-                <DRow label="Experience" value={row.experience} />
-                {row.description && row.description !== "-" && (
-                  <Box sx={{ py: 0.75 }}>
-                    <Typography sx={{ fontSize: "0.72rem", color: "#6b7280", fontWeight: 500, mb: 0.4 }}>Description</Typography>
-                    <Typography sx={{ fontSize: "0.77rem", color: "#1f2937", lineHeight: 1.55 }}>{row.description}</Typography>
+              {/* Badges Row */}
+              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mt: 2.5 }}>
+                {row.verification?.isVerified && (
+                  <Box sx={{
+                    px: 2, py: 0.7, borderRadius: "12px",
+                    bgcolor: "#ecf0ff", color: "#3b5bdb",
+                    fontSize: "0.8rem", fontWeight: 700,
+                    display: "flex", alignItems: "center", gap: 0.5
+                  }}>
+                    <CheckCircleRoundedIcon sx={{ fontSize: "1rem" }} /> Verified
+                  </Box>
+                )}
+                {row.badges?.isFeatured && (
+                  <Box sx={{ px: 2, py: 0.7, borderRadius: "12px", bgcolor: "#fff8e1", color: "#b8860b", fontSize: "0.8rem", fontWeight: 700 }}>
+                    ★ Featured
+                  </Box>
+                )}
+                {row.badges?.isSponsored && (
+                  <Box sx={{ px: 2, py: 0.7, borderRadius: "12px", bgcolor: "#f3e8ff", color: "#7c3aed", fontSize: "0.8rem", fontWeight: 700 }}>
+                    Sponsored
+                  </Box>
+                )}
+                {row.badges?.isTrending && (
+                  <Box sx={{ px: 2, py: 0.7, borderRadius: "12px", bgcolor: "#fef2f2", color: "#c41e3a", fontSize: "0.8rem", fontWeight: 700 }}>
+                    🔥 Trending
                   </Box>
                 )}
               </Box>
+            </Box>
 
-              {socialLinks.length > 0 && <>
-                <Divider />
-                <Box>
-                  <SLabel>Web & Social</SLabel>
-                  {socialLinks.map(({ label, value }) => <DRow key={label} label={label} value={value} />)}
+            {/* Scrollable Details */}
+            <Box sx={{ maxHeight: 500, overflowY: "auto", p: 0, display: "flex", flexDirection: "column", bgcolor: "#ffffff" }}>
+              <Box sx={{ p: 4.5, display: "flex", flexDirection: "column", gap: 3.5 }}>
+
+                {/* Contact Section */}
+                <Box sx={{ pb: 2.5, borderBottom: "1px solid #e8ecf1" }}>
+                  <SLabel>Contact Information</SLabel>
+                  <DRow label="Email" value={row.email} />
+                  <DRow label="Phone" value={row.contact} />
+                  <DRow label="WhatsApp" value={row.whatsappNumber} />
+                  <DRow label="Created By" value={getCreatedByDisplayName(row.createdBy)} />
                 </Box>
-              </>}
 
-              {(row.seoTitle || row.title || row.slug || keywords.length > 0) && <>
-                <Divider />
-                <Box>
-                  <SLabel>SEO</SLabel>
-                  <DRow label="Display Title" value={row.title} />
-                  <DRow label="SEO Title" value={row.seoTitle} />
-                  <DRow label="Slug" value={row.slug} />
-                  <DRow label="SEO Description" value={row.seoDescription} />
-                  {keywords.length > 0 && (
-                    <Box sx={{ py: 0.6 }}>
-                      <Typography sx={{ fontSize: "0.72rem", color: "#6b7280", fontWeight: 500, mb: 0.5 }}>Keywords</Typography>
-                      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-                        {keywords.slice(0, 12).map((kw, i) => (
-                          <Box key={i} sx={{ px: 1, py: 0.3, borderRadius: "10px", bgcolor: "#f3f4f6", fontSize: "0.69rem", color: "#374151", fontWeight: 500 }}>
-                            {kw}
-                          </Box>
-                        ))}
+                {/* Address Section */}
+                <Box sx={{ pb: 2.5, borderBottom: "1px solid #e8ecf1" }}>
+                  <SLabel>Address Details</SLabel>
+                  <DRow label="Location" value={row.location} />
+                  <DRow label="Plot / Street" value={[row.plotNumber, row.street].filter(v => v && v !== "-").join(", ") || null} />
+                  <DRow label="Pincode" value={row.pincode} />
+                  <DRow label="Full Address" value={row.globalAddress} />
+                </Box>
+
+                {/* Business Info Section */}
+                <Box sx={{ pb: 2.5, borderBottom: "1px solid #e8ecf1" }}>
+                  <SLabel>Business Information</SLabel>
+                  <DRow label="Category" value={row.category} />
+                  <DRow label="Category Group" value={categoryGroups} />
+                  <DRow label="GSTIN" value={row.gstin} />
+                  <DRow label="Experience" value={row.experience} />
+                  {row.description && row.description !== "-" && (
+                    <Box sx={{ py: 1.2, borderTop: "1px solid #e8ecf1", mt: 1 }}>
+                      <Typography sx={{ fontSize: "0.92rem", color: "#64748b", fontWeight: 600, mb: 0.8 }}>Description</Typography>
+                      <Typography sx={{ fontSize: "0.92rem", color: "#0f172a", lineHeight: 1.8, fontWeight: 500 }}>{row.description}</Typography>
+                    </Box>
+                  )}
+                </Box>
+
+                {/* Web & Social Section */}
+                {socialLinks.length > 0 && (
+                  <Box sx={{ pb: 2.5, borderBottom: "1px solid #e8ecf1" }}>
+                    <SLabel>Web & Social</SLabel>
+                    {socialLinks.map(({ label, value }) => <DRow key={label} label={label} value={value} />)}
+                  </Box>
+                )}
+
+                {/* SEO Section */}
+                {(row.seoTitle || row.title || row.slug || keywords.length > 0) && (
+                  <Box sx={{ pb: 2.5, borderBottom: "1px solid #e8ecf1" }}>
+                    <SLabel>SEO Details</SLabel>
+                    <DRow label="Display Title" value={row.title} />
+                    <DRow label="SEO Title" value={row.seoTitle} />
+                    <DRow label="Slug" value={row.slug} />
+                    <DRow label="SEO Description" value={row.seoDescription} />
+                    {keywords.length > 0 && (
+                      <Box sx={{ py: 1.2, borderTop: "1px solid #e8ecf1", mt: 1 }}>
+                        <Typography sx={{ fontSize: "0.92rem", color: "#64748b", fontWeight: 600, mb: 1 }}>Keywords</Typography>
+                        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.8 }}>
+                          {keywords.slice(0, 12).map((kw, i) => (
+                            <Box key={i} sx={{ px: 1.4, py: 0.5, borderRadius: "10px", bgcolor: "#f1f5f9", fontSize: "0.85rem", color: "#334155", fontWeight: 600, border: "1px solid #e2e8f0" }}>
+                              {kw}
+                            </Box>
+                          ))}
+                        </Box>
+                      </Box>
+                    )}
+                  </Box>
+                )}
+
+                {/* Payment Section */}
+                <Box sx={{ pb: 2.5, borderBottom: "1px solid #e8ecf1" }}>
+                  <SLabel>Payment Status</SLabel>
+                  <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 1 }}>
+                    <Box sx={{
+                      display: "inline-flex", alignItems: "center", px: 2, py: 0.75,
+                      borderRadius: "20px", fontSize: "0.9rem", fontWeight: 700,
+                      bgcolor: isPaid ? "#d1fae5" : "#fef3c7",
+                      color: isPaid ? "#065f46" : "#92400e"
+                    }}>
+                      {isPaid ? "✓ Paid" : "⏳ Pending"}
+                    </Box>
+                    {!isPaid && (
+                      <Button size="small" variant="contained" onClick={handleMarkPaid}
+                        sx={{ bgcolor: "#ff8c00", "&:hover": { bgcolor: "#d97800" }, fontSize: "0.9rem", textTransform: "none", py: 0.7, px: 2.5, fontWeight: 600 }}>
+                        Mark as Paid
+                      </Button>
+                    )}
+                  </Box>
+                  {formattedDate && <Typography sx={{ fontSize: "0.85rem", color: "#64748b", mt: 1.2, fontWeight: 500 }}>Paid on {formattedDate}</Typography>}
+                </Box>
+
+                {/* QR Section */}
+                {row.qrImage && (
+                  <Box>
+                    <SLabel>QR Code</SLabel>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 3, p: 2.5, bgcolor: "#f8f9fa", borderRadius: "12px" }}>
+                      <Avatar src={row.qrImage} variant="square" sx={{ width: 90, height: 90, borderRadius: 1.2, boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }} />
+                      <Box>
+                        <Typography sx={{ fontSize: "0.85rem", color: "#64748b", mb: 1.2, fontWeight: 500 }}>Last downloaded: {lastDownload}</Typography>
+                        <Button size="medium" variant="outlined" onClick={handleDownloadQR}
+                          sx={{ fontSize: "0.9rem", textTransform: "none", borderColor: "#ff8c00", color: "#ff8c00", fontWeight: 600, "&:hover": { borderColor: "#d97800", bgcolor: "#fff8f1" }, py: 0.7 }}>
+                          Download QR
+                        </Button>
                       </Box>
                     </Box>
-                  )}
-                </Box>
-              </>}
-
-              <Divider />
-
-              {/* Payment */}
-              <Box>
-                <SLabel>Payment</SLabel>
-                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 0.5 }}>
-                  <Box sx={{
-                    display: "inline-flex", alignItems: "center", px: 1.5, py: 0.5,
-                    borderRadius: "16px", fontSize: "0.75rem", fontWeight: 700,
-                    bgcolor: isPaid ? "#d1fae5" : "#fef3c7",
-                    color: isPaid ? "#065f46" : "#92400e"
-                  }}>
-                    {isPaid ? "Paid" : "Pending"}
                   </Box>
-                  {!isPaid && (
-                    <Button size="small" variant="contained" onClick={handleMarkPaid}
-                      sx={{ bgcolor: "#ff7a00", "&:hover": { bgcolor: "#d46900" }, fontSize: "0.75rem", textTransform: "none" }}>
-                      Mark as Paid
-                    </Button>
-                  )}
-                </Box>
-                {formattedDate && <Typography sx={{ fontSize: "0.75rem", color: "#6b7280", mt: 0.5 }}>Paid on {formattedDate}</Typography>}
+                )}
               </Box>
-
-              {row.qrImage && <>
-                <Divider />
-                <Box>
-                  <SLabel>Review QR</SLabel>
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                    <Avatar src={row.qrImage} variant="square" sx={{ width: 64, height: 64, borderRadius: 1 }} />
-                    <Box>
-                      <Typography sx={{ fontSize: "0.75rem", color: "#6b7280", mb: 0.75 }}>Last: {lastDownload}</Typography>
-                      <Button size="small" variant="outlined" onClick={handleDownloadQR}
-                        sx={{ fontSize: "0.75rem", textTransform: "none", borderColor: "#ff7a00", color: "#ff7a00", "&:hover": { borderColor: "#d46900", bgcolor: "#fff7ed" } }}>
-                        Download QR
-                      </Button>
-                    </Box>
-                  </Box>
-                </Box>
-              </>}
-
-              <Divider />
-
-              {/* Actions */}
-              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", pb: 1 }}>
-                <Button size="small" variant="outlined" startIcon={<EditOutlined />}
-                  onClick={() => { setDetailRow(null); handleEdit(row); }}
-                  sx={{ textTransform: "none", fontSize: "0.8rem" }}>
-                  Edit
-                </Button>
-                <Button size="small" variant="outlined" startIcon={<CollectionsBookmarkOutlinedIcon fontSize="small" />}
-                  onClick={() => { setDetailRow(null); handleOpenGallery(row._id); }}
-                  sx={{ textTransform: "none", fontSize: "0.8rem" }}>
-                  Gallery
-                </Button>
-                <Button size="small" variant="outlined" color="error" startIcon={<DeleteOutlined />}
-                  onClick={() => { setDetailRow(null); handleDelete(row); }}
-                  sx={{ textTransform: "none", fontSize: "0.8rem" }}>
-                  Delete
-                </Button>
-              </Box>
-
             </Box>
-          </Box>
+
+            {/* Actions Footer - Polished */}
+            <Box sx={{
+              p: 4,
+              bgcolor: "#ffffff",
+              borderTop: "1px solid #e8ecf1",
+              display: "flex",
+              gap: 1.5,
+              flexWrap: "wrap"
+            }}>
+              <Button
+                size="large"
+                variant="outlined"
+                startIcon={<EditOutlined />}
+                onClick={() => { setDetailRow(null); handleEdit(row); }}
+                sx={{
+                  textTransform: "none",
+                  fontSize: "0.95rem",
+                  fontWeight: 600,
+                  flex: 1,
+                  minWidth: "120px",
+                  py: 1.2,
+                  borderColor: "#e8ecf1",
+                  color: "#0f172a",
+                  "&:hover": { bgcolor: "#f8f9fa", borderColor: "#cbd5e1" }
+                }}
+              >
+                Edit
+              </Button>
+              <Button
+                size="large"
+                variant="outlined"
+                startIcon={<CollectionsBookmarkOutlinedIcon fontSize="small" />}
+                onClick={() => { setDetailRow(null); handleOpenGallery(row._id); }}
+                sx={{
+                  textTransform: "none",
+                  fontSize: "0.95rem",
+                  fontWeight: 600,
+                  flex: 1,
+                  minWidth: "120px",
+                  py: 1.2,
+                  borderColor: "#e8ecf1",
+                  color: "#0f172a",
+                  "&:hover": { bgcolor: "#f8f9fa", borderColor: "#cbd5e1" }
+                }}
+              >
+                Gallery
+              </Button>
+              <Button
+                size="large"
+                variant="outlined"
+                color="error"
+                startIcon={<DeleteOutlined />}
+                onClick={() => { setDetailRow(null); handleDelete(row); }}
+                sx={{
+                  textTransform: "none",
+                  fontSize: "0.95rem",
+                  fontWeight: 600,
+                  flex: 1,
+                  minWidth: "120px",
+                  py: 1.2,
+                  "&:hover": { bgcolor: "#fef2f2" }
+                }}
+              >
+                Delete
+              </Button>
+            </Box>
+          </>
         );
       })()}
-    </Drawer>
+    </Dialog>
+
+    {/* Image Modal */}
+    <Dialog
+      open={imageModalOpen}
+      onClose={() => {
+        setImageModalOpen(false);
+        setSelectedImageUrl(null);
+      }}
+      maxWidth="md"
+      fullWidth
+      PaperProps={{ sx: { borderRadius: 2, bgcolor: "#ffffff" } }}
+    >
+      <Box sx={{ position: "relative", bgcolor: "#f8f9fa", display: "flex", alignItems: "center", justifyContent: "center", minHeight: 500 }}>
+        {selectedImageUrl ? (
+          <img
+            src={selectedImageUrl}
+            alt="Business Image"
+            style={{
+              maxWidth: "100%",
+              maxHeight: "600px",
+              objectFit: "contain",
+              padding: "20px"
+            }}
+          />
+        ) : (
+          <Typography sx={{ fontSize: "1rem", color: "#9ca3af" }}>No image available</Typography>
+        )}
+        <IconButton
+          size="medium"
+          onClick={() => {
+            setImageModalOpen(false);
+            setSelectedImageUrl(null);
+          }}
+          sx={{
+            position: "absolute",
+            top: 12,
+            right: 12,
+            bgcolor: "rgba(255, 255, 255, 0.95)",
+            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
+            "&:hover": { bgcolor: "#ffffff", boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)" }
+          }}
+        >
+          <CloseRoundedIcon fontSize="small" />
+        </IconButton>
+      </Box>
+    </Dialog>
 
     <Dialog open={warnDialog} onClose={() => setWarnDialog(false)} maxWidth="xs" fullWidth>
       <DialogTitle sx={{ color: "#D97800", fontWeight: 700 }}>

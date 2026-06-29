@@ -115,15 +115,22 @@ export const viewAllUserClients = async ({
     } else {
       sort.createdAt = -1;
     }
+    // Add stable secondary sort by _id to prevent pagination issues with duplicate values
+    sort._id = 1;
 
     const total = await userClientModel.countDocuments(query);
+
+    const skip = (pageNo - 1) * pageSize;
+    console.log(`📊 Query: pageNo=${pageNo}, pageSize=${pageSize}, skip=${skip}, limit=${pageSize}, total=${total}`);
 
     const usersClient = await userClientModel
       .find(query)
       .sort(sort)
-      .skip((pageNo - 1) * pageSize)
+      .skip(skip)
       .limit(pageSize)
       .lean();
+
+    console.log(`📋 Returned ${usersClient.length} results: ${usersClient.map(u => u.name).join(" | ")}`);
 
     return { list: usersClient, total };
 
@@ -139,6 +146,18 @@ export const updateUserClients = async (id, data) => {
     const updatedUserClient = await userClientModel.findByIdAndUpdate(id, data, { new: true });
     if (!updatedUserClient) throw new Error("updatedUserClient not found");
     return updatedUserClient;
+};
+
+export const updateUserClientStatus = async (id, isActive) => {
+    if (!ObjectId.isValid(id)) throw new Error("Invalid user ID");
+
+    const user = await userClientModel.findByIdAndUpdate(
+        id,
+        { isActive, updatedAt: new Date() },
+        { new: true }
+    );
+    if (!user) throw new Error("User not found");
+    return user;
 };
 
 export const deleteUserClients = async (id) => {

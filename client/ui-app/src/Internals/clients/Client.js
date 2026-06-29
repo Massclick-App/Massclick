@@ -2,7 +2,7 @@ import { createScopedClassNames } from "../../utils/createScopedClassNames";
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import InputValidator from "../validators/inputValidator.js";
-import { getAllUsersClient, createUserClient, editUserClient, deleteUserClient } from "../../redux/actions/userClientAction.js";
+import { getAllUsersClient, createUserClient, editUserClient, updateUserClientStatus, deleteUserClient } from "../../redux/actions/userClientAction.js";
 import { Box, Button, Typography, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, Alert, AlertTitle } from "@mui/material";
 import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import CheckCircleOutlineRoundedIcon from "@mui/icons-material/CheckCircleOutlineRounded";
@@ -35,6 +35,7 @@ export default function UserClients() {
   });
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [tableRefreshKey, setTableRefreshKey] = useState(0);
   const [tableQuery, setTableQuery] = useState({
     pageNo: 1,
     pageSize: 10,
@@ -143,11 +144,14 @@ export default function UserClients() {
       businessAddress: data.businessAddress
     };
   };
-  const refreshCurrentPage = () => dispatch(getAllUsersClient({
-    pageNo: currentPageNo,
-    pageSize: currentPageSize,
-    options: tableQuery.options
-  }));
+  const refreshCurrentPage = () => {
+    setTableRefreshKey(prev => prev + 1);
+    dispatch(getAllUsersClient({
+      pageNo: currentPageNo,
+      pageSize: currentPageSize,
+      options: tableQuery.options
+    }));
+  };
   const handleSubmit = e => {
     e.preventDefault();
     if (!validateForm()) return;
@@ -210,7 +214,17 @@ export default function UserClients() {
     setDeleteDialogOpen(false);
     setSelectedUser(null);
   };
-  const rows = userClient.filter(user => user.isActive).map((user, index) => ({
+  const handleStatusToggle = async (row) => {
+    try {
+      await dispatch(updateUserClientStatus(row.id, !row.isActive));
+      setSuccessMessage(`✓ Client status updated to ${!row.isActive ? "Active" : "Inactive"}!`);
+      setTimeout(() => setSuccessMessage(""), 3000);
+      refreshCurrentPage();
+    } catch (err) {
+      console.error("Status update failed:", err);
+    }
+  };
+  const rows = userClient.map((user, index) => ({
     id: user._id || index,
     _id: user._id || index,
     clientId: user.clientId,
@@ -221,6 +235,10 @@ export default function UserClients() {
     businessAddress: user.businessAddress || "-",
     isActive: user.isActive
   }));
+
+  useEffect(() => {
+    console.log(`📋 Page ${tableQuery.pageNo}: ${rows.map(r => r.name).join(" | ")}`);
+  }, [rows, tableQuery.pageNo]);
   const clientList = [{
     id: "clientId",
     label: "Client ID"
@@ -239,6 +257,20 @@ export default function UserClients() {
   }, {
     id: "businessAddress",
     label: "Business Address"
+  }, {
+    id: "status",
+    label: "Status",
+    renderCell: (_, row) => (
+      <label className={cx("switch-container")}>
+        <input
+          type="checkbox"
+          className={cx("switch-checkbox")}
+          checked={row.isActive}
+          onChange={() => handleStatusToggle(row)}
+        />
+        <span className={cx("switch-slider")}></span>
+      </label>
+    )
   }, {
     id: "action",
     label: "Action",
@@ -369,11 +401,20 @@ export default function UserClients() {
       <Box sx={{
       width: "100%"
     }}>
-        <CustomizedTable data={rows} columns={clientList} total={total} loading={loading} fetchData={(pageNo, pageSize, options) => setTableQuery({
-        pageNo,
-        pageSize,
-        options
-      })} />
+        <CustomizedTable
+          data={rows}
+          columns={clientList}
+          total={total}
+          loading={loading}
+          fetchData={(pageNo, pageSize, options) => {
+            console.log("📄 Fetching page:", pageNo, "with pageSize:", pageSize);
+            setTableQuery({
+              pageNo,
+              pageSize,
+              options
+            });
+          }}
+        />
       </Box>
       </>}
 
