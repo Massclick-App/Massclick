@@ -33,6 +33,9 @@ const BusinessFormStep2 = ({
   searchCategory,
   dispatch,
   businessCategorySearch,
+  editMode,
+  saveSectionData,
+  sectionSavingState,
 }) => {
   const [categorySearchInput, setCategorySearchInput] = React.useState("");
 
@@ -845,10 +848,13 @@ const BusinessFormStep2 = ({
             isCollapsed={false}
             isDisabled={isDisabled}
             onToggleCollapse={() => {}}
-            showAdvanceButton={!!navigation}
+            showAdvanceButton={!editMode && !!navigation}
             onAdvance={() => handleSectionAdvance(2, activeSection_obj.key)}
             advanceLabel={navigation?.label || "Next"}
             advanceType={navigation?.type === "submit" ? "submit" : "next"}
+            showSaveButton={editMode}
+            onSave={() => saveSectionData(activeSection_obj.key)}
+            isSaving={sectionSavingState[activeSection_obj.key] || false}
           >
             {sectionRenderers[activeSection_obj.key]()}
           </BusinessFormSection>

@@ -17,6 +17,9 @@ const BusinessFormStep1 = ({
   getSectionRefKey,
   getSectionIsDisabled,
   renderFieldError,
+  editMode,
+  saveSectionData,
+  sectionSavingState,
 }) => {
   const isDisabled = getSectionIsDisabled ? getSectionIsDisabled(1, "kycDocuments") : false;
   const navigation = getSectionNavigation ? getSectionNavigation(1, "kycDocuments") : null;
@@ -31,10 +34,13 @@ const BusinessFormStep1 = ({
         isCollapsed={false}
         isDisabled={isDisabled}
         onToggleCollapse={() => {}}
-        showAdvanceButton={!!navigation}
+        showAdvanceButton={!editMode && !!navigation}
         onAdvance={() => handleSectionAdvance(1, "kycDocuments")}
         advanceLabel={navigation?.label || "Next"}
         advanceType={navigation?.type === "submit" ? "submit" : "next"}
+        showSaveButton={editMode}
+        onSave={() => saveSectionData("kycDocuments")}
+        isSaving={sectionSavingState["kycDocuments"] || false}
       >
         <div className={cx("section-intro") }>
           <div className={cx("section-intro-copy") }>

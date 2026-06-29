@@ -1,4 +1,5 @@
 import React from "react";
+import { CircularProgress } from "@mui/material";
 import { createScopedClassNames } from "../../../utils/createScopedClassNames";
 import styles from "../business.module.css";
 
@@ -15,6 +16,9 @@ const BusinessFormSection = ({
   onAdvance,
   advanceLabel = "Next",
   advanceType = "next",
+  showSaveButton = false,
+  onSave,
+  isSaving = false,
 }) => {
   return (
     <div className={cx("form-section-wrapper", "section-panel")}>
@@ -37,7 +41,26 @@ const BusinessFormSection = ({
       {!isDisabled && (
         <div className={cx("form-section-content")}>
           {children}
-          {showAdvanceButton && onAdvance && (
+          {showSaveButton && onSave && (
+            <div className={cx("col-span-all", "section-nav-row")}>
+              <button
+                type="button"
+                className={cx("step-nav-button", "section-save-button")}
+                onClick={onSave}
+                disabled={isSaving}
+              >
+                {isSaving ? (
+                  <>
+                    <CircularProgress size={16} sx={{ mr: 1, color: 'inherit' }} />
+                    <span>Saving...</span>
+                  </>
+                ) : (
+                  <span>Save Section</span>
+                )}
+              </button>
+            </div>
+          )}
+          {showAdvanceButton && onAdvance && !showSaveButton && (
             <div className={cx("col-span-all", "section-nav-row")}>
               <button
                 type="button"

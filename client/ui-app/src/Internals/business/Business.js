@@ -1025,6 +1025,7 @@ const BusinessList = React.memo(() => {
     open: false,
     id: null
   });
+  const [sectionSavingState, setSectionSavingState] = useState({});
   const isForceBypassableField = field => Boolean(field) && !FORCE_BYPASS_BLOCKED_FIELDS.has(field);
   const getUniqueFields = fields => [...new Set((fields || []).filter(Boolean))];
   const getPaidStepFieldNames = useCallback((data, step) => {
@@ -2502,9 +2503,14 @@ const BusinessList = React.memo(() => {
   const saveSectionData = async (sectionKey = activeSection) => {
     if (!editMode || !editId) return;
 
+    setSectionSavingState(prev => ({ ...prev, [sectionKey]: true }));
+
     try {
       const endpointName = SECTION_TO_ENDPOINT[sectionKey];
-      if (!endpointName) return;
+      if (!endpointName) {
+        setSectionSavingState(prev => ({ ...prev, [sectionKey]: false }));
+        return;
+      }
 
       const allowedFields = SECTION_ENDPOINT_FIELDS[endpointName];
       const sectionData = {};
@@ -2521,18 +2527,23 @@ const BusinessList = React.memo(() => {
         }
       });
 
-      if (Object.keys(sectionData).length === 0) return;
+      if (Object.keys(sectionData).length === 0) {
+        setSectionSavingState(prev => ({ ...prev, [sectionKey]: false }));
+        return;
+      }
 
       await dispatch(editBusinessSection(editId, endpointName, sectionData));
-      enqueueSnackbar(`${sectionKey} updated successfully!`, {
+      enqueueSnackbar(`${sectionKey} saved successfully!`, {
         variant: "success"
       });
       dispatch(getAllBusinessList());
+      setSectionSavingState(prev => ({ ...prev, [sectionKey]: false }));
     } catch (err) {
       console.error(`Error saving ${sectionKey}:`, err);
       enqueueSnackbar(`Error saving ${sectionKey}. Please try again.`, {
         variant: "error"
       });
+      setSectionSavingState(prev => ({ ...prev, [sectionKey]: false }));
     }
   };
 
@@ -4039,6 +4050,9 @@ const BusinessList = React.memo(() => {
             dispatch={dispatch}
             getUserClientSuggestion={getUserClientSuggestion}
             activeSection={activeSection}
+            editMode={editMode}
+            saveSectionData={saveSectionData}
+            sectionSavingState={sectionSavingState}
           />
         );
       case 1:
@@ -4052,6 +4066,9 @@ const BusinessList = React.memo(() => {
             getSectionRefKey={getSectionRefKey}
             getSectionIsDisabled={getSectionIsDisabled}
             renderFieldError={renderFieldError}
+            editMode={editMode}
+            saveSectionData={saveSectionData}
+            sectionSavingState={sectionSavingState}
           />
         );
       case 2:
@@ -4085,6 +4102,9 @@ const BusinessList = React.memo(() => {
             searchCategory={searchCategory}
             dispatch={dispatch}
             businessCategorySearch={businessCategorySearch}
+            editMode={editMode}
+            saveSectionData={saveSectionData}
+            sectionSavingState={sectionSavingState}
           />
         );
 
