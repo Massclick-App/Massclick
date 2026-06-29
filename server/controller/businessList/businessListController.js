@@ -1130,7 +1130,7 @@ const SECTION_FIELD_MAPPING = {
   'business-info': ['gstin', 'experience'],
   'location-web': ['googleMap', 'geoLatitude', 'geoLongitude', 'website', 'geoLocation'],
   'social-media': ['facebook', 'instagram', 'youtube', 'pinterest', 'twitter', 'linkedin'],
-  'banner-details': ['bannerImage', 'businessDetails'],
+  'banner-details': ['bannerImage', 'logoImage', 'businessDetails'],
   'opening-hours': ['openingHours'],
   'category-seo': ['category', 'keywords'],
   'display-seo': ['title', 'description', 'seoTitle', 'seoDescription', 'slug', 'filters'],
