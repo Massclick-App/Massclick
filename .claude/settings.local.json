@@ -17,7 +17,8 @@
       "Bash(Get-Content \"D:\\\\dev_abishek\\\\massclick\\\\client\\\\ui-app\\\\src\\\\Internals\\\\clientComponent\\\\trendingSearch\\\\trendingSearch.module.css\")",
       "Bash(Select-String \"padding\")",
       "Bash(Select-Object -First 10)",
-      "Bash(curl -s http://localhost:3000)"
+      "Bash(curl -s http://localhost:3000)",
+      "Bash(npm start *)"
     ]
   }
 }

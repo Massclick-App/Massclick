@@ -118,12 +118,17 @@ export const viewAllUserClients = async ({
 
     const total = await userClientModel.countDocuments(query);
 
+    const skip = (pageNo - 1) * pageSize;
+    console.log(`📊 Query: pageNo=${pageNo}, pageSize=${pageSize}, skip=${skip}, limit=${pageSize}, total=${total}`);
+
     const usersClient = await userClientModel
       .find(query)
       .sort(sort)
-      .skip((pageNo - 1) * pageSize)
+      .skip(skip)
       .limit(pageSize)
       .lean();
+
+    console.log(`📋 Returned ${usersClient.length} results: ${usersClient.map(u => u.name).join(" | ")}`);
 
     return { list: usersClient, total };
 

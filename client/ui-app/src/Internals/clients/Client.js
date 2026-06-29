@@ -35,9 +35,10 @@ export default function UserClients() {
   });
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [tableRefreshKey, setTableRefreshKey] = useState(0);
   const [tableQuery, setTableQuery] = useState({
     pageNo: 1,
-    pageSize: 1000,
+    pageSize: 10,
     options: {}
   });
   useEffect(() => {
@@ -143,11 +144,14 @@ export default function UserClients() {
       businessAddress: data.businessAddress
     };
   };
-  const refreshCurrentPage = () => dispatch(getAllUsersClient({
-    pageNo: currentPageNo,
-    pageSize: currentPageSize,
-    options: tableQuery.options
-  }));
+  const refreshCurrentPage = () => {
+    setTableRefreshKey(prev => prev + 1);
+    dispatch(getAllUsersClient({
+      pageNo: currentPageNo,
+      pageSize: currentPageSize,
+      options: tableQuery.options
+    }));
+  };
   const handleSubmit = e => {
     e.preventDefault();
     if (!validateForm()) return;
@@ -231,6 +235,10 @@ export default function UserClients() {
     businessAddress: user.businessAddress || "-",
     isActive: user.isActive
   }));
+
+  useEffect(() => {
+    console.log(`📋 Page ${tableQuery.pageNo}: ${rows.map(r => r.name).join(" | ")}`);
+  }, [rows, tableQuery.pageNo]);
   const clientList = [{
     id: "clientId",
     label: "Client ID"
@@ -393,11 +401,20 @@ export default function UserClients() {
       <Box sx={{
       width: "100%"
     }}>
-        <CustomizedTable data={rows} columns={clientList} total={total} loading={loading} fetchData={(pageNo, pageSize, options) => setTableQuery({
-        pageNo,
-        pageSize,
-        options
-      })} />
+        <CustomizedTable
+          data={rows}
+          columns={clientList}
+          total={total}
+          loading={loading}
+          fetchData={(pageNo, pageSize, options) => {
+            console.log("📄 Fetching page:", pageNo, "with pageSize:", pageSize);
+            setTableQuery({
+              pageNo,
+              pageSize,
+              options
+            });
+          }}
+        />
       </Box>
       </>}
 
