@@ -20,7 +20,10 @@
       "Bash(curl -s http://localhost:3000)",
       "Bash(npm start *)",
       "Bash(find /c/Users/USER/.claude/projects -name \"MEMORY.md\" -o -name \"*memory*\" -type d 2>/dev/null | head -10)",
-      "Bash(grep -E \"\\\\.\\(js|ts\\)$\")"
+      "Bash(grep -E \"\\\\.\\(js|ts\\)$\")",
+      "mcp__Claude_Preview__preview_start",
+      "PowerShell($content = Get-Content \"D:\\\\dev_abishek\\\\massclick\\\\client\\\\ui-app\\\\src\\\\Internals\\\\business\\\\Business.js\"; $lines = @\\($content\\); for \\($i = $lines.Length - 1; $i -ge 0; $i--\\) { if \\($lines[$i] -match \"</div>\"\\) { Write-Host \"Line $\\($i + 1\\): $\\($lines[$i]\\)\"; if \\($i - 1 -ge 0\\) { Write-Host \"Line $\\($i\\): $\\($lines[$i - 1]\\)\"; } break } })",
+      "Bash(git checkout *)"
     ]
   }
 }

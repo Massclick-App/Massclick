@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import axiosInstance from "../../services/axiosInstance.js";
 import { useDispatch, useSelector } from "react-redux";
 import InputValidator from "../validators/inputValidator.js";
-import { getAllBusinessList, createBusinessList, editBusinessList, deleteBusinessList, trackQrDownload, updateBusinessBadges, exportBusinessList } from "../../redux/actions/businessListAction";
+import { getAllBusinessList, createBusinessList, editBusinessList, deleteBusinessList, trackQrDownload, updateBusinessBadges, exportBusinessList, revertPaidStatus } from "../../redux/actions/businessListAction";
 import { getAllLocation, createLocation } from "../../redux/actions/locationAction";
 import { getAllCategory, businessCategorySearch } from "../../redux/actions/categoryAction";
 import { getAllUsersClient, getUserClientSuggestion } from "../../redux/actions/userClientAction.js";
@@ -40,6 +40,7 @@ import BusinessFormStep0 from "./components/BusinessFormStep0";
 import BusinessFormStep1 from "./components/BusinessFormStep1";
 import BusinessFormStep2 from "./components/BusinessFormStep2";
 import BusinessSidebar from "./components/BusinessSidebar";
+import LogoCropperModal from "./components/LogoCropperModal";
 import "quill/dist/quill.snow.css";
 const cx = createScopedClassNames(styles);
 const LISTING_MODE = {
@@ -948,6 +949,7 @@ const BusinessList = React.memo(() => {
     title: "",
     description: "",
     bannerImage: "",
+    logoImage: null,
     googleMap: "",
     website: "",
     facebook: "",
@@ -995,6 +997,15 @@ const BusinessList = React.memo(() => {
   const [duplicateBypassSignature, setDuplicateBypassSignature] = useState("");
   const [localDraftMeta, setLocalDraftMeta] = useState(null);
   const [preview, setPreview] = useState(null);
+  const [logoPreview, setLogoPreview] = useState(null);
+  const [logoCropperOpen, setLogoCropperOpen] = useState(false);
+  const [logoCropData, setLogoCropData] = useState({
+    image: null,
+    crop: { x: 0, y: 0 },
+    zoom: 1,
+    aspect: 1,
+    croppedAreaPixels: null,
+  });
   const [demoSubmitting, setDemoSubmitting] = useState(false);
   const [badgeUpdateLoading, setBadgeUpdateLoading] = useState(false);
   const [postCreatePaidStatus, setPostCreatePaidStatus] = useState("idle");
@@ -1116,6 +1127,7 @@ const BusinessList = React.memo(() => {
     setFormData(nextFormData);
     setBusinessValue(nextFormData.businessDetails || "");
     setPreview(nextFormData.bannerImage || null);
+    setLogoPreview(nextFormData.logoImage || null);
     setKycFiles([]);
     setFieldErrors({});
     setForceBypassedFields([]);
@@ -2261,6 +2273,7 @@ const BusinessList = React.memo(() => {
       description: row.description || "",
       restaurantOptions: row.restaurantOptions || "",
       bannerImage: row.bannerImage || "",
+      logoImage: row.logoImage || null,
       googleMap: row.googleMap || "",
       website: row.website || "",
       facebook: row.facebook || "",
@@ -2290,6 +2303,7 @@ const BusinessList = React.memo(() => {
     });
     setBusinessValue(row.businessDetails || "");
     setPreview(row.bannerImage || null);
+    setLogoPreview(row.logoImage || null);
     setActiveSection("clientBusiness");
     window.scrollTo({
       top: 0,
@@ -2380,6 +2394,44 @@ const BusinessList = React.memo(() => {
       };
       reader.readAsDataURL(file);
     }
+  };
+  const handleLogoSelect = e => {
+    clearForceBypassForFields("logoImage");
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setLogoCropData(prev => ({
+          ...prev,
+          image: reader.result
+        }));
+        setLogoCropperOpen(true);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+  const handleLogoCropSave = async (croppedBase64) => {
+    setFormData(prev => ({
+      ...prev,
+      logoImage: croppedBase64
+    }));
+    setLogoPreview(croppedBase64);
+    setLogoCropperOpen(false);
+    updateLiveValidation({
+      ...formData,
+      logoImage: croppedBase64
+    }, "logoImage");
+  };
+  const handleLogoClear = () => {
+    setFormData(prev => ({
+      ...prev,
+      logoImage: null
+    }));
+    setLogoPreview(null);
+    updateLiveValidation({
+      ...formData,
+      logoImage: null
+    }, "logoImage");
   };
   const buildFieldErrorMap = errors => errors.reduce((acc, error) => ({
     ...acc,
@@ -2885,14 +2937,6 @@ const BusinessList = React.memo(() => {
     verification: bl.verification || { isVerified: false, verificationType: "ADMIN" },
   }));
 
-  const filteredRows = rows;
-  const categoryOptions = toSortedUniqueTextOptions(
-    [...category, ...searchCategory].map(c => c?.category)
-  );
-  const locationOptions = toSortedUniqueTextOptions(
-    location.map(l => l?.city || l?.district || l?.location || l?.name)
-  );
-
   const mapBusinessToRow = (bl, index = 0) => ({
     id: bl._id || index,
     _id: bl._id,
@@ -3002,6 +3046,14 @@ const BusinessList = React.memo(() => {
 
     return true;
   });
+
+  const filteredRows = rows;
+  const categoryOptions = toSortedUniqueTextOptions(
+    [...category, ...searchCategory].map(c => c?.category)
+  );
+  const locationOptions = toSortedUniqueTextOptions(
+    location.map(l => l?.city || l?.district || l?.location || l?.name)
+  );
 
   const removeInvalidXmlChars = value => Array.from(String(value ?? ""))
     .map(char => {
@@ -3382,6 +3434,7 @@ const BusinessList = React.memo(() => {
     id: "payment",
     label: "Status",
     renderCell: (_, row) => {
+      const [isHovering, setIsHovering] = useState(false);
       const isPaid = Boolean(row.amountPaid);
       const handleMarkPaid = async () => {
         if (isPaid || !row?._id) return;
@@ -3397,6 +3450,16 @@ const BusinessList = React.memo(() => {
           enqueueSnackbar("Payment failed. Please try again!", { variant: "error" });
         }
       };
+      const handleRevertPaid = async () => {
+        if (!isPaid || !row?._id) return;
+        try {
+          await dispatch(revertPaidStatus(row._id));
+          enqueueSnackbar(`${row.businessName} reverted to unpaid`, { variant: "success" });
+          dispatch(getAllBusinessList());
+        } catch {
+          enqueueSnackbar("Failed to revert payment status. Please try again!", { variant: "error" });
+        }
+      };
       const paidDateValue = row.paidDate?.$date ? row.paidDate.$date : row.paidDate;
       const formattedDate = paidDateValue ? new Date(paidDateValue).toLocaleString("en-IN", {
         timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric",
@@ -3404,19 +3467,32 @@ const BusinessList = React.memo(() => {
       }) : null;
       return (
         <Box sx={{ display: "flex", justifyContent: "center" }}>
-          <Tooltip title={isPaid ? `Paid on ${formattedDate}` : "Click to mark as paid"} arrow>
-            <Box onClick={!isPaid ? handleMarkPaid : undefined} sx={{
-              display: "inline-flex", alignItems: "center",
-              px: 1.5, py: 0.4, borderRadius: "16px",
-              fontSize: "0.72rem", fontWeight: 700,
-              bgcolor: isPaid ? "#d1fae5" : "#fef3c7",
-              color: isPaid ? "#065f46" : "#92400e",
-              cursor: isPaid ? "default" : "pointer",
-              transition: "opacity 0.15s",
-              "&:hover": !isPaid ? { opacity: 0.75 } : {},
-            }}>
-              {isPaid ? "Paid" : "Pending"}
-            </Box>
+          <Tooltip title={isPaid ? (isHovering ? "Click to revert to unpaid" : `Paid on ${formattedDate}`) : "Click to mark as paid"} arrow>
+            <button
+              onClick={isPaid ? handleRevertPaid : handleMarkPaid}
+              className={cx("payment-status-btn", isPaid ? "payment-status-btn-paid" : "payment-status-btn-pending")}
+              disabled={false}
+              onMouseEnter={() => setIsHovering(true)}
+              onMouseLeave={() => setIsHovering(false)}
+            >
+              {isPaid ? (
+                <>
+                  {isHovering ? (
+                    <>
+                      <CloseRoundedIcon sx={{ fontSize: "1rem" }} />
+                      <span>Revert</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircleRoundedIcon sx={{ fontSize: "1rem" }} />
+                      <span>Paid</span>
+                    </>
+                  )}
+                </>
+              ) : (
+                <span>Pending</span>
+              )}
+            </button>
           </Tooltip>
         </Box>
       );
@@ -3860,6 +3936,7 @@ const BusinessList = React.memo(() => {
             fieldErrors={fieldErrors}
             loading={loading}
             preview={preview}
+            logoPreview={logoPreview}
             listingMode={listingMode}
             getSectionRefKey={getSectionRefKey}
             getSectionIsComplete={getSectionIsComplete}
@@ -3872,6 +3949,8 @@ const BusinessList = React.memo(() => {
             handlePlaceSelect={handlePlaceSelect}
             handleGeoCoordinateChange={handleGeoCoordinateChange}
             handleImageChange={handleImageChange}
+            handleLogoSelect={handleLogoSelect}
+            handleLogoClear={handleLogoClear}
             handleBusinessChange={handleBusinessChange}
             handleOpeningHourChange={handleOpeningHourChange}
             formDataBusinessDetails={businessvalue}
@@ -4336,41 +4415,29 @@ const BusinessList = React.memo(() => {
             <Typography variant="body2" className={cx("table-count")}>
               {total || rows.length} businesses
             </Typography>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={exportLoading ? <CircularProgress size={16} color="inherit" /> : <FileDownloadOutlinedIcon />}
+            <button
+              className={cx("export-btn")}
               onClick={handleExportBusinessData}
               disabled={exportLoading}
-              sx={{
-                borderColor: '#16a34a',
-                color: '#15803d',
-                fontSize: '0.8rem',
-                fontWeight: 700,
-                textTransform: 'none',
-                bgcolor: '#f0fdf4',
-                '&:hover': { borderColor: '#15803d', bgcolor: '#dcfce7' },
-                '&.Mui-disabled': { borderColor: '#bbf7d0', color: '#86efac' }
-              }}
             >
-              {exportLoading ? "Exporting..." : "Export XLSX"}
-            </Button>
-            <Button
-              variant="contained"
-              size="small"
-              startIcon={<TravelExploreIcon />}
+              <svg
+                fill="#fff"
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 50 50"
+              >
+                <path d="M28.8125 .03125L.8125 5.34375C.339844 5.433594 0 5.863281 0 6.34375L0 43.65625C0 44.136719 .339844 44.566406 .8125 44.65625L28.8125 49.96875C28.875 49.980469 28.9375 50 29 50C29.230469 50 29.445313 49.929688 29.625 49.78125C29.855469 49.589844 30 49.296875 30 49L30 1C30 .703125 29.855469 .410156 29.625 .21875C29.394531 .0273438 29.105469 -.0234375 28.8125 .03125ZM32 6L32 13L34 13L34 15L32 15L32 20L34 20L34 22L32 22L32 27L34 27L34 29L32 29L32 35L34 35L34 37L32 37L32 44L47 44C48.101563 44 49 43.101563 49 42L49 8C49 6.898438 48.101563 6 47 6ZM36 13L44 13L44 15L36 15ZM6.6875 15.6875L11.8125 15.6875L14.5 21.28125C14.710938 21.722656 14.898438 22.265625 15.0625 22.875L15.09375 22.875C15.199219 22.511719 15.402344 21.941406 15.6875 21.21875L18.65625 15.6875L23.34375 15.6875L17.75 24.9375L23.5 34.375L18.53125 34.375L15.28125 28.28125C15.160156 28.054688 15.035156 27.636719 14.90625 27.03125L14.875 27.03125C14.8125 27.316406 14.664063 27.761719 14.4375 28.34375L11.1875 34.375L6.1875 34.375L12.15625 25.03125ZM36 20L44 20L44 22L36 22ZM36 27L44 27L44 29L36 29ZM36 35L44 35L44 37L36 37Z"></path>
+              </svg>
+              <span>{exportLoading ? "Exporting..." : "Export"}</span>
+            </button>
+            <button
+              className={cx("gmaps-btn")}
               onClick={() => navigate('/dashboard/gmaps-leads')}
-              sx={{
-                bgcolor: '#ff8c42',
-                color: '#fff',
-                fontSize: '0.8rem',
-                textTransform: 'none',
-                boxShadow: 'none',
-                '&:hover': { bgcolor: '#e67a2e', boxShadow: 'none' }
-              }}
             >
-              GMaps Leads
-            </Button>
+              <TravelExploreIcon sx={{ fontSize: "1rem" }} />
+              <span>GMaps Leads</span>
+            </button>
           </Box>
         </div>
 
@@ -5077,6 +5144,15 @@ const BusinessList = React.memo(() => {
         </Box>
       </DialogActions>
     </Dialog>
+
+    {/* Logo Cropper Modal */}
+    <LogoCropperModal
+      open={logoCropperOpen}
+      image={logoCropData.image}
+      onClose={() => setLogoCropperOpen(false)}
+      onSave={handleLogoCropSave}
+      isLoading={loading}
+    />
   </div>;
 });
 export default BusinessList;

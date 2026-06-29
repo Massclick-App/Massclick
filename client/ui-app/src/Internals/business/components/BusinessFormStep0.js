@@ -13,12 +13,15 @@ const BusinessFormStep0 = ({
   formData,
   fieldErrors,
   preview,
+  logoPreview,
   getInputClassName,
   renderFieldError,
   handleChange,
   handlePlaceSelect,
   handleGeoCoordinateChange,
   handleImageChange,
+  handleLogoSelect,
+  handleLogoClear,
   handleBusinessChange,
   handleOpeningHourChange,
   formDataBusinessDetails,
@@ -454,6 +457,28 @@ const BusinessFormStep0 = ({
             </div>
           </div>
           {renderFieldError("bannerImage")}
+        </div>
+
+        <div className={fieldClass("field-span-full", "upload-section")}>
+          <div className={cx("upload-panel")}>
+            <div>
+              <label className="form-input-label">Business Logo</label>
+              <p className={cx("upload-panel-copy")}>Upload a square logo (1:1 aspect ratio). We'll auto-crop it for you.</p>
+            </div>
+            <div className={cx("upload-content")}>
+              <Button variant="contained" startIcon={<CloudUploadIcon />} component="label" className={cx("upload-button")}>
+                Upload Logo
+                <input type="file" accept="image/*" hidden onChange={handleLogoSelect} />
+              </Button>
+              {logoPreview && (
+                <div className={cx("logo-preview")}>
+                  <Avatar src={logoPreview} sx={{ width: 100, height: 100 }} />
+                  <Button size="small" onClick={handleLogoClear} sx={{ mt: 1 }}>Clear</Button>
+                </div>
+              )}
+            </div>
+          </div>
+          {renderFieldError("logoImage")}
         </div>
 
         <div className={fieldClass("field-span-full")}>

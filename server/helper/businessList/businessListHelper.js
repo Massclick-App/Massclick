@@ -17,7 +17,7 @@ const autoMarkGmapsLeadImported = async (contact) => {
   try {
     await gmapsLeadsModel.updateMany(
       { phone: contact, imported_to_main: { $ne: true } },
-      { $set: { imported_to_main: true } }
+      { $set: { imported_to_main: true } },
     );
   } catch (e) {
     console.warn("gmaps auto-mark failed:", e.message);
@@ -29,9 +29,11 @@ export const copyKeywordsFromCategory = async (categoryName) => {
   try {
     if (!categoryName) return [];
 
-    const category = await categoryModel.findOne({
-      category: new RegExp(`^${categoryName}$`, "i")
-    }).lean();
+    const category = await categoryModel
+      .findOne({
+        category: new RegExp(`^${categoryName}$`, "i"),
+      })
+      .lean();
 
     if (!category || !Array.isArray(category.keywords)) {
       return [];
@@ -45,18 +47,25 @@ export const copyKeywordsFromCategory = async (categoryName) => {
 };
 
 const getPublicBaseUrl = () =>
-  String(process.env.PUBLIC_BASE_URL || "https://massclick.in").replace(/\/+$/, "");
+  String(process.env.PUBLIC_BASE_URL || "https://massclick.in").replace(
+    /\/+$/,
+    "",
+  );
 
 const buildBusinessDetailsUrl = (business = {}) => {
-  const businessId = business?._id?.toString?.() || business?._id || business?.id || "";
+  const businessId =
+    business?._id?.toString?.() || business?._id || business?.id || "";
   const locationSlug = slugify(business.location || "business");
-  const businessSlug = slugify(business.slug || business.businessName || business.name || "profile");
+  const businessSlug = slugify(
+    business.slug || business.businessName || business.name || "profile",
+  );
 
   return `${getPublicBaseUrl()}/business/${locationSlug}/${businessSlug}/${businessId}`;
 };
 
 const buildReviewUrl = (business = {}) => {
-  const businessId = business?._id?.toString?.() || business?._id || business?.id || "";
+  const businessId =
+    business?._id?.toString?.() || business?._id || business?.id || "";
   return `${getPublicBaseUrl()}/write-review/${businessId}/0`;
 };
 
@@ -79,13 +88,13 @@ const generateReviewQrCode = async (businessDocument) => {
   const qrUploadResult = await uploadImageToS3(
     qrImageData,
     `businessList/qr/review-${businessDocument._id}`,
-    { skipImageConversion: true }
+    { skipImageConversion: true },
   );
 
   businessDocument.qrCode = {
     qrText,
     qrImageKey: qrUploadResult.key,
-    createdAt: new Date()
+    createdAt: new Date(),
   };
 
   await businessDocument.save();
@@ -104,18 +113,19 @@ const generateBusinessDetailsQrCode = async (businessDocument) => {
   const qrUploadResult = await uploadImageToS3(
     qrImageData,
     `businessList/qr/business-profile-${businessDocument._id}-${Date.now()}`,
-    { skipImageConversion: true }
+    { skipImageConversion: true },
   );
 
   businessDocument.businessProfileQrCode = {
     qrText,
     qrImageKey: qrUploadResult.key,
-    createdAt: new Date()
+    createdAt: new Date(),
   };
 
   await businessDocument.save();
   return {
-    ...(businessDocument.businessProfileQrCode.toObject?.() || businessDocument.businessProfileQrCode),
+    ...(businessDocument.businessProfileQrCode.toObject?.() ||
+      businessDocument.businessProfileQrCode),
     qrImageData,
   };
 };
@@ -125,11 +135,16 @@ const ensureBusinessDetailsQrCode = async (business = {}) => {
 
   const expectedQrText = buildBusinessDetailsUrl(business);
   const hasCurrentBusinessQr =
-    business.businessProfileQrCode?.qrImageKey && business.businessProfileQrCode?.qrText === expectedQrText;
+    business.businessProfileQrCode?.qrImageKey &&
+    business.businessProfileQrCode?.qrText === expectedQrText;
 
   if (hasCurrentBusinessQr) {
-    business.businessProfileQrCode.qrImage = getSignedUrlByKey(business.businessProfileQrCode.qrImageKey);
-    business.businessProfileQrCode.qrImageData = await createQrDataUrl(business.businessProfileQrCode.qrText);
+    business.businessProfileQrCode.qrImage = getSignedUrlByKey(
+      business.businessProfileQrCode.qrImageKey,
+    );
+    business.businessProfileQrCode.qrImageData = await createQrDataUrl(
+      business.businessProfileQrCode.qrText,
+    );
     return business;
   }
 
@@ -191,38 +206,54 @@ export const createBusinessList = async (reqBody = {}) => {
     if (reqBody.bannerImage) {
       const uploadResult = await uploadImageToS3(
         reqBody.bannerImage,
-        `businessList/banners/banner-${Date.now()}`
+        `businessList/banners/banner-${Date.now()}`,
       );
 
       reqBody.bannerImageKey = uploadResult.key;
       delete reqBody.bannerImage;
     }
 
-    if (Array.isArray(reqBody.businessImages) && reqBody.businessImages.length > 0) {
+    if (reqBody.logoImage) {
+      const uploadResult = await uploadImageToS3(
+        reqBody.logoImage,
+        `businessList/logos/logo-${Date.now()}`,
+      );
+
+      reqBody.logoImageKey = uploadResult.key;
+      reqBody.logoUploadedAt = new Date();
+      delete reqBody.logoImage;
+    }
+
+    if (
+      Array.isArray(reqBody.businessImages) &&
+      reqBody.businessImages.length > 0
+    ) {
       const businessImageKeys = await Promise.all(
         reqBody.businessImages.map(async (img, i) => {
           const uploadResult = await uploadImageToS3(
             img,
-            `businessList/gallery/image-${Date.now()}-${i}`
+            `businessList/gallery/image-${Date.now()}-${i}`,
           );
           return uploadResult.key;
-        })
+        }),
       );
 
       reqBody.businessImagesKey = businessImageKeys;
       delete reqBody.businessImages;
     }
 
-
-    if (Array.isArray(reqBody.kycDocuments) && reqBody.kycDocuments.length > 0) {
+    if (
+      Array.isArray(reqBody.kycDocuments) &&
+      reqBody.kycDocuments.length > 0
+    ) {
       const kycDocumentsKey = await Promise.all(
         reqBody.kycDocuments.map(async (doc, i) => {
           const uploadResult = await uploadImageToS3(
             doc,
-            `businessList/kyc/document-${Date.now()}-${i}`
+            `businessList/kyc/document-${Date.now()}-${i}`,
           );
           return uploadResult.key;
-        })
+        }),
       );
 
       reqBody.kycDocumentsKey = kycDocumentsKey;
@@ -240,26 +271,23 @@ export const createBusinessList = async (reqBody = {}) => {
     const businessListDocument = new businessListModel(reqBody);
     const savedBusiness = await businessListDocument.save();
 
-
-
     await generateReviewQrCode(savedBusiness);
-    const businessProfileQrCode = await generateBusinessDetailsQrCode(savedBusiness);
+    const businessProfileQrCode =
+      await generateBusinessDetailsQrCode(savedBusiness);
 
     // Auto-mark any matching GMaps lead as imported
     autoMarkGmapsLeadImported(savedBusiness.contact);
 
     const result = savedBusiness.toObject();
 
-    result.qrCode.qrImage = getSignedUrlByKey(
-      savedBusiness.qrCode.qrImageKey
-    );
+    result.qrCode.qrImage = getSignedUrlByKey(savedBusiness.qrCode.qrImageKey);
     result.businessProfileQrCode.qrImage = getSignedUrlByKey(
-      savedBusiness.businessProfileQrCode.qrImageKey
+      savedBusiness.businessProfileQrCode.qrImageKey,
     );
-    result.businessProfileQrCode.qrImageData = businessProfileQrCode.qrImageData;
+    result.businessProfileQrCode.qrImageData =
+      businessProfileQrCode.qrImageData;
 
     return result;
-
   } catch (error) {
     console.error("Error saving business:", error);
     throw error;
@@ -268,17 +296,21 @@ export const createBusinessList = async (reqBody = {}) => {
 
 export const findBusinessBySlug = async ({ location, slug }) => {
   try {
-    const normalizedSlug = String(slug || "").trim().toLowerCase();
+    const normalizedSlug = String(slug || "")
+      .trim()
+      .toLowerCase();
     const businessNamePattern = String(slug || "").replace(/-/g, " ");
-    const business = await businessListModel.findOne({
-      location: new RegExp(`^${location}$`, "i"),
-      $or: [
-        { slug: new RegExp(`^${normalizedSlug}$`, "i") },
-        { businessName: new RegExp(`^${businessNamePattern}$`, "i") }
-      ],
-      isActive: true,
-      businessesLive: true,
-    }).lean();
+    const business = await businessListModel
+      .findOne({
+        location: new RegExp(`^${location}$`, "i"),
+        $or: [
+          { slug: new RegExp(`^${normalizedSlug}$`, "i") },
+          { businessName: new RegExp(`^${businessNamePattern}$`, "i") },
+        ],
+        isActive: true,
+        businessesLive: true,
+      })
+      .lean();
 
     if (!business) return null;
 
@@ -288,13 +320,13 @@ export const findBusinessBySlug = async ({ location, slug }) => {
 
     if (business.businessImagesKey?.length > 0) {
       business.businessImages = business.businessImagesKey.map((key) =>
-        getSignedUrlByKey(key)
+        getSignedUrlByKey(key),
       );
     }
 
     if (business.kycDocumentsKey?.length > 0) {
       business.kycDocuments = business.kycDocumentsKey.map((key) =>
-        getSignedUrlByKey(key)
+        getSignedUrlByKey(key),
       );
     }
 
@@ -310,13 +342,17 @@ export const viewBusinessList = async (id) => {
   const business = await businessListModel.findById(id).lean();
   if (!business) throw new Error("Business not found");
 
-  if (business.bannerImageKey) business.bannerImage = getSignedUrlByKey(business.bannerImageKey);
+  if (business.bannerImageKey)
+    business.bannerImage = getSignedUrlByKey(business.bannerImageKey);
   if (business.businessImagesKey?.length > 0) {
-    business.businessImages = business.businessImagesKey.map(key => getSignedUrlByKey(key));
+    business.businessImages = business.businessImagesKey.map((key) =>
+      getSignedUrlByKey(key),
+    );
   }
   if (business.kycDocumentsKey?.length > 0)
-    business.kycDocuments = business.kycDocumentsKey.map((key) => getSignedUrlByKey(key));
-
+    business.kycDocuments = business.kycDocumentsKey.map((key) =>
+      getSignedUrlByKey(key),
+    );
 
   return business;
 };
@@ -335,13 +371,13 @@ export const viewAllBusiness = async () => {
 
     if (business.businessImagesKey?.length > 0) {
       business.businessImages = business.businessImagesKey.map((key) =>
-        getSignedUrlByKey(key)
+        getSignedUrlByKey(key),
       );
     }
 
     if (business.kycDocumentsKey?.length > 0) {
       business.kycDocuments = business.kycDocumentsKey.map((key) =>
-        getSignedUrlByKey(key)
+        getSignedUrlByKey(key),
       );
     }
 
@@ -356,8 +392,8 @@ export const findBusinessesByCategory = async (category, district) => {
     businessesLive: true,
     $or: [
       { category: { $regex: category, $options: "i" } },
-      { keywords: { $regex: category, $options: "i" } }
-    ]
+      { keywords: { $regex: category, $options: "i" } },
+    ],
   };
 
   if (
@@ -372,9 +408,9 @@ export const findBusinessesByCategory = async (category, district) => {
           { location: { $regex: district, $options: "i" } },
           { locationDetails: { $regex: district, $options: "i" } },
           { street: { $regex: district, $options: "i" } },
-          { pincode: { $regex: district, $options: "i" } }
-        ]
-      }
+          { pincode: { $regex: district, $options: "i" } },
+        ],
+      },
     ];
   }
 
@@ -386,8 +422,8 @@ export const findBusinessesByCategory = async (category, district) => {
         from: "businessreviews",
         localField: "_id",
         foreignField: "businessId",
-        as: "reviews"
-      }
+        as: "reviews",
+      },
     },
 
     {
@@ -396,30 +432,27 @@ export const findBusinessesByCategory = async (category, district) => {
           $filter: {
             input: "$reviews",
             as: "review",
-            cond: { $eq: ["$$review.status", "ACTIVE"] }
-          }
-        }
-      }
+            cond: { $eq: ["$$review.status", "ACTIVE"] },
+          },
+        },
+      },
     },
 
     {
       $addFields: {
         totalReviews: { $size: "$activeReviews" },
         averageRating: {
-          $round: [
-            { $ifNull: [{ $avg: "$activeReviews.rating" }, 0] },
-            1
-          ]
-        }
-      }
+          $round: [{ $ifNull: [{ $avg: "$activeReviews.rating" }, 0] }, 1],
+        },
+      },
     },
 
     {
       $project: {
         reviews: 0,
-        activeReviews: 0
-      }
-    }
+        activeReviews: 0,
+      },
+    },
   ]);
 
   if (!businessList.length) return [];
@@ -430,30 +463,35 @@ export const findBusinessesByCategory = async (category, district) => {
 
     if (business.businessImagesKey?.length > 0)
       business.businessImages = business.businessImagesKey.map((key) =>
-        getSignedUrlByKey(key)
+        getSignedUrlByKey(key),
       );
 
     if (business.kycDocumentsKey?.length > 0)
       business.kycDocuments = business.kycDocumentsKey.map((key) =>
-        getSignedUrlByKey(key)
+        getSignedUrlByKey(key),
       );
 
     return business;
   });
 };
 
-
 export const viewAllClientBusinessList = async () => {
   const businessList = await businessListModel.find().lean();
-  if (!businessList || businessList.length === 0) throw new Error("No business found");
+  if (!businessList || businessList.length === 0)
+    throw new Error("No business found");
 
-  return businessList.map(business => {
-    if (business.bannerImageKey) business.bannerImage = getSignedUrlByKey(business.bannerImageKey);
+  return businessList.map((business) => {
+    if (business.bannerImageKey)
+      business.bannerImage = getSignedUrlByKey(business.bannerImageKey);
     if (business.businessImagesKey?.length > 0) {
-      business.businessImages = business.businessImagesKey.map(key => getSignedUrlByKey(key));
+      business.businessImages = business.businessImagesKey.map((key) =>
+        getSignedUrlByKey(key),
+      );
     }
     if (business.kycDocumentsKey?.length > 0)
-      business.kycDocuments = business.kycDocumentsKey.map((key) => getSignedUrlByKey(key));
+      business.kycDocuments = business.kycDocumentsKey.map((key) =>
+        getSignedUrlByKey(key),
+      );
     return business;
   });
 };
@@ -464,7 +502,9 @@ function escapeRegex(text) {
 
 const isTrichyAlias = (value = "") => {
   const normalized = String(value).toLowerCase().trim();
-  return ["trichy", "tiruchirappalli", "trichy / tiruchirappalli"].includes(normalized);
+  return ["trichy", "tiruchirappalli", "trichy / tiruchirappalli"].includes(
+    normalized,
+  );
 };
 
 const getLocationQuery = (location = "") => {
@@ -494,43 +534,37 @@ export const viewAllBusinessList = async ({
   createdFrom,
   createdTo,
   sortBy,
-  sortOrder
+  sortOrder,
 }) => {
-
   let query = {};
-
 
   if (role === "SuperAdmin") {
     query = {};
-  }
-  else if (role === "SalesManager") {
+  } else if (role === "SalesManager") {
     const manager = await userModel.findById(userId).lean();
     const salesOfficerIds = manager?.salesBy || [];
 
     const allowedCreators = [
       new mongoose.Types.ObjectId(userId),
-      ...salesOfficerIds.map((id) => new mongoose.Types.ObjectId(id))
+      ...salesOfficerIds.map((id) => new mongoose.Types.ObjectId(id)),
     ];
 
     query = { createdBy: { $in: allowedCreators } };
-  }
-  else if (role === "SalesOfficer") {
+  } else if (role === "SalesOfficer") {
     query = { createdBy: new mongoose.Types.ObjectId(userId) };
-  }
-  else if (["client", "PublicUser", "user"].includes(role)) {
+  } else if (["client", "PublicUser", "user"].includes(role)) {
     query = { isActive: true };
-  }
-  else {
+  } else {
     query = {};
   }
-
 
   if (status === "active") query.activeBusinesses = true;
   if (status === "inactive") query.activeBusinesses = false;
   if (liveStatus === "live") query.businessesLive = true;
   if (liveStatus === "pending") query.businessesLive = false;
 
-  if (category) query.category = { $regex: `^${escapeRegex(category)}$`, $options: "i" };
+  if (category)
+    query.category = { $regex: `^${escapeRegex(category)}$`, $options: "i" };
   if (location) query.location = getLocationQuery(location);
   if (paymentStatus === "paid") {
     query.$and = [
@@ -539,9 +573,9 @@ export const viewAllBusinessList = async ({
         $or: [
           { amountPaid: true },
           { "payment.paymentStatus": "SUCCESS" },
-          { "payment.paid": true }
-        ]
-      }
+          { "payment.paid": true },
+        ],
+      },
     ];
   } else if (paymentStatus === "pending") {
     query.$and = [
@@ -550,9 +584,9 @@ export const viewAllBusinessList = async ({
         $nor: [
           { amountPaid: true },
           { "payment.paymentStatus": "SUCCESS" },
-          { "payment.paid": true }
-        ]
-      }
+          { "payment.paid": true },
+        ],
+      },
     ];
   }
 
@@ -582,7 +616,7 @@ export const viewAllBusinessList = async ({
     "gstin",
     "businessDetails",
     "globalAddress",
-    "keywords"
+    "keywords",
   ];
 
   if (search) {
@@ -597,19 +631,18 @@ export const viewAllBusinessList = async ({
         ...(query.$and || []),
         ...searchTokens.map((token) => ({
           $or: searchableFields.map((field) => ({
-            [field]: { $regex: token, $options: "i" }
-          }))
-        }))
+            [field]: { $regex: token, $options: "i" },
+          })),
+        })),
       ];
     }
   }
-
 
   const allowedSortFields = [
     "createdAt",
     "businessName",
     "location",
-    "category"
+    "category",
   ];
 
   const sort = {};
@@ -622,7 +655,6 @@ export const viewAllBusinessList = async ({
   // Add stable secondary sort by _id to prevent pagination issues with duplicate values
   sort._id = 1;
 
-
   const total = await businessListModel.countDocuments(query);
 
   const businessList = await businessListModel
@@ -634,37 +666,34 @@ export const viewAllBusinessList = async ({
 
   const businessListWithDetails = await Promise.all(
     businessList.map(async (business) => {
-
       if (business.bannerImageKey) {
         business.bannerImage = getSignedUrlByKey(business.bannerImageKey);
       }
 
       if (business.businessImagesKey?.length > 0) {
         business.businessImages = business.businessImagesKey.map((key) =>
-          getSignedUrlByKey(key)
+          getSignedUrlByKey(key),
         );
       }
 
       if (business.kycDocumentsKey?.length > 0) {
         business.kycDocuments = business.kycDocumentsKey.map((key) =>
-          getSignedUrlByKey(key)
+          getSignedUrlByKey(key),
         );
       }
       if (business.qrCode?.qrImageKey) {
-        business.qrCode.qrImage = getSignedUrlByKey(
-          business.qrCode.qrImageKey
-        );
+        business.qrCode.qrImage = getSignedUrlByKey(business.qrCode.qrImageKey);
       }
 
       if (business.businessProfileQrCode?.qrImageKey) {
         business.businessProfileQrCode.qrImage = getSignedUrlByKey(
-          business.businessProfileQrCode.qrImageKey
+          business.businessProfileQrCode.qrImageKey,
         );
       }
       business.locationDetails = business.location || "";
 
       return business;
-    })
+    }),
   );
 
   return {
@@ -734,17 +763,22 @@ export const updateBusinessList = async (id, data) => {
 
     const uploadedPhotoKeys = [];
 
-    if (Array.isArray(reviewData.ratingPhotos) && reviewData.ratingPhotos.length > 0) {
-      const photoUploadPromises = reviewData.ratingPhotos.map(async (img, i) => {
-        if (typeof img === "string" && img.startsWith("data:image")) {
-          const uploadResult = await uploadImageToS3(
-            img,
-            `businessList/reviews/${business._id}/photo-${Date.now()}-${i}`
-          );
-          return uploadResult.key;
-        }
-        return null;
-      });
+    if (
+      Array.isArray(reviewData.ratingPhotos) &&
+      reviewData.ratingPhotos.length > 0
+    ) {
+      const photoUploadPromises = reviewData.ratingPhotos.map(
+        async (img, i) => {
+          if (typeof img === "string" && img.startsWith("data:image")) {
+            const uploadResult = await uploadImageToS3(
+              img,
+              `businessList/reviews/${business._id}/photo-${Date.now()}-${i}`,
+            );
+            return uploadResult.key;
+          }
+          return null;
+        },
+      );
 
       const uploaded = await Promise.all(photoUploadPromises);
       uploadedPhotoKeys.push(...uploaded.filter(Boolean));
@@ -761,7 +795,7 @@ export const updateBusinessList = async (id, data) => {
     // Recalculate average rating safely
     const totalRating = business.reviews.reduce(
       (sum, review) => sum + (Number(review.rating) || 0),
-      0
+      0,
     );
 
     business.averageRating =
@@ -775,10 +809,13 @@ export const updateBusinessList = async (id, data) => {
   /* ===============================
      2️⃣ HANDLE BANNER IMAGE
   =============================== */
-  if (typeof data.bannerImage === "string" && data.bannerImage.startsWith("data:image")) {
+  if (
+    typeof data.bannerImage === "string" &&
+    data.bannerImage.startsWith("data:image")
+  ) {
     const uploadResult = await uploadImageToS3(
       data.bannerImage,
-      `businessList/banners/banner-${Date.now()}`
+      `businessList/banners/banner-${Date.now()}`,
     );
     business.bannerImageKey = uploadResult.key;
   } else if (data.bannerImage === null || data.bannerImage === "") {
@@ -796,17 +833,17 @@ export const updateBusinessList = async (id, data) => {
       : [];
 
     const newImages = data.businessImages.filter(
-      img => typeof img === "string" && img.startsWith("data:image")
+      (img) => typeof img === "string" && img.startsWith("data:image"),
     );
 
     const newKeys = await Promise.all(
       newImages.map(async (img, i) => {
         const uploadResult = await uploadImageToS3(
           img,
-          `businessList/gallery/image-${Date.now()}-${i}`
+          `businessList/gallery/image-${Date.now()}-${i}`,
         );
         return uploadResult.key;
-      })
+      }),
     );
 
     business.businessImagesKey = [...new Set([...oldKeys, ...newKeys])];
@@ -816,24 +853,23 @@ export const updateBusinessList = async (id, data) => {
 
   delete data.businessImages;
 
-
   if (Array.isArray(data.kycDocuments)) {
     const oldKycKeys = Array.isArray(business.kycDocumentsKey)
       ? business.kycDocumentsKey
       : [];
 
     const newKycDocs = data.kycDocuments.filter(
-      doc => typeof doc === "string" && doc.startsWith("data:")
+      (doc) => typeof doc === "string" && doc.startsWith("data:"),
     );
 
     const newKycKeys = await Promise.all(
       newKycDocs.map(async (doc, i) => {
         const uploadResult = await uploadImageToS3(
           doc,
-          `businessList/kyc/document-${Date.now()}-${i}`
+          `businessList/kyc/document-${Date.now()}-${i}`,
         );
         return uploadResult.key;
-      })
+      }),
     );
 
     business.kycDocumentsKey = [...new Set([...oldKycKeys, ...newKycKeys])];
@@ -843,10 +879,28 @@ export const updateBusinessList = async (id, data) => {
 
   delete data.kycDocuments;
 
+  /* ===============================
+     4️⃣ HANDLE LOGO IMAGE
+  =============================== */
+  if (
+    typeof data.logoImage === "string" &&
+    data.logoImage.startsWith("data:image")
+  ) {
+    const uploadResult = await uploadImageToS3(
+      data.logoImage,
+      `businessList/logos/logo-${Date.now()}`,
+    );
+    business.logoImageKey = uploadResult.key;
+    business.logoUploadedAt = new Date();
+  } else if (data.logoImage === null || data.logoImage === "") {
+    business.logoImageKey = null;
+    business.logoUploadedAt = null;
+  }
+
+  delete data.logoImage;
+
   if (Array.isArray(data.payment) && data.payment.length > 0) {
-
     if (!business.amountPaid) {
-
       // 1️⃣ ADD PAYMENT
       business.payment = [
         ...(business.payment || []),
@@ -884,7 +938,7 @@ export const updateBusinessList = async (id, data) => {
           categoryGroup: groupLetter,
           categoryGroupLocation: location,
           leadsCount: null,
-        }
+        },
       ];
     }
   }
@@ -894,7 +948,7 @@ export const updateBusinessList = async (id, data) => {
   /* ===============================
      5️⃣ UPDATE NORMAL FIELDS
   =============================== */
-  Object.keys(data).forEach(key => {
+  Object.keys(data).forEach((key) => {
     if (!["reviews", "averageRating", "clientId"].includes(key)) {
       business[key] = data[key];
     }
@@ -924,15 +978,25 @@ export const updateBusinessList = async (id, data) => {
     result.bannerImage = getSignedUrlByKey(business.bannerImageKey);
   }
 
-  if (Array.isArray(business.businessImagesKey) && business.businessImagesKey.length > 0) {
-    result.businessImages = business.businessImagesKey.map(key =>
-      getSignedUrlByKey(key)
+  if (business.logoImageKey) {
+    result.logoImage = getSignedUrlByKey(business.logoImageKey);
+  }
+
+  if (
+    Array.isArray(business.businessImagesKey) &&
+    business.businessImagesKey.length > 0
+  ) {
+    result.businessImages = business.businessImagesKey.map((key) =>
+      getSignedUrlByKey(key),
     );
   }
 
-  if (Array.isArray(business.kycDocumentsKey) && business.kycDocumentsKey.length > 0) {
-    result.kycDocuments = business.kycDocumentsKey.map(key =>
-      getSignedUrlByKey(key)
+  if (
+    Array.isArray(business.kycDocumentsKey) &&
+    business.kycDocumentsKey.length > 0
+  ) {
+    result.kycDocuments = business.kycDocumentsKey.map((key) =>
+      getSignedUrlByKey(key),
     );
   }
 
@@ -941,16 +1005,19 @@ export const updateBusinessList = async (id, data) => {
   }
 
   if (result.businessProfileQrCode?.qrImageKey) {
-    result.businessProfileQrCode.qrImage = getSignedUrlByKey(result.businessProfileQrCode.qrImageKey);
-    result.businessProfileQrCode.qrImageData = businessProfileQrCode.qrImageData;
+    result.businessProfileQrCode.qrImage = getSignedUrlByKey(
+      result.businessProfileQrCode.qrImageKey,
+    );
+    result.businessProfileQrCode.qrImageData =
+      businessProfileQrCode.qrImageData;
   }
 
   // SAFE reviews formatting
   if (Array.isArray(result.reviews) && result.reviews.length > 0) {
-    result.reviews = result.reviews.map(review => ({
+    result.reviews = result.reviews.map((review) => ({
       ...review,
       ratingPhotos: Array.isArray(review.ratingPhotos)
-        ? review.ratingPhotos.map(key => getSignedUrlByKey(key))
+        ? review.ratingPhotos.map((key) => getSignedUrlByKey(key))
         : [],
     }));
   } else {
@@ -966,7 +1033,7 @@ export const deleteBusinessList = async (id) => {
   const deletedBusiness = await businessListModel.findByIdAndUpdate(
     id,
     { isActive: false, updatedAt: new Date() },
-    { new: true }
+    { new: true },
   );
 
   if (!deletedBusiness) {
@@ -976,12 +1043,13 @@ export const deleteBusinessList = async (id) => {
   return deletedBusiness;
 };
 export const restoreBusinessList = async (id) => {
-  if (!mongoose.Types.ObjectId.isValid(id)) throw new Error("Invalid business ID");
+  if (!mongoose.Types.ObjectId.isValid(id))
+    throw new Error("Invalid business ID");
 
   const restoredBusiness = await businessListModel.findByIdAndUpdate(
     id,
     { isActive: true, updatedAt: new Date() },
-    { new: true }
+    { new: true },
   );
 
   if (!restoredBusiness) throw new Error("Business not found");
@@ -990,19 +1058,19 @@ export const restoreBusinessList = async (id) => {
 };
 
 export const activeBusinessList = async (id, newStatus) => {
-  if (!mongoose.Types.ObjectId.isValid(id)) throw new Error("Invalid business ID");
+  if (!mongoose.Types.ObjectId.isValid(id))
+    throw new Error("Invalid business ID");
 
   const business = await businessListModel.findByIdAndUpdate(
     id,
     { activeBusinesses: newStatus },
-    { new: true }
+    { new: true },
   );
 
   if (!business) throw new Error("Business not found");
 
   return business;
 };
-
 
 export const getTrendingSearches = async (limit = 4) => {
   const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
@@ -1012,7 +1080,13 @@ export const getTrendingSearches = async (limit = 4) => {
     { $group: { _id: "$categoryName", count: { $sum: 1 } } },
     { $sort: { count: -1 } },
     { $limit: limit },
-    { $project: { _id: 0, name: "$_id", path: { $concat: ["/trending/", { $toLower: "$_id" }] } } },
+    {
+      $project: {
+        _id: 0,
+        name: "$_id",
+        path: { $concat: ["/trending/", { $toLower: "$_id" }] },
+      },
+    },
   ];
 
   return await SearchLogModel.aggregate(pipeline);
@@ -1022,9 +1096,11 @@ export const findBusinessByMobile = async (mobile) => {
   try {
     if (!mobile) throw new Error("Mobile number is required");
 
-    const business = await businessListModel.findOne({
-      contactList: mobile
-    }).lean();
+    const business = await businessListModel
+      .findOne({
+        contactList: mobile,
+      })
+      .lean();
 
     if (!business) return null;
 
@@ -1034,13 +1110,13 @@ export const findBusinessByMobile = async (mobile) => {
 
     if (business.businessImagesKey?.length > 0) {
       business.businessImages = business.businessImagesKey.map((key) =>
-        getSignedUrlByKey(key)
+        getSignedUrlByKey(key),
       );
     }
 
     if (business.kycDocumentsKey?.length > 0) {
       business.kycDocuments = business.kycDocumentsKey.map((key) =>
-        getSignedUrlByKey(key)
+        getSignedUrlByKey(key),
       );
     }
 
@@ -1053,7 +1129,6 @@ export const findBusinessByMobile = async (mobile) => {
 };
 
 export const getDashboardSummaryHelper = async ({ role, userId }) => {
-
   let query = {};
 
   // -------------------------
@@ -1061,25 +1136,21 @@ export const getDashboardSummaryHelper = async ({ role, userId }) => {
   // -------------------------
   if (role === "SuperAdmin") {
     query = {};
-  }
-  else if (role === "SalesManager") {
+  } else if (role === "SalesManager") {
     const manager = await userModel.findById(userId).lean();
     const salesOfficerIds = manager?.salesBy || [];
 
     const allowedCreators = [
       new mongoose.Types.ObjectId(userId),
-      ...salesOfficerIds.map(id => new mongoose.Types.ObjectId(id))
+      ...salesOfficerIds.map((id) => new mongoose.Types.ObjectId(id)),
     ];
 
     query = { createdBy: { $in: allowedCreators } };
-  }
-  else if (role === "SalesOfficer") {
+  } else if (role === "SalesOfficer") {
     query = { createdBy: new mongoose.Types.ObjectId(userId) };
-  }
-  else if (["client", "PublicUser", "user"].includes(role)) {
+  } else if (["client", "PublicUser", "user"].includes(role)) {
     query = { isActive: true };
-  }
-  else {
+  } else {
     query = {};
   }
 
@@ -1094,14 +1165,14 @@ export const getDashboardSummaryHelper = async ({ role, userId }) => {
   // -------------------------
   const todayCount = await businessListModel.countDocuments({
     ...query,
-    createdAt: { $gte: startOfToday }
+    createdAt: { $gte: startOfToday },
   });
 
   const totalCount = await businessListModel.countDocuments(query);
 
   const activeCount = await businessListModel.countDocuments({
     ...query,
-    activeBusinesses: true
+    activeBusinesses: true,
   });
 
   const inactiveCount = totalCount - activeCount;
@@ -1113,17 +1184,17 @@ export const getDashboardSummaryHelper = async ({ role, userId }) => {
     {
       $match: {
         ...query,
-        activeBusinesses: true
-      }
+        activeBusinesses: true,
+      },
     },
     {
       $group: {
         _id: "$category",
-        count: { $sum: 1 }
-      }
+        count: { $sum: 1 },
+      },
     },
     { $sort: { count: -1 } },
-    { $limit: 1 }
+    { $limit: 1 },
   ]);
 
   const hotCategory =
@@ -1134,37 +1205,30 @@ export const getDashboardSummaryHelper = async ({ role, userId }) => {
     totalCount,
     activeCount,
     inactiveCount,
-    hotCategory
+    hotCategory,
   };
 };
 
-
 export const getDashboardChartsHelper = async ({ role, userId }) => {
-
   let query = {};
-
 
   if (role === "SuperAdmin") {
     query = {};
-  }
-  else if (role === "SalesManager") {
+  } else if (role === "SalesManager") {
     const manager = await userModel.findById(userId).lean();
     const salesOfficerIds = manager?.salesBy || [];
 
     const allowedCreators = [
       new mongoose.Types.ObjectId(userId),
-      ...salesOfficerIds.map(id => new mongoose.Types.ObjectId(id))
+      ...salesOfficerIds.map((id) => new mongoose.Types.ObjectId(id)),
     ];
 
     query = { createdBy: { $in: allowedCreators } };
-  }
-  else if (role === "SalesOfficer") {
+  } else if (role === "SalesOfficer") {
     query = { createdBy: new mongoose.Types.ObjectId(userId) };
-  }
-  else if (["client", "PublicUser", "user"].includes(role)) {
+  } else if (["client", "PublicUser", "user"].includes(role)) {
     query = { isActive: true };
-  }
-  else {
+  } else {
     query = {};
   }
 
@@ -1172,36 +1236,34 @@ export const getDashboardChartsHelper = async ({ role, userId }) => {
   const startOfYear = new Date(`${year}-01-01`);
   const endOfYear = new Date(`${year}-12-31`);
 
-
   const monthly = await businessListModel.aggregate([
     {
       $match: {
         ...query,
         createdAt: {
           $gte: startOfYear,
-          $lte: endOfYear
-        }
-      }
+          $lte: endOfYear,
+        },
+      },
     },
     {
       $group: {
         _id: { month: { $month: "$createdAt" } },
-        count: { $sum: 1 }
-      }
+        count: { $sum: 1 },
+      },
     },
-    { $sort: { "_id.month": 1 } }
+    { $sort: { "_id.month": 1 } },
   ]);
-
 
   const categories = await businessListModel.aggregate([
     { $match: query },
     {
       $group: {
         _id: "$category",
-        count: { $sum: 1 }
-      }
+        count: { $sum: 1 },
+      },
     },
-    { $sort: { count: -1 } }
+    { $sort: { count: -1 } },
   ]);
 
   return { monthly, categories };
@@ -1235,7 +1297,20 @@ const buildDashboardQuery = async ({ role, userId }) => {
   return {};
 };
 
-const monthLabels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const monthLabels = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
 
 const buildMonthSeries = (rows = [], monthsBack = 12) => {
   const now = new Date();
@@ -1307,13 +1382,23 @@ export const getAdminAnalyticsReportHelper = async ({ role, userId }) => {
     recentBusinesses,
   ] = await Promise.all([
     businessListModel.countDocuments(businessQuery),
-    businessListModel.countDocuments({ ...businessQuery, activeBusinesses: true }),
-    businessListModel.countDocuments({ ...businessQuery, businessesLive: true }),
-    businessListModel.countDocuments({ ...businessQuery, createdAt: { $gte: startOfToday } }),
-    businessListModel.countDocuments({ ...businessQuery, createdAt: { $gte: startOfThirtyDays } }),
-    userModel.aggregate([
-      { $group: { _id: "$isActive", count: { $sum: 1 } } },
-    ]),
+    businessListModel.countDocuments({
+      ...businessQuery,
+      activeBusinesses: true,
+    }),
+    businessListModel.countDocuments({
+      ...businessQuery,
+      businessesLive: true,
+    }),
+    businessListModel.countDocuments({
+      ...businessQuery,
+      createdAt: { $gte: startOfToday },
+    }),
+    businessListModel.countDocuments({
+      ...businessQuery,
+      createdAt: { $gte: startOfThirtyDays },
+    }),
+    userModel.aggregate([{ $group: { _id: "$isActive", count: { $sum: 1 } } }]),
     categoryModel.aggregate([
       { $group: { _id: "$isActive", count: { $sum: 1 } } },
     ]),
@@ -1326,7 +1411,9 @@ export const getAdminAnalyticsReportHelper = async ({ role, userId }) => {
           _id: null,
           total: { $sum: 1 },
           last30Days: {
-            $sum: { $cond: [{ $gte: ["$submittedAt", startOfThirtyDays] }, 1, 0] },
+            $sum: {
+              $cond: [{ $gte: ["$submittedAt", startOfThirtyDays] }, 1, 0],
+            },
           },
         },
       },
@@ -1348,22 +1435,23 @@ export const getAdminAnalyticsReportHelper = async ({ role, userId }) => {
         $group: {
           _id: null,
           total: { $sum: 1 },
-          imported: { $sum: { $cond: [{ $eq: ["$imported_to_main", true] }, 1, 0] } },
+          imported: {
+            $sum: { $cond: [{ $eq: ["$imported_to_main", true] }, 1, 0] },
+          },
           withPhone: {
             $sum: {
               $cond: [
                 {
-                  $and: [
-                    { $ne: ["$phone", null] },
-                    { $ne: ["$phone", ""] },
-                  ],
+                  $and: [{ $ne: ["$phone", null] }, { $ne: ["$phone", ""] }],
                 },
                 1,
                 0,
               ],
             },
           },
-          detailsFetched: { $sum: { $cond: [{ $eq: ["$details_fetched", true] }, 1, 0] } },
+          detailsFetched: {
+            $sum: { $cond: [{ $eq: ["$details_fetched", true] }, 1, 0] },
+          },
         },
       },
     ]),
@@ -1376,7 +1464,10 @@ export const getAdminAnalyticsReportHelper = async ({ role, userId }) => {
           count: { $sum: 1 },
           amount: {
             $sum: {
-              $ifNull: ["$payment.totalAmount", { $ifNull: ["$payment.amount", 0] }],
+              $ifNull: [
+                "$payment.totalAmount",
+                { $ifNull: ["$payment.amount", 0] },
+              ],
             },
           },
         },
@@ -1386,12 +1477,17 @@ export const getAdminAnalyticsReportHelper = async ({ role, userId }) => {
       {
         $match: {
           ...businessQuery,
-          createdAt: { $gte: new Date(now.getFullYear(), now.getMonth() - 11, 1) },
+          createdAt: {
+            $gte: new Date(now.getFullYear(), now.getMonth() - 11, 1),
+          },
         },
       },
       {
         $group: {
-          _id: { year: { $year: "$createdAt" }, month: { $month: "$createdAt" } },
+          _id: {
+            year: { $year: "$createdAt" },
+            month: { $month: "$createdAt" },
+          },
           count: { $sum: 1 },
         },
       },
@@ -1409,10 +1505,15 @@ export const getAdminAnalyticsReportHelper = async ({ role, userId }) => {
       { $sort: { count: -1 } },
       { $limit: 8 },
     ]),
-    businessListModel.find(
-      businessQuery,
-      { businessName: 1, category: 1, location: 1, createdAt: 1, activeBusinesses: 1, businessesLive: 1 }
-    )
+    businessListModel
+      .find(businessQuery, {
+        businessName: 1,
+        category: 1,
+        location: 1,
+        createdAt: 1,
+        activeBusinesses: 1,
+        businessesLive: 1,
+      })
       .sort({ createdAt: -1 })
       .limit(6)
       .lean(),
@@ -1420,13 +1521,30 @@ export const getAdminAnalyticsReportHelper = async ({ role, userId }) => {
 
   const activeUsers = userCounts.find((row) => row._id === true)?.count || 0;
   const totalUsers = userCounts.reduce((sum, row) => sum + row.count, 0);
-  const activeCategories = categoryCounts.find((row) => row._id === true)?.count || 0;
-  const totalCategories = categoryCounts.reduce((sum, row) => sum + row.count, 0);
-  const activeLocations = locationCounts.find((row) => row._id === true)?.count || 0;
-  const totalLocations = locationCounts.reduce((sum, row) => sum + row.count, 0);
+  const activeCategories =
+    categoryCounts.find((row) => row._id === true)?.count || 0;
+  const totalCategories = categoryCounts.reduce(
+    (sum, row) => sum + row.count,
+    0,
+  );
+  const activeLocations =
+    locationCounts.find((row) => row._id === true)?.count || 0;
+  const totalLocations = locationCounts.reduce(
+    (sum, row) => sum + row.count,
+    0,
+  );
   const enquirySummary = enquiryCounts[0] || { total: 0, last30Days: 0 };
-  const searchSummary = searchCounts[0] || { total: 0, unread: 0, last7Days: 0 };
-  const gmapsSummary = gmapsStats[0] || { total: 0, imported: 0, withPhone: 0, detailsFetched: 0 };
+  const searchSummary = searchCounts[0] || {
+    total: 0,
+    unread: 0,
+    last7Days: 0,
+  };
+  const gmapsSummary = gmapsStats[0] || {
+    total: 0,
+    imported: 0,
+    withPhone: 0,
+    detailsFetched: 0,
+  };
   const successfulPayments = paymentStats
     .filter((row) => ["SUCCESS", "PAID", "paid", "success"].includes(row._id))
     .reduce((sum, row) => sum + row.count, 0);
@@ -1464,8 +1582,14 @@ export const getAdminAnalyticsReportHelper = async ({ role, userId }) => {
       paymentRevenue,
     },
     monthlyTrend: buildMonthSeries(monthlyRows),
-    topCategories: topCategories.map((row) => ({ name: row._id || "Uncategorised", count: row.count })),
-    topLocations: topLocations.map((row) => ({ name: row._id || "Unknown", count: row.count })),
+    topCategories: topCategories.map((row) => ({
+      name: row._id || "Uncategorised",
+      count: row.count,
+    })),
+    topLocations: topLocations.map((row) => ({
+      name: row._id || "Unknown",
+      count: row.count,
+    })),
     paymentBreakdown: paymentStats.map((row) => ({
       status: row._id || "NO_STATUS",
       count: row.count,
@@ -1481,19 +1605,40 @@ export const getAdminAnalyticsReportHelper = async ({ role, userId }) => {
   };
 };
 
+export const revertBusinessFromPaid = async (id) => {
+  if (!ObjectId.isValid(id)) throw new Error("Invalid business ID");
+
+  const business = await businessListModel.findById(id);
+  if (!business) throw new Error("Business not found");
+
+  business.amountPaid = false;
+  business.paidDate = null;
+  business.payment = [];
+  business.subscription = {
+    ...(business.subscription?.toObject?.() || business.subscription || {}),
+    isActive: false,
+  };
+  business.businessesLive = false;
+  business.mniDetails = [];
+
+  await business.save();
+  return business;
+};
 
 export const getPendingBusinessList = async () => {
-  return await businessListModel.find(
-    { businessesLive: false },
-    {
-      businessName: 1,
-      clientId: 1,
-      category: 1,
-      location: 1,
-      contact: 1,
-      createdAt: 1,
-      createdBy: 1,
-      businessesLive: 1,
-    }
-  ).lean();
+  return await businessListModel
+    .find(
+      { businessesLive: false },
+      {
+        businessName: 1,
+        clientId: 1,
+        category: 1,
+        location: 1,
+        contact: 1,
+        createdAt: 1,
+        createdBy: 1,
+        businessesLive: 1,
+      },
+    )
+    .lean();
 };

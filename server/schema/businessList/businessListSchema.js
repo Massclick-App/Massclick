@@ -132,6 +132,8 @@ const businessListSchema = new mongoose.Schema({
   description: { type: String, default: '' },
   bannerImageKey: { type: String, default: '' },
   businessImagesKey: [{ type: String, default: '' }],
+  logoImageKey: { type: String, default: null },
+  logoUploadedAt: { type: Date, default: null },
   qrCode: {
     qrText: { type: String, default: "" },
     qrImageKey: { type: String, default: "" },

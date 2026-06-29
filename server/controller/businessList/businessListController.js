@@ -1,4 +1,4 @@
-import { createBusinessList, viewBusinessList, findBusinessBySlug, viewAllBusiness, getDashboardChartsHelper, getPendingBusinessList, findBusinessesByCategory, getDashboardSummaryHelper, getAdminAnalyticsReportHelper, findBusinessByMobile, viewAllBusinessList, viewAllClientBusinessList, updateBusinessList, getTrendingSearches, deleteBusinessList, activeBusinessList } from "../../helper/businessList/businessListHelper.js";
+import { createBusinessList, viewBusinessList, findBusinessBySlug, viewAllBusiness, getDashboardChartsHelper, getPendingBusinessList, findBusinessesByCategory, getDashboardSummaryHelper, getAdminAnalyticsReportHelper, findBusinessByMobile, viewAllBusinessList, viewAllClientBusinessList, updateBusinessList, getTrendingSearches, deleteBusinessList, activeBusinessList, revertBusinessFromPaid } from "../../helper/businessList/businessListHelper.js";
 import { BAD_REQUEST } from "../../errorCodes.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
 import { getSignedUrlByKey } from "../../s3Uploder.js";
@@ -1311,6 +1311,26 @@ export const updateBusinessBadgesAction = async (req, res) => {
 
   } catch (error) {
     console.error("Error updating business badges:", error);
+    return res.status(400).send({ message: error.message });
+  }
+};
+
+export const revertPaidStatusAction = async (req, res) => {
+  try {
+    const businessId = req.params.id;
+
+    const business = await revertBusinessFromPaid(businessId);
+
+    await invalidateSearchCache();
+    await invalidateDashboardCache();
+    await invalidateCategoryCache();
+
+    res.send({
+      message: "Business reverted from paid to unpaid successfully",
+      business,
+    });
+  } catch (error) {
+    console.error(error);
     return res.status(400).send({ message: error.message });
   }
 };

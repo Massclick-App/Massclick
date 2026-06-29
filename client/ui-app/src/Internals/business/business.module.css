@@ -1822,6 +1822,19 @@ textarea[readonly],
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
+.logo-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.logo-preview :global(.MuiAvatar-root) {
+  border: 2px solid var(--color-border) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+}
+
 .form-input-group :global(.ql-toolbar) {
   border-top-left-radius: 10px;
   border-top-right-radius: 10px;
@@ -2343,6 +2356,185 @@ textarea[readonly],
 
 .free-badge-icon {
   font-size: 20px;
+}
+
+/* Payment Status Button Styles */
+.payment-status-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.103);
+  white-space: nowrap;
+}
+
+.payment-status-btn::before {
+  width: 150%;
+  height: 150%;
+  position: absolute;
+  content: "";
+  left: -100%;
+  top: 50%;
+  transform: translateY(-50%);
+  transition: all 0.3s ease;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.payment-status-btn-paid {
+  background-color: #10b981;
+  color: white;
+}
+
+.payment-status-btn-paid::before {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.payment-status-btn-paid:hover:not(:disabled) {
+  box-shadow: 5px 5px 15px rgba(16, 185, 129, 0.3);
+  background-color: #dc2626;
+  border-color: #dc2626;
+}
+
+.payment-status-btn-paid:disabled {
+  cursor: pointer;
+}
+
+.payment-status-btn-paid:disabled:hover {
+  background-color: #dc2626;
+  border-color: #dc2626;
+  box-shadow: 5px 5px 15px rgba(220, 38, 38, 0.3);
+}
+
+.payment-status-btn-pending {
+  background-color: #f59e0b;
+  color: white;
+}
+
+.payment-status-btn-pending::before {
+  background-color: rgba(255, 255, 255, 0.25);
+}
+
+.payment-status-btn-pending:hover {
+  box-shadow: 5px 5px 15px rgba(245, 158, 11, 0.3);
+}
+
+.payment-status-btn-pending:hover::before {
+  left: 100%;
+  border-radius: 0;
+}
+
+.payment-status-btn:active:not(:disabled) {
+  transform: translate(2px, 2px);
+}
+
+.payment-status-btn:disabled {
+  cursor: not-allowed;
+}
+
+.payment-status-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Export Button Styles */
+.export-btn {
+  display: flex;
+  position: relative;
+  justify-content: center;
+  align-items: center;
+  background-color: #307750;
+  color: #fff;
+  border-style: none;
+  padding: 0.5em 1.2em;
+  border-radius: 0.5em;
+  overflow: hidden;
+  z-index: 1;
+  box-shadow: 4px 8px 10px -3px rgba(0, 0, 0, 0.356);
+  transition: all 250ms;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 600;
+  gap: 6px;
+}
+
+.export-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.export-btn::before {
+  content: "";
+  position: absolute;
+  height: 100%;
+  width: 0;
+  border-radius: 0.5em;
+  background-color: #469b61;
+  z-index: -1;
+  transition: all 350ms;
+}
+
+.export-btn:hover::before {
+  width: 100%;
+}
+
+.export-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* GMaps Leads Button Styles */
+.gmaps-btn {
+  display: flex;
+  position: relative;
+  justify-content: center;
+  align-items: center;
+  background-color: #ff8c42;
+  color: #fff;
+  border-style: none;
+  padding: 0.5em 1.2em;
+  border-radius: 0.5em;
+  overflow: hidden;
+  z-index: 1;
+  box-shadow: 4px 8px 10px -3px rgba(0, 0, 0, 0.356);
+  transition: all 250ms;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 600;
+  gap: 6px;
+}
+
+.gmaps-btn::before {
+  content: "";
+  position: absolute;
+  height: 100%;
+  width: 0;
+  border-radius: 0.5em;
+  background-color: #e67a2e;
+  z-index: -1;
+  transition: all 350ms;
+}
+
+.gmaps-btn:hover::before {
+  width: 100%;
+}
+
+.gmaps-btn:active:not(:disabled) {
+  transform: translate(2px, 2px);
+}
+
+.gmaps-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
 .success-message {

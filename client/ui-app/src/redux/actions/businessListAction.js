@@ -377,6 +377,23 @@ export const updateBusinessBadges = (id, badgesData) => async (dispatch) => {
   }
 };
 
+export const revertPaidStatus = (id) => async (dispatch) => {
+  dispatch({ type: EDIT_BUSINESS_REQUEST });
+  try {
+    const token = await getValidToken(dispatch);
+
+    const response = await axiosInstance.put(`${API_URL}/businesslist/revert-paid/${id}`, {}, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const updatedBusinessList = response.data.business;
+    dispatch({ type: EDIT_BUSINESS_SUCCESS, payload: updatedBusinessList });
+    return updatedBusinessList;
+  } catch (error) {
+    dispatch({ type: EDIT_BUSINESS_FAILURE, payload: error.response?.data || error.message });
+    throw error;
+  }
+};
+
 export const deleteBusinessList = (id) => async (dispatch) => {
   dispatch({ type: DELETE_BUSINESS_REQUEST });
   try {
