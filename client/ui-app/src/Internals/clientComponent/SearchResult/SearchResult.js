@@ -29,6 +29,7 @@ import { fetchSeoPageContentMeta } from "../../../redux/actions/seoPageContentAc
 import { CLEAR_SEO_META } from "../../../redux/actions/userActionTypes.js";
 import { selectBusinessLoading, selectBusinessError } from "../../../redux/selectors";
 import TopBannerAds from "../banners/topBanner/topBanner.js";
+import CategoryPublicCounterBadge from "../publicUserCounter/CategoryPublicCounterBadge.js";
 import GlobalSkeleton from "../globalSkeleton.js";
 import OTPLoginModal from "../AddBusinessModel.js";
 import FilterPanel from "./FilterPanel.js";
@@ -588,6 +589,7 @@ const SearchResults = React.memo(() => {
               Discover trusted {searchText} in {locationText}. Compare ratings,
               reviews and contact details to find the best near you.
             </h2>
+            <CategoryPublicCounterBadge category={searchText} />
 
             <div className={cx("category-trust-badges")}>
               <span className={cx("trust-badge")}><VerifiedIcon fontSize="small" /> Verified Listings</span>

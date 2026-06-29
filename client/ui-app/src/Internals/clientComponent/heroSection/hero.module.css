@@ -176,6 +176,12 @@
   align-items: center;
 }
 
+.trust-count {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--brand-blue);
+}
+
 .trust-card:nth-child(1) {
   color: var(--brand-orange);
 }

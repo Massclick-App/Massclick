@@ -38,6 +38,7 @@ export const Collections = {
     GMAPSLEADS: 'gmaps_leads',
     CHATCONVERSATION: 'chatconversations',
     CHATMESSAGE: 'chatmessages',
+    PUBLICUSERCOUNTERSETTINGS: 'publicusercountersettings',
     BUSINESSWEBPMIGRATIONJOB: 'business_webp_migration_jobs'
 };
 
@@ -81,5 +82,6 @@ export const {
     GMAPSLEADS,
     CHATCONVERSATION,
     CHATMESSAGE,
+    PUBLICUSERCOUNTERSETTINGS,
     BUSINESSWEBPMIGRATIONJOB
 } = Collections;

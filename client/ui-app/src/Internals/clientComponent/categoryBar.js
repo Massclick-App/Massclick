@@ -24,6 +24,7 @@ import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import { getDisplayableLeadNotifications } from "./leadsNotification/leadNotificationUtils.js";
 import { fetchMatchedLeads } from "../../redux/actions/leadsAction.js";
 import styles from "./categoryBar.module.css";
+
 const AddBusinessModal = lazy(() => import("./AddBusinessModel.js"));
 const DashboardPage = lazy(() => import("../clientComponent/userMenu/DashboardPage/Dashboard.js"));
 const FavoritesPage = lazy(() => import("../clientComponent/userMenu/FavouritePage/FavouritePage.js"));
@@ -132,6 +133,7 @@ export const userMenuItems = [{
   path: "/",
   icon: <ExitToAppIcon color="action" />
 }];
+
 export const getVisibleUserMenuItems = (user = {}) =>
   userMenuItems.filter((item) => !item.businessPeopleOnly || isBusinessPeopleUser(user));
 const CategoryBar = () => {
@@ -218,6 +220,7 @@ const CategoryBar = () => {
       navigate("/business-enquiry");
     }
   };
+  
   const goHome = () => navigate("/");
   return <header className={cx("categoryBarContainer")}>
     <div className={cx("categoryBarContent")}>

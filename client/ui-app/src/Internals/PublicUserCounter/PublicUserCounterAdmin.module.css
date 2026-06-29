@@ -1,0 +1,122 @@
+.public-counter-admin {
+  width: 100%;
+  max-width: 1180px;
+}
+
+.public-counter-admin--loading {
+  min-height: 300px;
+  display: grid;
+  place-items: center;
+}
+
+.public-counter-admin__header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  padding: 1.25rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.public-counter-admin__header-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: #e1580f;
+  flex-shrink: 0;
+}
+
+.public-counter-admin__panel {
+  width: 100%;
+  padding: 1.25rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.public-counter-admin__grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.public-counter-admin__category-row {
+  display: grid;
+  grid-template-columns: auto 1.2fr 1fr 0.7fr 0.6fr 0.6fr 0.7fr auto;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.public-counter-admin__footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 -6px 24px rgba(15, 23, 42, 0.08);
+}
+
+@media (max-width: 1100px) {
+  .public-counter-admin__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .public-counter-admin__category-row {
+    grid-template-columns: auto repeat(3, minmax(0, 1fr)) auto;
+  }
+}
+
+@media (min-width: 1101px) and (max-width: 1366px) {
+  .public-counter-admin {
+    max-width: 1080px;
+  }
+
+  .public-counter-admin__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .public-counter-admin__category-row {
+    grid-template-columns: auto 1.2fr 1fr 0.7fr 0.55fr 0.55fr 0.65fr auto;
+    gap: 0.5rem;
+  }
+}
+
+@media (min-width: 701px) and (max-width: 900px) {
+  .public-counter-admin__header {
+    flex-wrap: wrap;
+  }
+
+  .public-counter-admin__category-row {
+    grid-template-columns: auto repeat(2, minmax(0, 1fr)) auto;
+  }
+}
+
+@media (max-width: 700px) {
+  .public-counter-admin__header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .public-counter-admin__grid,
+  .public-counter-admin__category-row {
+    grid-template-columns: 1fr;
+  }
+
+  .public-counter-admin__footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

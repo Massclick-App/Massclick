@@ -36,6 +36,7 @@ import ClassIcon from '@mui/icons-material/Class';
 import FeaturedVideoIcon from '@mui/icons-material/FeaturedVideo';
 import TravelExploreIcon from '@mui/icons-material/TravelExplore';
 import MarkEmailReadIcon from '@mui/icons-material/MarkEmailRead';
+import GroupsRoundedIcon from '@mui/icons-material/GroupsRounded';
 import { fetchChatUnreadCount, getAdminChatToken } from "../services/chatService";
 import { connectSocket } from "../services/socketService";
 import { getAuthSnapshot } from "../auth/authStore.js";
@@ -90,6 +91,7 @@ const MENU_SECTIONS = [
       { text: "Users", icon: InterpreterModeIcon, path: "/dashboard/user" },
       { text: "Roles", icon: AdminPanelSettingsIcon, path: "/dashboard/roles" },
       { text: "Display", icon: CategoryIcon, path: "/dashboard/category-display" },
+      { text: "Public Count", icon: GroupsRoundedIcon, path: "/dashboard/public-users-count" },
       { text: "Terms", icon: GavelIcon, path: "/dashboard/terms-conditions-data" },
       { text: "Auth Console", icon: SettingsIcon, path: "/dashboard/auth-console" },
       { text: "Config", icon: SettingsIcon, path: "/dashboard/system-settings" },

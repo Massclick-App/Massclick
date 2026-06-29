@@ -6,9 +6,14 @@ import MicIcon from "@mui/icons-material/Mic";
 import HistoryToggleOffIcon from "@mui/icons-material/HistoryToggleOff";
 import { useDispatch, useSelector } from "react-redux";
 import { getBackendSuggestions } from "../../../redux/actions/businessListAction";
+import { fetchPublicUserCounter } from "../../../redux/actions/publicUserCounterAction.js";
 import { navigateToSearchResult } from "../../../utils/searchResultNavigation";
 import { detectDistrict } from "../../../redux/actions/locationAction";
 import { scheduleIdleCallback } from "../../../utils/scheduleIdleCallback.js";
+import {
+  formatCounterCount,
+  getVisibleCounterCount,
+} from "../../../utils/publicUserCounterUtils.js";
 // import backgroundImage from "../../../assets/background9.jpg";
 // import backgroundImage from "../../../assets/background.png";
 import { useNavigate } from "react-router-dom";
@@ -96,7 +101,10 @@ const HeroSection = React.memo(({
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [debouncedLocation, setDebouncedLocation] = useState("");
   const [showVoiceModal, setShowVoiceModal] = useState(false);
+  const [counterNow, setCounterNow] = useState(Date.now());
   const businessState = useSelector(state => state.businessListReducer);
+  const publicCounterSettings = useSelector(state => state.publicUserCounter?.publicSettings);
+  const publicUsersCount = publicCounterSettings ? getVisibleCounterCount(publicCounterSettings, counterNow) : null;
   const {
     searchLogs = [],
     backendSuggestions = [],
@@ -105,6 +113,15 @@ const HeroSection = React.memo(({
     backendSuggestionsPage = 0,
     backendSuggestionsQuery = ""
   } = businessState;
+  useEffect(() => {
+    if (!publicCounterSettings) {
+      dispatch(fetchPublicUserCounter()).catch(() => {});
+    }
+  }, [dispatch, publicCounterSettings]);
+  useEffect(() => {
+    const timer = window.setInterval(() => setCounterNow(Date.now()), 30000);
+    return () => window.clearInterval(timer);
+  }, []);
   const requestSuggestions = (query, {
     page = 1,
     append = false
@@ -467,7 +484,8 @@ const HeroSection = React.memo(({
 
           <div className={cx("trust-card")}>
             <span className={cx("trust-icon")}>👥</span>
-            <span>Trusted by Thousands of Users</span>
+            <span className={cx("trust-count")}>{publicUsersCount ? `${formatCounterCount(publicUsersCount)}+` : "Live"}</span>
+            <span>Public Users</span>
           </div>
 
           <div className={cx("trust-card")}>

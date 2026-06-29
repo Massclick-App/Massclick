@@ -92,6 +92,9 @@ const ServiceCardsGrid = lazy(
 const LeadAwareness = lazy(
   () => import("./leadAwareness/LeadAwareness.js"),
 );
+const PublicUserCounter = lazy(
+  () => import("./publicUserCounter/PublicUserCounter.js"),
+);
 const TwoWayAwareness = lazy(
   () => import("./twoWayAwareness/TwoWayAwareness.js"),
 );
@@ -673,6 +676,12 @@ const LandingPage = React.memo(() => {
                 >
                   <Suspense fallback={<SkeletonCards type="featured" />}>
                     <FeaturedServices />
+                  </Suspense>
+                </Box>
+
+                <Box className={cx("home-section")} sx={homeSectionSx}>
+                  <Suspense fallback={null}>
+                    <PublicUserCounter />
                   </Suspense>
                 </Box>
 
