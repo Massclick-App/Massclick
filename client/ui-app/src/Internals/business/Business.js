@@ -1855,6 +1855,20 @@ const BusinessList = React.memo(() => {
     twitter: normalizeText(data.twitter),
     linkedin: normalizeText(data.linkedin),
     businessDetails: data.businessDetails,
+    bannerImage: data.bannerImage,
+    logoImage: data.logoImage,
+    openingHours: Array.isArray(data.openingHours) ? data.openingHours : [],
+    filters: data.filters && typeof data.filters === 'object' ? data.filters : {},
+    badges: data.badges && typeof data.badges === 'object' ? data.badges : {
+      isFeatured: false,
+      isSponsored: false,
+      isTrending: false,
+      priorityScore: 0
+    },
+    verification: data.verification && typeof data.verification === 'object' ? data.verification : {
+      isVerified: false,
+      verificationType: "ADMIN"
+    },
     geoLocation: {
       type: "Point",
       coordinates: Array.isArray(data.geoLocation?.coordinates) ? data.geoLocation.coordinates.map(value => String(value ?? "").trim()) : ["", ""]
