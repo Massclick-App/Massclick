@@ -1942,7 +1942,10 @@ const BusinessList = React.memo(() => {
     });
 
     return [
-      { field: "clientId", label: "Client ID", required: true, example: "MC-1023 - Kumar Stores", suggestion: "Pick an existing client suggestion." },
+      { field: "clientId", label: "Client ID", required: true, example: "MC260109132723", suggestion: "Pick an existing client suggestion.", validate: value => {
+        const idPart = value.split(' — ')[0].trim();
+        return /^MC\d{12}$/.test(idPart) || "must be a valid client ID (format: MCYYMMDDHHMMSS). Select from the dropdown list.";
+      }},
       { field: "businessName", label: "Business name", required: true, example: "Kumar Electricals", suggestion: "Use the legal or public shop name.", validate: value => passOrMessage(value.length >= 2 && !/(.)\1{3,}/.test(value), "must be at least 2 characters and not repeated/gibberish.") },
       { field: "plotNumber", label: "Plot number", required: true, example: "12A", suggestion: "Use door, shop, plot, or building number." },
       { field: "street", label: "Street", required: true, example: "Gandhi Road", suggestion: "Add the road, area, or landmark street." },

@@ -106,14 +106,19 @@ const BusinessFormStep0 = ({
 
   // Find the selected client object from all available options
   const getSelectedClient = () => {
-    const selected = formData.clientId ? allOptions.find((c) => c.clientId === formData.clientId) : null;
+    if (!formData.clientId) return null;
+
+    // Extract ID part if clientId is in extended format "MCYYMMDDHHMMSS — Name"
+    const idPart = formData.clientId.split(' — ')[0].trim();
+
+    const selected = allOptions.find((c) => c.clientId === idPart);
     console.log("🎯 getSelectedClient:", {
       formDataClientId: formData.clientId,
+      extractedIdPart: idPart,
       foundClient: selected ? { id: selected.clientId, name: selected.name } : null,
       allOptionsLength: allOptions?.length
     });
-    if (!formData.clientId) return null;
-    return allOptions.find((c) => c.clientId === formData.clientId) || null;
+    return selected || null;
   };
 
   const sections = [
@@ -176,11 +181,22 @@ const BusinessFormStep0 = ({
             isOptionEqualToValue={(option, value) => option.clientId === value.clientId}
             freeSolo={false}
             disableClearable={false}
+            filterOptions={(options, state) => {
+              // Only show options that match the search input
+              if (!state.inputValue) return options;
+              return options.filter(
+                (option) =>
+                  option.clientId.includes(state.inputValue.toUpperCase()) ||
+                  option.name.toLowerCase().includes(state.inputValue.toLowerCase())
+              );
+            }}
             renderInput={(params) => (
               <TextField
                 {...params}
-                placeholder="Search and select a client"
+                placeholder="Search by client ID or name"
                 size="small"
+                helperText="Must select from the list below. Search your client by name or ID."
+                error={!!fieldErrors.clientId}
                 sx={{
                   "& .MuiOutlinedInput-root": {
                     padding: "6px !important",

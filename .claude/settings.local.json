@@ -19,7 +19,8 @@
       "Bash(Select-Object -First 10)",
       "Bash(curl -s http://localhost:3000)",
       "Bash(npm start *)",
-      "Bash(find /c/Users/USER/.claude/projects -name \"MEMORY.md\" -o -name \"*memory*\" -type d 2>/dev/null | head -10)"
+      "Bash(find /c/Users/USER/.claude/projects -name \"MEMORY.md\" -o -name \"*memory*\" -type d 2>/dev/null | head -10)",
+      "Bash(grep -E \"\\\\.\\(js|ts\\)$\")"
     ]
   }
 }
