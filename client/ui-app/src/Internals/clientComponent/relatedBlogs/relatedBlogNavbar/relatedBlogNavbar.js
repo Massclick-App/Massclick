@@ -135,7 +135,7 @@ const Navbar = ({
             handleTagClick(tag);
           }
         }}>
-              <Icon className={cx("category-icon")} />
+              {/* <Icon className={cx("category-icon")} /> */}
               <span>{tag}</span>
             </div>;
       })}

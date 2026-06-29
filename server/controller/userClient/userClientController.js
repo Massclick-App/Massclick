@@ -1,4 +1,4 @@
-import { createUsersClients, viewUserClients, viewAllUserClients,searchUsersClient, updateUserClients, deleteUserClients } from "../../helper/userClient/userClientHelper.js";
+import { createUsersClients, viewUserClients, viewAllUserClients, searchUsersClient, updateUserClients, updateUserClientStatus, deleteUserClients } from "../../helper/userClient/userClientHelper.js";
 import { BAD_REQUEST } from "../../errorCodes.js";
 
 export const addUsersClientAction = async (req, res) => {
@@ -76,6 +76,23 @@ export const updateUsersClientAction = async (req, res) => {
     } catch (error) {
         console.error(error);
         return res.status(400).send({ message: error.message });
+    }
+};
+
+export const updateStatusAction = async (req, res) => {
+    try {
+        const userId = req.params.id;
+        const { isActive } = req.body;
+
+        if (typeof isActive !== 'boolean') {
+            return res.status(BAD_REQUEST.code).send({ message: "isActive must be a boolean" });
+        }
+
+        const user = await updateUserClientStatus(userId, isActive);
+        res.send(user);
+    } catch (error) {
+        console.error("Error in updateStatusAction:", error);
+        return res.status(BAD_REQUEST.code).send({ message: error.message });
     }
 };
 

@@ -91,6 +91,21 @@ export const editUserClient = (id, userClientData) => async (dispatch) => {
   }
 };
 
+export const updateUserClientStatus = (id, isActive) => async (dispatch) => {
+  dispatch({ type: EDIT_USERCLIENT_REQUEST });
+  try {
+    const token = await getValidToken(dispatch);
+    const response = await axiosInstance.patch(`${API_URL}/userclient/status/${id}`,
+      { isActive },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    dispatch({ type: EDIT_USERCLIENT_SUCCESS, payload: response.data });
+    return response.data;
+  } catch (error) {
+    dispatch({ type: EDIT_USERCLIENT_FAILURE, payload: error.response?.data || error.message });
+    throw error;
+  }
+};
 
 export const deleteUserClient = (id) => async (dispatch) => {
   dispatch({ type: DELETE_USERCLIENT_REQUEST });
