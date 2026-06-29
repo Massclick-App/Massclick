@@ -619,6 +619,8 @@ export const viewAllBusinessList = async ({
   } else {
     sort.createdAt = -1;
   }
+  // Add stable secondary sort by _id to prevent pagination issues with duplicate values
+  sort._id = 1;
 
 
   const total = await businessListModel.countDocuments(query);

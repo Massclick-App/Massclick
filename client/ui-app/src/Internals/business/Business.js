@@ -463,6 +463,8 @@ const BusinessList = React.memo(() => {
   const [inputKeyword, setInputKeyword] = useState("");
   const [categoryKeywordSuggestions, setCategoryKeywordSuggestions] = useState([]);
   const [detailRow, setDetailRow] = useState(null);
+  const [imageModalOpen, setImageModalOpen] = useState(false);
+  const [selectedImageUrl, setSelectedImageUrl] = useState(null);
 
   // Search & Filter States
   const [searchTerm, setSearchTerm] = useState("");
@@ -3334,7 +3336,16 @@ const BusinessList = React.memo(() => {
     id: "bannerImage",
     label: "",
     renderCell: (value, row) => (
-      <Avatar src={value} alt={row.businessName} sx={{ width: 36, height: 36, borderRadius: 1 }} variant="square" />
+      <Avatar
+        src={value}
+        alt={row.businessName}
+        sx={{ width: 36, height: 36, borderRadius: 1, cursor: "pointer" }}
+        variant="square"
+        onClick={() => {
+          setSelectedImageUrl(value);
+          setImageModalOpen(true);
+        }}
+      />
     )
   }, {
     id: "businessName",
@@ -4379,7 +4390,7 @@ const BusinessList = React.memo(() => {
     <Dialog
       open={Boolean(detailRow)}
       onClose={() => setDetailRow(null)}
-      maxWidth="lg"
+      maxWidth="sm"
       fullWidth
       PaperProps={{ sx: { borderRadius: 3, maxHeight: "95vh", bgcolor: "#ffffff" } }}
     >
@@ -4456,54 +4467,8 @@ const BusinessList = React.memo(() => {
 
         return (
           <>
-            {/* Large Banner Image - Full Display */}
-            <Box
-              sx={{
-                width: "100%",
-                height: 420,
-                bgcolor: "#f8f9fa",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                overflow: "hidden",
-                position: "relative",
-                borderBottom: "1px solid #e8ecf1"
-              }}
-            >
-              {row.bannerImage ? (
-                <img
-                  src={row.bannerImage}
-                  alt={row.businessName}
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "contain",
-                    padding: "12px"
-                  }}
-                />
-              ) : (
-                <Box sx={{ textAlign: "center" }}>
-                  <Typography sx={{ fontSize: "1rem", color: "#9ca3af", fontWeight: 500 }}>No image available</Typography>
-                </Box>
-              )}
-              <IconButton
-                size="medium"
-                onClick={() => setDetailRow(null)}
-                sx={{
-                  position: "absolute",
-                  top: 12,
-                  right: 12,
-                  bgcolor: "rgba(255, 255, 255, 0.95)",
-                  boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
-                  "&:hover": { bgcolor: "#ffffff", boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)" }
-                }}
-              >
-                <CloseRoundedIcon fontSize="small" />
-              </IconButton>
-            </Box>
-
             {/* Business Info Header - Polished */}
-            <Box sx={{ p: 4.5, bgcolor: "#ffffff" }}>
+            <Box sx={{ p: 4.5, bgcolor: "#ffffff", borderBottom: "1px solid #e8ecf1" }}>
               <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 2 }}>
                 <Box sx={{ flex: 1 }}>
                   <Typography sx={{ fontWeight: 800, fontSize: "1.55rem", color: "#0f172a", mb: 0.6, letterSpacing: "-0.5px" }}>
@@ -4513,6 +4478,9 @@ const BusinessList = React.memo(() => {
                     ID: {row.clientId}
                   </Typography>
                 </Box>
+                <IconButton size="small" onClick={() => setDetailRow(null)} sx={{ mt: -1 }}>
+                  <CloseRoundedIcon fontSize="small" />
+                </IconButton>
               </Box>
 
               {/* Badges Row */}
@@ -4544,8 +4512,6 @@ const BusinessList = React.memo(() => {
                 )}
               </Box>
             </Box>
-
-            <Box sx={{ height: "1px", bgcolor: "#e8ecf1" }} />
 
             {/* Scrollable Details */}
             <Box sx={{ maxHeight: 500, overflowY: "auto", p: 0, display: "flex", flexDirection: "column", bgcolor: "#ffffff" }}>
@@ -4725,6 +4691,52 @@ const BusinessList = React.memo(() => {
           </>
         );
       })()}
+    </Dialog>
+
+    {/* Image Modal */}
+    <Dialog
+      open={imageModalOpen}
+      onClose={() => {
+        setImageModalOpen(false);
+        setSelectedImageUrl(null);
+      }}
+      maxWidth="md"
+      fullWidth
+      PaperProps={{ sx: { borderRadius: 2, bgcolor: "#ffffff" } }}
+    >
+      <Box sx={{ position: "relative", bgcolor: "#f8f9fa", display: "flex", alignItems: "center", justifyContent: "center", minHeight: 500 }}>
+        {selectedImageUrl ? (
+          <img
+            src={selectedImageUrl}
+            alt="Business Image"
+            style={{
+              maxWidth: "100%",
+              maxHeight: "600px",
+              objectFit: "contain",
+              padding: "20px"
+            }}
+          />
+        ) : (
+          <Typography sx={{ fontSize: "1rem", color: "#9ca3af" }}>No image available</Typography>
+        )}
+        <IconButton
+          size="medium"
+          onClick={() => {
+            setImageModalOpen(false);
+            setSelectedImageUrl(null);
+          }}
+          sx={{
+            position: "absolute",
+            top: 12,
+            right: 12,
+            bgcolor: "rgba(255, 255, 255, 0.95)",
+            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
+            "&:hover": { bgcolor: "#ffffff", boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)" }
+          }}
+        >
+          <CloseRoundedIcon fontSize="small" />
+        </IconButton>
+      </Box>
     </Dialog>
 
     <Dialog open={warnDialog} onClose={() => setWarnDialog(false)} maxWidth="xs" fullWidth>

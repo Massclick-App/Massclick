@@ -115,6 +115,8 @@ export const viewAllUserClients = async ({
     } else {
       sort.createdAt = -1;
     }
+    // Add stable secondary sort by _id to prevent pagination issues with duplicate values
+    sort._id = 1;
 
     const total = await userClientModel.countDocuments(query);
 
