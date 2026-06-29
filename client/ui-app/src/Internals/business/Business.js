@@ -3483,6 +3483,26 @@ const BusinessList = React.memo(() => {
       />
     )
   }, {
+    id: "logoImage",
+    label: "Logo",
+    renderCell: (value, row) => (
+      value ? (
+        <Avatar
+          src={value}
+          alt={row.businessName}
+          sx={{ width: 40, height: 40, borderRadius: 1, cursor: "pointer" }}
+          onClick={() => {
+            setSelectedImageUrl(value);
+            setImageModalOpen(true);
+          }}
+        />
+      ) : (
+        <Box sx={{ width: 40, height: 40, borderRadius: 1, bgcolor: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.75rem", color: "#9ca3af" }}>
+          —
+        </Box>
+      )
+    )
+  }, {
     id: "businessName",
     label: "Business",
     renderCell: (value, row) => (

@@ -318,6 +318,10 @@ export const findBusinessBySlug = async ({ location, slug }) => {
       business.bannerImage = getSignedUrlByKey(business.bannerImageKey);
     }
 
+    if (business.logoImageKey) {
+      business.logoImage = getSignedUrlByKey(business.logoImageKey);
+    }
+
     if (business.businessImagesKey?.length > 0) {
       business.businessImages = business.businessImagesKey.map((key) =>
         getSignedUrlByKey(key),
@@ -344,6 +348,8 @@ export const viewBusinessList = async (id) => {
 
   if (business.bannerImageKey)
     business.bannerImage = getSignedUrlByKey(business.bannerImageKey);
+  if (business.logoImageKey)
+    business.logoImage = getSignedUrlByKey(business.logoImageKey);
   if (business.businessImagesKey?.length > 0) {
     business.businessImages = business.businessImagesKey.map((key) =>
       getSignedUrlByKey(key),
@@ -367,6 +373,10 @@ export const viewAllBusiness = async () => {
   const updatedBusinesses = businesses.map((business) => {
     if (business.bannerImageKey) {
       business.bannerImage = getSignedUrlByKey(business.bannerImageKey);
+    }
+
+    if (business.logoImageKey) {
+      business.logoImage = getSignedUrlByKey(business.logoImageKey);
     }
 
     if (business.businessImagesKey?.length > 0) {
@@ -483,6 +493,8 @@ export const viewAllClientBusinessList = async () => {
   return businessList.map((business) => {
     if (business.bannerImageKey)
       business.bannerImage = getSignedUrlByKey(business.bannerImageKey);
+    if (business.logoImageKey)
+      business.logoImage = getSignedUrlByKey(business.logoImageKey);
     if (business.businessImagesKey?.length > 0) {
       business.businessImages = business.businessImagesKey.map((key) =>
         getSignedUrlByKey(key),
@@ -668,6 +680,10 @@ export const viewAllBusinessList = async ({
     businessList.map(async (business) => {
       if (business.bannerImageKey) {
         business.bannerImage = getSignedUrlByKey(business.bannerImageKey);
+      }
+
+      if (business.logoImageKey) {
+        business.logoImage = getSignedUrlByKey(business.logoImageKey);
       }
 
       if (business.businessImagesKey?.length > 0) {

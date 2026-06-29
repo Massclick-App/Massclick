@@ -765,6 +765,27 @@ const BusinessFormStep2 = ({
           </div>
         )}
 
+        {/* Images Preview */}
+        {(formData.bannerImage || formData.logoImage) && (
+          <div className={fieldClass("field-span-full", "field-surface")}>
+            <h3 style={{ fontSize: "14px", fontWeight: 700, marginBottom: "16px", color: "#333" }}>🖼️ Business Images</h3>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "16px" }}>
+              {formData.bannerImage && (
+                <div>
+                  <small style={{ color: "#666", fontSize: "12px" }}>Banner Image</small>
+                  <img src={formData.bannerImage} alt="Banner" style={{ width: "100%", height: "100px", objectFit: "cover", borderRadius: "6px", marginTop: "8px", border: "1px solid #e5e7eb" }} />
+                </div>
+              )}
+              {formData.logoImage && (
+                <div>
+                  <small style={{ color: "#666", fontSize: "12px" }}>Logo</small>
+                  <img src={formData.logoImage} alt="Logo" style={{ width: "100px", height: "100px", objectFit: "cover", borderRadius: "6px", marginTop: "8px", border: "1px solid #e5e7eb" }} />
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Display Details */}
         {(formData.title || formData.description) && (
           <div className={fieldClass("field-span-full", "field-surface")}>
