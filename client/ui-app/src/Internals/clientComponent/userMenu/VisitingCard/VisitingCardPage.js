@@ -8,6 +8,7 @@ import StickySearchBar from "../../StickySearchBar/StickySearchBar";
 import Footer from "../../footer/footer";
 import { findBusinessByMobile } from "../../../../redux/actions/businessListAction";
 import BusinessDocumentsNav from "./BusinessDocumentsNav";
+import { getBusinessLogo, imageToDataUrl } from "./documentImageUtils";
 import styles from "./VisitingCardPage.module.css";
 
 const cx = createScopedClassNames(styles);
@@ -106,6 +107,7 @@ const getBusinessProfile = (business = {}, storedUser = {}) => {
     website: business.website || "massclick.in",
     location: compact(business.globalAddress, business.location) || business.street || "",
     category: business.category || "",
+    logoImage: getBusinessLogo(business),
     qrImage: profileQrCode.qrImageData || profileQrCode.qrImage || legacyProfileQrCode.qrImageData || legacyProfileQrCode.qrImage || "",
     qrExportImage: profileQrCode.qrImageData || legacyProfileQrCode.qrImageData || "",
     url: businessUrl,
@@ -148,7 +150,13 @@ const CardPreview = ({ template, profile, size = "normal" }) => (
     <span className={cx("card-shape card-shape-secondary")} />
 
     <header className={cx("card-brand-row")}>
-      <div className={cx("brand-mark")}>{getInitials(profile.businessName)}</div>
+      <div className={cx("brand-mark")}>
+        {profile.logoImage ? (
+          <img src={profile.logoImage} alt={`${profile.businessName} logo`} />
+        ) : (
+          getInitials(profile.businessName)
+        )}
+      </div>
       <div className={cx("brand-copy")}>
         <h2 className={cx("business-name")}>{profile.businessName}</h2>
         <p className={cx("tag-line")}>{profile.tagLine}</p>
@@ -209,6 +217,30 @@ const svgQrImage = (image, x, y, accent, muted) => `
   ${svgLine("Scan for profile", x - 8, y + 184, 18, muted, 700)}
 `;
 
+const svgLogoMark = (profile, x, y, size, fill, textColor) => {
+  const logo = profile.logoImage || profile.logoExportImage;
+  const radius = Math.round(size / 2);
+  const initials = getInitials(profile.businessName);
+
+  if (logo) {
+    return `
+      <defs>
+        <clipPath id="businessLogoClip">
+          <circle cx="${x + radius}" cy="${y + radius}" r="${radius}" />
+        </clipPath>
+      </defs>
+      <circle cx="${x + radius}" cy="${y + radius}" r="${radius + 6}" fill="#ffffff" />
+      <circle cx="${x + radius}" cy="${y + radius}" r="${radius}" fill="#ffffff" />
+      <image href="${svgText(logo)}" x="${x}" y="${y}" width="${size}" height="${size}" preserveAspectRatio="xMidYMid meet" clip-path="url(#businessLogoClip)" />
+    `;
+  }
+
+  return `
+    <circle cx="${x + radius}" cy="${y + radius}" r="${radius}" fill="${fill}" />
+    ${svgLine(initials, x + 21, y + 52, 36, textColor, 850)}
+  `;
+};
+
 const buildCardSvg = (template, profile) => {
   const dark = ["dark", "luxury", "gradient", "tech"].includes(template.id);
   const bg = {
@@ -232,7 +264,6 @@ const buildCardSvg = (template, profile) => {
   const qr = profile.qrImage
     ? svgQrImage(profile.qrImage, qrX, qrY, accent, muted)
     : svgQrUnavailable(qrX, qrY, accent, muted);
-  const initials = getInitials(profile.businessName);
   const ownerName = limitText(profile.personName, 28);
   const businessName = limitText(profile.businessName, 36);
   const tagLine = limitText(profile.tagLine, 48);
@@ -255,8 +286,7 @@ const buildCardSvg = (template, profile) => {
     <path d="M0 476 C180 418 308 592 512 504 C676 434 748 320 1050 356 L1050 600 L0 600 Z" fill="${accent}" opacity="${dark ? "0.22" : "0.12"}" />
     <path d="M778 0 L1050 0 L1050 206 C968 162 920 92 778 0 Z" fill="${accent}" opacity="${dark ? "0.2" : "0.14"}" />
     ${template.id === "vertical" ? `<rect x="0" y="0" width="126" height="600" fill="${accent}" />` : ""}
-    <circle cx="94" cy="96" r="43" fill="${template.id === "vertical" ? "#ffffff" : accent}" />
-    ${svgLine(initials, 72, 112, 36, template.id === "vertical" ? accent : "#ffffff", 850)}
+    ${svgLogoMark(profile, 51, 53, 86, template.id === "vertical" ? "#ffffff" : accent, template.id === "vertical" ? accent : "#ffffff")}
     ${svgLine(businessName, 170, 92, 42, text, 850)}
     ${svgLine(tagLine, 172, 128, 22, muted, 500)}
     <rect x="82" y="186" width="128" height="7" rx="3.5" fill="${accent}" />
@@ -285,6 +315,7 @@ const createCardPng = async (template, profile) => {
   const embeddedProfile = {
     ...profile,
     qrImage: profile.qrExportImage || "",
+    logoImage: await imageToDataUrl(profile.logoImage),
   };
 
   return new Promise((resolve, reject) => {
@@ -351,6 +382,26 @@ export default function VisitingCardPage() {
       setStatusMessage("Business profile link copied.");
     } catch {
       setStatusMessage("Copy failed. Please use the share button.");
+    }
+  };
+
+  const handleCopyDetails = async () => {
+    const details = [
+      profile.businessName,
+      profile.personName,
+      profile.role,
+      profile.phones?.length ? `Phone: ${profile.phones.join(", ")}` : "",
+      profile.email ? `Email: ${profile.email}` : "",
+      profile.website ? `Website: ${profile.website}` : "",
+      profile.location ? `Address: ${profile.location}` : "",
+      `Profile: ${profile.url}`,
+    ].filter(Boolean).join("\n");
+
+    try {
+      await navigator.clipboard.writeText(details);
+      setStatusMessage("Business details copied.");
+    } catch {
+      setStatusMessage("Copy failed. Please try again.");
     }
   };
 
@@ -449,6 +500,10 @@ export default function VisitingCardPage() {
               <button type="button" className={cx("secondary-action")} onClick={handleShare}>
                 <ShareIcon />
                 Share
+              </button>
+              <button type="button" className={cx("secondary-action")} onClick={handleCopyDetails}>
+                <ContentCopyIcon />
+                Copy Details
               </button>
               <button type="button" className={cx("icon-action")} onClick={handleCopyLink} aria-label="Copy business profile link">
                 <ContentCopyIcon />

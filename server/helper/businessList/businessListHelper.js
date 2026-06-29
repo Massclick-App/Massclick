@@ -2,7 +2,7 @@ import { ObjectId } from "mongodb";
 import businessListModel from "../../model/businessList/businessListModel.js";
 import SearchLogModel from "../../model/businessList/searchLogModel.js";
 import mongoose from "mongoose";
-import { uploadImageToS3, getSignedUrlByKey } from "../../s3Uploder.js";
+import { uploadImageToS3, getSignedUrlByKey, getImageDataUrlByKey } from "../../s3Uploder.js";
 import locationModel from "../../model/locationModel/locationModel.js";
 import userModel from "../../model/userModel.js";
 import QRCode from "qrcode";
@@ -1122,6 +1122,11 @@ export const findBusinessByMobile = async (mobile) => {
 
     if (business.bannerImageKey) {
       business.bannerImage = getSignedUrlByKey(business.bannerImageKey);
+    }
+
+    if (business.logoImageKey) {
+      business.logoImage = getSignedUrlByKey(business.logoImageKey);
+      business.logoImageData = await getImageDataUrlByKey(business.logoImageKey);
     }
 
     if (business.businessImagesKey?.length > 0) {

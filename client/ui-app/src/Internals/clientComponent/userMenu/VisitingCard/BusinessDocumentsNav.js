@@ -7,17 +7,18 @@ import Tabs from "@mui/material/Tabs";
 import Toolbar from "@mui/material/Toolbar";
 
 const documentOptions = [
-  { label: "Visiting Card", path: "/user_visiting-card" },
-  { label: "Letterhead", path: "/user_letterhead" },
-  { label: "Quotation", path: "/user_quotation" },
+  { label: "Visiting Card", type: "visiting-card", path: "/user_marketing-materials" },
+  { label: "Letterhead", type: "letterhead", path: "/user_marketing-materials?type=letterhead" },
+  { label: "Quotation", type: "quotation", path: "/user_marketing-materials?type=quotation" },
 ];
 
 export default function BusinessDocumentsNav() {
   const location = useLocation();
   const navigate = useNavigate();
-  const currentPath = documentOptions.some((option) => option.path === location.pathname)
-    ? location.pathname
-    : documentOptions[0].path;
+  const searchParams = new URLSearchParams(location.search);
+  const currentType = searchParams.get("type") || documentOptions[0].type;
+  const currentPath =
+    documentOptions.find((option) => option.type === currentType)?.path || documentOptions[0].path;
 
   return (
     <Box

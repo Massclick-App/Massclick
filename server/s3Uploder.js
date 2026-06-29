@@ -94,3 +94,24 @@ export const getSignedUrlByKey = (key, { signed = false, expiry = 3600 } = {}) =
 
   return `https://${assetsBucket}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
 };
+
+export const getImageDataUrlByKey = async (key) => {
+  if (!key) return "";
+
+  try {
+    const object = await s3.getObject({
+      Bucket: assetsBucket,
+      Key: key,
+    }).promise();
+
+    const buffer = Buffer.isBuffer(object.Body)
+      ? object.Body
+      : Buffer.from(object.Body || []);
+    const contentType = object.ContentType || "image/webp";
+
+    return `data:${contentType};base64,${buffer.toString("base64")}`;
+  } catch (error) {
+    console.warn("Unable to read image data URL from S3:", error.message);
+    return "";
+  }
+};
