@@ -476,23 +476,24 @@
 
 .search-btn-web {
   width: auto;
-  height: 52px;
+  height: auto;
   min-width: 124px;
   border: none;
-  border-radius: var(--radius-md);
-  background: linear-gradient(135deg, var(--brand), var(--brand-dark));
+  border-radius: 30px;
+  background: linear-gradient(45deg, #FF6F00, #F7941D);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(255, 123, 0, 0.2);
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
   color: #fff;
   font-weight: 700;
-  font-size: 0.9rem;
-  padding: 0 18px;
+  font-size: 0.95rem;
+  padding: 10px 20px;
   gap: 6px;
   flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .search-btn-web--pending {
@@ -500,7 +501,7 @@
 }
 
 .search-btn-web:hover {
-  transform: translateY(-2px);
+  background: linear-gradient(45deg, #cc5a0f, #ff8a2d);
   box-shadow: 0 4px 12px rgba(255, 123, 0, 0.25);
 }
 
