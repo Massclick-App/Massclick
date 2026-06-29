@@ -53,7 +53,7 @@ router.get('/api/businesslist/nearby', nearbyBusinessesController);
 router.get('/api/businesslist/suggestions', suggestionsCache, getSuggestionsController);
 router.get('/api/businesslist/suggestions-enhanced', suggestionsCache, getEnhancedSuggestionsController);
 router.get('/api/businesslist/category', cacheMiddleware({ expirySeconds: 3600, keyPrefix: 'category' }), viewBusinessByCategory);
-router.get("/api/businesslist/findByMobile/:mobile", cacheMiddleware({ expirySeconds: 1800, keyPrefix: 'mobile' }), findBusinessByMobileAction);
+router.get("/api/businesslist/findByMobile/:mobile", cacheMiddleware({ expirySeconds: 1800, keyPrefix: 'mobile-v3' }), findBusinessByMobileAction);
 router.get('/api/businesslist/dashboard-summary', oauthAuthentication, cacheMiddleware({ expirySeconds: 600, keyPrefix: 'dashboard-summary' }), dashboardSummaryAction);
 router.get('/api/businesslist/dashboard-charts', oauthAuthentication, cacheMiddleware({ expirySeconds: 600, keyPrefix: 'dashboard-charts' }), dashboardChartsAction);
 router.get('/api/businesslist/admin-analytics-report', oauthAuthentication, cacheMiddleware({ expirySeconds: 300, keyPrefix: 'admin-analytics-report' }), adminAnalyticsReportAction);

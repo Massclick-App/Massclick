@@ -96,6 +96,7 @@ const PublicUserCounterAdmin = lazy(() => import(/* webpackChunkName: "admin-pub
 const UserDashboardPage = lazy(() => import(/* webpackChunkName: "user-dashboard" */ './Internals/clientComponent/userMenu/DashboardPage/Dashboard.js'));
 const UserEditProfilePage = lazy(() => import(/* webpackChunkName: "user-edit-profile" */ './Internals/clientComponent/userMenu/EditProfile/EditProfilePage.js'));
 const UserMRPPage = lazy(() => import(/* webpackChunkName: "user-mni" */ './Internals/clientComponent/MRP/mrp.js'));
+const UserMarketingMaterialsPage = lazy(() => import(/* webpackChunkName: "user-marketing-materials" */ './Internals/clientComponent/userMenu/VisitingCard/MarketingMaterialsPage.js'));
 const UserFavoritesPage = lazy(() => import(/* webpackChunkName: "user-favorites" */ './Internals/clientComponent/userMenu/FavouritePage/FavouritePage.js'));
 const UserCustomerServicePage = lazy(() => import(/* webpackChunkName: "user-customer-service" */ './Internals/clientComponent/userMenu/CustomerService/CustomerServicePage.js'));
 const UserPolicyPage = lazy(() => import(/* webpackChunkName: "user-policy" */ './Internals/clientComponent/userMenu/PolicyPage/PolicyPage.js'));
@@ -250,6 +251,13 @@ function AppRoutes({
             path="/user_mni"
             element={isBusinessPeopleUser(getStoredCustomerUser()) ? <UserMRPPage /> : <Navigate to="/user_dashboard" replace />}
           />
+          <Route
+            path="/user_marketing-materials"
+            element={isBusinessPeopleUser(getStoredCustomerUser()) ? <UserMarketingMaterialsPage /> : <Navigate to="/user_dashboard" replace />}
+          />
+          <Route path="/user_visiting-card" element={<Navigate to="/user_marketing-materials" replace />} />
+          <Route path="/user_letterhead" element={<Navigate to="/user_marketing-materials?type=letterhead" replace />} />
+          <Route path="/user_quotation" element={<Navigate to="/user_marketing-materials?type=quotation" replace />} />
           <Route path="/user_favorites" element={<UserFavoritesPage />} />
           <Route path="/user_customer-service" element={<UserCustomerServicePage />} />
           <Route path="/user_policy" element={<UserPolicyPage />} />

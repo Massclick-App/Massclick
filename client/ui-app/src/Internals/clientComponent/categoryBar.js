@@ -14,9 +14,7 @@ import DashboardIcon from "@mui/icons-material/Dashboard";
 import BusinessCenterIcon from "@mui/icons-material/BusinessCenter";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import EditIcon from "@mui/icons-material/Edit";
-import BadgeIcon from "@mui/icons-material/Badge";
 import DescriptionIcon from "@mui/icons-material/Description";
-import RequestQuoteIcon from "@mui/icons-material/RequestQuote";
 import HeadsetMicIcon from "@mui/icons-material/HeadsetMic";
 import PolicyIcon from "@mui/icons-material/Policy";
 import FeedbackIcon from "@mui/icons-material/Feedback";
@@ -30,8 +28,6 @@ const DashboardPage = lazy(() => import("../clientComponent/userMenu/DashboardPa
 const FavoritesPage = lazy(() => import("../clientComponent/userMenu/FavouritePage/FavouritePage.js"));
 const EditProfilePage = lazy(() => import("../clientComponent/userMenu/EditProfile/EditProfilePage.js"));
 const VisitingCardPage = lazy(() => import("../clientComponent/userMenu/VisitingCard/VisitingCardPage.js"));
-const LetterheadPage = lazy(() => import("../clientComponent/userMenu/VisitingCard/LetterheadPage.js"));
-const QuotationPage = lazy(() => import("../clientComponent/userMenu/VisitingCard/QuotationPage.js"));
 const CustomerServicePage = lazy(() => import("../clientComponent/userMenu/CustomerService/CustomerServicePage.js"));
 const PolicyPage = lazy(() => import("../clientComponent/userMenu/PolicyPage/PolicyPage.js"));
 const FeedbackPage = lazy(() => import("../clientComponent/userMenu/FeedbackPage/FeedBackPage.js"));
@@ -77,22 +73,10 @@ export const userMenuItems = [{
   component: MRPPage,
   businessPeopleOnly: true
 }, {
-  name: "Visiting Card",
-  path: "/user_visiting-card",
-  icon: <BadgeIcon color="action" />,
-  component: VisitingCardPage,
-  businessPeopleOnly: true
-}, {
-  name: "Letterhead",
-  path: "/user_letterhead",
+  name: "Marketing Materials",
+  path: "/user_marketing-materials",
   icon: <DescriptionIcon color="action" />,
-  component: LetterheadPage,
-  businessPeopleOnly: true
-}, {
-  name: "Quotation",
-  path: "/user_quotation",
-  icon: <RequestQuoteIcon color="action" />,
-  component: QuotationPage,
+  component: VisitingCardPage,
   businessPeopleOnly: true
 }, {
   name: "User Favorites",
@@ -296,6 +280,7 @@ const CategoryBar = () => {
     </Suspense>
   </header>;
 };
+
 export default CategoryBar;
 export const categoryBarHelpers = {
   checkLogin: () => {
