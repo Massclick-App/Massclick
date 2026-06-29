@@ -1,6 +1,6 @@
 import express from 'express'
 
-import { addBusinessListAction, viewBusinessListAction,getBusinessBySlugAction, getSuggestionsController, getEnhancedSuggestionsController, mainSearchController, nearbyBusinessesController, viewAllBusinessListAction,viewAllBusinessAction, exportBusinessListAction, updateBusinessListAction, deleteBusinessListAction, activeBusinessListAction, viewAllClientBusinessListAction, viewBusinessByCategory, findBusinessByMobileAction, dashboardSummaryAction, dashboardChartsAction, adminAnalyticsReportAction, getPendingBusinessAction, trackQrDownload, updateBusinessBadgesAction, revertPaidStatusAction } from "../controller/businessList/businessListController.js"
+import { addBusinessListAction, viewBusinessListAction,getBusinessBySlugAction, getSuggestionsController, getEnhancedSuggestionsController, mainSearchController, nearbyBusinessesController, viewAllBusinessListAction,viewAllBusinessAction, exportBusinessListAction, updateBusinessListAction, updateBusinessSectionAction, deleteBusinessListAction, activeBusinessListAction, viewAllClientBusinessListAction, viewBusinessByCategory, findBusinessByMobileAction, dashboardSummaryAction, dashboardChartsAction, adminAnalyticsReportAction, getPendingBusinessAction, trackQrDownload, updateBusinessBadgesAction, revertPaidStatusAction } from "../controller/businessList/businessListController.js"
 import { oauthAuthentication } from '../helper/oauthHelper.js';
 import { logSearchAction, viewLogSearchAction, viewSearchAction, updateSearchAction, getTrendingSearchesAction, sendEnquiryLead } from "../controller/businessList/logSearchController.js"
 import { cacheMiddleware } from '../middleware/cacheMiddleware.js';
@@ -23,6 +23,19 @@ router.get('/api/businesslist/export', oauthAuthentication, exportBusinessListAc
 router.get('/api/businesslist/viewallbusiness', viewAllBusinessAction);
 router.get('/api/businesslist/clientview', oauthAuthentication, viewAllClientBusinessListAction);
 router.put('/api/businesslist/update/:id', oauthAuthentication, validateBusiness, updateBusinessListAction);
+
+// Section-based update endpoints
+router.put('/api/businesslist/:id/address', oauthAuthentication, updateBusinessSectionAction);
+router.put('/api/businesslist/:id/contact', oauthAuthentication, updateBusinessSectionAction);
+router.put('/api/businesslist/:id/business-info', oauthAuthentication, updateBusinessSectionAction);
+router.put('/api/businesslist/:id/location-web', oauthAuthentication, updateBusinessSectionAction);
+router.put('/api/businesslist/:id/social-media', oauthAuthentication, updateBusinessSectionAction);
+router.put('/api/businesslist/:id/banner-details', oauthAuthentication, updateBusinessSectionAction);
+router.put('/api/businesslist/:id/opening-hours', oauthAuthentication, updateBusinessSectionAction);
+router.put('/api/businesslist/:id/category-seo', oauthAuthentication, updateBusinessSectionAction);
+router.put('/api/businesslist/:id/display-seo', oauthAuthentication, updateBusinessSectionAction);
+router.put('/api/businesslist/:id/kyc-documents', oauthAuthentication, updateBusinessSectionAction);
+
 router.delete('/api/businesslist/delete/:id', oauthAuthentication, deleteBusinessListAction);
 router.put('/api/businesslist/activate/:id', oauthAuthentication, activeBusinessListAction);
 router.put('/api/businesslist/badges/:id', oauthAuthentication, updateBusinessBadgesAction);

@@ -360,6 +360,25 @@ export const editBusinessList = (id, businessData) => async (dispatch) => {
   }
 };
 
+export const editBusinessSection = (id, section, sectionData) => async (dispatch) => {
+  dispatch({ type: EDIT_BUSINESS_REQUEST });
+  try {
+    const token = await getValidToken(dispatch);
+
+    const response = await axiosInstance.put(
+      `${API_URL}/businesslist/${id}/${section}`,
+      sectionData,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    const updatedBusiness = response.data;
+    dispatch({ type: EDIT_BUSINESS_SUCCESS, payload: updatedBusiness });
+    return updatedBusiness;
+  } catch (error) {
+    dispatch({ type: EDIT_BUSINESS_FAILURE, payload: error.response?.data || error.message });
+    throw error;
+  }
+};
+
 export const updateBusinessBadges = (id, badgesData) => async (dispatch) => {
   dispatch({ type: EDIT_BUSINESS_REQUEST });
   try {

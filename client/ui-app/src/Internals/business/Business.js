@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import axiosInstance from "../../services/axiosInstance.js";
 import { useDispatch, useSelector } from "react-redux";
 import InputValidator from "../validators/inputValidator.js";
-import { getAllBusinessList, createBusinessList, editBusinessList, deleteBusinessList, trackQrDownload, updateBusinessBadges, exportBusinessList, revertPaidStatus } from "../../redux/actions/businessListAction";
+import { getAllBusinessList, createBusinessList, editBusinessList, editBusinessSection, deleteBusinessList, trackQrDownload, updateBusinessBadges, exportBusinessList, revertPaidStatus } from "../../redux/actions/businessListAction";
 import { getAllLocation, createLocation } from "../../redux/actions/locationAction";
 import { getAllCategory, businessCategorySearch } from "../../redux/actions/categoryAction";
 import { getAllUsersClient, getUserClientSuggestion } from "../../redux/actions/userClientAction.js";
@@ -2469,6 +2469,73 @@ const BusinessList = React.memo(() => {
       }
     );
   };
+  const SECTION_TO_ENDPOINT = {
+    clientBusiness: 'address',
+    address: 'address',
+    contact: 'contact',
+    businessInfo: 'business-info',
+    locationWeb: 'location-web',
+    socialMedia: 'social-media',
+    bannerDetails: 'banner-details',
+    openingHours: 'opening-hours',
+    badgesVisibility: 'address',
+    kycDocuments: 'kyc-documents',
+    categorySeo: 'category-seo',
+    keywordsTags: 'category-seo',
+    displaySeo: 'display-seo',
+    searchSeo: 'display-seo',
+  };
+
+  const SECTION_ENDPOINT_FIELDS = {
+    address: ['plotNumber', 'street', 'pincode', 'location', 'globalAddress', 'businessName'],
+    contact: ['email', 'contact', 'contactList', 'whatsappNumber'],
+    'business-info': ['gstin', 'experience'],
+    'location-web': ['googleMap', 'geoLatitude', 'geoLongitude', 'website', 'geoLocation'],
+    'social-media': ['facebook', 'instagram', 'youtube', 'pinterest', 'twitter', 'linkedin'],
+    'banner-details': ['bannerImage', 'businessDetails'],
+    'opening-hours': ['openingHours'],
+    'category-seo': ['category', 'keywords'],
+    'display-seo': ['title', 'description', 'seoTitle', 'seoDescription', 'slug', 'filters'],
+    'kyc-documents': ['kycDocuments'],
+  };
+
+  const saveSectionData = async (sectionKey = activeSection) => {
+    if (!editMode || !editId) return;
+
+    try {
+      const endpointName = SECTION_TO_ENDPOINT[sectionKey];
+      if (!endpointName) return;
+
+      const allowedFields = SECTION_ENDPOINT_FIELDS[endpointName];
+      const sectionData = {};
+
+      allowedFields.forEach(field => {
+        if (field === 'geoLocation') {
+          sectionData.geoLocation = formData.geoLocation;
+        } else if (field === 'geoLatitude') {
+          sectionData.geoLocation = formData.geoLocation;
+        } else if (field === 'geoLongitude') {
+          sectionData.geoLocation = formData.geoLocation;
+        } else if (formData[field] !== undefined) {
+          sectionData[field] = formData[field];
+        }
+      });
+
+      if (Object.keys(sectionData).length === 0) return;
+
+      await dispatch(editBusinessSection(editId, endpointName, sectionData));
+      enqueueSnackbar(`${sectionKey} updated successfully!`, {
+        variant: "success"
+      });
+      dispatch(getAllBusinessList());
+    } catch (err) {
+      console.error(`Error saving ${sectionKey}:`, err);
+      enqueueSnackbar(`Error saving ${sectionKey}. Please try again.`, {
+        variant: "error"
+      });
+    }
+  };
+
   const markBusinessAsPaidAfterCreate = async (businessId, sourceData) => {
     if (!businessId) {
       return false;
@@ -2620,6 +2687,7 @@ const BusinessList = React.memo(() => {
           variant: "success"
         });
         clearDraftFromLocalStorage();
+        dispatch(getAllBusinessList());
       } else {
         response = await dispatch(createBusinessList(payload));
         const businessId = response?.data?._id || response?._id || response?.payload?._id || response?.payload?.data?._id;

@@ -1124,6 +1124,59 @@ export const updateBusinessListAction = async (req, res) => {
   }
 };
 
+const SECTION_FIELD_MAPPING = {
+  'address': ['plotNumber', 'street', 'pincode', 'location', 'globalAddress'],
+  'contact': ['email', 'contact', 'contactList', 'whatsappNumber'],
+  'business-info': ['gstin', 'experience'],
+  'location-web': ['googleMap', 'geoLatitude', 'geoLongitude', 'website', 'geoLocation'],
+  'social-media': ['facebook', 'instagram', 'youtube', 'pinterest', 'twitter', 'linkedin'],
+  'banner-details': ['bannerImage', 'businessDetails'],
+  'opening-hours': ['openingHours'],
+  'category-seo': ['category', 'keywords'],
+  'display-seo': ['title', 'description', 'seoTitle', 'seoDescription', 'slug', 'filters'],
+  'kyc-documents': ['kycDocuments'],
+};
+
+export const updateBusinessSectionAction = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pathParts = req.originalUrl.split('/');
+    const sectionName = pathParts[pathParts.length - 1].split('?')[0];
+
+    const allowedFields = SECTION_FIELD_MAPPING[sectionName];
+    if (!allowedFields) {
+      return res.status(400).send({ message: `Unknown section: ${sectionName}` });
+    }
+
+    const filteredData = {};
+    allowedFields.forEach(field => {
+      if (field in req.body) {
+        filteredData[field] = req.body[field];
+      }
+    });
+
+    if (Object.keys(filteredData).length === 0) {
+      return res.status(400).send({ message: `No valid fields provided for section: ${sectionName}` });
+    }
+
+    const businessData = {
+      ...filteredData,
+      updatedBy: req.authUser?.userId,
+    };
+
+    const business = await updateBusinessList(id, businessData);
+
+    await invalidateSearchCache();
+    await invalidateDashboardCache();
+    await invalidateCategoryCache();
+
+    res.send(business);
+  } catch (error) {
+    console.error("Error in updateBusinessSectionAction:", error);
+    return res.status(400).send({ message: error.message });
+  }
+};
+
 export const deleteBusinessListAction = async (req, res) => {
   try {
     const businessId = req.params.id;
