@@ -9,6 +9,7 @@ import QRCode from "qrcode";
 import categoryModel from "../../model/category/categoryModel.js";
 import gmapsLeadsModel from "../../model/gmapsLeads/gmapsLeadsModel.js";
 import enquiryModel from "../../model/enquiry/enquiryModel.js";
+import { slugify } from "../../slugify.js";
 
 // Silently mark any gmaps lead with a matching phone as imported
 const autoMarkGmapsLeadImported = async (contact) => {
@@ -41,6 +42,140 @@ export const copyKeywordsFromCategory = async (categoryName) => {
     console.error("Error copying keywords from category:", err.message);
     return [];
   }
+};
+
+const getPublicBaseUrl = () =>
+  String(process.env.PUBLIC_BASE_URL || "https://massclick.in").replace(/\/+$/, "");
+
+const buildBusinessDetailsUrl = (business = {}) => {
+  const businessId = business?._id?.toString?.() || business?._id || business?.id || "";
+  const locationSlug = slugify(business.location || "business");
+  const businessSlug = slugify(business.slug || business.businessName || business.name || "profile");
+
+  return `${getPublicBaseUrl()}/business/${locationSlug}/${businessSlug}/${businessId}`;
+};
+
+const buildReviewUrl = (business = {}) => {
+  const businessId = business?._id?.toString?.() || business?._id || business?.id || "";
+  return `${getPublicBaseUrl()}/write-review/${businessId}/0`;
+};
+
+const createQrDataUrl = (qrText) =>
+  QRCode.toDataURL(qrText, {
+    errorCorrectionLevel: "M",
+    margin: 2,
+    width: 512,
+    color: {
+      dark: "#0f172a",
+      light: "#ffffff",
+    },
+  });
+
+const generateReviewQrCode = async (businessDocument) => {
+  if (!businessDocument?._id) return null;
+
+  const qrText = buildReviewUrl(businessDocument);
+  const qrImageData = await createQrDataUrl(qrText);
+  const qrUploadResult = await uploadImageToS3(
+    qrImageData,
+    `businessList/qr/review-${businessDocument._id}`,
+    { skipImageConversion: true }
+  );
+
+  businessDocument.qrCode = {
+    qrText,
+    qrImageKey: qrUploadResult.key,
+    createdAt: new Date()
+  };
+
+  await businessDocument.save();
+  return {
+    ...(businessDocument.qrCode.toObject?.() || businessDocument.qrCode),
+    qrImageData,
+  };
+};
+
+const generateBusinessDetailsQrCode = async (businessDocument) => {
+  if (!businessDocument?._id) return null;
+
+  const qrText = buildBusinessDetailsUrl(businessDocument);
+  const qrImageData = await createQrDataUrl(qrText);
+
+  const qrUploadResult = await uploadImageToS3(
+    qrImageData,
+    `businessList/qr/business-profile-${businessDocument._id}-${Date.now()}`,
+    { skipImageConversion: true }
+  );
+
+  businessDocument.businessProfileQrCode = {
+    qrText,
+    qrImageKey: qrUploadResult.key,
+    createdAt: new Date()
+  };
+
+  await businessDocument.save();
+  return {
+    ...(businessDocument.businessProfileQrCode.toObject?.() || businessDocument.businessProfileQrCode),
+    qrImageData,
+  };
+};
+
+const ensureBusinessDetailsQrCode = async (business = {}) => {
+  if (!business?._id) return business;
+
+  const expectedQrText = buildBusinessDetailsUrl(business);
+  const hasCurrentBusinessQr =
+    business.businessProfileQrCode?.qrImageKey && business.businessProfileQrCode?.qrText === expectedQrText;
+
+  if (hasCurrentBusinessQr) {
+    business.businessProfileQrCode.qrImage = getSignedUrlByKey(business.businessProfileQrCode.qrImageKey);
+    business.businessProfileQrCode.qrImageData = await createQrDataUrl(business.businessProfileQrCode.qrText);
+    return business;
+  }
+
+  const businessDocument = await businessListModel.findById(business._id);
+  if (!businessDocument) return business;
+
+  const qrCode = await generateBusinessDetailsQrCode(businessDocument);
+
+  return {
+    ...business,
+    businessProfileQrCode: {
+      qrText: qrCode.qrText,
+      qrImageKey: qrCode.qrImageKey,
+      createdAt: qrCode.createdAt,
+      qrImage: getSignedUrlByKey(qrCode.qrImageKey),
+      qrImageData: qrCode.qrImageData,
+    },
+  };
+};
+
+const ensureReviewQrCode = async (business = {}) => {
+  if (!business?._id) return business;
+
+  const expectedQrText = buildReviewUrl(business);
+  const hasCurrentReviewQr =
+    business.qrCode?.qrImageKey && business.qrCode?.qrText === expectedQrText;
+
+  if (hasCurrentReviewQr) {
+    business.qrCode.qrImage = getSignedUrlByKey(business.qrCode.qrImageKey);
+    return business;
+  }
+
+  const businessDocument = await businessListModel.findById(business._id);
+  if (!businessDocument) return business;
+
+  const qrCode = await generateReviewQrCode(businessDocument);
+
+  return {
+    ...business,
+    qrCode: {
+      qrText: qrCode.qrText,
+      qrImageKey: qrCode.qrImageKey,
+      createdAt: qrCode.createdAt,
+      qrImage: getSignedUrlByKey(qrCode.qrImageKey),
+    },
+  };
 };
 
 export const createBusinessList = async (reqBody = {}) => {
@@ -107,24 +242,8 @@ export const createBusinessList = async (reqBody = {}) => {
 
 
 
-    const publicReviewUrl = `${process.env.PUBLIC_BASE_URL}/write-review/${savedBusiness._id}/0`;
-
-
-    const qrBase64 = await QRCode.toDataURL(publicReviewUrl);
-
-    const qrUploadResult = await uploadImageToS3(
-      qrBase64,
-      `businessList/qr/review-${savedBusiness._id}`
-    );
-
-
-    savedBusiness.qrCode = {
-      qrText: publicReviewUrl,
-      qrImageKey: qrUploadResult.key,
-      createdAt: new Date()
-    };
-
-    await savedBusiness.save();
+    await generateReviewQrCode(savedBusiness);
+    const businessProfileQrCode = await generateBusinessDetailsQrCode(savedBusiness);
 
     // Auto-mark any matching GMaps lead as imported
     autoMarkGmapsLeadImported(savedBusiness.contact);
@@ -134,6 +253,10 @@ export const createBusinessList = async (reqBody = {}) => {
     result.qrCode.qrImage = getSignedUrlByKey(
       savedBusiness.qrCode.qrImageKey
     );
+    result.businessProfileQrCode.qrImage = getSignedUrlByKey(
+      savedBusiness.businessProfileQrCode.qrImageKey
+    );
+    result.businessProfileQrCode.qrImageData = businessProfileQrCode.qrImageData;
 
     return result;
 
@@ -530,6 +653,12 @@ export const viewAllBusinessList = async ({
           business.qrCode.qrImageKey
         );
       }
+
+      if (business.businessProfileQrCode?.qrImageKey) {
+        business.businessProfileQrCode.qrImage = getSignedUrlByKey(
+          business.businessProfileQrCode.qrImageKey
+        );
+      }
       business.locationDetails = business.location || "";
 
       return business;
@@ -778,6 +907,8 @@ export const updateBusinessList = async (id, data) => {
   }
 
   await business.save();
+  await generateReviewQrCode(business);
+  const businessProfileQrCode = await generateBusinessDetailsQrCode(business);
 
   // Auto-mark any matching GMaps lead as imported
   autoMarkGmapsLeadImported(business.contact);
@@ -801,6 +932,15 @@ export const updateBusinessList = async (id, data) => {
     result.kycDocuments = business.kycDocumentsKey.map(key =>
       getSignedUrlByKey(key)
     );
+  }
+
+  if (result.qrCode?.qrImageKey) {
+    result.qrCode.qrImage = getSignedUrlByKey(result.qrCode.qrImageKey);
+  }
+
+  if (result.businessProfileQrCode?.qrImageKey) {
+    result.businessProfileQrCode.qrImage = getSignedUrlByKey(result.businessProfileQrCode.qrImageKey);
+    result.businessProfileQrCode.qrImageData = businessProfileQrCode.qrImageData;
   }
 
   // SAFE reviews formatting
@@ -902,7 +1042,8 @@ export const findBusinessByMobile = async (mobile) => {
       );
     }
 
-    return business;
+    const businessWithReviewQr = await ensureReviewQrCode(business);
+    return ensureBusinessDetailsQrCode(businessWithReviewQr);
   } catch (err) {
     console.error("Error in findBusinessByMobile:", err);
     throw err;

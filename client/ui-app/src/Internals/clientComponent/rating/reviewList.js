@@ -16,7 +16,6 @@ export default function ReviewList({ businessId }) {
     state => state.businessListReducer
   );
 
-  
   useEffect(() => {
     dispatch(getBusinessReviews(businessId));
   }, [dispatch, businessId]);
