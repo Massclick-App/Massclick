@@ -27,170 +27,181 @@ const invoiceHTMLTemplate = (invoiceData) => `
       font-family: Arial, sans-serif;
       line-height: 1.6;
       color: #333;
-      max-width: 600px;
+      max-width: 800px;
       margin: 0 auto;
+      padding: 20px;
     }
     .container {
-      background-color: #f9f9f9;
-      padding: 20px;
+      background-color: #ffffff;
+      padding: 30px;
       border-radius: 5px;
     }
     .header {
-      background-color: #FF8C00;
-      color: white;
-      padding: 20px;
       text-align: center;
-      border-radius: 5px 5px 0 0;
+      margin-bottom: 30px;
+      border-bottom: 2px solid #FF8C00;
+      padding-bottom: 20px;
     }
     .header h1 {
       margin: 0;
-      font-size: 28px;
-    }
-    .invoice-details {
-      background-color: white;
-      padding: 20px;
-      margin: 20px 0;
-      border-left: 4px solid #FF8C00;
-    }
-    .invoice-details h2 {
-      margin-top: 0;
+      font-size: 24px;
       color: #FF8C00;
-      font-size: 20px;
     }
-    .detail-row {
-      display: flex;
-      justify-content: space-between;
-      padding: 10px 0;
-      border-bottom: 1px solid #eee;
-    }
-    .detail-row:last-child {
-      border-bottom: none;
-    }
-    .detail-label {
-      font-weight: bold;
-      color: #555;
-    }
-    .detail-value {
-      color: #333;
-    }
-    .amount-section {
-      background-color: #f5f5f5;
-      padding: 15px;
-      border-radius: 5px;
-      margin: 15px 0;
-    }
-    .amount-row {
-      display: flex;
-      justify-content: space-between;
-      padding: 8px 0;
-      font-size: 16px;
-    }
-    .amount-row.total {
-      font-weight: bold;
-      font-size: 18px;
-      color: #FF8C00;
-      border-top: 2px solid #FF8C00;
-      padding-top: 10px;
-    }
-    .business-info {
-      background-color: white;
-      padding: 20px;
+    .content {
       margin: 20px 0;
-      border-radius: 5px;
+      line-height: 1.8;
     }
-    .business-info h3 {
-      margin-top: 0;
-      color: #333;
-      font-size: 16px;
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      font-size: 14px;
     }
-    .footer {
-      text-align: center;
-      padding: 20px;
-      color: #777;
-      font-size: 12px;
+    table td {
+      padding: 10px;
+      border: 1px solid #ddd;
+    }
+    table tr:nth-child(even) {
       background-color: #f9f9f9;
     }
-    .status {
-      display: inline-block;
-      background-color: #4CAF50;
-      color: white;
-      padding: 5px 15px;
-      border-radius: 20px;
+    .section-title {
       font-weight: bold;
-      margin: 10px 0;
+      color: #FF8C00;
+      margin-top: 20px;
+      margin-bottom: 10px;
+      font-size: 16px;
+    }
+    .benefits-list {
+      margin-left: 20px;
+    }
+    .benefits-list li {
+      margin: 8px 0;
+    }
+    .footer {
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 1px solid #ddd;
+      text-align: center;
+      font-size: 12px;
+      color: #666;
+    }
+    .footer-link {
+      color: #FF8C00;
+      text-decoration: none;
     }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <h1>Invoice</h1>
-      <p style="margin: 5px 0;">Payment Successful</p>
+      <h1>🎉 Welcome to MassClick Premium Business Membership!</h1>
     </div>
 
-    <div class="invoice-details">
-      <h2>Invoice Details</h2>
+    <div class="content">
+      <p>Dear ${invoiceData.businessName},</p>
 
-      <div class="detail-row">
-        <span class="detail-label">Business Name:</span>
-        <span class="detail-value">${invoiceData.businessName || 'N/A'}</span>
-      </div>
+      <p>Thank you for choosing MassClick Premium Business Membership.</p>
 
-      <div class="detail-row">
-        <span class="detail-label">Category:</span>
-        <span class="detail-value">${invoiceData.category || 'N/A'}</span>
-      </div>
+      <p>We are pleased to inform you that your business listing has been successfully activated and is now part of the MassClick Premium Business Network. Your membership provides enhanced visibility, priority exposure, customer engagement opportunities, and access to powerful business growth tools designed to help you reach more customers and expand your local presence.</p>
 
-      <div class="detail-row">
-        <span class="detail-label">Location:</span>
-        <span class="detail-value">${invoiceData.location || 'N/A'}</span>
-      </div>
+      <div class="section-title">📋 Membership Details</div>
+      <table>
+        <tr>
+          <td><strong>Business Name</strong></td>
+          <td>${invoiceData.businessName || 'N/A'}</td>
+        </tr>
+        <tr>
+          <td><strong>Category</strong></td>
+          <td>${invoiceData.category || 'N/A'}</td>
+        </tr>
+        <tr>
+          <td><strong>Location</strong></td>
+          <td>${invoiceData.location || 'N/A'}</td>
+        </tr>
+        <tr>
+          <td><strong>Membership Plan</strong></td>
+          <td>Premium Business Membership</td>
+        </tr>
+        <tr>
+          <td><strong>Base Amount</strong></td>
+          <td>₹${(invoiceData.amount || 0).toFixed(2)}</td>
+        </tr>
+        <tr>
+          <td><strong>GST (18%)</strong></td>
+          <td>₹${(invoiceData.gstAmount || 0).toFixed(2)}</td>
+        </tr>
+        <tr>
+          <td><strong>Total Amount Paid</strong></td>
+          <td><strong>₹${(invoiceData.totalAmount || 0).toFixed(2)}</strong></td>
+        </tr>
+        <tr>
+          <td><strong>Payment Status</strong></td>
+          <td>✅ Success</td>
+        </tr>
+        <tr>
+          <td><strong>Transaction ID</strong></td>
+          <td>${invoiceData.transactionId || 'N/A'}</td>
+        </tr>
+        <tr>
+          <td><strong>Payment Method</strong></td>
+          <td>PhonePe</td>
+        </tr>
+        <tr>
+          <td><strong>Activation Date</strong></td>
+          <td>${invoiceData.paymentDate || new Date().toLocaleDateString('en-IN')}</td>
+        </tr>
+        <tr>
+          <td><strong>Membership Status</strong></td>
+          <td>🟢 Active</td>
+        </tr>
+      </table>
 
-      <div class="detail-row">
-        <span class="detail-label">Transaction ID:</span>
-        <span class="detail-value">${invoiceData.transactionId || 'N/A'}</span>
-      </div>
+      <div class="section-title">✨ Premium Benefits Activated</div>
+      <ul class="benefits-list">
+        <li>✓ Priority Placement in Search Results</li>
+        <li>✓ Enhanced Business Visibility</li>
+        <li>✓ Premium Business Profile</li>
+        <li>✓ WhatsApp Lead Notifications</li>
+        <li>✓ Customer Reviews & Reputation Building</li>
+        <li>✓ Business Analytics & Performance Insights</li>
+        <li>✓ Increased Customer Reach</li>
+        <li>✓ Priority Support Assistance</li>
+      </ul>
 
-      <div class="detail-row">
-        <span class="detail-label">Invoice Date:</span>
-        <span class="detail-value">${invoiceData.paymentDate || new Date().toLocaleDateString('en-IN')}</span>
-      </div>
+      <div class="section-title">📱 Stay Connected</div>
+      <p>Keep your registered WhatsApp number active to receive customer enquiries, lead notifications, business opportunities, and important account updates from MassClick.</p>
 
-      <div class="detail-row">
-        <span class="detail-label">Payment Gateway:</span>
-        <span class="detail-value">PhonePe</span>
-      </div>
-    </div>
+      <div class="section-title">🤝 Grow Through MNI Business Network</div>
+      <p>As a Premium Member, you have access to MNI (MassClick Network Intelligence), our exclusive business networking platform that helps businesses connect, collaborate, and discover new opportunities.</p>
+      <p><strong>With MNI you can:</strong></p>
+      <ul class="benefits-list">
+        <li>Connect with businesses across relevant categories</li>
+        <li>Receive referral-based business opportunities</li>
+        <li>Expand your professional network</li>
+        <li>Discover partnership and collaboration opportunities</li>
+        <li>Increase local business visibility</li>
+      </ul>
 
-    <div class="amount-section">
-      <div class="amount-row">
-        <span>Base Amount:</span>
-        <span>₹${(invoiceData.amount || 0).toFixed(2)}</span>
-      </div>
-      <div class="amount-row">
-        <span>GST (18%):</span>
-        <span>₹${(invoiceData.gstAmount || 0).toFixed(2)}</span>
-      </div>
-      <div class="amount-row total">
-        <span>Total Amount Paid:</span>
-        <span>₹${(invoiceData.totalAmount || 0).toFixed(2)}</span>
-      </div>
-    </div>
+      <div class="section-title">🚀 Maximize Your Business Growth</div>
+      <p><strong>To get the best results from your membership, we recommend:</strong></p>
+      <ul class="benefits-list">
+        <li>Completing your business profile</li>
+        <li>Uploading high-quality business photos and videos</li>
+        <li>Keeping contact details up to date</li>
+        <li>Responding promptly to customer enquiries</li>
+        <li>Encouraging customers to leave reviews and ratings</li>
+      </ul>
 
-    <div class="status" style="text-align: center;">
-      ✓ PAYMENT SUCCESSFUL
-    </div>
+      <p>Thank you for being a valued Premium Business Member. We look forward to supporting your business growth and helping you connect with more customers through the MassClick platform.</p>
 
-    <div class="business-info">
-      <h3>Business Information</h3>
-      ${invoiceData.email ? `<p><strong>Email:</strong> ${invoiceData.email}</p>` : ''}
-      ${invoiceData.contact ? `<p><strong>Contact:</strong> ${invoiceData.contact}</p>` : ''}
-      ${invoiceData.website ? `<p><strong>Website:</strong> ${invoiceData.website}</p>` : ''}
+      <p><strong>Best Regards,</strong></p>
+      <p><strong>MassClick Business Success Team</strong></p>
     </div>
 
     <div class="footer">
-      <p>Your business listing is now live on MassClick!</p>
-      <p>For any queries, please contact us at business@massclick.in</p>
+      <p>MassClick – India's Leading Local Search Engine</p>
+      <p>Website: <a href="https://massclick.in" class="footer-link">https://massclick.in</a></p>
+      <p>Email: <a href="mailto:support@massclick.in" class="footer-link">support@massclick.in</a></p>
       <p>&copy; 2024 MassClick. All rights reserved.</p>
     </div>
   </div>
@@ -200,15 +211,20 @@ const invoiceHTMLTemplate = (invoiceData) => `
 
 export const sendInvoiceEmail = async (businessData, paymentData) => {
   try {
+    console.log(`📧 [Invoice Email] Starting email send process for business: ${businessData?.businessName}`);
     const businessEmail = businessData?.email;
 
     if (!businessEmail) {
-      console.warn(`No email found for business: ${businessData?.businessName || businessData?._id}`);
+      console.warn(`⚠️ [Invoice Email] No email found for business: ${businessData?.businessName || businessData?._id}`);
       return {
         success: false,
         message: 'No email address found for business',
       };
     }
+
+    console.log(`📧 [Invoice Email] Preparing invoice for: ${businessEmail}`);
+    console.log(`📊 [Invoice Email] Payment Details - TxnID: ${paymentData.transactionId}, Amount: ₹${paymentData.totalAmount}`);
+
 
     const invoiceData = {
       businessName: businessData.businessName,
@@ -231,9 +247,12 @@ export const sendInvoiceEmail = async (businessData, paymentData) => {
       html: invoiceHTMLTemplate(invoiceData),
     };
 
+    console.log(`📧 [Invoice Email] Sending email via SMTP - From: ${INVOICE_EMAIL_FROM}, To: ${businessEmail}`);
     const info = await transporter.sendMail(mailOptions);
 
-    console.log(`Invoice email sent to ${businessEmail}:`, info.response);
+    console.log(`✅ [Invoice Email] SUCCESS - Email sent to ${businessEmail}`);
+    console.log(`📬 [Invoice Email] Message ID: ${info.messageId}`);
+    console.log(`📝 [Invoice Email] SMTP Response: ${info.response}`);
 
     return {
       success: true,
@@ -241,7 +260,15 @@ export const sendInvoiceEmail = async (businessData, paymentData) => {
       messageId: info.messageId,
     };
   } catch (error) {
-    console.error('Error sending invoice email:', error);
+    console.error(`❌ [Invoice Email] FAILED - Error sending invoice email to ${businessData?.businessName}`);
+    console.error(`❌ [Invoice Email] Error Details:`, {
+      businessName: businessData?.businessName,
+      businessEmail: businessData?.email,
+      transactionId: paymentData?.transactionId,
+      errorMessage: error.message,
+      errorCode: error.code,
+      errorStack: error.stack,
+    });
     return {
       success: false,
       message: 'Failed to send invoice email',

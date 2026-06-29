@@ -11,12 +11,14 @@ import { Skeleton } from "@mui/material";
 const cx = createScopedClassNames(styles);
 const BlogsSkeleton = () => <div className={cx("blogs-skeleton")}>
     {[...Array(4)].map((_, i) => <div className={cx("blog-skeleton-card")} key={i}>
-        <Skeleton variant="rounded" width="100%" height={260} animation="wave" sx={{
+        <Skeleton variant="rounded" width="100%" height="100%" animation="wave" sx={{
       bgcolor: "rgba(255,107,0,0.08)",
-      borderRadius: "14px 14px 0 0"
+      borderRadius: "16px",
+      position: "absolute",
+      inset: 0
     }} />
         <div className={cx("skeleton-content")}>
-          <Skeleton variant="rounded" width="85%" height={20} animation="wave" sx={{
+          <Skeleton variant="rounded" width="85%" height={24} animation="wave" sx={{
         bgcolor: "rgba(255,107,0,0.08)"
       }} />
           <Skeleton variant="rounded" width="60%" height={16} animation="wave" sx={{

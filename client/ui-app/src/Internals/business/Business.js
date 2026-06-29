@@ -3556,12 +3556,41 @@ const BusinessList = React.memo(() => {
       const handleMarkPaid = async () => {
         if (isPaid || !row?._id) return;
         try {
+          console.log(`💳 [UI] Marking business as paid: ${row.businessName}`);
           await dispatch(editBusinessList(row._id, {
             name: row.businessName, businessName: row.businessName,
             category: row.category, location: row.location,
             payment: [{ amount: row?.subscription?.price || 1 }]
           }));
           enqueueSnackbar(`${row.businessName} marked as paid`, { variant: "success" });
+
+          // Send invoice email
+          console.log(`📧 [UI] Sending invoice email for businessId: ${row._id}`);
+          try {
+            const token = localStorage.getItem('accessToken');
+            const emailResponse = await axiosInstance.post(
+              `${process.env.REACT_APP_API_URL}/phonepe/send-invoice`,
+              { businessId: row._id },
+              {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  "Content-Type": "application/json",
+                },
+              }
+            );
+
+            if (emailResponse.data?.success) {
+              console.log(`✅ [UI] Invoice email sent successfully`);
+              enqueueSnackbar(`Invoice email sent to ${row.email}`, { variant: "info" });
+            } else {
+              console.warn(`⚠️ [UI] Failed to send invoice email: ${emailResponse.data?.message}`);
+              enqueueSnackbar(`Invoice email could not be sent`, { variant: "warning" });
+            }
+          } catch (emailError) {
+            console.error(`❌ [UI] Error sending invoice email:`, emailError);
+            enqueueSnackbar(`Invoice email error: ${emailError.message}`, { variant: "warning" });
+          }
+
           dispatch(getAllBusinessList());
         } catch {
           enqueueSnackbar("Payment failed. Please try again!", { variant: "error" });
@@ -3607,7 +3636,7 @@ const BusinessList = React.memo(() => {
                   )}
                 </>
               ) : (
-                <span>Pending</span>
+                <span>Pay Now</span>
               )}
             </button>
           </Tooltip>
