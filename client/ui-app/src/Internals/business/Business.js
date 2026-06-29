@@ -1007,6 +1007,7 @@ const BusinessList = React.memo(() => {
     croppedAreaPixels: null,
   });
   const [demoSubmitting, setDemoSubmitting] = useState(false);
+  const [hoveredPaidButtonId, setHoveredPaidButtonId] = useState(null); // Track which paid button is being hovered
   const [badgeUpdateLoading, setBadgeUpdateLoading] = useState(false);
   const [postCreatePaidStatus, setPostCreatePaidStatus] = useState("idle");
   const [postCreateBusinessName, setPostCreateBusinessName] = useState("");
@@ -3434,8 +3435,8 @@ const BusinessList = React.memo(() => {
     id: "payment",
     label: "Status",
     renderCell: (_, row) => {
-      const [isHovering, setIsHovering] = useState(false);
       const isPaid = Boolean(row.amountPaid);
+      const isHovering = hoveredPaidButtonId === row._id;
       const handleMarkPaid = async () => {
         if (isPaid || !row?._id) return;
         try {
@@ -3472,8 +3473,8 @@ const BusinessList = React.memo(() => {
               onClick={isPaid ? handleRevertPaid : handleMarkPaid}
               className={cx("payment-status-btn", isPaid ? "payment-status-btn-paid" : "payment-status-btn-pending")}
               disabled={false}
-              onMouseEnter={() => setIsHovering(true)}
-              onMouseLeave={() => setIsHovering(false)}
+              onMouseEnter={() => setHoveredPaidButtonId(row._id)}
+              onMouseLeave={() => setHoveredPaidButtonId(null)}
             >
               {isPaid ? (
                 <>
