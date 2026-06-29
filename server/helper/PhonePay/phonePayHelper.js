@@ -2,6 +2,7 @@ import crypto from "crypto";
 import axios from "axios";
 import paymentModel from "../../model/phonePay/paymentModel.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
+import { sendInvoiceEmail } from "../email/emailService.js";
 
 const {
   PHONEPE_MERCHANT_ID,
@@ -218,6 +219,18 @@ export const checkPhonePeStatus = async (transactionId) => {
             },
           }
         );
+      }
+
+      // Send invoice email on successful payment
+      if (normalizedPaymentStatus === "SUCCESS") {
+        try {
+          const businessData = await businessListModel.findById(updated.businessId).lean();
+          if (businessData) {
+            await sendInvoiceEmail(businessData, updated);
+          }
+        } catch (emailError) {
+          console.error("Failed to send invoice email:", emailError);
+        }
       }
     }
 
