@@ -310,11 +310,13 @@ export async function ssrMiddleware(req, res) {
               name: biz.businessName,
               url: bizUrl,
             };
+            if (biz.bannerImage) itemObj.image = biz.bannerImage;
             if (biz.street || biz.location) {
               itemObj.address = {
                 "@type": "PostalAddress",
                 streetAddress: biz.street || "",
                 addressLocality: biz.location || "",
+                ...(biz.pincode && { postalCode: biz.pincode }),
                 addressCountry: "IN",
               };
             }
@@ -328,7 +330,7 @@ export async function ssrMiddleware(req, res) {
                 worstRating: 1,
               };
             }
-            return { "@type": "ListItem", position: i + 1, url: bizUrl, item: itemObj };
+            return { "@type": "ListItem", position: i + 1, item: itemObj };
           }),
         });
       }

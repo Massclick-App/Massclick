@@ -87,8 +87,12 @@ const CardCarousel = () => {
     if (!container) return;
     const card = container.querySelector(".popular-search__card");
     if (!card) return;
-    const observer = new ResizeObserver(() => {
-      cardWidthRef.current = card.offsetWidth + 20;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.target === card) {
+          cardWidthRef.current = entry.contentRect.width + 20;
+        }
+      }
     });
     observer.observe(card);
     return () => observer.disconnect();

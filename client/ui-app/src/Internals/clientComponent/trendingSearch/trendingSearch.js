@@ -48,21 +48,36 @@ const TrendingSearchesCarousel = () => {
     if (!el) return;
     const firstCard = el.querySelector(".ts__card");
     if (!firstCard) return;
-    const updateDimensions = () => {
-      cardWidthRef.current = firstCard.offsetWidth + 16;
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.target === firstCard) {
+          // Use entry.contentRect to avoid re-querying offsetWidth (forced reflow)
+          cardWidthRef.current = entry.contentRect.width + 16;
+        } else if (entry.target === el) {
+          scrollDimensionsRef.current.clientWidth = entry.contentRect.width;
+          // scrollWidth requires a DOM read but layout is already stable here
+          scrollDimensionsRef.current.scrollWidth = el.scrollWidth;
+        }
+      }
+    });
+
+    // Defer initial geometry read past React's commit phase to avoid forced reflow
+    const rafId = requestAnimationFrame(() => {
+      cardWidthRef.current = firstCard.getBoundingClientRect().width + 16;
       scrollDimensionsRef.current = {
         scrollWidth: el.scrollWidth,
         clientWidth: el.clientWidth,
         scrollLeft: el.scrollLeft
       };
-    };
-    updateDimensions();
-    const observer = new ResizeObserver(() => {
-      updateDimensions();
     });
+
     observer.observe(firstCard);
     observer.observe(el);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(rafId);
+    };
   }, [trendingList]);
 
   /* ── scroll-state tracker (uses cached dimensions) ── */
