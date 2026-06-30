@@ -66,6 +66,7 @@ export const uploadImageToS3 = async (fileData, uploadPath, options = {}) => {
     Key: s3Key,
     Body: finalBuffer,
     ContentType: mimeType,
+    CacheControl: 'public, max-age=31536000',
   }).promise();
 
   return { key: s3Key };

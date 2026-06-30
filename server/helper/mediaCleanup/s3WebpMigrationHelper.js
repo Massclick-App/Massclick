@@ -343,6 +343,7 @@ const convertSourceKeyToWebp = async (sourceKey, retryCount = 3) => {
       Key: webpKey,
       Body: webpBuffer,
       ContentType: "image/webp",
+      CacheControl: 'public, max-age=31536000',
     }).promise();
 
     return {
