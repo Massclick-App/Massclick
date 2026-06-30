@@ -22,6 +22,7 @@ const defaultForm = {
   location: "",
   heading: "",
   excerpt: "",
+  quickSummary: "",
   headerContent: "",
   pageContent: "",
   tags: [],

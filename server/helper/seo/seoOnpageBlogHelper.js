@@ -1,5 +1,6 @@
 import seoPageContentBlogModel from "../../model/seoModel/seoPageContentBlogModel.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
+import authorMasterModel from "../../model/seoModel/authorMasterModel.js";
 import {
   uploadImageToS3,
   getSignedUrlByKey,
@@ -555,7 +556,7 @@ export const getSeoBlogBySlugService = async (slug) => {
 ===================================== */
 export const getSeoBlogMetaBySlug = async (slug) => {
   const cleanSlug = makeSlug(slug);
-  const fields = "metaTitle metaDescription metaKeywords heading slug category location author experience expertCategory email website linkedin bestFor features createdAt updatedAt pageContent faq";
+  const fields = "metaTitle metaDescription metaKeywords heading slug category location author authorId experience expertCategory email website linkedin bestFor features createdAt updatedAt pageContent faq quickSummary";
 
   let result = await seoPageContentBlogModel
     .findOne({ slug: cleanSlug, isActive: true })
@@ -569,6 +570,24 @@ export const getSeoBlogMetaBySlug = async (slug) => {
       .lean();
 
     result = allBlogs.find(b => makeSlug(b.heading) === cleanSlug) || null;
+  }
+
+  if (result?.authorId) {
+    const authorDoc = await authorMasterModel
+      .findById(result.authorId)
+      .select("displayName slug title shortBio expertCategory linkedin")
+      .lean();
+
+    if (authorDoc) {
+      result.authorMeta = {
+        name: authorDoc.displayName,
+        slug: authorDoc.slug,
+        title: authorDoc.title,
+        shortBio: authorDoc.shortBio,
+        expertCategory: authorDoc.expertCategory,
+        linkedin: authorDoc.linkedin,
+      };
+    }
   }
 
   return result || null;

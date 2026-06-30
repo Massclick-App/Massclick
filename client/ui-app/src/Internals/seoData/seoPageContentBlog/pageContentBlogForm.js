@@ -575,6 +575,7 @@ export default function SeoPageContentForm({
     { label: "Location", key: "location" },
     { label: "Heading", key: "heading" },
     { label: "Excerpt", key: "excerpt" },
+    { label: "Quick Summary (2-3 sentences, AI-citable answer)", key: "quickSummary", multiline: true },
     { label: "Author", key: "authorId", type: "select" },
     { label: "Experience", key: "experience" },
     { label: "Expert Category", key: "expertCategory" },
@@ -681,6 +682,17 @@ export default function SeoPageContentForm({
                     </option>
                   ))}
                 </select>
+                <label>{field.label}</label>
+              </>
+            ) : field.multiline ? (
+              <>
+                <textarea
+                  value={formData[field.key] || ""}
+                  onChange={(e) => updateField(field.key, e.target.value)}
+                  placeholder=" "
+                  rows={3}
+                  style={{ resize: "vertical", width: "100%", padding: "12px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 13 }}
+                />
                 <label>{field.label}</label>
               </>
             ) : (

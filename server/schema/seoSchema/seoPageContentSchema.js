@@ -1,5 +1,13 @@
 import mongoose from "mongoose";
 
+const faqSchema = new mongoose.Schema(
+  {
+    question: { type: String, trim: true, required: true },
+    answer: { type: String, trim: true, required: true },
+  },
+  { _id: false }
+);
+
 const seoPageContentSchema = new mongoose.Schema(
   {
     pageType: {
@@ -21,6 +29,10 @@ const seoPageContentSchema = new mongoose.Schema(
     pageContent: {
       type: String,
       required: true,
+    },
+    faq: {
+      type: [faqSchema],
+      default: [],
     },
     isActive: {
       type: Boolean,

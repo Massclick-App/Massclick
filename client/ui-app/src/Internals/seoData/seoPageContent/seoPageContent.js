@@ -31,7 +31,8 @@ export default function SeoPageContent() {
     category: "",
     location: "",
     headerContent: "",
-    pageContent: ""
+    pageContent: "",
+    faq: []
   });
   const [editingId, setEditingId] = useState(null);
   const [activeView, setActiveView] = useState("list");
@@ -109,7 +110,8 @@ export default function SeoPageContent() {
         category: "",
         location: "",
         headerContent: "",
-        pageContent: ""
+        pageContent: "",
+        faq: []
       });
       setCategoryInput("");
       setEditingId(null);
@@ -125,7 +127,8 @@ export default function SeoPageContent() {
     category: seo.category,
     location: seo.location,
     headerContent: seo.headerContent,
-    pageContent: seo.pageContent
+    pageContent: seo.pageContent,
+    faq: seo.faq || []
   }));
   const columns = [{
     id: "pageType",
@@ -247,6 +250,42 @@ export default function SeoPageContent() {
               pageContent: v
             }))} modules={modules} formats={formats} />
                         </div>
+                    </section>
+
+                    <section className={cx("editor-card")}>
+                        <div className={cx("editor-title")} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <h3>FAQ (optional)</h3>
+                            <button type="button" onClick={() => setFormData(p => ({ ...p, faq: [...(p.faq || []), { question: "", answer: "" }] }))} style={{ fontSize: 13, padding: "4px 12px", cursor: "pointer", background: "#3b82f6", color: "#fff", border: "none", borderRadius: 6 }}>
+                                + Add FAQ
+                            </button>
+                        </div>
+                        {(formData.faq || []).map((item, i) => (
+                            <div key={i} style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, marginBottom: 10, position: "relative" }}>
+                                <button type="button" onClick={() => setFormData(p => ({ ...p, faq: p.faq.filter((_, idx) => idx !== i) }))} style={{ position: "absolute", top: 8, right: 8, background: "none", border: "none", color: "#ef4444", cursor: "pointer", fontSize: 16 }}>✕</button>
+                                <div style={{ marginBottom: 8 }}>
+                                    <label style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 4 }}>Question</label>
+                                    <input
+                                        value={item.question}
+                                        onChange={e => setFormData(p => ({ ...p, faq: p.faq.map((f, idx) => idx === i ? { ...f, question: e.target.value } : f) }))}
+                                        placeholder="e.g. What are the best hospitals in Trichy?"
+                                        style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 13 }}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 4 }}>Answer</label>
+                                    <textarea
+                                        value={item.answer}
+                                        onChange={e => setFormData(p => ({ ...p, faq: p.faq.map((f, idx) => idx === i ? { ...f, answer: e.target.value } : f) }))}
+                                        placeholder="Provide a clear, complete answer..."
+                                        rows={3}
+                                        style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 13, resize: "vertical" }}
+                                    />
+                                </div>
+                            </div>
+                        ))}
+                        {(formData.faq || []).length === 0 && (
+                            <p style={{ fontSize: 12, color: "#9ca3af", marginTop: 8 }}>No FAQs added yet. Click "+ Add FAQ" to add question-answer pairs.</p>
+                        )}
                     </section>
 
                     <div className={cx("action-bar")}>

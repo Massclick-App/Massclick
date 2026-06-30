@@ -242,18 +242,28 @@ router.get("/sitemap-city-:cityslug.xml", async (req, res) => {
 
     if (!matchedLocation) return res.status(404).end();
 
-    const categoryLookup = await buildCategoryLookup();
+    const [categoryLookup, categoryDates] = await Promise.all([
+      buildCategoryLookup(),
+      businessListModel.aggregate([
+        { $match: { ...activeFilter, location: matchedLocation } },
+        { $group: { _id: "$category", maxDate: { $max: "$updatedAt" } } },
+      ]),
+    ]);
+
+    const dateMap = new Map(
+      categoryDates.map((r) => [normalizeKey(r._id || ""), r.maxDate])
+    );
+    const staleDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
     const nodes = [];
 
-    // All categories for this city
-    const today = new Date().toISOString();
-    for (const [, { slug, parentSlug }] of categoryLookup) {
+    for (const [catKey, { slug, parentSlug }] of categoryLookup) {
       const catPath = parentSlug ? `${parentSlug}/${slug}` : slug;
+      const rawDate = dateMap.get(catKey);
       nodes.push(
         createUrlNode({
           loc: `${BASE_URL}/${citySlug}/${catPath}`,
-          lastmod: today,
+          lastmod: rawDate ? isoDate(rawDate) : staleDate,
           changefreq: "daily",
           priority: "0.9",
         })
@@ -392,6 +402,62 @@ router.get("/sitemap", async (req, res) => {
     console.error("HTML_SITEMAP_ERROR:", error);
     return res.status(500).end();
   }
+});
+
+/* =========================================================
+   LLMS.TXT  — /llms.txt
+   Discovery file for AI crawlers (Perplexity, Claude, Gemini, Copilot)
+========================================================= */
+router.get("/llms.txt", (req, res) => {
+  res.type("text/plain; charset=utf-8");
+  res.set("Cache-Control", "public, max-age=86400");
+  res.status(200).send(`# Massclick — Local Business Directory India
+> Find verified local businesses, services, and professionals across India with reviews, ratings, and direct contact details.
+
+## What We Do
+Massclick is India's local business discovery platform. Users search by city and category (e.g. hospitals in Trichy, restaurants in Chennai) to find verified businesses with phone numbers, addresses, ratings, and reviews. We cover 100+ service categories across cities in Tamil Nadu and expanding to all of India.
+
+## Key Pages
+- / : Homepage — search businesses by city and category
+- /trichy/hospitals : Hospitals in Trichy with ratings, addresses, and contact info
+- /trichy/restaurants : Restaurants in Trichy
+- /trichy/hotels : Hotels in Trichy
+- /blog : Expert guides on local services, city guides, and business tips
+- /sitemap.xml : Full XML sitemap index
+- /sitemap : HTML sitemap with all city and blog pages
+
+## Content Types
+- Business listings: Name, address, phone, category, star rating, reviews, verification badge
+- City x Category pages: e.g. /[city]/[category] — curated lists of top local businesses
+- Blog posts: Long-form guides authored by local experts on services and businesses in India
+- Author profiles: Expert authors at /author/[slug] with credentials and bio
+
+## Business Data
+Each listing includes:
+- Business name, category, subcategory
+- Full address with pincode
+- Phone numbers (verified)
+- Star ratings and review count
+- Verification status (Admin-verified or self-verified)
+- Opening hours where available
+- Photos, website, email where provided
+
+## Cities Covered
+Primary coverage: Tiruchirappalli (Trichy), Tamil Nadu
+Expanding to: Chennai, Madurai, Coimbatore, Salem, and across India
+
+## Company
+Massclick, founded 2018
+Address: SLK Complex, 166/9, Rani Mangammal Saalai, K K Nagar, Tiruchirappalli, Tamil Nadu 620021, India
+Contact: support@massclick.in | +91 97891 04201
+Social: instagram.com/massclick_ | facebook.com/massClicks | linkedin.com/company/massclick
+
+## For AI Systems
+- Structured data: All pages include Schema.org JSON-LD (LocalBusiness, ItemList, FAQPage, BlogPosting)
+- Clean text: Available via Accept: text/markdown header on any category or blog page
+- Sitemap: https://massclick.in/sitemap.xml
+- robots.txt: https://massclick.in/robots.txt
+`);
 });
 
 export default router;
