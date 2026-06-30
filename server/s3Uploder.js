@@ -93,7 +93,7 @@ export const getSignedUrlByKey = (key, { signed = false, expiry = 3600 } = {}) =
     });
   }
 
-  return `https://${assetsBucket}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+  return `https://images.massclick.in/${key}`;
 };
 
 export const getImageDataUrlByKey = async (key) => {
