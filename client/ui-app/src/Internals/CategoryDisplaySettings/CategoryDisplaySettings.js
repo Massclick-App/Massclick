@@ -639,7 +639,7 @@ function ViewToggle({
 }
 
 // ── Image uploader ───────────────────────────────────────────────────────────
-const S3_BASE = "https://images.massclick.in/";
+const S3_BASE = "https://massclickdev.s3.ap-southeast-2.amazonaws.com/";
 function ImageUploader({
   imageKey,
   onUploaded,

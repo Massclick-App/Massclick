@@ -29,7 +29,7 @@ export default function MNILeadsInsights({
       setError(err.message);
     }
   }, [dispatch, view]);
-  const S3_URL = "https://images.massclick.in";
+  const S3_URL = "https://massclickdev.s3.ap-southeast-2.amazonaws.com";
   const formatPhone = phone => {
     const clean = phone?.toString().replace(/\D/g, "").slice(-10) || "N/A";
     return clean.replace(/(\d{5})(\d{5})/, "$1-$2");

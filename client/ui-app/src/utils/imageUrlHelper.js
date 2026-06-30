@@ -1,4 +1,4 @@
-const S3_BASE_URL = 'https://images.massclick.in';
+const S3_BASE_URL = 'https://massclickdev.s3.ap-southeast-2.amazonaws.com';
 
 export const normalizeImageUrl = (url) => {
   if (!url) return '';

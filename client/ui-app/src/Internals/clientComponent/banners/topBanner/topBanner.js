@@ -54,8 +54,8 @@ const TopBannerAds = ({
       const imageKey = ad.bannerImageKey;
       return ad.isActive && !ad.isDeleted && ad.position === "TOP_BANNER" && (normalizeCategory(ad.category) === normalizeCategory(category) || isCommonTopBanner(ad.category)) && imageKey;
     }).map(ad => {
-      const baseUrl = `https://images.massclick.in/${ad.bannerImageKey}`;
-      const mobileBaseUrl = ad.mobileBannerImageKey ? `https://images.massclick.in/${ad.mobileBannerImageKey}` : null;
+      const baseUrl = `https://massclickdev.s3.ap-southeast-2.amazonaws.com/${ad.bannerImageKey}`;
+      const mobileBaseUrl = ad.mobileBannerImageKey ? `https://massclickdev.s3.ap-southeast-2.amazonaws.com/${ad.mobileBannerImageKey}` : null;
       return {
         ...ad,
         image: ad.bannerImage || baseUrl,
