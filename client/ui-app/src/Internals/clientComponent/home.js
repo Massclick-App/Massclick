@@ -680,13 +680,13 @@ const LandingPage = React.memo(() => {
                 </Box>
 
                 <Box className={cx("home-section")} sx={homeSectionSx}>
-                  <Suspense fallback={null}>
+                  <Suspense fallback={<Box sx={{ minHeight: 176 }} />}>
                     <PublicUserCounter />
                   </Suspense>
                 </Box>
 
                 <Box className={cx("home-section")} sx={homeSectionSx}>
-                  <Suspense fallback={null}>
+                  <Suspense fallback={<Box sx={{ minHeight: 118 }} />}>
                     <LeadAwareness
                       isLoggedIn={customerLoggedIn}
                       emphasizeLogin={loginReminder}
@@ -716,7 +716,7 @@ const LandingPage = React.memo(() => {
                 </Box>
 
                 <Box className={cx("home-section")} sx={homeSectionSx}>
-                  <Suspense fallback={null}>
+                  <Suspense fallback={<Box sx={{ minHeight: 178 }} />}>
                     <TwoWayAwareness
                       isLoggedIn={customerLoggedIn}
                       onLoginRequest={() => setShowLoginModal(true)}
