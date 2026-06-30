@@ -39,7 +39,8 @@ export const Collections = {
     CHATCONVERSATION: 'chatconversations',
     CHATMESSAGE: 'chatmessages',
     PUBLICUSERCOUNTERSETTINGS: 'publicusercountersettings',
-    BUSINESSWEBPMIGRATIONJOB: 'business_webp_migration_jobs'
+    BUSINESSWEBPMIGRATIONJOB: 'business_webp_migration_jobs',
+    S3CACHEHEADERMIGRATIONJOB: 's3_cache_header_migration_jobs'
 };
 
 export const {
@@ -83,5 +84,6 @@ export const {
     CHATCONVERSATION,
     CHATMESSAGE,
     PUBLICUSERCOUNTERSETTINGS,
-    BUSINESSWEBPMIGRATIONJOB
+    BUSINESSWEBPMIGRATIONJOB,
+    S3CACHEHEADERMIGRATIONJOB
 } = Collections;
