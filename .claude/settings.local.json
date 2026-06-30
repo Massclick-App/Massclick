@@ -27,7 +27,9 @@
       "Bash(node -c \"D:\\\\dev_abishek\\\\massclick\\\\client\\\\ui-app\\\\src\\\\Internals\\\\business\\\\components\\\\BusinessFormSection.js\")",
       "Bash(node -c \"D:\\\\dev_abishek\\\\massclick\\\\server\\\\controller\\\\businessList\\\\businessListController.js\")",
       "Bash(node -c \"D:\\\\dev_abishek\\\\massclick\\\\client\\\\ui-app\\\\src\\\\Internals\\\\business\\\\Business.js\")",
-      "Bash(mongosh \"mongodb://admin:Massclick123@127.0.0.1:27018/massClick_dev?authSource=admin\" --eval \"db.getCollectionNames\\(\\).filter\\(n => n.toLowerCase\\(\\).includes\\('seo'\\) || n.toLowerCase\\(\\).includes\\('onpage'\\)\\)\" --quiet)"
+      "Bash(mongosh \"mongodb://admin:Massclick123@127.0.0.1:27018/massClick_dev?authSource=admin\" --eval \"db.getCollectionNames\\(\\).filter\\(n => n.toLowerCase\\(\\).includes\\('seo'\\) || n.toLowerCase\\(\\).includes\\('onpage'\\)\\)\" --quiet)",
+      "Bash(mongosh mongodb://admin:Massclick123@127.0.0.1:27018/massClick_dev?authSource=admin --eval 'db.seopagecontents.findOne\\({faq: {$exists: true}}\\)' --quiet)",
+      "Bash(mongosh mongodb://admin:Massclick123@127.0.0.1:27018/massClick_dev?authSource=admin --eval 'db.seopagecontents.countDocuments\\({faq: {$exists: true}}\\)' --quiet)"
     ]
   }
 }
