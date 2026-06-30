@@ -492,7 +492,10 @@ const BusinessDetail = React.memo(() => {
   };
   const whatsappNumber = business.whatsappNumber || business.contactList || business.contact;
   const locationSlug = location || "";
+  // Use DB location field for canonical to stay consistent regardless of how the user arrived
+  const canonicalLocationSlug = toSlug(business.location || location);
   const businessUrl = `https://massclick.in/business/${locationSlug}/${business.slug || businessSlug}/${business._id || id}`;
+  const canonicalUrl = `https://massclick.in/business/${canonicalLocationSlug}/${business.slug || businessSlug}/${business._id || id}`;
 
   // Generate LocalBusiness schema with all available data
   const localBusinessSchema = generateLocalBusinessSchema({
@@ -540,6 +543,7 @@ const BusinessDetail = React.memo(() => {
   }]);
   return <>
       <Helmet>
+        <link rel="canonical" href={canonicalUrl} />
         {localBusinessSchema && <script type="application/ld+json">{JSON.stringify(localBusinessSchema)}</script>}
         {breadcrumbSchema && <script type="application/ld+json">{JSON.stringify(breadcrumbSchema)}</script>}
       </Helmet>

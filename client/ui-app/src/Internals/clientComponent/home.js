@@ -598,16 +598,21 @@ const LandingPage = React.memo(() => {
       url: "https://massclick.in",
     },
   };
+
+  // SSR already injects Organization + WebSite schemas on fresh page loads.
+  // Only emit them from React when SSR didn't run (client-side-only navigations).
+  const ssrInjectedSchemas = !!window.__SSR_SEO__;
+
   return (
     <>
       <SeoMeta seoData={seoMetaData} fallback={fallbackSeo} />
       <Helmet>
-        {websiteSchema && (
+        {!ssrInjectedSchemas && websiteSchema && (
           <script type="application/ld+json">
             {JSON.stringify(websiteSchema)}
           </script>
         )}
-        {organizationSchema && (
+        {!ssrInjectedSchemas && organizationSchema && (
           <script type="application/ld+json">
             {JSON.stringify(organizationSchema)}
           </script>

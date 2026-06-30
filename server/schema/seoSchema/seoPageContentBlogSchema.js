@@ -129,6 +129,12 @@ const seoPageContentBlogSchema = new mongoose.Schema(
       trim: true,
     },
 
+    quickSummary: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
     headerContent: {
       type: String,
       default: "",
