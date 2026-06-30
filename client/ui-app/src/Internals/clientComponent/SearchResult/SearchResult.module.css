@@ -596,6 +596,44 @@ section.seo-header-content.premium-section {
   margin-bottom: 0;
 }
 
+.seo-faq-section {
+  margin-top: 32px;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 24px;
+}
+
+.seo-faq-heading {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #172033;
+  margin-bottom: 20px;
+}
+
+.seo-faq-item {
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.seo-faq-item:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.seo-faq-question {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #172033;
+  margin-bottom: 8px;
+}
+
+.seo-faq-answer {
+  font-size: 0.9rem;
+  color: #555;
+  line-height: 1.6;
+}
+
 .category-trust-badges{
   display: flex;
   gap: 10px;

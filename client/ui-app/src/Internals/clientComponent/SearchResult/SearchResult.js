@@ -548,7 +548,7 @@ const SearchResults = React.memo(() => {
   }]);
   const websiteSchema = generateWebsiteSchema();
   const organizationSchema = generateOrganizationSchema();
-  const faqSchema = seoContent?.faqs && seoContent.faqs.length > 0 ? generateFAQSchema(seoContent.faqs) : null;
+  const faqSchema = seoContent?.faq && seoContent.faq.length > 0 ? generateFAQSchema(seoContent.faq) : null;
 
   return <>
       <OTPLoginModal open={openLoginModal} handleClose={() => setOpenLoginModal(false)} />
@@ -832,11 +832,22 @@ const SearchResults = React.memo(() => {
           </button>
         </div>
 
-        {!seoContentLoading && sanitizedPageContent && <div className={cx("seo-outer-wrapper")}>
+        {!seoContentLoading && (sanitizedPageContent || (seoContent?.faq?.length > 0)) && <div className={cx("seo-outer-wrapper")}>
             <div className={cx("seo-article-wrapper")}>
               <article className={cx("seo-article")}>
                 <div className={cx("seo-divider")} />
-                <section className={cx("seo-page-content")} dangerouslySetInnerHTML={{ __html: sanitizedPageContent }} />
+                {sanitizedPageContent && <section className={cx("seo-page-content")} dangerouslySetInnerHTML={{ __html: sanitizedPageContent }} />}
+                {seoContent?.faq?.length > 0 && (
+                  <section className={cx("seo-faq-section")}>
+                    <h2 className={cx("seo-faq-heading")}>Frequently Asked Questions</h2>
+                    {seoContent.faq.map((item, i) => (
+                      <div key={i} className={cx("seo-faq-item")}>
+                        <h3 className={cx("seo-faq-question")}>{item.question}</h3>
+                        <p className={cx("seo-faq-answer")}>{item.answer}</p>
+                      </div>
+                    ))}
+                  </section>
+                )}
               </article>
             </div>
           </div>}
