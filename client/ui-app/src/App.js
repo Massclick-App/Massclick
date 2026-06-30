@@ -25,6 +25,7 @@ import { isBusinessPeopleUser } from './utils/userUtils.js';
 import ShimmerSkeleton from './Internals/clientComponent/shimmerSkeleton.js';
 import GlobalLoaderWrapper from './Internals/clientComponent/common/GlobalLoaderWrapper.js';
 import { scheduleIdleCallback } from './utils/scheduleIdleCallback.js';
+import { useDrawer } from './Internals/clientComponent/Drawer/drawerContext.js';
 
 const Dashboard = lazy(() => import(/* webpackChunkName: "admin-dashboard" */ './Dashboard'));
 const Login = lazy(() => import(/* webpackChunkName: "admin-login" */ './Internals/Login/login.js'));
@@ -180,6 +181,7 @@ function AppRoutes({
 }) {
   const location = useLocation();
   const pathname = location.pathname || "";
+  const { hasEverOpened: hasDrawerEverOpened } = useDrawer();
   const isAdminSurface = pathname === "/admin" || pathname.startsWith("/dashboard");
   const authSnapshot = getAuthSnapshot();
   const shouldHoldAdminRoute =
@@ -207,7 +209,7 @@ function AppRoutes({
     <>
       {!isAdminSurface && showGlobalChrome && (
         <Suspense fallback={<DynamicLoader />}>
-          <GlobalDrawer />
+          {hasDrawerEverOpened && <GlobalDrawer />}
           {/* Google ad widgets are disabled for now. Re-enable when needed. */}
           {/*
           <FloatingAdCard />
@@ -320,10 +322,10 @@ function AppRoutes({
           {/* ─────────────────────────────────────────────────────────────── */}
         </Routes>
 
-        {/* Login Modal */}
-        {!isAdminSurface && (
+        {/* Login Modal — only mount chunk after first open */}
+        {!isAdminSurface && openLoginModal && (
           <OTPLoginModal
-            open={openLoginModal}
+            open={true}
             handleClose={() => setOpenLoginModal(false)}
           />
         )}

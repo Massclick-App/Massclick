@@ -4,12 +4,16 @@ const DrawerContext = createContext();
 
 export const DrawerProvider = ({ children }) => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [hasEverOpened, setHasEverOpened] = useState(false);
 
-  const openDrawer = () => setIsDrawerOpen(true);
+  const openDrawer = () => {
+    setHasEverOpened(true);
+    setIsDrawerOpen(true);
+  };
   const closeDrawer = () => setIsDrawerOpen(false);
 
   return (
-    <DrawerContext.Provider value={{ isDrawerOpen, openDrawer, closeDrawer }}>
+    <DrawerContext.Provider value={{ isDrawerOpen, openDrawer, closeDrawer, hasEverOpened }}>
       {children}
     </DrawerContext.Provider>
   );
