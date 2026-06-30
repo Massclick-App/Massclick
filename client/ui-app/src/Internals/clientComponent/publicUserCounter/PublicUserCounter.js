@@ -57,7 +57,12 @@ const PublicUserCounter = () => {
     };
   }, [settings, now]);
 
-  if (!settings?.enabled || !counts) return null;
+  if (!settings) {
+    // Hold the layout space while the fetch is in-flight so nothing below shifts.
+    // CSS min-height on .public-counter matches the Suspense placeholder in home.js.
+    return <section className={cx("public-counter")} aria-hidden="true" />;
+  }
+  if (!settings.enabled || !counts) return null;
 
   return (
     <section className={cx("public-counter")} aria-label="Live public users count">
