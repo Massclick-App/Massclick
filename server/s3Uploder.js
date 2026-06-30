@@ -17,7 +17,7 @@ const s3 = new AWS.S3();
 
 
 export const uploadImageToS3 = async (fileData, uploadPath, options = {}) => {
-  const { skipImageConversion = false } = options;
+  const { skipImageConversion = false, contentType: forcedContentType = "", extension: forcedExtension = "" } = options;
   let fileBuffer;
   let mimeType;
   let extension;
@@ -26,15 +26,15 @@ export const uploadImageToS3 = async (fileData, uploadPath, options = {}) => {
     const matches = fileData.match(/^data:([\w/+.-]+);base64,(.+)$/);
     if (!matches) throw new Error("Invalid base64 string");
 
-    mimeType = matches[1];
+    mimeType = forcedContentType || matches[1];
     fileBuffer = Buffer.from(matches[2], "base64");
-    extension = mimeType.split("/")[1];
+    extension = forcedExtension || mimeType.split("/")[1];
   }
 
   else if (Buffer.isBuffer(fileData)) {
     fileBuffer = fileData;
-    mimeType = "application/octet-stream";
-    extension = "bin";
+    mimeType = forcedContentType || "application/octet-stream";
+    extension = forcedExtension || "bin";
   }
 
   else {

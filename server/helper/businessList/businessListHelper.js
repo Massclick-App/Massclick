@@ -869,10 +869,21 @@ export const updateBusinessList = async (id, data) => {
 
   delete data.businessImages;
 
+  const retainedKycDocuments = Array.isArray(data.retainedKycDocuments)
+    ? data.retainedKycDocuments.filter(Boolean)
+    : null;
+  delete data.retainedKycDocuments;
+
   if (Array.isArray(data.kycDocuments)) {
     const oldKycKeys = Array.isArray(business.kycDocumentsKey)
       ? business.kycDocumentsKey
       : [];
+    const retainedKycKeys = retainedKycDocuments
+      ? oldKycKeys.filter((key) => {
+          const keyUrl = getSignedUrlByKey(key);
+          return retainedKycDocuments.includes(key) || retainedKycDocuments.includes(keyUrl);
+        })
+      : oldKycKeys;
 
     const newKycDocs = data.kycDocuments.filter(
       (doc) => typeof doc === "string" && doc.startsWith("data:"),
@@ -888,7 +899,7 @@ export const updateBusinessList = async (id, data) => {
       }),
     );
 
-    business.kycDocumentsKey = [...new Set([...oldKycKeys, ...newKycKeys])];
+    business.kycDocumentsKey = [...new Set([...retainedKycKeys, ...newKycKeys])];
   } else if (data.kycDocuments === null) {
     business.kycDocumentsKey = [];
   }

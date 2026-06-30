@@ -8,10 +8,21 @@ import styles from "../business.module.css";
 
 const cx = createScopedClassNames(styles);
 
+const getDocumentUrl = (document) => {
+  if (!document) return "";
+  if (typeof document === "string") return document;
+  return document.url || document.preview || document.href || "";
+};
+
+const isPreviewableImage = (url = "") => /\.(png|jpe?g|webp|gif|bmp|avif)(?:\?|$)/i.test(url);
+const isPdfDocument = (url = "") => /\.pdf(?:\?|$)/i.test(url);
+
 const BusinessFormStep1 = ({
   kycFiles,
+  existingKycDocuments = [],
   handleKycUpload,
   handleRemoveFile,
+  handleRemoveStoredDocument,
   handleSectionAdvance,
   getSectionNavigation,
   getSectionRefKey,
@@ -23,6 +34,32 @@ const BusinessFormStep1 = ({
 }) => {
   const isDisabled = getSectionIsDisabled ? getSectionIsDisabled(1, "kycDocuments") : false;
   const navigation = getSectionNavigation ? getSectionNavigation(1, "kycDocuments") : null;
+  const storedDocuments = Array.isArray(existingKycDocuments)
+    ? existingKycDocuments.map(getDocumentUrl).filter(Boolean)
+    : [];
+  const totalDocumentCount = storedDocuments.length + kycFiles.length;
+  const renderPreview = ({ src, name, type }) => {
+    if (type?.includes("image") || isPreviewableImage(src)) {
+      return <img src={src} alt={name} className={cx("kyc-document-preview-image")} />;
+    }
+
+    if (type?.includes("pdf") || isPdfDocument(src)) {
+      return (
+        <iframe
+          src={src}
+          title={name}
+          className={cx("kyc-document-preview-frame")}
+        />
+      );
+    }
+
+    return (
+      <div className={cx("kyc-document-placeholder")}>
+        <span className={cx("kyc-document-placeholder-icon")}>DOC</span>
+        <span>Preview not available</span>
+      </div>
+    );
+  };
 
   return (
     <>
@@ -47,77 +84,94 @@ const BusinessFormStep1 = ({
             <p className={cx("section-eyebrow")}>Verification</p>
             <p className={cx("section-summary")}>Upload clear documents so the listing can be reviewed without back-and-forth. PDFs and images work best when they are sharp and uncropped.</p>
           </div>
-          <div className={cx("section-stat")}>{kycFiles.length} file(s)</div>
+          <div className={cx("section-stat")}>{totalDocumentCount} file(s)</div>
         </div>
 
-        <div className={cx("field-card", "field-span-full")}>
-          <div className={cx("upload-panel")}>
-            <div>
+        <div className={cx("kyc-upload-card")}>
+          <div className={cx("kyc-upload-copy")}>
               <label className={cx("input-label")}>Upload Documents (PDF, PNG, JPG)</label>
               <p className={cx("upload-panel-copy")}>Add Aadhaar, GST, ownership papers, or any other verification files that help the review team move faster.</p>
-            </div>
-            <Button variant="contained" component="label" startIcon={<CloudUploadIcon />} className={cx("upload-button")}>
+          </div>
+          <Button variant="contained" component="label" startIcon={<CloudUploadIcon />} className={cx("upload-button")}>
               Upload Files
               <input type="file" multiple hidden onChange={handleKycUpload} accept=".pdf,.png,.jpg,.jpeg" />
-            </Button>
-          </div>
+          </Button>
           {renderFieldError("kycDocuments")}
         </div>
 
         <div className={cx("kyc-file-list")}>
-          {kycFiles.length === 0 ? (
+          {totalDocumentCount === 0 ? (
             <div className={cx("field-card", "field-span-full")} style={{ textAlign: "center" }}>
               <Typography variant="body2" sx={{ color: "#64748b", fontWeight: 600 }}>
                 No documents uploaded yet. Add one or more files to build the KYC bundle.
               </Typography>
             </div>
           ) : (
-            kycFiles.map((file, index) => (
-              <div key={index} className={cx("kyc-file-item")}>
-                <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                  {file.name || `Document ${index + 1}`}
-                </Typography>
-                <IconButton color="error" onClick={() => handleRemoveFile(index)}>
-                  <DeleteOutlineRoundedIcon />
-                </IconButton>
-
-                <div style={{ marginTop: "5px" }}>
-                  {file.type?.includes("image") ? (
-                    <img
-                      src={file.preview}
-                      alt={file.name}
-                      style={{
-                        width: "100%",
-                        maxWidth: "160px",
-                        height: "160px",
-                        borderRadius: "12px",
-                        objectFit: "cover",
-                      }}
-                    />
-                  ) : file.type?.includes("pdf") ? (
-                    <iframe
-                      src={file.preview}
-                      title={file.name}
-                      width="100%"
-                      height="170px"
-                      style={{
-                        border: "1px solid #e5e7eb",
-                        borderRadius: "12px",
-                      }}
-                    />
-                  ) : null}
-
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "10px" }}>
+            <>
+            {storedDocuments.map((url, index) => {
+              const name = `Stored document ${index + 1}`;
+              return (
+                <div key={`stored-${url}-${index}`} className={cx("kyc-document-card")}>
+                  <div className={cx("kyc-document-topbar")}>
+                    <div className={cx("kyc-document-title")}>
+                      <span className={cx("kyc-document-type-icon")}>DOC</span>
+                      <span className={cx("kyc-document-name")}>{name}</span>
+                    </div>
+                    <IconButton
+                      color="error"
+                      size="small"
+                      onClick={() => handleRemoveStoredDocument?.(index)}
+                      aria-label={`Delete ${name}`}
+                      className={cx("kyc-document-icon-button")}
+                    >
+                      <DeleteOutlineRoundedIcon fontSize="small" />
+                    </IconButton>
+                  </div>
+                  <div className={cx("kyc-document-preview")}>
+                    {renderPreview({ src: url, name })}
+                  </div>
+                  <div className={cx("kyc-document-actions")}>
+                    <Button size="small" variant="outlined" onClick={() => window.open(url, "_blank")}>
+                      View Full
+                    </Button>
+                    <Button size="small" color="error" variant="text" onClick={() => handleRemoveStoredDocument?.(index)}>
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+            {kycFiles.map((file, index) => (
+              <div key={`${file.name}-${index}`} className={cx("kyc-document-card")}>
+                <div className={cx("kyc-document-topbar")}>
+                  <div className={cx("kyc-document-title")}>
+                    <span className={cx("kyc-document-type-icon")}>DOC</span>
+                    <span className={cx("kyc-document-name")}>{file.name || `New document ${index + 1}`}</span>
+                  </div>
+                  <IconButton
+                    color="error"
+                    size="small"
+                    onClick={() => handleRemoveFile(index)}
+                    aria-label={`Delete ${file.name || `New document ${index + 1}`}`}
+                    className={cx("kyc-document-icon-button")}
+                  >
+                    <DeleteOutlineRoundedIcon fontSize="small" />
+                  </IconButton>
+                </div>
+                <div className={cx("kyc-document-preview")}>
+                  {renderPreview({ src: file.preview, name: file.name, type: file.type })}
+                </div>
+                <div className={cx("kyc-document-actions")}>
                     <Button size="small" variant="outlined" onClick={() => window.open(file.preview, "_blank") }>
                       View Full
                     </Button>
-                    <IconButton color="error" onClick={() => handleRemoveFile(index)}>
-                      <DeleteOutlineRoundedIcon />
-                    </IconButton>
-                  </div>
+                    <Button size="small" color="error" variant="text" onClick={() => handleRemoveFile(index)}>
+                      Delete
+                    </Button>
                 </div>
               </div>
-            ))
+            ))}
+            </>
           )}
         </div>
       </BusinessFormSection>

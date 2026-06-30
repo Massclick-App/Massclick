@@ -17,242 +17,545 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-const invoiceHTMLTemplate = (invoiceData) => `
+const escapeHtml = (value) => String(value ?? '')
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#39;');
+
+const formatAmount = (value) => {
+  const amount = Number(value || 0);
+  return amount.toLocaleString('en-IN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+};
+
+const formatPaymentDate = (value) => {
+  const date = value ? new Date(value) : new Date();
+
+  if (Number.isNaN(date.getTime())) {
+    return new Date().toLocaleDateString('en-IN');
+  }
+
+  return date.toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+};
+
+const slugifyEmailValue = (value = '') =>
+  String(value)
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'business';
+
+const getPublicBaseUrl = () =>
+  String(process.env.PUBLIC_BASE_URL || 'https://massclick.in').replace(/\/+$/, '');
+
+const buildBusinessProfileUrl = (businessData = {}) => {
+  const businessId = businessData?._id?.toString?.() || businessData?._id || businessData?.id || '';
+  const locationSlug = slugifyEmailValue(businessData.location || 'business');
+  const businessSlug = slugifyEmailValue(
+    businessData.slug || businessData.businessName || businessData.name || 'profile',
+  );
+
+  return `${getPublicBaseUrl()}/business/${locationSlug}/${businessSlug}/${businessId}`;
+};
+
+const detailRow = (label, value, isStrong = false) => `
+  <tr>
+    <td style="padding: 13px 16px; border-bottom: 1px solid #edf0f5; color: #667085; font-size: 14px; line-height: 20px;">${label}</td>
+    <td style="padding: 13px 16px; border-bottom: 1px solid #edf0f5; color: #101828; font-size: 14px; line-height: 20px; font-weight: ${isStrong ? '700' : '600'}; text-align: right;">${value || 'N/A'}</td>
+  </tr>
+`;
+
+const benefitItem = (title, description) => `
+  <tr>
+    <td width="28" valign="top" style="padding: 0 12px 18px 0;">
+      <span style="display: inline-block; width: 22px; height: 22px; border-radius: 50%; background: #fff3e0; color: #f58220; font-size: 14px; line-height: 22px; text-align: center; font-weight: 700;">&#10003;</span>
+    </td>
+    <td valign="top" style="padding: 0 0 18px 0;">
+      <div style="color: #101828; font-size: 15px; line-height: 22px; font-weight: 700;">${title}</div>
+      <div style="color: #667085; font-size: 13px; line-height: 20px;">${description}</div>
+    </td>
+  </tr>
+`;
+
+const certificateEmailTemplate = (businessData, certificateTypes = []) => {
+  const businessName = escapeHtml(businessData.businessName || businessData.name || 'Valued Business Partner');
+  const category = escapeHtml(businessData.category || 'N/A');
+  const location = escapeHtml(businessData.location || 'N/A');
+  const profileUrl = escapeHtml(buildBusinessProfileUrl(businessData));
+  const hasTrust = certificateTypes.includes('trust');
+  const hasVerified = certificateTypes.includes('verified');
+  const certificateLabel = hasVerified && hasTrust
+    ? 'Verified and Trust Certificates'
+    : hasTrust
+      ? 'Trust Certificate'
+      : 'Verified Certificate';
+
+  return `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MassClick ${certificateLabel}</title>
+</head>
+<body style="margin:0; padding:0; background:#f4f6fb; font-family:Arial, Helvetica, sans-serif; color:#101828;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6fb; padding:32px 12px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:680px; background:#ffffff; border-radius:18px; overflow:hidden; box-shadow:0 16px 42px rgba(16,24,40,0.10);">
+          <tr>
+            <td style="background:#111827; background-image:linear-gradient(135deg,#111827 0%,#1f2937 52%,#f58220 100%); padding:36px; color:#ffffff;">
+              <div style="font-size:15px; line-height:20px; font-weight:700;">MassClick</div>
+              <div style="display:inline-block; margin-top:26px; padding:7px 12px; border-radius:999px; background:rgba(255,255,255,0.14); font-size:12px; line-height:16px; font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">${certificateLabel} Issued</div>
+              <h1 style="margin:16px 0 0; font-size:30px; line-height:38px; font-weight:800;">Your MassClick certificate status is active.</h1>
+              <p style="margin:14px 0 0; color:#f3f4f6; font-size:15px; line-height:24px;">Dear ${businessName}, your business profile has received the approved MassClick certificate status. This status is now reflected as a trust signal on your MassClick profile.</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:34px 36px 30px;">
+              <p style="color:#475467; font-size:15px; line-height:24px; margin:0 0 22px;">
+                Congratulations. This certificate helps customers identify your business as reviewed by MassClick and supports stronger trust on your public profile.
+              </p>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #edf0f5; border-radius:12px; overflow:hidden; margin-bottom:28px;">
+                ${detailRow('Business Name', businessName)}
+                ${detailRow('Category', category)}
+                ${detailRow('Location', location)}
+                ${detailRow('Certificate Status', escapeHtml(certificateLabel), true)}
+              </table>
+              <a href="${profileUrl}" style="display:inline-block; background:#f58220; border-radius:999px; color:#ffffff; font-size:14px; font-weight:800; padding:13px 20px; text-decoration:none;">View Business Profile</a>
+              <p style="color:#475467; font-size:15px; line-height:24px; margin:28px 0 0;">
+                Regards,<br>
+                <strong>MassClick Business Success Team</strong>
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:26px 36px 34px; background:#f9fafb; border-top:1px solid #edf0f5; text-align:center; color:#667085; font-size:12px; line-height:20px;">
+              <strong style="color:#101828;">MassClick</strong><br>
+              India's local business discovery platform<br>
+              <a href="https://massclick.in" style="color:#f58220; text-decoration:none;">massclick.in</a> &nbsp;|&nbsp; <a href="mailto:support@massclick.in" style="color:#f58220; text-decoration:none;">support@massclick.in</a>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+};
+
+const certificateTextTemplate = (businessData, certificateTypes = []) => {
+  const businessName = businessData.businessName || businessData.name || 'Valued Business Partner';
+  const profileUrl = buildBusinessProfileUrl(businessData);
+  const certificateLabel = certificateTypes.includes('verified') && certificateTypes.includes('trust')
+    ? 'Verified and Trust Certificates'
+    : certificateTypes.includes('trust')
+      ? 'Trust Certificate'
+      : 'Verified Certificate';
+
+  return `
+MassClick ${certificateLabel} Issued
+
+Dear ${businessName},
+
+Your business profile has received the approved MassClick certificate status.
+
+Business Name: ${businessName}
+Category: ${businessData.category || 'N/A'}
+Location: ${businessData.location || 'N/A'}
+Certificate Status: ${certificateLabel}
+
+Business Profile:
+${profileUrl}
+
+Regards,
+MassClick Business Success Team
+`;
+};
+
+const invoiceHTMLTemplate = (invoiceData) => {
+  const businessName = escapeHtml(invoiceData.businessName || 'Valued Business Partner');
+  const category = escapeHtml(invoiceData.category || 'N/A');
+  const location = escapeHtml(invoiceData.location || 'N/A');
+  const transactionId = escapeHtml(invoiceData.transactionId || 'N/A');
+  const paymentDate = escapeHtml(invoiceData.paymentDate || formatPaymentDate());
+  const baseAmount = formatAmount(invoiceData.amount);
+  const gstAmount = formatAmount(invoiceData.gstAmount);
+  const totalAmount = formatAmount(invoiceData.totalAmount);
+
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>MassClick Premium Membership Activated</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      line-height: 1.6;
-      color: #333;
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 20px;
-    }
-    .container {
-      background-color: #ffffff;
-      padding: 30px;
-      border-radius: 5px;
-    }
-    .header {
-      text-align: center;
-      margin-bottom: 30px;
-      border-bottom: 2px solid #FF8C00;
-      padding-bottom: 20px;
-    }
-    .header h1 {
       margin: 0;
-      font-size: 24px;
-      color: #FF8C00;
-    }
-    .content {
-      margin: 20px 0;
-      line-height: 1.8;
+      padding: 0;
+      background-color: #f4f6fb;
+      font-family: Arial, Helvetica, sans-serif;
+      color: #101828;
+      -webkit-text-size-adjust: 100%;
     }
     table {
-      width: 100%;
       border-collapse: collapse;
-      margin: 20px 0;
-      font-size: 14px;
     }
-    table td {
-      padding: 10px;
-      border: 1px solid #ddd;
+    a {
+      color: #f58220;
+      text-decoration: none;
     }
-    table tr:nth-child(even) {
-      background-color: #f9f9f9;
+    .email-shell {
+      width: 100%;
+      background-color: #f4f6fb;
+      padding: 32px 12px;
+    }
+    .email-card {
+      width: 100%;
+      max-width: 680px;
+      margin: 0 auto;
+      background: #ffffff;
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow: 0 16px 42px rgba(16, 24, 40, 0.10);
+    }
+    .hero {
+      background: #111827;
+      background-image: linear-gradient(135deg, #111827 0%, #1f2937 52%, #f58220 100%);
+      padding: 36px 36px 34px;
+      color: #ffffff;
+    }
+    .brand {
+      font-size: 15px;
+      line-height: 20px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+    }
+    .badge {
+      display: inline-block;
+      margin-top: 26px;
+      padding: 7px 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.14);
+      color: #ffffff;
+      font-size: 12px;
+      line-height: 16px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .hero-title {
+      margin: 16px 0 0;
+      font-size: 30px;
+      line-height: 38px;
+      font-weight: 800;
+    }
+    .hero-copy {
+      margin: 14px 0 0;
+      color: #f3f4f6;
+      font-size: 15px;
+      line-height: 24px;
+      max-width: 560px;
+    }
+    .content {
+      padding: 34px 36px 26px;
+    }
+    .intro {
+      color: #475467;
+      font-size: 15px;
+      line-height: 24px;
+      margin: 0 0 22px;
     }
     .section-title {
-      font-weight: bold;
-      color: #FF8C00;
-      margin-top: 20px;
-      margin-bottom: 10px;
-      font-size: 16px;
+      margin: 0 0 14px;
+      color: #101828;
+      font-size: 18px;
+      line-height: 26px;
+      font-weight: 800;
     }
-    .benefits-list {
-      margin-left: 20px;
+    .details-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid #edf0f5;
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 30px;
     }
-    .benefits-list li {
-      margin: 8px 0;
+    .summary-card {
+      background: #fff8ef;
+      border: 1px solid #ffe1b8;
+      border-radius: 14px;
+      padding: 20px;
+      margin: 6px 0 30px;
+    }
+    .summary-label {
+      color: #8a4b0f;
+      font-size: 12px;
+      line-height: 16px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 800;
+    }
+    .summary-amount {
+      color: #101828;
+      font-size: 30px;
+      line-height: 38px;
+      font-weight: 800;
+      margin-top: 6px;
+    }
+    .summary-meta {
+      color: #667085;
+      font-size: 13px;
+      line-height: 20px;
+      margin-top: 8px;
+    }
+    .next-steps {
+      background: #f9fafb;
+      border-radius: 14px;
+      padding: 22px;
+      margin-top: 8px;
+    }
+    .next-steps ol {
+      margin: 0;
+      padding-left: 20px;
+      color: #475467;
+      font-size: 14px;
+      line-height: 24px;
+    }
+    .signature {
+      margin: 28px 0 0;
+      color: #475467;
+      font-size: 15px;
+      line-height: 24px;
     }
     .footer {
-      margin-top: 30px;
-      padding-top: 20px;
-      border-top: 1px solid #ddd;
+      padding: 26px 36px 34px;
+      background: #f9fafb;
+      border-top: 1px solid #edf0f5;
       text-align: center;
+      color: #667085;
       font-size: 12px;
-      color: #666;
+      line-height: 20px;
     }
-    .footer-link {
-      color: #FF8C00;
-      text-decoration: none;
+    @media only screen and (max-width: 600px) {
+      .email-shell {
+        padding: 0;
+      }
+      .email-card {
+        border-radius: 0;
+      }
+      .hero,
+      .content,
+      .footer {
+        padding-left: 22px;
+        padding-right: 22px;
+      }
+      .hero-title {
+        font-size: 25px;
+        line-height: 32px;
+      }
+      .summary-amount {
+        font-size: 26px;
+        line-height: 34px;
+      }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <h1>🎉 Welcome to MassClick Premium Business Membership!</h1>
-    </div>
+  <table role="presentation" class="email-shell" width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td align="center">
+        <table role="presentation" class="email-card" cellpadding="0" cellspacing="0">
+          <tr>
+            <td class="hero">
+              <div class="brand">MassClick</div>
+              <div class="badge">Premium Membership Activated</div>
+              <h1 class="hero-title">Your business is now live with Premium visibility.</h1>
+              <p class="hero-copy">
+                Dear ${businessName}, your MassClick Premium Business Membership has been activated successfully. Your listing is now set up for stronger discovery, lead engagement, and customer trust across the MassClick network.
+              </p>
+            </td>
+          </tr>
 
-    <div class="content">
-      <p>Dear ${invoiceData.businessName},</p>
+          <tr>
+            <td class="content">
+              <p class="intro">
+                Thank you for choosing MassClick. This email confirms your successful payment and activation. Please keep this message as your official payment acknowledgement and membership reference.
+              </p>
 
-      <p>Thank you for choosing MassClick Premium Business Membership.</p>
+              <div class="summary-card">
+                <div class="summary-label">Total Amount Paid</div>
+                <div class="summary-amount">&#8377;${totalAmount}</div>
+                <div class="summary-meta">Payment successful via PhonePe | Transaction ID: ${transactionId}</div>
+              </div>
 
-      <p>We are pleased to inform you that your business listing has been successfully activated and is now part of the MassClick Premium Business Network. Your membership provides enhanced visibility, priority exposure, customer engagement opportunities, and access to powerful business growth tools designed to help you reach more customers and expand your local presence.</p>
+              <h2 class="section-title">Membership Details</h2>
+              <table role="presentation" class="details-table" cellpadding="0" cellspacing="0">
+                ${detailRow('Business Name', businessName)}
+                ${detailRow('Category', category)}
+                ${detailRow('Location', location)}
+                ${detailRow('Membership Plan', 'Premium Business Membership')}
+                ${detailRow('Membership Status', '<span style="color: #027a48;">Active</span>')}
+                ${detailRow('Activation Date', paymentDate)}
+              </table>
 
-      <div class="section-title">📋 Membership Details</div>
-      <table>
-        <tr>
-          <td><strong>Business Name</strong></td>
-          <td>${invoiceData.businessName || 'N/A'}</td>
-        </tr>
-        <tr>
-          <td><strong>Category</strong></td>
-          <td>${invoiceData.category || 'N/A'}</td>
-        </tr>
-        <tr>
-          <td><strong>Location</strong></td>
-          <td>${invoiceData.location || 'N/A'}</td>
-        </tr>
-        <tr>
-          <td><strong>Membership Plan</strong></td>
-          <td>Premium Business Membership</td>
-        </tr>
-        <tr>
-          <td><strong>Base Amount</strong></td>
-          <td>₹${(invoiceData.amount || 0).toFixed(2)}</td>
-        </tr>
-        <tr>
-          <td><strong>GST (18%)</strong></td>
-          <td>₹${(invoiceData.gstAmount || 0).toFixed(2)}</td>
-        </tr>
-        <tr>
-          <td><strong>Total Amount Paid</strong></td>
-          <td><strong>₹${(invoiceData.totalAmount || 0).toFixed(2)}</strong></td>
-        </tr>
-        <tr>
-          <td><strong>Payment Status</strong></td>
-          <td>✅ Success</td>
-        </tr>
-        <tr>
-          <td><strong>Transaction ID</strong></td>
-          <td>${invoiceData.transactionId || 'N/A'}</td>
-        </tr>
-        <tr>
-          <td><strong>Payment Method</strong></td>
-          <td>PhonePe</td>
-        </tr>
-        <tr>
-          <td><strong>Activation Date</strong></td>
-          <td>${invoiceData.paymentDate || new Date().toLocaleDateString('en-IN')}</td>
-        </tr>
-        <tr>
-          <td><strong>Membership Status</strong></td>
-          <td>🟢 Active</td>
-        </tr>
-      </table>
+              <h2 class="section-title">Payment Summary</h2>
+              <table role="presentation" class="details-table" cellpadding="0" cellspacing="0">
+                ${detailRow('Base Amount', `&#8377;${baseAmount}`)}
+                ${detailRow('GST (18%)', `&#8377;${gstAmount}`)}
+                ${detailRow('Total Paid', `&#8377;${totalAmount}`, true)}
+                ${detailRow('Payment Status', '<span style="color: #027a48;">Successful</span>')}
+                ${detailRow('Payment Method', 'PhonePe')}
+                ${detailRow('Transaction ID', transactionId)}
+              </table>
 
-      <div class="section-title">✨ Premium Benefits Activated</div>
-      <ul class="benefits-list">
-        <li>✓ Priority Placement in Search Results</li>
-        <li>✓ Enhanced Business Visibility</li>
-        <li>✓ Premium Business Profile</li>
-        <li>✓ WhatsApp Lead Notifications</li>
-        <li>✓ Customer Reviews & Reputation Building</li>
-        <li>✓ Business Analytics & Performance Insights</li>
-        <li>✓ Increased Customer Reach</li>
-        <li>✓ Priority Support Assistance</li>
-      </ul>
+              <h2 class="section-title">Premium Benefits Now Active</h2>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 14px;">
+                ${benefitItem('Priority discovery', 'Improved placement opportunities that help customers find your business faster.')}
+                ${benefitItem('Enhanced business profile', 'A stronger profile presence designed to improve trust, enquiries, and conversions.')}
+                ${benefitItem('Lead and enquiry support', 'Customer enquiries and important business updates can reach you through your registered contact channels.')}
+                ${benefitItem('Reviews and reputation growth', 'Build credibility by encouraging customers to share ratings, reviews, and feedback.')}
+                ${benefitItem('MNI business network access', 'Connect with relevant businesses, referral opportunities, and collaboration possibilities through MassClick Network Intelligence.')}
+              </table>
 
-      <div class="section-title">📱 Stay Connected</div>
-      <p>Keep your registered WhatsApp number active to receive customer enquiries, lead notifications, business opportunities, and important account updates from MassClick.</p>
+              <div class="next-steps">
+                <h2 class="section-title" style="font-size: 16px; line-height: 24px; margin-bottom: 10px;">Recommended Next Steps</h2>
+                <ol>
+                  <li>Complete every important profile field, including contact details, service areas, and working hours.</li>
+                  <li>Upload clear business photos, videos, product images, or service visuals to improve customer confidence.</li>
+                  <li>Keep your registered WhatsApp number active so enquiries and updates are not missed.</li>
+                  <li>Respond quickly to customer enquiries and request reviews from satisfied customers.</li>
+                </ol>
+              </div>
 
-      <div class="section-title">🤝 Grow Through MNI Business Network</div>
-      <p>As a Premium Member, you have access to MNI (MassClick Network Intelligence), our exclusive business networking platform that helps businesses connect, collaborate, and discover new opportunities.</p>
-      <p><strong>With MNI you can:</strong></p>
-      <ul class="benefits-list">
-        <li>Connect with businesses across relevant categories</li>
-        <li>Receive referral-based business opportunities</li>
-        <li>Expand your professional network</li>
-        <li>Discover partnership and collaboration opportunities</li>
-        <li>Increase local business visibility</li>
-      </ul>
+              <p class="signature">
+                We are glad to support your growth on MassClick and help your business reach more customers with a polished, trusted presence.
+                <br><br>
+                Regards,<br>
+                <strong>MassClick Business Success Team</strong>
+              </p>
+            </td>
+          </tr>
 
-      <div class="section-title">🚀 Maximize Your Business Growth</div>
-      <p><strong>To get the best results from your membership, we recommend:</strong></p>
-      <ul class="benefits-list">
-        <li>Completing your business profile</li>
-        <li>Uploading high-quality business photos and videos</li>
-        <li>Keeping contact details up to date</li>
-        <li>Responding promptly to customer enquiries</li>
-        <li>Encouraging customers to leave reviews and ratings</li>
-      </ul>
-
-      <p>Thank you for being a valued Premium Business Member. We look forward to supporting your business growth and helping you connect with more customers through the MassClick platform.</p>
-
-      <p><strong>Best Regards,</strong></p>
-      <p><strong>MassClick Business Success Team</strong></p>
-    </div>
-
-    <div class="footer">
-      <p>MassClick – India's Leading Local Search Engine</p>
-      <p>Website: <a href="https://massclick.in" class="footer-link">https://massclick.in</a></p>
-      <p>Email: <a href="mailto:support@massclick.in" class="footer-link">support@massclick.in</a></p>
-      <p>&copy; 2024 MassClick. All rights reserved.</p>
-    </div>
-  </div>
+          <tr>
+            <td class="footer">
+              <strong style="color: #101828;">MassClick</strong><br>
+              India's local business discovery platform<br>
+              <a href="https://massclick.in">massclick.in</a> &nbsp;|&nbsp; <a href="mailto:support@massclick.in">support@massclick.in</a><br>
+              &copy; ${new Date().getFullYear()} MassClick. All rights reserved.
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>
 `;
+};
+
+const invoiceTextTemplate = (invoiceData) => {
+  const businessName = invoiceData.businessName || 'Valued Business Partner';
+  const paymentDate = invoiceData.paymentDate || formatPaymentDate();
+
+  return `
+MassClick Premium Business Membership Activated
+
+Dear ${businessName},
+
+Your MassClick Premium Business Membership has been activated successfully.
+
+Membership Details:
+Business Name: ${businessName}
+Category: ${invoiceData.category || 'N/A'}
+Location: ${invoiceData.location || 'N/A'}
+Plan: Premium Business Membership
+Status: Active
+Activation Date: ${paymentDate}
+
+Payment Summary:
+Base Amount: INR ${formatAmount(invoiceData.amount)}
+GST (18%): INR ${formatAmount(invoiceData.gstAmount)}
+Total Paid: INR ${formatAmount(invoiceData.totalAmount)}
+Payment Method: PhonePe
+Transaction ID: ${invoiceData.transactionId || 'N/A'}
+
+Premium benefits now active:
+- Priority discovery
+- Enhanced business profile
+- Lead and enquiry support
+- Reviews and reputation growth
+- MNI business network access
+
+Regards,
+MassClick Business Success Team
+https://massclick.in
+support@massclick.in
+`;
+};
 
 export const sendInvoiceEmail = async (businessData, paymentData) => {
   try {
-    console.log(`📧 [Invoice Email] Starting email send process for business: ${businessData?.businessName}`);
+    console.log(`[Invoice Email] Starting email send process for business: ${businessData?.businessName}`);
     const businessEmail = businessData?.email;
 
     if (!businessEmail) {
-      console.warn(`⚠️ [Invoice Email] No email found for business: ${businessData?.businessName || businessData?._id}`);
+      console.warn(`[Invoice Email] No email found for business: ${businessData?.businessName || businessData?._id}`);
       return {
         success: false,
         message: 'No email address found for business',
       };
     }
 
-    console.log(`📧 [Invoice Email] Preparing invoice for: ${businessEmail}`);
-    console.log(`📊 [Invoice Email] Payment Details - TxnID: ${paymentData.transactionId}, Amount: ₹${paymentData.totalAmount}`);
-
+    console.log(`[Invoice Email] Preparing invoice for: ${businessEmail}`);
+    console.log(`[Invoice Email] Payment details - TxnID: ${paymentData.transactionId}, Amount: INR ${paymentData.totalAmount}`);
 
     const invoiceData = {
+      _id: businessData._id,
       businessName: businessData.businessName,
+      name: businessData.name,
       category: businessData.category,
       location: businessData.location,
+      slug: businessData.slug,
+      plotNumber: businessData.plotNumber,
+      street: businessData.street,
+      pincode: businessData.pincode,
       email: businessData.email,
       contact: businessData.contact,
       website: businessData.website,
+      verification: businessData.verification || {},
+      badges: businessData.badges || {},
       transactionId: paymentData.transactionId,
       amount: paymentData.amount,
       gstAmount: paymentData.gstAmount,
       totalAmount: paymentData.totalAmount,
-      paymentDate: new Date(paymentData.paymentDate).toLocaleDateString('en-IN'),
+      paymentDate: formatPaymentDate(paymentData.paymentDate),
     };
 
     const mailOptions = {
       from: `MassClick <${INVOICE_EMAIL_FROM}>`,
       to: businessEmail,
-      subject: `Invoice - Payment Successful for ${businessData.businessName}`,
+      subject: `MassClick Premium Activated - Payment Successful for ${businessData.businessName}`,
       html: invoiceHTMLTemplate(invoiceData),
+      text: invoiceTextTemplate(invoiceData),
     };
 
-    console.log(`📧 [Invoice Email] Sending email via SMTP - From: ${INVOICE_EMAIL_FROM}, To: ${businessEmail}`);
+    console.log(`[Invoice Email] Sending email via SMTP - From: ${INVOICE_EMAIL_FROM}, To: ${businessEmail}`);
     const info = await transporter.sendMail(mailOptions);
 
-    console.log(`✅ [Invoice Email] SUCCESS - Email sent to ${businessEmail}`);
-    console.log(`📬 [Invoice Email] Message ID: ${info.messageId}`);
-    console.log(`📝 [Invoice Email] SMTP Response: ${info.response}`);
+    console.log(`[Invoice Email] SUCCESS - Email sent to ${businessEmail}`);
+    console.log(`[Invoice Email] Message ID: ${info.messageId}`);
+    console.log(`[Invoice Email] SMTP Response: ${info.response}`);
 
     return {
       success: true,
@@ -260,8 +563,8 @@ export const sendInvoiceEmail = async (businessData, paymentData) => {
       messageId: info.messageId,
     };
   } catch (error) {
-    console.error(`❌ [Invoice Email] FAILED - Error sending invoice email to ${businessData?.businessName}`);
-    console.error(`❌ [Invoice Email] Error Details:`, {
+    console.error(`[Invoice Email] FAILED - Error sending invoice email to ${businessData?.businessName}`);
+    console.error('[Invoice Email] Error details:', {
       businessName: businessData?.businessName,
       businessEmail: businessData?.email,
       transactionId: paymentData?.transactionId,
@@ -272,6 +575,74 @@ export const sendInvoiceEmail = async (businessData, paymentData) => {
     return {
       success: false,
       message: 'Failed to send invoice email',
+      error: error.message,
+    };
+  }
+};
+
+export const sendBusinessCertificateEmail = async (businessData, options = {}) => {
+  try {
+    console.log(`[Certificate Email] Starting email send process for business: ${businessData?.businessName}`);
+    const businessEmail = businessData?.email;
+
+    if (!businessEmail) {
+      console.warn(`[Certificate Email] No email found for business: ${businessData?.businessName || businessData?._id}`);
+      return {
+        success: false,
+        message: 'No email address found for business',
+      };
+    }
+
+    const certificateTypes = [
+      options.includeVerified && 'verified',
+      options.includeTrust && 'trust',
+    ].filter(Boolean);
+
+    if (certificateTypes.length === 0) {
+      return {
+        success: false,
+        message: 'No active certificate type provided',
+      };
+    }
+
+    const certificateLabel = certificateTypes.includes('verified') && certificateTypes.includes('trust')
+      ? 'Verified and Trust Certificates'
+      : certificateTypes.includes('trust')
+        ? 'Trust Certificate'
+        : 'Verified Certificate';
+
+    const mailOptions = {
+      from: `MassClick <${INVOICE_EMAIL_FROM}>`,
+      to: businessEmail,
+      subject: `MassClick ${certificateLabel} Ready - ${businessData.businessName || businessData.name}`,
+      html: certificateEmailTemplate(businessData, certificateTypes),
+      text: certificateTextTemplate(businessData, certificateTypes),
+    };
+
+    console.log(`[Certificate Email] Sending email via SMTP - From: ${INVOICE_EMAIL_FROM}, To: ${businessEmail}`);
+    const info = await transporter.sendMail(mailOptions);
+
+    console.log(`[Certificate Email] SUCCESS - Email sent to ${businessEmail}`);
+    console.log(`[Certificate Email] Message ID: ${info.messageId}`);
+    console.log(`[Certificate Email] SMTP Response: ${info.response}`);
+
+    return {
+      success: true,
+      message: 'Certificate email sent successfully',
+      messageId: info.messageId,
+    };
+  } catch (error) {
+    console.error(`[Certificate Email] FAILED - Error sending certificate email to ${businessData?.businessName}`);
+    console.error('[Certificate Email] Error details:', {
+      businessName: businessData?.businessName,
+      businessEmail: businessData?.email,
+      errorMessage: error.message,
+      errorCode: error.code,
+      errorStack: error.stack,
+    });
+    return {
+      success: false,
+      message: 'Failed to send certificate email',
       error: error.message,
     };
   }

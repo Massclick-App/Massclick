@@ -1,7 +1,9 @@
 import { createScopedClassNames } from "../../../../utils/createScopedClassNames";
 import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import CloseIcon from "@mui/icons-material/Close";
 import DownloadIcon from "@mui/icons-material/Download";
+import PaletteIcon from "@mui/icons-material/Palette";
 import ShareIcon from "@mui/icons-material/Share";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import StickySearchBar from "../../StickySearchBar/StickySearchBar";
@@ -355,6 +357,7 @@ export default function VisitingCardPage() {
   const mobileNumber = localStorage.getItem("mobileNumber") || storedUser.mobileNumber1 || storedUser.contact || "";
   const [selectedTemplateId, setSelectedTemplateId] = useState(templates[0].id);
   const [statusMessage, setStatusMessage] = useState("");
+  const [isDesignModalOpen, setIsDesignModalOpen] = useState(false);
 
   useEffect(() => {
     if (mobileNumber) dispatch(findBusinessByMobile(mobileNumber));
@@ -458,41 +461,13 @@ export default function VisitingCardPage() {
           <div className={cx("notice-box")}>{matchedBusinessError}</div>
         )}
 
-        <section className={cx("workspace")}>
-          <div className={cx("template-panel")}>
-            {matchedBusinessLoading ? (
-              <div className={cx("loading-box")}>Loading your business card details...</div>
-            ) : (
-              <div className={cx("template-grid")}>
-                {templates.map((template, index) => (
-                  <button
-                    type="button"
-                    key={template.id}
-                    className={cx(
-                      "template-option",
-                      selectedTemplateId === template.id && "template-option-active"
-                    )}
-                    onClick={() => setSelectedTemplateId(template.id)}
-                  >
-                    <CardPreview template={template} profile={profile} size="thumbnail" />
-                    <span className={cx("template-label")}>{index + 1}. {template.name}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
+        <section className={cx("workspace document-output-workspace")}>
           <aside className={cx("preview-panel")}>
-            <div className={cx("preview-header")}>
-              <div>
-                <span>Selected Template</span>
-                <h2>{selectedTemplate.name}</h2>
-              </div>
-            </div>
-
-            <CardPreview template={selectedTemplate} profile={profile} />
-
-            <div className={cx("action-row")}>
+            <div className={cx("document-output-toolbar")}>
+              <button type="button" className={cx("secondary-action")} onClick={() => setIsDesignModalOpen(true)}>
+                <PaletteIcon />
+                Theme
+              </button>
               <button type="button" className={cx("primary-action")} onClick={handleDownload}>
                 <DownloadIcon />
                 Download PNG
@@ -510,9 +485,57 @@ export default function VisitingCardPage() {
               </button>
             </div>
 
+            <div className={cx("preview-header")}>
+              <div>
+                <span>Selected Template</span>
+                <h2>{selectedTemplate.name}</h2>
+              </div>
+            </div>
+
+            <CardPreview template={selectedTemplate} profile={profile} />
             {statusMessage && <p className={cx("status-message")}>{statusMessage}</p>}
+
           </aside>
         </section>
+
+        {isDesignModalOpen && (
+          <div className={cx("document-modal-overlay")} role="presentation">
+            <section className={cx("document-modal")} role="dialog" aria-modal="true" aria-labelledby="visiting-card-design-title">
+              <header className={cx("document-modal-header")}>
+                <div>
+                  <span>Digital Visiting Card</span>
+                  <h2 id="visiting-card-design-title">Choose Template</h2>
+                </div>
+                <button type="button" className={cx("icon-action")} onClick={() => setIsDesignModalOpen(false)} aria-label="Close design settings">
+                  <CloseIcon />
+                </button>
+              </header>
+
+              <div className={cx("document-modal-body")}>
+                {matchedBusinessLoading ? (
+                  <div className={cx("loading-box")}>Loading your business card details...</div>
+                ) : (
+                  <div className={cx("template-grid")}>
+                    {templates.map((template, index) => (
+                      <button
+                        type="button"
+                        key={template.id}
+                        className={cx(
+                          "template-option",
+                          selectedTemplateId === template.id && "template-option-active"
+                        )}
+                        onClick={() => setSelectedTemplateId(template.id)}
+                      >
+                        <CardPreview template={template} profile={profile} size="thumbnail" />
+                        <span className={cx("template-label")}>{index + 1}. {template.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </section>
+          </div>
+        )}
       </main>
       <Footer />
     </>

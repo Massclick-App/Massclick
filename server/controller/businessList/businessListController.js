@@ -10,6 +10,32 @@ import { getCache, setCache } from "../../utils/redisClient.js";
 import { enhanceSearchQuery, resolveCategory } from "../../utils/geminiQueryEnhancer.js";
 import { invalidateSearchCache, invalidateDashboardCache, invalidateCategoryCache } from "../../utils/cacheInvalidation.js";
 import { buildBusinessExportWorkbook } from "../../utils/businessExportXlsx.js";
+import { sendBusinessCertificateEmail } from "../../helper/email/emailService.js";
+import { ensureBusinessCertificates } from "../../helper/businessList/businessCertificateHelper.js";
+
+const sendCertificateEmailForActivation = async (previousBusiness, business) => {
+  const businessWithCertificates = await ensureBusinessCertificates(business);
+  const certificateBusiness = businessWithCertificates || business;
+  const newlyVerified =
+    !previousBusiness?.verification?.isVerified && !!certificateBusiness?.verification?.isVerified;
+  const newlyTrusted =
+    !previousBusiness?.badges?.isTrust && !!certificateBusiness?.badges?.isTrust;
+
+  if (!newlyVerified && !newlyTrusted) {
+    return certificateBusiness;
+  }
+
+  const certificateEmailResult = await sendBusinessCertificateEmail(certificateBusiness, {
+    includeVerified: !!certificateBusiness?.verification?.isVerified,
+    includeTrust: !!certificateBusiness?.badges?.isTrust,
+  });
+
+  if (!certificateEmailResult.success) {
+    console.warn("[Certificate Email] Business update saved, but certificate email was not sent:", certificateEmailResult.message);
+  }
+
+  return certificateBusiness;
+};
 
 export const addBusinessListAction = async (req, res) => {
   try {
@@ -1005,6 +1031,7 @@ export const mainSearchController = async (req, res) => {
     // Sign image URLs
     results.forEach((b) => {
       if (b.bannerImageKey) b.bannerImage = getSignedUrlByKey(b.bannerImageKey);
+      if (b.logoImageKey) b.logoImage = getSignedUrlByKey(b.logoImageKey);
       if (b.businessImagesKey?.length > 0) b.businessImages = b.businessImagesKey.map((k) => getSignedUrlByKey(k));
       if (b.kycDocumentsKey?.length > 0) b.kycDocuments = b.kycDocumentsKey.map((k) => getSignedUrlByKey(k));
     });
@@ -1046,7 +1073,7 @@ export const nearbyBusinessesController = async (req, res) => {
       { $limit: limit },
       {
         $project: {
-          businessName: 1, category: 1, location: 1, bannerImageKey: 1,
+          businessName: 1, category: 1, location: 1, bannerImageKey: 1, logoImageKey: 1,
           verification: 1, badges: 1,
           contact: 1, whatsappNumber: 1, filters: 1, experience: 1, slug: 1,
           distance: { $round: [{ $divide: ["$distanceMeters", 1000] }, 2] }
@@ -1093,6 +1120,7 @@ export const nearbyBusinessesController = async (req, res) => {
     const results = await businessListModel.aggregate(pipeline);
     results.forEach((b) => {
       if (b.bannerImageKey) b.bannerImage = getSignedUrlByKey(b.bannerImageKey);
+      if (b.logoImageKey) b.logoImage = getSignedUrlByKey(b.logoImageKey);
     });
 
     res.send(results);
@@ -1105,6 +1133,7 @@ export const nearbyBusinessesController = async (req, res) => {
 export const updateBusinessListAction = async (req, res) => {
   try {
     const businessId = req.params.id;
+    const previousBusiness = await businessListModel.findById(businessId).lean();
 
     const businessData = {
       ...req.body,
@@ -1112,12 +1141,13 @@ export const updateBusinessListAction = async (req, res) => {
     };
 
     const business = await updateBusinessList(businessId, businessData);
+    const businessWithCertificates = await sendCertificateEmailForActivation(previousBusiness, business);
 
     await invalidateSearchCache();
     await invalidateDashboardCache();
     await invalidateCategoryCache();
 
-    res.send(business);
+    res.send(businessWithCertificates || business);
   } catch (error) {
     console.error(error);
     return res.status(400).send({ message: error.message });
@@ -1134,7 +1164,7 @@ const SECTION_FIELD_MAPPING = {
   'opening-hours': ['openingHours'],
   'category-seo': ['category', 'keywords'],
   'display-seo': ['title', 'description', 'seoTitle', 'seoDescription', 'slug', 'filters'],
-  'kyc-documents': ['kycDocuments'],
+  'kyc-documents': ['kycDocuments', 'retainedKycDocuments'],
 };
 
 export const updateBusinessSectionAction = async (req, res) => {
@@ -1343,24 +1373,34 @@ export const updateBusinessBadgesAction = async (req, res) => {
       return res.status(400).send({ message: "Business ID is required" });
     }
 
+    const previousBusiness = await businessListModel.findById(id).lean();
+
+    if (!previousBusiness) {
+      return res.status(404).send({ message: "Business not found" });
+    }
+
+    const normalizedBadges = {
+      ...(badges || {}),
+      isTrust: !!(badges?.isTrust || badges?.isTrusted)
+    };
+    delete normalizedBadges.isTrusted;
+
     const business = await businessListModel.findByIdAndUpdate(
       id,
       {
-        badges: badges || {},
+        badges: normalizedBadges,
         verification: verification || {}
       },
       { new: true }
     );
 
-    if (!business) {
-      return res.status(404).send({ message: "Business not found" });
-    }
+    const businessWithCertificates = await sendCertificateEmailForActivation(previousBusiness, business.toObject());
 
     await invalidateSearchCache();
     await invalidateDashboardCache();
     await invalidateCategoryCache();
 
-    res.status(200).send(business);
+    res.status(200).send(businessWithCertificates || business);
 
   } catch (error) {
     console.error("Error updating business badges:", error);

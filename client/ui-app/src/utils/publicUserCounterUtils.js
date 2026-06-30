@@ -9,9 +9,14 @@ const seededIncrement = (index, min, max) => {
   return low + (Math.abs(Math.floor(seed)) % range);
 };
 
-const getLocalDayStart = (time) => {
+const DAILY_RESET_HOUR = 7;
+
+const getLocalDailyResetStart = (time) => {
   const date = new Date(time);
-  date.setHours(0, 0, 0, 0);
+  date.setHours(DAILY_RESET_HOUR, 0, 0, 0);
+  if (date.getTime() > time) {
+    date.setDate(date.getDate() - 1);
+  }
   return date.getTime();
 };
 
@@ -24,7 +29,7 @@ export const getVisibleCounterCount = (config, now = Date.now()) => {
   const startedAt = Number.isFinite(rawStartedAt) ? rawStartedAt : now;
   const cycleStart = config.resetDaily === false
     ? startedAt
-    : Math.max(startedAt, getLocalDayStart(now));
+    : Math.max(startedAt, getLocalDailyResetStart(now));
   const elapsedIntervals = Math.max(0, Math.floor((now - cycleStart) / intervalMs));
 
   let growth = 0;

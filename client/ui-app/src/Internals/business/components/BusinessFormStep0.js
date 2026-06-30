@@ -118,13 +118,17 @@ const BusinessFormStep0 = ({
     const idPart = formData.clientId.split(' — ')[0].trim();
 
     const selected = allOptions.find((c) => c.clientId === idPart);
+    const fallbackName = String(formData.clientId)
+      .replace(idPart, "")
+      .replace(/^\s*(?:\u2014|â€”|-)\s*/, "")
+      .trim();
     console.log("🎯 getSelectedClient:", {
       formDataClientId: formData.clientId,
       extractedIdPart: idPart,
       foundClient: selected ? { id: selected.clientId, name: selected.name } : null,
       allOptionsLength: allOptions?.length
     });
-    return selected || null;
+    return selected || { clientId: idPart, name: fallbackName };
   };
 
   const sections = [
@@ -183,7 +187,6 @@ const BusinessFormStep0 = ({
               setClientSearchInput("");
             }}
             onInputChange={handleClientSearch}
-            inputValue={clientSearchInput}
             isOptionEqualToValue={(option, value) => option.clientId === value.clientId}
             freeSolo={false}
             disableClearable={false}
@@ -668,8 +671,7 @@ const BusinessFormStep0 = ({
             >
               <option value="ADMIN">Admin Verified</option>
               <option value="DOCUMENT">Document Verified</option>
-              <option value="PHONE">Phone Verified</option>
-              <option value="BUSINESS">Business Verified</option>
+              <option value="AUTO">Auto Verified</option>
             </select>
           </div>
         )}

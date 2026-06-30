@@ -91,7 +91,7 @@ const BusinessFormStep2 = ({
       allOptionsLength: allCategoryOptions?.length
     });
     if (!formData.category) return null;
-    return allCategoryOptions.find((c) => c.category === formData.category) || null;
+    return selected || { category: formData.category };
   };
   const sections = [
     { key: "categorySeo", title: "Category & SEO", subtitle: "Define the classification and search basics" },
@@ -175,7 +175,6 @@ const BusinessFormStep2 = ({
               setCategorySearchInput("");
             }}
             onInputChange={handleCategorySearch}
-            inputValue={categorySearchInput}
             isOptionEqualToValue={(option, value) => option.category === value.category}
             freeSolo={false}
             disableClearable={false}

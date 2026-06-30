@@ -36,12 +36,14 @@ const LeadsNotificationModal = lazy(() => import("./leadsNotification/leadsNotif
 const MRPPage = lazy(() => import("./MRP/mrp.js"));
 const cx = createScopedClassNames(styles);
 export const isBusinessPeopleUser = (user = {}) => user?.businessPeople === true;
+
 export const getUserMenuLabel = (item, user = {}) => {
   if (item.path === "/user_edit-profile" && isBusinessPeopleUser(user)) {
     return "Edit Business";
   }
   return item.name.startsWith("User ") ? item.name.replace("User ", "") : item.name;
 };
+
 const categories = [{
   name: "Leads",
   icon: <MailIcon />
@@ -54,6 +56,7 @@ const categories = [{
   name: "Business Enquiry",
   icon: <AppRegistrationIcon />
 }];
+
 export const userMenuItems = [{
   name: "User Dashboard",
   path: "/user_dashboard",

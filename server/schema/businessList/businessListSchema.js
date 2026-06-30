@@ -186,6 +186,12 @@ const businessListSchema = new mongoose.Schema({
     isTrust: { type: Boolean, default: false },
     priorityScore: { type: Number, default: 0 },
   },
+  certificates: {
+    verifiedCertificateKey: { type: String, default: '' },
+    trustCertificateKey: { type: String, default: '' },
+    generatedAt: { type: Date, default: null },
+    templateVersion: { type: Number, default: 0 },
+  },
   geoLocation: {
     type: {
       type: String,

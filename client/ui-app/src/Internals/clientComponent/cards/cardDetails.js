@@ -49,6 +49,7 @@ import { addFavorite, removeFavorite, fetchFavorites, getAuthUser } from "../../
 import { generateLocalBusinessSchema, generateBreadcrumbSchema } from "../../../utils/seoSchemaGenerators";
 import OTPLoginModal from "../AddBusinessModel.js";
 import PopularCategoriesLink from "../popularCategories/popularCategories.js";
+import massClickLogo from "../../../assets/mclogo.png";
 const cx = createScopedClassNames(styles);
 const toSlug = (text = "") => String(text).toLowerCase().trim().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-").replace(/^-+|-+$/g, "");
 const SimpleModal = ({
@@ -206,6 +207,7 @@ const BusinessDetail = React.memo(() => {
   const fallbackImage = getPlaceholderImage();
   const firstImage = business.bannerImage || galleryImageSrcs[0] || null;
   const bannerImageSrc = mainImage || firstImage || fallbackImage;
+  const businessLogoSrc = business.logoImage || firstImage || "";
   const bannerIndex = mainImage ? Math.max(galleryImageSrcs.indexOf(mainImage), 0) : 0;
   const website = business.website;
   const formattedWebsite = website && website.startsWith("http") ? website : `https://${website}`;
@@ -582,10 +584,19 @@ const BusinessDetail = React.memo(() => {
                 {currentCertificate.icon}
                 <span>{currentCertificate.label}</span>
               </div>
-              <h2 id={`business-carddetails-certificate-${business._id || id}`} className={cx("business-CardDetails-certificateTitle")}>
-                {business.businessName}
-              </h2>
-              <p className={cx("business-CardDetails-certificateLocation")}>{fullAddress}</p>
+              <div className={cx("business-CardDetails-certificateIdentity")}>
+                <div className={cx("business-CardDetails-certificateBusinessLogo")}>
+                  {businessLogoSrc ? (
+                    <img src={businessLogoSrc} alt={`${business.businessName} logo`} />
+                  ) : (
+                    <span>{String(business.businessName || "MC").slice(0, 2).toUpperCase()}</span>
+                  )}
+                </div>
+                <h2 id={`business-carddetails-certificate-${business._id || id}`} className={cx("business-CardDetails-certificateTitle")}>
+                  {business.businessName}
+                </h2>
+                <p className={cx("business-CardDetails-certificateLocation")}>{fullAddress}</p>
+              </div>
               <p className={cx("business-CardDetails-certificateStatus")}>{currentCertificate.copy}</p>
               {currentCertificate.key === "trust" && <div className={cx("business-CardDetails-certificateStars")} aria-label="Trusted rating">
                   <StarIcon /><StarIcon /><StarIcon /><StarIcon /><StarIcon />
@@ -601,7 +612,7 @@ const BusinessDetail = React.memo(() => {
                   </div>)}
               </div>
               <div className={cx("business-CardDetails-certificateBrand")}>
-                <span>Mass</span><strong>Click</strong>
+                <img src={massClickLogo} alt="MassClick" />
               </div>
             </div>
           </div>
