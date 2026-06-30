@@ -3,6 +3,7 @@ import React, { useEffect, useState, useMemo, useDeferredValue } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchSystemSettings, updateSystemSettings } from "../../redux/actions/systemSettingsAction.js";
 import { fetchRedisStatus, invalidateCache, clearAllCaches, fetchRedisKeys, deleteRedisKeys, fetchRedisInfo, flushRedisDb, deleteRedisPattern } from "../../redux/actions/cacheActions.js";
+import S3CacheHeaderMigrationCard from "./S3CacheHeaderMigrationCard.js";
 import styles from "./SystemSettings.module.css";
 
 // Icons
@@ -554,6 +555,13 @@ const SETTINGS_SECTIONS = [{
   icon: CloudSyncIcon,
   color: "#14b8a6",
   fieldKeys: ["redis_enabled"]
+}, {
+  key: "media",
+  label: "Media",
+  description: "S3 image optimization and cache management.",
+  icon: CloudSyncIcon,
+  color: "#0ea5e9",
+  fieldKeys: []
 }];
 const FIELD_SECTION_MAP = SETTINGS_SECTIONS.reduce((acc, section) => {
   section.fieldKeys.forEach(fieldKey => {
@@ -1282,11 +1290,10 @@ export default function SystemSettings() {
               </div>
             </div>
           </div>;
-      // Temporarily hidden. Uncomment to restore the media cleanup panel.
-      // case "mediaCleanup":
-      //   return <div className={cx("panel-stack")}>
-      //       <S3WebpMigrationCard />
-      //     </div>;
+      case "media":
+        return <div className={cx("panel-stack")}>
+            <S3CacheHeaderMigrationCard />
+          </div>;
       default:
         return null;
     }
