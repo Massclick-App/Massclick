@@ -405,6 +405,92 @@ router.get("/sitemap", async (req, res) => {
 });
 
 /* =========================================================
+   ROBOTS.TXT  — /robots.txt
+========================================================= */
+router.get("/robots.txt", (req, res) => {
+  res.type("text/plain; charset=utf-8");
+  res.set("Cache-Control", "public, max-age=86400");
+  res.status(200).send(`# https://www.robotstxt.org/robotstxt.html
+
+User-agent: *
+Allow: /
+
+# ── Google ────────────────────────────────────────────────
+User-agent: Googlebot
+Allow: /
+
+# Google AI training (Gemini)
+User-agent: Google-Extended
+Allow: /
+
+# ── OpenAI ────────────────────────────────────────────────
+User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+# ── Anthropic / Claude ────────────────────────────────────
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-SearchBot
+Allow: /
+
+User-agent: Claude-User
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+# ── Perplexity ────────────────────────────────────────────
+User-agent: PerplexityBot
+Allow: /
+
+# ── Apple Intelligence ────────────────────────────────────
+User-agent: Applebot
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+# ── Amazon / Alexa ────────────────────────────────────────
+User-agent: Amazonbot
+Allow: /
+
+# ── Meta / Facebook ───────────────────────────────────────
+User-agent: FacebookBot
+Allow: /
+
+# ── Microsoft / Bing ──────────────────────────────────────
+User-agent: bingbot
+Allow: /
+
+# ── You.com ───────────────────────────────────────────────
+User-agent: YouBot
+Allow: /
+
+# ── Cohere ────────────────────────────────────────────────
+User-agent: cohere-ai
+Allow: /
+
+# ── ByteDance / TikTok ────────────────────────────────────
+User-agent: Bytespider
+Allow: /
+
+# ── Admin / API routes ────────────────────────────────────
+User-agent: *
+Disallow: /admin
+Disallow: /api/
+
+Sitemap: https://massclick.in/sitemap.xml
+`);
+});
+
+/* =========================================================
    LLMS.TXT  — /llms.txt
    Discovery file for AI crawlers (Perplexity, Claude, Gemini, Copilot)
 ========================================================= */

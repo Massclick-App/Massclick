@@ -36,8 +36,7 @@ const TopBannerAds = ({
     }
   }, [dispatch, category]);
   const {
-    categoryAdvertisements = [],
-    loading
+    categoryAdvertisements = []
   } = useSelector(state => state.advertisement || {});
   const bannerAds = useMemo(() => {
     if (!category) {
@@ -81,9 +80,6 @@ const TopBannerAds = ({
     }, SLIDE_INTERVAL);
     return () => clearInterval(timer);
   }, [bannerAds.length]);
-  if (loading) {
-    return null;
-  }
   return <div className={cx("top-banner-carousel")}>
       {hasPaidBanner && <div className={cx("sponsored-label")}>Sponsored</div>}
 

@@ -30,7 +30,6 @@ import { CLEAR_SEO_META } from "../../../redux/actions/userActionTypes.js";
 import { selectBusinessLoading, selectBusinessError } from "../../../redux/selectors";
 import TopBannerAds from "../banners/topBanner/topBanner.js";
 import CategoryPublicCounterBadge from "../publicUserCounter/CategoryPublicCounterBadge.js";
-import GlobalSkeleton from "../globalSkeleton.js";
 import OTPLoginModal from "../AddBusinessModel.js";
 import FilterPanel from "./FilterPanel.js";
 import axiosInstance from "../../../services/axiosInstance.js";
@@ -86,6 +85,101 @@ const AdvertisementBanner = () => (
 const sanitizeSeoHtml = (html = "") => {
   return html.replace(/<h1(\s[^>]*)?>/gi, "<h2>").replace(/<\/h1>/gi, "</h2>");
 };
+
+const RESULT_SKELETON_COUNT = {
+  list: 5,
+  table: 6,
+  grid: 6,
+  large: 4
+};
+
+const SearchResultListSkeleton = ({ viewMode = "list" }) => {
+  const count = RESULT_SKELETON_COUNT[viewMode] ?? RESULT_SKELETON_COUNT.list;
+  const isVertical = viewMode === "grid" || viewMode === "large";
+  const isTable = viewMode === "table";
+
+  return (
+    <div className={cx("business-list", `business-list--${viewMode}`, "business-list--skeleton")} aria-hidden="true">
+      {Array.from({ length: count }).map((_, i) => (
+        <div className={cx("business-card-wrapper")} key={`sk-${viewMode}-${i}`}>
+
+          {isTable ? (
+            /* ── table: compact 72px row ── */
+            <div className={cx("sk-card", "sk-card--table")}>
+              <div className={cx("sk-table-title-block")}>
+                <div className={cx("sk-bar", "sk-bar--title")} />
+                <div className={cx("sk-pill-row")}>
+                  <span className={cx("sk-pill")} />
+                </div>
+              </div>
+              <div className={cx("sk-bar", "sk-bar--table-loc")} />
+              <div className={cx("sk-table-actions")}>
+                <span className={cx("sk-btn")} />
+                <span className={cx("sk-btn")} />
+              </div>
+            </div>
+
+          ) : isVertical ? (
+            /* ── grid / large: vertical card ── */
+            <div className={cx("sk-card", `sk-card--${viewMode}`)}>
+              <div className={cx("sk-media", `sk-media--${viewMode}`)} />
+              <div className={cx("sk-body", "sk-body--vert")}>
+                <div className={cx("sk-bar", "sk-bar--title")} />
+                <div className={cx("sk-pill-row")}>
+                  <span className={cx("sk-pill")} />
+                  <span className={cx("sk-pill", "sk-pill--sm")} />
+                </div>
+                <div className={cx("sk-bar", "sk-bar--md")} />
+                <div className={cx("sk-bar", "sk-bar--sm")} />
+                <div className={cx("sk-tag-row")}>
+                  <span className={cx("sk-tag")} />
+                  <span className={cx("sk-tag", "sk-tag--wide")} />
+                  <span className={cx("sk-tag")} />
+                </div>
+                <div className={cx("sk-vert-actions")}>
+                  <span className={cx("sk-btn")} />
+                  <span className={cx("sk-btn")} />
+                  <span className={cx("sk-btn")} />
+                </div>
+              </div>
+            </div>
+
+          ) : (
+            /* ── list: horizontal card — mirrors .base-card--list exactly ── */
+            <div className={cx("sk-card", "sk-card--list")}>
+              <div className={cx("sk-media", "sk-media--list")} />
+              <div className={cx("sk-body", "sk-body--list")}>
+                <div className={cx("sk-header-row")}>
+                  <div className={cx("sk-bar", "sk-bar--title")} />
+                  <div className={cx("sk-price")} />
+                </div>
+                <div className={cx("sk-pill-row")}>
+                  <span className={cx("sk-pill")} />
+                  <span className={cx("sk-pill", "sk-pill--sm")} />
+                  <span className={cx("sk-pill", "sk-pill--cat")} />
+                </div>
+                <div className={cx("sk-bar", "sk-bar--location")} />
+                <div className={cx("sk-bar", "sk-bar--sm")} />
+                <div className={cx("sk-tag-row")}>
+                  <span className={cx("sk-tag")} />
+                  <span className={cx("sk-tag", "sk-tag--wide")} />
+                  <span className={cx("sk-tag")} />
+                </div>
+              </div>
+              <div className={cx("sk-list-actions")}>
+                <span className={cx("sk-btn")} />
+                <span className={cx("sk-btn")} />
+                <span className={cx("sk-btn")} />
+              </div>
+            </div>
+          )}
+
+        </div>
+      ))}
+    </div>
+  );
+};
+
 const SearchResults = React.memo(() => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -549,6 +643,7 @@ const SearchResults = React.memo(() => {
   const websiteSchema = generateWebsiteSchema();
   const organizationSchema = generateOrganizationSchema();
   const faqSchema = seoContent?.faq && seoContent.faq.length > 0 ? generateFAQSchema(seoContent.faq) : null;
+  const showInitialResultsSkeleton = results.length === 0 && (loading || !initialSearchResolved);
 
   return <>
       <OTPLoginModal open={openLoginModal} handleClose={() => setOpenLoginModal(false)} />
@@ -664,6 +759,11 @@ const SearchResults = React.memo(() => {
                     Showing {results.length} result{results.length !== 1 ? "s" : ""}
                   </p>
                 )}
+                {showInitialResultsSkeleton && (
+                  <p className={cx("result-count", "result-count--loading")}>
+                    Loading results...
+                  </p>
+                )}
                 <label className={cx("sort-control")}>
                   <span>Sort by</span>
                   <select value={sortBy} onChange={e => handleSortChange(e.target.value)}>
@@ -677,9 +777,7 @@ const SearchResults = React.memo(() => {
                 </label>
               </div>
 
-              {loading && <GlobalSkeleton type="list" />}
-
-              {!loading && results.length === 0 && (
+              {!showInitialResultsSkeleton && !loading && results.length === 0 && (
                 <div className={cx("no-results-container")}>
                   <p className={cx("no-results-title")}>No results found 😔</p>
                   {hasActiveFilters && (
@@ -695,45 +793,49 @@ const SearchResults = React.memo(() => {
                 </div>
               )}
 
-              <div className={cx("business-list", `business-list--${viewMode}`)}>
-                {results.map((business, idx) => {
-                  const averageRating = Number(business.averageRating);
-                  const totalRatings = typeof business.totalReviews === "number" ? business.totalReviews : 0;
-                  const businessUrl = `/business/${createSlug(business.location)}/${createSlug(business.businessName)}/${business._id}`;
-                  return (
-                    <div className={cx("business-card-wrapper")} key={business._id}>
-                      <CardDesign
-                        businessId={business._id}
-                        title={business.businessName}
-                        phone={business.contact}
-                        whatsappNumber={business.whatsappNumber}
-                        contactList={business.contactList}
-                        rating={Number.isFinite(averageRating) && averageRating > 0 ? averageRating : null}
-                        reviews={totalRatings}
-                        address={business.location}
-                        experience={business.experience}
-                        category={business.category}
-                        price={business.filters?.price || business.filters?.priceRange || business.price || null}
-                        imageSrc={business.bannerImage || "/header.png"}
-                        logoImage={business.logoImage}
-                        to={businessUrl}
-                        isVerified={!!business.verification?.isVerified}
-                        isTrusted={!!(business.badges?.isTrusted || business.badges?.isTrust || business.verification?.isTrusted)}
-                        certificateType={business.verification?.certificateType || business.verification?.verificationType}
-                        isFeatured={!!business.badges?.isFeatured}
-                        isSponsored={!!business.badges?.isSponsored}
-                        isTrending={!!business.badges?.isTrending}
-                        filters={business.filters}
-                        filterConfig={filterConfig}
-                        distance={typeof business.distance === "number" ? business.distance : null}
-                        viewMode={viewMode}
-                        compact={isCompact}
-                        index={idx}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
+              {showInitialResultsSkeleton ? (
+                <SearchResultListSkeleton viewMode={viewMode} />
+              ) : (
+                <div className={cx("business-list", `business-list--${viewMode}`, loading && results.length > 0 && "business-list--refreshing")}>
+                  {results.map((business, idx) => {
+                    const averageRating = Number(business.averageRating);
+                    const totalRatings = typeof business.totalReviews === "number" ? business.totalReviews : 0;
+                    const businessUrl = `/business/${createSlug(business.location)}/${createSlug(business.businessName)}/${business._id}`;
+                    return (
+                      <div className={cx("business-card-wrapper")} key={business._id}>
+                        <CardDesign
+                          businessId={business._id}
+                          title={business.businessName}
+                          phone={business.contact}
+                          whatsappNumber={business.whatsappNumber}
+                          contactList={business.contactList}
+                          rating={Number.isFinite(averageRating) && averageRating > 0 ? averageRating : null}
+                          reviews={totalRatings}
+                          address={business.location}
+                          experience={business.experience}
+                          category={business.category}
+                          price={business.filters?.price || business.filters?.priceRange || business.price || null}
+                          imageSrc={business.bannerImage || "/header.png"}
+                          logoImage={business.logoImage}
+                          to={businessUrl}
+                          isVerified={!!business.verification?.isVerified}
+                          isTrusted={!!(business.badges?.isTrusted || business.badges?.isTrust || business.verification?.isTrusted)}
+                          certificateType={business.verification?.certificateType || business.verification?.verificationType}
+                          isFeatured={!!business.badges?.isFeatured}
+                          isSponsored={!!business.badges?.isSponsored}
+                          isTrending={!!business.badges?.isTrending}
+                          filters={business.filters}
+                          filterConfig={filterConfig}
+                          distance={typeof business.distance === "number" ? business.distance : null}
+                          viewMode={viewMode}
+                          compact={isCompact}
+                          index={idx}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
 
               {/* Infinite scroll sentinel */}
               {hasMore && <div ref={sentinelRef} className={cx("scroll-sentinel")} aria-hidden="true" />}
@@ -795,12 +897,10 @@ const SearchResults = React.memo(() => {
               )}
             </div>
 
-            {/* Right ads column — only for single-column (list / table) modes */}
-            {(viewMode === "list" || viewMode === "table") && (
-              <div className={cx("ads-column")}>
-                <AdvertisementBanner />
-              </div>
-            )}
+            {/* Right ads column — always in DOM to prevent flex reflow CLS on view toggle */}
+            <div className={cx("ads-column", !(viewMode === "list" || viewMode === "table") && "ads-column--hidden")}>
+              <AdvertisementBanner />
+            </div>
           </div>
         </div>
 
