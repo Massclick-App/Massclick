@@ -3143,7 +3143,7 @@ const BusinessList = React.memo(() => {
     return true;
   });
 
-  const filteredRows = rows;
+  const filteredRows = getRowsMatchingAppliedFilters(rows);
   const categoryOptions = toSortedUniqueTextOptions(
     [...category, ...searchCategory].map(c => c?.category)
   );
@@ -4603,7 +4603,10 @@ const BusinessList = React.memo(() => {
             total={total || filteredRows.length}
             columns={businessListTable}
             fetchData={(pageNo, pageSize, options = {}) => {
-              const f = appliedFiltersRef.current;
+              const f = { ...appliedFiltersRef.current };
+              if (options.search !== undefined) {
+                f.searchTerm = options.search;
+              }
               dispatchFetch(f, pageNo, pageSize, options.sortBy || null, options.sortOrder || "desc");
             }}
           />
