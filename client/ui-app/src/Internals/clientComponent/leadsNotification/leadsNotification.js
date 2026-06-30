@@ -12,6 +12,7 @@ import LocationOnIcon from "@mui/icons-material/LocationOn";
 import { fetchMatchedLeads } from "../../../redux/actions/leadsAction";
 import styles from "./leadsNotification.module.css";
 import { updateSearchLogRead } from "../../../redux/actions/businessListAction";
+import { updateOtpUser } from "../../../redux/actions/otpAction";
 import { getCurrentLeadViewer, getDisplayableLeadNotifications, getLeadUser, hasValue } from "./leadNotificationUtils";
 const cx = createScopedClassNames(styles);
 const LeadsNotificationModal = ({
@@ -48,7 +49,18 @@ const LeadsNotificationModal = ({
     };
     setSelectedLead(normalizedLead);
     setReadItems(prev => [...prev, lead._id]);
-    dispatch(updateSearchLogRead(lead._id));
+
+    if (Array.isArray(lead.userDetails)) {
+      dispatch(updateSearchLogRead(lead._id));
+      return;
+    }
+
+    const currentUser = getCurrentLeadViewer();
+    if (currentUser.mobileNumber1) {
+      dispatch(updateOtpUser(currentUser.mobileNumber1, {
+        markRead: { leadId: lead._id }
+      }));
+    }
   };
   return <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm" PaperProps={{
     style: {

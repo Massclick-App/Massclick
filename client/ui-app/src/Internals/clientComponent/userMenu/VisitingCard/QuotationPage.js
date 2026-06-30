@@ -2,8 +2,10 @@ import { createScopedClassNames } from "../../../../utils/createScopedClassNames
 import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import AddIcon from "@mui/icons-material/Add";
+import CloseIcon from "@mui/icons-material/Close";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import DownloadIcon from "@mui/icons-material/Download";
+import PaletteIcon from "@mui/icons-material/Palette";
 import SaveIcon from "@mui/icons-material/Save";
 import StickySearchBar from "../../StickySearchBar/StickySearchBar";
 import Footer from "../../footer/footer";
@@ -463,6 +465,7 @@ export default function QuotationPage() {
     accent: quotationThemes[0].accent,
   });
   const [statusMessage, setStatusMessage] = useState("");
+  const [isDesignModalOpen, setIsDesignModalOpen] = useState(false);
 
   useEffect(() => {
     if (mobileNumber) dispatch(findBusinessByMobile(mobileNumber));
@@ -668,53 +671,72 @@ export default function QuotationPage() {
             </section>
           </div>
 
-          <aside className={cx("quotation-style-panel")}>
-            <section>
-              <span>Theme</span>
-              <div className={cx("quotation-theme-list")}>
-                {quotationThemes.map((theme) => (
-                  <button
-                    type="button"
-                    key={theme.id}
-                    className={cx("quotation-theme-option", selectedThemeId === theme.id && "quotation-theme-option-active")}
-                    onClick={() => handleThemeSelect(theme)}
-                  >
-                    <i style={{ "--quotation-primary": theme.primary, "--quotation-accent": theme.accent }} />
-                    {theme.name}
-                  </button>
-                ))}
-              </div>
-            </section>
-            <section className={cx("quotation-color-controls")}>
-              <label>
-                Header
-                <input
-                  type="color"
-                  value={customColors.primary}
-                  onChange={(event) => setCustomColors((current) => ({ ...current, primary: event.target.value }))}
-                />
-              </label>
-              <label>
-                Accent
-                <input
-                  type="color"
-                  value={customColors.accent}
-                  onChange={(event) => setCustomColors((current) => ({ ...current, accent: event.target.value }))}
-                />
-              </label>
-            </section>
-            <section className={cx("quotation-actions")}>
+          <div className={cx("quotation-preview-panel")}>
+            <div className={cx("document-output-toolbar")}>
+              <button type="button" className={cx("secondary-action")} onClick={() => setIsDesignModalOpen(true)}>
+                <PaletteIcon />
+                Theme
+              </button>
               <button type="button" className={cx("secondary-action")} onClick={saveDraft}><SaveIcon /> Save Draft</button>
               <button type="button" className={cx("secondary-action quotation-danger-action")} onClick={resetDraft}><DeleteOutlineIcon /> Reset Draft</button>
               <button type="button" className={cx("primary-action")} onClick={handleDownload}><DownloadIcon /> Download PNG</button>
-              {statusMessage && <p className={cx("status-message")}>{statusMessage}</p>}
-            </section>
-          </aside>
+            </div>
 
-          <div className={cx("quotation-preview-panel")}>
             <QuotationPreview draft={draft} profile={profile} theme={selectedTheme} />
+            {statusMessage && <p className={cx("status-message")}>{statusMessage}</p>}
           </div>
         </section>
+
+        {isDesignModalOpen && (
+          <div className={cx("document-modal-overlay")} role="presentation">
+            <section className={cx("document-modal")} role="dialog" aria-modal="true" aria-labelledby="quotation-design-title">
+              <header className={cx("document-modal-header")}>
+                <div>
+                  <span>Business Document</span>
+                  <h2 id="quotation-design-title">Quotation Theme</h2>
+                </div>
+                <button type="button" className={cx("icon-action")} onClick={() => setIsDesignModalOpen(false)} aria-label="Close design settings">
+                  <CloseIcon />
+                </button>
+              </header>
+
+              <div className={cx("document-modal-body")}>
+                <div className={cx("quotation-theme-list")}>
+                  {quotationThemes.map((theme) => (
+                    <button
+                      type="button"
+                      key={theme.id}
+                      className={cx("quotation-theme-option", selectedThemeId === theme.id && "quotation-theme-option-active")}
+                      onClick={() => handleThemeSelect(theme)}
+                    >
+                      <i style={{ "--quotation-primary": theme.primary, "--quotation-accent": theme.accent }} />
+                      {theme.name}
+                    </button>
+                  ))}
+                </div>
+
+                <div className={cx("quotation-color-controls")}>
+                  <label>
+                    Header
+                    <input
+                      type="color"
+                      value={customColors.primary}
+                      onChange={(event) => setCustomColors((current) => ({ ...current, primary: event.target.value }))}
+                    />
+                  </label>
+                  <label>
+                    Accent
+                    <input
+                      type="color"
+                      value={customColors.accent}
+                      onChange={(event) => setCustomColors((current) => ({ ...current, accent: event.target.value }))}
+                    />
+                  </label>
+                </div>
+              </div>
+            </section>
+          </div>
+        )}
       </main>
       <Footer />
     </>

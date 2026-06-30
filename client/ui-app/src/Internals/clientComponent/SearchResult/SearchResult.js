@@ -715,6 +715,7 @@ const SearchResults = React.memo(() => {
                         category={business.category}
                         price={business.filters?.price || business.filters?.priceRange || business.price || null}
                         imageSrc={business.bannerImage || "/header.png"}
+                        logoImage={business.logoImage}
                         to={businessUrl}
                         isVerified={!!business.verification?.isVerified}
                         isTrusted={!!(business.badges?.isTrusted || business.badges?.isTrust || business.verification?.isTrusted)}
@@ -770,6 +771,7 @@ const SearchResults = React.memo(() => {
                             category={b.category}
                             price={b.filters?.price || b.filters?.priceRange || null}
                             imageSrc={b.bannerImage || "/header.png"}
+                            logoImage={b.logoImage}
                             to={businessUrl}
                             isVerified={!!b.verification?.isVerified}
                             isTrusted={!!(b.badges?.isTrusted || b.badges?.isTrust || b.verification?.isTrusted)}

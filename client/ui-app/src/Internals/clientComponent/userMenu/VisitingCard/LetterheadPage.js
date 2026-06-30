@@ -1,8 +1,10 @@
 import { createScopedClassNames } from "../../../../utils/createScopedClassNames";
 import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import CloseIcon from "@mui/icons-material/Close";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DownloadIcon from "@mui/icons-material/Download";
+import PaletteIcon from "@mui/icons-material/Palette";
 import StickySearchBar from "../../StickySearchBar/StickySearchBar";
 import Footer from "../../footer/footer";
 import { findBusinessByMobile } from "../../../../redux/actions/businessListAction";
@@ -333,6 +335,7 @@ export default function LetterheadPage() {
     accent: letterheadTemplates[0].accent,
   });
   const [statusMessage, setStatusMessage] = useState("");
+  const [isDesignModalOpen, setIsDesignModalOpen] = useState(false);
 
   useEffect(() => {
     if (mobileNumber) dispatch(findBusinessByMobile(mobileNumber));
@@ -420,86 +423,99 @@ export default function LetterheadPage() {
           <div className={cx("notice-box")}>{matchedBusinessError}</div>
         )}
 
-        <section className={cx("letterhead-workspace")}>
-          <div className={cx("letterhead-template-panel")}>
-            <div className={cx("letterhead-panel-heading")}>
-              <span>10 Premium Themes</span>
-              <h2>Choose Letterhead Style</h2>
-            </div>
-            <div className={cx("letterhead-theme-grid")}>
-              {letterheadTemplates.map((template, index) => (
-                <button
-                  type="button"
-                  key={template.id}
-                  className={cx(
-                    "letterhead-theme-option",
-                    selectedTemplateId === template.id && "letterhead-theme-option-active"
-                  )}
-                  onClick={() => handleTemplateSelect(template)}
-                >
-                  <span
-                    className={cx("letterhead-theme-swatch")}
-                    style={{
-                      "--letterhead-primary": template.primary,
-                      "--letterhead-accent": template.accent,
-                    }}
-                  />
-                  <span>{index + 1}. {template.name}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
+        <section className={cx("letterhead-workspace document-output-workspace")}>
           <div className={cx("letterhead-preview-panel")}>
-            {matchedBusinessLoading ? (
-              <div className={cx("loading-box")}>Loading your business letterhead details...</div>
-            ) : (
-              <LetterheadPreview profile={profile} template={selectedTemplate} />
-            )}
-          </div>
-
-          <aside className={cx("letterhead-side-panel")}>
-            <span>Selected Design</span>
-            <h2>{selectedTemplate.name}</h2>
-            <p>
-              Includes business name, tagline, phone, email, website, address, writing lines, and
-              branded footer details in the selected color theme.
-            </p>
-            <div className={cx("letterhead-color-controls")}>
-              <label>
-                <span>Header</span>
-                <input
-                  type="color"
-                  value={customColors.primary}
-                  onChange={(event) => handleColorChange("primary", event.target.value)}
-                  aria-label="Customize letterhead header color"
-                />
-              </label>
-              <label>
-                <span>Accent</span>
-                <input
-                  type="color"
-                  value={customColors.accent}
-                  onChange={(event) => handleColorChange("accent", event.target.value)}
-                  aria-label="Customize letterhead accent color"
-                />
-              </label>
-            </div>
-            <div className={cx("letterhead-extra-actions")}>
-              <button type="button" className={cx("secondary-action")} onClick={handleResetColors}>
-                Reset Colors
+            <div className={cx("document-output-toolbar")}>
+              <button type="button" className={cx("secondary-action")} onClick={() => setIsDesignModalOpen(true)}>
+                <PaletteIcon />
+                Theme
+              </button>
+              <button type="button" className={cx("primary-action")} onClick={handleDownload}>
+                <DownloadIcon />
+                Download Letterhead
               </button>
               <button type="button" className={cx("icon-action")} onClick={handleCopyContact} aria-label="Copy letterhead contact details">
                 <ContentCopyIcon />
               </button>
             </div>
-            <button type="button" className={cx("primary-action letterhead-download")} onClick={handleDownload}>
-              <DownloadIcon />
-              Download Letterhead
-            </button>
+
+            {matchedBusinessLoading ? (
+              <div className={cx("loading-box")}>Loading your business letterhead details...</div>
+            ) : (
+              <LetterheadPreview profile={profile} template={selectedTemplate} />
+            )}
             {statusMessage && <p className={cx("status-message")}>{statusMessage}</p>}
-          </aside>
+          </div>
+
         </section>
+
+        {isDesignModalOpen && (
+          <div className={cx("document-modal-overlay")} role="presentation">
+            <section className={cx("document-modal")} role="dialog" aria-modal="true" aria-labelledby="letterhead-design-title">
+              <header className={cx("document-modal-header")}>
+                <div>
+                  <span>Business Stationery</span>
+                  <h2 id="letterhead-design-title">Choose Letterhead Style</h2>
+                </div>
+                <button type="button" className={cx("icon-action")} onClick={() => setIsDesignModalOpen(false)} aria-label="Close design settings">
+                  <CloseIcon />
+                </button>
+              </header>
+
+              <div className={cx("document-modal-body")}>
+                <div className={cx("letterhead-theme-grid")}>
+                  {letterheadTemplates.map((template, index) => (
+                    <button
+                      type="button"
+                      key={template.id}
+                      className={cx(
+                        "letterhead-theme-option",
+                        selectedTemplateId === template.id && "letterhead-theme-option-active"
+                      )}
+                      onClick={() => handleTemplateSelect(template)}
+                    >
+                      <span
+                        className={cx("letterhead-theme-swatch")}
+                        style={{
+                          "--letterhead-primary": template.primary,
+                          "--letterhead-accent": template.accent,
+                        }}
+                      />
+                      <span>{index + 1}. {template.name}</span>
+                    </button>
+                  ))}
+                </div>
+
+                <div className={cx("letterhead-color-controls")}>
+                  <label>
+                    <span>Header</span>
+                    <input
+                      type="color"
+                      value={customColors.primary}
+                      onChange={(event) => handleColorChange("primary", event.target.value)}
+                      aria-label="Customize letterhead header color"
+                    />
+                  </label>
+                  <label>
+                    <span>Accent</span>
+                    <input
+                      type="color"
+                      value={customColors.accent}
+                      onChange={(event) => handleColorChange("accent", event.target.value)}
+                      aria-label="Customize letterhead accent color"
+                    />
+                  </label>
+                </div>
+              </div>
+
+              <footer className={cx("document-modal-actions")}>
+                <button type="button" className={cx("secondary-action")} onClick={handleResetColors}>
+                  Reset Colors
+                </button>
+              </footer>
+            </section>
+          </div>
+        )}
       </main>
       <Footer />
     </>

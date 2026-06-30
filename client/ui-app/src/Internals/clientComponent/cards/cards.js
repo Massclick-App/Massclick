@@ -22,6 +22,7 @@ import CheckBoxRoundedIcon from "@mui/icons-material/CheckBoxRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import { addFavorite, removeFavorite, fetchFavorites, getAuthUser } from "../../../redux/actions/favoriteAction";
 import OTPLoginModal from "../AddBusinessModel.js";
+import massClickLogo from "../../../assets/mclogo.png";
 
 const cx = createScopedClassNames(styles);
 
@@ -89,6 +90,7 @@ function getFilterBadges(filters, filterConfig) {
 
 const Cards = ({
   imageSrc,
+  logoImage,
   title,
   rating,
   reviews,
@@ -150,6 +152,7 @@ const Cards = ({
     fc => (fc.key === "price" || fc.key === "priceRange") && fc.enabled === false
   );
   const certificateLocation = address || "Business location verified by MassClick";
+  const businessLogo = logoImage || imageSrc || "";
   const hasTrustCertificate = isTrusted || certificateType === "trust" || isFeatured;
   const currentCertificate = activeCertificate === "trust"
     ? {
@@ -307,10 +310,19 @@ const Cards = ({
                 {currentCertificate.icon}
                 <span>{currentCertificate.label}</span>
               </div>
-              <h2 id={`massclick-certificate-${businessId || index}`} className={cx("certificate-title")}>
-                {title}
-              </h2>
-              <p className={cx("certificate-location")}>{certificateLocation}</p>
+              <div className={cx("certificate-identity")}>
+                <div className={cx("certificate-business-logo")}>
+                  {businessLogo ? (
+                    <img src={businessLogo} alt={`${title} logo`} />
+                  ) : (
+                    <span>{String(title || "MC").slice(0, 2).toUpperCase()}</span>
+                  )}
+                </div>
+                <h2 id={`massclick-certificate-${businessId || index}`} className={cx("certificate-title")}>
+                  {title}
+                </h2>
+                <p className={cx("certificate-location")}>{certificateLocation}</p>
+              </div>
               <p className={cx("certificate-status-copy")}>{currentCertificate.copy}</p>
               {currentCertificate.key === "trust" && (
                 <div className={cx("certificate-stars")} aria-label="Trusted rating">
@@ -344,7 +356,7 @@ const Cards = ({
                 </div>
               </div>
               <div className={cx("certificate-brand")}>
-                <span>Mass</span><strong>Click</strong>
+                <img src={massClickLogo} alt="MassClick" />
               </div>
             </div>
           </div>
