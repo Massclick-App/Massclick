@@ -805,8 +805,16 @@ export const updateSearchAction = async (req, res) => {
       data: updatedLog,
     });
   } catch (error) {
+    if (error.message === "Invalid search log ID") {
+      return res.status(400).json({ success: false, message: error.message });
+    }
+
+    if (error.message === "Search log not found") {
+      return res.status(404).json({ success: false, message: error.message });
+    }
+
     console.error("updateSearchAction error:", error);
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 

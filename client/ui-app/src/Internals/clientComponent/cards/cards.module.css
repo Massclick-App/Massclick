@@ -474,13 +474,15 @@
 }
 
 .certificate-frame {
-  background: #ffffff;
-  box-shadow: 0 26px 80px rgba(15, 23, 42, 0.32);
+  background: linear-gradient(135deg, #ffffff, #f8fafc);
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 10px;
+  box-shadow: 0 32px 90px rgba(15, 23, 42, 0.38);
   margin: auto;
-  max-width: 594px;
-  padding: 10px;
+  max-width: 640px;
+  padding: 12px;
   position: relative;
-  width: min(92vw, 594px);
+  width: min(92vw, 640px);
 }
 
 .certificate-close {
@@ -507,17 +509,20 @@
 
 .certificate-paper {
   background:
-    linear-gradient(30deg, rgba(255, 140, 0, 0.06) 12%, transparent 12.5%, transparent 87%, rgba(255, 140, 0, 0.06) 87.5%, rgba(255, 140, 0, 0.06)),
-    linear-gradient(150deg, rgba(255, 140, 0, 0.06) 12%, transparent 12.5%, transparent 87%, rgba(255, 140, 0, 0.06) 87.5%, rgba(255, 140, 0, 0.06)),
-    linear-gradient(30deg, rgba(29, 78, 216, 0.04) 12%, transparent 12.5%, transparent 87%, rgba(29, 78, 216, 0.04) 87.5%, rgba(29, 78, 216, 0.04)),
+    radial-gradient(circle at 50% 0, rgba(255, 140, 0, 0.13), transparent 32%),
+    linear-gradient(30deg, rgba(255, 140, 0, 0.045) 12%, transparent 12.5%, transparent 87%, rgba(255, 140, 0, 0.045) 87.5%, rgba(255, 140, 0, 0.045)),
+    linear-gradient(150deg, rgba(8, 15, 85, 0.035) 12%, transparent 12.5%, transparent 87%, rgba(8, 15, 85, 0.035) 87.5%, rgba(8, 15, 85, 0.035)),
     #ffffff;
   background-position: 0 0, 0 0, 18px 18px;
-  background-size: 36px 62px;
-  border: 2px solid #ff5a1f;
+  background-size: auto, 48px 82px, 48px 82px;
+  border: 1px solid rgba(255, 90, 31, 0.86);
   color: #0f172a;
-  min-height: 736px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-height: 720px;
   overflow: hidden;
-  padding: 92px 58px 34px;
+  padding: 74px 58px 28px;
   position: relative;
   text-align: center;
 }
@@ -530,17 +535,23 @@
 }
 
 .certificate-paper--trust::before {
-  border-left: 128px solid #00095c;
-  border-bottom: 86px solid transparent;
+  background: linear-gradient(90deg, #00095c, rgba(0, 9, 92, 0));
+  border-radius: 999px;
+  content: "";
+  height: 7px;
   left: 0;
   top: 0;
+  width: 180px;
 }
 
 .certificate-paper--trust::after {
-  border-right: 128px solid #00095c;
-  border-top: 86px solid transparent;
+  background: linear-gradient(90deg, rgba(0, 9, 92, 0), #00095c);
+  border-radius: 999px;
   bottom: 0;
+  content: "";
+  height: 7px;
   right: 0;
+  width: 180px;
 }
 
 .certificate-paper > * {
@@ -550,8 +561,9 @@
 
 .certificate-paper--verified::after {
   border: 1px solid rgba(255, 159, 26, 0.28);
+  border-radius: 4px;
   content: "";
-  inset: 10px;
+  inset: 12px;
   pointer-events: none;
   position: absolute;
 }
@@ -614,28 +626,63 @@
   text-transform: uppercase;
 }
 
+.certificate-business-logo {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid rgba(255, 107, 26, 0.25);
+  border-radius: 50%;
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.14);
+  color: #ff5a1f;
+  display: flex;
+  flex: 0 0 auto;
+  height: 104px;
+  justify-content: center;
+  margin: 0 auto 16px;
+  overflow: hidden;
+  padding: 5px;
+  width: 104px;
+}
+
+.certificate-business-logo img {
+  border-radius: 50%;
+  display: block;
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
+}
+
+.certificate-business-logo span {
+  font-size: 1.8rem;
+  font-weight: 850;
+  letter-spacing: 0;
+}
+
 .certificate-mark {
   align-items: center;
   color: #ff5a1f;
-  display: inline-flex;
-  font-size: clamp(2.2rem, 6vw, 3.35rem);
+  display: flex;
+  font-size: clamp(2rem, 5vw, 2.95rem);
   font-weight: 850;
   gap: 6px;
+  justify-content: center;
   letter-spacing: -0.04em;
   line-height: 1;
+  margin: 10px auto 24px;
 }
 
 .certificate-paper--trust .certificate-mark {
   background: #00095c;
-  border-radius: 8px;
+  border-radius: 10px;
   color: #ffffff;
-  font-size: clamp(1.75rem, 4vw, 2.45rem);
+  font-size: clamp(1.55rem, 3.5vw, 2.15rem);
   font-weight: 850;
   justify-content: center;
   letter-spacing: 0;
-  margin: 0 auto;
-  min-width: 178px;
-  padding: 8px 16px;
+  margin: 10px auto 24px;
+  max-width: 380px;
+  min-width: 0;
+  padding: 11px 28px;
+  width: min(100%, 380px);
 }
 
 .certificate-mark svg {
@@ -648,12 +695,22 @@
   filter: drop-shadow(0 1px 0 rgba(15, 23, 42, 0.18));
 }
 
+.certificate-identity {
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(226, 232, 240, 0.82);
+  border-radius: 18px;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.07);
+  margin: 0 auto;
+  max-width: 470px;
+  padding: 20px 24px 18px;
+}
+
 .certificate-title {
   color: #020617;
-  font-size: clamp(1.22rem, 3.2vw, 1.55rem);
+  font-size: clamp(1.35rem, 3.3vw, 1.72rem);
   font-weight: 850;
   line-height: 1.3;
-  margin: 36px auto 8px;
+  margin: 0 auto 6px;
   max-width: 460px;
 }
 
@@ -671,7 +728,7 @@
   font-size: 0.88rem;
   font-weight: 600;
   line-height: 1.5;
-  margin: 18px auto 0;
+  margin: 20px auto 0;
   max-width: 440px;
 }
 
@@ -691,7 +748,7 @@
 .certificate-divider {
   background: linear-gradient(90deg, transparent, rgba(255, 140, 0, 0.52), transparent);
   height: 1px;
-  margin: 74px auto 28px;
+  margin: 48px auto 26px;
   width: min(100%, 410px);
 }
 
@@ -711,6 +768,7 @@
   display: grid;
   gap: 18px 28px;
   grid-template-columns: 1fr 1fr;
+  margin-bottom: 0;
   text-align: left;
 }
 
@@ -732,18 +790,15 @@
 }
 
 .certificate-brand {
-  bottom: 26px;
-  color: #00095c;
-  font-size: 1.85rem;
-  font-weight: 850;
-  left: 50%;
-  letter-spacing: -0.04em;
-  position: absolute;
-  transform: translateX(-50%);
+  margin: 30px auto 0;
+  position: relative;
+  width: 190px;
 }
 
-.certificate-brand strong {
-  color: #ff5a1f;
+.certificate-brand img {
+  display: block;
+  height: auto;
+  width: 100%;
 }
 
 /* ---- Fav button ---- */
@@ -1538,7 +1593,12 @@ button.status-badge:hover {
   }
 
   .certificate-brand {
-    font-size: 1.55rem;
+    width: 152px;
+  }
+
+  .certificate-business-logo {
+    height: 82px;
+    width: 82px;
   }
 }
 

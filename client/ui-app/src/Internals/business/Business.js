@@ -561,6 +561,13 @@ const BusinessList = React.memo(() => {
       return updatedFiles;
     });
   };
+  const handleRemoveStoredKycDocument = index => {
+    clearForceBypassForFields("kycDocuments");
+    setFormData(prev => ({
+      ...prev,
+      kycDocuments: (prev.kycDocuments || []).filter((_, itemIndex) => itemIndex !== index)
+    }));
+  };
   const handleSectionChange = (sectionKey) => {
     setActiveSection(sectionKey);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -970,6 +977,7 @@ const BusinessList = React.memo(() => {
       isFeatured: false,
       isSponsored: false,
       isTrending: false,
+      isTrust: false,
       priorityScore: 0,
     },
     verification: {
@@ -2310,6 +2318,7 @@ const BusinessList = React.memo(() => {
         isFeatured: row.badges?.isFeatured || false,
         isSponsored: row.badges?.isSponsored || false,
         isTrending: row.badges?.isTrending || false,
+        isTrust: row.badges?.isTrust || row.badges?.isTrusted || false,
         priorityScore: row.badges?.priorityScore || 0,
       },
       verification: {
@@ -2493,7 +2502,6 @@ const BusinessList = React.memo(() => {
     socialMedia: 'social-media',
     bannerDetails: 'banner-details',
     openingHours: 'opening-hours',
-    badgesVisibility: 'address',
     kycDocuments: 'kyc-documents',
     categorySeo: 'category-seo',
     keywordsTags: 'category-seo',
@@ -2520,6 +2528,35 @@ const BusinessList = React.memo(() => {
     setSectionSavingState(prev => ({ ...prev, [sectionKey]: true }));
 
     try {
+      if (sectionKey === 'badgesVisibility') {
+        const payload = {
+          badges: {
+            ...formData.badges,
+            isTrust: !!(formData.badges?.isTrust || formData.badges?.isTrusted),
+          },
+          verification: formData.verification,
+        };
+
+        const updatedBusiness = await dispatch(updateBusinessBadges(editId, payload));
+        setFormData(prev => ({
+          ...prev,
+          badges: {
+            ...prev.badges,
+            ...(updatedBusiness?.badges || payload.badges),
+          },
+          verification: {
+            ...prev.verification,
+            ...(updatedBusiness?.verification || payload.verification),
+          },
+        }));
+        enqueueSnackbar("Badges & visibility saved successfully!", {
+          variant: "success"
+        });
+        dispatch(getAllBusinessList());
+        setSectionSavingState(prev => ({ ...prev, [sectionKey]: false }));
+        return;
+      }
+
       const endpointName = SECTION_TO_ENDPOINT[sectionKey];
       if (!endpointName) {
         setSectionSavingState(prev => ({ ...prev, [sectionKey]: false }));
@@ -2541,12 +2578,34 @@ const BusinessList = React.memo(() => {
         }
       });
 
+      if (sectionKey === 'kycDocuments') {
+        const newKycFiles = kycFiles.filter(file => file instanceof File);
+        const newKycDocuments = await Promise.all(newKycFiles.map(file => new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        })));
+        sectionData.kycDocuments = [
+          ...newKycDocuments
+        ];
+        sectionData.retainedKycDocuments = Array.isArray(formData.kycDocuments) ? formData.kycDocuments : [];
+      }
+
       if (Object.keys(sectionData).length === 0) {
         setSectionSavingState(prev => ({ ...prev, [sectionKey]: false }));
         return;
       }
 
-      await dispatch(editBusinessSection(editId, endpointName, sectionData));
+      const updatedBusiness = await dispatch(editBusinessSection(editId, endpointName, sectionData));
+      if (sectionKey === 'kycDocuments') {
+        revokePreviewUrls(kycFiles);
+        setKycFiles([]);
+        setFormData(prev => ({
+          ...prev,
+          kycDocuments: Array.isArray(updatedBusiness?.kycDocuments) ? updatedBusiness.kycDocuments : prev.kycDocuments,
+        }));
+      }
       enqueueSnackbar(`${sectionKey} saved successfully!`, {
         variant: "success"
       });
@@ -2668,7 +2727,8 @@ const BusinessList = React.memo(() => {
       });
       return;
     }
-    const kycBase64 = await Promise.all(sourceKycFiles.map(file => new Promise((resolve, reject) => {
+    const newKycFiles = sourceKycFiles.filter(file => file instanceof File);
+    const kycBase64 = await Promise.all(newKycFiles.map(file => new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(reader.result);
       reader.onerror = reject;
@@ -2692,6 +2752,9 @@ const BusinessList = React.memo(() => {
       name: cleanedFormData.businessName,
       businessDetails: sourceBusinessDetails,
       kycDocuments: kycBase64,
+      retainedKycDocuments: editMode && Array.isArray(cleanedFormData.kycDocuments)
+        ? cleanedFormData.kycDocuments
+        : undefined,
       geoLocation: {
         type: "Point",
         coordinates: [longitude, latitude]
@@ -2806,11 +2869,25 @@ const BusinessList = React.memo(() => {
     setBadgeUpdateLoading(true);
     try {
       const payload = {
-        badges: formData.badges,
+        badges: {
+          ...formData.badges,
+          isTrust: !!(formData.badges?.isTrust || formData.badges?.isTrusted),
+        },
         verification: formData.verification
       };
 
-      await dispatch(updateBusinessBadges(editId, payload));
+      const updatedBusiness = await dispatch(updateBusinessBadges(editId, payload));
+      setFormData(prev => ({
+        ...prev,
+        badges: {
+          ...prev.badges,
+          ...(updatedBusiness?.badges || payload.badges),
+        },
+        verification: {
+          ...prev.verification,
+          ...(updatedBusiness?.verification || payload.verification),
+        },
+      }));
       enqueueSnackbar("Badges updated successfully!", {
         variant: "success"
       });
@@ -2895,6 +2972,7 @@ const BusinessList = React.memo(() => {
         isFeatured: false,
         isSponsored: false,
         isTrending: false,
+        isTrust: false,
         priorityScore: 0,
       },
       verification: {
@@ -3028,7 +3106,8 @@ const BusinessList = React.memo(() => {
     qrDownloads: bl.qrDownloads || [],
     amountPaid: bl.amountPaid || false,
     paidDate: bl.paidDate || null,
-    badges: bl.badges || { isFeatured: false, isSponsored: false, isTrending: false, priorityScore: 0 },
+    kycDocuments: bl.kycDocuments || [],
+    badges: bl.badges || { isFeatured: false, isSponsored: false, isTrending: false, isTrust: false, priorityScore: 0 },
     verification: bl.verification || { isVerified: false, verificationType: "ADMIN" },
   }));
 
@@ -3087,7 +3166,8 @@ const BusinessList = React.memo(() => {
     activeBusinesses: bl.activeBusinesses,
     businessesLive: bl.businessesLive,
     isActive: bl.isActive,
-    badges: bl.badges || { isFeatured: false, isSponsored: false, isTrending: false, priorityScore: 0 },
+    kycDocuments: bl.kycDocuments || [],
+    badges: bl.badges || { isFeatured: false, isSponsored: false, isTrending: false, isTrust: false, priorityScore: 0 },
     verification: bl.verification || { isVerified: false, verificationType: "ADMIN" },
   });
 
@@ -4125,8 +4205,10 @@ const BusinessList = React.memo(() => {
         return (
           <BusinessFormStep1
             kycFiles={kycFiles}
+            existingKycDocuments={formData.kycDocuments}
             handleKycUpload={handleKycUpload}
             handleRemoveFile={handleRemoveFile}
+            handleRemoveStoredDocument={handleRemoveStoredKycDocument}
             handleSectionAdvance={handleSectionAdvance}
             getSectionNavigation={getSectionNavigation}
             getSectionRefKey={getSectionRefKey}
@@ -4301,7 +4383,8 @@ const BusinessList = React.memo(() => {
   Object.entries(SECTION_TO_STEP).forEach(([key, step]) => {
     if (step === 3) return;
     if (key === "kycDocuments") {
-      sectionStatus[key] = { done: kycFiles.length > 0 ? 1 : 0, total: 1 };
+      const existingKycCount = Array.isArray(formData.kycDocuments) ? formData.kycDocuments.length : 0;
+      sectionStatus[key] = { done: kycFiles.length + existingKycCount > 0 ? 1 : 0, total: 1 };
       return;
     }
     if (key === "openingHours") {

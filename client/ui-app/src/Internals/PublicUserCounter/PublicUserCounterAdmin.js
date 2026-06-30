@@ -286,7 +286,7 @@ const PublicUserCounterAdmin = () => {
           </div>
 
           <Alert severity="info">
-            Example: starting count 500, increment 1 to 5, update every 30 seconds. Tomorrow it starts again from 500 when daily reset is enabled.
+            Example: starting count 500, increment 1 to 5, update every 30 seconds. Every morning at 7:00 AM it starts again from 500 when daily reset is enabled.
           </Alert>
         </Stack>
       </Card>
