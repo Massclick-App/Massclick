@@ -14,11 +14,7 @@ import {
 import { AUTH_EXPIRED_EVENT, connectSocket } from "../../services/socketService";
 import styles from "./CustomerChatPanel.module.css";
 
-const LOG = (...args) => console.log('[CustomerChat]', ...args);
-const WARN = (...args) => console.warn('[CustomerChat]', ...args);
-const ERR = (...args) => console.error('[CustomerChat]', ...args);
-
-const cx = createScopedClassNames(styles);
+const LOG = () => {};const WARN = () => {};const ERR = () => {};const cx = createScopedClassNames(styles);
 
 const formatTime = (value) => {
   if (!value) return "";

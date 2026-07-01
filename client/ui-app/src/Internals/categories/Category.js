@@ -581,7 +581,6 @@ export default function Category() {
         : urlObj.pathname;
       return path;
     } catch (err) {
-      console.error("Failed to extract key from URL:", url, err);
       return url;
     }
   };
@@ -736,13 +735,7 @@ export default function Category() {
     if (deleteConfirm.id) {
       dispatch(deleteCategory(deleteConfirm.id))
         .then(() => dispatch(getAllCategory()))
-        .catch((err) => console.error("Delete failed:", err))
-        .finally(() =>
-          setDeleteConfirm({
-            open: false,
-            id: null,
-          }),
-        );
+        .catch(() => {});
     }
   };
   const handleAddKeyword = () => {
@@ -843,16 +836,6 @@ export default function Category() {
   };
   const validateForm = () => {
     let newErrors = {};
-    console.log("[Category] validateForm — formData:", {
-      category: formData.category,
-      categoryType: formData.categoryType,
-      subCategoryType: formData.subCategoryType,
-      title: formData.title,
-      description: formData.description,
-      keywords: formData.keywords,
-      filterConfig: formData.filterConfig,
-    });
-
     // Use InputValidator for comprehensive validation
     try {
       const categoryData = {
@@ -864,7 +847,6 @@ export default function Category() {
       // This will throw if validation fails
       InputValidator.validateCategory(categoryData);
     } catch (error) {
-      console.log("[Category] InputValidator threw:", error.message);
       // Parse InputValidator error message into field errors
       const errorLines = error.message
         .split("\n")
@@ -891,7 +873,6 @@ export default function Category() {
     if (!formData.title.trim()) newErrors.title = "Title is required";
     if (!formData.keywords.length)
       newErrors.keywords = "At least one keyword is required";
-    console.log("[Category] validateForm errors:", newErrors);
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -973,7 +954,6 @@ export default function Category() {
                       alert("Failed to upload image");
                     }
                   } catch (err) {
-                    console.error("Upload error:", err);
                     alert("Upload failed: " + err.message);
                   } finally {
                     setUploadingImageVariant(null);
@@ -981,7 +961,6 @@ export default function Category() {
                 };
                 reader.readAsDataURL(blob);
               } catch (err) {
-                console.error("Error uploading image:", err);
                 alert("Upload failed: " + err.message);
               }
             },
@@ -989,14 +968,12 @@ export default function Category() {
             0.95,
           );
         } catch (err) {
-          console.error("Error in crop processing:", err);
           alert("Error: " + err.message);
         }
       };
       img.onerror = () => alert("Failed to load image");
       img.src = image;
     } catch (err) {
-      console.error("Error in handleCropSave:", err);
       alert("Error: " + err.message);
     }
   };
@@ -1113,8 +1090,7 @@ export default function Category() {
       });
       setBusinessUsage(map);
     } catch (err) {
-      console.error("Failed to fetch business usage:", err);
-    }
+      }
   };
   const findDuplicates = async () => {
     setDupLoading(true);
@@ -1129,8 +1105,7 @@ export default function Category() {
       setSelectedDups([]);
       fetchBusinessUsage(allCats);
     } catch (err) {
-      console.error("Failed to fetch categories for duplicate check:", err);
-    } finally {
+      } finally {
       setDupLoading(false);
     }
   };
@@ -1176,8 +1151,7 @@ export default function Category() {
       setSelectedDups([]);
       dispatch(getAllCategory());
     } catch (err) {
-      console.error("Bulk delete failed:", err);
-    } finally {
+      } finally {
       setDupDeleting(false);
     }
   };
@@ -1206,12 +1180,6 @@ export default function Category() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
   const doSave = () => {
-    console.log(
-      "[Category] doSave called, editMode:",
-      editMode,
-      "_id:",
-      formData._id,
-    );
     // Prepare data to send (use cleaned keywords from InputValidator)
     const saveData = {
       ...formData,
@@ -1228,7 +1196,6 @@ export default function Category() {
         dispatch(getAllCategory());
       })
       .catch((err) => {
-        console.error(editMode ? "Update failed:" : "Create failed:", err);
         if (err.response?.data?.errors) {
           const backendErrors = {};
           err.response.data.errors.forEach((e) => {
@@ -1246,9 +1213,7 @@ export default function Category() {
   };
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("[Category] handleSubmit fired, editMode:", editMode);
     const valid = validateForm();
-    console.log("[Category] validateForm result:", valid);
     if (!valid) return;
     if (!editMode) {
       setCreateWarningLoading(true);
@@ -1273,8 +1238,7 @@ export default function Category() {
           return;
         }
       } catch (err) {
-        console.error("Duplicate pre-check failed:", err);
-      }
+        }
       setCreateWarningLoading(false);
     }
     doSave();

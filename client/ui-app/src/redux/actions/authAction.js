@@ -45,8 +45,7 @@ export const login = (userName, password) => async (dispatch) => {
 
     const { accessToken, refreshToken, user = {} } = response.data;
 
-        console.log("result", response.data);
-    setAdminSession({
+        setAdminSession({
       accessToken,
       refreshToken,
       accessTokenExpiresAt: response.data.accessTokenExpiresAt,
@@ -87,7 +86,6 @@ export const relogin = () => async (dispatch) => {
 
     const { accessToken, accessTokenExpiresAt, refreshToken: newRefreshToken, user } = response.data;
 
-    console.log("result", response.data);
     setAdminSession({
       accessToken,
       refreshToken: newRefreshToken,

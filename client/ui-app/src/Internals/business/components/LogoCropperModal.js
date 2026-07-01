@@ -67,7 +67,6 @@ const LogoCropperModal = ({
                 };
                 reader.readAsDataURL(blob);
               } catch (err) {
-                console.error("Error reading blob:", err);
                 alert("Error processing image");
               }
             },
@@ -75,17 +74,14 @@ const LogoCropperModal = ({
             0.95
           );
         } catch (err) {
-          console.error("Error creating canvas:", err);
           alert("Error processing image");
         }
       };
       img.onerror = () => {
-        console.error("Failed to load image");
         alert("Failed to load image");
       };
       img.src = image;
     } catch (err) {
-      console.error("Error in crop save:", err);
       alert("Error processing image");
     }
   };

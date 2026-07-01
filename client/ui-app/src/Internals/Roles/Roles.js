@@ -88,7 +88,7 @@ export default function Roles() {
     dispatch(action).then(() => {
       resetForm();
       dispatch(getAllRoles());
-    }).catch(err => console.error("Role save failed:", err));
+    }).catch(() => {});
   };
   const handleEdit = row => {
     setEditingId(row.id);
@@ -110,7 +110,7 @@ export default function Roles() {
         dispatch(getAllRoles());
         setDeleteDialogOpen(false);
         setSelectedRow(null);
-      }).catch(err => console.error("Delete roles failed:", err));
+      }).catch(() => {});
     }
   };
   const cancelDelete = () => {

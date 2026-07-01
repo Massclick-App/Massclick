@@ -497,10 +497,6 @@ const BusinessList = React.memo(() => {
       userId = createUserId;
     }
     if (!businessId || !userId) {
-      console.error("❌ Missing businessId or userId:", {
-        businessId,
-        userId
-      });
       return;
     }
     dispatch(createPhonePePayment(amount, userId, businessId));
@@ -759,8 +755,7 @@ const BusinessList = React.memo(() => {
       handleCloseGallery();
       await dispatch(getAllBusinessList());
     } catch (err) {
-      console.error("Upload failed:", err);
-    }
+      }
   };
   const defaultOpeningHours = [{
     day: "Monday",
@@ -814,8 +809,7 @@ const BusinessList = React.memo(() => {
       });
       setNewGalleryImages([]);
     } else {
-      console.error("Business not found in Redux store");
-    }
+      }
   };
   const handleCloseGallery = () => {
     setGalleryDialog({
@@ -2356,7 +2350,6 @@ const BusinessList = React.memo(() => {
       });
       dispatch(getAllBusinessList());
     } catch (error) {
-      console.error("Retry paid activation failed:", error);
       enqueueSnackbar("Still unable to mark this business as paid. Please try again.", {
         variant: "error"
       });
@@ -2510,7 +2503,6 @@ const BusinessList = React.memo(() => {
               variant: "success"
             });
           } catch (paymentError) {
-            console.error("Error marking created business as paid:", paymentError);
             setPostCreatePaidStatus("failed");
             enqueueSnackbar(`${cleanedFormData.businessName} was created, but it could not be marked as paid.`, {
               variant: "error"
@@ -2531,7 +2523,6 @@ const BusinessList = React.memo(() => {
       setForceBypassedFields([]);
       setActiveStep(3);
     } catch (err) {
-      console.error("Error saving business:", err);
       const backendPayload = err.response?.data;
 
       // Handle backend validation errors
@@ -2576,7 +2567,6 @@ const BusinessList = React.memo(() => {
       });
       dispatch(getAllBusinessList());
     } catch (err) {
-      console.error("Error updating badges:", err);
       if (err.response?.data?.message) {
         enqueueSnackbar(err.response.data.message, {
           variant: "error"
@@ -3236,7 +3226,6 @@ const BusinessList = React.memo(() => {
         { variant: "success" }
       );
     } catch (error) {
-      console.error("Business export failed:", error);
       enqueueSnackbar(error.message || "Export failed. Please try again.", { variant: "error" });
     }
   };
@@ -3342,7 +3331,6 @@ const BusinessList = React.memo(() => {
           });
           dispatch(getAllBusinessList());
         } catch (error) {
-          console.error(error);
           enqueueSnackbar("Payment failed. Please try again!", {
             variant: "error"
           });

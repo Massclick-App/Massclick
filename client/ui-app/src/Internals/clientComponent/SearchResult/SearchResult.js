@@ -466,8 +466,7 @@ const SearchResults = React.memo(() => {
       setTotalResults(newTotal);
 
     } catch (err) {
-      console.warn("loadPage error:", err.message);
-    } finally {
+      } finally {
       loadingPagesRef.current.delete(page);
       setIsLoadingMore(false);
     }

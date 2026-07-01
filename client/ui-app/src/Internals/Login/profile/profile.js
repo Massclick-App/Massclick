@@ -93,8 +93,7 @@ export default function Profile() {
   const handleEditProfile = () => {
     // You can replace this with navigation or dialog open
     // e.g., navigate("/profile/edit");
-    console.log("Edit profile clicked");
-  };
+    };
   return <div className={cx("profilePage")}>
       <div className={cx("profileCard")}>
         {/* Top header layout */}

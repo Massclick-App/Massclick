@@ -5,7 +5,6 @@ import styles from "./BusinessList.module.css";
 const cx = createScopedClassNames(styles);
 export default function BusinessListPage() {
   const handlePayNow = () => {
-    console.log("Initiating payment via PhonePe for MassClick Business Listing...");
     alert("Redirecting to PhonePe for secure payment...");
   };
   return <>

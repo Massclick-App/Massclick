@@ -85,8 +85,7 @@ export const getGmapsLeadsStats = () => async (dispatch) => {
     });
     dispatch({ type: FETCH_GMAPS_LEADS_STATS_SUCCESS, payload: response.data });
   } catch (error) {
-    console.error('getGmapsLeadsStats error:', error);
-  }
+    }
 };
 
 export const getGmapsLeadsDistincts = () => async (dispatch) => {
@@ -97,8 +96,7 @@ export const getGmapsLeadsDistincts = () => async (dispatch) => {
     });
     dispatch({ type: FETCH_GMAPS_LEADS_DISTINCTS_SUCCESS, payload: response.data });
   } catch (error) {
-    console.error('getGmapsLeadsDistincts error:', error);
-  }
+    }
 };
 
 export const updateGmapsLeadStatus = (id, data) => async (dispatch) => {

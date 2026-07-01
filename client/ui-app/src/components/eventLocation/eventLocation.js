@@ -184,7 +184,7 @@ export default function EventLocation() {
         dispatch(getAllEventLocation());
         resetForm();
       })
-      .catch(console.error);
+      .catch(() => {});
 
     setTimeout(() => {
       setSuccessMessage("");
@@ -229,7 +229,7 @@ export default function EventLocation() {
         setSelectedLocation(null);
         setSuccessMessage("Event location deleted successfully");
       })
-      .catch(console.error);
+      .catch(() => {});
   };
 
   const rows = data.map((item) => ({

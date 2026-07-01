@@ -52,11 +52,6 @@ export const navigateToSearchResult = ({
   userDetails = null,
 }) => {
   if (!searchTerm || !location || !navigate) {
-    console.error("navigateToSearchResult: Missing required parameters", {
-      searchTerm,
-      location,
-      navigate,
-    });
     return;
   }
 

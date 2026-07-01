@@ -5,11 +5,7 @@ const WS_URL =
   process.env.REACT_APP_WS_URL ||
   (process.env.REACT_APP_API_URL || "").replace(/\/api\/?$/, "");
 
-const LOG = (...args) => console.log("[WS]", ...args);
-const WARN = (...args) => console.warn("[WS]", ...args);
-const ERR = (...args) => console.error("[WS]", ...args);
-
-let socket = null;
+const LOG = () => {};const WARN = () => {};const ERR = () => {};let socket = null;
 let currentToken = null;
 let getTokenFn = null;
 

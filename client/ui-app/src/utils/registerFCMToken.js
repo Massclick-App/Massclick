@@ -5,13 +5,10 @@ const API_URL = process.env.REACT_APP_API_URL;
 
 export async function registerWebFCMToken() {
   const authToken = getCustomerToken();
-  console.log("[FCM] registerWebFCMToken called - hasToken:", !!authToken);
-
   try {
     const { requestPushSubscription } = await import("../firebase");
     const subscription = await requestPushSubscription();
     if (!subscription) {
-      console.warn("[FCM] No push subscription - permission denied or browser not supported");
       updateAuthDebug({
         fcm: {
           state: "permission-denied",
@@ -27,10 +24,8 @@ export async function registerWebFCMToken() {
       { headers: { Authorization: `Bearer ${authToken}` } }
     );
 
-    console.log("[FCM] Token registered successfully:", res.data);
     updateAuthDebug({ fcm: { state: "registered", lastError: null } });
   } catch (error) {
-    console.error("[FCM] Failed to register:", error?.response?.data || error.message);
     updateAuthDebug({
       fcm: {
         state: "failed",

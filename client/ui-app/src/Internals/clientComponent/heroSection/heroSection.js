@@ -348,14 +348,12 @@ const HeroSection = React.memo(({
     try {
       recognition.start();
     } catch {
-      console.log("Recognition already running");
-    }
+      }
     recognition.onstart = () => {
       setIsListening(true);
     };
     recognition.onresult = event => {
       const transcript = event.results[0][0].transcript;
-      console.log("Voice:", transcript);
       setSearchTerm(transcript);
       setShowVoiceModal(false);
       const parsed = parseVoiceQuery(transcript);
@@ -369,8 +367,7 @@ const HeroSection = React.memo(({
     };
     recognition.onerror = event => {
       if (event.error === "no-speech") return;
-      console.log("Voice error:", event.error);
-    };
+      };
     recognition.onend = () => {
       setIsListening(false);
       setShowVoiceModal(false);

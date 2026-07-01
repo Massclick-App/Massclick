@@ -45,8 +45,7 @@ const showGlobalLoader = () => {
       store.dispatch({ type: 'SHOW_GLOBAL_LOADER', payload: { message: 'Loading...' } });
     }
   } catch (error) {
-    console.warn('Error showing global loader:', error);
-  }
+    }
 };
 
 const hideGlobalLoader = () => {
@@ -55,8 +54,7 @@ const hideGlobalLoader = () => {
       store.dispatch({ type: 'HIDE_GLOBAL_LOADER' });
     }
   } catch (error) {
-    console.warn('Error hiding global loader:', error);
-  }
+    }
 };
 
 let isRefreshing = false;
@@ -158,8 +156,7 @@ const syncMaintenanceModeFromError = (error) => {
       })
     );
   } catch (dispatchError) {
-    console.warn("Error syncing maintenance mode state:", dispatchError);
-  }
+    }
 };
 
 const createMaintenanceModeError = (config) => {
@@ -285,7 +282,6 @@ axiosInstance.interceptors.response.use(
         .then((response) => {
           const { accessToken, refreshToken: newRefreshToken, accessTokenExpiresAt } = response.data;
 
-          console.log('[Auth] Access token refreshed — notifying socket');
           setAdminSession({
             accessToken,
             refreshToken: newRefreshToken,

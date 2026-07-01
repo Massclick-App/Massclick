@@ -26,8 +26,7 @@ export const loadGoogleAnalytics = () => {
   };
 
   script.onerror = () => {
-    console.warn("Failed to load Google Analytics");
-  };
+    };
 
   document.head.appendChild(script);
 };
@@ -64,8 +63,7 @@ export const loadAdSense = () => {
   script.src =
     "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3217097513155005";
   script.onerror = () => {
-    console.warn("Failed to load Google AdSense");
-  };
+    };
 
   document.head.appendChild(script);
 };

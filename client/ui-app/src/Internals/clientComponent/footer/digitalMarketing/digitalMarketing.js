@@ -73,8 +73,7 @@ const DigitalMarketing = () => {
         handleClose();
       }, 3000);
     } catch (err) {
-      console.error("Project submission failed:", err);
-    }
+      }
   };
 
   // Updated modal style to ensure max-width and proper placement

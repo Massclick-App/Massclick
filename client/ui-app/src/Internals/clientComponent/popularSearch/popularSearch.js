@@ -148,7 +148,6 @@ const CardCarousel = () => {
       await dispatch(sendEnquiryLead(leadPayload));
       setShowSuccess(true);
     } catch (error) {
-      console.error("Enquiry failed:", error);
       setErrorMessage(getErrorMessage(error));
       setShowError(true);
     } finally {

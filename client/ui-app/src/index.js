@@ -64,8 +64,7 @@ const loadDeferredScripts = async () => {
     // Uncomment the next line if ads are re-enabled later.
     // loadAdSense();
   } catch (err) {
-    console.warn('Deferred script loader error:', err);
-  }
+    }
 };
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
@@ -94,6 +93,6 @@ reportWebVitals();
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/service-worker.js')
-      .catch(err => console.warn('SW registration failed:', err));
+      .catch(() => {});
   });
 }

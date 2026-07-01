@@ -224,8 +224,7 @@ const BusinessEnquiry = () => {
       setFormErrors({});
       setShowModal(true);
     } catch (error) {
-      console.error("Error submitting form:", error);
-    }
+      }
   };
   const isFormValid = Object.keys(validateForm()).length === 0;
   const renderFieldWithError = (fieldName, label, icon, type = "text", placeholder = "") => {

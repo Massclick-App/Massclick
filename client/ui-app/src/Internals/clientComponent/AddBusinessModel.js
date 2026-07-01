@@ -107,7 +107,6 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater }) => {
             setResendTimer(60);
             localStorage.setItem("mobileNumber", mobileNumber);
         } catch (error) {
-            console.error("Error sending OTP:", error);
             enqueueSnackbar("Failed to send OTP. Please try again.", {
                 variant: "error",
                 autoHideDuration: 3000,
@@ -156,7 +155,6 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater }) => {
                 handleClose();
             }
         } catch (error) {
-            console.error("Error verifying OTP:", error);
             setOtpDigits(['', '', '', '']);
             otpRefs.current[0]?.focus();
 

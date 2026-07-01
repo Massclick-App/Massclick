@@ -91,12 +91,12 @@ export default function User() {
       dispatch(editUser(editUserId, dataToSubmit)).then(() => {
         resetForm();
         dispatch(getAllUsers());
-      }).catch(err => console.error("Update user failed:", err));
+      }).catch(() => {});
     } else {
       dispatch(createUser(dataToSubmit)).then(() => {
         resetForm();
         dispatch(getAllUsers());
-      }).catch(err => console.error("Create user failed:", err));
+      }).catch(() => {});
     }
   };
   const validateForm = () => {
@@ -156,7 +156,7 @@ export default function User() {
         dispatch(getAllUsers());
         setDeleteDialogOpen(false);
         setSelectedUser(null);
-      }).catch(err => console.error("Delete failed:", err));
+      }).catch(() => {});
     }
   };
   const cancelDelete = () => {

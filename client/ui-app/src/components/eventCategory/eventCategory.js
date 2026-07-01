@@ -214,7 +214,7 @@ export default function EventCategory() {
         dispatch(getAllEventCategory());
         resetForm();
       })
-      .catch(console.error);
+      .catch(() => {});
 
     setTimeout(() => {
       setSuccessMessage("");
@@ -255,7 +255,7 @@ export default function EventCategory() {
         setSelectedCategory(null);
         setSuccessMessage("Event category deleted successfully");
       })
-      .catch(console.error);
+      .catch(() => {});
   };
 
   const rows = data.map((item) => ({
