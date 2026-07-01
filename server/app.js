@@ -52,6 +52,7 @@ import chatRoutes from "./routes/chatRoutes.js";
 import authAdminRoutes from "./routes/authAdminRoutes.js";
 import publicUserCounterRoutes from "./routes/publicUserCounterRoutes.js";
 import gscRoutes from "./routes/gscRoutes.js";
+import quotationRoutes from "./routes/quotationRoute.js";
 import { startFCMScheduler } from "./scheduler/fcmScheduler.js";
 
 dotenv.config();
@@ -139,6 +140,7 @@ app.use("/", chatRoutes);
 app.use("/", authAdminRoutes);
 app.use("/", publicUserCounterRoutes);
 app.use("/", gscRoutes);
+app.use("/", quotationRoutes);
 app.use(express.static(CLIENT_BUILD_PATH, {
   index: false,
   maxAge: "365d",

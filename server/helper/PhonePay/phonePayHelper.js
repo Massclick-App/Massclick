@@ -3,6 +3,7 @@ import axios from "axios";
 import paymentModel from "../../model/phonePay/paymentModel.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
 import { sendInvoiceEmail } from "../email/emailService.js";
+import { CERTIFICATE_TEMPLATE_VERSION, ensureBusinessCertificates } from "../businessList/businessCertificateHelper.js";
 
 const {
   PHONEPE_MERCHANT_ID,
@@ -152,6 +153,22 @@ export const createPhonePePayment = async (amount, userId, businessId = null) =>
         if (businessData) {
           const emailResult = await sendInvoiceEmail(businessData, paymentDoc);
           console.log(`📧 [PhonePe Payment] Invoice email result: ${emailResult.success ? 'SUCCESS' : 'FAILED'}`);
+          if (emailResult.success) {
+            const invoiceEmailSentAt = new Date();
+            await paymentModel.updateOne(
+              { _id: paymentDoc._id },
+              { $set: { invoiceEmailSent: true, invoiceEmailSentAt } }
+            );
+            await businessListModel.updateOne(
+              { _id: businessId, "payment.transactionId": transactionId },
+              {
+                $set: {
+                  "payment.$.invoiceEmailSent": true,
+                  "payment.$.invoiceEmailSentAt": invoiceEmailSentAt,
+                },
+              }
+            );
+          }
         }
       } catch (emailError) {
         console.error(`⚠️ [PhonePe Payment] Failed to send email on payment creation:`, emailError.message);
@@ -276,7 +293,7 @@ export const checkPhonePeStatus = async (transactionId) => {
       }
 
       // Send invoice email on successful payment
-      if (normalizedPaymentStatus === "SUCCESS") {
+      if (normalizedPaymentStatus === "SUCCESS" && !updated.invoiceEmailSent) {
         try {
           console.log(`💰 [Payment Success] Sending invoice email for business: ${updated.businessId}`);
           const businessData = await businessListModel.findById(updated.businessId).lean();
@@ -285,6 +302,23 @@ export const checkPhonePeStatus = async (transactionId) => {
             const emailResult = await sendInvoiceEmail(businessData, updated);
             if (emailResult.success) {
               console.log(`✅ [Invoice Email] Email delivered successfully - MessageID: ${emailResult.messageId}`);
+              const invoiceEmailSentAt = new Date();
+              await paymentModel.updateOne(
+                { _id: updated._id },
+                { $set: { invoiceEmailSent: true, invoiceEmailSentAt } }
+              );
+              await businessListModel.updateOne(
+                {
+                  _id: updated.businessId,
+                  "payment.transactionId": transactionId,
+                },
+                {
+                  $set: {
+                    "payment.$.invoiceEmailSent": true,
+                    "payment.$.invoiceEmailSentAt": invoiceEmailSentAt,
+                  },
+                }
+              );
             } else {
               console.warn(`⚠️ [Invoice Email] Email sending failed - ${emailResult.message}`);
             }
@@ -299,6 +333,8 @@ export const checkPhonePeStatus = async (transactionId) => {
             errorStack: emailError.stack,
           });
         }
+      } else if (normalizedPaymentStatus === "SUCCESS") {
+        console.log(`📧 [Invoice Email] Skipped duplicate invoice email for transaction: ${transactionId}`);
       }
     }
 
@@ -354,11 +390,46 @@ export const sendInvoiceEmailForBusiness = async (businessId) => {
       };
     }
 
+    const storedCertificateVersion = Number(businessData.certificates?.templateVersion || 0);
+    const shouldResendForCertificateRefresh =
+      latestPayment.invoiceEmailSent && storedCertificateVersion < CERTIFICATE_TEMPLATE_VERSION;
+
+    if (latestPayment.invoiceEmailSent && !shouldResendForCertificateRefresh) {
+      console.log(`📧 [Manual Invoice Email] Invoice email already sent for business: ${businessData.businessName}`);
+      return {
+        success: true,
+        message: 'Invoice email already sent',
+        alreadySent: true,
+      };
+    }
+
+    if (shouldResendForCertificateRefresh) {
+      console.log(`📧 [Manual Invoice Email] Resending invoice once to attach refreshed certificate template for business: ${businessData.businessName}`);
+      await ensureBusinessCertificates(businessData);
+    }
+
     console.log(`💾 [Manual Invoice Email] Found payment record - TxnID: ${latestPayment.transactionId}`);
     const emailResult = await sendInvoiceEmail(businessData, latestPayment);
 
     if (emailResult.success) {
       console.log(`✅ [Manual Invoice Email] Email sent successfully - MessageID: ${emailResult.messageId}`);
+      const invoiceEmailSentAt = new Date();
+      await businessListModel.updateOne(
+        {
+          _id: businessId,
+          "payment.transactionId": latestPayment.transactionId,
+        },
+        {
+          $set: {
+            "payment.$.invoiceEmailSent": true,
+            "payment.$.invoiceEmailSentAt": invoiceEmailSentAt,
+          },
+        }
+      );
+      await paymentModel.updateOne(
+        { transactionId: latestPayment.transactionId },
+        { $set: { invoiceEmailSent: true, invoiceEmailSentAt } }
+      );
     } else {
       console.error(`❌ [Manual Invoice Email] Failed to send email - ${emailResult.message}`);
     }

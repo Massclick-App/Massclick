@@ -10,10 +10,9 @@ import { getCache, setCache } from "../../utils/redisClient.js";
 import { enhanceSearchQuery, resolveCategory } from "../../utils/geminiQueryEnhancer.js";
 import { invalidateSearchCache, invalidateDashboardCache, invalidateCategoryCache } from "../../utils/cacheInvalidation.js";
 import { buildBusinessExportWorkbook } from "../../utils/businessExportXlsx.js";
-import { sendBusinessCertificateEmail } from "../../helper/email/emailService.js";
 import { ensureBusinessCertificates } from "../../helper/businessList/businessCertificateHelper.js";
 
-const sendCertificateEmailForActivation = async (previousBusiness, business) => {
+const ensureCertificatesForActivation = async (previousBusiness, business) => {
   const businessWithCertificates = await ensureBusinessCertificates(business);
   const certificateBusiness = businessWithCertificates || business;
   const newlyVerified =
@@ -25,14 +24,7 @@ const sendCertificateEmailForActivation = async (previousBusiness, business) => 
     return certificateBusiness;
   }
 
-  const certificateEmailResult = await sendBusinessCertificateEmail(certificateBusiness, {
-    includeVerified: !!certificateBusiness?.verification?.isVerified,
-    includeTrust: !!certificateBusiness?.badges?.isTrust,
-  });
-
-  if (!certificateEmailResult.success) {
-    console.warn("[Certificate Email] Business update saved, but certificate email was not sent:", certificateEmailResult.message);
-  }
+  console.log("[Certificate] Certificate generated; delivery will be included with the invoice email.");
 
   return certificateBusiness;
 };
@@ -1141,7 +1133,7 @@ export const updateBusinessListAction = async (req, res) => {
     };
 
     const business = await updateBusinessList(businessId, businessData);
-    const businessWithCertificates = await sendCertificateEmailForActivation(previousBusiness, business);
+    const businessWithCertificates = await ensureCertificatesForActivation(previousBusiness, business);
 
     await invalidateSearchCache();
     await invalidateDashboardCache();
@@ -1394,7 +1386,7 @@ export const updateBusinessBadgesAction = async (req, res) => {
       { new: true }
     );
 
-    const businessWithCertificates = await sendCertificateEmailForActivation(previousBusiness, business.toObject());
+    const businessWithCertificates = await ensureCertificatesForActivation(previousBusiness, business.toObject());
 
     await invalidateSearchCache();
     await invalidateDashboardCache();
