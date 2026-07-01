@@ -521,20 +521,23 @@ support@massclick.in
 `;
 };
 
-const buildCertificateAttachments = async (businessData = {}) => {
+const buildCertificateAttachments = async (businessData = {}, certificateTypes = []) => {
   const businessWithCertificates = await ensureBusinessCertificates(businessData);
   const certificateBusiness = businessWithCertificates || businessData;
   const certificates = certificateBusiness.certificates || {};
+  const requestedTypes = Array.isArray(certificateTypes) && certificateTypes.length > 0
+    ? certificateTypes
+    : ['verified', 'trust'];
   const businessSlug = slugifyEmailValue(
     certificateBusiness.businessName || certificateBusiness.name || 'business',
   );
 
   const certificateFiles = [
-    certificateBusiness.verification?.isVerified && certificates.verifiedCertificateKey && {
+    requestedTypes.includes('verified') && certificateBusiness.verification?.isVerified && certificates.verifiedCertificateKey && {
       key: certificates.verifiedCertificateKey,
       filename: `massclick-verified-certificate-${businessSlug}.png`,
     },
-    certificateBusiness.badges?.isTrust && certificates.trustCertificateKey && {
+    requestedTypes.includes('trust') && certificateBusiness.badges?.isTrust && certificates.trustCertificateKey && {
       key: certificates.trustCertificateKey,
       filename: `massclick-trust-certificate-${businessSlug}.png`,
     },
@@ -671,6 +674,7 @@ export const sendBusinessCertificateEmail = async (businessData, options = {}) =
       : certificateTypes.includes('trust')
         ? 'Trust Certificate'
         : 'Verified Certificate';
+    const certificateAttachments = await buildCertificateAttachments(businessData, certificateTypes);
 
     const mailOptions = {
       from: `MassClick <${INVOICE_EMAIL_FROM}>`,
@@ -678,9 +682,10 @@ export const sendBusinessCertificateEmail = async (businessData, options = {}) =
       subject: `MassClick ${certificateLabel} Ready - ${businessData.businessName || businessData.name}`,
       html: certificateEmailTemplate(businessData, certificateTypes),
       text: certificateTextTemplate(businessData, certificateTypes),
+      attachments: certificateAttachments,
     };
 
-    console.log(`[Certificate Email] Sending email via SMTP - From: ${INVOICE_EMAIL_FROM}, To: ${businessEmail}`);
+    console.log(`[Certificate Email] Sending email via SMTP - From: ${INVOICE_EMAIL_FROM}, To: ${businessEmail}, Attachments: ${certificateAttachments.length}`);
     const info = await transporter.sendMail(mailOptions);
 
     console.log(`[Certificate Email] SUCCESS - Email sent to ${businessEmail}`);
