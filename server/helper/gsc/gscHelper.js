@@ -29,6 +29,9 @@ const parseQueryParts = (q = "") => {
 let _sc = null;
 const getSc = async () => {
   if (_sc) return _sc;
+  if (!process.env.GSC_KEY_PATH) {
+    throw new Error("GSC_KEY_PATH is not set in .env — add it and restart the server.");
+  }
   const auth = new google.auth.GoogleAuth({
     keyFile: process.env.GSC_KEY_PATH,
     scopes: ["https://www.googleapis.com/auth/webmasters.readonly"],
