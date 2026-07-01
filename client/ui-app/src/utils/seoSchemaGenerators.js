@@ -268,7 +268,6 @@ export const generateItemListSchema = (items, listName, listDescription) => {
       return {
         "@type": "ListItem",
         position: index + 1,
-        url: item.url,
         item: itemObject,
       };
     }),

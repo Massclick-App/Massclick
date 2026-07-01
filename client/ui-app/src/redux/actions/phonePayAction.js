@@ -36,7 +36,6 @@ export const createPhonePePayment = (amount, userId, businessId) => async (dispa
       window.location.href = paymentUrl; 
     }
   } catch (error) {
-    console.error("Error creating PhonePe payment:", error);
     dispatch({
       type: CREATE_PAYMENT_FAILURE,
       payload: error.response?.data || error.message,
@@ -60,7 +59,6 @@ export const checkPhonePeStatus = (transactionId) => async (dispatch) => {
       payload: response.data,
     });
   } catch (error) {
-    console.error("Error checking payment status:", error);
     dispatch({
       type: CHECK_PAYMENT_STATUS_FAILURE,
       payload: error.response?.data || error.message,

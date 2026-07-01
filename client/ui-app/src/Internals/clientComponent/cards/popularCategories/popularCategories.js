@@ -47,8 +47,7 @@ const PopularCategoriesDrawer = ({
       const categorySlug = cat.slug || slugify(cat.name);
       return `/${districtSlug}/${categorySlug}`;
     });
-    console.log("Popular category URLs:", popularCategoryUrls);
-  }, [popularCategories, districtSlug]);
+    }, [popularCategories, districtSlug]);
 
   // v2 API returns categories in admin-configured order — use directly.
   const orderedCategories = useMemo(() => popularCategories, [popularCategories]);

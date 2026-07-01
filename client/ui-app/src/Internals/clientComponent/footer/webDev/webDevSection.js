@@ -105,8 +105,7 @@ const WebDevSection = () => {
         handleClose();
       }, 3000);
     } catch (err) {
-      console.error("Project submission failed:", err);
-    }
+      }
   };
   const modalStyle = {
     position: 'absolute',

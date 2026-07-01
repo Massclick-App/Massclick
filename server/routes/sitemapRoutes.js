@@ -70,7 +70,7 @@ const activeFilter = { isActive: true, businessesLive: true };
    Same logic as getAllUniqueCategoriesAction (/api/category/all):
    - queries categoryModel directly
    - uses categoriesData for parent-child mapping
-   Builds: normalize(businessCategory) → { slug, parentSlug | null }
+   Builds: normalize(businessCategory) â†’ { slug, parentSlug | null }
 ========================================================= */
 let _categoryLookupCache = null;
 let _categoryLookupBuiltAt = 0;
@@ -96,7 +96,7 @@ const buildCategoryLookup = async () => {
 
   const categories = await categoryModel.find({ isActive: true }).lean();
 
-  // deduplicate — same as getAllUniqueCategoriesAction
+  // deduplicate â€” same as getAllUniqueCategoriesAction
   const uniqueMap = new Map();
   categories.forEach((item) => {
     const key = normalizeKey(item.category);
@@ -114,7 +114,7 @@ const buildCategoryLookup = async () => {
 
   const lookup = new Map();
 
-  // pass 1 — every DB category starts as a primary (no parent)
+  // pass 1 â€” every DB category starts as a primary (no parent)
   for (const [, item] of uniqueMap) {
     const key = normalizeKey(item.category);
     lookup.set(key, {
@@ -123,7 +123,7 @@ const buildCategoryLookup = async () => {
     });
   }
 
-  // pass 2 — re-map sub-categories with their real parent slug.
+  // pass 2 â€” re-map sub-categories with their real parent slug.
   // Runs after pass 1 so subs always override the null set above,
   // except for categories that are themselves a parent key in categoriesData.
   for (const [, parentItem] of uniqueMap) {
@@ -187,7 +187,7 @@ const getActiveCitySlugs = async () => {
 };
 
 /* =========================================================
-   SITEMAP INDEX  — /sitemap.xml
+   SITEMAP INDEX  â€” /sitemap.xml
    Lists one sitemap-city-{slug}.xml per active city,
    paginated business sitemaps, and blog sitemap.
 ========================================================= */
@@ -222,7 +222,7 @@ ${links.join("")}
 });
 
 /* =========================================================
-   PER-CITY SITEMAP  — /sitemap-city-{cityslug}.xml
+   PER-CITY SITEMAP  â€” /sitemap-city-{cityslug}.xml
    Contains all category pages + all business pages for that city.
    Category URLs use real slugs from categoryModel (no hardcoded mapping).
 ========================================================= */
@@ -283,7 +283,7 @@ ${nodes.join("")}
 });
 
 /* =========================================================
-   BUSINESS SITEMAP  — /sitemap-business-{page}.xml
+   BUSINESS SITEMAP  â€” /sitemap-business-{page}.xml
 ========================================================= */
 router.get("/sitemap-business-:page.xml", async (req, res) => {
   try {
@@ -321,7 +321,7 @@ ${nodes.join("")}
 });
 
 /* =========================================================
-   BLOG SITEMAP  — /sitemap-blog.xml
+   BLOG SITEMAP  â€” /sitemap-blog.xml
 ========================================================= */
 router.get("/sitemap-blog.xml", async (req, res) => {
   try {
@@ -356,7 +356,7 @@ ${nodes.join("")}
 });
 
 /* =========================================================
-   HTML SITEMAP  — /sitemap
+   HTML SITEMAP  â€” /sitemap
 ========================================================= */
 router.get("/sitemap", async (req, res) => {
   try {
@@ -405,20 +405,20 @@ router.get("/sitemap", async (req, res) => {
 });
 
 /* =========================================================
-   LLMS.TXT  — /llms.txt
+   LLMS.TXT  â€” /llms.txt
    Discovery file for AI crawlers (Perplexity, Claude, Gemini, Copilot)
 ========================================================= */
 router.get("/llms.txt", (req, res) => {
   res.type("text/plain; charset=utf-8");
   res.set("Cache-Control", "public, max-age=86400");
-  res.status(200).send(`# Massclick — Local Business Directory India
+  res.status(200).send(`# Massclick â€” Local Business Directory India
 > Find verified local businesses, services, and professionals across India with reviews, ratings, and direct contact details.
 
 ## What We Do
 Massclick is India's local business discovery platform. Users search by city and category (e.g. hospitals in Trichy, restaurants in Chennai) to find verified businesses with phone numbers, addresses, ratings, and reviews. We cover 100+ service categories across cities in Tamil Nadu and expanding to all of India.
 
 ## Key Pages
-- / : Homepage — search businesses by city and category
+- / : Homepage â€” search businesses by city and category
 - /trichy/hospitals : Hospitals in Trichy with ratings, addresses, and contact info
 - /trichy/restaurants : Restaurants in Trichy
 - /trichy/hotels : Hotels in Trichy
@@ -428,7 +428,7 @@ Massclick is India's local business discovery platform. Users search by city and
 
 ## Content Types
 - Business listings: Name, address, phone, category, star rating, reviews, verification badge
-- City x Category pages: e.g. /[city]/[category] — curated lists of top local businesses
+- City x Category pages: e.g. /[city]/[category] â€” curated lists of top local businesses
 - Blog posts: Long-form guides authored by local experts on services and businesses in India
 - Author profiles: Expert authors at /author/[slug] with credentials and bio
 
@@ -461,3 +461,4 @@ Social: instagram.com/massclick_ | facebook.com/massClicks | linkedin.com/compan
 });
 
 export default router;
+

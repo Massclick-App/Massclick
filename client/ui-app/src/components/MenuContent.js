@@ -61,6 +61,7 @@ const MENU_SECTIONS = [
       { text: "Pages", icon: ArticleIcon, path: "/dashboard/seopagecontent" },
       { text: "Blogs", icon: NewspaperIcon, path: "/dashboard/seopagecontentblogs" },
       { text: "Authors", icon: CategoryIcon, path: "/dashboard/authors" },
+      { text: "GSC Analytics", icon: AnalyticsRoundedIcon, path: "/dashboard/gsc-analytics" },
     ]
   },
   {

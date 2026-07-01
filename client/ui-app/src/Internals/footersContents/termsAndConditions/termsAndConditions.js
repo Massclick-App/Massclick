@@ -104,8 +104,7 @@ export default function TermsAndConditionsDatas() {
       setEditingId(null);
       dispatch(getAllTermsAndConditions());
     } catch (error) {
-      console.error(error);
-    }
+      }
   };
   const handleEdit = rowId => {
     const found = termsList.find(item => item._id === rowId);

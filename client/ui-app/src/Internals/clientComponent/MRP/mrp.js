@@ -57,8 +57,7 @@ export default function MRPPage() {
         location: authUser.businessLocation || ""
       }));
     } catch (error) {
-      console.error("Invalid authUser in localStorage:", error);
-    }
+      }
   }, []);
   useEffect(() => {
     return () => clearTimeout(timerRef.current);
@@ -106,7 +105,6 @@ export default function MRPPage() {
       setBusinessSelected(false);
       setCategorySelected(false);
     } catch (err) {
-      console.error(err);
       enqueueSnackbar(typeof err === "string" ? err : err?.message || "Failed to publish requirement", {
         variant: "error"
       });

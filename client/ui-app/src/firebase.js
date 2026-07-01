@@ -18,8 +18,7 @@ let messaging = null;
 try {
   messaging = getMessaging(app);
 } catch (error) {
-  console.warn('[FCM] Messaging unavailable in this browser:', error?.message || error);
-}
+  }
 
 export { messaging };
 
@@ -36,38 +35,31 @@ function urlBase64ToUint8Array(base64String) {
 
 export async function requestPushSubscription() {
   if (!messaging) {
-    console.warn('[FCM] Messaging is not available in this browser');
     return null;
   }
 
   if (!('Notification' in window) || !('PushManager' in window)) {
-    console.warn('[FCM] Push notifications not supported in this browser');
     return null;
   }
 
   const permission = await Notification.requestPermission();
-  console.log('[FCM] Notification permission:', permission);
   if (permission !== 'granted') return null;
 
   try {
     const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
     await navigator.serviceWorker.ready;
-    console.log('[FCM] Service worker ready');
-
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(VAPID_KEY),
     });
 
     const subJson = subscription.toJSON();
-    console.log('[FCM] Push subscription created');
     return {
       endpoint: subJson.endpoint,
       auth: subJson.keys.auth,
       p256dh: subJson.keys.p256dh,
     };
   } catch (err) {
-    console.error('[FCM] Push subscription failed:', err);
     return null;
   }
 }

@@ -16,7 +16,10 @@ export const createSearchLog = async function (data = {}) {
 
 export const getAllSearchLogs = async () => {
     try {
-        const logs = await searchLogModel.find().sort({ createdAt: -1 }); 
+        const logs = await searchLogModel
+            .find({}, { categoryName: 1, _id: 0 })
+            .sort({ createdAt: -1 })
+            .limit(500);
         return logs;
     } catch (error) {
         console.error("Error fetching Search Logs:", error);

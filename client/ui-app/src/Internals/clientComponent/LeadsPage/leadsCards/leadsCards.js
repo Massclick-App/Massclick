@@ -72,12 +72,10 @@ const LeadsCardHistory = () => {
           try {
             await dispatch(updateOtpUser(businessMobile, payload));
           } catch (err) {
-            console.error("Error saving single lead:", lead, err);
-          }
+            }
         }
       } catch (err) {
-        console.error("Error syncing leads:", err);
-      }
+        }
     };
     syncLeads();
   }, [leadsUsers, dispatch]);

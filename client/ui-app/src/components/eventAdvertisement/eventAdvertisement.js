@@ -369,7 +369,7 @@ export default function EventAdvertisement() {
         dispatch(getAllEventAdvertisement());
         resetForm();
       })
-      .catch(console.error);
+      .catch(() => {});
 
     setTimeout(() => {
       setSuccessMessage("");
@@ -415,7 +415,7 @@ export default function EventAdvertisement() {
         setSelectedPopup(null);
         setSuccessMessage("Home popup deleted successfully");
       })
-      .catch(console.error);
+      .catch(() => {});
   };
 
   const rows = data

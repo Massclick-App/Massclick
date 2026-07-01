@@ -36,7 +36,6 @@ const CategoryRouter = () => {
         const response = await axiosInstance.get(`${API_URL}/v2/category/home`);
         setCategories(response.data || []);
       } catch (error) {
-        console.error("Error fetching categories:", error);
         setCategories([]);
       }
     };
@@ -124,8 +123,6 @@ const CategoryRouter = () => {
           return;
         }
       } catch (error) {
-        console.error(error);
-
         setResolvedCategory(
           formatText(subcategory || category || "")
         );

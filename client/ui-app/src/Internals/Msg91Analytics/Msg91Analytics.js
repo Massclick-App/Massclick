@@ -139,8 +139,7 @@ export default function Msg91Analytics() {
           });
         }
       } catch (optionError) {
-        console.error("MSG91 filter options failed:", optionError);
-      }
+        }
     };
 
     loadOptions();
@@ -157,7 +156,6 @@ export default function Msg91Analytics() {
         const businesses = await searchMsg91Businesses({ search: businessSearch, limit: 30 });
         if (!ignore) setBusinessOptions(businesses);
       } catch (businessError) {
-        console.error("MSG91 business search failed:", businessError);
         if (!ignore) setBusinessOptions([]);
       } finally {
         if (!ignore) setBusinessLoading(false);
@@ -212,7 +210,6 @@ export default function Msg91Analytics() {
       link.click();
       URL.revokeObjectURL(url);
     } catch (downloadError) {
-      console.error("MSG91 CSV export failed:", downloadError);
       window.alert(downloadError.response?.data?.message || "Excel export failed. Please try again.");
     } finally {
       setExportLoading(false);

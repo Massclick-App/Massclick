@@ -25,7 +25,6 @@ export default function MNILeadsInsights({
       }
       dispatch(getBusinessProfileByPhone(phoneNumber));
     } catch (err) {
-      console.error("Error fetching business profile:", err);
       setError(err.message);
     }
   }, [dispatch, view]);

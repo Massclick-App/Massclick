@@ -38,7 +38,7 @@ export default function EnquiryPage() {
     })).then(() => {
       dispatch(getAllStartProjects());
       handleCloseDetails();
-    }).catch(err => console.log(err));
+    }).catch(() => {});
   };
   const getInitials = (name = "") => {
     const parts = name.trim().split(" ").filter(Boolean);

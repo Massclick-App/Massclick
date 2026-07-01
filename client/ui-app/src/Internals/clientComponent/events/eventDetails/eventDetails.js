@@ -83,7 +83,7 @@ export default function EventDetails() {
 
   useEffect(() => {
     if (id) {
-      dispatch(viewEventCreation(id)).catch(console.error);
+      dispatch(viewEventCreation(id)).catch(() => {});
     }
   }, [dispatch, id]);
 

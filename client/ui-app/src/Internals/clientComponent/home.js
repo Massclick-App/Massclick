@@ -382,19 +382,12 @@ const LandingPage = React.memo(() => {
         import("../../firebase")
           .then(({ messaging, onMessage }) => {
             if (!messaging || typeof onMessage !== "function") {
-              console.warn("[FCM] Skipping foreground messaging setup in this browser");
               return undefined;
             }
 
             const unsubscribe = onMessage(messaging, (payload) => {
-              console.log("[FCM] Foreground message received:", payload);
               const { title, body, image } = payload.notification || {};
               const imageUrl = image || payload.data?.imageUrl || null;
-              console.log("[FCM] Showing in-app notification:", {
-                title,
-                body,
-                imageUrl,
-              });
               setFcmNotif({
                 title: title || "MassClick",
                 body: body || "",
@@ -403,7 +396,7 @@ const LandingPage = React.memo(() => {
             });
             return unsubscribe;
           })
-          .catch((err) => console.warn("[FCM] Failed to load Firebase:", err));
+          .catch(() => {});
       },
       { timeout: 4000 },
     );

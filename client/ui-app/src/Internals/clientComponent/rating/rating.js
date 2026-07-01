@@ -34,7 +34,6 @@ export default function UserRatingWidget({
       const storedUser = localStorage.getItem('authUser');
       return storedUser ? JSON.parse(storedUser) : null;
     } catch (err) {
-      console.error('Error parsing authUser:', err);
       return null;
     }
   };

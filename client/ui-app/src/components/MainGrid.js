@@ -160,7 +160,6 @@ export default function MainGrid() {
       (typeof row?.createdBy === "string" ? row.createdBy : null);
 
     if (!businessId || !userId) {
-      console.error("Missing businessId or userId:", { businessId, userId });
       return;
     }
     dispatch(createPhonePePayment(amount, userId, businessId));

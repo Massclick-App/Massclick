@@ -231,7 +231,6 @@ export const getAllBusinessList = ({
       },
     });
   } catch (error) {
-    console.error("getAllBusinessList error:", error);
     dispatch({
       type: FETCH_BUSINESS_FAILURE,
       payload: error.response?.data || error.message,
@@ -256,7 +255,6 @@ export const getAllClientBusinessList = () => async (dispatch) => {
 
     dispatch({ type: FETCH_VIEWBUSINESS_SUCCESS, payload: businessList });
   } catch (error) {
-    console.error("getAllBusinessList error:", error);
     dispatch({
       type: FETCH_VIEWBUSINESS_FAILURE,
       payload: error.response?.data || error.message,
@@ -456,8 +454,7 @@ export const logSearchActivity = (
       );
 
     } catch (error) {
-      console.warn("Failed to log search activity:", error.message);
-    }
+      }
   };
 
 export const sendEnquiryLead = (payload) => async (dispatch) => {
@@ -478,7 +475,6 @@ export const sendEnquiryLead = (payload) => async (dispatch) => {
   } catch (error) {
     const errPayload = error.response?.data || error.message;
     dispatch({ type: SEND_ENQUIRY_LEAD_FAILURE, payload: errPayload });
-    console.error("sendEnquiryLead error:", errPayload);
     throw error;
   }
 };

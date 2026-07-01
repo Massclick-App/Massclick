@@ -25,14 +25,11 @@ const GooglePlacesInput = ({ onPlaceSelect, placeholder = 'Type business name or
     setLoading(true);
     setError('');
     setSuggestions([]);
-    console.log('[GooglePlaces] Searching:', query); // eslint-disable-line no-console
-
     try {
       const { suggestions: results } = await window.google.maps.places.AutocompleteSuggestion.fetchAutocompleteSuggestions({
         input: query.trim(),
         includedRegionCodes: ['in']
       });
-      console.log('[GooglePlaces] Results:', results?.length); // eslint-disable-line no-console
       if (results?.length) {
         setSuggestions(results);
         setShowDropdown(true);
@@ -40,7 +37,6 @@ const GooglePlacesInput = ({ onPlaceSelect, placeholder = 'Type business name or
         setError('No results found. Try a different search.');
       }
     } catch (e) {
-      console.error('[GooglePlaces] Search error:', e); // eslint-disable-line no-console
       setError('Search failed. Please try again.');
     } finally {
       setLoading(false);
@@ -65,8 +61,6 @@ const GooglePlacesInput = ({ onPlaceSelect, placeholder = 'Type business name or
     try {
       const place = suggestion.placePrediction.toPlace();
       await place.fetchFields({ fields: ['addressComponents', 'location', 'formattedAddress'] });
-      console.log('[GooglePlaces] Place:', place); // eslint-disable-line no-console
-
       const components = place.addressComponents || [];
       const get = (types) => {
         const c = components.find(c => types.some(t => c.types.includes(t)));
@@ -87,10 +81,8 @@ const GooglePlacesInput = ({ onPlaceSelect, placeholder = 'Type business name or
         formattedAddress: place.formattedAddress
       };
 
-      console.log('[GooglePlaces] Parsed:', result); // eslint-disable-line no-console
       onPlaceSelectRef.current(result);
     } catch (e) {
-      console.error('[GooglePlaces] Details error:', e); // eslint-disable-line no-console
       setError('Failed to get place details. Try again.');
     } finally {
       setLoading(false);

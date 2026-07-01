@@ -81,12 +81,12 @@ export default function Location() {
       dispatch(editLocation(editingId, formData)).then(() => {
         resetForm();
         dispatch(getAllLocation());
-      }).catch(err => console.error("Update location failed:", err));
+      }).catch(() => {});
     } else {
       dispatch(createLocation(formData)).then(() => {
         resetForm();
         dispatch(getAllLocation());
-      }).catch(err => console.error("Create location failed:", err));
+      }).catch(() => {});
     }
   };
   const handleEdit = row => {
@@ -113,7 +113,7 @@ export default function Location() {
         dispatch(getAllLocation());
         setDeleteDialogOpen(false);
         setSelectedRow(null);
-      }).catch(err => console.error("Delete location failed:", err));
+      }).catch(() => {});
     }
   };
   const cancelDelete = () => {

@@ -40,25 +40,19 @@ const BusinessFormStep2 = ({
   const [categorySearchInput, setCategorySearchInput] = React.useState("");
 
   const handleCategorySearch = (event, value) => {
-    console.log("🔍 handleCategorySearch called with value:", value);
-    console.log("   searchCategory:", searchCategory);
-    console.log("   category length:", category?.length);
     setCategorySearchInput(value);
 
     // Only search if input is not empty and is a partial search (doesn't contain " — " which is the full label format)
     if (value && value.trim().length > 0 && !value.includes(" — ") && dispatch) {
-      console.log("   → Dispatching businessCategorySearch");
       dispatch(businessCategorySearch(value));
     } else if (value && value.includes(" — ")) {
-      console.log("   → Skipped search (full label detected, this is post-selection)");
-    }
+      }
   };
 
   // Get all available options - merge search results with full category list to avoid losing searched categories
   const allCategoryOptions = React.useMemo(() => {
     if (categorySearchInput && searchCategory?.length > 0) {
       // When searching, show search results
-      console.log("📋 Using searchCategory results");
       return searchCategory;
     }
     // When not searching, show all categories AND keep any previously searched categories in the list
@@ -70,26 +64,13 @@ const BusinessFormStep2 = ({
           mergedCategories.push(searched);
         }
       });
-      console.log("📋 Merged search results with category");
-    }
-    console.log("📋 Using merged category list");
+      }
     return mergedCategories;
   }, [categorySearchInput, searchCategory, category]);
-
-  console.log("📋 allCategoryOptions computed:", {
-    categorySearchInput,
-    hasSuggestion: !!searchCategory?.length,
-    optionsLength: allCategoryOptions?.length
-  });
 
   // Find the selected category object from all available options
   const getSelectedCategory = () => {
     const selected = formData.category ? allCategoryOptions.find((c) => c.category === formData.category) : null;
-    console.log("🎯 getSelectedCategory:", {
-      formDataCategory: formData.category,
-      foundCategory: selected ? { category: selected.category } : null,
-      allOptionsLength: allCategoryOptions?.length
-    });
     if (!formData.category) return null;
     return selected || { category: formData.category };
   };
@@ -151,10 +132,6 @@ const BusinessFormStep2 = ({
             getOptionLabel={(option) => option.category || ""}
             value={getSelectedCategory()}
             onChange={(event, newValue) => {
-              console.log("✅ Category Autocomplete onChange:", {
-                newValue: newValue ? newValue.category : null,
-                currentFormDataCategory: formData.category
-              });
               const nextData = {
                 ...formData,
                 category: newValue ? newValue.category : "",
@@ -707,7 +684,6 @@ const BusinessFormStep2 = ({
   );
 
   const renderPreview = () => {
-    console.log("DEBUG: renderPreview called, formData =", formData);
     return (
     <>
       {renderSectionIntro(

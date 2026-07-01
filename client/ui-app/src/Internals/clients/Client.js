@@ -163,7 +163,6 @@ export default function UserClients() {
         resetForm();
         refreshCurrentPage();
       }).catch(err => {
-        console.error("Update client failed:", err);
         const backendErrors = parseBackendErrors(err);
         if (Object.keys(backendErrors).length > 0) {
           setErrors(backendErrors);
@@ -176,7 +175,6 @@ export default function UserClients() {
         resetForm();
         refreshCurrentPage();
       }).catch(err => {
-        console.error("Create client failed:", err);
         const backendErrors = parseBackendErrors(err);
         if (Object.keys(backendErrors).length > 0) {
           setErrors(backendErrors);
@@ -207,7 +205,7 @@ export default function UserClients() {
         refreshCurrentPage();
         setDeleteDialogOpen(false);
         setSelectedUser(null);
-      }).catch(err => console.error("Delete failed:", err));
+      }).catch(() => {});
     }
   };
   const cancelDelete = () => {
@@ -221,8 +219,7 @@ export default function UserClients() {
       setTimeout(() => setSuccessMessage(""), 3000);
       refreshCurrentPage();
     } catch (err) {
-      console.error("Status update failed:", err);
-    }
+      }
   };
   const rows = userClient.map((user, index) => ({
     id: user._id || index,
@@ -237,8 +234,7 @@ export default function UserClients() {
   }));
 
   useEffect(() => {
-    console.log(`📋 Page ${tableQuery.pageNo}: ${rows.map(r => r.name).join(" | ")}`);
-  }, [rows, tableQuery.pageNo]);
+    }, [rows, tableQuery.pageNo]);
   const clientList = [{
     id: "clientId",
     label: "Client ID"
@@ -407,7 +403,6 @@ export default function UserClients() {
           total={total}
           loading={loading}
           fetchData={(pageNo, pageSize, options) => {
-            console.log("📄 Fetching page:", pageNo, "with pageSize:", pageSize);
             setTableQuery({
               pageNo,
               pageSize,

@@ -36,11 +36,7 @@ import {
 } from "../../services/chatService";
 import { AUTH_EXPIRED_EVENT, connectSocket, refreshSocketToken } from "../../services/socketService";
 
-const LOG = (...args) => console.log('[AdminChat]', ...args);
-const WARN = (...args) => console.warn('[AdminChat]', ...args);
-const ERR = (...args) => console.error('[AdminChat]', ...args);
-
-const formatTime = (value) => {
+const LOG = () => {};const WARN = () => {};const ERR = () => {};const formatTime = (value) => {
   if (!value) return "";
   return new Date(value).toLocaleString([], {
     day: "2-digit",

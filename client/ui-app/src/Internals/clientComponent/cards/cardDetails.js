@@ -316,7 +316,6 @@ const BusinessDetail = React.memo(() => {
       setNewGalleryImages(prev => [...prev, ...images]);
       setUploadError("");
     } catch (error) {
-      console.error("Failed to read selected images:", error);
       setUploadError("Unable to read selected images. Please try again.");
     } finally {
       if (event.target) {
@@ -353,7 +352,6 @@ const BusinessDetail = React.memo(() => {
         variant: "success"
       });
     } catch (error) {
-      console.error("Business image upload failed:", error);
       setUploadError(error?.response?.data?.message || error?.message || "Upload failed. Please try again.");
       enqueueSnackbar(error?.response?.data?.message || error?.message || "Upload failed. Please try again.", {
         variant: "error"
@@ -382,7 +380,7 @@ const BusinessDetail = React.memo(() => {
   const handleCopyAddress = () => {
     if (!fullAddress) return;
     if (navigator.clipboard) {
-      navigator.clipboard.writeText(fullAddress).then(() => alert("Address copied to clipboard!")).catch(err => console.error("Failed to copy:", err));
+      navigator.clipboard.writeText(fullAddress).then(() => alert("Address copied to clipboard!")).catch(() => {});
     } else {
       const textarea = document.createElement("textarea");
       textarea.value = fullAddress;
@@ -402,7 +400,7 @@ const BusinessDetail = React.memo(() => {
       navigator.clipboard.writeText(linkToCopy).then(() => {
         alert("Link copied!");
         setShowShareOptions(false);
-      }).catch(err => console.error("Failed to copy link:", err));
+      }).catch(() => {});
     } else {
       alert("Copy failed. Browser does not support clipboard.");
     }
@@ -443,7 +441,6 @@ const BusinessDetail = React.memo(() => {
         alert("Phone number copied!");
         setShowContactModal(false);
       }).catch(err => {
-        console.error("Failed to copy:", err);
         alert("Failed to copy. Please copy manually.");
       });
     } else {

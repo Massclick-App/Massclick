@@ -1,18 +1,27 @@
 # https://www.robotstxt.org/robotstxt.html
 
 User-agent: *
-Content-Signal: search=yes, ai-input=yes, ai-train=no
+Allow: /
+
+# ── Google ────────────────────────────────────────────────
+User-agent: Googlebot
+Allow: /
+
+# Google AI training (Gemini) — allow for AI visibility
+User-agent: Google-Extended
+Allow: /
+
+# ── OpenAI ────────────────────────────────────────────────
+User-agent: GPTBot
 Allow: /
 
 User-agent: OAI-SearchBot
 Allow: /
 
-User-agent: GPTBot
-Allow: /
-
 User-agent: ChatGPT-User
 Allow: /
 
+# ── Anthropic / Claude ────────────────────────────────────
 User-agent: ClaudeBot
 Allow: /
 
@@ -22,7 +31,47 @@ Allow: /
 User-agent: Claude-User
 Allow: /
 
-User-agent: Google-Extended
-Disallow: /
+User-agent: anthropic-ai
+Allow: /
+
+# ── Perplexity ────────────────────────────────────────────
+User-agent: PerplexityBot
+Allow: /
+
+# ── Apple Intelligence ────────────────────────────────────
+User-agent: Applebot
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+# ── Amazon / Alexa ────────────────────────────────────────
+User-agent: Amazonbot
+Allow: /
+
+# ── Meta / Facebook ───────────────────────────────────────
+User-agent: FacebookBot
+Allow: /
+
+# ── Microsoft / Bing ──────────────────────────────────────
+User-agent: bingbot
+Allow: /
+
+# ── You.com ───────────────────────────────────────────────
+User-agent: YouBot
+Allow: /
+
+# ── Cohere ────────────────────────────────────────────────
+User-agent: cohere-ai
+Allow: /
+
+# ── ByteDance / TikTok ────────────────────────────────────
+User-agent: Bytespider
+Allow: /
+
+# ── Common admin / private routes ─────────────────────────
+User-agent: *
+Disallow: /admin
+Disallow: /api/
 
 Sitemap: https://massclick.in/sitemap.xml

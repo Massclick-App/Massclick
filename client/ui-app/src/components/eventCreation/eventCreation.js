@@ -303,7 +303,7 @@ export default function EventCreation() {
         dispatch(getAllEventCreation());
         resetForm();
       })
-      .catch(console.error);
+      .catch(() => {});
 
     setTimeout(() => {
       setSuccessMessage("");
@@ -360,7 +360,7 @@ export default function EventCreation() {
         setSelectedEvent(null);
         setSuccessMessage("Event deleted successfully");
       })
-      .catch(console.error);
+      .catch(() => {});
   };
 
   const rows = data.map((item) => ({

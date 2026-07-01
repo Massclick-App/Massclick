@@ -10,38 +10,54 @@
 }
 
 .shimmer-container {
-  width: 100%;
-  min-height: 100vh;
-  background-color: #f5f7fa;
-  padding: 16px;
-  contain: layout style paint;
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  pointer-events: none;
+  background: rgba(245, 247, 250, 0.68);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-sizing: border-box;
+}
+
+.shimmer-shell {
+  width: min(100%, 420px);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 24px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.16);
 }
 
 .shimmer-header {
-  height: 56px;
-  background-color: #ffffff;
-  border-radius: 0;
-  margin-bottom: 16px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
-  contain: layout style paint;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.shimmer-logo {
+  width: 52px;
+  height: 52px;
+  border-radius: 18px;
 }
 
 .shimmer-hero {
-  background-color: #ffffff;
-  border-radius: 8px;
-  padding: 32px 16px;
-  margin-bottom: 24px;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  contain: layout style paint;
+  gap: 12px;
 }
 
 .shimmer-content {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 16px;
-  contain: layout style paint;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .shimmer-bar {
@@ -54,9 +70,9 @@
   );
   background-size: 1000px 100%;
   animation: shimmer 2s infinite;
-  border-radius: 4px;
-  contain: paint;
+  border-radius: 999px;
   display: block;
+  box-sizing: border-box;
 }
 
 .shimmer-bar-lg {
@@ -71,11 +87,13 @@
   height: 16px;
 }
 
-/* Prevent layout shift */
-.shimmer-container,
-.shimmer-header,
-.shimmer-hero,
-.shimmer-content,
-.shimmer-bar {
-  box-sizing: border-box;
+@media (max-width: 640px) {
+  .shimmer-container {
+    padding: 16px;
+  }
+
+  .shimmer-shell {
+    padding: 20px;
+    border-radius: 20px;
+  }
 }

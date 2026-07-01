@@ -443,16 +443,7 @@ const BusinessList = React.memo(() => {
 
   // DEBUG: Log on mount and view changes
   useEffect(() => {
-    console.log("🎯 Business Component Mounted/Updated", {
-      activeView,
-      editMode,
-      businessListLength: businessList?.length,
-      filteredRowsLength: filteredRows?.length,
-      successData: !!successData,
-      businessListData: businessList,
-      filteredRows
-    });
-  }, [activeView, editMode, businessList, successData]);
+    }, [activeView, editMode, businessList, successData]);
   const [newGalleryImages, setNewGalleryImages] = useState([]);
   const [createdBusinessId, setCreatedBusinessId] = useState(null);
   const [createUserId, setCreateUserId] = useState(null);
@@ -532,10 +523,6 @@ const BusinessList = React.memo(() => {
       userId = createUserId;
     }
     if (!businessId || !userId) {
-      console.error("❌ Missing businessId or userId:", {
-        businessId,
-        userId
-      });
       return;
     }
     dispatch(createPhonePePayment(amount, userId, businessId));
@@ -870,8 +857,7 @@ const BusinessList = React.memo(() => {
       handleCloseGallery();
       await dispatch(getAllBusinessList());
     } catch (err) {
-      console.error("Upload failed:", err);
-    }
+      }
   };
   const defaultOpeningHours = [{
     day: "Monday",
@@ -925,8 +911,7 @@ const BusinessList = React.memo(() => {
       });
       setNewGalleryImages([]);
     } else {
-      console.error("Business not found in Redux store");
-    }
+      }
   };
   const handleCloseGallery = () => {
     setGalleryDialog({
@@ -1273,8 +1258,7 @@ const BusinessList = React.memo(() => {
       };
       localStorage.setItem(BUSINESS_LOCAL_DRAFT_KEY, JSON.stringify(essentialData));
     } catch (error) {
-      console.error("Failed to save draft:", error);
-    }
+      }
   }, [listingMode]);
 
   const clearDraftFromLocalStorage = useCallback(() => {
@@ -1282,8 +1266,7 @@ const BusinessList = React.memo(() => {
       localStorage.removeItem(BUSINESS_LOCAL_DRAFT_KEY);
       setLocalDraftMeta(null);
     } catch (error) {
-      console.error("Failed to clear draft:", error);
-    }
+      }
   }, []);
 
   // ===== AUTO-SAVE DRAFT ON FORM CHANGE =====
@@ -2612,7 +2595,6 @@ const BusinessList = React.memo(() => {
       dispatch(getAllBusinessList());
       setSectionSavingState(prev => ({ ...prev, [sectionKey]: false }));
     } catch (err) {
-      console.error(`Error saving ${sectionKey}:`, err);
       enqueueSnackbar(`Error saving ${sectionKey}. Please try again.`, {
         variant: "error"
       });
@@ -2644,7 +2626,6 @@ const BusinessList = React.memo(() => {
       });
       dispatch(getAllBusinessList());
     } catch (error) {
-      console.error("Retry paid activation failed:", error);
       enqueueSnackbar("Still unable to mark this business as paid. Please try again.", {
         variant: "error"
       });
@@ -2805,7 +2786,6 @@ const BusinessList = React.memo(() => {
               variant: "success"
             });
           } catch (paymentError) {
-            console.error("Error marking created business as paid:", paymentError);
             setPostCreatePaidStatus("failed");
             enqueueSnackbar(`${cleanedFormData.businessName} was created, but it could not be marked as paid.`, {
               variant: "error"
@@ -2834,7 +2814,6 @@ const BusinessList = React.memo(() => {
       clearLocalDraft(false);
       setForceBypassedFields([]);
     } catch (err) {
-      console.error("Error saving business:", err);
       const backendPayload = err.response?.data;
 
       // Handle backend validation errors
@@ -2893,7 +2872,6 @@ const BusinessList = React.memo(() => {
       });
       dispatch(getAllBusinessList());
     } catch (err) {
-      console.error("Error updating badges:", err);
       if (err.response?.data?.message) {
         enqueueSnackbar(err.response.data.message, {
           variant: "error"
@@ -3558,7 +3536,6 @@ const BusinessList = React.memo(() => {
         { variant: "success" }
       );
     } catch (error) {
-      console.error("Business export failed:", error);
       enqueueSnackbar(error.message || "Export failed. Please try again.", { variant: "error" });
     }
   };
@@ -3636,7 +3613,6 @@ const BusinessList = React.memo(() => {
       const handleMarkPaid = async () => {
         if (isPaid || !row?._id) return;
         try {
-          console.log(`💳 [UI] Marking business as paid: ${row.businessName}`);
           await dispatch(editBusinessList(row._id, {
             name: row.businessName, businessName: row.businessName,
             category: row.category, location: row.location,
@@ -3645,7 +3621,6 @@ const BusinessList = React.memo(() => {
           enqueueSnackbar(`${row.businessName} marked as paid`, { variant: "success" });
 
           // Send invoice email
-          console.log(`📧 [UI] Sending invoice email for businessId: ${row._id}`);
           try {
             const token = localStorage.getItem('accessToken');
             const emailResponse = await axiosInstance.post(
@@ -3660,14 +3635,11 @@ const BusinessList = React.memo(() => {
             );
 
             if (emailResponse.data?.success) {
-              console.log(`✅ [UI] Invoice email sent successfully`);
               enqueueSnackbar(`Invoice email sent to ${row.email}`, { variant: "info" });
             } else {
-              console.warn(`⚠️ [UI] Failed to send invoice email: ${emailResponse.data?.message}`);
               enqueueSnackbar(`Invoice email could not be sent`, { variant: "warning" });
             }
           } catch (emailError) {
-            console.error(`❌ [UI] Error sending invoice email:`, emailError);
             enqueueSnackbar(`Invoice email error: ${emailError.message}`, { variant: "warning" });
           }
 

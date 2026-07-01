@@ -25,6 +25,7 @@ import { isBusinessPeopleUser } from './utils/userUtils.js';
 import ShimmerSkeleton from './Internals/clientComponent/shimmerSkeleton.js';
 import GlobalLoaderWrapper from './Internals/clientComponent/common/GlobalLoaderWrapper.js';
 import { scheduleIdleCallback } from './utils/scheduleIdleCallback.js';
+import { useDrawer } from './Internals/clientComponent/Drawer/drawerContext.js';
 
 const Dashboard = lazy(() => import(/* webpackChunkName: "admin-dashboard" */ './Dashboard'));
 const Login = lazy(() => import(/* webpackChunkName: "admin-login" */ './Internals/Login/login.js'));
@@ -92,6 +93,7 @@ const GmapsLeads = lazy(() => import(/* webpackChunkName: "admin-gmaps-leads" */
 const Msg91Analytics = lazy(() => import(/* webpackChunkName: "admin-msg91-analytics" */ './Internals/Msg91Analytics/Msg91Analytics.js'));
 const AuthConsole = lazy(() => import(/* webpackChunkName: "admin-auth-console" */ './Internals/AuthConsole/AuthConsole.js'));
 const PublicUserCounterAdmin = lazy(() => import(/* webpackChunkName: "admin-public-user-counter" */ './Internals/PublicUserCounter/PublicUserCounterAdmin.js'));
+const GscAnalytics = lazy(() => import(/* webpackChunkName: "admin-gsc" */ './Internals/gscAnalytics/gscAnalytics.js'));
 
 const UserDashboardPage = lazy(() => import(/* webpackChunkName: "user-dashboard" */ './Internals/clientComponent/userMenu/DashboardPage/Dashboard.js'));
 const UserEditProfilePage = lazy(() => import(/* webpackChunkName: "user-edit-profile" */ './Internals/clientComponent/userMenu/EditProfile/EditProfilePage.js'));
@@ -180,6 +182,7 @@ function AppRoutes({
 }) {
   const location = useLocation();
   const pathname = location.pathname || "";
+  const { hasEverOpened: hasDrawerEverOpened } = useDrawer();
   const isAdminSurface = pathname === "/admin" || pathname.startsWith("/dashboard");
   const authSnapshot = getAuthSnapshot();
   const shouldHoldAdminRoute =
@@ -207,7 +210,7 @@ function AppRoutes({
     <>
       {!isAdminSurface && showGlobalChrome && (
         <Suspense fallback={<DynamicLoader />}>
-          <GlobalDrawer />
+          {hasDrawerEverOpened && <GlobalDrawer />}
           {/* Google ad widgets are disabled for now. Re-enable when needed. */}
           {/*
           <FloatingAdCard />
@@ -313,6 +316,7 @@ function AppRoutes({
                 <Route path="category-display" element={<CategoryDisplaySettings />} />
                 <Route path="gmaps-leads" element={<GmapsLeads />} />
                 <Route path="msg91-analytics" element={<Msg91Analytics />} />
+                <Route path="gsc-analytics" element={<GscAnalytics />} />
               </Route>
 
             </Route>
@@ -320,10 +324,10 @@ function AppRoutes({
           {/* ─────────────────────────────────────────────────────────────── */}
         </Routes>
 
-        {/* Login Modal */}
-        {!isAdminSurface && (
+        {/* Login Modal — only mount chunk after first open */}
+        {!isAdminSurface && openLoginModal && (
           <OTPLoginModal
-            open={openLoginModal}
+            open={true}
             handleClose={() => setOpenLoginModal(false)}
           />
         )}
@@ -461,8 +465,7 @@ function App() {
           cleanup = () => ws.off('app:maintenance', handleMaintenanceMode);
         }
       } catch (error) {
-        console.warn('Failed to set up maintenance mode listener:', error);
-      }
+        }
     });
 
     return () => cleanup?.();
