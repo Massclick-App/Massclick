@@ -1026,7 +1026,7 @@ export const mainSearchController = async (req, res) => {
         : businessListModel.countDocuments(matchQuery)
     ]);
     const total = usesComputedRatingFilter ? totalResult[0]?.total || 0 : totalResult;
-    console.log(`[Search] → ${results.length} results (total:${total} hasMore:${page * pageSize < total}) in ${Date.now() - t0}ms`);
+    console.log(`[Search] → ${results.length} results (total:${total} hasMore:${page * pageSize < total}) resolvedCategory:"${category || ""}" in ${Date.now() - t0}ms`);
 
     // Sign image URLs
     results.forEach((b) => {
