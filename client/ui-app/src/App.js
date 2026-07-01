@@ -93,6 +93,7 @@ const GmapsLeads = lazy(() => import(/* webpackChunkName: "admin-gmaps-leads" */
 const Msg91Analytics = lazy(() => import(/* webpackChunkName: "admin-msg91-analytics" */ './Internals/Msg91Analytics/Msg91Analytics.js'));
 const AuthConsole = lazy(() => import(/* webpackChunkName: "admin-auth-console" */ './Internals/AuthConsole/AuthConsole.js'));
 const PublicUserCounterAdmin = lazy(() => import(/* webpackChunkName: "admin-public-user-counter" */ './Internals/PublicUserCounter/PublicUserCounterAdmin.js'));
+const GscAnalytics = lazy(() => import(/* webpackChunkName: "admin-gsc" */ './Internals/gscAnalytics/gscAnalytics.js'));
 
 const UserDashboardPage = lazy(() => import(/* webpackChunkName: "user-dashboard" */ './Internals/clientComponent/userMenu/DashboardPage/Dashboard.js'));
 const UserEditProfilePage = lazy(() => import(/* webpackChunkName: "user-edit-profile" */ './Internals/clientComponent/userMenu/EditProfile/EditProfilePage.js'));
@@ -315,6 +316,7 @@ function AppRoutes({
                 <Route path="category-display" element={<CategoryDisplaySettings />} />
                 <Route path="gmaps-leads" element={<GmapsLeads />} />
                 <Route path="msg91-analytics" element={<Msg91Analytics />} />
+                <Route path="gsc-analytics" element={<GscAnalytics />} />
               </Route>
 
             </Route>
@@ -463,8 +465,7 @@ function App() {
           cleanup = () => ws.off('app:maintenance', handleMaintenanceMode);
         }
       } catch (error) {
-        console.warn('Failed to set up maintenance mode listener:', error);
-      }
+        }
     });
 
     return () => cleanup?.();

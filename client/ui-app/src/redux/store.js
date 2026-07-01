@@ -34,6 +34,7 @@ import eventReducer from './reducers/eventReducer.js';
 import gmapsLeadsReducer from './reducers/gmapsLeadsReducer.js';
 import msg91AnalyticsReducer from './reducers/msg91AnalyticsReducer.js';
 import publicUserCounterReducer from './reducers/publicUserCounterReducer.js';
+import gscReducer from './reducers/gscReducer.js';
 
 const rootReducer = combineReducers({
   auth: authReducer,
@@ -70,6 +71,7 @@ const rootReducer = combineReducers({
   gmapsLeadsReducer: gmapsLeadsReducer,
   msg91Analytics: msg91AnalyticsReducer,
   publicUserCounter: publicUserCounterReducer,
+  gscReducer,
 });
 
 let storeInstance = null;
