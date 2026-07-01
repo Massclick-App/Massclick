@@ -1,4 +1,6 @@
 import nodemailer from 'nodemailer';
+import { getObjectBufferByKey } from '../../s3Uploder.js';
+import { ensureBusinessCertificates } from '../businessList/businessCertificateHelper.js';
 
 const {
   INVOICE_EMAIL_HOST,
@@ -190,6 +192,15 @@ const invoiceHTMLTemplate = (invoiceData) => {
   const baseAmount = formatAmount(invoiceData.amount);
   const gstAmount = formatAmount(invoiceData.gstAmount);
   const totalAmount = formatAmount(invoiceData.totalAmount);
+  const certificatesAttached = Number(invoiceData.certificateAttachmentCount || 0) > 0;
+  const certificateSection = certificatesAttached
+    ? `
+              <h2 class="section-title">Certificates Attached</h2>
+              <p class="intro">
+                Your active MassClick certificate file${Number(invoiceData.certificateAttachmentCount) > 1 ? 's are' : ' is'} attached with this invoice email for your records.
+              </p>
+`
+    : '';
 
   return `
 <!DOCTYPE html>
@@ -419,6 +430,8 @@ const invoiceHTMLTemplate = (invoiceData) => {
                 ${detailRow('Transaction ID', transactionId)}
               </table>
 
+              ${certificateSection}
+
               <h2 class="section-title">Premium Benefits Now Active</h2>
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 14px;">
                 ${benefitItem('Priority discovery', 'Improved placement opportunities that help customers find your business faster.')}
@@ -467,6 +480,9 @@ const invoiceHTMLTemplate = (invoiceData) => {
 const invoiceTextTemplate = (invoiceData) => {
   const businessName = invoiceData.businessName || 'Valued Business Partner';
   const paymentDate = invoiceData.paymentDate || formatPaymentDate();
+  const certificatesAttached = Number(invoiceData.certificateAttachmentCount || 0) > 0
+    ? `\nCertificates Attached: ${invoiceData.certificateAttachmentCount}\n`
+    : '';
 
   return `
 MassClick Premium Business Membership Activated
@@ -489,6 +505,7 @@ GST (18%): INR ${formatAmount(invoiceData.gstAmount)}
 Total Paid: INR ${formatAmount(invoiceData.totalAmount)}
 Payment Method: PhonePe
 Transaction ID: ${invoiceData.transactionId || 'N/A'}
+${certificatesAttached}
 
 Premium benefits now active:
 - Priority discovery
@@ -502,6 +519,46 @@ MassClick Business Success Team
 https://massclick.in
 support@massclick.in
 `;
+};
+
+const buildCertificateAttachments = async (businessData = {}) => {
+  const businessWithCertificates = await ensureBusinessCertificates(businessData);
+  const certificateBusiness = businessWithCertificates || businessData;
+  const certificates = certificateBusiness.certificates || {};
+  const businessSlug = slugifyEmailValue(
+    certificateBusiness.businessName || certificateBusiness.name || 'business',
+  );
+
+  const certificateFiles = [
+    certificateBusiness.verification?.isVerified && certificates.verifiedCertificateKey && {
+      key: certificates.verifiedCertificateKey,
+      filename: `massclick-verified-certificate-${businessSlug}.png`,
+    },
+    certificateBusiness.badges?.isTrust && certificates.trustCertificateKey && {
+      key: certificates.trustCertificateKey,
+      filename: `massclick-trust-certificate-${businessSlug}.png`,
+    },
+  ].filter(Boolean);
+
+  const attachments = [];
+
+  for (const certificateFile of certificateFiles) {
+    try {
+      const file = await getObjectBufferByKey(certificateFile.key);
+
+      if (file?.content?.length) {
+        attachments.push({
+          filename: certificateFile.filename,
+          content: file.content,
+          contentType: file.contentType || 'image/png',
+        });
+      }
+    } catch (error) {
+      console.warn(`[Invoice Email] Certificate attachment skipped for ${certificateFile.key}: ${error.message}`);
+    }
+  }
+
+  return attachments;
 };
 
 export const sendInvoiceEmail = async (businessData, paymentData) => {
@@ -541,6 +598,9 @@ export const sendInvoiceEmail = async (businessData, paymentData) => {
       totalAmount: paymentData.totalAmount,
       paymentDate: formatPaymentDate(paymentData.paymentDate),
     };
+    
+    const certificateAttachments = await buildCertificateAttachments(businessData);
+    invoiceData.certificateAttachmentCount = certificateAttachments.length;
 
     const mailOptions = {
       from: `MassClick <${INVOICE_EMAIL_FROM}>`,
@@ -548,9 +608,10 @@ export const sendInvoiceEmail = async (businessData, paymentData) => {
       subject: `MassClick Premium Activated - Payment Successful for ${businessData.businessName}`,
       html: invoiceHTMLTemplate(invoiceData),
       text: invoiceTextTemplate(invoiceData),
+      attachments: certificateAttachments,
     };
 
-    console.log(`[Invoice Email] Sending email via SMTP - From: ${INVOICE_EMAIL_FROM}, To: ${businessEmail}`);
+    console.log(`[Invoice Email] Sending email via SMTP - From: ${INVOICE_EMAIL_FROM}, To: ${businessEmail}, Attachments: ${certificateAttachments.length}`);
     const info = await transporter.sendMail(mailOptions);
 
     console.log(`[Invoice Email] SUCCESS - Email sent to ${businessEmail}`);

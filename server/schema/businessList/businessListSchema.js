@@ -46,6 +46,14 @@ const paymentSchema = new mongoose.Schema({
     type: Date,
     default: null,
   },
+  invoiceEmailSent: {
+    type: Boolean,
+    default: false,
+  },
+  invoiceEmailSentAt: {
+    type: Date,
+    default: null,
+  },
   responseData: {
     type: Object,
     default: {},

@@ -113,3 +113,21 @@ export const getImageDataUrlByKey = async (key) => {
     return "";
   }
 };
+
+export const getObjectBufferByKey = async (key) => {
+  if (!key) return null;
+
+  const object = await s3.getObject({
+    Bucket: assetsBucket,
+    Key: key,
+  }).promise();
+
+  const content = Buffer.isBuffer(object.Body)
+    ? object.Body
+    : Buffer.from(object.Body || []);
+
+  return {
+    content,
+    contentType: object.ContentType || "application/octet-stream",
+  };
+};

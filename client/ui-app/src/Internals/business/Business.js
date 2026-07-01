@@ -3634,7 +3634,9 @@ const BusinessList = React.memo(() => {
               }
             );
 
-            if (emailResponse.data?.success) {
+            if (emailResponse.data?.alreadySent) {
+              enqueueSnackbar(`Invoice email already sent to ${row.email}`, { variant: "info" });
+            } else if (emailResponse.data?.success) {
               enqueueSnackbar(`Invoice email sent to ${row.email}`, { variant: "info" });
             } else {
               enqueueSnackbar(`Invoice email could not be sent`, { variant: "warning" });
