@@ -172,7 +172,7 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater }) => {
             open={open}
             onClose={handleClose}
             maxWidth="sm"
-            fullScreen={isMobile}
+            fullWidth={false}
             BackdropProps={{
                 sx: {
                     backdropFilter: 'blur(12px)',
@@ -180,13 +180,17 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater }) => {
                 },
             }}
             sx={{
+                "& .MuiDialog-container": {
+                    alignItems: isMobile ? 'flex-end' : 'center',
+                },
                 "& .MuiDialog-paper": {
-                    borderRadius: isMobile ? '0' : "24px",
-                    boxShadow: isMobile ? 'none' : "0 25px 60px rgba(0, 0, 0, 0.2)",
+                    borderRadius: isMobile ? '24px 24px 0 0' : "24px",
+                    boxShadow: "0 25px 60px rgba(0, 0, 0, 0.2)",
                     p: { xs: 3, sm: 5 },
+                    m: isMobile ? 0 : undefined,
                     width: isMobile ? '100%' : '440px',
-                    minHeight: isMobile ? '100vh' : 'auto',
-                    maxHeight: isMobile ? 'none' : '90vh',
+                    maxHeight: isMobile ? '85vh' : '90vh',
+                    overflowY: 'auto',
                     transition: 'all 0.3s ease-in-out',
                     background: 'linear-gradient(145deg, #ffffff 0%, #fff8f3 100%)',
                     position: 'relative',
@@ -196,24 +200,22 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater }) => {
                 },
             }}
         >
-            {!isMobile && (
-                <IconButton
-                    onClick={handleClose}
-                    sx={{
-                        position: 'absolute',
-                        right: 16,
-                        top: 16,
-                        color: theme.palette.grey[500],
-                        transition: 'all 0.2s ease',
-                        '&:hover': {
-                            color: '#FF7B00',
-                            backgroundColor: 'rgba(255, 123, 0, 0.1)',
-                        },
-                    }}
-                >
-                    <CloseIcon />
-                </IconButton>
-            )}
+            <IconButton
+                onClick={handleClose}
+                sx={{
+                    position: 'absolute',
+                    right: 16,
+                    top: 16,
+                    color: theme.palette.grey[500],
+                    transition: 'all 0.2s ease',
+                    '&:hover': {
+                        color: '#FF7B00',
+                        backgroundColor: 'rgba(255, 123, 0, 0.1)',
+                    },
+                }}
+            >
+                <CloseIcon />
+            </IconButton>
 
             <DialogContent
                 sx={{
