@@ -19,7 +19,7 @@ const publicUserCounterSettingsSchema = new mongoose.Schema(
     enabled: { type: Boolean, default: true },
     title: { type: String, default: "Public Users", trim: true },
     subtitle: { type: String, default: "Public Users Connected", trim: true },
-    baseCount: { type: Number, default: 52487, min: 0 },
+    baseCount: { type: Number, default: 0, min: 0 },
     todayBaseCount: { type: Number, default: 127, min: 0 },
     onlineBaseCount: { type: Number, default: 143, min: 0 },
     incrementMin: { type: Number, default: 1, min: 0 },

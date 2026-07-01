@@ -15,7 +15,6 @@ AWS.config.update({
 
 const s3 = new AWS.S3();
 
-
 export const uploadImageToS3 = async (fileData, uploadPath, options = {}) => {
   const { skipImageConversion = false, contentType: forcedContentType = "", extension: forcedExtension = "" } = options;
   let fileBuffer;
@@ -41,7 +40,6 @@ export const uploadImageToS3 = async (fileData, uploadPath, options = {}) => {
     throw new Error("Invalid file format. Must be Base64 or Buffer.");
   }
 
-
   let finalBuffer = fileBuffer;
 
 
@@ -57,7 +55,6 @@ export const uploadImageToS3 = async (fileData, uploadPath, options = {}) => {
       console.error("WebP conversion failed → uploading original", err);
     }
   }
-
 
   const s3Key = `${uploadPath}.${extension}`;
 
