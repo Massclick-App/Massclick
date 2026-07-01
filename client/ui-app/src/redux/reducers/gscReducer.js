@@ -7,6 +7,13 @@ import {
   FETCH_GSC_COUNTRIES_REQUEST, FETCH_GSC_COUNTRIES_SUCCESS, FETCH_GSC_COUNTRIES_FAILURE,
   FETCH_GSC_OPPORTUNITIES_REQUEST, FETCH_GSC_OPPORTUNITIES_SUCCESS, FETCH_GSC_OPPORTUNITIES_FAILURE,
   FETCH_GSC_KEYWORD_GAPS_REQUEST, FETCH_GSC_KEYWORD_GAPS_SUCCESS, FETCH_GSC_KEYWORD_GAPS_FAILURE,
+  FETCH_TRACKED_KEYWORDS_REQUEST, FETCH_TRACKED_KEYWORDS_SUCCESS, FETCH_TRACKED_KEYWORDS_FAILURE,
+  ADD_TRACKED_KEYWORD_SUCCESS,
+  UPDATE_TRACKED_KEYWORD_SUCCESS, DELETE_TRACKED_KEYWORD_SUCCESS,
+  CHECK_KEYWORD_RANK_REQUEST, CHECK_KEYWORD_RANK_SUCCESS, CHECK_KEYWORD_RANK_FAILURE,
+  CHECK_ALL_KEYWORDS_REQUEST, CHECK_ALL_KEYWORDS_SUCCESS, CHECK_ALL_KEYWORDS_FAILURE,
+  FETCH_KEYWORD_HISTORY_REQUEST, FETCH_KEYWORD_HISTORY_SUCCESS, FETCH_KEYWORD_HISTORY_FAILURE,
+  FETCH_KEYWORD_QUOTA_SUCCESS,
 } from "../actions/gscActionTypes";
 
 const initialState = {
@@ -18,6 +25,11 @@ const initialState = {
   countries: [],        countriesLoading: false,
   opportunities: null,  opportunitiesLoading: false,
   keywordGaps: [],      keywordGapsLoading: false,
+  trackedKeywords: [],  trackedKeywordsLoading: false, trackedKeywordsError: null,
+  keywordCheckingId: null, keywordCheckError: null,
+  keywordHistory: null, keywordHistoryLoading: false,
+  keywordQuota: null,
+  checkAllLoading: false, checkAllResult: null, checkAllError: null,
 };
 
 export default function gscReducer(state = initialState, action) {
@@ -77,6 +89,60 @@ export default function gscReducer(state = initialState, action) {
       return { ...state, keywordGapsLoading: false, keywordGaps: action.payload };
     case FETCH_GSC_KEYWORD_GAPS_FAILURE:
       return { ...state, keywordGapsLoading: false };
+
+    case FETCH_TRACKED_KEYWORDS_REQUEST:
+      return { ...state, trackedKeywordsLoading: true, trackedKeywordsError: null };
+    case FETCH_TRACKED_KEYWORDS_SUCCESS:
+      return { ...state, trackedKeywordsLoading: false, trackedKeywords: action.payload };
+    case FETCH_TRACKED_KEYWORDS_FAILURE:
+      return { ...state, trackedKeywordsLoading: false, trackedKeywordsError: action.payload };
+
+    case ADD_TRACKED_KEYWORD_SUCCESS:
+      return { ...state, trackedKeywords: [action.payload, ...state.trackedKeywords] };
+
+    case UPDATE_TRACKED_KEYWORD_SUCCESS:
+      return {
+        ...state,
+        trackedKeywords: state.trackedKeywords.map((k) =>
+          k._id === action.payload._id ? action.payload : k
+        ),
+      };
+
+    case DELETE_TRACKED_KEYWORD_SUCCESS:
+      return {
+        ...state,
+        trackedKeywords: state.trackedKeywords.filter((k) => k._id !== action.payload),
+      };
+
+    case CHECK_KEYWORD_RANK_REQUEST:
+      return { ...state, keywordCheckingId: action.payload, keywordCheckError: null };
+    case CHECK_KEYWORD_RANK_SUCCESS:
+      return {
+        ...state,
+        keywordCheckingId: null,
+        trackedKeywords: state.trackedKeywords.map((k) =>
+          k._id === action.payload._id ? action.payload : k
+        ),
+      };
+    case CHECK_KEYWORD_RANK_FAILURE:
+      return { ...state, keywordCheckingId: null, keywordCheckError: action.payload };
+
+    case CHECK_ALL_KEYWORDS_REQUEST:
+      return { ...state, checkAllLoading: true, checkAllResult: null, checkAllError: null };
+    case CHECK_ALL_KEYWORDS_SUCCESS:
+      return { ...state, checkAllLoading: false, checkAllResult: action.payload };
+    case CHECK_ALL_KEYWORDS_FAILURE:
+      return { ...state, checkAllLoading: false, checkAllError: action.payload };
+
+    case FETCH_KEYWORD_HISTORY_REQUEST:
+      return { ...state, keywordHistoryLoading: true };
+    case FETCH_KEYWORD_HISTORY_SUCCESS:
+      return { ...state, keywordHistoryLoading: false, keywordHistory: action.payload };
+    case FETCH_KEYWORD_HISTORY_FAILURE:
+      return { ...state, keywordHistoryLoading: false };
+
+    case FETCH_KEYWORD_QUOTA_SUCCESS:
+      return { ...state, keywordQuota: action.payload };
 
     default:
       return state;

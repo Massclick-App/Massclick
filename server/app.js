@@ -52,7 +52,9 @@ import chatRoutes from "./routes/chatRoutes.js";
 import authAdminRoutes from "./routes/authAdminRoutes.js";
 import publicUserCounterRoutes from "./routes/publicUserCounterRoutes.js";
 import gscRoutes from "./routes/gscRoutes.js";
+import trackedKeywordRoutes from "./routes/trackedKeywordRoutes.js";
 import { startFCMScheduler } from "./scheduler/fcmScheduler.js";
+import { startKeywordRankCron } from "./cron/keywordRankCron.js";
 
 dotenv.config();
 
@@ -139,6 +141,7 @@ app.use("/", chatRoutes);
 app.use("/", authAdminRoutes);
 app.use("/", publicUserCounterRoutes);
 app.use("/", gscRoutes);
+app.use("/", trackedKeywordRoutes);
 app.use(express.static(CLIENT_BUILD_PATH, {
   index: false,
   maxAge: "365d",
@@ -158,6 +161,7 @@ mongoose.connect(MONGO_URI)
   .then(async () => {
     await initRedis();
     startFCMScheduler();
+    startKeywordRankCron();
     await initWsServer(httpServer);
     httpServer.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);

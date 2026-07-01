@@ -40,7 +40,8 @@ export const Collections = {
     CHATMESSAGE: 'chatmessages',
     PUBLICUSERCOUNTERSETTINGS: 'publicusercountersettings',
     BUSINESSWEBPMIGRATIONJOB: 'business_webp_migration_jobs',
-    S3CACHEHEADERMIGRATIONJOB: 's3_cache_header_migration_jobs'
+    S3CACHEHEADERMIGRATIONJOB: 's3_cache_header_migration_jobs',
+    TRACKEDKEYWORD: 'trackedkeywords'
 };
 
 export const {
@@ -85,5 +86,6 @@ export const {
     CHATMESSAGE,
     PUBLICUSERCOUNTERSETTINGS,
     BUSINESSWEBPMIGRATIONJOB,
-    S3CACHEHEADERMIGRATIONJOB
+    S3CACHEHEADERMIGRATIONJOB,
+    TRACKEDKEYWORD
 } = Collections;
