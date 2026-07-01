@@ -1036,7 +1036,7 @@ export const mainSearchController = async (req, res) => {
       if (b.kycDocumentsKey?.length > 0) b.kycDocuments = b.kycDocumentsKey.map((k) => getSignedUrlByKey(k));
     });
 
-    res.send({ results, total, page, pageSize, hasMore: page * pageSize < total });
+    res.send({ results, total, page, pageSize, hasMore: page * pageSize < total, resolvedCategory: category || null });
 
   } catch (err) {
     console.error(err);

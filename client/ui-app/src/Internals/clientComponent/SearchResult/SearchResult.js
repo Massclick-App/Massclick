@@ -220,6 +220,8 @@ const SearchResults = React.memo(() => {
   const [results, setResults] = useState([]);
   const [activeFilters, setActiveFilters] = useState({});
   const [filterConfig, setFilterConfig] = useState([]);
+  const [resolvedCategory, setResolvedCategory] = useState(null);
+  const effectiveCategory = resolvedCategory || (isKnownCategory ? normalizedSearchTerm : null);
   const [sortBy, setSortBy] = useState("relevant");
   const [viewMode, setViewMode] = useState("list");
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
@@ -285,6 +287,7 @@ const SearchResults = React.memo(() => {
     setTotalResults(0);
     setHasMore(false);
     setNearbyResults([]);
+    setResolvedCategory(null);
     setInitialSearchResolved(Boolean(safeStateResults));
     loadingPagesRef.current.clear();
   }, [normalizedSearchTerm, locationText, safeStateResults]);
@@ -386,6 +389,7 @@ const SearchResults = React.memo(() => {
       setResults(normalized.results || []);
       setTotalResults(normalized.total || 0);
       setHasMore(normalized.hasMore || false);
+      setResolvedCategory(normalized.resolvedCategory || null);
       setCurrentPage(1);
       setInitialSearchResolved(true);
       loadingPagesRef.current.clear();
@@ -410,6 +414,7 @@ const SearchResults = React.memo(() => {
       setResults(normalized.results || []);
       setTotalResults(normalized.total || 0);
       setHasMore(normalized.hasMore || false);
+      setResolvedCategory(normalized.resolvedCategory || null);
       setCurrentPage(1);
       setInitialSearchResolved(true);
       loadingPagesRef.current.clear();
@@ -418,12 +423,12 @@ const SearchResults = React.memo(() => {
 
   // ─── Fetch filterConfig for this category ────────────────────────────────────
   useEffect(() => {
-    if (!normalizedSearchTerm) return;
-    const slug = normalizedSearchTerm.toLowerCase().trim().replace(/\s+/g, "-");
+    if (!effectiveCategory) { setFilterConfig([]); return; }
+    const slug = effectiveCategory.toLowerCase().trim().replace(/\s+/g, "-");
     axiosInstance.get(`/category/${encodeURIComponent(slug)}/filters`)
       .then(res => setFilterConfig(Array.isArray(res.data) ? res.data : []))
       .catch(() => setFilterConfig([]));
-  }, [normalizedSearchTerm]);
+  }, [effectiveCategory]);
 
   // ─── Infinite scroll: load next page directly (bypasses Redux loading state) ─
   const loadPage = useCallback(async (page) => {
@@ -438,8 +443,8 @@ const SearchResults = React.memo(() => {
     try {
       const token = await dispatch(getClientToken());
       const params = {
-        ...(isKnownCategory
-          ? { category: normalizedSearchTerm }
+        ...(effectiveCategory
+          ? { category: effectiveCategory }
           : { term: normalizedSearchTerm }),
         location: locationText,
         ...buildSearchParams(page)
@@ -470,7 +475,7 @@ const SearchResults = React.memo(() => {
       loadingPagesRef.current.delete(page);
       setIsLoadingMore(false);
     }
-  }, [hasMore, normalizedSearchTerm, locationText, buildSearchParams, isKnownCategory, dispatch]);
+  }, [hasMore, normalizedSearchTerm, locationText, buildSearchParams, effectiveCategory, dispatch]);
 
   // ─── IntersectionObserver for infinite scroll ─────────────────────────────────
   useEffect(() => {
@@ -487,20 +492,20 @@ const SearchResults = React.memo(() => {
 
   // ─── Nearby businesses fetch (only when geo granted) ─────────────────────────
   useEffect(() => {
-    if (!userGeo || geoStatus !== "granted" || !normalizedSearchTerm) return;
+    if (!userGeo || geoStatus !== "granted" || !effectiveCategory) return;
     let cancelled = false;
 
     dispatch(fetchNearbyBusinesses({
       lat: userGeo.lat,
       lng: userGeo.lng,
-      category: normalizedSearchTerm,
+      category: effectiveCategory,
       limit: 6
     })).then(result => {
       if (!cancelled) setNearbyResults(result.data || []);
     });
 
     return () => { cancelled = true; };
-  }, [userGeo, geoStatus, normalizedSearchTerm, dispatch]);
+  }, [userGeo, geoStatus, effectiveCategory, dispatch]);
 
   // ─── Filter handlers ──────────────────────────────────────────────────────────
   const handleFilterChange = useCallback((key, value) => {
@@ -567,23 +572,23 @@ const SearchResults = React.memo(() => {
   ];
 
   useEffect(() => {
-    if (!normalizedSearchTerm || !locationText) return;
+    if (!effectiveCategory || !locationText) return;
     dispatch({ type: CLEAR_SEO_META });
     dispatch(fetchSeoMeta({
       pageType: "category",
-      category: normalizedSearchTerm.toLowerCase(),
+      category: effectiveCategory.toLowerCase(),
       location: locationText.toLowerCase()
     }));
-  }, [dispatch, normalizedSearchTerm, locationText]);
+  }, [dispatch, effectiveCategory, locationText]);
 
   useEffect(() => {
-    if (!normalizedSearchTerm) return;
+    if (!effectiveCategory) return;
     dispatch(fetchSeoPageContentMeta({
       pageType: "category",
-      category: normalizedSearchTerm.replace(/-/g, " "),
+      category: effectiveCategory.replace(/-/g, " "),
       ...(locationText ? { location: locationText } : {})
     }));
-  }, [dispatch, normalizedSearchTerm, locationText]);
+  }, [dispatch, effectiveCategory, locationText]);
 
   const handleRetry = useCallback(() => {
     dispatch(performSearch(searchText, locationText));
@@ -662,7 +667,7 @@ const SearchResults = React.memo(() => {
         <main>
         <div className={cx("page-spacing")} />
         <div className={cx("results-container banner-section")}>
-          <TopBannerAds category={searchText} />
+          <TopBannerAds category={effectiveCategory} />
         </div>
 
         <div className={cx("results-container content-section")}>
@@ -683,7 +688,7 @@ const SearchResults = React.memo(() => {
               Discover trusted {searchText} in {locationText}. Compare ratings,
               reviews and contact details to find the best near you.
             </h2>
-            <CategoryPublicCounterBadge category={searchText} />
+            <CategoryPublicCounterBadge category={effectiveCategory} />
 
             <div className={cx("category-trust-badges")}>
               <span className={cx("trust-badge")}><VerifiedIcon fontSize="small" /> Verified Listings</span>
