@@ -898,42 +898,45 @@ export default function PublicizePage() {
                       ))}
                     </div>
                   </div>
-
-                  <aside className={cx("payment-summary")} aria-label="Selected plan summary">
-                    <div className={cx("summary-head")}>
-                      <span>{selectedPlanDetails.tenure}</span>
-                      <h2>{selectedPlanDetails.label} Plan</h2>
-                      <p>{selectedPlanDetails.description}</p>
-                    </div>
-                    <div className={cx("summary-row")}>
-                      <span>Monthly Fee</span>
-                      <strong>{testingAmountLabel}</strong>
-                    </div>
-                    <div className={cx("summary-row")}>
-                      <span>Discount</span>
-                      <strong>{selectedPlanDetails.discount}</strong>
-                    </div>
-                    <div className={cx("summary-row")}>
-                      <span>Verified Seal + Trust Stamp</span>
-                      <strong>Free</strong>
-                    </div>
-                    <div className={cx("summary-row")}>
-                      <span>GST @ 18%</span>
-                      <strong>{testingAmountLabel}</strong>
-                    </div>
-                    <div className={cx("summary-total")}>
-                      <span>Total Monthly Fee</span>
-                      <strong>{testingAmountLabel}</strong>
-                    </div>
-                    <button
-                      className={cx("summary-button")}
-                      type="button"
-                      onClick={() => navigate("/customercare")}
-                    >
-                      Talk to our team <ArrowRight size={18} />
-                    </button>
-                  </aside>
                 </section>
+
+                <aside
+                  className={cx("payment-summary", "payment-summary-inline")}
+                  aria-label="Selected plan summary"
+                >
+                  <div className={cx("summary-head")}>
+                    <span>{selectedPlanDetails.tenure}</span>
+                    <h2>{selectedPlanDetails.label} Plan</h2>
+                    <p>{selectedPlanDetails.description}</p>
+                  </div>
+                  <div className={cx("summary-row")}>
+                    <span>Monthly Fee</span>
+                    <strong>{testingAmountLabel}</strong>
+                  </div>
+                  <div className={cx("summary-row")}>
+                    <span>Discount</span>
+                    <strong>{selectedPlanDetails.discount}</strong>
+                  </div>
+                  <div className={cx("summary-row")}>
+                    <span>Verified Seal + Trust Stamp</span>
+                    <strong>Free</strong>
+                  </div>
+                  <div className={cx("summary-row")}>
+                    <span>GST @ 18%</span>
+                    <strong>{testingAmountLabel}</strong>
+                  </div>
+                  <div className={cx("summary-total")}>
+                    <span>Total Monthly Fee</span>
+                    <strong>{testingAmountLabel}</strong>
+                  </div>
+                  <button
+                    className={cx("summary-button")}
+                    type="button"
+                    onClick={() => navigate("/customercare")}
+                  >
+                    Talk to our team <ArrowRight size={18} />
+                  </button>
+                </aside>
 
                 <div className={cx("button-row", "sticky-actions")}>
                   <button type="button" className={cx("secondary-button")} onClick={goBack}>
