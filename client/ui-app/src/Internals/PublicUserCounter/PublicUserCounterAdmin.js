@@ -36,7 +36,7 @@ const DEFAULT_SETTINGS = {
   enabled: true,
   title: "Public Users",
   subtitle: "Public Users Connected",
-  baseCount: 52487,
+  baseCount: 0,
   todayBaseCount: 127,
   onlineBaseCount: 143,
   incrementMin: 1,
@@ -156,7 +156,7 @@ const PublicUserCounterAdmin = () => {
         {
           name: "",
           slug: "",
-          baseCount: 500,
+          baseCount: settings.baseCount,
           incrementMin: 0,
           incrementMax: 2,
           intervalSeconds: 30,
@@ -180,7 +180,7 @@ const PublicUserCounterAdmin = () => {
           {
             name: category.name,
             slug: category.slug || category.name.toLowerCase().replace(/\s+/g, "-"),
-            baseCount: 500,
+            baseCount: prev.baseCount,
             incrementMin: 0,
             incrementMax: 2,
             intervalSeconds: 30,
@@ -286,7 +286,7 @@ const PublicUserCounterAdmin = () => {
           </div>
 
           <Alert severity="info">
-            Example: starting count 500, increment 1 to 5, update every 30 seconds. Every morning at 7:00 AM it starts again from 500 when daily reset is enabled.
+            Example: starting count {toInputValue(settings.baseCount) || 0}, increment {toInputValue(settings.incrementMin) || 0} to {toInputValue(settings.incrementMax) || 0}, update every {toInputValue(settings.intervalSeconds) || 30} seconds. Every morning at 7:00 AM it starts again from the Starting Count when daily reset is enabled.
           </Alert>
         </Stack>
       </Card>

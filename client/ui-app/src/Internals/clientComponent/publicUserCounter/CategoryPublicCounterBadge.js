@@ -53,6 +53,7 @@ const CategoryPublicCounterBadge = ({ category }) => {
     ...matchedCategory,
     resetDaily: settings.resetDaily,
     startedAt: matchedCategory.startedAt || settings.startedAt,
+    dailyResetTimeZone: settings.dailyResetTimeZone,
   }, now);
 
   return (

@@ -3,6 +3,8 @@ import categoryModel from "../../model/category/categoryModel.js";
 import { deleteCache, getCache, setCache } from "../../utils/redisClient.js";
 
 const CACHE_KEY = "public-user-counter:settings";
+const DAILY_RESET_HOUR = 7;
+const INDIA_OFFSET_MS = 5.5 * 60 * 60 * 1000;
 
 const clampNumber = (value, fallback, min = 0) => {
   const num = Number(value);
@@ -28,13 +30,68 @@ const buildCategoryCounterDefaults = async () => {
   return categories.map((category, index) => ({
     name: category.category,
     slug: category.slug || category.category?.toLowerCase().replace(/\s+/g, "-"),
-    baseCount: 500 + index * 125,
+    baseCount: index * 125,
     incrementMin: 0,
     incrementMax: 2,
     intervalSeconds: 30,
     startedAt: new Date(),
     enabled: true,
   }));
+};
+
+const getIndiaDailyResetStart = (time = new Date()) => {
+  const timestamp = new Date(time).getTime();
+  const indiaDate = new Date(timestamp + INDIA_OFFSET_MS);
+  let resetStart = Date.UTC(
+    indiaDate.getUTCFullYear(),
+    indiaDate.getUTCMonth(),
+    indiaDate.getUTCDate(),
+    DAILY_RESET_HOUR,
+    0,
+    0,
+    0
+  ) - INDIA_OFFSET_MS;
+
+  if (resetStart > timestamp) {
+    resetStart -= 24 * 60 * 60 * 1000;
+  }
+
+  return new Date(resetStart);
+};
+
+const getNextIndiaDailyResetStart = (time = new Date()) => {
+  const currentResetStart = getIndiaDailyResetStart(time).getTime();
+  return new Date(currentResetStart + 24 * 60 * 60 * 1000);
+};
+
+const applyDailyResetIfNeeded = async (settings) => {
+  if (settings?.resetDaily === false) return settings;
+
+  const resetStart = getIndiaDailyResetStart();
+  const resetStartTime = resetStart.getTime();
+  const lastResetTime = new Date(settings.lastResetAt || settings.startedAt || 0).getTime();
+
+  if (Number.isFinite(lastResetTime) && lastResetTime >= resetStartTime) {
+    return settings;
+  }
+
+  const saved = await publicUserCounterSettingsModel.findOneAndUpdate(
+    { _id: settings._id },
+    {
+      $set: {
+        startedAt: resetStart,
+        lastResetAt: resetStart,
+        categories: (settings.categories || []).map((category) => ({
+          ...category,
+          startedAt: resetStart,
+        })),
+      },
+    },
+    { new: true }
+  ).lean();
+
+  await deleteCache(CACHE_KEY);
+  return saved || settings;
 };
 
 const normalizeCounterSettings = async (payload = {}) => {
@@ -45,7 +102,7 @@ const normalizeCounterSettings = async (payload = {}) => {
     enabled: payload.enabled !== false,
     title: String(payload.title || "Public Users").trim(),
     subtitle: String(payload.subtitle || "Public Users Connected").trim(),
-    baseCount: clampNumber(payload.baseCount, 52487),
+    baseCount: clampNumber(payload.baseCount, 0),
     todayBaseCount: clampNumber(payload.todayBaseCount, 127),
     onlineBaseCount: clampNumber(payload.onlineBaseCount, 143),
     incrementMin,
@@ -83,11 +140,14 @@ const getOrCreateSettings = async () => {
         { new: true }
       ).lean();
     }
-    return settings;
+    return applyDailyResetIfNeeded(settings);
   }
 
+  const now = new Date();
   const created = await publicUserCounterSettingsModel.create({
     intervalSeconds: 30,
+    startedAt: now,
+    lastResetAt: now,
     categories: await buildCategoryCounterDefaults(),
   });
   return created.toObject();
@@ -178,9 +238,17 @@ export const resetAdminPublicUserCounterAction = async (req, res) => {
 export const getPublicUserCounterAction = async (req, res) => {
   try {
     const cached = await getCache(CACHE_KEY);
-    if (cached) return res.status(200).json(cached);
+    if (cached) {
+      const cachedResetStart = new Date(cached.dailyResetStartedAt || cached.startedAt || 0).getTime();
+      const currentResetStart = getIndiaDailyResetStart().getTime();
+      if (cached.resetDaily === false || cachedResetStart >= currentResetStart) {
+        return res.status(200).json(cached);
+      }
+      await deleteCache(CACHE_KEY);
+    }
 
     const settings = await getOrCreateSettings();
+    const nextResetAt = getNextIndiaDailyResetStart();
     const payload = {
       enabled: settings.enabled,
       title: settings.title,
@@ -193,11 +261,18 @@ export const getPublicUserCounterAction = async (req, res) => {
       intervalSeconds: settings.intervalSeconds,
       resetDaily: settings.resetDaily !== false,
       startedAt: settings.startedAt,
+      dailyResetStartedAt: settings.startedAt,
+      dailyResetHour: DAILY_RESET_HOUR,
+      dailyResetTimeZone: "Asia/Kolkata",
+      nextDailyResetAt: nextResetAt.toISOString(),
       categories: (settings.categories || []).filter((item) => item.enabled),
       serverTime: new Date().toISOString(),
     };
 
-    await setCache(CACHE_KEY, payload, 300);
+    const ttlSeconds = settings.resetDaily === false
+      ? 300
+      : Math.max(1, Math.min(300, Math.floor((nextResetAt.getTime() - Date.now()) / 1000)));
+    await setCache(CACHE_KEY, payload, ttlSeconds);
     return res.status(200).json(payload);
   } catch (error) {
     console.error("getPublicUserCounterAction error:", error);

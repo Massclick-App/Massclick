@@ -25,9 +25,10 @@ export const getVisibleCounterCount = (config, now = Date.now()) => {
 
   const base = Number(config.baseCount || 0);
   const intervalMs = Math.max(10, Number(config.intervalSeconds) || 30) * 1000;
-  const rawStartedAt = new Date(config.startedAt || now).getTime();
+  const rawStartedAt = new Date(config.dailyResetStartedAt || config.startedAt || now).getTime();
   const startedAt = Number.isFinite(rawStartedAt) ? rawStartedAt : now;
-  const cycleStart = config.resetDaily === false
+  const serverManagedReset = Boolean(config.dailyResetStartedAt || config.dailyResetTimeZone);
+  const cycleStart = config.resetDaily === false || serverManagedReset
     ? startedAt
     : Math.max(startedAt, getLocalDailyResetStart(now));
   const elapsedIntervals = Math.max(0, Math.floor((now - cycleStart) / intervalMs));
