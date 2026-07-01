@@ -3,8 +3,66 @@ import categoryModel from "../../model/category/categoryModel.js";
 import { getSignedUrlByKey } from "../../s3Uploder.js";
 import { getCache, setCache } from "../../utils/redisClient.js";
 import { createLogger } from "../../utils/logger.js";
+import { slugify } from "../../slugify.js";
 
 const logger = createLogger("SEO");
+
+const titleCase = (text = "") =>
+  text
+    .split(/[\s-]+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+
+// Builds accurate SEO meta for the exact requested category/location when no
+// curated entry exists — never guesses with a mismatched category/location record,
+// since that produces a wrong canonical URL and wrong on-page copy (e.g. showing
+// "Thanjavur" content on a Trichy page).
+const buildDynamicSeoMeta = ({ category, location }) => {
+  const categoryTitle = category ? titleCase(category) : null;
+  const locationTitle = location ? titleCase(location) : null;
+
+  if (categoryTitle && locationTitle) {
+    return {
+      title: `Best ${categoryTitle} in ${locationTitle} | Massclick`,
+      description: `Find trusted ${categoryTitle} in ${locationTitle}. Compare ratings, reviews and contact details to find the best near you.`,
+      keywords: `${categoryTitle}, ${categoryTitle} in ${locationTitle}, best ${categoryTitle} ${locationTitle}`,
+      canonical: `https://massclick.in/${slugify(location)}/${slugify(category)}`,
+      robots: "index, follow",
+      generated: true,
+    };
+  }
+
+  if (categoryTitle) {
+    return {
+      title: `Best ${categoryTitle} | Massclick`,
+      description: `Find trusted ${categoryTitle} near you on Massclick.`,
+      keywords: `${categoryTitle}, best ${categoryTitle}`,
+      canonical: `https://massclick.in/${slugify(category)}`,
+      robots: "index, follow",
+      generated: true,
+    };
+  }
+
+  if (locationTitle) {
+    return {
+      title: `Local Businesses in ${locationTitle} | Massclick`,
+      description: `Discover trusted local businesses and services in ${locationTitle} on Massclick.`,
+      keywords: `businesses in ${locationTitle}, ${locationTitle} local services`,
+      canonical: `https://massclick.in/${slugify(location)}`,
+      robots: "index, follow",
+      generated: true,
+    };
+  }
+
+  return {
+    title: "Massclick - Local Business Search Platform",
+    description: "Find trusted local businesses, services, and professionals near you on Massclick.",
+    canonical: "https://massclick.in",
+    robots: "index, follow",
+    generated: true,
+  };
+};
 
 export const createSeo = async (data) => {
   try {
@@ -175,115 +233,17 @@ export const getSeoMeta = async ({ pageType, category, location }) => {
     }
 
     // ===============================
-    // 🔥 5. CATEGORY ONLY (ignore location if no match with both)
+    // 🔥 5. NO CURATED MATCH — GENERATE DYNAMICALLY
     // ===============================
-    if (safeCategory && safeLocation) {
-      await logger.seoDebug('Step 5: Trying CATEGORY ONLY (ignoring location)', { pageType: safePageType, category: safeCategory });
-      seo = await seoModel.findOne({
-        pageType: safePageType,
-        category: safeCategory,
-        isActive: true,
-      }).lean();
+    // Deliberately does NOT fall back to a record for a different category or
+    // location (e.g. returning a Thanjavur "fire service" entry for a Trichy
+    // search) — that produces a wrong canonical URL and wrong on-page copy.
+    // Instead, build accurate SEO for the exact category/location requested.
+    await logger.seoDebug('Step 5: No curated match — generating dynamic SEO', { category: safeCategory, location: safeLocation });
+    const dynamicSeo = buildDynamicSeoMeta({ category: safeCategory, location: safeLocation });
 
-      if (seo) {
-        await logger.seoDebug('Step 5: FOUND', { title: seo.title, category: seo.category, location: seo.location });
-        await setCache(cacheKey, seo, 86400); // Cache for 24 hours
-        return seo;
-      }
-      await logger.seoDebug('Step 5: NOT found');
-    }
-
-    // ===============================
-    // 🔥 6. FLEXIBLE CATEGORY ONLY (ignore location if no match with both)
-    // ===============================
-    if (safeCategory && safeLocation) {
-      await logger.seoDebug('Step 6: Trying FLEXIBLE CATEGORY ONLY (ignoring location)', { pageType: safePageType, categoryRegex: flexibleCategory });
-      seo = await seoModel.findOne({
-        pageType: safePageType,
-        category: { $regex: flexibleCategory, $options: "i" },
-        isActive: true,
-      }).lean();
-
-      if (seo) {
-        await logger.seoDebug('Step 6: FOUND', { title: seo.title, category: seo.category, location: seo.location });
-        await setCache(cacheKey, seo, 86400); // Cache for 24 hours
-        return seo;
-      }
-      await logger.seoDebug('Step 6: NOT found');
-    }
-
-    // ===============================
-    // 🔥 7. LOCATION ONLY (ignore category if no match with both)
-    // ===============================
-    if (safeCategory && safeLocation) {
-      await logger.seoDebug('Step 7: Trying LOCATION ONLY (ignoring category)', { pageType: safePageType, location: safeLocation });
-      seo = await seoModel.findOne({
-        pageType: safePageType,
-        location: safeLocation,
-        isActive: true,
-      }).lean();
-
-      if (seo) {
-        await logger.seoDebug('Step 7: FOUND', { title: seo.title, category: seo.category, location: seo.location });
-        await setCache(cacheKey, seo, 86400); // Cache for 24 hours
-        return seo;
-      }
-      await logger.seoDebug('Step 7: NOT found');
-    }
-
-    // ===============================
-    // 🔥 8. FLEXIBLE LOCATION ONLY (ignore category if no match with both)
-    // ===============================
-    if (safeCategory && safeLocation) {
-      await logger.seoDebug('Step 8: Trying FLEXIBLE LOCATION ONLY (ignoring category)', { pageType: safePageType, locationRegex: flexibleLocation });
-      seo = await seoModel.findOne({
-        pageType: safePageType,
-        location: { $regex: flexibleLocation, $options: "i" },
-        isActive: true,
-      }).lean();
-
-      if (seo) {
-        await logger.seoDebug('Step 8: FOUND', { title: seo.title, category: seo.category, location: seo.location });
-        await setCache(cacheKey, seo, 86400); // Cache for 24 hours
-        return seo;
-      }
-      await logger.seoDebug('Step 8: NOT found');
-    }
-
-    // ===============================
-    // 🔥 9. FALLBACK (PAGE TYPE ONLY)
-    // ===============================
-    await logger.seoDebug('Step 9: FALLBACK - Trying PAGE TYPE ONLY', { pageType: safePageType });
-    seo = await seoModel.findOne({
-      pageType: safePageType,
-      isActive: true,
-    }).lean();
-    if (seo) {
-      await logger.seoDebug('Step 9: FOUND', { title: seo.title, category: seo.category, location: seo.location });
-    } else {
-      await logger.seoDebug('Step 9: NOT found');
-    }
-
-    if (seo) {
-      await logger.seoDebug('Step 9: FOUND', { title: seo.title, category: seo.category, location: seo.location });
-      await setCache(cacheKey, seo, 86400); // Cache for 24 hours
-      return seo;
-    }
-
-    // ===============================
-    // 🔥 DEFAULT
-    // ===============================
-    await logger.seoDebug('Step 10: FALLBACK - Returning DEFAULT SEO');
-    const defaultSeo = {
-      title: "Massclick - Local Business Search Platform",
-      description:
-        "Find trusted local businesses, services, and professionals near you on Massclick.",
-      canonical: "https://massclick.in",
-      robots: "index, follow",
-    };
-
-    await setCache(cacheKey, defaultSeo, 86400); // Cache for 24 hours
-    return defaultSeo;
+    await setCache(cacheKey, dynamicSeo, 86400); // Cache for 24 hours
+    return dynamicSeo;
 
   } catch (error) {
     await logger.error("[SEO META ERROR]", error);
