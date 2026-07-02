@@ -43,9 +43,22 @@ export const createPublicize = async (reqBody = {}) => {
     });
     const savedPublicize = await publicizeDocument.save();
 
-    const businessDocument = new businessListModel(
-      buildBusinessFromPublicize(savedPublicize)
-    );
+    const businessData = buildBusinessFromPublicize(savedPublicize);
+
+    // Check if business already exists
+    const existingBusiness = await businessListModel.findOne({
+      businessName: businessData.businessName,
+      category: businessData.category,
+      location: businessData.location,
+    });
+
+    if (existingBusiness) {
+      throw new Error(
+        `Business "${businessData.businessName}" in "${businessData.category}" at "${businessData.location}" already exists. Please use a different business name, category, or location.`
+      );
+    }
+
+    const businessDocument = new businessListModel(businessData);
     const savedBusiness = await businessDocument.save();
 
     return {
@@ -181,11 +194,22 @@ export const initiatePublicizePayment = async (publicizeData = {}) => {
       const savedBusiness = await businessDocument.save();
 
       const amount = 24000;
-      const paymentResult = await createPhonePePayment(
-        amount,
-        mobileNumber,
-        savedBusiness._id.toString()
-      );
+      let paymentResult;
+
+      try {
+        paymentResult = await createPhonePePayment(
+          amount,
+          mobileNumber,
+          savedBusiness._id.toString()
+        );
+      } catch (paymentError) {
+        console.error("Payment initiation failed:", paymentError.message);
+        throw new Error(`Payment initiation failed: ${paymentError.message}`);
+      }
+
+      if (!paymentResult || !paymentResult.paymentUrl) {
+        throw new Error("Payment URL not received from gateway");
+      }
 
       return {
         success: true,
