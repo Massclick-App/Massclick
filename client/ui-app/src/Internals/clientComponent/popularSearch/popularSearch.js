@@ -14,6 +14,7 @@ import { createEnquiryNow } from "../../../redux/actions/popularSearchesAction";
 import { fetchPopularSearches } from "../../../redux/actions/categoryAction";
 import { logSearchActivity, sendEnquiryLead } from "../../../redux/actions/businessListAction";
 import OTPLoginModal from "../AddBusinessModel";
+import Card from "./Card";
 const cx = createScopedClassNames(styles);
 const defaultCards = [{
   title: "CCTV",
@@ -168,46 +169,33 @@ const CardCarousel = () => {
   }, [pendingCard, selectedDistrict]);
   return <>
       <section className={cx("popular-search")}>
-        <div className={cx("popular-search__inner")}>
-          <div className={cx("popular-search__header")}>
-            <div>
-              <h2 className={cx("popular-search__title")}>Popular Searches</h2>
-              <p className={cx("popular-search__subtitle")}>
-                Quick access to the most in-demand services around you.
-              </p>
-            </div>
-            <div className={cx("popular-search__controls")}>
-              <button type="button" className={cx("popular-search__control popular-search__control--left")} onClick={() => scrollByCard("left")} aria-label="Scroll popular searches left">
-                <KeyboardDoubleArrowLeftIcon />
-              </button>
-              <button type="button" className={cx("popular-search__control popular-search__control--right")} onClick={() => scrollByCard("right")} aria-label="Scroll popular searches right">
-                <KeyboardDoubleArrowRightIcon />
-              </button>
-            </div>
+        <div className={cx("popular-search__header")}>
+          <div>
+            <h2 className={cx("popular-search__title")}>Popular Searches</h2>
+            <p className={cx("popular-search__subtitle")}>
+              Quick access to the most in-demand services around you.
+            </p>
           </div>
+          <div className={cx("popular-search__controls")}>
+            <button type="button" className={cx("popular-search__control popular-search__control--left")} onClick={() => scrollByCard("left")} aria-label="Scroll popular searches left">
+              <KeyboardDoubleArrowLeftIcon />
+            </button>
+            <button type="button" className={cx("popular-search__control popular-search__control--right")} onClick={() => scrollByCard("right")} aria-label="Scroll popular searches right">
+              <KeyboardDoubleArrowRightIcon />
+            </button>
+          </div>
+        </div>
 
-          <div className={cx("popular-search__viewport")}>
-            <div className={cx("popular-search__track")} ref={containerRef}>
-              {cards.map((card, index) => <article className={cx("popular-search__card")} key={`${card.title}-${index}`} style={{
-              "--accent-color": card.accent
-            }}>
-                  {card.image ? <div className={cx("popular-search__card-image-wrapper")}>
-                      <img src={card.image} alt={card.alt} className={cx("popular-search__card-image")} width="640" height="360" loading="lazy" decoding="async" />
-                      <div className={cx("popular-search__card-overlay")} />
-                    </div> : <div className={cx("popular-search__card-image-wrapper popular-search__card-image-wrapper--empty")}>
-                    </div>}
-                  <div className={cx("popular-search__card-body")}>
-                    <div className={cx("popular-search__card-badge")}>Popular</div>
-                    <h3 className={cx("popular-search__card-title")}>{card.title}</h3>
-                    <p className={cx("popular-search__card-description")}>
-                      {card.description || "Find verified services"}
-                    </p>
-                    <button type="button" className={cx("popular-search__card-button")} onClick={() => handleEnquireClick(card)} disabled={submittingCard === card.title}>
-                      {submittingCard === card.title ? "Sending..." : card.buttonText}
-                    </button>
-                  </div>
-                </article>)}
-            </div>
+        <div className={cx("popular-search__viewport")}>
+          <div className={cx("popular-search__track")} ref={containerRef}>
+            {cards.map((card, index) => (
+              <Card
+                key={`${card.title}-${index}`}
+                card={card}
+                onEnquireClick={handleEnquireClick}
+                isSubmitting={submittingCard === card.title}
+              />
+            ))}
           </div>
         </div>
       </section>
