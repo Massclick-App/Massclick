@@ -4,8 +4,9 @@
   margin: 0 auto;
   padding: 28px var(--section-padding-h) 24px;
   background: #ffffff;
-  border-radius: var(--section-radius);
-  box-shadow: var(--section-shadow);
+   border-radius: var(--section-radius);
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  /* box-shadow: var(--section-shadow); */
   box-sizing: border-box;
   font-family:
     "Inter",

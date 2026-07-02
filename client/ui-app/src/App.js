@@ -272,6 +272,7 @@ function AppRoutes({
             <Route key={path} path={path} element={element} />
           ))}
 
+          <Route path="/:location" element={<Navigate to="/" replace />} />
           <Route path="/:location/:category" element={<CategoryRouter />} />
           <Route
             path="/:location/:category/:subcategory"
