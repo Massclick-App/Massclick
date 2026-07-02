@@ -28,6 +28,54 @@ const CACHE_TTL = {
   STATIC_PAGE: 3600,       // 1 hour
 };
 
+const isSafeFaqUrl = (url = "") =>
+  /^(https?:\/\/|\/(?!\/)|mailto:|tel:)/i.test(String(url).trim());
+
+const renderFaqAnswerHtmlWithLinks = (answer = "", links = []) => {
+  if (!answer) return "";
+
+  const validLinks = (links || [])
+    .filter((link) => link?.linkText && link?.url && isSafeFaqUrl(link.url))
+    .sort((a, b) => b.linkText.length - a.linkText.length);
+
+  if (validLinks.length === 0) {
+    return escapeHtml(answer);
+  }
+
+  let segments = [answer];
+
+  validLinks.forEach((link) => {
+    const escapedText = link.linkText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const pattern = new RegExp(`\\b(${escapedText})\\b`, "gi");
+    const nextSegments = [];
+
+    segments.forEach((segment) => {
+      if (typeof segment !== "string") {
+        nextSegments.push(segment);
+        return;
+      }
+
+      const parts = segment.split(pattern);
+      parts.forEach((part, partIndex) => {
+        if (!part) return;
+
+        if (partIndex % 2 === 1) {
+          nextSegments.push(
+            `<a href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(part)}</a>`
+          );
+          return;
+        }
+
+        nextSegments.push(escapeHtml(part));
+      });
+    });
+
+    segments = nextSegments;
+  });
+
+  return segments.join("");
+};
+
 export async function ssrMiddleware(req, res) {
   try {
     const indexPath = path.join(CLIENT_BUILD_PATH, "index.html");
@@ -354,6 +402,20 @@ export async function ssrMiddleware(req, res) {
       `
       : "";
 
+    const categoryFaqHtml = Array.isArray(categoryContent?.faq) && categoryContent.faq.length > 0
+      ? `
+        <section>
+          <h2>Frequently Asked Questions</h2>
+          ${categoryContent.faq.map((item) => `
+            <div>
+              <h3>${escapeHtml(item.question)}</h3>
+              <p>${renderFaqAnswerHtmlWithLinks(item.answer, item.links)}</p>
+            </div>
+          `).join("")}
+        </section>
+      `
+      : "";
+
     const blogFaqHtml = Array.isArray(blogDoc?.faq) && blogDoc.faq.length > 0
       ? `
         <section>
@@ -361,7 +423,7 @@ export async function ssrMiddleware(req, res) {
           ${blogDoc.faq.map((item) => `
             <div>
               <h3>${escapeHtml(item.question)}</h3>
-              <p>${escapeHtml(item.answer)}</p>
+              <p>${renderFaqAnswerHtmlWithLinks(item.answer, item.links)}</p>
             </div>
           `).join("")}
         </section>
@@ -402,6 +464,7 @@ export async function ssrMiddleware(req, res) {
           <h1>${escapeHtml(h1)}</h1>
           <p>${description}</p>
           ${categoryIntroHtml}
+          ${categoryFaqHtml}
           ${Array.isArray(categoryBusinesses) && categoryBusinesses.length > 0 ? `
           <section class="top-businesses">
             <h2>Top ${escapeHtml(categoryName)} in ${escapeHtml(locationName)}</h2>
@@ -493,6 +556,14 @@ export async function ssrMiddleware(req, res) {
           mdLines.push("## Frequently Asked Questions", "");
           for (const item of blogDoc.faq) {
             mdLines.push(`### ${item.question}`, "", item.answer, "");
+            if (Array.isArray(item.links) && item.links.length > 0) {
+              const linkLines = item.links
+                .filter((link) => link?.linkText && link?.url && isSafeFaqUrl(link.url))
+                .map((link) => `- [${link.linkText}](${link.url})`);
+              if (linkLines.length > 0) {
+                mdLines.push(...linkLines, "");
+              }
+            }
           }
         }
       } else if (isCategoryPage) {
@@ -515,6 +586,20 @@ export async function ssrMiddleware(req, res) {
           const plain = categoryContent.pageContent
             .replace(/<[^>]+>/g, " ").replace(/\s{2,}/g, " ").trim();
           if (plain) mdLines.push(plain, "");
+        }
+        if (Array.isArray(categoryContent?.faq) && categoryContent.faq.length > 0) {
+          mdLines.push("## Frequently Asked Questions", "");
+          for (const item of categoryContent.faq) {
+            mdLines.push(`### ${item.question}`, "", item.answer, "");
+            if (Array.isArray(item.links) && item.links.length > 0) {
+              const linkLines = item.links
+                .filter((link) => link?.linkText && link?.url && isSafeFaqUrl(link.url))
+                .map((link) => `- [${link.linkText}](${link.url})`);
+              if (linkLines.length > 0) {
+                mdLines.push(...linkLines, "");
+              }
+            }
+          }
         }
       }
 

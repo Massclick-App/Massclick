@@ -70,6 +70,90 @@ export default function SeoPageContent() {
     setErrors(e);
     return Object.keys(e).length === 0;
   };
+  const addFaq = () => {
+    setFormData((prev) => ({
+      ...prev,
+      faq: [...(prev.faq || []), { question: "", answer: "", links: [] }]
+    }));
+  };
+  const updateFaq = (index, key, value) => {
+    setFormData((prev) => {
+      const updatedFaq = [...(prev.faq || [])];
+      updatedFaq[index] = {
+        ...(updatedFaq[index] || {}),
+        [key]: value
+      };
+      return {
+        ...prev,
+        faq: updatedFaq
+      };
+    });
+  };
+  const addFaqLink = faqIndex => {
+    setFormData(prev => {
+      const updatedFaq = [...(prev.faq || [])];
+      const currentFaq = {
+        question: "",
+        answer: "",
+        links: [],
+        ...(updatedFaq[faqIndex] || {})
+      };
+      currentFaq.links = [...(currentFaq.links || []), {
+        linkText: "",
+        url: ""
+      }];
+      updatedFaq[faqIndex] = currentFaq;
+      return {
+        ...prev,
+        faq: updatedFaq
+      };
+    });
+  };
+  const updateFaqLink = (faqIndex, linkIndex, key, value) => {
+    setFormData(prev => {
+      const updatedFaq = [...(prev.faq || [])];
+      const currentFaq = {
+        question: "",
+        answer: "",
+        links: [],
+        ...(updatedFaq[faqIndex] || {})
+      };
+      const updatedLinks = [...(currentFaq.links || [])];
+      updatedLinks[linkIndex] = {
+        ...(updatedLinks[linkIndex] || {}),
+        [key]: value
+      };
+      currentFaq.links = updatedLinks;
+      updatedFaq[faqIndex] = currentFaq;
+      return {
+        ...prev,
+        faq: updatedFaq
+      };
+    });
+  };
+  const removeFaqLink = (faqIndex, linkIndex) => {
+    setFormData(prev => {
+      const updatedFaq = [...(prev.faq || [])];
+      const currentFaq = {
+        question: "",
+        answer: "",
+        links: [],
+        ...(updatedFaq[faqIndex] || {})
+      };
+      currentFaq.links = (currentFaq.links || []).filter((_, idx) => idx !== linkIndex);
+      updatedFaq[faqIndex] = currentFaq;
+      return {
+        ...prev,
+        faq: updatedFaq
+      };
+    });
+  };
+  const removeFaq = index => {
+    setFormData(prev => ({
+      ...prev,
+      faq: (prev.faq || []).filter((_, idx) => idx !== index)
+    }));
+  };
   useEffect(() => {
     if (!categoryInput || categoryInput.length < 1) return;
     const delay = setTimeout(() => {
@@ -255,18 +339,18 @@ export default function SeoPageContent() {
                     <section className={cx("editor-card")}>
                         <div className={cx("editor-title")} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                             <h3>FAQ (optional)</h3>
-                            <button type="button" onClick={() => setFormData(p => ({ ...p, faq: [...(p.faq || []), { question: "", answer: "" }] }))} style={{ fontSize: 13, padding: "4px 12px", cursor: "pointer", background: "#3b82f6", color: "#fff", border: "none", borderRadius: 6 }}>
+                            <button type="button" onClick={addFaq} style={{ fontSize: 13, padding: "4px 12px", cursor: "pointer", background: "#3b82f6", color: "#fff", border: "none", borderRadius: 6 }}>
                                 + Add FAQ
                             </button>
                         </div>
                         {(formData.faq || []).map((item, i) => (
                             <div key={i} style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, marginBottom: 10, position: "relative" }}>
-                                <button type="button" onClick={() => setFormData(p => ({ ...p, faq: p.faq.filter((_, idx) => idx !== i) }))} style={{ position: "absolute", top: 8, right: 8, background: "none", border: "none", color: "#ef4444", cursor: "pointer", fontSize: 16 }}>✕</button>
+                                <button type="button" onClick={() => removeFaq(i)} style={{ position: "absolute", top: 8, right: 8, background: "none", border: "none", color: "#ef4444", cursor: "pointer", fontSize: 16 }}>✕</button>
                                 <div style={{ marginBottom: 8 }}>
                                     <label style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 4 }}>Question</label>
                                     <input
                                         value={item.question}
-                                        onChange={e => setFormData(p => ({ ...p, faq: p.faq.map((f, idx) => idx === i ? { ...f, question: e.target.value } : f) }))}
+                                        onChange={e => updateFaq(i, "question", e.target.value)}
                                         placeholder="e.g. What are the best hospitals in Trichy?"
                                         style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 13 }}
                                     />
@@ -275,11 +359,43 @@ export default function SeoPageContent() {
                                     <label style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 4 }}>Answer</label>
                                     <textarea
                                         value={item.answer}
-                                        onChange={e => setFormData(p => ({ ...p, faq: p.faq.map((f, idx) => idx === i ? { ...f, answer: e.target.value } : f) }))}
+                                        onChange={e => updateFaq(i, "answer", e.target.value)}
                                         placeholder="Provide a clear, complete answer..."
                                         rows={3}
                                         style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 13, resize: "vertical" }}
                                     />
+                                </div>
+                                <div style={{ marginTop: 14, borderTop: "1px solid #e5e7eb", paddingTop: 12 }}>
+                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                                        <label style={{ fontSize: 12, fontWeight: 600, display: "block" }}>Answer Links</label>
+                                        <button type="button" onClick={() => addFaqLink(i)} style={{ fontSize: 12, padding: "4px 10px", cursor: "pointer", background: "#0f172a", color: "#fff", border: "none", borderRadius: 6 }}>
+                                            + Add Link
+                                        </button>
+                                    </div>
+                                    {(item.links || []).map((link, linkIndex) => (
+                                        <div key={linkIndex} style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 8, marginBottom: 8, alignItems: "start" }}>
+                                            <input
+                                                value={link.linkText}
+                                                onChange={e => updateFaqLink(i, linkIndex, "linkText", e.target.value)}
+                                                placeholder="Link text (exact match)"
+                                                style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 13 }}
+                                            />
+                                            <input
+                                                value={link.url}
+                                                onChange={e => updateFaqLink(i, linkIndex, "url", e.target.value)}
+                                                placeholder="URL"
+                                                style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 13 }}
+                                            />
+                                            <button type="button" onClick={() => removeFaqLink(i, linkIndex)} style={{ width: 34, height: 34, borderRadius: 6, border: "1px solid #fecaca", background: "#fff1f2", color: "#ef4444", cursor: "pointer" }}>
+                                                ✕
+                                            </button>
+                                        </div>
+                                    ))}
+                                    {(!item.links || item.links.length === 0) && (
+                                        <p style={{ margin: 0, fontSize: 12, color: "#9ca3af" }}>
+                                            No links added yet. Add a link to make matching words in the answer clickable.
+                                        </p>
+                                    )}
                                 </div>
                             </div>
                         ))}

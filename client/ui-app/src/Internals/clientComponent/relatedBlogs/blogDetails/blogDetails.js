@@ -101,23 +101,54 @@ const BlogDetail = () => {
     return () => window.removeEventListener("scroll", throttledUpdate);
   }, []);
   const renderFaqAnswer = (answer = "", links = []) => {
-    if (!answer) return "";
-    if (!links || links.length === 0) return answer;
-    let html = answer;
+    const escapeHtml = (value = "") =>
+      String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
 
-    // Sort by position/index to replace from end to start (prevents offset issues)
-    const sortedLinks = [...links].filter(link => link.linkText && link.url).sort((a, b) => {
-      const posA = answer.indexOf(a.linkText);
-      const posB = answer.indexOf(b.linkText);
-      return posB - posA;
-    });
-    if (sortedLinks.length === 0) return answer;
+    const isSafeFaqUrl = (url = "") =>
+      /^(https?:\/\/|\/(?!\/)|mailto:|tel:)/i.test(String(url).trim());
+
+    if (!answer) return "";
+    const sortedLinks = [...(links || [])]
+      .filter(link => link.linkText && link.url && isSafeFaqUrl(link.url))
+      .sort((a, b) => b.linkText.length - a.linkText.length);
+
+    if (sortedLinks.length === 0) return escapeHtml(answer);
+
+    let segments = [answer];
+
     sortedLinks.forEach(link => {
       const escapedText = link.linkText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const regex = new RegExp(`\\b${escapedText}\\b`, 'gi');
-      html = html.replace(regex, `<a href="${link.url}" target="_blank" rel="noopener noreferrer" class="faq-link">${link.linkText}</a>`);
+      const regex = new RegExp(`\\b(${escapedText})\\b`, 'gi');
+      const nextSegments = [];
+
+      segments.forEach(segment => {
+        if (typeof segment !== "string") {
+          nextSegments.push(segment);
+          return;
+        }
+
+        const parts = segment.split(regex);
+        parts.forEach((part, partIndex) => {
+          if (!part) return;
+
+          if (partIndex % 2 === 1) {
+            nextSegments.push(`<a href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer" class="faq-link">${escapeHtml(part)}</a>`);
+            return;
+          }
+
+          nextSegments.push(escapeHtml(part));
+        });
+      });
+
+      segments = nextSegments;
     });
-    return html;
+
+    return segments.join("");
   };
   const makeSlug = (text = "") => text.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
   const formattedContent = useMemo(() => {

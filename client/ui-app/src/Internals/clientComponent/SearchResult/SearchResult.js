@@ -35,6 +35,7 @@ import FilterPanel from "./FilterPanel.js";
 import axiosInstance from "../../../services/axiosInstance.js";
 import { getClientToken } from "../../../redux/actions/clientAuthAction.js";
 import { generateSearchResultsPageSchema, generateBreadcrumbSchema, generateOrganizationSchema, generateWebsiteSchema, generateFAQSchema } from "../../../utils/seoSchemaGenerators";
+import { renderFaqAnswerWithLinks } from "../../../utils/renderFaqAnswerWithLinks";
 const cx = createScopedClassNames(styles);
 const DEFAULT_LOCATION = "Trichy";
 const createSlug = (text = "") => text.toLowerCase().trim().replace(/&/g, "and").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
@@ -1000,7 +1001,9 @@ const SearchResults = React.memo(() => {
                     {seoContent.faq.map((item, i) => (
                       <div key={i} className={cx("seo-faq-item")}>
                         <h3 className={cx("seo-faq-question")}>{item.question}</h3>
-                        <p className={cx("seo-faq-answer")}>{item.answer}</p>
+                        <p className={cx("seo-faq-answer")}>
+                          {renderFaqAnswerWithLinks(item.answer, item.links)}
+                        </p>
                       </div>
                     ))}
                   </section>

@@ -924,6 +924,18 @@ section.seo-header-content.premium-section {
   font-size: 0.9rem;
   color: #555;
   line-height: 1.6;
+  white-space: pre-line;
+}
+
+.seo-faq-answer a {
+  color: #1d4ed8;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.seo-faq-answer a:hover {
+  color: #1e40af;
 }
 
 .category-trust-badges{

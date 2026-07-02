@@ -15,6 +15,7 @@ import SeoMeta from "../seo/seoMeta.js";
 import Footer from "../footer/footer.js";
 import PopularCategoriesLink from "../popularCategories/popularCategories.js";
 import { generateBreadcrumbSchema, generateItemListSchema } from "../../../utils/seoSchemaGenerators";
+import { renderFaqAnswerWithLinks } from "../../../utils/renderFaqAnswerWithLinks";
 const cx = createScopedClassNames(styles);
 const sanitizeSeoHtml = (html = "") => {
   return html.replace(/<h1(\s[^>]*)?>/gi, "<h2>").replace(/<\/h1>/gi, "</h2>");
@@ -101,6 +102,7 @@ const CategoriesPage = () => {
   };
   const seoContent = seoPageContents?.[0];
   const sanitizedPageContent = seoContent?.pageContent ? sanitizeSeoHtml(seoContent.pageContent) : null;
+  const hasFaq = (seoContent?.faq || []).length > 0;
 
   // Generate Breadcrumb schema
   const breadcrumbSchema = generateBreadcrumbSchema([{
@@ -177,14 +179,24 @@ const CategoriesPage = () => {
       </div>
 
       {/* SEO Content Section */}
-      {!seoContentLoading && sanitizedPageContent && <div className={cx("seo-outer-wrapper")}>
+      {!seoContentLoading && (sanitizedPageContent || hasFaq) && <div className={cx("seo-outer-wrapper")}>
           <div className={cx("seo-article-wrapper")}>
             <article className={cx("seo-article")}>
               <div className={cx("seo-divider")} />
 
-              <section className={cx("seo-page-content")} dangerouslySetInnerHTML={{
+              {sanitizedPageContent && <section className={cx("seo-page-content")} dangerouslySetInnerHTML={{
             __html: sanitizedPageContent
-          }} />
+          }} />}
+
+              {hasFaq && <section className={cx("seo-faq-section")}>
+                  <h2 className={cx("seo-faq-heading")}>Frequently Asked Questions</h2>
+                  {seoContent.faq.map((item, i) => <div key={i} className={cx("seo-faq-item")}>
+                      <h3 className={cx("seo-faq-question")}>{item.question}</h3>
+                      <p className={cx("seo-faq-answer")}>
+                        {renderFaqAnswerWithLinks(item.answer, item.links)}
+                      </p>
+                    </div>)}
+                </section>}
             </article>
           </div>
         </div>}
