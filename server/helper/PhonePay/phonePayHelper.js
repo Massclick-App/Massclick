@@ -13,10 +13,39 @@ const {
   FRONTEND_URL,
 } = process.env;
 
+const PREMIUM_MEMBERSHIP_BASE_AMOUNT = 24000;
+const GST_RATE_PERCENT = 18;
+
+const normalizePremiumMembershipAmount = (amount) => {
+  const requestedAmount = Number(amount || 0);
+
+  return requestedAmount === PREMIUM_MEMBERSHIP_BASE_AMOUNT
+    ? requestedAmount
+    : PREMIUM_MEMBERSHIP_BASE_AMOUNT;
+};
+
+const getPremiumMembershipAmounts = () => {
+  const amount = PREMIUM_MEMBERSHIP_BASE_AMOUNT;
+  const gstAmount = parseFloat((amount * (GST_RATE_PERCENT / 100)).toFixed(2));
+  const totalAmount = parseFloat((amount + gstAmount).toFixed(2));
+
+  return { amount, gstAmount, totalAmount };
+};
+
+const hasPremiumAmountMismatch = (payment = {}) => {
+  const expected = getPremiumMembershipAmounts();
+
+  return Number(payment.amount || 0) !== expected.amount
+    || Number(payment.gstAmount || 0) !== expected.gstAmount
+    || Number(payment.totalAmount || 0) !== expected.totalAmount;
+};
+
 export const createPhonePePayment = async (amount, userId, businessId = null) => {
   try {
+    const baseAmount = normalizePremiumMembershipAmount(amount);
+
     console.log(`💳 [PhonePe Payment] Creating payment - Amount: ₹${amount}, UserId: ${userId}, BusinessId: ${businessId}`);
-    if (!amount || isNaN(amount)) {
+    if (!baseAmount || isNaN(baseAmount)) {
       console.error(`❌ [PhonePe Payment] Invalid amount: ${amount}`);
       throw new Error("Invalid amount value");
     }
@@ -24,9 +53,8 @@ export const createPhonePePayment = async (amount, userId, businessId = null) =>
     const transactionId = `txn_${Date.now()}`;
     console.log(`🆔 [PhonePe Payment] Generated TransactionId: ${transactionId}`);
 
-    const gstAmount = parseFloat((amount * 0.18).toFixed(2));
-    const totalAmount = parseFloat((amount + gstAmount).toFixed(2));
-    console.log(`💰 [PhonePe Payment] Amount Breakdown - Base: ₹${amount}, GST(18%): ₹${gstAmount}, Total: ₹${totalAmount}`);
+    const { gstAmount, totalAmount } = getPremiumMembershipAmounts();
+    console.log(`💰 [PhonePe Payment] Amount Breakdown - Base: ₹${baseAmount}, GST(18%): ₹${gstAmount}, Total: ₹${totalAmount}`);
 
     const payload = {
       merchantId: PHONEPE_MERCHANT_ID,
@@ -72,7 +100,7 @@ export const createPhonePePayment = async (amount, userId, businessId = null) =>
       userId,
       businessId,
       transactionId,
-      amount,
+      amount: baseAmount,
       gstAmount,
       totalAmount,
       paymentUrl,
@@ -98,7 +126,7 @@ export const createPhonePePayment = async (amount, userId, businessId = null) =>
             businessId,
             transactionId,
             orderId: null,
-            amount,
+            amount: baseAmount,
             gstAmount,
             totalAmount,
             paymentGateway: "phonepe",
@@ -122,7 +150,7 @@ export const createPhonePePayment = async (amount, userId, businessId = null) =>
               businessId,
               transactionId,
               orderId: null,
-              amount,
+              amount: baseAmount,
               gstAmount,
               totalAmount,
               paymentGateway: "phonepe",
@@ -393,8 +421,10 @@ export const sendInvoiceEmailForBusiness = async (businessId) => {
     const storedCertificateVersion = Number(businessData.certificates?.templateVersion || 0);
     const shouldResendForCertificateRefresh =
       latestPayment.invoiceEmailSent && storedCertificateVersion < CERTIFICATE_TEMPLATE_VERSION;
+    const shouldResendForAmountCorrection =
+      latestPayment.invoiceEmailSent && hasPremiumAmountMismatch(latestPayment);
 
-    if (latestPayment.invoiceEmailSent && !shouldResendForCertificateRefresh) {
+    if (latestPayment.invoiceEmailSent && !shouldResendForCertificateRefresh && !shouldResendForAmountCorrection) {
       console.log(`📧 [Manual Invoice Email] Invoice email already sent for business: ${businessData.businessName}`);
       return {
         success: true,
@@ -409,7 +439,16 @@ export const sendInvoiceEmailForBusiness = async (businessId) => {
     }
 
     console.log(`💾 [Manual Invoice Email] Found payment record - TxnID: ${latestPayment.transactionId}`);
-    const emailResult = await sendInvoiceEmail(businessData, latestPayment);
+    if (shouldResendForAmountCorrection) {
+      console.log(`[Manual Invoice Email] Resending invoice with corrected Premium amount for business: ${businessData.businessName}`);
+    }
+
+    const correctedPayment = {
+      ...latestPayment,
+      ...getPremiumMembershipAmounts(),
+    };
+
+    const emailResult = await sendInvoiceEmail(businessData, correctedPayment);
 
     if (emailResult.success) {
       console.log(`✅ [Manual Invoice Email] Email sent successfully - MessageID: ${emailResult.messageId}`);
@@ -423,12 +462,23 @@ export const sendInvoiceEmailForBusiness = async (businessId) => {
           $set: {
             "payment.$.invoiceEmailSent": true,
             "payment.$.invoiceEmailSentAt": invoiceEmailSentAt,
+            "payment.$.amount": correctedPayment.amount,
+            "payment.$.gstAmount": correctedPayment.gstAmount,
+            "payment.$.totalAmount": correctedPayment.totalAmount,
           },
         }
       );
       await paymentModel.updateOne(
         { transactionId: latestPayment.transactionId },
-        { $set: { invoiceEmailSent: true, invoiceEmailSentAt } }
+        {
+          $set: {
+            invoiceEmailSent: true,
+            invoiceEmailSentAt,
+            amount: correctedPayment.amount,
+            gstAmount: correctedPayment.gstAmount,
+            totalAmount: correctedPayment.totalAmount,
+          },
+        }
       );
     } else {
       console.error(`❌ [Manual Invoice Email] Failed to send email - ${emailResult.message}`);

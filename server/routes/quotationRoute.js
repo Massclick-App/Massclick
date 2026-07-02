@@ -10,7 +10,7 @@ import {
 import { oauthAuthentication } from '../helper/oauthHelper.js';
 
 const router = express.Router();
-
+  
 router.post("/api/quotation/create", oauthAuthentication, createQuotationAction);
 router.get("/api/quotation/next-number", oauthAuthentication, nextQuotationNoAction);
 router.get("/api/quotation/viewall", oauthAuthentication, viewAllQuotationAction);

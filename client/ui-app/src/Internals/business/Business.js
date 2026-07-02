@@ -47,6 +47,7 @@ const LISTING_MODE = {
   FREE: "free",
   PAID: "paid"
 };
+const PREMIUM_MEMBERSHIP_BASE_AMOUNT = 24000;
 const SECTION_TO_STEP = {
   clientBusiness: 0, address: 0, contact: 0, businessInfo: 0, locationWeb: 0,
   socialMedia: 0, bannerDetails: 0, openingHours: 0, badgesVisibility: 0,
@@ -515,7 +516,7 @@ const BusinessList = React.memo(() => {
   };
 
   const handlePayNow = row => {
-    const amount = 1;
+    const amount = PREMIUM_MEMBERSHIP_BASE_AMOUNT;
     let businessId = row?._id?.$oid || row?._id || row?.businessId || row?.id || createdBusinessId;
     let userId = row?.createdBy?.$oid || (typeof row?.createdBy === "string" ? row.createdBy : null) || createUserId;
     if (!row) {
@@ -1075,7 +1076,7 @@ const BusinessList = React.memo(() => {
     category: source?.category,
     location: source?.location,
     payment: [{
-      amount: source?.subscription?.price || 1
+      amount: source?.subscription?.price || PREMIUM_MEMBERSHIP_BASE_AMOUNT
     }]
   });
   function resetToCreateBusinessState({
@@ -3616,7 +3617,7 @@ const BusinessList = React.memo(() => {
           await dispatch(editBusinessList(row._id, {
             name: row.businessName, businessName: row.businessName,
             category: row.category, location: row.location,
-            payment: [{ amount: row?.subscription?.price || 1 }]
+            payment: [{ amount: row?.subscription?.price || PREMIUM_MEMBERSHIP_BASE_AMOUNT }]
           }));
           enqueueSnackbar(`${row.businessName} marked as paid`, { variant: "success" });
 
@@ -4285,7 +4286,7 @@ const BusinessList = React.memo(() => {
                     ? "Paid activation completed"
                     : postCreatePaidStatus === "failed"
                       ? "Created successfully, but not marked as paid"
-                      : "Just Rs. 99/- + GST"
+                      : `Just Rs. ${PREMIUM_MEMBERSHIP_BASE_AMOUNT.toLocaleString("en-IN")}/- + GST`
                   : "Free listing draft saved"}
               </Typography>
 
@@ -4726,7 +4727,7 @@ const BusinessList = React.memo(() => {
             await dispatch(editBusinessList(row._id, {
               name: row.businessName, businessName: row.businessName,
               category: row.category, location: row.location,
-              payment: [{ amount: row?.subscription?.price || 1 }]
+              payment: [{ amount: row?.subscription?.price || PREMIUM_MEMBERSHIP_BASE_AMOUNT }]
             }));
             enqueueSnackbar(`${row.businessName} marked as paid`, { variant: "success" });
             dispatch(getAllBusinessList());

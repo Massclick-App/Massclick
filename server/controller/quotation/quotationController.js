@@ -48,26 +48,54 @@ const normalizeQuotationItems = (items = []) => {
     .filter((item) => item.description);
 };
 
-const normalizeQuotationPayload = (body = {}) => ({
-  quotationName: DEFAULT_QUOTATION_NAME,
-  quotationNo: String(body.quotationNo || "").trim(),
-  customerName: String(body.customerName || "").trim(),
-  customerPhone: String(body.customerPhone || "").trim(),
-  customerEmail: String(body.customerEmail || "").trim(),
-  customerAddress: String(body.customerAddress || "").trim(),
-  businessName: String(body.businessName || "MassClick").trim(),
-  businessPhone: String(body.businessPhone || "").trim(),
-  businessEmail: String(body.businessEmail || "").trim(),
-  businessAddress: String(body.businessAddress || "").trim(),
-  issueDate: body.issueDate || new Date(),
-  validUntil: body.validUntil || null,
-  notes: DEFAULT_NOTES,
-  terms: DEFAULT_TERMS,
-  taxRate: MASSCLICK_GST_RATE,
-  discount: 0,
-  items: normalizeQuotationItems(body.items),
-  status: body.status || "draft",
-});
+const calculateQuotationTotal = ({ items = [], discount = 0, taxRate = MASSCLICK_GST_RATE }) => {
+  const subtotal = items.reduce(
+    (sum, item) => sum + Number(item.quantity || 0) * Number(item.unitPrice || 0),
+    0
+  );
+  const taxable = Math.max(subtotal - Number(discount || 0), 0);
+  const tax = taxable * (Number(taxRate || 0) / 100);
+  return taxable + tax;
+};
+
+const derivePaymentStatus = (advancePayment, total) => {
+  if (advancePayment <= 0) return "unpaid";
+  if (advancePayment >= total && total > 0) return "paid";
+  return "part_paid";
+};
+
+const normalizeQuotationPayload = (body = {}) => {
+  const items = normalizeQuotationItems(body.items);
+  const total = calculateQuotationTotal({
+    items,
+    discount: 0,
+    taxRate: MASSCLICK_GST_RATE,
+  });
+  const advancePayment = Math.min(Math.max(Number(body.advancePayment || 0), 0), total);
+
+  return {
+    quotationName: DEFAULT_QUOTATION_NAME,
+    quotationNo: String(body.quotationNo || "").trim(),
+    customerName: String(body.customerName || "").trim(),
+    customerPhone: String(body.customerPhone || "").trim(),
+    customerEmail: String(body.customerEmail || "").trim(),
+    customerAddress: String(body.customerAddress || "").trim(),
+    businessName: String(body.businessName || "MassClick").trim(),
+    businessPhone: String(body.businessPhone || "").trim(),
+    businessEmail: String(body.businessEmail || "").trim(),
+    businessAddress: String(body.businessAddress || "").trim(),
+    issueDate: body.issueDate || new Date(),
+    validUntil: body.validUntil || null,
+    notes: DEFAULT_NOTES,
+    terms: DEFAULT_TERMS,
+    taxRate: MASSCLICK_GST_RATE,
+    discount: 0,
+    advancePayment,
+    paymentStatus: derivePaymentStatus(advancePayment, total),
+    items,
+    status: body.status || "draft",
+  };
+};
 
 const validateQuotation = (payload, { requireQuotationNo = true } = {}) => {
   if (!payload.quotationName) return "Quotation name is required";

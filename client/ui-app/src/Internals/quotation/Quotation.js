@@ -121,6 +121,7 @@ const createEmptyForm = () => ({
   validUntil: addDaysIso(15),
   taxRate: MASSCLICK_GST_RATE,
   discount: 0,
+  advancePayment: 0,
   status: "draft",
   notes: DEFAULT_NOTES,
   terms: DEFAULT_TERMS,
@@ -160,7 +161,18 @@ const calculateTotals = (quotation) => {
   const discount = Number(quotation.discount || 0);
   const taxable = Math.max(subtotal - discount, 0);
   const tax = taxable * (Number(quotation.taxRate || 0) / 100);
-  return { subtotal, discount, taxable, tax, total: taxable + tax };
+  const total = taxable + tax;
+  const advancePayment = Math.min(Math.max(Number(quotation.advancePayment || 0), 0), total);
+  const balanceDue = Math.max(total - advancePayment, 0);
+  const paymentStatus =
+    advancePayment <= 0 ? "unpaid" : balanceDue <= 0 ? "paid" : "part_paid";
+  return { subtotal, discount, taxable, tax, total, advancePayment, balanceDue, paymentStatus };
+};
+
+const paymentStatusLabel = (status) => {
+  if (status === "paid") return "Paid";
+  if (status === "part_paid") return "Part Paid";
+  return "Unpaid";
 };
 
 const mapQuotationToForm = (quotation) => ({
@@ -170,6 +182,7 @@ const mapQuotationToForm = (quotation) => ({
   validUntil: toDateInput(quotation.validUntil),
   taxRate: MASSCLICK_GST_RATE,
   discount: 0,
+  advancePayment: Number(quotation.advancePayment || 0),
   quotationName: DEFAULT_QUOTATION_NAME,
   notes: DEFAULT_NOTES,
   terms: DEFAULT_TERMS,
@@ -182,6 +195,7 @@ const buildQuotationPayload = (source, quotationNo = "") => ({
   quotationNo,
   taxRate: MASSCLICK_GST_RATE,
   discount: 0,
+  advancePayment: Number(source.advancePayment || 0),
   notes: DEFAULT_NOTES,
   terms: DEFAULT_TERMS,
   items: normalizePayloadItems(source.items),
@@ -321,7 +335,7 @@ const drawQuotationPdf = (quotation, logoDataUrl = "", signatureDataUrl = "") =>
   pdf.text("Includes: 1 free website", summaryX, y + 32);
   pdf.setTextColor(...teal);
   pdf.setFont("helvetica", "bold");
-  pdf.text(`Grand Total: ${money(totals.total)}`, summaryX, y + 38);
+  pdf.text(`Balance Due: ${money(totals.balanceDue)}`, summaryX, y + 38);
 
   y += 58;
   pdf.setFillColor(...navy);
@@ -363,21 +377,25 @@ const drawQuotationPdf = (quotation, logoDataUrl = "", signatureDataUrl = "") =>
   const totalX = 128;
   pdf.setDrawColor(...border);
   pdf.setFillColor(...soft);
-  pdf.roundedRect(totalX, y, 68, 34, 3, 3, "FD");
+  pdf.roundedRect(totalX, y, 68, 52, 3, 3, "FD");
   pdf.setFontSize(9);
   pdf.setTextColor(...deepNavy);
   pdf.text("Subtotal", totalX + 5, y + 9);
   pdf.text(money(totals.subtotal), totalX + 62, y + 9, { align: "right" });
   pdf.text("Tax", totalX + 5, y + 18);
   pdf.text(money(totals.tax), totalX + 62, y + 18, { align: "right" });
+  pdf.text("Grand Total", totalX + 5, y + 27);
+  pdf.text(money(totals.total), totalX + 62, y + 27, { align: "right" });
+  pdf.text("Advance Paid", totalX + 5, y + 36);
+  pdf.text(money(totals.advancePayment), totalX + 62, y + 36, { align: "right" });
   pdf.setDrawColor(226, 232, 240);
-  pdf.line(totalX + 5, y + 23, totalX + 63, y + 23);
+  pdf.line(totalX + 5, y + 41, totalX + 63, y + 41);
   pdf.setTextColor(...teal);
   pdf.setFontSize(11);
-  pdf.text("Total", totalX + 5, y + 31);
-  pdf.text(money(totals.total), totalX + 62, y + 31, { align: "right" });
+  pdf.text("Balance Due", totalX + 5, y + 49);
+  pdf.text(money(totals.balanceDue), totalX + 62, y + 49, { align: "right" });
 
-  y += 50;
+  y += 68;
   pdf.setTextColor(...deepNavy);
   pdf.setFontSize(9);
   pdf.setDrawColor(...border);
@@ -746,6 +764,18 @@ export default function Quotation() {
           discount: 0,
           items: normalizeFormItems(quotation.items),
         }).total),
+        balanceLabel: money(calculateTotals({
+          ...quotation,
+          taxRate: MASSCLICK_GST_RATE,
+          discount: 0,
+          items: normalizeFormItems(quotation.items),
+        }).balanceDue),
+        paymentStatusLabel: paymentStatusLabel(calculateTotals({
+          ...quotation,
+          taxRate: MASSCLICK_GST_RATE,
+          discount: 0,
+          items: normalizeFormItems(quotation.items),
+        }).paymentStatus),
       })),
     [quotations]
   );
@@ -757,6 +787,8 @@ export default function Quotation() {
     { id: "customerPhone", label: "Phone" },
     { id: "issueDateLabel", label: "Issue Date" },
     { id: "totalLabel", label: "Total" },
+    { id: "balanceLabel", label: "Balance" },
+    { id: "paymentStatusLabel", label: "Payment" },
     {
       id: "actions",
       label: "Actions",
@@ -907,6 +939,16 @@ export default function Quotation() {
                   readOnly
                 />
               </label>
+              <label className={cx("field")}>
+                <span className={cx("label")}>Advance Paid</span>
+                <input
+                  className={cx("input")}
+                  type="number"
+                  min="0"
+                  value={form.advancePayment}
+                  onChange={(event) => updateField("advancePayment", event.target.value)}
+                />
+              </label>
             </div>
 
             <div className={cx("items")}>
@@ -998,6 +1040,8 @@ export default function Quotation() {
                   <p>Includes: 1 free website</p>
                   <p>GST: {Number(preview.taxRate || 0)}%</p>
                   <p>Grand Total: <strong>{money(totals.total)}</strong></p>
+                  <p>Advance Paid: <strong>{money(totals.advancePayment)}</strong></p>
+                  <p>Balance Due: <strong>{money(totals.balanceDue)}</strong></p>
                 </div>
               </div>
 
@@ -1033,7 +1077,9 @@ export default function Quotation() {
                 <div className={cx("totals-box")}>
                   <div className={cx("total-row")}><span>Subtotal</span><strong>{money(totals.subtotal)}</strong></div>
                   <div className={cx("total-row")}><span>Tax</span><strong>{money(totals.tax)}</strong></div>
-                  <div className={cx("total-row", "grand-total")}><span>Total</span><strong>{money(totals.total)}</strong></div>
+                  <div className={cx("total-row")}><span>Grand Total</span><strong>{money(totals.total)}</strong></div>
+                  <div className={cx("total-row")}><span>Advance Paid</span><strong>{money(totals.advancePayment)}</strong></div>
+                  <div className={cx("total-row", "grand-total")}><span>Balance Due</span><strong>{money(totals.balanceDue)}</strong></div>
                 </div>
               </div>
 

@@ -22,6 +22,8 @@ import BusinessCard from './businessCard/businessCard.js';
 import CustomizedTable from './Table/CustomizedTable.js';
 import { createPhonePePayment } from '../redux/actions/phonePayAction.js';
 
+const PREMIUM_MEMBERSHIP_BASE_AMOUNT = 24000;
+
 export default function MainGrid() {
   const { enqueueSnackbar } = useSnackbar();
   const { users = [] } = useSelector((state) => state.userReducer || {});
@@ -151,7 +153,7 @@ export default function MainGrid() {
   }));
 
   const handlePayNow = (row) => {
-    const amount = 1;
+    const amount = PREMIUM_MEMBERSHIP_BASE_AMOUNT;
 
     const businessId = row?._id?.$oid || row?._id || row?.businessId || row?.id;
 

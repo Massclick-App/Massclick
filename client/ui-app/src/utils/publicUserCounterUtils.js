@@ -20,6 +20,20 @@ const getLocalDailyResetStart = (time) => {
   return date.getTime();
 };
 
+const getNextLocalDailyResetStart = (time) =>
+  getLocalDailyResetStart(time) + 24 * 60 * 60 * 1000;
+
+export const getNextCounterRefreshDelay = (config, now = Date.now()) => {
+  if (!config || config.resetDaily === false) return null;
+
+  const rawNextResetAt = new Date(config.nextDailyResetAt || 0).getTime();
+  const nextResetAt = Number.isFinite(rawNextResetAt) && rawNextResetAt > now
+    ? rawNextResetAt
+    : getNextLocalDailyResetStart(now);
+
+  return Math.max(1000, nextResetAt - now + 1000);
+};
+
 export const getVisibleCounterCount = (config, now = Date.now()) => {
   if (!config) return 0;
 
