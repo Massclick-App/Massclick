@@ -1,10 +1,11 @@
 import { createScopedClassNames } from "../../../../utils/createScopedClassNames";
-import React, { useEffect, useState, useMemo, useCallback } from "react";
+import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import styles from "./popularCategories.module.css";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { getPlaceholderImage, handleImageError } from "../../../../utils/placeholderImage";
 import Drawer from "@mui/material/Drawer";
+import Skeleton from "@mui/material/Skeleton";
 import CloseIcon from "@mui/icons-material/Close";
 import SearchIcon from "@mui/icons-material/Search";
 import { fetchPopularCategories } from "../../../../redux/actions/categoryAction";
@@ -27,6 +28,7 @@ const PopularCategoriesDrawer = ({
   const dispatch = useDispatch();
   const [drawerOpen, setDrawerOpen] = useState(openFromHome);
   const [search, setSearch] = useState("");
+  const searchInputRef = useRef(null);
   const {
     selectedDistrict
   } = useSelector(state => state.locationReducer);
@@ -40,6 +42,11 @@ const PopularCategoriesDrawer = ({
   useEffect(() => {
     setDrawerOpen(openFromHome);
   }, [openFromHome]);
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const focusTimer = setTimeout(() => searchInputRef.current?.focus(), 150);
+    return () => clearTimeout(focusTimer);
+  }, [drawerOpen]);
   const districtSlug = useMemo(() => slugify(selectedDistrict || "india"), [selectedDistrict]);
   useEffect(() => {
     if (!popularCategories.length) return;
@@ -100,24 +107,30 @@ const PopularCategoriesDrawer = ({
 
       <div className={cx("pc-search")}>
         <SearchIcon />
-        <input placeholder="Search categories" value={search} onChange={e => setSearch(e.target.value)} />
+        <input ref={searchInputRef} placeholder="Search categories" value={search} onChange={e => setSearch(e.target.value)} />
+        {search && <CloseIcon className={cx("pc-search-clear")} onClick={() => setSearch("")} />}
       </div>
 
       <section className={cx("pc-grid")}>
+
+        {loading && [...Array(8)].map((_, index) => <div className={cx("pc-item")} key={`pc-skeleton-${index}`}>
+              <Skeleton variant="circular" width={60} height={60} />
+              <Skeleton variant="rounded" width="70%" height={18} />
+            </div>)}
 
         {!loading && filtered.length === 0 && <p style={{
         textAlign: "center"
       }}>No categories found</p>}
 
-        {filtered.map((cat, index) => {
+        {!loading && filtered.map((cat, index) => {
         const altText = generateAltText(cat.name, districtSlug);
         return <article key={cat._id || cat.slug || `${cat.name}-${index}`} className={cx("pc-item")} onClick={() => handleClick(cat)}>
-              <img src={cat.icon || getPlaceholderImage()} className={cx("popular-icons")} alt={altText} width="70" height="70" loading="lazy" decoding="async" style={{
-            objectFit: "contain"
-          }} onError={e => {
-            e.target.onerror = null;
-            handleImageError(e);
-          }} />
+              <span className={cx("popular-icons")}>
+                <img src={cat.icon || getPlaceholderImage()} alt={altText} width="70" height="70" loading="lazy" decoding="async" onError={e => {
+              e.target.onerror = null;
+              handleImageError(e);
+            }} />
+              </span>
               <span>{formatUiName(cat.name)}</span>
             </article>;
       })}
