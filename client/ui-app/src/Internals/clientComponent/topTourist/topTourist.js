@@ -1,13 +1,11 @@
 import { createScopedClassNames } from "../../../utils/createScopedClassNames";
-import React, { useRef, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { Link, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from 'react-redux';
 import Bangalore from "../../../assets/toptourist/bangalore.webp";
 import Chennai from "../../../assets/toptourist/chennai.webp";
 import Hyderabad from "../../../assets/toptourist/hyderabad.webp";
 import Ooty from "../../../assets/toptourist/ooty.webp";
-import KeyboardDoubleArrowRightIcon from '@mui/icons-material/KeyboardDoubleArrowRight';
-import KeyboardDoubleArrowLeftIcon from '@mui/icons-material/KeyboardDoubleArrowLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import styles from "./topTourist.module.css";
 import { fetchTopTouristPlaces } from '../../../redux/actions/categoryAction';
@@ -35,7 +33,6 @@ const getTouristCategoryName = place => {
   return /tourist\s+places/i.test(placeName) ? placeName : `${placeName} tourist places`;
 };
 const TopTourist = () => {
-  const carouselRef = useRef(null);
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const topTouristPlaces = useSelector(state => state.categoryReducer.topTouristPlaces || []);
@@ -43,18 +40,6 @@ const TopTourist = () => {
   useEffect(() => {
     dispatch(fetchTopTouristPlaces());
   }, [dispatch]);
-  const scrollRight = () => {
-    carouselRef.current?.scrollBy({
-      left: 320,
-      behavior: "smooth"
-    });
-  };
-  const scrollLeft = () => {
-    carouselRef.current?.scrollBy({
-      left: -320,
-      behavior: "smooth"
-    });
-  };
   const handlePlaceClick = (event, place) => {
     event.preventDefault();
     const categoryName = getTouristCategoryName(place);
@@ -80,27 +65,12 @@ const TopTourist = () => {
   return <div className={cx("tourist-section")}>
 
       <div className={cx("tourist-header")}>
-        <div>
-          <h2 className={cx("tourist-title")}>Top Tourist Places</h2>
-          <p className={cx("tourist-subtitle")}>Explore India’s most visited & loved destinations</p>
-        </div>
-
-        <div className={cx("tourist-controls")}>
-          <button type="button" className={cx("tourist-arrow")} onClick={scrollLeft} aria-label="Scroll tourist places left">
-            <KeyboardDoubleArrowLeftIcon />
-          </button>
-          <button type="button" className={cx("tourist-arrow")} onClick={scrollRight} aria-label="Scroll tourist places right">
-            <KeyboardDoubleArrowRightIcon />
-          </button>
-        </div>
+        <h2 className={cx("tourist-title")}>Top Tourist Places</h2>
+        <p className={cx("tourist-subtitle")}>Explore India’s most visited & loved destinations</p>
       </div>
 
-      <div className={cx("tourist-carousel-wrapper")}>
-        {/* <div className="tourist-fade-left"></div> */}
-        {/* <div className="tourist-fade-right"></div> */}
-
-        <div className={cx("tourist-carousel")} ref={carouselRef}>
-          {topTouristPlaces.map((place, index) => {
+      <div className={cx("tourist-grid")}>
+        {topTouristPlaces.map((place, index) => {
           const imgSrc = place.imageUrl || staticFallbackMap[place.name] || null;
           const categoryName = getTouristCategoryName(place);
           const locationName = getLocationName(selectedDistrict);
@@ -117,7 +87,6 @@ const TopTourist = () => {
                 </div>
               </Link>;
         })}
-        </div>
       </div>
 
     </div>;

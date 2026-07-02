@@ -24,11 +24,7 @@
 
 /* HEADER */
 .tourist-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   margin-bottom: 20px;
-  padding-right: 10px;
 }
 
 .tourist-title {
@@ -46,136 +42,114 @@
   font-weight: 500;
 }
 
-/* CONTROLS */
-.tourist-controls {
-  display: flex;
-  gap: 10px;
+/* GRID - fixed set of 4 cards, neatly aligned, no scrolling */
+.tourist-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 22px;
 }
 
-.tourist-arrow {
-  width: 42px;
-  height: 42px;
-  border: none;
-  background: white;
-  border-radius: 50%;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
-  cursor: pointer;
-  transition: var(--tourist-transition);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.tourist-arrow:hover {
-  transform: scale(1.1);
-  background: #fff4e5;
-}
-
-/* CAROUSEL */
-.tourist-carousel-wrapper {
-  position: relative;
-  overflow: visible;
-}
-
-.tourist-carousel {
-  display: flex;
-  gap: 25px;
-  overflow-x: auto;
-  padding-bottom: 20px;
-  padding-top: 8px;
-  scroll-snap-type: x mandatory;
-  scrollbar-width: none;
-}
-
-.tourist-carousel::-webkit-scrollbar {
-  display: none;
-}
-
-/* Edge fading */
-.tourist-fade-left,
-.tourist-fade-right {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 70px;
-  pointer-events: none;
-}
-
-.tourist-fade-left {
-  left: 0;
-  background: linear-gradient(to right, #fff 60%, transparent);
-}
-
-.tourist-fade-right {
-  right: 0;
-  background: linear-gradient(to left, #fff 60%, transparent);
-}
-
-/* CARD */
+/* CARD - full-bleed landscape image, details revealed on hover */
 .tourist-card {
-  display: flex;
-  min-width: 420px;
-  max-width: 420px;
-  height: 150px;
-  background: #fff;
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 220px;
   border-radius: var(--tourist-radius-md);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
-  border: 1px solid #eee;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+  border: 1px solid #f0f0f0;
   overflow: hidden;
   text-decoration: none;
   transition: var(--tourist-transition);
-  scroll-snap-align: start;
 }
 
 .tourist-card:hover {
   transform: translateY(-6px);
-  border-color: var(--tourist-brand);
 }
 
-/* IMAGE */
-.tourist-img-wrapper {
-  width: 45%;
+/* Corner-reveal accent panels (expand to cover card on hover) */
+.tourist-card::before,
+.tourist-card::after {
+  content: "";
+  position: absolute;
+  width: 26%;
+  height: 26%;
+  background: rgba(20, 20, 20, 0.35);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: all 0.5s ease;
+  z-index: 1;
+}
+
+.tourist-card::before {
+  top: 0;
+  right: 0;
+  border-radius: 0 var(--tourist-radius-md) 0 100%;
+}
+
+.tourist-card::after {
+  bottom: 0;
+  left: 0;
+  border-radius: 0 100% 0 var(--tourist-radius-md);
+}
+
+.tourist-card:hover::before,
+.tourist-card:hover::after {
+  width: 100%;
   height: 100%;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  border-radius: var(--tourist-radius-md);
+}
+
+/* IMAGE - fills the card, initial state shows only this */
+.tourist-img-wrapper {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
 }
 
 .tourist-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: 0.35s ease;
+  transition: 0.5s ease;
 }
 
 .tourist-card:hover .tourist-img {
-  transform: scale(1.05);
+  transform: scale(1.08);
 }
 
-/* INFO */
+/* INFO - hidden overlay, fades in once the corner panels cover the card */
 .tourist-info {
-  width: 55%;
-  padding: 18px 22px;
+  position: absolute;
+  inset: 0;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   justify-content: center;
+  align-items: flex-start;
+  padding: 22px;
+  opacity: 0;
+  transition: opacity 0.35s ease 0.1s;
+}
+
+.tourist-card:hover .tourist-info {
+  opacity: 1;
 }
 
 .tourist-name {
-  font-size: 1.4rem;
+  font-size: 1.3rem;
   font-weight: 700;
-  margin-bottom: 4px;
-  color: #333;
+  margin-bottom: 6px;
+  color: #fff;
 }
 
 .tourist-explore {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: var(--tourist-brand);
+  color: #fff;
   font-weight: 600;
-  margin-top: 4px;
 }
 
 .tourist-card:hover .tourist-explore svg {
@@ -184,15 +158,9 @@
 }
 
 /* RESPONSIVE */
-@media (max-width: 768px) {
-  .tourist-card {
-    min-width: 300px;
-    max-width: 300px;
-    height: 140px;
-  }
-
-  .tourist-img-wrapper {
-    width: 50%;
+@media (max-width: 900px) {
+  .tourist-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
@@ -201,8 +169,11 @@
     font-size: 1.6rem;
   }
 
+  .tourist-grid {
+    grid-template-columns: 1fr;
+  }
+
   .tourist-card {
-    min-width: 260px;
-    max-width: 260px;
+    height: 190px;
   }
 }

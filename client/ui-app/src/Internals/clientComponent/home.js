@@ -115,6 +115,7 @@ const PageHeaderContents = lazy(
   () => import("./pageHeaderContents/pageHeaderContents.js"),
 );
 const RelatedBlogs = lazy(() => import("./relatedBlogs/relatedBlogs.js"));
+const WeatherWidget = lazy(() => import("./weatherWidget/weatherWidget.js"));
 
 const HOME_SECTION_GAP = DESIGN_TOKENS.sectionGap;
 
@@ -733,6 +734,10 @@ const LandingPage = React.memo(() => {
           handleClose={() => setShowLoginModal(false)}
           onMaybeLater={() => setLoginReminder(true)}
         />
+
+        <Suspense fallback={null}>
+          <WeatherWidget locationName={locationName} />
+        </Suspense>
       </Box>
 
       <Snackbar
