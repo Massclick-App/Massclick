@@ -937,6 +937,7 @@ export const updateBusinessList = async (id, data) => {
           businessId: business._id,
           transactionId: `MANUAL-${Date.now()}`,
           paid: true,
+          paymentGateway: "manual",
           paymentStatus: "SUCCESS",
           paymentDate: new Date(),
         })),

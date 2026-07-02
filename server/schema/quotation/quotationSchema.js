@@ -29,6 +29,12 @@ const quotationSchema = new Schema(
     terms: { type: String, trim: true, default: "" },
     taxRate: { type: Number, default: 18, min: 0 },
     discount: { type: Number, default: 0, min: 0 },
+    advancePayment: { type: Number, default: 0, min: 0 },
+    paymentStatus: {
+      type: String,
+      enum: ["unpaid", "part_paid", "paid"],
+      default: "unpaid",
+    },
     items: {
       type: [quotationItemSchema],
       default: () => [

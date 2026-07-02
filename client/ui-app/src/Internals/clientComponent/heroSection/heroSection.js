@@ -12,6 +12,7 @@ import { detectDistrict } from "../../../redux/actions/locationAction";
 import { scheduleIdleCallback } from "../../../utils/scheduleIdleCallback.js";
 import {
   formatCounterCount,
+  getNextCounterRefreshDelay,
   getVisibleCounterCount,
 } from "../../../utils/publicUserCounterUtils.js";
 // import backgroundImage from "../../../assets/background9.jpg";
@@ -122,6 +123,17 @@ const HeroSection = React.memo(({
     const timer = window.setInterval(() => setCounterNow(Date.now()), 30000);
     return () => window.clearInterval(timer);
   }, []);
+  useEffect(() => {
+    const delay = getNextCounterRefreshDelay(publicCounterSettings);
+    if (!delay) return undefined;
+
+    const timer = window.setTimeout(() => {
+      setCounterNow(Date.now());
+      dispatch(fetchPublicUserCounter()).catch(() => {});
+    }, delay);
+
+    return () => window.clearTimeout(timer);
+  }, [dispatch, publicCounterSettings]);
   const requestSuggestions = (query, {
     page = 1,
     append = false

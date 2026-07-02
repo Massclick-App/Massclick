@@ -7,6 +7,7 @@ import AccessTimeRoundedIcon from "@mui/icons-material/AccessTimeRounded";
 import { fetchPublicUserCounter } from "../../../redux/actions/publicUserCounterAction.js";
 import {
   formatCounterCount,
+  getNextCounterRefreshDelay,
   getVisibleCounterCount,
 } from "../../../utils/publicUserCounterUtils.js";
 import styles from "./PublicUserCounter.module.css";
@@ -49,6 +50,18 @@ const PublicUserCounter = () => {
     const timer = window.setInterval(() => setNow(Date.now()), 30000);
     return () => window.clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    const delay = getNextCounterRefreshDelay(settings);
+    if (!delay) return undefined;
+
+    const timer = window.setTimeout(() => {
+      setNow(Date.now());
+      dispatch(fetchPublicUserCounter()).catch(() => {});
+    }, delay);
+
+    return () => window.clearTimeout(timer);
+  }, [dispatch, settings]);
 
   const counts = useMemo(() => {
     if (!settings) return null;

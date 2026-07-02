@@ -19,6 +19,21 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+const PREMIUM_MEMBERSHIP_BASE_AMOUNT = 24000;
+const GST_RATE_PERCENT = 18;
+
+const calculateInvoiceAmounts = (paymentData = {}) => {
+  const storedTotalAmount = Number(paymentData.totalAmount || 0);
+  const amount = PREMIUM_MEMBERSHIP_BASE_AMOUNT;
+  const gstAmount = parseFloat((amount * (GST_RATE_PERCENT / 100)).toFixed(2));
+  const expectedTotalAmount = parseFloat((amount + gstAmount).toFixed(2));
+  const totalAmount = storedTotalAmount === expectedTotalAmount
+    ? storedTotalAmount
+    : expectedTotalAmount;
+
+  return { amount, gstAmount, totalAmount };
+};
+
 const escapeHtml = (value) => String(value ?? '')
   .replace(/&/g, '&amp;')
   .replace(/</g, '&lt;')
@@ -187,7 +202,6 @@ const invoiceHTMLTemplate = (invoiceData) => {
   const businessName = escapeHtml(invoiceData.businessName || 'Valued Business Partner');
   const category = escapeHtml(invoiceData.category || 'N/A');
   const location = escapeHtml(invoiceData.location || 'N/A');
-  const transactionId = escapeHtml(invoiceData.transactionId || 'N/A');
   const paymentDate = escapeHtml(invoiceData.paymentDate || formatPaymentDate());
   const baseAmount = formatAmount(invoiceData.amount);
   const gstAmount = formatAmount(invoiceData.gstAmount);
@@ -407,7 +421,7 @@ const invoiceHTMLTemplate = (invoiceData) => {
               <div class="summary-card">
                 <div class="summary-label">Total Amount Paid</div>
                 <div class="summary-amount">&#8377;${totalAmount}</div>
-                <div class="summary-meta">Payment successful via PhonePe | Transaction ID: ${transactionId}</div>
+                <div class="summary-meta">Payment recorded successfully for your Premium membership.</div>
               </div>
 
               <h2 class="section-title">Membership Details</h2>
@@ -426,8 +440,6 @@ const invoiceHTMLTemplate = (invoiceData) => {
                 ${detailRow('GST (18%)', `&#8377;${gstAmount}`)}
                 ${detailRow('Total Paid', `&#8377;${totalAmount}`, true)}
                 ${detailRow('Payment Status', '<span style="color: #027a48;">Successful</span>')}
-                ${detailRow('Payment Method', 'PhonePe')}
-                ${detailRow('Transaction ID', transactionId)}
               </table>
 
               ${certificateSection}
@@ -503,8 +515,6 @@ Payment Summary:
 Base Amount: INR ${formatAmount(invoiceData.amount)}
 GST (18%): INR ${formatAmount(invoiceData.gstAmount)}
 Total Paid: INR ${formatAmount(invoiceData.totalAmount)}
-Payment Method: PhonePe
-Transaction ID: ${invoiceData.transactionId || 'N/A'}
 ${certificatesAttached}
 
 Premium benefits now active:
@@ -577,8 +587,10 @@ export const sendInvoiceEmail = async (businessData, paymentData) => {
       };
     }
 
+    const invoiceAmounts = calculateInvoiceAmounts(paymentData);
+
     console.log(`[Invoice Email] Preparing invoice for: ${businessEmail}`);
-    console.log(`[Invoice Email] Payment details - TxnID: ${paymentData.transactionId}, Amount: INR ${paymentData.totalAmount}`);
+    console.log(`[Invoice Email] Payment details - TxnID: ${paymentData.transactionId}, Amount: INR ${invoiceAmounts.totalAmount}`);
 
     const invoiceData = {
       _id: businessData._id,
@@ -596,9 +608,9 @@ export const sendInvoiceEmail = async (businessData, paymentData) => {
       verification: businessData.verification || {},
       badges: businessData.badges || {},
       transactionId: paymentData.transactionId,
-      amount: paymentData.amount,
-      gstAmount: paymentData.gstAmount,
-      totalAmount: paymentData.totalAmount,
+      amount: invoiceAmounts.amount,
+      gstAmount: invoiceAmounts.gstAmount,
+      totalAmount: invoiceAmounts.totalAmount,
       paymentDate: formatPaymentDate(paymentData.paymentDate),
     };
     

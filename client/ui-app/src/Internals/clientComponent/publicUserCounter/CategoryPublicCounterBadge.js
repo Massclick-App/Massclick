@@ -5,6 +5,7 @@ import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
 import { fetchPublicUserCounter } from "../../../redux/actions/publicUserCounterAction.js";
 import {
   formatCounterCount,
+  getNextCounterRefreshDelay,
   getVisibleCounterCount,
 } from "../../../utils/publicUserCounterUtils.js";
 import styles from "./CategoryPublicCounterBadge.module.css";
@@ -36,6 +37,18 @@ const CategoryPublicCounterBadge = ({ category }) => {
     const timer = window.setInterval(() => setNow(Date.now()), 30000);
     return () => window.clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    const delay = getNextCounterRefreshDelay(settings);
+    if (!delay) return undefined;
+
+    const timer = window.setTimeout(() => {
+      setNow(Date.now());
+      dispatch(fetchPublicUserCounter()).catch(() => {});
+    }, delay);
+
+    return () => window.clearTimeout(timer);
+  }, [dispatch, settings]);
 
   const matchedCategory = useMemo(() => {
     const target = normalize(category);
