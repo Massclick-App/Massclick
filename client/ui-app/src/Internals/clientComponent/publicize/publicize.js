@@ -203,7 +203,7 @@ const paymentOptions = [
   },
 ];
 
-const testingAmountLabel = "Rs 000";
+const testingAmountLabel = "Rs 2360";
 
 const initialFormData = {
   businessName: "",
@@ -261,7 +261,8 @@ export default function PublicizePage() {
   const [showCategorySuggest, setShowCategorySuggest] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [selectedKeywords, setSelectedKeywords] = useState([]);
-  const [selectedPlan, setSelectedPlan] = useState("premium");
+  const [selectedPlan, setSelectedPlan] = useState("standard");
+  const [listingType, setListingType] = useState(null); // "free" or "paid"
   const [formData, setFormData] = useState(() => ({
     ...initialFormData,
     mobileNumber: getStoredMobileNumber(),
@@ -408,6 +409,47 @@ export default function PublicizePage() {
     setErrors({});
   };
 
+  const initiatePayment = async () => {
+    if (!validateStep(0) || !validateStep(1) || !validateStep(2)) return;
+
+    const publicizeData = {
+      businessName: formData.businessName.trim(),
+      mobileNumber: formData.mobileNumber.trim(),
+      pincode: formData.pincode.trim(),
+      category: selectedCategories[0],
+      keywords: selectedKeywords,
+      city: formData.city.trim(),
+      businessAddress: formData.businessAddress.trim(),
+      plan: selectedPlan,
+      listingType: listingType,
+    };
+
+    try {
+      const response = await fetch(
+        `${process.env.REACT_APP_API_URL}/publicize/initiate-payment`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(publicizeData),
+        }
+      );
+
+      const data = await response.json();
+
+      if (data.redirectUrl) {
+        window.location.href = data.redirectUrl;
+      } else {
+        enqueueSnackbar("Failed to initiate payment. Please try again.", {
+          variant: "error",
+        });
+      }
+    } catch (error) {
+      enqueueSnackbar("Something went wrong. Please try again.", {
+        variant: "error",
+      });
+    }
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (!validateStep(0) || !validateStep(1) || !validateStep(2)) return;
@@ -422,6 +464,8 @@ export default function PublicizePage() {
           keywords: selectedKeywords,
           city: formData.city.trim(),
           businessAddress: formData.businessAddress.trim(),
+          plan: selectedPlan,
+          listingType: listingType,
         })
       );
 
@@ -511,37 +555,6 @@ export default function PublicizePage() {
         id="publicize-start"
         className={cx("hero", activeStep === 3 ? "hero-plan-mode" : "")}
       >
-        <div className={cx("hero-content")}>
-          <div className={cx("breadcrumb")}>Home <ChevronRight size={14} /> Publicize your Business</div>
-          <h1>
-            <span>Grow</span> your business with Massclick
-          </h1>
-          <p className={cx("hero-copy")}>
-            Build a verified business profile, capture ready-to-buy leads, and
-            increase visibility across the Massclick marketplace.
-          </p>
-
-          <div className={cx("hero-stats")}>
-            <div>
-              <strong>10L+</strong>
-              <span>buyer searches</span>
-            </div>
-            <div>
-              <strong>1L+</strong>
-              <span>happy customers</span>
-            </div>
-            <div>
-              <strong>24/7</strong>
-              <span>lead discovery</span>
-            </div>
-          </div>
-
-          <ul className={cx("benefit-list")}>
-            <li><CheckCircle2 size={22} /> Rank ahead of your competition</li>
-            <li><CheckCircle2 size={22} /> Find ready-to-buy customers instantly</li>
-            <li><CheckCircle2 size={22} /> Track leads and growth opportunities</li>
-          </ul>
-        </div>
 
         <div className={cx("journey-card", activeStep === 3 ? "journey-card-plan" : "")}>
           <div className={cx("stepper")}>
@@ -821,13 +834,15 @@ export default function PublicizePage() {
                     <button
                       type="button"
                       key={plan.id}
+                      disabled={plan.id !== "standard"}
                       className={cx(
                         "plan-card",
                         selectedPlan === plan.id ? "plan-selected" : "",
-                        plan.recommended ? "plan-recommended" : ""
+                        plan.id !== "standard" ? "plan-upcoming" : ""
                       )}
-                      onClick={() => setSelectedPlan(plan.id)}
+                      onClick={() => plan.id === "standard" && setSelectedPlan(plan.id)}
                     >
+                      {plan.id !== "standard" && <span className={cx("upcoming-badge")}>Upcoming</span>}
                       <span className={cx("plan-badge")}>{plan.tenure}</span>
                       <strong>{plan.label}</strong>
                       <small>{plan.discount}</small>
@@ -858,48 +873,6 @@ export default function PublicizePage() {
                   ))}
                 </div>
 
-                <section className={cx("payment-showcase", "payment-showcase-inline")}>
-                  <div className={cx("payment-main")}>
-                    <div className={cx("section-heading", "section-heading-left")}>
-                      <span>Plan Checkout</span>
-                      <h2>Recommended upgrades and payment options</h2>
-                      <p>
-                        Choose a payment mode that fits your budget and keep every plan
-                        detail easy to review before submission.
-                      </p>
-                    </div>
-
-                    <div className={cx("recommended-strip")}>
-                      {[
-                        ["Universal Listing", `${testingAmountLabel}/day`, "New launch"],
-                        ["Mobile Banner", `${testingAmountLabel}/day`, "Most popular"],
-                        ["Website Banner", `${testingAmountLabel}/day`, "High intent"],
-                      ].map(([title, price, badge]) => (
-                        <article className={cx("addon-card")} key={title}>
-                          <span>{badge}</span>
-                          <strong>{title}</strong>
-                          <p>{price}</p>
-                          <button type="button">Add</button>
-                        </article>
-                      ))}
-                    </div>
-
-                    <div className={cx("payment-options")}>
-                      {paymentOptions.map(({ icon: Icon, title, description, badge }) => (
-                        <article className={cx("payment-option")} key={title}>
-                          <Icon size={30} />
-                          <div>
-                            <h3>{title}</h3>
-                            <p>{description}</p>
-                            <span>{badge}</span>
-                          </div>
-                          <ChevronRight size={20} />
-                        </article>
-                      ))}
-                    </div>
-                  </div>
-                </section>
-
                 <aside
                   className={cx("payment-summary", "payment-summary-inline")}
                   aria-label="Selected plan summary"
@@ -910,8 +883,8 @@ export default function PublicizePage() {
                     <p>{selectedPlanDetails.description}</p>
                   </div>
                   <div className={cx("summary-row")}>
-                    <span>Monthly Fee</span>
-                    <strong>{testingAmountLabel}</strong>
+                    <span>Annual Fee</span>
+                    <strong>Rs 24,000</strong>
                   </div>
                   <div className={cx("summary-row")}>
                     <span>Discount</span>
@@ -923,11 +896,11 @@ export default function PublicizePage() {
                   </div>
                   <div className={cx("summary-row")}>
                     <span>GST @ 18%</span>
-                    <strong>{testingAmountLabel}</strong>
+                    <strong>Rs 4,320</strong>
                   </div>
                   <div className={cx("summary-total")}>
-                    <span>Total Monthly Fee</span>
-                    <strong>{testingAmountLabel}</strong>
+                    <span>Total Payment</span>
+                    <strong>Rs 28,320</strong>
                   </div>
                   <button
                     className={cx("summary-button")}
@@ -938,12 +911,40 @@ export default function PublicizePage() {
                   </button>
                 </aside>
 
+                <div className={cx("listing-options")}>
+                  <button
+                    type="button"
+                    className={cx("option-button", listingType === "free" ? "option-selected" : "")}
+                    onClick={() => setListingType("free")}
+                  >
+                    <div className={cx("option-content")}>
+                      <strong>Free Listing</strong>
+                      <p>Basic visibility in Massclick marketplace</p>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    className={cx("option-button", listingType === "paid" ? "option-selected" : "")}
+                    onClick={() => setListingType("paid")}
+                  >
+                    <div className={cx("option-content")}>
+                      <strong>Paid Listing</strong>
+                      <p>Premium visibility + full features (Rs 28,320/year)</p>
+                    </div>
+                  </button>
+                </div>
+
                 <div className={cx("button-row", "sticky-actions")}>
                   <button type="button" className={cx("secondary-button")} onClick={goBack}>
                     Back
                   </button>
-                  <button className={cx("primary-button")} type="submit" disabled={loading}>
-                    {loading ? "Submitting..." : "Submit and continue"}
+                  <button
+                    className={cx("primary-button")}
+                    type="button"
+                    disabled={loading || !listingType}
+                    onClick={() => listingType === "paid" ? initiatePayment() : handleSubmit(new Event("submit"))}
+                  >
+                    {loading ? "Processing..." : listingType === "paid" ? "Proceed to Payment" : "Create Free Listing"}
                     {!loading && <ArrowRight size={20} />}
                   </button>
                 </div>

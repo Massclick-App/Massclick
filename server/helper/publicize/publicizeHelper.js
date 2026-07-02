@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb";
 import publicizeModel from "../../model/publicize/publicizeModel.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
+import { createPhonePePayment } from "../PhonePay/phonePayHelper.js";
 
 const normalizePublicizeKeywords = (keywords) => {
   if (!Array.isArray(keywords)) return [];
@@ -149,6 +150,56 @@ export const deletePublicize = async (id) => {
     return deletedPublicize;
   } catch (error) {
     console.error("Error deleting publicize:", error);
+    throw error;
+  }
+};
+
+export const initiatePublicizePayment = async (publicizeData = {}) => {
+  try {
+    const { listingType, mobileNumber, businessName } = publicizeData;
+
+    if (listingType === "free") {
+      const result = await createPublicize(publicizeData);
+      return {
+        success: true,
+        message: "Free listing created successfully",
+        data: result,
+      };
+    }
+
+    if (listingType === "paid") {
+      const publicizeDocument = new publicizeModel({
+        ...publicizeData,
+        keywords: normalizePublicizeKeywords(publicizeData.keywords),
+        paymentPending: true,
+      });
+      const savedPublicize = await publicizeDocument.save();
+
+      const businessDocument = new businessListModel(
+        buildBusinessFromPublicize(savedPublicize)
+      );
+      const savedBusiness = await businessDocument.save();
+
+      const amount = 24000;
+      const paymentResult = await createPhonePePayment(
+        amount,
+        mobileNumber,
+        savedBusiness._id.toString()
+      );
+
+      return {
+        success: true,
+        message: "Payment initiated successfully",
+        publicizeId: savedPublicize._id,
+        businessId: savedBusiness._id,
+        redirectUrl: paymentResult.paymentUrl,
+        transactionId: paymentResult.transactionId,
+      };
+    }
+
+    throw new Error("Invalid listing type. Must be 'free' or 'paid'");
+  } catch (error) {
+    console.error("Error initiating publicize payment:", error);
     throw error;
   }
 };
