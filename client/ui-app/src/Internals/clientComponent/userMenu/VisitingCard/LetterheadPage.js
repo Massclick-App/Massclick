@@ -120,6 +120,26 @@ const getBusinessProfile = (business = {}, storedUser = {}) => {
   };
 };
 
+const LETTERHEAD_DRAFT_KEY = "massclickLetterheadDraft";
+
+const todayDisplay = () => new Date().toLocaleDateString("en-IN");
+
+const createDefaultLetterheadDraft = () => ({
+  date: todayDisplay(),
+  to: "",
+  subject: "",
+  body: "",
+});
+
+const readLetterheadDraft = () => {
+  try {
+    const draft = JSON.parse(localStorage.getItem(LETTERHEAD_DRAFT_KEY) || "null");
+    return draft ? { ...createDefaultLetterheadDraft(), ...draft } : null;
+  } catch {
+    return null;
+  }
+};
+
 const downloadBlob = (blob, fileName) => {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -133,6 +153,39 @@ const downloadBlob = (blob, fileName) => {
 
 const svgLine = (text, x, y, size, color, weight = 500, extra = "") =>
   `<text x="${x}" y="${y}" font-family="Inter, Arial, sans-serif" font-size="${size}" font-weight="${weight}" fill="${color}" ${extra}>${svgText(text)}</text>`;
+
+const wrapText = (value = "", maxChars = 86, maxLines = 9) => {
+  const paragraphs = String(value || "").split(/\r?\n/);
+  const lines = [];
+
+  paragraphs.forEach((paragraph) => {
+    const words = paragraph.trim().split(/\s+/).filter(Boolean);
+    if (!words.length) {
+      if (lines.length < maxLines) lines.push("");
+      return;
+    }
+
+    words.forEach((word) => {
+      if (!lines.length) lines.push("");
+      const current = lines[lines.length - 1] || "";
+      const next = current ? `${current} ${word}` : word;
+
+      if (!current || next.length <= maxChars) {
+        lines[lines.length - 1] = next;
+      } else if (lines.length < maxLines) {
+        lines.push(word);
+      }
+    });
+  });
+
+  return lines.slice(0, maxLines);
+};
+
+const svgTextLines = (lines, x, y, size, color, weight = 500, lineGap = 44) =>
+  lines
+    .filter((line) => String(line || "").trim())
+    .map((line, index) => svgLine(line, x, y + index * lineGap, size, color, weight))
+    .join("");
 
 const svgInfo = (label, value, x, y, template) => `
   <circle cx="${x}" cy="${y - 7}" r="15" fill="${template.accent}" opacity="0.16" />
@@ -162,11 +215,13 @@ const svgLetterheadLogo = (profile, template) => {
   `;
 };
 
-const buildLetterheadSvg = (profile, template) => {
+const buildLetterheadSvg = (profile, template, draft = createDefaultLetterheadDraft()) => {
   const phones = profile.phones.length ? profile.phones.join(" / ") : "+91 98765 43210";
   const initials = getInitials(profile.businessName);
   const address = limitText(profile.location, 86);
   const footerLine = [phones, profile.email, profile.website].filter(Boolean).join("  |  ");
+  const toLines = wrapText(draft.to, 48, 2);
+  const bodyLines = wrapText(draft.body, 92, 9);
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="1754" viewBox="0 0 1240 1754">
     <rect width="1240" height="1754" fill="#ffffff" />
@@ -193,15 +248,19 @@ const buildLetterheadSvg = (profile, template) => {
     ${svgLine(initials, 510, 972, 168, template.primary, 850, 'opacity="0.04"')}
     ${svgLine("Date:", 118, 518, 24, "#1f2937", 750)}
     <line x1="184" y1="516" x2="390" y2="516" stroke="#cbd5e1" stroke-width="2" />
+    ${draft.date ? svgLine(limitText(draft.date, 24), 198, 510, 20, "#0f172a", 600) : ""}
     ${svgLine("To,", 118, 606, 24, "#1f2937", 750)}
     <line x1="118" y1="662" x2="640" y2="662" stroke="#e2e8f0" stroke-width="2" />
     <line x1="118" y1="724" x2="640" y2="724" stroke="#e2e8f0" stroke-width="2" />
+    ${svgTextLines(toLines, 118, 650, 20, "#0f172a", 600, 62)}
     ${svgLine("Subject:", 118, 826, 24, "#1f2937", 850)}
     <line x1="222" y1="824" x2="1060" y2="824" stroke="#cbd5e1" stroke-width="2" />
+    ${draft.subject ? svgLine(limitText(draft.subject, 74), 242, 818, 20, "#0f172a", 650) : ""}
     ${Array.from({ length: 9 }, (_, index) => {
       const y = 934 + index * 72;
       return `<line x1="118" y1="${y}" x2="1122" y2="${y}" stroke="#edf2f7" stroke-width="2" />`;
     }).join("")}
+    ${svgTextLines(bodyLines, 118, 920, 20, "#0f172a", 500, 72)}
 
     <rect x="0" y="1530" width="1240" height="224" fill="${template.primary}" />
     <path d="M0 1530 C262 1476 420 1584 642 1532 C866 1480 1034 1486 1240 1530 V1588 C1026 1552 862 1568 668 1618 C432 1676 246 1574 0 1632 Z" fill="${template.accent}" />
@@ -213,7 +272,7 @@ const buildLetterheadSvg = (profile, template) => {
   </svg>`;
 };
 
-const createLetterheadPng = async (profile, template) => {
+const createLetterheadPng = async (profile, template, draft) => {
   const exportProfile = {
     ...profile,
     logoImage: await imageToDataUrl(profile.logoImage),
@@ -221,7 +280,7 @@ const createLetterheadPng = async (profile, template) => {
 
   return (
   new Promise((resolve, reject) => {
-    const svg = buildLetterheadSvg(exportProfile, template);
+    const svg = buildLetterheadSvg(exportProfile, template, draft);
     const image = new Image();
     const svgBlob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
     const url = URL.createObjectURL(svgBlob);
@@ -249,9 +308,10 @@ const createLetterheadPng = async (profile, template) => {
   );
 };
 
-const LetterheadPreview = ({ profile, template }) => {
+const LetterheadPreview = ({ profile, template, draft, onDraftChange }) => {
   const phones = profile.phones.length ? profile.phones.join(" / ") : "+91 98765 43210";
   const initials = getInitials(profile.businessName);
+  const updateDraft = (field) => (event) => onDraftChange(field, event.target.value);
 
   return (
     <article
@@ -294,19 +354,41 @@ const LetterheadPreview = ({ profile, template }) => {
         <div className={cx("letterhead-watermark")}>{initials}</div>
         <div className={cx("letterhead-field-row")}>
           <strong>Date:</strong>
-          <span />
+          <input
+            value={draft.date}
+            onChange={updateDraft("date")}
+            placeholder="Date"
+            aria-label="Letterhead date"
+          />
         </div>
         <div className={cx("letterhead-address-block")}>
           <strong>To,</strong>
-          <span />
-          <span />
+          <textarea
+            value={draft.to}
+            onChange={updateDraft("to")}
+            rows={2}
+            placeholder="Recipient name and address"
+            aria-label="Letterhead recipient"
+          />
         </div>
         <div className={cx("letterhead-field-row letterhead-subject-row")}>
           <strong>Subject:</strong>
-          <span />
+          <input
+            value={draft.subject}
+            onChange={updateDraft("subject")}
+            placeholder="Subject"
+            aria-label="Letterhead subject"
+          />
         </div>
         <div className={cx("letterhead-writing-lines")}>
           {Array.from({ length: 9 }, (_, index) => <span key={index} />)}
+          <textarea
+            value={draft.body}
+            onChange={updateDraft("body")}
+            rows={9}
+            placeholder="Type your letter content here"
+            aria-label="Letterhead body"
+          />
         </div>
       </div>
 
@@ -334,12 +416,17 @@ export default function LetterheadPage() {
     primary: letterheadTemplates[0].primary,
     accent: letterheadTemplates[0].accent,
   });
+  const [draft, setDraft] = useState(() => readLetterheadDraft() || createDefaultLetterheadDraft());
   const [statusMessage, setStatusMessage] = useState("");
   const [isDesignModalOpen, setIsDesignModalOpen] = useState(false);
 
   useEffect(() => {
     if (mobileNumber) dispatch(findBusinessByMobile(mobileNumber));
   }, [dispatch, mobileNumber]);
+
+  useEffect(() => {
+    localStorage.setItem(LETTERHEAD_DRAFT_KEY, JSON.stringify(draft));
+  }, [draft]);
 
   const baseTemplate =
     letterheadTemplates.find((template) => template.id === selectedTemplateId) || letterheadTemplates[0];
@@ -364,6 +451,20 @@ export default function LetterheadPage() {
       ...current,
       [field]: value,
     }));
+  };
+
+  const handleDraftChange = (field, value) => {
+    setDraft((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  };
+
+  const handleResetDraft = () => {
+    const nextDraft = createDefaultLetterheadDraft();
+    setDraft(nextDraft);
+    localStorage.removeItem(LETTERHEAD_DRAFT_KEY);
+    setStatusMessage("Letterhead text cleared.");
   };
 
   const handleResetColors = () => {
@@ -396,7 +497,7 @@ export default function LetterheadPage() {
   const handleDownload = async () => {
     setStatusMessage("");
     try {
-      const blob = await createLetterheadPng(profile, selectedTemplate);
+      const blob = await createLetterheadPng(profile, selectedTemplate, draft);
       downloadBlob(blob, fileName);
       setStatusMessage("Letterhead downloaded.");
     } catch (error) {
@@ -430,6 +531,9 @@ export default function LetterheadPage() {
                 <PaletteIcon />
                 Theme
               </button>
+              <button type="button" className={cx("secondary-action")} onClick={handleResetDraft}>
+                Clear Text
+              </button>
               <button type="button" className={cx("primary-action")} onClick={handleDownload}>
                 <DownloadIcon />
                 Download Letterhead
@@ -442,7 +546,12 @@ export default function LetterheadPage() {
             {matchedBusinessLoading ? (
               <div className={cx("loading-box")}>Loading your business letterhead details...</div>
             ) : (
-              <LetterheadPreview profile={profile} template={selectedTemplate} />
+              <LetterheadPreview
+                profile={profile}
+                template={selectedTemplate}
+                draft={draft}
+                onDraftChange={handleDraftChange}
+              />
             )}
             {statusMessage && <p className={cx("status-message")}>{statusMessage}</p>}
           </div>
