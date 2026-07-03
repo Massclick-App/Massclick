@@ -2,7 +2,7 @@ import { createScopedClassNames } from "../../utils/createScopedClassNames";
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { createSeo, editSeo, deleteSeo, getAllSeo } from "../../redux/actions/seoAction.js";
-import { getAllLocation, createLocation } from "../../redux/actions/locationAction.js";
+import { getAllLocation } from "../../redux/actions/locationAction.js";
 import { useSnackbar } from "notistack";
 import { Box, Button, Typography, CircularProgress, IconButton, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
 import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
@@ -44,6 +44,12 @@ export default function SeoData() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showLocationSuggest, setShowLocationSuggest] = useState(false);
   const [locationSuggestions, setLocationSuggestions] = useState([]);
+  // Tracks whether the current categoryInput/location text was actually
+  // picked from a real suggestion, rather than free-typed — required so we
+  // never save a spelling that doesn't match the categories/locations
+  // collections (this is what caused the seodatas duplication cleanup).
+  const [selectedCategorySlug, setSelectedCategorySlug] = useState(null);
+  const [selectedLocation, setSelectedLocation] = useState(null);
   useEffect(() => {
     dispatch(getAllSeo());
     dispatch(getAllLocation({
@@ -78,7 +84,7 @@ export default function SeoData() {
       setShowLocationSuggest(false);
       return;
     }
-    const filtered = location.filter(loc => loc.city?.toLowerCase().includes(query) || loc.district?.toLowerCase().includes(query));
+    const filtered = location.filter(loc => loc.city?.toLowerCase().includes(query) || loc.district?.toLowerCase().includes(query) || loc.location?.toLowerCase().includes(query) || loc.name?.toLowerCase().includes(query));
     setLocationSuggestions(filtered);
     setShowLocationSuggest(filtered.length > 0);
   };
@@ -87,6 +93,12 @@ export default function SeoData() {
     if (!formData.pageType) newErrors.pageType = "Page type required";
     if (!formData.title.trim()) newErrors.title = "Meta title required";
     if (!formData.description.trim()) newErrors.description = "Meta description required";
+    if (formData.pageType === "category" && categoryInput.trim() && !selectedCategorySlug) {
+      newErrors.category = "Please select a category from the suggestions";
+    }
+    if (formData.location.trim() && !selectedLocation) {
+      newErrors.location = "Please select a location from the suggestions";
+    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -102,6 +114,8 @@ export default function SeoData() {
       robots: "index, follow"
     });
     setCategoryInput("");
+    setSelectedCategorySlug(null);
+    setSelectedLocation(null);
     setShowLocationSuggest(false);
     setLocationSuggestions([]);
     setEditingId(null);
@@ -109,21 +123,12 @@ export default function SeoData() {
   };
   const handleSubmit = async e => {
     e.preventDefault();
-    const locationExists = location.some(loc => loc.city?.toLowerCase() === formData.location?.toLowerCase() || loc.district?.toLowerCase() === formData.location?.toLowerCase());
+    if (!validateForm()) return;
     const finalData = {
       ...formData,
-      category: categoryInput
+      category: selectedCategorySlug || categoryInput
     };
-    if (!validateForm()) return;
     try {
-      if (!locationExists && formData.location) {
-        await dispatch(createLocation({
-          city: formData.location,
-          district: formData.location,
-          state: "N/A",
-          country: "N/A"
-        }));
-      }
       if (editingId) {
         await dispatch(editSeo(editingId, finalData));
         enqueueSnackbar("SEO updated successfully", {
@@ -158,6 +163,8 @@ export default function SeoData() {
       robots: row.robots || "index, follow"
     });
     setCategoryInput(row.category || "");
+    setSelectedCategorySlug(row.category || null);
+    setSelectedLocation(row.location ? { city: row.location } : null);
     setShowLocationSuggest(false);
     setLocationSuggestions([]);
     setActiveView("form");
@@ -250,9 +257,10 @@ export default function SeoData() {
         <form onSubmit={handleSubmit} className={cx("seo-form-grid")}>
           <div className={cx("seo-form-input-group category-search")}>
             <label className="form-input-label">Category</label>
-            <input type="text" value={categoryInput} placeholder="Search category" className="form-text-input" onChange={e => {
+            <input type="text" value={categoryInput} placeholder="Search category" className={`form-text-input ${errors.category ? "error" : ""}`} onChange={e => {
             const value = e.target.value;
             setCategoryInput(value);
+            setSelectedCategorySlug(null);
             setShowSuggestions(true);
             setFormData(prev => ({
               ...prev,
@@ -264,33 +272,37 @@ export default function SeoData() {
             {showSuggestions && categorySuggestions.length > 0 && <ul className={cx("category-suggestion-list")}>
                 {categorySuggestions.map(item => <li key={item._id} className={cx("category-suggestion-item")} onClick={() => {
               setCategoryInput(item.category);
+              setSelectedCategorySlug(item.slug || null);
               setFormData(prev => ({
                 ...prev,
-                category: item.category
+                category: item.slug || item.category
               }));
               setShowSuggestions(false);
             }}>
                     {item.category}
                   </li>)}
               </ul>}
+            {errors.category && <p className="form-error-text">{errors.category}</p>}
           </div>
           <div className={cx("seo-form-input-group category-search")}>
             <label className="form-input-label">Location</label>
             <input type="text" name="location" value={formData.location} placeholder="Search location" className={`form-text-input ${errors.location ? "error" : ""}`} onChange={e => {
             handleChange(e);
+            setSelectedLocation(null);
             updateLocationSuggestions(e.target.value);
           }} onFocus={() => updateLocationSuggestions(formData.location)} onBlur={() => setTimeout(() => setShowLocationSuggest(false), 150)} />
             {showLocationSuggest && locationSuggestions.length > 0 && <ul className={cx("category-suggestion-list")}>
                 {locationSuggestions.map(loc => <li key={loc._id} className={cx("category-suggestion-item")} onClick={() => {
               setFormData(prev => ({
                 ...prev,
-                location: loc.city || loc.district || ""
+                location: loc.city || loc.district || loc.location || loc.name || ""
               }));
+              setSelectedLocation(loc);
               setShowLocationSuggest(false);
               setLocationSuggestions([]);
             }}>
-                    {loc.city}
-                    {loc.district && loc.district !== loc.city ? `, ${loc.district}` : ""}
+                    {loc.city || loc.location || loc.name}
+                    {loc.district && loc.district !== (loc.city || loc.location || loc.name) ? `, ${loc.district}` : ""}
                     {loc.state ? ` - ${loc.state}` : ""}
                   </li>)}
               </ul>}

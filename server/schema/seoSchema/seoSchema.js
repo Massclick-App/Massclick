@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { slugify } from "../../slugify.js";
 
 const normalizeText = (v = "") =>
   typeof v === "string" ? v.toLowerCase().trim() : v;
@@ -17,15 +18,18 @@ const seoSchema = new mongoose.Schema(
       index: true
     },
 
+    // slugified (lowercase, hyphen-separated) so "AC Service" / "ac service" /
+    // "ac-service" all collapse to the same stored value instead of drifting
+    // into duplicate records — see seodatas normalization cleanup.
     category: {
       type: String,
-      set: normalizeText,
+      set: slugify,
       index: true
     },
 
     location: {
       type: String,
-      set: normalizeText,
+      set: slugify,
       index: true
     },
 

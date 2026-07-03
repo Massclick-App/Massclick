@@ -1,5 +1,6 @@
 import seoModel from "../../model/seoModel/seoModel.js";
 import categoryModel from "../../model/category/categoryModel.js";
+import locationModel from "../../model/locationModel/locationModel.js";
 import { getSignedUrlByKey } from "../../s3Uploder.js";
 import { getCache, setCache } from "../../utils/redisClient.js";
 import { createLogger } from "../../utils/logger.js";
@@ -64,6 +65,63 @@ const buildDynamicSeoMeta = ({ category, location }) => {
   };
 };
 
+// Locations collection has two historical document shapes (city/district vs
+// location/name) — match against all of them so validation works regardless
+// of which shape a given record was created under.
+const findMatchingLocation = async (locationValue = "") => {
+  const normalized = locationValue.toLowerCase().trim();
+  if (!normalized) return null;
+
+  const regex = new RegExp(
+    `^${normalized.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+    "i"
+  );
+
+  return await locationModel
+    .findOne({
+      isActive: true,
+      $or: [
+        { city: regex },
+        { district: regex },
+        { location: regex },
+        { name: regex }
+      ]
+    })
+    .lean();
+};
+
+const ensureCategoryExists = async (categorySlug) => {
+  const exists = await categoryModel
+    .findOne({ slug: categorySlug, isActive: true })
+    .lean();
+
+  if (!exists) {
+    throw new Error(
+      `Category "${categorySlug}" does not exist. Please select a category from the suggestions.`
+    );
+  }
+};
+
+// Resolves free-typed location text to the canonical name of a real,
+// existing location record (rather than trusting whatever casing/spelling
+// was typed) — prevents both duplicate seodatas rows and orphaned location
+// docs that used to get silently auto-created for typos/one-off text.
+const resolveLocation = async (locationValue) => {
+  const matched = await findMatchingLocation(locationValue);
+
+  if (!matched) {
+    throw new Error(
+      `Location "${locationValue}" does not exist. Please add it via Location Management first, then select it here.`
+    );
+  }
+
+  const canonicalName =
+    matched.city || matched.district || matched.location || matched.name || locationValue;
+
+  const location = slugify(canonicalName);
+  return { location, locationKey: location.replace(/[^a-z0-9]/g, "") };
+};
+
 export const createSeo = async (data) => {
   try {
 
@@ -71,16 +129,19 @@ export const createSeo = async (data) => {
       throw new Error("Category is required");
     }
 
-    data.category = data.category.toLowerCase().trim();
-
     if (data.pageType)
       data.pageType = data.pageType.toLowerCase().trim();
 
-    if (data.location) {
-      data.location = data.location.toLowerCase().trim();
+    data.category = slugify(data.category);
 
-      data.locationKey =
-        data.location.replace(/[^a-z0-9]/g, "");
+    if (data.pageType === "category") {
+      await ensureCategoryExists(data.category);
+    }
+
+    if (data.location) {
+      const { location, locationKey } = await resolveLocation(data.location);
+      data.location = location;
+      data.locationKey = locationKey;
     }
 
     const seo = await seoModel.create(data);
@@ -302,12 +363,21 @@ export const viewAllSeo = async ({
 
 export const updateSeo = async (id, data) => {
 
+  if (data.pageType)
+    data.pageType = data.pageType.toLowerCase().trim();
+
+  if (data.category) {
+    data.category = slugify(data.category);
+
+    if (data.pageType === "category") {
+      await ensureCategoryExists(data.category);
+    }
+  }
+
   if (data.location) {
-    data.locationKey =
-      data.location
-        .toLowerCase()
-        .trim()
-        .replace(/[^a-z0-9]/g, "");
+    const { location, locationKey } = await resolveLocation(data.location);
+    data.location = location;
+    data.locationKey = locationKey;
   }
 
   const exists = await seoModel.findOne({
@@ -358,6 +428,7 @@ export const categorySuggestion = async (search = "", limit = 10) => {
         },
         {
           category: 1,
+          slug: 1,
           categoryImageKey: 1
         }
       )

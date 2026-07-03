@@ -8,6 +8,28 @@ export const createLocation = async function (reqBody = {}) {
     const data = {
       ...reqBody,
     };
+
+    ["country", "state", "district", "city", "addressLine1", "addressLine2"].forEach((field) => {
+      if (typeof data[field] === "string") data[field] = data[field].trim();
+    });
+
+    if (data.city) {
+      const escaped = data.city.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const duplicate = await locationModel
+        .findOne({
+          isActive: true,
+          $or: [
+            { city: new RegExp(`^${escaped}$`, "i") },
+            { district: new RegExp(`^${escaped}$`, "i") }
+          ]
+        })
+        .lean();
+
+      if (duplicate) {
+        throw new Error(`Location "${data.city}" already exists.`);
+      }
+    }
+
     const locationDocument = new locationModel(data);
     const result = await locationDocument.save();
     return result;
