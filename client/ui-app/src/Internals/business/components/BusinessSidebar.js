@@ -14,6 +14,7 @@ const SECTION_ORDER = [
   { key: "bannerDetails", title: "Banner & Details", step: 0 },
   { key: "openingHours", title: "Hours", step: 0 },
   { key: "badgesVisibility", title: "Badges", step: 0 },
+  { key: "paymentDetails", title: "Payment", step: 0 },
   { key: "kycDocuments", title: "KYC Docs", step: 1 },
   { key: "categorySeo", title: "Category", step: 2 },
   { key: "keywordsTags", title: "Keywords", step: 2 },

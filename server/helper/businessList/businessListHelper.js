@@ -11,6 +11,34 @@ import gmapsLeadsModel from "../../model/gmapsLeads/gmapsLeadsModel.js";
 import enquiryModel from "../../model/enquiry/enquiryModel.js";
 import { slugify } from "../../slugify.js";
 
+const BUSINESS_PAYMENT_GST_RATE = 18;
+
+const normalizeBusinessPaymentConcept = (source = {}) => {
+  const baseAmount = Math.max(Number(source.baseAmount ?? source.totalAmount ?? 0), 0);
+  const gstRate = BUSINESS_PAYMENT_GST_RATE;
+  const gstAmount = Number(((baseAmount * gstRate) / 100).toFixed(2));
+  const totalAmount = Number((baseAmount + gstAmount).toFixed(2));
+  const advancePaid = Math.min(Math.max(Number(source.advancePaid || 0), 0), totalAmount);
+  const pendingAmount = Math.max(totalAmount - advancePaid, 0);
+  const paymentStatus =
+    advancePaid <= 0 ? "unpaid" : pendingAmount <= 0 ? "paid" : "part_paid";
+
+  return {
+    baseAmount,
+    gstRate,
+    gstAmount,
+    totalAmount,
+    advancePaid,
+    pendingAmount,
+    paymentStatus,
+    paymentMethod: source.paymentMethod || "not_selected",
+    paymentReference: String(source.paymentReference || "").trim(),
+    paymentDueDate: source.paymentDueDate || null,
+    notes: String(source.notes || "").trim(),
+    updatedAt: new Date(),
+  };
+};
+
 // Silently mark any gmaps lead with a matching phone as imported
 const autoMarkGmapsLeadImported = async (contact) => {
   if (!contact) return;
@@ -972,6 +1000,10 @@ export const updateBusinessList = async (id, data) => {
   }
 
   delete data.payment;
+
+  if (data.paymentConcept && typeof data.paymentConcept === "object") {
+    data.paymentConcept = normalizeBusinessPaymentConcept(data.paymentConcept);
+  }
 
   /* ===============================
      5️⃣ UPDATE NORMAL FIELDS

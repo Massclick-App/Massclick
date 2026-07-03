@@ -14,6 +14,8 @@ const BusinessFormStep0 = ({
   fieldErrors,
   preview,
   logoPreview,
+  paymentMethodOptions,
+  normalizePaymentConcept,
   getInputClassName,
   renderFieldError,
   handleChange,
@@ -112,6 +114,7 @@ const BusinessFormStep0 = ({
     { key: "bannerDetails", title: "Business Banner & Details", subtitle: "Upload banner image and describe your business" },
     { key: "openingHours", title: "Opening Hours", subtitle: "Set business hours for each day" },
     { key: "badgesVisibility", title: "Badges & Visibility", subtitle: "Control how this listing is highlighted" },
+    { key: "paymentDetails", title: "Payment Details", subtitle: "Track total, advance paid, and pending amount" },
   ];
 
   const renderSectionIntro = (eyebrow, summary, stat) => (
@@ -125,6 +128,33 @@ const BusinessFormStep0 = ({
   );
 
   const fieldClass = (...extra) => cx("form-input-group", "field-card", ...extra);
+  const paymentConcept = normalizePaymentConcept
+    ? normalizePaymentConcept(formData.paymentConcept)
+    : formData.paymentConcept;
+  const paymentProgress = paymentConcept?.totalAmount > 0
+    ? Math.min(100, Math.round((paymentConcept.advancePaid / paymentConcept.totalAmount) * 100))
+    : 0;
+  const paymentStatusLabel = {
+    unpaid: "Unpaid",
+    part_paid: "Part Paid",
+    paid: "Paid",
+  }[paymentConcept?.paymentStatus] || "Unpaid";
+  const paymentMethodLabel = (paymentMethodOptions || []).find(
+    option => option.value === paymentConcept?.paymentMethod
+  )?.label || "Not selected";
+  const formatAmount = value => Number(value || 0).toLocaleString("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  });
+  const updatePaymentConcept = (patch) => {
+    setFormData((prev) => ({
+      ...prev,
+      paymentConcept: normalizePaymentConcept
+        ? normalizePaymentConcept({ ...(prev.paymentConcept || {}), ...patch })
+        : { ...(prev.paymentConcept || {}), ...patch },
+    }));
+  };
 
   const renderClientBusiness = () => (
     <>
@@ -644,6 +674,169 @@ const BusinessFormStep0 = ({
     </>
   );
 
+  const renderPaymentDetails = () => (
+    <>
+      {renderSectionIntro(
+        "Payment concept",
+        "Record the base amount, 18% GST, total payable, advance paid, and pending amount for this business.",
+        paymentStatusLabel
+      )}
+
+      <div className={cx("payment-concept-panel")}>
+        <div className={cx("payment-concept-header")}>
+          <div>
+            <p className={cx("payment-concept-eyebrow")}>Business Payment Summary</p>
+            <h3 className={cx("payment-concept-title")}>{formData.businessName || "New business"}</h3>
+          </div>
+          <span className={cx("payment-concept-status", `payment-concept-status-${paymentConcept.paymentStatus}`)}>
+            {paymentStatusLabel}
+          </span>
+        </div>
+
+        <div className={cx("payment-concept-metrics")}>
+          <div className={cx("payment-concept-metric")}>
+            <span className={cx("payment-concept-metric-label")}>Base Amount</span>
+            <strong className={cx("payment-concept-metric-value")}>{formatAmount(paymentConcept.baseAmount)}</strong>
+          </div>
+          <div className={cx("payment-concept-metric")}>
+            <span className={cx("payment-concept-metric-label")}>GST 18%</span>
+            <strong className={cx("payment-concept-metric-value")}>{formatAmount(paymentConcept.gstAmount)}</strong>
+          </div>
+          <div className={cx("payment-concept-metric")}>
+            <span className={cx("payment-concept-metric-label")}>Total Amount Incl. GST</span>
+            <strong className={cx("payment-concept-metric-value")}>{formatAmount(paymentConcept.totalAmount)}</strong>
+          </div>
+          <div className={cx("payment-concept-metric")}>
+            <span className={cx("payment-concept-metric-label")}>Advance Paid</span>
+            <strong className={cx("payment-concept-metric-value")}>{formatAmount(paymentConcept.advancePaid)}</strong>
+          </div>
+          <div className={cx("payment-concept-metric", "payment-concept-pending")}>
+            <span className={cx("payment-concept-metric-label")}>Pending Amount</span>
+            <strong className={cx("payment-concept-metric-value", "payment-concept-metric-value-pending")}>{formatAmount(paymentConcept.pendingAmount)}</strong>
+          </div>
+        </div>
+
+        <div className={cx("payment-concept-progress")}>
+          <span className={cx("payment-concept-progress-fill")} style={{ width: `${paymentProgress}%` }} />
+        </div>
+
+        <div className={cx("section-grid", "section-grid-2")}>
+          <div className={fieldClass()}>
+            <label htmlFor="paymentBaseAmount" className="form-input-label">Base Amount</label>
+            <input
+              id="paymentBaseAmount"
+              type="number"
+              min="0"
+              className={cx("text-input")}
+              value={paymentConcept.baseAmount}
+              onChange={(event) => updatePaymentConcept({ baseAmount: event.target.value })}
+            />
+          </div>
+
+          <div className={fieldClass()}>
+            <label className="form-input-label">GST 18%</label>
+            <input
+              type="text"
+              className={cx("text-input")}
+              value={formatAmount(paymentConcept.gstAmount)}
+              readOnly
+            />
+          </div>
+
+          <div className={fieldClass()}>
+            <label className="form-input-label">Total Amount Incl. GST</label>
+            <input
+              type="text"
+              className={cx("text-input")}
+              value={formatAmount(paymentConcept.totalAmount)}
+              readOnly
+            />
+          </div>
+
+          <div className={fieldClass()}>
+            <label htmlFor="paymentAdvancePaid" className="form-input-label">Advance / Paid Amount</label>
+            <input
+              id="paymentAdvancePaid"
+              type="number"
+              min="0"
+              className={cx("text-input")}
+              value={paymentConcept.advancePaid}
+              onChange={(event) => updatePaymentConcept({ advancePaid: event.target.value })}
+            />
+          </div>
+
+          <div className={fieldClass()}>
+            <label className="form-input-label">Pending Amount</label>
+            <input
+              type="text"
+              className={cx("text-input")}
+              value={formatAmount(paymentConcept.pendingAmount)}
+              readOnly
+            />
+          </div>
+
+          <div className={fieldClass()}>
+            <label htmlFor="paymentMethod" className="form-input-label">Payment Method</label>
+            <select
+              id="paymentMethod"
+              className={cx("select-input")}
+              value={paymentConcept.paymentMethod}
+              onChange={(event) => updatePaymentConcept({ paymentMethod: event.target.value })}
+            >
+              {(paymentMethodOptions || []).map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className={fieldClass()}>
+            <label htmlFor="paymentDueDate" className="form-input-label">Payment Due Date</label>
+            <input
+              id="paymentDueDate"
+              type="date"
+              className={cx("text-input")}
+              value={paymentConcept.paymentDueDate}
+              onChange={(event) => updatePaymentConcept({ paymentDueDate: event.target.value })}
+            />
+          </div>
+
+          <div className={fieldClass()}>
+            <label className="form-input-label">Payment Status</label>
+            <input
+              type="text"
+              className={cx("text-input")}
+              value={`${paymentStatusLabel} - ${paymentMethodLabel}`}
+              readOnly
+            />
+          </div>
+
+          <div className={fieldClass("field-span-full")}>
+            <label htmlFor="paymentReference" className="form-input-label">Payment Reference</label>
+            <input
+              id="paymentReference"
+              type="text"
+              className={cx("text-input")}
+              value={paymentConcept.paymentReference}
+              onChange={(event) => updatePaymentConcept({ paymentReference: event.target.value })}
+              placeholder="Transaction ID, receipt number, cheque number, or manual note"
+            />
+          </div>
+
+          <div className={fieldClass("field-span-full")}>
+            <label htmlFor="paymentNotes" className="form-input-label">Internal Payment Notes</label>
+            <textarea
+              id="paymentNotes"
+              className={cx("textarea-input")}
+              value={paymentConcept.notes}
+              onChange={(event) => updatePaymentConcept({ notes: event.target.value })}
+              placeholder="Add any payment follow-up notes for the team"
+            />
+          </div>
+        </div>
+      </div>
+    </>
+  );
+
   const sectionRenderers = {
     clientBusiness: renderClientBusiness,
     address: renderAddress,
@@ -654,6 +847,7 @@ const BusinessFormStep0 = ({
     bannerDetails: renderBannerDetails,
     openingHours: renderOpeningHours,
     badgesVisibility: renderBadgesVisibility,
+    paymentDetails: renderPaymentDetails,
   };
 
   const activeSection_obj = sections.find((s) => s.key === activeSection);

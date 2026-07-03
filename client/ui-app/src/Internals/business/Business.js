@@ -51,6 +51,7 @@ const PREMIUM_MEMBERSHIP_BASE_AMOUNT = 24000;
 const SECTION_TO_STEP = {
   clientBusiness: 0, address: 0, contact: 0, businessInfo: 0, locationWeb: 0,
   socialMedia: 0, bannerDetails: 0, openingHours: 0, badgesVisibility: 0,
+  paymentDetails: 0,
   kycDocuments: 1,
   categorySeo: 2, keywordsTags: 2, displaySeo: 2, searchSeo: 2, preview: 2
 };
@@ -62,6 +63,13 @@ const SECTION_ALL_FIELDS = {
   locationWeb: ["googleMap", "geoLatitude", "geoLongitude", "website"],
   socialMedia: ["facebook", "instagram", "youtube", "pinterest", "twitter", "linkedin"],
   bannerDetails: ["bannerImage", "businessDetails"],
+  paymentDetails: [
+    "paymentConcept.baseAmount",
+    "paymentConcept.gstAmount",
+    "paymentConcept.totalAmount",
+    "paymentConcept.advancePaid",
+    "paymentConcept.pendingAmount"
+  ],
   categorySeo: ["category", "keywords"],
   displaySeo: ["title", "description"],
   searchSeo: ["seoTitle", "seoDescription", "slug"],
@@ -72,6 +80,30 @@ const BUSINESS_LOCAL_DRAFT_KEY = "massclick.business.createDraft";
 const DEMO_PNG_DATA_URL = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9s0qDbgAAAAASUVORK5CYII=";
 const ORANGE_PRIMARY = '#FF8C00';
 const ORANGE_HOVER = '#D97800';
+const BUSINESS_PAYMENT_GST_RATE = 18;
+const PAYMENT_METHOD_OPTIONS = [
+  { value: "not_selected", label: "Not selected" },
+  { value: "cash", label: "Cash" },
+  { value: "upi", label: "UPI" },
+  { value: "bank_transfer", label: "Bank transfer" },
+  { value: "card", label: "Card" },
+  { value: "cheque", label: "Cheque" },
+  { value: "phonepe", label: "PhonePe" },
+  { value: "other", label: "Other" },
+];
+const DEFAULT_PAYMENT_CONCEPT = {
+  baseAmount: PREMIUM_MEMBERSHIP_BASE_AMOUNT,
+  gstRate: BUSINESS_PAYMENT_GST_RATE,
+  gstAmount: 4320,
+  totalAmount: 28320,
+  advancePaid: 0,
+  pendingAmount: 28320,
+  paymentStatus: "unpaid",
+  paymentMethod: "not_selected",
+  paymentReference: "",
+  paymentDueDate: "",
+  notes: "",
+};
 const QUILL_MODULES = {
   toolbar: [[{
     header: "1"
@@ -84,6 +116,38 @@ const QUILL_MODULES = {
   }], ["link", "image", "video"], ["clean"]]
 };
 const QUILL_FORMATS = ["header", "bold", "italic", "underline", "strike", "list", "bullet", "link", "image", "video"];
+
+const toNumberAmount = value => Math.max(Number(value || 0), 0);
+
+const derivePaymentStatus = (advancePaid, totalAmount) => {
+  if (advancePaid <= 0) return "unpaid";
+  if (totalAmount > 0 && advancePaid >= totalAmount) return "paid";
+  return "part_paid";
+};
+
+const normalizePaymentConcept = (source = {}) => {
+  const baseAmount = toNumberAmount(source.baseAmount ?? source.totalAmount ?? DEFAULT_PAYMENT_CONCEPT.baseAmount);
+  const gstRate = BUSINESS_PAYMENT_GST_RATE;
+  const gstAmount = Number(((baseAmount * gstRate) / 100).toFixed(2));
+  const totalAmount = Number((baseAmount + gstAmount).toFixed(2));
+  const advancePaid = Math.min(toNumberAmount(source.advancePaid), totalAmount);
+  const pendingAmount = Math.max(totalAmount - advancePaid, 0);
+  return {
+    ...DEFAULT_PAYMENT_CONCEPT,
+    ...source,
+    baseAmount,
+    gstRate,
+    gstAmount,
+    totalAmount,
+    advancePaid,
+    pendingAmount,
+    paymentStatus: derivePaymentStatus(advancePaid, totalAmount),
+    paymentMethod: source.paymentMethod || DEFAULT_PAYMENT_CONCEPT.paymentMethod,
+    paymentReference: String(source.paymentReference || ""),
+    paymentDueDate: source.paymentDueDate ? String(source.paymentDueDate).slice(0, 10) : "",
+    notes: String(source.notes || ""),
+  };
+};
 
 const normalizeQuillHtml = value =>
   value === "<p><br></p>" ? "" : value || "";
@@ -364,7 +428,12 @@ const FORM_SECTION_FLOW = {
     },
     {
       key: "badgesVisibility",
-      title: "Badges & Visibility"
+      title: "Badges & Visibility",
+      body: "Finally, record the business payment amount, advance paid, and pending balance."
+    },
+    {
+      key: "paymentDetails",
+      title: "Payment Details"
     }
   ],
   1: [
@@ -620,7 +689,8 @@ const BusinessList = React.memo(() => {
       socialMedia: [],
       bannerDetails: [],
       openingHours: [],
-      badgesVisibility: []
+      badgesVisibility: [],
+      paymentDetails: []
     },
     1: {
       kycDocuments: []
@@ -644,7 +714,8 @@ const BusinessList = React.memo(() => {
       socialMedia: [],
       bannerDetails: ["bannerImage", "businessDetails"],
       openingHours: [],
-      badgesVisibility: []
+      badgesVisibility: [],
+      paymentDetails: []
     },
     1: {
       kycDocuments: []
@@ -959,6 +1030,7 @@ const BusinessList = React.memo(() => {
       coordinates: ["", ""]
     },
     filters: {},
+    paymentConcept: normalizePaymentConcept(),
     badges: {
       isFeatured: false,
       isSponsored: false,
@@ -1092,6 +1164,7 @@ const BusinessList = React.memo(() => {
       ...baseFormData,
       ...source,
       filters: source.filters && typeof source.filters === "object" ? source.filters : {},
+      paymentConcept: normalizePaymentConcept(source.paymentConcept),
       badges: {
         ...baseFormData.badges,
         ...(source.badges || {})
@@ -1851,6 +1924,7 @@ const BusinessList = React.memo(() => {
     logoImage: data.logoImage,
     openingHours: Array.isArray(data.openingHours) ? data.openingHours : [],
     filters: data.filters && typeof data.filters === 'object' ? data.filters : {},
+    paymentConcept: normalizePaymentConcept(data.paymentConcept),
     badges: data.badges && typeof data.badges === 'object' ? data.badges : {
       isFeatured: false,
       isSponsored: false,
@@ -2298,6 +2372,7 @@ const BusinessList = React.memo(() => {
         coordinates: Array.isArray(row.geoLocation?.coordinates) ? row.geoLocation.coordinates.map(value => value ?? "") : ["", ""]
       },
       filters: (row.filters && typeof row.filters === "object") ? row.filters : {},
+      paymentConcept: normalizePaymentConcept(row.paymentConcept),
       badges: {
         isFeatured: row.badges?.isFeatured || false,
         isSponsored: row.badges?.isSponsored || false,
@@ -2534,6 +2609,27 @@ const BusinessList = React.memo(() => {
           },
         }));
         enqueueSnackbar("Badges & visibility saved successfully!", {
+          variant: "success"
+        });
+        dispatch(getAllBusinessList());
+        setSectionSavingState(prev => ({ ...prev, [sectionKey]: false }));
+        return;
+      }
+
+      if (sectionKey === 'paymentDetails') {
+        const payload = {
+          name: formData.businessName,
+          businessName: formData.businessName,
+          category: formData.category,
+          location: formData.location,
+          paymentConcept: normalizePaymentConcept(formData.paymentConcept),
+        };
+        const updatedBusiness = await dispatch(editBusinessList(editId, payload));
+        setFormData(prev => ({
+          ...prev,
+          paymentConcept: normalizePaymentConcept(updatedBusiness?.paymentConcept || payload.paymentConcept),
+        }));
+        enqueueSnackbar("Payment details saved successfully!", {
           variant: "success"
         });
         dispatch(getAllBusinessList());
@@ -4139,6 +4235,8 @@ const BusinessList = React.memo(() => {
             preview={preview}
             logoPreview={logoPreview}
             listingMode={listingMode}
+            paymentMethodOptions={PAYMENT_METHOD_OPTIONS}
+            normalizePaymentConcept={normalizePaymentConcept}
             getSectionRefKey={getSectionRefKey}
             getSectionIsComplete={getSectionIsComplete}
             getSectionIsDisabled={getSectionIsDisabled}
@@ -4349,7 +4447,7 @@ const BusinessList = React.memo(() => {
   const isFieldFilled = (field, data) => {
     if (field === "geoLatitude") { const v = data.geoLocation?.coordinates?.[1]; return v != null && String(v).trim().length > 0; }
     if (field === "geoLongitude") { const v = data.geoLocation?.coordinates?.[0]; return v != null && String(v).trim().length > 0; }
-    const value = data[field];
+    const value = String(field).split(".").reduce((source, key) => source?.[key], data);
     if (value == null) return false;
     if (Array.isArray(value)) return value.length > 0;
     return String(value).replace(/<[^>]*>/g, "").trim().length > 0;

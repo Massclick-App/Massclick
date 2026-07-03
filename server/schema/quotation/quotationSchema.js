@@ -30,6 +30,13 @@ const quotationSchema = new Schema(
     taxRate: { type: Number, default: 18, min: 0 },
     discount: { type: Number, default: 0, min: 0 },
     advancePayment: { type: Number, default: 0, min: 0 },
+    paymentMethod: {
+      type: String,
+      enum: ["not_selected", "cash", "upi", "bank_transfer", "card", "cheque", "phonepe", "other"],
+      default: "not_selected",
+    },
+    paymentReference: { type: String, trim: true, default: "" },
+    paymentDueDate: { type: Date, default: null },
     paymentStatus: {
       type: String,
       enum: ["unpaid", "part_paid", "paid"],

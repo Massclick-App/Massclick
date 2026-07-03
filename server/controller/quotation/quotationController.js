@@ -14,6 +14,16 @@ const DEFAULT_TERMS =
   "MassClick product quotation. The listed product amount and GST are fixed. This quotation includes one free basic website.";
 const DEFAULT_NOTES =
   "All customer enquiries and lead notifications are delivered through WhatsApp. Businesses are advised to maintain an active and regularly monitored WhatsApp number to ensure timely responses and maximize lead conversion opportunities. One free basic website is included with this quotation.";
+const PAYMENT_METHODS = new Set([
+  "not_selected",
+  "cash",
+  "upi",
+  "bank_transfer",
+  "card",
+  "cheque",
+  "phonepe",
+  "other",
+]);
 
 const buildQuotationNo = (year, sequence) =>
   `MC-QTN-${year}-${String(sequence).padStart(QUOTATION_SEQUENCE_PAD, "0")}`;
@@ -72,6 +82,7 @@ const normalizeQuotationPayload = (body = {}) => {
     taxRate: MASSCLICK_GST_RATE,
   });
   const advancePayment = Math.min(Math.max(Number(body.advancePayment || 0), 0), total);
+  const paymentMethod = String(body.paymentMethod || "not_selected").trim();
 
   return {
     quotationName: DEFAULT_QUOTATION_NAME,
@@ -91,6 +102,9 @@ const normalizeQuotationPayload = (body = {}) => {
     taxRate: MASSCLICK_GST_RATE,
     discount: 0,
     advancePayment,
+    paymentMethod: PAYMENT_METHODS.has(paymentMethod) ? paymentMethod : "not_selected",
+    paymentReference: String(body.paymentReference || "").trim(),
+    paymentDueDate: body.paymentDueDate || null,
     paymentStatus: derivePaymentStatus(advancePayment, total),
     items,
     status: body.status || "draft",

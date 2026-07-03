@@ -90,6 +90,17 @@ const DEFAULT_NOTES =
 
 const DEFAULT_QUOTATION_NAME = "Massclick";
 
+const paymentMethodOptions = [
+  { value: "not_selected", label: "Not selected" },
+  { value: "cash", label: "Cash" },
+  { value: "upi", label: "UPI" },
+  { value: "bank_transfer", label: "Bank transfer" },
+  { value: "card", label: "Card" },
+  { value: "cheque", label: "Cheque" },
+  { value: "phonepe", label: "PhonePe" },
+  { value: "other", label: "Other" },
+];
+
 const normalizeFormItems = (items = []) => {
   const sourceItems = Array.isArray(items) && items.length ? items : [MASSCLICK_PRODUCT_ITEM];
   return sourceItems.map((item) => ({
@@ -122,6 +133,9 @@ const createEmptyForm = () => ({
   taxRate: MASSCLICK_GST_RATE,
   discount: 0,
   advancePayment: 0,
+  paymentMethod: "not_selected",
+  paymentReference: "",
+  paymentDueDate: addDaysIso(7),
   status: "draft",
   notes: DEFAULT_NOTES,
   terms: DEFAULT_TERMS,
@@ -175,6 +189,15 @@ const paymentStatusLabel = (status) => {
   return "Unpaid";
 };
 
+const paymentMethodLabel = (value) =>
+  paymentMethodOptions.find((option) => option.value === value)?.label || "Not selected";
+
+const paymentStatusClass = (status) => {
+  if (status === "paid") return "payment-status-paid";
+  if (status === "part_paid") return "payment-status-part-paid";
+  return "payment-status-unpaid";
+};
+
 const mapQuotationToForm = (quotation) => ({
   ...createEmptyForm(),
   ...quotation,
@@ -183,6 +206,9 @@ const mapQuotationToForm = (quotation) => ({
   taxRate: MASSCLICK_GST_RATE,
   discount: 0,
   advancePayment: Number(quotation.advancePayment || 0),
+  paymentMethod: quotation.paymentMethod || "not_selected",
+  paymentReference: quotation.paymentReference || "",
+  paymentDueDate: toDateInput(quotation.paymentDueDate),
   quotationName: DEFAULT_QUOTATION_NAME,
   notes: DEFAULT_NOTES,
   terms: DEFAULT_TERMS,
@@ -196,6 +222,9 @@ const buildQuotationPayload = (source, quotationNo = "") => ({
   taxRate: MASSCLICK_GST_RATE,
   discount: 0,
   advancePayment: Number(source.advancePayment || 0),
+  paymentMethod: source.paymentMethod || "not_selected",
+  paymentReference: String(source.paymentReference || "").trim(),
+  paymentDueDate: source.paymentDueDate || null,
   notes: DEFAULT_NOTES,
   terms: DEFAULT_TERMS,
   items: normalizePayloadItems(source.items),
@@ -377,7 +406,7 @@ const drawQuotationPdf = (quotation, logoDataUrl = "", signatureDataUrl = "") =>
   const totalX = 128;
   pdf.setDrawColor(...border);
   pdf.setFillColor(...soft);
-  pdf.roundedRect(totalX, y, 68, 52, 3, 3, "FD");
+  pdf.roundedRect(totalX, y, 68, 72, 3, 3, "FD");
   pdf.setFontSize(9);
   pdf.setTextColor(...deepNavy);
   pdf.text("Subtotal", totalX + 5, y + 9);
@@ -388,14 +417,31 @@ const drawQuotationPdf = (quotation, logoDataUrl = "", signatureDataUrl = "") =>
   pdf.text(money(totals.total), totalX + 62, y + 27, { align: "right" });
   pdf.text("Advance Paid", totalX + 5, y + 36);
   pdf.text(money(totals.advancePayment), totalX + 62, y + 36, { align: "right" });
+  pdf.text("Payment Status", totalX + 5, y + 45);
+  pdf.text(paymentStatusLabel(totals.paymentStatus), totalX + 62, y + 45, { align: "right" });
+  pdf.text("Due Date", totalX + 5, y + 54);
+  pdf.text(formatDate(quotation.paymentDueDate), totalX + 62, y + 54, { align: "right" });
   pdf.setDrawColor(226, 232, 240);
-  pdf.line(totalX + 5, y + 41, totalX + 63, y + 41);
+  pdf.line(totalX + 5, y + 59, totalX + 63, y + 59);
   pdf.setTextColor(...teal);
   pdf.setFontSize(11);
-  pdf.text("Balance Due", totalX + 5, y + 49);
-  pdf.text(money(totals.balanceDue), totalX + 62, y + 49, { align: "right" });
+  pdf.text("Balance Due", totalX + 5, y + 67);
+  pdf.text(money(totals.balanceDue), totalX + 62, y + 67, { align: "right" });
 
-  y += 68;
+  pdf.setDrawColor(...border);
+  pdf.setFillColor(255, 255, 255);
+  pdf.roundedRect(margin, y, 100, 36, 3, 3, "FD");
+  pdf.setTextColor(...orange);
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(8.5);
+  pdf.text("PAYMENT DETAILS", margin + 5, y + 8);
+  pdf.setTextColor(...deepNavy);
+  pdf.setFontSize(8.3);
+  pdf.text(`Method: ${paymentMethodLabel(quotation.paymentMethod)}`, margin + 5, y + 17);
+  pdf.text(`Paid / Advance: ${money(totals.advancePayment)}`, margin + 5, y + 25);
+  drawWrappedText(pdf, `Reference: ${quotation.paymentReference || "-"}`, margin + 5, y + 33, 88, 3.7);
+
+  y += 86;
   pdf.setTextColor(...deepNavy);
   pdf.setFontSize(9);
   pdf.setDrawColor(...border);
@@ -427,6 +473,7 @@ const drawQuotationPdf = (quotation, logoDataUrl = "", signatureDataUrl = "") =>
   if (logoDataUrl) {
     pdf.addImage(logoDataUrl, "PNG", margin, y - 9, 48, 15.5, undefined, "FAST");
   }
+  
   pdf.setDrawColor(...orange);
   pdf.setLineWidth(1);
   pdf.line(margin, y + 13, pageWidth - margin, y + 13);
@@ -533,6 +580,9 @@ export default function Quotation() {
   );
   const totals = useMemo(() => calculateTotals(preview), [preview]);
   const previewProductItem = preview.items[0] || MASSCLICK_PRODUCT_ITEM;
+  const paymentProgress = totals.total > 0
+    ? Math.min(100, Math.round((totals.advancePayment / totals.total) * 100))
+    : 0;
 
   const fetchQuotations = async (pageNo = 1, pageSize = 25, options = {}) => {
     try {
@@ -770,12 +820,19 @@ export default function Quotation() {
           discount: 0,
           items: normalizeFormItems(quotation.items),
         }).balanceDue),
+        advanceLabel: money(calculateTotals({
+          ...quotation,
+          taxRate: MASSCLICK_GST_RATE,
+          discount: 0,
+          items: normalizeFormItems(quotation.items),
+        }).advancePayment),
         paymentStatusLabel: paymentStatusLabel(calculateTotals({
           ...quotation,
           taxRate: MASSCLICK_GST_RATE,
           discount: 0,
           items: normalizeFormItems(quotation.items),
         }).paymentStatus),
+        paymentDueDateLabel: formatDate(quotation.paymentDueDate),
       })),
     [quotations]
   );
@@ -787,7 +844,9 @@ export default function Quotation() {
     { id: "customerPhone", label: "Phone" },
     { id: "issueDateLabel", label: "Issue Date" },
     { id: "totalLabel", label: "Total" },
+    { id: "advanceLabel", label: "Paid" },
     { id: "balanceLabel", label: "Balance" },
+    { id: "paymentDueDateLabel", label: "Due Date" },
     { id: "paymentStatusLabel", label: "Payment" },
     {
       id: "actions",
@@ -949,7 +1008,83 @@ export default function Quotation() {
                   onChange={(event) => updateField("advancePayment", event.target.value)}
                 />
               </label>
+              <label className={cx("field")}>
+                <span className={cx("label")}>Payment Method</span>
+                <select
+                  className={cx("select")}
+                  value={form.paymentMethod}
+                  onChange={(event) => updateField("paymentMethod", event.target.value)}
+                >
+                  {paymentMethodOptions.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </label>
+              <label className={cx("field")}>
+                <span className={cx("label")}>Payment Due Date</span>
+                <input
+                  className={cx("input")}
+                  type="date"
+                  value={form.paymentDueDate}
+                  onChange={(event) => updateField("paymentDueDate", event.target.value)}
+                />
+              </label>
+              <label className={cx("field", "field-wide")}>
+                <span className={cx("label")}>Payment Reference / Notes</span>
+                <input
+                  className={cx("input")}
+                  value={form.paymentReference}
+                  onChange={(event) => updateField("paymentReference", event.target.value)}
+                  placeholder="Transaction ID, receipt number, cheque number, or internal note"
+                />
+              </label>
             </div>
+
+            <section className={cx("payment-overview")} aria-label="Payment overview">
+              <div className={cx("payment-overview-header")}>
+                <div>
+                  <span className={cx("payment-kicker")}>Payment Concept</span>
+                  <h3 className={cx("payment-heading")}>Amount paid and pending details</h3>
+                </div>
+                <span className={cx("payment-status", paymentStatusClass(totals.paymentStatus))}>
+                  {paymentStatusLabel(totals.paymentStatus)}
+                </span>
+              </div>
+              <div className={cx("payment-metrics")}>
+                <div className={cx("payment-metric")}>
+                  <span className={cx("payment-metric-label")}>Grand Total</span>
+                  <strong className={cx("payment-metric-value")}>{money(totals.total)}</strong>
+                </div>
+                <div className={cx("payment-metric")}>
+                  <span className={cx("payment-metric-label")}>Paid / Advance</span>
+                  <strong className={cx("payment-metric-value")}>{money(totals.advancePayment)}</strong>
+                </div>
+                <div className={cx("payment-metric")}>
+                  <span className={cx("payment-metric-label")}>Pending Amount</span>
+                  <strong className={cx("payment-metric-value", "payment-metric-pending")}>{money(totals.balanceDue)}</strong>
+                </div>
+              </div>
+              <div className={cx("payment-progress-track")}>
+                <span
+                  className={cx("payment-progress-fill")}
+                  style={{ width: `${paymentProgress}%` }}
+                />
+              </div>
+              <div className={cx("payment-detail-grid")}>
+                <div className={cx("payment-detail")}>
+                  <span className={cx("payment-detail-label")}>Method</span>
+                  <strong className={cx("payment-detail-value")}>{paymentMethodLabel(form.paymentMethod)}</strong>
+                </div>
+                <div className={cx("payment-detail")}>
+                  <span className={cx("payment-detail-label")}>Due Date</span>
+                  <strong className={cx("payment-detail-value")}>{formatDate(form.paymentDueDate)}</strong>
+                </div>
+                <div className={cx("payment-detail")}>
+                  <span className={cx("payment-detail-label")}>Reference</span>
+                  <strong className={cx("payment-detail-value")}>{form.paymentReference || "-"}</strong>
+                </div>
+              </div>
+            </section>
 
             <div className={cx("items")}>
               <h2 className={cx("section-title")}>Commercial Product</h2>
@@ -1042,6 +1177,8 @@ export default function Quotation() {
                   <p>Grand Total: <strong>{money(totals.total)}</strong></p>
                   <p>Advance Paid: <strong>{money(totals.advancePayment)}</strong></p>
                   <p>Balance Due: <strong>{money(totals.balanceDue)}</strong></p>
+                  <p>Payment Status: <strong>{paymentStatusLabel(totals.paymentStatus)}</strong></p>
+                  <p>Payment Due: <strong>{formatDate(preview.paymentDueDate)}</strong></p>
                 </div>
               </div>
 
@@ -1079,9 +1216,25 @@ export default function Quotation() {
                   <div className={cx("total-row")}><span>Tax</span><strong>{money(totals.tax)}</strong></div>
                   <div className={cx("total-row")}><span>Grand Total</span><strong>{money(totals.total)}</strong></div>
                   <div className={cx("total-row")}><span>Advance Paid</span><strong>{money(totals.advancePayment)}</strong></div>
+                  <div className={cx("total-row")}><span>Payment Status</span><strong>{paymentStatusLabel(totals.paymentStatus)}</strong></div>
                   <div className={cx("total-row", "grand-total")}><span>Balance Due</span><strong>{money(totals.balanceDue)}</strong></div>
                 </div>
               </div>
+
+              <section className={cx("document-payment")}>
+                <div className={cx("document-payment-card")}>
+                  <span className={cx("document-payment-label")}>Payment Method</span>
+                  <strong className={cx("document-payment-value")}>{paymentMethodLabel(preview.paymentMethod)}</strong>
+                </div>
+                <div className={cx("document-payment-card")}>
+                  <span className={cx("document-payment-label")}>Payment Due Date</span>
+                  <strong className={cx("document-payment-value")}>{formatDate(preview.paymentDueDate)}</strong>
+                </div>
+                <div className={cx("document-payment-card")}>
+                  <span className={cx("document-payment-label")}>Reference</span>
+                  <strong className={cx("document-payment-value")}>{preview.paymentReference || "-"}</strong>
+                </div>
+              </section>
 
               <div className={cx("notes")}>
                 <p><strong>Terms:</strong> {preview.terms || "-"}</p>

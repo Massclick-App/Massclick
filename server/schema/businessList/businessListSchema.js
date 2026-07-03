@@ -173,6 +173,28 @@ const businessListSchema = new mongoose.Schema({
     endDate: { type: Date, default: null },
     autoRenew: { type: Boolean, default: false },
   },
+  paymentConcept: {
+    baseAmount: { type: Number, default: 0, min: 0 },
+    gstRate: { type: Number, default: 18, min: 0 },
+    gstAmount: { type: Number, default: 0, min: 0 },
+    totalAmount: { type: Number, default: 0, min: 0 },
+    advancePaid: { type: Number, default: 0, min: 0 },
+    pendingAmount: { type: Number, default: 0, min: 0 },
+    paymentStatus: {
+      type: String,
+      enum: ["unpaid", "part_paid", "paid"],
+      default: "unpaid",
+    },
+    paymentMethod: {
+      type: String,
+      enum: ["not_selected", "cash", "upi", "bank_transfer", "card", "cheque", "phonepe", "other"],
+      default: "not_selected",
+    },
+    paymentReference: { type: String, default: "" },
+    paymentDueDate: { type: Date, default: null },
+    notes: { type: String, default: "" },
+    updatedAt: { type: Date, default: null },
+  },
   verification: {
     isVerified: { type: Boolean, default: false },
     verifiedBy: {
