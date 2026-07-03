@@ -236,6 +236,9 @@ const drawWrappedText = (pdf, text, x, y, maxWidth, lineHeight = 5) => {
   return y + lines.length * lineHeight;
 };
 
+const splitPdfText = (pdf, text, maxWidth) =>
+  pdf.splitTextToSize(String(text || "-"), maxWidth);
+
 const cachedImageDataUrls = {};
 
 const imageUrlToDataUrl = async (url) => {
@@ -333,40 +336,60 @@ const drawQuotationPdf = (quotation, logoDataUrl = "", signatureDataUrl = "") =>
   y = 85;
   const boxGap = 6;
   const boxWidth = (contentWidth - boxGap) / 2;
+  const boxPaddingX = 5;
+  const boxHeaderHeight = 10;
+  const boxLineHeight = 5.5;
+  const boxTextWidth = boxWidth - boxPaddingX * 2;
+  const addressLines = splitPdfText(pdf, quotation.customerAddress || "-", boxTextWidth);
+  const billToContentHeight =
+    13 + boxLineHeight * 3 + Math.max(addressLines.length, 1) * 4.5;
+  const summaryContentHeight = 13 + boxLineHeight * 4;
+  const partyBoxHeight = Math.max(48, boxHeaderHeight + 8 + billToContentHeight, boxHeaderHeight + 8 + summaryContentHeight);
   pdf.setDrawColor(219, 226, 237);
   pdf.setFillColor(255, 255, 255);
-  pdf.roundedRect(margin, y, boxWidth, 42, 3, 3, "FD");
-  pdf.roundedRect(margin + boxWidth + boxGap, y, boxWidth, 42, 3, 3, "FD");
+  pdf.roundedRect(margin, y, boxWidth, partyBoxHeight, 3, 3, "FD");
+  pdf.roundedRect(margin + boxWidth + boxGap, y, boxWidth, partyBoxHeight, 3, 3, "FD");
   pdf.setFillColor(...paleOrange);
-  pdf.rect(margin + 0.6, y + 0.6, boxWidth - 1.2, 10, "F");
-  pdf.rect(margin + boxWidth + boxGap + 0.6, y + 0.6, boxWidth - 1.2, 10, "F");
+  pdf.rect(margin + 0.6, y + 0.6, boxWidth - 1.2, boxHeaderHeight, "F");
+  pdf.rect(margin + boxWidth + boxGap + 0.6, y + 0.6, boxWidth - 1.2, boxHeaderHeight, "F");
 
   pdf.setTextColor(...orange);
   pdf.setFont("helvetica", "bold");
   pdf.setFontSize(9);
-  pdf.text("BILL TO", margin + 5, y + 8);
-  pdf.text("COMMERCIAL SUMMARY", margin + boxWidth + boxGap + 5, y + 8);
+  pdf.text("BILL TO", margin + boxPaddingX, y + 8);
+  pdf.text("COMMERCIAL SUMMARY", margin + boxWidth + boxGap + boxPaddingX, y + 8);
 
   pdf.setTextColor(...deepNavy);
   pdf.setFontSize(9);
   pdf.setFont("helvetica", "bold");
-  pdf.text(quotation.customerName || "Customer Name", margin + 5, y + 18);
+  const billToX = margin + boxPaddingX;
+  let billToY = y + 19;
+  pdf.text(quotation.customerName || "Customer Name", billToX, billToY);
   pdf.setFont("helvetica", "normal");
-  pdf.text(quotation.customerPhone || "-", margin + 5, y + 25);
-  pdf.text(quotation.customerEmail || "-", margin + 5, y + 32);
-  drawWrappedText(pdf, quotation.customerAddress || "-", margin + 5, y + 39, boxWidth - 10, 4);
+  billToY += boxLineHeight;
+  pdf.text(quotation.customerPhone || "-", billToX, billToY);
+  billToY += boxLineHeight;
+  pdf.text(quotation.customerEmail || "-", billToX, billToY);
+  billToY += 6;
+  pdf.setTextColor(31, 41, 55);
+  pdf.text(addressLines, billToX, billToY);
 
-  const summaryX = margin + boxWidth + boxGap + 5;
+  const summaryX = margin + boxWidth + boxGap + boxPaddingX;
+  let summaryY = y + 19;
   pdf.setFont("helvetica", "bold");
-  pdf.text(quotation.quotationName || DEFAULT_QUOTATION_NAME, summaryX, y + 18);
+  pdf.setTextColor(...deepNavy);
+  pdf.text(quotation.quotationName || DEFAULT_QUOTATION_NAME, summaryX, summaryY);
   pdf.setFont("helvetica", "normal");
-  pdf.text(`Product: ${quoteItem.description}`, summaryX, y + 25);
-  pdf.text("Includes: 1 free website", summaryX, y + 32);
+  summaryY += boxLineHeight;
+  pdf.text(`Product: ${quoteItem.description}`, summaryX, summaryY);
+  summaryY += boxLineHeight;
+  pdf.text("Includes: 1 free website", summaryX, summaryY);
+  summaryY += 7;
   pdf.setTextColor(...teal);
   pdf.setFont("helvetica", "bold");
-  pdf.text(`Balance Due: ${money(totals.balanceDue)}`, summaryX, y + 38);
+  pdf.text(`Balance Due: ${money(totals.balanceDue)}`, summaryX, summaryY);
 
-  y += 58;
+  y += partyBoxHeight + 16;
   pdf.setFillColor(...navy);
   pdf.roundedRect(margin, y, contentWidth, 13, 2, 2, "F");
   pdf.setTextColor(255, 255, 255);
@@ -451,10 +474,6 @@ const drawQuotationPdf = (quotation, logoDataUrl = "", signatureDataUrl = "") =>
   drawWrappedText(pdf, quotation.terms || "-", margin + 22, y + 9, 156, 4);
   pdf.text("Notes:", margin + 5, y + 22);
   drawWrappedText(pdf, quotation.notes || "-", margin + 22, y + 22, 156, 4);
-
-  pdf.setFontSize(8);
-  pdf.setTextColor(...muted);
-  pdf.text("Page 1 of 2", pageWidth - margin, pageHeight - 8, { align: "right" });
 
   pdf.addPage();
   pdf.setFillColor(250, 252, 255);
@@ -543,7 +562,6 @@ const drawQuotationPdf = (quotation, logoDataUrl = "", signatureDataUrl = "") =>
 
   pdf.setFontSize(8);
   pdf.setTextColor(...muted);
-  pdf.text("Page 2 of 2", pageWidth - margin, pageHeight - 8, { align: "right" });
   pdf.text("Massclick Technologies Pvt Ltd", margin, pageHeight - 8);
 
   return pdf;
