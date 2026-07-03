@@ -494,6 +494,7 @@
   margin: 4px 0;
   color: var(--quote-ink);
   font-weight: 700;
+  overflow-wrap: anywhere;
 }
 
 .document-table {
