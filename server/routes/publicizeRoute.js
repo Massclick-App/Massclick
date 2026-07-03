@@ -1,12 +1,13 @@
 import express from 'express'
 
-import { addPublicizeAction, viewPublicizeAction, viewAllPublicizeAction, updatePublicizeAction, deletePublicizeAction } from "../controller/publicize/publicizeController.js"
+import { addPublicizeAction, viewPublicizeAction, viewAllPublicizeAction, updatePublicizeAction, deletePublicizeAction, initiatePublicizePaymentAction } from "../controller/publicize/publicizeController.js"
 import { oauthAuthentication } from '../helper/oauthHelper.js';
 
 
 const router = express.Router();
 
 router.post('/api/publicize/create', oauthAuthentication, addPublicizeAction);
+router.post('/api/publicize/initiate-payment', initiatePublicizePaymentAction);
 router.get('/api/publicize/view/:id',oauthAuthentication, viewPublicizeAction);
 router.get('/api/publicize/viewall',oauthAuthentication, viewAllPublicizeAction);
 router.put('/api/publicize/update/:id',oauthAuthentication, updatePublicizeAction);

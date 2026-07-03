@@ -9,19 +9,10 @@
   width: 100%;
   max-width: var(--section-max-width);
   margin: 0 auto;
+  padding: 0;
   font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-/* ==================== INNER WRAPPER ==================== */
-.popular-search__inner {
-  position: relative;
-  border-radius: var(--section-radius);
-  background: #ffffff;
-  border: 1px solid rgba(17, 24, 39, 0.08);
-    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
-  padding: 28px var(--section-padding-h) 24px;
-  overflow: hidden;
-}
 
 /* ==================== HEADER ==================== */
 .popular-search__header {
@@ -108,141 +99,14 @@
   display: none;
 }
 
-/* ==================== CARD ==================== */
-.popular-search__card {
-  flex: 0 0 auto;
-  scroll-snap-align: start;
-  width: 280px;
-  border-radius: var(--popular-radius-md);
-  background: var(--popular-bg-card);
-  border: 1px solid #e8e8e8;
-  box-shadow: var(--popular-shadow-soft);
-  overflow: hidden;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  transition: all var(--popular-transition);
-}
-
-.popular-search__card:hover {
-  transform: translateY(-6px);
-  border-color: #d0d0d0;
-}
-
-/* ==================== CARD IMAGE ==================== */
-.popular-search__card-image-wrapper {
-  position: relative;
-  aspect-ratio: 16 / 9;
-  overflow: hidden;
-  background: #f0f0f0;
-  flex-shrink: 0;
-}
-
-.popular-search__card-image-wrapper--empty {
-  background: #f5f5f5;
-}
-
-.popular-search__card-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-  transition: transform 0.4s ease;
-}
-
-.popular-search__card:hover .popular-search__card-image {
-  transform: scale(1.06);
-}
-
-.popular-search__card-overlay {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.15) 100%);
-  opacity: 0;
-  transition: opacity var(--popular-transition);
-  pointer-events: none;
-}
-
-.popular-search__card:hover .popular-search__card-overlay {
-  opacity: 1;
-}
-
-/* ==================== CARD BODY ==================== */
-.popular-search__card-body {
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  flex: 1;
-  background: var(--popular-bg-card);
-}
-
-/* Badge */
-.popular-search__card-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  border-radius: 20px;
-  font-size: 0.65rem;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: #e67e22;
-  background: rgba(230, 126, 34, 0.1);
-  width: fit-content;
-}
-
-/* Title */
-.popular-search__card-title {
-  margin: 0;
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #1a1a1a;
-  line-height: 1.3;
-}
-
-/* Description */
-.popular-search__card-description {
-  margin: 0;
-  font-size: 0.8rem;
-  color: #888888;
-  line-height: 1.4;
-  flex-grow: 1;
-}
-
-/* Button */
-.popular-search__card-button {
-  margin-top: auto;
-  align-self: flex-start;
-  border-radius: 20px;
-  border: none;
-  padding: 8px 16px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  cursor: pointer;
-  background: #e67e22;
-  color: #ffffff;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  box-shadow: 0 2px 8px rgba(230, 126, 34, 0.2);
-  transition: all var(--popular-transition);
-}
-
-.popular-search__card-button:hover {
-  background: #d35400;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(230, 126, 34, 0.3);
-}
-
-.popular-search__card-button:active {
-  transform: translateY(0);
-}
 
 /* ==================== RESPONSIVE BREAKPOINTS ==================== */
 
 @media (max-width: 480px) {
+  .popular-search {
+    padding: 20px var(--section-padding-h) 16px;
+  }
+
   .popular-search__title {
     font-size: 1.4rem;
   }
@@ -251,12 +115,8 @@
     margin-bottom: 16px;
   }
 
-  .popular-search__card {
-    width: 240px;
-  }
-
   .popular-search__track {
-    gap: 14px;
+    gap: 12px;
   }
 }
 
@@ -265,24 +125,14 @@
     font-size: 1.6rem;
   }
 
-  .popular-search__card {
-    width: 260px;
-  }
-}
-
-@media (min-width: 900px) {
-  .popular-search__card {
-    width: 290px;
+  .popular-search__track {
+    gap: 16px;
   }
 }
 
 @media (min-width: 1200px) {
   .popular-search__title {
     font-size: 1.9rem;
-  }
-
-  .popular-search__card {
-    width: 300px;
   }
 
   .popular-search__track {

@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb";
 import publicizeModel from "../../model/publicize/publicizeModel.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
+import { createPhonePePayment } from "../PhonePay/phonePayHelper.js";
 
 const normalizePublicizeKeywords = (keywords) => {
   if (!Array.isArray(keywords)) return [];
@@ -42,9 +43,22 @@ export const createPublicize = async (reqBody = {}) => {
     });
     const savedPublicize = await publicizeDocument.save();
 
-    const businessDocument = new businessListModel(
-      buildBusinessFromPublicize(savedPublicize)
-    );
+    const businessData = buildBusinessFromPublicize(savedPublicize);
+
+    // Check if business already exists
+    const existingBusiness = await businessListModel.findOne({
+      businessName: businessData.businessName,
+      category: businessData.category,
+      location: businessData.location,
+    });
+
+    if (existingBusiness) {
+      throw new Error(
+        `Business "${businessData.businessName}" in "${businessData.category}" at "${businessData.location}" already exists. Please use a different business name, category, or location.`
+      );
+    }
+
+    const businessDocument = new businessListModel(businessData);
     const savedBusiness = await businessDocument.save();
 
     return {
@@ -149,6 +163,67 @@ export const deletePublicize = async (id) => {
     return deletedPublicize;
   } catch (error) {
     console.error("Error deleting publicize:", error);
+    throw error;
+  }
+};
+
+export const initiatePublicizePayment = async (publicizeData = {}) => {
+  try {
+    const { listingType, mobileNumber, businessName } = publicizeData;
+
+    if (listingType === "free") {
+      const result = await createPublicize(publicizeData);
+      return {
+        success: true,
+        message: "Free listing created successfully",
+        data: result,
+      };
+    }
+
+    if (listingType === "paid") {
+      const publicizeDocument = new publicizeModel({
+        ...publicizeData,
+        keywords: normalizePublicizeKeywords(publicizeData.keywords),
+        paymentPending: true,
+      });
+      const savedPublicize = await publicizeDocument.save();
+
+      const businessDocument = new businessListModel(
+        buildBusinessFromPublicize(savedPublicize)
+      );
+      const savedBusiness = await businessDocument.save();
+
+      const amount = 24000;
+      let paymentResult;
+
+      try {
+        paymentResult = await createPhonePePayment(
+          amount,
+          mobileNumber,
+          savedBusiness._id.toString()
+        );
+      } catch (paymentError) {
+        console.error("Payment initiation failed:", paymentError.message);
+        throw new Error(`Payment initiation failed: ${paymentError.message}`);
+      }
+
+      if (!paymentResult || !paymentResult.paymentUrl) {
+        throw new Error("Payment URL not received from gateway");
+      }
+
+      return {
+        success: true,
+        message: "Payment initiated successfully",
+        publicizeId: savedPublicize._id,
+        businessId: savedBusiness._id,
+        redirectUrl: paymentResult.paymentUrl,
+        transactionId: paymentResult.transactionId,
+      };
+    }
+
+    throw new Error("Invalid listing type. Must be 'free' or 'paid'");
+  } catch (error) {
+    console.error("Error initiating publicize payment:", error);
     throw error;
   }
 };

@@ -4,6 +4,7 @@ import {
   viewAllPublicize,
   updatePublicize,
   deletePublicize,
+  initiatePublicizePayment,
 } from "../../helper/publicize/publicizeHelper.js";
 
 import { BAD_REQUEST } from "../../errorCodes.js";
@@ -58,5 +59,15 @@ export const deletePublicizeAction = async (req, res) => {
   } catch (error) {
     console.error(error);
     return res.status(400).send({ message: error.message });
+  }
+};
+
+export const initiatePublicizePaymentAction = async (req, res) => {
+  try {
+    const result = await initiatePublicizePayment(req.body);
+    return res.send(result);
+  } catch (error) {
+    console.error(error);
+    return res.status(BAD_REQUEST.code).send({ message: error.message });
   }
 };
