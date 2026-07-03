@@ -97,3 +97,6 @@ MSG91_LEADS_CONTEXT.md
 /extensions
 /s3-backups
 client/ui-app/src/Internals/seoData/metaseoData.json
+/extracted
+/_tmp
+/.claude

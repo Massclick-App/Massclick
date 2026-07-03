@@ -6,49 +6,12 @@ import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
 import KeyboardDoubleArrowRightIcon from "@mui/icons-material/KeyboardDoubleArrowRight";
 import KeyboardDoubleArrowLeftIcon from "@mui/icons-material/KeyboardDoubleArrowLeft";
-import Cctv from "../../../assets/popular/cctv.webp";
-import Education from "../../../assets/popular/education.webp";
-import HotelRoom from "../../../assets/popular/hotelroom.webp";
-import Photography from "../../../assets/popular/photography.webp";
 import { createEnquiryNow } from "../../../redux/actions/popularSearchesAction";
 import { fetchPopularSearches } from "../../../redux/actions/categoryAction";
 import { logSearchActivity, sendEnquiryLead } from "../../../redux/actions/businessListAction";
 import OTPLoginModal from "../AddBusinessModel";
 import Card from "./Card";
 const cx = createScopedClassNames(styles);
-const defaultCards = [{
-  title: "CCTV",
-  image: Cctv,
-  alt: "CCTV installation",
-  buttonText: "Enquire Now",
-  accent: "#e67e22"
-}, {
-  title: "Hotels",
-  image: HotelRoom,
-  alt: "Hotel room",
-  buttonText: "Enquire Now",
-  accent: "#2f80ed"
-}, {
-  title: "Photography",
-  image: Photography,
-  alt: "Photography service",
-  buttonText: "Enquire Now",
-  accent: "#9b51e0"
-}, {
-  title: "Education",
-  image: Education,
-  alt: "Education service",
-  buttonText: "Enquire Now",
-  accent: "#27ae60"
-}];
-const staticFallbackMap = {
-  CCTV: Cctv,
-  Hotels: HotelRoom,
-  Photography,
-  Education,
-  Logistics: Cctv,
-  Consulting: HotelRoom
-};
 const getAuthUser = () => JSON.parse(localStorage.getItem("authUser") || "null");
 const getErrorMessage = error => error?.response?.data?.message || error?.response?.data?.error || error?.response?.data || error?.message || "Something went wrong";
 const CardCarousel = () => {
@@ -65,13 +28,13 @@ const CardCarousel = () => {
   const popularSearchCards = useSelector(state => state.categoryReducer.popularSearchCards || []);
   const sendEnquiryError = useSelector(state => state.businessListReducer.sendEnquiryError);
   const cards = useMemo(() => {
-    const source = popularSearchCards.length ? popularSearchCards : defaultCards;
+    const source = popularSearchCards.length ? popularSearchCards : [];
     return source.map(card => ({
       ...card,
       title: card.title || card.categoryName || card.category || "",
       buttonText: card.buttonText || "Enquire Now",
       alt: card.alt || card.title || "Popular search",
-      image: card.imageUrl || card.image || staticFallbackMap[card.title] || null,
+      image: card.imageUrl || card.image || null,
       accent: card.accent || "#e67e22"
     }));
   }, [popularSearchCards]);

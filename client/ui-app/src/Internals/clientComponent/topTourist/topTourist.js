@@ -2,21 +2,11 @@ import { createScopedClassNames } from "../../../utils/createScopedClassNames";
 import React, { useEffect } from 'react';
 import { Link, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from 'react-redux';
-import Bangalore from "../../../assets/toptourist/bangalore.webp";
-import Chennai from "../../../assets/toptourist/chennai.webp";
-import Hyderabad from "../../../assets/toptourist/hyderabad.webp";
-import Ooty from "../../../assets/toptourist/ooty.webp";
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import styles from "./topTourist.module.css";
 import { fetchTopTouristPlaces } from '../../../redux/actions/categoryAction';
 import { navigateToSearchResult } from "../../../utils/searchResultNavigation";
 const cx = createScopedClassNames(styles);
-const staticFallbackMap = {
-  Ooty: Ooty,
-  Bangalore: Bangalore,
-  Chennai: Chennai,
-  Hyderabad: Hyderabad
-};
 const createSlug = (text = "") => String(text).toLowerCase().trim().replace(/&/g, "and").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 const getLocationName = selectedDistrict => {
   if (typeof selectedDistrict === "string") return selectedDistrict;
@@ -71,7 +61,7 @@ const TopTourist = () => {
 
       <div className={cx("tourist-grid")}>
         {topTouristPlaces.map((place, index) => {
-          const imgSrc = place.imageUrl || staticFallbackMap[place.name] || null;
+          const imgSrc = place.imageUrl || null;
           const categoryName = getTouristCategoryName(place);
           const locationName = getLocationName(selectedDistrict);
           const href = place.path || `/${createSlug(locationName)}/${createSlug(categoryName)}`;
