@@ -254,8 +254,8 @@ export default function SeoPageContent() {
                             {errors.pageType && <span>{errors.pageType}</span>}
                         </div>
 
-                        <div className={cx("field-shell category-search")}>
-                            <label className={cx("field-label")}>Category</label>
+                        <div className={cx("meta-field category-search")}>
+                            <label>Category</label>
 
                             <div className={cx("category-input-wrapper")}>
                                 <input type="text" value={categoryInput} placeholder="Search category…" onChange={e => {
@@ -269,6 +269,7 @@ export default function SeoPageContent() {
               }} onFocus={() => setShowSuggestions(true)} onBlur={() => setTimeout(() => setShowSuggestions(false), 150)} />
                                 <span className={cx("search-icon")}>⌕</span>
                             </div>
+                            {errors.category && <span>{errors.category}</span>}
 
                             {showSuggestions && categorySuggestions.length > 0 && <ul className={cx("category-suggestion-list")}>
                                     {categorySuggestions.map(item => <li key={item._id} onClick={() => {
@@ -304,8 +305,7 @@ export default function SeoPageContent() {
                 setShowLocationSuggest(false);
                 setLocationSuggestions([]);
               }}>
-                                            {loc.city}
-                                            {loc.district && loc.district !== loc.city ? `, ${loc.district}` : ""}
+                                            {loc.city || loc.district}
                                             {loc.state ? ` - ${loc.state}` : ""}
                                         </li>)}
                                 </ul>}

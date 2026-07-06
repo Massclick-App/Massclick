@@ -175,7 +175,9 @@
 }
 
 .category-suggestion-list {
-  margin-top: 6px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
   background: #fff;
   border-radius: 14px;
   border: 1px solid var(--border);

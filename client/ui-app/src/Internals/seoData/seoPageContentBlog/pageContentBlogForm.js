@@ -643,7 +643,10 @@ export default function SeoPageContentForm({
                     updateLocationSuggestions(value);
                   }}
                   onFocus={() => updateLocationSuggestions(formData[field.key] || "")}
-                  onBlur={() => setTimeout(() => setShowLocationSuggest(false), 150)}
+                  onBlur={() => {
+                    updateField(field.key, (formData[field.key] || "").trim());
+                    setTimeout(() => setShowLocationSuggest(false), 150);
+                  }}
                   placeholder=" "
                 />
 

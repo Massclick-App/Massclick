@@ -78,11 +78,12 @@ export default function SeoPageContentBlogs() {
   };
   const handleSubmit = async e => {
     e.preventDefault();
-    const locationExists = location.some(loc => loc.city?.toLowerCase() === formData.location?.toLowerCase() || loc.district?.toLowerCase() === formData.location?.toLowerCase());
-    if (!locationExists && formData.location) {
+    const trimmedLocation = (formData.location || "").trim();
+    const locationExists = location.some(loc => loc.city?.toLowerCase() === trimmedLocation.toLowerCase() || loc.district?.toLowerCase() === trimmedLocation.toLowerCase());
+    if (!locationExists && trimmedLocation) {
       await dispatch(createLocation({
-        city: formData.location,
-        district: formData.location,
+        city: trimmedLocation,
+        district: trimmedLocation,
         state: "N/A",
         country: "N/A"
       }));
@@ -91,6 +92,7 @@ export default function SeoPageContentBlogs() {
     // Ensure pageImages is always sent and not lost
     const submitData = {
       ...formData,
+      location: trimmedLocation,
       pageImages: formData.pageImages || []
     };
     const action = editingId ? updateSeoPageContentBlogs(editingId, submitData) : createSeoPageContentBlogs(submitData);
