@@ -318,9 +318,9 @@ const Cards = ({
                     <span>{String(title || "MC").slice(0, 2).toUpperCase()}</span>
                   )}
                 </div>
-                <h2 id={`massclick-certificate-${businessId || index}`} className={cx("certificate-title")}>
+                <h3 id={`massclick-certificate-${businessId || index}`} className={cx("certificate-title")}>
                   {title}
-                </h2>
+                </h3>
                 <p className={cx("certificate-location")}>{certificateLocation}</p>
               </div>
               <p className={cx("certificate-status-copy")}>{currentCertificate.copy}</p>
@@ -401,7 +401,7 @@ const Cards = ({
             <div className={cx("list-content")}>
               <div className={cx("list-info")}>
                 <div className={cx("card-header-row")}>
-                  <h2 className={cx("card-title")}>{renderTitle()}</h2>
+                  <h3 className={cx("card-title")}>{renderTitle()}</h3>
                   {(() => {
                     const displayPrice = !priceFilterDisabled && (filters?.price || filters?.priceRange || price || null);
                     return displayPrice ? (
@@ -439,7 +439,7 @@ const Cards = ({
             <div className={cx("card-content")}>
               <div className={cx("card-top")}>
                 <div className={cx("card-header-row")}>
-                  <h2 className={cx("card-title")}>{renderTitle()}</h2>
+                  <h3 className={cx("card-title")}>{renderTitle()}</h3>
                   {(() => {
                     const displayPrice = !priceFilterDisabled && (filters?.price || filters?.priceRange || price || null);
                     return displayPrice ? (
