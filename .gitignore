@@ -100,3 +100,4 @@ client/ui-app/src/Internals/seoData/metaseoData.json
 /extracted
 /_tmp
 /.claude
+/outputs

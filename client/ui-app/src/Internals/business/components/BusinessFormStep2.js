@@ -38,16 +38,30 @@ const BusinessFormStep2 = ({
   sectionSavingState,
 }) => {
   const [categorySearchInput, setCategorySearchInput] = React.useState("");
+  const categorySearchTimeoutRef = React.useRef(null);
 
   const handleCategorySearch = (event, value) => {
     setCategorySearchInput(value);
 
+    if (categorySearchTimeoutRef.current) {
+      clearTimeout(categorySearchTimeoutRef.current);
+    }
+
     // Only search if input is not empty and is a partial search (doesn't contain " — " which is the full label format)
     if (value && value.trim().length > 0 && !value.includes(" — ") && dispatch) {
-      dispatch(businessCategorySearch(value));
-    } else if (value && value.includes(" — ")) {
-      }
+      categorySearchTimeoutRef.current = setTimeout(() => {
+        dispatch(businessCategorySearch(value));
+      }, 300);
+    }
   };
+
+  React.useEffect(() => {
+    return () => {
+      if (categorySearchTimeoutRef.current) {
+        clearTimeout(categorySearchTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Get all available options - merge search results with full category list to avoid losing searched categories
   const allCategoryOptions = React.useMemo(() => {
@@ -87,7 +101,7 @@ const BusinessFormStep2 = ({
       return;
     }
 
-    const selected = category.find((cat) => cat.category === formData.category);
+    const selected = allCategoryOptions.find((cat) => cat.category === formData.category);
     const nextSuggestions = Array.isArray(selected?.keywords) ? selected.keywords : [];
 
     setCategoryKeywordSuggestions((previousSuggestions) => {
@@ -102,7 +116,7 @@ const BusinessFormStep2 = ({
 
       return nextSuggestions;
     });
-  }, [formData.category, category, setCategoryKeywordSuggestions]);
+  }, [formData.category, allCategoryOptions, setCategoryKeywordSuggestions]);
 
   const renderSectionIntro = (eyebrow, summary, stat) => (
     <div className={cx("section-intro")}>
