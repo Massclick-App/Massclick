@@ -4,7 +4,6 @@ import {
   FETCH_GA4_TRAFFIC_SOURCES_REQUEST, FETCH_GA4_TRAFFIC_SOURCES_SUCCESS, FETCH_GA4_TRAFFIC_SOURCES_FAILURE,
   FETCH_GA4_LOCATIONS_REQUEST, FETCH_GA4_LOCATIONS_SUCCESS, FETCH_GA4_LOCATIONS_FAILURE,
   FETCH_GA4_DEVICES_REQUEST, FETCH_GA4_DEVICES_SUCCESS, FETCH_GA4_DEVICES_FAILURE,
-  FETCH_GA4_CONVERSIONS_REQUEST, FETCH_GA4_CONVERSIONS_SUCCESS, FETCH_GA4_CONVERSIONS_FAILURE,
   FETCH_GA4_CITIES_REQUEST, FETCH_GA4_CITIES_SUCCESS, FETCH_GA4_CITIES_FAILURE,
   FETCH_GA4_BROWSERS_REQUEST, FETCH_GA4_BROWSERS_SUCCESS, FETCH_GA4_BROWSERS_FAILURE,
   FETCH_GA4_PAGES_REQUEST, FETCH_GA4_PAGES_SUCCESS, FETCH_GA4_PAGES_FAILURE,
@@ -16,8 +15,6 @@ import {
 // share the exact (Loading, value) shape, to avoid 48 lines of copy-paste.
 const EXTRA_SLICES = [
   ["ENGAGEMENT_OVERVIEW", "engagementOverview", null],
-  ["ECOMMERCE_OVERVIEW", "ecommerceOverview", null],
-  ["TOP_ITEMS", "topItems", []],
   ["REFERRERS", "referrers", []],
   ["CAMPAIGNS", "campaigns", []],
   ["OPERATING_SYSTEMS", "operatingSystems", []],
@@ -45,7 +42,6 @@ const initialState = {
   trafficSources: [],    trafficSourcesLoading: false,
   locations: [],         locationsLoading: false,
   devices: [],           devicesLoading: false,
-  conversions: [],       conversionsLoading: false,
   cities: [],            citiesLoading: false,
   browsers: [],          browsersLoading: false,
   pages: [],             pagesLoading: false,
@@ -99,13 +95,6 @@ export default function ga4Reducer(state = initialState, action) {
       return { ...state, devicesLoading: false, devices: action.payload };
     case FETCH_GA4_DEVICES_FAILURE:
       return { ...state, devicesLoading: false };
-
-    case FETCH_GA4_CONVERSIONS_REQUEST:
-      return { ...state, conversionsLoading: true };
-    case FETCH_GA4_CONVERSIONS_SUCCESS:
-      return { ...state, conversionsLoading: false, conversions: action.payload };
-    case FETCH_GA4_CONVERSIONS_FAILURE:
-      return { ...state, conversionsLoading: false };
 
     case FETCH_GA4_CITIES_REQUEST:
       return { ...state, citiesLoading: true };

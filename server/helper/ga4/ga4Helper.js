@@ -227,26 +227,6 @@ export const getDevices = async (days = 28) => {
   });
 };
 
-export const getConversions = async (days = 28, limit = 25) => {
-  return withCache(`ga4:conversions:${limit}:${days}`, async () => {
-    const { rows } = await runReport({
-      dateRanges: [{ startDate: dateStr(days), endDate: dateStr(0) }],
-      dimensions: [{ name: "eventName" }],
-      metrics: [{ name: "conversions" }, { name: "eventCount" }],
-      orderBys: [{ metric: { metricName: "conversions" }, desc: true }],
-      limit,
-    });
-
-    return rows
-      .map((r) => ({
-        eventName: r.dimensionValues[0].value,
-        conversions: metricValue(r, 0),
-        eventCount: metricValue(r, 1),
-      }))
-      .filter((r) => r.conversions > 0);
-  });
-};
-
 export const getCities = async (days = 28, limit = 25) => {
   return withCache(`ga4:cities:${limit}:${days}`, async () => {
     const { rows } = await runReport({
@@ -389,75 +369,6 @@ export const getEngagementOverview = async (days = 28) => {
     for (const key of Object.keys(current)) delta[key] = pct(current[key], prev[key]);
 
     return { current, prev, delta, days };
-  });
-};
-
-// ── Ecommerce ────────────────────────────────────────────────────────────
-
-const ECOMMERCE_METRICS = [
-  { name: "transactions" },
-  { name: "purchaseRevenue" },
-  { name: "addToCarts" },
-  { name: "checkouts" },
-  { name: "purchaserConversionRate" },
-  { name: "firstTimePurchasers" },
-  { name: "averagePurchaseRevenue" },
-];
-
-export const getEcommerceOverview = async (days = 28) => {
-  return withCache(`ga4:ecommerce-overview:${days}`, async () => {
-    const dateRange = (from, to) => ({ dateRanges: [{ startDate: dateStr(from), endDate: dateStr(to) }] });
-
-    const [{ rows: curRows }, { rows: prevRows }] = await Promise.all([
-      runReport({ ...dateRange(days, 0), metrics: ECOMMERCE_METRICS }),
-      runReport({ ...dateRange(2 * days, days + 1), metrics: ECOMMERCE_METRICS }),
-    ]);
-
-    const agg = (rows) => {
-      const row = rows[0];
-      if (!row) {
-        return {
-          transactions: 0, purchaseRevenue: 0, addToCarts: 0, checkouts: 0,
-          purchaserConversionRate: 0, firstTimePurchasers: 0, averagePurchaseRevenue: 0,
-        };
-      }
-      return {
-        transactions: metricValue(row, 0),
-        purchaseRevenue: parseFloat(metricValue(row, 1).toFixed(2)),
-        addToCarts: metricValue(row, 2),
-        checkouts: metricValue(row, 3),
-        purchaserConversionRate: parseFloat((metricValue(row, 4) * 100).toFixed(2)),
-        firstTimePurchasers: metricValue(row, 5),
-        averagePurchaseRevenue: parseFloat(metricValue(row, 6).toFixed(2)),
-      };
-    };
-
-    const current = agg(curRows);
-    const prev = agg(prevRows);
-    const pct = (cur, pre) => (pre === 0 ? null : parseFloat((((cur - pre) / pre) * 100).toFixed(1)));
-
-    const delta = {};
-    for (const key of Object.keys(current)) delta[key] = pct(current[key], prev[key]);
-
-    return { current, prev, delta, days };
-  });
-};
-
-export const getTopItems = async (days = 28, limit = 25) => {
-  return withCache(`ga4:top-items:${limit}:${days}`, async () => {
-    const { rows } = await runReport({
-      dateRanges: [{ startDate: dateStr(days), endDate: dateStr(0) }],
-      dimensions: [{ name: "itemName" }, { name: "itemCategory" }],
-      metrics: [{ name: "itemRevenue" }],
-      orderBys: [{ metric: { metricName: "itemRevenue" }, desc: true }],
-      limit,
-    });
-
-    return rows.map((r) => ({
-      itemName: r.dimensionValues[0].value,
-      itemCategory: r.dimensionValues[1].value,
-      itemRevenue: parseFloat(metricValue(r, 0).toFixed(2)),
-    }));
   });
 };
 

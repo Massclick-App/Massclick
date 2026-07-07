@@ -4,15 +4,12 @@ import {
   getTrafficSources,
   getLocations,
   getDevices,
-  getConversions,
   getCities,
   getBrowsers,
   getPages,
   getLandingPages,
   getAcquisition,
   getEngagementOverview,
-  getEcommerceOverview,
-  getTopItems,
   getReferrers,
   getCampaigns,
   getOperatingSystems,
@@ -111,18 +108,6 @@ export const devices = async (req, res) => {
   }
 };
 
-export const conversions = async (req, res) => {
-  try {
-    const days = parseInt(req.query.days) || 28;
-    const limit = parseInt(req.query.limit) || 25;
-    const data = await getConversions(days, limit);
-    res.send(data);
-  } catch (err) {
-    await logger.error("conversions controller failed", err);
-    res.status(500).send({ message: err.message });
-  }
-};
-
 export const cities = async (req, res) => {
   try {
     const days = parseInt(req.query.days) || 28;
@@ -183,8 +168,6 @@ export const acquisition = async (req, res) => {
 };
 
 export const engagementOverview = daysHandler("engagementOverview", getEngagementOverview);
-export const ecommerceOverview = daysHandler("ecommerceOverview", getEcommerceOverview);
-export const topItems = daysLimitHandler("topItems", getTopItems);
 export const referrers = daysLimitHandler("referrers", getReferrers);
 export const campaigns = daysLimitHandler("campaigns", getCampaigns);
 export const operatingSystems = daysHandler("operatingSystems", getOperatingSystems);

@@ -14,6 +14,7 @@ import {
   TableRow,
   Card,
   Alert,
+  Tooltip as MuiTooltip,
 } from "@mui/material";
 import {
   LineChart,
@@ -36,15 +37,12 @@ import {
   fetchGa4TrafficSources,
   fetchGa4Locations,
   fetchGa4Devices,
-  fetchGa4Conversions,
   fetchGa4Cities,
   fetchGa4Browsers,
   fetchGa4Pages,
   fetchGa4LandingPages,
   fetchGa4Acquisition,
   fetchGa4EngagementOverview,
-  fetchGa4EcommerceOverview,
-  fetchGa4TopItems,
   fetchGa4Referrers,
   fetchGa4Campaigns,
   fetchGa4OperatingSystems,
@@ -86,17 +84,49 @@ const STAT_ICONS = {
   "Event Value": "💵",
   "Scrolled Users": "📜",
   "Session Conv. Rate": "🎯",
-  Transactions: "🛒",
-  "Purchase Revenue": "💰",
-  "Add to Carts": "🛍️",
-  Checkouts: "🧾",
-  "Purchaser Conv. Rate": "🎯",
-  "First-Time Purchasers": "🆕",
-  "Avg. Purchase Revenue": "💳",
+};
+
+// Plain-language explanation shown on hover for each stat card, so a
+// non-technical viewer understands what the number actually means.
+const METRIC_INFO = {
+  Visitors: "Unique users who visited your site in this period.",
+  "Total Users": "All users, including ones who didn't trigger a trackable interaction.",
+  "New Users": "Visitors who came to your site for the first time.",
+  Sessions: "Number of visits. A session ends after 30 minutes of inactivity.",
+  "Engaged Sessions": "Sessions lasting 10+ seconds, with a conversion, or 2+ pageviews.",
+  "Page Views": "Total pages viewed, including repeat views of the same page.",
+  Conversions: "Times a key business event (signup, purchase, etc.) was completed.",
+  Events: "Total tracked interactions — clicks, views, form submits, etc.",
+  Revenue: "Total revenue recorded from purchases and other paid events.",
+  "Avg. Session Duration": "Average time users spent actively engaged per session.",
+  "Bounce Rate": "% of sessions that were NOT engaged. Lower is better.",
+  "Engagement Rate": "% of sessions that were engaged. Higher is better.",
+  "Sessions / User": "Average sessions per user — higher means more repeat visits.",
+  "Pageviews / Session": "Average pages viewed per session — higher means deeper browsing.",
+  "Engagement Duration": "Total time users spent actively engaged with the site.",
+  "Events / User": "Average number of tracked interactions per user.",
+  "Event Value": "Sum of the numeric 'value' parameter across all tracked events.",
+  "Scrolled Users": "Users who scrolled at least 90% down a page.",
+  "Session Conv. Rate": "% of sessions that included a conversion event.",
 };
 
 const TabPanel = ({ children, value, index }) =>
   value === index ? <Box className={cx("tab-content")}>{children}</Box> : null;
+
+// Info banner shown at the top of a tab, explaining what it's for and why it matters.
+const TabIntro = ({ children }) => (
+  <Box className={cx("tab-intro")}>
+    <span className={cx("tab-intro-icon")}>💬</span>
+    <Typography className={cx("tab-intro-text")}>{children}</Typography>
+  </Box>
+);
+
+const InfoIcon = ({ text }) =>
+  text ? (
+    <MuiTooltip title={text} arrow placement="top">
+      <span className={cx("info-icon")}>i</span>
+    </MuiTooltip>
+  ) : null;
 
 const StatCard = ({ label, value, delta, suffix = "", invertDelta }) => {
   const isUp = delta > 0;
@@ -107,7 +137,10 @@ const StatCard = ({ label, value, delta, suffix = "", invertDelta }) => {
     <Card className={cx("stat-card")}>
       <Box className={cx("stat-card-content")}>
         <Box className={cx("stat-card-icon")}>{icon}</Box>
-        <Typography className={cx("stat-label")}>{label}</Typography>
+        <Box className={cx("stat-label-row")}>
+          <Typography className={cx("stat-label")}>{label}</Typography>
+          <InfoIcon text={METRIC_INFO[label]} />
+        </Box>
         <Typography className={cx("stat-value")}>
           {value !== undefined && value !== null ? `${value.toLocaleString()}${suffix}` : "—"}
         </Typography>
@@ -204,11 +237,6 @@ const buildTabFetchers = (dispatch) => ({
     dispatch(fetchGa4DayOfWeek());
     dispatch(fetchGa4HourOfDay());
   },
-  9: () => {
-    dispatch(fetchGa4EcommerceOverview());
-    dispatch(fetchGa4TopItems());
-  },
-  10: () => dispatch(fetchGa4Conversions()),
 });
 
 export default function Ga4Analytics() {
@@ -242,9 +270,6 @@ export default function Ga4Analytics() {
     dayOfWeek, dayOfWeekLoading,
     hourOfDay, hourOfDayLoading,
     engagementOverview, engagementOverviewLoading,
-    ecommerceOverview, ecommerceOverviewLoading,
-    topItems, topItemsLoading,
-    conversions, conversionsLoading,
   } = state;
 
   useEffect(() => {
@@ -266,6 +291,11 @@ export default function Ga4Analytics() {
     <Box className={cx("ga4-page")}>
       <Box className={cx("page-header")}>
         <Typography className={cx("page-title")}>Google Analytics 4</Typography>
+        <Typography className={cx("page-subtitle")}>
+          Historical traffic and engagement data pulled directly from Massclick's GA4 property —
+          hover the ⓘ next to any number for what it means, or the tab intro for what the whole
+          section is for.
+        </Typography>
       </Box>
 
       <Tabs
@@ -301,8 +331,6 @@ export default function Ga4Analytics() {
         <Tab label="🌍 Locations" />
         <Tab label="💻 Technology" />
         <Tab label="👥 Audience" />
-        <Tab label="🛒 Ecommerce" />
-        <Tab label="🎯 Conversions" />
       </Tabs>
 
       {/* ── Tab 0: Overview ── */}
@@ -314,6 +342,11 @@ export default function Ga4Analytics() {
             Viewer in GA4 Admin &gt; Property Access Management.
           </Alert>
         )}
+
+        <TabIntro>
+          A quick snapshot of your website's overall traffic and health over the selected period,
+          compared to the previous period of the same length.
+        </TabIntro>
 
         {/* AI-powered summary — Phase 2. Helper functions already return clean,
             structured data so a future summarization step can consume it directly. */}
@@ -384,6 +417,10 @@ export default function Ga4Analytics() {
 
       {/* ── Tab 1: Engagement ── */}
       <TabPanel value={activeTab} index={1}>
+        <TabIntro>
+          How deeply visitors interact with your site beyond just showing up — session depth,
+          scroll behavior, and event activity. Useful for judging content quality, not just traffic volume.
+        </TabIntro>
         {engagementOverviewLoading ? (
           sectionLoading("Loading engagement metrics...")
         ) : engagementOverview ? (
@@ -406,6 +443,10 @@ export default function Ga4Analytics() {
 
       {/* ── Tab 2: Traffic Sources ── */}
       <TabPanel value={activeTab} index={2}>
+        <TabIntro>
+          Where your sessions came from — search engines, social media, direct visits, or other
+          referring sites — based on the traffic source recorded for each session.
+        </TabIntro>
         {trafficSourcesLoading ? (
           sectionLoading("Loading traffic sources...")
         ) : (
@@ -423,6 +464,9 @@ export default function Ga4Analytics() {
         )}
 
         <Typography className={cx("section-title")} sx={{ mt: 4 }}>🔙 Top Referrers</Typography>
+        <Typography className={cx("section-description")}>
+          External websites that linked to your pages and sent visitors your way.
+        </Typography>
         {referrersLoading ? (
           sectionLoading(null)
         ) : (
@@ -441,9 +485,11 @@ export default function Ga4Analytics() {
 
       {/* ── Tab 3: Acquisition ── */}
       <TabPanel value={activeTab} index={3}>
-        <Typography className={cx("section-description")} sx={{ mb: 2 }}>
-          First-touch acquisition channel — which source brought each user in for the very first time.
-        </Typography>
+        <TabIntro>
+          First-touch acquisition — which source brought each user in for the very first time.
+          Unlike Traffic Sources (which counts every session), this tracks long-term channel
+          performance for bringing in brand-new users, useful for marketing ROI.
+        </TabIntro>
         {acquisitionLoading ? (
           sectionLoading("Loading acquisition data...")
         ) : (
@@ -461,6 +507,10 @@ export default function Ga4Analytics() {
         )}
 
         <Typography className={cx("section-title")} sx={{ mt: 4 }}>📣 Top Campaigns</Typography>
+        <Typography className={cx("section-description")}>
+          Performance of specific marketing pushes — only sessions tagged with UTM campaign
+          parameters (e.g. links shared with <code>?utm_campaign=...</code>) show up here.
+        </Typography>
         {campaignsLoading ? (
           sectionLoading(null)
         ) : (
@@ -473,13 +523,17 @@ export default function Ga4Analytics() {
             ],
             campaigns,
             "📣",
-            "No campaign data found (only sessions tagged with UTM campaign params show here)"
+            "No campaign data found yet"
           )
         )}
       </TabPanel>
 
       {/* ── Tab 4: Pages ── */}
       <TabPanel value={activeTab} index={4}>
+        <TabIntro>
+          Your most-viewed pages, to see what content resonates with visitors and where they
+          actually spend their time once on your site.
+        </TabIntro>
         {pagesLoading ? (
           sectionLoading("Loading pages...")
         ) : (
@@ -519,6 +573,10 @@ export default function Ga4Analytics() {
 
       {/* ── Tab 5: Landing Pages ── */}
       <TabPanel value={activeTab} index={5}>
+        <TabIntro>
+          The first page visitors saw in each session — helps you see which entry points (ads,
+          shared links, homepage) actually lead to good engagement once people arrive.
+        </TabIntro>
         {landingPagesLoading ? (
           sectionLoading("Loading landing pages...")
         ) : (
@@ -538,6 +596,10 @@ export default function Ga4Analytics() {
 
       {/* ── Tab 6: Locations ── */}
       <TabPanel value={activeTab} index={6}>
+        <TabIntro>
+          Where in the world your visitors are — from continent down to city — so you can see
+          whether traffic matches the regions you actually serve.
+        </TabIntro>
         {locationsLoading ? (
           sectionLoading("Loading geographic data...")
         ) : (
@@ -573,6 +635,9 @@ export default function Ga4Analytics() {
             )}
 
             <Typography className={cx("section-title")} sx={{ mt: 4 }}>🏙️ Top Cities</Typography>
+            <Typography className={cx("section-description")}>
+              A finer-grained breakdown of the countries above, down to city level.
+            </Typography>
             {citiesLoading
               ? sectionLoading(null)
               : simpleTable(
@@ -588,6 +653,9 @@ export default function Ga4Analytics() {
                 )}
 
             <Typography className={cx("section-title")} sx={{ mt: 4 }}>🗺️ Top Regions</Typography>
+            <Typography className={cx("section-description")}>
+              State / province-level breakdown — a middle ground between country and city.
+            </Typography>
             {regionsLoading
               ? sectionLoading(null)
               : simpleTable(
@@ -603,6 +671,10 @@ export default function Ga4Analytics() {
                 )}
 
             <Typography className={cx("section-title")} sx={{ mt: 4 }}>🌐 Continents & Sub-Continents</Typography>
+            <Typography className={cx("section-description")}>
+              The broadest geographic rollup — useful for a top-level "which parts of the world care
+              about us" view.
+            </Typography>
             <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 3 }}>
               <Box>
                 {continentsLoading
@@ -639,6 +711,10 @@ export default function Ga4Analytics() {
 
       {/* ── Tab 7: Technology (device, browser, OS, platform, model, resolution) ── */}
       <TabPanel value={activeTab} index={7}>
+        <TabIntro>
+          What devices, operating systems, browsers, and screen sizes your visitors use — useful
+          for prioritizing what to test and design for.
+        </TabIntro>
         {devicesLoading ? (
           sectionLoading("Loading device analytics...")
         ) : (
@@ -689,6 +765,9 @@ export default function Ga4Analytics() {
             )}
 
             <Typography className={cx("section-title")} sx={{ mt: 4 }}>🧭 Browsers</Typography>
+            <Typography className={cx("section-description")}>
+              Which browsers to test in — prioritize the ones with the most sessions.
+            </Typography>
             {browsersLoading
               ? sectionLoading(null)
               : simpleTable(
@@ -703,6 +782,9 @@ export default function Ga4Analytics() {
                 )}
 
             <Typography className={cx("section-title")} sx={{ mt: 4 }}>🖥️ Operating Systems</Typography>
+            <Typography className={cx("section-description")}>
+              OS + version breakdown — flags if visitors are stuck on old, unsupported versions.
+            </Typography>
             {operatingSystemsLoading
               ? sectionLoading(null)
               : simpleTable(
@@ -718,6 +800,9 @@ export default function Ga4Analytics() {
                 )}
 
             <Typography className={cx("section-title")} sx={{ mt: 4 }}>🧩 Platforms</Typography>
+            <Typography className={cx("section-description")}>
+              Web vs. iOS vs. Android app — relevant once/if Massclick ships a native app.
+            </Typography>
             {platformsLoading
               ? sectionLoading(null)
               : simpleTable(
@@ -732,6 +817,9 @@ export default function Ga4Analytics() {
                 )}
 
             <Typography className={cx("section-title")} sx={{ mt: 4 }}>📲 Device Models</Typography>
+            <Typography className={cx("section-description")}>
+              Specific phone/tablet models — helps catch device-specific display bugs.
+            </Typography>
             {deviceModelsLoading
               ? sectionLoading(null)
               : simpleTable(
@@ -746,6 +834,9 @@ export default function Ga4Analytics() {
                 )}
 
             <Typography className={cx("section-title")} sx={{ mt: 4 }}>🖼️ Screen Resolutions</Typography>
+            <Typography className={cx("section-description")}>
+              Common viewport sizes — use these to decide which breakpoints to design and test for.
+            </Typography>
             {screenResolutionsLoading
               ? sectionLoading(null)
               : simpleTable(
@@ -764,7 +855,15 @@ export default function Ga4Analytics() {
 
       {/* ── Tab 8: Audience (new vs returning, day of week, hour of day) ── */}
       <TabPanel value={activeTab} index={8}>
+        <TabIntro>
+          Who's visiting and when — new vs. returning users, and which days/hours see the most
+          activity. Use this to time posts, campaigns, and maintenance windows.
+        </TabIntro>
+
         <Typography className={cx("section-title")}>👥 New vs Returning</Typography>
+        <Typography className={cx("section-description")}>
+          Are you attracting new people, or mostly seeing repeat visitors come back?
+        </Typography>
         {newVsReturningLoading
           ? sectionLoading(null)
           : simpleTable(
@@ -781,6 +880,9 @@ export default function Ga4Analytics() {
 
         <Box className={cx("chart-card")} sx={{ mt: 3 }}>
           <Typography className={cx("section-title")}>📅 Sessions by Day of Week</Typography>
+          <Typography className={cx("section-description")}>
+            Which days of the week bring the most traffic — helps time posts and promotions.
+          </Typography>
           {dayOfWeekLoading ? (
             sectionLoading(null)
           ) : dayOfWeek?.length ? (
@@ -802,6 +904,9 @@ export default function Ga4Analytics() {
 
         <Box className={cx("chart-card")} sx={{ mt: 3 }}>
           <Typography className={cx("section-title")}>🕐 Sessions by Hour of Day</Typography>
+          <Typography className={cx("section-description")}>
+            Peak hours of activity — useful for scheduling maintenance during quiet windows.
+          </Typography>
           {hourOfDayLoading ? (
             sectionLoading(null)
           ) : hourOfDay?.length ? (
@@ -822,62 +927,6 @@ export default function Ga4Analytics() {
         </Box>
       </TabPanel>
 
-      {/* ── Tab 9: Ecommerce ── */}
-      <TabPanel value={activeTab} index={9}>
-        <Typography className={cx("section-description")} sx={{ mb: 2 }}>
-          These will show 0 if this GA4 property doesn't track ecommerce events (purchase, add_to_cart, begin_checkout, etc).
-        </Typography>
-        {ecommerceOverviewLoading ? (
-          sectionLoading("Loading ecommerce metrics...")
-        ) : ecommerceOverview ? (
-          <Box className={cx("stat-cards-row")}>
-            <StatCard label="Transactions" value={ecommerceOverview.current?.transactions} delta={ecommerceOverview.delta?.transactions} />
-            <StatCard label="Purchase Revenue" value={ecommerceOverview.current?.purchaseRevenue} delta={ecommerceOverview.delta?.purchaseRevenue} suffix=" ₹" />
-            <StatCard label="Add to Carts" value={ecommerceOverview.current?.addToCarts} delta={ecommerceOverview.delta?.addToCarts} />
-            <StatCard label="Checkouts" value={ecommerceOverview.current?.checkouts} delta={ecommerceOverview.delta?.checkouts} />
-            <StatCard label="Purchaser Conv. Rate" value={ecommerceOverview.current?.purchaserConversionRate} delta={ecommerceOverview.delta?.purchaserConversionRate} suffix="%" />
-            <StatCard label="First-Time Purchasers" value={ecommerceOverview.current?.firstTimePurchasers} delta={ecommerceOverview.delta?.firstTimePurchasers} />
-            <StatCard label="Avg. Purchase Revenue" value={ecommerceOverview.current?.averagePurchaseRevenue} delta={ecommerceOverview.delta?.averagePurchaseRevenue} suffix=" ₹" />
-          </Box>
-        ) : (
-          <Box className={cx("empty-state")}>
-            <div className={cx("empty-state-icon")}>🛒</div>
-            <Typography sx={{ fontWeight: 600, color: "#111827" }}>No ecommerce data available</Typography>
-          </Box>
-        )}
-
-        <Typography className={cx("section-title")} sx={{ mt: 4 }}>🏷️ Top Items by Revenue</Typography>
-        {topItemsLoading
-          ? sectionLoading(null)
-          : simpleTable(
-              [
-                { key: "itemName", label: "Item" },
-                { key: "itemCategory", label: "Category", cellSx: { color: "#6b7280" } },
-                { key: "itemRevenue", label: "Revenue", align: "right", cellSx: { color: "#059669", fontWeight: 600 }, render: (row) => `₹${row.itemRevenue}` },
-              ],
-              topItems,
-              "🏷️",
-              "No item revenue data found"
-            )}
-      </TabPanel>
-
-      {/* ── Tab 10: Conversions ── */}
-      <TabPanel value={activeTab} index={10}>
-        {conversionsLoading ? (
-          sectionLoading("Loading conversions...")
-        ) : (
-          simpleTable(
-            [
-              { key: "eventName", label: "Event" },
-              { key: "conversions", label: "Conversions", align: "right", cellSx: { color: "#059669", fontWeight: 600 } },
-              { key: "eventCount", label: "Event Count", align: "right", cellSx: { color: "#6b7280" } },
-            ],
-            conversions,
-            "🎯",
-            "No conversion events found"
-          )
-        )}
-      </TabPanel>
     </Box>
   );
 }

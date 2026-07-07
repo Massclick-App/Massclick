@@ -6,15 +6,12 @@ import {
   trafficSources,
   locations,
   devices,
-  conversions,
   cities,
   browsers,
   pages,
   landingPages,
   acquisition,
   engagementOverview,
-  ecommerceOverview,
-  topItems,
   referrers,
   campaigns,
   operatingSystems,
@@ -37,15 +34,12 @@ router.get("/api/ga4/trends",               oauthAuthentication, trends);
 router.get("/api/ga4/traffic-sources",      oauthAuthentication, trafficSources);
 router.get("/api/ga4/locations",            oauthAuthentication, locations);
 router.get("/api/ga4/devices",              oauthAuthentication, devices);
-router.get("/api/ga4/conversions",          oauthAuthentication, conversions);
 router.get("/api/ga4/cities",               oauthAuthentication, cities);
 router.get("/api/ga4/browsers",             oauthAuthentication, browsers);
 router.get("/api/ga4/pages",                oauthAuthentication, pages);
 router.get("/api/ga4/landing-pages",        oauthAuthentication, landingPages);
 router.get("/api/ga4/acquisition",          oauthAuthentication, acquisition);
 router.get("/api/ga4/engagement-overview",  oauthAuthentication, engagementOverview);
-router.get("/api/ga4/ecommerce-overview",   oauthAuthentication, ecommerceOverview);
-router.get("/api/ga4/top-items",            oauthAuthentication, topItems);
 router.get("/api/ga4/referrers",            oauthAuthentication, referrers);
 router.get("/api/ga4/campaigns",            oauthAuthentication, campaigns);
 router.get("/api/ga4/operating-systems",    oauthAuthentication, operatingSystems);
