@@ -19,6 +19,7 @@ const BusinessFormSection = ({
   showSaveButton = false,
   onSave,
   isSaving = false,
+  isAdvancing = false,
 }) => {
   return (
     <div className={cx("form-section-wrapper", "section-panel")}>
@@ -66,8 +67,16 @@ const BusinessFormSection = ({
                 type="button"
                 className={cx("step-nav-button", "section-next-button", advanceType === "submit" && "section-submit-button")}
                 onClick={onAdvance}
+                disabled={advanceType === "submit" && isAdvancing}
               >
-                <span>{advanceLabel}</span>
+                {advanceType === "submit" && isAdvancing ? (
+                  <>
+                    <CircularProgress size={16} sx={{ mr: 1, color: 'inherit' }} />
+                    <span>Submitting...</span>
+                  </>
+                ) : (
+                  <span>{advanceLabel}</span>
+                )}
               </button>
             </div>
           )}

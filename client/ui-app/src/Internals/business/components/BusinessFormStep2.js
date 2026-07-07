@@ -36,6 +36,7 @@ const BusinessFormStep2 = ({
   editMode,
   saveSectionData,
   sectionSavingState,
+  isSavingBusiness,
 }) => {
   const [categorySearchInput, setCategorySearchInput] = React.useState("");
   const categorySearchTimeoutRef = React.useRef(null);
@@ -865,6 +866,7 @@ const BusinessFormStep2 = ({
             showSaveButton={editMode}
             onSave={() => saveSectionData(activeSection_obj.key)}
             isSaving={sectionSavingState[activeSection_obj.key] || false}
+            isAdvancing={isSavingBusiness}
           >
             {sectionRenderers[activeSection_obj.key]()}
           </BusinessFormSection>

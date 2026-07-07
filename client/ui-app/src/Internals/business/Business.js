@@ -1092,6 +1092,8 @@ const BusinessList = React.memo(() => {
     id: null
   });
   const [sectionSavingState, setSectionSavingState] = useState({});
+  const [isSavingBusiness, setIsSavingBusiness] = useState(false);
+  const isSavingBusinessRef = useRef(false);
   const isForceBypassableField = field => Boolean(field) && !FORCE_BYPASS_BLOCKED_FIELDS.has(field);
   const getUniqueFields = fields => [...new Set((fields || []).filter(Boolean))];
   const getPaidStepFieldNames = useCallback((data, step) => {
@@ -2735,6 +2737,12 @@ const BusinessList = React.memo(() => {
     draftBusinessDetails = null,
     draftKycFiles = null
   } = {}) => {
+    if (isSavingBusinessRef.current) {
+      return;
+    }
+    isSavingBusinessRef.current = true;
+    setIsSavingBusiness(true);
+    try {
     const sourceFormData = draftFormData || formData;
     const sourceBusinessDetails = draftBusinessDetails ?? businessvalue;
     const sourceKycFiles = draftKycFiles ?? kycFiles;
@@ -2932,6 +2940,10 @@ const BusinessList = React.memo(() => {
           variant: "error"
         });
       }
+    }
+    } finally {
+      isSavingBusinessRef.current = false;
+      setIsSavingBusiness(false);
     }
   };
   const updateBadgesOnly = async () => {
@@ -4326,6 +4338,7 @@ const BusinessList = React.memo(() => {
             editMode={editMode}
             saveSectionData={saveSectionData}
             sectionSavingState={sectionSavingState}
+            isSavingBusiness={isSavingBusiness}
           />
         );
 
