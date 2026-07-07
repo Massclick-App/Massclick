@@ -5,13 +5,14 @@ const hasScript = (needle) =>
 
 // Lazy load Google Analytics to avoid blocking main thread
 export const loadGoogleAnalytics = () => {
-  if (hasScript("gtag/js?id=G-925S15KNR9")) {
+  const gaId = process.env.REACT_APP_GA_MEASUREMENT_ID;
+  if (!gaId || hasScript(`gtag/js?id=${gaId}`)) {
     return;
   }
 
   const script = document.createElement("script");
   script.async = true;
-  script.src = "https://www.googletagmanager.com/gtag/js?id=G-925S15KNR9";
+  script.src = `https://www.googletagmanager.com/gtag/js?id=${gaId}`;
   script.dataset.massclickGa = "true";
 
   script.onload = () => {
@@ -20,7 +21,7 @@ export const loadGoogleAnalytics = () => {
       window.dataLayer.push(arguments);
     }
     gtag("js", new Date());
-    gtag("config", "G-925S15KNR9", {
+    gtag("config", gaId, {
       send_page_view: true,
     });
   };

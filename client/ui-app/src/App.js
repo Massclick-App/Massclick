@@ -94,6 +94,7 @@ const Msg91Analytics = lazy(() => import(/* webpackChunkName: "admin-msg91-analy
 const AuthConsole = lazy(() => import(/* webpackChunkName: "admin-auth-console" */ './Internals/AuthConsole/AuthConsole.js'));
 const PublicUserCounterAdmin = lazy(() => import(/* webpackChunkName: "admin-public-user-counter" */ './Internals/PublicUserCounter/PublicUserCounterAdmin.js'));
 const GscAnalytics = lazy(() => import(/* webpackChunkName: "admin-gsc" */ './Internals/gscAnalytics/gscAnalytics.js'));
+const Ga4Analytics = lazy(() => import(/* webpackChunkName: "admin-ga4" */ './Internals/ga4Analytics/ga4Analytics.js'));
 const Quotation = lazy(() => import(/* webpackChunkName: "admin-quotation" */ './Internals/quotation/Quotation.js'));
 const MassclickDocuments = lazy(() => import(/* webpackChunkName: "admin-documents" */ './Internals/massclickDocuments/massclickDocuments.js'));
 
@@ -322,6 +323,7 @@ function AppRoutes({
                 <Route path="gmaps-leads" element={<GmapsLeads />} />
                 <Route path="msg91-analytics" element={<Msg91Analytics />} />
                 <Route path="gsc-analytics" element={<GscAnalytics />} />
+                <Route path="ga4-analytics" element={<Ga4Analytics />} />
                 <Route path="quotation" element={<Quotation />} />
                 <Route path="documents" element={<MassclickDocuments />} />
               </Route>

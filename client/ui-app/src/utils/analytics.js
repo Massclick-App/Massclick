@@ -1,4 +1,4 @@
-export const GA_TRACKING_ID = "G-925S15KNR9";
+export const GA_TRACKING_ID = process.env.REACT_APP_GA_MEASUREMENT_ID;
 
 export const pageview = (url) => {
   if (window.gtag) {
