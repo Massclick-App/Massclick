@@ -107,6 +107,7 @@ const UserCustomerServicePage = lazy(() => import(/* webpackChunkName: "user-cus
 const UserPolicyPage = lazy(() => import(/* webpackChunkName: "user-policy" */ './Internals/clientComponent/userMenu/PolicyPage/PolicyPage.js'));
 const UserFeedbackPage = lazy(() => import(/* webpackChunkName: "user-feedback" */ './Internals/clientComponent/userMenu/FeedbackPage/FeedBackPage.js'));
 const UserHelpPage = lazy(() => import(/* webpackChunkName: "user-help" */ './Internals/clientComponent/userMenu/HelpPage/HelpPage.js'));
+const UserMassclickDocumentsPage = lazy(() => import(/* webpackChunkName: "user-documents" */ './Internals/clientComponent/userMenu/MassclickDocuments/MassclickDocumentsPage.js'));
 
 const FloatingButtons = lazy(() => import(/* webpackChunkName: "floating-buttons" */ './Internals/clientComponent/floating/floatingButtons.js'));
 // Google ad surfaces are intentionally disabled for now.
@@ -264,6 +265,7 @@ function AppRoutes({
           <Route path="/user_visiting-card" element={<Navigate to="/user_marketing-materials" replace />} />
           <Route path="/user_letterhead" element={<Navigate to="/user_marketing-materials?type=letterhead" replace />} />
           <Route path="/user_quotation" element={<Navigate to="/user_marketing-materials?type=quotation" replace />} />
+          <Route path="/user_massclick-documents" element={<UserMassclickDocumentsPage />} />
           <Route path="/user_favorites" element={<UserFavoritesPage />} />
           <Route path="/user_customer-service" element={<UserCustomerServicePage />} />
           <Route path="/user_policy" element={<UserPolicyPage />} />
@@ -343,7 +345,7 @@ function AppRoutes({
   );
 }
 
-/* -------------------------------- App ------------------------------------ */
+/* -------------------------------- App ------------------- ----------------- */
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [realtimeSocketToken, setRealtimeSocketToken] = useState(() => getRealtimeSocketToken());

@@ -41,7 +41,11 @@ const normalizeDocument = (document) => {
 
   return {
     ...document,
-    documentUrl: getSignedUrlByKey(document.documentKey),
+    documentUrl: document.documentKey ? getSignedUrlByKey(document.documentKey) : "",
+    mediaItems: (document.mediaItems || []).map((item) => ({
+      ...item,
+      mediaUrl: item.mediaKey ? getSignedUrlByKey(item.mediaKey) : "",
+    })),
   };
 };
 
@@ -63,13 +67,37 @@ const isAllowedDocument = (fileType = "", fileName = "") => {
   return ALLOWED_DOCUMENT_EXTENSIONS.has(extension);
 };
 
+const toStringArray = (value) => {
+  if (Array.isArray(value)) return value.map((item) => `${item}`.trim()).filter(Boolean);
+  if (typeof value !== "string") return [];
+  return value
+    .split(/\r?\n|,/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+};
+
 const validateDocumentPayload = (data = {}, requireFile = true) => {
   if (!data.title?.trim()) throw new Error("Title is required");
   if (!data.section?.trim()) throw new Error("Section is required");
 
-  if (!requireFile && !data.documentFile) return;
+  const hasResourceContent = Boolean(
+    data.documentFile ||
+    data.summary?.trim() ||
+    data.contentDetails?.trim() ||
+    toStringArray(data.youtubeLinks).length ||
+    toStringArray(data.videoLinks).length ||
+    toStringArray(data.imageLinks).length ||
+    toStringArray(data.keyBenefits).length ||
+    toStringArray(data.useCases).length ||
+    data.mediaFiles?.length
+  );
 
-  if (!data.documentFile) throw new Error("Document file is required");
+  if (requireFile && !hasResourceContent) {
+    throw new Error("Add a document, media, link, or awareness content");
+  }
+
+  if (!data.documentFile) return;
+
   if (!data.fileName?.trim()) throw new Error("File name is required");
   if (!isAllowedDocument(data.fileType, data.fileName)) {
     throw new Error("Unsupported document type");
@@ -94,18 +122,66 @@ const uploadDocument = async (data = {}) => {
   return uploadResult.key;
 };
 
+const uploadMediaFiles = async (data = {}) => {
+  const files = Array.isArray(data.mediaFiles) ? data.mediaFiles : [];
+
+  return Promise.all(
+    files
+      .filter((file) => file?.mediaFile && file?.fileName)
+      .map(async (file) => {
+        const extension = getExtensionFromFileName(file.fileName);
+        const isImage = (file.fileType || "").startsWith("image/");
+        const isVideo = (file.fileType || "").startsWith("video/");
+        const uploadResult = await uploadImageToS3(
+          file.mediaFile,
+          `massclick-documents/${data.section.trim().toLowerCase().replace(/\s+/g, "-")}/media-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          {
+            skipImageConversion: true,
+            contentType: file.fileType,
+            extension,
+          }
+        );
+
+        return {
+          title: file.title || file.fileName,
+          mediaType: isImage ? "image" : isVideo ? "video" : "file",
+          mediaKey: uploadResult.key,
+          fileName: file.fileName,
+          fileType: file.fileType || "application/octet-stream",
+          fileSize: file.fileSize || getBase64Size(file.mediaFile),
+        };
+      })
+  );
+};
+
+const buildResourceFields = (data = {}) => ({
+  resourceType: data.resourceType || "document",
+  summary: data.summary || "",
+  contentDetails: data.contentDetails || "",
+  youtubeLinks: toStringArray(data.youtubeLinks),
+  videoLinks: toStringArray(data.videoLinks),
+  imageLinks: toStringArray(data.imageLinks),
+  keyBenefits: toStringArray(data.keyBenefits),
+  useCases: toStringArray(data.useCases),
+  targetAudience: data.targetAudience || "",
+  displayOrder: Number(data.displayOrder || 0),
+});
+
 export const createMassclickDocument = async (data = {}, user = {}) => {
   validateDocumentPayload(data, true);
 
-  const documentKey = await uploadDocument(data);
+  const documentKey = data.documentFile ? await uploadDocument(data) : "";
+  const mediaItems = await uploadMediaFiles(data);
   const document = new massclickDocumentsModel({
     title: data.title,
     section: data.section,
     description: data.description || "",
+    ...buildResourceFields(data),
     documentKey,
-    fileName: data.fileName,
-    fileType: data.fileType,
+    fileName: data.fileName || "",
+    fileType: data.fileType || "",
     fileSize: data.fileSize || getBase64Size(data.documentFile),
+    mediaItems,
     isActive: data.isActive ?? true,
     createdBy: user?._id || user?.id || null,
   });
@@ -147,6 +223,8 @@ export const viewAllMassclickDocuments = async ({
       { title: { $regex: search, $options: "i" } },
       { section: { $regex: search, $options: "i" } },
       { fileName: { $regex: search, $options: "i" } },
+      { summary: { $regex: search, $options: "i" } },
+      { contentDetails: { $regex: search, $options: "i" } },
     ];
   }
 
@@ -178,6 +256,7 @@ export const updateMassclickDocument = async (id, data = {}) => {
     title: data.title,
     section: data.section,
     description: data.description || "",
+    ...buildResourceFields(data),
     isActive: data.isActive ?? true,
     updatedAt: new Date(),
   };
@@ -188,6 +267,12 @@ export const updateMassclickDocument = async (id, data = {}) => {
     updateData.fileType = data.fileType;
     updateData.fileSize = data.fileSize || getBase64Size(data.documentFile);
   }
+
+  const newMediaItems = await uploadMediaFiles(data);
+  updateData.mediaItems = [
+    ...(Array.isArray(data.existingMediaItems) ? data.existingMediaItems : existingDocument.mediaItems || []),
+    ...newMediaItems,
+  ];
 
   const updatedDocument = await massclickDocumentsModel
     .findByIdAndUpdate(id, updateData, { new: true })
