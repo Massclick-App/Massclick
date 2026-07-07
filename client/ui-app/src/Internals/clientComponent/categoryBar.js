@@ -19,6 +19,7 @@ import HeadsetMicIcon from "@mui/icons-material/HeadsetMic";
 import PolicyIcon from "@mui/icons-material/Policy";
 import FeedbackIcon from "@mui/icons-material/Feedback";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
+import FolderCopyIcon from "@mui/icons-material/FolderCopy";
 import { getDisplayableLeadNotifications } from "./leadsNotification/leadNotificationUtils.js";
 import { fetchMatchedLeads } from "../../redux/actions/leadsAction.js";
 import styles from "./categoryBar.module.css";
@@ -34,6 +35,7 @@ const FeedbackPage = lazy(() => import("../clientComponent/userMenu/FeedbackPage
 const HelpPage = lazy(() => import("../clientComponent/userMenu/HelpPage/HelpPage.js"));
 const LeadsNotificationModal = lazy(() => import("./leadsNotification/leadsNotification.js"));
 const MRPPage = lazy(() => import("./MRP/mrp.js"));
+const MassclickDocumentsPage = lazy(() => import("./userMenu/MassclickDocuments/MassclickDocumentsPage.js"));
 const cx = createScopedClassNames(styles);
 export const isBusinessPeopleUser = (user = {}) => user?.businessPeople === true;
 
@@ -81,6 +83,11 @@ export const userMenuItems = [{
   icon: <DescriptionIcon color="action" />,
   component: VisitingCardPage,
   businessPeopleOnly: true
+}, {
+  name: "Knowledge Hub",
+  path: "/user_massclick-documents",
+  icon: <FolderCopyIcon color="action" />,
+  component: MassclickDocumentsPage
 }, {
   name: "User Favorites",
   path: "/user_favorites",
