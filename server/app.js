@@ -56,6 +56,7 @@ import ga4Routes from "./routes/ga4Routes.js";
 import trackedKeywordRoutes from "./routes/trackedKeywordRoutes.js";
 import quotationRoutes from "./routes/quotationRoute.js";
 import massclickDocumentsRoutes from "./routes/massclickDocumentsRoute.js";
+import massclickFeedRoutes from "./routes/massclickFeedRoute.js";
 import { startFCMScheduler } from "./scheduler/fcmScheduler.js";
 import { startKeywordRankCron } from "./cron/keywordRankCron.js";
 
@@ -148,6 +149,7 @@ app.use("/", ga4Routes);
 app.use("/", trackedKeywordRoutes);
 app.use("/", quotationRoutes);
 app.use("/", massclickDocumentsRoutes);
+app.use("/", massclickFeedRoutes);
 app.use(express.static(CLIENT_BUILD_PATH, {
   index: false,
   maxAge: "365d",

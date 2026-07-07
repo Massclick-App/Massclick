@@ -44,7 +44,8 @@ export const Collections = {
     TRACKEDKEYWORD: 'trackedkeywords',
     MASSCLICKQUOTATION: 'massclick_quotation',
     MASSCLICKQUOTATIONCOUNTER: 'massclick_quotation_counter',
-    MASSCLICKDOCUMENTS: 'massclick_documents'
+    MASSCLICKDOCUMENTS: 'massclick_documents',
+    MASSCLICKFEEDPOSTS: 'massclick_feed_posts'
 };
 
 export const {
@@ -93,5 +94,6 @@ export const {
     TRACKEDKEYWORD,
     MASSCLICKQUOTATION,
     MASSCLICKQUOTATIONCOUNTER,
-    MASSCLICKDOCUMENTS
+    MASSCLICKDOCUMENTS,
+    MASSCLICKFEEDPOSTS
 } = Collections;

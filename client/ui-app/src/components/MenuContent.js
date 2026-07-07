@@ -39,6 +39,7 @@ import MarkEmailReadIcon from '@mui/icons-material/MarkEmailRead';
 import GroupsRoundedIcon from '@mui/icons-material/GroupsRounded';
 import RequestQuoteIcon from '@mui/icons-material/RequestQuote';
 import FolderCopyIcon from '@mui/icons-material/FolderCopy';
+import DynamicFeedIcon from '@mui/icons-material/DynamicFeed';
 import { fetchChatUnreadCount, getAdminChatToken } from "../services/chatService";
 import { connectSocket } from "../services/socketService";
 import { getAuthSnapshot } from "../auth/authStore.js";
@@ -76,6 +77,7 @@ const MENU_SECTIONS = [
       { text: "Data Analytics", icon: AnalyticsRoundedIcon, path: "/dashboard/data-analytics" },
       { text: "Quotations", icon: RequestQuoteIcon, path: "/dashboard/quotation" },
       { text: "Documents", icon: FolderCopyIcon, path: "/dashboard/documents" },
+      { text: "Feed", icon: DynamicFeedIcon, path: "/dashboard/feed" },
       { text: "MNI", icon: StorefrontIcon, path: "/dashboard/mni-data" },
       { text: "Notifications", icon: NotificationsIcon, path: "/dashboard/fcm-marketing" },
       { text: "GMaps Leads", icon: TravelExploreIcon, path: "/dashboard/gmaps-leads" },

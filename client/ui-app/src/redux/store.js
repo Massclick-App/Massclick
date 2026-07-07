@@ -38,6 +38,7 @@ import gscReducer from './reducers/gscReducer.js';
 import ga4Reducer from './reducers/ga4Reducer.js';
 import quotationReducer from './reducers/quotationReducer.js';
 import massclickDocumentsReducer from './reducers/massclickDocumentsReducer.js';
+import massclickFeedReducer from './reducers/massclickFeedReducer.js';
 
 const rootReducer = combineReducers({
   auth: authReducer,
@@ -78,6 +79,7 @@ const rootReducer = combineReducers({
   ga4Reducer,
   quotationReducer,
   massclickDocuments: massclickDocumentsReducer,
+  massclickFeed: massclickFeedReducer,
 });
 
 let storeInstance = null;
