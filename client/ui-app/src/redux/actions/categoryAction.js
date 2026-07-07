@@ -17,7 +17,6 @@ import { getClientToken } from "./clientAuthAction.js";
 
 const API_URL = process.env.REACT_APP_API_URL;
 
-
 const getValidToken = async (dispatch) => {
   let token = localStorage.getItem("accessToken");
   if (!token) token = await dispatch(getClientToken());

@@ -43,7 +43,8 @@ export const Collections = {
     S3CACHEHEADERMIGRATIONJOB: 's3_cache_header_migration_jobs',
     TRACKEDKEYWORD: 'trackedkeywords',
     MASSCLICKQUOTATION: 'massclick_quotation',
-    MASSCLICKQUOTATIONCOUNTER: 'massclick_quotation_counter'
+    MASSCLICKQUOTATIONCOUNTER: 'massclick_quotation_counter',
+    MASSCLICKDOCUMENTS: 'massclick_documents'
 };
 
 export const {
@@ -91,5 +92,6 @@ export const {
     S3CACHEHEADERMIGRATIONJOB,
     TRACKEDKEYWORD,
     MASSCLICKQUOTATION,
-    MASSCLICKQUOTATIONCOUNTER
+    MASSCLICKQUOTATIONCOUNTER,
+    MASSCLICKDOCUMENTS
 } = Collections;

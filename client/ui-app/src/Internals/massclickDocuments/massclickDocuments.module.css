@@ -1,0 +1,264 @@
+.documents-page {
+  width: 100%;
+  min-height: 100vh;
+  padding: clamp(16px, 4vw, 40px);
+  background: #f9fafb;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(20px, 4vw, 32px);
+  align-items: center;
+}
+
+.documents-header {
+  width: 100%;
+  max-width: 1440px;
+}
+
+.documents-header h1 {
+  margin: 0;
+  color: #111827;
+  font-size: clamp(22px, 3vw, 28px);
+  font-weight: 700;
+}
+
+.documents-header p {
+  margin: 6px 0 0;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.documents-card {
+  width: 100%;
+  max-width: 1440px;
+  padding: clamp(16px, 4vw, 32px);
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+}
+
+.documents-card h2 {
+  margin: 0 0 20px;
+  color: #111827;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.documents-form {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 20px 24px;
+}
+
+.form-field {
+  grid-column: span 4;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-field label {
+  color: #374151;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.form-field input,
+.form-field textarea,
+.form-field select {
+  width: 100%;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  color: #111827;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.form-field input,
+.form-field select {
+  height: 48px;
+  padding: 0 16px;
+}
+
+.form-field textarea {
+  min-height: 110px;
+  padding: 14px 16px;
+  resize: vertical;
+}
+
+.form-field input:focus,
+.form-field textarea:focus,
+.form-field select:focus {
+  outline: none;
+  border-color: #ff8a00;
+}
+
+.span-2 {
+  grid-column: span 8;
+}
+
+.span-3 {
+  grid-column: span 12;
+}
+
+.checkbox-field {
+  flex-direction: row;
+  align-items: center;
+  padding-top: 24px;
+}
+
+.checkbox-field input {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  accent-color: #ff8a00;
+}
+
+.upload-field {
+  grid-column: span 12;
+}
+
+.upload-guidance {
+  margin: 0;
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.upload-box {
+  min-height: 116px;
+  padding: 18px;
+  border: 1px dashed #c7d2fe;
+  border-radius: 8px;
+  background: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.upload-button {
+  height: 46px;
+  padding: 0 18px;
+  border: 1px solid #c7d2fe;
+  border-radius: 8px;
+  background: #eef2ff;
+  color: #3730a3;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.file-summary {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.file-name {
+  color: #111827;
+  font-size: 14px;
+  font-weight: 700;
+  word-break: break-word;
+}
+
+.file-meta {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.form-error-text {
+  color: #dc2626;
+  font-size: 12px;
+}
+
+.form-actions {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.primary-action,
+.secondary-action {
+  height: 48px;
+  padding: 0 28px;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.primary-action {
+  border: none;
+  background: #ff8a00;
+  color: #fff;
+}
+
+.primary-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.secondary-action {
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #374151;
+}
+
+.table-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.action-link {
+  color: #2563eb;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+@media (max-width: 640px) {
+  .documents-form {
+    grid-template-columns: 1fr;
+  }
+
+  .form-field,
+  .span-2,
+  .span-3,
+  .upload-field {
+    grid-column: span 1;
+  }
+
+  .upload-box,
+  .form-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .upload-button,
+  .primary-action,
+  .secondary-action {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 900px) {
+  .documents-form {
+    grid-template-columns: repeat(8, 1fr);
+  }
+
+  .form-field {
+    grid-column: span 4;
+  }
+
+  .span-2,
+  .span-3,
+  .upload-field {
+    grid-column: span 8;
+  }
+}
+
