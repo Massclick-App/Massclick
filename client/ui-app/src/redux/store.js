@@ -35,6 +35,7 @@ import gmapsLeadsReducer from './reducers/gmapsLeadsReducer.js';
 import msg91AnalyticsReducer from './reducers/msg91AnalyticsReducer.js';
 import publicUserCounterReducer from './reducers/publicUserCounterReducer.js';
 import gscReducer from './reducers/gscReducer.js';
+import ga4Reducer from './reducers/ga4Reducer.js';
 import quotationReducer from './reducers/quotationReducer.js';
 
 const rootReducer = combineReducers({
@@ -73,6 +74,7 @@ const rootReducer = combineReducers({
   msg91Analytics: msg91AnalyticsReducer,
   publicUserCounter: publicUserCounterReducer,
   gscReducer,
+  ga4Reducer,
   quotationReducer,
 });
 
