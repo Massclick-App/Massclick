@@ -54,6 +54,7 @@ import publicUserCounterRoutes from "./routes/publicUserCounterRoutes.js";
 import gscRoutes from "./routes/gscRoutes.js";
 import trackedKeywordRoutes from "./routes/trackedKeywordRoutes.js";
 import quotationRoutes from "./routes/quotationRoute.js";
+import massclickDocumentsRoutes from "./routes/massclickDocumentsRoute.js";
 import { startFCMScheduler } from "./scheduler/fcmScheduler.js";
 import { startKeywordRankCron } from "./cron/keywordRankCron.js";
 
@@ -144,6 +145,7 @@ app.use("/", publicUserCounterRoutes);
 app.use("/", gscRoutes);
 app.use("/", trackedKeywordRoutes);
 app.use("/", quotationRoutes);
+app.use("/", massclickDocumentsRoutes);
 app.use(express.static(CLIENT_BUILD_PATH, {
   index: false,
   maxAge: "365d",

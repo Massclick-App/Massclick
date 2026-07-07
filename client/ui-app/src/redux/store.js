@@ -36,6 +36,7 @@ import msg91AnalyticsReducer from './reducers/msg91AnalyticsReducer.js';
 import publicUserCounterReducer from './reducers/publicUserCounterReducer.js';
 import gscReducer from './reducers/gscReducer.js';
 import quotationReducer from './reducers/quotationReducer.js';
+import massclickDocumentsReducer from './reducers/massclickDocumentsReducer.js';
 
 const rootReducer = combineReducers({
   auth: authReducer,
@@ -74,6 +75,7 @@ const rootReducer = combineReducers({
   publicUserCounter: publicUserCounterReducer,
   gscReducer,
   quotationReducer,
+  massclickDocuments: massclickDocumentsReducer,
 });
 
 let storeInstance = null;

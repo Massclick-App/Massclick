@@ -95,6 +95,7 @@ const AuthConsole = lazy(() => import(/* webpackChunkName: "admin-auth-console" 
 const PublicUserCounterAdmin = lazy(() => import(/* webpackChunkName: "admin-public-user-counter" */ './Internals/PublicUserCounter/PublicUserCounterAdmin.js'));
 const GscAnalytics = lazy(() => import(/* webpackChunkName: "admin-gsc" */ './Internals/gscAnalytics/gscAnalytics.js'));
 const Quotation = lazy(() => import(/* webpackChunkName: "admin-quotation" */ './Internals/quotation/Quotation.js'));
+const MassclickDocuments = lazy(() => import(/* webpackChunkName: "admin-documents" */ './Internals/massclickDocuments/massclickDocuments.js'));
 
 const UserDashboardPage = lazy(() => import(/* webpackChunkName: "user-dashboard" */ './Internals/clientComponent/userMenu/DashboardPage/Dashboard.js'));
 const UserEditProfilePage = lazy(() => import(/* webpackChunkName: "user-edit-profile" */ './Internals/clientComponent/userMenu/EditProfile/EditProfilePage.js'));
@@ -131,7 +132,7 @@ const DynamicLoader = memo(() => {
 
 const RateLimitNotifier = memo(() => {
   const { enqueueSnackbar } = useSnackbar();
-
+  
   useEffect(() => {
     const handleRateLimit = (event) => {
       const detail = event?.detail || {};
@@ -320,6 +321,7 @@ function AppRoutes({
                 <Route path="msg91-analytics" element={<Msg91Analytics />} />
                 <Route path="gsc-analytics" element={<GscAnalytics />} />
                 <Route path="quotation" element={<Quotation />} />
+                <Route path="documents" element={<MassclickDocuments />} />
               </Route>
 
             </Route>
