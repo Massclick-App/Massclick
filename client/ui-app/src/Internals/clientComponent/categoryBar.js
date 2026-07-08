@@ -145,7 +145,7 @@ const CategoryBar = () => {
   } = useDrawer();
   const [anchorEl, setAnchorEl] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(() => !!localStorage.getItem("authToken"));
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
   const otpState = useSelector(state => state.otp) || {};
   const {
