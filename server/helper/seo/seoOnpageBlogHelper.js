@@ -272,11 +272,16 @@ export const getSeoPageContentBlog = async ({
    META LIST
 ===================================== */
 export const getSeoPageContentBlogMetaService =
-  async ({ pageType, category, location }) => {
+  async ({ pageType, category, location, authorId }) => {
     const query = {
       isActive: true,
-      pageType: normalizeText(pageType),
     };
+
+    if (pageType)
+      query.pageType = normalizeText(pageType);
+
+    if (authorId)
+      query.authorId = authorId;
 
     if (category)
       query.category =
@@ -291,7 +296,7 @@ export const getSeoPageContentBlogMetaService =
         .find(query)
         .sort({ updatedAt: -1 })
         .select(
-          "metaTitle metaDescription metaKeywords slug heading category location profileImageKey pageImageKey updatedAt"
+          "metaTitle metaDescription metaKeywords slug heading category location profileImageKey pageImageKey updatedAt authorId author views createdAt"
         )
         .lean();
 

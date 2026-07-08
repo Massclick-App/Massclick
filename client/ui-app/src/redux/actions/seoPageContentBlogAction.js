@@ -175,6 +175,15 @@ export const fetchSeoPageContentBlogsMeta = (params) => async (dispatch) => {
   }
 };
 
+export const fetchBlogsByAuthor = (authorId) => async () => {
+  const res = await axiosInstance.get(
+    `${API}/seopagecontentblog/meta`,
+    { params: { authorId } }
+  );
+
+  return res.data.data || [];
+};
+
  export const fetchSeoBlogBySlug = (slug) => async (dispatch) => {
   dispatch({ type: FETCH_SEOBLOG_BY_SLUG_REQUEST });
 

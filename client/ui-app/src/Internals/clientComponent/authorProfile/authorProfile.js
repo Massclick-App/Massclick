@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
 import { Helmet } from "react-helmet-async";
 import { fetchAuthorBySlug } from "../../../redux/actions/authorMasterAction.js";
-import { fetchSeoPageContentBlogsMeta } from "../../../redux/actions/seoPageContentBlogAction.js";
+import { fetchBlogsByAuthor } from "../../../redux/actions/seoPageContentBlogAction.js";
 import { createScopedClassNames } from "../../../utils/createScopedClassNames";
 import styles from "./authorProfile.module.css";
 import Navbar from "../relatedBlogs/relatedBlogNavbar/relatedBlogNavbar.js";
@@ -27,13 +27,8 @@ const AuthorProfile = () => {
   const [authorData, setAuthorData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  const { list: authors = [] } = useSelector(
-    (state) => state.authorMasterReducer || {}
-  );
-  const { list: blogList = [] } = useSelector(
-    (state) => state.seoPageContentBlogReducer || {}
-  );
+  const [authorBlogs, setAuthorBlogs] = useState([]);
+  const [blogsLoading, setBlogsLoading] = useState(false);
 
   useEffect(() => {
     // Capture referring blog from state if navigating from blog details
@@ -63,18 +58,40 @@ const AuthorProfile = () => {
   }, [slug, dispatch]);
 
   useEffect(() => {
-    if (authorData?._id) {
-      dispatch(
-        fetchSeoPageContentBlogsMeta({
-          pageType: "category",
-        })
-      );
+    if (!authorData?._id) {
+      setAuthorBlogs([]);
+      return;
     }
+
+    let cancelled = false;
+    setBlogsLoading(true);
+
+    dispatch(fetchBlogsByAuthor(authorData._id))
+      .then((blogs) => {
+        if (!cancelled) setAuthorBlogs(blogs);
+      })
+      .catch(() => {
+        if (!cancelled) setAuthorBlogs([]);
+      })
+      .finally(() => {
+        if (!cancelled) setBlogsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [authorData, dispatch]);
 
-  const authorBlogs = blogList.filter(
-    (blog) => blog.authorId === authorData?._id
-  );
+  const formatBlogDate = (value) => {
+    if (!value) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    return date.toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  };
 
   if (loading) {
     return (
@@ -154,7 +171,8 @@ const AuthorProfile = () => {
                 )}
 
                 <span className={cx("article-count")}>
-                  <strong>{authorData.blogCount}</strong> Articles
+                  <strong>{authorBlogs.length || authorData.blogCount || 0}</strong>{" "}
+                  Articles
                 </span>
               </div>
 
@@ -287,32 +305,64 @@ const AuthorProfile = () => {
         )}
 
         {/* Articles Section */}
-        {authorBlogs.length > 0 && (
+        {(blogsLoading || authorBlogs.length > 0) && (
           <section className={cx("articles-section")}>
-            <h2>Published Articles ({authorBlogs.length})</h2>
-            <div className={cx("blog-grid")}>
-              {authorBlogs.map((blog) => (
-                <Link
-                  key={blog._id}
-                  to={`/blog/${blog.slug}`}
-                  className={cx("blog-card-link")}
-                  style={{ textDecoration: "none" }}
-                >
-                  <div className={cx("blog-card")}>
-                    <div className={cx("blog-content")}>
-                      <h3>{blog.heading}</h3>
-                      {blog.excerpt && (
-                        <p className={cx("excerpt")}>{blog.excerpt.substring(0, 100)}...</p>
+            <h2>
+              Published Articles
+              {!blogsLoading && ` (${authorBlogs.length})`}
+            </h2>
+
+            {blogsLoading ? (
+              <div className={cx("blogs-loading")}>
+                <CircularProgress size={28} />
+              </div>
+            ) : (
+              <div className={cx("blog-grid")}>
+                {authorBlogs.map((blog) => (
+                  <Link
+                    key={blog._id}
+                    to={`/blog/${blog.slug}`}
+                    className={cx("blog-card-link")}
+                    state={{ fromAuthor: slug }}
+                  >
+                    <article className={cx("blog-card")}>
+                      {blog.profileImage && (
+                        <div className={cx("blog-card-image")}>
+                          <img
+                            src={blog.profileImage}
+                            alt={blog.heading}
+                            loading="lazy"
+                            decoding="async"
+                          />
+                        </div>
                       )}
-                      <div className={cx("blog-meta")}>
-                        <span className={cx("category")}>{blog.category}</span>
-                        <span className={cx("views")}>👁️ {blog.views || 0}</span>
+
+                      <div className={cx("blog-content")}>
+                        <h3>{blog.heading}</h3>
+
+                        {blog.metaDescription && (
+                          <p className={cx("excerpt")}>{blog.metaDescription}</p>
+                        )}
+
+                        <div className={cx("blog-meta")}>
+                          {blog.category && (
+                            <span className={cx("category")}>{blog.category}</span>
+                          )}
+                          {formatBlogDate(blog.updatedAt) && (
+                            <span className={cx("date")}>
+                              {formatBlogDate(blog.updatedAt)}
+                            </span>
+                          )}
+                          <span className={cx("views")}>👁️ {blog.views || 0}</span>
+                        </div>
+
+                        <span className={cx("read-more")}>Read Article →</span>
                       </div>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
+                    </article>
+                  </Link>
+                ))}
+              </div>
+            )}
           </section>
         )}
       </main>

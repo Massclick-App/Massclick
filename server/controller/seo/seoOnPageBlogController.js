@@ -61,16 +61,17 @@ export const getSeoPageContentBlogAction = async (req, res) => {
 ===================================== */
 export const getSeoPageContentBlogMetaAction = async (req, res) => {
   try {
-    const { pageType, category, location } = req.query;
+    const { pageType, category, location, authorId } = req.query;
 
-    if (!pageType) {
-      throw new Error("pageType is required");
+    if (!pageType && !authorId) {
+      throw new Error("pageType or authorId is required");
     }
 
     const result = await getSeoPageContentBlogMetaService({
       pageType,
       category,
       location,
+      authorId,
     });
 
     return res.send({

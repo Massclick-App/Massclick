@@ -6,6 +6,7 @@ import {
   updateAuthor,
   deleteAuthor,
 } from "../../../redux/actions/authorMasterAction.js";
+import { fetchBlogsByAuthor } from "../../../redux/actions/seoPageContentBlogAction.js";
 import {
   Box,
   Button,
@@ -57,10 +58,37 @@ export default function AuthorMaster() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedRow, setSelectedRow] = useState(null);
   const [detailDrawer, setDetailDrawer] = useState(null);
+  const [authorBlogs, setAuthorBlogs] = useState([]);
+  const [blogsLoading, setBlogsLoading] = useState(false);
 
   useEffect(() => {
     dispatch(fetchAllAuthors({ includeInactive: "true" }));
   }, [dispatch]);
+
+  useEffect(() => {
+    if (!detailDrawer?._id) {
+      setAuthorBlogs([]);
+      return;
+    }
+
+    let cancelled = false;
+    setBlogsLoading(true);
+
+    dispatch(fetchBlogsByAuthor(detailDrawer._id))
+      .then((blogs) => {
+        if (!cancelled) setAuthorBlogs(blogs);
+      })
+      .catch(() => {
+        if (!cancelled) setAuthorBlogs([]);
+      })
+      .finally(() => {
+        if (!cancelled) setBlogsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [detailDrawer, dispatch]);
 
   const resetForm = () => {
     setFormData(defaultForm);
@@ -150,7 +178,14 @@ export default function AuthorMaster() {
       id: "blogCount",
       label: "Blogs",
       renderCell: (_, row) => (
-        <Chip label={row.blogCount} size="small" variant="outlined" />
+        <Chip
+          label={row.blogCount}
+          size="small"
+          variant="outlined"
+          clickable
+          onClick={() => handleView(row.id)}
+          title="View author's blogs"
+        />
       ),
     },
     {
@@ -535,6 +570,72 @@ export default function AuthorMaster() {
 
                 {/* Content */}
                 <Box sx={{ flex: 1, overflowY: "auto", p: 3 }}>
+                  {/* Published Blogs */}
+                  <Box sx={{ mb: 2 }}>
+                    <SLabel>
+                      Published Blogs
+                      {!blogsLoading && ` (${authorBlogs.length})`}
+                    </SLabel>
+
+                    {blogsLoading && (
+                      <Typography sx={{ fontSize: "0.85rem", color: "#9ca3af" }}>
+                        Loading blogs...
+                      </Typography>
+                    )}
+
+                    {!blogsLoading && authorBlogs.length === 0 && (
+                      <Typography sx={{ fontSize: "0.85rem", color: "#9ca3af" }}>
+                        No blogs assigned to this author yet.
+                      </Typography>
+                    )}
+
+                    {!blogsLoading &&
+                      authorBlogs.map((blog) => (
+                        <Box
+                          key={blog._id}
+                          onClick={() => window.open(`/blog/${blog.slug}`, "_blank")}
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: 1,
+                            p: 1.2,
+                            mb: 0.8,
+                            borderRadius: "8px",
+                            border: "1px solid #f1f5f9",
+                            cursor: "pointer",
+                            transition: "all 0.2s",
+                            "&:hover": {
+                              borderColor: "#ff6b00",
+                              background: "#fff8f2",
+                            },
+                          }}
+                        >
+                          <Box sx={{ minWidth: 0 }}>
+                            <Typography
+                              sx={{
+                                fontSize: "0.85rem",
+                                fontWeight: 600,
+                                color: "#1f2937",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {blog.heading}
+                            </Typography>
+                            <Typography sx={{ fontSize: "0.72rem", color: "#9ca3af" }}>
+                              {[blog.category, blog.location].filter(Boolean).join(" · ")}
+                              {blog.views ? ` · ${blog.views} views` : ""}
+                            </Typography>
+                          </Box>
+                          <OpenInNewIcon sx={{ fontSize: 15, color: "#ff6b00", flexShrink: 0 }} />
+                        </Box>
+                      ))}
+                  </Box>
+
+                  <Divider sx={{ my: 2 }} />
+
                   <DRow label="Email" value={author.email} />
                   <DRow label="Phone" value={author.phone} />
                   <DRow label="Title" value={author.title} />
@@ -664,14 +765,12 @@ export default function AuthorMaster() {
                     </Box>
                   )}
 
-                  {author.blogCount !== undefined && (
-                    <Box sx={{ mb: 2 }}>
-                      <SLabel>Articles Published</SLabel>
-                      <Typography sx={{ fontSize: "1.2rem", fontWeight: 700, color: "#ff6b00" }}>
-                        {author.blogCount || 0}
-                      </Typography>
-                    </Box>
-                  )}
+                  <Box sx={{ mb: 2 }}>
+                    <SLabel>Articles Published</SLabel>
+                    <Typography sx={{ fontSize: "1.2rem", fontWeight: 700, color: "#ff6b00" }}>
+                      {blogsLoading ? "..." : authorBlogs.length}
+                    </Typography>
+                  </Box>
                 </Box>
 
                 {/* Footer Actions */}
