@@ -305,8 +305,6 @@ export const getSeoPageContentBlogMetaService =
     if (location)
       query.location = locationFilter(location);
 
-    console.log("[BlogMeta] mongo query (after normalize):", JSON.stringify(query));
-
     const result =
       await seoPageContentBlogModel
         .find(query)
@@ -315,15 +313,6 @@ export const getSeoPageContentBlogMetaService =
           "metaTitle metaDescription metaKeywords slug heading category location profileImageKey pageImageKey updatedAt authorId author views createdAt"
         )
         .lean();
-
-    if (result.length === 0) {
-      const activeTotal = await seoPageContentBlogModel.countDocuments({ isActive: true });
-      const distinctLocations = await seoPageContentBlogModel.distinct("location", { isActive: true });
-      console.log(
-        "[BlogMeta] 0 matches. Active blogs in DB:", activeTotal,
-        "| distinct locations:", JSON.stringify(distinctLocations)
-      );
-    }
 
     return result.map(mapSignedUrls);
   };

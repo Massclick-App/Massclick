@@ -67,27 +67,12 @@ export const getSeoPageContentBlogMetaAction = async (req, res) => {
       throw new Error("pageType or authorId is required");
     }
 
-    console.log("[BlogMeta] request:", {
-      pageType,
-      category,
-      location,
-      authorId,
-    });
-
     const result = await getSeoPageContentBlogMetaService({
       pageType,
       category,
       location,
       authorId,
     });
-
-    console.log(
-      "[BlogMeta] result count:",
-      result.length,
-      result.length === 0
-        ? "(no blogs matched — check isActive/pageType/location values in DB)"
-        : ""
-    );
 
     return res.send({
       success: true,

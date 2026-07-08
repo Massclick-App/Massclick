@@ -83,11 +83,7 @@ const RelatedBlogs = ({
   } = useSelector(state => state.seoPageContentBlogReducer);
   useEffect(() => {
     const cleanLocation = (location || "").toLowerCase().trim();
-    if (!cleanLocation) {
-      console.log("[RelatedBlogs] no location provided — skipping fetch");
-      return;
-    }
-    console.log("[RelatedBlogs] fetching blogs for location:", cleanLocation);
+    if (!cleanLocation) return;
     dispatch(fetchSeoPageContentBlogsMeta({
       pageType: "category",
       location: cleanLocation
@@ -117,10 +113,6 @@ const RelatedBlogs = ({
   };
   const createSlug = (text = "") => text.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
   if (!loading && !error && list.length === 0) {
-    console.log(
-      "[RelatedBlogs] hidden — API returned 0 blogs for location:",
-      location
-    );
     return null;
   }
   return <div className={cx("related-wrapper")}>
