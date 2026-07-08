@@ -21,8 +21,23 @@ const normalizeLocation = (value = "") => {
     trichi: "trichy",
   };
 
-  return map[v] || v;
+  if (map[v]) return map[v];
+
+  // Catch truncated/partial variants like "tiruchirappall", "tiruchira"
+  if (v.startsWith("tiruch") || v.startsWith("trich")) return "trichy";
+
+  return v;
 };
+
+const escapeRegex = (value = "") =>
+  String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+// DB has mixed-case location values (e.g. "Trichy" vs "trichy"),
+// so read queries must match case-insensitively.
+const locationFilter = (value = "") => ({
+  $regex: `^${escapeRegex(normalizeLocation(value))}$`,
+  $options: "i",
+});
 
 const normalizeCategory = (value = "") => {
   const v = normalizeText(value);
@@ -260,7 +275,7 @@ export const getSeoPageContentBlog = async ({
     query.category = normalizeCategory(category);
 
   if (location)
-    query.location = normalizeLocation(location);
+    query.location = locationFilter(location);
 
   const result =
     await seoPageContentBlogModel.findOne(query).lean();
@@ -272,28 +287,43 @@ export const getSeoPageContentBlog = async ({
    META LIST
 ===================================== */
 export const getSeoPageContentBlogMetaService =
-  async ({ pageType, category, location }) => {
+  async ({ pageType, category, location, authorId }) => {
     const query = {
       isActive: true,
-      pageType: normalizeText(pageType),
     };
+
+    if (pageType)
+      query.pageType = normalizeText(pageType);
+
+    if (authorId)
+      query.authorId = authorId;
 
     if (category)
       query.category =
         normalizeCategory(category);
 
     if (location)
-      query.location =
-        normalizeLocation(location);
+      query.location = locationFilter(location);
+
+    console.log("[BlogMeta] mongo query (after normalize):", JSON.stringify(query));
 
     const result =
       await seoPageContentBlogModel
         .find(query)
         .sort({ updatedAt: -1 })
         .select(
-          "metaTitle metaDescription metaKeywords slug heading category location profileImageKey pageImageKey updatedAt"
+          "metaTitle metaDescription metaKeywords slug heading category location profileImageKey pageImageKey updatedAt authorId author views createdAt"
         )
         .lean();
+
+    if (result.length === 0) {
+      const activeTotal = await seoPageContentBlogModel.countDocuments({ isActive: true });
+      const distinctLocations = await seoPageContentBlogModel.distinct("location", { isActive: true });
+      console.log(
+        "[BlogMeta] 0 matches. Active blogs in DB:", activeTotal,
+        "| distinct locations:", JSON.stringify(distinctLocations)
+      );
+    }
 
     return result.map(mapSignedUrls);
   };

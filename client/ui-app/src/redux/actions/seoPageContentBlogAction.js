@@ -160,12 +160,21 @@ export const fetchSeoPageContentBlogsMeta = (params) => async (dispatch) => {
       { params }
     );
 
+    console.log(
+      "[BlogMeta] fetch params:", params,
+      "| received:", res.data?.data?.length ?? 0, "blogs"
+    );
+
     dispatch({
       type: FETCH_SEOPAGECONTENTBLOGS_META_SUCCESS,
       payload: res.data,
     });
 
   } catch (error) {
+    console.error(
+      "[BlogMeta] fetch failed:", params,
+      "|", error.response?.status, error.response?.data?.message || error.message
+    );
     dispatch({
       type: FETCH_SEOPAGECONTENTBLOGS_META_FAILURE,
       payload:
@@ -173,6 +182,15 @@ export const fetchSeoPageContentBlogsMeta = (params) => async (dispatch) => {
         error.message,
     });
   }
+};
+
+export const fetchBlogsByAuthor = (authorId) => async () => {
+  const res = await axiosInstance.get(
+    `${API}/seopagecontentblog/meta`,
+    { params: { authorId } }
+  );
+
+  return res.data.data || [];
 };
 
  export const fetchSeoBlogBySlug = (slug) => async (dispatch) => {
