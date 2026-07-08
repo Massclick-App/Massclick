@@ -45,7 +45,8 @@ export const Collections = {
     MASSCLICKQUOTATION: 'massclick_quotation',
     MASSCLICKQUOTATIONCOUNTER: 'massclick_quotation_counter',
     MASSCLICKDOCUMENTS: 'massclick_documents',
-    MASSCLICKFEEDPOSTS: 'massclick_feed_posts'
+    MASSCLICKFEEDPOSTS: 'massclick_feed_posts',
+    USERFEEDBACKS: 'user_feedbacks'
 };
 
 export const {
@@ -95,5 +96,6 @@ export const {
     MASSCLICKQUOTATION,
     MASSCLICKQUOTATIONCOUNTER,
     MASSCLICKDOCUMENTS,
-    MASSCLICKFEEDPOSTS
+    MASSCLICKFEEDPOSTS,
+    USERFEEDBACKS
 } = Collections;

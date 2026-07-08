@@ -21,6 +21,7 @@ const CUSTOMER_AUTH_PATHS = [
   /^\/api\/fcm-token(\/|$)/,
   /^\/api\/chat(\/|$)/,
   /^\/api\/massclick-feed(\/|$)/,
+  /^\/api\/user-feedback(\/|$)/,
   /^\/api\/rating(\/|$)/,
   /^\/api\/reviews?(\/|$)/,
   /^\/api\/search(\/|$)/,
