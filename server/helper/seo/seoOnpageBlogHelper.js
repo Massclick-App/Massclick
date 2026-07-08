@@ -21,8 +21,23 @@ const normalizeLocation = (value = "") => {
     trichi: "trichy",
   };
 
-  return map[v] || v;
+  if (map[v]) return map[v];
+
+  // Catch truncated/partial variants like "tiruchirappall", "tiruchira"
+  if (v.startsWith("tiruch") || v.startsWith("trich")) return "trichy";
+
+  return v;
 };
+
+const escapeRegex = (value = "") =>
+  String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+// DB has mixed-case location values (e.g. "Trichy" vs "trichy"),
+// so read queries must match case-insensitively.
+const locationFilter = (value = "") => ({
+  $regex: `^${escapeRegex(normalizeLocation(value))}$`,
+  $options: "i",
+});
 
 const normalizeCategory = (value = "") => {
   const v = normalizeText(value);
@@ -260,7 +275,7 @@ export const getSeoPageContentBlog = async ({
     query.category = normalizeCategory(category);
 
   if (location)
-    query.location = normalizeLocation(location);
+    query.location = locationFilter(location);
 
   const result =
     await seoPageContentBlogModel.findOne(query).lean();
@@ -288,8 +303,7 @@ export const getSeoPageContentBlogMetaService =
         normalizeCategory(category);
 
     if (location)
-      query.location =
-        normalizeLocation(location);
+      query.location = locationFilter(location);
 
     console.log("[BlogMeta] mongo query (after normalize):", JSON.stringify(query));
 
