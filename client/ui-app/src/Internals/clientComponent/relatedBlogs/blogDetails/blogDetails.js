@@ -489,7 +489,7 @@ const BlogDetail = () => {
   const articleSchema = generateArticleSchema({
     headline: blog.metaTitle || blog.heading,
     description: blog.metaDescription || blog.excerpt,
-    image: blog.ogImageKey,
+    image: blog.ogImage || blog.profileImage || blog.pageImages?.[0],
     datePublished: blog.createdAt,
     dateModified: blog.updatedAt,
     author: getAuthorData().name

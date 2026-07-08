@@ -400,9 +400,10 @@ export const generateAboutPageSchema = (pageData = {}) => {
       url: "https://massclick.in",
       logo: "https://massclick.in/logo.png",
       sameAs: [
-        "https://facebook.com/massclick",
-        "https://instagram.com/massclick",
-        "https://twitter.com/massclick",
+        "https://www.instagram.com/massclick_/",
+        "https://www.facebook.com/massClicks",
+        "https://www.linkedin.com/company/massclick/",
+        "https://www.youtube.com/@Mass360Business",
       ],
       areaServed: {
         "@type": "Country",
@@ -430,7 +431,7 @@ export const generateContactPageSchema = (pageData = {}) => {
       contactPoint: {
         "@type": "ContactPoint",
         contactType: "Customer Service",
-        telephone: pageData.telephone || "+91-XXXXXXXXXX",
+        telephone: pageData.telephone || "+919789104201",
         email: "support@massclick.in",
         areaServed: {
           "@type": "Country",
