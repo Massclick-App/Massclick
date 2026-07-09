@@ -281,7 +281,6 @@ const BusinessDetail = React.memo(() => {
   const certificateLabels = statusBadges
     .filter(item => item.key === "verified" || item.key === "trust")
     .map(item => item.label);
-  const availableCertificateBadges = statusBadges.filter(item => item.certificateKey);
   const heroHighlights = [
     business.category,
     isVerified ? "Verified" : null,
@@ -565,17 +564,6 @@ const BusinessDetail = React.memo(() => {
               <CloseIcon />
             </button>
             <div className={cx("business-CardDetails-certificatePaper", `business-CardDetails-certificatePaper--${currentCertificate.key}`)}>
-              {availableCertificateBadges.length > 1 && <div className={cx("business-CardDetails-certificateTabs")} aria-label="Certificate type">
-                  {availableCertificateBadges.map(badge => <button
-                      key={badge.key}
-                      type="button"
-                      className={cx("business-CardDetails-certificateTab", activeCertificate === badge.certificateKey && "business-CardDetails-certificateTab--active")}
-                      onClick={handleCertificateClick(badge.certificateKey)}
-                    >
-                      {badge.icon}
-                      {badge.label}
-                    </button>)}
-                </div>}
               {currentCertificate.eyebrow && <p className={cx("business-CardDetails-certificateEyebrow")}>{currentCertificate.eyebrow}</p>}
               <div className={cx("business-CardDetails-certificateMark")}>
                 {currentCertificate.icon}

@@ -522,7 +522,7 @@
   gap: 0;
   min-height: 720px;
   overflow: hidden;
-  padding: 74px 58px 28px;
+  padding: 58px 58px 28px;
   position: relative;
   text-align: center;
 }
@@ -566,54 +566,6 @@
   inset: 12px;
   pointer-events: none;
   position: absolute;
-}
-
-.certificate-tabs {
-  display: inline-flex;
-  gap: 6px;
-  left: 18px;
-  position: absolute;
-  top: 18px;
-}
-
-.certificate-tab {
-  align-items: center;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid #dbe3ef;
-  border-radius: 999px;
-  color: #475569;
-  cursor: pointer;
-  display: inline-flex;
-  font: inherit;
-  font-size: 0.72rem;
-  font-weight: 800;
-  gap: 4px;
-  min-height: 28px;
-  padding: 5px 9px;
-}
-
-.certificate-tab svg {
-  font-size: 14px;
-}
-
-.certificate-tab--active {
-  background: #fff3ec;
-  border-color: #ff9b73;
-  color: #ff5a1f;
-}
-
-.certificate-tab--trust.certificate-tab--active {
-  background: #eef1ff;
-  border-color: #00095c;
-  color: #00095c;
-}
-
-.certificate-tab--verified svg {
-  color: #ff5a1f;
-}
-
-.certificate-tab--trust svg {
-  color: #00095c;
 }
 
 .certificate-eyebrow {

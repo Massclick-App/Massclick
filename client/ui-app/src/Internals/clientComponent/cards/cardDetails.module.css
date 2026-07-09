@@ -453,7 +453,7 @@ button.business-CardDetails-statusBadge:hover {
   gap: 0;
   min-height: 720px;
   overflow: hidden;
-  padding: 74px 56px 28px;
+  padding: 58px 56px 28px;
   position: relative;
   text-align: center;
 }
@@ -488,40 +488,6 @@ button.business-CardDetails-statusBadge:hover {
   height: 7px;
   right: 0;
   width: 180px;
-}
-
-.business-CardDetails-certificateTabs {
-  display: inline-flex;
-  gap: 6px;
-  left: 18px;
-  position: absolute;
-  top: 18px;
-}
-
-.business-CardDetails-certificateTab {
-  align-items: center;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid #dbe3ef;
-  border-radius: 999px;
-  color: #475569;
-  cursor: pointer;
-  display: inline-flex;
-  font: inherit;
-  font-size: 0.72rem;
-  font-weight: 800;
-  gap: 4px;
-  min-height: 28px;
-  padding: 5px 9px;
-}
-
-.business-CardDetails-certificateTab svg {
-  font-size: 14px;
-}
-
-.business-CardDetails-certificateTab--active {
-  background: #fff3ec;
-  border-color: #ff9b73;
-  color: var(--bc-primary-dark);
 }
 
 .business-CardDetails-certificateEyebrow {

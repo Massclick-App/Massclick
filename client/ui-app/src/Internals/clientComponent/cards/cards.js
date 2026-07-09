@@ -285,24 +285,6 @@ const Cards = ({
               <CloseRoundedIcon />
             </button>
             <div className={cx("certificate-paper", `certificate-paper--${currentCertificate.key}`)}>
-              <div className={cx("certificate-tabs")} aria-label="Certificate type">
-                <button
-                  type="button"
-                  className={cx("certificate-tab", "certificate-tab--verified", activeCertificate === "verified" && "certificate-tab--active")}
-                  onClick={() => setActiveCertificate("verified")}
-                >
-                  <VerifiedRoundedIcon />
-                  Verified
-                </button>
-                <button
-                  type="button"
-                  className={cx("certificate-tab", "certificate-tab--trust", activeCertificate === "trust" && "certificate-tab--active")}
-                  onClick={() => setActiveCertificate("trust")}
-                >
-                  <WorkspacePremiumRoundedIcon />
-                  Trust
-                </button>
-              </div>
               {currentCertificate.eyebrow && (
                 <p className={cx("certificate-eyebrow")}>{currentCertificate.eyebrow}</p>
               )}
