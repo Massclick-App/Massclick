@@ -74,10 +74,37 @@ const formatOfferText = (post) => {
 };
 
 const getPostKind = (post = {}) => {
+  if (post.offerStartsAt || post.offerEndsAt) return "Offer";
   if (post.mediaItems?.length && post.text?.trim()) return "Photo update";
   if (post.mediaItems?.length) return "Photo post";
-  if (post.offerStartsAt || post.offerEndsAt) return "Offer";
   return "Text update";
+};
+
+const getPostTypeClass = (post = {}) => {
+  if (post.offerStartsAt || post.offerEndsAt) return "offer";
+  if (post.mediaItems?.length) return "photo";
+  return "text";
+};
+
+const isOfferExpiringSoon = (endDate) => {
+  if (!endDate) return false;
+  const now = new Date();
+  const end = new Date(endDate);
+  const hoursUntilExpiry = (end - now) / (1000 * 60 * 60);
+  return hoursUntilExpiry > 0 && hoursUntilExpiry <= 24;
+};
+
+const formatCountdownTime = (endDate) => {
+  if (!endDate) return "";
+  const now = new Date();
+  const end = new Date(endDate);
+  const diff = end - now;
+  if (diff <= 0) return "Expired";
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  if (hours > 24) return `${Math.floor(hours / 24)}d left`;
+  if (hours > 0) return `${hours}h left`;
+  return `${minutes}m left`;
 };
 
 const canCreateFeedPost = (user = {}) =>
@@ -88,10 +115,12 @@ const canCreateFeedPost = (user = {}) =>
   user.paymentConcept?.paymentStatus === "paid";
 
 const postPrompts = [
-  "Today-only offer or flash discount",
-  "New product, batch, class, or menu arrival",
-  "Event, admission, booking, or holiday timing",
-  "Before/after work, customer proof, or milestone",
+  "🔥 Today-only offer or flash discount",
+  "🆕 New product, batch, class, or menu arrival",
+  "🎉 Event, admission, booking, or holiday timing",
+  "⭐ Before/after work, customer proof, or milestone",
+  "📸 High-quality photo of your product or space",
+  "🕐 Update hours or special holiday schedules",
 ];
 
 const playbookItems = [
@@ -136,12 +165,23 @@ function FeedPost({ post, onLike, onShare, onComment }) {
           <div className={cx("business-avatar")}>
             {(post.businessName || "M").charAt(0).toUpperCase()}
           </div>
-          <div>
-            <h2 className={cx("business-name")}>
-              {post.businessName || "MassClick Business"}
-            </h2>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                marginBottom: "4px",
+              }}
+            >
+              <h2 className={cx("business-name")}>
+                {post.businessName || "MassClick Business"}
+              </h2>
+              <span className={cx("post-type-badge", `post-type-${getPostTypeClass(post)}`)}>
+                {getPostKind(post)}
+              </span>
+            </div>
             <p className={cx("post-meta")}>
-              <span className={cx("post-meta-item")}>{getPostKind(post)}</span>
               <span className={cx("post-meta-item")}>
                 {[post.businessCategory, post.businessLocation]
                   .filter(Boolean)
@@ -154,7 +194,36 @@ function FeedPost({ post, onLike, onShare, onComment }) {
           </div>
         </div>
 
-        {offerText && <span className={cx("offer-badge")}>{offerText}</span>}
+        {offerText && (
+          <div
+            className={cx("offer-badge")}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              justifyContent: "space-between",
+            }}
+          >
+            <span>{offerText}</span>
+            {isOfferExpiringSoon(post.offerEndsAt) && (
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  padding: "2px 6px",
+                  borderRadius: "4px",
+                  background: "rgba(220, 38, 38, 0.15)",
+                  color: "#dc2626",
+                  fontSize: "0.7rem",
+                  fontWeight: "800",
+                }}
+              >
+                ⏱ {formatCountdownTime(post.offerEndsAt)}
+              </span>
+            )}
+          </div>
+        )}
         {(post.title || post.text) && (
           <div className={cx(!imageCount ? "text-only-panel" : "post-copy")}>
             {post.title && <h3 className={cx("post-title")}>{post.title}</h3>}
@@ -186,12 +255,25 @@ function FeedPost({ post, onLike, onShare, onComment }) {
           <VerifiedIcon fontSize="small" />
           Verified local update
         </span>
+        {(post.likesCount || 0) +
+          (post.commentsCount || 0) +
+          (post.sharesCount || 0) >
+        10 ? (
+          <span className={cx("post-insight-pill")}>
+            <TrendingUpIcon fontSize="small" />
+            Trending
+          </span>
+        ) : null}
         <span className={cx("post-insight-pill")}>
-          <TrendingUpIcon fontSize="small" />
           {(post.likesCount || 0) +
             (post.commentsCount || 0) +
             (post.sharesCount || 0)}{" "}
-          actions
+          {(post.likesCount || 0) +
+            (post.commentsCount || 0) +
+            (post.sharesCount || 0) ===
+          1
+            ? "action"
+            : "actions"}
         </span>
       </div>
 
@@ -422,45 +504,46 @@ export default function MassclickFeedPage() {
         <div className={cx("feed-shell")}>
           <aside className={cx("left-rail")} aria-label="Feed discovery">
             <section className={cx("rail-panel rail-panel-dark")}>
-              <span className={cx("rail-eyebrow")}>Local signal board</span>
+              <span className={cx("rail-eyebrow")}>✨ Real-time Updates</span>
               <h2 className={cx("rail-title")}>
-                Find what nearby businesses are saying now.
+                Never miss what your community is sharing.
               </h2>
               <p className={cx("rail-copy")}>
-                Offers, announcements, photos, events, and service notes in one
-                living local feed.
+                Stay connected with time-sensitive offers, event announcements,
+                new product launches, and authentic business stories from nearby
+                shops and services.
               </p>
             </section>
 
             <section className={cx("rail-panel")}>
               <div className={cx("rail-heading")}>
-                <StorefrontIcon fontSize="small" />
-                <h2 className={cx("rail-heading-title")}>Live Pulse</h2>
+                <TrendingUpIcon fontSize="small" />
+                <h2 className={cx("rail-heading-title")}>Community Pulse</h2>
               </div>
               <div className={cx("metric-grid")}>
                 <div className={cx("metric-card")}>
                   <strong className={cx("metric-value")}>
                     {formatCompactNumber(posts.length)}
                   </strong>
-                  <span className={cx("metric-label")}>updates</span>
+                  <span className={cx("metric-label")}>Active Posts</span>
                 </div>
                 <div className={cx("metric-card")}>
                   <strong className={cx("metric-value")}>
                     {formatCompactNumber(offerCount)}
                   </strong>
-                  <span className={cx("metric-label")}>offers</span>
+                  <span className={cx("metric-label")}>Live Offers</span>
                 </div>
                 <div className={cx("metric-card")}>
                   <strong className={cx("metric-value")}>
                     {formatCompactNumber(photoCount)}
                   </strong>
-                  <span className={cx("metric-label")}>photo posts</span>
+                  <span className={cx("metric-label")}>Visual Posts</span>
                 </div>
                 <div className={cx("metric-card")}>
                   <strong className={cx("metric-value")}>
                     {formatCompactNumber(totalComments + totalShares)}
                   </strong>
-                  <span className={cx("metric-label")}>responses</span>
+                  <span className={cx("metric-label")}>Engagements</span>
                 </div>
               </div>
             </section>
@@ -493,24 +576,25 @@ export default function MassclickFeedPage() {
             <section className={cx("feed-hero")}>
               <div className={cx("hero-copy")}>
                 <span className={cx("feed-kicker")}>
-                  MassClick local business network
+                  Your local business network
                 </span>
-                <h1 className={cx("feed-title")}>MassClick Feed</h1>
+                <h1 className={cx("feed-title")}>Local Signal Board</h1>
                 <p className={cx("feed-subtitle")}>
-                  The place for nearby offers, announcements, launches, service
-                  updates, and real-time business stories.
+                  Real-time offers, announcements, and updates from nearby
+                  businesses. Discover what's happening in your community right
+                  now.
                 </p>
                 <div className={cx("hero-tags")}>
-                  <span className={cx("hero-tag")}>Offers</span>
-                  <span className={cx("hero-tag")}>Photos</span>
-                  <span className={cx("hero-tag")}>Events</span>
-                  <span className={cx("hero-tag")}>Announcements</span>
+                  <span className={cx("hero-tag")}>🎯 Offers</span>
+                  <span className={cx("hero-tag")}>📸 Photos</span>
+                  <span className={cx("hero-tag")}>🎉 Events</span>
+                  <span className={cx("hero-tag")}>📢 Announcements</span>
                 </div>
               </div>
               <div className={cx("hero-action-card")}>
                 <span className={cx("hero-action-label")}>Business owner?</span>
                 <strong className={cx("hero-action-title")}>
-                  Post an update customers can act on today.
+                  Share an update your customers will act on.
                 </strong>
                 <button
                   className={cx("post-button")}
@@ -716,7 +800,27 @@ export default function MassclickFeedPage() {
                 <span className={cx("toolbar-label")}>Community feed</span>
                 <h2 className={cx("toolbar-title")}>Latest verified updates</h2>
               </div>
-              <span className={cx("toolbar-count")}>{posts.length} posts</span>
+              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                <span className={cx("toolbar-count")}>{posts.length} posts</span>
+                {offerCount > 0 && (
+                  <span
+                    className={cx("post-type-badge", "post-type-offer")}
+                    title={`${offerCount} offer${offerCount !== 1 ? "s" : ""}`}
+                  >
+                    <LocalOfferIcon fontSize="small" /> {offerCount} Offer
+                    {offerCount !== 1 ? "s" : ""}
+                  </span>
+                )}
+                {photoCount > 0 && (
+                  <span
+                    className={cx("post-type-badge", "post-type-announcement")}
+                    title={`${photoCount} post${photoCount !== 1 ? "s" : ""} with photos`}
+                  >
+                    <ImageIcon fontSize="small" /> {photoCount} Photo
+                    {photoCount !== 1 ? "s" : ""}
+                  </span>
+                )}
+              </div>
             </section>
 
             <section className={cx("feed-list")}>
