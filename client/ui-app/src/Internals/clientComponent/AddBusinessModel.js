@@ -63,6 +63,8 @@ const LogoComponent = () => (
     </Box>
 );
 
+const OTP_LENGTH = 4;
+
 const OTPLoginModal = ({ open, handleClose, onMaybeLater }) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -70,8 +72,8 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater }) => {
     const [agreed, setAgreed] = React.useState(false);
 
     const [otpSent, setOtpSent] = React.useState(false);
-    const [otpDigits, setOtpDigits] = React.useState(['', '', '', '']);
-    const otpRefs = React.useRef([null, null, null, null]);
+    const [otpDigits, setOtpDigits] = React.useState(Array(OTP_LENGTH).fill(''));
+    const otpRefs = React.useRef(Array(OTP_LENGTH).fill(null));
     const [userName, setUserName] = React.useState('');
     const [isNewUser, setIsNewUser] = React.useState(false);
     const [isLoading, setIsLoading] = React.useState(false);
@@ -106,6 +108,7 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater }) => {
             setIsNewUser(res.isNewUser);
             setResendTimer(60);
             localStorage.setItem("mobileNumber", mobileNumber);
+            window.setTimeout(() => otpRefs.current[0]?.focus(), 0);
         } catch (error) {
             enqueueSnackbar("Failed to send OTP. Please try again.", {
                 variant: "error",
@@ -116,30 +119,9 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater }) => {
         }
     };
 
-    const handleOtpChange = (index, value) => {
-        if (!/^\d*$/.test(value)) return;
-        const newOtpDigits = [...otpDigits];
-        newOtpDigits[index] = value;
-        setOtpDigits(newOtpDigits);
-
-        if (value && index < 3) {
-            otpRefs.current[index + 1]?.focus();
-        }
-
-        if (newOtpDigits.every(digit => digit !== '')) {
-            handleVerifyOtp(newOtpDigits.join(''));
-        }
-    };
-
-    const handleOtpKeyDown = (index, e) => {
-        if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
-            otpRefs.current[index - 1]?.focus();
-        }
-    };
-
-    const handleVerifyOtp = async (otpValue) => {
+    const handleVerifyOtp = React.useCallback(async (otpValue) => {
         const finalOtp = otpValue || otpDigits.join('');
-        if (finalOtp.length !== 4) return;
+        if (finalOtp.length !== OTP_LENGTH) return;
 
         setIsLoading(true);
         try {
@@ -155,7 +137,7 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater }) => {
                 handleClose();
             }
         } catch (error) {
-            setOtpDigits(['', '', '', '']);
+            setOtpDigits(Array(OTP_LENGTH).fill(''));
             otpRefs.current[0]?.focus();
 
             enqueueSnackbar("Invalid OTP. Please try again.", {
@@ -164,6 +146,69 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater }) => {
             });
         } finally {
             setIsLoading(false);
+        }
+    }, [dispatch, enqueueSnackbar, handleClose, mobileNumber, otpDigits, userName]);
+
+    React.useEffect(() => {
+        if (!otpSent || !open || !('OTPCredential' in window) || !navigator.credentials) return undefined;
+
+        const abortController = new AbortController();
+
+        navigator.credentials
+            .get({
+                otp: { transport: ['sms'] },
+                signal: abortController.signal,
+            })
+            .then((credential) => {
+                const code = credential?.code?.replace(/\D/g, '').slice(0, OTP_LENGTH);
+                if (code?.length === OTP_LENGTH) {
+                    const nextDigits = code.split('');
+                    setOtpDigits(nextDigits);
+                    handleVerifyOtp(code);
+                }
+            })
+            .catch(() => {
+                // Web OTP is best-effort and only works on supported mobile browsers.
+            });
+
+        return () => abortController.abort();
+    }, [handleVerifyOtp, otpSent, open]);
+
+    const applyOtpValue = (index, value) => {
+        const digits = value.replace(/\D/g, '').slice(0, OTP_LENGTH - index);
+        if (!digits) return;
+
+        const newOtpDigits = [...otpDigits];
+        digits.split('').forEach((digit, offset) => {
+            newOtpDigits[index + offset] = digit;
+        });
+        setOtpDigits(newOtpDigits);
+
+        const nextIndex = Math.min(index + digits.length, OTP_LENGTH - 1);
+        if (index + digits.length < OTP_LENGTH) {
+            otpRefs.current[nextIndex]?.focus();
+        } else {
+            otpRefs.current[OTP_LENGTH - 1]?.blur();
+        }
+
+        if (newOtpDigits.every(digit => digit !== '')) {
+            handleVerifyOtp(newOtpDigits.join(''));
+        }
+    };
+
+    const handleOtpChange = (index, value) => {
+        if (!/^\d*$/.test(value)) return;
+        applyOtpValue(index, value);
+    };
+
+    const handleOtpPaste = (index, e) => {
+        e.preventDefault();
+        applyOtpValue(index, e.clipboardData.getData('text'));
+    };
+
+    const handleOtpKeyDown = (index, e) => {
+        if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
+            otpRefs.current[index - 1]?.focus();
         }
     };
 
@@ -313,7 +358,7 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater }) => {
                                 type="tel"
                                 inputProps={{
                                     maxLength: 10,
-                                    autoComplete: 'off',
+                                    autoComplete: 'tel-national',
                                     inputMode: 'numeric',
                                 }}
                                 value={mobileNumber}
@@ -491,11 +536,13 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater }) => {
                                         inputRef={(el) => (otpRefs.current[index] = el)}
                                         value={digit}
                                         onChange={(e) => handleOtpChange(index, e.target.value)}
+                                        onPaste={(e) => handleOtpPaste(index, e)}
                                         onKeyDown={(e) => handleOtpKeyDown(index, e)}
                                         inputProps={{
-                                            maxLength: 1,
+                                            maxLength: index === 0 ? OTP_LENGTH : 1,
                                             inputMode: 'numeric',
-                                            autoComplete: 'off',
+                                            autoComplete: index === 0 ? 'one-time-code' : 'off',
+                                            pattern: '[0-9]*',
                                             style: {
                                                 textAlign: 'center',
                                                 fontSize: '2rem',
