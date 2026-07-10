@@ -1,231 +1,100 @@
-/* DashboardPage.css */
-
-:root {
-  /* Massclick Brand Colors - unchanged */
-  --brand-orange-primary: #ff8c00; 
-  --brand-orange-secondary: #ffa500;
-  --brand-gradient: linear-gradient(135deg, #ff9933 0%, #ff6600 100%); 
-  
-  --success-green: #28a745;
-  --info-blue: #17a2b8; /* New color for 'Enquiries' */
-  --secondary-purple: #6f42c1; /* New color for 'Shares' */
-  
-  /* Layout & Utility */
-  --neutral-bg: #f5f6f8; 
-  --text-dark: #2c3e50; /* Slightly darker for better contrast */
-  --text-muted: #7f8c8d; /* More modern muted grey */
-  --card-shadow: 0 8px 25px rgba(0, 0, 0, 0.08); /* Refined shadow */
-  --card-radius: 12px; /* Slightly smaller radius for compactness */
-}
-
-/* Base Page Styling */
-.dashboard-page-container {
-  padding: 30px 25px; /* Slightly reduced padding */
-  background-color: var(--neutral-bg);
-  min-height: 100vh;
-  font-family: 'Inter', sans-serif; /* Using a modern, clean font if available */
-  /* Fallback to Arial, Helvetica if Inter isn't linked */
-  font-family: 'Inter', 'Arial', sans-serif; 
-}
-
-/* Header Styling */
-.dashboard-main-title {
-  font-size: 2.2rem; /* Slightly smaller title */
-  font-weight: 700;
-  color: var(--text-dark);
-  margin-bottom: 5px;
-}
-
-.title-separator {
-  border: 0;
-  border-top: 1px solid #e0e0e0; /* Thinner, subtle separator */
-  margin-bottom: 40px; /* Reduced margin */
-}
-
-/* 2. RESPONSIVE METRIC GRID */
-/* 2. RESPONSIVE METRIC GRID */
-.key-metrics-grid {
-  display: grid;
-  /* Default: 2 columns for tablets and medium desktops, min card width 250px */
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); 
-  gap: 25px; /* Consistent spacing */
-
-  /* For larger screens, aim for 4 columns */
-  @media (min-width: 1200px) {
-    grid-template-columns: repeat(4, 1fr);
-  }
-}
-
-/* 3. PREMIUM METRIC CARD STYLING - **COMPACTED AND REFINED** */
-.metric-card {
-  background: white;
-  padding: 25px; /* Reduced padding for compactness */
-  border-radius: var(--card-radius);
-  box-shadow: var(--card-shadow);
-  transition: all 0.3s ease-in-out; /* Smoother transition */
-  overflow: hidden;
-  position: relative;
-  display: flex; /* Using flexbox for internal card layout */
-  flex-direction: column;
-  justify-content: space-between;
-  min-height: 150px; /* Ensure cards have a minimum height */
-}
-
-/* Hover effect */
-.metric-card:hover {
-  transform: translateY(-5px); /* Subtle lift */
-  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.12); /* Enhanced shadow on hover */
-}
-
-/* Gradient Bar Accent at the TOP */
-.metric-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 4px; /* Thinner accent bar */
-    width: 100%;
-    background: var(--brand-orange-primary); /* Default */
-}
-
-/* Card Content Structure */
-.metric-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px; /* Space above value */
-}
-
-.metric-title {
-  font-size: 0.95rem; /* Smaller, more concise title */
-  font-weight: 500;
-  color: var(--text-muted); 
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-/* Icon Styling - subtle, background-like */
-.metric-icon {
-  font-size: 2.2rem; /* Slightly smaller icon */
-  opacity: 0.15; /* More visible than before, but still subtle */
-  color: var(--text-dark);
-  align-self: flex-start; /* Align with title */
-}
-
-/* Main Value - still impactful, but proportional to new card size */
-.metric-value {
-  font-size: 3rem; /* Adjusted for smaller card size */
-  font-weight: 800;
-  color: var(--text-dark);
-  line-height: 1;
-  margin: 0; /* Reset margins */
-}
-
-.metric-context {
-  font-size: 0.8rem; /* Smaller context text */
-  color: var(--text-muted);
-  margin-top: auto; /* Pushes to the bottom */
-  padding-top: 12px;
-  border-top: 1px dashed #e9ecef; 
-}
-
-/* 4. SPECIFIC CARD THEMING */
-
-/* Total Business Views - Use the Brand Gradient */
-/* 4. SPECIFIC CARD THEMING */
-
-/* Total Business Views (Orange/Massclick Brand) */
-.views-card::before {
-    background: var(--brand-gradient);
-}
-.views-card .metric-value {
-    color: var(--text-dark); /* Keep text dark for readability */
-}
-.views-card .metric-icon {
-    color: var(--brand-orange-primary); /* Icon subtly takes brand color */
-}
-
-/* Total WhatsApp Clicks (Green) */
-.whatsapp-card::before {
-    background: var(--success-green);
-}
-.whatsapp-card .metric-value {
-    color: var(--success-green);
-}
-.whatsapp-card .metric-icon {
-    color: var(--success-green);
-    opacity: 0.4;
-}
-
-/* NEW: Total Enquiries (Info Blue) */
-.enquiry-card::before {
-    background: var(--info-blue);
-}
-.enquiry-card .metric-value {
-    color: var(--info-blue);
-}
-.enquiry-card .metric-icon {
-    color: var(--info-blue);
-    opacity: 0.4;
-}
-
-/* NEW: Profile Shares (Secondary Purple) */
-.share-card::before {
-    background: var(--secondary-purple);
-}
-.share-card .metric-value {
-    color: var(--secondary-purple);
-}
-.share-card .metric-icon {
-    color: var(--secondary-purple);
-    opacity: 0.4;
-}
-
-/* 5. FULL RESPONSIVENESS */
-
-/* TABLET/MEDIUM DESKTOP OPTIMIZATION (2 columns) */
-@media (min-width: 768px) and (max-width: 1199px) {
-    .dashboard-page-container {
-        padding: 25px 20px;
-    }
-    .key-metrics-grid {
-        grid-template-columns: repeat(2, 1fr); /* Explicitly 2 columns */
-        gap: 20px;
-    }
-    .metric-value {
-        font-size: 2.8rem; 
-    }
-}
-
-/* PHONE OPTIMIZATION (1 column) */
-@media (max-width: 767px) {
-    .dashboard-page-container {
-        padding: 20px 15px;
-    }
-    .dashboard-main-title {
-        font-size: 1.8rem;
-    }
-    .title-separator {
-        margin-bottom: 25px;
-    }
-    .key-metrics-grid {
-        grid-template-columns: 1fr; /* Stacks to 1 column */
-        gap: 20px;
-    }
-    .metric-card {
-        padding: 20px;
-        min-height: 140px;
-    }
-    .metric-title {
-      font-size: 0.85rem;
-    }
-    .metric-icon {
-      font-size: 2rem;
-    }
-    .metric-value {
-        font-size: 2.5rem; 
-    }
-    .metric-context {
-        font-size: 0.75rem;
-    }
-}
+.dashboard-shell { min-height: 100vh; background: #f6f7fb; color: #17243d; padding: 118px 24px 64px; font-family: Inter, "Segoe UI", sans-serif; }
+.dashboard-container { width: min(1400px, 100%); margin: 0 auto; }
+.hero { display: flex; align-items: flex-end; justify-content: space-between; gap: 28px; margin-bottom: 28px; }
+.hero-copy { min-width: 0; }
+.eyebrow { display: inline-flex; align-items: center; gap: 7px; color: #f27121; font-size: 11px; font-weight: 800; letter-spacing: .12em; margin-bottom: 10px; }
+.hero-title { color: #18243a; font-size: clamp(28px, 3vw, 40px); letter-spacing: -.04em; line-height: 1.1; margin: 0; font-weight: 750; }
+.hero-subtitle { color: #69758a; font-size: 15px; margin: 10px 0 0; }
+.hero-subtitle strong { color: #39465c; font-weight: 650; }
+.primary-action { display: inline-flex; align-items: center; gap: 9px; flex: 0 0 auto; color: white; background: #f57622; border-radius: 10px; padding: 12px 18px; text-decoration: none; font-size: 14px; font-weight: 700; box-shadow: 0 6px 16px rgba(245,118,34,.2); transition: transform .2s, box-shadow .2s; }
+.primary-action:hover { color: white; transform: translateY(-2px); box-shadow: 0 10px 22px rgba(245,118,34,.26); }
+.metrics-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; margin-bottom: 18px; }
+.metric-card { position: relative; display: flex; flex-direction: column; min-height: 145px; padding: 20px 21px; overflow: hidden; background: white; border: 1px solid #e8ebf1; border-radius: 14px; box-shadow: 0 4px 14px rgba(24,36,58,.04); }
+.metric-card::after { content: ""; position: absolute; left: 0; top: 19px; bottom: 19px; width: 3px; border-radius: 0 3px 3px 0; background: var(--metric-color); }
+.metric-topline { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.metric-label { color: #667287; font-size: 13px; font-weight: 650; }
+.metric-icon-wrap { display: grid; place-items: center; width: 36px; height: 36px; color: var(--metric-color); border-radius: 10px; background: var(--metric-soft); }
+.metric-value { color: #17243d; font-size: 32px; line-height: 1; margin-top: 14px; letter-spacing: -.03em; }
+.metric-note { color: #8b95a5; font-size: 12px; margin-top: 9px; }
+.metric-orange { --metric-color: #f57622; --metric-soft: #fff3e9; }
+.metric-green { --metric-color: #17a673; --metric-soft: #eaf8f2; }
+.metric-blue { --metric-color: #3478d4; --metric-soft: #edf4fd; }
+.metric-purple { --metric-color: #7a58c7; --metric-soft: #f3effc; }
+.content-grid { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(330px, .85fr); gap: 18px; margin-bottom: 18px; }
+.panel { background: white; border: 1px solid #e8ebf1; border-radius: 14px; box-shadow: 0 4px 14px rgba(24,36,58,.04); }
+.performance-panel { padding: 23px; min-height: 336px; }
+.panel-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.panel-kicker { color: #98a1b0; font-size: 10px; font-weight: 800; letter-spacing: .13em; }
+.panel-title { color: #25324a; font-size: 18px; line-height: 1.25; margin: 5px 0 0; font-weight: 720; }
+.period-pill, .status-dot { color: #667287; background: #f5f7fa; border: 1px solid #e8ebf1; border-radius: 999px; padding: 7px 10px; font-size: 11px; font-weight: 650; }
+.refresh-button { display: inline-flex; align-items: center; gap: 6px; color: #667287; background: #f5f7fa; border: 1px solid #e4e8ef; border-radius: 8px; padding: 7px 10px; font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; }
+.refresh-button:hover:not(:disabled) { color: #e96511; border-color: #f8c6a6; background: #fff8f3; }
+.refresh-button:disabled { cursor: wait; opacity: .7; }
+.refresh-spinning { animation: dashboard-spin .8s linear infinite; }
+@keyframes dashboard-spin { to { transform: rotate(360deg); } }
+.data-message { display: flex; align-items: center; justify-content: center; gap: 13px; min-height: 230px; color: #f57622; padding: 24px; }
+.data-message strong { display: block; color: #334057; font-size: 14px; }
+.data-message p { max-width: 420px; color: #7b8698; font-size: 12px; line-height: 1.5; margin: 5px 0 0; }
+.data-error { color: #d34b4b; }
+.chart-loading { display: flex; align-items: flex-end; justify-content: space-around; gap: 22px; height: 220px; padding: 40px 12%; }
+.chart-loading span { width: 13%; height: 70%; border-radius: 7px 7px 0 0; background: linear-gradient(90deg, #f1f3f6, #fafbfc, #f1f3f6); background-size: 200% 100%; animation: dashboard-shimmer 1.2s infinite linear; }
+.chart-loading span:nth-child(2) { height: 45%; }
+.chart-loading span:nth-child(3) { height: 85%; }
+.chart-loading span:nth-child(4) { height: 58%; }
+@keyframes dashboard-shimmer { to { background-position: -200% 0; } }
+.engagement-chart { display: grid; gap: 22px; padding: 43px 10px 25px; }
+.engagement-row { display: grid; grid-template-columns: 120px minmax(100px, 1fr) 48px; align-items: center; gap: 13px; }
+.engagement-label { color: #667287; font-size: 12px; font-weight: 650; }
+.engagement-track { height: 10px; overflow: hidden; background: #f0f2f5; border-radius: 999px; }
+.engagement-fill { display: block; height: 100%; border-radius: inherit; transition: width .45s ease; }
+.fill-orange { background: #f57622; }
+.fill-green { background: #17a673; }
+.fill-blue { background: #3478d4; }
+.fill-purple { background: #7a58c7; }
+.engagement-value { color: #344159; font-size: 12px; text-align: right; }
+.empty-chart { position: relative; height: 240px; margin-top: 15px; overflow: hidden; }
+.chart-visual { position: absolute; inset: 18px 0 0; display: flex; align-items: flex-end; justify-content: space-around; gap: 8%; padding: 0 6%; border-bottom: 1px solid #eef0f4; background: repeating-linear-gradient(to bottom, transparent 0, transparent 49px, #f1f3f6 50px); opacity: .65; }
+.chart-bar { width: 7%; max-width: 32px; background: linear-gradient(180deg, #ffd6ba, #fff3e9); border-radius: 5px 5px 0 0; }
+.empty-chart-copy { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 13px; width: min(430px, 90%); height: fit-content; margin: auto; padding: 17px 19px; background: rgba(255,255,255,.93); border: 1px solid #ebedf2; border-radius: 12px; box-shadow: 0 10px 30px rgba(28,42,67,.07); }
+.empty-icon { display: grid; place-items: center; flex: 0 0 42px; height: 42px; color: #f57622; background: #fff2e8; border-radius: 11px; }
+.empty-chart-copy strong { color: #29364e; display: block; font-size: 14px; }
+.empty-chart-copy p { color: #7b8698; font-size: 12px; line-height: 1.45; margin: 4px 0 0; }
+.completion-panel { padding: 23px; }
+.completion-head { display: flex; align-items: center; gap: 15px; }
+.score-ring { display: grid; place-items: center; flex: 0 0 64px; height: 64px; border-radius: 50%; background: conic-gradient(#f57622 35%, #f0f1f4 0); position: relative; }
+.score-ring::after { content: ""; position: absolute; inset: 6px; background: white; border-radius: 50%; }
+.score-ring span { position: relative; z-index: 1; color: #26344c; font-size: 14px; font-weight: 800; }
+.completion-copy { color: #7b8698; font-size: 13px; line-height: 1.5; margin: 18px 0 12px; }
+.task-list { border-top: 1px solid #eef0f4; }
+.task-row { display: grid; grid-template-columns: 36px 1fr auto; align-items: center; gap: 11px; color: #3c485d; padding: 13px 0; text-decoration: none; border-bottom: 1px solid #eef0f4; }
+.task-row:hover { color: #f57622; }
+.task-icon { display: grid; place-items: center; width: 36px; height: 36px; color: #f57622; background: #fff4ec; border-radius: 9px; }
+.task-row strong, .task-row small { display: block; }
+.task-row strong { font-size: 13px; }
+.task-row small { color: #929baa; font-size: 11px; margin-top: 3px; }
+.text-action { display: inline-flex; align-items: center; gap: 7px; color: #e96511; font-size: 13px; font-weight: 750; text-decoration: none; margin-top: 17px; }
+.lower-grid { display: grid; grid-template-columns: minmax(320px, .85fr) minmax(0, 1.65fr); gap: 18px; }
+.activity-panel { padding: 23px; min-height: 265px; }
+.status-dot { color: #1b8b66; background: #ecf8f3; border-color: #dcefe8; }
+.activity-empty { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 34px 20px 16px; }
+.activity-icon { display: grid; place-items: center; width: 52px; height: 52px; color: #8b96a8; background: #f4f6f9; border-radius: 14px; margin-bottom: 13px; }
+.activity-empty strong { color: #334057; font-size: 14px; }
+.activity-empty p { max-width: 340px; color: #8b95a5; font-size: 12px; line-height: 1.55; margin: 6px 0 0; }
+.quick-section { padding: 23px; background: #192943; border-radius: 14px; box-shadow: 0 5px 18px rgba(24,41,67,.15); }
+.quick-heading .panel-kicker { color: #8290a7; }
+.quick-heading .panel-title { color: white; }
+.quick-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 11px; margin-top: 17px; }
+.quick-card { display: grid; grid-template-columns: 40px 1fr auto; align-items: center; gap: 11px; min-width: 0; color: white; padding: 13px; background: #223652; border: 1px solid #30435d; border-radius: 11px; text-decoration: none; transition: background .2s, transform .2s; }
+.quick-card:hover { color: white; background: #2a405e; transform: translateY(-2px); }
+.quick-icon { display: grid; place-items: center; width: 40px; height: 40px; color: var(--quick-color); background: var(--quick-soft); border-radius: 10px; }
+.quick-content { min-width: 0; }
+.quick-content strong, .quick-content small { display: block; }
+.quick-content strong { font-size: 12px; }
+.quick-content small { overflow: hidden; color: #aeb9c9; font-size: 10px; margin-top: 4px; text-overflow: ellipsis; white-space: nowrap; }
+.quick-arrow { color: #74849a; }
+.quick-orange { --quick-color: #ff9b58; --quick-soft: rgba(245,118,34,.13); }
+.quick-violet { --quick-color: #b39aee; --quick-soft: rgba(122,88,199,.18); }
+.quick-rose { --quick-color: #f18da5; --quick-soft: rgba(220,75,111,.15); }
+.quick-navy { --quick-color: #7fc4ee; --quick-soft: rgba(52,120,212,.16); }
+@media (max-width: 1050px) { .metrics-grid { grid-template-columns: repeat(2, 1fr); } .content-grid, .lower-grid { grid-template-columns: 1fr; } }
+@media (max-width: 640px) { .dashboard-shell { padding: 98px 15px 42px; } .hero { align-items: flex-start; flex-direction: column; } .primary-action { width: 100%; justify-content: center; } .metrics-grid, .quick-grid { grid-template-columns: 1fr; } .metric-card { min-height: 132px; } .content-grid { grid-template-columns: minmax(0, 1fr); } .performance-panel, .completion-panel, .activity-panel, .quick-section { padding: 18px; } .empty-chart-copy { align-items: flex-start; } }
