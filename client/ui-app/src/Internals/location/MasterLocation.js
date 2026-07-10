@@ -48,19 +48,6 @@ export default function MasterLocation() {
   const [filterStatus, setFilterStatus] = useState("active");
   const [tableKey, setTableKey] = useState(0); // Reset pagination when filters change
 
-  useEffect(() => {
-    // Load first page with server-side filtering
-    dispatch(getAllMasterLocation({
-      pageNo: 1,
-      pageSize: 50,
-      options: {
-        status: filterStatus,
-        level: filterLevel,
-        search: filterDistrict ? filterDistrict : ""
-      }
-    }));
-  }, [dispatch]);
-
   // Reset pagination when filters change
   useEffect(() => {
     setTableKey(prev => prev + 1);
@@ -426,7 +413,8 @@ export default function MasterLocation() {
                 key={tableKey}
                 data={rows}
                 columns={columns}
-                total={Math.max(rows.length, 1)}
+                total={total}
+                loading={loading}
                 fetchData={(pageNo, pageSize, options) => {
                   // Server-side filtering with pagination
                   const mergedOptions = {
@@ -437,7 +425,7 @@ export default function MasterLocation() {
                   };
                   dispatch(getAllMasterLocation({
                     pageNo,
-                    pageSize: 50,
+                    pageSize,
                     options: mergedOptions
                   }));
                 }}

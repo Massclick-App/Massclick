@@ -195,9 +195,9 @@ const CustomizedTable = ({
                 </TableCell>
               </TableRow>
             ) : (
-              data.map(row => (
+              data.map((row, rowIndex) => (
                 <TableRow
-                  key={row._id}
+                  key={row._id ?? row.id ?? `${page}-${rowIndex}`}
                   className={cx(`custom-row ${onRowClick ? "clickable-row" : ""}`)}
                   onClick={onRowClick ? () => onRowClick(row) : undefined}
                 >
