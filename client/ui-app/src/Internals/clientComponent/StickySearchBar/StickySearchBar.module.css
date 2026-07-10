@@ -467,16 +467,15 @@
 }
 
 .search-action-web {
+  position: relative;
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
+  align-items: center;
   flex-shrink: 0;
 }
 
 .search-btn-web {
   width: auto;
-  height: auto;
+  height: 44px;
   min-width: 124px;
   border: none;
   border-radius: 30px;
@@ -518,6 +517,10 @@
 }
 
 .search-hint-web {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
   color: var(--text-muted);
   font-size: 0.76rem;
   font-weight: 600;
@@ -530,6 +533,10 @@
   align-items: center;
   gap: 12px;
   flex-shrink: 0;
+}
+
+.header-actions :global(.MuiButton-root) {
+  min-height: 44px;
 }
 
 @media (max-width: 1180px) {
