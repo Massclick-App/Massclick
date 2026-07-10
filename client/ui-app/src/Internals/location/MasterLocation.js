@@ -48,7 +48,8 @@ export default function MasterLocation() {
   const [filterStatus, setFilterStatus] = useState("active");
 
   useEffect(() => {
-    dispatch(getAllMasterLocation());
+    // Load all locations on first load (large pageSize to avoid pagination issues with filters)
+    dispatch(getAllMasterLocation({ pageNo: 1, pageSize: 10000 }));
   }, [dispatch]);
 
   const handleChange = e => {
@@ -407,11 +408,26 @@ export default function MasterLocation() {
           </Typography>
 
           <Box sx={{ width: "100%" }}>
-              <CustomizedTable data={rows} columns={columns} total={rows.length} fetchData={(pageNo, pageSize, options) => dispatch(getAllMasterLocation({
-                pageNo,
-                pageSize,
-                options
-              }))} />
+              <CustomizedTable
+                data={rows}
+                columns={columns}
+                total={rows.length}
+                fetchData={(pageNo, pageSize, options) => {
+                  // Pass filters along with pagination
+                  const mergedOptions = {
+                    ...options,
+                    search: options.search || "",
+                    status: filterStatus,
+                    level: filterLevel,
+                    district: filterDistrict
+                  };
+                  dispatch(getAllMasterLocation({
+                    pageNo,
+                    pageSize: 10000,
+                    options: mergedOptions
+                  }));
+                }}
+              />
           </Box>
       </div>
       )}
