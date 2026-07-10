@@ -1,0 +1,93 @@
+import {
+  FETCH_MASTER_LOCATION_REQUEST,
+  FETCH_MASTER_LOCATION_SUCCESS,
+  FETCH_MASTER_LOCATION_FAILURE,
+
+  CREATE_MASTER_LOCATION_REQUEST,
+  CREATE_MASTER_LOCATION_SUCCESS,
+  CREATE_MASTER_LOCATION_FAILURE,
+
+  EDIT_MASTER_LOCATION_REQUEST,
+  EDIT_MASTER_LOCATION_SUCCESS,
+  EDIT_MASTER_LOCATION_FAILURE,
+
+  DELETE_MASTER_LOCATION_REQUEST,
+  DELETE_MASTER_LOCATION_SUCCESS,
+  DELETE_MASTER_LOCATION_FAILURE
+} from "../actions/userActionTypes";
+
+const initialState = {
+  masterLocation: [],
+  total: 0,
+  pageNo: 1,
+  pageSize: 10,
+  loading: false,
+  error: null,
+};
+
+export default function masterLocationReducer(state = initialState, action) {
+  switch (action.type) {
+
+    case FETCH_MASTER_LOCATION_REQUEST:
+    case CREATE_MASTER_LOCATION_REQUEST:
+    case EDIT_MASTER_LOCATION_REQUEST:
+    case DELETE_MASTER_LOCATION_REQUEST:
+      return {
+        ...state,
+        loading: true,
+        error: null,
+      };
+
+    case FETCH_MASTER_LOCATION_SUCCESS:
+      return {
+        ...state,
+        loading: false,
+        masterLocation: action.payload.data,
+        total: action.payload.total,
+        pageNo: action.payload.pageNo,
+        pageSize: action.payload.pageSize,
+        error: null,
+      };
+
+    case CREATE_MASTER_LOCATION_SUCCESS:
+      return {
+        ...state,
+        loading: false,
+        masterLocation: [...state.masterLocation, action.payload],
+        error: null,
+      };
+
+    case EDIT_MASTER_LOCATION_SUCCESS:
+      return {
+        ...state,
+        loading: false,
+        masterLocation: state.masterLocation.map((loc) =>
+          loc._id === action.payload._id ? action.payload : loc
+        ),
+        error: null,
+      };
+
+    case DELETE_MASTER_LOCATION_SUCCESS:
+      return {
+        ...state,
+        loading: false,
+        masterLocation: state.masterLocation.filter(
+          (loc) => loc._id !== action.payload._id
+        ),
+        error: null,
+      };
+
+    case FETCH_MASTER_LOCATION_FAILURE:
+    case CREATE_MASTER_LOCATION_FAILURE:
+    case EDIT_MASTER_LOCATION_FAILURE:
+    case DELETE_MASTER_LOCATION_FAILURE:
+      return {
+        ...state,
+        loading: false,
+        error: action.payload,
+      };
+
+    default:
+      return state;
+  }
+}

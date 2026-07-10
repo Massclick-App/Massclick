@@ -35,6 +35,7 @@ const Business = lazy(() => import(/* webpackChunkName: "admin-business" */ './I
 const Category = lazy(() => import(/* webpackChunkName: "admin-category" */ './Internals/categories/Category.js'));
 const Roles = lazy(() => import(/* webpackChunkName: "admin-roles" */ './Internals/Roles/Roles.js'));
 const Location = lazy(() => import(/* webpackChunkName: "admin-location" */ './Internals/location/Location.js'));
+const MasterLocation = lazy(() => import(/* webpackChunkName: "admin-master-location" */ './Internals/location/MasterLocation.js'));
 const TermsAndConditionsDatas = lazy(() => import(/* webpackChunkName: "admin-terms" */ './Internals/footersContents/termsAndConditions/termsAndConditions.js'));
 const MainGrid = lazy(() => import(/* webpackChunkName: "admin-maingrid" */ './components/MainGrid.js'));
 
@@ -302,6 +303,7 @@ function AppRoutes({
                 <Route path="business" element={<Business />} />
                 <Route path="category" element={<Category />} />
                 <Route path="location" element={<Location />} />
+                <Route path="master-location" element={<MasterLocation />} />
                 <Route path="seo" element={<SeoData />} />
                 <Route path="seopagecontent" element={<SeoPageContent />} />
                 <Route path="seopagecontentblogs" element={<SeoPageContentBlogs />} />

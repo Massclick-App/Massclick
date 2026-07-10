@@ -1,0 +1,155 @@
+/* ===========================
+   Master Location Page Styles (Orange Theme)
+   Owns only .master-location-* classes — no parent/child targeting.
+   =========================== */
+
+.master-location-page {
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 16px;
+  background-color: #f8f9fb;
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.master-location-card {
+  background-color: #ffffff;
+  padding: 30px;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e5e7eb;
+  margin-bottom: 30px;
+  transition: box-shadow 0.3s ease;
+}
+
+.master-location-card:hover {
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.08);
+}
+
+.master-location-card-title {
+  font-size: 1.65rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 12px;
+  border-bottom: 3px solid #ff8c00;
+  width: fit-content;
+  padding-bottom: 8px;
+}
+
+.master-location-hint {
+  font-size: 0.9rem;
+  color: #6b7280;
+  margin-bottom: 26px;
+  max-width: 640px;
+}
+
+.master-location-form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 35px 28px;
+}
+
+.master-location-col-span-all {
+  grid-column: 1 / -1;
+}
+
+.master-location-form-input-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.master-location-input-label {
+  font-size: 0.95rem;
+  color: #6b7280;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+.master-location-error-text {
+  color: #ef4444;
+  font-size: 0.85rem;
+  margin-top: 16px;
+  font-weight: 500;
+}
+
+.master-location-actions-section {
+  padding-top: 20px;
+}
+
+.master-location-actions-content {
+  display: flex;
+  align-items: start;
+  gap: 20px;
+  justify-content: start;
+}
+
+.master-location-submit-button,
+.master-location-cancel-button {
+  height: 48px;
+  padding: 0 24px;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: background-color 0.3s, box-shadow 0.3s, transform 0.1s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.master-location-submit-button {
+  background-color: #ff8c00;
+  color: white;
+}
+
+.master-location-submit-button:hover:not(:disabled) {
+  background-color: #d97800;
+  box-shadow: 0 4px 10px rgba(255, 140, 0, 0.4);
+}
+
+.master-location-submit-button:disabled {
+  background-color: #ffc280;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.master-location-cancel-button {
+  background-color: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+.master-location-cancel-button:hover {
+  background-color: #e5e7eb;
+}
+
+@media (max-width: 992px) {
+  .master-location-form-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 25px 18px;
+  }
+
+  .master-location-card {
+    padding: 25px;
+  }
+}
+
+@media (max-width: 600px) {
+  .master-location-page {
+    padding: 0 10px;
+  }
+
+  .master-location-card {
+    padding: 20px;
+  }
+
+  .master-location-form-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .master-location-card-title {
+    font-size: 1.4rem;
+  }
+}

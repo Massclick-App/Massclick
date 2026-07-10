@@ -17,6 +17,7 @@ import { maintenanceModeMiddleware } from "./middleware/maintenanceModeMiddlewar
 import userRoutes from "./routes/userRoutes.js";
 import userClientRoutes from "./routes/userClientRoute.js";
 import locationRoutes from "./routes/locationRoute.js";
+import masterLocationRoutes from "./routes/masterLocationRoute.js";
 import fcmTokenRoutes from "./routes/fcmTokenRoutes.js";
 import oauthRoutes from "./routes/oauthRoutes.js";
 import categoryRoutes from "./routes/categoryRoute.js";
@@ -114,6 +115,7 @@ app.use("/", fcmTokenRoutes);
 app.use("/", oauthRoutes);
 app.use("/", userClientRoutes);
 app.use("/", locationRoutes);
+app.use("/", masterLocationRoutes);
 app.use("/", categoryRoutes);
 app.use("/", businessListRoutes);
 app.use("/", rolesRoutes);
