@@ -46,11 +46,17 @@ export default function MasterLocation() {
   const [filterLevel, setFilterLevel] = useState("");
   const [filterPincode, setFilterPincode] = useState("");
   const [filterStatus, setFilterStatus] = useState("active");
+  const [tableKey, setTableKey] = useState(0); // Reset pagination when filters change
 
   useEffect(() => {
     // Load all locations on first load (large pageSize to avoid pagination issues with filters)
     dispatch(getAllMasterLocation({ pageNo: 1, pageSize: 10000 }));
   }, [dispatch]);
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setTableKey(prev => prev + 1);
+  }, [filterDistrict, filterLevel, filterPincode, filterStatus]);
 
   const handleChange = e => {
     const { name, value } = e.target;
@@ -409,9 +415,10 @@ export default function MasterLocation() {
 
           <Box sx={{ width: "100%" }}>
               <CustomizedTable
+                key={tableKey}
                 data={rows}
                 columns={columns}
-                total={rows.length}
+                total={Math.max(rows.length, 1)}
                 fetchData={(pageNo, pageSize, options) => {
                   // Pass filters along with pagination
                   const mergedOptions = {
