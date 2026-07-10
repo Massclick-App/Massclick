@@ -183,7 +183,7 @@ const CustomizedTable = ({
                 </TableRow>
               ))
             ) : data.length === 0 ? (
-              <TableRow>
+              <TableRow key="empty-state">
                 <TableCell colSpan={columns.length} className={cx("empty-cell")}>
                   {renderEmpty ? renderEmpty() : (
                     <div className={cx("empty-state")}>

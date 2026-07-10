@@ -49,8 +49,16 @@ export default function MasterLocation() {
   const [tableKey, setTableKey] = useState(0); // Reset pagination when filters change
 
   useEffect(() => {
-    // Load all locations on first load (large pageSize to avoid pagination issues with filters)
-    dispatch(getAllMasterLocation({ pageNo: 1, pageSize: 10000 }));
+    // Load first page with server-side filtering
+    dispatch(getAllMasterLocation({
+      pageNo: 1,
+      pageSize: 50,
+      options: {
+        status: filterStatus,
+        level: filterLevel,
+        search: filterDistrict ? filterDistrict : ""
+      }
+    }));
   }, [dispatch]);
 
   // Reset pagination when filters change
@@ -420,17 +428,16 @@ export default function MasterLocation() {
                 columns={columns}
                 total={Math.max(rows.length, 1)}
                 fetchData={(pageNo, pageSize, options) => {
-                  // Pass filters along with pagination
+                  // Server-side filtering with pagination
                   const mergedOptions = {
                     ...options,
-                    search: options.search || "",
+                    search: filterDistrict || filterPincode || "",
                     status: filterStatus,
-                    level: filterLevel,
-                    district: filterDistrict
+                    level: filterLevel
                   };
                   dispatch(getAllMasterLocation({
                     pageNo,
-                    pageSize: 10000,
+                    pageSize: 50,
                     options: mergedOptions
                   }));
                 }}
