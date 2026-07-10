@@ -41,6 +41,12 @@ export default function MasterLocation() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedRow, setSelectedRow] = useState(null);
 
+  // Filters
+  const [filterDistrict, setFilterDistrict] = useState("");
+  const [filterLevel, setFilterLevel] = useState("");
+  const [filterPincode, setFilterPincode] = useState("");
+  const [filterStatus, setFilterStatus] = useState("active");
+
   useEffect(() => {
     dispatch(getAllMasterLocation());
   }, [dispatch]);
@@ -133,8 +139,23 @@ export default function MasterLocation() {
     setSelectedRow(null);
   };
 
-  const rows = masterLocation.filter(loc => loc.isActive).map((loc, index) => ({
+  // Get unique districts and levels for filter dropdowns
+  const uniqueDistricts = [...new Set(masterLocation.map(loc => loc.district))].sort();
+  const uniqueLevels = ["district", "zone", "ward", "locality"];
+
+  // Apply filters
+  const filteredLocation = masterLocation.filter(loc => {
+    if (filterStatus === "active" && !loc.isActive) return false;
+    if (filterStatus === "inactive" && loc.isActive) return false;
+    if (filterDistrict && loc.district !== filterDistrict) return false;
+    if (filterLevel && loc.level !== filterLevel) return false;
+    if (filterPincode && !((loc.pincode && loc.pincode.includes(filterPincode)) || (loc.pincodes && loc.pincodes.join(",").includes(filterPincode)))) return false;
+    return true;
+  });
+
+  const rows = filteredLocation.map((loc, index) => ({
     id: loc._id || index,
+    name: loc.locality || loc.ward || loc.zone || loc.district,
     state: loc.state,
     district: loc.district,
     zone: loc.zone || "-",
@@ -150,6 +171,10 @@ export default function MasterLocation() {
   }));
 
   const columns = [{
+    id: "name",
+    label: "Name",
+    renderCell: (value, row) => <strong>{value}</strong>
+  }, {
     id: "zone",
     label: "Zone"
   }, {
@@ -264,8 +289,125 @@ export default function MasterLocation() {
               Master Location Table
           </Typography>
 
+          {/* Filters */}
+          <Box sx={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+            gap: "16px",
+            marginBottom: "20px",
+            padding: "16px",
+            backgroundColor: "#f9fafb",
+            borderRadius: "8px"
+          }}>
+            <Box>
+              <label style={{ fontSize: "0.875rem", fontWeight: "600", color: "#6b7280", display: "block", marginBottom: "6px" }}>
+                District
+              </label>
+              <select
+                value={filterDistrict}
+                onChange={(e) => setFilterDistrict(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "8px 12px",
+                  border: "1px solid #d1d5db",
+                  borderRadius: "6px",
+                  fontSize: "0.875rem",
+                  backgroundColor: "#ffffff"
+                }}
+              >
+                <option value="">All Districts</option>
+                {uniqueDistricts.map(d => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+            </Box>
+
+            <Box>
+              <label style={{ fontSize: "0.875rem", fontWeight: "600", color: "#6b7280", display: "block", marginBottom: "6px" }}>
+                Level
+              </label>
+              <select
+                value={filterLevel}
+                onChange={(e) => setFilterLevel(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "8px 12px",
+                  border: "1px solid #d1d5db",
+                  borderRadius: "6px",
+                  fontSize: "0.875rem",
+                  backgroundColor: "#ffffff"
+                }}
+              >
+                <option value="">All Levels</option>
+                {uniqueLevels.map(l => (
+                  <option key={l} value={l}>{l.charAt(0).toUpperCase() + l.slice(1)}</option>
+                ))}
+              </select>
+            </Box>
+
+            <Box>
+              <label style={{ fontSize: "0.875rem", fontWeight: "600", color: "#6b7280", display: "block", marginBottom: "6px" }}>
+                Pincode
+              </label>
+              <input
+                type="text"
+                placeholder="Search pincode..."
+                value={filterPincode}
+                onChange={(e) => setFilterPincode(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "8px 12px",
+                  border: "1px solid #d1d5db",
+                  borderRadius: "6px",
+                  fontSize: "0.875rem"
+                }}
+              />
+            </Box>
+
+            <Box>
+              <label style={{ fontSize: "0.875rem", fontWeight: "600", color: "#6b7280", display: "block", marginBottom: "6px" }}>
+                Status
+              </label>
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "8px 12px",
+                  border: "1px solid #d1d5db",
+                  borderRadius: "6px",
+                  fontSize: "0.875rem",
+                  backgroundColor: "#ffffff"
+                }}
+              >
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+                <option value="all">All</option>
+              </select>
+            </Box>
+
+            <Box sx={{ display: "flex", alignItems: "flex-end" }}>
+              <Button
+                variant="outlined"
+                onClick={() => {
+                  setFilterDistrict("");
+                  setFilterLevel("");
+                  setFilterPincode("");
+                  setFilterStatus("active");
+                }}
+                fullWidth
+              >
+                Clear Filters
+              </Button>
+            </Box>
+          </Box>
+
+          <Typography variant="body2" sx={{ marginBottom: "12px", color: "#6b7280" }}>
+            Showing {rows.length} of {masterLocation.length} locations
+          </Typography>
+
           <Box sx={{ width: "100%" }}>
-              <CustomizedTable data={rows} columns={columns} total={total} fetchData={(pageNo, pageSize, options) => dispatch(getAllMasterLocation({
+              <CustomizedTable data={rows} columns={columns} total={rows.length} fetchData={(pageNo, pageSize, options) => dispatch(getAllMasterLocation({
                 pageNo,
                 pageSize,
                 options
