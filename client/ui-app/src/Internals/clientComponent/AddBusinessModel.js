@@ -149,10 +149,53 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater }) => {
         }
     }, [dispatch, enqueueSnackbar, handleClose, mobileNumber, otpDigits, userName]);
 
+    const extractOtpFromMessage = React.useCallback((message) => {
+        if (!message) return null;
+
+        const cleanMessage = String(message).trim();
+
+        const patterns = [
+            /\b(\d{4,6})\b(?=\D*valid|\D*minute|\D*expire)/i,
+            /is\s+(\d{4,6})\b/i,
+            /otp[:\s]+(\d{4,6})\b/i,
+            /code[:\s]+(\d{4,6})\b/i,
+            /(\d{4,6})[.\s]*(?:is|your|verification)/i,
+            /\b(\d{4,6})\b/
+        ];
+
+        for (const pattern of patterns) {
+            const match = cleanMessage.match(pattern);
+            if (match?.[1]) {
+                const code = match[1].slice(0, OTP_LENGTH);
+                if (code.length === OTP_LENGTH && /^\d{4}$/.test(code)) {
+                    return code;
+                }
+            }
+        }
+        return null;
+    }, []);
+
+    const fillOtpAndVerify = React.useCallback((code) => {
+        if (!code || code.length !== OTP_LENGTH || !/^\d{4}$/.test(code)) return false;
+
+        const nextDigits = code.split('');
+        setOtpDigits(nextDigits);
+
+        setTimeout(() => {
+            handleVerifyOtp(code);
+        }, 100);
+
+        return true;
+    }, [handleVerifyOtp]);
+
+    // Mechanism 1: Web OTP API (Chrome/Firefox Android)
     React.useEffect(() => {
-        if (!otpSent || !open || !('OTPCredential' in window) || !navigator.credentials) return undefined;
+        if (!otpSent || !open || !('OTPCredential' in window) || !navigator.credentials) {
+            return undefined;
+        }
 
         const abortController = new AbortController();
+        const timeout = setTimeout(() => abortController.abort(), 300000); // 5 min timeout
 
         navigator.credentials
             .get({
@@ -160,19 +203,70 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater }) => {
                 signal: abortController.signal,
             })
             .then((credential) => {
-                const code = credential?.code?.replace(/\D/g, '').slice(0, OTP_LENGTH);
-                if (code?.length === OTP_LENGTH) {
-                    const nextDigits = code.split('');
-                    setOtpDigits(nextDigits);
-                    handleVerifyOtp(code);
+                if (credential?.code) {
+                    const extractedCode = extractOtpFromMessage(credential.code);
+                    fillOtpAndVerify(extractedCode);
                 }
             })
             .catch(() => {
-                // Web OTP is best-effort and only works on supported mobile browsers.
+                // Silently fail, clipboard listener will handle it
             });
 
-        return () => abortController.abort();
-    }, [handleVerifyOtp, otpSent, open]);
+        return () => {
+            clearTimeout(timeout);
+            abortController.abort();
+        };
+    }, [otpSent, open, extractOtpFromMessage, fillOtpAndVerify]);
+
+    // Mechanism 2: Clipboard Listener (iOS, Samsung Internet, fallback)
+    React.useEffect(() => {
+        if (!otpSent || !open) return undefined;
+
+        const handleClipboardChange = async () => {
+            try {
+                if (!navigator.clipboard?.readText) return;
+
+                const text = await navigator.clipboard.readText();
+                const extractedCode = extractOtpFromMessage(text);
+
+                if (extractedCode && otpDigits.join('') === '') {
+                    fillOtpAndVerify(extractedCode);
+                }
+            } catch {
+                // Permission denied or clipboard empty
+            }
+        };
+
+        // Poll clipboard every 500ms when OTP screen is active
+        const clipboardInterval = setInterval(handleClipboardChange, 500);
+
+        // Also listen for paste events
+        const handlePaste = (e) => {
+            const pastedText = e.clipboardData?.getData('text') || '';
+            const extractedCode = extractOtpFromMessage(pastedText);
+            if (extractedCode) {
+                e.preventDefault();
+                fillOtpAndVerify(extractedCode);
+            }
+        };
+
+        document.addEventListener('paste', handlePaste);
+
+        return () => {
+            clearInterval(clipboardInterval);
+            document.removeEventListener('paste', handlePaste);
+        };
+    }, [otpSent, open, extractOtpFromMessage, fillOtpAndVerify, otpDigits]);
+
+    // Mechanism 3: Auto-verify when 4 digits are filled
+    React.useEffect(() => {
+        if (otpDigits.every(digit => digit !== '') && otpSent) {
+            const timer = setTimeout(() => {
+                handleVerifyOtp(otpDigits.join(''));
+            }, 500);
+            return () => clearTimeout(timer);
+        }
+    }, [otpDigits, otpSent, handleVerifyOtp]);
 
     const applyOtpValue = (index, value) => {
         const digits = value.replace(/\D/g, '').slice(0, OTP_LENGTH - index);
