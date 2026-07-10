@@ -804,7 +804,7 @@
 }
 
 .draft-actions-bar {
-  align-items: center;
+  align-items: flex-end;
   display: flex;
   flex: 1 1 420px;
   flex-wrap: wrap;
@@ -849,7 +849,7 @@
   font: inherit;
   font-size: 0.82rem;
   font-weight: 800;
-  min-height: 38px;
+  min-height: 32px;
   padding: 0 16px;
   transition: background 0.2s ease, box-shadow 0.2s ease, color 0.2s ease, transform 0.2s ease;
   white-space: nowrap;
@@ -880,9 +880,39 @@
   font: inherit;
   font-size: 0.8rem;
   font-weight: 800;
-  min-height: 36px;
+  line-height: 1;
+  height: 40px;
   padding: 8px 14px;
   transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.template-download-button {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #f97316;
+  border-radius: 999px;
+  color: #c2410c;
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 800;
+  line-height: 1;
+  height: 40px;
+  padding: 7px 13px;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+  white-space: nowrap;
+}
+
+.template-download-button:hover {
+  background: #fff7ed;
+  color: #9a3412;
+  transform: translateY(-1px);
+}
+
+.template-download-button:focus-visible {
+  outline: 2px solid #fb923c;
+  outline-offset: 2px;
 }
 
 .draft-action-button:hover {

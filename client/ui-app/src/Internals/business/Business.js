@@ -18,7 +18,6 @@ import {
   Box, Button, Typography, CircularProgress, IconButton, Avatar, Dialog, DialogTitle, DialogContent, DialogActions,
   Drawer, Divider, Chip
 } from "@mui/material";
-import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined';
 import { useSnackbar } from 'notistack';
 import PropTypes from 'prop-types';
 import { styled } from '@mui/material/styles';
@@ -41,6 +40,7 @@ import BusinessFormStep1 from "./components/BusinessFormStep1";
 import BusinessFormStep2 from "./components/BusinessFormStep2";
 import BusinessSidebar from "./components/BusinessSidebar";
 import LogoCropperModal from "./components/LogoCropperModal";
+import { downloadBusinessDetailsTemplate } from "./businessDetailsTemplate";
 import "quill/dist/quill.snow.css";
 const cx = createScopedClassNames(styles);
 const LISTING_MODE = {
@@ -4501,6 +4501,9 @@ const BusinessList = React.memo(() => {
           {!editMode && (
             <div className={cx("draft-actions-bar")}>
               {!editMode && renderListingModeToggle()}
+              <button type="button" className={cx("template-download-button")} onClick={downloadBusinessDetailsTemplate}>
+                Download Template
+              </button>
               <button type="button" className={cx("draft-action-button")} onClick={saveDraftToLocal}>
                 Save Draft
               </button>
@@ -4520,8 +4523,12 @@ const BusinessList = React.memo(() => {
                   onClick={openGmapsPicker}
                   sx={{
                     borderColor: '#ff8c42',
+                    borderRadius: '999px',
                     color: '#ff8c42',
                     fontSize: '0.8rem',
+                    fontWeight: 800,
+                    height: '40px',
+                    padding: '7px 14px',
                     textTransform: 'none',
                     '&:hover': { borderColor: '#e67a2e', bgcolor: '#fff5ee' }
                   }}
