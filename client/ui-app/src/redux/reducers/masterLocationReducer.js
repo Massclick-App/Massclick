@@ -13,7 +13,11 @@ import {
 
   DELETE_MASTER_LOCATION_REQUEST,
   DELETE_MASTER_LOCATION_SUCCESS,
-  DELETE_MASTER_LOCATION_FAILURE
+  DELETE_MASTER_LOCATION_FAILURE,
+
+  SEARCH_MASTER_LOCATION_REQUEST,
+  SEARCH_MASTER_LOCATION_SUCCESS,
+  SEARCH_MASTER_LOCATION_FAILURE
 } from "../actions/userActionTypes";
 
 const initialState = {
@@ -23,6 +27,12 @@ const initialState = {
   pageSize: 10,
   loading: false,
   error: null,
+
+  // Free-text location search (hero search bar autocomplete) — kept separate
+  // from the admin list state above so one doesn't clobber the other.
+  locationSearchResults: [],
+  locationSearchLoading: false,
+  locationSearchQuery: "",
 };
 
 export default function masterLocationReducer(state = initialState, action) {
@@ -75,6 +85,28 @@ export default function masterLocationReducer(state = initialState, action) {
           (loc) => loc._id !== action.payload._id
         ),
         error: null,
+      };
+
+    case SEARCH_MASTER_LOCATION_REQUEST:
+      return {
+        ...state,
+        locationSearchLoading: true,
+        locationSearchQuery: action.meta?.query ?? state.locationSearchQuery,
+      };
+
+    case SEARCH_MASTER_LOCATION_SUCCESS:
+      return {
+        ...state,
+        locationSearchLoading: false,
+        locationSearchResults: action.payload.data,
+        locationSearchQuery: action.payload.query,
+      };
+
+    case SEARCH_MASTER_LOCATION_FAILURE:
+      return {
+        ...state,
+        locationSearchLoading: false,
+        locationSearchResults: [],
       };
 
     case FETCH_MASTER_LOCATION_FAILURE:

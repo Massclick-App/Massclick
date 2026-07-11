@@ -112,23 +112,64 @@ export const viewAllMasterLocation = async ({
 
 // Resolve free text ("kk nagar", "manaparai", "trichy") to a location, then
 // expose its slug so callers can prefix-match businesses at any hierarchy level.
+// Ranked exact > prefix > substring match first, so a term like "mettu" surfaces
+// "Mettur"/"Metturdam" (prefix hits) ahead of "Sundamettupudur" (mid-string hit)
+// instead of results being decided by which district's slug sorts first.
 export const searchMasterLocation = async (text, limit = 10) => {
   const term = (text || "").toLowerCase().trim();
   if (!term) return [];
 
-  return masterLocationModel
-    .find({
-      isActive: true,
-      $or: [
-        { keywords: term },
-        { keywords: { $regex: term, $options: "i" } },
-        { slug: { $regex: slugify(term), $options: "i" } },
-        { pincode: term },
-      ],
-    })
-    .sort({ level: 1, slug: 1 })
-    .limit(limit)
-    .lean();
+  return masterLocationModel.aggregate([
+    {
+      $match: {
+        isActive: true,
+        $or: [
+          { keywords: term },
+          { keywords: { $regex: term, $options: "i" } },
+          { slug: { $regex: slugify(term), $options: "i" } },
+          { pincode: term },
+        ],
+      },
+    },
+    {
+      $addFields: {
+        // keywords[0] is always the doc's own name (locality, or ward/zone
+        // for parent-level docs) — see buildDerivedFields. Matching there
+        // outranks a match that's only inherited from a parent's name, so
+        // e.g. "Mettur" and "Metturdam" beat every other locality that just
+        // happens to sit inside the Mettur zone.
+        _rank: {
+          $switch: {
+            branches: [
+              { case: { $in: [term, "$keywords"] }, then: 0 },
+              { case: { $eq: [{ $indexOfCP: [{ $arrayElemAt: ["$keywords", 0] }, term] }, 0] }, then: 1 },
+              {
+                case: {
+                  $gt: [
+                    {
+                      $size: {
+                        $filter: {
+                          input: "$keywords",
+                          as: "k",
+                          cond: { $eq: [{ $indexOfCP: ["$$k", term] }, 0] },
+                        },
+                      },
+                    },
+                    0,
+                  ],
+                },
+                then: 2,
+              },
+            ],
+            default: 3,
+          },
+        },
+      },
+    },
+    { $sort: { _rank: 1, level: 1, slug: 1 } },
+    { $limit: limit },
+    { $project: { _rank: 0 } },
+  ]);
 };
 
 export const updateMasterLocation = async (id, reqBody = {}) => {

@@ -3,7 +3,8 @@ import {
   FETCH_MASTER_LOCATION_REQUEST, FETCH_MASTER_LOCATION_SUCCESS, FETCH_MASTER_LOCATION_FAILURE,
   CREATE_MASTER_LOCATION_REQUEST, CREATE_MASTER_LOCATION_SUCCESS, CREATE_MASTER_LOCATION_FAILURE,
   EDIT_MASTER_LOCATION_REQUEST, EDIT_MASTER_LOCATION_SUCCESS, EDIT_MASTER_LOCATION_FAILURE,
-  DELETE_MASTER_LOCATION_REQUEST, DELETE_MASTER_LOCATION_SUCCESS, DELETE_MASTER_LOCATION_FAILURE
+  DELETE_MASTER_LOCATION_REQUEST, DELETE_MASTER_LOCATION_SUCCESS, DELETE_MASTER_LOCATION_FAILURE,
+  SEARCH_MASTER_LOCATION_REQUEST, SEARCH_MASTER_LOCATION_SUCCESS, SEARCH_MASTER_LOCATION_FAILURE
 } from "./userActionTypes.js";
 import { getClientToken } from "./clientAuthAction.js";
 
@@ -85,6 +86,33 @@ export const editMasterLocation = (id, locationData) => async (dispatch) => {
   } catch (error) {
     dispatch({ type: EDIT_MASTER_LOCATION_FAILURE, payload: error.response?.data || error.message });
     throw error;
+  }
+};
+
+// Public: resolve free text ("srirangam", "kk nagar") to real masterlocations
+// docs (with hierarchyPath/level/slug) — no auth token needed.
+export const searchMasterLocations = (text, limit = 12) => async (dispatch) => {
+  const query = String(text || "").trim();
+  dispatch({ type: SEARCH_MASTER_LOCATION_REQUEST, meta: { query } });
+
+  if (query.length < 2) {
+    dispatch({ type: SEARCH_MASTER_LOCATION_SUCCESS, payload: { data: [], query } });
+    return [];
+  }
+
+  try {
+    const response = await axiosInstance.get(
+      `${API_URL}/masterlocation/search?q=${encodeURIComponent(query)}&limit=${limit}`
+    );
+    const data = response.data?.data || [];
+    dispatch({ type: SEARCH_MASTER_LOCATION_SUCCESS, payload: { data, query } });
+    return data;
+  } catch (error) {
+    dispatch({
+      type: SEARCH_MASTER_LOCATION_FAILURE,
+      payload: error.response?.data || error.message
+    });
+    return [];
   }
 };
 

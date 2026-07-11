@@ -6,6 +6,7 @@ import MicIcon from "@mui/icons-material/Mic";
 import HistoryToggleOffIcon from "@mui/icons-material/HistoryToggleOff";
 import { useDispatch, useSelector } from "react-redux";
 import { getBackendSuggestions } from "../../../redux/actions/businessListAction";
+import { searchMasterLocations } from "../../../redux/actions/masterLocationAction";
 import { fetchPublicUserCounter } from "../../../redux/actions/publicUserCounterAction.js";
 import { navigateToSearchResult } from "../../../utils/searchResultNavigation";
 import { detectDistrict } from "../../../redux/actions/locationAction";
@@ -23,66 +24,80 @@ const cx = createScopedClassNames(styles);
 const DEFAULT_LOCATION = "Trichy";
 const SUGGESTION_PAGE_SIZE = 10;
 const isObjectId = s => /^[a-f\d]{24}$/i.test(String(s || "").trim());
+const getOptionLabel = option => {
+  if (typeof option === "string") return option;
+  if (!option || typeof option !== "object") return "";
+  return String(
+    option.category ||
+    option.categoryName ||
+    option.businessName ||
+    option.location ||
+    option.locationName ||
+    option.name ||
+    ""
+  ).trim();
+};
+// Renders one or more labeled option groups inside a single positioned
+// dropdown box. `sections` lets callers (e.g. location autocomplete) stack
+// multiple sources for side-by-side comparison without duplicating the
+// absolutely-positioned container (which would just overlap).
 const CategoryDropdown = React.memo(({
   label,
   options,
   onSelect,
   onReachEnd,
   hasMore = false,
-  isLoadingMore = false
+  isLoadingMore = false,
+  sections
 }) => {
   const MAX_HEIGHT_PX = 220;
-  const getOptionLabel = option => {
-    if (typeof option === "string") return option;
-    if (!option || typeof option !== "object") return "";
-    return String(
-      option.category ||
-      option.categoryName ||
-      option.businessName ||
-      option.location ||
-      option.locationName ||
-      option.name ||
-      ""
-    ).trim();
-  };
-  const visibleOptions = (options || []).filter(option => {
-    const labelText = getOptionLabel(option);
-    return labelText && !isObjectId(labelText);
-  });
-  const handleScroll = event => {
-    if (!onReachEnd || !hasMore || isLoadingMore) return;
-    const {
-      scrollTop,
-      scrollHeight,
-      clientHeight
-    } = event.currentTarget;
-    if (scrollHeight - scrollTop - clientHeight <= 24) {
-      onReachEnd();
-    }
-  };
-  if (visibleOptions.length === 0) return null;
+  const resolvedSections = sections && sections.length ? sections : [{ label, options, onSelect, onReachEnd, hasMore, isLoadingMore }];
+  const preparedSections = resolvedSections.map(section => ({
+    ...section,
+    visibleOptions: (section.options || []).filter(option => {
+      const labelText = getOptionLabel(option);
+      return labelText && !isObjectId(labelText);
+    })
+  })).filter(section => section.visibleOptions.length > 0);
+  if (preparedSections.length === 0) return null;
   return <div className={cx("category-custom-dropdown")} style={{
     zIndex: 10000
   }}>
-      <div className={cx("trending-label")}>{label}</div>
-      <div className={cx("options-list-container")} style={{
-      maxHeight: `${MAX_HEIGHT_PX}px`,
-      overflowY: "auto"
-    }} onScroll={handleScroll}>
-        {visibleOptions.map((option, index) => {
-        const displayText = getOptionLabel(option);
-        return <div key={index} className={cx("option-item")} onClick={() => onSelect(option)}>
-              {label.toLowerCase().includes("location") ? <LocationOnIcon className={cx("option-icon")} /> : label === "RECENT SEARCHES" ? <HistoryToggleOffIcon className={cx("option-icon")} /> : <SearchIcon className={cx("option-icon")} />}
+      {preparedSections.map((section, sectionIndex) => {
+      const handleScroll = event => {
+        if (!section.onReachEnd || !section.hasMore || section.isLoadingMore) return;
+        const {
+          scrollTop,
+          scrollHeight,
+          clientHeight
+        } = event.currentTarget;
+        if (scrollHeight - scrollTop - clientHeight <= 24) {
+          section.onReachEnd();
+        }
+      };
+      return <div key={section.label || sectionIndex}>
+            <div className={cx("trending-label")}>{section.label}</div>
+            <div className={cx("options-list-container")} style={{
+          maxHeight: `${MAX_HEIGHT_PX}px`,
+          overflowY: "auto"
+        }} onScroll={handleScroll}>
+              {section.visibleOptions.map((option, index) => {
+            const displayText = getOptionLabel(option);
+            return <div key={index} className={cx("option-item")} onClick={() => section.onSelect(option)}>
+                    {(section.label || "").toLowerCase().includes("location") ? <LocationOnIcon className={cx("option-icon")} /> : section.label === "RECENT SEARCHES" ? <HistoryToggleOffIcon className={cx("option-icon")} /> : <SearchIcon className={cx("option-icon")} />}
 
-              <span className={cx("option-text-main")}>{displayText}</span>
-
-              {label === "RECENT SEARCHES" && typeof option !== "string" && (option.category || option.categoryName) && <span className={cx("option-text-sub")}>{option.category || option.categoryName}</span>}
-            </div>;
-      })}
-        {isLoadingMore && <div className={cx("option-item")}>
-            <span className={cx("option-text-main")}>Loading more...</span>
-          </div>}
-      </div>
+                    <span className={cx("option-text-group")}>
+                      <span className={cx("option-text-main")}>{displayText}</span>
+                      {typeof option !== "string" && (option.subLabel || (section.label === "RECENT SEARCHES" && (option.category || option.categoryName))) && <span className={cx("option-text-sub")}>{option.subLabel || option.category || option.categoryName}</span>}
+                    </span>
+                  </div>;
+          })}
+              {section.isLoadingMore && <div className={cx("option-item")}>
+                  <span className={cx("option-text-main")}>Loading more...</span>
+                </div>}
+            </div>
+          </div>;
+    })}
     </div>;
 });
 const HeroSection = React.memo(({
@@ -104,6 +119,11 @@ const HeroSection = React.memo(({
   const [showVoiceModal, setShowVoiceModal] = useState(false);
   const [counterNow, setCounterNow] = useState(Date.now());
   const businessState = useSelector(state => state.businessListReducer);
+  const masterLocationState = useSelector(state => state.masterLocationReducer);
+  const {
+    locationSearchResults = [],
+    locationSearchQuery = ""
+  } = masterLocationState || {};
   const publicCounterSettings = useSelector(state => state.publicUserCounter?.publicSettings);
   const publicUsersCount = publicCounterSettings ? getVisibleCounterCount(publicCounterSettings, counterNow) : null;
   const {
@@ -244,6 +264,7 @@ const HeroSection = React.memo(({
       limit: SUGGESTION_PAGE_SIZE,
       append: false
     }));
+    dispatch(searchMasterLocations(debouncedLocation.trim()));
   }, [debouncedLocation, dispatch, showLocationDropdown]);
   const recentSearchOptions = [...new Set((searchLogs || []).map(log => log.categoryName ? log.categoryName.trim() : "").filter(name => name && !isObjectId(name)))];
   const suggestionCategories = (() => {
@@ -281,6 +302,23 @@ const HeroSection = React.memo(({
       });
     });
     return list;
+  })();
+  // New: real masterlocations match (district/zone/ward/locality), shown
+  // alongside the legacy business-field suggestions above for comparison.
+  // subLabel is kept to zone + district only (not the full breadcrumb) so
+  // the option stays scannable instead of repeating the same words 5x.
+  const masterLocationSuggestions = (() => {
+    if (!Array.isArray(locationSearchResults) || locationSearchResults.length === 0) return [];
+    return locationSearchResults.map(loc => {
+      const name = loc.locality || loc.ward || loc.zone || loc.district;
+      const contextParts = [loc.zone, loc.district].filter(part => part && part.toLowerCase() !== String(name).toLowerCase());
+      return {
+        _raw: loc,
+        name,
+        subLabel: [...new Set(contextParts)].slice(0, 2).join(", "),
+        slug: loc.slug
+      };
+    });
   })();
   const parseVoiceQuery = text => {
     const lower = text.toLowerCase().trim();
@@ -406,16 +444,30 @@ const HeroSection = React.memo(({
             setIsDropdownOpen(false);
           }} />
 
-            {showLocationDropdown && parsedLocationSuggestions.length > 0 && <CategoryDropdown label="LOCATION SUGGESTIONS" options={parsedLocationSuggestions} onReachEnd={() => maybeLoadMoreSuggestions(locationName.trim())} hasMore={backendSuggestionsHasMore && backendSuggestionsQuery === locationName.trim()} isLoadingMore={backendSuggestionsLoading && backendSuggestionsQuery === locationName.trim()} onSelect={val => {
-            const chosen = typeof val === "string" ? val : String(val);
-            setLocationName(chosen);
-            localStorage.setItem("selectedLocation", chosen);
-            dispatch({
-              type: "SET_SELECTED_DISTRICT",
-              payload: chosen
-            });
-            setShowLocationDropdown(false);
-          }} />}
+            {showLocationDropdown && (() => {
+            const selectLocation = val => {
+              const chosen = typeof val === "string" ? val : val.name;
+              setLocationName(chosen);
+              localStorage.setItem("selectedLocation", chosen);
+              dispatch({
+                type: "SET_SELECTED_DISTRICT",
+                payload: chosen
+              });
+              setShowLocationDropdown(false);
+            };
+            return <CategoryDropdown sections={[{
+              label: "VERIFIED LOCATIONS",
+              options: masterLocationSuggestions,
+              onSelect: selectLocation
+            }, {
+              label: "LOCATION SUGGESTIONS",
+              options: parsedLocationSuggestions,
+              onSelect: selectLocation,
+              onReachEnd: () => maybeLoadMoreSuggestions(locationName.trim()),
+              hasMore: backendSuggestionsHasMore && backendSuggestionsQuery === locationName.trim(),
+              isLoadingMore: backendSuggestionsLoading && backendSuggestionsQuery === locationName.trim()
+            }]} />;
+          })()}
           </div>
 
           <div className={cx("input-group search-group")} ref={categoryRef}>

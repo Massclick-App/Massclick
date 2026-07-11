@@ -440,6 +440,13 @@
   flex-shrink: 0;
 }
 
+.option-text-group {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
 .option-text-main {
   white-space: nowrap;
   overflow: hidden;
@@ -447,9 +454,12 @@
 }
 
 .option-text-sub {
-  margin-left: auto;
+  margin-top: 2px;
   color: gray;
   font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .custom-input {
