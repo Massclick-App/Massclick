@@ -114,6 +114,9 @@ const HeroSection = React.memo(({
   const locationRef = useRef(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [showLocationDropdown, setShowLocationDropdown] = useState(false);
+  // Canonical masterlocations slug of a VERIFIED LOCATIONS pick. Cleared the
+  // moment the user types freely — then the server resolves the text itself.
+  const [masterLocationSlug, setMasterLocationSlug] = useState(() => localStorage.getItem("selectedLocationSlug") || "");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [debouncedLocation, setDebouncedLocation] = useState("");
   const [showVoiceModal, setShowVoiceModal] = useState(false);
@@ -371,6 +374,7 @@ const HeroSection = React.memo(({
     navigateToSearchResult({
       searchTerm: cleanedTerm,
       location: location,
+      masterLocationSlug,
       navigate,
       dispatch,
       isKnownCategory: false,
@@ -433,6 +437,8 @@ const HeroSection = React.memo(({
             const value = e.target.value;
             setLocationName(value);
             localStorage.setItem("selectedLocation", value);
+            setMasterLocationSlug("");
+            localStorage.removeItem("selectedLocationSlug");
             dispatch({
               type: "SET_SELECTED_DISTRICT",
               payload: value
@@ -449,6 +455,12 @@ const HeroSection = React.memo(({
               const chosen = typeof val === "string" ? val : val.name;
               setLocationName(chosen);
               localStorage.setItem("selectedLocation", chosen);
+              // Verified picks carry the canonical slug; legacy text
+              // suggestions don't and clear any previous one.
+              const slug = typeof val === "object" && val.slug ? val.slug : "";
+              setMasterLocationSlug(slug);
+              if (slug) localStorage.setItem("selectedLocationSlug", slug);
+              else localStorage.removeItem("selectedLocationSlug");
               dispatch({
                 type: "SET_SELECTED_DISTRICT",
                 payload: chosen

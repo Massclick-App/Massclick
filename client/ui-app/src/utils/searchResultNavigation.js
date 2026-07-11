@@ -44,6 +44,10 @@ export const normalizeSearchTerm = (text = "") => {
 export const navigateToSearchResult = ({
   searchTerm,
   location,
+  // Canonical masterlocations slug (e.g. "tamil-nadu-salem-mettur") from a
+  // verified-location pick. Sent to the search API instead of the free text,
+  // so ambiguous names (two "Puthur"s) hit the exact node the user chose.
+  masterLocationSlug = "",
   navigate,
   dispatch,
   isKnownCategory = false,
@@ -65,6 +69,9 @@ export const navigateToSearchResult = ({
   const navigationState = {
     // Location - normalized
     location: normalizedLocation,
+
+    // Canonical location slug from a verified pick ("" when typed freely)
+    masterLocationSlug,
 
     // Display name - use raw input for UI display
     displayName: searchTerm,
@@ -108,6 +115,7 @@ export const extractSearchResultData = (locationState = {}, urlParams = {}) => {
   const {
     searchTerm,
     location,
+    masterLocationSlug = "",
     displayName,
     category: stateCategory,
     results = null,
@@ -143,6 +151,7 @@ export const extractSearchResultData = (locationState = {}, urlParams = {}) => {
   return {
     searchTerm: normalizeSearchTerm(finalSearchTerm),
     location: normalizeSearchTerm(finalLocation),
+    masterLocationSlug: String(masterLocationSlug || ""),
     displayName: finalSearchTerm, // Keep original for display
     isKnownCategory, // Flag for API call routing
     results: Array.isArray(results) ? results : null,

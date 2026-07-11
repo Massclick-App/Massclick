@@ -11,6 +11,7 @@ import { enhanceSearchQuery, resolveCategory } from "../../utils/geminiQueryEnha
 import { invalidateSearchCache, invalidateDashboardCache, invalidateCategoryCache } from "../../utils/cacheInvalidation.js";
 import { buildBusinessExportWorkbook } from "../../utils/businessExportXlsx.js";
 import { ensureBusinessCertificates } from "../../helper/businessList/businessCertificateHelper.js";
+import { resolveLocationForSearch } from "../../helper/location/locationResolver.js";
 
 const ensureCertificatesForActivation = async (previousBusiness, business) => {
   const businessWithCertificates = await ensureBusinessCertificates(business);
@@ -798,8 +799,51 @@ export const mainSearchController = async (req, res) => {
 
     const matchQuery = { businessesLive: true, $and: [] };
 
-    // Location filter
+    // ── Location filter ──────────────────────────────────────────────────────
+    // Resolve the location text to a masterlocations node, then match linked
+    // businesses by slug prefix (parent slugs prefix child slugs, so one regex
+    // covers the whole subtree at any level). Unlinked businesses fall back to
+    // the legacy exact-text match so they don't vanish from results while
+    // linkage coverage grows.
+    let resolvedLocation = null;
     if (location) {
+      resolvedLocation = await resolveLocationForSearch(location).catch((err) => {
+        console.error("[Search] location resolve failed:", err.message);
+        return null;
+      });
+    }
+    const slugPrefixRegex = resolvedLocation
+      ? new RegExp(`^${escapeRegex(resolvedLocation.slug)}(-|$)`)
+      : null;
+
+    if (resolvedLocation) {
+      console.log(`[Search] location resolved: "${location}" -> ${resolvedLocation.level}:${resolvedLocation.slug}`);
+      // Fallback matches the node's own name(s) against unlinked businesses'
+      // free text. The district name joins only for district-level searches —
+      // a "mettur" search must not sweep in every unlinked "Salem" business.
+      const locKey = location.toLowerCase().trim();
+      const fallbackNames = [
+        ...new Set([
+          locKey,
+          ...(districtAliasMap[locKey] || []),
+          resolvedLocation.locality || resolvedLocation.ward || resolvedLocation.zone,
+          ...(resolvedLocation.level === "district" ? [resolvedLocation.district] : []),
+          ...(resolvedLocation.alternateNames || []),
+        ].filter(Boolean).map((n) => normalize(n))),
+      ];
+      matchQuery.$and.push({
+        $or: [
+          { "masterLocation.slug": slugPrefixRegex },
+          {
+            "masterLocation.locationId": null,
+            $or: fallbackNames.map((l) => ({
+              location: { $regex: `^${escapeRegex(l)}$`, $options: "i" }
+            })),
+          },
+        ],
+      });
+    } else if (location) {
+      // Nothing resolved — legacy behavior untouched.
       const locKey = location.toLowerCase().trim();
       const aliases = districtAliasMap[locKey] || [locKey];
       matchQuery.$and.push({
@@ -978,6 +1022,20 @@ export const mainSearchController = async (req, res) => {
               0,
               1
             ]
+          },
+          // Businesses verified into the searched location subtree rank above
+          // legacy free-text fallback matches.
+          locationPriority: {
+            $cond: [
+              slugPrefixRegex ? {
+                $regexMatch: {
+                  input: { $ifNull: ["$masterLocation.slug", ""] },
+                  regex: slugPrefixRegex.source
+                }
+              } : false,
+              0,
+              1
+            ]
           }
         }
       },
@@ -991,6 +1049,7 @@ export const mainSearchController = async (req, res) => {
           : (useCustomSort || {
               ...(term ? { textScore: -1 } : {}),
               categoryPriority: 1,
+              locationPriority: 1,
               amountPaid: -1,
               paidDate: -1,
               createdAt: -1
@@ -998,7 +1057,7 @@ export const mainSearchController = async (req, res) => {
       },
       { $skip: skip },
       { $limit: pageSize },
-      { $project: { reviews: 0, activeReviews: 0, categoryPriority: 0, textScore: 0, _distanceSort: 0 } }
+      { $project: { reviews: 0, activeReviews: 0, categoryPriority: 0, locationPriority: 0, textScore: 0, _distanceSort: 0 } }
     ];
 
     const usesComputedRatingFilter = Number.isFinite(minRatingValue) && minRatingValue > 0;

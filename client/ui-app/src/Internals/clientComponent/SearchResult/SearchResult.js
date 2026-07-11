@@ -192,11 +192,15 @@ const SearchResults = React.memo(() => {
   const {
     searchTerm,
     location: locationText,
+    masterLocationSlug,
     displayName,
     isKnownCategory,
     results: stateResults,
     logAlreadySent: stateLogSent
   } = extractSearchResultData(locationState.state || {}, urlParams);
+  // Verified-location picks search by canonical slug (exact node); free text
+  // goes through the server-side resolver. Display always uses locationText.
+  const apiLocation = masterLocationSlug || locationText;
 
   const safeStateResults = Array.isArray(stateResults) ? stateResults : null;
   const searchText = displayName;
@@ -385,8 +389,8 @@ const SearchResults = React.memo(() => {
     if (!normalizedSearchTerm || !locationText) return;
 
     const requestId = ++requestIdRef.current;
-    console.log(`[SearchResult] initial load: calling performSearch(term="${normalizedSearchTerm}", location="${locationText}", isKnownCategory=${isKnownCategory})`, buildSearchParams(1));
-    dispatch(performSearch(normalizedSearchTerm, locationText, isKnownCategory, buildSearchParams(1))).then(action => {
+    console.log(`[SearchResult] initial load: calling performSearch(term="${normalizedSearchTerm}", location="${apiLocation}", isKnownCategory=${isKnownCategory})`, buildSearchParams(1));
+    dispatch(performSearch(normalizedSearchTerm, apiLocation, isKnownCategory, buildSearchParams(1))).then(action => {
       if (requestId !== requestIdRef.current) {
         console.log("[SearchResult] initial load: response discarded (stale — a newer search started)");
         return;
@@ -406,7 +410,7 @@ const SearchResults = React.memo(() => {
       setInitialSearchResolved(true);
       loadingPagesRef.current.clear();
     });
-  }, [safeStateResults, normalizedSearchTerm, locationText, isKnownCategory, dispatch]); // eslint-disable-line
+  }, [safeStateResults, normalizedSearchTerm, locationText, apiLocation, isKnownCategory, dispatch]); // eslint-disable-line
 
   // ─── Re-fetch when filters / sort / geo change ───────────────────────────────
   const normalizedActiveFilters = useMemo(() => cleanFilterValues(activeFilters), [activeFilters]);
@@ -418,7 +422,7 @@ const SearchResults = React.memo(() => {
 
     const requestId = ++requestIdRef.current;
     console.log(`[SearchResult] refetch (filters/sort/geo changed): calling performSearch(term="${normalizedSearchTerm}", isKnownCategory=${isKnownCategory})`, buildSearchParams(1));
-    dispatch(performSearch(normalizedSearchTerm, locationText, isKnownCategory, buildSearchParams(1))).then(action => {
+    dispatch(performSearch(normalizedSearchTerm, apiLocation, isKnownCategory, buildSearchParams(1))).then(action => {
       if (requestId !== requestIdRef.current) {
         console.log("[SearchResult] refetch: response discarded (stale — a newer search started)");
         return;
@@ -477,7 +481,7 @@ const SearchResults = React.memo(() => {
         ...(effectiveCategory
           ? { category: effectiveCategory }
           : { term: normalizedSearchTerm }),
-        location: locationText,
+        location: apiLocation,
         ...buildSearchParams(page)
       };
       console.log(`[SearchResult] loadPage(${page}): calling GET /businesslist/search`, params);
@@ -512,7 +516,7 @@ const SearchResults = React.memo(() => {
       loadingPagesRef.current.delete(page);
       setIsLoadingMore(false);
     }
-  }, [hasMore, normalizedSearchTerm, locationText, buildSearchParams, effectiveCategory, dispatch]);
+  }, [hasMore, normalizedSearchTerm, locationText, apiLocation, buildSearchParams, effectiveCategory, dispatch]);
 
   // ─── IntersectionObserver for infinite scroll ─────────────────────────────────
   useEffect(() => {
@@ -643,8 +647,8 @@ const SearchResults = React.memo(() => {
   }, [dispatch, effectiveCategory, locationText]);
 
   const handleRetry = useCallback(() => {
-    dispatch(performSearch(searchText, locationText));
-  }, [dispatch, searchText, locationText]);
+    dispatch(performSearch(searchText, apiLocation));
+  }, [dispatch, searchText, apiLocation]);
 
   if (error) {
     return <>

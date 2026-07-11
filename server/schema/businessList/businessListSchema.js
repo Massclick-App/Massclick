@@ -97,6 +97,41 @@ const mniSchema = new mongoose.Schema({
   ]
 });
 
+// Link to the canonical masterlocations hierarchy. The free-text `location`
+// field stays untouched; this block is filled by the pincode backfill, admin
+// edits, or owner selection. `slug` is the deepest resolved node's slug —
+// since parent slugs prefix child slugs, a subtree query at any level is an
+// anchored regex on it. Name fields below `resolvedLevel` stay null.
+const businessMasterLocationSchema = new mongoose.Schema({
+  locationId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "masterlocation",
+    default: null,
+  },
+  slug: { type: String, default: null },
+  state: { type: String, default: null },
+  district: { type: String, default: null },
+  zone: { type: String, default: null },
+  ward: { type: String, default: null },
+  locality: { type: String, default: null },
+  resolvedLevel: {
+    type: String,
+    enum: ["district", "zone", "ward", "locality"],
+    default: null,
+  },
+  confidence: {
+    type: String,
+    enum: ["high", "medium", "low"],
+    default: null,
+  },
+  source: {
+    type: String,
+    enum: ["pincode", "pincode+text", "text-match", "manual", "owner-selected"],
+    default: null,
+  },
+  linkedAt: { type: Date, default: null },
+}, { _id: false });
+
 const businessListSchema = new mongoose.Schema({
   clientId: { type: String, default: '', },
   name: { type: String, default: '', },
@@ -130,6 +165,10 @@ const businessListSchema = new mongoose.Schema({
   ],
   restaurantOptions: { type: String, default: '', },
   location: { type: String, default: '' },
+  masterLocation: {
+    type: businessMasterLocationSchema,
+    default: null,
+  },
   category: { type: String, default: '', required: true },
   subcategory: { type: String, default: '' },
   keywords: [{ type: String, default: '' }],
@@ -265,6 +304,11 @@ const businessListSchema = new mongoose.Schema({
 });
 
 businessListSchema.index({ geoLocation: "2dsphere" });
+
+// Structured location search: slug prefix covers subtree queries at any
+// hierarchy level; district exact-match covers the most common search scope.
+businessListSchema.index({ "masterLocation.slug": 1 });
+businessListSchema.index({ "masterLocation.district": 1, isActive: 1 });
 
 businessListSchema.pre("validate", function syncBusinessName(next) {
   if (!this.businessName && this.name) {
