@@ -84,6 +84,8 @@ const message91UsersSchema = new mongoose.Schema({
     }
   ],
   profileCompleted: { type: Boolean, default: false },
+  lastLoginAt: { type: Date, default: null },
+  loginCount: { type: Number, default: 0 },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });

@@ -36,8 +36,11 @@ export const verifyOtpAndLogin = async (req, res) => {
 
         if (userName && userName !== user.userName) {
             user.userName = userName;
-            await user.save();
         }
+
+        user.lastLoginAt = new Date();
+        user.loginCount = Number(user.loginCount || 0) + 1;
+        await user.save();
 
         const token = jwt.sign(
             { userId: user._id, mobile: user.mobileNumber1 },

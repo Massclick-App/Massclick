@@ -1388,6 +1388,7 @@ export const adminAnalyticsReportAction = async (req, res) => {
     const report = await getAdminAnalyticsReportHelper({
       role: userRole,
       userId,
+      days: req.query.days,
     });
 
     return res.send({

@@ -1,4 +1,10 @@
 export const PAGE_REGISTRY = [
+  { path: '/dashboard/analytics-overview', label: 'Analytics Overview' },
+  { path: '/dashboard/data-analytics', label: 'Category Coverage' },
+  { path: '/dashboard/ga4-analytics', label: 'Google Analytics 4' },
+  { path: '/dashboard/gsc-analytics', label: 'Google Search Console' },
+  { path: '/dashboard/msg91-analytics', label: 'MSG91 Analytics' },
+  { path: '/dashboard/gmaps-leads', label: 'Google Maps Leads' },
   { path: '/dashboard/clients',             label: 'Clients' },
   { path: '/dashboard/business',            label: 'Business' },
   { path: '/dashboard/category',            label: 'Category' },
@@ -6,7 +12,6 @@ export const PAGE_REGISTRY = [
   { path: '/dashboard/seo',                 label: 'SEO Management' },
   { path: '/dashboard/seopagecontent',      label: 'SEO Page Content' },
   { path: '/dashboard/seopagecontentblogs', label: 'SEO Blogs' },
-  { path: '/dashboard/data-analytics',      label: 'Data Analytics' },
   { path: '/dashboard/enquiry',             label: 'Enquiry' },
   { path: '/dashboard/advertisements',      label: 'Advertisements' },
   { path: '/dashboard/mni-data',            label: 'MNI Data' },
