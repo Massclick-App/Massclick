@@ -42,6 +42,7 @@ const getOptionLabel = option => {
 // multiple sources for side-by-side comparison without duplicating the
 // absolutely-positioned container (which would just overlap).
 const CategoryDropdown = React.memo(({
+  id,
   label,
   options,
   onSelect,
@@ -60,7 +61,7 @@ const CategoryDropdown = React.memo(({
     })
   })).filter(section => section.visibleOptions.length > 0);
   if (preparedSections.length === 0) return null;
-  return <div className={cx("category-custom-dropdown")} style={{
+  return <div id={id} role="listbox" className={cx("category-custom-dropdown")} style={{
     zIndex: 10000
   }}>
       {preparedSections.map((section, sectionIndex) => {
@@ -431,9 +432,9 @@ const HeroSection = React.memo(({
       <div className={cx("hero-content hero-minimal")}>
 
         <form className={cx("search-bar-container")} onSubmit={handleSearch}>
-          <div className={cx("input-group location-group")} ref={locationRef}>
+          <div className={cx("input-group location-group", showLocationDropdown && "dropdown-open")} ref={locationRef}>
             <LocationOnIcon className={cx("input-adornment start")} />
-            <input className={cx("custom-input")} placeholder={locationName ? "Change location..." : "Detecting location..."} value={locationName} onChange={e => {
+            <input className={cx("custom-input")} role="combobox" aria-autocomplete="list" aria-controls="location-suggestions" aria-label="Business location" aria-expanded={showLocationDropdown} autoComplete="address-level2" placeholder={locationName ? "Change location..." : "Detecting location..."} value={locationName} onChange={e => {
             const value = e.target.value;
             setLocationName(value);
             localStorage.setItem("selectedLocation", value);
@@ -467,7 +468,7 @@ const HeroSection = React.memo(({
               });
               setShowLocationDropdown(false);
             };
-            return <CategoryDropdown sections={[{
+            return <CategoryDropdown id="location-suggestions" sections={[{
               label: "VERIFIED LOCATIONS",
               options: masterLocationSuggestions,
               onSelect: selectLocation
@@ -482,8 +483,8 @@ const HeroSection = React.memo(({
           })()}
           </div>
 
-          <div className={cx("input-group search-group")} ref={categoryRef}>
-            <input className={cx("custom-input")} placeholder="Search for..." value={searchTerm} onChange={e => {
+          <div className={cx("input-group search-group", isDropdownOpen && "dropdown-open")} ref={categoryRef}>
+            <input className={cx("custom-input")} role="combobox" aria-autocomplete="list" aria-controls="business-suggestions" aria-label="Search for businesses or services" aria-expanded={isDropdownOpen} enterKeyHint="search" placeholder="Search for..." value={searchTerm} onChange={e => {
             setSearchTerm(e.target.value);
             setCategoryName(e.target.value);
             setIsDropdownOpen(true);
@@ -493,21 +494,26 @@ const HeroSection = React.memo(({
             setShowLocationDropdown(false);
           }} />
 
-            {isDropdownOpen && searchTerm.trim().length < 2 && <CategoryDropdown label="RECENT SEARCHES" options={recentSearchOptions} onSelect={val => {
+            {isDropdownOpen && searchTerm.trim().length < 2 && <CategoryDropdown id="business-suggestions" label="RECENT SEARCHES" options={recentSearchOptions} onSelect={val => {
             const chosen = typeof val === "string" ? val : String(val);
             setSearchTerm(chosen);
             if (setCategoryName) setCategoryName(chosen);
             setIsDropdownOpen(false);
           }} />}
 
-            {isDropdownOpen && searchTerm.trim().length >= 2 && <CategoryDropdown label="SUGGESTIONS" options={suggestionCategories} onReachEnd={() => maybeLoadMoreSuggestions(searchTerm.trim())} hasMore={backendSuggestionsHasMore && backendSuggestionsQuery === searchTerm.trim()} isLoadingMore={backendSuggestionsLoading && backendSuggestionsQuery === searchTerm.trim()} onSelect={val => {
+            {isDropdownOpen && searchTerm.trim().length >= 2 && <CategoryDropdown id="business-suggestions" label="SUGGESTIONS" options={suggestionCategories} onReachEnd={() => maybeLoadMoreSuggestions(searchTerm.trim())} hasMore={backendSuggestionsHasMore && backendSuggestionsQuery === searchTerm.trim()} isLoadingMore={backendSuggestionsLoading && backendSuggestionsQuery === searchTerm.trim()} onSelect={val => {
             const chosen = typeof val === "string" ? val : String(val);
             setSearchTerm(chosen);
             if (setCategoryName) setCategoryName(chosen);
             setIsDropdownOpen(false);
           }} />}
 
-            <MicIcon className={cx("input-adornment end")} onClick={handleVoiceSearch} style={{
+            <MicIcon className={cx("input-adornment end")} aria-label="Start voice search" role="button" tabIndex={0} onClick={handleVoiceSearch} onKeyDown={event => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              handleVoiceSearch();
+            }
+          }} style={{
             color: isListening ? "red" : "#ff7b00",
             pointerEvents: isListening ? "none" : "auto"
           }} />
@@ -545,7 +551,7 @@ const HeroSection = React.memo(({
             <option value="ml-IN">Malayalam</option>
             <option value="kn-IN">Kannada</option>
            </select> */}
-          <button type="submit" className={cx("search-button")}>
+          <button type="submit" className={cx("search-button")} aria-label="Search businesses">
             <SearchIcon className={cx("search-icon")} />
           </button>
         </form>

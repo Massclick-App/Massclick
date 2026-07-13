@@ -156,7 +156,7 @@ export default function GmapsLeads() {
       {/* Page Header */}
       <div className={cx('page-header')}>
         <div>
-          <div className={cx('page-title')}>GMaps Leads</div>
+          <div className={cx('page-title')}>Google Maps Leads</div>
           <div className={cx('page-subtitle')}>
             Businesses scraped from Google Maps — use data to create listings
           </div>

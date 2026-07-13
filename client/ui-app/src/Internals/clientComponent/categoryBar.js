@@ -59,6 +59,9 @@ const categories = [{
 }, {
   name: "Business Enquiry",
   icon: <AppRegistrationIcon />
+}, {
+  name: "Spotlight",
+  icon: <DynamicFeedIcon />
 }];
 
 export const userMenuItems = [{
@@ -86,7 +89,7 @@ export const userMenuItems = [{
   component: VisitingCardPage,
   businessPeopleOnly: true
 }, {
-  name: "MassClick Feed",
+  name: "Spotlight",
   path: "/user_feed",
   icon: <DynamicFeedIcon color="action" />,
   component: MassclickFeedPage
@@ -219,6 +222,12 @@ const CategoryBar = () => {
         return;
       }
       navigate("/business-enquiry");
+    } else if (name === "Spotlight") {
+      if (!localStorage.getItem("authUser")) {
+        setIsModalOpen(true);
+        return;
+      }
+      navigate("/user_feed");
     }
   };
   

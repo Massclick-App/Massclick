@@ -35,6 +35,7 @@
 .categoryBarContent {
     width: 100%;
     max-width: 1440px;
+    min-width: 0;
     margin: 0 auto;
     padding-inline: clamp(1rem, 4vw, 3rem);
 
@@ -51,6 +52,7 @@
     display: flex;
     align-items: center;
     gap: .75rem;
+    min-width: 0;
     flex-shrink: 0;
 }
 
@@ -87,19 +89,17 @@
     border-radius: 50%;
 }
 
-.logoImage {
-    width: 70%;
-    height: 70%;
-    object-fit: contain;
-}
-
 .brandingText {
     display: flex;
     align-items: center;
+    min-width: 0;
 }
+
 .brandLogo {
-    height: clamp(28px, 3.5vw, 44px);  
-    width: auto;                        
+    display: block;
+    width: clamp(7rem, 12vw, 11.25rem);
+    height: auto;
+    max-height: 44px;
     object-fit: contain;
 }
 
@@ -112,11 +112,15 @@
     justify-content: center;
     gap: clamp(1rem, 3vw, 2.5rem);
     flex: 1;
+    min-width: 0;
 }
 
 .categoryButtons {
     display: flex;
+    align-items: center;
+    justify-content: center;
     gap: clamp(.5rem, 1.5vw, 1.5rem);
+    min-width: 0;
 }
 
 .categoryButton {
@@ -131,11 +135,13 @@
 
     font-size: .95rem;
     font-weight: 600;
+    line-height: 1.25;
     color: var(--text-primary);
     cursor: pointer;
 
     white-space: nowrap;
     min-width: fit-content;
+    min-height: 44px;
 
     transition: var(--cb-transition);
 }
@@ -156,6 +162,7 @@
 
 
 .mobileMenuButton {
+    /* MUI's IconButton display rule is injected after this module. */
     display: none !important;
 }
 
@@ -194,6 +201,7 @@
 .iconButtonPrimary {
     width: 44px;
     height: 44px;
+    flex: 0 0 44px;
     border-radius: 50%;
     background: rgba(0, 0, 0, .05);
     color: var(--text-secondary);
@@ -207,10 +215,7 @@ button:active {
 }
 
 
-@media (max-width: 599px) {
-    .brandingText {
-        display: flex;
-    }
+@media (max-width: 1199px) {
     .desktopNav {
         display: none;
     }
@@ -222,24 +227,35 @@ button:active {
         border-radius: 50%;
     }
 
-    .loginText {
-        display: none;
-    }
-
     .loginButton {
-        width: auto;
-        padding-inline: 1rem;
-        border-radius: 999px;
+        padding-inline: 1.2rem;
     }
 }
 
-@media (max-width: 420px) {
-    :root {
-        --header-height: 60px;
+@media (min-width: 1200px) and (max-width: 1365px) {
+    .categoryBarContent {
+        padding-inline: 1.5rem;
+        gap: .75rem;
     }
 
-    .brandingText {
-        display: flex;
+    .categoryButtons {
+        gap: .25rem;
+    }
+
+    .categoryButton {
+        gap: .4rem;
+        padding-inline: .65rem;
+        font-size: .9rem;
+    }
+
+    .actionButtons {
+        gap: .5rem;
+    }
+}
+
+@media (max-width: 599px) {
+    .categoryBarContainer {
+        --header-height: 64px;
     }
 
     .categoryBarContent {
@@ -247,51 +263,77 @@ button:active {
         gap: .5rem;
     }
 
-    .iconButtonPrimary,
+    .logoGroup {
+        gap: .5rem;
+    }
+
+    .logoWrapper {
+        width: 36px;
+        height: 36px;
+    }
+
+    .brandLogo {
+        width: clamp(6.5rem, 32vw, 9rem);
+    }
+
+    .actionButtons {
+        gap: .35rem;
+    }
+
     .mobileMenuButton {
-        width: 40px;
-        height: 40px;
+        flex: 0 0 44px;
+        width: 44px;
+        height: 44px;
+    }
+
+    .loginText {
+        display: none;
     }
 
     .loginButton {
         width: 44px;
         height: 44px;
+        min-width: 44px;
         padding: 0;
         display: flex;
         align-items: center;
         justify-content: center;
     }
+}
 
-    .categoryButton svg,
-    .iconButtonPrimary svg,
-    .mobileMenuButton svg {
-        font-size: 1.1rem;
+@media (max-width: 419px) {
+    .categoryBarContent {
+        padding-inline: .5rem;
+        gap: .25rem;
+    }
+
+    .actionButtons {
+        gap: .2rem;
+    }
+
+    .brandLogo {
+        width: clamp(6.25rem, 30vw, 7.5rem);
     }
 }
 
-
-@media (min-width: 600px) and (max-width: 1024px) {
-    .desktopNav {
+@media (max-width: 359px) {
+    .logoWrapper {
         display: none;
     }
 
-    .mobileMenuButton {
-        display: inline-flex !important;
-    }
-
-    .loginText {
-        display: inline;
-    }
-
-    .loginButton {
-        padding-inline: 1.2rem;
-    }
-
-    .categoryButton span {
-        display: none;
+    .brandLogo {
+        width: 6.75rem;
     }
 }
 
+@media (prefers-reduced-motion: reduce) {
+    .logoWrapper,
+    .categoryButton,
+    .loginButton,
+    .iconButtonPrimary {
+        transition: none;
+    }
+}
 
 @media (min-width: 1536px) {
     .categoryBarContent {

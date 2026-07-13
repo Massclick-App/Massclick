@@ -36,6 +36,8 @@ import ClassIcon from '@mui/icons-material/Class';
 import FeaturedVideoIcon from '@mui/icons-material/FeaturedVideo';
 import TravelExploreIcon from '@mui/icons-material/TravelExplore';
 import MarkEmailReadIcon from '@mui/icons-material/MarkEmailRead';
+import QueryStatsRoundedIcon from '@mui/icons-material/QueryStatsRounded';
+import WebRoundedIcon from '@mui/icons-material/WebRounded';
 import GroupsRoundedIcon from '@mui/icons-material/GroupsRounded';
 import RequestQuoteIcon from '@mui/icons-material/RequestQuote';
 import FolderCopyIcon from '@mui/icons-material/FolderCopy';
@@ -50,7 +52,6 @@ const MENU_SECTIONS = [
   {
     label: "Main",
     items: [
-      { text: "Analytics Overview", icon: AnalyticsRoundedIcon, path: "/dashboard/analytics-overview" },
       { text: "Home", icon: HomeRoundedIcon, path: "/dashboard" },
       { text: "Clients", icon: SupportAgentIcon, path: "/dashboard/clients" },
       { text: "Business", icon: StorefrontIcon, path: "/dashboard/business" },
@@ -66,8 +67,7 @@ const MENU_SECTIONS = [
       { text: "Pages", icon: ArticleIcon, path: "/dashboard/seopagecontent" },
       { text: "Blogs", icon: NewspaperIcon, path: "/dashboard/seopagecontentblogs" },
       { text: "Authors", icon: CategoryIcon, path: "/dashboard/authors" },
-      { text: "GSC Analytics", icon: AnalyticsRoundedIcon, path: "/dashboard/gsc-analytics" },
-      { text: "GA4 Analytics", icon: AnalyticsRoundedIcon, path: "/dashboard/ga4-analytics" },
+
     ]
   },
   {
@@ -76,14 +76,12 @@ const MENU_SECTIONS = [
       { text: "Enquiries", icon: MailOutlineIcon, path: "/dashboard/enquiry" },
       { text: "Care Chat", icon: HeadsetMicIcon, path: "/dashboard/customer-care", badgeKey: "chat" },
       { text: "Ads", icon: NotificationsIcon, path: "/dashboard/advertisements" },
-      { text: "Data Analytics", icon: AnalyticsRoundedIcon, path: "/dashboard/data-analytics" },
       { text: "Quotations", icon: RequestQuoteIcon, path: "/dashboard/quotation" },
       { text: "Documents", icon: FolderCopyIcon, path: "/dashboard/documents" },
       { text: "Feed", icon: DynamicFeedIcon, path: "/dashboard/feed" },
       { text: "MNI", icon: StorefrontIcon, path: "/dashboard/mni-data" },
       { text: "Notifications", icon: NotificationsIcon, path: "/dashboard/fcm-marketing" },
-      { text: "GMaps Leads", icon: TravelExploreIcon, path: "/dashboard/gmaps-leads" },
-      { text: "MSG91 Analytics", icon: MarkEmailReadIcon, path: "/dashboard/msg91-analytics" },
+
     ]
   },
   {
@@ -93,6 +91,17 @@ const MENU_SECTIONS = [
       { text: "EventCategory", icon: ClassIcon, path: "/dashboard/event-category" },
       { text: "EventCreation", icon: EmojiEventsIcon, path: "/dashboard/event-creation" },
       { text: "EventAdvertisement", icon: FeaturedVideoIcon, path: "/dashboard/event-advertisement" },
+    ]
+  },
+  {
+    label: "Analytics",
+    items: [
+      { text: "Analytics Overview", icon: AnalyticsRoundedIcon, path: "/dashboard/analytics-overview" },
+      { text: "Category Coverage", icon: CategoryIcon, path: "/dashboard/data-analytics" },
+      { text: "Google Analytics 4", icon: WebRoundedIcon, path: "/dashboard/ga4-analytics" },
+      { text: "Google Search Console", icon: QueryStatsRoundedIcon, path: "/dashboard/gsc-analytics" },
+      { text: "MSG91 Analytics", icon: MarkEmailReadIcon, path: "/dashboard/msg91-analytics" },
+      { text: "Google Maps Leads", icon: TravelExploreIcon, path: "/dashboard/gmaps-leads" },
     ]
   },
   {
@@ -134,7 +143,7 @@ export default function SideMenu({ onItemClick }) {
 
     fetchChatUnreadCount(token)
       .then((data) => setChatUnread(data.admin || 0))
-      .catch(() => {});
+      .catch(() => { });
 
     const socket = connectSocket(token);
     const handleUnread = (data) => setChatUnread(data?.admin || 0);
