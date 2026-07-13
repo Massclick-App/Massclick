@@ -5,7 +5,6 @@ import { useNavigate } from "react-router-dom";
 import styles from "./StickySearchBar.module.css";
 import SearchIcon from "@mui/icons-material/Search";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
-import HistoryToggleOffIcon from "@mui/icons-material/HistoryToggleOff";
 import CloseIcon from "@mui/icons-material/Close";
 import LoginIcon from "@mui/icons-material/Login";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
@@ -15,6 +14,7 @@ import {
   logSearchActivity,
   performSearch
 } from "../../../redux/actions/businessListAction";
+import { searchMasterLocations } from "../../../redux/actions/masterLocationAction";
 import { logUserSearch } from "../../../redux/actions/otpAction";
 import { selectBackendSuggestions, selectBackendSuggestionsMeta, selectSearchLogs } from "../../../redux/selectors";
 import { shouldSendSearch } from "../../../utils/searchLock";
@@ -24,73 +24,47 @@ import { Box, Button, IconButton, Tooltip } from "@mui/material";
 import { useDrawer } from "../Drawer/drawerContext";
 import { categoryBarHelpers } from "../categoryBar";
 import AddBusinessModel from "../AddBusinessModel";
+import CategoryDropdown from "../CategoryDropdown/CategoryDropdown";
 
 const cx = createScopedClassNames(styles);
 const DEFAULT_LOCATION = "Trichy";
-const SUGGESTION_PAGE_SIZE = 10;
+const SUGGESTION_PAGE_SIZE = 20;
+const MASTER_LOCATION_SUGGESTION_LIMIT = 25;
 const isMongoObjectId = value => /^[a-f\d]{24}$/i.test(String(value || "").trim());
+const LEVEL_DEPTH = { district: 0, zone: 1, ward: 2, locality: 3 };
+const LEVEL_LABEL = { district: "District", zone: "Zone", ward: "Ward", locality: "Locality" };
 
-const Dropdown = ({
-  label,
-  options,
-  onSelect,
-  onReachEnd,
-  hasMore = false,
-  isLoadingMore = false,
-  type = "suggestion"
-}) => {
-  const MAX_HEIGHT_PX = 240;
-  const getOptionLabel = option => {
-    if (typeof option === "string") return option;
-    if (!option || typeof option !== "object") return "";
-    return String(option.category || option.categoryName || option.businessName || option.location || option.locationName || option.name || "").trim();
-  };
-
-  const visibleOptions = (options || []).filter(option => {
-    const displayText = getOptionLabel(option);
-    return displayText && !isMongoObjectId(displayText);
+// Groups masterlocations search hits by name so a district/zone/ward that
+// shares its exact name with a child locality (the area's namesake place)
+// renders as one row with the other levels as pills, instead of several
+// identical-looking rows - mirrors heroSection's masterLocationSuggestions.
+const buildMasterLocationSuggestions = (locationSearchResults) => {
+  if (!Array.isArray(locationSearchResults) || locationSearchResults.length === 0) return [];
+  const groups = new Map();
+  locationSearchResults.forEach(loc => {
+    const name = loc.locality || loc.ward || loc.zone || loc.district;
+    if (!name) return;
+    const key = name.toLowerCase();
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(loc);
   });
-
-  const handleScroll = event => {
-    if (!onReachEnd || !hasMore || isLoadingMore) return;
-    const { scrollTop, scrollHeight, clientHeight } = event.currentTarget;
-    if (scrollHeight - scrollTop - clientHeight <= 24) {
-      onReachEnd();
-    }
-  };
-
-  if (visibleOptions.length === 0) return null;
-
-  return (
-    <div className={cx("dropdown", `dropdown--${type}`)}>
-      <div className={cx("dropdown-label")}>{label}</div>
-      <div className={cx("dropdown-list")} style={{ maxHeight: `${MAX_HEIGHT_PX}px` }} onScroll={handleScroll}>
-        {visibleOptions.map((option, index) => {
-          const displayText = getOptionLabel(option);
-          return (
-            <div key={index} className={cx("dropdown-item")} onClick={() => onSelect(option)}>
-              {label.toLowerCase().includes("location") ? (
-                <LocationOnIcon className={cx("dropdown-icon")} />
-              ) : label === "RECENT SEARCHES" ? (
-                <HistoryToggleOffIcon className={cx("dropdown-icon")} />
-              ) : (
-                <SearchIcon className={cx("dropdown-icon")} />
-              )}
-              <span className={cx("dropdown-text")}>{displayText}</span>
-              {label === "RECENT SEARCHES" && typeof option !== "string" && (option.category || option.categoryName) && (
-                <span className={cx("dropdown-meta")}>{option.category || option.categoryName}</span>
-              )}
-            </div>
-          );
-        })}
-        {isLoadingMore && (
-          <div className={cx("dropdown-item")}>
-            <span className={cx("dropdown-text")}>Loading more...</span>
-          </div>
-        )}
-      </div>
-    </div>
-  );
+  return [...groups.values()].map(group => {
+    group.sort((a, b) => (LEVEL_DEPTH[b.level] ?? 0) - (LEVEL_DEPTH[a.level] ?? 0));
+    const primary = group[0];
+    const name = primary.locality || primary.ward || primary.zone || primary.district;
+    const contextParts = [primary.ward, primary.zone, primary.district].filter(part => part && part.toLowerCase() !== String(name).toLowerCase());
+    return {
+      _raw: primary,
+      name,
+      subLabel: [...new Set(contextParts)].join(", "),
+      slug: primary.slug,
+      levels: group.length > 1 ? [...group].reverse().map(loc => ({
+        level: loc.level,
+        label: LEVEL_LABEL[loc.level] || loc.level,
+        slug: loc.slug
+      })) : null
+    };
+  });
 };
 
 const StickySearchBar = ({
@@ -119,6 +93,10 @@ const StickySearchBar = ({
   const [debouncedLocation, setDebouncedLocation] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isWebView, setIsWebView] = useState(window.innerWidth > 768);
+  // Canonical masterlocations slug of a VERIFIED LOCATIONS pick. Cleared the
+  // moment the user types/picks free text - mirrors heroSection's behavior
+  // and shares the same localStorage key so both search bars stay in sync.
+  const [masterLocationSlug, setMasterLocationSlug] = useState(() => localStorage.getItem("selectedLocationSlug") || "");
 
   const locationName = propLocationName ?? internalLocationName;
   const setLocationName = propSetLocationName ?? setInternalLocationName;
@@ -132,6 +110,7 @@ const StickySearchBar = ({
     page: backendSuggestionsPage,
     query: backendSuggestionsQuery
   } = useSelector(selectBackendSuggestionsMeta);
+  const { locationSearchResults = [] } = useSelector(state => state.masterLocationReducer) || {};
   const locationSuggestionQuery = isWebView ? locationName : locationInput;
   const normalizeComparable = value => String(value || "").trim().replace(/\s+/g, " ").toLowerCase();
   const hasPendingSearch = normalizeComparable(committedSearchTerm) !== normalizeComparable(searchTerm) || normalizeComparable(committedLocationName || DEFAULT_LOCATION) !== normalizeComparable(locationName || DEFAULT_LOCATION);
@@ -206,6 +185,7 @@ const StickySearchBar = ({
       limit: SUGGESTION_PAGE_SIZE,
       append: false
     }));
+    dispatch(searchMasterLocations(debouncedLocation.trim(), MASTER_LOCATION_SUGGESTION_LIMIT));
   }, [debouncedLocation, dispatch, isSelectingLocation]);
 
   useEffect(() => {
@@ -265,14 +245,22 @@ const StickySearchBar = ({
     return list;
   })();
 
+  const masterLocationSuggestions = buildMasterLocationSuggestions(locationSearchResults);
+
   const handleSearchFocus = () => {
     setIsFocused(true);
     setIsCategoryDropdownOpen(true);
   };
 
   const handleLocationChange = (loc) => {
-    const chosen = typeof loc === "string" ? loc : String(loc);
+    const chosen = typeof loc === "string" ? loc : (loc?.name || String(loc));
     setLocationName(chosen);
+    // Verified picks carry the canonical slug; legacy text suggestions
+    // don't and clear any previous one - shared with heroSection.
+    const slug = typeof loc === "object" && loc?.slug ? loc.slug : "";
+    setMasterLocationSlug(slug);
+    if (slug) localStorage.setItem("selectedLocationSlug", slug);
+    else localStorage.removeItem("selectedLocationSlug");
     setIsSelectingLocation(false);
     setIsFocused(false);
     setLocationInput("");
@@ -347,6 +335,7 @@ const StickySearchBar = ({
     navigateToSearchResult({
       searchTerm: searchInput,
       location,
+      masterLocationSlug,
       navigate,
       dispatch,
       isKnownCategory: false,
@@ -392,6 +381,8 @@ const StickySearchBar = ({
                 value={locationName}
                 onChange={(e) => {
                   setLocationName(e.target.value);
+                  setMasterLocationSlug("");
+                  localStorage.removeItem("selectedLocationSlug");
                   setIsSelectingLocation(true);
                   setIsCategoryDropdownOpen(false);
                 }}
@@ -400,16 +391,19 @@ const StickySearchBar = ({
                   setIsCategoryDropdownOpen(false);
                 }}
               />
-              {isSelectingLocation && parsedLocationSuggestions.length > 0 && (
-                <Dropdown
-                  label="LOCATIONS"
-                  options={parsedLocationSuggestions}
-                  onReachEnd={() => maybeLoadMoreSuggestions(locationName.trim())}
-                  hasMore={backendSuggestionsHasMore && backendSuggestionsQuery === locationName.trim()}
-                  onSelect={handleLocationChange}
-                  type="location"
-                  isLoadingMore={backendSuggestionsLoading && backendSuggestionsQuery === locationName.trim()}
-                />
+              {isSelectingLocation && (
+                <CategoryDropdown sections={[{
+                  label: "VERIFIED LOCATIONS",
+                  options: masterLocationSuggestions,
+                  onSelect: handleLocationChange
+                }, {
+                  label: "LOCATIONS",
+                  options: parsedLocationSuggestions,
+                  onSelect: handleLocationChange,
+                  onReachEnd: () => maybeLoadMoreSuggestions(locationName.trim()),
+                  hasMore: backendSuggestionsHasMore && backendSuggestionsQuery === locationName.trim(),
+                  isLoadingMore: backendSuggestionsLoading && backendSuggestionsQuery === locationName.trim()
+                }]} />
               )}
             </div>
 
@@ -431,21 +425,19 @@ const StickySearchBar = ({
                 }}
               />
               {isCategoryDropdownOpen && searchTerm.trim().length < 2 && (
-                <Dropdown
+                <CategoryDropdown
                   label="RECENT SEARCHES"
                   options={recentSearchOptions}
                   onSelect={handleSelectCategory}
-                  type="suggestion"
                 />
               )}
               {isCategoryDropdownOpen && searchTerm.trim().length >= 2 && (
-                <Dropdown
+                <CategoryDropdown
                   label="SUGGESTIONS"
                   options={suggestionCategories}
                   onReachEnd={() => maybeLoadMoreSuggestions(searchTerm.trim())}
                   hasMore={backendSuggestionsHasMore && backendSuggestionsQuery === searchTerm.trim()}
                   onSelect={handleSelectCategory}
-                  type="suggestion"
                   isLoadingMore={backendSuggestionsLoading && backendSuggestionsQuery === searchTerm.trim()}
                 />
               )}
@@ -576,21 +568,23 @@ const StickySearchBar = ({
       </header>
 
       {isSelectingLocation && isFocused && (
-        <Dropdown
-          label="LOCATIONS"
-          options={parsedLocationSuggestions}
-          onSelect={handleLocationChange}
-          type="location"
-          isLoadingMore={backendSuggestionsLoading}
-        />
+        <CategoryDropdown sections={[{
+          label: "VERIFIED LOCATIONS",
+          options: masterLocationSuggestions,
+          onSelect: handleLocationChange
+        }, {
+          label: "LOCATIONS",
+          options: parsedLocationSuggestions,
+          onSelect: handleLocationChange,
+          isLoadingMore: backendSuggestionsLoading
+        }]} />
       )}
 
       {isCategoryDropdownOpen && isFocused && !isSelectingLocation && searchTerm.trim().length >= 1 && (
-        <Dropdown
+        <CategoryDropdown
           label="SUGGESTIONS"
           options={suggestionCategories}
           onSelect={handleSelectCategory}
-          type="suggestion"
           isLoadingMore={backendSuggestionsLoading}
         />
       )}

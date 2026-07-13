@@ -197,103 +197,9 @@
 
 /* ================================ */
 /* DROPDOWN (Suggestions & Location) */
+/* Moved to the shared CategoryDropdown component's own CSS   */
+/* module - see Internals/clientComponent/CategoryDropdown.   */
 /* ================================ */
-
-.dropdown {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 16px;
-  right: 16px;
-  background: var(--bg-light);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-light);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
-  z-index: 10000;
-  overflow: hidden;
-  animation: dropdownSlideDown 0.2s ease;
-}
-
-@keyframes dropdownSlideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.dropdown-label {
-  padding: 10px 14px 8px;
-  font-size: 0.7rem;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  background: linear-gradient(180deg, #f8f4ff 0%, #fff 100%);
-  border-bottom: 1px solid #ede9fe;
-}
-
-.dropdown--location .dropdown-label {
-  color: #059669;
-}
-
-.dropdown--suggestion .dropdown-label {
-  color: #7c3aed;
-}
-
-.dropdown-list {
-  max-height: 280px;
-  overflow-y: auto;
-  overflow-x: hidden;
-}
-
-.dropdown-item {
-  padding: 12px 14px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  cursor: pointer;
-  transition: background 0.15s ease;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.02);
-}
-
-.dropdown-item:hover {
-  background: #f8fafc;
-}
-
-.dropdown-item:last-child {
-  border-bottom: none;
-}
-
-.dropdown-icon {
-  color: var(--brand);
-  flex-shrink: 0;
-  font-size: 18px !important;
-}
-
-.dropdown--location .dropdown-icon {
-  color: #059669;
-}
-
-.dropdown-text {
-  flex: 1;
-  min-width: 0;
-  color: var(--text-primary);
-  font-size: 0.93rem;
-  font-weight: 500;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.dropdown-meta {
-  margin-left: auto;
-  flex-shrink: 0;
-  color: var(--text-muted);
-  font-size: 0.8rem;
-  font-weight: 500;
-}
 
 /* ================================ */
 /* WEB VIEW LAYOUT (>768px)          */
@@ -561,75 +467,9 @@
   }
 }
 
-.cards-input-group .category-custom-dropdown {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 0;
-  right: 0;
-  background: var(--bg-light);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-light);
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.16);
-  z-index: 10000;
-  overflow: hidden;
-  width: 100%;
-}
-
-.trending-label {
-  padding: 12px 16px 10px;
-  font-size: 0.72rem;
-  line-height: 1;
-  color: #7c3aed;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  background: linear-gradient(180deg, #f8f4ff 0%, #fff 100%);
-  border-bottom: 1px solid #ede9fe;
-}
-
-.cards-input-group .options-list-container {
-  max-height: 280px;
-  overflow-y: auto;
-  overflow-x: hidden;
-}
-
-.cards-input-group .option-item {
-  padding: 12px 16px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-
-.cards-input-group .option-item:hover {
-  background: #f8fafc;
-}
-
-.option-icon {
-  color: var(--brand);
-  flex-shrink: 0;
-  font-size: 18px !important;
-}
-
-.option-text-main {
-  flex: 1;
-  min-width: 0;
-  color: var(--text-primary);
-  font-size: 0.93rem;
-  font-weight: 500;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.option-text-sub {
-  margin-left: auto;
-  flex-shrink: 0;
-  color: var(--text-muted);
-  font-size: 0.78rem;
-  font-weight: 500;
-}
+/* CategoryDropdown (VERIFIED LOCATIONS / LOCATIONS / SUGGESTIONS) styling
+   now lives in the shared component's own CSS module - see
+   Internals/clientComponent/CategoryDropdown. */
 
 /* ================================ */
 /* RESPONSIVE                       */
@@ -651,10 +491,5 @@
   .search-input {
     font-size: 13px;
     padding: 0 40px 0 42px;
-  }
-
-  .dropdown {
-    left: 12px;
-    right: 12px;
   }
 }

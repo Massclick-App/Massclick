@@ -320,7 +320,34 @@ const BusinessFormStep0 = ({
         </div>
 
         <div className={fieldClass()}>
-          <label htmlFor="location" className="form-input-label">Location</label>
+          <label htmlFor="locationLegacy" className="form-input-label">Location (legacy list)</label>
+          <select
+            id="locationLegacy"
+            name="location"
+            className={`form-select-input ${fieldErrors.location ? "error" : ""}`}
+            value={formData.location}
+            onChange={(e) => {
+              setFormData((prev) => ({ ...prev, location: e.target.value, masterLocation: null }));
+            }}
+          >
+            <option value="">Select a location</option>
+            {location && location.length > 0 ? (
+              location.map((loc) => {
+                const displayName = loc.city || loc.district;
+                return (
+                  <option key={loc._id} value={displayName}>
+                    {displayName}{loc.state ? ` — ${loc.state}` : ""}
+                  </option>
+                );
+              })
+            ) : (
+              <option disabled>No locations available</option>
+            )}
+          </select>
+        </div>
+
+        <div className={fieldClass()}>
+          <label htmlFor="location" className="form-input-label">Location (verified search)</label>
           <Autocomplete
             freeSolo
             id="location"

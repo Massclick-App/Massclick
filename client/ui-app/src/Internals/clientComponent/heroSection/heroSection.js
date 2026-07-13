@@ -3,7 +3,6 @@ import React, { useEffect, useState, useRef } from "react";
 import SearchIcon from "@mui/icons-material/Search";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import MicIcon from "@mui/icons-material/Mic";
-import HistoryToggleOffIcon from "@mui/icons-material/HistoryToggleOff";
 import { useDispatch, useSelector } from "react-redux";
 import { getBackendSuggestions } from "../../../redux/actions/businessListAction";
 import { searchMasterLocations } from "../../../redux/actions/masterLocationAction";
@@ -19,87 +18,13 @@ import {
 // import backgroundImage from "../../../assets/background9.jpg";
 // import backgroundImage from "../../../assets/background.png";
 import { useNavigate } from "react-router-dom";
+import CategoryDropdown from "../CategoryDropdown/CategoryDropdown";
 import styles from "./hero.module.css";
 const cx = createScopedClassNames(styles);
 const DEFAULT_LOCATION = "Trichy";
-const SUGGESTION_PAGE_SIZE = 10;
+const SUGGESTION_PAGE_SIZE = 20;
+const MASTER_LOCATION_SUGGESTION_LIMIT = 25;
 const isObjectId = s => /^[a-f\d]{24}$/i.test(String(s || "").trim());
-const getOptionLabel = option => {
-  if (typeof option === "string") return option;
-  if (!option || typeof option !== "object") return "";
-  return String(
-    option.category ||
-    option.categoryName ||
-    option.businessName ||
-    option.location ||
-    option.locationName ||
-    option.name ||
-    ""
-  ).trim();
-};
-// Renders one or more labeled option groups inside a single positioned
-// dropdown box. `sections` lets callers (e.g. location autocomplete) stack
-// multiple sources for side-by-side comparison without duplicating the
-// absolutely-positioned container (which would just overlap).
-const CategoryDropdown = React.memo(({
-  label,
-  options,
-  onSelect,
-  onReachEnd,
-  hasMore = false,
-  isLoadingMore = false,
-  sections
-}) => {
-  const MAX_HEIGHT_PX = 220;
-  const resolvedSections = sections && sections.length ? sections : [{ label, options, onSelect, onReachEnd, hasMore, isLoadingMore }];
-  const preparedSections = resolvedSections.map(section => ({
-    ...section,
-    visibleOptions: (section.options || []).filter(option => {
-      const labelText = getOptionLabel(option);
-      return labelText && !isObjectId(labelText);
-    })
-  })).filter(section => section.visibleOptions.length > 0);
-  if (preparedSections.length === 0) return null;
-  return <div className={cx("category-custom-dropdown")} style={{
-    zIndex: 10000
-  }}>
-      {preparedSections.map((section, sectionIndex) => {
-      const handleScroll = event => {
-        if (!section.onReachEnd || !section.hasMore || section.isLoadingMore) return;
-        const {
-          scrollTop,
-          scrollHeight,
-          clientHeight
-        } = event.currentTarget;
-        if (scrollHeight - scrollTop - clientHeight <= 24) {
-          section.onReachEnd();
-        }
-      };
-      return <div key={section.label || sectionIndex}>
-            <div className={cx("trending-label")}>{section.label}</div>
-            <div className={cx("options-list-container")} style={{
-          maxHeight: `${MAX_HEIGHT_PX}px`,
-          overflowY: "auto"
-        }} onScroll={handleScroll}>
-              {section.visibleOptions.map((option, index) => {
-            const displayText = getOptionLabel(option);
-            return <div key={index} className={cx("option-item")} onClick={() => section.onSelect(option)}>
-                    {(section.label || "").toLowerCase().includes("location") ? <LocationOnIcon className={cx("option-icon")} /> : section.label === "RECENT SEARCHES" ? <HistoryToggleOffIcon className={cx("option-icon")} /> : <SearchIcon className={cx("option-icon")} />}
-
-                    <span className={cx("option-text-group")}>
-                      <span className={cx("option-text-main")}>{displayText}</span>
-                      {typeof option !== "string" && (option.subLabel || (section.label === "RECENT SEARCHES" && (option.category || option.categoryName))) && <span className={cx("option-text-sub")}>{option.subLabel || option.category || option.categoryName}</span>}
-                    </span>
-                  </div>;
-          })}
-              {section.isLoadingMore && <div className={cx("option-item")}>
-                  <span className={cx("option-text-main")}>Loading more...</span>
-                </div>}
-            </div>
-          </div>;
-    })}
-    </div>;
-});
 const HeroSection = React.memo(({
   searchTerm,
   setSearchTerm,
@@ -267,7 +192,7 @@ const HeroSection = React.memo(({
       limit: SUGGESTION_PAGE_SIZE,
       append: false
     }));
-    dispatch(searchMasterLocations(debouncedLocation.trim()));
+    dispatch(searchMasterLocations(debouncedLocation.trim(), MASTER_LOCATION_SUGGESTION_LIMIT));
   }, [debouncedLocation, dispatch, showLocationDropdown]);
   const recentSearchOptions = [...new Set((searchLogs || []).map(log => log.categoryName ? log.categoryName.trim() : "").filter(name => name && !isObjectId(name)))];
   const suggestionCategories = (() => {
@@ -308,18 +233,39 @@ const HeroSection = React.memo(({
   })();
   // New: real masterlocations match (district/zone/ward/locality), shown
   // alongside the legacy business-field suggestions above for comparison.
-  // subLabel is kept to zone + district only (not the full breadcrumb) so
-  // the option stays scannable instead of repeating the same words 5x.
+  // subLabel shows the full remaining breadcrumb (ward > zone > district),
+  // deduped against the bold name and against itself so no level repeats.
+  // A district/zone/ward can share its exact name with a child locality
+  // (the area's namesake place) - those matches are grouped into one row
+  // with the different levels shown as pills, instead of several
+  // identical-looking rows each eating a slot in the capped result list.
   const masterLocationSuggestions = (() => {
     if (!Array.isArray(locationSearchResults) || locationSearchResults.length === 0) return [];
-    return locationSearchResults.map(loc => {
+    const levelDepth = { district: 0, zone: 1, ward: 2, locality: 3 };
+    const levelLabel = { district: "District", zone: "Zone", ward: "Ward", locality: "Locality" };
+    const groups = new Map();
+    locationSearchResults.forEach(loc => {
       const name = loc.locality || loc.ward || loc.zone || loc.district;
-      const contextParts = [loc.zone, loc.district].filter(part => part && part.toLowerCase() !== String(name).toLowerCase());
+      if (!name) return;
+      const key = name.toLowerCase();
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(loc);
+    });
+    return [...groups.values()].map(group => {
+      group.sort((a, b) => (levelDepth[b.level] ?? 0) - (levelDepth[a.level] ?? 0));
+      const primary = group[0];
+      const name = primary.locality || primary.ward || primary.zone || primary.district;
+      const contextParts = [primary.ward, primary.zone, primary.district].filter(part => part && part.toLowerCase() !== String(name).toLowerCase());
       return {
-        _raw: loc,
+        _raw: primary,
         name,
-        subLabel: [...new Set(contextParts)].slice(0, 2).join(", "),
-        slug: loc.slug
+        subLabel: [...new Set(contextParts)].join(", "),
+        slug: primary.slug,
+        levels: group.length > 1 ? [...group].reverse().map(loc => ({
+          level: loc.level,
+          label: levelLabel[loc.level] || loc.level,
+          slug: loc.slug
+        })) : null
       };
     });
   })();

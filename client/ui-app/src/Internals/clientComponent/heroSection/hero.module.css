@@ -392,75 +392,9 @@
 
 /* ========================================================= */
 /* --- Dropdown (Recent & Suggestions) --- */
+/* Moved to the shared CategoryDropdown component's own CSS   */
+/* module - see Internals/clientComponent/CategoryDropdown.   */
 /* ========================================================= */
-
-/* .category-custom-dropdown {
-  position: absolute !important;
-  top: 105%;
-  left: 0;
-  right: 0;
-  z-index: 999999 !important;
-  background-color: #ffffff;
-  border-radius: 12px;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
-} */
-
-.trending-label {
-  padding: 8px 16px 4px;
-  font-size: 0.75rem;
-  color: #888;
-  font-weight: bold;
-  text-transform: uppercase;
-  border-bottom: 1px solid #eee;
-}
-
-.options-list-container {
-  max-height: 288px;
-  overflow-y: auto;
-}
-
-.option-item {
-  padding: 10px 16px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  font-size: 0.95rem;
-  color: #333;
-  transition: background-color 0.2s;
-}
-
-.option-item:hover,
-.option-item.selected {
-  background-color: #f0f0f0;
-}
-
-.option-icon {
-  margin-right: 6px;
-  color: var(--color-primary);
-  flex-shrink: 0;
-}
-
-.option-text-group {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  flex: 1;
-}
-
-.option-text-main {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.option-text-sub {
-  margin-top: 2px;
-  color: gray;
-  font-size: 12px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
 
 .custom-input {
   width: 100%;
@@ -587,19 +521,6 @@
 .navbar {
   position: relative !important;
   z-index: 5000 !important;
-}
-
-.category-custom-dropdown {
-  position: absolute !important;
-  top: calc(100% + 8px);
-  left: 0;
-  width: 100%;
-  max-width: 100%;
-  background: #ffffff;
-  z-index: 10000 !important;
-  border-radius: 12px;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
-  overflow: hidden;
 }
 
 .categories-wrapper {
