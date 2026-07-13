@@ -130,6 +130,23 @@ export const searchMasterLocations = (text, limit = 12) => async (dispatch) => {
   }
 };
 
+// Admin form helper: existing Zone/Ward/Locality values for the district
+// (and zone/ward) picked so far, for the create/edit form's cascading
+// autocomplete. Not stored in redux — the form owns this as local state.
+export const getMasterLocationFieldOptions = ({ field, district = "", zone = "", ward = "" }) => async (dispatch) => {
+  try {
+    const token = await getValidToken(dispatch);
+    const params = new URLSearchParams({ field, district, zone, ward });
+    const response = await axiosInstance.get(
+      `${API_URL}/masterlocation/distinct-values?${params.toString()}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return response.data?.data || [];
+  } catch (error) {
+    return [];
+  }
+};
+
 export const deleteMasterLocation = (id) => async (dispatch) => {
   dispatch({ type: DELETE_MASTER_LOCATION_REQUEST });
   try {

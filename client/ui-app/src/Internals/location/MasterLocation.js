@@ -1,9 +1,9 @@
 import { createScopedClassNames } from "../../utils/createScopedClassNames";
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { getAllMasterLocation, createMasterLocation, editMasterLocation, deleteMasterLocation } from "../../redux/actions/masterLocationAction.js";
+import { getAllMasterLocation, createMasterLocation, editMasterLocation, deleteMasterLocation, getMasterLocationFieldOptions } from "../../redux/actions/masterLocationAction.js";
 import styles from "./masterLocation.module.css";
-import { Box, Button, Typography, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, Chip } from "@mui/material";
+import { Box, Button, Typography, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, Chip, Autocomplete, TextField } from "@mui/material";
 import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import CustomizedTable from "../../components/Table/CustomizedTable.js";
 import AdminViewTabs from "../../components/AdminViewTabs.js";
@@ -37,6 +37,39 @@ export default function MasterLocation() {
   });
   const [editingId, setEditingId] = useState(null);
   const [activeView, setActiveView] = useState("list");
+
+  // Existing-value suggestions for the hierarchy fields, so Zone/Ward/Locality
+  // text matches an existing doc's exact spelling instead of silently forking
+  // the hierarchy (these are plain text fields, not references).
+  const [districtOptions, setDistrictOptions] = useState([]);
+  const [zoneOptions, setZoneOptions] = useState([]);
+  const [wardOptions, setWardOptions] = useState([]);
+  const [localityOptions, setLocalityOptions] = useState([]);
+
+  useEffect(() => {
+    dispatch(getMasterLocationFieldOptions({ field: "district" })).then(setDistrictOptions);
+  }, [dispatch]);
+
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      dispatch(getMasterLocationFieldOptions({ field: "zone", district: formData.district })).then(setZoneOptions);
+    }, 250);
+    return () => clearTimeout(handle);
+  }, [dispatch, formData.district]);
+
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      dispatch(getMasterLocationFieldOptions({ field: "ward", district: formData.district, zone: formData.zone })).then(setWardOptions);
+    }, 250);
+    return () => clearTimeout(handle);
+  }, [dispatch, formData.district, formData.zone]);
+
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      dispatch(getMasterLocationFieldOptions({ field: "locality", district: formData.district, zone: formData.zone, ward: formData.ward })).then(setLocalityOptions);
+    }, 250);
+    return () => clearTimeout(handle);
+  }, [dispatch, formData.district, formData.zone, formData.ward]);
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedRow, setSelectedRow] = useState(null);
@@ -198,21 +231,10 @@ export default function MasterLocation() {
     )
   }];
 
+  // Plain text fields, rendered as-is.
   const fields = [{
     label: "State",
     name: "state"
-  }, {
-    label: "District",
-    name: "district"
-  }, {
-    label: "Zone (e.g. Srirangam, Manapparai)",
-    name: "zone"
-  }, {
-    label: "Ward",
-    name: "ward"
-  }, {
-    label: "Locality / Area",
-    name: "locality"
   }, {
     label: "Pincode",
     name: "pincode"
@@ -220,6 +242,53 @@ export default function MasterLocation() {
     label: "Alternate Names (comma separated)",
     name: "alternateNames"
   }];
+
+  // Hierarchy fields: freeSolo autocomplete suggesting existing values scoped
+  // to the parent fields already picked, so a new entry's Zone/Ward text
+  // matches an existing doc's exact spelling instead of forking the hierarchy.
+  const hierarchyFields = [{
+    label: "District",
+    name: "district",
+    options: districtOptions
+  }, {
+    label: "Zone (e.g. Srirangam, Manapparai)",
+    name: "zone",
+    options: zoneOptions
+  }, {
+    label: "Ward",
+    name: "ward",
+    options: wardOptions
+  }, {
+    label: "Locality / Area",
+    name: "locality",
+    options: localityOptions
+  }];
+
+  const renderHierarchyField = ({ label, name, options }) => (
+    <div key={name} className={cx("master-location-form-input-group")}>
+      <label htmlFor={name} className={cx("master-location-input-label")}>
+        {label}
+      </label>
+      <Autocomplete
+        freeSolo
+        id={name}
+        options={options}
+        inputValue={formData[name] || ""}
+        onInputChange={(event, newInputValue) => {
+          setFormData(prev => ({ ...prev, [name]: newInputValue }));
+        }}
+        renderInput={(params) => (
+          <TextField
+            {...params}
+            size="small"
+            error={!!errors[name]}
+            placeholder={`Existing ${label.split(" (")[0].toLowerCase()}s shown as you type`}
+          />
+        )}
+      />
+      {errors[name] && <p className="form-error-text">{errors[name]}</p>}
+    </div>
+  );
 
   return <div className={cx("master-location-page")}>
       <AdminViewTabs activeView={activeView} onChange={setActiveView} isEditing={Boolean(editingId)} createLabel="Master Location" listLabel="Master Locations" listCount={total || rows.length} />
@@ -236,7 +305,9 @@ export default function MasterLocation() {
           </p>
 
           <form onSubmit={handleSubmit} className={cx("master-location-form-grid")}>
-              {fields.map(({ label, name }) => <div key={name} className={cx("master-location-form-input-group")}>
+              {(() => {
+                const renderPlainField = ({ label, name }) => (
+                  <div key={name} className={cx("master-location-form-input-group")}>
                       <label htmlFor={name} className={cx("master-location-input-label")}>
                           {label}
                       </label>
@@ -249,7 +320,16 @@ export default function MasterLocation() {
                         onChange={handleChange}
                       />
                       {errors[name] && <p className="form-error-text">{errors[name]}</p>}
-                    </div>)}
+                    </div>
+                );
+                const [stateField, pincodeField, alternateNamesField] = fields;
+                return <>
+                  {renderPlainField(stateField)}
+                  {hierarchyFields.map(renderHierarchyField)}
+                  {renderPlainField(pincodeField)}
+                  {renderPlainField(alternateNamesField)}
+                </>;
+              })()}
 
               <div className={cx("master-location-form-input-group master-location-col-span-all master-location-actions-section")}>
                   <div className={cx("master-location-actions-content")}>

@@ -129,6 +129,24 @@ export const viewAllMasterLocation = async ({
   return { list, total };
 };
 
+// Distinct existing values for one hierarchy field, scoped by its parents —
+// powers the admin form's cascading autocomplete so a new entry's Zone/Ward
+// text matches an existing doc's spelling exactly instead of silently
+// forking the hierarchy (a Zone/Ward field is plain text, not a reference).
+const DISTINCT_FIELDS = ["district", "zone", "ward", "locality"];
+
+export const listDistinctMasterLocationValues = async ({ field, district, zone, ward }) => {
+  if (!DISTINCT_FIELDS.includes(field)) throw new Error("Invalid field");
+
+  const query = { isActive: true, [field]: { $ne: null } };
+  if (district && district.trim()) query.district = { $regex: `^${escapeRegex(district.trim())}$`, $options: "i" };
+  if (zone && zone.trim()) query.zone = { $regex: `^${escapeRegex(zone.trim())}$`, $options: "i" };
+  if (ward && ward.trim()) query.ward = { $regex: `^${escapeRegex(ward.trim())}$`, $options: "i" };
+
+  const values = await masterLocationModel.distinct(field, query);
+  return values.filter(Boolean).sort((a, b) => a.localeCompare(b));
+};
+
 // Resolve free text ("kk nagar", "manaparai", "trichy") to a location, then
 // expose its slug so callers can prefix-match businesses at any hierarchy level.
 // Ranked exact > prefix > substring match first, so a term like "mettu" surfaces

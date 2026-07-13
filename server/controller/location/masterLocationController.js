@@ -3,6 +3,7 @@ import {
     viewMasterLocation,
     viewAllMasterLocation,
     searchMasterLocation,
+    listDistinctMasterLocationValues,
     updateMasterLocation,
     deleteMasterLocation
 } from "../../helper/location/masterLocationHelper.js";
@@ -75,6 +76,19 @@ export const searchMasterLocationAction = async (req, res) => {
         res.send({ data: results });
     } catch (error) {
         console.error("Master location search error:", error);
+        return res.status(BAD_REQUEST.code).send({ message: error.message });
+    }
+};
+
+// Admin form helper: existing Zone/Ward/Locality values for the district
+// (and zone/ward) picked so far, for a cascading autocomplete.
+export const listDistinctMasterLocationValuesAction = async (req, res) => {
+    try {
+        const { field, district, zone, ward } = req.query;
+        const values = await listDistinctMasterLocationValues({ field, district, zone, ward });
+        res.send({ data: values });
+    } catch (error) {
+        console.error(error);
         return res.status(BAD_REQUEST.code).send({ message: error.message });
     }
 };
