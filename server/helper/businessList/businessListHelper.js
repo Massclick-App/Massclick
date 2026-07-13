@@ -9,6 +9,7 @@ import QRCode from "qrcode";
 import categoryModel from "../../model/category/categoryModel.js";
 import gmapsLeadsModel from "../../model/gmapsLeads/gmapsLeadsModel.js";
 import enquiryModel from "../../model/enquiry/enquiryModel.js";
+import otpUserModel from "../../model/msg91Model/usersModels.js";
 import { slugify } from "../../slugify.js";
 
 const BUSINESS_PAYMENT_GST_RATE = 18;
@@ -1417,7 +1418,7 @@ const dashboardLocationNameExpression = {
   },
 };
 
-export const getAdminAnalyticsReportHelper = async ({ role, userId }) => {
+export const getAdminAnalyticsReportHelper = async ({ role, userId, days = 28 }) => {
   const businessQuery = await buildDashboardQuery({ role, userId });
   const now = new Date();
   const startOfToday = new Date(now);
@@ -1427,6 +1428,9 @@ export const getAdminAnalyticsReportHelper = async ({ role, userId }) => {
   const startOfThirtyDays = new Date(now);
   startOfThirtyDays.setDate(startOfThirtyDays.getDate() - 30);
   const startOfYear = new Date(now.getFullYear(), 0, 1);
+  const periodDays = Math.max(1, Math.min(Number(days) || 28, 365));
+  const periodStart = new Date(now);
+  periodStart.setDate(periodStart.getDate() - periodDays);
 
   const [
     totalBusinesses,
@@ -1445,6 +1449,9 @@ export const getAdminAnalyticsReportHelper = async ({ role, userId }) => {
     topCategories,
     topLocations,
     recentBusinesses,
+    otpCustomerStats,
+    otpSearchCategories,
+    otpSearchLocations,
   ] = await Promise.all([
     businessListModel.countDocuments(businessQuery),
     businessListModel.countDocuments({
@@ -1582,6 +1589,21 @@ export const getAdminAnalyticsReportHelper = async ({ role, userId }) => {
       .sort({ createdAt: -1 })
       .limit(6)
       .lean(),
+    otpUserModel.aggregate([
+      { $group: { _id: null, registered: { $sum: 1 }, registeredInPeriod: { $sum: { $cond: [{ $gte: ["$createdAt", periodStart] }, 1, 0] } }, loggedInInPeriod: { $sum: { $cond: [{ $gte: ["$lastLoginAt", periodStart] }, 1, 0] } }, totalLoginCount: { $sum: { $ifNull: ["$loginCount", 0] } }, profileCompleted: { $sum: { $cond: [{ $eq: ["$profileCompleted", true] }, 1, 0] } } } },
+    ]),
+    otpUserModel.aggregate([
+      { $unwind: "$searchHistory" },
+      { $match: { "searchHistory.searchedAt": { $gte: periodStart } } },
+      { $group: { _id: { $ifNull: ["$searchHistory.category", "General"] }, count: { $sum: 1 } } },
+      { $sort: { count: -1 } }, { $limit: 10 },
+    ]),
+    otpUserModel.aggregate([
+      { $unwind: "$searchHistory" },
+      { $match: { "searchHistory.searchedAt": { $gte: periodStart } } },
+      { $group: { _id: { $ifNull: ["$searchHistory.location", "Global"] }, count: { $sum: 1 } } },
+      { $sort: { count: -1 } }, { $limit: 10 },
+    ]),
   ]);
 
   const activeUsers = userCounts.find((row) => row._id === true)?.count || 0;
@@ -1616,6 +1638,7 @@ export const getAdminAnalyticsReportHelper = async ({ role, userId }) => {
   const paymentRevenue = paymentStats
     .filter((row) => ["SUCCESS", "PAID", "paid", "success"].includes(row._id))
     .reduce((sum, row) => sum + row.amount, 0);
+  const otpSummary = otpCustomerStats[0] || {};
 
   return {
     generatedAt: new Date().toISOString(),
@@ -1645,7 +1668,15 @@ export const getAdminAnalyticsReportHelper = async ({ role, userId }) => {
       gmapsDetailsFetched: gmapsSummary.detailsFetched,
       successfulPayments,
       paymentRevenue,
+      otpCustomers: otpSummary.registered || 0,
+      otpCustomersRegisteredInPeriod: otpSummary.registeredInPeriod || 0,
+      otpCustomersLoggedInInPeriod: otpSummary.loggedInInPeriod || 0,
+      otpLoginCount: otpSummary.totalLoginCount || 0,
+      otpProfilesCompleted: otpSummary.profileCompleted || 0,
     },
+    periodDays,
+    otpTopSearchCategories: otpSearchCategories.map((row) => ({ name: row._id || "General", count: row.count })),
+    otpTopSearchLocations: otpSearchLocations.map((row) => ({ name: row._id || "Global", count: row.count })),
     monthlyTrend: buildMonthSeries(monthlyRows),
     topCategories: topCategories.map((row) => ({
       name: row._id || "Uncategorised",

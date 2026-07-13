@@ -1,4 +1,5 @@
 export const PAGE_REGISTRY = [
+  { path: '/dashboard/analytics-overview',  label: 'Analytics Overview' },
   { path: '/dashboard/clients',             label: 'Clients' },
   { path: '/dashboard/business',            label: 'Business' },
   { path: '/dashboard/category',            label: 'Category' },

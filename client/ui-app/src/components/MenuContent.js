@@ -50,6 +50,7 @@ const MENU_SECTIONS = [
   {
     label: "Main",
     items: [
+      { text: "Analytics Overview", icon: AnalyticsRoundedIcon, path: "/dashboard/analytics-overview" },
       { text: "Home", icon: HomeRoundedIcon, path: "/dashboard" },
       { text: "Clients", icon: SupportAgentIcon, path: "/dashboard/clients" },
       { text: "Business", icon: StorefrontIcon, path: "/dashboard/business" },
