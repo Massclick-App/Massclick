@@ -27,6 +27,7 @@ const getOptionLabel = option => {
 // absolutely-positioned container (which would just overlap). Shared by
 // heroSection and StickySearchBar so both search bars behave identically.
 const CategoryDropdown = React.memo(({
+  id,
   label,
   options,
   onSelect,
@@ -46,7 +47,7 @@ const CategoryDropdown = React.memo(({
   })).filter(section => section.visibleOptions.length > 0);
   if (preparedSections.length === 0) return null;
   return (
-    <div className={cx("category-custom-dropdown")} style={{ zIndex: 10000 }}>
+    <div id={id} role="listbox" className={cx("category-custom-dropdown")} style={{ zIndex: 10000 }}>
       {preparedSections.map((section, sectionIndex) => {
         const handleScroll = event => {
           if (!section.onReachEnd || !section.hasMore || section.isLoadingMore) return;
