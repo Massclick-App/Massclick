@@ -36,6 +36,8 @@ export const viewAllMasterLocationAction = async (req, res) => {
         const search = req.query.search || "";
         const status = req.query.status || "all";
         const level = req.query.level || "all";
+        const district = req.query.district || "";
+        const pincode = req.query.pincode || "";
         const sortBy = req.query.sortBy || null;
         const sortOrder = req.query.sortOrder === "desc" ? -1 : 1;
 
@@ -45,6 +47,8 @@ export const viewAllMasterLocationAction = async (req, res) => {
             search,
             status,
             level,
+            district,
+            pincode,
             sortBy,
             sortOrder
         });

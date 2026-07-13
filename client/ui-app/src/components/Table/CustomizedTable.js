@@ -81,6 +81,7 @@ const CustomizedTable = ({
   };
 
   const handleSort = columnId => {
+    setPage(0);
     setSortConfig(prev => {
       if (prev.orderBy === columnId) {
         if (prev.order === "asc") return { orderBy: columnId, order: "desc" };
@@ -133,7 +134,10 @@ const CustomizedTable = ({
                 placeholder="Search threads, contacts, replies"
                 aria-label="Search"
                 value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
+                onChange={e => {
+                  setSearchQuery(e.target.value);
+                  setPage(0);
+                }}
               />
               <kbd className={cx("cir-search__kbd")}>⌘ K</kbd>
             </label>
@@ -145,7 +149,10 @@ const CustomizedTable = ({
                 <button
                   key={opt.value}
                   className={cx(`filter-chip ${statusFilter === opt.value ? "filter-chip--active" : ""}`)}
-                  onClick={() => setStatusFilter(opt.value)}
+                  onClick={() => {
+                    setStatusFilter(opt.value);
+                    setPage(0);
+                  }}
                 >
                   {opt.label}
                 </button>

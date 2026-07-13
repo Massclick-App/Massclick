@@ -142,20 +142,10 @@ export default function MasterLocation() {
   };
 
   // Get unique districts and levels for filter dropdowns
-  const uniqueDistricts = [...new Set(masterLocation.map(loc => loc.district))].sort();
+  const uniqueDistricts = [...new Set(masterLocation.map(loc => loc.district).filter(Boolean))].sort();
   const uniqueLevels = ["district", "zone", "ward", "locality"];
 
-  // Apply filters
-  const filteredLocation = masterLocation.filter(loc => {
-    if (filterStatus === "active" && !loc.isActive) return false;
-    if (filterStatus === "inactive" && loc.isActive) return false;
-    if (filterDistrict && loc.district !== filterDistrict) return false;
-    if (filterLevel && loc.level !== filterLevel) return false;
-    if (filterPincode && !((loc.pincode && loc.pincode.includes(filterPincode)) || (loc.pincodes && loc.pincodes.join(",").includes(filterPincode)))) return false;
-    return true;
-  });
-
-  const rows = filteredLocation.map((loc, index) => ({
+  const rows = masterLocation.map((loc, index) => ({
     id: loc._id || index,
     name: loc.locality || loc.ward || loc.zone || loc.district,
     state: loc.state,
@@ -232,7 +222,7 @@ export default function MasterLocation() {
   }];
 
   return <div className={cx("master-location-page")}>
-      <AdminViewTabs activeView={activeView} onChange={setActiveView} isEditing={Boolean(editingId)} createLabel="Master Location" listLabel="Master Locations" listCount={rows.length} />
+      <AdminViewTabs activeView={activeView} onChange={setActiveView} isEditing={Boolean(editingId)} createLabel="Master Location" listLabel="Master Locations" listCount={total || rows.length} />
 
       {activeView === "form" && (
       <div className={cx("master-location-card master-location-form-section")}>
@@ -405,23 +395,26 @@ export default function MasterLocation() {
           </Box>
 
           <Typography variant="body2" sx={{ marginBottom: "12px", color: "#6b7280" }}>
-            Showing {rows.length} of {masterLocation.length} locations
+            Showing {rows.length} of {total} locations
           </Typography>
 
           <Box sx={{ width: "100%" }}>
               <CustomizedTable
                 key={tableKey}
+                title="Master Locations"
                 data={rows}
                 columns={columns}
                 total={total}
                 loading={loading}
+                enableStatusFilter={false}
                 fetchData={(pageNo, pageSize, options) => {
-                  // Server-side filtering with pagination
                   const mergedOptions = {
                     ...options,
-                    search: filterDistrict || filterPincode || "",
+                    search: options.search?.trim() || "",
+                    district: filterDistrict,
+                    pincode: filterPincode.trim(),
                     status: filterStatus,
-                    level: filterLevel
+                    level: filterLevel || "all"
                   };
                   dispatch(getAllMasterLocation({
                     pageNo,

@@ -4,6 +4,8 @@ import masterLocationModel from "../../model/locationModel/masterLocationModel.j
 const slugify = (str) =>
   str.toLowerCase().trim().replace(/[^\w\s-]/g, "").replace(/[\s_]+/g, "-").replace(/^-+|-+$/g, "");
 
+const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 // slug, hierarchyPath, keywords and level are always derived from the
 // hierarchy fields so they can never drift out of sync with each other.
 const buildDerivedFields = (data) => {
@@ -77,24 +79,41 @@ export const viewAllMasterLocation = async ({
   search,
   status,
   level,
+  district,
+  pincode,
   sortBy,
   sortOrder,
 }) => {
   const query = {};
+  const andConditions = [];
 
   if (status === "active") query.isActive = true;
   if (status === "inactive") query.isActive = false;
   if (level && level !== "all") query.level = level;
+  if (district && district.trim() !== "") {
+    query.district = { $regex: `^${escapeRegex(district.trim())}$`, $options: "i" };
+  }
 
   if (search && search.trim() !== "") {
-    const term = search.trim();
-    query.$or = [
+    const term = escapeRegex(search.trim());
+    andConditions.push({ $or: [
       { keywords: { $regex: term, $options: "i" } },
       { slug: { $regex: term, $options: "i" } },
       { hierarchyPath: { $regex: term, $options: "i" } },
       { pincode: { $regex: term, $options: "i" } },
-    ];
+      { pincodes: { $regex: term, $options: "i" } },
+    ] });
   }
+
+  if (pincode && pincode.trim() !== "") {
+    const term = escapeRegex(pincode.trim());
+    andConditions.push({ $or: [
+      { pincode: { $regex: term, $options: "i" } },
+      { pincodes: { $regex: term, $options: "i" } },
+    ] });
+  }
+
+  if (andConditions.length) query.$and = andConditions;
 
   const sortQuery = sortBy ? { [sortBy]: sortOrder } : { slug: 1 };
 

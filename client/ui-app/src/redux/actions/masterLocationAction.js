@@ -29,12 +29,26 @@ export const getAllMasterLocation =
           search = "",
           status = "all",
           level = "all",
+          district = "",
+          pincode = "",
           sortBy = "",
           sortOrder = ""
         } = options;
 
+        const params = new URLSearchParams({
+          pageNo: String(pageNo),
+          pageSize: String(pageSize),
+          search,
+          status,
+          level,
+          district,
+          pincode,
+          sortBy,
+          sortOrder
+        });
+
         const response = await axiosInstance.get(
-          `${API_URL}/masterlocation/viewall?pageNo=${pageNo}&pageSize=${pageSize}&search=${search}&status=${status}&level=${level}&sortBy=${sortBy}&sortOrder=${sortOrder}`,
+          `${API_URL}/masterlocation/viewall?${params.toString()}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
 
