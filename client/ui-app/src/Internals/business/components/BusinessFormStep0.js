@@ -1,11 +1,18 @@
 import React from "react";
 import { Button, Avatar, Autocomplete, TextField } from "@mui/material";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
+import { useSelector } from "react-redux";
 import { createScopedClassNames } from "../../../utils/createScopedClassNames";
 import GooglePlacesInput from "../../../components/GooglePlacesInput/GooglePlacesInput";
 import BusinessFormSection from "./BusinessFormSection";
 import styles from "../business.module.css";
 import { getAllUsersClient } from "../../../redux/actions/userClientAction";
+import { searchMasterLocations } from "../../../redux/actions/masterLocationAction";
+
+const getMasterLocationLabel = (option) => {
+  if (!option || typeof option !== "object") return "";
+  return option.locality || option.ward || option.zone || option.district || "";
+};
 
 const cx = createScopedClassNames(styles);
 
@@ -52,6 +59,12 @@ const BusinessFormStep0 = ({
   sectionSavingState,
 }) => {
   const [clientSearchInput, setClientSearchInput] = React.useState("");
+  const [locationInput, setLocationInput] = React.useState(formData.location || "");
+  const masterLocationState = useSelector((state) => state.masterLocationReducer) || {};
+  const {
+    locationSearchResults: masterLocationOptions = [],
+    locationSearchLoading: masterLocationLoading = false,
+  } = masterLocationState;
 
   React.useEffect(() => {
     // Load all clients when component mounts
@@ -59,6 +72,38 @@ const BusinessFormStep0 = ({
       dispatch(getAllUsersClient());
     }
   }, [dispatch]);
+
+  React.useEffect(() => {
+    setLocationInput(formData.location || "");
+  }, [formData.location]);
+
+  React.useEffect(() => {
+    if (!dispatch) return undefined;
+    const query = locationInput.trim();
+    if (query.length < 2) return undefined;
+    const handle = setTimeout(() => dispatch(searchMasterLocations(query)), 300);
+    return () => clearTimeout(handle);
+  }, [locationInput, dispatch]);
+
+  const handleMasterLocationPick = (loc) => {
+    setFormData((prev) => ({
+      ...prev,
+      location: getMasterLocationLabel(loc),
+      masterLocation: {
+        locationId: loc._id,
+        slug: loc.slug,
+        state: loc.state || null,
+        district: loc.district || null,
+        zone: loc.zone || null,
+        ward: loc.ward || null,
+        locality: loc.locality || null,
+        resolvedLevel: loc.level,
+        confidence: "high",
+        source: "manual",
+        linkedAt: new Date().toISOString(),
+      },
+    }));
+  };
 
   const handleClientSearch = (event, value) => {
     setClientSearchInput(value);
@@ -276,29 +321,55 @@ const BusinessFormStep0 = ({
 
         <div className={fieldClass()}>
           <label htmlFor="location" className="form-input-label">Location</label>
-          <select
+          <Autocomplete
+            freeSolo
             id="location"
-            name="location"
-            className={`form-select-input ${fieldErrors.location ? "error" : ""}`}
-            value={formData.location}
-            onChange={(e) => {
-              setFormData((prev) => ({ ...prev, location: e.target.value }));
+            options={masterLocationOptions.filter((loc) => loc.level !== "state")}
+            loading={masterLocationLoading}
+            getOptionLabel={getMasterLocationLabel}
+            inputValue={locationInput}
+            filterOptions={(options) => options}
+            isOptionEqualToValue={(option, value) => option._id === value?._id}
+            onInputChange={(event, newInputValue, reason) => {
+              setLocationInput(newInputValue);
+              if (reason === "input") {
+                setFormData((prev) => ({ ...prev, location: newInputValue, masterLocation: null }));
+              }
             }}
-          >
-            <option value="">Select a location</option>
-            {location && location.length > 0 ? (
-              location.map((loc) => {
-                const displayName = loc.city || loc.district;
-                return (
-                  <option key={loc._id} value={displayName}>
-                    {displayName}{loc.state ? ` — ${loc.state}` : ""}
-                  </option>
-                );
-              })
-            ) : (
-              <option disabled>No locations available</option>
+            onChange={(event, newValue) => {
+              if (newValue && typeof newValue === "object") {
+                handleMasterLocationPick(newValue);
+              }
+            }}
+            renderOption={(props, option) => (
+              <li {...props} key={option._id}>
+                <span>
+                  <span style={{ display: "block", fontWeight: 600 }}>{getMasterLocationLabel(option)}</span>
+                  <span style={{ display: "block", fontSize: "12px", color: "#777" }}>{option.hierarchyPath}</span>
+                </span>
+              </li>
             )}
-          </select>
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                placeholder="Search district, zone, ward, or locality"
+                size="small"
+                error={!!fieldErrors.location}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    padding: "6px !important",
+                    borderRadius: "6px",
+                    fontSize: "14px",
+                  },
+                }}
+              />
+            )}
+          />
+          {formData.masterLocation?.slug && (
+            <small className={cx("helper-note")}>
+              Linked: {[formData.masterLocation.district, formData.masterLocation.zone, formData.masterLocation.ward, formData.masterLocation.locality].filter(Boolean).join(" > ")}
+            </small>
+          )}
           {renderFieldError("location")}
         </div>
 

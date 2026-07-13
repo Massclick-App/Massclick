@@ -1005,6 +1005,7 @@ const BusinessList = React.memo(() => {
     whatsappNumber: "",
     experience: "",
     location: "",
+    masterLocation: null,
     category: "",
     keywords: [],
     slug: "",
@@ -2348,6 +2349,7 @@ const BusinessList = React.memo(() => {
       whatsappNumber: row.whatsappNumber || "",
       experience: row.experience || "",
       location: row.location || "",
+      masterLocation: row.masterLocation || null,
       category: row.category || "",
       keywords: Array.isArray(row.keywords) ? row.keywords : [],
       slug: row.slug || "",
@@ -2571,7 +2573,7 @@ const BusinessList = React.memo(() => {
   };
 
   const SECTION_ENDPOINT_FIELDS = {
-    address: ['plotNumber', 'street', 'pincode', 'location', 'globalAddress', 'businessName'],
+    address: ['plotNumber', 'street', 'pincode', 'location', 'masterLocation', 'globalAddress', 'businessName'],
     contact: ['email', 'contact', 'contactList', 'whatsappNumber'],
     'business-info': ['gstin', 'experience'],
     'location-web': ['googleMap', 'geoLatitude', 'geoLongitude', 'website', 'geoLocation'],
@@ -3160,6 +3162,7 @@ const BusinessList = React.memo(() => {
     whatsappNumber: bl.whatsappNumber || "-",
     experience: bl.experience || "-",
     location: bl.location || "-",
+    masterLocation: bl.masterLocation || null,
     category: bl.category || "-",
     seoTitle: bl.seoTitle || "",
     seoDescription: bl.seoDescription || "",
@@ -3214,6 +3217,7 @@ const BusinessList = React.memo(() => {
     whatsappNumber: bl.whatsappNumber || "-",
     experience: bl.experience || "-",
     location: bl.location || "-",
+    masterLocation: bl.masterLocation || null,
     category: bl.category || "-",
     seoTitle: bl.seoTitle || "",
     seoDescription: bl.seoDescription || "",
