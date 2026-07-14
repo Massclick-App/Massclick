@@ -1,23 +1,24 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import sharp from "sharp";
+import QRCode from "qrcode";
 import {
   deleteObjectByKey,
-  getObjectBufferByKey,
   getSignedUrlByKey,
   uploadImageToS3,
 } from "../../s3Uploder.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
+import { slugify } from "../../slugify.js";
 
-export const CERTIFICATE_TEMPLATE_VERSION = 9;
+export const CERTIFICATE_TEMPLATE_VERSION = 11;
 const CERTIFICATE_FONT_FAMILY = "'Nirmala UI', 'Noto Sans Tamil', Latha, 'Arial Unicode MS', Arial, Helvetica, sans-serif";
+const SERIF_FONT_FAMILY = "Georgia, 'Times New Roman', serif";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const MASSCLICK_LOGO_PATH = path.resolve(
-  __dirname,
-  "../../../client/ui-app/src/assets/mclogo.png",
-);
+// Kept inside server/ (not client/) so these ship with the backend deploy,
+// which packages only the server directory.
+const MASSCLICK_LOGO_PATH = path.resolve(__dirname, "../../assets/certificates/massclick-logo.png");
+const SIGNATURE_PATH = path.resolve(__dirname, "../../assets/certificates/signature.png");
 
 const escapeXml = (value) =>
   String(value ?? "")
@@ -27,17 +28,18 @@ const escapeXml = (value) =>
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&apos;");
 
-const getMassclickLogoDataUrl = () => {
+const readImageDataUrl = (filePath, label) => {
   try {
-    const logoBuffer = fs.readFileSync(MASSCLICK_LOGO_PATH);
-    return `data:image/png;base64,${logoBuffer.toString("base64")}`;
+    const buffer = fs.readFileSync(filePath);
+    return `data:image/png;base64,${buffer.toString("base64")}`;
   } catch (error) {
-    console.warn("Unable to read MassClick certificate logo:", error.message);
+    console.warn(`Unable to read ${label} for certificate:`, error.message);
     return "";
   }
 };
 
-const MASSCLICK_LOGO_DATA_URL = getMassclickLogoDataUrl();
+const MASSCLICK_LOGO_DATA_URL = readImageDataUrl(MASSCLICK_LOGO_PATH, "MassClick logo");
+const SIGNATURE_DATA_URL = readImageDataUrl(SIGNATURE_PATH, "signature");
 
 const slugifyCertificateValue = (value = "") =>
   String(value)
@@ -60,53 +62,21 @@ const formatCertificateDate = (value = new Date()) => {
 const getBusinessId = (business = {}) =>
   business?._id?.toString?.() || String(business?._id || business?.id || "");
 
-const getBusinessInitials = (businessName = "") => {
-  const words = String(businessName || "Business")
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
+const getPublicBaseUrl = () =>
+  String(process.env.PUBLIC_BASE_URL || "https://massclick.in").replace(/\/+$/, "");
 
-  return (
-    words
-      .slice(0, 2)
-      .map((word) => word[0]?.toUpperCase() || "")
-      .join("") || "MC"
+const buildCertificateVerifyUrl = (business = {}) => {
+  if (business.businessProfileQrCode?.qrText) {
+    return business.businessProfileQrCode.qrText;
+  }
+
+  const businessId = getBusinessId(business);
+  const locationSlug = slugify(business.location || "business");
+  const businessSlug = slugify(
+    business.slug || business.businessName || business.name || "profile",
   );
-};
 
-const resolveBusinessLogoDataUrl = async (business = {}) => {
-  const fallbackImageKey = Array.isArray(business.businessImagesKey)
-    ? business.businessImagesKey.find(Boolean)
-    : "";
-  const imageKey = business.logoImageKey || business.bannerImageKey || fallbackImageKey;
-
-  if (!imageKey) {
-    return "";
-  }
-
-  try {
-    const object = await getObjectBufferByKey(imageKey);
-
-    if (!object?.content?.length) {
-      return "";
-    }
-
-    const pngBuffer = await sharp(object.content)
-      .resize(220, 220, {
-        fit: "cover",
-        position: "center",
-      })
-      .png()
-      .toBuffer();
-
-    return `data:image/png;base64,${pngBuffer.toString("base64")}`;
-  } catch (error) {
-    console.warn(
-      `Unable to prepare certificate business logo from ${imageKey}:`,
-      error.message,
-    );
-    return "";
-  }
+  return `${getPublicBaseUrl()}/business/${locationSlug}/${businessSlug}/${businessId}`;
 };
 
 const appendCertificateUrls = (business = {}) => {
@@ -164,88 +134,256 @@ const textLinesMarkup = ({
   fontWeight,
   fill,
   fontFamily = CERTIFICATE_FONT_FAMILY,
+  letterSpacing,
 }) =>
   lines
     .map(
       (line, index) =>
-        `<text x="${x}" y="${y + index * lineHeight}" text-anchor="middle" font-family="${fontFamily}" font-size="${fontSize}" font-weight="${fontWeight}" fill="${fill}">${escapeXml(line)}</text>`,
+        `<text x="${x}" y="${y + index * lineHeight}" text-anchor="middle" font-family="${fontFamily}" font-size="${fontSize}" font-weight="${fontWeight}" fill="${fill}"${letterSpacing ? ` letter-spacing="${letterSpacing}"` : ""}>${escapeXml(line)}</text>`,
     )
     .join("\n  ");
 
-const buildLogoMarkup = ({ logoDataUrl, initials, accent, x = 320, y = 238, radius = 50 }) => {
-  if (logoDataUrl) {
-    return `
-      <clipPath id="businessLogoClip">
-        <circle cx="${x}" cy="${y}" r="${radius - 8}"/>
-      </clipPath>
-      <circle cx="${x}" cy="${y}" r="${radius}" fill="#ffffff" stroke="${accent}" stroke-opacity="0.28" stroke-width="1"/>
-      <circle cx="${x}" cy="${y}" r="${radius - 3}" fill="#ffffff" stroke="#fed7c4" stroke-width="1"/>
-      <image href="${escapeXml(logoDataUrl)}" x="${x - radius + 6}" y="${y - radius + 6}" width="${(radius - 6) * 2}" height="${(radius - 6) * 2}" preserveAspectRatio="xMidYMid slice" clip-path="url(#businessLogoClip)"/>`;
-  }
+// ---- decorative building blocks --------------------------------------------
+
+const cornerMark = (x, y, hSign, vSign, color) => {
+  const len = 30;
+  return `
+    <path d="M${x} ${y + vSign * len} V${y} H${x + hSign * len}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" opacity="0.55"/>
+    <circle cx="${x}" cy="${y}" r="3" fill="${color}" opacity="0.7"/>`;
+};
+
+const sealMarkup = (cx, cy, primary, isTrust) => {
+  const bumpCount = 32;
+  const bumpR = 6;
+  const bumpOrbit = 62;
+  const bumps = Array.from({ length: bumpCount })
+    .map((_, i) => {
+      const angle = (i / bumpCount) * Math.PI * 2;
+      const x = cx + bumpOrbit * Math.cos(angle);
+      const y = cy + bumpOrbit * Math.sin(angle);
+      return `<circle cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="${bumpR}" fill="${primary}"/>`;
+    })
+    .join("");
+  const icon = isTrust
+    ? `<path d="M${cx} ${cy - 20} l14.5 5.8 v15.4 c0 11.4 -6.2 19.4 -14.5 23.2 c-8.3 -3.8 -14.5 -11.8 -14.5 -23.2 v-15.4 z" fill="#ffffff"/>
+       <circle cx="${cx}" cy="${cy - 2.5}" r="5.8" fill="${primary}"/>
+       <path d="M${cx} ${cy + 3.8} v9.4" stroke="${primary}" stroke-width="4.2" stroke-linecap="round"/>`
+    : `<path d="M${cx - 13.5} ${cy + 1} l9 9.5 l19 -21" fill="none" stroke="#ffffff" stroke-width="6.4" stroke-linecap="round" stroke-linejoin="round"/>`;
 
   return `
-      <circle cx="${x}" cy="${y}" r="${radius}" fill="#ffffff" stroke="${accent}" stroke-opacity="0.28" stroke-width="1"/>
-      <circle cx="${x}" cy="${y}" r="${radius - 8}" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
-      <text x="${x}" y="${y + 14}" text-anchor="middle" font-family="${CERTIFICATE_FONT_FAMILY}" font-size="30" font-weight="900" fill="${accent}">${escapeXml(initials)}</text>`;
+    ${bumps}
+    <circle cx="${cx}" cy="${cy}" r="52" fill="${primary}"/>
+    <circle cx="${cx}" cy="${cy}" r="46.5" fill="none" stroke="#f4c95d" stroke-width="1.6" opacity="0.85"/>
+    <circle cx="${cx}" cy="${cy}" r="40" fill="#ffffff" opacity="0.14"/>
+    ${icon}`;
 };
+
+const chipMarkup = (cx, cy, width, label) => {
+  const height = 32;
+  const x = cx - width / 2;
+  const y = cy - height / 2;
+  const checkX = x + 20;
+  return `
+    <rect x="${x}" y="${y}" width="${width}" height="${height}" rx="${height / 2}" fill="#f8fafc" stroke="#e2e8f0"/>
+    <circle cx="${checkX}" cy="${cy}" r="9" fill="#1f7a34"/>
+    <path d="M${checkX - 4.4} ${cy + 0.2} L${checkX - 1.2} ${cy + 3.4} L${checkX + 4.8} ${cy - 3.6}" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="${checkX + 14}" y="${cy + 5}" font-family="${CERTIFICATE_FONT_FAMILY}" font-size="14" font-weight="700" fill="#1f2937">${escapeXml(label)}</text>`;
+};
+
+const watermarkDefs = (primary) => `
+    <pattern id="watermarkTile" width="260" height="190" patternUnits="userSpaceOnUse" patternTransform="rotate(-30)">
+      <text x="0" y="80" font-family="${SERIF_FONT_FAMILY}" font-size="26" font-weight="700" fill="${primary}" opacity="0.032">MASSCLICK</text>
+    </pattern>`;
+
+const SIGNATURE_ASPECT = 849 / 376;
+
+const signatureMarkup = (cx, bottomY, width) => {
+  const height = width / SIGNATURE_ASPECT;
+  const x = cx - width / 2;
+  const y = bottomY - height;
+
+  if (!SIGNATURE_DATA_URL) {
+    return `<path d="M${x} ${bottomY - height / 2} c5,-13 11,-13 15,-3 c4,10 8,-15 13,-6 c4,7 7,-11 12,-4 c4,5 6,4 9,-2"
+      fill="none" stroke="#1e293b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" opacity="0.75"/>`;
+  }
+
+  return `<image href="${escapeXml(SIGNATURE_DATA_URL)}" x="${x}" y="${y}" width="${width}" height="${height}" preserveAspectRatio="xMidYMid meet"/>`;
+};
+
+const qrMarkup = async ({ url, x, y, size, color }) => {
+  try {
+    const raw = await QRCode.toString(url, {
+      type: "svg",
+      margin: 1,
+      color: { dark: color, light: "#00000000" },
+    });
+    const viewBoxMatch = raw.match(/viewBox="([^"]+)"/);
+    const bodyMatch = raw.match(/<svg[^>]*>([\s\S]*)<\/svg>/);
+
+    if (!viewBoxMatch || !bodyMatch) return "";
+
+    return `<svg x="${x}" y="${y}" width="${size}" height="${size}" viewBox="${viewBoxMatch[1]}">${bodyMatch[1]}</svg>`;
+  } catch (error) {
+    console.warn("Unable to build certificate QR code:", error.message);
+    return "";
+  }
+};
+
+// ---- main builder ------------------------------------------------------------
 
 const buildCertificateSvg = async (business = {}, type = "verified") => {
   const isTrust = type === "trust";
   const rawBusinessName = business.businessName || business.name || "Business";
   const rawLocation = business.globalAddress || business.location || "Business location verified by MassClick";
-  const businessNameLines = splitSvgTextLines(rawBusinessName, 28, 2);
-  const locationLines = splitSvgTextLines(rawLocation, 44, 2);
+  const businessNameLines = splitSvgTextLines(rawBusinessName, 26, 2);
+  const locationLines = splitSvgTextLines(rawLocation, 46, 2);
   const accent = "#ff5a1f";
   const trustBlue = "#00095c";
   const primary = isTrust ? trustBlue : accent;
   const soft = isTrust ? "#eef2ff" : "#fff7ed";
-  const detailWord = isTrust ? "trusted" : "verified";
   const statusCopy = isTrust
-    ? "has been certified as a trusted member of MassClick"
-    : "has been verified by MassClick";
-  const logoDataUrl = await resolveBusinessLogoDataUrl(business);
-  const businessLogoMarkup = buildLogoMarkup({
-    logoDataUrl,
-    initials: getBusinessInitials(business.businessName || business.name),
-    accent: primary,
-    x: 360,
-    y: 318,
-    radius: 62,
-  });
-  const brandLogoMarkup = MASSCLICK_LOGO_DATA_URL
-    ? `<image href="${escapeXml(MASSCLICK_LOGO_DATA_URL)}" x="252" y="824" width="216" height="62" preserveAspectRatio="xMidYMid meet"/>`
-    : "";
-  const titleMarkup = textLinesMarkup({
+    ? ["has been certified by MassClick as a", "Trusted business partner"]
+    : ["has successfully completed MassClick's", "business verification process"];
+  const certNo = `MC-${isTrust ? "TRU" : "VER"}-${(getBusinessId(business) || "000000").slice(-6).toUpperCase()}`;
+  const issuedDate = formatCertificateDate(business.certificates?.generatedAt || new Date());
+  const category = (business.category || "").trim();
+
+  // ---- vertical flow cursor: each block advances `cursor` past itself so
+  // longer/shorter business names and addresses never overlap the next block.
+  const CX = 360;
+  let cursor = 96;
+
+  const sealCy = cursor + 62;
+  const sealMarkupOut = sealMarkup(CX, sealCy, primary, isTrust);
+  cursor = sealCy + 62 + 26;
+
+  const titleY = cursor;
+  const titleMarkupOut = `<text x="${CX}" y="${titleY}" text-anchor="middle" font-family="${SERIF_FONT_FAMILY}" font-size="26" font-weight="700" letter-spacing="1.5" fill="#0f172a">CERTIFICATE OF ${isTrust ? "TRUST" : "VERIFICATION"}</text>`;
+  cursor += 22;
+
+  const ruleY = cursor;
+  const ruleMarkupOut = `
+    <line x1="256" y1="${ruleY}" x2="326" y2="${ruleY}" stroke="#e2e8f0" stroke-width="1.2"/>
+    <path d="M${CX} ${ruleY - 6} l6 6 l-6 6 l-6 -6 z" fill="${primary}" opacity="0.7"/>
+    <line x1="394" y1="${ruleY}" x2="464" y2="${ruleY}" stroke="#e2e8f0" stroke-width="1.2"/>`;
+  cursor += 28;
+
+  const certifyY = cursor;
+  const certifyMarkupOut = `<text x="${CX}" y="${certifyY}" text-anchor="middle" font-family="${SERIF_FONT_FAMILY}" font-style="italic" font-size="15" fill="#64748b">This is to certify that</text>`;
+  cursor += 44;
+
+  const nameLineHeight = 38;
+  const nameFontSize = businessNameLines.length > 1 ? 29 : 33;
+  const nameY = cursor;
+  const nameMarkupOut = textLinesMarkup({
     lines: businessNameLines,
-    x: 360,
-    y: 422 + (businessNameLines.length > 1 ? 0 : 20),
-    lineHeight: 39,
-    fontSize: businessNameLines.length > 1 ? 32 : 36,
-    fontWeight: 850,
-    fill: "#020617",
+    x: CX,
+    y: nameY,
+    lineHeight: nameLineHeight,
+    fontSize: nameFontSize,
+    fontWeight: 800,
+    fill: "#0f172a",
   });
-  const locationMarkup = textLinesMarkup({
-    lines: locationLines,
-    x: 360,
-    y: businessNameLines.length > 1 ? 508 : 494,
-    lineHeight: 25,
-    fontSize: 18,
-    fontWeight: 750,
-    fill: "#111827",
-  });
-  const checkIcon = (x, y) => `
-    <circle cx="${x + 10}" cy="${y + 10}" r="10" fill="#1f7a34"/>
-    <path d="M${x + 5.2} ${y + 10.4} L${x + 8.8} ${y + 14} L${x + 15.2} ${y + 6.7}" fill="none" stroke="#ffffff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>`;
-  const verifiedIcon = `
-    <path d="M280 96 L294 91 L306 101 L322 100 L329 114 L343 121 L338 137 L343 153 L329 160 L322 174 L306 173 L294 183 L280 178 L266 183 L254 173 L238 174 L231 160 L217 153 L222 137 L217 121 L231 114 L238 100 L254 101 Z" fill="${accent}"/>
-    <path d="M275 139 L287 151 L313 121" fill="none" stroke="#ffffff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>`;
-  const trustIcon = `
-    <path d="M306 101 h28 a17 17 0 0 1 17 17 v28 a39 39 0 0 1 -27 37 l-4 1.6 l-4 -1.6 a39 39 0 0 1 -27 -37 v-28 a17 17 0 0 1 17 -17 z" fill="#ffffff"/>
-    <circle cx="320" cy="134" r="8" fill="${trustBlue}"/>
-    <path d="M320 143 v17" stroke="${trustBlue}" stroke-width="6" stroke-linecap="round"/>`;
-  const starsMarkup = isTrust
-    ? `<text x="360" y="612" text-anchor="middle" font-family="${CERTIFICATE_FONT_FAMILY}" font-size="24" font-weight="900" fill="${accent}">&#9733; &#9733; &#9733; &#9733; &#9733;</text>`
+  cursor = nameY + (businessNameLines.length - 1) * nameLineHeight + 30;
+
+  const chipWidth = Math.min(300, Math.max(120, category.length * 9 + 50));
+  const categoryY = cursor;
+  const categoryMarkupOut = category
+    ? `<rect x="${CX - chipWidth / 2}" y="${categoryY - 15}" width="${chipWidth}" height="30" rx="15" fill="${soft}"/>
+       <text x="${CX}" y="${categoryY + 5}" text-anchor="middle" font-family="${CERTIFICATE_FONT_FAMILY}" font-size="13" font-weight="700" letter-spacing="0.6" fill="${primary}">${escapeXml(category.toUpperCase())}</text>`
     : "";
+  cursor += category ? 40 : 6;
+
+  const locationY = cursor;
+  const locationMarkupOut = textLinesMarkup({
+    lines: locationLines,
+    x: CX,
+    y: locationY,
+    lineHeight: 22,
+    fontSize: 16,
+    fontWeight: 600,
+    fill: "#475569",
+  });
+  cursor = locationY + (locationLines.length - 1) * 22 + 34;
+
+  const statementY = cursor;
+  const statementMarkupOut = statusCopy
+    .map(
+      (line, i) =>
+        `<text x="${CX}" y="${statementY + i * 21}" text-anchor="middle" font-family="${CERTIFICATE_FONT_FAMILY}" font-size="15" fill="#475569">${i === 1 ? `<tspan font-weight="800" fill="${primary}">${escapeXml(line)}</tspan>` : escapeXml(line)}</text>`,
+    )
+    .join("\n  ");
+  cursor = statementY + 21 + 30;
+
+  const starsMarkupOut = (() => {
+    if (!isTrust) return "";
+
+    const starPath = (cx, cy, r) => {
+      const points = Array.from({ length: 10 }).map((_, i) => {
+        const angle = -Math.PI / 2 + (i * Math.PI) / 5;
+        const rad = i % 2 === 0 ? r : r * 0.42;
+        return `${(cx + rad * Math.cos(angle)).toFixed(1)},${(cy + rad * Math.sin(angle)).toFixed(1)}`;
+      });
+      return `<polygon points="${points.join(" ")}" fill="#f4b400"/>`;
+    };
+    const out = Array.from({ length: 5 })
+      .map((_, i) => starPath(CX - 88 + i * 44, cursor, 11))
+      .join("");
+    cursor += 30;
+    return out;
+  })();
+
+  const dividerY = cursor;
+  const dividerMarkupOut = `
+    <line x1="150" y1="${dividerY}" x2="326" y2="${dividerY}" stroke="#e2e8f0" stroke-width="1.4"/>
+    <path d="M${CX} ${dividerY - 7} l7 7 l-7 7 l-7 -7 z" fill="${primary}" opacity="0.7"/>
+    <line x1="394" y1="${dividerY}" x2="570" y2="${dividerY}" stroke="#e2e8f0" stroke-width="1.4"/>`;
+  cursor += 40;
+
+  const checksRow1Y = cursor;
+  const checksRow2Y = checksRow1Y + 44;
+  const checksMarkupOut = `
+    ${chipMarkup(220, checksRow1Y, 190, "Business Proof")}
+    ${chipMarkup(500, checksRow1Y, 210, "Business Address")}
+    ${chipMarkup(220, checksRow2Y, 190, "Mobile Number")}
+    ${chipMarkup(500, checksRow2Y, 190, "Email ID")}`;
+  cursor = checksRow2Y + 40;
+
+  // Footer sits at a fixed baseline unless content overflows past it, so
+  // certificates for short and long business names stay visually consistent.
+  const footerRuleY = Math.max(cursor, 726);
+  const qrSize = 68;
+  const qrTop = footerRuleY + 24;
+  const qrSvg = await qrMarkup({
+    url: buildCertificateVerifyUrl(business),
+    x: 84,
+    y: qrTop,
+    size: qrSize,
+    color: "#111827",
+  });
+  const logoW = 170;
+  const logoH = logoW / (858 / 200);
+  const logoTop = footerRuleY + 30;
+
+  const sigCx = 600;
+  const sigImageBottomY = footerRuleY + 50;
+  const sigLineY = sigImageBottomY + 6;
+  const sigLabelY = sigLineY + 15;
+
+  const brandLogoMarkup = MASSCLICK_LOGO_DATA_URL
+    ? `<image href="${escapeXml(MASSCLICK_LOGO_DATA_URL)}" x="${CX - logoW / 2}" y="${logoTop}" width="${logoW}" height="${logoH}" preserveAspectRatio="xMidYMid meet"/>`
+    : "";
+
+  const footerMarkup = `
+    <line x1="60" y1="${footerRuleY}" x2="660" y2="${footerRuleY}" stroke="#e2e8f0" stroke-width="1"/>
+    ${qrSvg}
+    <text x="${84 + qrSize / 2}" y="${qrTop + qrSize + 17}" text-anchor="middle" font-family="${CERTIFICATE_FONT_FAMILY}" font-size="10" font-weight="700" letter-spacing="0.4" fill="#94a3b8">SCAN TO VERIFY</text>
+    ${brandLogoMarkup}
+    <text x="${CX}" y="${logoTop + logoH + 16}" text-anchor="middle" font-family="${CERTIFICATE_FONT_FAMILY}" font-size="11" fill="#94a3b8">www.massclick.in</text>
+    ${signatureMarkup(sigCx, sigImageBottomY, 112)}
+    <line x1="${sigCx - 50}" y1="${sigLineY}" x2="${sigCx + 50}" y2="${sigLineY}" stroke="#94a3b8" stroke-width="1"/>
+    <text x="${sigCx}" y="${sigLabelY}" text-anchor="middle" font-family="${CERTIFICATE_FONT_FAMILY}" font-size="10" font-weight="700" letter-spacing="0.4" fill="#94a3b8">AUTHORIZED SIGNATORY</text>
+    <text x="${CX}" y="${footerRuleY + 20 + qrSize + 42}" text-anchor="middle" font-family="${CERTIFICATE_FONT_FAMILY}" font-size="10" fill="#cbd5e1">Certificate No. ${certNo}  |  Issued ${issuedDate}</text>`;
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="720" height="960" viewBox="0 0 720 960">
@@ -258,51 +396,33 @@ const buildCertificateSvg = async (business = {}, type = "verified") => {
       <stop offset="0.42" stop-color="#ffffff"/>
       <stop offset="1" stop-color="#f8fafc"/>
     </linearGradient>
-    <linearGradient id="dividerGlow" x1="0" x2="1">
-      <stop offset="0" stop-color="${accent}" stop-opacity="0"/>
-      <stop offset="0.5" stop-color="${accent}" stop-opacity="0.58"/>
-      <stop offset="1" stop-color="${accent}" stop-opacity="0"/>
-    </linearGradient>
+    ${watermarkDefs(primary)}
   </defs>
 
   <rect width="720" height="960" fill="url(#pageGlow)"/>
-  <circle cx="360" cy="0" r="250" fill="${accent}" opacity="0.10"/>
-  <rect x="24" y="24" width="672" height="912" rx="8" fill="none" stroke="${accent}" stroke-opacity="0.30" stroke-width="1.4"/>
-  ${isTrust ? `<rect x="24" y="24" width="230" height="8" rx="4" fill="${trustBlue}"/><rect x="466" y="928" width="230" height="8" rx="4" fill="${trustBlue}"/>` : ""}
+  <rect x="32" y="32" width="656" height="896" fill="url(#watermarkTile)"/>
+  <rect x="22" y="22" width="676" height="916" rx="6" fill="none" stroke="${primary}" stroke-opacity="0.35" stroke-width="1.6"/>
+  <rect x="32" y="32" width="656" height="896" rx="4" fill="none" stroke="#cbd5e1" stroke-width="1"/>
+  ${cornerMark(46, 46, 1, 1, primary)}
+  ${cornerMark(674, 46, -1, 1, primary)}
+  ${cornerMark(46, 914, 1, -1, primary)}
+  ${cornerMark(674, 914, -1, -1, primary)}
 
-  ${isTrust
-    ? `<text x="360" y="102" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="36" fill="#1f2937">CERTIFICATE OF</text>
-  <rect x="224" y="132" width="272" height="68" rx="10" fill="${trustBlue}"/>
-  ${trustIcon}
-  <text x="384" y="177" text-anchor="middle" font-family="${CERTIFICATE_FONT_FAMILY}" font-size="40" font-weight="850" fill="#ffffff">Trust</text>`
-    : `${verifiedIcon}
-  <text x="406" y="154" text-anchor="middle" font-family="${CERTIFICATE_FONT_FAMILY}" font-size="58" font-weight="850" fill="${accent}">Verified</text>`}
+  <text x="${CX}" y="72" text-anchor="middle" font-family="${CERTIFICATE_FONT_FAMILY}" font-size="12.5" font-weight="700" letter-spacing="3" fill="#64748b">MASSCLICK BUSINESS VERIFICATION</text>
+  <line x1="300" y1="86" x2="420" y2="86" stroke="${primary}" stroke-opacity="0.4" stroke-width="1.2"/>
 
-  <rect x="112" y="238" width="496" height="312" rx="18" fill="#ffffff" fill-opacity="0.88" stroke="#e2e8f0" filter="url(#identityShadow)"/>
-  ${businessLogoMarkup}
-  ${titleMarkup}
-  ${locationMarkup}
-
-  <text x="360" y="574" text-anchor="middle" font-family="${CERTIFICATE_FONT_FAMILY}" font-size="18" font-weight="760" fill="#111827">${escapeXml(statusCopy)}</text>
-  ${starsMarkup}
-
-  <rect x="140" y="${isTrust ? 650 : 628}" width="440" height="1.4" fill="url(#dividerGlow)"/>
-
-  <text x="360" y="${isTrust ? 710 : 688}" text-anchor="middle" font-family="${CERTIFICATE_FONT_FAMILY}" font-size="18" fill="#475569">
-    <tspan>Following details of the company have been </tspan>
-    <tspan font-weight="850" fill="${accent}">${detailWord}</tspan>
-  </text>
-
-  ${checkIcon(158, isTrust ? 748 : 726)}
-  <text x="190" y="${isTrust ? 765 : 743}" font-family="${CERTIFICATE_FONT_FAMILY}" font-size="18" font-weight="800" fill="#111827">Business Proof</text>
-  ${checkIcon(420, isTrust ? 748 : 726)}
-  <text x="452" y="${isTrust ? 765 : 743}" font-family="${CERTIFICATE_FONT_FAMILY}" font-size="18" font-weight="800" fill="#111827">Business Address</text>
-  ${checkIcon(158, isTrust ? 804 : 782)}
-  <text x="190" y="${isTrust ? 821 : 799}" font-family="${CERTIFICATE_FONT_FAMILY}" font-size="18" font-weight="800" fill="#111827">Mobile Number</text>
-  ${checkIcon(420, isTrust ? 804 : 782)}
-  <text x="452" y="${isTrust ? 821 : 799}" font-family="${CERTIFICATE_FONT_FAMILY}" font-size="18" font-weight="800" fill="#111827">Email ID</text>
-
-  ${brandLogoMarkup}
+  ${sealMarkupOut}
+  ${titleMarkupOut}
+  ${ruleMarkupOut}
+  ${certifyMarkupOut}
+  ${nameMarkupOut}
+  ${categoryMarkupOut}
+  ${locationMarkupOut}
+  ${statementMarkupOut}
+  ${starsMarkupOut}
+  ${dividerMarkupOut}
+  ${checksMarkupOut}
+  ${footerMarkup}
 </svg>`;
 };
 
