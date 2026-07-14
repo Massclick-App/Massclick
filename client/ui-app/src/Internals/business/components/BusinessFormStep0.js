@@ -327,7 +327,7 @@ const BusinessFormStep0 = ({
             className={`form-select-input ${fieldErrors.location ? "error" : ""}`}
             value={formData.location}
             onChange={(e) => {
-              setFormData((prev) => ({ ...prev, location: e.target.value, masterLocation: null }));
+              setFormData((prev) => ({ ...prev, location: e.target.value }));
             }}
           >
             <option value="">Select a location</option>
