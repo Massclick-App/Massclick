@@ -25,6 +25,15 @@ const DEFAULT_LOCATION = "Tiruchirappalli";
 const SUGGESTION_PAGE_SIZE = 20;
 const MASTER_LOCATION_SUGGESTION_LIMIT = 25;
 const isObjectId = s => /^[a-f\d]{24}$/i.test(String(s || "").trim());
+const getAuthUserDetails = () => {
+  const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
+  return {
+    userName: authUser?.userName,
+    mobileNumber1: authUser?.mobileNumber1,
+    mobileNumber2: authUser?.mobileNumber2,
+    email: authUser?.email
+  };
+};
 const HeroSection = React.memo(({
   searchTerm,
   setSearchTerm,
@@ -231,8 +240,7 @@ const HeroSection = React.memo(({
     });
     return list;
   })();
-  // New: real masterlocations match (district/zone/ward/locality), shown
-  // alongside the legacy business-field suggestions above for comparison.
+  // Real masterlocations match (district/zone/ward/locality).
   // subLabel shows the full remaining breadcrumb (ward > zone > district),
   // deduped against the bold name and against itself so no level repeats.
   // A district/zone/ward can share its exact name with a child locality
@@ -268,6 +276,14 @@ const HeroSection = React.memo(({
         })) : null
       };
     });
+  })();
+  // Single merged list: VERIFIED LOCATIONS listed in full first, legacy
+  // LOCATION SUGGESTIONS after them, with any name already covered by a
+  // verified match dropped so it doesn't show twice.
+  const combinedLocationOptions = (() => {
+    const seen = new Set(masterLocationSuggestions.map(opt => String(opt.name || "").trim().toLowerCase()).filter(Boolean));
+    const legacyOnly = parsedLocationSuggestions.filter(text => !seen.has(String(text).trim().toLowerCase()));
+    return [...masterLocationSuggestions, ...legacyOnly];
   })();
   const parseVoiceQuery = text => {
     const lower = text.toLowerCase().trim();
@@ -309,13 +325,6 @@ const HeroSection = React.memo(({
     // 🔹 Remove stopwords
     words = words.filter(word => !stopWords.includes(word));
     const cleanedTerm = words.join(" ");
-    const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
-    const userDetails = {
-      userName: authUser?.userName,
-      mobileNumber1: authUser?.mobileNumber1,
-      mobileNumber2: authUser?.mobileNumber2,
-      email: authUser?.email
-    };
     // Use centralized navigation with normalized data
     navigateToSearchResult({
       searchTerm: cleanedTerm,
@@ -326,7 +335,7 @@ const HeroSection = React.memo(({
       isKnownCategory: false,
       // User typed search - use flexible term search
       logAlreadySent: false,
-      userDetails
+      userDetails: getAuthUserDetails()
     });
   };
   const handleVoiceSearch = () => {
@@ -378,6 +387,14 @@ const HeroSection = React.memo(({
       <div className={cx("hero-decor hero-decor-left")} aria-hidden="true">
         <img src={heroIllustrationLeft} alt="" />
       </div>
+      <div className={cx("hero-heading")}>
+        <h1 className={cx("hero-title")}>
+          Explore. Connect.
+          <br />
+          <span className={cx("hero-title-accent")}>Succeed Local.</span>
+        </h1>
+        <p className={cx("hero-subtitle")}>Find trusted businesses and services near you.</p>
+      </div>
       <div className={cx("hero-content hero-minimal")}>
 
         <form className={cx("search-bar-container")} onSubmit={handleSearch}>
@@ -417,18 +434,7 @@ const HeroSection = React.memo(({
               });
               setShowLocationDropdown(false);
             };
-            return <CategoryDropdown id="location-suggestions" sections={[{
-              label: "VERIFIED LOCATIONS",
-              options: masterLocationSuggestions,
-              onSelect: selectLocation
-            }, {
-              label: "LOCATION SUGGESTIONS",
-              options: parsedLocationSuggestions,
-              onSelect: selectLocation,
-              onReachEnd: () => maybeLoadMoreSuggestions(locationName.trim()),
-              hasMore: backendSuggestionsHasMore && backendSuggestionsQuery === locationName.trim(),
-              isLoadingMore: backendSuggestionsLoading && backendSuggestionsQuery === locationName.trim()
-            }]} />;
+            return <CategoryDropdown id="location-suggestions" label="LOCATION SUGGESTIONS" options={combinedLocationOptions} onSelect={selectLocation} onReachEnd={() => maybeLoadMoreSuggestions(locationName.trim())} hasMore={backendSuggestionsHasMore && backendSuggestionsQuery === locationName.trim()} isLoadingMore={backendSuggestionsLoading && backendSuggestionsQuery === locationName.trim()} />;
           })()}
           </div>
 
@@ -502,6 +508,7 @@ const HeroSection = React.memo(({
            </select> */}
           <button type="submit" className={cx("search-button")} aria-label="Search businesses">
             <SearchIcon className={cx("search-icon")} />
+            <span className={cx("search-button-text")}>Search</span>
           </button>
         </form>
         <div className={cx("hero-trust")}>
