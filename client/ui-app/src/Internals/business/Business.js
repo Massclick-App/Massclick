@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import axiosInstance from "../../services/axiosInstance.js";
 import { useDispatch, useSelector } from "react-redux";
 import InputValidator from "../validators/inputValidator.js";
-import { getAllBusinessList, createBusinessList, editBusinessList, editBusinessSection, deleteBusinessList, trackQrDownload, updateBusinessBadges, exportBusinessList, revertPaidStatus } from "../../redux/actions/businessListAction";
+import { getAllBusinessList, createBusinessList, editBusinessList, editBusinessSection, deleteBusinessList, trackQrDownload, updateBusinessBadges, regenerateBusinessCertificates, exportBusinessList, revertPaidStatus } from "../../redux/actions/businessListAction";
 import { getAllLocation, createLocation } from "../../redux/actions/locationAction";
 import { getAllCategory, businessCategorySearch } from "../../redux/actions/categoryAction";
 import { getAllUsersClient, getUserClientSuggestion } from "../../redux/actions/userClientAction.js";
@@ -28,6 +28,9 @@ import TravelExploreIcon from '@mui/icons-material/TravelExplore';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
+import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
+import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded';
+import AutorenewRoundedIcon from '@mui/icons-material/AutorenewRounded';
 import { checkPhonePeStatus, createPhonePePayment } from "../../redux/actions/phonePayAction.js";
 import { updateGmapsLeadStatus, clearGmapsLeadImport, setGmapsLeadToImport } from "../../redux/actions/gmapsLeadsAction";
 import CustomizedTable from "../../components/Table/CustomizedTable.js";
@@ -151,6 +154,37 @@ const normalizePaymentConcept = (source = {}) => {
 
 const normalizeQuillHtml = value =>
   value === "<p><br></p>" ? "" : value || "";
+
+const getBusinessDocumentUrl = (document) => {
+  if (!document) return "";
+  if (typeof document === "string") return document;
+  return document.url || document.preview || document.href || document.documentUrl || document.fileUrl || "";
+};
+
+const getBusinessDocumentName = (document, index) => {
+  if (document && typeof document === "object") {
+    const explicitName = document.name || document.fileName || document.originalName || document.title;
+    if (explicitName) return explicitName;
+  }
+
+  const url = getBusinessDocumentUrl(document);
+  const urlName = url.split("?")[0].split("/").filter(Boolean).pop();
+  if (urlName) {
+    try {
+      return decodeURIComponent(urlName);
+    } catch {
+      return urlName;
+    }
+  }
+
+  return `Document ${index + 1}`;
+};
+
+const isPreviewableBusinessDocumentImage = (url = "") =>
+  /^data:image\//i.test(url) || /\.(png|jpe?g|webp|gif|bmp|avif)(?:\?|$)/i.test(url);
+
+const isBusinessPdfDocument = (url = "") =>
+  /^data:application\/pdf/i.test(url) || /\.pdf(?:\?|$)/i.test(url);
 
 const QuillEditor = ({
   value,
@@ -521,12 +555,17 @@ const BusinessList = React.memo(() => {
     open: false,
     data: null
   });
+  const [documentsDialog, setDocumentsDialog] = useState({
+    open: false,
+    data: null
+  });
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [inputKeyword, setInputKeyword] = useState("");
   const [categoryKeywordSuggestions, setCategoryKeywordSuggestions] = useState([]);
   const [detailRow, setDetailRow] = useState(null);
   const [imageModalOpen, setImageModalOpen] = useState(false);
   const [selectedImageUrl, setSelectedImageUrl] = useState(null);
+  const [certificateRegeneratingId, setCertificateRegeneratingId] = useState(null);
 
   // Search & Filter States
   const [searchTerm, setSearchTerm] = useState("");
@@ -987,6 +1026,25 @@ const BusinessList = React.memo(() => {
   };
   const handleCloseGallery = () => {
     setGalleryDialog({
+      open: false,
+      data: null
+    });
+  };
+  const handleOpenDocuments = row => {
+    const rowId = row?._id || row?.id || row;
+    const business = (row && typeof row === "object")
+      ? row
+      : businessList.find(b => b._id === rowId);
+
+    if (business) {
+      setDocumentsDialog({
+        open: true,
+        data: business
+      });
+    }
+  };
+  const handleCloseDocuments = () => {
+    setDocumentsDialog({
       open: false,
       data: null
     });
@@ -1523,8 +1581,46 @@ const BusinessList = React.memo(() => {
       if (!payment || typeof payment !== "object") return false;
       const status = normalizeSearchValue(payment.status || payment.paymentStatus || payment.payment_status);
       const amount = Number(payment.amount || payment.amountPaid || payment.paidAmount || 0);
-      return status === "paid" || amount > 0;
+      return status === "paid" || status === "success" || amount > 0;
     });
+  };
+
+  const hasCertificateDocument = row =>
+    !!(
+      row?.certificates?.verifiedCertificateKey ||
+      row?.certificates?.verifiedCertificateUrl ||
+      row?.certificates?.trustCertificateKey ||
+      row?.certificates?.trustCertificateUrl
+    );
+
+  const canRegenerateCertificates = row =>
+    isBusinessPaid(row) && (
+      !!row.verification?.isVerified ||
+      !!row.badges?.isTrust ||
+      hasCertificateDocument(row)
+    );
+
+  const handleRegenerateCertificates = async row => {
+    if (!row?._id || !canRegenerateCertificates(row)) return;
+
+    setCertificateRegeneratingId(row._id);
+    try {
+      const updatedBusiness = await dispatch(regenerateBusinessCertificates(row._id));
+      enqueueSnackbar("Certificates regenerated and old files cleared.", { variant: "success" });
+      if (detailRow?._id === row._id) {
+        setDetailRow(prev => ({
+          ...prev,
+          ...updatedBusiness
+        }));
+      }
+    } catch (error) {
+      enqueueSnackbar(
+        error.response?.data?.message || error.message || "Certificate regeneration failed.",
+        { variant: "error" }
+      );
+    } finally {
+      setCertificateRegeneratingId(null);
+    }
   };
 
   const buildFilterState = (overrides = {}) => ({
@@ -3199,6 +3295,7 @@ const BusinessList = React.memo(() => {
     kycDocuments: bl.kycDocuments || [],
     badges: bl.badges || { isFeatured: false, isSponsored: false, isTrending: false, isTrust: false, priorityScore: 0 },
     verification: bl.verification || { isVerified: false, verificationType: "ADMIN" },
+    certificates: bl.certificates || {},
   }));
 
   const mapBusinessToRow = (bl, index = 0) => ({
@@ -3260,6 +3357,7 @@ const BusinessList = React.memo(() => {
     kycDocuments: bl.kycDocuments || [],
     badges: bl.badges || { isFeatured: false, isSponsored: false, isTrending: false, isTrust: false, priorityScore: 0 },
     verification: bl.verification || { isVerified: false, verificationType: "ADMIN" },
+    certificates: bl.certificates || {},
   });
 
   const getRowsMatchingAppliedFilters = rowList => rowList.filter(row => {
@@ -3818,6 +3916,28 @@ const BusinessList = React.memo(() => {
         <Tooltip title="View details" arrow>
           <EyeOutlined onClick={() => setDetailRow(row)} style={{ fontSize: 18, color: "#ff7a00", cursor: "pointer" }} />
         </Tooltip>
+        <Tooltip title="View docs" arrow>
+          <DescriptionOutlinedIcon
+            onClick={() => handleOpenDocuments(row)}
+            sx={{ fontSize: 18, color: "#0f766e", cursor: "pointer" }}
+          />
+        </Tooltip>
+        {canRegenerateCertificates(row) && (
+          <Tooltip title="Regenerate certificates" arrow>
+            <AutorenewRoundedIcon
+              onClick={() => {
+                if (certificateRegeneratingId !== row._id) {
+                  handleRegenerateCertificates(row);
+                }
+              }}
+              sx={{
+                fontSize: 18,
+                color: certificateRegeneratingId === row._id ? "#94a3b8" : "#8b5cf6",
+                cursor: certificateRegeneratingId === row._id ? "not-allowed" : "pointer"
+              }}
+            />
+          </Tooltip>
+        )}
         <Tooltip title="Edit" arrow>
           <EditOutlined onClick={() => handleEdit(row)} style={{ fontSize: 17, color: "#3b82f6", cursor: "pointer" }} />
         </Tooltip>
@@ -4829,6 +4949,21 @@ const BusinessList = React.memo(() => {
         const keywords = Array.isArray(row.keywords)
           ? row.keywords.map(k => typeof k === "string" ? k.trim() : k?.keyword || k).filter(Boolean)
           : String(row.keywords || "").split(",").map(k => k.trim()).filter(Boolean);
+        const certificateGeneratedAtValue = row.certificates?.generatedAt?.$date || row.certificates?.generatedAt;
+        const formattedCertificateDate = certificateGeneratedAtValue ? new Date(certificateGeneratedAtValue).toLocaleString("en-IN", {
+          timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric",
+          hour: "2-digit", minute: "2-digit", hour12: true
+        }) : null;
+        const certificateLinks = [
+          row.certificates?.verifiedCertificateUrl && {
+            label: "Verified Certificate",
+            url: row.certificates.verifiedCertificateUrl
+          },
+          row.certificates?.trustCertificateUrl && {
+            label: "Trust Certificate",
+            url: row.certificates.trustCertificateUrl
+          }
+        ].filter(Boolean);
 
         const handleDownloadQR = async () => {
           try {
@@ -4989,6 +5124,31 @@ const BusinessList = React.memo(() => {
                   </Box>
                 )}
 
+                {(row.verification?.isVerified || row.badges?.isTrust || certificateLinks.length > 0) && (
+                  <Box sx={{ pb: 2.5, borderBottom: "1px solid #e8ecf1" }}>
+                    <SLabel>Certificates</SLabel>
+                    <DRow label="Verified" value={row.verification?.isVerified ? "Active" : null} />
+                    <DRow label="Trust" value={row.badges?.isTrust ? "Active" : null} />
+                    <DRow label="Generated" value={formattedCertificateDate} />
+                    {certificateLinks.length > 0 && (
+                      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mt: 1.2 }}>
+                        {certificateLinks.map(certificate => (
+                          <Button
+                            key={certificate.label}
+                            size="small"
+                            variant="outlined"
+                            endIcon={<OpenInNewRoundedIcon fontSize="small" />}
+                            onClick={() => window.open(certificate.url, "_blank", "noopener,noreferrer")}
+                            sx={{ textTransform: "none", borderColor: "#ddd6fe", color: "#6d28d9", fontWeight: 700, "&:hover": { bgcolor: "#f5f3ff", borderColor: "#c4b5fd" } }}
+                          >
+                            {certificate.label}
+                          </Button>
+                        ))}
+                      </Box>
+                    )}
+                  </Box>
+                )}
+
                 {/* Payment Section */}
                 <Box sx={{ pb: 2.5, borderBottom: "1px solid #e8ecf1" }}>
                   <SLabel>Payment Status</SLabel>
@@ -5080,6 +5240,47 @@ const BusinessList = React.memo(() => {
               <Button
                 size="large"
                 variant="outlined"
+                startIcon={<DescriptionOutlinedIcon fontSize="small" />}
+                onClick={() => { setDetailRow(null); handleOpenDocuments(row); }}
+                sx={{
+                  textTransform: "none",
+                  fontSize: "0.95rem",
+                  fontWeight: 600,
+                  flex: 1,
+                  minWidth: "120px",
+                  py: 1.2,
+                  borderColor: "#e8ecf1",
+                  color: "#0f172a",
+                  "&:hover": { bgcolor: "#f8f9fa", borderColor: "#cbd5e1" }
+                }}
+              >
+                Docs
+              </Button>
+              {canRegenerateCertificates(row) && (
+                <Button
+                  size="large"
+                  variant="outlined"
+                  startIcon={certificateRegeneratingId === row._id ? <CircularProgress size={17} /> : <AutorenewRoundedIcon fontSize="small" />}
+                  onClick={() => handleRegenerateCertificates(row)}
+                  disabled={certificateRegeneratingId === row._id}
+                  sx={{
+                    textTransform: "none",
+                    fontSize: "0.95rem",
+                    fontWeight: 600,
+                    flex: 1,
+                    minWidth: "150px",
+                    py: 1.2,
+                    borderColor: "#ddd6fe",
+                    color: "#6d28d9",
+                    "&:hover": { bgcolor: "#f5f3ff", borderColor: "#c4b5fd" }
+                  }}
+                >
+                  {certificateRegeneratingId === row._id ? "Regenerating" : "Regenerate Certs"}
+                </Button>
+              )}
+              <Button
+                size="large"
+                variant="outlined"
                 color="error"
                 startIcon={<DeleteOutlined />}
                 onClick={() => { setDetailRow(null); handleDelete(row); }}
@@ -5096,6 +5297,188 @@ const BusinessList = React.memo(() => {
                 Delete
               </Button>
             </Box>
+          </>
+        );
+      })()}
+    </Dialog>
+
+    <Dialog
+      open={documentsDialog.open}
+      onClose={handleCloseDocuments}
+      maxWidth="md"
+      fullWidth
+      PaperProps={{ sx: { borderRadius: 2, bgcolor: "#ffffff" } }}
+    >
+      {(() => {
+        const rawDocuments = documentsDialog.data?.kycDocuments;
+        const kycDocuments = (Array.isArray(rawDocuments)
+          ? rawDocuments
+          : rawDocuments ? [rawDocuments] : [])
+          .map((documentItem, index) => ({
+            url: getBusinessDocumentUrl(documentItem),
+            name: getBusinessDocumentName(documentItem, index),
+            kind: "KYC"
+          }))
+          .filter(documentItem => documentItem.url);
+        const certificateDocuments = [
+          documentsDialog.data?.certificates?.verifiedCertificateUrl && {
+            url: documentsDialog.data.certificates.verifiedCertificateUrl,
+            name: "Verified Certificate",
+            kind: "CERT"
+          },
+          documentsDialog.data?.certificates?.trustCertificateUrl && {
+            url: documentsDialog.data.certificates.trustCertificateUrl,
+            name: "Trust Certificate",
+            kind: "CERT"
+          }
+        ].filter(Boolean);
+        const documents = [...certificateDocuments, ...kycDocuments];
+
+        return (
+          <>
+            <DialogTitle sx={{ borderBottom: "1px solid #eef2f7", pr: 6, position: "relative" }}>
+              <Box>
+                <Typography sx={{ fontWeight: 800, color: "#0f172a", fontSize: "1.1rem" }}>
+                  Business Documents
+                </Typography>
+                <Typography sx={{ color: "#64748b", fontSize: "0.86rem", mt: 0.4 }}>
+                  {documentsDialog.data?.businessName || "Business"} • {documents.length} document{documents.length === 1 ? "" : "s"}
+                </Typography>
+              </Box>
+              <IconButton
+                size="small"
+                onClick={handleCloseDocuments}
+                sx={{ position: "absolute", top: 14, right: 14 }}
+                aria-label="Close documents"
+              >
+                <CloseRoundedIcon fontSize="small" />
+              </IconButton>
+            </DialogTitle>
+            <DialogContent dividers sx={{ p: 3, bgcolor: "#f8fafc" }}>
+              {documents.length === 0 ? (
+                <Box sx={{
+                  minHeight: 220,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  textAlign: "center",
+                  gap: 1,
+                  color: "#64748b",
+                  bgcolor: "#ffffff",
+                  border: "1px dashed #cbd5e1",
+                  borderRadius: 2
+                }}>
+                  <DescriptionOutlinedIcon sx={{ fontSize: 42, color: "#94a3b8" }} />
+                  <Typography sx={{ fontWeight: 800, color: "#334155" }}>No documents uploaded</Typography>
+                  <Typography sx={{ fontSize: "0.9rem" }}>
+                    Add KYC documents from the business edit form.
+                  </Typography>
+                </Box>
+              ) : (
+                <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 2 }}>
+                  {documents.map((documentItem, index) => {
+                    const { url, name, kind } = documentItem;
+                    const isImage = isPreviewableBusinessDocumentImage(url);
+                    const isPdf = isBusinessPdfDocument(url);
+                    const isCertificate = kind === "CERT";
+
+                    return (
+                      <Box
+                        key={`${url}-${index}`}
+                        sx={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 1.25,
+                          p: 1.5,
+                          bgcolor: "#ffffff",
+                          border: "1px solid #e2e8f0",
+                          borderRadius: 2,
+                          minHeight: 300,
+                          boxShadow: "0 10px 28px rgba(15, 23, 42, 0.08)"
+                        }}
+                      >
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}>
+                          <Box sx={{
+                            width: isCertificate ? 42 : 32,
+                            height: 24,
+                            borderRadius: 1,
+                            bgcolor: isCertificate ? "#f5f3ff" : isPdf ? "#fef2f2" : isImage ? "#ecfdf5" : "#eff6ff",
+                            color: isCertificate ? "#6d28d9" : isPdf ? "#b91c1c" : isImage ? "#047857" : "#2563eb",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontSize: "0.66rem",
+                            fontWeight: 900,
+                            flex: "0 0 auto",
+                            letterSpacing: 0
+                          }}>
+                            {isCertificate ? "CERT" : isPdf ? "PDF" : isImage ? "IMG" : "DOC"}
+                          </Box>
+                          <Typography title={name} sx={{ fontWeight: 800, color: "#0f172a", fontSize: "0.86rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {name}
+                          </Typography>
+                        </Box>
+
+                        <Box sx={{
+                          height: 190,
+                          border: "1px solid #e2e8f0",
+                          borderRadius: 1.5,
+                          overflow: "hidden",
+                          bgcolor: "#f8fafc",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center"
+                        }}>
+                          {isImage ? (
+                            <img
+                              src={url}
+                              alt={name}
+                              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                            />
+                          ) : isPdf ? (
+                            <iframe
+                              src={url}
+                              title={name}
+                              style={{ width: "100%", height: "100%", border: 0, display: "block" }}
+                            />
+                          ) : (
+                            <Box sx={{ textAlign: "center", color: "#64748b", px: 2 }}>
+                              <DescriptionOutlinedIcon sx={{ fontSize: 34, color: "#94a3b8", mb: 1 }} />
+                              <Typography sx={{ fontSize: "0.82rem", fontWeight: 700 }}>
+                                Preview not available
+                              </Typography>
+                            </Box>
+                          )}
+                        </Box>
+
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          endIcon={<OpenInNewRoundedIcon fontSize="small" />}
+                          onClick={() => window.open(url, "_blank", "noopener,noreferrer")}
+                          sx={{
+                            mt: "auto",
+                            textTransform: "none",
+                            borderColor: "#0f766e",
+                            color: "#0f766e",
+                            fontWeight: 700,
+                            "&:hover": { borderColor: "#0d5f59", bgcolor: "#ecfdf5" }
+                          }}
+                        >
+                          Open
+                        </Button>
+                      </Box>
+                    );
+                  })}
+                </Box>
+              )}
+            </DialogContent>
+            <DialogActions sx={{ px: 3, py: 1.5 }}>
+              <Button onClick={handleCloseDocuments} color="secondary">
+                Close
+              </Button>
+            </DialogActions>
           </>
         );
       })()}

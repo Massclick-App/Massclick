@@ -3,6 +3,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import sharp from "sharp";
 import {
+  deleteObjectByKey,
   getObjectBufferByKey,
   getSignedUrlByKey,
   uploadImageToS3,
@@ -328,6 +329,20 @@ const uploadCertificateImage = async (business = {}, type = "verified") => {
   return uploadResult.key;
 };
 
+const deleteCertificateKeys = async (keys = []) => {
+  const uniqueKeys = [...new Set(keys.filter(Boolean))];
+
+  await Promise.all(
+    uniqueKeys.map(async (key) => {
+      try {
+        await deleteObjectByKey(key);
+      } catch (error) {
+        console.warn(`Unable to delete old certificate from S3 (${key}):`, error.message);
+      }
+    }),
+  );
+};
+
 export const ensureBusinessCertificates = async (businessIdOrDoc) => {
   const businessId =
     typeof businessIdOrDoc === "string"
@@ -382,6 +397,64 @@ export const ensureBusinessCertificates = async (businessIdOrDoc) => {
 
   nextCertificates.generatedAt = new Date();
   nextCertificates.templateVersion = CERTIFICATE_TEMPLATE_VERSION;
+  business.certificates = nextCertificates;
+  await business.save();
+
+  return appendCertificateUrls(business);
+};
+
+export const regenerateBusinessCertificates = async (businessId) => {
+  const business = await businessListModel.findById(businessId);
+
+  if (!business) {
+    return null;
+  }
+
+  if (!business.amountPaid) {
+    const error = new Error("Certificates can be regenerated only for paid businesses.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const currentCertificates = business.certificates?.toObject?.() || business.certificates || {};
+  const hasVerifiedCertificate =
+    !!business.verification?.isVerified || !!currentCertificates.verifiedCertificateKey;
+  const hasTrustCertificate =
+    !!business.badges?.isTrust || !!currentCertificates.trustCertificateKey;
+
+  if (!hasVerifiedCertificate && !hasTrustCertificate) {
+    const error = new Error("No active verified or trust certificate status found for this business.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  await deleteCertificateKeys([
+    currentCertificates.verifiedCertificateKey,
+    currentCertificates.trustCertificateKey,
+  ]);
+
+  const nextCertificates = {
+    ...currentCertificates,
+    verifiedCertificateKey: "",
+    trustCertificateKey: "",
+    generatedAt: new Date(),
+    templateVersion: CERTIFICATE_TEMPLATE_VERSION,
+  };
+
+  if (hasVerifiedCertificate) {
+    nextCertificates.verifiedCertificateKey = await uploadCertificateImage(
+      business,
+      "verified",
+    );
+  }
+
+  if (hasTrustCertificate) {
+    nextCertificates.trustCertificateKey = await uploadCertificateImage(
+      business,
+      "trust",
+    );
+  }
+
   business.certificates = nextCertificates;
   await business.save();
 

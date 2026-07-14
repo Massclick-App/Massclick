@@ -10,7 +10,7 @@ import { getCache, setCache } from "../../utils/redisClient.js";
 import { enhanceSearchQuery, resolveCategory } from "../../utils/geminiQueryEnhancer.js";
 import { invalidateSearchCache, invalidateDashboardCache, invalidateCategoryCache } from "../../utils/cacheInvalidation.js";
 import { buildBusinessExportWorkbook } from "../../utils/businessExportXlsx.js";
-import { ensureBusinessCertificates } from "../../helper/businessList/businessCertificateHelper.js";
+import { ensureBusinessCertificates, regenerateBusinessCertificates } from "../../helper/businessList/businessCertificateHelper.js";
 import { resolveLocationForSearch } from "../../helper/location/locationResolver.js";
 
 const ensureCertificatesForActivation = async (previousBusiness, business) => {
@@ -1457,6 +1457,35 @@ export const updateBusinessBadgesAction = async (req, res) => {
   } catch (error) {
     console.error("Error updating business badges:", error);
     return res.status(400).send({ message: error.message });
+  }
+};
+
+export const regenerateBusinessCertificatesAction = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).send({ message: "Business ID is required" });
+    }
+
+    const business = await regenerateBusinessCertificates(id);
+
+    if (!business) {
+      return res.status(404).send({ message: "Business not found" });
+    }
+
+    await invalidateSearchCache();
+    await invalidateDashboardCache();
+    await invalidateCategoryCache();
+
+    return res.status(200).send({
+      success: true,
+      message: "Certificates regenerated successfully",
+      business,
+    });
+  } catch (error) {
+    console.error("Error regenerating business certificates:", error);
+    return res.status(error.statusCode || 400).send({ message: error.message });
   }
 };
 

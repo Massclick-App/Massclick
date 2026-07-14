@@ -388,6 +388,16 @@ export const viewBusinessList = async (id) => {
     business.kycDocuments = business.kycDocumentsKey.map((key) =>
       getSignedUrlByKey(key),
     );
+  if (business.certificates?.verifiedCertificateKey) {
+    business.certificates.verifiedCertificateUrl = getSignedUrlByKey(
+      business.certificates.verifiedCertificateKey,
+    );
+  }
+  if (business.certificates?.trustCertificateKey) {
+    business.certificates.trustCertificateUrl = getSignedUrlByKey(
+      business.certificates.trustCertificateKey,
+    );
+  }
 
   return business;
 };
@@ -724,6 +734,16 @@ export const viewAllBusinessList = async ({
       if (business.kycDocumentsKey?.length > 0) {
         business.kycDocuments = business.kycDocumentsKey.map((key) =>
           getSignedUrlByKey(key),
+        );
+      }
+      if (business.certificates?.verifiedCertificateKey) {
+        business.certificates.verifiedCertificateUrl = getSignedUrlByKey(
+          business.certificates.verifiedCertificateKey,
+        );
+      }
+      if (business.certificates?.trustCertificateKey) {
+        business.certificates.trustCertificateUrl = getSignedUrlByKey(
+          business.certificates.trustCertificateKey,
         );
       }
       if (business.qrCode?.qrImageKey) {
