@@ -347,7 +347,7 @@ const Cards = ({
       )}
       <Link to={to} state={props.state} className={cx("card-link")}>
         <div className={cx("base-card", `base-card--${viewMode}`, cardVariant && `base-card--${cardVariant}`, compact && "base-card--compact")}>
-      
+
           {/* Image */}
           <div className={cx("card-image-wrapper")}>
             <div className={cx("card-image-container")}>
