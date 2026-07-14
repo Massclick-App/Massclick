@@ -10,15 +10,15 @@ import {
 import businessListModel from "../../model/businessList/businessListModel.js";
 import { slugify } from "../../slugify.js";
 
-export const CERTIFICATE_TEMPLATE_VERSION = 10;
+export const CERTIFICATE_TEMPLATE_VERSION = 11;
 const CERTIFICATE_FONT_FAMILY = "'Nirmala UI', 'Noto Sans Tamil', Latha, 'Arial Unicode MS', Arial, Helvetica, sans-serif";
 const SERIF_FONT_FAMILY = "Georgia, 'Times New Roman', serif";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const MASSCLICK_LOGO_PATH = path.resolve(
-  __dirname,
-  "../../../client/ui-app/src/assets/mclogo.png",
-);
+// Kept inside server/ (not client/) so these ship with the backend deploy,
+// which packages only the server directory.
+const MASSCLICK_LOGO_PATH = path.resolve(__dirname, "../../assets/certificates/massclick-logo.png");
+const SIGNATURE_PATH = path.resolve(__dirname, "../../assets/certificates/signature.png");
 
 const escapeXml = (value) =>
   String(value ?? "")
@@ -28,17 +28,18 @@ const escapeXml = (value) =>
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&apos;");
 
-const getMassclickLogoDataUrl = () => {
+const readImageDataUrl = (filePath, label) => {
   try {
-    const logoBuffer = fs.readFileSync(MASSCLICK_LOGO_PATH);
-    return `data:image/png;base64,${logoBuffer.toString("base64")}`;
+    const buffer = fs.readFileSync(filePath);
+    return `data:image/png;base64,${buffer.toString("base64")}`;
   } catch (error) {
-    console.warn("Unable to read MassClick certificate logo:", error.message);
+    console.warn(`Unable to read ${label} for certificate:`, error.message);
     return "";
   }
 };
 
-const MASSCLICK_LOGO_DATA_URL = getMassclickLogoDataUrl();
+const MASSCLICK_LOGO_DATA_URL = readImageDataUrl(MASSCLICK_LOGO_PATH, "MassClick logo");
+const SIGNATURE_DATA_URL = readImageDataUrl(SIGNATURE_PATH, "signature");
 
 const slugifyCertificateValue = (value = "") =>
   String(value)
@@ -194,9 +195,20 @@ const watermarkDefs = (primary) => `
       <text x="0" y="80" font-family="${SERIF_FONT_FAMILY}" font-size="26" font-weight="700" fill="${primary}" opacity="0.032">MASSCLICK</text>
     </pattern>`;
 
-const signatureScribble = (cx, cy, color) => `
-    <path d="M${cx - 34} ${cy} c5,-13 11,-13 15,-3 c4,10 8,-15 13,-6 c4,7 7,-11 12,-4 c4,5 6,4 9,-2"
-      fill="none" stroke="${color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" opacity="0.75"/>`;
+const SIGNATURE_ASPECT = 849 / 376;
+
+const signatureMarkup = (cx, bottomY, width) => {
+  const height = width / SIGNATURE_ASPECT;
+  const x = cx - width / 2;
+  const y = bottomY - height;
+
+  if (!SIGNATURE_DATA_URL) {
+    return `<path d="M${x} ${bottomY - height / 2} c5,-13 11,-13 15,-3 c4,10 8,-15 13,-6 c4,7 7,-11 12,-4 c4,5 6,4 9,-2"
+      fill="none" stroke="#1e293b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" opacity="0.75"/>`;
+  }
+
+  return `<image href="${escapeXml(SIGNATURE_DATA_URL)}" x="${x}" y="${y}" width="${width}" height="${height}" preserveAspectRatio="xMidYMid meet"/>`;
+};
 
 const qrMarkup = async ({ url, x, y, size, color }) => {
   try {
@@ -349,13 +361,13 @@ const buildCertificateSvg = async (business = {}, type = "verified") => {
     size: qrSize,
     color: "#111827",
   });
-  const logoW = 158;
-  const logoH = 45;
+  const logoW = 170;
+  const logoH = logoW / (858 / 200);
   const logoTop = footerRuleY + 30;
 
   const sigCx = 600;
-  const scribbleY = footerRuleY + 44;
-  const sigLineY = scribbleY + 12;
+  const sigImageBottomY = footerRuleY + 50;
+  const sigLineY = sigImageBottomY + 6;
   const sigLabelY = sigLineY + 15;
 
   const brandLogoMarkup = MASSCLICK_LOGO_DATA_URL
@@ -368,7 +380,7 @@ const buildCertificateSvg = async (business = {}, type = "verified") => {
     <text x="${84 + qrSize / 2}" y="${qrTop + qrSize + 17}" text-anchor="middle" font-family="${CERTIFICATE_FONT_FAMILY}" font-size="10" font-weight="700" letter-spacing="0.4" fill="#94a3b8">SCAN TO VERIFY</text>
     ${brandLogoMarkup}
     <text x="${CX}" y="${logoTop + logoH + 16}" text-anchor="middle" font-family="${CERTIFICATE_FONT_FAMILY}" font-size="11" fill="#94a3b8">www.massclick.in</text>
-    ${signatureScribble(sigCx, scribbleY, "#1e293b")}
+    ${signatureMarkup(sigCx, sigImageBottomY, 112)}
     <line x1="${sigCx - 50}" y1="${sigLineY}" x2="${sigCx + 50}" y2="${sigLineY}" stroke="#94a3b8" stroke-width="1"/>
     <text x="${sigCx}" y="${sigLabelY}" text-anchor="middle" font-family="${CERTIFICATE_FONT_FAMILY}" font-size="10" font-weight="700" letter-spacing="0.4" fill="#94a3b8">AUTHORIZED SIGNATORY</text>
     <text x="${CX}" y="${footerRuleY + 20 + qrSize + 42}" text-anchor="middle" font-family="${CERTIFICATE_FONT_FAMILY}" font-size="10" fill="#cbd5e1">Certificate No. ${certNo}  |  Issued ${issuedDate}</text>`;
