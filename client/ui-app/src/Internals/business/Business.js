@@ -181,7 +181,7 @@ const getBusinessDocumentName = (document, index) => {
 };
 
 const isPreviewableBusinessDocumentImage = (url = "") =>
-  /^data:image\//i.test(url) || /\.(png|jpe?g|webp|gif|bmp|avif)(?:\?|$)/i.test(url);
+  /^data:image\//i.test(url) || /\.(png|jpe?g|webp|gif|bmp|avif|svg)(?:\?|$)/i.test(url);
 
 const isBusinessPdfDocument = (url = "") =>
   /^data:application\/pdf/i.test(url) || /\.pdf(?:\?|$)/i.test(url);
