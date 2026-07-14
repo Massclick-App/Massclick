@@ -122,6 +122,37 @@
   color: var(--brand-blue);
 }
 
+.hero-layout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 1500px;
+}
+
+.hero-decor {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: clamp(160px, 18vw, 320px);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.hero-decor-left {
+  left: 0;
+}
+
+.hero-decor-right {
+  right: 0;
+}
+
+.hero-decor img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
 .hero-content {
   width: 100%;
   max-width: 1100px;
@@ -489,6 +520,12 @@
 /* ========================================================= */
 /* --- Responsiveness --- */
 /* ========================================================= */
+
+@media (max-width: 1199px) {
+  .hero-decor {
+    display: none;
+  }
+}
 
 @media (max-width: 767px) {
   .hero-section {

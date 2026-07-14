@@ -15,13 +15,13 @@ import {
   getNextCounterRefreshDelay,
   getVisibleCounterCount,
 } from "../../../utils/publicUserCounterUtils.js";
-// import backgroundImage from "../../../assets/background9.jpg";
-// import backgroundImage from "../../../assets/background.png";
+import heroIllustrationLeft from "../../../assets/hero_illustration_left.png";
+import heroIllustrationRight from "../../../assets/hero_illustration_right.png";
 import { useNavigate } from "react-router-dom";
 import CategoryDropdown from "../CategoryDropdown/CategoryDropdown";
 import styles from "./hero.module.css";
 const cx = createScopedClassNames(styles);
-const DEFAULT_LOCATION = "Trichy";
+const DEFAULT_LOCATION = "Tiruchirappalli";
 const SUGGESTION_PAGE_SIZE = 20;
 const MASTER_LOCATION_SUGGESTION_LIMIT = 25;
 const isObjectId = s => /^[a-f\d]{24}$/i.test(String(s || "").trim());
@@ -374,6 +374,10 @@ const HeroSection = React.memo(({
     };
   };
   return <div className={cx("hero-section")}>
+      <div className={cx("hero-layout")}>
+      <div className={cx("hero-decor hero-decor-left")} aria-hidden="true">
+        <img src={heroIllustrationLeft} alt="" />
+      </div>
       <div className={cx("hero-content hero-minimal")}>
 
         <form className={cx("search-bar-container")} onSubmit={handleSearch}>
@@ -522,6 +526,10 @@ const HeroSection = React.memo(({
             <span>Secure & Spam-Free Platform</span>
           </div>
         </div>
+      </div>
+      <div className={cx("hero-decor hero-decor-right")} aria-hidden="true">
+        <img src={heroIllustrationRight} alt="" />
+      </div>
       </div>
     </div>;
 });
