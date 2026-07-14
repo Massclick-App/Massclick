@@ -566,6 +566,11 @@ const BusinessList = React.memo(() => {
   const [imageModalOpen, setImageModalOpen] = useState(false);
   const [selectedImageUrl, setSelectedImageUrl] = useState(null);
   const [certificateRegeneratingId, setCertificateRegeneratingId] = useState(null);
+  const [certificateTraceDialog, setCertificateTraceDialog] = useState({
+    open: false,
+    businessName: "",
+    items: []
+  });
 
   // Search & Filter States
   const [searchTerm, setSearchTerm] = useState("");
@@ -1600,13 +1605,54 @@ const BusinessList = React.memo(() => {
       hasCertificateDocument(row)
     );
 
+  const formatTraceValue = value => {
+    if (Array.isArray(value)) return value.length ? value.join(", ") : "none";
+    if (value === true) return "yes";
+    if (value === false) return "no";
+    return value || "none";
+  };
+
+  const buildCertificateTraceItems = (row, updatedBusiness) => {
+    const trace = updatedBusiness?.certificateRegenerationTrace || {};
+    const oldCertificates = row?.certificates || {};
+    const nextCertificates = updatedBusiness?.certificates || {};
+
+    return [
+      { label: "Business", value: trace.businessName || row?.businessName || row?.name || row?._id },
+      { label: "Regenerated types", value: formatTraceValue(trace.requestedTypes) },
+      { label: "Output saved as", value: trace.outputContentType || "image/svg+xml" },
+      { label: "Old verified key", value: trace.oldVerifiedCertificateKey || oldCertificates.verifiedCertificateKey },
+      { label: "New verified key", value: trace.newVerifiedCertificateKey || nextCertificates.verifiedCertificateKey },
+      { label: "Old trust key", value: trace.oldTrustCertificateKey || oldCertificates.trustCertificateKey },
+      { label: "New trust key", value: trace.newTrustCertificateKey || nextCertificates.trustCertificateKey },
+      { label: "Deleted cert keys", value: formatTraceValue(trace.deletedCertificateKeys) },
+      { label: "Skipped non-cert keys", value: formatTraceValue(trace.skippedDeleteKeys) },
+      { label: "Failed deletes", value: formatTraceValue((trace.failedDeleteKeys || []).map(item => `${item.key}: ${item.message}`)) },
+      { label: "KYC document keys", value: `${trace.kycDocumentsKeyCount ?? row?.kycDocumentsKey?.length ?? 0} untouched` },
+      { label: "KYC touched", value: formatTraceValue(trace.kycTouched) },
+      { label: "Template version", value: trace.templateVersion },
+      { label: "Font stack", value: trace.fontFamily },
+      { label: "Verified URL", value: trace.newVerifiedCertificateUrl || nextCertificates.verifiedCertificateUrl },
+      { label: "Trust URL", value: trace.newTrustCertificateUrl || nextCertificates.trustCertificateUrl }
+    ];
+  };
+
   const handleRegenerateCertificates = async row => {
     if (!row?._id || !canRegenerateCertificates(row)) return;
 
     setCertificateRegeneratingId(row._id);
     try {
       const updatedBusiness = await dispatch(regenerateBusinessCertificates(row._id));
-      enqueueSnackbar("Certificates regenerated and old files cleared.", { variant: "success" });
+      enqueueSnackbar("Verified/trust certificates regenerated. KYC documents were not changed.", { variant: "success" });
+      const traceItems = buildCertificateTraceItems(row, updatedBusiness);
+      setCertificateTraceDialog({
+        open: true,
+        businessName: updatedBusiness?.businessName || row.businessName || row.name || "Business",
+        items: traceItems
+      });
+      console.groupCollapsed("[CertificateRegenerate] Frontend trace");
+      console.table(traceItems);
+      console.groupEnd();
       if (detailRow?._id === row._id) {
         setDetailRow(prev => ({
           ...prev,
@@ -3923,7 +3969,7 @@ const BusinessList = React.memo(() => {
           />
         </Tooltip>
         {canRegenerateCertificates(row) && (
-          <Tooltip title="Regenerate certificates" arrow>
+          <Tooltip title="Regenerate verified/trust certificates" arrow>
             <AutorenewRoundedIcon
               onClick={() => {
                 if (certificateRegeneratingId !== row._id) {
@@ -5275,7 +5321,7 @@ const BusinessList = React.memo(() => {
                     "&:hover": { bgcolor: "#f5f3ff", borderColor: "#c4b5fd" }
                   }}
                 >
-                  {certificateRegeneratingId === row._id ? "Regenerating" : "Regenerate Certs"}
+                  {certificateRegeneratingId === row._id ? "Regenerating" : "Regenerate Verified/Trust"}
                 </Button>
               )}
               <Button
@@ -5300,6 +5346,49 @@ const BusinessList = React.memo(() => {
           </>
         );
       })()}
+    </Dialog>
+
+    <Dialog
+      open={certificateTraceDialog.open}
+      onClose={() => setCertificateTraceDialog(prev => ({ ...prev, open: false }))}
+      maxWidth="md"
+      fullWidth
+    >
+      <DialogTitle sx={{ borderBottom: "1px solid #eef2f7" }}>
+        Certificate regenerate trace
+        <Typography variant="body2" sx={{ mt: 0.5, color: "#64748b" }}>
+          {certificateTraceDialog.businessName || "Business"} - verified/trust only
+        </Typography>
+      </DialogTitle>
+      <DialogContent dividers sx={{ p: 0 }}>
+        <Box sx={{ display: "grid", gridTemplateColumns: "190px 1fr", bgcolor: "#f8fafc" }}>
+          {certificateTraceDialog.items.map(item => (
+            <React.Fragment key={item.label}>
+              <Box sx={{ px: 2, py: 1.25, borderBottom: "1px solid #e2e8f0", fontWeight: 800, color: "#334155" }}>
+                {item.label}
+              </Box>
+              <Box
+                sx={{
+                  px: 2,
+                  py: 1.25,
+                  borderBottom: "1px solid #e2e8f0",
+                  bgcolor: "#fff",
+                  color: "#0f172a",
+                  overflowWrap: "anywhere",
+                  fontFamily: item.label.includes("key") || item.label.includes("URL") ? "monospace" : "inherit"
+                }}
+              >
+                {formatTraceValue(item.value)}
+              </Box>
+            </React.Fragment>
+          ))}
+        </Box>
+      </DialogContent>
+      <DialogActions sx={{ px: 3, py: 1.5 }}>
+        <Button onClick={() => setCertificateTraceDialog(prev => ({ ...prev, open: false }))}>
+          Close
+        </Button>
+      </DialogActions>
     </Dialog>
 
     <Dialog

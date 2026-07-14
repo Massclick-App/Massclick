@@ -404,7 +404,10 @@ export const regenerateBusinessCertificates = (id) => async (dispatch) => {
       {},
       { headers: { Authorization: `Bearer ${token}` } }
     );
-    const updatedBusinessList = response.data.business || response.data;
+    const updatedBusinessList = {
+      ...(response.data.business || response.data),
+      certificateRegenerationTrace: response.data.trace || null,
+    };
     dispatch({ type: EDIT_BUSINESS_SUCCESS, payload: updatedBusinessList });
     return updatedBusinessList;
   } catch (error) {

@@ -10,7 +10,8 @@ import {
 } from "../../s3Uploder.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
 
-export const CERTIFICATE_TEMPLATE_VERSION = 8;
+export const CERTIFICATE_TEMPLATE_VERSION = 9;
+const CERTIFICATE_FONT_FAMILY = "'Nirmala UI', 'Noto Sans Tamil', Latha, 'Arial Unicode MS', Arial, Helvetica, sans-serif";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const MASSCLICK_LOGO_PATH = path.resolve(
@@ -162,7 +163,7 @@ const textLinesMarkup = ({
   fontSize,
   fontWeight,
   fill,
-  fontFamily = "Arial, Helvetica, sans-serif",
+  fontFamily = CERTIFICATE_FONT_FAMILY,
 }) =>
   lines
     .map(
@@ -185,7 +186,7 @@ const buildLogoMarkup = ({ logoDataUrl, initials, accent, x = 320, y = 238, radi
   return `
       <circle cx="${x}" cy="${y}" r="${radius}" fill="#ffffff" stroke="${accent}" stroke-opacity="0.28" stroke-width="1"/>
       <circle cx="${x}" cy="${y}" r="${radius - 8}" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
-      <text x="${x}" y="${y + 14}" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="900" fill="${accent}">${escapeXml(initials)}</text>`;
+      <text x="${x}" y="${y + 14}" text-anchor="middle" font-family="${CERTIFICATE_FONT_FAMILY}" font-size="30" font-weight="900" fill="${accent}">${escapeXml(initials)}</text>`;
 };
 
 const buildCertificateSvg = async (business = {}, type = "verified") => {
@@ -243,7 +244,7 @@ const buildCertificateSvg = async (business = {}, type = "verified") => {
     <circle cx="320" cy="134" r="8" fill="${trustBlue}"/>
     <path d="M320 143 v17" stroke="${trustBlue}" stroke-width="6" stroke-linecap="round"/>`;
   const starsMarkup = isTrust
-    ? `<text x="360" y="612" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="900" fill="${accent}">&#9733; &#9733; &#9733; &#9733; &#9733;</text>`
+    ? `<text x="360" y="612" text-anchor="middle" font-family="${CERTIFICATE_FONT_FAMILY}" font-size="24" font-weight="900" fill="${accent}">&#9733; &#9733; &#9733; &#9733; &#9733;</text>`
     : "";
 
   return `<?xml version="1.0" encoding="UTF-8"?>
@@ -273,44 +274,36 @@ const buildCertificateSvg = async (business = {}, type = "verified") => {
     ? `<text x="360" y="102" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="36" fill="#1f2937">CERTIFICATE OF</text>
   <rect x="224" y="132" width="272" height="68" rx="10" fill="${trustBlue}"/>
   ${trustIcon}
-  <text x="384" y="177" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="40" font-weight="850" fill="#ffffff">Trust</text>`
+  <text x="384" y="177" text-anchor="middle" font-family="${CERTIFICATE_FONT_FAMILY}" font-size="40" font-weight="850" fill="#ffffff">Trust</text>`
     : `${verifiedIcon}
-  <text x="406" y="154" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="58" font-weight="850" fill="${accent}">Verified</text>`}
+  <text x="406" y="154" text-anchor="middle" font-family="${CERTIFICATE_FONT_FAMILY}" font-size="58" font-weight="850" fill="${accent}">Verified</text>`}
 
   <rect x="112" y="238" width="496" height="312" rx="18" fill="#ffffff" fill-opacity="0.88" stroke="#e2e8f0" filter="url(#identityShadow)"/>
   ${businessLogoMarkup}
   ${titleMarkup}
   ${locationMarkup}
 
-  <text x="360" y="574" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="760" fill="#111827">${escapeXml(statusCopy)}</text>
+  <text x="360" y="574" text-anchor="middle" font-family="${CERTIFICATE_FONT_FAMILY}" font-size="18" font-weight="760" fill="#111827">${escapeXml(statusCopy)}</text>
   ${starsMarkup}
 
   <rect x="140" y="${isTrust ? 650 : 628}" width="440" height="1.4" fill="url(#dividerGlow)"/>
 
-  <text x="360" y="${isTrust ? 710 : 688}" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#475569">
+  <text x="360" y="${isTrust ? 710 : 688}" text-anchor="middle" font-family="${CERTIFICATE_FONT_FAMILY}" font-size="18" fill="#475569">
     <tspan>Following details of the company have been </tspan>
     <tspan font-weight="850" fill="${accent}">${detailWord}</tspan>
   </text>
 
   ${checkIcon(158, isTrust ? 748 : 726)}
-  <text x="190" y="${isTrust ? 765 : 743}" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="800" fill="#111827">Business Proof</text>
+  <text x="190" y="${isTrust ? 765 : 743}" font-family="${CERTIFICATE_FONT_FAMILY}" font-size="18" font-weight="800" fill="#111827">Business Proof</text>
   ${checkIcon(420, isTrust ? 748 : 726)}
-  <text x="452" y="${isTrust ? 765 : 743}" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="800" fill="#111827">Business Address</text>
+  <text x="452" y="${isTrust ? 765 : 743}" font-family="${CERTIFICATE_FONT_FAMILY}" font-size="18" font-weight="800" fill="#111827">Business Address</text>
   ${checkIcon(158, isTrust ? 804 : 782)}
-  <text x="190" y="${isTrust ? 821 : 799}" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="800" fill="#111827">Mobile Number</text>
+  <text x="190" y="${isTrust ? 821 : 799}" font-family="${CERTIFICATE_FONT_FAMILY}" font-size="18" font-weight="800" fill="#111827">Mobile Number</text>
   ${checkIcon(420, isTrust ? 804 : 782)}
-  <text x="452" y="${isTrust ? 821 : 799}" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="800" fill="#111827">Email ID</text>
+  <text x="452" y="${isTrust ? 821 : 799}" font-family="${CERTIFICATE_FONT_FAMILY}" font-size="18" font-weight="800" fill="#111827">Email ID</text>
 
   ${brandLogoMarkup}
 </svg>`;
-};
-
-const buildCertificatePng = async (business = {}, type = "verified") => {
-  const svg = await buildCertificateSvg(business, type);
-
-  return sharp(Buffer.from(svg, "utf8"))
-    .png()
-    .toBuffer();
 };
 
 const uploadCertificateImage = async (business = {}, type = "verified") => {
@@ -318,32 +311,58 @@ const uploadCertificateImage = async (business = {}, type = "verified") => {
   const businessSlug = slugifyCertificateValue(
     business.businessName || business.name || businessId,
   );
-  const png = await buildCertificatePng(business, type);
+  const svg = await buildCertificateSvg(business, type);
   const uploadResult = await uploadImageToS3(
-    png,
+    Buffer.from(svg, "utf8"),
     `businessList/certificates/${businessId}/${type}-${businessSlug}`,
     {
       skipImageConversion: true,
-      contentType: "image/png",
-      extension: "png",
+      contentType: "image/svg+xml",
+      extension: "svg",
     },
   );
+
+  console.log(`[CertificateRegenerate] Uploaded ${type} certificate SVG: ${uploadResult.key}`);
 
   return uploadResult.key;
 };
 
 const deleteCertificateKeys = async (keys = []) => {
-  const uniqueKeys = [...new Set(keys.filter(Boolean))];
+  const skippedKeys = keys.filter(key =>
+    key &&
+    (typeof key !== "string" || !key.startsWith("businessList/certificates/")),
+  );
+  const uniqueKeys = [
+    ...new Set(
+      keys.filter(key =>
+        typeof key === "string" &&
+        key.startsWith("businessList/certificates/"),
+      ),
+    ),
+  ];
+  const deletedKeys = [];
+  const failedKeys = [];
 
   await Promise.all(
     uniqueKeys.map(async (key) => {
       try {
         await deleteObjectByKey(key);
+        deletedKeys.push(key);
       } catch (error) {
+        failedKeys.push({ key, message: error.message });
         console.warn(`Unable to delete old certificate from S3 (${key}):`, error.message);
       }
     }),
   );
+
+  if (skippedKeys.length) {
+    console.warn(
+      "[CertificateRegenerate] Skipped non-certificate S3 keys during certificate cleanup:",
+      skippedKeys,
+    );
+  }
+
+  return { deletedKeys, skippedKeys, failedKeys };
 };
 
 export const ensureBusinessCertificates = async (businessIdOrDoc) => {
@@ -424,6 +443,25 @@ export const regenerateBusinessCertificates = async (businessId) => {
     !!business.verification?.isVerified || !!currentCertificates.verifiedCertificateKey;
   const hasTrustCertificate =
     !!business.badges?.isTrust || !!currentCertificates.trustCertificateKey;
+  const requestedTypes = [
+    hasVerifiedCertificate && "verified",
+    hasTrustCertificate && "trust",
+  ].filter(Boolean);
+  const trace = {
+    businessId: getBusinessId(business),
+    businessName: business.businessName || business.name || "",
+    location: business.globalAddress || business.location || "",
+    requestedTypes,
+    oldVerifiedCertificateKey: currentCertificates.verifiedCertificateKey || "",
+    oldTrustCertificateKey: currentCertificates.trustCertificateKey || "",
+    kycDocumentsKeyCount: Array.isArray(business.kycDocumentsKey)
+      ? business.kycDocumentsKey.length
+      : 0,
+    kycTouched: false,
+    outputContentType: "image/svg+xml",
+    fontFamily: CERTIFICATE_FONT_FAMILY,
+    templateVersion: CERTIFICATE_TEMPLATE_VERSION,
+  };
 
   if (!hasVerifiedCertificate && !hasTrustCertificate) {
     const error = new Error("No active verified or trust certificate status found for this business.");
@@ -431,10 +469,15 @@ export const regenerateBusinessCertificates = async (businessId) => {
     throw error;
   }
 
-  await deleteCertificateKeys([
+  console.log("[CertificateRegenerate] Starting regenerate:", trace);
+
+  const deleteTrace = await deleteCertificateKeys([
     currentCertificates.verifiedCertificateKey,
     currentCertificates.trustCertificateKey,
   ]);
+  trace.deletedCertificateKeys = deleteTrace.deletedKeys;
+  trace.skippedDeleteKeys = deleteTrace.skippedKeys;
+  trace.failedDeleteKeys = deleteTrace.failedKeys;
 
   const nextCertificates = {
     ...currentCertificates,
@@ -461,5 +504,14 @@ export const regenerateBusinessCertificates = async (businessId) => {
   business.certificates = nextCertificates;
   await business.save();
 
-  return appendCertificateUrls(business);
+  trace.newVerifiedCertificateKey = nextCertificates.verifiedCertificateKey || "";
+  trace.newTrustCertificateKey = nextCertificates.trustCertificateKey || "";
+  trace.generatedAt = nextCertificates.generatedAt;
+
+  const result = appendCertificateUrls(business);
+  trace.newVerifiedCertificateUrl = result.certificates?.verifiedCertificateUrl || "";
+  trace.newTrustCertificateUrl = result.certificates?.trustCertificateUrl || "";
+  console.log("[CertificateRegenerate] Completed regenerate:", trace);
+
+  return { business: result, trace };
 };

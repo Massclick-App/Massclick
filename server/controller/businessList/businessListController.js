@@ -1480,7 +1480,9 @@ export const regenerateBusinessCertificatesAction = async (req, res) => {
       return res.status(400).send({ message: "Business ID is required" });
     }
 
-    const business = await regenerateBusinessCertificates(id);
+    const regenerateResult = await regenerateBusinessCertificates(id);
+    const business = regenerateResult?.business || regenerateResult;
+    const trace = regenerateResult?.trace || null;
 
     if (!business) {
       return res.status(404).send({ message: "Business not found" });
@@ -1494,6 +1496,7 @@ export const regenerateBusinessCertificatesAction = async (req, res) => {
       success: true,
       message: "Certificates regenerated successfully",
       business,
+      trace,
     });
   } catch (error) {
     console.error("Error regenerating business certificates:", error);
