@@ -73,6 +73,7 @@ Thumbs.db           # Windows
 
 # Claude Code local settings (per-developer, not shared)
 .claude/settings.local.json
+AGENTS.md
 server/.env
 server/env
 server/key.json
