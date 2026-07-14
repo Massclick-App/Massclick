@@ -1,7 +1,38 @@
 const path = require('path');
 const CompressionPlugin = require('compression-webpack-plugin');
 
+const exceljsDist = path.dirname(require.resolve('exceljs/dist/exceljs.min.js'));
+
+function excludeExcelJsFromSourceMapLoader(rule) {
+  if (!rule || typeof rule !== 'object') {
+    return;
+  }
+
+  if (rule.loader && rule.loader.includes(`${path.sep}source-map-loader${path.sep}`)) {
+    const exceljsMatcher = (modulePath = '') => modulePath.startsWith(exceljsDist);
+    const existingExclude = rule.exclude;
+
+    if (!existingExclude) {
+      rule.exclude = exceljsMatcher;
+    } else if (Array.isArray(existingExclude)) {
+      rule.exclude = [...existingExclude, exceljsMatcher];
+    } else {
+      rule.exclude = [existingExclude, exceljsMatcher];
+    }
+  }
+
+  ['rules', 'oneOf'].forEach((key) => {
+    if (Array.isArray(rule[key])) {
+      rule[key].forEach(excludeExcelJsFromSourceMapLoader);
+    }
+  });
+}
+
 module.exports = function override(config, env) {
+  if (config.module && Array.isArray(config.module.rules)) {
+    config.module.rules.forEach(excludeExcelJsFromSourceMapLoader);
+  }
+
   // Enable gzip compression
   if (env === 'production') {
     config.plugins.push(
