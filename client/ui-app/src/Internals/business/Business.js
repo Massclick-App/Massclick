@@ -30,6 +30,7 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded';
+import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined';
 import AutorenewRoundedIcon from '@mui/icons-material/AutorenewRounded';
 import { checkPhonePeStatus, createPhonePePayment } from "../../redux/actions/phonePayAction.js";
 import { updateGmapsLeadStatus, clearGmapsLeadImport, setGmapsLeadToImport } from "../../redux/actions/gmapsLeadsAction";
@@ -3774,6 +3775,31 @@ const BusinessList = React.memo(() => {
     return match ? decodeURIComponent(match[1].replace(/"/g, "")) : fallback;
   };
 
+  const downloadBusinessDocument = async ({
+    businessId,
+    type,
+    index,
+    name,
+    fallbackUrl = ""
+  }) => {
+    const params = new URLSearchParams({ type });
+    if (Number.isInteger(index)) params.append("index", String(index));
+
+    try {
+      const response = await axiosInstance.get(
+        `${process.env.REACT_APP_API_URL}/businesslist/documents/${businessId}/download?${params.toString()}`,
+        { responseType: "blob" }
+      );
+      const extension = (fallbackUrl.split("?")[0].match(/\.(\w+)$/) || [])[1] || "bin";
+      const fallbackName = `${name || "Business Document"}.${extension}`;
+      const filename = getDownloadFilename(response.headers?.["content-disposition"], fallbackName);
+      downloadBlob(response.data, filename);
+      enqueueSnackbar(`${name || "Document"} downloaded`, { variant: "success" });
+    } catch (error) {
+      enqueueSnackbar(error.response?.data?.message || error.message || "Download failed.", { variant: "error" });
+    }
+  };
+
   const handleExportBusinessData = async () => {
     if (exportLoading) return;
     try {
@@ -5003,11 +5029,13 @@ const BusinessList = React.memo(() => {
         const certificateLinks = [
           row.certificates?.verifiedCertificateUrl && {
             label: "Verified Certificate",
-            url: row.certificates.verifiedCertificateUrl
+            url: row.certificates.verifiedCertificateUrl,
+            type: "verified"
           },
           row.certificates?.trustCertificateUrl && {
             label: "Trust Certificate",
-            url: row.certificates.trustCertificateUrl
+            url: row.certificates.trustCertificateUrl,
+            type: "trust"
           }
         ].filter(Boolean);
 
@@ -5183,8 +5211,13 @@ const BusinessList = React.memo(() => {
                             key={certificate.label}
                             size="small"
                             variant="outlined"
-                            endIcon={<OpenInNewRoundedIcon fontSize="small" />}
-                            onClick={() => window.open(certificate.url, "_blank", "noopener,noreferrer")}
+                            endIcon={<FileDownloadOutlinedIcon fontSize="small" />}
+                            onClick={() => downloadBusinessDocument({
+                              businessId: row._id,
+                              type: certificate.type,
+                              name: certificate.label,
+                              fallbackUrl: certificate.url
+                            })}
                             sx={{ textTransform: "none", borderColor: "#ddd6fe", color: "#6d28d9", fontWeight: 700, "&:hover": { bgcolor: "#f5f3ff", borderColor: "#c4b5fd" } }}
                           >
                             {certificate.label}
@@ -5406,7 +5439,9 @@ const BusinessList = React.memo(() => {
           .map((documentItem, index) => ({
             url: getBusinessDocumentUrl(documentItem),
             name: getBusinessDocumentName(documentItem, index),
-            kind: "KYC"
+            kind: "KYC",
+            downloadType: "kyc",
+            downloadIndex: index
           }))
           .filter(documentItem => documentItem.url);
         const certificateDocuments = [
@@ -5414,16 +5449,26 @@ const BusinessList = React.memo(() => {
             url: documentsDialog.data.certificates.verifiedCertificateUrl,
             name: "Verified Certificate",
             kind: "CERT",
-            certificateType: "verified"
+            certificateType: "verified",
+            downloadType: "verified"
           },
           documentsDialog.data?.certificates?.trustCertificateUrl && {
             url: documentsDialog.data.certificates.trustCertificateUrl,
             name: "Trust Certificate",
             kind: "CERT",
-            certificateType: "trust"
+            certificateType: "trust",
+            downloadType: "trust"
           }
         ].filter(Boolean);
         const documents = [...certificateDocuments, ...kycDocuments];
+
+        const handleDownloadDocument = async documentItem => downloadBusinessDocument({
+          businessId: documentsDialog.data?._id,
+          type: documentItem.downloadType,
+          index: documentItem.downloadIndex,
+          name: documentItem.name,
+          fallbackUrl: documentItem.url
+        });
 
         return (
           <>
@@ -5543,22 +5588,40 @@ const BusinessList = React.memo(() => {
                           )}
                         </Box>
 
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          endIcon={<OpenInNewRoundedIcon fontSize="small" />}
-                          onClick={() => window.open(url, "_blank", "noopener,noreferrer")}
-                          sx={{
-                            mt: "auto",
-                            textTransform: "none",
-                            borderColor: "#0f766e",
-                            color: "#0f766e",
-                            fontWeight: 700,
-                            "&:hover": { borderColor: "#0d5f59", bgcolor: "#ecfdf5" }
-                          }}
-                        >
-                          Open
-                        </Button>
+                        <Box sx={{ mt: "auto", display: "flex", gap: 1 }}>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            fullWidth
+                            endIcon={<OpenInNewRoundedIcon fontSize="small" />}
+                            onClick={() => window.open(url, "_blank", "noopener,noreferrer")}
+                            sx={{
+                              textTransform: "none",
+                              borderColor: "#0f766e",
+                              color: "#0f766e",
+                              fontWeight: 700,
+                              "&:hover": { borderColor: "#0d5f59", bgcolor: "#ecfdf5" }
+                            }}
+                          >
+                            Open
+                          </Button>
+                          <Button
+                            size="small"
+                            variant="contained"
+                            fullWidth
+                            disableElevation
+                            endIcon={<FileDownloadOutlinedIcon fontSize="small" />}
+                            onClick={() => handleDownloadDocument(documentItem)}
+                            sx={{
+                              textTransform: "none",
+                              bgcolor: "#0f766e",
+                              fontWeight: 700,
+                              "&:hover": { bgcolor: "#0d5f59" }
+                            }}
+                          >
+                            Download
+                          </Button>
+                        </Box>
                       </Box>
                     );
                   })}
