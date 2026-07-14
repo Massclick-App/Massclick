@@ -518,6 +518,39 @@ export const getV2SubCategoriesAction = async (req, res) => {
   }
 };
 
+// ─── V2: Parent-of-subcategory (reverse lookup) ────────────────────────────────
+// Given a subcategory slug, resolves the parentSlug it actually belongs to
+// per the same dynamic subCategoryMapping used above. Used to validate
+// /:location/:category/:subcategory URLs so a bogus :category segment
+// (e.g. "beauty-and-spa/chairs-on-rent") can be redirected to the real
+// pairing ("rent-and-hire/chairs-on-rent") instead of silently rendering.
+export const getV2ParentOfSubCategoryAction = async (req, res) => {
+  try {
+    const { subcategorySlug } = req.params;
+
+    const settings = await categoryDisplaySettingsModel.findOne().lean();
+    const subCatLookup = buildSubCatLookup(settings);
+
+    const cleanText = (text = "") =>
+      text.toLowerCase().trim()
+        .replace(/[-_\s]+/g, " ")
+        .replace(/\bcontractors\b/g, "contractor")
+        .replace(/\s+/g, " ");
+
+    const category = await categoryModel.findOne({ slug: subcategorySlug, isActive: true }).lean();
+    const targetName = category ? cleanText(category.category) : cleanText(subcategorySlug.replace(/-/g, " "));
+
+    const parentSlug = Object.keys(subCatLookup).find((key) =>
+      subCatLookup[key].some((item) => cleanText(item.name) === targetName)
+    ) || null;
+
+    return res.json({ parentSlug });
+  } catch (error) {
+    console.error("getV2ParentOfSubCategoryAction error:", error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
 // ─── V2: Popular Search Cards ─────────────────────────────────────────────────
 
 const FALLBACK_POPULAR_SEARCHES = [
