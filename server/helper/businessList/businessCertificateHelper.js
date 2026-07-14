@@ -561,6 +561,18 @@ export const regenerateBusinessCertificates = async (businessId) => {
     throw error;
   }
 
+  // Paid businesses are entitled to verified + trust status; award any
+  // missing flags here so regeneration also repairs businesses whose paid
+  // flow ran before badges were auto-updated (or whose email step failed).
+  if (!business.verification?.isVerified) {
+    business.set("verification.isVerified", true);
+    business.set("verification.verifiedAt", new Date());
+    business.set("verification.verificationType", "AUTO");
+  }
+  if (!business.badges?.isTrust) {
+    business.set("badges.isTrust", true);
+  }
+
   const currentCertificates = business.certificates?.toObject?.() || business.certificates || {};
   const hasVerifiedCertificate =
     !!business.verification?.isVerified || !!currentCertificates.verifiedCertificateKey;

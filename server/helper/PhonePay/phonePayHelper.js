@@ -350,8 +350,11 @@ export const checkPhonePeStatus = async (transactionId) => {
       if (normalizedPaymentStatus === "SUCCESS") {
         try {
           await ensurePaidBusinessBadges(updated.businessId);
+          // Generate certificates now, independent of the invoice email below,
+          // so a failed email never leaves a paid business without certificates.
+          await ensureBusinessCertificates(updated.businessId);
         } catch (badgeError) {
-          console.error(`❌ [Paid Badges] Failed to auto-update badges for business ${updated.businessId}:`, badgeError.message);
+          console.error(`❌ [Paid Badges] Failed to auto-update badges/certificates for business ${updated.businessId}:`, badgeError.message);
         }
       }
 
@@ -472,6 +475,9 @@ export const sendInvoiceEmailForBusiness = async (businessId) => {
       businessData.amountPaid || latestPayment.paid || latestPayment.paymentStatus === "SUCCESS";
     if (isPaidBusiness) {
       await ensurePaidBusinessBadges(businessId);
+      // Generate certificates before attempting the email so an SMTP failure
+      // never leaves a paid business without certificates.
+      await ensureBusinessCertificates(businessId);
     }
 
     if (shouldResendForCertificateRefresh) {
