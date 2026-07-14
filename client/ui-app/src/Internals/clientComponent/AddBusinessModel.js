@@ -120,16 +120,7 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater }) => {
             setIsNewUser(res.isNewUser);
             setResendTimer(60);
             localStorage.setItem("mobileNumber", mobileNumber);
-
-            // Auto-fill if backend returns OTP (for testing)
-            if (res?.otp) {
-                addLog('✅ Backend returned OTP:', res.otp);
-                setTimeout(() => {
-                    fillOtpAndVerify(res.otp);
-                }, 500);
-            } else {
-                window.setTimeout(() => otpRefs.current[0]?.focus(), 0);
-            }
+            window.setTimeout(() => otpRefs.current[0]?.focus(), 0);
         } catch (error) {
             enqueueSnackbar("Failed to send OTP. Please try again.", {
                 variant: "error",
@@ -287,50 +278,51 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater }) => {
     }, [otpSent, open, extractOtpFromMessage, fillOtpAndVerify, addLog]);
 
     // Mechanism 2: Paste Listener (Works on all devices)
+    const pasteInputRef = React.useRef(null);
+
     React.useEffect(() => {
-        if (!otpSent || !open) return undefined;
+        if (!otpSent || !open) {
+            addLog('📌 Paste listener deactivated');
+            return undefined;
+        }
 
-        console.log('📌 Global paste listener activated');
+        addLog('📌 Paste listener activated - tap to paste OTP');
 
+        // Focus paste input after dialog opens
+        setTimeout(() => {
+            if (pasteInputRef.current) {
+                pasteInputRef.current.focus();
+            }
+        }, 100);
+
+        const handlePaste = (e) => {
+            const pastedText = e.clipboardData?.getData('text') || '';
+            addLog('📌 Paste detected:', pastedText);
+            const extractedCode = extractOtpFromMessage(pastedText);
+            if (extractedCode) {
+                addLog('✅ OTP extracted from paste:', extractedCode);
+                e.preventDefault();
+                fillOtpAndVerify(extractedCode);
+                // Clear the input after successful fill
+                if (pasteInputRef.current) {
+                    pasteInputRef.current.value = '';
+                }
+            }
+        };
+
+        const pasteInput = pasteInputRef.current;
+        if (pasteInput) {
+            pasteInput.addEventListener('paste', handlePaste);
+        }
+
+        // Also listen for global paste as fallback
         const handleGlobalPaste = (e) => {
-            if (otpDigits.join('') === '') {
+            if (otpDigits.join('') === '' && otpSent && open) {
                 const pastedText = e.clipboardData?.getData('text') || '';
-                console.log('📌 Paste detected:', pastedText);
-
-                // Extract OTP directly here to avoid circular dependency
-                const cleanMessage = String(pastedText).trim();
-                const patterns = [
-                    /\b(\d{4})\b(?=\D*(?:valid|minute|expire|otp|code))/i,
-                    /is\s+(\d{4})\b/i,
-                    /otp[:\s]+(\d{4})\b/i,
-                    /code[:\s]+(\d{4})\b/i,
-                    /(\d{4})[.\s]*(?:is|your|otp|code|verification)/i,
-                    /(?:verification|registration)[^\d]*(\d{4})\b/i,
-                    /\b(\d{4})\b/
-                ];
-
-                let extractedCode = null;
-                for (const pattern of patterns) {
-                    const match = cleanMessage.match(pattern);
-                    if (match?.[1]) {
-                        const code = match[1];
-                        if (code.length === 4 && /^\d{4}$/.test(code)) {
-                            extractedCode = code;
-                            break;
-                        }
-                    }
-                }
-
-                if (!extractedCode) {
-                    const allDigits = cleanMessage.replace(/\D/g, '');
-                    if (allDigits.length >= 4) {
-                        extractedCode = allDigits.slice(0, 4);
-                    }
-                }
-
+                addLog('📌 Global paste detected:', pastedText);
+                const extractedCode = extractOtpFromMessage(pastedText);
                 if (extractedCode) {
-                    console.log('✅ OTP extracted from paste:', extractedCode);
-                    addLog('✅ OTP extracted from paste:', extractedCode);
+                    addLog('✅ OTP auto-filled from global paste:', extractedCode);
                     fillOtpAndVerify(extractedCode);
                 }
             }
@@ -339,9 +331,12 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater }) => {
         document.addEventListener('paste', handleGlobalPaste);
 
         return () => {
+            if (pasteInput) {
+                pasteInput.removeEventListener('paste', handlePaste);
+            }
             document.removeEventListener('paste', handleGlobalPaste);
         };
-    }, [otpSent, open, otpDigits, addLog, fillOtpAndVerify]);
+    }, [otpSent, open, extractOtpFromMessage, fillOtpAndVerify, addLog, otpDigits]);
 
     // Mechanism 3: Auto-verify when 4 digits are filled
     React.useEffect(() => {
