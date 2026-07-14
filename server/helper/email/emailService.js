@@ -542,14 +542,16 @@ const buildCertificateAttachments = async (businessData = {}, certificateTypes =
     certificateBusiness.businessName || certificateBusiness.name || 'business',
   );
 
+  const certificateExtension = (key = '') =>
+    (String(key).match(/\.(\w+)$/) || [])[1] || 'svg';
   const certificateFiles = [
     requestedTypes.includes('verified') && certificateBusiness.verification?.isVerified && certificates.verifiedCertificateKey && {
       key: certificates.verifiedCertificateKey,
-      filename: `massclick-verified-certificate-${businessSlug}.png`,
+      filename: `massclick-verified-certificate-${businessSlug}.${certificateExtension(certificates.verifiedCertificateKey)}`,
     },
     requestedTypes.includes('trust') && certificateBusiness.badges?.isTrust && certificates.trustCertificateKey && {
       key: certificates.trustCertificateKey,
-      filename: `massclick-trust-certificate-${businessSlug}.png`,
+      filename: `massclick-trust-certificate-${businessSlug}.${certificateExtension(certificates.trustCertificateKey)}`,
     },
   ].filter(Boolean);
 
@@ -563,7 +565,7 @@ const buildCertificateAttachments = async (businessData = {}, certificateTypes =
         attachments.push({
           filename: certificateFile.filename,
           content: file.content,
-          contentType: file.contentType || 'image/png',
+          contentType: file.contentType || 'image/svg+xml',
         });
       }
     } catch (error) {

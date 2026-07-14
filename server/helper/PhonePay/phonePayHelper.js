@@ -32,6 +32,33 @@ const getPremiumMembershipAmounts = () => {
   return { amount, gstAmount, totalAmount };
 };
 
+// Paid businesses automatically receive verified + trust status so their
+// certificates exist by the time the invoice email builds its attachments.
+// Conditional filters keep admin-set verification (verifiedBy etc.) untouched.
+const ensurePaidBusinessBadges = async (businessId) => {
+  const now = new Date();
+  const verifiedResult = await businessListModel.updateOne(
+    { _id: businessId, "verification.isVerified": { $ne: true } },
+    {
+      $set: {
+        "verification.isVerified": true,
+        "verification.verifiedAt": now,
+        "verification.verificationType": "AUTO",
+      },
+    },
+  );
+  const trustResult = await businessListModel.updateOne(
+    { _id: businessId, "badges.isTrust": { $ne: true } },
+    { $set: { "badges.isTrust": true } },
+  );
+
+  if (verifiedResult.modifiedCount || trustResult.modifiedCount) {
+    console.log(
+      `🏅 [Paid Badges] Auto-updated badges for business ${businessId} - verified: ${!!verifiedResult.modifiedCount}, trust: ${!!trustResult.modifiedCount}`,
+    );
+  }
+};
+
 const hasPremiumAmountMismatch = (payment = {}) => {
   const expected = getPremiumMembershipAmounts();
 
@@ -320,6 +347,14 @@ export const checkPhonePeStatus = async (transactionId) => {
         console.log(`✅ [Business Update] Fallback update completed for businessId: ${updated.businessId}`);
       }
 
+      if (normalizedPaymentStatus === "SUCCESS") {
+        try {
+          await ensurePaidBusinessBadges(updated.businessId);
+        } catch (badgeError) {
+          console.error(`❌ [Paid Badges] Failed to auto-update badges for business ${updated.businessId}:`, badgeError.message);
+        }
+      }
+
       // Send invoice email on successful payment
       if (normalizedPaymentStatus === "SUCCESS" && !updated.invoiceEmailSent) {
         try {
@@ -431,6 +466,12 @@ export const sendInvoiceEmailForBusiness = async (businessId) => {
         message: 'Invoice email already sent',
         alreadySent: true,
       };
+    }
+
+    const isPaidBusiness =
+      businessData.amountPaid || latestPayment.paid || latestPayment.paymentStatus === "SUCCESS";
+    if (isPaidBusiness) {
+      await ensurePaidBusinessBadges(businessId);
     }
 
     if (shouldResendForCertificateRefresh) {
