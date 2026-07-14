@@ -5324,12 +5324,14 @@ const BusinessList = React.memo(() => {
           documentsDialog.data?.certificates?.verifiedCertificateUrl && {
             url: documentsDialog.data.certificates.verifiedCertificateUrl,
             name: "Verified Certificate",
-            kind: "CERT"
+            kind: "CERT",
+            certificateType: "verified"
           },
           documentsDialog.data?.certificates?.trustCertificateUrl && {
             url: documentsDialog.data.certificates.trustCertificateUrl,
             name: "Trust Certificate",
-            kind: "CERT"
+            kind: "CERT",
+            certificateType: "trust"
           }
         ].filter(Boolean);
         const documents = [...certificateDocuments, ...kycDocuments];
@@ -5376,7 +5378,7 @@ const BusinessList = React.memo(() => {
                   </Typography>
                 </Box>
               ) : (
-                <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 2 }}>
+                <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 2 }}>
                   {documents.map((documentItem, index) => {
                     const { url, name, kind } = documentItem;
                     const isImage = isPreviewableBusinessDocumentImage(url);
@@ -5394,7 +5396,7 @@ const BusinessList = React.memo(() => {
                           bgcolor: "#ffffff",
                           border: "1px solid #e2e8f0",
                           borderRadius: 2,
-                          minHeight: 300,
+                          minHeight: isCertificate ? 390 : 300,
                           boxShadow: "0 10px 28px rgba(15, 23, 42, 0.08)"
                         }}
                       >
@@ -5421,7 +5423,7 @@ const BusinessList = React.memo(() => {
                         </Box>
 
                         <Box sx={{
-                          height: 190,
+                          height: isCertificate ? 280 : 190,
                           border: "1px solid #e2e8f0",
                           borderRadius: 1.5,
                           overflow: "hidden",

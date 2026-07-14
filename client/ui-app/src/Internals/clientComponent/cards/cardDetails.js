@@ -278,6 +278,9 @@ const BusinessDetail = React.memo(() => {
         detailWord: "verified",
         icon: <VerifiedRoundedIcon />
       };
+  const savedCertificateUrl = activeCertificate === "trust"
+    ? business.certificates?.trustCertificateUrl
+    : business.certificates?.verifiedCertificateUrl;
   const certificateLabels = statusBadges
     .filter(item => item.key === "verified" || item.key === "trust")
     .map(item => item.label);
@@ -563,6 +566,15 @@ const BusinessDetail = React.memo(() => {
             >
               <CloseIcon />
             </button>
+            {savedCertificateUrl ? (
+              <div className={cx("business-CardDetails-certificateImageShell")}>
+                <img
+                  src={savedCertificateUrl}
+                  alt={`MassClick ${currentCertificate.label} certificate for ${business.businessName}`}
+                  className={cx("business-CardDetails-certificateSavedImage")}
+                />
+              </div>
+            ) : (
             <div className={cx("business-CardDetails-certificatePaper", `business-CardDetails-certificatePaper--${currentCertificate.key}`)}>
               {currentCertificate.eyebrow && <p className={cx("business-CardDetails-certificateEyebrow")}>{currentCertificate.eyebrow}</p>}
               <div className={cx("business-CardDetails-certificateMark")}>
@@ -600,6 +612,7 @@ const BusinessDetail = React.memo(() => {
                 <img src={massClickLogo} alt="MassClick" />
               </div>
             </div>
+            )}
           </div>
         </div>,
         document.body

@@ -1085,6 +1085,12 @@ export const mainSearchController = async (req, res) => {
       if (b.logoImageKey) b.logoImage = getSignedUrlByKey(b.logoImageKey);
       if (b.businessImagesKey?.length > 0) b.businessImages = b.businessImagesKey.map((k) => getSignedUrlByKey(k));
       if (b.kycDocumentsKey?.length > 0) b.kycDocuments = b.kycDocumentsKey.map((k) => getSignedUrlByKey(k));
+      if (b.certificates?.verifiedCertificateKey) {
+        b.certificates.verifiedCertificateUrl = getSignedUrlByKey(b.certificates.verifiedCertificateKey);
+      }
+      if (b.certificates?.trustCertificateKey) {
+        b.certificates.trustCertificateUrl = getSignedUrlByKey(b.certificates.trustCertificateKey);
+      }
     });
 
     res.send({ results, total, page, pageSize, hasMore: page * pageSize < total, resolvedCategory: category || null });
@@ -1125,7 +1131,7 @@ export const nearbyBusinessesController = async (req, res) => {
       {
         $project: {
           businessName: 1, category: 1, location: 1, bannerImageKey: 1, logoImageKey: 1,
-          verification: 1, badges: 1,
+          verification: 1, badges: 1, certificates: 1,
           contact: 1, whatsappNumber: 1, filters: 1, experience: 1, slug: 1,
           distance: { $round: [{ $divide: ["$distanceMeters", 1000] }, 2] }
         }
@@ -1172,6 +1178,12 @@ export const nearbyBusinessesController = async (req, res) => {
     results.forEach((b) => {
       if (b.bannerImageKey) b.bannerImage = getSignedUrlByKey(b.bannerImageKey);
       if (b.logoImageKey) b.logoImage = getSignedUrlByKey(b.logoImageKey);
+      if (b.certificates?.verifiedCertificateKey) {
+        b.certificates.verifiedCertificateUrl = getSignedUrlByKey(b.certificates.verifiedCertificateKey);
+      }
+      if (b.certificates?.trustCertificateKey) {
+        b.certificates.trustCertificateUrl = getSignedUrlByKey(b.certificates.trustCertificateKey);
+      }
     });
 
     res.send(results);

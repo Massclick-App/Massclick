@@ -527,6 +527,25 @@
   text-align: center;
 }
 
+.certificate-image-shell {
+  align-items: center;
+  background: #ffffff;
+  border-radius: 8px;
+  display: flex;
+  justify-content: center;
+  overflow: hidden;
+  width: 100%;
+}
+
+.certificate-saved-image {
+  display: block;
+  height: auto;
+  max-height: min(86vh, 900px);
+  max-width: 100%;
+  object-fit: contain;
+  width: auto;
+}
+
 .certificate-paper--trust::before,
 .certificate-paper--trust::after {
   content: "";

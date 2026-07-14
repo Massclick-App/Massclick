@@ -10,7 +10,7 @@ import {
 } from "../../s3Uploder.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
 
-export const CERTIFICATE_TEMPLATE_VERSION = 7;
+export const CERTIFICATE_TEMPLATE_VERSION = 8;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const MASSCLICK_LOGO_PATH = path.resolve(
@@ -191,11 +191,13 @@ const buildLogoMarkup = ({ logoDataUrl, initials, accent, x = 320, y = 238, radi
 const buildCertificateSvg = async (business = {}, type = "verified") => {
   const isTrust = type === "trust";
   const rawBusinessName = business.businessName || business.name || "Business";
-  const rawLocation = business.location || "India";
-  const businessNameLines = splitSvgTextLines(rawBusinessName, 30, 2);
-  const locationLines = splitSvgTextLines(rawLocation, 38, 1);
-  const accent = "#ff6b1a";
+  const rawLocation = business.globalAddress || business.location || "Business location verified by MassClick";
+  const businessNameLines = splitSvgTextLines(rawBusinessName, 28, 2);
+  const locationLines = splitSvgTextLines(rawLocation, 44, 2);
+  const accent = "#ff5a1f";
   const trustBlue = "#00095c";
+  const primary = isTrust ? trustBlue : accent;
+  const soft = isTrust ? "#eef2ff" : "#fff7ed";
   const detailWord = isTrust ? "trusted" : "verified";
   const statusCopy = isTrust
     ? "has been certified as a trusted member of MassClick"
@@ -204,99 +206,100 @@ const buildCertificateSvg = async (business = {}, type = "verified") => {
   const businessLogoMarkup = buildLogoMarkup({
     logoDataUrl,
     initials: getBusinessInitials(business.businessName || business.name),
-    accent,
-    x: 320,
-    y: isTrust ? 272 : 238,
-    radius: 52,
+    accent: primary,
+    x: 360,
+    y: 318,
+    radius: 62,
   });
   const brandLogoMarkup = MASSCLICK_LOGO_DATA_URL
-    ? `<image href="${escapeXml(MASSCLICK_LOGO_DATA_URL)}" x="224" y="680" width="192" height="54" preserveAspectRatio="xMidYMid meet"/>`
+    ? `<image href="${escapeXml(MASSCLICK_LOGO_DATA_URL)}" x="252" y="824" width="216" height="62" preserveAspectRatio="xMidYMid meet"/>`
     : "";
   const titleMarkup = textLinesMarkup({
     lines: businessNameLines,
-    x: 320,
-    y: (isTrust ? 364 : 330) + (businessNameLines.length > 1 ? 0 : 12),
-    lineHeight: 33,
-    fontSize: businessNameLines.length > 1 ? 27 : 29,
+    x: 360,
+    y: 422 + (businessNameLines.length > 1 ? 0 : 20),
+    lineHeight: 39,
+    fontSize: businessNameLines.length > 1 ? 32 : 36,
     fontWeight: 850,
     fill: "#020617",
   });
   const locationMarkup = textLinesMarkup({
     lines: locationLines,
-    x: 320,
-    y: isTrust
-      ? (businessNameLines.length > 1 ? 430 : 410)
-      : (businessNameLines.length > 1 ? 396 : 376),
-    lineHeight: 22,
-    fontSize: 16,
-    fontWeight: 800,
-    fill: "#020617",
+    x: 360,
+    y: businessNameLines.length > 1 ? 508 : 494,
+    lineHeight: 25,
+    fontSize: 18,
+    fontWeight: 750,
+    fill: "#111827",
   });
   const checkIcon = (x, y) => `
-    <rect x="${x}" y="${y}" width="14" height="14" rx="3" fill="#1f7a34"/>
-    <path d="M${x + 3.2} ${y + 7.3} L${x + 6.2} ${y + 10.1} L${x + 11.2} ${y + 4.3}" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
+    <circle cx="${x + 10}" cy="${y + 10}" r="10" fill="#1f7a34"/>
+    <path d="M${x + 5.2} ${y + 10.4} L${x + 8.8} ${y + 14} L${x + 15.2} ${y + 6.7}" fill="none" stroke="#ffffff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>`;
   const verifiedIcon = `
-    <path d="M274 95 L286 91 L296 99 L309 98 L315 110 L327 116 L323 129 L327 142 L315 148 L309 160 L296 159 L286 167 L274 163 L262 167 L252 159 L239 160 L233 148 L221 142 L225 129 L221 116 L233 110 L239 98 L252 99 Z" fill="${accent}"/>
-    <path d="M270 130 L280 140 L300 116" fill="none" stroke="#ffffff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>`;
+    <path d="M280 96 L294 91 L306 101 L322 100 L329 114 L343 121 L338 137 L343 153 L329 160 L322 174 L306 173 L294 183 L280 178 L266 183 L254 173 L238 174 L231 160 L217 153 L222 137 L217 121 L231 114 L238 100 L254 101 Z" fill="${accent}"/>
+    <path d="M275 139 L287 151 L313 121" fill="none" stroke="#ffffff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>`;
   const trustIcon = `
-    <path d="M243 107 h14 a10 10 0 0 1 10 10 v12 a17 17 0 0 1 -12 16 l-5 2 l-5 -2 a17 17 0 0 1 -12 -16 v-12 a10 10 0 0 1 10 -10 z" fill="#ffffff"/>
-    <circle cx="250" cy="124" r="5" fill="${trustBlue}"/>
-    <path d="M250 130 v10" stroke="${trustBlue}" stroke-width="4" stroke-linecap="round"/>`;
+    <path d="M306 101 h28 a17 17 0 0 1 17 17 v28 a39 39 0 0 1 -27 37 l-4 1.6 l-4 -1.6 a39 39 0 0 1 -27 -37 v-28 a17 17 0 0 1 17 -17 z" fill="#ffffff"/>
+    <circle cx="320" cy="134" r="8" fill="${trustBlue}"/>
+    <path d="M320 143 v17" stroke="${trustBlue}" stroke-width="6" stroke-linecap="round"/>`;
   const starsMarkup = isTrust
-    ? `<text x="320" y="512" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="900" fill="${accent}">&#9733; &#9733; &#9733; &#9733; &#9733;</text>`
+    ? `<text x="360" y="612" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="900" fill="${accent}">&#9733; &#9733; &#9733; &#9733; &#9733;</text>`
     : "";
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="640" height="760" viewBox="0 0 640 760">
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="960" viewBox="0 0 720 960">
   <defs>
-    <pattern id="certificatePatternA" width="48" height="82" patternUnits="userSpaceOnUse">
-      <path d="M0 0 L48 0 L48 12 Z" fill="${accent}" opacity="0.045"/>
-      <path d="M0 82 L0 70 L48 82 Z" fill="${accent}" opacity="0.045"/>
-    </pattern>
-    <pattern id="certificatePatternB" width="48" height="82" patternUnits="userSpaceOnUse">
-      <path d="M0 0 L0 12 L48 0 Z" fill="#080f55" opacity="0.035"/>
-      <path d="M48 82 L0 82 L48 70 Z" fill="#080f55" opacity="0.035"/>
-    </pattern>
     <filter id="identityShadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="16" stdDeviation="20" flood-color="#0f172a" flood-opacity="0.08"/>
+      <feDropShadow dx="0" dy="18" stdDeviation="24" flood-color="#0f172a" flood-opacity="0.10"/>
     </filter>
+    <linearGradient id="pageGlow" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="${soft}"/>
+      <stop offset="0.42" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#f8fafc"/>
+    </linearGradient>
+    <linearGradient id="dividerGlow" x1="0" x2="1">
+      <stop offset="0" stop-color="${accent}" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="${accent}" stop-opacity="0.58"/>
+      <stop offset="1" stop-color="${accent}" stop-opacity="0"/>
+    </linearGradient>
   </defs>
 
-  <rect width="640" height="760" fill="#ffffff"/>
-  <rect width="640" height="760" fill="url(#certificatePatternA)"/>
-  <rect width="640" height="760" fill="url(#certificatePatternB)"/>
-  <rect x="14" y="14" width="612" height="732" fill="none" stroke="${accent}" stroke-width="1"/>
-  ${isTrust ? `<rect x="14" y="14" width="180" height="7" rx="4" fill="${trustBlue}"/><rect x="446" y="739" width="180" height="7" rx="4" fill="${trustBlue}"/>` : ""}
+  <rect width="720" height="960" fill="url(#pageGlow)"/>
+  <circle cx="360" cy="0" r="250" fill="${accent}" opacity="0.10"/>
+  <rect x="24" y="24" width="672" height="912" rx="8" fill="none" stroke="${accent}" stroke-opacity="0.30" stroke-width="1.4"/>
+  ${isTrust ? `<rect x="24" y="24" width="230" height="8" rx="4" fill="${trustBlue}"/><rect x="466" y="928" width="230" height="8" rx="4" fill="${trustBlue}"/>` : ""}
 
   ${isTrust
-    ? `<text x="320" y="84" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="31" fill="#1f2937">CERTIFICATE OF</text>
-  <rect x="194" y="113" width="252" height="55" rx="8" fill="${trustBlue}"/>
-  <g transform="translate(6 13)">${trustIcon}</g>
-  <text x="338" y="151" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="34" font-weight="850" fill="#ffffff">Trust</text>`
-    : `<g transform="translate(-78 0)">${verifiedIcon}</g>
-  <text x="362" y="136" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="46" font-weight="850" fill="${accent}">Verified</text>`}
+    ? `<text x="360" y="102" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="36" fill="#1f2937">CERTIFICATE OF</text>
+  <rect x="224" y="132" width="272" height="68" rx="10" fill="${trustBlue}"/>
+  ${trustIcon}
+  <text x="384" y="177" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="40" font-weight="850" fill="#ffffff">Trust</text>`
+    : `${verifiedIcon}
+  <text x="406" y="154" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="58" font-weight="850" fill="${accent}">Verified</text>`}
 
-  <rect x="110" y="${isTrust ? 198 : 182}" width="420" height="${businessNameLines.length > 1 ? 244 : 226}" rx="16" fill="#ffffff" fill-opacity="0.92" stroke="#e2e8f0" filter="url(#identityShadow)"/>
+  <rect x="112" y="238" width="496" height="312" rx="18" fill="#ffffff" fill-opacity="0.88" stroke="#e2e8f0" filter="url(#identityShadow)"/>
   ${businessLogoMarkup}
   ${titleMarkup}
   ${locationMarkup}
 
-  <text x="320" y="${isTrust ? 472 : 444}" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="800" fill="#020617">${escapeXml(statusCopy)}</text>
+  <text x="360" y="574" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="760" fill="#111827">${escapeXml(statusCopy)}</text>
   ${starsMarkup}
 
-  <text x="320" y="${isTrust ? 592 : 560}" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#475569">
+  <rect x="140" y="${isTrust ? 650 : 628}" width="440" height="1.4" fill="url(#dividerGlow)"/>
+
+  <text x="360" y="${isTrust ? 710 : 688}" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#475569">
     <tspan>Following details of the company have been </tspan>
     <tspan font-weight="850" fill="${accent}">${detailWord}</tspan>
   </text>
 
-  ${checkIcon(142, isTrust ? 622 : 590)}
-  <text x="172" y="${isTrust ? 635 : 603}" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="800" fill="#111827">Business Proof</text>
-  ${checkIcon(398, isTrust ? 622 : 590)}
-  <text x="428" y="${isTrust ? 635 : 603}" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="800" fill="#111827">Business Address</text>
-  ${checkIcon(142, isTrust ? 664 : 632)}
-  <text x="172" y="${isTrust ? 677 : 645}" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="800" fill="#111827">Mobile Number</text>
-  ${checkIcon(398, isTrust ? 664 : 632)}
-  <text x="428" y="${isTrust ? 677 : 645}" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="800" fill="#111827">Email ID</text>
+  ${checkIcon(158, isTrust ? 748 : 726)}
+  <text x="190" y="${isTrust ? 765 : 743}" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="800" fill="#111827">Business Proof</text>
+  ${checkIcon(420, isTrust ? 748 : 726)}
+  <text x="452" y="${isTrust ? 765 : 743}" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="800" fill="#111827">Business Address</text>
+  ${checkIcon(158, isTrust ? 804 : 782)}
+  <text x="190" y="${isTrust ? 821 : 799}" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="800" fill="#111827">Mobile Number</text>
+  ${checkIcon(420, isTrust ? 804 : 782)}
+  <text x="452" y="${isTrust ? 821 : 799}" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="800" fill="#111827">Email ID</text>
 
   ${brandLogoMarkup}
 </svg>`;
