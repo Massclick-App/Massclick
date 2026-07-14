@@ -1139,6 +1139,7 @@ const BusinessList = React.memo(() => {
   });
   const [demoSubmitting, setDemoSubmitting] = useState(false);
   const [hoveredPaidButtonId, setHoveredPaidButtonId] = useState(null); // Track which paid button is being hovered
+  const [markingPaidId, setMarkingPaidId] = useState(null); // Business id currently being marked as paid
   const [badgeUpdateLoading, setBadgeUpdateLoading] = useState(false);
   const [postCreatePaidStatus, setPostCreatePaidStatus] = useState("idle");
   const [postCreateBusinessName, setPostCreateBusinessName] = useState("");
@@ -3770,6 +3771,43 @@ const BusinessList = React.memo(() => {
     URL.revokeObjectURL(url);
   };
 
+  const replaceFileExtension = (filename, extension) => {
+    const cleanName = filename || `Business Document.${extension}`;
+    return `${cleanName.replace(/\.[^/.\\]+$/, "")}.${extension}`;
+  };
+
+  const convertSvgBlobToPngBlob = async (svgBlob) => {
+    if (document.fonts?.ready) {
+      await document.fonts.ready.catch(() => {});
+    }
+
+    const svgUrl = URL.createObjectURL(svgBlob);
+    try {
+      const image = await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = svgUrl;
+      });
+      const canvas = document.createElement("canvas");
+      canvas.width = image.naturalWidth || image.width || 720;
+      canvas.height = image.naturalHeight || image.height || 960;
+      const context = canvas.getContext("2d");
+      context.fillStyle = "#ffffff";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+      return await new Promise((resolve, reject) => {
+        canvas.toBlob(blob => {
+          if (blob) resolve(blob);
+          else reject(new Error("Unable to prepare PNG download."));
+        }, "image/png", 0.96);
+      });
+    } finally {
+      URL.revokeObjectURL(svgUrl);
+    }
+  };
+
   const getDownloadFilename = (contentDisposition, fallback) => {
     const match = String(contentDisposition || "").match(/filename\*?=(?:UTF-8''|")?([^";]+)/i);
     return match ? decodeURIComponent(match[1].replace(/"/g, "")) : fallback;
@@ -3792,9 +3830,18 @@ const BusinessList = React.memo(() => {
       );
       const extension = (fallbackUrl.split("?")[0].match(/\.(\w+)$/) || [])[1] || "bin";
       const fallbackName = `${name || "Business Document"}.${extension}`;
-      const filename = getDownloadFilename(response.headers?.["content-disposition"], fallbackName);
-      downloadBlob(response.data, filename);
-      enqueueSnackbar(`${name || "Document"} downloaded`, { variant: "success" });
+      let filename = getDownloadFilename(response.headers?.["content-disposition"], fallbackName);
+      let downloadData = response.data;
+      const isCertificateDownload = type === "verified" || type === "trust";
+      const isSvgDownload = downloadData?.type === "image/svg+xml" || filename.toLowerCase().endsWith(".svg");
+
+      if (isCertificateDownload && isSvgDownload) {
+        downloadData = await convertSvgBlobToPngBlob(downloadData);
+        filename = replaceFileExtension(filename, "png");
+      }
+
+      downloadBlob(downloadData, filename);
+      enqueueSnackbar(`${name || "Document"} downloaded${isCertificateDownload ? " as PNG" : ""}`, { variant: "success" });
     } catch (error) {
       enqueueSnackbar(error.response?.data?.message || error.message || "Download failed.", { variant: "error" });
     }
@@ -3893,8 +3940,10 @@ const BusinessList = React.memo(() => {
     renderCell: (_, row) => {
       const isPaid = Boolean(row.amountPaid);
       const isHovering = hoveredPaidButtonId === row._id;
+      const isMarkingPaid = markingPaidId === row._id;
       const handleMarkPaid = async () => {
-        if (isPaid || !row?._id) return;
+        if (isPaid || !row?._id || markingPaidId) return;
+        setMarkingPaidId(row._id);
         try {
           await dispatch(editBusinessList(row._id, {
             name: row.businessName, businessName: row.businessName,
@@ -3931,6 +3980,8 @@ const BusinessList = React.memo(() => {
           dispatch(getAllBusinessList());
         } catch {
           enqueueSnackbar("Payment failed. Please try again!", { variant: "error" });
+        } finally {
+          setMarkingPaidId(null);
         }
       };
       const handleRevertPaid = async () => {
@@ -3950,15 +4001,21 @@ const BusinessList = React.memo(() => {
       }) : null;
       return (
         <Box sx={{ display: "flex", justifyContent: "center" }}>
-          <Tooltip title={isPaid ? (isHovering ? "Click to revert to unpaid" : `Paid on ${formattedDate}`) : "Click to mark as paid"} arrow>
+          <Tooltip title={isMarkingPaid ? "Marking as paid..." : isPaid ? (isHovering ? "Click to revert to unpaid" : `Paid on ${formattedDate}`) : "Click to mark as paid"} arrow>
             <button
               onClick={isPaid ? handleRevertPaid : handleMarkPaid}
               className={cx("payment-status-btn", isPaid ? "payment-status-btn-paid" : "payment-status-btn-pending")}
-              disabled={false}
+              disabled={isMarkingPaid}
+              style={isMarkingPaid ? { opacity: 0.7, cursor: "wait" } : undefined}
               onMouseEnter={() => setHoveredPaidButtonId(row._id)}
               onMouseLeave={() => setHoveredPaidButtonId(null)}
             >
-              {isPaid ? (
+              {isMarkingPaid ? (
+                <>
+                  <CircularProgress size={13} sx={{ color: "inherit" }} />
+                  <span>Processing</span>
+                </>
+              ) : isPaid ? (
                 <>
                   {isHovering ? (
                     <>
@@ -5054,6 +5111,8 @@ const BusinessList = React.memo(() => {
           }
         };
         const handleMarkPaid = async () => {
+          if (markingPaidId) return;
+          setMarkingPaidId(row._id);
           try {
             await dispatch(editBusinessList(row._id, {
               name: row.businessName, businessName: row.businessName,
@@ -5065,6 +5124,8 @@ const BusinessList = React.memo(() => {
             setDetailRow(null);
           } catch {
             enqueueSnackbar("Payment failed", { variant: "error" });
+          } finally {
+            setMarkingPaidId(null);
           }
         };
 
@@ -5242,8 +5303,10 @@ const BusinessList = React.memo(() => {
                     </Box>
                     {!isPaid && (
                       <Button size="small" variant="contained" onClick={handleMarkPaid}
-                        sx={{ bgcolor: "#ff8c00", "&:hover": { bgcolor: "#d97800" }, fontSize: "0.9rem", textTransform: "none", py: 0.7, px: 2.5, fontWeight: 600 }}>
-                        Mark as Paid
+                        disabled={markingPaidId === row._id}
+                        startIcon={markingPaidId === row._id ? <CircularProgress size={15} sx={{ color: "#ffffff" }} /> : null}
+                        sx={{ bgcolor: "#ff8c00", "&:hover": { bgcolor: "#d97800" }, "&.Mui-disabled": { bgcolor: "#ffb866", color: "#ffffff" }, fontSize: "0.9rem", textTransform: "none", py: 0.7, px: 2.5, fontWeight: 600 }}>
+                        {markingPaidId === row._id ? "Processing..." : "Mark as Paid"}
                       </Button>
                     )}
                   </Box>
