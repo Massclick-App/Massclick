@@ -432,9 +432,12 @@ const uploadCertificateImage = async (business = {}, type = "verified") => {
     business.businessName || business.name || businessId,
   );
   const svg = await buildCertificateSvg(business, type);
+  // Timestamped key: uploads set a 1-year Cache-Control and certificate URLs
+  // are stable public URLs, so overwriting the same key leaves browsers
+  // serving the stale cached file. A fresh key per regeneration busts that.
   const uploadResult = await uploadImageToS3(
     Buffer.from(svg, "utf8"),
-    `businessList/certificates/${businessId}/${type}-${businessSlug}`,
+    `businessList/certificates/${businessId}/${type}-${businessSlug}-${Date.now()}`,
     {
       skipImageConversion: true,
       contentType: "image/svg+xml",
