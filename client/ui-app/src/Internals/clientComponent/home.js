@@ -17,6 +17,7 @@ import { Helmet } from "react-helmet-async";
 import HeroSection from "../clientComponent/heroSection/heroSection.js";
 import CategoryBar from "../clientComponent/categoryBar";
 import StickySearchBar from './StickySearchBar/StickySearchBar';
+import MobileTrustBanner from "./mobileHomeDock/MobileTrustBanner.js";
 import OTPLoginModel from "./AddBusinessModel.js";
 import { viewOtpUser } from "../../redux/actions/otpAction.js";
 import { fetchMatchedLeads } from "../../redux/actions/leadsAction.js";
@@ -703,6 +704,7 @@ const LandingPage = React.memo(() => {
                 {showDeferredSections ? deferredSections : null}
 
                 <Box
+                  id="popular-categories"
                   className={cx("home-section")}
                   sx={{
                     ...homeSectionSx,
@@ -713,6 +715,8 @@ const LandingPage = React.memo(() => {
                     <PopularCategoriesLink />
                   </Suspense>
                 </Box>
+
+                <MobileTrustBanner />
 
                 <Box className={cx("home-section")} sx={homeSectionSx}>
                   <Suspense fallback={<Box sx={{ minHeight: 178 }} />}>

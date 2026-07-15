@@ -1,0 +1,18 @@
+.banner { display: none; }
+
+@media (max-width: 1199px) {
+  .banner {
+    width: calc(100% - 32px); max-width: 760px; margin: 10px auto 94px; min-height: 76px; padding: 13px 16px;
+    border: 1px solid #fff0e7; border-radius: 18px; background: linear-gradient(100deg, #fff8f3, #fffdfa);
+    box-shadow: 0 7px 20px rgba(15,23,42,.07); display: grid; grid-template-columns: auto 1fr auto;
+    align-items: center; gap: 12px; color: #0b1a4a; text-align: left; font: inherit; cursor: pointer;
+  }
+  .shield { width: 46px; height: 46px; display: grid; place-items: center; color: #fff; border-radius: 14px; background: linear-gradient(145deg, #ff9b0b, #ff6708); }
+  .shield svg { font-size: 29px; }
+  .copy { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  .copy strong { font-size: .98rem; line-height: 1.15; }
+  .copy small { color: #626873; font-size: .72rem; line-height: 1.25; }
+  .arrow { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 50%; color: #ff7900; background: #fff4e9; }
+  .arrow svg { font-size: 22px; }
+  .banner:focus-visible { outline: 3px solid rgba(255,123,0,.35); outline-offset: 2px; }
+}

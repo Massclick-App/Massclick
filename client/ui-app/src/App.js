@@ -26,6 +26,7 @@ import ShimmerSkeleton from './Internals/clientComponent/shimmerSkeleton.js';
 import GlobalLoaderWrapper from './Internals/clientComponent/common/GlobalLoaderWrapper.js';
 import { scheduleIdleCallback } from './utils/scheduleIdleCallback.js';
 import { useDrawer } from './Internals/clientComponent/Drawer/drawerContext.js';
+import MobileHomeDock from './Internals/clientComponent/mobileHomeDock/MobileHomeDock.js';
 
 const Dashboard = lazy(() => import(/* webpackChunkName: "admin-dashboard" */ './Dashboard'));
 const Login = lazy(() => import(/* webpackChunkName: "admin-login" */ './Internals/Login/login.js'));
@@ -349,6 +350,12 @@ function AppRoutes({
           />
         )}
       </Suspense>
+      {!isAdminSurface && (
+        <MobileHomeDock
+          isLoggedIn={Boolean(getAuthSnapshot()?.customer?.token || localStorage.getItem("authToken"))}
+          onRequireLogin={() => setOpenLoginModal(true)}
+        />
+      )}
     </>
   );
 }

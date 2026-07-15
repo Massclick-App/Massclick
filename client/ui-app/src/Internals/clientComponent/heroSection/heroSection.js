@@ -3,6 +3,10 @@ import React, { useEffect, useState, useRef } from "react";
 import SearchIcon from "@mui/icons-material/Search";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import MicIcon from "@mui/icons-material/Mic";
+import StorefrontRoundedIcon from "@mui/icons-material/StorefrontRounded";
+import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
+import VerifiedUserRoundedIcon from "@mui/icons-material/VerifiedUserRounded";
+import GppGoodRoundedIcon from "@mui/icons-material/GppGoodRounded";
 import { useDispatch, useSelector } from "react-redux";
 import { getBackendSuggestions } from "../../../redux/actions/businessListAction";
 import { searchMasterLocations } from "../../../redux/actions/masterLocationAction";
@@ -389,11 +393,11 @@ const HeroSection = React.memo(({
       </div>
       <div className={cx("hero-heading")}>
         <h1 className={cx("hero-title")}>
-          Discover Your
+          Explore. Connect.
           <br />
-          <span className={cx("hero-title-accent")}>Neighborhood</span>
+          <span className={cx("hero-title-accent")}>Succeed Local.</span>
         </h1>
-        <p className={cx("hero-subtitle")}>Find what you need from trusted local businesses.</p>
+        <p className={cx("hero-subtitle")}>Find trusted businesses and services near you.</p>
       </div>
       <div className={cx("hero-content hero-minimal")}>
 
@@ -439,6 +443,7 @@ const HeroSection = React.memo(({
           </div>
 
           <div className={cx("input-group search-group", isDropdownOpen && "dropdown-open")} ref={categoryRef}>
+            <SearchIcon className={cx("input-adornment start search-field-icon")} aria-hidden="true" />
             <input className={cx("custom-input")} role="combobox" aria-autocomplete="list" aria-controls="business-suggestions" aria-label="Search for businesses or services" aria-expanded={isDropdownOpen} enterKeyHint="search" placeholder="Search for..." value={searchTerm} onChange={e => {
             setSearchTerm(e.target.value);
             setCategoryName(e.target.value);
@@ -513,24 +518,23 @@ const HeroSection = React.memo(({
         </form>
         <div className={cx("hero-trust")}>
           <div className={cx("trust-card")}>
-            <span className={cx("trust-icon")}>✔</span>
-            <span>50,000+ Businesses Listed</span>
+            <span className={cx("trust-icon")}><StorefrontRoundedIcon /></span>
+            <span className={cx("trust-copy")}><strong>50,000+</strong><small>Businesses Listed</small></span>
           </div>
 
           <div className={cx("trust-card")}>
-            <span className={cx("trust-icon")}>👥</span>
-            <span className={cx("trust-count")}>{publicUsersCount ? `${formatCounterCount(publicUsersCount)}+` : "Live"}</span>
-            <span>Public Users</span>
+            <span className={cx("trust-icon")}><GroupsRoundedIcon /></span>
+            <span className={cx("trust-copy")}><strong className={cx("trust-count")}>{publicUsersCount ? `${formatCounterCount(publicUsersCount)}+` : "Live"}</strong><small>Public Users</small></span>
           </div>
 
           <div className={cx("trust-card")}>
-            <span className={cx("trust-icon")}>⭐</span>
-            <span>Verified Local Businesses</span>
+            <span className={cx("trust-icon")}><VerifiedUserRoundedIcon /></span>
+            <span className={cx("trust-copy")}><strong>Verified</strong><small>Local Businesses</small></span>
           </div>
 
           <div className={cx("trust-card")}>
-            <span className={cx("trust-icon")}>🔒</span>
-            <span>Secure & Spam-Free Platform</span>
+            <span className={cx("trust-icon")}><GppGoodRoundedIcon /></span>
+            <span className={cx("trust-copy")}><strong>Secure</strong><small>&amp; Spam-Free Platform</small></span>
           </div>
         </div>
       </div>

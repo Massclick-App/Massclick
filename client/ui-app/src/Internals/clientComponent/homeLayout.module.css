@@ -37,3 +37,9 @@
     --home-edge: clamp(24px, 7vw, 52px);
   }
 }
+
+@media (max-width: 1199px) {
+  .home-page {
+    padding-bottom: calc(70px + env(safe-area-inset-bottom));
+  }
+}
