@@ -118,12 +118,24 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater }) => {
 
     const handleOtpChange = (index, value) => {
         if (!/^\d*$/.test(value)) return;
+
+        // iOS "one-time-code" autofill types the whole code into one input,
+        // so spread however many digits arrive across the boxes.
+        const digits = value.slice(0, 4 - index);
         const newOtpDigits = [...otpDigits];
-        newOtpDigits[index] = value;
+        newOtpDigits[index] = '';
+        digits.split('').forEach((digit, offset) => {
+            newOtpDigits[index + offset] = digit;
+        });
         setOtpDigits(newOtpDigits);
 
-        if (value && index < 3) {
-            otpRefs.current[index + 1]?.focus();
+        if (digits) {
+            const nextIndex = index + digits.length;
+            if (nextIndex <= 3) {
+                otpRefs.current[nextIndex]?.focus();
+            } else {
+                otpRefs.current[3]?.blur();
+            }
         }
 
         if (newOtpDigits.every(digit => digit !== '')) {
@@ -139,7 +151,7 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater }) => {
 
     const handleVerifyOtp = async (otpValue) => {
         const finalOtp = otpValue || otpDigits.join('');
-        if (finalOtp.length !== 4) return;
+        if (finalOtp.length !== 4 || isLoading) return;
 
         setIsLoading(true);
         try {
@@ -164,6 +176,43 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater }) => {
             });
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const autoFillOtp = (code) => {
+        const digits = String(code || '').replace(/\D/g, '').slice(0, 4);
+        if (digits.length !== 4) return;
+        setOtpDigits(digits.split(''));
+        handleVerifyOtp(digits);
+    };
+
+    const autoFillRef = React.useRef(autoFillOtp);
+    autoFillRef.current = autoFillOtp;
+
+    // Web OTP API (Chrome/Edge on Android): the browser hands over the code
+    // only when the SMS ends with "@massclick.in #<otp>" — kept in sync with
+    // the DLT-approved MSG91 template.
+    React.useEffect(() => {
+        if (!otpSent || !open || !('OTPCredential' in window)) return undefined;
+
+        const abortController = new AbortController();
+        navigator.credentials
+            .get({ otp: { transport: ['sms'] }, signal: abortController.signal })
+            .then((credential) => {
+                if (credential?.code) autoFillRef.current(credential.code);
+            })
+            .catch(() => {
+                // Aborted or no matching SMS; user enters the code manually.
+            });
+
+        return () => abortController.abort();
+    }, [otpSent, open]);
+
+    const handleOtpPaste = (e) => {
+        const digits = (e.clipboardData?.getData('text') || '').replace(/\D/g, '');
+        if (digits.length >= 4) {
+            e.preventDefault();
+            autoFillOtp(digits);
         }
     };
 
@@ -492,10 +541,11 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater }) => {
                                         value={digit}
                                         onChange={(e) => handleOtpChange(index, e.target.value)}
                                         onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                                        onPaste={handleOtpPaste}
                                         inputProps={{
-                                            maxLength: 1,
+                                            maxLength: index === 0 ? 4 : 1,
                                             inputMode: 'numeric',
-                                            autoComplete: 'off',
+                                            autoComplete: index === 0 ? 'one-time-code' : 'off',
                                             style: {
                                                 textAlign: 'center',
                                                 fontSize: '2rem',
