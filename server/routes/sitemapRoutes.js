@@ -1,6 +1,7 @@
 import express from "express";
 import businessListModel from "../model/businessList/businessListModel.js";
 import categoryModel from "../model/category/categoryModel.js";
+import categoryDisplaySettingsModel from "../model/categoryDisplaySettings/categoryDisplaySettingsModel.js";
 import { slugify } from "../slugify.js";
 import seoPageContentBlogs from "../model/seoModel/seoPageContentBlogModel.js";
 import { categoriesData } from "../utils/sub-categoriesData.js";
@@ -67,9 +68,10 @@ const activeFilter = { isActive: true, businessesLive: true };
 
 /* =========================================================
    CATEGORY LOOKUP FROM DB
-   Same logic as getAllUniqueCategoriesAction (/api/category/all):
-   - queries categoryModel directly
-   - uses categoriesData for parent-child mapping
+   Mirrors V2 category display settings:
+   - queries categoryModel directly for live category slugs
+   - uses categoryDisplaySettings.subCategoryMapping for parent-child mapping
+   - falls back to categoriesData only when admin settings are empty
    Builds: normalize(businessCategory) â†’ { slug, parentSlug | null }
 ========================================================= */
 let _categoryLookupCache = null;
@@ -88,6 +90,26 @@ const cleanText = (text = "") =>
     .replace(/\bcontractors\b/g, "contractor")
     .replace(/\s+/g, " ");
 
+const buildSubCategoryMappings = async () => {
+  const settings = await categoryDisplaySettingsModel.findOne().lean();
+
+  if (settings?.subCategoryMapping?.length > 0) {
+    return settings.subCategoryMapping
+      .map(({ parentSlug, subCategoryNames }) => ({
+        parentSlug: safeSlug(parentSlug),
+        subCategoryNames: Array.isArray(subCategoryNames)
+          ? subCategoryNames.filter((name) => String(name || "").trim())
+          : [],
+      }))
+      .filter(({ parentSlug, subCategoryNames }) => parentSlug && subCategoryNames.length > 0);
+  }
+
+  return Object.entries(categoriesData).map(([parentSlug, subCategories]) => ({
+    parentSlug: safeSlug(parentSlug),
+    subCategoryNames: subCategories.map(({ name }) => name),
+  }));
+};
+
 const buildCategoryLookup = async () => {
   const now = Date.now();
   if (_categoryLookupCache && now - _categoryLookupBuiltAt < CACHE_TTL_MS) {
@@ -95,6 +117,7 @@ const buildCategoryLookup = async () => {
   }
 
   const categories = await categoryModel.find({ isActive: true }).lean();
+  const subCategoryMappings = await buildSubCategoryMappings();
 
   // deduplicate â€” same as getAllUniqueCategoriesAction
   const uniqueMap = new Map();
@@ -107,9 +130,9 @@ const buildCategoryLookup = async () => {
     categories.map((cat) => [cleanText(cat.category), cat])
   );
 
-  // set of category keys that are parents in categoriesData
+  // set of category keys that are parents in the active display settings
   const parentKeys = new Set(
-    Object.keys(categoriesData).map((k) => normalizeKey(k))
+    subCategoryMappings.map(({ parentSlug }) => normalizeKey(parentSlug))
   );
 
   const lookup = new Map();
@@ -125,19 +148,9 @@ const buildCategoryLookup = async () => {
 
   // pass 2 â€” re-map sub-categories with their real parent slug.
   // Runs after pass 1 so subs always override the null set above,
-  // except for categories that are themselves a parent key in categoriesData.
-  for (const [, parentItem] of uniqueMap) {
-    const pKey = normalizeKey(parentItem.category);
-    const parentSlug = parentItem.slug || safeSlug(parentItem.category);
-
-    const matchedKey = Object.keys(categoriesData).find((key) => {
-      const cur = normalizeKey(key);
-      return cur === pKey || cur === pKey + "s" || cur + "s" === pKey;
-    });
-
-    if (!matchedKey) continue;
-
-    for (const { name } of categoriesData[matchedKey]) {
+  // except for categories that are themselves configured as parent keys.
+  for (const { parentSlug, subCategoryNames } of subCategoryMappings) {
+    for (const name of subCategoryNames) {
       const subKey = normalizeKey(name);
       // keep primary URL if this sub is itself a parent (e.g. "hospitals" under hospitals)
       if (parentKeys.has(subKey)) continue;
