@@ -389,11 +389,11 @@ const HeroSection = React.memo(({
       </div>
       <div className={cx("hero-heading")}>
         <h1 className={cx("hero-title")}>
-          Explore. Connect.
+          Discover Your
           <br />
-          <span className={cx("hero-title-accent")}>Succeed Local.</span>
+          <span className={cx("hero-title-accent")}>Neighborhood</span>
         </h1>
-        <p className={cx("hero-subtitle")}>Find trusted businesses and services near you.</p>
+        <p className={cx("hero-subtitle")}>Find what you need from trusted local businesses.</p>
       </div>
       <div className={cx("hero-content hero-minimal")}>
 
