@@ -52,6 +52,7 @@ import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownR
 import KeyboardArrowUpRoundedIcon from "@mui/icons-material/KeyboardArrowUpRounded";
 import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 import AdminViewTabs from "../../components/AdminViewTabs.js";
+import CategoryPdfDownload from "./pdf/CategoryPdfDownload.js";
 const cx = createScopedClassNames(styles);
 const API_URL = process.env.REACT_APP_API_URL;
 const CATEGORY_PAGE_FETCH_SIZE = 100;
@@ -3398,23 +3399,33 @@ export default function Category() {
                   customer filters.
                 </p>
               </div>
-              <Button
-                variant="outlined"
-                color="warning"
-                size="small"
-                startIcon={
-                  dupLoading ? (
-                    <CircularProgress size={16} />
-                  ) : (
-                    <ContentCopyRoundedIcon />
-                  )
-                }
-                onClick={findDuplicates}
-                disabled={dupLoading}
-                sx={{ textTransform: "none", alignSelf: "flex-start" }}
-              >
-                Find Duplicates
-              </Button>
+              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignSelf: "flex-start" }}>
+                <CategoryPdfDownload
+                  loadCategories={() =>
+                    fetchAllCategoriesPageWise({ status: "all" })
+                  }
+                  onError={(message) =>
+                    setErrors((current) => ({ ...current, _form: message }))
+                  }
+                />
+                <Button
+                  variant="outlined"
+                  color="warning"
+                  size="small"
+                  startIcon={
+                    dupLoading ? (
+                      <CircularProgress size={16} />
+                    ) : (
+                      <ContentCopyRoundedIcon />
+                    )
+                  }
+                  onClick={findDuplicates}
+                  disabled={dupLoading}
+                  sx={{ textTransform: "none" }}
+                >
+                  Find Duplicates
+                </Button>
+              </Box>
             </div>
 
               <CustomizedTable

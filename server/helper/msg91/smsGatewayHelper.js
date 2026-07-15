@@ -206,6 +206,7 @@ export const sendOtp = async (number) => {
   try {
     const authKey = process.env.MSG91_AUTH_KEY;
     const templateId = process.env.MSG91_TEMPLATE_ID;
+    const fallbackTemplateId = process.env.MSG91_TEMPLATE_ID_FALLBACK;
     const baseUrl = process.env.MSG91_BASE_URL;
 
     if (!authKey || !templateId || !baseUrl) {
@@ -217,22 +218,42 @@ export const sendOtp = async (number) => {
       throw new Error("Invalid phone number. Must be 10 digits.");
     }
 
-    const response = await axios.post(
-      baseUrl,
-      {
-        mobile: `91${cleanNumber}`,
-        template_id: templateId
-      },
-      {
-        headers: {
-          authkey: authKey,
-          "Content-Type": "application/json",
+    const sendWithTemplate = async (template_id) => {
+      const response = await axios.post(
+        baseUrl,
+        {
+          mobile: `91${cleanNumber}`,
+          template_id
         },
-      }
-    );
+        {
+          headers: {
+            authkey: authKey,
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
-    if (response.data.type !== "success") {
-      throw new Error(response.data.message || "Failed to send OTP.");
+      if (response.data.type !== "success") {
+        throw new Error(response.data.message || "Failed to send OTP.");
+      }
+
+      return response;
+    };
+
+    let response;
+    try {
+      response = await sendWithTemplate(templateId);
+    } catch (primaryError) {
+      if (!fallbackTemplateId || fallbackTemplateId === templateId) {
+        throw primaryError;
+      }
+      await logger.warn("Primary OTP template failed, retrying with fallback template", {
+        phoneNumber: cleanNumber,
+        templateId,
+        fallbackTemplateId,
+        error: primaryError.message,
+      });
+      response = await sendWithTemplate(fallbackTemplateId);
     }
 
     await logger.smsDebug("OTP sent successfully", { phoneNumber: cleanNumber, response: response.data });
