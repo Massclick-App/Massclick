@@ -63,33 +63,19 @@ const LogoComponent = () => (
     </Box>
 );
 
-const OTP_LENGTH = 4;
-
 const OTPLoginModal = ({ open, handleClose, onMaybeLater }) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const [mobileNumber, setMobileNumber] = React.useState('');
     const [agreed, setAgreed] = React.useState(false);
-    const [debugLogs, setDebugLogs] = React.useState([]);
-    const [showDebug, setShowDebug] = React.useState(true);
-
-    const addLog = React.useCallback((message, data = null) => {
-        console.log(message, data);
-        const timestamp = new Date().toLocaleTimeString();
-        setDebugLogs((prev) => [
-            ...prev.slice(-50), // Keep last 50 logs
-            { timestamp, message, data },
-        ]);
-    }, []);
 
     const [otpSent, setOtpSent] = React.useState(false);
-    const [otpDigits, setOtpDigits] = React.useState(Array(OTP_LENGTH).fill(''));
-    const otpRefs = React.useRef(Array(OTP_LENGTH).fill(null));
+    const [otpDigits, setOtpDigits] = React.useState(['', '', '', '']);
+    const otpRefs = React.useRef([null, null, null, null]);
     const [userName, setUserName] = React.useState('');
     const [isNewUser, setIsNewUser] = React.useState(false);
     const [isLoading, setIsLoading] = React.useState(false);
     const [resendTimer, setResendTimer] = React.useState(0);
-    const [isAutoFilling, setIsAutoFilling] = React.useState(false);
 
     const dispatch = useDispatch();
     const { enqueueSnackbar } = useSnackbar();
@@ -120,16 +106,6 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater }) => {
             setIsNewUser(res.isNewUser);
             setResendTimer(60);
             localStorage.setItem("mobileNumber", mobileNumber);
-
-            // Auto-fill if backend returns OTP (for testing)
-            if (res?.otp) {
-                addLog('✅ Backend returned OTP:', res.otp);
-                setTimeout(() => {
-                    fillOtpAndVerify(res.otp);
-                }, 500);
-            } else {
-                window.setTimeout(() => otpRefs.current[0]?.focus(), 0);
-            }
         } catch (error) {
             enqueueSnackbar("Failed to send OTP. Please try again.", {
                 variant: "error",
@@ -140,9 +116,30 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater }) => {
         }
     };
 
-    const handleVerifyOtp = React.useCallback(async (otpValue) => {
+    const handleOtpChange = (index, value) => {
+        if (!/^\d*$/.test(value)) return;
+        const newOtpDigits = [...otpDigits];
+        newOtpDigits[index] = value;
+        setOtpDigits(newOtpDigits);
+
+        if (value && index < 3) {
+            otpRefs.current[index + 1]?.focus();
+        }
+
+        if (newOtpDigits.every(digit => digit !== '')) {
+            handleVerifyOtp(newOtpDigits.join(''));
+        }
+    };
+
+    const handleOtpKeyDown = (index, e) => {
+        if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
+            otpRefs.current[index - 1]?.focus();
+        }
+    };
+
+    const handleVerifyOtp = async (otpValue) => {
         const finalOtp = otpValue || otpDigits.join('');
-        if (finalOtp.length !== OTP_LENGTH) return;
+        if (finalOtp.length !== 4) return;
 
         setIsLoading(true);
         try {
@@ -158,7 +155,7 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater }) => {
                 handleClose();
             }
         } catch (error) {
-            setOtpDigits(Array(OTP_LENGTH).fill(''));
+            setOtpDigits(['', '', '', '']);
             otpRefs.current[0]?.focus();
 
             enqueueSnackbar("Invalid OTP. Please try again.", {
@@ -167,227 +164,6 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater }) => {
             });
         } finally {
             setIsLoading(false);
-        }
-    }, [dispatch, enqueueSnackbar, handleClose, mobileNumber, otpDigits, userName]);
-
-    const extractOtpFromMessage = React.useCallback((message) => {
-        if (!message) return null;
-
-        const cleanMessage = String(message).trim();
-        addLog('🔍 OTP Message received:', cleanMessage);
-
-        // Extract ALL digits from the message
-        const allDigits = cleanMessage.replace(/\D/g, '');
-        addLog('📊 All digits found:', allDigits);
-
-        // Try to find exactly 4 consecutive digits
-        const patterns = [
-            /\b(\d{4})\b(?=\D*(?:valid|minute|expire|otp|code))/i,
-            /is\s+(\d{4})\b/i,
-            /otp[:\s]+(\d{4})\b/i,
-            /code[:\s]+(\d{4})\b/i,
-            /(\d{4})[.\s]*(?:is|your|otp|code|verification)/i,
-            /(?:verification|registration)[^\d]*(\d{4})\b/i,
-            /\b(\d{4})\b/
-        ];
-
-        for (const pattern of patterns) {
-            const match = cleanMessage.match(pattern);
-            if (match?.[1]) {
-                const code = match[1];
-                if (code.length === 4 && /^\d{4}$/.test(code)) {
-                    addLog('✅ OTP extracted:', code);
-                    return code;
-                }
-            }
-        }
-
-        if (allDigits.length >= 4) {
-            const code = allDigits.slice(0, 4);
-            addLog('⚠️ Fallback extraction:', code);
-            return code;
-        }
-
-        addLog('❌ No OTP found in message');
-        return null;
-    }, [addLog]);
-
-    const fillOtpAndVerify = React.useCallback((code) => {
-        if (!code || code.length !== OTP_LENGTH || !/^\d{4}$/.test(code)) {
-            addLog('❌ Invalid code format:', code);
-            return false;
-        }
-
-        addLog('🎯 AUTO-FILLING OTP with code:', code);
-        setIsAutoFilling(true);
-        const nextDigits = code.split('');
-
-        // Update React state - this will trigger re-render and update the UI
-        addLog('🔄 Updating state for digits:', nextDigits);
-        setOtpDigits(nextDigits);
-
-        // Focus first field
-        setTimeout(() => {
-            if (otpRefs.current[0]) {
-                otpRefs.current[0].focus();
-            }
-        }, 50);
-
-        // Verify after state is updated
-        setTimeout(() => {
-            addLog('🔐 Auto-verifying OTP:', code);
-            handleVerifyOtp(code);
-            setIsAutoFilling(false);
-        }, 200);
-
-        return true;
-    }, [handleVerifyOtp, addLog]);
-
-    // Mechanism 1: Web OTP API (Chrome/Firefox Android)
-    React.useEffect(() => {
-        if (!otpSent || !open || !('OTPCredential' in window) || !navigator.credentials) {
-            if (otpSent && open) {
-                addLog('⚠️ Web OTP API not available on this device');
-            }
-            return undefined;
-        }
-
-        addLog('🔔 Web OTP API listener started');
-        const abortController = new AbortController();
-        const timeout = setTimeout(() => abortController.abort(), 300000);
-
-        navigator.credentials
-            .get({
-                otp: { transport: ['sms'] },
-                signal: abortController.signal,
-            })
-            .then((credential) => {
-                addLog('📱 OTP Credential received');
-                if (credential?.code) {
-                    addLog('📨 Raw credential code:', credential.code);
-                    const extractedCode = extractOtpFromMessage(credential.code);
-                    if (extractedCode) {
-                        addLog('✅ Successfully extracted code:', extractedCode);
-                        fillOtpAndVerify(extractedCode);
-                    } else {
-                        addLog('❌ Failed to extract code from credential');
-                    }
-                } else {
-                    addLog('❌ Credential received but no code found');
-                }
-            })
-            .catch((error) => {
-                addLog('⚠️ Web OTP API error:', error?.message || error);
-            });
-
-        return () => {
-            clearTimeout(timeout);
-            abortController.abort();
-        };
-    }, [otpSent, open, extractOtpFromMessage, fillOtpAndVerify, addLog]);
-
-    // Mechanism 2: Paste Listener (Works on all devices)
-    React.useEffect(() => {
-        if (!otpSent || !open) return undefined;
-
-        console.log('📌 Global paste listener activated');
-
-        const handleGlobalPaste = (e) => {
-            if (otpDigits.join('') === '') {
-                const pastedText = e.clipboardData?.getData('text') || '';
-                console.log('📌 Paste detected:', pastedText);
-
-                // Extract OTP directly here to avoid circular dependency
-                const cleanMessage = String(pastedText).trim();
-                const patterns = [
-                    /\b(\d{4})\b(?=\D*(?:valid|minute|expire|otp|code))/i,
-                    /is\s+(\d{4})\b/i,
-                    /otp[:\s]+(\d{4})\b/i,
-                    /code[:\s]+(\d{4})\b/i,
-                    /(\d{4})[.\s]*(?:is|your|otp|code|verification)/i,
-                    /(?:verification|registration)[^\d]*(\d{4})\b/i,
-                    /\b(\d{4})\b/
-                ];
-
-                let extractedCode = null;
-                for (const pattern of patterns) {
-                    const match = cleanMessage.match(pattern);
-                    if (match?.[1]) {
-                        const code = match[1];
-                        if (code.length === 4 && /^\d{4}$/.test(code)) {
-                            extractedCode = code;
-                            break;
-                        }
-                    }
-                }
-
-                if (!extractedCode) {
-                    const allDigits = cleanMessage.replace(/\D/g, '');
-                    if (allDigits.length >= 4) {
-                        extractedCode = allDigits.slice(0, 4);
-                    }
-                }
-
-                if (extractedCode) {
-                    console.log('✅ OTP extracted from paste:', extractedCode);
-                    addLog('✅ OTP extracted from paste:', extractedCode);
-                    fillOtpAndVerify(extractedCode);
-                }
-            }
-        };
-
-        document.addEventListener('paste', handleGlobalPaste);
-
-        return () => {
-            document.removeEventListener('paste', handleGlobalPaste);
-        };
-    }, [otpSent, open, otpDigits, addLog, fillOtpAndVerify]);
-
-    // Mechanism 3: Auto-verify when 4 digits are filled
-    React.useEffect(() => {
-        if (otpDigits.every(digit => digit !== '') && otpSent) {
-            const timer = setTimeout(() => {
-                handleVerifyOtp(otpDigits.join(''));
-            }, 500);
-            return () => clearTimeout(timer);
-        }
-    }, [otpDigits, otpSent, handleVerifyOtp]);
-
-    const applyOtpValue = (index, value) => {
-        const digits = value.replace(/\D/g, '').slice(0, OTP_LENGTH - index);
-        if (!digits) return;
-
-        const newOtpDigits = [...otpDigits];
-        digits.split('').forEach((digit, offset) => {
-            newOtpDigits[index + offset] = digit;
-        });
-        setOtpDigits(newOtpDigits);
-
-        const nextIndex = Math.min(index + digits.length, OTP_LENGTH - 1);
-        if (index + digits.length < OTP_LENGTH) {
-            otpRefs.current[nextIndex]?.focus();
-        } else {
-            otpRefs.current[OTP_LENGTH - 1]?.blur();
-        }
-
-        if (newOtpDigits.every(digit => digit !== '')) {
-            handleVerifyOtp(newOtpDigits.join(''));
-        }
-    };
-
-    const handleOtpChange = (index, value) => {
-        if (!/^\d*$/.test(value)) return;
-        applyOtpValue(index, value);
-    };
-
-    const handleOtpPaste = (index, e) => {
-        e.preventDefault();
-        applyOtpValue(index, e.clipboardData.getData('text'));
-    };
-
-    const handleOtpKeyDown = (index, e) => {
-        if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
-            otpRefs.current[index - 1]?.focus();
         }
     };
 
@@ -537,7 +313,7 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater }) => {
                                 type="tel"
                                 inputProps={{
                                     maxLength: 10,
-                                    autoComplete: 'tel-national',
+                                    autoComplete: 'off',
                                     inputMode: 'numeric',
                                 }}
                                 value={mobileNumber}
@@ -701,20 +477,6 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater }) => {
                 ) : (
                     <>
                         <Box sx={{ mb: 4, width: '100%' }}>
-                            {isAutoFilling && (
-                                <Box sx={{
-                                    mb: 2,
-                                    p: 1.5,
-                                    backgroundColor: 'rgba(34, 197, 94, 0.1)',
-                                    border: '1px solid rgba(34, 197, 94, 0.3)',
-                                    borderRadius: '8px',
-                                    textAlign: 'center'
-                                }}>
-                                    <Typography sx={{ color: '#22c55e', fontSize: '0.9rem', fontWeight: 600 }}>
-                                        ✓ Auto-filling OTP from SMS...
-                                    </Typography>
-                                </Box>
-                            )}
                             <Box
                                 sx={{
                                     display: 'flex',
@@ -729,13 +491,11 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater }) => {
                                         inputRef={(el) => (otpRefs.current[index] = el)}
                                         value={digit}
                                         onChange={(e) => handleOtpChange(index, e.target.value)}
-                                        onPaste={(e) => handleOtpPaste(index, e)}
                                         onKeyDown={(e) => handleOtpKeyDown(index, e)}
                                         inputProps={{
-                                            maxLength: index === 0 ? OTP_LENGTH : 1,
+                                            maxLength: 1,
                                             inputMode: 'numeric',
-                                            autoComplete: index === 0 ? 'one-time-code' : 'off',
-                                            pattern: '[0-9]*',
+                                            autoComplete: 'off',
                                             style: {
                                                 textAlign: 'center',
                                                 fontSize: '2rem',
@@ -750,11 +510,10 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater }) => {
                                             '& .MuiOutlinedInput-root': {
                                                 width: '100%',
                                                 height: '100%',
-                                                transition: 'all 0.3s ease',
-                                                backgroundColor: isAutoFilling && digit ? 'rgba(34, 197, 94, 0.05)' : 'transparent',
+                                                transition: 'all 0.2s ease',
                                                 '& fieldset': {
-                                                    borderColor: isAutoFilling && digit ? '#22c55e' : '#e2e8f0',
-                                                    borderWidth: isAutoFilling && digit ? '2px' : '2px',
+                                                    borderColor: '#e2e8f0',
+                                                    borderWidth: '2px',
                                                 },
                                                 '&:hover fieldset': {
                                                     borderColor: '#FF7B00',
@@ -929,123 +688,6 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater }) => {
                 >
                     🔒 Secure & spam-free login
                 </Typography>
-
-                {/* Floating Debug Panel */}
-                {otpSent && showDebug && (
-                    <Box sx={{
-                        position: 'fixed',
-                        bottom: 0,
-                        left: 0,
-                        right: 0,
-                        height: '40%',
-                        backgroundColor: '#0f172a',
-                        borderTop: '3px solid #22c55e',
-                        zIndex: 9999,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        animation: 'slideUp 0.3s ease',
-                        '@keyframes slideUp': {
-                            'from': { transform: 'translateY(100%)' },
-                            'to': { transform: 'translateY(0)' },
-                        },
-                    }}>
-                        {/* Header */}
-                        <Box sx={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            p: 2,
-                            borderBottom: '1px solid #334155',
-                            backgroundColor: '#1e293b',
-                        }}>
-                            <Typography sx={{ color: '#22c55e', fontSize: '1rem', fontWeight: 700 }}>
-                                🐛 DEBUG LOGS
-                            </Typography>
-                            <Box sx={{ display: 'flex', gap: 1 }}>
-                                <Typography
-                                    onClick={() => setDebugLogs([])}
-                                    sx={{
-                                        color: '#ef4444',
-                                        fontSize: '0.9rem',
-                                        cursor: 'pointer',
-                                        fontWeight: 600,
-                                        '&:hover': { textDecoration: 'underline' }
-                                    }}
-                                >
-                                    Clear
-                                </Typography>
-                                <Typography
-                                    onClick={() => setShowDebug(false)}
-                                    sx={{
-                                        color: '#94a3b8',
-                                        fontSize: '1.2rem',
-                                        cursor: 'pointer',
-                                        fontWeight: 600,
-                                    }}
-                                >
-                                    ▼
-                                </Typography>
-                            </Box>
-                        </Box>
-
-                        {/* Logs Container */}
-                        <Box sx={{
-                            flex: 1,
-                            overflowY: 'auto',
-                            p: 2,
-                            fontFamily: 'monospace',
-                            fontSize: '0.85rem',
-                            lineHeight: 1.6,
-                        }}>
-                            {debugLogs.length === 0 ? (
-                                <Typography sx={{ color: '#94a3b8', fontSize: '0.9rem' }}>
-                                    Waiting for logs...
-                                </Typography>
-                            ) : (
-                                debugLogs.map((log, idx) => (
-                                    <Box key={idx} sx={{ mb: 1, color: '#22c55e' }}>
-                                        <span style={{ color: '#64748b' }}>[{log.timestamp}]</span>
-                                        {' '}
-                                        <span style={{ color: '#22c55e' }}>{log.message}</span>
-                                        {log.data && <span style={{ color: '#60a5fa' }}> {typeof log.data === 'string' ? log.data : JSON.stringify(log.data)}</span>}
-                                    </Box>
-                                ))
-                            )}
-                        </Box>
-                    </Box>
-                )}
-
-                {/* Floating Toggle Button */}
-                {otpSent && !showDebug && (
-                    <Box
-                        onClick={() => setShowDebug(true)}
-                        sx={{
-                            position: 'fixed',
-                            bottom: 20,
-                            right: 20,
-                            backgroundColor: '#22c55e',
-                            color: '#0f172a',
-                            width: '60px',
-                            height: '60px',
-                            borderRadius: '50%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
-                            fontSize: '1.5rem',
-                            fontWeight: 700,
-                            boxShadow: '0 4px 12px rgba(34, 197, 94, 0.4)',
-                            zIndex: 9999,
-                            '&:hover': {
-                                boxShadow: '0 6px 16px rgba(34, 197, 94, 0.6)',
-                                transform: 'scale(1.1)',
-                            },
-                            transition: 'all 0.2s ease',
-                        }}
-                    >
-                        🐛
-                    </Box>
-                )}
             </DialogContent>
         </Dialog>
     );
