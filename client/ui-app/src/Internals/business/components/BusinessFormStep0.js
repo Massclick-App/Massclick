@@ -59,7 +59,7 @@ const BusinessFormStep0 = ({
   sectionSavingState,
 }) => {
   const [clientSearchInput, setClientSearchInput] = React.useState("");
-  const [locationInput, setLocationInput] = React.useState(formData.location || "");
+  const [locationInput, setLocationInput] = React.useState(getMasterLocationLabel(formData.masterLocation));
   const masterLocationState = useSelector((state) => state.masterLocationReducer) || {};
   const {
     locationSearchResults: masterLocationOptions = [],
@@ -74,8 +74,10 @@ const BusinessFormStep0 = ({
   }, [dispatch]);
 
   React.useEffect(() => {
-    setLocationInput(formData.location || "");
-  }, [formData.location]);
+    // Hydrate the verified-search input when a linked masterLocation arrives (edit mode loads async)
+    const label = getMasterLocationLabel(formData.masterLocation);
+    if (label) setLocationInput(label);
+  }, [formData.masterLocation]);
 
   React.useEffect(() => {
     if (!dispatch) return undefined;
@@ -88,7 +90,6 @@ const BusinessFormStep0 = ({
   const handleMasterLocationPick = (loc) => {
     setFormData((prev) => ({
       ...prev,
-      location: getMasterLocationLabel(loc),
       masterLocation: {
         locationId: loc._id,
         slug: loc.slug,
@@ -344,6 +345,7 @@ const BusinessFormStep0 = ({
               <option disabled>No locations available</option>
             )}
           </select>
+          {renderFieldError("location")}
         </div>
 
         <div className={fieldClass()}>
@@ -360,7 +362,7 @@ const BusinessFormStep0 = ({
             onInputChange={(event, newInputValue, reason) => {
               setLocationInput(newInputValue);
               if (reason === "input") {
-                setFormData((prev) => ({ ...prev, location: newInputValue, masterLocation: null }));
+                setFormData((prev) => ({ ...prev, masterLocation: null }));
               }
             }}
             onChange={(event, newValue) => {
@@ -381,7 +383,6 @@ const BusinessFormStep0 = ({
                 {...params}
                 placeholder="Search district, zone, ward, or locality"
                 size="small"
-                error={!!fieldErrors.location}
                 sx={{
                   "& .MuiOutlinedInput-root": {
                     padding: "6px !important",
@@ -397,7 +398,6 @@ const BusinessFormStep0 = ({
               Linked: {[formData.masterLocation.district, formData.masterLocation.zone, formData.masterLocation.ward, formData.masterLocation.locality].filter(Boolean).join(" > ")}
             </small>
           )}
-          {renderFieldError("location")}
         </div>
 
         <div className={fieldClass("field-span-full")}>
