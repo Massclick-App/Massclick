@@ -1388,20 +1388,26 @@ const BusinessList = React.memo(() => {
   };
 
   // ===== AUTO-DRAFT FUNCTIONS =====
-  const saveDraftToLocalStorage = useCallback((data) => {
+  // Images and file uploads are excluded to stay within the localStorage quota;
+  // restoreDraftFromLocal expects the rest of the form under `formData`.
+  const buildBusinessDraftPayload = useCallback((data, activeStep = 0) => {
+    const { bannerImage, logoImage, kycDocuments, ...serializableFormData } = data || {};
+    return {
+      savedAt: new Date().toISOString(),
+      activeStep,
+      listingMode,
+      formData: serializableFormData
+    };
+  }, [listingMode]);
+
+  const saveDraftToLocalStorage = useCallback((data, activeStep = 0) => {
     try {
-      // Save only essential fields to avoid exceeding localStorage quota
-      const essentialData = {
-        businessName: data.businessName,
-        clientId: data.clientId,
-        category: data.category,
-        listingMode,
-        savedAt: new Date().toISOString(),
-      };
-      localStorage.setItem(BUSINESS_LOCAL_DRAFT_KEY, JSON.stringify(essentialData));
+      const draftPayload = buildBusinessDraftPayload(data, activeStep);
+      localStorage.setItem(BUSINESS_LOCAL_DRAFT_KEY, JSON.stringify(draftPayload));
+      setLocalDraftMeta({ savedAt: draftPayload.savedAt });
     } catch (error) {
       }
-  }, [listingMode]);
+  }, [buildBusinessDraftPayload]);
 
   const clearDraftFromLocalStorage = useCallback(() => {
     try {
@@ -1413,13 +1419,14 @@ const BusinessList = React.memo(() => {
 
   // ===== AUTO-SAVE DRAFT ON FORM CHANGE =====
   useEffect(() => {
-    if (activeView === "form" && formData.businessName) {
+    // editMode guard: editing an existing business must not overwrite the create draft
+    if (!editMode && activeView === "form" && formData.businessName) {
       const timer = setTimeout(() => {
-        saveDraftToLocalStorage(formData);
+        saveDraftToLocalStorage(formData, SECTION_TO_STEP[activeSection] ?? 0);
       }, 1000); // Save after 1 second of inactivity
       return () => clearTimeout(timer);
     }
-  }, [formData, activeView, saveDraftToLocalStorage]);
+  }, [formData, activeView, editMode, activeSection, saveDraftToLocalStorage]);
 
   useEffect(() => {
     dispatch(getAllBusinessList());
@@ -2268,15 +2275,7 @@ const BusinessList = React.memo(() => {
       return;
     }
 
-    // Save only essential fields to avoid exceeding localStorage quota
-    const draftPayload = {
-      savedAt: new Date().toISOString(),
-      activeStep: SECTION_TO_STEP[activeSection],
-      businessName: formData.businessName,
-      clientId: formData.clientId,
-      category: formData.category,
-      listingMode
-    };
+    const draftPayload = buildBusinessDraftPayload(formData, SECTION_TO_STEP[activeSection] ?? 0);
 
     try {
       localStorage.setItem(BUSINESS_LOCAL_DRAFT_KEY, JSON.stringify(draftPayload));
@@ -2357,6 +2356,9 @@ const BusinessList = React.memo(() => {
       action: "save"
     });
     setDuplicateBypassSignature("");
+    if (draft.listingMode === LISTING_MODE.PAID || draft.listingMode === LISTING_MODE.FREE) {
+      setListingMode(draft.listingMode);
+    }
     setActiveView("form");
     const draftStep = Number.isInteger(draft.activeStep) ? Math.max(0, Math.min(draft.activeStep, steps.length - 2)) : 0;
     const defaultSection = draftStep === 0 ? "clientBusiness" : draftStep === 1 ? "kycDocuments" : "categorySeo";
@@ -4803,7 +4805,7 @@ const BusinessList = React.memo(() => {
                 ? `Last saved: ${new Date(localDraftMeta.savedAt).toLocaleString()}`
                 : "No local draft saved yet."}
             </span>
-            <span>KYC file uploads are not included in local draft restore.</span>
+            <span>Images and KYC file uploads are not included in local draft restore.</span>
           </div>
         )}
       </div>
