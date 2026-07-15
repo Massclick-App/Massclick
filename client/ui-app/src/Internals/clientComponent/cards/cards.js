@@ -108,6 +108,7 @@ const Cards = ({
   isVerified = false,
   isTrusted = false,
   certificateType = "verified",
+  certificates = {},
   isFeatured = false,
   isSponsored = false,
   isTrending = false,
@@ -154,6 +155,9 @@ const Cards = ({
   const certificateLocation = address || "Business location verified by MassClick";
   const businessLogo = logoImage || imageSrc || "";
   const hasTrustCertificate = isTrusted || certificateType === "trust" || isFeatured;
+  const savedCertificateUrl = activeCertificate === "trust"
+    ? certificates?.trustCertificateUrl
+    : certificates?.verifiedCertificateUrl;
   const currentCertificate = activeCertificate === "trust"
     ? {
         key: "trust",
@@ -284,6 +288,15 @@ const Cards = ({
             >
               <CloseRoundedIcon />
             </button>
+            {savedCertificateUrl ? (
+              <div className={cx("certificate-image-shell")}>
+                <img
+                  src={savedCertificateUrl}
+                  alt={`MassClick ${currentCertificate.label} certificate for ${title}`}
+                  className={cx("certificate-saved-image")}
+                />
+              </div>
+            ) : (
             <div className={cx("certificate-paper", `certificate-paper--${currentCertificate.key}`)}>
               {currentCertificate.eyebrow && (
                 <p className={cx("certificate-eyebrow")}>{currentCertificate.eyebrow}</p>
@@ -341,6 +354,7 @@ const Cards = ({
                 <img src={massClickLogo} alt="MassClick" />
               </div>
             </div>
+            )}
           </div>
         </div>,
         document.body

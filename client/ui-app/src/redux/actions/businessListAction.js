@@ -394,6 +394,28 @@ export const updateBusinessBadges = (id, badgesData) => async (dispatch) => {
   }
 };
 
+export const regenerateBusinessCertificates = (id) => async (dispatch) => {
+  dispatch({ type: EDIT_BUSINESS_REQUEST });
+  try {
+    const token = await getValidToken(dispatch);
+
+    const response = await axiosInstance.post(
+      `${API_URL}/businesslist/certificates/${id}/regenerate`,
+      {},
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    const updatedBusinessList = {
+      ...(response.data.business || response.data),
+      certificateRegenerationTrace: response.data.trace || null,
+    };
+    dispatch({ type: EDIT_BUSINESS_SUCCESS, payload: updatedBusinessList });
+    return updatedBusinessList;
+  } catch (error) {
+    dispatch({ type: EDIT_BUSINESS_FAILURE, payload: error.response?.data || error.message });
+    throw error;
+  }
+};
+
 export const revertPaidStatus = (id) => async (dispatch) => {
   dispatch({ type: EDIT_BUSINESS_REQUEST });
   try {

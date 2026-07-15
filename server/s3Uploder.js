@@ -131,3 +131,14 @@ export const getObjectBufferByKey = async (key) => {
     contentType: object.ContentType || "application/octet-stream",
   };
 };
+
+export const deleteObjectByKey = async (key) => {
+  if (!key) return false;
+
+  await s3.deleteObject({
+    Bucket: assetsBucket,
+    Key: key,
+  }).promise();
+
+  return true;
+};

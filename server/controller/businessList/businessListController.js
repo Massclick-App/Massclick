@@ -1,7 +1,7 @@
 import { createBusinessList, viewBusinessList, findBusinessBySlug, viewAllBusiness, getDashboardChartsHelper, getPendingBusinessList, findBusinessesByCategory, getDashboardSummaryHelper, getAdminAnalyticsReportHelper, findBusinessByMobile, viewAllBusinessList, viewAllClientBusinessList, updateBusinessList, getTrendingSearches, deleteBusinessList, activeBusinessList, revertBusinessFromPaid } from "../../helper/businessList/businessListHelper.js";
 import { BAD_REQUEST } from "../../errorCodes.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
-import { getSignedUrlByKey } from "../../s3Uploder.js";
+import { getObjectBufferByKey, getSignedUrlByKey } from "../../s3Uploder.js";
 import categoryModel from "../../model/category/categoryModel.js";
 import userModel from "../../model/userModel.js";
 import { emitToRoom } from "../../websocket/roomManager.js";
@@ -10,7 +10,7 @@ import { getCache, setCache } from "../../utils/redisClient.js";
 import { enhanceSearchQuery, resolveCategory } from "../../utils/geminiQueryEnhancer.js";
 import { invalidateSearchCache, invalidateDashboardCache, invalidateCategoryCache } from "../../utils/cacheInvalidation.js";
 import { buildBusinessExportWorkbook } from "../../utils/businessExportXlsx.js";
-import { ensureBusinessCertificates } from "../../helper/businessList/businessCertificateHelper.js";
+import { ensureBusinessCertificates, regenerateBusinessCertificates } from "../../helper/businessList/businessCertificateHelper.js";
 import { resolveLocationForSearch } from "../../helper/location/locationResolver.js";
 
 const ensureCertificatesForActivation = async (previousBusiness, business) => {
@@ -1085,6 +1085,12 @@ export const mainSearchController = async (req, res) => {
       if (b.logoImageKey) b.logoImage = getSignedUrlByKey(b.logoImageKey);
       if (b.businessImagesKey?.length > 0) b.businessImages = b.businessImagesKey.map((k) => getSignedUrlByKey(k));
       if (b.kycDocumentsKey?.length > 0) b.kycDocuments = b.kycDocumentsKey.map((k) => getSignedUrlByKey(k));
+      if (b.certificates?.verifiedCertificateKey) {
+        b.certificates.verifiedCertificateUrl = getSignedUrlByKey(b.certificates.verifiedCertificateKey);
+      }
+      if (b.certificates?.trustCertificateKey) {
+        b.certificates.trustCertificateUrl = getSignedUrlByKey(b.certificates.trustCertificateKey);
+      }
     });
 
     res.send({ results, total, page, pageSize, hasMore: page * pageSize < total, resolvedCategory: category || null });
@@ -1125,7 +1131,7 @@ export const nearbyBusinessesController = async (req, res) => {
       {
         $project: {
           businessName: 1, category: 1, location: 1, bannerImageKey: 1, logoImageKey: 1,
-          verification: 1, badges: 1,
+          verification: 1, badges: 1, certificates: 1,
           contact: 1, whatsappNumber: 1, filters: 1, experience: 1, slug: 1,
           distance: { $round: [{ $divide: ["$distanceMeters", 1000] }, 2] }
         }
@@ -1172,6 +1178,12 @@ export const nearbyBusinessesController = async (req, res) => {
     results.forEach((b) => {
       if (b.bannerImageKey) b.bannerImage = getSignedUrlByKey(b.bannerImageKey);
       if (b.logoImageKey) b.logoImage = getSignedUrlByKey(b.logoImageKey);
+      if (b.certificates?.verifiedCertificateKey) {
+        b.certificates.verifiedCertificateUrl = getSignedUrlByKey(b.certificates.verifiedCertificateKey);
+      }
+      if (b.certificates?.trustCertificateKey) {
+        b.certificates.trustCertificateUrl = getSignedUrlByKey(b.certificates.trustCertificateKey);
+      }
     });
 
     res.send(results);
@@ -1457,6 +1469,130 @@ export const updateBusinessBadgesAction = async (req, res) => {
   } catch (error) {
     console.error("Error updating business badges:", error);
     return res.status(400).send({ message: error.message });
+  }
+};
+
+const sanitizeDownloadFilename = (value = "document") =>
+  String(value || "document")
+    .replace(/[<>:"/\\|?*\x00-\x1F]/g, "-")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 140) || "document";
+
+const getDownloadExtension = (key = "", contentType = "") => {
+  const keyExtension = String(key).split("?")[0].match(/\.([a-z0-9]+)$/i)?.[1];
+  if (keyExtension) return keyExtension.toLowerCase();
+
+  const extensionByType = {
+    "image/svg+xml": "svg",
+    "image/png": "png",
+    "image/jpeg": "jpg",
+    "image/jpg": "jpg",
+    "image/webp": "webp",
+    "application/pdf": "pdf",
+  };
+
+  return extensionByType[String(contentType).toLowerCase()] || "bin";
+};
+
+const resolveBusinessDocumentDownload = (business, type, index) => {
+  if (type === "verified") {
+    return {
+      key: business.certificates?.verifiedCertificateKey,
+      label: "Verified Certificate",
+    };
+  }
+
+  if (type === "trust") {
+    return {
+      key: business.certificates?.trustCertificateKey,
+      label: "Trust Certificate",
+    };
+  }
+
+  if (type === "kyc") {
+    const documentIndex = Number(index);
+    const keys = Array.isArray(business.kycDocumentsKey) ? business.kycDocumentsKey : [];
+
+    return {
+      key: Number.isInteger(documentIndex) && documentIndex >= 0 ? keys[documentIndex] : "",
+      label: `KYC Document ${Number.isInteger(documentIndex) ? documentIndex + 1 : ""}`.trim(),
+    };
+  }
+
+  return { key: "", label: "Business Document" };
+};
+
+export const regenerateBusinessCertificatesAction = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).send({ message: "Business ID is required" });
+    }
+
+    const regenerateResult = await regenerateBusinessCertificates(id);
+    const business = regenerateResult?.business || regenerateResult;
+    const trace = regenerateResult?.trace || null;
+
+    if (!business) {
+      return res.status(404).send({ message: "Business not found" });
+    }
+
+    await invalidateSearchCache();
+    await invalidateDashboardCache();
+    await invalidateCategoryCache();
+
+    return res.status(200).send({
+      success: true,
+      message: "Certificates regenerated successfully",
+      business,
+      trace,
+    });
+  } catch (error) {
+    console.error("Error regenerating business certificates:", error);
+    return res.status(error.statusCode || 400).send({ message: error.message });
+  }
+};
+
+export const downloadBusinessDocumentAction = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { type, index } = req.query;
+
+    if (!id) {
+      return res.status(400).send({ message: "Business ID is required" });
+    }
+
+    const business = await businessListModel
+      .findById(id)
+      .select("businessName name certificates kycDocumentsKey")
+      .lean();
+
+    if (!business) {
+      return res.status(404).send({ message: "Business not found" });
+    }
+
+    const { key, label } = resolveBusinessDocumentDownload(business, type, index);
+
+    if (!key) {
+      return res.status(404).send({ message: "Document not found for this business." });
+    }
+
+    const object = await getObjectBufferByKey(key);
+    const contentType = object?.contentType || "application/octet-stream";
+    const extension = getDownloadExtension(key, contentType);
+    const baseName = sanitizeDownloadFilename(business.businessName || business.name || "business");
+    const documentName = sanitizeDownloadFilename(label);
+    const filename = `${baseName} - ${documentName}.${extension}`;
+
+    res.setHeader("Content-Type", contentType);
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.setHeader("Content-Length", object.content.length);
+    return res.send(object.content);
+  } catch (error) {
+    console.error("Error downloading business document:", error);
+    return res.status(error.statusCode || 400).send({ message: error.message });
   }
 };
 

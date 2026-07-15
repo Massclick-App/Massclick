@@ -202,6 +202,39 @@ const SearchResults = React.memo(() => {
   // goes through the server-side resolver. Display always uses locationText.
   const apiLocation = masterLocationSlug || locationText;
 
+  // Guard against nonsensical /:location/:category/:subcategory URLs where
+  // :category isn't the subcategory's real parent (e.g. beauty-and-spa/chairs-on-rent
+  // — chairs-on-rent actually belongs to rent-and-hire). These render fine today
+  // because :category is discarded below, which lets bots index infinite fake
+  // combinations. Parent/child pairing is admin-configurable (CategoryDisplaySettings),
+  // so it's resolved from the API rather than a hardcoded map.
+  const { location: rawLocationParam, category: categoryParam, subcategory: subcategoryParam } = urlParams;
+  const [categoryMismatchTarget, setCategoryMismatchTarget] = useState(null);
+
+  useEffect(() => {
+    setCategoryMismatchTarget(null);
+    if (!categoryParam || !subcategoryParam) return;
+
+    let cancelled = false;
+    axiosInstance.get(`/v2/category/parent-of/${encodeURIComponent(subcategoryParam)}`)
+      .then((res) => {
+        if (cancelled) return;
+        const expectedParentSlug = res.data?.parentSlug;
+        if (expectedParentSlug && expectedParentSlug !== categoryParam) {
+          setCategoryMismatchTarget(`/${rawLocationParam}/${expectedParentSlug}/${subcategoryParam}`);
+        }
+      })
+      .catch(() => {});
+
+    return () => { cancelled = true; };
+  }, [categoryParam, subcategoryParam, rawLocationParam]);
+
+  useEffect(() => {
+    if (categoryMismatchTarget) {
+      navigate(categoryMismatchTarget, { replace: true });
+    }
+  }, [categoryMismatchTarget, navigate]);
+
   const safeStateResults = Array.isArray(stateResults) ? stateResults : null;
   const searchText = displayName;
   const normalizedSearchTerm = searchTerm;
@@ -650,6 +683,10 @@ const SearchResults = React.memo(() => {
     dispatch(performSearch(searchText, apiLocation));
   }, [dispatch, searchText, apiLocation]);
 
+  if (categoryMismatchTarget) {
+    return null;
+  }
+
   if (error) {
     return <>
         <StickySearchBar locationName={locationInput} setLocationName={setLocationInput} searchTerm={searchInput} setSearchTerm={setSearchInput} committedLocationName={locationText} committedSearchTerm={searchText} />
@@ -881,6 +918,7 @@ const SearchResults = React.memo(() => {
                           isVerified={!!business.verification?.isVerified}
                           isTrusted={!!(business.badges?.isTrusted || business.badges?.isTrust || business.verification?.isTrusted)}
                           certificateType={business.verification?.certificateType || business.verification?.verificationType}
+                          certificates={business.certificates}
                           isFeatured={!!business.badges?.isFeatured}
                           isSponsored={!!business.badges?.isSponsored}
                           isTrending={!!business.badges?.isTrending}
@@ -938,6 +976,7 @@ const SearchResults = React.memo(() => {
                             isVerified={!!b.verification?.isVerified}
                             isTrusted={!!(b.badges?.isTrusted || b.badges?.isTrust || b.verification?.isTrusted)}
                             certificateType={b.verification?.certificateType || b.verification?.verificationType}
+                            certificates={b.certificates}
                             isFeatured={!!b.badges?.isFeatured}
                             isSponsored={!!b.badges?.isSponsored}
                             isTrending={!!b.badges?.isTrending}

@@ -458,6 +458,25 @@ button.business-CardDetails-statusBadge:hover {
   text-align: center;
 }
 
+.business-CardDetails-certificateImageShell {
+  align-items: center;
+  background: #ffffff;
+  border-radius: 8px;
+  display: flex;
+  justify-content: center;
+  overflow: hidden;
+  width: 100%;
+}
+
+.business-CardDetails-certificateSavedImage {
+  display: block;
+  height: auto;
+  max-height: min(86vh, 900px);
+  max-width: 100%;
+  object-fit: contain;
+  width: auto;
+}
+
 .business-CardDetails-certificatePaper > * {
   position: relative;
   z-index: 1;

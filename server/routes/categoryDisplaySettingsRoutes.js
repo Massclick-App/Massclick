@@ -8,6 +8,7 @@ import {
   getV2ServiceCardsAction,
   getV2MobileServiceCardsAction,
   getV2SubCategoriesAction,
+  getV2ParentOfSubCategoryAction,
   getV2PopularSearchesAction,
   getV2TopTouristAction,
   getV2PopularCategoryContentAction,
@@ -33,6 +34,7 @@ router.get("/api/v2/category/popular", homeCategoryCache, getV2PopularCategories
 router.get("/api/v2/category/service-cards", homeCategoryCache, getV2ServiceCardsAction);
 router.get("/api/v2/category/mobile-service-cards", homeMobileCategoryCache, getV2MobileServiceCardsAction);
 router.get("/api/v2/category/sub/:parentSlug", categoryCache, getV2SubCategoriesAction);
+router.get("/api/v2/category/parent-of/:subcategorySlug", categoryCache, getV2ParentOfSubCategoryAction);
 
 router.get("/api/v2/home/popular-searches",         homeCategoryCache, getV2PopularSearchesAction);
 router.get("/api/v2/home/top-tourist",              homeCategoryCache, getV2TopTouristAction);
