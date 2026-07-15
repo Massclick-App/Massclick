@@ -36,6 +36,7 @@ router.get("/api/v2/category/mobile-service-cards", homeMobileCategoryCache, get
 router.get("/api/v2/category/sub/:parentSlug", categoryCache, getV2SubCategoriesAction);
 router.get("/api/v2/category/parent-of/:subcategorySlug", categoryCache, getV2ParentOfSubCategoryAction);
 
+
 router.get("/api/v2/home/popular-searches",         homeCategoryCache, getV2PopularSearchesAction);
 router.get("/api/v2/home/top-tourist",              homeCategoryCache, getV2TopTouristAction);
 router.get("/api/v2/home/popular-category-content", homeCategoryCache, getV2PopularCategoryContentAction);
