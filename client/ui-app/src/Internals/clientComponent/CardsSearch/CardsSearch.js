@@ -254,10 +254,10 @@ const CardsSearch = ({
     });
     return list;
   })();
-  const handleSearch = async e => {
+  const handleSearch = async (e, selectedTerm, selectedLocation) => {
     e?.preventDefault?.();
-    const searchInput = searchTerm.trim();
-    const location = (locationName || DEFAULT_LOCATION).trim();
+    const searchInput = (selectedTerm ?? searchTerm).trim();
+    const location = ((selectedLocation ?? locationName) || DEFAULT_LOCATION).trim();
     if (!locationName?.trim()) {
       setLocationName(location);
     }
@@ -358,6 +358,7 @@ const CardsSearch = ({
               setLocationName(chosen);
               setIsLocationDropdownOpen(false);
               document.activeElement.blur();
+              handleSearch(undefined, undefined, chosen);
             }} />}
             </div>
 
@@ -377,6 +378,7 @@ const CardsSearch = ({
               propSetCategoryName?.(chosen);
               setIsCategoryDropdownOpen(false);
               document.activeElement.blur();
+              handleSearch(undefined, chosen);
             }} />}
 
               {isCategoryDropdownOpen && searchTerm.trim().length >= 2 && <CategoryDropdown label="SUGGESTIONS" options={suggestionCategories} onReachEnd={() => maybeLoadMoreSuggestions(searchTerm.trim())} hasMore={backendSuggestionsHasMore && backendSuggestionsQuery === searchTerm.trim()} isLoadingMore={backendSuggestionsLoading && backendSuggestionsQuery === searchTerm.trim()} onSelect={val => {
@@ -385,6 +387,7 @@ const CardsSearch = ({
               propSetCategoryName?.(chosen);
               setIsCategoryDropdownOpen(false);
               document.activeElement.blur();
+              handleSearch(undefined, chosen);
             }} />}
 
               <MicIcon className={cx("input-adornment end")} aria-hidden="true" />
