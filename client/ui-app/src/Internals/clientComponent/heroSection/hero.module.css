@@ -555,7 +555,7 @@
   .hero-section {
     background-image:
       linear-gradient(180deg, rgba(255,250,247,.12), rgba(255,255,255,.72)),
-      url("../../../assets/search-background.png");
+      url("../../../assets/search-background.webp");
     background-position: center top;
     background-repeat: no-repeat;
     background-size: cover;
@@ -703,7 +703,7 @@
     min-height: 0;
     background-image:
       linear-gradient(180deg, rgba(255,250,247,.15) 0%, rgba(255,255,255,.08) 55%, rgba(255,255,255,.9) 100%),
-      url("../../../assets/search-background.png");
+      url("../../../assets/search-background.webp");
     background-position: center top;
     background-repeat: no-repeat;
     background-size: auto 430px;

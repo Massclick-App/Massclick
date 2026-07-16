@@ -18,7 +18,7 @@ import SupportAgentIcon from '@mui/icons-material/SupportAgent';
 import styles from "./webDevSection.module.css";
 import StickySearchBar from '../../StickySearchBar/StickySearchBar';
 import Footer from '../footer';
-import EnquiryImage from '../../../../assets/enquiry.png';
+import EnquiryImage from '../../../../assets/enquiry.webp';
 const cx = createScopedClassNames(styles);
 const featuresData = [{
   title: "Customized Approach",

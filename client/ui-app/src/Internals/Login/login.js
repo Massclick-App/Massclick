@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { login } from '../../redux/actions/authAction.js';
 import { useNavigate } from 'react-router-dom';
-import companyLogo from "../../assets/mclogo.png";
+import companyLogo from "../../assets/mclogo.webp";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import { Link } from "react-router-dom";

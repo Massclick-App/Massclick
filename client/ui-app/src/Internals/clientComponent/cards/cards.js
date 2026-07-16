@@ -22,7 +22,7 @@ import CheckBoxRoundedIcon from "@mui/icons-material/CheckBoxRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import { addFavorite, removeFavorite, fetchFavorites, getAuthUser } from "../../../redux/actions/favoriteAction";
 import OTPLoginModal from "../AddBusinessModel.js";
-import massClickLogo from "../../../assets/mclogo.png";
+import massClickLogo from "../../../assets/mclogo.webp";
 
 const cx = createScopedClassNames(styles);
 

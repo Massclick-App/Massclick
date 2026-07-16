@@ -1,5 +1,5 @@
 import jsPDF from "jspdf";
-import massclickLogo from "../../assets/MassClick_pvt_ltd.png";
+import massclickLogo from "../../assets/MassClick_pvt_ltd.webp";
 
 const REQUIRED = "REQUIRED";
 const IF_AVAILABLE = "IF AVAILABLE";

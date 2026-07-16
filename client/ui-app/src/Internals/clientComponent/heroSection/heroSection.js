@@ -19,8 +19,8 @@ import {
   getNextCounterRefreshDelay,
   getVisibleCounterCount,
 } from "../../../utils/publicUserCounterUtils.js";
-import heroIllustrationLeft from "../../../assets/hero_illustration_left.png";
-import heroIllustrationRight from "../../../assets/hero_illustration_right.png";
+import heroIllustrationLeft from "../../../assets/hero_illustration_left.webp";
+import heroIllustrationRight from "../../../assets/hero_illustration_right.webp";
 import { useNavigate } from "react-router-dom";
 import CategoryDropdown from "../CategoryDropdown/CategoryDropdown";
 import styles from "./hero.module.css";

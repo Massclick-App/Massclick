@@ -4,7 +4,7 @@ import { Helmet } from "react-helmet-async";
 import styles from "./enquiry.module.css";
 import Alert from '@mui/material/Alert';
 import SendIcon from '@mui/icons-material/Send';
-import EnquiryImage from '../../../../assets/enquiry.png';
+import EnquiryImage from '../../../../assets/enquiry.webp';
 import StickySearchBar from '../../../clientComponent/StickySearchBar/StickySearchBar';
 import Footer from '../footer';
 import { useDispatch, useSelector } from "react-redux";
