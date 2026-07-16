@@ -598,6 +598,49 @@ const scoreCategoryIntent = (candidate, rawTerm) => {
   return score;
 };
 
+const scorePartialCategoryIntent = (candidate, rawTerm) => {
+  const queryTokens = categoryIntentTokens(rawTerm).filter(
+    (token) => !categoryIntentStopWords.has(token)
+  );
+  if (queryTokens.length < 2) return 0;
+
+  const categoryText = categoryIntentNormalize(candidate.category);
+  const descriptionText = categoryIntentNormalize(candidate.description);
+  const keywordTexts = (Array.isArray(candidate.keywords) ? candidate.keywords : [])
+    .map((keyword) => categoryIntentNormalize(keyword));
+  const searchableText = [categoryText, ...keywordTexts, descriptionText].join(" ");
+  const matchedTokens = queryTokens.filter((token) =>
+    hasCategoryIntentToken(searchableText, token)
+  );
+
+  // A multi-word search must match most of a short query, or at least three
+  // words from a longer query. This prevents a generic word such as
+  // "equipment" from resolving catering searches to gym/crane categories.
+  const minimumMatches = queryTokens.length <= 3
+    ? 2
+    : Math.max(3, Math.ceil(queryTokens.length * 0.6));
+  if (matchedTokens.length < minimumMatches) return 0;
+
+  let score = matchedTokens.length * 100;
+  score += (matchedTokens.length / queryTokens.length) * 200;
+
+  for (const token of matchedTokens) {
+    if (hasCategoryIntentToken(categoryText, token)) score += 50;
+    if (keywordTexts.some((keyword) => hasCategoryIntentToken(keyword, token))) score += 30;
+    if (hasCategoryIntentToken(descriptionText, token)) score += 5;
+  }
+
+  // Prefer categories containing adjacent words from the user's original
+  // phrase, e.g. "catering equipment" over unrelated "* equipment" entries.
+  for (let index = 0; index < queryTokens.length - 1; index += 1) {
+    const phrase = `${queryTokens[index]} ${queryTokens[index + 1]}`;
+    if (categoryText.includes(phrase)) score += 120;
+    if (keywordTexts.some((keyword) => keyword.includes(phrase))) score += 80;
+  }
+
+  return score;
+};
+
 export const resolveCategoryIntent = async (term, escapeRegex) => {
   const exactPattern = `^${escapeRegex(term)}$`;
   const exactMatch = await categoryModel.findOne(
@@ -630,9 +673,9 @@ export const resolveCategoryIntent = async (term, escapeRegex) => {
       ]
     },
     { category: 1, keywords: 1, description: 1 }
-  ).limit(50);
+  ).limit(200);
 
-  const bestMatch = candidates
+  const strictMatch = candidates
     .map((candidate) => ({
       category: candidate.category,
       score: scoreCategoryIntent(candidate, term),
@@ -640,7 +683,17 @@ export const resolveCategoryIntent = async (term, escapeRegex) => {
     .filter((candidate) => candidate.score > 0)
     .sort((a, b) => b.score - a.score)[0];
 
-  return bestMatch?.category || "";
+  if (strictMatch?.category) return strictMatch.category;
+
+  const partialMatch = candidates
+    .map((candidate) => ({
+      category: candidate.category,
+      score: scorePartialCategoryIntent(candidate, term),
+    }))
+    .filter((candidate) => candidate.score > 0)
+    .sort((a, b) => b.score - a.score)[0];
+
+  return partialMatch?.category || "";
 };
 
 export const getEnhancedSuggestionsController = async (req, res) => {

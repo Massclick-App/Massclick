@@ -313,10 +313,10 @@ const HeroSection = React.memo(({
       location
     };
   };
-  const handleSearch = async e => {
-    e.preventDefault();
+  const handleSearch = async (e, selectedTerm) => {
+    e?.preventDefault?.();
     const normalize = (text = "") => text.toLowerCase().trim().replace(/&/g, " and ").replace(/[-_]/g, " ").replace(/\s+/g, " ");
-    let term = normalize(searchTerm);
+    let term = normalize(selectedTerm ?? searchTerm);
     let location = normalize(locationName);
 
     // 🔹 Remove location from term
@@ -459,6 +459,7 @@ const HeroSection = React.memo(({
             setSearchTerm(chosen);
             if (setCategoryName) setCategoryName(chosen);
             setIsDropdownOpen(false);
+            handleSearch(undefined, chosen);
           }} />}
 
             {isDropdownOpen && searchTerm.trim().length >= 2 && <CategoryDropdown id="business-suggestions" label="SUGGESTIONS" options={suggestionCategories} onReachEnd={() => maybeLoadMoreSuggestions(searchTerm.trim())} hasMore={backendSuggestionsHasMore && backendSuggestionsQuery === searchTerm.trim()} isLoadingMore={backendSuggestionsLoading && backendSuggestionsQuery === searchTerm.trim()} onSelect={val => {
@@ -466,6 +467,7 @@ const HeroSection = React.memo(({
             setSearchTerm(chosen);
             if (setCategoryName) setCategoryName(chosen);
             setIsDropdownOpen(false);
+            handleSearch(undefined, chosen);
           }} />}
 
             <MicIcon className={cx("input-adornment end")} aria-label="Start voice search" role="button" tabIndex={0} onClick={handleVoiceSearch} onKeyDown={event => {

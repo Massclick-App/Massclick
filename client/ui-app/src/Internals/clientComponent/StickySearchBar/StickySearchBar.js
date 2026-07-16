@@ -264,6 +264,7 @@ const StickySearchBar = ({
     setIsSelectingLocation(false);
     setIsFocused(false);
     setLocationInput("");
+    handleSearch(undefined, undefined, chosen, slug);
   };
 
   const handleSelectCategory = (val) => {
@@ -271,12 +272,14 @@ const StickySearchBar = ({
     setSearchTerm(chosen);
     propSetCategoryName?.(chosen);
     setIsCategoryDropdownOpen(false);
+    handleSearch(undefined, chosen);
   };
 
-  const handleSearch = async event => {
+  const handleSearch = async (event, selectedTerm, selectedLocation, selectedLocationSlug) => {
     event?.preventDefault?.();
-    const searchInput = searchTerm.trim();
-    const location = (locationName || DEFAULT_LOCATION).trim();
+    const searchInput = (selectedTerm ?? searchTerm).trim();
+    const location = ((selectedLocation ?? locationName) || DEFAULT_LOCATION).trim();
+    const locationSlug = selectedLocationSlug ?? masterLocationSlug;
 
     if (!searchInput) {
       setIsCategoryDropdownOpen(true);
@@ -335,7 +338,7 @@ const StickySearchBar = ({
     navigateToSearchResult({
       searchTerm: searchInput,
       location,
-      masterLocationSlug,
+      masterLocationSlug: locationSlug,
       navigate,
       dispatch,
       isKnownCategory: false,

@@ -9,7 +9,7 @@ import { businessListRateLimit } from '../middleware/rateLimitMiddleware.js';
 
 const router = express.Router();
 
-const searchCache = cacheMiddleware({ expirySeconds: 1800 }); // 30 min cache
+const searchCache = cacheMiddleware({ expirySeconds: 1800, keyPrefix: 'search-v2' }); // 30 min cache
 const suggestionsCache = cacheMiddleware({ expirySeconds: 3600, keyPrefix: 'suggestions' }); // 1 hour cache
 const trendsCache = cacheMiddleware({ expirySeconds: 7200, keyPrefix: 'trends' }); // 2 hours cache
 
