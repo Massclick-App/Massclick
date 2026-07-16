@@ -22,6 +22,7 @@ const CategoryRouter = () => {
 
   const [resolvedCategory, setResolvedCategory] = useState(null);
   const [categories, setCategories] = useState([]);
+  const [prefetchedResults, setPrefetchedResults] = useState(null);
 
   const isSearchFlow = routerLocation.state?.isSearch;
   const searchText = routerLocation.state?.searchText;
@@ -52,6 +53,7 @@ const CategoryRouter = () => {
 
   useEffect(() => {
     const loadCategory = async () => {
+      setPrefetchedResults(null);
       try {
         // If category name was passed directly from featured service, use it
         if (passedCategoryName) {
@@ -62,13 +64,15 @@ const CategoryRouter = () => {
         if (isSearchFlow && searchText) {
           setResolvedCategory(searchText);
 
-          await dispatch(
+          const response = await dispatch(
             performSearch(
               searchText,
               location,
               false  // isKnownCategory: user search flow
             )
           );
+
+          setPrefetchedResults(response?.payload || {});
 
           return;
         }
@@ -91,13 +95,15 @@ const CategoryRouter = () => {
             )
           );
 
-          const results = response?.payload || [];
+          const payload = response?.payload || {};
+          const results = payload.results || [];
 
           if (results.length > 0) {
             setResolvedCategory(results[0].category);
           } else {
             setResolvedCategory(formatText(subcategory));
           }
+          setPrefetchedResults(payload);
 
           return;
         }
@@ -112,13 +118,15 @@ const CategoryRouter = () => {
             )
           );
 
-          const results = response?.payload || [];
+          const payload = response?.payload || {};
+          const results = payload.results || [];
 
           if (results.length > 0) {
             setResolvedCategory(results[0].category);
           } else {
             setResolvedCategory(formatText(category));
           }
+          setPrefetchedResults(payload);
 
           return;
         }
@@ -157,6 +165,9 @@ const CategoryRouter = () => {
     <SearchResults
       overrideCategory={resolvedCategory}
       overrideLocation={formatText(location)}
+      initialResults={prefetchedResults?.results}
+      initialTotal={prefetchedResults?.total}
+      initialHasMore={prefetchedResults?.hasMore}
     />
   );
 };
