@@ -84,15 +84,32 @@ const withRetry = async (fn, retryCount = 3) => {
   }
 };
 
+const CACHE_CONTROL_VALUE = 'public, max-age=31536000';
+
 const copyObjectWithCacheHeaders = async (sourceKey, retryCount = 3) => {
   const result = await withRetry(async () => {
-    const copySource = `${assetsBucket}/${sourceKey}`;
+    const head = await s3.headObject({
+      Bucket: assetsBucket,
+      Key: sourceKey,
+    }).promise();
 
+    if (head.CacheControl === CACHE_CONTROL_VALUE) {
+      return {
+        sourceKey,
+        skipped: true,
+      };
+    }
+
+    // MetadataDirective REPLACE wipes ALL metadata, so ContentType and any
+    // user metadata must be carried over explicitly or images get served as
+    // application/octet-stream.
     await s3.copyObject({
       Bucket: assetsBucket,
-      CopySource: copySource,
+      CopySource: `${assetsBucket}/${sourceKey}`,
       Key: sourceKey,
-      CacheControl: 'public, max-age=31536000',
+      CacheControl: CACHE_CONTROL_VALUE,
+      ContentType: head.ContentType || 'application/octet-stream',
+      Metadata: head.Metadata || {},
       MetadataDirective: 'REPLACE',
     }).promise();
 

@@ -372,8 +372,6 @@ const Cards = ({
                   decoding="async"
                   loading="eager"
                   fetchpriority="high"
-                  width="100%"
-                  height="100%"
                   className={cx("card-image")}
                 />
               ) : (
@@ -384,8 +382,7 @@ const Cards = ({
                   decoding="async"
                   loading={index < 3 ? "eager" : "lazy"}
                   effect="opacity"
-                  width="100%"
-                  height="100%"
+                  wrapperProps={{ style: { width: "100%", height: "100%" } }}
                   className={cx("card-image")}
                 />
               )}

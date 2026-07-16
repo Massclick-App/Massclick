@@ -262,10 +262,6 @@ const SearchResults = React.memo(({ initialResults, initialTotal, initialHasMore
   const [filterConfig, setFilterConfig] = useState([]);
   const [resolvedCategory, setResolvedCategory] = useState(null);
   const effectiveCategory = resolvedCategory || (isKnownCategory ? normalizedSearchTerm : null);
-
-  useEffect(() => {
-    console.log(`[SearchResult] term="${normalizedSearchTerm}" isKnownCategory=${isKnownCategory} resolvedCategory=${resolvedCategory || "null"} → effectiveCategory=${effectiveCategory || "null"}`);
-  }, [normalizedSearchTerm, isKnownCategory, resolvedCategory, effectiveCategory]);
   const [sortBy, setSortBy] = useState("relevant");
   const [viewMode, setViewMode] = useState("list");
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
@@ -426,19 +422,12 @@ const SearchResults = React.memo(({ initialResults, initialTotal, initialHasMore
     if (!normalizedSearchTerm || !locationText) return;
 
     const requestId = ++requestIdRef.current;
-    console.log(`[SearchResult] initial load: calling performSearch(term="${normalizedSearchTerm}", location="${apiLocation}", isKnownCategory=${isKnownCategory})`, buildSearchParams(1));
     dispatch(performSearch(normalizedSearchTerm, apiLocation, isKnownCategory, buildSearchParams(1))).then(action => {
-      if (requestId !== requestIdRef.current) {
-        console.log("[SearchResult] initial load: response discarded (stale — a newer search started)");
-        return;
-      }
+      if (requestId !== requestIdRef.current) return;
       const data = action?.payload;
       const normalized = data && !Array.isArray(data)
         ? data
         : { results: Array.isArray(data) ? data : [], total: 0, hasMore: false };
-      console.log(
-        `[SearchResult] initial load: got ${normalized.results?.length || 0}/${normalized.total || 0} result(s) — resolvedCategory=${normalized.resolvedCategory ? `"${normalized.resolvedCategory}"` : "not resolved"}`
-      );
       setResults(normalized.results || []);
       setTotalResults(normalized.total || 0);
       setHasMore(normalized.hasMore || false);
@@ -458,19 +447,12 @@ const SearchResults = React.memo(({ initialResults, initialTotal, initialHasMore
     if (!hasActiveFilters && sortBy === "relevant" && !userGeo && !searchControlsChangedRef.current) return;
 
     const requestId = ++requestIdRef.current;
-    console.log(`[SearchResult] refetch (filters/sort/geo changed): calling performSearch(term="${normalizedSearchTerm}", isKnownCategory=${isKnownCategory})`, buildSearchParams(1));
     dispatch(performSearch(normalizedSearchTerm, apiLocation, isKnownCategory, buildSearchParams(1))).then(action => {
-      if (requestId !== requestIdRef.current) {
-        console.log("[SearchResult] refetch: response discarded (stale — a newer search started)");
-        return;
-      }
+      if (requestId !== requestIdRef.current) return;
       const data = action?.payload;
       const normalized = data && !Array.isArray(data)
         ? data
         : { results: Array.isArray(data) ? data : [], total: 0, hasMore: false };
-      console.log(
-        `[SearchResult] refetch: got ${normalized.results?.length || 0}/${normalized.total || 0} result(s) — resolvedCategory=${normalized.resolvedCategory ? `"${normalized.resolvedCategory}"` : "not resolved"}`
-      );
       setResults(normalized.results || []);
       setTotalResults(normalized.total || 0);
       setHasMore(normalized.hasMore || false);
@@ -484,20 +466,15 @@ const SearchResults = React.memo(({ initialResults, initialTotal, initialHasMore
   // ─── Fetch filterConfig for this category ────────────────────────────────────
   useEffect(() => {
     if (!effectiveCategory) {
-      console.log("[SearchResult] filterConfig: no effectiveCategory, skipping fetch");
       setFilterConfig([]);
       return;
     }
     const slug = effectiveCategory.toLowerCase().trim().replace(/\s+/g, "-");
-    console.log(`[SearchResult] filterConfig: fetching /category/${slug}/filters`);
     axiosInstance.get(`/category/${encodeURIComponent(slug)}/filters`)
       .then(res => {
-        const config = Array.isArray(res.data) ? res.data : [];
-        console.log(`[SearchResult] filterConfig: got ${config.length} field(s) for slug="${slug}"`, config);
-        setFilterConfig(config);
+        setFilterConfig(Array.isArray(res.data) ? res.data : []);
       })
-      .catch((err) => {
-        console.log(`[SearchResult] filterConfig: fetch failed for slug="${slug}"`, err?.message);
+      .catch(() => {
         setFilterConfig([]);
       });
   }, [effectiveCategory]);
@@ -521,23 +498,18 @@ const SearchResults = React.memo(({ initialResults, initialTotal, initialHasMore
         location: apiLocation,
         ...buildSearchParams(page)
       };
-      console.log(`[SearchResult] loadPage(${page}): calling GET /businesslist/search`, params);
       const response = await axiosInstance.get(
         `${process.env.REACT_APP_API_URL}/businesslist/search`,
         { headers: { Authorization: `Bearer ${token}` }, params }
       );
 
-      if (searchVersionRef.current !== capturedVersion) {
-        console.log(`[SearchResult] loadPage(${page}): response discarded (stale — search changed mid-flight)`);
-        return;
-      }
+      if (searchVersionRef.current !== capturedVersion) return;
 
       const raw = response.data;
       const isLegacy = Array.isArray(raw);
       const newResults = isLegacy ? raw : (raw.results || []);
       const newHasMore = isLegacy ? false : (raw.hasMore || false);
       const newTotal = isLegacy ? raw.length : (raw.total || 0);
-      console.log(`[SearchResult] loadPage(${page}): got ${newResults.length} new result(s), total=${newTotal}, hasMore=${newHasMore}`);
 
       setResults(prev => {
         const seen = new Set(prev.map(b => b._id));
@@ -547,9 +519,9 @@ const SearchResults = React.memo(({ initialResults, initialTotal, initialHasMore
       setHasMore(newHasMore);
       setTotalResults(newTotal);
 
-    } catch (err) {
-      console.log(`[SearchResult] loadPage(${page}): failed`, err?.message);
-      } finally {
+    } catch {
+      // swallow — sentinel retriggers on next intersection
+    } finally {
       loadingPagesRef.current.delete(page);
       setIsLoadingMore(false);
     }
@@ -570,24 +542,16 @@ const SearchResults = React.memo(({ initialResults, initialTotal, initialHasMore
 
   // ─── Nearby businesses fetch (only when geo granted) ─────────────────────────
   useEffect(() => {
-    if (!userGeo || geoStatus !== "granted" || !effectiveCategory) {
-      console.log(`[SearchResult] nearby: skipped (geoStatus=${geoStatus}, effectiveCategory=${effectiveCategory || "null"})`);
-      return;
-    }
+    if (!userGeo || geoStatus !== "granted" || !effectiveCategory) return;
     let cancelled = false;
 
-    console.log(`[SearchResult] nearby: calling fetchNearbyBusinesses for category="${effectiveCategory}"`);
     dispatch(fetchNearbyBusinesses({
       lat: userGeo.lat,
       lng: userGeo.lng,
       category: effectiveCategory,
       limit: 6
     })).then(result => {
-      if (cancelled) {
-        console.log("[SearchResult] nearby: result discarded (effect cleaned up)");
-        return;
-      }
-      console.log(`[SearchResult] nearby: got ${result.data?.length || 0} result(s)`);
+      if (cancelled) return;
       setNearbyResults(result.data || []);
     });
 
@@ -659,28 +623,16 @@ const SearchResults = React.memo(({ initialResults, initialTotal, initialHasMore
   ];
 
   useEffect(() => {
-    if (!effectiveCategory || !locationText) {
-      console.log(`[SearchResult] seoMeta: skipped (effectiveCategory=${effectiveCategory || "null"}, location="${locationText}")`);
-      return;
-    }
+    if (!effectiveCategory || !locationText) return;
     const seoParams = { pageType: "category", category: effectiveCategory.toLowerCase(), location: locationText.toLowerCase() };
-    console.log("[SearchResult] seoMeta: calling fetchSeoMeta", seoParams);
     dispatch({ type: CLEAR_SEO_META });
-    dispatch(fetchSeoMeta(seoParams)).then(data => {
-      console.log("[SearchResult] seoMeta: got", data ? "meta found" : "no meta (using fallback)", data);
-    });
+    dispatch(fetchSeoMeta(seoParams));
   }, [dispatch, effectiveCategory, locationText]);
 
   useEffect(() => {
-    if (!effectiveCategory) {
-      console.log("[SearchResult] seoPageContent: skipped (no effectiveCategory)");
-      return;
-    }
+    if (!effectiveCategory) return;
     const seoContentParams = { pageType: "category", category: effectiveCategory.replace(/-/g, " "), ...(locationText ? { location: locationText } : {}) };
-    console.log("[SearchResult] seoPageContent: calling fetchSeoPageContentMeta", seoContentParams);
-    dispatch(fetchSeoPageContentMeta(seoContentParams)).then(data => {
-      console.log("[SearchResult] seoPageContent: got", data ? "content found" : "no content", data);
-    });
+    dispatch(fetchSeoPageContentMeta(seoContentParams));
   }, [dispatch, effectiveCategory, locationText]);
 
   const handleRetry = useCallback(() => {
@@ -760,6 +712,8 @@ const SearchResults = React.memo(({ initialResults, initialTotal, initialHasMore
       </Helmet>
 
       <div className={cx("results-page")}>
+        
+        <StickySearchBar locationName={locationInput} setLocationName={setLocationInput} searchTerm={searchInput} setSearchTerm={setSearchInput} committedLocationName={locationText} committedSearchTerm={searchText} />
         {/* Render banner early for LCP — Redux fetch happens async in TopBannerAds */}
         <StickySearchBar locationName={locationInput} setLocationName={setLocationInput} searchTerm={searchInput} setSearchTerm={setSearchInput} committedLocationName={locationText} committedSearchTerm={searchText} />
         <div className={cx("results-container banner-section")}>
