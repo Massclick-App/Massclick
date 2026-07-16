@@ -203,7 +203,7 @@ const CardsSearch = ({
       resizeObserver = new ResizeObserver(entries => {
         const entry = entries[0];
         if (!entry) return;
-        const nextHeight = Math.ceil(entry.borderBoxSize?.[0]?.blockSize || entry.contentRect.height || headerNode.offsetHeight || 0);
+        const nextHeight = Math.ceil(entry.borderBoxSize?.[0]?.blockSize || entry.contentRect.height || 0);
         if (nextHeight > 0) {
           rootStyle.setProperty("--cards-search-height", `${nextHeight}px`);
         }
