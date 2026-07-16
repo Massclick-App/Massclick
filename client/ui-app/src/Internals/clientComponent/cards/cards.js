@@ -365,17 +365,30 @@ const Cards = ({
           {/* Image */}
           <div className={cx("card-image-wrapper")}>
             <div className={cx("card-image-container")}>
-              <LazyLoadImage
-                src={imageSrc || EMPTY_PIXEL}
-                placeholderSrc={EMPTY_PIXEL}
-                alt={title}
-                decoding="async"
-                loading={index < 3 ? "eager" : "lazy"}
-                effect="opacity"
-                width="100%"
-                height="100%"
-                className={cx("card-image")}
-              />
+              {index === 0 ? (
+                <img
+                  src={imageSrc || EMPTY_PIXEL}
+                  alt={title}
+                  decoding="async"
+                  loading="eager"
+                  fetchpriority="high"
+                  width="100%"
+                  height="100%"
+                  className={cx("card-image")}
+                />
+              ) : (
+                <LazyLoadImage
+                  src={imageSrc || EMPTY_PIXEL}
+                  placeholderSrc={EMPTY_PIXEL}
+                  alt={title}
+                  decoding="async"
+                  loading={index < 3 ? "eager" : "lazy"}
+                  effect="opacity"
+                  width="100%"
+                  height="100%"
+                  className={cx("card-image")}
+                />
+              )}
             </div>
 
             {/* Fav button */}

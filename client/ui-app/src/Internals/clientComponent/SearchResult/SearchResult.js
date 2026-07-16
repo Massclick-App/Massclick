@@ -181,7 +181,7 @@ const SearchResultListSkeleton = ({ viewMode = "list" }) => {
   );
 };
 
-const SearchResults = React.memo(() => {
+const SearchResults = React.memo(({ initialResults, initialTotal, initialHasMore } = {}) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const urlParams = useParams();
@@ -235,7 +235,9 @@ const SearchResults = React.memo(() => {
     }
   }, [categoryMismatchTarget, navigate]);
 
-  const safeStateResults = Array.isArray(stateResults) ? stateResults : null;
+  const safeStateResults = Array.isArray(initialResults)
+    ? initialResults
+    : (Array.isArray(stateResults) ? stateResults : null);
   const searchText = displayName;
   const normalizedSearchTerm = searchTerm;
   const [searchInput, setSearchInput] = useState(displayName || searchTerm || "");
@@ -412,8 +414,10 @@ const SearchResults = React.memo(() => {
   useEffect(() => {
     if (Array.isArray(safeStateResults) && safeStateResults.length > 0 && !stateAppliedRef.current) {
       setResults(safeStateResults);
-      setTotalResults(safeStateResults.length);
-      setHasMore(false); // state results are a snapshot — no pagination
+      setTotalResults(typeof initialTotal === "number" ? initialTotal : safeStateResults.length);
+      // initialResults (from CategoryRouter's prefetch) carries real pagination info;
+      // plain navigation-state results are a snapshot with no pagination.
+      setHasMore(Array.isArray(initialResults) ? Boolean(initialHasMore) : false);
       setInitialSearchResolved(true);
       stateAppliedRef.current = true;
       return;
