@@ -761,10 +761,10 @@ const SearchResults = React.memo(({ initialResults, initialTotal, initialHasMore
 
       <div className={cx("results-page")}>
         {/* Render banner early for LCP — Redux fetch happens async in TopBannerAds */}
+        <StickySearchBar locationName={locationInput} setLocationName={setLocationInput} searchTerm={searchInput} setSearchTerm={setSearchInput} committedLocationName={locationText} committedSearchTerm={searchText} />
         <div className={cx("results-container banner-section")}>
           <TopBannerAds category={effectiveCategory} />
         </div>
-        <StickySearchBar locationName={locationInput} setLocationName={setLocationInput} searchTerm={searchInput} setSearchTerm={setSearchInput} committedLocationName={locationText} committedSearchTerm={searchText} />
         <main>
         <div className={cx("page-spacing")} />
 
