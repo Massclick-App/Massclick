@@ -2,8 +2,8 @@ import { createScopedClassNames } from "../../../../utils/createScopedClassNames
 import React, { useEffect } from "react";
 import { Helmet } from "react-helmet-async";
 import styles from "./seo.module.css";
-import SeoImage from '../../../../assets/seo1.jpg';
-import searchGraphic from '../../../../assets/seo.jpg';
+import SeoImage from '../../../../assets/seo1.webp';
+import searchGraphic from '../../../../assets/seo.webp';
 import Footer from '../footer';
 import StickySearchBar from '../../StickySearchBar/StickySearchBar';
 import SeoMeta from "../../seo/seoMeta";

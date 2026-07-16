@@ -21,7 +21,7 @@ import {
 import MenuIcon from "@mui/icons-material/Menu";
 import NotificationsIcon from "@mui/icons-material/Notifications";
 import PersonIcon from "@mui/icons-material/Person";
-import massClickLogo from '../../assets/mclogo.png';
+import massClickLogo from '../../assets/mclogo.webp';
 
 const navLinks = ["About Us", "Services", "Testimonials", "Portfolio"];
 

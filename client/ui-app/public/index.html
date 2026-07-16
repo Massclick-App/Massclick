@@ -3,6 +3,24 @@
 
 <head>
 
+  <!-- Google Tag Manager (deferred until page load to avoid blocking initial render) -->
+  <script>(function(w,d,s,l,i){
+    function loadGTM(){
+      w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});
+      var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';
+      j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;
+      f.parentNode.insertBefore(j,f);
+    }
+    if(d.readyState==='complete'){
+      loadGTM();
+    } else {
+      w.addEventListener('load',function(){
+        'requestIdleCallback' in w ? requestIdleCallback(loadGTM,{timeout:2000}) : setTimeout(loadGTM,1);
+      });
+    }
+  })(window,document,'script','dataLayer','GTM-KB44T7MH');</script>
+  <!-- End Google Tag Manager -->
+
   <meta charset="utf-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -132,6 +150,25 @@
     @keyframes shimmer {
       0% { background-position: 200% 0; }
       100% { background-position: -200% 0; }
+    }
+    /* Loading skeleton shown before the app JS mounts */
+    .ssr-skeleton {
+      padding: 20px;
+    }
+    .ssr-skeleton-bar {
+      border-radius: 6px;
+    }
+    /* Server-rendered SEO content: kept in the DOM for crawlers, hidden from sighted users */
+    .ssr-seo-content {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
     }
   </style>
 

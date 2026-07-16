@@ -5,8 +5,8 @@ import { createStartProject } from "../../../redux/actions/startProjectAction.js
 import { User, Phone, Mail, Building, Globe, AlertCircle } from "lucide-react";
 import StickySearchBar from '../StickySearchBar/StickySearchBar';
 import styles from "./businessEnquiry.module.css";
-import businessImage from "../../../assets/businessimage.jpg";
-import businessChain from "../../../assets/businesschain.jpg";
+import businessImage from "../../../assets/businessimage.webp";
+import businessChain from "../../../assets/businesschain.webp";
 const cx = createScopedClassNames(styles);
 const BusinessEnquiry = () => {
   const dispatch = useDispatch();

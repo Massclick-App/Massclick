@@ -169,7 +169,7 @@ export const generateOrganizationSchema = () => {
       availableLanguage: ["English", "Tamil"],
     },
     sameAs: [
-      "https://www.instagram.com/massclick_/",
+      "https://www.instagram.com/massclick.in",
       "https://www.facebook.com/massClicks",
       "https://www.linkedin.com/company/massclick/",
       "https://www.youtube.com/@Mass360Business",
@@ -400,7 +400,7 @@ export const generateAboutPageSchema = (pageData = {}) => {
       url: "https://massclick.in",
       logo: "https://massclick.in/logo.png",
       sameAs: [
-        "https://www.instagram.com/massclick_/",
+        "https://www.instagram.com/massclick.in",
         "https://www.facebook.com/massClicks",
         "https://www.linkedin.com/company/massclick/",
         "https://www.youtube.com/@Mass360Business",

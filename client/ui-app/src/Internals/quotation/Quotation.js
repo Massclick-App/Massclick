@@ -22,8 +22,8 @@ import {
 } from "../../redux/actions/quotationAction.js";
 import AdminViewTabs from "../../components/AdminViewTabs.js";
 import CustomizedTable from "../../components/Table/CustomizedTable.js";
-import massclickLogo from "../../assets/MassClick_pvt_ltd.png";
-import authorizedSignature from "../../assets/signature1.jpg";
+import massclickLogo from "../../assets/MassClick_pvt_ltd.webp";
+import authorizedSignature from "../../assets/signature1.webp";
 import styles from "./quotation.module.css";
 
 const cx = createScopedClassNames(styles);

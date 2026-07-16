@@ -499,8 +499,6 @@ function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
 
-      {/* <VideoPreloader /> */}
-
       <GlobalLoaderWrapper>
         <SnackbarProvider
           maxSnack={3}

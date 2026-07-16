@@ -9,8 +9,8 @@ import StickySearchBar from '../../../clientComponent/StickySearchBar/StickySear
 import SeoMeta from "../../seo/seoMeta";
 import { fetchSeoMeta } from "../../../../redux/actions/seoAction";
 import { generateServiceSchema, generateBreadcrumbSchema } from "../../../../utils/seoSchemaGenerators";
-import EnquiryImage from '../../../../assets/enquiry.png';
-import digitmarketing from '../../../../assets/digitalmarketing.jpg';
+import EnquiryImage from '../../../../assets/enquiry.webp';
+import digitmarketing from '../../../../assets/digitalmarketing.webp';
 import { Typography, Button, Box, Modal, CircularProgress } from '@mui/material';
 const cx = createScopedClassNames(styles);
 const primaryOrange = '#ff6600';

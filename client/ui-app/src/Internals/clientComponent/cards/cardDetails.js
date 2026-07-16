@@ -49,7 +49,7 @@ import { addFavorite, removeFavorite, fetchFavorites, getAuthUser } from "../../
 import { generateLocalBusinessSchema, generateBreadcrumbSchema } from "../../../utils/seoSchemaGenerators";
 import OTPLoginModal from "../AddBusinessModel.js";
 import PopularCategoriesLink from "../popularCategories/popularCategories.js";
-import massClickLogo from "../../../assets/mclogo.png";
+import massClickLogo from "../../../assets/mclogo.webp";
 const cx = createScopedClassNames(styles);
 const toSlug = (text = "") => String(text).toLowerCase().trim().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-").replace(/^-+|-+$/g, "");
 const SimpleModal = ({
