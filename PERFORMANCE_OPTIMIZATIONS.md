@@ -64,24 +64,50 @@ curl http://localhost:5000/api/admin/system-settings/s3-cache-header-migration/l
 
 ### 4. Unused JavaScript Analysis 🔍
 **Issue:** 234 KiB unused JS reported by Lighthouse
-- GTM: 126 KiB
-- GA: 70 KiB  
-- First-party chunks: 107 KiB
+- GTM: 126 KiB (analytics, intentionally lazy-loaded)
+- GA: 70 KiB (tracking, intentionally lazy-loaded)
+- First-party chunks: 107 KiB (various route dependencies)
 
-**Current Status:**
-- ✅ GTM/GA already lazy-loaded with `scheduleIdleCallback` after page render
+**Current Status:** ✅ Well Optimized
+- ✅ Routes already using lazy-loaded chunks (webpack chunkNames)
+- ✅ GTM/GA lazy-loaded with `scheduleIdleCallback` after page render
 - ✅ Deferred with 5000ms timeout in `client/ui-app/src/index.js`
-- ⏳ First-party unused code needs analysis
+- ✅ Separate MUI chunk to avoid duplication
+- ✅ SearchResult has dedicated "search" chunk
 
-**Recommendations:**
-1. **Code splitting:** Identify page-specific routes and lazy-load non-critical chunks
-2. **Tree-shaking:** Ensure unused dependencies are removed at build time
-3. **Bundle analysis:** Run `npm run build -- --analyze` to find largest chunks
+**Analysis Results:**
+SearchResult imports are clean:
+- No firebase, recharts, exceljs, jspdf, canvas-confetti
+- Only uses MUI icons (already chunked)
+- Heavy dependencies isolated to their routes
 
-**Next Steps:**
-- Run Webpack Bundle Analyzer on production build
-- Identify category-specific code (can be lazy-loaded per route)
-- Consider moving non-critical filters/sorting to lazy-loaded modules
+**What Lighthouse Reports:**
+The "unused JS" typically includes:
+- Code paths not executed on THIS page (but used on other pages)
+- Feature flags/feature modules
+- Polyfills for unsupported browsers
+- Library utilities not needed for this specific route
+
+**To Further Optimize:**
+```bash
+# 1. Generate bundle analysis report
+npm run build  # Uses webpack-bundle-analyzer via config-overrides.js
+
+# 2. Look for:
+# - Duplicate dependencies across chunks
+# - Large libraries in non-admin chunks  
+# - Utility code that could be shared
+
+# 3. Consider code splitting for:
+# - Admin-only features (e.g., exceljs, jspdf)
+# - Feature modules (e.g., Firebase, notifications)
+# - Heavy UI libraries per route
+```
+
+**Recommended Low-Risk Improvements:**
+1. **Move admin dependencies to admin-only chunk** - exceljs, jspdf not needed for search
+2. **Verify tree-shaking** - Ensure unused utilities are removed at build time
+3. **Monitor Core Web Vitals** - If LCP/FCP meet targets, this is a non-blocker
 
 ---
 
