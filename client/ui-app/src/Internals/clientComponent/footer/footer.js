@@ -56,7 +56,7 @@ const Footer = () => {
             </a>
 
             <a
-              href="https://www.instagram.com/massclick_/"
+              href="https://www.instagram.com/massclick.in"
               aria-label="Instagram"
             >
               <InstagramIcon />
