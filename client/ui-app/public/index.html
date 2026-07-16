@@ -62,19 +62,39 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=optional" media="print" onload="this.media='all'">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=optional"></noscript>
 
+  <!-- Preconnect to the S3 image origin: card/banner images (usually the LCP
+       element) come from here, and the cold DNS+TCP+TLS handshake to
+       ap-southeast-2 otherwise delays the LCP fetch by hundreds of ms.
+       No crossorigin: <img> fetches are non-CORS, so the connection must match. -->
+  <link rel="preconnect" href="https://massclickdev.s3.ap-southeast-2.amazonaws.com" />
+
   <!-- DNS Prefetch for critical services -->
   <link rel="dns-prefetch" href="//www.googletagmanager.com" />
   <link rel="dns-prefetch" href="//firebase.googleapis.com" />
   <link rel="dns-prefetch" href="//firestore.googleapis.com" />
 
-  <!-- Google tag (gtag.js) -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=AW-18321855911"></script>
+  <!-- Google tag (gtag.js) — deferred until page load + idle, same as GTM above.
+       gtag() calls made before the script loads queue safely in dataLayer. -->
   <script>
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
-
     gtag('config', 'AW-18321855911');
+    (function(w,d){
+      function loadGtag(){
+        var s=d.createElement('script');
+        s.async=true;
+        s.src='https://www.googletagmanager.com/gtag/js?id=AW-18321855911';
+        d.head.appendChild(s);
+      }
+      if(d.readyState==='complete'){
+        loadGtag();
+      } else {
+        w.addEventListener('load',function(){
+          'requestIdleCallback' in w ? requestIdleCallback(loadGtag,{timeout:2000}) : setTimeout(loadGtag,1);
+        });
+      }
+    })(window,document);
   </script>
 
   <!-- Inline critical CSS for above-the-fold content -->
