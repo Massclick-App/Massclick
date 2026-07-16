@@ -853,10 +853,15 @@ export const mainSearchController = async (req, res) => {
       });
     }
 
-    // Category filter
     if (category) {
       const escaped = escapeRegex(category);
-      matchQuery.$and.push({ category: { $regex: `^${escaped}$`, $options: "i" } });
+      const exactCategoryOrKeyword = { $regex: `^${escaped}$`, $options: "i" };
+      matchQuery.$and.push({
+        $or: [
+          { category: exactCategoryOrKeyword },
+          { keywords: exactCategoryOrKeyword }
+        ]
+      });
     }
 
     // Text search
@@ -1014,6 +1019,13 @@ export const mainSearchController = async (req, res) => {
               1
             ]
           },
+          verifiedPriority: {
+            $cond: [
+              { $eq: ["$verification.isVerified", true] },
+              0,
+              1
+            ]
+          },
           categoryPriority: {
             $cond: [
               category ? {
@@ -1047,6 +1059,7 @@ export const mainSearchController = async (req, res) => {
         $sort: useNearestSort
           ? { _distanceSort: 1, amountPaid: -1, createdAt: -1 }
           : (useCustomSort || {
+              verifiedPriority: 1,
               ...(term ? { textScore: -1 } : {}),
               categoryPriority: 1,
               locationPriority: 1,
@@ -1057,7 +1070,7 @@ export const mainSearchController = async (req, res) => {
       },
       { $skip: skip },
       { $limit: pageSize },
-      { $project: { reviews: 0, activeReviews: 0, categoryPriority: 0, locationPriority: 0, textScore: 0, _distanceSort: 0 } }
+      { $project: { reviews: 0, activeReviews: 0, verifiedPriority: 0, categoryPriority: 0, locationPriority: 0, textScore: 0, _distanceSort: 0 } }
     ];
 
     const usesComputedRatingFilter = Number.isFinite(minRatingValue) && minRatingValue > 0;
