@@ -133,6 +133,25 @@
       0% { background-position: 200% 0; }
       100% { background-position: -200% 0; }
     }
+    /* Loading skeleton shown before the app JS mounts */
+    .ssr-skeleton {
+      padding: 20px;
+    }
+    .ssr-skeleton-bar {
+      border-radius: 6px;
+    }
+    /* Server-rendered SEO content: kept in the DOM for crawlers, hidden from sighted users */
+    .ssr-seo-content {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
   </style>
 
 </head>

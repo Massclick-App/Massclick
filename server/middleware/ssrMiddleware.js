@@ -260,7 +260,7 @@ export async function ssrMiddleware(req, res) {
             availableLanguage: ["English", "Tamil"],
           },
           sameAs: [
-            "https://www.instagram.com/massclick_/",
+            "https://www.instagram.com/massclick.in",
             "https://www.facebook.com/massClicks",
             "https://www.linkedin.com/company/massclick/",
             "https://www.youtube.com/@Mass360Business",
@@ -521,9 +521,19 @@ export async function ssrMiddleware(req, res) {
     const schemaScripts = schemaObjects
       .map((schema) => `<script type="application/ld+json">${JSON.stringify(schema)}</script>`)
       .join("");
+
+    const skeletonHtml = `
+      <div class="ssr-skeleton" aria-hidden="true">
+        <div class="ssr-skeleton-bar shimmer" style="width:40%;height:28px;margin-bottom:16px;"></div>
+        <div class="ssr-skeleton-bar shimmer" style="width:90%;height:14px;margin-bottom:10px;"></div>
+        <div class="ssr-skeleton-bar shimmer" style="width:75%;height:14px;margin-bottom:24px;"></div>
+        <div class="ssr-skeleton-bar shimmer" style="width:100%;height:120px;"></div>
+      </div>
+    `;
+
     html = html
       .replace("</head>", `<script>window.__SSR_SEO__=${ssrSeoJson}</script>${schemaScripts}</head>`)
-      .replace('<div id="root"></div>', `<div id="root">${serverContent}</div>`);
+      .replace('<div id="root"></div>', `<div id="root">${skeletonHtml}<div class="ssr-seo-content">${serverContent}</div></div>`);
 
     if (!firstSegment) {
       appendDiscoveryLinkHeaders(res);
