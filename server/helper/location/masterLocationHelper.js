@@ -34,7 +34,15 @@ const buildDerivedFields = (data) => {
 const normalize = (reqBody = {}) => {
   const data = { ...reqBody };
 
-  ["state", "district", "zone", "ward", "locality", "pincode"].forEach((field) => {
+  [
+    "state",
+    "district",
+    "zone",
+    "ward",
+    "locality",
+    "pincode",
+    "searchGroupSlug",
+  ].forEach((field) => {
     if (typeof data[field] === "string") data[field] = data[field].trim();
     if (data[field] === "") data[field] = null;
   });
@@ -42,6 +50,9 @@ const normalize = (reqBody = {}) => {
   // alternateNames arrives as an array or a comma-separated string
   if (typeof data.alternateNames === "string") {
     data.alternateNames = data.alternateNames.split(",").map((a) => a.trim()).filter(Boolean);
+  }
+  if (typeof data.searchGroupNames === "string") {
+    data.searchGroupNames = data.searchGroupNames.split(",").map((a) => a.trim()).filter(Boolean);
   }
 
   return data;
@@ -100,6 +111,8 @@ export const viewAllMasterLocation = async ({
       { keywords: { $regex: term, $options: "i" } },
       { slug: { $regex: term, $options: "i" } },
       { hierarchyPath: { $regex: term, $options: "i" } },
+      { searchGroupSlug: { $regex: term, $options: "i" } },
+      { searchGroupNames: { $regex: term, $options: "i" } },
       { pincode: { $regex: term, $options: "i" } },
       { pincodes: { $regex: term, $options: "i" } },
     ] });
@@ -155,6 +168,18 @@ export const listDistinctMasterLocationValues = async ({ field, district, zone, 
 export const searchMasterLocation = async (text, limit = 10) => {
   const term = (text || "").toLowerCase().trim();
   if (!term) return [];
+  const hierarchyTokens = term
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter(Boolean);
+  const hierarchyTokenMatch = {
+    $and: hierarchyTokens.map((token) => ({
+      hierarchyPath: {
+        $regex: escapeRegex(token),
+        $options: "i",
+      },
+    })),
+  };
 
   return masterLocationModel.aggregate([
     {
@@ -165,6 +190,7 @@ export const searchMasterLocation = async (text, limit = 10) => {
           { keywords: { $regex: term, $options: "i" } },
           { slug: { $regex: slugify(term), $options: "i" } },
           { pincode: term },
+          hierarchyTokenMatch,
         ],
       },
     },

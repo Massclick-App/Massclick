@@ -4,7 +4,10 @@ import SearchLogModel from "../../model/businessList/searchLogModel.js";
 import mongoose from "mongoose";
 import { uploadImageToS3, getSignedUrlByKey, getImageDataUrlByKey } from "../../s3Uploder.js";
 import { sortBusinessesForDefaultSearch } from "../../utils/businessSearchSort.js";
-import { resolveLocationForSearch } from "../location/locationResolver.js";
+import {
+  resolveLocationForSearch,
+  resolveLocationSearchScope,
+} from "../location/locationResolver.js";
 import locationModel from "../../model/locationModel/locationModel.js";
 import userModel from "../../model/userModel.js";
 import QRCode from "qrcode";
@@ -447,6 +450,7 @@ export const findBusinessesByCategory = async (category, district) => {
     ],
   };
   let resolvedLocation = null;
+  let locationSearchScope = null;
 
   if (
     district &&
@@ -456,6 +460,8 @@ export const findBusinessesByCategory = async (category, district) => {
     resolvedLocation = await resolveLocationForSearch(district).catch(() => null);
 
     if (resolvedLocation?.slug) {
+      locationSearchScope = await resolveLocationSearchScope(resolvedLocation)
+        .catch(() => null);
       const escapeRegex = (value = "") =>
         String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       const normalizeLocation = (value = "") =>
@@ -470,20 +476,53 @@ export const findBusinessesByCategory = async (category, district) => {
         resolvedLocation.locality,
         resolvedLocation.ward,
         resolvedLocation.zone,
-        resolvedLocation.district,
+        ...(resolvedLocation.level === "district"
+          ? [resolvedLocation.district]
+          : []),
         ...(resolvedLocation.alternateNames || []),
       ]
         .filter(Boolean)
         .map(normalizeLocation);
+      const slugPrefixRegex = locationSearchScope?.slugPrefixRegex ||
+        new RegExp(`^${escapeRegex(resolvedLocation.slug)}(-|$)`);
+      const groupAddressRegexes = locationSearchScope?.searchGroupSlug
+        ? locationSearchScope.addressNames.map(
+            (name) => new RegExp(escapeRegex(name), "i"),
+          )
+        : [];
+      const groupDistrictMatches = [
+        {
+          "masterLocation.district": {
+            $regex: `^${escapeRegex(resolvedLocation.district || "")}$`,
+            $options: "i",
+          },
+        },
+        ...(locationSearchScope?.pincodes?.length
+          ? [{ pincode: { $in: locationSearchScope.pincodes } }]
+          : []),
+      ];
+      const groupedAddressMatch = groupAddressRegexes.length > 0
+        ? {
+            $and: [
+              { $or: groupDistrictMatches },
+              {
+                $or: groupAddressRegexes.flatMap((regex) => [
+                  { location: regex },
+                  { street: regex },
+                  { globalAddress: regex },
+                ]),
+              },
+            ],
+          }
+        : null;
 
       matchQuery.$and = [
         {
           $or: [
             {
-              "masterLocation.slug": new RegExp(
-                `^${escapeRegex(resolvedLocation.slug)}(-|$)`,
-              ),
+              "masterLocation.slug": slugPrefixRegex,
             },
+            ...(groupedAddressMatch ? [groupedAddressMatch] : []),
             {
               "masterLocation.locationId": null,
               $or: [...new Set(fallbackNames)].map((locationName) => ({

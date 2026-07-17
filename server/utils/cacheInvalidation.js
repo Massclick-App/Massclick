@@ -45,7 +45,13 @@ export const invalidateCategoryCache = async () => {
  */
 export const invalidateSearchCache = async () => {
   try {
-    const patterns = ['suggestions:*', 'trends:*', 'trending-categories:*', 'cache:*'];
+    const patterns = [
+      'search-v2:*',
+      'suggestions:*',
+      'trends:*',
+      'trending-categories:*',
+      'cache:*',
+    ];
     const results = await Promise.all(
       patterns.map(pattern => deleteCachePattern(pattern))
     );

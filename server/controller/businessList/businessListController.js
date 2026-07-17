@@ -11,7 +11,10 @@ import { enhanceSearchQuery, resolveCategory } from "../../utils/geminiQueryEnha
 import { invalidateSearchCache, invalidateDashboardCache, invalidateCategoryCache } from "../../utils/cacheInvalidation.js";
 import { buildBusinessExportWorkbook } from "../../utils/businessExportXlsx.js";
 import { ensureBusinessCertificates, regenerateBusinessCertificates } from "../../helper/businessList/businessCertificateHelper.js";
-import { resolveLocationForSearch } from "../../helper/location/locationResolver.js";
+import {
+  resolveLocationForSearch,
+  resolveLocationSearchScope,
+} from "../../helper/location/locationResolver.js";
 
 const ensureCertificatesForActivation = async (previousBusiness, business) => {
   const businessWithCertificates = await ensureBusinessCertificates(business);
@@ -854,20 +857,28 @@ export const mainSearchController = async (req, res) => {
 
     // ── Location filter ──────────────────────────────────────────────────────
     // Resolve the location text to a masterlocations node, then match linked
-    // businesses by slug prefix (parent slugs prefix child slugs, so one regex
-    // covers the whole subtree at any level). Unlinked businesses fall back to
-    // the legacy exact-text match so they don't vanish from results while
-    // linkage coverage grows.
+    // businesses by slug prefix. Related search groups can expand sibling
+    // nodes and safely recover broad neighborhood address entries without
+    // widening to the whole administrative zone. Unlinked businesses retain
+    // the legacy exact-text fallback while linkage coverage grows.
     let resolvedLocation = null;
+    let locationSearchScope = null;
     if (location) {
       resolvedLocation = await resolveLocationForSearch(location).catch((err) => {
         console.error("[Search] location resolve failed:", err.message);
         return null;
       });
+      if (resolvedLocation) {
+        locationSearchScope = await resolveLocationSearchScope(resolvedLocation).catch((err) => {
+          console.error("[Search] location scope expansion failed:", err.message);
+          return null;
+        });
+      }
     }
-    const slugPrefixRegex = resolvedLocation
-      ? new RegExp(`^${escapeRegex(resolvedLocation.slug)}(-|$)`)
-      : null;
+    const slugPrefixRegex = locationSearchScope?.slugPrefixRegex ||
+      (resolvedLocation
+        ? new RegExp(`^${escapeRegex(resolvedLocation.slug)}(-|$)`)
+        : null);
 
     if (resolvedLocation) {
       console.log(`[Search] location resolved: "${location}" -> ${resolvedLocation.level}:${resolvedLocation.slug}`);
@@ -884,9 +895,53 @@ export const mainSearchController = async (req, res) => {
           ...(resolvedLocation.alternateNames || []),
         ].filter(Boolean).map((n) => normalize(n))),
       ];
+      const groupAddressRegexes = locationSearchScope?.searchGroupSlug
+        ? locationSearchScope.addressNames.map(
+            (name) => new RegExp(escapeRegex(name), "i"),
+          )
+        : [];
+      const districtKey = normalize(resolvedLocation.district || "");
+      const districtNames = [
+        ...new Set([
+          districtKey,
+          ...(districtAliasMap[districtKey] || []),
+        ].filter(Boolean)),
+      ];
+      const groupDistrictMatches = [
+        {
+          "masterLocation.district": {
+            $regex: `^${escapeRegex(resolvedLocation.district || "")}$`,
+            $options: "i",
+          },
+        },
+        ...(locationSearchScope?.pincodes?.length
+          ? [{ pincode: { $in: locationSearchScope.pincodes } }]
+          : []),
+        ...districtNames.map((name) => ({
+          location: {
+            $regex: `^${escapeRegex(name)}$`,
+            $options: "i",
+          },
+        })),
+      ];
+      const groupedAddressMatch = groupAddressRegexes.length > 0
+        ? {
+            $and: [
+              { $or: groupDistrictMatches },
+              {
+                $or: groupAddressRegexes.flatMap((regex) => [
+                  { location: regex },
+                  { street: regex },
+                  { globalAddress: regex },
+                ]),
+              },
+            ],
+          }
+        : null;
       matchQuery.$and.push({
         $or: [
           { "masterLocation.slug": slugPrefixRegex },
+          ...(groupedAddressMatch ? [groupedAddressMatch] : []),
           {
             "masterLocation.locationId": null,
             $or: fallbackNames.map((l) => ({

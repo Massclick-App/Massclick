@@ -6,6 +6,30 @@ const slugify = (str) =>
 
 const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+const ownNameOfLocation = (doc = {}) =>
+  doc.locality || doc.ward || doc.zone || doc.district || doc.state || "";
+
+const removeCoveredSlugPrefixes = (slugs = []) => {
+  const sorted = [...new Set(slugs.filter(Boolean))]
+    .sort((a, b) => a.length - b.length || a.localeCompare(b));
+  const roots = [];
+
+  for (const slug of sorted) {
+    if (!roots.some((root) => slug === root || slug.startsWith(`${root}-`))) {
+      roots.push(slug);
+    }
+  }
+
+  return roots;
+};
+
+const buildSlugPrefixRegex = (slugs = []) => {
+  const roots = removeCoveredSlugPrefixes(slugs);
+  if (roots.length === 0) return null;
+  const alternatives = roots.map(escapeRegex).join("|");
+  return new RegExp(`^(?:${alternatives})(?:-|$)`);
+};
+
 // Resolve a location string from the search UI or a URL to a single
 // masterlocation node. Tried in precision order — an exact slug (sent by the
 // verified-locations autocomplete) never falls through to fuzzy matching.
@@ -47,6 +71,71 @@ export const resolveLocationForSearch = async (text) => {
 
   const ranked = await searchMasterLocation(term, 1);
   return ranked[0] || null;
+};
+
+// Expand a resolved location into its business-search scope. Most locations
+// use their normal descendant slug prefix. A related search group can span
+// sibling nodes (for example Thillai Nagar East/Main), in which case every
+// member contributes its slug, broad address names, and pincodes.
+export const resolveLocationSearchScope = async (resolvedLocation) => {
+  if (!resolvedLocation?.slug) {
+    return {
+      slugPrefixRegex: null,
+      slugPrefixes: [],
+      addressNames: [],
+      pincodes: [],
+      searchGroupSlug: null,
+    };
+  }
+
+  let locations = [resolvedLocation];
+  const searchGroupSlug = resolvedLocation.searchGroupSlug || null;
+
+  if (searchGroupSlug) {
+    const groupedLocations = await masterLocationModel
+      .find({ searchGroupSlug, isActive: true })
+      .lean();
+    if (groupedLocations.length > 0) locations = groupedLocations;
+  }
+
+  const slugPrefixes = removeCoveredSlugPrefixes(
+    locations.map((location) => location.slug),
+  );
+  const groupNames = locations.flatMap((location) =>
+    Array.isArray(location.searchGroupNames) ? location.searchGroupNames : [],
+  );
+  const fallbackNames = searchGroupSlug
+    ? groupNames
+    : [
+        ownNameOfLocation(resolvedLocation),
+        ...(resolvedLocation.alternateNames || []),
+      ];
+  const addressNames = [
+    ...new Set(
+      fallbackNames
+        .map((name) => String(name || "").trim())
+        .filter(Boolean),
+    ),
+  ];
+  const pincodes = [
+    ...new Set(
+      locations
+        .flatMap((location) => [
+          location.pincode,
+          ...(Array.isArray(location.pincodes) ? location.pincodes : []),
+        ])
+        .map((pincode) => String(pincode || "").trim())
+        .filter((pincode) => /^\d{6}$/.test(pincode)),
+    ),
+  ];
+
+  return {
+    slugPrefixRegex: buildSlugPrefixRegex(slugPrefixes),
+    slugPrefixes,
+    addressNames,
+    pincodes,
+    searchGroupSlug,
+  };
 };
 
 // Resolve a pincode to the deepest node that covers ALL localities sharing

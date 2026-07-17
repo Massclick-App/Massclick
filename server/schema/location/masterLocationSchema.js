@@ -59,6 +59,21 @@ const masterLocationSchema = new mongoose.Schema({
         default: [],
     },
 
+    // Optional grouping for neighborhoods that span sibling hierarchy nodes.
+    // Example: Thillai Nagar East/Main and their cross streets share one
+    // search group even though East and Main are separate wards.
+    searchGroupSlug: {
+        type: String,
+        default: null,
+        lowercase: true,
+        trim: true,
+        index: true,
+    },
+    searchGroupNames: {
+        type: [String],
+        default: undefined,
+    },
+
     // Depth of this document in the hierarchy
     level: {
         type: String,
