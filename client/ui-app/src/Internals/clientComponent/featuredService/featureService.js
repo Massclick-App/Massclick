@@ -99,7 +99,7 @@ const FeaturedServicesSection = () => {
           }
         }}>
 
-              <img src={service.icon ? service.icon : getPlaceholderImage()} alt={altText} title={`${service.name} services in ${districtSlug}`} className={cx("service-icons")} width="60" height="60" loading={index < 2 ? "eager" : "lazy"} decoding="async" fetchpriority={index < 2 ? "high" : "auto"} onError={e => {
+              <img src={service.icon ? service.icon : getPlaceholderImage()} alt={altText} title={`${service.name} services in ${districtSlug}`} className={cx("service-icons")} width="60" height="60" loading={index < 2 ? "eager" : "lazy"} decoding="async" fetchpriority={index < 2 ? "high" : "low"} onError={e => {
             e.target.onerror = null;
             handleImageError(e);
           }} />

@@ -16,6 +16,10 @@ import {
   demoteH1Tags,
   buildBreadcrumbSchema,
 } from "../utils/htmlUtils.js";
+import {
+  getHomeRoutePreloadTags,
+  renderHomeRouteShell,
+} from "../utils/homeRouteShell.mjs";
 
 const CLIENT_BUILD_PATH = process.env.REACT_BUILD_PATH;
 
@@ -538,13 +542,20 @@ export async function ssrMiddleware(req, res) {
         <div class="ssr-skeleton-bar shimmer" style="width:100%;height:120px;"></div>
       </div>
     `;
+    const isHomePage = !firstSegment;
+    const homeRoutePreloadTags = isHomePage
+      ? getHomeRoutePreloadTags(CLIENT_BUILD_PATH)
+      : "";
+    const rootBootstrapHtml = isHomePage
+      ? renderHomeRouteShell()
+      : `${skeletonHtml}<div class="ssr-seo-content">${serverContent}</div>`;
 
     html = html
       .replace(
         "</head>",
-        `${lcpImagePreload}<script>window.__SSR_SEO__=${ssrSeoJson}</script>${schemaScripts}</head>`
+        `${homeRoutePreloadTags}${lcpImagePreload}<script>window.__SSR_SEO__=${ssrSeoJson}</script>${schemaScripts}</head>`
       )
-      .replace('<div id="root"></div>', `<div id="root">${skeletonHtml}<div class="ssr-seo-content">${serverContent}</div></div>`);
+      .replace('<div id="root"></div>', `<div id="root">${rootBootstrapHtml}</div>`);
 
     if (!firstSegment) {
       appendDiscoveryLinkHeaders(res);

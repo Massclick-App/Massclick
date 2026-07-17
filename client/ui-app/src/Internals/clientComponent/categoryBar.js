@@ -177,8 +177,8 @@ const CategoryBar = () => {
     const token = localStorage.getItem("authToken");
     if (mobile && token) {
       dispatch(viewOtpUser(mobile));
+      dispatch(fetchMatchedLeads());
     }
-    dispatch(fetchMatchedLeads());
   }, [dispatch]);
   const handleMenuClick = event => setAnchorEl(event.currentTarget);
   const handleMenuClose = () => setAnchorEl(null);

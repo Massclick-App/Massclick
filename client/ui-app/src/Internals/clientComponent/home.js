@@ -53,7 +53,6 @@ const TopTourist = lazy(() => import("./topTourist/topTourist"));
 const PopularCategoriesLink = lazy(
   () => import("./popularCategories/popularCategories.js"),
 );
-const SearchResults = lazy(() => import("./SearchResult/SearchResult"));
 const Footer = lazy(() => import("./footer/footer"));
 const PageHeaderContents = lazy(
   () => import("./pageHeaderContents/pageHeaderContents.js"),
@@ -78,8 +77,7 @@ const DeferredHomeSection = ({
   children,
   id,
   minHeight,
-  preserveMinHeight = false,
-  rootMargin = "400px 0px",
+  rootMargin = "200px 0px",
   style,
 }) => {
   const { targetRef, shouldRender } = useRenderNearViewport(rootMargin);
@@ -90,8 +88,10 @@ const DeferredHomeSection = ({
       id={id}
       className={cx("home-section")}
       style={{
-        minHeight:
-          !shouldRender || preserveMinHeight ? minHeight : undefined,
+        // Never collapse the reservation when async content mounts. The
+        // previous placeholder → auto-height transition accumulated CLS as
+        // users scrolled through the page.
+        minHeight,
         ...style,
       }}
     >
@@ -109,6 +109,7 @@ const DeferredHomeSection = ({
 const SECTION_HEIGHTS = {
   featured: "var(--featured-services-reserved-height)",
   service: 420,
+  events: 380,
   trending: 290,
   popular: 330,
   tourist: 350,
@@ -249,7 +250,6 @@ const LandingPage = React.memo(() => {
     canonical: "https://massclick.in/",
     robots: "index, follow",
   };
-  const [searchResults, setSearchResults] = useState(null);
   const [isScrolled, setIsScrolled] = useState(false);
   const [locationName, setLocationName] = useState(
     localStorage.getItem("selectedLocation") || "Trichy",
@@ -320,12 +320,11 @@ const LandingPage = React.memo(() => {
     observer.observe(heroSectionRef.current);
     return () => observer.disconnect();
   }, [checkedLogin]);
-  const isSearching = searchResults && searchResults.length > 0;
   // Keep the original visual order while allowing each below-the-fold section
   // to load independently only as the user approaches it.
   const deferredSections = (
     <>
-      <DeferredHomeSection minHeight={1}>
+      <DeferredHomeSection minHeight={SECTION_HEIGHTS.events}>
         <EventCarousel locationLabel={locationName} />
       </DeferredHomeSection>
 
@@ -432,19 +431,14 @@ const LandingPage = React.memo(() => {
               setSearchTerm={setSearchTerm}
               categoryName={categoryName}
               setCategoryName={setCategoryName}
-              setSearchResults={setSearchResults}
             />
           </div>
 
           <Suspense fallback={null}>
-            {isSearching ? (
-              <SearchResults results={searchResults} />
-            ) : (
-              <>
+            <>
                 <DeferredHomeSection
                   minHeight={SECTION_HEIGHTS.featured}
-                  preserveMinHeight
-                  rootMargin="700px 0px"
+                  rootMargin="100px 0px"
                   style={{
                     maxHeight: "none",
                     overflow: "visible",
@@ -455,14 +449,12 @@ const LandingPage = React.memo(() => {
 
                 <DeferredHomeSection
                   minHeight="var(--public-counter-reserved-height)"
-                  preserveMinHeight
                 >
                   <PublicUserCounter />
                 </DeferredHomeSection>
 
                 <DeferredHomeSection
                   minHeight="var(--lead-awareness-reserved-height)"
-                  preserveMinHeight
                 >
                   <LeadAwareness
                     isLoggedIn={customerLoggedIn}
@@ -501,8 +493,7 @@ const LandingPage = React.memo(() => {
                 <DeferredHomeSection minHeight={320}>
                   <Footer />
                 </DeferredHomeSection>
-              </>
-            )}
+            </>
           </Suspense>
         </main>
 

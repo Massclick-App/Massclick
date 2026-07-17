@@ -1,8 +1,23 @@
 import { render, screen } from '@testing-library/react';
-import App from './App';
+import RouteLoadingFallback from './components/RouteLoadingFallback';
 
-test('renders learn react link', () => {
-  render(<App />);
-  const linkElement = screen.getByText(/learn react/i);
-  expect(linkElement).toBeInTheDocument();
+jest.mock(
+  'react-router-dom',
+  () => ({
+    useLocation: () => ({ pathname: '/' }),
+  }),
+  { virtual: true },
+);
+
+test('renders a geometry-stable homepage fallback with the final LCP text', () => {
+  const { container } = render(<RouteLoadingFallback />);
+
+  expect(
+    screen.getByRole('heading', { name: /explore\. connect\. succeed local\./i }),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByText(/find trusted businesses and services near you\./i),
+  ).toBeInTheDocument();
+  expect(container.querySelector('[data-home-route-shell]')).toBeInTheDocument();
+  expect(container.querySelectorAll('.home-route-shell__field')).toHaveLength(2);
 });

@@ -17,7 +17,7 @@
   position: relative;
   width: 100%;
   padding: 20px 0;
-  min-height: auto;
+  min-height: var(--home-hero-reserved-height, 240px);
   height: auto;
 
   display: flex;
@@ -556,6 +556,7 @@
 
 @media (max-width: 1199px) {
   .hero-section {
+    min-height: var(--home-hero-reserved-height, 450px);
     background-image:
       linear-gradient(180deg, rgba(255,250,247,.12), rgba(255,255,255,.72)),
       url("../../../assets/search-background.webp");
@@ -594,7 +595,7 @@
   .hero-section {
     --search-height: 50px;
     padding: 12px 0;
-    min-height: 300px;
+    min-height: var(--home-hero-reserved-height, 520px);
   }
 
   .hero-content {
@@ -703,7 +704,7 @@
   .hero-section {
     --search-height: 48px;
     padding: 14px 0 12px;
-    min-height: 0;
+    min-height: var(--home-hero-reserved-height, 520px);
     background-image:
       linear-gradient(180deg, rgba(255,250,247,.15) 0%, rgba(255,255,255,.08) 55%, rgba(255,255,255,.9) 100%),
       url("../../../assets/search-background.webp");

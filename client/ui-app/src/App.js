@@ -25,11 +25,10 @@ import ScrollToTop from './scrollTop.js';
 import RouteChangeTracker from './RouteChangeTracker.js';
 import { isBusinessPeopleUser } from './utils/userUtils.js';
 
-import ShimmerSkeleton from './Internals/clientComponent/shimmerSkeleton.js';
 import GlobalLoaderWrapper from './Internals/clientComponent/common/GlobalLoaderWrapper.js';
+import RouteLoadingFallback from './components/RouteLoadingFallback.js';
 import { scheduleIdleCallback } from './utils/scheduleIdleCallback.js';
 import { useDrawer } from './Internals/clientComponent/Drawer/drawerContext.js';
-import MobileHomeDock from './Internals/clientComponent/mobileHomeDock/MobileHomeDock.js';
 
 const Dashboard = lazy(() => import(/* webpackChunkName: "admin-dashboard" */ './Dashboard'));
 const Login = lazy(() => import(/* webpackChunkName: "admin-login" */ './Internals/Login/login.js'));
@@ -119,6 +118,7 @@ const UserMassclickDocumentsPage = lazy(() => import(/* webpackChunkName: "user-
 const UserMassclickFeedPage = lazy(() => import(/* webpackChunkName: "user-feed" */ './Internals/clientComponent/userMenu/MassclickFeed/MassclickFeedPage.js'));
 
 const FloatingButtons = lazy(() => import(/* webpackChunkName: "floating-buttons" */ './Internals/clientComponent/floating/floatingButtons.js'));
+const MobileHomeDock = lazy(() => import(/* webpackChunkName: "mobile-home-dock" */ './Internals/clientComponent/mobileHomeDock/MobileHomeDock.js'));
 // Google ad surfaces are intentionally disabled for now.
 // Uncomment these lines if you want to restore them later.
 // const FloatingAdCard = lazy(() => import(/* webpackChunkName: "floating-ad" */ './Internals/clientComponent/floating/floatingAdCard.js'));
@@ -128,18 +128,6 @@ const OTPLoginModal = lazy(() => import(/* webpackChunkName: "otp-modal" */ './I
 const CategoryRouter = lazy(() => import(/* webpackChunkName: "category-router" */ './Internals/clientComponent/categories/categoryRouter.js'));
 const BlogDetail = lazy(() => import(/* webpackChunkName: "blog-detail" */ './Internals/clientComponent/relatedBlogs/blogDetails/blogDetails.js'));
 const MaintenanceOverlay = lazy(() => import(/* webpackChunkName: "maintenance" */ './components/MaintenanceOverlay.js'));
-
-const DynamicLoader = memo(() => {
-  const { pathname } = useLocation();
-
-  // Don't show skeleton on home page - it causes layout shift
-  if (pathname === "/") {
-    return null;
-  }
-
-  // Show minimal shimmer for other pages
-  return <ShimmerSkeleton />;
-});
 
 const RateLimitNotifier = memo(() => {
   const { enqueueSnackbar } = useSnackbar();
@@ -164,12 +152,6 @@ const RateLimitNotifier = memo(() => {
 
   return null;
 });
-
-const ComingSoon = ({ title }) => (
-  <div style={{ textAlign: 'center', marginTop: '20%' }}>
-    <h2>{title} Page Coming Soon!</h2>
-  </div>
-);
 
 const getStoredCustomerUser = () => {
   try {
@@ -222,7 +204,7 @@ function AppRoutes({
   return (
     <>
       {!isAdminSurface && showGlobalChrome && (
-        <Suspense fallback={<DynamicLoader />}>
+        <Suspense fallback={null}>
           {hasDrawerEverOpened && <GlobalDrawer />}
           {/* Google ad widgets are disabled for now. Re-enable when needed. */}
           {/*
@@ -233,7 +215,7 @@ function AppRoutes({
         </Suspense>
       )}
 
-      <Suspense fallback={<DynamicLoader />}>
+      <Suspense fallback={<RouteLoadingFallback />}>
         <Routes>
           <Route path="/" element={<BusinessListing />} />
           <Route
@@ -355,11 +337,13 @@ function AppRoutes({
           />
         )}
       </Suspense>
-      {!isAdminSurface && (
-        <MobileHomeDock
-          isLoggedIn={Boolean(getAuthSnapshot()?.customer?.token || localStorage.getItem("authToken"))}
-          onRequireLogin={() => setOpenLoginModal(true)}
-        />
+      {!isAdminSurface && showGlobalChrome && (
+        <Suspense fallback={null}>
+          <MobileHomeDock
+            isLoggedIn={Boolean(getAuthSnapshot()?.customer?.token || localStorage.getItem("authToken"))}
+            onRequireLogin={() => setOpenLoginModal(true)}
+          />
+        </Suspense>
       )}
     </>
   );
@@ -493,8 +477,9 @@ function App() {
           ws.on('app:maintenance', handleMaintenanceMode);
           cleanup = () => ws.off('app:maintenance', handleMaintenanceMode);
         }
-      } catch (error) {
-        }
+      } catch {
+        // Realtime maintenance updates are optional; HTTP state remains active.
+      }
     });
 
     return () => cleanup?.();

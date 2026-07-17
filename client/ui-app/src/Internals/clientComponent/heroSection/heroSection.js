@@ -52,8 +52,7 @@ const HeroSection = React.memo(({
   setSearchTerm,
   locationName,
   setLocationName,
-  setCategoryName,
-  setSearchResults
+  setCategoryName
 }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -84,9 +83,26 @@ const HeroSection = React.memo(({
     backendSuggestionsQuery = ""
   } = businessState;
   useEffect(() => {
-    if (!publicCounterSettings) {
-      dispatch(fetchPublicUserCounter()).catch(() => {});
-    }
+    if (publicCounterSettings) return undefined;
+
+    let cancelled = false;
+    const idleHandle = scheduleIdleCallback(() => {
+      if (!cancelled) {
+        dispatch(fetchPublicUserCounter()).catch(() => {});
+      }
+    }, {
+      timeout: 3000
+    });
+
+    return () => {
+      cancelled = true;
+      if (idleHandle === null) return;
+      if (typeof window.cancelIdleCallback === "function") {
+        window.cancelIdleCallback(idleHandle);
+        return;
+      }
+      window.clearTimeout(idleHandle);
+    };
   }, [dispatch, publicCounterSettings]);
   useEffect(() => {
     const timer = window.setInterval(() => setCounterNow(Date.now()), 30000);
@@ -369,7 +385,8 @@ const HeroSection = React.memo(({
     try {
       recognition.start();
     } catch {
-      }
+      // Ignore duplicate SpeechRecognition starts while a session is active.
+    }
     recognition.onstart = () => {
       setIsListening(true);
     };
