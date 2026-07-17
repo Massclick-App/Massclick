@@ -88,10 +88,10 @@ const DeferredHomeSection = ({
       id={id}
       className={cx("home-section")}
       style={{
-        // Never collapse the reservation when async content mounts. The
-        // previous placeholder → auto-height transition accumulated CLS as
-        // users scrolled through the page.
-        minHeight,
+        // Reserve space until this section begins rendering. The Suspense
+        // fallback keeps that space while the chunk loads; afterward, the
+        // resolved component controls its height and may intentionally be null.
+        minHeight: shouldRender ? undefined : minHeight,
         ...style,
       }}
     >

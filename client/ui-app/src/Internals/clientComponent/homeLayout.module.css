@@ -28,6 +28,10 @@
   z-index: 1;
 }
 
+.home-section:empty {
+  margin-bottom: 0;
+}
+
 .home-section--flush {
   padding: 0;
 }
