@@ -1,10 +1,11 @@
 import { createScopedClassNames } from "../../../../utils/createScopedClassNames";
-import React, { useEffect, useMemo, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { Helmet } from "react-helmet-async";
 import { fetchSeoBlogBySlug } from "../../../../redux/actions/seoPageContentBlogAction";
 import { fetchAllAuthors } from "../../../../redux/actions/authorMasterAction.js";
+import { logSearchActivity } from "../../../../redux/actions/businessListAction";
 import { throttle } from "../../../../utils/throttle";
 import { getPlaceholderImage } from "../../../../utils/placeholderImage";
 import { generateArticleSchema, generateBreadcrumbSchema } from "../../../../utils/seoSchemaGenerators";
@@ -12,6 +13,7 @@ import styles from "./blogDetails.module.css";
 import Navbar from "../relatedBlogNavbar/relatedBlogNavbar";
 import Breadcrumbs from "../../Breadcrumbs/Breadcrumbs";
 import AuthorCard from "./AuthorCard";
+import OTPLoginModal from "../../AddBusinessModel.js";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import ArticleIcon from "@mui/icons-material/Article";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
@@ -25,6 +27,15 @@ import ShareIcon from "@mui/icons-material/Share";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 const cx = createScopedClassNames(styles);
+
+const readAuthUser = () => {
+  try {
+    return JSON.parse(localStorage.getItem("authUser") || "null");
+  } catch {
+    return null;
+  }
+};
+
 const BlogDetail = () => {
   const {
     slug
@@ -34,6 +45,8 @@ const BlogDetail = () => {
   const [copied, setCopied] = useState(false);
   const [selectedContact, setSelectedContact] = useState(null);
   const [copiedContact, setCopiedContact] = useState(false);
+  const [openLoginModal, setOpenLoginModal] = useState(false);
+  const loggedLeadKeyRef = useRef(null);
   const {
     blog,
     loading,
@@ -47,6 +60,55 @@ const BlogDetail = () => {
     }
     dispatch(fetchAllAuthors());
   }, [dispatch, slug]);
+
+  useEffect(() => {
+    if (!readAuthUser()) {
+      setOpenLoginModal(true);
+    }
+  }, [slug]);
+
+  useEffect(() => {
+    if (!blog || openLoginModal) return;
+
+    const authUser = readAuthUser();
+    if (!authUser) return;
+
+    const userIdentity =
+      authUser._id ||
+      authUser.mobileNumber1 ||
+      authUser.mobileNumber2 ||
+      authUser.email;
+    if (!userIdentity) return;
+
+    const categoryName = String(blog.category || "").trim();
+    const blogLocation = String(blog.location || "Global").trim();
+    if (!categoryName) return;
+
+    const leadKey = `${slug}:${userIdentity}`;
+    if (loggedLeadKeyRef.current === leadKey) return;
+
+    const matchedBusinessIds = (blog.businessDetails || [])
+      .map(business => business?._id)
+      .filter(Boolean);
+    const userDetails = {
+      userName: authUser.userName,
+      mobileNumber1: authUser.mobileNumber1,
+      mobileNumber2: authUser.mobileNumber2,
+      email: authUser.email,
+    };
+
+    dispatch(
+      logSearchActivity(
+        categoryName,
+        blogLocation,
+        userDetails,
+        categoryName,
+        true,
+        matchedBusinessIds,
+      ),
+    );
+    loggedLeadKeyRef.current = leadKey;
+  }, [blog, dispatch, openLoginModal, slug]);
 
   // Helper function to get author details by authorId
   const getAuthorData = useCallback(() => {
@@ -507,6 +569,10 @@ const BlogDetail = () => {
     url: canonical
   }]);
   return <>
+    <OTPLoginModal
+      open={openLoginModal}
+      handleClose={() => setOpenLoginModal(false)}
+    />
     <Helmet>
       <title>{metaTitle}</title>
       <meta name="description" content={metaDescription} />
