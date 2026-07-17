@@ -397,7 +397,7 @@ const HeroSection = React.memo(({
   return <div className={cx("hero-section")}>
       <div className={cx("hero-layout")}>
       <div className={cx("hero-decor hero-decor-left")} aria-hidden="true">
-        <img src={heroIllustrationLeft} alt="" />
+        <img src={heroIllustrationLeft} alt="" loading="lazy" decoding="async" fetchpriority="low" />
       </div>
       <div className={cx("hero-heading")}>
         <h1 className={cx("hero-title")}>
@@ -549,7 +549,7 @@ const HeroSection = React.memo(({
         </div>
       </div>
       <div className={cx("hero-decor hero-decor-right")} aria-hidden="true">
-        <img src={heroIllustrationRight} alt="" />
+        <img src={heroIllustrationRight} alt="" loading="lazy" decoding="async" fetchpriority="low" />
       </div>
       </div>
     </div>;

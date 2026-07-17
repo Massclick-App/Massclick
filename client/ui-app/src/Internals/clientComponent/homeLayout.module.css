@@ -8,6 +8,7 @@
   --section-padding-h: clamp(16px, 3.5vw, 52px);
   --section-radius: 16px;
   --section-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+  --featured-services-reserved-height: 400px;
   --public-counter-reserved-height: 184px;
   --lead-awareness-reserved-height: 160px;
 
@@ -109,6 +110,12 @@
   }
 }
 
+@media (max-width: 1499px) {
+  .home-page {
+    --featured-services-reserved-height: 540px;
+  }
+}
+
 @media (max-width: 900px) {
   .home-page {
     --home-edge: clamp(24px, 7vw, 52px);
@@ -117,6 +124,12 @@
 
   .home-section {
     margin-bottom: 24px;
+  }
+}
+
+@media (max-width: 768px) {
+  .home-page {
+    --featured-services-reserved-height: 610px;
   }
 }
 
@@ -133,6 +146,12 @@
 
   .home-section {
     margin-bottom: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .home-page {
+    --featured-services-reserved-height: 410px;
   }
 }
 

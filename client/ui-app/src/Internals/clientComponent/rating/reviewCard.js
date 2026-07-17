@@ -10,7 +10,7 @@ import { useDispatch } from "react-redux";
 import { markReviewHelpful, reportReview } from "../../../redux/actions/reviewAction";
 import ReplyBox from "./reviewReplayBox";
 import OTPLoginModal from "../AddBusinessModel";
-import { useSnackbar } from "notistack";
+import { useSnackbar } from "../../../components/snackbar/SnackbarProvider.js";
 import styles from "./reviewReplayBox.module.css";
 const cx = createScopedClassNames(styles);
 const normalizeMobile = value => {

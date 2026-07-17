@@ -13,7 +13,10 @@ import {
 
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-import { SnackbarProvider, useSnackbar } from 'notistack';
+import {
+  SnackbarProvider,
+  useSnackbar,
+} from './components/snackbar/SnackbarProvider.js';
 
 import theme from './Internals/clientComponent/theme.js';
 import PrivateRoute from './PrivateRoute';

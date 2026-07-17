@@ -18,7 +18,7 @@ import {
   Box, Button, Typography, CircularProgress, IconButton, Avatar, Dialog, DialogTitle, DialogContent, DialogActions,
   Drawer, Divider, Chip
 } from "@mui/material";
-import { useSnackbar } from 'notistack';
+import { useSnackbar } from '../../components/snackbar/SnackbarProvider.js';
 import PropTypes from 'prop-types';
 import { styled } from '@mui/material/styles';
 import StepConnector, { stepConnectorClasses } from '@mui/material/StepConnector';

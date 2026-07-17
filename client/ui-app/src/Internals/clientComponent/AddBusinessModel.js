@@ -26,7 +26,7 @@ import { getCustomerUser } from "../../auth/authStore.js";
 import { useDispatch } from "react-redux";
 import { Link as RouterLink } from 'react-router-dom';
 import { Link as MuiLink } from '@mui/material';
-import { useSnackbar } from "notistack";
+import { useSnackbar } from "../../components/snackbar/SnackbarProvider.js";
 
 const LogoComponent = () => (
     <Box sx={{ mb: 3, textAlign: 'center' }}>

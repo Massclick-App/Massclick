@@ -6,7 +6,7 @@ import { Helmet } from "react-helmet-async";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { getPlaceholderImage } from "../../../utils/placeholderImage";
 import { useDispatch, useSelector } from "react-redux";
-import { useSnackbar } from "notistack";
+import { useSnackbar } from "../../../components/snackbar/SnackbarProvider.js";
 import { getBusinessDetailsById, getBusinessDetailsBySlug, editBusinessList } from "../../../redux/actions/businessListAction";
 import styles from "./cardDetails.module.css";
 import UserRatingWidget from "../rating/rating";

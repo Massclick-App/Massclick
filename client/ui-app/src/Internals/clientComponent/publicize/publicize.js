@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { useSnackbar } from "notistack";
+import { useSnackbar } from "../../../components/snackbar/SnackbarProvider.js";
 import {
   ArrowRight,
   Award,

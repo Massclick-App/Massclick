@@ -297,13 +297,17 @@ const CategoryBar = () => {
       </MenuItem>)}
     </Menu>
 
-    <Suspense fallback={null}>
-      <AddBusinessModal open={isModalOpen} handleClose={() => setIsModalOpen(false)} />
-    </Suspense>
+    {isModalOpen && (
+      <Suspense fallback={null}>
+        <AddBusinessModal open={true} handleClose={() => setIsModalOpen(false)} />
+      </Suspense>
+    )}
 
-    <Suspense fallback={null}>
-      <LeadsNotificationModal open={isNotificationModalOpen} onClose={() => setIsNotificationModalOpen(false)} />
-    </Suspense>
+    {isNotificationModalOpen && (
+      <Suspense fallback={null}>
+        <LeadsNotificationModal open={true} onClose={() => setIsNotificationModalOpen(false)} />
+      </Suspense>
+    )}
   </header>;
 };
 

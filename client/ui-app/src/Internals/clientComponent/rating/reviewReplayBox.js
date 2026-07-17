@@ -2,7 +2,7 @@ import { createScopedClassNames } from "../../../utils/createScopedClassNames";
 import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { replyToReview } from "../../../redux/actions/reviewAction";
-import { useSnackbar } from "notistack";
+import { useSnackbar } from "../../../components/snackbar/SnackbarProvider.js";
 import styles from "./reviewReplayBox.module.css";
 const cx = createScopedClassNames(styles);
 export default function ReplyBox({

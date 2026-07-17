@@ -216,8 +216,11 @@
 }
 
 .trust-count {
+  display: inline-block;
+  min-width: 7ch;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
+  text-align: center;
   color: var(--brand-blue);
 }
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useSnackbar } from 'notistack';
+import { useSnackbar } from '../../components/snackbar/SnackbarProvider.js';
 import { createScopedClassNames } from '../../utils/createScopedClassNames';
 import styles from './gmapsLeads.module.css';
 import {

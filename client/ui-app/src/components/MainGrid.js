@@ -5,7 +5,7 @@ import Button from '@mui/material/Button';
 
 import { useSelector, useDispatch } from "react-redux";
 import { getAllBusinessList, toggleBusinessStatus, trackQrDownload } from "../redux/actions/businessListAction";
-import { useSnackbar } from 'notistack';
+import { useSnackbar } from './snackbar/SnackbarProvider.js';
 import { getAllLocation } from "../redux/actions/locationAction";
 import { getAllUsers } from "../redux/actions/userAction.js";
 import { Payment as PaymentIcon, CheckCircle, HourglassEmpty, Cancel } from "@mui/icons-material";

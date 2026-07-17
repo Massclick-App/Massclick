@@ -1,7 +1,7 @@
 import { createScopedClassNames } from "../../../utils/createScopedClassNames";
 import { useState, useRef, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useSnackbar } from 'notistack';
+import { useSnackbar } from '../../../components/snackbar/SnackbarProvider.js';
 import BusinessIcon from "@mui/icons-material/Business";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import PhoneIcon from "@mui/icons-material/Phone";

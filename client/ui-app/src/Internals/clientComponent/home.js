@@ -107,7 +107,7 @@ const DeferredHomeSection = ({
 };
 
 const SECTION_HEIGHTS = {
-  featured: 280,
+  featured: "var(--featured-services-reserved-height)",
   service: 420,
   trending: 290,
   popular: 330,
@@ -443,6 +443,7 @@ const LandingPage = React.memo(() => {
               <>
                 <DeferredHomeSection
                   minHeight={SECTION_HEIGHTS.featured}
+                  preserveMinHeight
                   rootMargin="700px 0px"
                   style={{
                     maxHeight: "none",

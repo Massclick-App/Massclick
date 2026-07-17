@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { createSeo, editSeo, deleteSeo, getAllSeo } from "../../redux/actions/seoAction.js";
 import { getAllLocation } from "../../redux/actions/locationAction.js";
-import { useSnackbar } from "notistack";
+import { useSnackbar } from "../../components/snackbar/SnackbarProvider.js";
 import { Box, Button, Typography, CircularProgress, IconButton, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
 import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { fetchSeoCategorySuggestions } from "../../redux/actions/seoAction.js";

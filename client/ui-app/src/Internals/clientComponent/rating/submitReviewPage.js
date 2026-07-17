@@ -18,7 +18,7 @@ import Button from '@mui/material/Button';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import OTPLoginModal from '../AddBusinessModel';
 import Tooltip from "@mui/material/Tooltip";
-import { useSnackbar } from "notistack";
+import { useSnackbar } from "../../../components/snackbar/SnackbarProvider.js";
 const cx = createScopedClassNames(styles);
 const labels = {
   0.5: 'Useless',
