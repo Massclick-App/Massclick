@@ -8,6 +8,8 @@
   --section-padding-h: clamp(16px, 3.5vw, 52px);
   --section-radius: 16px;
   --section-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+  --public-counter-reserved-height: 184px;
+  --lead-awareness-reserved-height: 160px;
 
   background: var(--home-page-bg);
   contain: layout style paint;
@@ -101,9 +103,16 @@
    Each component manages its own styling via CSS Modules.
    This layout container only manages its own properties. */
 
+@media (max-width: 980px) {
+  .home-page {
+    --lead-awareness-reserved-height: 220px;
+  }
+}
+
 @media (max-width: 900px) {
   .home-page {
     --home-edge: clamp(24px, 7vw, 52px);
+    --public-counter-reserved-height: 260px;
   }
 
   .home-section {
@@ -111,7 +120,17 @@
   }
 }
 
+@media (max-width: 640px) {
+  .home-page {
+    --lead-awareness-reserved-height: 420px;
+  }
+}
+
 @media (max-width: 600px) {
+  .home-page {
+    --public-counter-reserved-height: 520px;
+  }
+
   .home-section {
     margin-bottom: 20px;
   }

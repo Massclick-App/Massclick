@@ -78,6 +78,7 @@ const DeferredHomeSection = ({
   children,
   id,
   minHeight,
+  preserveMinHeight = false,
   rootMargin = "400px 0px",
   style,
 }) => {
@@ -89,7 +90,8 @@ const DeferredHomeSection = ({
       id={id}
       className={cx("home-section")}
       style={{
-        minHeight: shouldRender ? undefined : minHeight,
+        minHeight:
+          !shouldRender || preserveMinHeight ? minHeight : undefined,
         ...style,
       }}
     >
@@ -450,11 +452,17 @@ const LandingPage = React.memo(() => {
                   <FeaturedServices />
                 </DeferredHomeSection>
 
-                <DeferredHomeSection minHeight={176}>
+                <DeferredHomeSection
+                  minHeight="var(--public-counter-reserved-height)"
+                  preserveMinHeight
+                >
                   <PublicUserCounter />
                 </DeferredHomeSection>
 
-                <DeferredHomeSection minHeight={118}>
+                <DeferredHomeSection
+                  minHeight="var(--lead-awareness-reserved-height)"
+                  preserveMinHeight
+                >
                   <LeadAwareness
                     isLoggedIn={customerLoggedIn}
                     emphasizeLogin={loginReminder}
