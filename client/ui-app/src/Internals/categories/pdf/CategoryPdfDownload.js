@@ -1,48 +1,64 @@
 import React, { useState } from "react";
-import { Button, CircularProgress } from "@mui/material";
 import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
+import PictureAsPdfOutlinedIcon from "@mui/icons-material/PictureAsPdfOutlined";
+import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
 import { generateCategoryKeywordsPdf } from "./generateCategoryKeywordsPdf";
+import styles from "./CategoryPdfDownload.module.css";
 
 export default function CategoryPdfDownload({ loadCategories, onError }) {
-  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState("idle");
+  const loading = status === "loading";
 
   const handleDownload = async () => {
-    setLoading(true);
+    setStatus("loading");
     try {
       const categories = await loadCategories();
-      if (!categories.length)
+      if (!categories.length) {
         throw new Error("No categories are available to export.");
+      }
       generateCategoryKeywordsPdf(categories);
+      setStatus("success");
+      window.setTimeout(() => setStatus("idle"), 1800);
     } catch (error) {
+      setStatus("idle");
       onError?.(
         error?.message || "Unable to create the category keywords PDF.",
       );
-    } finally {
-      setLoading(false);
     }
   };
 
   return (
-    <Button
-      variant="contained"
-      size="small"
-      startIcon={
-        loading ? (
-          <CircularProgress size={16} color="inherit" />
-        ) : (
-          <FileDownloadOutlinedIcon />
-        )
-      }
+    <button
+      type="button"
+      className={styles.exportButton}
       onClick={handleDownload}
       disabled={loading}
-      sx={{
-        textTransform: "none",
-        bgcolor: "#f5670f",
-        boxShadow: "0 5px 14px rgba(245, 103, 15, 0.22)",
-        "&:hover": { bgcolor: "#dc5708" },
-      }}
+      aria-busy={loading}
+      aria-label="Download the complete category and keyword directory as PDF"
     >
-      {loading ? "Preparing PDF..." : "Download All Categories PDF"}
-    </Button>
+      <span className={styles.iconWrap} aria-hidden="true">
+        {status === "success" ? (
+          <CheckRoundedIcon />
+        ) : (
+          <PictureAsPdfOutlinedIcon />
+        )}
+      </span>
+      <span className={styles.copy}>
+        <span className={styles.eyebrow}>PDF directory</span>
+        <span className={styles.label}>
+          {loading
+            ? "Building your export…"
+            : status === "success"
+              ? "Download ready"
+              : "Export categories"}
+        </span>
+      </span>
+      <span
+        className={`${styles.actionIcon} ${loading ? styles.spinning : ""}`}
+        aria-hidden="true"
+      >
+        <FileDownloadOutlinedIcon />
+      </span>
+    </button>
   );
 }
