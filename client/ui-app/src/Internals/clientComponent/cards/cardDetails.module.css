@@ -1197,6 +1197,18 @@ button.business-CardDetails-statusBadge:hover {
   cursor: pointer;
 }
 
+.business-CardDetails-sidebarItem--action {
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.business-CardDetails-sidebarItem--action:hover,
+.business-CardDetails-sidebarItem--action:focus-visible {
+  background: #fff7ed;
+  color: var(--bc-ink);
+  outline: none;
+}
+
 .business-CardDetails-sidebarItem--highlight {
   background: #fff7ed;
   border: 0;
@@ -1729,6 +1741,76 @@ button.business-CardDetails-statusBadge:hover {
   display: flex;
   gap: 10px;
   justify-content: center;
+}
+
+.business-CardDetails-actionForm {
+  display: grid;
+  gap: 14px;
+}
+
+.business-CardDetails-modalBody .business-CardDetails-formIntro {
+  color: var(--bc-muted);
+  font-size: 0.88rem;
+  font-weight: 500;
+  line-height: 1.55;
+  margin: 0;
+  text-align: left;
+}
+
+.business-CardDetails-actionForm label {
+  color: var(--bc-ink);
+  display: grid;
+  font-size: 0.83rem;
+  font-weight: 700;
+  gap: 6px;
+}
+
+.business-CardDetails-actionForm input,
+.business-CardDetails-actionForm textarea {
+  border: 1px solid var(--bc-border);
+  border-radius: 10px;
+  color: var(--bc-ink);
+  font: inherit;
+  font-weight: 500;
+  padding: 10px 11px;
+  resize: vertical;
+}
+
+.business-CardDetails-actionForm input:focus,
+.business-CardDetails-actionForm textarea:focus {
+  border-color: var(--bc-primary);
+  box-shadow: 0 0 0 3px rgba(255, 123, 0, 0.12);
+  outline: none;
+}
+
+.business-CardDetails-formGrid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 1fr 1fr;
+}
+
+.business-CardDetails-actionForm button {
+  justify-content: center;
+  width: 100%;
+}
+
+.business-CardDetails-shareActions {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 1fr 1fr;
+}
+
+.business-CardDetails-shareActions .business-CardDetails-btn {
+  justify-content: center;
+  margin: 0;
+  text-decoration: none;
+}
+
+@media (max-width: 420px) {
+  .business-CardDetails-shareActions,
+  .business-CardDetails-formGrid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .business-CardDetails-galleryOverlay {

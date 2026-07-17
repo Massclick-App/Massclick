@@ -728,4 +728,86 @@ export const sendBusinessCertificateEmail = async (businessData, options = {}) =
   }
 };
 
+const escapeEnquiryText = (value = "") =>
+  String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+
+export const sendBusinessEnquiryEmail = async (businessData, lead = {}) => {
+  const businessEmail = String(businessData?.email || "").trim();
+  if (!businessEmail) return { success: false, message: "Business email is not available" };
+
+  const safe = {
+    businessName: escapeEnquiryText(businessData?.businessName || "Business"),
+    customerName: escapeEnquiryText(lead.customerName || "Customer"),
+    customerMobile: escapeEnquiryText(lead.customerMobile || "Not provided"),
+    customerEmail: escapeEnquiryText(lead.customerEmail || "Not provided"),
+    message: escapeEnquiryText(lead.message || "General enquiry"),
+    category: escapeEnquiryText(lead.category || businessData?.category || "General"),
+    location: escapeEnquiryText(lead.location || businessData?.location || "Not provided"),
+  };
+
+  const info = await transporter.sendMail({
+    from: `MassClick <${INVOICE_EMAIL_FROM}>`,
+    to: businessEmail,
+    replyTo: String(lead.customerEmail || "").trim() || undefined,
+    subject: `New MassClick enquiry for ${businessData.businessName || "your business"}`,
+    text: `New customer enquiry\n\nName: ${lead.customerName || "Customer"}\nMobile: ${lead.customerMobile || "Not provided"}\nEmail: ${lead.customerEmail || "Not provided"}\nCategory: ${lead.category || businessData.category || "General"}\nLocation: ${lead.location || businessData.location || "Not provided"}\nEnquiry: ${lead.message || "General enquiry"}`,
+    html: `<h2>New customer enquiry</h2>
+      <p>Hello ${safe.businessName},</p>
+      <p>You received a new customer enquiry through MassClick.</p>
+      <table cellpadding="6" cellspacing="0">
+        <tr><td><strong>Name</strong></td><td>${safe.customerName}</td></tr>
+        <tr><td><strong>Mobile</strong></td><td>${safe.customerMobile}</td></tr>
+        <tr><td><strong>Email</strong></td><td>${safe.customerEmail}</td></tr>
+        <tr><td><strong>Category</strong></td><td>${safe.category}</td></tr>
+        <tr><td><strong>Location</strong></td><td>${safe.location}</td></tr>
+      </table>
+      <h3>Enquiry</h3><p>${safe.message.replace(/\r?\n/g, "<br>")}</p>`,
+  });
+
+  return { success: true, messageId: info.messageId };
+};
+
+export const sendCustomerBusinessInfoEmail = async (businessData, customer = {}) => {
+  const customerEmail = String(customer.email || "").trim();
+  if (!customerEmail) return { success: false, message: "Customer email is not available" };
+
+  const safe = {
+    customerName: escapeEnquiryText(customer.name || "Customer"),
+    businessName: escapeEnquiryText(businessData.businessName || "Business"),
+    category: escapeEnquiryText(businessData.category || "Local business"),
+    contact: escapeEnquiryText(businessData.contactList || businessData.contact || "Not provided"),
+    email: escapeEnquiryText(businessData.email || "Not provided"),
+    address: escapeEnquiryText([
+      businessData.plotNumber,
+      businessData.street,
+      businessData.location,
+      businessData.pincode,
+    ].filter(Boolean).join(", ") || "Not provided"),
+    website: escapeEnquiryText(businessData.website || "Not provided"),
+  };
+
+  const info = await transporter.sendMail({
+    from: `MassClick <${INVOICE_EMAIL_FROM}>`,
+    to: customerEmail,
+    subject: `${businessData.businessName || "Business"} contact information from MassClick`,
+    text: `Hello ${customer.name || "Customer"},\n\nBusiness: ${businessData.businessName || "Business"}\nCategory: ${businessData.category || "Local business"}\nContact: ${businessData.contactList || businessData.contact || "Not provided"}\nEmail: ${businessData.email || "Not provided"}\nAddress: ${[businessData.plotNumber, businessData.street, businessData.location, businessData.pincode].filter(Boolean).join(", ") || "Not provided"}\nWebsite: ${businessData.website || "Not provided"}`,
+    html: `<h2>${safe.businessName}</h2>
+      <p>Hello ${safe.customerName}, here is the business information you requested from MassClick.</p>
+      <table cellpadding="6" cellspacing="0">
+        <tr><td><strong>Category</strong></td><td>${safe.category}</td></tr>
+        <tr><td><strong>Contact</strong></td><td>${safe.contact}</td></tr>
+        <tr><td><strong>Email</strong></td><td>${safe.email}</td></tr>
+        <tr><td><strong>Address</strong></td><td>${safe.address}</td></tr>
+        <tr><td><strong>Website</strong></td><td>${safe.website}</td></tr>
+      </table>`,
+  });
+
+  return { success: true, messageId: info.messageId };
+};
+
 export default transporter;

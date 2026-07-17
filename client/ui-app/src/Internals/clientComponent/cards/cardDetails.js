@@ -6,8 +6,9 @@ import { Helmet } from "react-helmet-async";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { getPlaceholderImage } from "../../../utils/placeholderImage";
 import { useDispatch, useSelector } from "react-redux";
-import { useSnackbar } from "../../../components/snackbar/SnackbarProvider.js";
-import { getBusinessDetailsById, getBusinessDetailsBySlug, editBusinessList } from "../../../redux/actions/businessListAction";
+import { useSnackbar } from "notistack";
+import { getBusinessDetailsById, getBusinessDetailsBySlug, editBusinessList, sendEnquiryLead, sendBusinessInfo } from "../../../redux/actions/businessListAction";
+import { createUserFeedback } from "../../../redux/actions/userFeedbackAction";
 import styles from "./cardDetails.module.css";
 import UserRatingWidget from "../rating/rating";
 import StickySearchBar from '../StickySearchBar/StickySearchBar';
@@ -140,6 +141,27 @@ const BusinessDetail = React.memo(() => {
   const [showFullHours, setShowFullHours] = useState(false);
   const [showShareOptions, setShowShareOptions] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
+  const [sidebarModal, setSidebarModal] = useState(null);
+  const [sidebarSubmitting, setSidebarSubmitting] = useState(false);
+  const [pendingSidebarAction, setPendingSidebarAction] = useState(null);
+  const [timingSuggestion, setTimingSuggestion] = useState({
+    days: "",
+    openingTime: "",
+    closingTime: "",
+    note: ""
+  });
+  const [enquiryForm, setEnquiryForm] = useState({
+    name: authUser?.userName || authUser?.name || "",
+    mobile: authUser?.mobileNumber1 || storedMobileNumber || "",
+    email: authUser?.email || authUser?.emailId || "",
+    message: ""
+  });
+  const [infoForm, setInfoForm] = useState({
+    name: authUser?.userName || authUser?.name || "",
+    mobile: authUser?.mobileNumber1 || storedMobileNumber || "",
+    email: authUser?.email || authUser?.emailId || ""
+  });
+  const [requestNote, setRequestNote] = useState("");
   const [showCertificate, setShowCertificate] = useState(false);
   const [activeCertificate, setActiveCertificate] = useState("verified");
   const [activeTab, setActiveTab] = useState("Overview");
@@ -177,6 +199,17 @@ const BusinessDetail = React.memo(() => {
       dispatch(getBusinessReviews(business._id));
     }
   }, [dispatch, business?._id]);
+  useEffect(() => {
+    const resumeSidebarAction = () => {
+      if (!pendingSidebarAction || !getAuthUser()?._id) return;
+      const action = pendingSidebarAction;
+      setPendingSidebarAction(null);
+      setShowLoginModal(false);
+      setSidebarModal(action);
+    };
+    window.addEventListener("authChange", resumeSidebarAction);
+    return () => window.removeEventListener("authChange", resumeSidebarAction);
+  }, [pendingSidebarAction]);
   useEffect(() => {
     if (business?._id) {
       trackBusinessView(business._id, business.businessName);
@@ -490,6 +523,176 @@ const BusinessDetail = React.memo(() => {
         behavior: "smooth",
         block: "start"
       });
+    }
+  };
+  const openSidebarAction = action => {
+    const user = getAuthUser();
+    if (!user?._id) {
+      setPendingSidebarAction(action);
+      setShowLoginModal(true);
+      enqueueSnackbar("Please log in to continue.", { variant: "info" });
+      return;
+    }
+    setSidebarModal(action);
+    if (action === "enquiry" || action === "info") {
+      setEnquiryForm(current => ({
+        ...current,
+        name: current.name || user.userName || user.name || "",
+        mobile: current.mobile || user.mobileNumber1 || storedMobileNumber || "",
+        email: current.email || user.email || user.emailId || ""
+      }));
+      setInfoForm(current => ({
+        name: current.name || user.userName || user.name || "",
+        mobile: current.mobile || user.mobileNumber1 || storedMobileNumber || "",
+        email: current.email || user.email || user.emailId || ""
+      }));
+    }
+  };
+  const handleShare = async () => {
+    const shareData = {
+      title: business.businessName,
+      text: `Check out ${business.businessName} on MassClick`,
+      url: window.location.href
+    };
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+        return;
+      } catch (error) {
+        if (error?.name === "AbortError") return;
+      }
+    }
+    setSidebarModal("share");
+  };
+  const handleEditListing = () => {
+    const user = getAuthUser();
+    if (!user?._id) {
+      setPendingSidebarAction("edit");
+      setShowLoginModal(true);
+      enqueueSnackbar("Please log in to edit this listing.", { variant: "info" });
+      return;
+    }
+    if (isBusinessImageUploadAllowed) {
+      navigate("/user_edit-profile");
+      return;
+    }
+    setSidebarModal("edit");
+  };
+  const handleTimingSuggestionSubmit = async e => {
+    e.preventDefault();
+    if (!timingSuggestion.days || !timingSuggestion.openingTime || !timingSuggestion.closingTime) {
+      enqueueSnackbar("Please select the days, opening time, and closing time.", { variant: "warning" });
+      return;
+    }
+    if (timingSuggestion.openingTime >= timingSuggestion.closingTime) {
+      enqueueSnackbar("Closing time must be later than opening time.", { variant: "warning" });
+      return;
+    }
+    setSidebarSubmitting(true);
+    try {
+      await dispatch(createUserFeedback({
+        rating: 5,
+        type: "Business timing correction",
+        area: business.businessName,
+        journey: `Business ID: ${business._id}`,
+        message: `${timingSuggestion.days}: ${timingSuggestion.openingTime} - ${timingSuggestion.closingTime}${timingSuggestion.note ? `. Note: ${timingSuggestion.note}` : ""}`,
+        source: "business_detail_timing_suggestion",
+        allowContact: true
+      }));
+      enqueueSnackbar("Thank you. Your timing suggestion was submitted for review.", { variant: "success" });
+      setSidebarModal(null);
+      setTimingSuggestion({ days: "", openingTime: "", closingTime: "", note: "" });
+    } catch (error) {
+      enqueueSnackbar(error?.response?.data?.message || "Unable to submit the timing suggestion.", { variant: "error" });
+    } finally {
+      setSidebarSubmitting(false);
+    }
+  };
+  const handleEnquirySubmit = async e => {
+    e.preventDefault();
+    const mobile = normalizePhone(enquiryForm.mobile);
+    const email = enquiryForm.email.trim();
+    if (!enquiryForm.name.trim() || mobile.length < 10 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !enquiryForm.message.trim()) {
+      enqueueSnackbar("Please enter your name, valid mobile number, email, and enquiry.", { variant: "warning" });
+      return;
+    }
+    setSidebarSubmitting(true);
+    try {
+      await dispatch(sendEnquiryLead({
+        businessId: business._id,
+        category: business.category || "",
+        location: business.location || "",
+        customerName: enquiryForm.name.trim(),
+        customerMobile: mobile,
+        customerEmail: email,
+        message: enquiryForm.message.trim()
+      }));
+      enqueueSnackbar(`Your enquiry was sent to ${business.businessName}.`, { variant: "success" });
+      setSidebarModal(null);
+      setEnquiryForm(current => ({ ...current, message: "" }));
+    } catch (error) {
+      enqueueSnackbar(error?.response?.data?.message || "Unable to send your enquiry.", { variant: "error" });
+    } finally {
+      setSidebarSubmitting(false);
+    }
+  };
+  const handleInfoSubmit = async e => {
+    e.preventDefault();
+    const mobile = normalizePhone(infoForm.mobile);
+    const email = infoForm.email.trim();
+    if (!infoForm.name.trim() || (mobile.length < 10 && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) {
+      enqueueSnackbar("Enter your name and a valid email or mobile number.", { variant: "warning" });
+      return;
+    }
+    setSidebarSubmitting(true);
+    try {
+      const result = await dispatch(sendBusinessInfo({
+        businessId: business._id,
+        customerName: infoForm.name.trim(),
+        customerMobile: mobile.length >= 10 ? mobile : "",
+        customerEmail: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : ""
+      }));
+      enqueueSnackbar(result.message || "Business information sent.", { variant: "success" });
+      setSidebarModal(null);
+    } catch (error) {
+      enqueueSnackbar(error?.response?.data?.message || "Unable to send business information.", { variant: "error" });
+    } finally {
+      setSidebarSubmitting(false);
+    }
+  };
+  const handleListingRequestSubmit = action => async e => {
+    e.preventDefault();
+    if (!requestNote.trim()) {
+      enqueueSnackbar("Please add a short note for our review team.", { variant: "warning" });
+      return;
+    }
+    setSidebarSubmitting(true);
+    try {
+      await dispatch(createUserFeedback({
+        rating: 5,
+        type: action === "claim" ? "Business ownership claim" : "Business listing correction",
+        area: business.businessName,
+        journey: `Business ID: ${business._id}`,
+        message: requestNote.trim(),
+        source: action === "claim" ? "business_detail_claim" : "business_detail_edit_request",
+        allowContact: true
+      }));
+      enqueueSnackbar(action === "claim" ? "Your ownership claim was submitted for verification." : "Your listing correction was submitted for review.", { variant: "success" });
+      setRequestNote("");
+      setSidebarModal(null);
+    } catch (error) {
+      enqueueSnackbar(error?.response?.data?.message || "Unable to submit your request.", { variant: "error" });
+    } finally {
+      setSidebarSubmitting(false);
+    }
+  };
+  const copyBusinessLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      enqueueSnackbar("Business link copied.", { variant: "success" });
+      setSidebarModal(null);
+    } catch {
+      enqueueSnackbar("Unable to copy the link.", { variant: "error" });
     }
   };
   const currentUrl = encodeURIComponent(window.location.href);
@@ -982,31 +1185,31 @@ const BusinessDetail = React.memo(() => {
                 </div>}
 
               <ul className={cx("business-CardDetails-sidebarList")}>
-                <li className={cx("business-CardDetails-sidebarItem")}>
+                <li className={cx("business-CardDetails-sidebarItem business-CardDetails-sidebarItem--action")} onClick={() => openSidebarAction("timings")} role="button" tabIndex={0} onKeyDown={e => (e.key === "Enter" || e.key === " ") && openSidebarAction("timings")}>
                   <NoteAltIcon className={cx("business-CardDetails-sidebarIcon")} />
                   Suggest New Timings
                 </li>
-                <li className={cx("business-CardDetails-sidebarItem")}>
+                <li className={cx("business-CardDetails-sidebarItem business-CardDetails-sidebarItem--action")} onClick={() => openSidebarAction("enquiry")} role="button" tabIndex={0} onKeyDown={e => (e.key === "Enter" || e.key === " ") && openSidebarAction("enquiry")}>
                   <EmailIcon className={cx("business-CardDetails-sidebarIcon")} />
                   Send Enquiry by Email
                 </li>
-                <li className={cx("business-CardDetails-sidebarItem business-CardDetails-sidebarItem--highlight")}>
+                <li className={cx("business-CardDetails-sidebarItem business-CardDetails-sidebarItem--highlight business-CardDetails-sidebarItem--action")} onClick={() => openSidebarAction("info")} role="button" tabIndex={0} onKeyDown={e => (e.key === "Enter" || e.key === " ") && openSidebarAction("info")}>
                   <InsertDriveFileIcon className={cx("business-CardDetails-sidebarIcon")} />
                   Get info via SMS/Email
                 </li>
-                <li className={cx("business-CardDetails-sidebarItem")}>
+                <li className={cx("business-CardDetails-sidebarItem business-CardDetails-sidebarItem--action")} onClick={handleShare} role="button" tabIndex={0} onKeyDown={e => (e.key === "Enter" || e.key === " ") && handleShare()}>
                   <ShareIcon className={cx("business-CardDetails-sidebarIcon")} />
                   Share
                 </li>
-                <li className={cx("business-CardDetails-sidebarItem")} onClick={handleRateClick}>
+                <li className={cx("business-CardDetails-sidebarItem business-CardDetails-sidebarItem--action")} onClick={handleRateClick} role="button" tabIndex={0} onKeyDown={e => (e.key === "Enter" || e.key === " ") && handleRateClick(e)}>
                   <StarIcon className={cx("business-CardDetails-sidebarIcon")} />
                   Tap to rate
                 </li>
-                <li className={cx("business-CardDetails-sidebarItem")}>
+                <li className={cx("business-CardDetails-sidebarItem business-CardDetails-sidebarItem--action")} onClick={handleEditListing} role="button" tabIndex={0} onKeyDown={e => (e.key === "Enter" || e.key === " ") && handleEditListing()}>
                   <EditIcon className={cx("business-CardDetails-sidebarIcon")} />
                   Edit this Listing
                 </li>
-                <li className={cx("business-CardDetails-sidebarItem")}>
+                <li className={cx("business-CardDetails-sidebarItem business-CardDetails-sidebarItem--action")} onClick={() => openSidebarAction("claim")} role="button" tabIndex={0} onKeyDown={e => (e.key === "Enter" || e.key === " ") && openSidebarAction("claim")}>
                   <CheckCircleIcon className={cx("business-CardDetails-sidebarIcon")} />
                   Claim this business
                 </li>
@@ -1075,6 +1278,81 @@ const BusinessDetail = React.memo(() => {
               Copy
             </button>
           </div>
+        </SimpleModal>}
+
+      {sidebarModal === "timings" && <SimpleModal title="Suggest New Timings" onClose={() => !sidebarSubmitting && setSidebarModal(null)}>
+          <form className={cx("business-CardDetails-actionForm")} onSubmit={handleTimingSuggestionSubmit}>
+            <p className={cx("business-CardDetails-formIntro")}>Help us keep {business.businessName}'s opening hours accurate.</p>
+            <label>Days
+              <input value={timingSuggestion.days} onChange={e => setTimingSuggestion({ ...timingSuggestion, days: e.target.value })} placeholder="Example: Monday to Friday" maxLength={80} required />
+            </label>
+            <div className={cx("business-CardDetails-formGrid")}>
+              <label>Opens
+                <input type="time" value={timingSuggestion.openingTime} onChange={e => setTimingSuggestion({ ...timingSuggestion, openingTime: e.target.value })} required />
+              </label>
+              <label>Closes
+                <input type="time" value={timingSuggestion.closingTime} onChange={e => setTimingSuggestion({ ...timingSuggestion, closingTime: e.target.value })} required />
+              </label>
+            </div>
+            <label>Additional note (optional)
+              <textarea value={timingSuggestion.note} onChange={e => setTimingSuggestion({ ...timingSuggestion, note: e.target.value })} maxLength={300} rows={3} placeholder="Closed for lunch, weekend hours, etc." />
+            </label>
+            <button type="submit" disabled={sidebarSubmitting} className={cx("business-CardDetails-btn business-CardDetails-btn--primary")}>{sidebarSubmitting ? "Submitting..." : "Submit Timings"}</button>
+          </form>
+        </SimpleModal>}
+
+      {sidebarModal === "enquiry" && <SimpleModal title={`Enquire with ${business.businessName}`} onClose={() => !sidebarSubmitting && setSidebarModal(null)}>
+          <form className={cx("business-CardDetails-actionForm")} onSubmit={handleEnquirySubmit}>
+            <p className={cx("business-CardDetails-formIntro")}>Enter your contact details and the business will receive your enquiry.</p>
+            <label>Your name
+              <input value={enquiryForm.name} onChange={e => setEnquiryForm({ ...enquiryForm, name: e.target.value })} maxLength={120} required />
+            </label>
+            <label>Mobile number
+              <input type="tel" inputMode="numeric" value={enquiryForm.mobile} onChange={e => setEnquiryForm({ ...enquiryForm, mobile: e.target.value.replace(/\D/g, "").slice(0, 15) })} required />
+            </label>
+            <label>Email address
+              <input type="email" value={enquiryForm.email} onChange={e => setEnquiryForm({ ...enquiryForm, email: e.target.value })} maxLength={180} required />
+            </label>
+            <label>Your enquiry
+              <textarea value={enquiryForm.message} onChange={e => setEnquiryForm({ ...enquiryForm, message: e.target.value })} maxLength={500} rows={4} placeholder="Tell the business what service you need." required />
+            </label>
+            <button type="submit" disabled={sidebarSubmitting} className={cx("business-CardDetails-btn business-CardDetails-btn--primary")}>{sidebarSubmitting ? "Sending..." : "Send Enquiry"}</button>
+          </form>
+        </SimpleModal>}
+
+      {sidebarModal === "info" && <SimpleModal title="Get Business Information" onClose={() => !sidebarSubmitting && setSidebarModal(null)}>
+          <form className={cx("business-CardDetails-actionForm")} onSubmit={handleInfoSubmit}>
+            <p className={cx("business-CardDetails-formIntro")}>We will send {business.businessName}'s contact information to you.</p>
+            <label>Your name
+              <input value={infoForm.name} onChange={e => setInfoForm({ ...infoForm, name: e.target.value })} maxLength={120} required />
+            </label>
+            <label>WhatsApp mobile
+              <input type="tel" inputMode="numeric" value={infoForm.mobile} onChange={e => setInfoForm({ ...infoForm, mobile: e.target.value.replace(/\D/g, "").slice(0, 15) })} placeholder="Optional when email is provided" />
+            </label>
+            <label>Email address
+              <input type="email" value={infoForm.email} onChange={e => setInfoForm({ ...infoForm, email: e.target.value })} maxLength={180} placeholder="Optional when mobile is provided" />
+            </label>
+            <button type="submit" disabled={sidebarSubmitting} className={cx("business-CardDetails-btn business-CardDetails-btn--primary")}>{sidebarSubmitting ? "Sending..." : "Send Business Info"}</button>
+          </form>
+        </SimpleModal>}
+
+      {sidebarModal === "share" && <SimpleModal title="Share this business" onClose={() => setSidebarModal(null)}>
+          <div className={cx("business-CardDetails-shareActions")}>
+            <a href={`https://wa.me/?text=${currentTitle}%20${currentUrl}`} target="_blank" rel="noopener noreferrer" className={cx("business-CardDetails-btn business-CardDetails-btn--whatsapp")}><WhatsAppIcon /> WhatsApp</a>
+            <a href={`https://www.facebook.com/sharer/sharer.php?u=${currentUrl}`} target="_blank" rel="noopener noreferrer" className={cx("business-CardDetails-btn business-CardDetails-btn--secondary")}><FacebookIcon /> Facebook</a>
+            <a href={`mailto:?subject=${currentTitle}&body=${currentUrl}`} className={cx("business-CardDetails-btn business-CardDetails-btn--secondary")}><EmailIcon /> Email</a>
+            <button type="button" onClick={copyBusinessLink} className={cx("business-CardDetails-btn business-CardDetails-btn--secondary")}><LinkIcon /> Copy Link</button>
+          </div>
+        </SimpleModal>}
+
+      {(sidebarModal === "edit" || sidebarModal === "claim") && <SimpleModal title={sidebarModal === "claim" ? "Claim this business" : "Suggest a listing correction"} onClose={() => !sidebarSubmitting && setSidebarModal(null)}>
+          <form className={cx("business-CardDetails-actionForm")} onSubmit={handleListingRequestSubmit(sidebarModal)}>
+            <p className={cx("business-CardDetails-formIntro")}>{sidebarModal === "claim" ? "Tell us your role and how we can verify your connection to this business. Our team will review the claim before granting edit access." : "Only the verified owner can directly edit this listing. Tell our review team what should be corrected."}</p>
+            <label>{sidebarModal === "claim" ? "Ownership details" : "Correction details"}
+              <textarea value={requestNote} onChange={e => setRequestNote(e.target.value)} maxLength={800} rows={5} placeholder={sidebarModal === "claim" ? "Example: I am the proprietor. Please verify me using the registered business mobile." : "Describe the incorrect information and the correct value."} required />
+            </label>
+            <button type="submit" disabled={sidebarSubmitting} className={cx("business-CardDetails-btn business-CardDetails-btn--primary")}>{sidebarSubmitting ? "Submitting..." : sidebarModal === "claim" ? "Submit Claim" : "Submit Correction"}</button>
+          </form>
         </SimpleModal>}
 
       {showFullGallery && <FullScreenGallery images={galleryImageSrcs} initialIndex={currentSlideIndex} onClose={() => setShowFullGallery(false)} />}

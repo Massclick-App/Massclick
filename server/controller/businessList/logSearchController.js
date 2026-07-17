@@ -25,6 +25,8 @@ import userModel from "../../model/msg91Model/usersModels.js";
 import { sendFCMNotification } from "../../helper/fcmHelper.js";
 import { emitToRoom } from "../../websocket/roomManager.js";
 import { buildRoom, WS_EVENTS } from "../../websocket/constants.js";
+import enquiryModel from "../../model/enquiry/enquiryModel.js";
+import { sendBusinessEnquiryEmail, sendCustomerBusinessInfoEmail } from "../../helper/email/emailService.js";
 
 const districtAliasMap = {
   tiruchirappalli: ["tiruchirappalli", "trichy"],
@@ -876,6 +878,7 @@ export const sendEnquiryLead = async (req, res) => {
       customerName,
       customerMobile,
       customerEmail,
+      message,
     } = req.body;
     const leadData = {
       category,
@@ -883,6 +886,7 @@ export const sendEnquiryLead = async (req, res) => {
       customerName,
       customerMobile,
       customerEmail,
+      message,
     };
     const leadSettings = await getSettings();
 
@@ -902,24 +906,51 @@ export const sendEnquiryLead = async (req, res) => {
         business.contactList,
       ])[0];
 
-      if (!mobile) {
+      if (!mobile && !business.email) {
         return res.status(400).json({
           success: false,
-          message: "Business does not have a valid enquiry mobile",
+          message: "Business does not have an enquiry email or mobile number",
         });
       }
 
-      await sendEnquiryBusinessLead(mobile, leadData, {
-        sourceType: "enquiry",
-        businessId: business._id,
+      let whatsappSent = false;
+      if (mobile) {
+        await sendEnquiryBusinessLead(mobile, leadData, {
+          sourceType: "enquiry",
+          businessId: business._id,
+          businessName: business.businessName,
+        });
+        whatsappSent = true;
+      }
+
+      await enquiryModel.create({
+        fullName: customerName,
         businessName: business.businessName,
+        businessCategory: category || business.category || "General",
+        contactNumber: customerMobile,
+        email: customerEmail,
+        serviceInterest: category || "General Consultation",
+        message: message || "General enquiry",
       });
+
+      let emailSent = false;
+      if (business.email) {
+        try {
+          emailSent = (await sendBusinessEnquiryEmail(business, leadData)).success === true;
+        } catch (emailError) {
+          console.error("sendBusinessEnquiryEmail failed:", emailError.message || emailError);
+        }
+      }
 
       return res.status(200).json({
         success: true,
-        message: "Lead sent to business",
+        message: emailSent
+          ? `Enquiry sent to the business by email${whatsappSent ? " and WhatsApp" : ""}`
+          : "Enquiry sent to the business",
+        emailSent,
+        whatsappSent,
         totalBusinesses: 1,
-        notifiedBusinesses: [{ businessName: business.businessName, mobile }],
+        notifiedBusinesses: [{ businessName: business.businessName, mobile, email: business.email || "" }],
       });
     }
 
@@ -1007,5 +1038,57 @@ export const sendEnquiryLead = async (req, res) => {
     res.status(500).json({
       success: false,
     });
+  }
+};
+
+export const sendBusinessInfoToCustomer = async (req, res) => {
+  try {
+    const { businessId, customerName, customerMobile, customerEmail } = req.body;
+    if (!businessId) {
+      return res.status(400).json({ success: false, message: "Business is required" });
+    }
+
+    const business = await businessListModel.findById(businessId).lean();
+    if (!business) {
+      return res.status(404).json({ success: false, message: "Business not found" });
+    }
+
+    let emailSent = false;
+    let whatsappSent = false;
+    if (customerEmail) {
+      emailSent = (await sendCustomerBusinessInfoEmail(business, {
+        name: customerName,
+        email: customerEmail,
+      })).success === true;
+    }
+    if (customerMobile) {
+      await sendBusinessesToCustomer(
+        customerMobile,
+        {
+          customerName,
+          customerMobile,
+          category: business.category,
+          searchText: business.category,
+          location: business.location,
+        },
+        [business],
+        { sourceType: "business_detail_info", customerListSendMode: "single" }
+      );
+      whatsappSent = true;
+    }
+
+    if (!emailSent && !whatsappSent) {
+      return res.status(400).json({ success: false, message: "A valid email or mobile number is required" });
+    }
+
+    return res.json({
+      success: true,
+      emailSent,
+      whatsappSent,
+      message: `Business information sent${emailSent ? " by email" : ""}${emailSent && whatsappSent ? " and" : ""}${whatsappSent ? " by WhatsApp" : ""}`,
+    });
+  } catch (error) {
+    console.error("sendBusinessInfoToCustomer failed:", error);
+    return res.status(500).json({ success: false, message: "Unable to send business information" });
   }
 };
