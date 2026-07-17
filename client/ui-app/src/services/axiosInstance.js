@@ -9,6 +9,7 @@ import {
   setAdminSession,
 } from "../auth/authStore.js";
 import { setMaintenanceModeOn } from "../redux/reducers/maintenanceReducer.js";
+import toFormUrlEncoded from "../utils/toFormUrlEncoded.js";
 
 const API_URL = process.env.REACT_APP_API_URL;
 const CLIENT_ID = process.env.REACT_APP_OAUTH_CLIENT_ID;
@@ -260,7 +261,6 @@ axiosInstance.interceptors.response.use(
       originalRequest._retry = true;
       isRefreshing = true;
 
-      const qs = require('qs');
       const refreshToken = getAdminRefreshToken();
 
       if (!refreshToken) {
@@ -270,7 +270,7 @@ axiosInstance.interceptors.response.use(
         return Promise.reject(error);
       }
 
-      const data = qs.stringify({
+      const data = toFormUrlEncoded({
         grant_type: 'refresh_token',
         client_id: CLIENT_ID,
         client_secret: CLIENT_SECRET,

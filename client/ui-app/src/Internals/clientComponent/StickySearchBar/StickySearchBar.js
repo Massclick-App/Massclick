@@ -1,5 +1,5 @@
 import { createScopedClassNames } from "../../../utils/createScopedClassNames";
-import React, { useState, useEffect, useRef } from "react";
+import React, { lazy, Suspense, useState, useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import styles from "./StickySearchBar.module.css";
@@ -20,19 +20,31 @@ import { selectBackendSuggestions, selectBackendSuggestionsMeta, selectSearchLog
 import { shouldSendSearch } from "../../../utils/searchLock";
 import { navigateToSearchResult } from "../../../utils/searchResultNavigation";
 import { scheduleIdleCallback } from "../../../utils/scheduleIdleCallback.js";
-import { Box, Button, IconButton, Tooltip } from "@mui/material";
+import useMediaQuery from "../../../hooks/useMediaQuery.js";
 import { useDrawer } from "../Drawer/drawerContext";
-import { categoryBarHelpers } from "../categoryBar";
-import AddBusinessModel from "../AddBusinessModel";
-import CategoryDropdown from "../CategoryDropdown/CategoryDropdown";
 
 const cx = createScopedClassNames(styles);
 const DEFAULT_LOCATION = "Trichy";
 const SUGGESTION_PAGE_SIZE = 20;
 const MASTER_LOCATION_SUGGESTION_LIMIT = 25;
+const WEB_VIEW_MEDIA_QUERY = "(min-width: 769px)";
 const isMongoObjectId = value => /^[a-f\d]{24}$/i.test(String(value || "").trim());
 const LEVEL_DEPTH = { district: 0, zone: 1, ward: 2, locality: 3 };
 const LEVEL_LABEL = { district: "District", zone: "Zone", ward: "Ward", locality: "Locality" };
+
+const AddBusinessModel = lazy(() =>
+  import(/* webpackChunkName: "otp-modal" */ "../AddBusinessModel")
+);
+const CategoryDropdown = lazy(() =>
+  import(
+    /* webpackChunkName: "category-dropdown" */ "../CategoryDropdown/CategoryDropdown"
+  )
+);
+const DeferredCategoryDropdown = (props) => (
+  <Suspense fallback={null}>
+    <CategoryDropdown {...props} />
+  </Suspense>
+);
 
 // Groups masterlocations search hits by name so a district/zone/ward that
 // shares its exact name with a child locality (the area's namesake place)
@@ -92,7 +104,7 @@ const StickySearchBar = ({
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [debouncedLocation, setDebouncedLocation] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isWebView, setIsWebView] = useState(window.innerWidth > 768);
+  const isWebView = useMediaQuery(WEB_VIEW_MEDIA_QUERY, true);
   // Canonical masterlocations slug of a VERIFIED LOCATIONS pick. Cleared the
   // moment the user types/picks free text - mirrors heroSection's behavior
   // and shares the same localStorage key so both search bars stay in sync.
@@ -187,12 +199,6 @@ const StickySearchBar = ({
     }));
     dispatch(searchMasterLocations(debouncedLocation.trim(), MASTER_LOCATION_SUGGESTION_LIMIT));
   }, [debouncedLocation, dispatch, isSelectingLocation]);
-
-  useEffect(() => {
-    const handleResize = () => setIsWebView(window.innerWidth > 768);
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -349,7 +355,7 @@ const StickySearchBar = ({
   };
 
   const goHome = () => navigate("/");
-  const loggedIn = categoryBarHelpers.checkLogin();
+  const loggedIn = Boolean(localStorage.getItem("authToken"));
   const handleOpenModal = () => setIsModalOpen(true);
   const handleCloseModal = () => setIsModalOpen(false);
 
@@ -362,11 +368,15 @@ const StickySearchBar = ({
         <header className={cx("sticky-search-bar", "web-header")}>
           <div className={cx("logo-section")}>
             <div className={cx("logo-circle")}>
-              <Tooltip title="Go to Home Page" arrow>
-                <button type="button" className={cx("logo-button")} onClick={goHome} aria-label="Go to Massclick home">
-                  <img src="/apple-touch-icon.png" alt="Massclick home" className={cx("logo-image")} width="48" height="48" decoding="async" />
-                </button>
-              </Tooltip>
+              <button
+                type="button"
+                className={cx("logo-button")}
+                onClick={goHome}
+                aria-label="Go to Massclick home"
+                title="Go to Home Page"
+              >
+                <img src="/apple-touch-icon.png" alt="Massclick home" className={cx("logo-image")} width="48" height="48" decoding="async" />
+              </button>
             </div>
             <div className={cx("brandingText")}>
               <button type="button" className={cx("logo-button", "logo-button--brand")} onClick={goHome} aria-label="Go to Massclick home">
@@ -395,7 +405,7 @@ const StickySearchBar = ({
                 }}
               />
               {isSelectingLocation && (
-                <CategoryDropdown sections={[{
+                <DeferredCategoryDropdown sections={[{
                   label: "VERIFIED LOCATIONS",
                   options: masterLocationSuggestions,
                   onSelect: handleLocationChange
@@ -428,14 +438,14 @@ const StickySearchBar = ({
                 }}
               />
               {isCategoryDropdownOpen && searchTerm.trim().length < 2 && (
-                <CategoryDropdown
+                <DeferredCategoryDropdown
                   label="RECENT SEARCHES"
                   options={recentSearchOptions}
                   onSelect={handleSelectCategory}
                 />
               )}
               {isCategoryDropdownOpen && searchTerm.trim().length >= 2 && (
-                <CategoryDropdown
+                <DeferredCategoryDropdown
                   label="SUGGESTIONS"
                   options={suggestionCategories}
                   onReachEnd={() => maybeLoadMoreSuggestions(searchTerm.trim())}
@@ -464,40 +474,34 @@ const StickySearchBar = ({
             </div>
           </form>
 
-          <Box className={cx("header-actions")} sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <div className={cx("header-actions")}>
             {!loggedIn ? (
-              <Button
-                variant="contained"
-                startIcon={<LoginIcon />}
+              <button
+                type="button"
+                className={cx("login-button")}
                 onClick={handleOpenModal}
-                sx={{
-                  background: "linear-gradient(45deg, #FF6F00, #F7941D)",
-                  color: "white",
-                  textTransform: "none",
-                  fontSize: "0.95rem",
-                  borderRadius: "30px",
-                  px: 2.5,
-                  py: 0.9,
-                  whiteSpace: "nowrap",
-                  boxShadow: "0 2px 8px rgba(255, 123, 0, 0.2)",
-                  transition: "all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)",
-                  "&:hover": {
-                    background: "linear-gradient(45deg, #cc5a0f, #ff8a2d)",
-                    boxShadow: "0 4px 12px rgba(255, 123, 0, 0.25)",
-                  },
-                }}
               >
+                <LoginIcon fontSize="small" />
                 Login / Sign Up
-              </Button>
+              </button>
             ) : (
-              <IconButton onClick={openDrawer} aria-label="Open user menu">
+              <button
+                type="button"
+                className={cx("user-menu-button")}
+                onClick={openDrawer}
+                aria-label="Open user menu"
+              >
                 <AccountCircleIcon sx={{ fontSize: 28 }} />
-              </IconButton>
+              </button>
             )}
-          </Box>
+          </div>
         </header>
 
-        <AddBusinessModel open={isModalOpen} handleClose={handleCloseModal} />
+        {isModalOpen && (
+          <Suspense fallback={null}>
+            <AddBusinessModel open={true} handleClose={handleCloseModal} />
+          </Suspense>
+        )}
       </div>
     );
   }
@@ -571,7 +575,7 @@ const StickySearchBar = ({
       </header>
 
       {isSelectingLocation && isFocused && (
-        <CategoryDropdown sections={[{
+        <DeferredCategoryDropdown sections={[{
           label: "VERIFIED LOCATIONS",
           options: masterLocationSuggestions,
           onSelect: handleLocationChange
@@ -584,7 +588,7 @@ const StickySearchBar = ({
       )}
 
       {isCategoryDropdownOpen && isFocused && !isSelectingLocation && searchTerm.trim().length >= 1 && (
-        <CategoryDropdown
+        <DeferredCategoryDropdown
           label="SUGGESTIONS"
           options={suggestionCategories}
           onSelect={handleSelectCategory}

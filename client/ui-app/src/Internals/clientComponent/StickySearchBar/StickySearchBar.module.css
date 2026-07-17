@@ -441,8 +441,54 @@
   flex-shrink: 0;
 }
 
-.header-actions :global(.MuiButton-root) {
+.login-button,
+.user-menu-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  cursor: pointer;
+}
+
+.login-button {
+  gap: 8px;
   min-height: 44px;
+  padding: 9px 20px;
+  border-radius: 30px;
+  background: linear-gradient(45deg, #ff6f00, #f7941d);
+  color: #fff;
+  font: inherit;
+  font-size: 0.95rem;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(255, 123, 0, 0.2);
+  transition:
+    background 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+.login-button:hover {
+  background: linear-gradient(45deg, #cc5a0f, #ff8a2d);
+  box-shadow: 0 4px 12px rgba(255, 123, 0, 0.25);
+}
+
+.login-button:focus-visible,
+.user-menu-button:focus-visible {
+  outline: 2px solid #ff8a2d;
+  outline-offset: 2px;
+}
+
+.user-menu-button {
+  width: 44px;
+  height: 44px;
+  padding: 8px;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  transition: background-color 0.2s ease;
+}
+
+.user-menu-button:hover {
+  background: rgba(15, 23, 42, 0.06);
 }
 
 @media (max-width: 1180px) {

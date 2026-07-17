@@ -1,10 +1,8 @@
 import { createScopedClassNames } from "../../../utils/createScopedClassNames";
-import React, { useEffect, useState } from "react";
+import React, { lazy, Suspense, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
-import { LazyLoadImage } from "react-lazy-load-image-component";
-import "react-lazy-load-image-component/src/effects/opacity.css";
 import styles from "./cards.module.css";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import PhoneIcon from "@mui/icons-material/Phone";
@@ -21,8 +19,11 @@ import WorkHistoryRoundedIcon from "@mui/icons-material/WorkHistoryRounded";
 import CheckBoxRoundedIcon from "@mui/icons-material/CheckBoxRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import { addFavorite, removeFavorite, fetchFavorites, getAuthUser } from "../../../redux/actions/favoriteAction";
-import OTPLoginModal from "../AddBusinessModel.js";
 import massClickLogo from "../../../assets/mclogo.webp";
+
+const OTPLoginModal = lazy(() =>
+  import(/* webpackChunkName: "otp-modal" */ "../AddBusinessModel.js")
+);
 
 const cx = createScopedClassNames(styles);
 
@@ -270,7 +271,14 @@ const Cards = ({
 
   return (
     <>
-      <OTPLoginModal open={showLoginModal} handleClose={() => setShowLoginModal(false)} />
+      {showLoginModal && (
+        <Suspense fallback={null}>
+          <OTPLoginModal
+            open={true}
+            handleClose={() => setShowLoginModal(false)}
+          />
+        </Suspense>
+      )}
       {showCertificate && createPortal(
         <div
           className={cx("certificate-overlay", `certificate-overlay--${currentCertificate.key}`)}
@@ -375,14 +383,11 @@ const Cards = ({
                   className={cx("card-image")}
                 />
               ) : (
-                <LazyLoadImage
+                <img
                   src={imageSrc || EMPTY_PIXEL}
-                  placeholderSrc={EMPTY_PIXEL}
                   alt={title}
                   decoding="async"
                   loading={index < 3 ? "eager" : "lazy"}
-                  effect="opacity"
-                  wrapperProps={{ style: { width: "100%", height: "100%" } }}
                   className={cx("card-image")}
                 />
               )}

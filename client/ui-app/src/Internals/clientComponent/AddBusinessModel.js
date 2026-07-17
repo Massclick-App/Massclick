@@ -222,6 +222,7 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater }) => {
             onClose={handleClose}
             maxWidth="sm"
             fullWidth={false}
+            disableScrollLock
             TransitionProps={{
                 appear: false,
             }}

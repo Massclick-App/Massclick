@@ -16,13 +16,11 @@ import StarIcon from "@mui/icons-material/Star";
 import GroupsIcon from "@mui/icons-material/Groups";
 import LockIcon from "@mui/icons-material/Lock";
 import TuneIcon from "@mui/icons-material/Tune";
-import CloseIcon from "@mui/icons-material/Close";
 import ViewListIcon from "@mui/icons-material/ViewList";
 import ViewModuleIcon from "@mui/icons-material/ViewModule";
 import ViewHeadlineIcon from "@mui/icons-material/ViewHeadline";
 import ViewAgendaIcon from "@mui/icons-material/ViewAgenda";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
-import { Chip, useMediaQuery } from "@mui/material";
 import styles from "./SearchResult.module.css";
 import StickySearchBar from "../StickySearchBar/StickySearchBar";
 import CardDesign from "../cards/cards.js";
@@ -53,6 +51,7 @@ import {
   generateFAQSchema,
 } from "../../../utils/seoSchemaGenerators";
 import { renderFaqAnswerWithLinks } from "../../../utils/renderFaqAnswerWithLinks";
+import useMediaQuery from "../../../hooks/useMediaQuery.js";
 import useRenderNearViewport from "../../../hooks/useRenderNearViewport.js";
 
 const Footer = lazy(() =>
@@ -62,9 +61,6 @@ const PopularCategoriesLink = lazy(() =>
   import(
     /* webpackChunkName: "popular-categories" */ "../popularCategories/popularCategories.js"
   )
-);
-const OTPLoginModal = lazy(() =>
-  import(/* webpackChunkName: "otp-modal" */ "../AddBusinessModel.js")
 );
 const FilterPanel = lazy(() =>
   import(/* webpackChunkName: "filter-panel" */ "./FilterPanel.js")
@@ -245,10 +241,7 @@ const SearchResults = React.memo(
     const navigate = useNavigate();
     const urlParams = useParams();
     const locationState = useLocation();
-    const [openLoginModal, setOpenLoginModal] = useState(
-      () => !localStorage.getItem("authUser"),
-    );
-    const isCompact = useMediaQuery("(max-width: 1023px)", { noSsr: true });
+    const isCompact = useMediaQuery("(max-width: 1023px)");
     const {
       targetRef: bottomSectionsRef,
       shouldRender: shouldRenderBottomSections,
@@ -929,14 +922,6 @@ const SearchResults = React.memo(
 
     return (
       <>
-        {openLoginModal && (
-          <Suspense fallback={null}>
-            <OTPLoginModal
-              open={true}
-              handleClose={() => setOpenLoginModal(false)}
-            />
-          </Suspense>
-        )}
         <SeoMeta seoData={seoMetaData} fallback={fallbackSeo} />
 
         <Helmet>
@@ -1034,11 +1019,12 @@ const SearchResults = React.memo(
               {activeFilterChips.length > 0 && (
                 <div className={cx("filter-chips-row")}>
                   {activeFilterChips.map((chip, i) => (
-                    <Chip
+                    <button
+                      type="button"
                       key={`${chip.key}-${chip.value}-${i}`}
-                      label={chip.label}
-                      size="small"
-                      onDelete={() => {
+                      className={cx("filter-chip")}
+                      aria-label={`Remove ${chip.label} filter`}
+                      onClick={() => {
                         const current = activeFilters[chip.key];
                         if (Array.isArray(current)) {
                           const updated = current.filter(
@@ -1052,31 +1038,20 @@ const SearchResults = React.memo(
                           handleFilterChange(chip.key, null);
                         }
                       }}
-                      deleteIcon={
-                        <CloseIcon sx={{ fontSize: "12px !important" }} />
-                      }
-                      sx={{
-                        bgcolor: "#fff3e0",
-                        color: "#e65100",
-                        border: "1px solid #ffb74d",
-                        fontSize: "12px",
-                        height: 26,
-                      }}
-                    />
+                    >
+                      <span>{chip.label}</span>
+                      <span className={cx("filter-chip-remove")} aria-hidden="true">
+                        ×
+                      </span>
+                    </button>
                   ))}
-                  <Chip
-                    label="Clear all"
-                    size="small"
+                  <button
+                    type="button"
+                    className={cx("filter-chip-clear")}
                     onClick={handleClearAllFilters}
-                    sx={{
-                      bgcolor: "transparent",
-                      border: "1px solid #ccc",
-                      color: "#666",
-                      fontSize: "12px",
-                      height: 26,
-                      cursor: "pointer",
-                    }}
-                  />
+                  >
+                    Clear all
+                  </button>
                 </div>
               )}
 
