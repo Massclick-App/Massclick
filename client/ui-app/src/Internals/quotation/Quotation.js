@@ -253,8 +253,7 @@ const imageUrlToDataUrl = async (url) => {
       reader.readAsDataURL(blob);
     });
     return cachedImageDataUrls[url];
-  } catch (error) {
-    console.warn("Unable to load quotation image for PDF:", error);
+  } catch {
     return "";
   }
 };

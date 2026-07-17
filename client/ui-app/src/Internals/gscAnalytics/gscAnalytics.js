@@ -253,12 +253,6 @@ export default function GscAnalytics() {
     }
   }, [activeTab, dispatch, queriesFetched, pagesFetched]);
 
-  useEffect(() => {
-    if (pages && pages.length > 0) {
-      console.log("Pages data loaded:", pages);
-    }
-  }, [pages]);
-
   const displayedQueries = quickWinsOnly
     ? (queries || []).filter((q) => q.position >= 4 && q.position <= 20)
     : queries || [];

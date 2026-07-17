@@ -629,7 +629,6 @@ export const getBackendSuggestions = (searchOrOptions, extraOptions = {}) => asy
 export const backendMainSearch = (term, location, category, extraParams = {}) => async (dispatch) => {
   dispatch({ type: SEARCH_BUSINESS_REQUEST });
   const requestParams = { term, location, category, ...extraParams };
-  console.log("[API] GET /businesslist/search → called with", requestParams);
 
   try {
     const token = await dispatch(getClientToken());
@@ -646,20 +645,15 @@ export const backendMainSearch = (term, location, category, extraParams = {}) =>
     // Old Redis cache entries (30-min TTL) may still return a raw array after deploy.
     const raw = response.data;
     const isLegacy = Array.isArray(raw);
-    console.log("[API] GET /businesslist/search → raw response", isLegacy ? { legacyArrayLength: raw.length } : raw);
     const normalized = isLegacy
       ? { results: raw, total: raw.length, page: 1, pageSize: raw.length, hasMore: false, resolvedCategory: null }
       : { results: raw.results || [], total: raw.total || 0, page: raw.page || 1, pageSize: raw.pageSize || 20, hasMore: raw.hasMore || false, resolvedCategory: raw.resolvedCategory || null };
-    console.log(
-      `[API] GET /businesslist/search → processed: ${normalized.results.length}/${normalized.total} result(s), resolvedCategory=${normalized.resolvedCategory ? `"${normalized.resolvedCategory}"` : "not resolved"}`
-    );
 
     dispatch({ type: SEARCH_BUSINESS_SUCCESS, payload: normalized.results });
 
     return { payload: normalized };
 
   } catch (error) {
-    console.log("[API] GET /businesslist/search → failed", error?.message);
     dispatch({
       type: SEARCH_BUSINESS_FAILURE,
       payload: error.response?.data || error.message,
@@ -669,7 +663,6 @@ export const backendMainSearch = (term, location, category, extraParams = {}) =>
 };
 
 export const fetchNearbyBusinesses = ({ lat, lng, category, limit = 6 }) => async (dispatch) => {
-  console.log("[API] GET /businesslist/nearby → called with", { lat, lng, category, limit });
   try {
     const token = await dispatch(getClientToken());
     const response = await axiosInstance.get(`${API_URL}/businesslist/nearby`, {
@@ -677,10 +670,8 @@ export const fetchNearbyBusinesses = ({ lat, lng, category, limit = 6 }) => asyn
       params: { lat, lng, category, limit },
     });
     const data = Array.isArray(response.data) ? response.data : [];
-    console.log(`[API] GET /businesslist/nearby → processed: ${data.length} result(s) for category="${category}"`);
     return { data };
-  } catch (error) {
-    console.log("[API] GET /businesslist/nearby → failed", error?.message);
+  } catch {
     return { data: [] };
   }
 };

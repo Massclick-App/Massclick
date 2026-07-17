@@ -164,7 +164,6 @@ const getStoredCustomerUser = () => {
 const getRealtimeSocketToken = (snapshot = getAuthSnapshot()) =>
   snapshot?.admin?.accessToken ||
   snapshot?.customer?.token ||
-  snapshot?.publicClient?.accessToken ||
   null;
 
 function AppRoutes({
