@@ -97,6 +97,7 @@ const MENU_SECTIONS = [
     label: "Analytics",
     items: [
       { text: "Analytics Overview", icon: AnalyticsRoundedIcon, path: "/dashboard/analytics-overview" },
+      { text: "Site Analytics", icon: QueryStatsRoundedIcon, path: "/dashboard/site-analytics" },
       { text: "Category Coverage", icon: CategoryIcon, path: "/dashboard/data-analytics" },
       { text: "Google Analytics 4", icon: WebRoundedIcon, path: "/dashboard/ga4-analytics" },
       { text: "Google Search Console", icon: QueryStatsRoundedIcon, path: "/dashboard/gsc-analytics" },

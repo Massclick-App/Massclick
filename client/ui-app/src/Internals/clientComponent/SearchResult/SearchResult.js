@@ -53,6 +53,7 @@ import {
 import { renderFaqAnswerWithLinks } from "../../../utils/renderFaqAnswerWithLinks";
 import useMediaQuery from "../../../hooks/useMediaQuery.js";
 import useRenderNearViewport from "../../../hooks/useRenderNearViewport.js";
+import { trackSearch } from "../../../utils/webTracker.js";
 
 const Footer = lazy(() =>
   import(/* webpackChunkName: "public-footer" */ "../footer/footer.js")
@@ -359,6 +360,7 @@ const SearchResults = React.memo(
     const stateAppliedRef = useRef(false);
     const requestIdRef = useRef(0);
     const searchControlsChangedRef = useRef(false);
+    const trackedSearchRef = useRef(null);
     const sentinelRef = useRef(null);
     const loadingPagesRef = useRef(new Set()); // pages currently in-flight
     const searchVersionRef = useRef(0); // bumped on every search-control change
@@ -489,6 +491,20 @@ const SearchResults = React.memo(
       [sortBy, activeFilters, userGeo],
     );
 
+    const trackResolvedSearch = useCallback((resultsCount) => {
+      const searchIdentity = locationState.key
+        || `${normalizedSearchTerm}|${locationText}|${isKnownCategory}`;
+      if (trackedSearchRef.current === searchIdentity) return;
+
+      trackSearch({
+        query: normalizedSearchTerm,
+        location: locationText,
+        resultsCount: Number(resultsCount) || 0,
+        known: isKnownCategory,
+      });
+      trackedSearchRef.current = searchIdentity;
+    }, [isKnownCategory, locationState.key, locationText, normalizedSearchTerm]);
+
     // ─── Initial load: use state results from navigation OR fetch from API ────────
     useEffect(() => {
       if (
@@ -497,17 +513,17 @@ const SearchResults = React.memo(
         !stateAppliedRef.current
       ) {
         setResults(safeStateResults);
-        setTotalResults(
-          typeof initialTotal === "number"
-            ? initialTotal
-            : safeStateResults.length,
-        );
+        const resolvedTotal = typeof initialTotal === "number"
+          ? initialTotal
+          : safeStateResults.length;
+        setTotalResults(resolvedTotal);
         // initialResults (from CategoryRouter's prefetch) carries real pagination info;
         // plain navigation-state results are a snapshot with no pagination.
         setHasMore(
           Array.isArray(initialResults) ? Boolean(initialHasMore) : false,
         );
         setInitialSearchResolved(true);
+        trackResolvedSearch(resolvedTotal);
         stateAppliedRef.current = true;
         return;
       }
@@ -539,6 +555,7 @@ const SearchResults = React.memo(
         setResolvedCategory(normalized.resolvedCategory || null);
         setCurrentPage(1);
         setInitialSearchResolved(true);
+        trackResolvedSearch(normalized.total || 0);
         loadingPagesRef.current.clear();
       });
     }, [
@@ -548,6 +565,7 @@ const SearchResults = React.memo(
       apiLocation,
       isKnownCategory,
       dispatch,
+      trackResolvedSearch,
     ]); // eslint-disable-line
 
     // ─── Re-fetch when filters / sort / geo change ───────────────────────────────
@@ -1236,6 +1254,7 @@ const SearchResults = React.memo(
                               viewMode={viewMode}
                               compact={isCompact}
                               index={idx}
+                              resultPosition={idx + 1}
                             />
                           </div>
                         );
@@ -1329,6 +1348,7 @@ const SearchResults = React.memo(
                                   cardVariant="nearby"
                                   compact={isCompact}
                                   index={idx}
+                                  resultPosition={idx + 1}
                                 />
                               </div>
                             );

@@ -59,6 +59,7 @@ import quotationRoutes from "./routes/quotationRoute.js";
 import massclickDocumentsRoutes from "./routes/massclickDocumentsRoute.js";
 import massclickFeedRoutes from "./routes/massclickFeedRoute.js";
 import userFeedbackRoutes from "./routes/userFeedbackRoutes.js";
+import webAnalyticsRoutes from "./routes/webAnalyticsRoute.js";
 import { startFCMScheduler } from "./scheduler/fcmScheduler.js";
 import { startKeywordRankCron } from "./cron/keywordRankCron.js";
 import { startS3CacheHeaderMigrationRecovery } from "./helper/mediaCleanup/s3CacheHeaderMigrationHelper.js";
@@ -155,6 +156,7 @@ app.use("/", quotationRoutes);
 app.use("/", massclickDocumentsRoutes);
 app.use("/", massclickFeedRoutes);
 app.use("/", userFeedbackRoutes);
+app.use("/", webAnalyticsRoutes);
 app.use(express.static(CLIENT_BUILD_PATH, {
   index: false,
   maxAge: "365d",

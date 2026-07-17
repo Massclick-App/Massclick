@@ -47,7 +47,8 @@ export const Collections = {
     MASSCLICKQUOTATIONCOUNTER: 'massclick_quotation_counter',
     MASSCLICKDOCUMENTS: 'massclick_documents',
     MASSCLICKFEEDPOSTS: 'massclick_feed_posts',
-    USERFEEDBACKS: 'user_feedbacks'
+    USERFEEDBACKS: 'user_feedbacks',
+    WEBANALYTICSEVENT: 'web_analytics_events'
 };
 
 export const {
@@ -99,5 +100,6 @@ export const {
     MASSCLICKQUOTATIONCOUNTER,
     MASSCLICKDOCUMENTS,
     MASSCLICKFEEDPOSTS,
-    USERFEEDBACKS
+    USERFEEDBACKS,
+    WEBANALYTICSEVENT
 } = Collections;

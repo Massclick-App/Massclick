@@ -19,6 +19,7 @@ import WorkHistoryRoundedIcon from "@mui/icons-material/WorkHistoryRounded";
 import CheckBoxRoundedIcon from "@mui/icons-material/CheckBoxRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import { addFavorite, removeFavorite, fetchFavorites, getAuthUser } from "../../../redux/actions/favoriteAction";
+import { trackBusinessClick, trackSearchResultClick } from "../../../utils/webTracker.js";
 import massClickLogo from "../../../assets/mclogo.webp";
 
 const OTPLoginModal = lazy(() =>
@@ -119,6 +120,7 @@ const Cards = ({
   viewMode = "list",
   cardVariant = "",
   compact = false,
+  resultPosition = null,
   ...props
 }) => {
   const navigate = useNavigate();
@@ -179,6 +181,8 @@ const Cards = ({
 
   const handlePhoneClick = e => {
     e.preventDefault();
+    e.stopPropagation();
+    trackBusinessClick(businessId, title, "call", "card");
     window.location.href = `tel:${phone}`;
   };
 
@@ -186,6 +190,7 @@ const Cards = ({
     e.preventDefault();
     e.stopPropagation();
     if (!whatsappNumber) { alert("WhatsApp number not available"); return; }
+    trackBusinessClick(businessId, title, "whatsapp", "card");
     const cleanNumber = whatsappNumber.replace(/\D/g, "");
     window.open(`https://wa.me/${cleanNumber}`, "_blank");
   };
@@ -193,6 +198,7 @@ const Cards = ({
   const handleEnquiryClick = e => {
     e.preventDefault();
     e.stopPropagation();
+    trackBusinessClick(businessId, title, "enquiry", "card");
     navigate("/business-enquiry");
   };
 
@@ -367,7 +373,16 @@ const Cards = ({
         </div>,
         document.body
       )}
-      <Link to={to} state={props.state} className={cx("card-link")}>
+      <Link
+        to={to}
+        state={props.state}
+        className={cx("card-link")}
+        onClick={() => {
+          if (resultPosition != null && businessId) {
+            trackSearchResultClick(businessId, title, resultPosition);
+          }
+        }}
+      >
         <div className={cx("base-card", `base-card--${viewMode}`, cardVariant && `base-card--${cardVariant}`, compact && "base-card--compact")}>
 
           {/* Image */}

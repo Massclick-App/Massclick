@@ -47,6 +47,7 @@ import { getBusinessReviews } from "../../../redux/actions/reviewAction.js";
 import GlobalSkeleton from "../globalSkeleton.js";
 import { addFavorite, removeFavorite, fetchFavorites, getAuthUser } from "../../../redux/actions/favoriteAction";
 import { generateLocalBusinessSchema, generateBreadcrumbSchema } from "../../../utils/seoSchemaGenerators";
+import { trackBusinessView, trackBusinessClick } from "../../../utils/webTracker.js";
 import OTPLoginModal from "../AddBusinessModel.js";
 import PopularCategoriesLink from "../popularCategories/popularCategories.js";
 import massClickLogo from "../../../assets/mclogo.webp";
@@ -176,6 +177,11 @@ const BusinessDetail = React.memo(() => {
       dispatch(getBusinessReviews(business._id));
     }
   }, [dispatch, business?._id]);
+  useEffect(() => {
+    if (business?._id) {
+      trackBusinessView(business._id, business.businessName);
+    }
+  }, [business?._id, business?.businessName]);
   if (businessDetailsLoading) {
     return <>
         <StickySearchBar />
@@ -433,6 +439,7 @@ const BusinessDetail = React.memo(() => {
   };
   const handleShowNumberClick = e => {
     if (e && e.preventDefault) e.preventDefault();
+    trackBusinessClick(business?._id, business?.businessName, "show_number", "detail");
     setShowContactModal(true);
   };
   const handleCopyContact = () => {
@@ -714,7 +721,7 @@ const BusinessDetail = React.memo(() => {
                     Show Number
                   </button>
 
-                  {whatsappNumber && <a className={cx("business-CardDetails-btn business-CardDetails-btn--whatsapp")} href={`https://wa.me/${whatsappNumber}?text=${currentTitle}%20${currentUrl}`} target="_blank" rel="noopener noreferrer">
+                  {whatsappNumber && <a className={cx("business-CardDetails-btn business-CardDetails-btn--whatsapp")} href={`https://wa.me/${whatsappNumber}?text=${currentTitle}%20${currentUrl}`} target="_blank" rel="noopener noreferrer" onClick={() => trackBusinessClick(business?._id, business?.businessName, "whatsapp", "detail")}>
                       <WhatsAppIcon style={{
                       fontSize: 20
                     }} />
@@ -918,7 +925,7 @@ const BusinessDetail = React.memo(() => {
                   <PhoneIcon />
                   Show Number
                 </button>
-                {whatsappNumber && <a className={cx("business-CardDetails-sidebarWhatsAppBtn")} href={`https://wa.me/${whatsappNumber}?text=${currentTitle}%20${currentUrl}`} target="_blank" rel="noopener noreferrer">
+                {whatsappNumber && <a className={cx("business-CardDetails-sidebarWhatsAppBtn")} href={`https://wa.me/${whatsappNumber}?text=${currentTitle}%20${currentUrl}`} target="_blank" rel="noopener noreferrer" onClick={() => trackBusinessClick(business?._id, business?.businessName, "whatsapp", "detail")}>
                     <WhatsAppIcon />
                     WhatsApp
                   </a>}
@@ -942,7 +949,7 @@ const BusinessDetail = React.memo(() => {
               </p>
 
               <div className={cx("business-CardDetails-addressActions")}>
-                {fullAddress && <a href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(fullAddress)}`} target="_blank" rel="noopener noreferrer" className={cx("business-CardDetails-addressBtn")}>
+                {fullAddress && <a href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(fullAddress)}`} target="_blank" rel="noopener noreferrer" className={cx("business-CardDetails-addressBtn")} onClick={() => trackBusinessClick(business?._id, business?.businessName, "direction", "detail")}>
                     <DirectionsIcon fontSize="small" />
                     Get Directions
                   </a>}
@@ -1059,7 +1066,7 @@ const BusinessDetail = React.memo(() => {
       {showContactModal && <SimpleModal title={`Contact for ${business.businessName}`} onClose={() => setShowContactModal(false)}>
           <p>{business.contact || "N/A"}</p>
           <div className={cx("business-CardDetails-modalActions")}>
-            {business.contact && <a href={`tel:${business.contact}`} className={cx("business-CardDetails-btn business-CardDetails-btn--primary")}>
+            {business.contact && <a href={`tel:${business.contact}`} className={cx("business-CardDetails-btn business-CardDetails-btn--primary")} onClick={() => trackBusinessClick(business?._id, business?.businessName, "call", "detail")}>
                 <PhoneIcon />
                 Call Now
               </a>}

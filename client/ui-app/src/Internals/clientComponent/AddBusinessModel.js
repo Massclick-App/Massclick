@@ -21,6 +21,8 @@ import {
 } from "@mui/icons-material";
 import { sendOtp, verifyOtp } from "../../redux/actions/otpAction";
 import { registerWebFCMToken } from "../../utils/registerFCMToken";
+import { identify } from "../../utils/webTracker.js";
+import { getCustomerUser } from "../../auth/authStore.js";
 import { useDispatch } from "react-redux";
 import { Link as RouterLink } from 'react-router-dom';
 import { Link as MuiLink } from '@mui/material';
@@ -164,6 +166,7 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater }) => {
                 });
 
                 await registerWebFCMToken();
+                identify(getCustomerUser()?._id);
                 handleClose();
             }
         } catch (error) {
