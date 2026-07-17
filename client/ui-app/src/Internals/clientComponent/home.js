@@ -1,24 +1,9 @@
 import { createScopedClassNames } from "../../utils/createScopedClassNames";
 import React, { useState, useEffect, useRef, Suspense, lazy } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import {
-  Box,
-  Drawer,
-  Grid,
-  List,
-  ListItem,
-  ListItemText,
-  Skeleton,
-  Snackbar,
-  Alert,
-  Avatar,
-} from "@mui/material";
 import { Helmet } from "react-helmet-async";
 import HeroSection from "../clientComponent/heroSection/heroSection.js";
 import CategoryBar from "../clientComponent/categoryBar";
-import StickySearchBar from './StickySearchBar/StickySearchBar';
-import MobileTrustBanner from "./mobileHomeDock/MobileTrustBanner.js";
-import OTPLoginModel from "./AddBusinessModel.js";
 import { viewOtpUser } from "../../redux/actions/otpAction.js";
 import { fetchMatchedLeads } from "../../redux/actions/leadsAction.js";
 import SeoMeta from "./seo/seoMeta";
@@ -28,57 +13,15 @@ import {
   generateOrganizationSchema,
 } from "../../utils/seoSchemaGenerators";
 import { scheduleIdleCallback } from "../../utils/scheduleIdleCallback.js";
+import useRenderNearViewport from "../../hooks/useRenderNearViewport.js";
 import styles from "./homeLayout.module.css";
 const cx = createScopedClassNames(styles);
-
-// Design System Constants - Enforce uniformity across all components
-const DESIGN_TOKENS = {
-  // Spacing (vertical gaps between sections)
-  sectionGap: {
-    xs: 2.5,
-    sm: 3,
-    md: 3.5,
-  },
-  // Padding (horizontal - applied to all sections)
-  sectionPadding: {
-    xs: 2,
-    sm: 4,
-    md: 6,
-  },
-  // Font sizes
-  fontSize: {
-    lg: 14, // Labels, titles
-    md: 13, // Body text
-    sm: 11, // Secondary text
-  },
-  // Component sizes
-  avatar: {
-    notification: 48,
-  },
-  gap: {
-    xs: 1,
-    sm: 1.5,
-  },
-};
-
-const S = ({ variant = "rounded", w, h, r, sx, ...rest }) => (
-  <Skeleton
-    variant={variant}
-    width={w}
-    height={h}
-    animation="wave"
-    sx={{
-      borderRadius: r ?? 2,
-      flexShrink: 0,
-      bgcolor: "rgba(255,107,44,0.055)",
-      ...sx,
-    }}
-    {...rest}
-  />
-);
-const Txt = ({ w = "100%", h = DESIGN_TOKENS.fontSize.lg, sx } = {}) => (
-  <S variant="rounded" w={w} h={h} r={1} sx={sx} />
-);
+const DEFERRED_INTERACTION_EVENTS = [
+  "pointerdown",
+  "touchstart",
+  "keydown",
+  "scroll",
+];
 const FeaturedServices = lazy(
   () => import("../clientComponent/featuredService/featureService.js"),
 );
@@ -117,244 +60,63 @@ const PageHeaderContents = lazy(
 );
 const RelatedBlogs = lazy(() => import("./relatedBlogs/relatedBlogs.js"));
 const WeatherWidget = lazy(() => import("./weatherWidget/weatherWidget.js"));
+const StickySearchBar = lazy(() =>
+  import(
+    /* webpackChunkName: "sticky-search" */ "./StickySearchBar/StickySearchBar"
+  )
+);
+const MobileTrustBanner = lazy(() =>
+  import(
+    /* webpackChunkName: "mobile-trust-banner" */ "./mobileHomeDock/MobileTrustBanner.js"
+  )
+);
+const OTPLoginModel = lazy(() =>
+  import(/* webpackChunkName: "otp-modal" */ "./AddBusinessModel.js")
+);
 
-const HOME_SECTION_GAP = DESIGN_TOKENS.sectionGap;
+const DeferredHomeSection = ({
+  children,
+  id,
+  minHeight,
+  rootMargin = "400px 0px",
+  style,
+}) => {
+  const { targetRef, shouldRender } = useRenderNearViewport(rootMargin);
 
-const homeSectionSx = {
-  mb: HOME_SECTION_GAP,
-  contain: "layout style paint",
+  return (
+    <section
+      ref={targetRef}
+      id={id}
+      className={cx("home-section")}
+      style={{
+        minHeight: shouldRender ? undefined : minHeight,
+        ...style,
+      }}
+    >
+      {shouldRender ? (
+        <Suspense
+          fallback={<div aria-hidden="true" style={{ minHeight }} />}
+        >
+          {children}
+        </Suspense>
+      ) : null}
+    </section>
+  );
 };
 
-// Reserve exact heights for each skeleton type to match actual content
-const SKELETON_HEIGHTS = {
-  featured: {
-    skeleton: 280,
-    actual: 280,
-  },
-  service: {
-    skeleton: 420,
-    actual: 420,
-  },
-  trending: {
-    skeleton: 290,
-    actual: 290,
-  },
-  popular: {
-    skeleton: 330,
-    actual: 330,
-  },
-  tourist: {
-    skeleton: 350,
-    actual: 350,
-  },
-  blogs: {
-    skeleton: 320,
-    actual: 320,
-  },
-  pageheader: {
-    skeleton: 230,
-    actual: 230,
-  },
+const SECTION_HEIGHTS = {
+  featured: 280,
+  service: 420,
+  trending: 290,
+  popular: 330,
+  tourist: 350,
+  blogs: 320,
+  pageheader: 230,
 };
 
 /* ──────────────────────────────────────────────────────────────
    Per-section skeleton loaders
 ────────────────────────────────────────────────────────────── */
-const SkeletonCard = ({ w = 80, h = 80, r = 50, mb = 1.5, mt = 0.5 }) => (
-  <S
-    w={w}
-    h={h}
-    r={r}
-    sx={{
-      mx: "auto",
-      mb,
-      mt,
-    }}
-  />
-);
-const SkeletonCards = ({ type }) => {
-  const configs = {
-    featured: {
-      count: 8,
-      cardW: 130,
-      cardH: 160,
-      iconW: 80,
-      iconH: 80,
-      containerH: SKELETON_HEIGHTS.featured.skeleton,
-    },
-    service: {
-      count: 12,
-      cardW: 80,
-      cardH: 80,
-      iconW: 70,
-      iconH: 70,
-      containerH: SKELETON_HEIGHTS.service.skeleton,
-    },
-    pageheader: {
-      count: 4,
-      cardW: 140,
-      cardH: 80,
-      iconW: 60,
-      iconH: 60,
-      containerH: SKELETON_HEIGHTS.pageheader.skeleton,
-    },
-  };
-  const c = configs[type] || configs.featured;
-  return (
-    <div
-      className={cx("sk-hscroll")}
-      style={{
-        padding: "0 16px",
-        height: c.containerH,
-        display: "flex",
-        alignItems: "center",
-        contain: "layout style paint",
-      }}
-    >
-      {[...Array(c.count)].map((_, i) => (
-        <div
-          key={i}
-          className={cx("service-card")}
-          style={{
-            width: c.cardW,
-            height: c.cardH,
-            flexShrink: 0,
-          }}
-        >
-          <SkeletonCard w={c.iconW} h={c.iconH} r={50} mb={1.5} mt={0} />
-          <Txt
-            w="70%"
-            h={DESIGN_TOKENS.fontSize.lg}
-            sx={{
-              mx: "auto",
-            }}
-          />
-          <Txt
-            w="50%"
-            h={DESIGN_TOKENS.fontSize.sm}
-            sx={{
-              mx: "auto",
-              mt: 0.5,
-            }}
-          />
-        </div>
-      ))}
-    </div>
-  );
-};
-const SkeletonCarousel = ({ type }) => {
-  const isTrending = type === "trending";
-  const cardW = isTrending ? 240 : 280;
-  const cardH = isTrending ? 150 : 180;
-  const count = isTrending ? 5 : 4;
-  const containerH = isTrending
-    ? SKELETON_HEIGHTS.trending.skeleton
-    : SKELETON_HEIGHTS.popular.skeleton;
-  return (
-    <div
-      style={{
-        height: containerH,
-        display: "flex",
-        alignItems: "center",
-        contain: "layout style paint",
-        overflow: "auto",
-      }}
-    >
-      <div
-        className={cx(
-          isTrending ? "trending-search__track" : "popular-search__track",
-        )}
-        style={{
-          display: "flex",
-          gap: "1rem",
-          overflow: "hidden",
-        }}
-      >
-        {[...Array(count)].map((_, i) => (
-          <div
-            key={i}
-            className={cx(
-              isTrending ? "trending-search__card" : "popular-search__card",
-            )}
-            style={{
-              width: cardW,
-              flexShrink: 0,
-            }}
-          >
-            <S w={cardW} h={cardH} r={14} />
-            <Txt
-              w="60%"
-              h={DESIGN_TOKENS.fontSize.lg}
-              sx={{
-                mt: 1,
-              }}
-            />
-            {!isTrending && (
-              <S
-                w={120}
-                h={36}
-                r={8}
-                sx={{
-                  mt: 1,
-                }}
-              />
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-const SkeletonGrid = ({ type }) => {
-  const isTourist = type === "tourist";
-  const count = isTourist ? 4 : 3;
-  const h = isTourist ? 200 : 170;
-  const containerH = isTourist
-    ? SKELETON_HEIGHTS.tourist.skeleton
-    : SKELETON_HEIGHTS.blogs.skeleton;
-  return (
-    <Grid
-      container
-      spacing={2}
-      sx={{
-        height: containerH,
-        display: "flex",
-        alignItems: "center",
-        contain: "layout style paint",
-      }}
-    >
-      {[...Array(count)].map((_, i) => (
-        <Grid
-          size={{
-            xs: 6,
-            sm: isTourist ? 3 : 4,
-            md: isTourist ? 3 : 4,
-          }}
-          key={i}
-        >
-          <S w="100%" h={h} r={12} />
-          <Txt
-            w="60%"
-            h={DESIGN_TOKENS.fontSize.lg}
-            sx={{
-              mt: 1.5,
-            }}
-          />
-          {isTourist && (
-            <Txt
-              w="40%"
-              h={DESIGN_TOKENS.fontSize.sm}
-              sx={{
-                mt: 0.5,
-              }}
-            />
-          )}
-        </Grid>
-      ))}
-    </Grid>
-  );
-};
-
 const isUserLoggedIn = () => {
   try {
     const storedUser = localStorage.getItem("authUser");
@@ -369,7 +131,7 @@ const isUserLoggedIn = () => {
 const LandingPage = React.memo(() => {
   const dispatch = useDispatch();
   const [fcmNotif, setFcmNotif] = useState(null);
-  const [showDeferredSections, setShowDeferredSections] = useState(false);
+  const [showWeatherWidget, setShowWeatherWidget] = useState(false);
   const { meta: seoMetaData } = useSelector((state) => state.seoReducer);
   useEffect(() => {
     dispatch(
@@ -379,15 +141,37 @@ const LandingPage = React.memo(() => {
     );
   }, [dispatch]);
   useEffect(() => {
-    const idleHandle = scheduleIdleCallback(
-      () => {
+    if (
+      !("Notification" in window) ||
+      window.Notification.permission !== "granted"
+    ) {
+      return undefined;
+    }
+
+    let cancelled = false;
+    let idleHandle = null;
+    let unsubscribe;
+
+    const removeInteractionListeners = () => {
+      DEFERRED_INTERACTION_EVENTS.forEach((eventName) => {
+        window.removeEventListener(eventName, startMessaging);
+      });
+    };
+
+    const startMessaging = () => {
+      removeInteractionListeners();
+      idleHandle = scheduleIdleCallback(() => {
         import("../../firebase")
           .then(({ messaging, onMessage }) => {
-            if (!messaging || typeof onMessage !== "function") {
-              return undefined;
+            if (
+              cancelled ||
+              !messaging ||
+              typeof onMessage !== "function"
+            ) {
+              return;
             }
 
-            const unsubscribe = onMessage(messaging, (payload) => {
+            unsubscribe = onMessage(messaging, (payload) => {
               const { title, body, image } = payload.notification || {};
               const imageUrl = image || payload.data?.imageUrl || null;
               setFcmNotif({
@@ -396,20 +180,63 @@ const LandingPage = React.memo(() => {
                 image: imageUrl,
               });
             });
-            return unsubscribe;
           })
           .catch(() => {});
-      },
-      { timeout: 4000 },
-    );
+      });
+    };
+
+    DEFERRED_INTERACTION_EVENTS.forEach((eventName) => {
+      window.addEventListener(eventName, startMessaging, {
+        passive: true,
+        once: true,
+      });
+    });
 
     return () => {
-      if (typeof window.cancelIdleCallback === "function") {
+      cancelled = true;
+      removeInteractionListeners();
+      unsubscribe?.();
+
+      if (
+        idleHandle !== null &&
+        typeof window.cancelIdleCallback === "function"
+      ) {
         window.cancelIdleCallback(idleHandle);
         return;
       }
 
-      window.clearTimeout(idleHandle);
+      if (idleHandle !== null) {
+        window.clearTimeout(idleHandle);
+      }
+    };
+  }, []);
+  useEffect(() => {
+    if (!fcmNotif) {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => setFcmNotif(null), 6000);
+    return () => window.clearTimeout(timeoutId);
+  }, [fcmNotif]);
+  useEffect(() => {
+    const activateWeather = () => {
+      DEFERRED_INTERACTION_EVENTS.forEach((eventName) => {
+        window.removeEventListener(eventName, activateWeather);
+      });
+      setShowWeatherWidget(true);
+    };
+
+    DEFERRED_INTERACTION_EVENTS.forEach((eventName) => {
+      window.addEventListener(eventName, activateWeather, {
+        passive: true,
+        once: true,
+      });
+    });
+
+    return () => {
+      DEFERRED_INTERACTION_EVENTS.forEach((eventName) => {
+        window.removeEventListener(eventName, activateWeather);
+      });
     };
   }, []);
   const fallbackSeo = {
@@ -421,7 +248,6 @@ const LandingPage = React.memo(() => {
     robots: "index, follow",
   };
   const [searchResults, setSearchResults] = useState(null);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [locationName, setLocationName] = useState(
     localStorage.getItem("selectedLocation") || "Trichy",
@@ -435,22 +261,6 @@ const LandingPage = React.memo(() => {
     isUserLoggedIn(),
   );
   const heroSectionRef = useRef(null);
-
-  useEffect(() => {
-    const idleHandle = scheduleIdleCallback(
-      () => setShowDeferredSections(true),
-      { timeout: 3000 },
-    );
-
-    return () => {
-      if (typeof window.cancelIdleCallback === "function") {
-        window.cancelIdleCallback(idleHandle);
-        return;
-      }
-
-      window.clearTimeout(idleHandle);
-    };
-  }, []);
 
   useEffect(() => {
     const mobile = localStorage.getItem("mobileNumber");
@@ -508,70 +318,45 @@ const LandingPage = React.memo(() => {
     observer.observe(heroSectionRef.current);
     return () => observer.disconnect();
   }, [checkedLogin]);
-  const handleMobileMenuClose = () => setMobileMenuOpen(false);
   const isSearching = searchResults && searchResults.length > 0;
-  // Keep the original visual order, but defer the below-the-fold sections until idle
-  // so the homepage stays faster on mobile and desktop.
+  // Keep the original visual order while allowing each below-the-fold section
+  // to load independently only as the user approaches it.
   const deferredSections = (
     <>
-      <Box className="home-section" sx={homeSectionSx}>
-        <Suspense fallback={<SkeletonCarousel type="popular" />}>
-          <EventCarousel locationLabel={locationName} />
-        </Suspense>
-      </Box>
+      <DeferredHomeSection minHeight={1}>
+        <EventCarousel locationLabel={locationName} />
+      </DeferredHomeSection>
 
-      {/* <Box className="home-section" sx={homeSectionSx}>
-        <Suspense fallback={<SkeletonCards type="service" />}>
-          <MassclickBanner />
-        </Suspense>
-      </Box> */}
+      <DeferredHomeSection
+        minHeight={SECTION_HEIGHTS.trending}
+      >
+        <TrendingSearchesCarousel />
+      </DeferredHomeSection>
 
-      <Box className={cx("home-section")} sx={homeSectionSx}>
-        <Suspense fallback={<SkeletonCarousel type="trending" />}>
-          <TrendingSearchesCarousel />
-        </Suspense>
-      </Box>
+      <DeferredHomeSection
+        minHeight={SECTION_HEIGHTS.popular}
+      >
+        <CardCarousel />
+      </DeferredHomeSection>
 
-      <Box className={cx("home-section")} sx={homeSectionSx}>
-        <Suspense fallback={<SkeletonCarousel type="popular" />}>
-          <CardCarousel />
-        </Suspense>
-      </Box>
+      <DeferredHomeSection
+        minHeight={SECTION_HEIGHTS.tourist}
+      >
+        <TopTourist />
+      </DeferredHomeSection>
 
-      <Box className={cx("home-section")} sx={homeSectionSx}>
-        <Suspense fallback={<SkeletonGrid type="tourist" />}>
-          <TopTourist />
-        </Suspense>
-      </Box>
+      <DeferredHomeSection
+        minHeight={SECTION_HEIGHTS.blogs}
+      >
+        <RelatedBlogs location={locationName} />
+      </DeferredHomeSection>
 
-      <Box className={cx("home-section")} sx={homeSectionSx}>
-        <Suspense fallback={<SkeletonGrid type="blogs" />}>
-          <RelatedBlogs location={locationName} />
-        </Suspense>
-      </Box>
-
-      <Box className={cx("home-section")} sx={homeSectionSx}>
-        <Suspense fallback={<SkeletonCards type="pageheader" />}>
-          <PageHeaderContents />
-        </Suspense>
-      </Box>
+      <DeferredHomeSection
+        minHeight={SECTION_HEIGHTS.pageheader}
+      >
+        <PageHeaderContents />
+      </DeferredHomeSection>
     </>
-  );
-  const drawerContent = (
-    <Box
-      onClick={handleMobileMenuClose}
-      sx={{
-        textAlign: "center",
-      }}
-    >
-      <List>
-        {["About Us", "Services", "Testimonials", "Portfolio"].map((text) => (
-          <ListItem button key={text}>
-            <ListItemText primary={text} />
-          </ListItem>
-        ))}
-      </List>
-    </Box>
   );
 
   // Generate WebSite schema (includes SearchAction for search box in Google)
@@ -619,36 +404,25 @@ const LandingPage = React.memo(() => {
         )}
       </Helmet>
 
-      <Box
-        className={cx("home-page")}
-        sx={{
-          flexGrow: 1,
-          bgcolor: "background.default",
-          width: "100%",
-        }}
-      >
-        <Drawer
-          anchor="right"
-          open={mobileMenuOpen}
-          onClose={handleMobileMenuClose}
-        >
-          {drawerContent}
-        </Drawer>
-
+      <div className={cx("home-page")}>
         <CategoryBar />
 
-        <StickySearchBar
-          isScrolled={isScrolled}
-          locationName={locationName}
-          setLocationName={setLocationName}
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
-          categoryName={categoryName}
-          setCategoryName={setCategoryName}
-        />
+        {isScrolled && (
+          <Suspense fallback={null}>
+            <StickySearchBar
+              isScrolled={true}
+              locationName={locationName}
+              setLocationName={setLocationName}
+              searchTerm={searchTerm}
+              setSearchTerm={setSearchTerm}
+              categoryName={categoryName}
+              setCategoryName={setCategoryName}
+            />
+          </Suspense>
+        )}
 
         <main>
-          <Box ref={heroSectionRef}>
+          <div ref={heroSectionRef}>
             <HeroSection
               locationName={locationName}
               setLocationName={setLocationName}
@@ -658,173 +432,114 @@ const LandingPage = React.memo(() => {
               setCategoryName={setCategoryName}
               setSearchResults={setSearchResults}
             />
-          </Box>
+          </div>
 
           <Suspense fallback={null}>
             {isSearching ? (
               <SearchResults results={searchResults} />
             ) : (
               <>
-                <Box
-                  className={cx("home-section")}
-                  sx={{
-                    ...homeSectionSx,
-                    minHeight: 280,
+                <DeferredHomeSection
+                  minHeight={SECTION_HEIGHTS.featured}
+                  rootMargin="700px 0px"
+                  style={{
                     maxHeight: "none",
                     overflow: "visible",
                   }}
                 >
-                  <Suspense fallback={<SkeletonCards type="featured" />}>
-                    <FeaturedServices />
-                  </Suspense>
-                </Box>
+                  <FeaturedServices />
+                </DeferredHomeSection>
 
-                <Box className={cx("home-section")} sx={homeSectionSx}>
-                  <Suspense fallback={<Box sx={{ minHeight: 176 }} />}>
-                    <PublicUserCounter />
-                  </Suspense>
-                </Box>
+                <DeferredHomeSection minHeight={176}>
+                  <PublicUserCounter />
+                </DeferredHomeSection>
 
-                <Box className={cx("home-section")} sx={homeSectionSx}>
-                  <Suspense fallback={<Box sx={{ minHeight: 118 }} />}>
-                    <LeadAwareness
-                      isLoggedIn={customerLoggedIn}
-                      emphasizeLogin={loginReminder}
-                      onLoginRequest={() => setShowLoginModal(true)}
-                    />
-                  </Suspense>
-                </Box>
+                <DeferredHomeSection minHeight={118}>
+                  <LeadAwareness
+                    isLoggedIn={customerLoggedIn}
+                    emphasizeLogin={loginReminder}
+                    onLoginRequest={() => setShowLoginModal(true)}
+                  />
+                </DeferredHomeSection>
 
-                <Box className={cx("home-section")} sx={homeSectionSx}>
-                  <Suspense fallback={<SkeletonCards type="service" />}>
-                    <ServiceCardsGrid />
-                  </Suspense>
-                </Box>
+                <DeferredHomeSection minHeight={SECTION_HEIGHTS.service}>
+                  <ServiceCardsGrid />
+                </DeferredHomeSection>
 
-                {showDeferredSections ? deferredSections : null}
+                {deferredSections}
 
-                <Box
+                <DeferredHomeSection
                   id="popular-categories"
-                  className={cx("home-section")}
-                  sx={{
-                    ...homeSectionSx,
-                    minHeight: { xs: 520, md: 620 },
+                  minHeight={520}
+                  style={{
+                    overflow: "visible",
                   }}
                 >
-                  <Suspense fallback={null}>
-                    <PopularCategoriesLink />
-                  </Suspense>
-                </Box>
+                  <PopularCategoriesLink />
+                </DeferredHomeSection>
 
-                <MobileTrustBanner />
+                <DeferredHomeSection minHeight={100}>
+                  <MobileTrustBanner />
+                </DeferredHomeSection>
 
-                <Box className={cx("home-section")} sx={homeSectionSx}>
-                  <Suspense fallback={<Box sx={{ minHeight: 178 }} />}>
-                    <TwoWayAwareness
-                      isLoggedIn={customerLoggedIn}
-                      onLoginRequest={() => setShowLoginModal(true)}
-                    />
-                  </Suspense>
-                </Box>
+                <DeferredHomeSection minHeight={178}>
+                  <TwoWayAwareness
+                    isLoggedIn={customerLoggedIn}
+                    onLoginRequest={() => setShowLoginModal(true)}
+                  />
+                </DeferredHomeSection>
 
-                <Footer />
+                <DeferredHomeSection minHeight={320}>
+                  <Footer />
+                </DeferredHomeSection>
               </>
             )}
           </Suspense>
         </main>
 
-        <OTPLoginModel
-          open={showLoginModal}
-          handleClose={() => setShowLoginModal(false)}
-          onMaybeLater={() => setLoginReminder(true)}
-        />
+        {showLoginModal && (
+          <Suspense fallback={null}>
+            <OTPLoginModel
+              open={true}
+              handleClose={() => setShowLoginModal(false)}
+              onMaybeLater={() => setLoginReminder(true)}
+            />
+          </Suspense>
+        )}
 
-        <Suspense fallback={null}>
-          <WeatherWidget locationName={locationName} />
-        </Suspense>
-      </Box>
+        {showWeatherWidget && (
+          <Suspense fallback={null}>
+            <WeatherWidget locationName={locationName} />
+          </Suspense>
+        )}
+      </div>
 
-      <Snackbar
-        open={!!fcmNotif}
-        autoHideDuration={6000}
-        onClose={() => setFcmNotif(null)}
-        anchorOrigin={{
-          vertical: "top",
-          horizontal: "right",
-        }}
-      >
-        <Alert
-          onClose={() => setFcmNotif(null)}
-          severity="info"
-          icon={false}
-          sx={{
-            width: "100%",
-            maxWidth: 360,
-            bgcolor: "#fff",
-            color: "#333",
-            boxShadow: 4,
-            borderRadius: 2,
-            display: "flex",
-            alignItems: "flex-start",
-            gap: DESIGN_TOKENS.gap.sm,
-            p: DESIGN_TOKENS.gap.sm,
-          }}
-        >
-          <Box
-            sx={{
-              display: "flex",
-              gap: DESIGN_TOKENS.gap.sm,
-              alignItems: "flex-start",
+      {fcmNotif && (
+        <div className={cx("notification-toast")} role="status" aria-live="polite">
+          <img
+            className={cx("notification-image")}
+            src={fcmNotif.image || "/apple-touch-icon.png"}
+            alt=""
+            width="48"
+            height="48"
+            onError={(event) => {
+              event.currentTarget.src = "/apple-touch-icon.png";
             }}
+          />
+          <div className={cx("notification-copy")}>
+            <strong className={cx("notification-title")}>{fcmNotif.title}</strong>
+            <span className={cx("notification-body")}>{fcmNotif.body}</span>
+          </div>
+          <button
+            type="button"
+            className={cx("notification-close")}
+            aria-label="Dismiss notification"
+            onClick={() => setFcmNotif(null)}
           >
-            {fcmNotif?.image ? (
-              <Avatar
-                src={fcmNotif.image}
-                variant="rounded"
-                sx={{
-                  width: DESIGN_TOKENS.avatar.notification,
-                  height: DESIGN_TOKENS.avatar.notification,
-                  flexShrink: 0,
-                }}
-                imgProps={{
-                  onError: (e) => {
-                    e.target.style.display = "none";
-                  },
-                }}
-              />
-            ) : (
-              <Avatar
-                src="/apple-touch-icon.png"
-                variant="rounded"
-                sx={{
-                  width: DESIGN_TOKENS.avatar.notification,
-                  height: DESIGN_TOKENS.avatar.notification,
-                  flexShrink: 0,
-                }}
-              />
-            )}
-            <Box>
-              <Box
-                sx={{
-                  fontWeight: 700,
-                  fontSize: DESIGN_TOKENS.fontSize.lg,
-                  mb: 0.25,
-                }}
-              >
-                {fcmNotif?.title}
-              </Box>
-              <Box
-                sx={{
-                  fontSize: DESIGN_TOKENS.fontSize.md,
-                  color: "#555",
-                }}
-              >
-                {fcmNotif?.body}
-              </Box>
-            </Box>
-          </Box>
-        </Alert>
-      </Snackbar>
+            ×
+          </button>
+        </div>
+      )}
     </>
   );
 });

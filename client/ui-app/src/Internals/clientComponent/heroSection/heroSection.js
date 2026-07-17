@@ -1,5 +1,5 @@
 import { createScopedClassNames } from "../../../utils/createScopedClassNames";
-import React, { useEffect, useState, useRef } from "react";
+import React, { lazy, Suspense, useEffect, useState, useRef } from "react";
 import SearchIcon from "@mui/icons-material/Search";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import MicIcon from "@mui/icons-material/Mic";
@@ -22,9 +22,18 @@ import {
 import heroIllustrationLeft from "../../../assets/hero_illustration_left.webp";
 import heroIllustrationRight from "../../../assets/hero_illustration_right.webp";
 import { useNavigate } from "react-router-dom";
-import CategoryDropdown from "../CategoryDropdown/CategoryDropdown";
 import styles from "./hero.module.css";
 const cx = createScopedClassNames(styles);
+const CategoryDropdown = lazy(() =>
+  import(
+    /* webpackChunkName: "category-dropdown" */ "../CategoryDropdown/CategoryDropdown"
+  )
+);
+const DeferredCategoryDropdown = (props) => (
+  <Suspense fallback={null}>
+    <CategoryDropdown {...props} />
+  </Suspense>
+);
 const DEFAULT_LOCATION = "Tiruchirappalli";
 const SUGGESTION_PAGE_SIZE = 20;
 const MASTER_LOCATION_SUGGESTION_LIMIT = 25;
@@ -63,7 +72,6 @@ const HeroSection = React.memo(({
   const masterLocationState = useSelector(state => state.masterLocationReducer);
   const {
     locationSearchResults = [],
-    locationSearchQuery = ""
   } = masterLocationState || {};
   const publicCounterSettings = useSelector(state => state.publicUserCounter?.publicSettings);
   const publicUsersCount = publicCounterSettings ? getVisibleCounterCount(publicCounterSettings, counterNow) : null;
@@ -438,7 +446,7 @@ const HeroSection = React.memo(({
               });
               setShowLocationDropdown(false);
             };
-            return <CategoryDropdown id="location-suggestions" label="LOCATION SUGGESTIONS" options={combinedLocationOptions} onSelect={selectLocation} onReachEnd={() => maybeLoadMoreSuggestions(locationName.trim())} hasMore={backendSuggestionsHasMore && backendSuggestionsQuery === locationName.trim()} isLoadingMore={backendSuggestionsLoading && backendSuggestionsQuery === locationName.trim()} />;
+            return <DeferredCategoryDropdown id="location-suggestions" label="LOCATION SUGGESTIONS" options={combinedLocationOptions} onSelect={selectLocation} onReachEnd={() => maybeLoadMoreSuggestions(locationName.trim())} hasMore={backendSuggestionsHasMore && backendSuggestionsQuery === locationName.trim()} isLoadingMore={backendSuggestionsLoading && backendSuggestionsQuery === locationName.trim()} />;
           })()}
           </div>
 
@@ -454,7 +462,7 @@ const HeroSection = React.memo(({
             setShowLocationDropdown(false);
           }} />
 
-            {isDropdownOpen && searchTerm.trim().length < 2 && <CategoryDropdown id="business-suggestions" label="RECENT SEARCHES" options={recentSearchOptions} onSelect={val => {
+            {isDropdownOpen && searchTerm.trim().length < 2 && <DeferredCategoryDropdown id="business-suggestions" label="RECENT SEARCHES" options={recentSearchOptions} onSelect={val => {
             const chosen = typeof val === "string" ? val : String(val);
             setSearchTerm(chosen);
             if (setCategoryName) setCategoryName(chosen);
@@ -462,7 +470,7 @@ const HeroSection = React.memo(({
             handleSearch(undefined, chosen);
           }} />}
 
-            {isDropdownOpen && searchTerm.trim().length >= 2 && <CategoryDropdown id="business-suggestions" label="SUGGESTIONS" options={suggestionCategories} onReachEnd={() => maybeLoadMoreSuggestions(searchTerm.trim())} hasMore={backendSuggestionsHasMore && backendSuggestionsQuery === searchTerm.trim()} isLoadingMore={backendSuggestionsLoading && backendSuggestionsQuery === searchTerm.trim()} onSelect={val => {
+            {isDropdownOpen && searchTerm.trim().length >= 2 && <DeferredCategoryDropdown id="business-suggestions" label="SUGGESTIONS" options={suggestionCategories} onReachEnd={() => maybeLoadMoreSuggestions(searchTerm.trim())} hasMore={backendSuggestionsHasMore && backendSuggestionsQuery === searchTerm.trim()} isLoadingMore={backendSuggestionsLoading && backendSuggestionsQuery === searchTerm.trim()} onSelect={val => {
             const chosen = typeof val === "string" ? val : String(val);
             setSearchTerm(chosen);
             if (setCategoryName) setCategoryName(chosen);
