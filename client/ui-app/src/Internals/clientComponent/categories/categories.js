@@ -1,5 +1,5 @@
 import { createScopedClassNames } from "../../../utils/createScopedClassNames";
-import React, { useState, useMemo, useEffect } from "react";
+import React, { lazy, Suspense, useState, useMemo, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { Helmet } from "react-helmet-async";
@@ -12,10 +12,19 @@ import { fetchSeoMeta } from "../../../redux/actions/seoAction.js";
 import { fetchSeoPageContentMeta } from "../../../redux/actions/seoPageContentAction.js";
 import { CLEAR_SEO_META } from "../../../redux/actions/userActionTypes.js";
 import SeoMeta from "../seo/seoMeta.js";
-import Footer from "../footer/footer.js";
-import PopularCategoriesLink from "../popularCategories/popularCategories.js";
 import { generateBreadcrumbSchema, generateItemListSchema } from "../../../utils/seoSchemaGenerators";
 import { renderFaqAnswerWithLinks } from "../../../utils/renderFaqAnswerWithLinks";
+import useRenderNearViewport from "../../../hooks/useRenderNearViewport.js";
+
+const Footer = lazy(() =>
+  import(/* webpackChunkName: "public-footer" */ "../footer/footer.js")
+);
+const PopularCategoriesLink = lazy(() =>
+  import(
+    /* webpackChunkName: "popular-categories" */ "../popularCategories/popularCategories.js"
+  )
+);
+
 const cx = createScopedClassNames(styles);
 const sanitizeSeoHtml = (html = "") => {
   return html.replace(/<h1(\s[^>]*)?>/gi, "<h2>").replace(/<\/h1>/gi, "</h2>");
@@ -29,6 +38,10 @@ const CategoriesPage = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const [search, setSearch] = useState("");
+  const {
+    targetRef: bottomSectionsRef,
+    shouldRender: shouldRenderBottomSections,
+  } = useRenderNearViewport();
   const {
     subCategories = [],
     loading
@@ -201,9 +214,13 @@ const CategoriesPage = () => {
           </div>
         </div>}
       {/* Bottom Sections */}
-      <div className={cx("bottom-sections-wrapper")}>
-        <PopularCategoriesLink />
-        <Footer />
+      <div ref={bottomSectionsRef} className={cx("bottom-sections-wrapper")}>
+        {shouldRenderBottomSections && (
+          <Suspense fallback={null}>
+            <PopularCategoriesLink />
+            <Footer />
+          </Suspense>
+        )}
       </div>
       </div>
     </>;

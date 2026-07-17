@@ -1,6 +1,6 @@
 import axiosInstance from '../../services/axiosInstance.js';
-import qs from 'qs';
 import { getPendingBusinessList } from './businessListAction.js';
+import toFormUrlEncoded from '../../utils/toFormUrlEncoded.js';
 import {
   clearAdminSession,
   getAdminAccessToken,
@@ -31,7 +31,7 @@ export const login = (userName, password) => async (dispatch) => {
   dispatch({ type: LOGIN_REQUEST });
 
   try {
-    const data = qs.stringify({
+    const data = toFormUrlEncoded({
       grant_type: 'password',
       client_id: CLIENT_ID,
       client_secret: CLIENT_SECRET,
@@ -73,7 +73,7 @@ export const relogin = () => async (dispatch) => {
   try {
     const refreshToken = getAdminRefreshToken();
 
-    const data = qs.stringify({
+    const data = toFormUrlEncoded({
       grant_type: 'refresh_token',
       client_id: CLIENT_ID,
       client_secret: CLIENT_SECRET,

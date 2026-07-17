@@ -1,10 +1,8 @@
 import { createScopedClassNames } from "../../../utils/createScopedClassNames";
-import React, { useEffect, useState } from "react";
+import React, { lazy, Suspense, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
-import { LazyLoadImage } from "react-lazy-load-image-component";
-import "react-lazy-load-image-component/src/effects/opacity.css";
 import styles from "./cards.module.css";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import PhoneIcon from "@mui/icons-material/Phone";
@@ -21,8 +19,12 @@ import WorkHistoryRoundedIcon from "@mui/icons-material/WorkHistoryRounded";
 import CheckBoxRoundedIcon from "@mui/icons-material/CheckBoxRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import { addFavorite, removeFavorite, fetchFavorites, getAuthUser } from "../../../redux/actions/favoriteAction";
-import OTPLoginModal from "../AddBusinessModel.js";
+import { trackBusinessClick, trackSearchResultClick } from "../../../utils/webTracker.js";
 import massClickLogo from "../../../assets/mclogo.webp";
+
+const OTPLoginModal = lazy(() =>
+  import(/* webpackChunkName: "otp-modal" */ "../AddBusinessModel.js")
+);
 
 const cx = createScopedClassNames(styles);
 
@@ -118,6 +120,7 @@ const Cards = ({
   viewMode = "list",
   cardVariant = "",
   compact = false,
+  resultPosition = null,
   ...props
 }) => {
   const navigate = useNavigate();
@@ -178,6 +181,8 @@ const Cards = ({
 
   const handlePhoneClick = e => {
     e.preventDefault();
+    e.stopPropagation();
+    trackBusinessClick(businessId, title, "call", "card");
     window.location.href = `tel:${phone}`;
   };
 
@@ -185,6 +190,7 @@ const Cards = ({
     e.preventDefault();
     e.stopPropagation();
     if (!whatsappNumber) { alert("WhatsApp number not available"); return; }
+    trackBusinessClick(businessId, title, "whatsapp", "card");
     const cleanNumber = whatsappNumber.replace(/\D/g, "");
     window.open(`https://wa.me/${cleanNumber}`, "_blank");
   };
@@ -192,6 +198,7 @@ const Cards = ({
   const handleEnquiryClick = e => {
     e.preventDefault();
     e.stopPropagation();
+    trackBusinessClick(businessId, title, "enquiry", "card");
     navigate("/business-enquiry");
   };
 
@@ -270,7 +277,14 @@ const Cards = ({
 
   return (
     <>
-      <OTPLoginModal open={showLoginModal} handleClose={() => setShowLoginModal(false)} />
+      {showLoginModal && (
+        <Suspense fallback={null}>
+          <OTPLoginModal
+            open={true}
+            handleClose={() => setShowLoginModal(false)}
+          />
+        </Suspense>
+      )}
       {showCertificate && createPortal(
         <div
           className={cx("certificate-overlay", `certificate-overlay--${currentCertificate.key}`)}
@@ -359,7 +373,16 @@ const Cards = ({
         </div>,
         document.body
       )}
-      <Link to={to} state={props.state} className={cx("card-link")}>
+      <Link
+        to={to}
+        state={props.state}
+        className={cx("card-link")}
+        onClick={() => {
+          if (resultPosition != null && businessId) {
+            trackSearchResultClick(businessId, title, resultPosition);
+          }
+        }}
+      >
         <div className={cx("base-card", `base-card--${viewMode}`, cardVariant && `base-card--${cardVariant}`, compact && "base-card--compact")}>
 
           {/* Image */}
@@ -375,14 +398,11 @@ const Cards = ({
                   className={cx("card-image")}
                 />
               ) : (
-                <LazyLoadImage
+                <img
                   src={imageSrc || EMPTY_PIXEL}
-                  placeholderSrc={EMPTY_PIXEL}
                   alt={title}
                   decoding="async"
                   loading={index < 3 ? "eager" : "lazy"}
-                  effect="opacity"
-                  wrapperProps={{ style: { width: "100%", height: "100%" } }}
                   className={cx("card-image")}
                 />
               )}

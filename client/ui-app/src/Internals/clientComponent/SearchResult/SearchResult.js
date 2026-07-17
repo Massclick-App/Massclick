@@ -1,5 +1,7 @@
 import { createScopedClassNames } from "../../../utils/createScopedClassNames";
 import React, {
+  lazy,
+  Suspense,
   useEffect,
   useRef,
   useState,
@@ -14,19 +16,15 @@ import StarIcon from "@mui/icons-material/Star";
 import GroupsIcon from "@mui/icons-material/Groups";
 import LockIcon from "@mui/icons-material/Lock";
 import TuneIcon from "@mui/icons-material/Tune";
-import CloseIcon from "@mui/icons-material/Close";
 import ViewListIcon from "@mui/icons-material/ViewList";
 import ViewModuleIcon from "@mui/icons-material/ViewModule";
 import ViewHeadlineIcon from "@mui/icons-material/ViewHeadline";
 import ViewAgendaIcon from "@mui/icons-material/ViewAgenda";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
-import { Box, Chip, Drawer, Button } from "@mui/material";
 import styles from "./SearchResult.module.css";
 import StickySearchBar from "../StickySearchBar/StickySearchBar";
 import CardDesign from "../cards/cards.js";
 import SeoMeta from "../seo/seoMeta.js";
-import Footer from "../footer/footer.js";
-import PopularCategoriesLink from "../popularCategories/popularCategories.js";
 import Breadcrumbs from "../Breadcrumbs/Breadcrumbs.js";
 import {
   performSearch,
@@ -43,8 +41,6 @@ import {
 } from "../../../redux/selectors";
 import TopBannerAds from "../banners/topBanner/topBanner.js";
 import CategoryPublicCounterBadge from "../publicUserCounter/CategoryPublicCounterBadge.js";
-import OTPLoginModal from "../AddBusinessModel.js";
-import FilterPanel from "./FilterPanel.js";
 import axiosInstance from "../../../services/axiosInstance.js";
 import { getClientToken } from "../../../redux/actions/clientAuthAction.js";
 import {
@@ -55,6 +51,27 @@ import {
   generateFAQSchema,
 } from "../../../utils/seoSchemaGenerators";
 import { renderFaqAnswerWithLinks } from "../../../utils/renderFaqAnswerWithLinks";
+import useMediaQuery from "../../../hooks/useMediaQuery.js";
+import useRenderNearViewport from "../../../hooks/useRenderNearViewport.js";
+import { trackSearch } from "../../../utils/webTracker.js";
+
+const Footer = lazy(() =>
+  import(/* webpackChunkName: "public-footer" */ "../footer/footer.js")
+);
+const PopularCategoriesLink = lazy(() =>
+  import(
+    /* webpackChunkName: "popular-categories" */ "../popularCategories/popularCategories.js"
+  )
+);
+const FilterPanel = lazy(() =>
+  import(/* webpackChunkName: "filter-panel" */ "./FilterPanel.js")
+);
+const MobileFilterDrawer = lazy(() =>
+  import(
+    /* webpackChunkName: "mobile-filter-drawer" */ "./MobileFilterDrawer.js"
+  )
+);
+
 const cx = createScopedClassNames(styles);
 const DEFAULT_LOCATION = "Trichy";
 const createSlug = (text = "") =>
@@ -225,8 +242,11 @@ const SearchResults = React.memo(
     const navigate = useNavigate();
     const urlParams = useParams();
     const locationState = useLocation();
-    const [openLoginModal, setOpenLoginModal] = useState(false);
-    const [viewport, setViewport] = useState(window.innerWidth);
+    const isCompact = useMediaQuery("(max-width: 1023px)");
+    const {
+      targetRef: bottomSectionsRef,
+      shouldRender: shouldRenderBottomSections,
+    } = useRenderNearViewport();
 
     const {
       searchTerm,
@@ -318,6 +338,7 @@ const SearchResults = React.memo(
     const [sortBy, setSortBy] = useState("relevant");
     const [viewMode, setViewMode] = useState("list");
     const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
+    const filterDrawerHasOpenedRef = useRef(false);
 
     // ─── Geo state (on-demand) ───────────────────────────────────────────────────
     const [userGeo, setUserGeo] = useState(null); // { lat, lng } or null
@@ -339,22 +360,11 @@ const SearchResults = React.memo(
     const stateAppliedRef = useRef(false);
     const requestIdRef = useRef(0);
     const searchControlsChangedRef = useRef(false);
+    const trackedSearchRef = useRef(null);
     const sentinelRef = useRef(null);
     const loadingPagesRef = useRef(new Set()); // pages currently in-flight
     const searchVersionRef = useRef(0); // bumped on every search-control change
 
-    useEffect(() => {
-      const authUser = localStorage.getItem("authUser");
-      if (!authUser) {
-        setOpenLoginModal(true);
-      }
-    }, []);
-
-    useEffect(() => {
-      const handleResize = () => setViewport(window.innerWidth);
-      window.addEventListener("resize", handleResize);
-      return () => window.removeEventListener("resize", handleResize);
-    }, []);
     useEffect(() => {
       setSearchInput(displayName || searchTerm || "");
       setLocationInput(locationText || DEFAULT_LOCATION);
@@ -481,6 +491,20 @@ const SearchResults = React.memo(
       [sortBy, activeFilters, userGeo],
     );
 
+    const trackResolvedSearch = useCallback((resultsCount) => {
+      const searchIdentity = locationState.key
+        || `${normalizedSearchTerm}|${locationText}|${isKnownCategory}`;
+      if (trackedSearchRef.current === searchIdentity) return;
+
+      trackSearch({
+        query: normalizedSearchTerm,
+        location: locationText,
+        resultsCount: Number(resultsCount) || 0,
+        known: isKnownCategory,
+      });
+      trackedSearchRef.current = searchIdentity;
+    }, [isKnownCategory, locationState.key, locationText, normalizedSearchTerm]);
+
     // ─── Initial load: use state results from navigation OR fetch from API ────────
     useEffect(() => {
       if (
@@ -489,17 +513,17 @@ const SearchResults = React.memo(
         !stateAppliedRef.current
       ) {
         setResults(safeStateResults);
-        setTotalResults(
-          typeof initialTotal === "number"
-            ? initialTotal
-            : safeStateResults.length,
-        );
+        const resolvedTotal = typeof initialTotal === "number"
+          ? initialTotal
+          : safeStateResults.length;
+        setTotalResults(resolvedTotal);
         // initialResults (from CategoryRouter's prefetch) carries real pagination info;
         // plain navigation-state results are a snapshot with no pagination.
         setHasMore(
           Array.isArray(initialResults) ? Boolean(initialHasMore) : false,
         );
         setInitialSearchResolved(true);
+        trackResolvedSearch(resolvedTotal);
         stateAppliedRef.current = true;
         return;
       }
@@ -531,6 +555,7 @@ const SearchResults = React.memo(
         setResolvedCategory(normalized.resolvedCategory || null);
         setCurrentPage(1);
         setInitialSearchResolved(true);
+        trackResolvedSearch(normalized.total || 0);
         loadingPagesRef.current.clear();
       });
     }, [
@@ -540,6 +565,7 @@ const SearchResults = React.memo(
       apiLocation,
       isKnownCategory,
       dispatch,
+      trackResolvedSearch,
     ]); // eslint-disable-line
 
     // ─── Re-fetch when filters / sort / geo change ───────────────────────────────
@@ -782,7 +808,6 @@ const SearchResults = React.memo(
 
     const totalActiveCount =
       activeFilterChips.length + (sortBy !== "relevant" ? 1 : 0);
-    const isCompact = viewport < 1024;
     const viewOptions = [
       { value: "list", label: "List", icon: ViewListIcon },
       { value: "grid", label: "Grid", icon: ViewModuleIcon },
@@ -915,10 +940,6 @@ const SearchResults = React.memo(
 
     return (
       <>
-        <OTPLoginModal
-          open={openLoginModal}
-          handleClose={() => setOpenLoginModal(false)}
-        />
         <SeoMeta seoData={seoMetaData} fallback={fallbackSeo} />
 
         <Helmet>
@@ -1016,11 +1037,12 @@ const SearchResults = React.memo(
               {activeFilterChips.length > 0 && (
                 <div className={cx("filter-chips-row")}>
                   {activeFilterChips.map((chip, i) => (
-                    <Chip
+                    <button
+                      type="button"
                       key={`${chip.key}-${chip.value}-${i}`}
-                      label={chip.label}
-                      size="small"
-                      onDelete={() => {
+                      className={cx("filter-chip")}
+                      aria-label={`Remove ${chip.label} filter`}
+                      onClick={() => {
                         const current = activeFilters[chip.key];
                         if (Array.isArray(current)) {
                           const updated = current.filter(
@@ -1034,48 +1056,41 @@ const SearchResults = React.memo(
                           handleFilterChange(chip.key, null);
                         }
                       }}
-                      deleteIcon={
-                        <CloseIcon sx={{ fontSize: "12px !important" }} />
-                      }
-                      sx={{
-                        bgcolor: "#fff3e0",
-                        color: "#e65100",
-                        border: "1px solid #ffb74d",
-                        fontSize: "12px",
-                        height: 26,
-                      }}
-                    />
+                    >
+                      <span>{chip.label}</span>
+                      <span className={cx("filter-chip-remove")} aria-hidden="true">
+                        ×
+                      </span>
+                    </button>
                   ))}
-                  <Chip
-                    label="Clear all"
-                    size="small"
+                  <button
+                    type="button"
+                    className={cx("filter-chip-clear")}
                     onClick={handleClearAllFilters}
-                    sx={{
-                      bgcolor: "transparent",
-                      border: "1px solid #ccc",
-                      color: "#666",
-                      fontSize: "12px",
-                      height: 26,
-                      cursor: "pointer",
-                    }}
-                  />
+                  >
+                    Clear all
+                  </button>
                 </div>
               )}
 
               {/* Three-column layout: filter | results | ads */}
               <div className={cx("search-layout")}>
                 {/* Desktop filter column */}
-                <div className={cx("filter-column")}>
-                  <FilterPanel
-                    filterConfig={filterConfig}
-                    activeFilters={activeFilters}
-                    sortBy={sortBy}
-                    onFilterChange={handleFilterChange}
-                    onSortChange={handleSortChange}
-                    onClearAll={handleClearAllFilters}
-                    hasGeo={geoStatus === "granted"}
-                  />
-                </div>
+                {!isCompact && (
+                  <div className={cx("filter-column")}>
+                    <Suspense fallback={null}>
+                      <FilterPanel
+                        filterConfig={filterConfig}
+                        activeFilters={activeFilters}
+                        sortBy={sortBy}
+                        onFilterChange={handleFilterChange}
+                        onSortChange={handleSortChange}
+                        onClearAll={handleClearAllFilters}
+                        hasGeo={geoStatus === "granted"}
+                      />
+                    </Suspense>
+                  </div>
+                )}
 
                 {/* Results column */}
                 <div className={cx("results-column")}>
@@ -1239,6 +1254,7 @@ const SearchResults = React.memo(
                               viewMode={viewMode}
                               compact={isCompact}
                               index={idx}
+                              resultPosition={idx + 1}
                             />
                           </div>
                         );
@@ -1332,6 +1348,7 @@ const SearchResults = React.memo(
                                   cardVariant="nearby"
                                   compact={isCompact}
                                   index={idx}
+                                  resultPosition={idx + 1}
                                 />
                               </div>
                             );
@@ -1355,29 +1372,11 @@ const SearchResults = React.memo(
             </div>
 
             {/* Mobile filter drawer */}
-            <Drawer
-              anchor="bottom"
-              open={filterDrawerOpen}
-              onClose={() => setFilterDrawerOpen(false)}
-              PaperProps={{
-                sx: {
-                  borderRadius: "16px 16px 0 0",
-                  maxHeight: "80vh",
-                  display: "flex",
-                  flexDirection: "column",
-                  overflow: "hidden",
-                },
-              }}
-            >
-              <Box
-                sx={{
-                  overflowY: "auto",
-                  flex: 1,
-                  p: 2,
-                  WebkitOverflowScrolling: "touch",
-                }}
-              >
-                <FilterPanel
+            {isCompact && filterDrawerHasOpenedRef.current && (
+              <Suspense fallback={null}>
+                <MobileFilterDrawer
+                  open={filterDrawerOpen}
+                  onClose={() => setFilterDrawerOpen(false)}
                   filterConfig={filterConfig}
                   activeFilters={activeFilters}
                   sortBy={sortBy}
@@ -1385,39 +1384,19 @@ const SearchResults = React.memo(
                   onSortChange={handleSortChange}
                   onClearAll={handleClearAllFilters}
                   hasGeo={geoStatus === "granted"}
+                  totalActiveCount={totalActiveCount}
                 />
-              </Box>
-              <Box
-                sx={{
-                  p: 2,
-                  pt: 1,
-                  flexShrink: 0,
-                  borderTop: "1px solid #f1f5f9",
-                  bgcolor: "#fff",
-                }}
-              >
-                <Button
-                  fullWidth
-                  variant="contained"
-                  onClick={() => setFilterDrawerOpen(false)}
-                  sx={{
-                    bgcolor: "#ff8c00",
-                    "&:hover": { bgcolor: "#e07800" },
-                    borderRadius: 2,
-                    fontWeight: 700,
-                  }}
-                >
-                  Apply Filters{" "}
-                  {totalActiveCount > 0 ? `(${totalActiveCount})` : ""}
-                </Button>
-              </Box>
-            </Drawer>
+              </Suspense>
+            )}
 
             {/* Mobile sticky filter bar */}
             <div className={cx("mobile-filter-bar")}>
               <button
                 className={cx("mobile-filter-btn")}
-                onClick={() => setFilterDrawerOpen(true)}
+                onClick={() => {
+                  filterDrawerHasOpenedRef.current = true;
+                  setFilterDrawerOpen(true);
+                }}
               >
                 <TuneIcon sx={{ fontSize: 16 }} />
                 Filters {totalActiveCount > 0 ? `(${totalActiveCount})` : ""}
@@ -1463,9 +1442,16 @@ const SearchResults = React.memo(
                 </div>
               )}
           </main>
-          <div className={cx("bottom-sections-wrapper")}>
-            <PopularCategoriesLink />
-            <Footer />
+          <div
+            ref={bottomSectionsRef}
+            className={cx("bottom-sections-wrapper")}
+          >
+            {shouldRenderBottomSections && (
+              <Suspense fallback={null}>
+                <PopularCategoriesLink />
+                <Footer />
+              </Suspense>
+            )}
           </div>
         </div>
       </>

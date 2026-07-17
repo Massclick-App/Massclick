@@ -1,33 +1,55 @@
+import {
+  ensureGoogleAnalyticsQueue,
+  ensureGoogleTagQueue,
+  GA_TRACKING_ID,
+} from "../utils/analytics.js";
+
+export const GOOGLE_ADS_ID = "AW-18321855911";
+const GOOGLE_ADS_CONFIGURED_FLAG = "__massclickGoogleAdsConfigured";
+
 const hasScript = (needle) =>
   Array.from(document.querySelectorAll("script")).some((script) =>
     script.src.includes(needle),
   );
 
-// Lazy load Google Analytics to avoid blocking main thread
 export const loadGoogleAnalytics = () => {
-  const gaId = process.env.REACT_APP_GA_MEASUREMENT_ID;
-  if (!gaId || hasScript(`gtag/js?id=${gaId}`)) {
+  if (
+    !ensureGoogleAnalyticsQueue() ||
+    hasScript(`gtag/js?id=${GA_TRACKING_ID}`)
+  ) {
     return;
   }
 
   const script = document.createElement("script");
   script.async = true;
-  script.src = `https://www.googletagmanager.com/gtag/js?id=${gaId}`;
+  script.src = `https://www.googletagmanager.com/gtag/js?id=${GA_TRACKING_ID}`;
   script.dataset.massclickGa = "true";
+  script.onerror = () => {};
 
-  script.onload = () => {
-    window.dataLayer = window.dataLayer || [];
-    function gtag() {
-      window.dataLayer.push(arguments);
-    }
-    gtag("js", new Date());
-    gtag("config", gaId, {
-      send_page_view: true,
-    });
-  };
+  document.head.appendChild(script);
+};
 
-  script.onerror = () => {
-    };
+export const loadGoogleAds = () => {
+  const gtag = ensureGoogleTagQueue();
+  if (!gtag) {
+    return;
+  }
+
+  if (!window[GOOGLE_ADS_CONFIGURED_FLAG]) {
+    window[GOOGLE_ADS_CONFIGURED_FLAG] = true;
+    gtag("config", GOOGLE_ADS_ID);
+  }
+
+  if (hasScript(`gtag/js?id=${GOOGLE_ADS_ID}`)) {
+    return;
+  }
+
+  const script = document.createElement("script");
+  script.async = true;
+  script.src =
+    `https://www.googletagmanager.com/gtag/js?id=${GOOGLE_ADS_ID}`;
+  script.dataset.massclickGoogleAds = "true";
+  script.onerror = () => {};
 
   document.head.appendChild(script);
 };
@@ -63,8 +85,7 @@ export const loadAdSense = () => {
   script.dataset.massclickAdsense = "true";
   script.src =
     "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3217097513155005";
-  script.onerror = () => {
-    };
+  script.onerror = () => {};
 
   document.head.appendChild(script);
 };

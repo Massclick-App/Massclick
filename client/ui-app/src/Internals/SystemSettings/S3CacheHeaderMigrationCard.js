@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import axiosInstance from "../../services/axiosInstance.js";
 import { createScopedClassNames } from "../../utils/createScopedClassNames";
 import styles from "./BusinessImageMigrationCard.module.css";
@@ -10,44 +10,38 @@ const MIGRATION_SCOPES = [
   {
     scopeKey: "all",
     label: "All Folders",
-    description: "Re-upload all images across all S3 folders with cache headers.",
-    progressLabel: "Objects",
+    description:
+      "Scan all supported S3 folders and update only objects with insufficient cache headers.",
   },
   {
     scopeKey: "businessList",
     label: "Business List",
     description: "Banners, galleries, and business images.",
-    progressLabel: "Objects",
   },
   {
     scopeKey: "category",
     label: "Category Images",
     description: "Category hero, card, and thumbnail images.",
-    progressLabel: "Objects",
   },
   {
     scopeKey: "seo",
     label: "SEO Blog Images",
     description: "SEO blog profile, page, and OG images.",
-    progressLabel: "Objects",
   },
   {
     scopeKey: "advertisements",
     label: "Advertisements",
     description: "Advertisement banner images.",
-    progressLabel: "Objects",
   },
   {
     scopeKey: "admin",
     label: "Admin Profiles",
     description: "Admin user profile images.",
-    progressLabel: "Objects",
   },
   {
     scopeKey: "user",
     label: "Customer Profiles",
     description: "Customer profile images.",
-    progressLabel: "Objects",
   },
 ];
 
@@ -89,6 +83,7 @@ const formatTime = (value) => {
 export default function S3CacheHeaderMigrationCard() {
   const [selectedScopeKey, setSelectedScopeKey] = useState("all");
   const [latestJob, setLatestJob] = useState(null);
+  const [activeJob, setActiveJob] = useState(null);
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
   const [pausing, setPausing] = useState(false);
@@ -99,31 +94,57 @@ export default function S3CacheHeaderMigrationCard() {
   const [note, setNote] = useState("");
 
   const selectedScope = useMemo(
-    () => MIGRATION_SCOPES.find((scope) => scope.scopeKey === selectedScopeKey) || MIGRATION_SCOPES[0],
-    [selectedScopeKey]
+    () =>
+      MIGRATION_SCOPES.find((scope) => scope.scopeKey === selectedScopeKey) ||
+      MIGRATION_SCOPES[0],
+    [selectedScopeKey],
   );
 
-  const loadLatestJob = async ({ silent = false, scopeKey = selectedScopeKey } = {}) => {
-    if (!silent) {
-      setRefreshing(true);
-    }
-
-    try {
-      const response = await axiosInstance.get(
-        `${API_URL}/admin/system-settings/s3-cache-header-migration/latest`,
-        { headers: authHeaders() }
-      );
-      setLatestJob(response.data?.data || null);
-      setNote("");
-    } catch (error) {
-      setNote(error.response?.data?.message || error.message || "Failed to load migration status");
-    } finally {
+  const loadLatestJob = useCallback(
+    async ({ silent = false, scopeKey = selectedScopeKey } = {}) => {
       if (!silent) {
-        setRefreshing(false);
-        setLoading(false);
+        setRefreshing(true);
       }
-    }
-  };
+
+      try {
+        const response = await axiosInstance.get(
+          `${API_URL}/admin/system-settings/s3-cache-header-migration/latest`,
+          {
+            headers: authHeaders(),
+            params: { scopeKey },
+          },
+        );
+        const scopedJob = response.data?.data || null;
+        const globalActiveJob = response.data?.activeJob || null;
+
+        setLatestJob(scopedJob);
+        setActiveJob(globalActiveJob);
+
+        if (
+          globalActiveJob?.scopeKey &&
+          globalActiveJob.scopeKey !== scopeKey
+        ) {
+          setSelectedScopeKey(globalActiveJob.scopeKey);
+        }
+
+        if (!silent) {
+          setNote("");
+        }
+      } catch (error) {
+        setNote(
+          error.response?.data?.message ||
+            error.message ||
+            "Failed to load migration status",
+        );
+      } finally {
+        if (!silent) {
+          setRefreshing(false);
+          setLoading(false);
+        }
+      }
+    },
+    [selectedScopeKey],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -139,35 +160,54 @@ export default function S3CacheHeaderMigrationCard() {
     return () => {
       cancelled = true;
     };
-  }, [selectedScopeKey]);
+  }, [loadLatestJob, selectedScopeKey]);
+
+  const displayedJob = activeJob || latestJob;
+  const displayedJobId = displayedJob?._id;
+  const displayedJobStatus = displayedJob?.status;
 
   useEffect(() => {
-    if (!latestJob?._id) return undefined;
-    if (!["queued", "running"].includes(latestJob.status)) return undefined;
+    if (
+      !displayedJobId ||
+      !["queued", "running"].includes(displayedJobStatus)
+    ) {
+      return undefined;
+    }
 
     const timer = setInterval(() => {
       loadLatestJob({ silent: true, scopeKey: selectedScopeKey });
     }, 5000);
 
     return () => clearInterval(timer);
-  }, [latestJob?._id, latestJob?.status, selectedScopeKey]);
+  }, [displayedJobId, displayedJobStatus, loadLatestJob, selectedScopeKey]);
 
-  const totals = latestJob?.totals || {};
-  const progress = latestJob?.progress || {};
+  const totals = displayedJob?.totals || {};
+  const progress = displayedJob?.progress || {};
   const totalObjects = Number(totals.candidateObjects || 0);
   const objectsDone = Number(progress.objectsScanned || 0);
+  const phase = displayedJob?.phase || "scanning";
+  const isDiscovering = phase === "scanning";
   const percent = useMemo(() => {
-    if (!totalObjects) return 0;
-    return Math.max(0, Math.min(100, Math.round((objectsDone / totalObjects) * 100)));
-  }, [objectsDone, totalObjects]);
-  const active = ["queued", "running"].includes(latestJob?.status);
-  const paused = latestJob?.status === "paused";
-  const cancellable = ["queued", "running", "paused"].includes(latestJob?.status);
+    if (isDiscovering || !totalObjects) return 0;
+    return Math.max(
+      0,
+      Math.min(100, Math.round((objectsDone / totalObjects) * 100)),
+    );
+  }, [isDiscovering, objectsDone, totalObjects]);
+  const active = ["queued", "running"].includes(displayedJobStatus);
+  const paused = displayedJobStatus === "paused";
+  const cancellable = ["queued", "running", "paused"].includes(
+    displayedJobStatus,
+  );
+  const phaseLabel = isDiscovering
+    ? "Discovering objects"
+    : "Updating cache headers";
+  const progressText = isDiscovering
+    ? `${formatNumber(totalObjects)} objects discovered`
+    : `${formatNumber(objectsDone)} / ${formatNumber(totalObjects)} (${percent}%)`;
 
   const startMigration = async () => {
-    const message = paused
-      ? "This will resume the paused cache header migration."
-      : `This will re-upload all ${selectedScope.label.toLowerCase()} with 1-year cache headers. Continue?`;
+    const message = `This will scan ${selectedScope.label.toLowerCase()} and update only objects that do not already have at least 1-year browser caching. Continue?`;
 
     if (!window.confirm(message)) {
       return;
@@ -184,20 +224,64 @@ export default function S3CacheHeaderMigrationCard() {
           batchSize,
           retryCount,
         },
-        { headers: authHeaders() }
+        { headers: authHeaders() },
       );
+      const job = response.data?.data || null;
 
-      setLatestJob(response.data?.data || null);
+      setLatestJob(job);
+      setActiveJob(job);
       setNote("Migration job started.");
     } catch (error) {
-      setNote(error.response?.data?.message || error.message || "Failed to start migration");
+      setNote(
+        error.response?.data?.message ||
+          error.message ||
+          "Failed to start migration",
+      );
+    } finally {
+      setStarting(false);
+    }
+  };
+
+  const resumeMigration = async () => {
+    if (
+      !displayedJobId ||
+      !window.confirm("Resume this migration from its saved checkpoint?")
+    ) {
+      return;
+    }
+
+    setStarting(true);
+    setNote("");
+
+    try {
+      const response = await axiosInstance.post(
+        `${API_URL}/admin/system-settings/s3-cache-header-migration/resume`,
+        { jobId: displayedJobId },
+        { headers: authHeaders() },
+      );
+      const job = response.data?.data || null;
+
+      setLatestJob(job);
+      setActiveJob(job);
+      setNote("Migration resumed from the saved checkpoint.");
+    } catch (error) {
+      setNote(
+        error.response?.data?.message ||
+          error.message ||
+          "Failed to resume migration",
+      );
     } finally {
       setStarting(false);
     }
   };
 
   const pauseMigration = async () => {
-    if (!window.confirm("Pause the migration? It will stop after the current batch finishes.")) {
+    if (
+      !displayedJobId ||
+      !window.confirm(
+        "Pause the migration? Any in-flight S3 object will finish first.",
+      )
+    ) {
       return;
     }
 
@@ -207,21 +291,30 @@ export default function S3CacheHeaderMigrationCard() {
     try {
       const response = await axiosInstance.post(
         `${API_URL}/admin/system-settings/s3-cache-header-migration/pause`,
-        {},
-        { headers: authHeaders() }
+        { jobId: displayedJobId },
+        { headers: authHeaders() },
       );
+      const job = response.data?.data || null;
 
-      setLatestJob(response.data?.data || null);
+      setLatestJob(job);
+      setActiveJob(job);
       setNote("Migration paused.");
     } catch (error) {
-      setNote(error.response?.data?.message || error.message || "Failed to pause migration");
+      setNote(
+        error.response?.data?.message ||
+          error.message ||
+          "Failed to pause migration",
+      );
     } finally {
       setPausing(false);
     }
   };
 
   const cancelMigration = async () => {
-    if (!window.confirm("Cancel the migration? This will stop the job.")) {
+    if (
+      !displayedJobId ||
+      !window.confirm("Cancel the migration? This will stop the job.")
+    ) {
       return;
     }
 
@@ -231,20 +324,27 @@ export default function S3CacheHeaderMigrationCard() {
     try {
       const response = await axiosInstance.post(
         `${API_URL}/admin/system-settings/s3-cache-header-migration/cancel`,
-        {},
-        { headers: authHeaders() }
+        { jobId: displayedJobId },
+        { headers: authHeaders() },
       );
 
       setLatestJob(response.data?.data || null);
+      setActiveJob(null);
       setNote("Migration cancelled.");
     } catch (error) {
-      setNote(error.response?.data?.message || error.message || "Failed to cancel migration");
+      setNote(
+        error.response?.data?.message ||
+          error.message ||
+          "Failed to cancel migration",
+      );
     } finally {
       setCancelling(false);
     }
   };
 
-  const failurePreview = Array.isArray(latestJob?.failures) ? latestJob.failures.slice(0, 5) : [];
+  const failurePreview = Array.isArray(displayedJob?.failures)
+    ? displayedJob.failures.slice(-5).reverse()
+    : [];
 
   return (
     <div className={cx("migration-card")}>
@@ -253,22 +353,35 @@ export default function S3CacheHeaderMigrationCard() {
           <div className={cx("migration-eyebrow")}>Admin maintenance</div>
           <h3 className={cx("migration-title")}>S3 Cache Header Migration</h3>
           <p className={cx("migration-subtitle")}>
-            Re-upload existing S3 images with 1-year cache headers for browser caching and performance optimization.
+            Apply 1-year browser cache headers without changing image bytes.
+            Objects already cached for at least one year are skipped without
+            copying.
           </p>
         </div>
-        <div className={cx(`status-chip ${statusTone[latestJob?.status] || "neutral"}`)}>
-          {statusLabel[latestJob?.status] || "No job yet"}
+        <div
+          className={cx(
+            `status-chip ${statusTone[displayedJobStatus] || "neutral"}`,
+          )}
+        >
+          {statusLabel[displayedJobStatus] || "No job yet"}
         </div>
       </div>
 
       <div className={cx("migration-warning")}>
-        <strong>One scope at a time:</strong> pick a folder scope, run the migration. Existing images will get cache headers for 1-year browser caching.
+        <strong>Restart-safe:</strong> one job runs at a time, progress is
+        checkpointed, and a stopped server continues the job automatically after
+        restart.
       </div>
 
       <div className={cx("migration-controls")}>
         <label className={cx("field-row", "scope-row")}>
           <span className={cx("form-input-label")}>Target folder</span>
-          <select value={selectedScopeKey} onChange={(e) => setSelectedScopeKey(e.target.value)} className={cx("form-select-input")}>
+          <select
+            value={selectedScopeKey}
+            onChange={(event) => setSelectedScopeKey(event.target.value)}
+            className={cx("form-select-input")}
+            disabled={Boolean(activeJob)}
+          >
             {MIGRATION_SCOPES.map((scope) => (
               <option key={scope.scopeKey} value={scope.scopeKey}>
                 {scope.label}
@@ -285,8 +398,9 @@ export default function S3CacheHeaderMigrationCard() {
             max="500"
             step="1"
             value={batchSize}
-            onChange={(e) => setBatchSize(e.target.value)}
+            onChange={(event) => setBatchSize(event.target.value)}
             className={cx("form-text-input")}
+            disabled={Boolean(activeJob)}
           />
         </label>
 
@@ -298,8 +412,9 @@ export default function S3CacheHeaderMigrationCard() {
             max="5"
             step="1"
             value={retryCount}
-            onChange={(e) => setRetryCount(e.target.value)}
+            onChange={(event) => setRetryCount(event.target.value)}
             className={cx("form-text-input")}
+            disabled={Boolean(activeJob)}
           />
         </label>
       </div>
@@ -312,16 +427,26 @@ export default function S3CacheHeaderMigrationCard() {
         <button
           type="button"
           className={cx("action-button primary")}
-          onClick={startMigration}
-          disabled={starting || (active && !paused)}
+          onClick={paused ? resumeMigration : startMigration}
+          disabled={starting || (Boolean(activeJob) && !paused)}
         >
-          {starting ? (paused ? "Resuming..." : "Starting...") : paused ? "Resume Migration" : active ? "Migration Running" : "Start Migration"}
+          {starting
+            ? paused
+              ? "Resuming..."
+              : "Starting..."
+            : paused
+              ? "Resume Migration"
+              : active
+                ? "Migration Running"
+                : "Start Migration"}
         </button>
         <button
           type="button"
           className={cx("action-button secondary")}
           onClick={pauseMigration}
-          disabled={pausing || !["running", "queued"].includes(latestJob?.status)}
+          disabled={
+            pausing || !["running", "queued"].includes(displayedJobStatus)
+          }
         >
           {pausing ? "Pausing..." : "Pause"}
         </button>
@@ -347,66 +472,96 @@ export default function S3CacheHeaderMigrationCard() {
 
       <div className={cx("migration-summary")}>
         <div className={cx("summary-card")}>
-          <div className={cx("summary-value")}>{formatNumber(totalObjects)}</div>
-          <div className={cx("summary-label")}>Objects in scope</div>
+          <div className={cx("summary-value")}>
+            {formatNumber(totalObjects)}
+          </div>
+          <div className={cx("summary-label")}>
+            {isDiscovering ? "Objects discovered" : "Objects in scope"}
+          </div>
         </div>
         <div className={cx("summary-card")}>
-          <div className={cx("summary-value")}>{formatNumber(progress.objectsUpdated)}</div>
+          <div className={cx("summary-value")}>
+            {formatNumber(progress.objectsUpdated)}
+          </div>
           <div className={cx("summary-label")}>Updated</div>
         </div>
         <div className={cx("summary-card")}>
-          <div className={cx("summary-value")}>{formatNumber(progress.objectsFailed)}</div>
+          <div className={cx("summary-value")}>
+            {formatNumber(progress.objectsFailed)}
+          </div>
           <div className={cx("summary-label")}>Failed</div>
         </div>
         <div className={cx("summary-card")}>
-          <div className={cx("summary-value")}>{formatNumber(progress.objectsSkipped)}</div>
+          <div className={cx("summary-value")}>
+            {formatNumber(progress.objectsSkipped)}
+          </div>
           <div className={cx("summary-label")}>Skipped</div>
         </div>
       </div>
 
       <div className={cx("progress-wrap")}>
         <div className={cx("progress-meta")}>
-          <span>Objects progress</span>
-          <span>{formatNumber(objectsDone)} / {formatNumber(totalObjects)} ({percent}%)</span>
+          <span>{phaseLabel}</span>
+          <span>{progressText}</span>
         </div>
         <div className={cx("progress-bar")}>
-          <div className={cx("progress-fill")} style={{ width: `${percent}%` }} />
+          <div
+            className={cx("progress-fill")}
+            style={{ width: `${percent}%` }}
+          />
         </div>
       </div>
 
       <div className={cx("details-grid")}>
         <div className={cx("details-card")}>
           <div className={cx("details-label")}>Status</div>
-          <div className={cx("details-value")}>{statusLabel[latestJob?.status] || "—"}</div>
+          <div className={cx("details-value")}>
+            {statusLabel[displayedJobStatus] || "—"}
+          </div>
         </div>
         <div className={cx("details-card")}>
           <div className={cx("details-label")}>Scope</div>
-          <div className={cx("details-value")}>{latestJob?.scopeLabel || selectedScope.label}</div>
+          <div className={cx("details-value")}>
+            {displayedJob?.scopeLabel || selectedScope.label}
+          </div>
         </div>
         <div className={cx("details-card")}>
           <div className={cx("details-label")}>Started</div>
-          <div className={cx("details-value")}>{formatTime(latestJob?.startedAt)}</div>
+          <div className={cx("details-value")}>
+            {formatTime(displayedJob?.startedAt)}
+          </div>
         </div>
         <div className={cx("details-card")}>
           <div className={cx("details-label")}>Finished</div>
-          <div className={cx("details-value")}>{formatTime(latestJob?.finishedAt)}</div>
+          <div className={cx("details-value")}>
+            {formatTime(displayedJob?.finishedAt)}
+          </div>
         </div>
       </div>
 
-      {latestJob?.lastError ? (
+      {displayedJob?.lastError ? (
         <div className={cx("error-box")}>
-          <strong>Last error:</strong> {latestJob.lastError}
+          <strong>Last error:</strong> {displayedJob.lastError}
         </div>
       ) : null}
 
       {failurePreview.length > 0 ? (
         <div className={cx("failure-block")}>
-          <div className={cx("failure-title")}>Recent failures ({latestJob.failures.length})</div>
+          <div className={cx("failure-title")}>
+            Recent failures ({formatNumber(progress.objectsFailed)})
+          </div>
           <div className={cx("failure-list")}>
             {failurePreview.map((failure, index) => (
-              <div key={`${failure.s3Key || index}`} className={cx("failure-item")}>
-                <div className={cx("failure-name")}>{failure.s3Key || "Unknown object"}</div>
-                <div className={cx("failure-message")}>{failure.error || "Unknown error"}</div>
+              <div
+                key={`${failure.s3Key || index}`}
+                className={cx("failure-item")}
+              >
+                <div className={cx("failure-name")}>
+                  {failure.s3Key || "Unknown object"}
+                </div>
+                <div className={cx("failure-message")}>
+                  {failure.error || "Unknown error"}
+                </div>
               </div>
             ))}
           </div>

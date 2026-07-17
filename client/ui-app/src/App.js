@@ -87,6 +87,7 @@ const SeoPageContentBlogs = lazy(() => import(/* webpackChunkName: "admin-seo-bl
 const AuthorMaster = lazy(() => import(/* webpackChunkName: "admin-author-master" */ './Internals/seoData/authorMaster/authorMaster.js'));
 const AdminDataAnalytics = lazy(() => import(/* webpackChunkName: "admin-data-analytics" */ './components/adminAnalytics/AdminDataAnalytics.js'));
 const UnifiedAnalytics = lazy(() => import(/* webpackChunkName: "admin-unified-analytics" */ './components/unifiedAnalytics/UnifiedAnalytics.js'));
+const SiteAnalytics = lazy(() => import(/* webpackChunkName: "admin-site-analytics" */ './components/siteAnalytics/SiteAnalytics.js'));
 
 const MRPDatas = lazy(() => import(/* webpackChunkName: "admin-mrp" */ './Internals/MRPDATA/mrpData.js'));
 const FCMMarketing = lazy(() => import(/* webpackChunkName: "admin-fcm" */ './Internals/FCMMarketing/FCMMarketing.js'));
@@ -312,6 +313,7 @@ function AppRoutes({
                 <Route path="authors" element={<AuthorMaster />} />
                 <Route path="data-analytics" element={<AdminDataAnalytics />} />
                 <Route path="analytics-overview" element={<UnifiedAnalytics />} />
+                <Route path="site-analytics" element={<SiteAnalytics />} />
                 <Route path="enquiry" element={<EnquiryPage />} />
                 <Route path="customer-care" element={<AdminCustomerCareChat />} />
                 <Route path="advertisements" element={<AdvertisementPage />} />

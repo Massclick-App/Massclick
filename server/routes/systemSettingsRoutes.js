@@ -8,6 +8,7 @@ import { requireAdminAuth } from "../auth/authMiddleware.js";
 import {
   startS3CacheHeaderMigrationAction,
   pauseS3CacheHeaderMigrationAction,
+  resumeS3CacheHeaderMigrationAction,
   cancelS3CacheHeaderMigrationAction,
   getLatestS3CacheHeaderMigrationJobAction,
   getS3CacheHeaderMigrationJobAction,
@@ -24,39 +25,52 @@ import {
 
 const router = express.Router();
 
-router.get("/api/admin/system-settings", oauthAuthentication, getSystemSettingsAction);
-router.put("/api/admin/system-settings", oauthAuthentication, updateSystemSettingsAction);
+router.get(
+  "/api/admin/system-settings",
+  oauthAuthentication,
+  getSystemSettingsAction,
+);
+router.put(
+  "/api/admin/system-settings",
+  oauthAuthentication,
+  updateSystemSettingsAction,
+);
 
 // S3 Cache Header Migration routes
 router.post(
   "/api/admin/system-settings/s3-cache-header-migration/start",
   requireAdminAuth(),
-  startS3CacheHeaderMigrationAction
+  startS3CacheHeaderMigrationAction,
 );
 router.post(
   "/api/admin/system-settings/s3-cache-header-migration/pause",
   requireAdminAuth(),
-  pauseS3CacheHeaderMigrationAction
+  pauseS3CacheHeaderMigrationAction,
+);
+router.post(
+  "/api/admin/system-settings/s3-cache-header-migration/resume",
+  requireAdminAuth(),
+  resumeS3CacheHeaderMigrationAction,
 );
 router.post(
   "/api/admin/system-settings/s3-cache-header-migration/cancel",
   requireAdminAuth(),
-  cancelS3CacheHeaderMigrationAction
+  cancelS3CacheHeaderMigrationAction,
 );
 router.get(
   "/api/admin/system-settings/s3-cache-header-migration/latest",
   requireAdminAuth(),
-  getLatestS3CacheHeaderMigrationJobAction
+  getLatestS3CacheHeaderMigrationJobAction,
 );
 router.get(
   "/api/admin/system-settings/s3-cache-header-migration/scopes",
   requireAdminAuth(),
-  getSupportedS3CacheScopesAction
+  getSupportedS3CacheScopesAction,
 );
 router.get(
   "/api/admin/system-settings/s3-cache-header-migration/:jobId",
   requireAdminAuth(),
-  getS3CacheHeaderMigrationJobAction
+  getS3CacheHeaderMigrationJobAction,
 );
 
 // router.post(

@@ -203,6 +203,14 @@ const RATE_LIMIT_RULES = {
     message: "Payment requests are being rate limited. Please try again later.",
     keyPrefix: "payment",
   },
+  analytics: {
+    limitKey: "rate_limit_analytics_limit",
+    windowKey: "rate_limit_analytics_window_minutes",
+    fallbackLimit: 120,
+    fallbackWindowMinutes: 10,
+    message: "Event reporting is being rate limited.",
+    keyPrefix: "analytics",
+  },
 };
 
 const createConfiguredRateLimit = (ruleName) => async (req, res, next) => {
@@ -243,3 +251,4 @@ export const chatRateLimit = createConfiguredRateLimit("chat");
 export const leadRateLimit = createConfiguredRateLimit("lead");
 export const adminRateLimit = createConfiguredRateLimit("admin");
 export const paymentRateLimit = createConfiguredRateLimit("payment");
+export const analyticsRateLimit = createConfiguredRateLimit("analytics");
