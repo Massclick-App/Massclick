@@ -1,4 +1,5 @@
 import seoPageContentModel from "../../model/seoModel/seoPageContentModel.js";
+import { renderSeoPageContentFromTemplate } from "./seoTemplateHelper.js";
 
 export const createPageContentSeo = async (reqBody = {}) => {
   try {
@@ -107,6 +108,17 @@ export const getSeoPageContentMetaService = async ({
       }).lean();
 
       if (seo) return seo;
+    }
+
+    // ===============================
+    // 🔥 4. NO CURATED MATCH — RENDER FROM TEMPLATE (if one exists)
+    // ===============================
+    if (safeCategory) {
+      const rendered = await renderSeoPageContentFromTemplate({
+        category: safeCategory,
+        location: safeLocation,
+      });
+      if (rendered) return rendered;
     }
 
     return null;

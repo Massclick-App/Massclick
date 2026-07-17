@@ -5,6 +5,7 @@ import { getSignedUrlByKey } from "../../s3Uploder.js";
 import { getCache, setCache } from "../../utils/redisClient.js";
 import { createLogger } from "../../utils/logger.js";
 import { slugify } from "../../slugify.js";
+import { renderSeoMetaFromTemplate } from "./seoTemplateHelper.js";
 
 const logger = createLogger("SEO");
 
@@ -301,7 +302,10 @@ export const getSeoMeta = async ({ pageType, category, location }) => {
     // search) — that produces a wrong canonical URL and wrong on-page copy.
     // Instead, build accurate SEO for the exact category/location requested.
     await logger.seoDebug('Step 5: No curated match — generating dynamic SEO', { category: safeCategory, location: safeLocation });
-    const dynamicSeo = buildDynamicSeoMeta({ category: safeCategory, location: safeLocation });
+    const templateSeo = safeCategory
+      ? await renderSeoMetaFromTemplate({ category: safeCategory, location: safeLocation })
+      : null;
+    const dynamicSeo = templateSeo || buildDynamicSeoMeta({ category: safeCategory, location: safeLocation });
 
     await setCache(cacheKey, dynamicSeo, 86400); // Cache for 24 hours
     return dynamicSeo;
