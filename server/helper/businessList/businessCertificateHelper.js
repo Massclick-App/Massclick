@@ -4,13 +4,14 @@ import { fileURLToPath } from "url";
 import QRCode from "qrcode";
 import {
   deleteObjectByKey,
+  getImageDataUrlByKey,
   getSignedUrlByKey,
   uploadImageToS3,
 } from "../../s3Uploder.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
 import { slugify } from "../../slugify.js";
 
-export const CERTIFICATE_TEMPLATE_VERSION = 11;
+export const CERTIFICATE_TEMPLATE_VERSION = 13;
 const CERTIFICATE_FONT_FAMILY = "'Nirmala UI', 'Noto Sans Tamil', Latha, 'Arial Unicode MS', Arial, Helvetica, sans-serif";
 const SERIF_FONT_FAMILY = "Georgia, 'Times New Roman', serif";
 const __filename = fileURLToPath(import.meta.url);
@@ -247,6 +248,9 @@ const buildCertificateSvg = async (business = {}, type = "verified") => {
   const certNo = `MC-${isTrust ? "TRU" : "VER"}-${(getBusinessId(business) || "000000").slice(-6).toUpperCase()}`;
   const issuedDate = formatCertificateDate(business.certificates?.generatedAt || new Date());
   const category = (business.category || "").trim();
+  const businessLogoDataUrl = business.logoImageKey
+    ? await getImageDataUrlByKey(business.logoImageKey)
+    : "";
 
   // ---- vertical flow cursor: each block advances `cursor` past itself so
   // longer/shorter business names and addresses never overlap the next block.
@@ -270,7 +274,19 @@ const buildCertificateSvg = async (business = {}, type = "verified") => {
 
   const certifyY = cursor;
   const certifyMarkupOut = `<text x="${CX}" y="${certifyY}" text-anchor="middle" font-family="${SERIF_FONT_FAMILY}" font-style="italic" font-size="15" fill="#64748b">This is to certify that</text>`;
-  cursor += 44;
+  cursor += businessLogoDataUrl ? 20 : 44;
+
+  const businessLogoSize = 104;
+  const businessLogoInset = 8;
+  const businessLogoY = cursor;
+  const businessLogoMarkupOut = businessLogoDataUrl
+    ? `<circle cx="${CX}" cy="${businessLogoY + businessLogoSize / 2}" r="${businessLogoSize / 2 + 8}" fill="${soft}" opacity="0.9"/>
+       <rect x="${CX - businessLogoSize / 2}" y="${businessLogoY}" width="${businessLogoSize}" height="${businessLogoSize}" rx="18" fill="#ffffff" stroke="${primary}" stroke-opacity="0.3" stroke-width="1.5" filter="url(#logoShadow)"/>
+       <image href="${escapeXml(businessLogoDataUrl)}" x="${CX - businessLogoSize / 2 + businessLogoInset}" y="${businessLogoY + businessLogoInset}" width="${businessLogoSize - businessLogoInset * 2}" height="${businessLogoSize - businessLogoInset * 2}" preserveAspectRatio="xMidYMid meet"/>`
+    : "";
+  if (businessLogoDataUrl) {
+    cursor = businessLogoY + businessLogoSize + 30;
+  }
 
   const nameLineHeight = 38;
   const nameFontSize = businessNameLines.length > 1 ? 29 : 33;
@@ -391,6 +407,9 @@ const buildCertificateSvg = async (business = {}, type = "verified") => {
     <filter id="identityShadow" x="-20%" y="-20%" width="140%" height="140%">
       <feDropShadow dx="0" dy="18" stdDeviation="24" flood-color="#0f172a" flood-opacity="0.10"/>
     </filter>
+    <filter id="logoShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="7" stdDeviation="8" flood-color="#0f172a" flood-opacity="0.16"/>
+    </filter>
     <linearGradient id="pageGlow" x1="0" x2="1" y1="0" y2="1">
       <stop offset="0" stop-color="${soft}"/>
       <stop offset="0.42" stop-color="#ffffff"/>
@@ -415,6 +434,7 @@ const buildCertificateSvg = async (business = {}, type = "verified") => {
   ${titleMarkupOut}
   ${ruleMarkupOut}
   ${certifyMarkupOut}
+  ${businessLogoMarkupOut}
   ${nameMarkupOut}
   ${categoryMarkupOut}
   ${locationMarkupOut}

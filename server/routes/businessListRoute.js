@@ -2,7 +2,7 @@ import express from 'express'
 
 import { addBusinessListAction, viewBusinessListAction,getBusinessBySlugAction, getSuggestionsController, getEnhancedSuggestionsController, mainSearchController, nearbyBusinessesController, viewAllBusinessListAction,viewAllBusinessAction, exportBusinessListAction, updateBusinessListAction, updateBusinessSectionAction, deleteBusinessListAction, activeBusinessListAction, viewAllClientBusinessListAction, viewBusinessByCategory, findBusinessByMobileAction, dashboardSummaryAction, dashboardChartsAction, adminAnalyticsReportAction, getPendingBusinessAction, trackQrDownload, updateBusinessBadgesAction, regenerateBusinessCertificatesAction, downloadBusinessDocumentAction, revertPaidStatusAction } from "../controller/businessList/businessListController.js"
 import { oauthAuthentication } from '../helper/oauthHelper.js';
-import { logSearchAction, viewLogSearchAction, viewSearchAction, updateSearchAction, getTrendingSearchesAction, sendEnquiryLead } from "../controller/businessList/logSearchController.js"
+import { logSearchAction, viewLogSearchAction, viewSearchAction, updateSearchAction, getTrendingSearchesAction, sendEnquiryLead, sendBusinessInfoToCustomer } from "../controller/businessList/logSearchController.js"
 import { cacheMiddleware } from '../middleware/cacheMiddleware.js';
 import { validateBusiness } from '../middleware/validationMiddleware.js';
 import { businessListRateLimit } from '../middleware/rateLimitMiddleware.js';
@@ -44,6 +44,7 @@ router.get('/api/businesslist/documents/:id/download', oauthAuthentication, down
 router.put('/api/businesslist/revert-paid/:id', oauthAuthentication, revertPaidStatusAction);
 router.post('/api/businesslist/log-search', logSearchAction);
 router.post('/api/businesslist/send-enquiry', sendEnquiryLead);
+router.post('/api/businesslist/send-info', sendBusinessInfoToCustomer);
 router.put('/api/businesslist/log-search/:id', updateSearchAction);
 // router.get('/api/businesslist/trending-searches', getTrendingSearchesAction);
 router.get('/api/businesslist/trending-searches/viewall',viewLogSearchAction);

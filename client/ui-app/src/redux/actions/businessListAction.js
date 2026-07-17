@@ -501,6 +501,16 @@ export const sendEnquiryLead = (payload) => async (dispatch) => {
   }
 };
 
+export const sendBusinessInfo = (payload) => async (dispatch) => {
+  const token = await dispatch(getClientToken());
+  const response = await axiosInstance.post(
+    `${API_URL}/businesslist/send-info`,
+    payload,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  return response.data;
+};
+
 export const getAllSearchLogs = () => async (dispatch) => {
   dispatch({ type: FETCH_SEARCH_LOGS_REQUEST });
 
