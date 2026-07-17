@@ -61,6 +61,7 @@ import massclickFeedRoutes from "./routes/massclickFeedRoute.js";
 import userFeedbackRoutes from "./routes/userFeedbackRoutes.js";
 import { startFCMScheduler } from "./scheduler/fcmScheduler.js";
 import { startKeywordRankCron } from "./cron/keywordRankCron.js";
+import { startS3CacheHeaderMigrationRecovery } from "./helper/mediaCleanup/s3CacheHeaderMigrationHelper.js";
 
 dotenv.config();
 
@@ -172,6 +173,7 @@ app.get(/.*/, ssrMiddleware);
 mongoose.connect(MONGO_URI)
   .then(async () => {
     await initRedis();
+    await startS3CacheHeaderMigrationRecovery();
     startFCMScheduler();
     startKeywordRankCron();
     await initWsServer(httpServer);
