@@ -3,6 +3,8 @@ import businessListModel from "../../model/businessList/businessListModel.js";
 import SearchLogModel from "../../model/businessList/searchLogModel.js";
 import mongoose from "mongoose";
 import { uploadImageToS3, getSignedUrlByKey, getImageDataUrlByKey } from "../../s3Uploder.js";
+import { sortBusinessesForDefaultSearch } from "../../utils/businessSearchSort.js";
+import { resolveLocationForSearch } from "../location/locationResolver.js";
 import locationModel from "../../model/locationModel/locationModel.js";
 import userModel from "../../model/userModel.js";
 import QRCode from "qrcode";
@@ -444,23 +446,69 @@ export const findBusinessesByCategory = async (category, district) => {
       { keywords: { $regex: category, $options: "i" } },
     ],
   };
+  let resolvedLocation = null;
 
   if (
     district &&
     district !== "All Districts" &&
     district !== "Enter location manually..."
   ) {
-    matchQuery.$and = [
-      {
-        $or: [
-          { district: { $regex: district, $options: "i" } },
-          { location: { $regex: district, $options: "i" } },
-          { locationDetails: { $regex: district, $options: "i" } },
-          { street: { $regex: district, $options: "i" } },
-          { pincode: { $regex: district, $options: "i" } },
-        ],
-      },
-    ];
+    resolvedLocation = await resolveLocationForSearch(district).catch(() => null);
+
+    if (resolvedLocation?.slug) {
+      const escapeRegex = (value = "") =>
+        String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const normalizeLocation = (value = "") =>
+        String(value)
+          .toLowerCase()
+          .trim()
+          .replace(/&/g, " and ")
+          .replace(/[-_]/g, " ")
+          .replace(/\s+/g, " ");
+      const fallbackNames = [
+        district,
+        resolvedLocation.locality,
+        resolvedLocation.ward,
+        resolvedLocation.zone,
+        resolvedLocation.district,
+        ...(resolvedLocation.alternateNames || []),
+      ]
+        .filter(Boolean)
+        .map(normalizeLocation);
+
+      matchQuery.$and = [
+        {
+          $or: [
+            {
+              "masterLocation.slug": new RegExp(
+                `^${escapeRegex(resolvedLocation.slug)}(-|$)`,
+              ),
+            },
+            {
+              "masterLocation.locationId": null,
+              $or: [...new Set(fallbackNames)].map((locationName) => ({
+                location: {
+                  $regex: `^${escapeRegex(locationName)}$`,
+                  $options: "i",
+                },
+              })),
+            },
+          ],
+        },
+      ];
+    } else {
+      matchQuery.$and = [
+        {
+          $or: [
+            { district: { $regex: district, $options: "i" } },
+            { location: { $regex: district, $options: "i" } },
+            { locationDetails: { $regex: district, $options: "i" } },
+            { street: { $regex: district, $options: "i" } },
+            { pincode: { $regex: district, $options: "i" } },
+          ],
+        },
+      ];
+    }
   }
 
   const businessList = await businessListModel.aggregate([
@@ -506,7 +554,7 @@ export const findBusinessesByCategory = async (category, district) => {
 
   if (!businessList.length) return [];
 
-  return businessList.map((business) => {
+  const businessesWithImages = businessList.map((business) => {
     if (business.bannerImageKey)
       business.bannerImage = getSignedUrlByKey(business.bannerImageKey);
 
@@ -522,6 +570,12 @@ export const findBusinessesByCategory = async (category, district) => {
 
     return business;
   });
+
+  return sortBusinessesForDefaultSearch(
+    businessesWithImages,
+    category,
+    resolvedLocation?.slug,
+  );
 };
 
 export const viewAllClientBusinessList = async () => {

@@ -20,7 +20,7 @@ import ViewModuleIcon from "@mui/icons-material/ViewModule";
 import ViewHeadlineIcon from "@mui/icons-material/ViewHeadline";
 import ViewAgendaIcon from "@mui/icons-material/ViewAgenda";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
-import { Box, Chip, Drawer, Button } from "@mui/material";
+import { Box, Chip, Drawer, Button, useMediaQuery } from "@mui/material";
 import styles from "./SearchResult.module.css";
 import StickySearchBar from "../StickySearchBar/StickySearchBar";
 import CardDesign from "../cards/cards.js";
@@ -225,8 +225,10 @@ const SearchResults = React.memo(
     const navigate = useNavigate();
     const urlParams = useParams();
     const locationState = useLocation();
-    const [openLoginModal, setOpenLoginModal] = useState(false);
-    const [viewport, setViewport] = useState(window.innerWidth);
+    const [openLoginModal, setOpenLoginModal] = useState(
+      () => !localStorage.getItem("authUser"),
+    );
+    const isCompact = useMediaQuery("(max-width: 1023px)", { noSsr: true });
 
     const {
       searchTerm,
@@ -343,18 +345,6 @@ const SearchResults = React.memo(
     const loadingPagesRef = useRef(new Set()); // pages currently in-flight
     const searchVersionRef = useRef(0); // bumped on every search-control change
 
-    useEffect(() => {
-      const authUser = localStorage.getItem("authUser");
-      if (!authUser) {
-        setOpenLoginModal(true);
-      }
-    }, []);
-
-    useEffect(() => {
-      const handleResize = () => setViewport(window.innerWidth);
-      window.addEventListener("resize", handleResize);
-      return () => window.removeEventListener("resize", handleResize);
-    }, []);
     useEffect(() => {
       setSearchInput(displayName || searchTerm || "");
       setLocationInput(locationText || DEFAULT_LOCATION);
@@ -782,7 +772,6 @@ const SearchResults = React.memo(
 
     const totalActiveCount =
       activeFilterChips.length + (sortBy !== "relevant" ? 1 : 0);
-    const isCompact = viewport < 1024;
     const viewOptions = [
       { value: "list", label: "List", icon: ViewListIcon },
       { value: "grid", label: "Grid", icon: ViewModuleIcon },

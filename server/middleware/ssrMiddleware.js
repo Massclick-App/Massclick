@@ -147,12 +147,13 @@ export async function ssrMiddleware(req, res) {
       const location = slugToText(firstSegment);
       const category = slugToText(thirdSegment || secondSegment);
       const cacheKeyPrefix = `category:${location}:${category}`;
+      const businessesCacheKey = `${cacheKeyPrefix}:businesses:v2`;
 
       // Parallel cache lookups for better performance
       const [cachedSeo, cachedContent, cachedBusinesses] = await Promise.all([
         getCache(`${cacheKeyPrefix}:seo`),
         getCache(`${cacheKeyPrefix}:content`),
-        getCache(`${cacheKeyPrefix}:businesses`)
+        getCache(businessesCacheKey)
       ]);
 
       // Use cached data or fetch from database
@@ -181,7 +182,7 @@ export async function ssrMiddleware(req, res) {
         await setCache(`${cacheKeyPrefix}:content`, categoryContent, CACHE_TTL.PAGE_CONTENT);
       }
       if (categoryBusinesses && !cachedBusinesses) {
-        await setCache(`${cacheKeyPrefix}:businesses`, categoryBusinesses, CACHE_TTL.BUSINESSES);
+        await setCache(businessesCacheKey, categoryBusinesses, CACHE_TTL.BUSINESSES);
       }
       isCategoryPage = true;
     }
@@ -521,6 +522,13 @@ export async function ssrMiddleware(req, res) {
     const schemaScripts = schemaObjects
       .map((schema) => `<script type="application/ld+json">${JSON.stringify(schema)}</script>`)
       .join("");
+    const lcpImageHref =
+      isCategoryPage && categoryBusinesses.length > 0
+        ? categoryBusinesses[0]?.bannerImage || "/header.png"
+        : null;
+    const lcpImagePreload = lcpImageHref
+      ? `<link rel="preload" as="image" href="${escapeHtml(lcpImageHref)}" fetchpriority="high">`
+      : "";
 
     const skeletonHtml = `
       <div class="ssr-skeleton" aria-hidden="true">
@@ -532,7 +540,10 @@ export async function ssrMiddleware(req, res) {
     `;
 
     html = html
-      .replace("</head>", `<script>window.__SSR_SEO__=${ssrSeoJson}</script>${schemaScripts}</head>`)
+      .replace(
+        "</head>",
+        `${lcpImagePreload}<script>window.__SSR_SEO__=${ssrSeoJson}</script>${schemaScripts}</head>`
+      )
       .replace('<div id="root"></div>', `<div id="root">${skeletonHtml}<div class="ssr-seo-content">${serverContent}</div></div>`);
 
     if (!firstSegment) {

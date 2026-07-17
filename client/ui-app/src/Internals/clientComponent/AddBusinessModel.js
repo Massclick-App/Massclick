@@ -222,7 +222,15 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater }) => {
             onClose={handleClose}
             maxWidth="sm"
             fullWidth={false}
+            TransitionProps={{
+                appear: false,
+            }}
             BackdropProps={{
+                slotProps: {
+                    transition: {
+                        appear: false,
+                    },
+                },
                 sx: {
                     backdropFilter: 'blur(12px)',
                     backgroundColor: 'rgba(15, 23, 42, 0.55)',
