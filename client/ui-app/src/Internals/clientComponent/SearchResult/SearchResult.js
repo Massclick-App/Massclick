@@ -1,5 +1,7 @@
 import { createScopedClassNames } from "../../../utils/createScopedClassNames";
 import React, {
+  lazy,
+  Suspense,
   useEffect,
   useRef,
   useState,
@@ -20,13 +22,11 @@ import ViewModuleIcon from "@mui/icons-material/ViewModule";
 import ViewHeadlineIcon from "@mui/icons-material/ViewHeadline";
 import ViewAgendaIcon from "@mui/icons-material/ViewAgenda";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
-import { Box, Chip, Drawer, Button, useMediaQuery } from "@mui/material";
+import { Chip, useMediaQuery } from "@mui/material";
 import styles from "./SearchResult.module.css";
 import StickySearchBar from "../StickySearchBar/StickySearchBar";
 import CardDesign from "../cards/cards.js";
 import SeoMeta from "../seo/seoMeta.js";
-import Footer from "../footer/footer.js";
-import PopularCategoriesLink from "../popularCategories/popularCategories.js";
 import Breadcrumbs from "../Breadcrumbs/Breadcrumbs.js";
 import {
   performSearch,
@@ -43,8 +43,6 @@ import {
 } from "../../../redux/selectors";
 import TopBannerAds from "../banners/topBanner/topBanner.js";
 import CategoryPublicCounterBadge from "../publicUserCounter/CategoryPublicCounterBadge.js";
-import OTPLoginModal from "../AddBusinessModel.js";
-import FilterPanel from "./FilterPanel.js";
 import axiosInstance from "../../../services/axiosInstance.js";
 import { getClientToken } from "../../../redux/actions/clientAuthAction.js";
 import {
@@ -55,6 +53,28 @@ import {
   generateFAQSchema,
 } from "../../../utils/seoSchemaGenerators";
 import { renderFaqAnswerWithLinks } from "../../../utils/renderFaqAnswerWithLinks";
+import useRenderNearViewport from "../../../hooks/useRenderNearViewport.js";
+
+const Footer = lazy(() =>
+  import(/* webpackChunkName: "public-footer" */ "../footer/footer.js")
+);
+const PopularCategoriesLink = lazy(() =>
+  import(
+    /* webpackChunkName: "popular-categories" */ "../popularCategories/popularCategories.js"
+  )
+);
+const OTPLoginModal = lazy(() =>
+  import(/* webpackChunkName: "otp-modal" */ "../AddBusinessModel.js")
+);
+const FilterPanel = lazy(() =>
+  import(/* webpackChunkName: "filter-panel" */ "./FilterPanel.js")
+);
+const MobileFilterDrawer = lazy(() =>
+  import(
+    /* webpackChunkName: "mobile-filter-drawer" */ "./MobileFilterDrawer.js"
+  )
+);
+
 const cx = createScopedClassNames(styles);
 const DEFAULT_LOCATION = "Trichy";
 const createSlug = (text = "") =>
@@ -229,6 +249,10 @@ const SearchResults = React.memo(
       () => !localStorage.getItem("authUser"),
     );
     const isCompact = useMediaQuery("(max-width: 1023px)", { noSsr: true });
+    const {
+      targetRef: bottomSectionsRef,
+      shouldRender: shouldRenderBottomSections,
+    } = useRenderNearViewport();
 
     const {
       searchTerm,
@@ -320,6 +344,7 @@ const SearchResults = React.memo(
     const [sortBy, setSortBy] = useState("relevant");
     const [viewMode, setViewMode] = useState("list");
     const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
+    const filterDrawerHasOpenedRef = useRef(false);
 
     // ─── Geo state (on-demand) ───────────────────────────────────────────────────
     const [userGeo, setUserGeo] = useState(null); // { lat, lng } or null
@@ -904,10 +929,14 @@ const SearchResults = React.memo(
 
     return (
       <>
-        <OTPLoginModal
-          open={openLoginModal}
-          handleClose={() => setOpenLoginModal(false)}
-        />
+        {openLoginModal && (
+          <Suspense fallback={null}>
+            <OTPLoginModal
+              open={true}
+              handleClose={() => setOpenLoginModal(false)}
+            />
+          </Suspense>
+        )}
         <SeoMeta seoData={seoMetaData} fallback={fallbackSeo} />
 
         <Helmet>
@@ -1054,17 +1083,21 @@ const SearchResults = React.memo(
               {/* Three-column layout: filter | results | ads */}
               <div className={cx("search-layout")}>
                 {/* Desktop filter column */}
-                <div className={cx("filter-column")}>
-                  <FilterPanel
-                    filterConfig={filterConfig}
-                    activeFilters={activeFilters}
-                    sortBy={sortBy}
-                    onFilterChange={handleFilterChange}
-                    onSortChange={handleSortChange}
-                    onClearAll={handleClearAllFilters}
-                    hasGeo={geoStatus === "granted"}
-                  />
-                </div>
+                {!isCompact && (
+                  <div className={cx("filter-column")}>
+                    <Suspense fallback={null}>
+                      <FilterPanel
+                        filterConfig={filterConfig}
+                        activeFilters={activeFilters}
+                        sortBy={sortBy}
+                        onFilterChange={handleFilterChange}
+                        onSortChange={handleSortChange}
+                        onClearAll={handleClearAllFilters}
+                        hasGeo={geoStatus === "granted"}
+                      />
+                    </Suspense>
+                  </div>
+                )}
 
                 {/* Results column */}
                 <div className={cx("results-column")}>
@@ -1344,29 +1377,11 @@ const SearchResults = React.memo(
             </div>
 
             {/* Mobile filter drawer */}
-            <Drawer
-              anchor="bottom"
-              open={filterDrawerOpen}
-              onClose={() => setFilterDrawerOpen(false)}
-              PaperProps={{
-                sx: {
-                  borderRadius: "16px 16px 0 0",
-                  maxHeight: "80vh",
-                  display: "flex",
-                  flexDirection: "column",
-                  overflow: "hidden",
-                },
-              }}
-            >
-              <Box
-                sx={{
-                  overflowY: "auto",
-                  flex: 1,
-                  p: 2,
-                  WebkitOverflowScrolling: "touch",
-                }}
-              >
-                <FilterPanel
+            {isCompact && filterDrawerHasOpenedRef.current && (
+              <Suspense fallback={null}>
+                <MobileFilterDrawer
+                  open={filterDrawerOpen}
+                  onClose={() => setFilterDrawerOpen(false)}
                   filterConfig={filterConfig}
                   activeFilters={activeFilters}
                   sortBy={sortBy}
@@ -1374,39 +1389,19 @@ const SearchResults = React.memo(
                   onSortChange={handleSortChange}
                   onClearAll={handleClearAllFilters}
                   hasGeo={geoStatus === "granted"}
+                  totalActiveCount={totalActiveCount}
                 />
-              </Box>
-              <Box
-                sx={{
-                  p: 2,
-                  pt: 1,
-                  flexShrink: 0,
-                  borderTop: "1px solid #f1f5f9",
-                  bgcolor: "#fff",
-                }}
-              >
-                <Button
-                  fullWidth
-                  variant="contained"
-                  onClick={() => setFilterDrawerOpen(false)}
-                  sx={{
-                    bgcolor: "#ff8c00",
-                    "&:hover": { bgcolor: "#e07800" },
-                    borderRadius: 2,
-                    fontWeight: 700,
-                  }}
-                >
-                  Apply Filters{" "}
-                  {totalActiveCount > 0 ? `(${totalActiveCount})` : ""}
-                </Button>
-              </Box>
-            </Drawer>
+              </Suspense>
+            )}
 
             {/* Mobile sticky filter bar */}
             <div className={cx("mobile-filter-bar")}>
               <button
                 className={cx("mobile-filter-btn")}
-                onClick={() => setFilterDrawerOpen(true)}
+                onClick={() => {
+                  filterDrawerHasOpenedRef.current = true;
+                  setFilterDrawerOpen(true);
+                }}
               >
                 <TuneIcon sx={{ fontSize: 16 }} />
                 Filters {totalActiveCount > 0 ? `(${totalActiveCount})` : ""}
@@ -1452,9 +1447,16 @@ const SearchResults = React.memo(
                 </div>
               )}
           </main>
-          <div className={cx("bottom-sections-wrapper")}>
-            <PopularCategoriesLink />
-            <Footer />
+          <div
+            ref={bottomSectionsRef}
+            className={cx("bottom-sections-wrapper")}
+          >
+            {shouldRenderBottomSections && (
+              <Suspense fallback={null}>
+                <PopularCategoriesLink />
+                <Footer />
+              </Suspense>
+            )}
           </div>
         </div>
       </>

@@ -1,14 +1,20 @@
-import React, { useEffect, useState } from "react";
+import React, { lazy, Suspense, useEffect, useState } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import { useDispatch } from "react-redux";
-
-import CategoriesPage from "./categories.js";
-import SearchResults from "../SearchResult/SearchResult";
 
 import {
   performSearch,
 } from "../../../redux/actions/businessListAction";
 import axiosInstance from "../../../services/axiosInstance.js";
+
+const CategoriesPage = lazy(() =>
+  import(/* webpackChunkName: "category-directory" */ "./categories.js")
+);
+const SearchResults = lazy(() =>
+  import(
+    /* webpackChunkName: "search" */ "../SearchResult/SearchResult.js"
+  )
+);
 
 const formatText = (text = "") =>
   text
@@ -158,17 +164,23 @@ const CategoryRouter = () => {
     !subcategory &&
     hasSubcategories(category)
   ) {
-    return <CategoriesPage />;
+    return (
+      <Suspense fallback={null}>
+        <CategoriesPage />
+      </Suspense>
+    );
   }
 
   return (
-    <SearchResults
-      overrideCategory={resolvedCategory}
-      overrideLocation={formatText(location)}
-      initialResults={prefetchedResults?.results}
-      initialTotal={prefetchedResults?.total}
-      initialHasMore={prefetchedResults?.hasMore}
-    />
+    <Suspense fallback={null}>
+      <SearchResults
+        overrideCategory={resolvedCategory}
+        overrideLocation={formatText(location)}
+        initialResults={prefetchedResults?.results}
+        initialTotal={prefetchedResults?.total}
+        initialHasMore={prefetchedResults?.hasMore}
+      />
+    </Suspense>
   );
 };
 

@@ -11,6 +11,12 @@ import { scheduleIdleCallback } from './utils/scheduleIdleCallback.js';
 
 const CHUNK_RECOVERY_FLAG = 'massclick:chunk-recovery-attempted';
 const CHUNK_ERROR_PATTERN = /Loading (?:CSS )?chunk \d+ failed|ChunkLoadError|Failed to fetch dynamically imported module/i;
+const MARKETING_INTERACTION_EVENTS = [
+  'pointerdown',
+  'touchstart',
+  'keydown',
+  'scroll',
+];
 
 // Set the store reference for axios global loader
 setAxiosStore(store);
@@ -51,20 +57,22 @@ if (typeof window !== 'undefined') {
   });
 }
 
-// Load marketing scripts after first paint to unblock main thread
 const loadDeferredScripts = async () => {
   try {
     const {
-      loadGoogleAnalytics,
+      loadGoogleAds,
       loadGoogleTagManager,
     } = await import('./services/analyticsLoader');
-    loadGoogleAnalytics();
-    loadGoogleTagManager();
+    // The Ads gtag runtime also processes the queued GA4 configuration, so a
+    // second gtag.js download for GA4 is unnecessary.
+    loadGoogleAds();
+    // Stagger the heavier GTM container onto a separate idle period.
+    scheduleIdleCallback(loadGoogleTagManager);
     // Google AdSense is intentionally disabled for now.
     // Uncomment the next line if ads are re-enabled later.
     // loadAdSense();
   } catch (err) {
-    }
+  }
 };
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
@@ -78,14 +86,29 @@ root.render(
   </Provider>
 );
 
-// Load analytics asynchronously after page interaction to avoid blocking
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    scheduleIdleCallback(loadDeferredScripts, { timeout: 5000 });
+// Marketing tags are never requested during passive page load. A real user
+// interaction only schedules them; the network requests begin when the browser
+// has idle time, keeping them out of initial rendering and LCP work.
+let marketingScriptsStarted = false;
+
+const startMarketingScripts = () => {
+  if (marketingScriptsStarted) {
+    return;
+  }
+
+  marketingScriptsStarted = true;
+  MARKETING_INTERACTION_EVENTS.forEach((eventName) => {
+    window.removeEventListener(eventName, startMarketingScripts);
   });
-} else {
-  scheduleIdleCallback(loadDeferredScripts, { timeout: 5000 });
-}
+  scheduleIdleCallback(loadDeferredScripts);
+};
+
+MARKETING_INTERACTION_EVENTS.forEach((eventName) => {
+  window.addEventListener(eventName, startMarketingScripts, {
+    passive: true,
+    once: true,
+  });
+});
 
 reportWebVitals();
 
