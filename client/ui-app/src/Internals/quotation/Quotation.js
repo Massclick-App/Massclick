@@ -275,32 +275,60 @@ const buildQuotationPayload = (source, quotationNo = "") => ({
   items: normalizePayloadItems(source.items),
 });
 
-const drawWrappedText = (pdf, text, x, y, maxWidth, lineHeight = 5) => {
-  const lines = pdf.splitTextToSize(String(text || "-"), maxWidth);
-  pdf.text(lines, x, y);
-  return y + lines.length * lineHeight;
-};
-
-const splitPdfText = (pdf, text, maxWidth) =>
-  pdf.splitTextToSize(String(text || "-"), maxWidth);
-
 const cachedImageDataUrls = {};
+
+const imageBlobToPngDataUrl = (blob) =>
+  new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(blob);
+    const image = new Image();
+
+    image.onload = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = image.naturalWidth;
+        canvas.height = image.naturalHeight;
+        const context = canvas.getContext("2d");
+        if (!context) throw new Error("Unable to prepare image for PDF.");
+        context.drawImage(image, 0, 0);
+        resolve(canvas.toDataURL("image/png"));
+      } catch (error) {
+        reject(error);
+      } finally {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("Unable to load image for PDF."));
+    };
+    image.src = objectUrl;
+  });
 
 const imageUrlToDataUrl = async (url) => {
   if (cachedImageDataUrls[url]) return cachedImageDataUrls[url];
   try {
     const response = await fetch(url);
     const blob = await response.blob();
-    cachedImageDataUrls[url] = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
+    cachedImageDataUrls[url] = await imageBlobToPngDataUrl(blob);
     return cachedImageDataUrls[url];
   } catch {
     return "";
   }
+};
+
+const PDF_COLORS = {
+  navy: [10, 24, 56],
+  navyDeep: [4, 12, 32],
+  orange: [243, 107, 16],
+  amber: [180, 83, 9],
+  ink: [30, 41, 59],
+  muted: [100, 116, 139],
+  border: [222, 229, 240],
+  soft: [248, 250, 252],
+  paleOrange: [255, 246, 235],
+  paleOrangeBorder: [253, 224, 193],
+  teal: [4, 106, 92],
+  white: [255, 255, 255],
 };
 
 const drawQuotationPdf = (quotation, logoDataUrl = "", signatureDataUrl = "") => {
@@ -309,324 +337,450 @@ const drawQuotationPdf = (quotation, logoDataUrl = "", signatureDataUrl = "") =>
   const pageHeight = pdf.internal.pageSize.getHeight();
   const margin = 14;
   const contentWidth = pageWidth - margin * 2;
-  const navy = [6, 18, 47];
-  const deepNavy = [3, 10, 30];
-  const orange = [243, 107, 16];
-  const muted = [71, 85, 105];
-  const border = [190, 202, 218];
-  const soft = [247, 250, 252];
-  const paleOrange = [255, 247, 237];
-  const teal = [0, 107, 95];
+  const headerHeight = 20;
+  const footerLimit = pageHeight - 14;
+  const c = PDF_COLORS;
+  const LINE_FACTOR = 1.18;
+  pdf.setLineHeightFactor(LINE_FACTOR);
+  const lineHeightFor = (fontSizePt) => fontSizePt * LINE_FACTOR * 0.3528;
+  const wrapText = (text, maxWidth) => pdf.splitTextToSize(String(text ?? "").trim() || "-", maxWidth);
+
   const quotationItems = normalizeFormItems(quotation.items);
   const quoteItem = quotationItems[0] || MASSCLICK_PRODUCT_ITEM;
   const totals = calculateTotals(quotation);
+  const colAmountX = pageWidth - margin;
+  const colPriceX = colAmountX - 26;
+  const colQtyX = colPriceX - 24;
 
   pdf.setProperties({
     title: quotation.quotationNo || "MassClick Quotation",
     subject: "MassClick product quotation",
   });
 
-  pdf.setFillColor(250, 252, 255);
-  pdf.rect(0, 0, pageWidth, pageHeight, "F");
-  pdf.setFillColor(...navy);
-  pdf.rect(0, 0, pageWidth, 18, "F");
-  pdf.setFillColor(...orange);
-  pdf.rect(0, 18, pageWidth, 1.8, "F");
-  pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(8.5);
-  pdf.setTextColor(255, 255, 255);
-  pdf.text("MASSCLICK PRODUCT QUOTATION", margin, 11.5);
-  pdf.text(quotation.quotationNo || "-", pageWidth - margin, 11.5, { align: "right" });
+  const card = (x, cardY, w, h, opts = {}) => {
+    const { fill = c.white, stroke = c.border, radius = 2.6 } = opts;
+    pdf.setDrawColor(...stroke);
+    pdf.setFillColor(...fill);
+    pdf.roundedRect(x, cardY, w, h, radius, radius, "FD");
+  };
 
-  let y = 33;
-  if (logoDataUrl) {
-    pdf.addImage(logoDataUrl, "PNG", margin, y - 8, 78, 25, undefined, "FAST");
-  } else {
-    pdf.setTextColor(...orange);
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(24);
-    pdf.text("Massclick", margin, y);
-    pdf.setTextColor(...navy);
-    pdf.setFontSize(14);
-    pdf.text("Technologies Pvt Ltd", margin, y + 8);
-  }
-  pdf.setTextColor(...muted);
-  pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(8.5);
-  pdf.text(quotation.businessAddress || "Tamil Nadu, India", margin, y + 24);
-  pdf.text(quotation.businessEmail || "support@massclick.in", margin, y + 30);
-
-  const metaX = 130;
-  pdf.setDrawColor(...border);
-  pdf.setFillColor(...soft);
-  pdf.roundedRect(metaX, 29, 66, 36, 3, 3, "FD");
-  pdf.setFillColor(255, 255, 255);
-  pdf.roundedRect(metaX + 3, 32, 60, 30, 2, 2, "F");
-  pdf.setFontSize(7.8);
-  pdf.setFont("helvetica", "bold");
-  pdf.setTextColor(...muted);
-  pdf.text("Quotation No", metaX + 7, 41);
-  pdf.text("Issue Date", metaX + 7, 50);
-  pdf.text("Valid Until", metaX + 7, 59);
-  pdf.setTextColor(...deepNavy);
-  pdf.text(quotation.quotationNo || "-", metaX + 58, 41, { align: "right" });
-  pdf.text(formatDate(quotation.issueDate), metaX + 58, 50, { align: "right" });
-  pdf.text(formatDate(quotation.validUntil), metaX + 58, 59, { align: "right" });
-
-  pdf.setDrawColor(...orange);
-  pdf.setLineWidth(1);
-  pdf.line(margin, 73, pageWidth - margin, 73);
-
-  y = 85;
-  const boxGap = 6;
-  const boxWidth = (contentWidth - boxGap) / 2;
-  const boxPaddingX = 5;
-  const boxHeaderHeight = 10;
-  const boxLineHeight = 5.5;
-  const boxTextWidth = boxWidth - boxPaddingX * 2;
-  const addressLines = splitPdfText(pdf, quotation.customerAddress || "-", boxTextWidth);
-  const billToContentHeight =
-    13 + boxLineHeight * 3 + Math.max(addressLines.length, 1) * 4.5;
-  const summaryContentHeight = 13 + boxLineHeight * 4;
-  const partyBoxHeight = Math.max(48, boxHeaderHeight + 8 + billToContentHeight, boxHeaderHeight + 8 + summaryContentHeight);
-  pdf.setDrawColor(219, 226, 237);
-  pdf.setFillColor(255, 255, 255);
-  pdf.roundedRect(margin, y, boxWidth, partyBoxHeight, 3, 3, "FD");
-  pdf.roundedRect(margin + boxWidth + boxGap, y, boxWidth, partyBoxHeight, 3, 3, "FD");
-  pdf.setFillColor(...paleOrange);
-  pdf.rect(margin + 0.6, y + 0.6, boxWidth - 1.2, boxHeaderHeight, "F");
-  pdf.rect(margin + boxWidth + boxGap + 0.6, y + 0.6, boxWidth - 1.2, boxHeaderHeight, "F");
-
-  pdf.setTextColor(...orange);
-  pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(9);
-  pdf.text("BILL TO", margin + boxPaddingX, y + 8);
-  pdf.text("COMMERCIAL SUMMARY", margin + boxWidth + boxGap + boxPaddingX, y + 8);
-
-  pdf.setTextColor(...deepNavy);
-  pdf.setFontSize(9);
-  pdf.setFont("helvetica", "bold");
-  const billToX = margin + boxPaddingX;
-  let billToY = y + 19;
-  pdf.text(quotation.customerName || "Customer Name", billToX, billToY);
-  pdf.setFont("helvetica", "normal");
-  billToY += boxLineHeight;
-  pdf.text(quotation.customerPhone || "-", billToX, billToY);
-  billToY += boxLineHeight;
-  pdf.text(quotation.customerEmail || "-", billToX, billToY);
-  billToY += 6;
-  pdf.setTextColor(31, 41, 55);
-  pdf.text(addressLines, billToX, billToY);
-
-  const summaryX = margin + boxWidth + boxGap + boxPaddingX;
-  let summaryY = y + 19;
-  pdf.setFont("helvetica", "bold");
-  pdf.setTextColor(...deepNavy);
-  pdf.text(quotation.quotationName || DEFAULT_QUOTATION_NAME, summaryX, summaryY);
-  pdf.setFont("helvetica", "normal");
-  summaryY += boxLineHeight;
-  pdf.text(`Product: ${quoteItem.description}`, summaryX, summaryY);
-  summaryY += boxLineHeight;
-  pdf.text(`Websites included: ${Number(quotation.websiteCount || 0)}`, summaryX, summaryY);
-  summaryY += 7;
-  pdf.setTextColor(...teal);
-  pdf.setFont("helvetica", "bold");
-  pdf.text(`Balance Due: ${money(totals.balanceDue)}`, summaryX, summaryY);
-
-  y += partyBoxHeight + 16;
-  pdf.setFillColor(...navy);
-  pdf.roundedRect(margin, y, contentWidth, 13, 2, 2, "F");
-  pdf.setTextColor(255, 255, 255);
-  pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(8.5);
-  pdf.text("PRODUCT / DESCRIPTION", margin + 4, y + 8.5);
-  pdf.text("QTY", 139, y + 8.5, { align: "right" });
-  pdf.text("UNIT PRICE", 168, y + 8.5, { align: "right" });
-  pdf.text("AMOUNT", 194, y + 8.5, { align: "right" });
-
-  y += 13;
-  pdf.setDrawColor(220, 226, 235);
-  pdf.setFillColor(255, 255, 255);
-  pdf.roundedRect(margin, y, contentWidth, 34, 1.5, 1.5, "FD");
-  y += 10;
-  pdf.setTextColor(...deepNavy);
-  pdf.setFontSize(9);
-  pdf.setFont("helvetica", "bold");
-  pdf.text(quoteItem.description, margin + 4, y);
-  pdf.setFont("helvetica", "normal");
-  pdf.setTextColor(51, 65, 85);
-  drawWrappedText(
-    pdf,
-    `${PRODUCT_INCLUSION_TEXT} ${serviceAdvantagesText(quotation)}`,
-    margin + 4,
-    y + 6,
-    100,
-    4
-  );
-  pdf.setFont("helvetica", "bold");
-  pdf.setTextColor(...deepNavy);
-  pdf.text(String(Number(quoteItem.quantity || 0)), 139, y, { align: "right" });
-  pdf.text(money(quoteItem.unitPrice), 168, y, { align: "right" });
-  pdf.text(money(Number(quoteItem.quantity || 0) * Number(quoteItem.unitPrice || 0)), 194, y, { align: "right" });
-
-  y += 40;
-  const totalX = 128;
-  pdf.setDrawColor(...border);
-  pdf.setFillColor(...soft);
-  pdf.roundedRect(totalX, y, 68, 72, 3, 3, "FD");
-  pdf.setFontSize(9);
-  pdf.setTextColor(...deepNavy);
-  pdf.text("Subtotal", totalX + 5, y + 9);
-  pdf.text(money(totals.subtotal), totalX + 62, y + 9, { align: "right" });
-  pdf.text("Tax", totalX + 5, y + 18);
-  pdf.text(money(totals.tax), totalX + 62, y + 18, { align: "right" });
-  pdf.text("Grand Total", totalX + 5, y + 27);
-  pdf.text(money(totals.total), totalX + 62, y + 27, { align: "right" });
-  pdf.text("Advance Paid", totalX + 5, y + 36);
-  pdf.text(money(totals.advancePayment), totalX + 62, y + 36, { align: "right" });
-  pdf.text("Payment Status", totalX + 5, y + 45);
-  pdf.text(paymentStatusLabel(totals.paymentStatus), totalX + 62, y + 45, { align: "right" });
-  pdf.text("Due Date", totalX + 5, y + 54);
-  pdf.text(formatDate(quotation.paymentDueDate), totalX + 62, y + 54, { align: "right" });
-  pdf.setDrawColor(226, 232, 240);
-  pdf.line(totalX + 5, y + 59, totalX + 63, y + 59);
-  pdf.setTextColor(...teal);
-  pdf.setFontSize(11);
-  pdf.text("Balance Due", totalX + 5, y + 67);
-  pdf.text(money(totals.balanceDue), totalX + 62, y + 67, { align: "right" });
-
-  pdf.setDrawColor(...border);
-  pdf.setFillColor(255, 255, 255);
-  pdf.roundedRect(margin, y, 100, 36, 3, 3, "FD");
-  pdf.setTextColor(...orange);
-  pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(8.5);
-  pdf.text("PAYMENT DETAILS", margin + 5, y + 8);
-  pdf.setTextColor(...deepNavy);
-  pdf.setFontSize(8.3);
-  pdf.text(`Method: ${paymentMethodLabel(quotation.paymentMethod)}`, margin + 5, y + 17);
-  pdf.text(`Paid / Advance: ${money(totals.advancePayment)}`, margin + 5, y + 25);
-  drawWrappedText(pdf, `Reference: ${quotation.paymentReference || "-"}`, margin + 5, y + 33, 88, 3.7);
-
-  y += 86;
-  pdf.setTextColor(...deepNavy);
-  pdf.setFontSize(9);
-  pdf.setDrawColor(...border);
-  pdf.setFillColor(255, 255, 255);
-  pdf.roundedRect(margin, y, contentWidth, 38, 2.5, 2.5, "FD");
-  pdf.text("Terms:", margin + 5, y + 9);
-  drawWrappedText(pdf, quotation.terms || "-", margin + 22, y + 9, 156, 4);
-  pdf.text("Notes:", margin + 5, y + 22);
-  drawWrappedText(pdf, quotation.notes || "-", margin + 22, y + 22, 156, 4);
-
-  pdf.addPage();
-  pdf.setFillColor(250, 252, 255);
-  pdf.rect(0, 0, pageWidth, pageHeight, "F");
-  pdf.setFillColor(...navy);
-  pdf.rect(0, 0, pageWidth, 18, "F");
-  pdf.setFillColor(...orange);
-  pdf.rect(0, 18, pageWidth, 1.8, "F");
-  pdf.setTextColor(255, 255, 255);
-  pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(8);
-  pdf.text("MASSCLICK VALUE SUMMARY", margin, 11.5);
-  pdf.text(quotation.quotationNo || "-", pageWidth - margin, 11.5, { align: "right" });
-
-  y = 34;
-  if (logoDataUrl) {
-    pdf.addImage(logoDataUrl, "PNG", margin, y - 9, 48, 15.5, undefined, "FAST");
-  }
-  
-  pdf.setDrawColor(...orange);
-  pdf.setLineWidth(1);
-  pdf.line(margin, y + 13, pageWidth - margin, y + 13);
-  pdf.setTextColor(...navy);
-  pdf.setFontSize(18);
-  pdf.text("10 Key MassClick Features", margin, y + 26);
-  pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(9);
-  pdf.setTextColor(...muted);
-  pdf.text("Lead generation, digital presence, discovery, and business network advantages included with the quotation.", margin, y + 34);
-  y += 48;
-
-  const cardGap = 6;
-  const cardWidth = (contentWidth - cardGap) / 2;
-  const cardHeight = 36;
-  let featurePageStartY = y;
-  whyChooseMassClick.forEach((point, index) => {
-    if (index === 6) {
-      pdf.addPage();
-      pdf.setFillColor(250, 252, 255);
-      pdf.rect(0, 0, pageWidth, pageHeight, "F");
-      pdf.setFillColor(...navy);
-      pdf.rect(0, 0, pageWidth, 18, "F");
-      pdf.setFillColor(...orange);
-      pdf.rect(0, 18, pageWidth, 1.8, "F");
-      pdf.setTextColor(255, 255, 255);
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(8);
-      pdf.text("MASSCLICK FEATURES", margin, 11.5);
-      pdf.text(quotation.quotationNo || "-", pageWidth - margin, 11.5, { align: "right" });
-      pdf.setTextColor(...navy);
-      pdf.setFontSize(16);
-      pdf.text("More Business Growth Features", margin, 34);
-      featurePageStartY = 44;
-    }
-    const pageIndex = index < 6 ? index : index - 6;
-    const column = pageIndex % 2;
-    const row = Math.floor(pageIndex / 2);
-    const cardX = margin + column * (cardWidth + cardGap);
-    const cardY = featurePageStartY + row * (cardHeight + 6);
-    pdf.setDrawColor(216, 224, 236);
-    pdf.setFillColor(...soft);
-    pdf.roundedRect(cardX, cardY, cardWidth, cardHeight, 3, 3, "FD");
+  const drawChrome = (subtitle) => {
     pdf.setFillColor(255, 255, 255);
-    pdf.roundedRect(cardX + 1.5, cardY + 1.5, cardWidth - 3, cardHeight - 3, 2.2, 2.2, "F");
-    pdf.setFillColor(...paleOrange);
-    pdf.circle(cardX + 7, cardY + 8, 4, "F");
-    pdf.setTextColor(...navy);
+    pdf.rect(0, 0, pageWidth, pageHeight, "F");
+    pdf.setFillColor(...c.navy);
+    pdf.rect(0, 0, pageWidth, headerHeight, "F");
+    pdf.setFillColor(...c.orange);
+    pdf.rect(0, headerHeight, pageWidth, 1.4, "F");
     pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(8.5);
-    pdf.text(String(index + 1), cardX + 7, cardY + 9.2, { align: "center" });
-    pdf.text(point.title, cardX + 14, cardY + 8.5);
+    pdf.setFontSize(12.5);
+    pdf.setTextColor(255, 255, 255);
+    pdf.text("MASSCLICK", margin, 12.2);
     pdf.setFont("helvetica", "normal");
-    pdf.setTextColor(31, 41, 55);
     pdf.setFontSize(7.6);
-    drawWrappedText(pdf, point.text, cardX + 6, cardY + 17, cardWidth - 12, 3.8);
+    pdf.setTextColor(199, 210, 231);
+    pdf.text(subtitle, margin, 16.6);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(9.5);
+    pdf.setTextColor(255, 255, 255);
+    pdf.text(quotation.quotationNo || "-", pageWidth - margin, 12.2, { align: "right" });
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(7.4);
+    pdf.setTextColor(199, 210, 231);
+    pdf.text("PRODUCT QUOTATION", pageWidth - margin, 16.6, { align: "right" });
+
+    pdf.setDrawColor(...c.border);
+    pdf.setLineWidth(0.3);
+    pdf.line(margin, pageHeight - 13, pageWidth - margin, pageHeight - 13);
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(7.2);
+    pdf.setTextColor(...c.muted);
+    pdf.text("Massclick Technologies Pvt Ltd  |  support@massclick.in", margin, pageHeight - 7.5);
+  };
+
+  let y = headerHeight;
+  let pageSubtitle = "MASSCLICK PRODUCT QUOTATION";
+  const newPage = (subtitle) => {
+    pdf.addPage();
+    pageSubtitle = subtitle || pageSubtitle;
+    drawChrome(pageSubtitle);
+    y = headerHeight + 14;
+  };
+  const ensureSpace = (height) => {
+    if (y + height > footerLimit) newPage(pageSubtitle);
+  };
+
+  drawChrome(pageSubtitle);
+  y = 27;
+
+  // Brand block + meta card
+  const brandTop = y;
+  if (logoDataUrl) {
+    pdf.addImage(logoDataUrl, "PNG", margin, brandTop - 4, 54, 17, undefined, "FAST");
+  } else {
+    pdf.setTextColor(...c.orange);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(18);
+    pdf.text("Massclick", margin, brandTop + 4);
+  }
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(7.7);
+  pdf.setTextColor(...c.muted);
+  pdf.text(quotation.businessAddress || "Tamil Nadu, India", margin, brandTop + 16.5);
+  pdf.text(quotation.businessEmail || "support@massclick.in", margin, brandTop + 21);
+
+  const metaW = 62;
+  const metaX = pageWidth - margin - metaW;
+  const metaH = 27;
+  card(metaX, brandTop - 4, metaW, metaH, { fill: c.soft });
+  const metaRows = [
+    ["Quote No", quotation.quotationNo || "-"],
+    ["Issue Date", formatDate(quotation.issueDate)],
+    ["Valid Until", formatDate(quotation.validUntil)],
+  ];
+  let metaY = brandTop + 1;
+  metaRows.forEach(([label, value], index) => {
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(6.1);
+    pdf.setTextColor(...c.muted);
+    pdf.text(label.toUpperCase(), metaX + 5, metaY);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(index === 0 ? 7.1 : 8);
+    pdf.setTextColor(...c.navyDeep);
+    pdf.text(value, metaX + metaW - 5, metaY, { align: "right" });
+    metaY += 7.7;
   });
 
-  y = featurePageStartY + 2 * (cardHeight + 6) + 4;
-  pdf.setDrawColor(...orange);
-  pdf.setFillColor(...paleOrange);
-  pdf.roundedRect(margin, y, contentWidth, 26, 3, 3, "FD");
-  pdf.setTextColor(124, 45, 18);
+  y = brandTop + 27;
+
+  // Bill To / Commercial Summary cards
+  const colGap = 6;
+  const colW = (contentWidth - colGap) / 2;
+  const padX = 6;
+  const textW = colW - padX * 2;
+  const bodyFont = 8;
+  const rowLh = lineHeightFor(bodyFont);
+
+  const customerNameLines = wrapText(quotation.customerName || "Customer Name", textW);
+  const addressLines = wrapText(quotation.customerAddress || "-", textW);
+  const billRowsBeforeAddress = 2; // phone, email (name is the header line)
+  const billContentH =
+    (customerNameLines.length + billRowsBeforeAddress + addressLines.length) * rowLh + 3;
+  const billCardH = 12 + billContentH + 4;
+
+  const productSummaryLines = wrapText(`Product: ${quoteItem.description}`, textW);
+  const summaryContentH =
+    rowLh + productSummaryLines.length * rowLh + rowLh + rowLh + 2 + 7.5;
+  const summaryCardH = 12 + summaryContentH + 4;
+
+  const partyH = Math.max(43, billCardH, summaryCardH);
+  ensureSpace(partyH + 6);
+
+  const billX = margin;
+  const summaryX = margin + colW + colGap;
+  card(billX, y, colW, partyH);
+  card(summaryX, y, colW, partyH);
+  pdf.setFillColor(...c.orange);
+  pdf.rect(billX, y, 2, partyH, "F");
+  pdf.rect(summaryX, y, 2, partyH, "F");
+
   pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(8.5);
-  pdf.text("Important Note", margin + 5, y + 8);
+  pdf.setFontSize(8);
+  pdf.setTextColor(...c.orange);
+  pdf.text("BILL TO", billX + padX, y + 8);
+  pdf.text("COMMERCIAL SUMMARY", summaryX + padX, y + 8);
+
+  let billY = y + 15.5;
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(bodyFont);
+  pdf.setTextColor(...c.navyDeep);
+  pdf.text(customerNameLines, billX + padX, billY);
   pdf.setFont("helvetica", "normal");
-  drawWrappedText(pdf, importantNote, margin + 5, y + 15, contentWidth - 10, 3.7);
+  pdf.setTextColor(...c.ink);
+  billY += customerNameLines.length * rowLh;
+  pdf.text(quotation.customerPhone || "-", billX + padX, billY);
+  billY += rowLh;
+  pdf.text(quotation.customerEmail || "-", billX + padX, billY);
+  billY += rowLh + 1;
+  pdf.text(addressLines, billX + padX, billY);
 
-  y += 48;
+  let summaryY = y + 15.5;
   pdf.setFont("helvetica", "bold");
-  pdf.setDrawColor(148, 163, 184);
-  pdf.setLineWidth(0.7);
-  pdf.line(margin, y, 86, y);
-  pdf.line(120, y, pageWidth - margin, y);
-  pdf.setTextColor(...muted);
-  pdf.setFontSize(8);
-  pdf.text("Accepted By", margin, y + 7);
-  pdf.text("Authorized Signature", 120, y + 7);
-  if (signatureDataUrl) {
-    pdf.addImage(signatureDataUrl, "JPEG", 120, y + 9, 42, 16, undefined, "FAST");
-  }
-  pdf.setTextColor(...navy);
-  pdf.setFontSize(9);
-  pdf.text(quotation.customerName || "Customer Name", margin, y + 14);
-  pdf.text("Authorized Representative", 120, y + 30);
+  pdf.setFontSize(bodyFont);
+  pdf.setTextColor(...c.navyDeep);
+  pdf.text(quotation.quotationName || DEFAULT_QUOTATION_NAME, summaryX + padX, summaryY);
+  pdf.setFont("helvetica", "normal");
+  pdf.setTextColor(...c.ink);
+  summaryY += rowLh;
+  pdf.text(productSummaryLines, summaryX + padX, summaryY);
+  summaryY += productSummaryLines.length * rowLh;
+  pdf.text(`Websites included: ${Number(quotation.websiteCount || 0)}`, summaryX + padX, summaryY);
+  summaryY += rowLh;
+  pdf.text(`GST: ${Number(quotation.taxRate || 0)}%`, summaryX + padX, summaryY);
+  summaryY += rowLh + 3;
+  pdf.setDrawColor(...c.border);
+  pdf.setLineWidth(0.2);
+  pdf.line(summaryX + padX, summaryY - rowLh + 2, summaryX + colW - padX, summaryY - rowLh + 2);
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(9.2);
+  pdf.setTextColor(...c.teal);
+  pdf.text("Balance Due", summaryX + padX, summaryY + 3);
+  pdf.text(money(totals.balanceDue), summaryX + colW - padX, summaryY + 3, { align: "right" });
 
-  pdf.setFontSize(8);
-  pdf.setTextColor(...muted);
-  pdf.text("Massclick Technologies Pvt Ltd", margin, pageHeight - 8);
+  y += partyH + 6;
+
+  // Added advantages row
+  const advItems = [
+    {
+      label: "Digital Marketing",
+      value: `${Number(quotation.digitalMarketingMonths || 0)} ${Number(quotation.digitalMarketingMonths || 0) === 1 ? "month" : "months"}`,
+    },
+    {
+      label: "YouTube Videos",
+      value: `${Number(quotation.youtubeVideoCount || 0)} ${Number(quotation.youtubeVideoCount || 0) === 1 ? "video" : "videos"}`,
+    },
+    { label: "Websites", value: `${Number(quotation.websiteCount || 0)}` },
+  ];
+  const advGap = 4.5;
+  const advW = (contentWidth - advGap * 2) / 3;
+  const advH = 16;
+  ensureSpace(advH + 6);
+  advItems.forEach((item, index) => {
+    const x = margin + index * (advW + advGap);
+    card(x, y, advW, advH, { fill: c.paleOrange, stroke: c.paleOrangeBorder });
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(6.2);
+    pdf.setTextColor(...c.amber);
+    pdf.text(item.label.toUpperCase(), x + 5, y + 6.5);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(9.4);
+    pdf.setTextColor(...c.navyDeep);
+    pdf.text(item.value, x + 5, y + 13);
+  });
+  y += advH + 6;
+
+  // Product table
+  ensureSpace(20);
+  pdf.setFillColor(...c.navy);
+  pdf.rect(margin, y, contentWidth, 8.5, "F");
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(7.2);
+  pdf.setTextColor(255, 255, 255);
+  pdf.text("PRODUCT / DESCRIPTION", margin + 4, y + 5.8);
+  pdf.text("QTY", colQtyX, y + 5.8, { align: "right" });
+  pdf.text("UNIT PRICE", colPriceX, y + 5.8, { align: "right" });
+  pdf.text("AMOUNT", colAmountX, y + 5.8, { align: "right" });
+  y += 8.5;
+
+  const descLines = wrapText(`${PRODUCT_INCLUSION_TEXT} ${serviceAdvantagesText(quotation)}`, contentWidth - 8);
+  const descLh = lineHeightFor(7.3);
+  const rowH = Math.max(20, 8 + descLines.length * descLh + 4);
+  ensureSpace(rowH + 6);
+  card(margin, y, contentWidth, rowH);
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(8.6);
+  pdf.setTextColor(...c.navyDeep);
+  pdf.text(quoteItem.description, margin + 4, y + 7);
+  pdf.text(String(Number(quoteItem.quantity || 0)), colQtyX, y + 7, { align: "right" });
+  pdf.text(money(quoteItem.unitPrice), colPriceX, y + 7, { align: "right" });
+  pdf.text(money(Number(quoteItem.quantity || 0) * Number(quoteItem.unitPrice || 0)), colAmountX, y + 7, { align: "right" });
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(7.3);
+  pdf.setTextColor(...c.muted);
+  pdf.text(descLines, margin + 4, y + 12.5);
+  y += rowH + 6;
+
+  // Totals + payment details
+  const totalsW = 72;
+  const totalsX = pageWidth - margin - totalsW;
+  const payW = contentWidth - totalsW - 6;
+  const payRefLines = wrapText(`Reference: ${quotation.paymentReference || "-"}`, payW - 12);
+  const payLh = lineHeightFor(7.5);
+  const payH = 39 + payRefLines.length * payLh + 5;
+  const totalsH = Math.max(52, payH);
+  ensureSpace(totalsH + 6);
+
+  card(margin, y, payW, totalsH, { fill: c.soft });
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(7.8);
+  pdf.setTextColor(...c.orange);
+  pdf.text("PAYMENT DETAILS", margin + 6, y + 8);
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(7.7);
+  pdf.setTextColor(...c.ink);
+  pdf.text(`Method: ${paymentMethodLabel(quotation.paymentMethod)}`, margin + 6, y + 17);
+  pdf.text(`Due date: ${formatDate(quotation.paymentDueDate)}`, margin + 6, y + 25);
+  pdf.text(`Paid / Advance: ${money(totals.advancePayment)}`, margin + 6, y + 33);
+  pdf.text(payRefLines, margin + 6, y + 41);
+
+  card(totalsX, y, totalsW, totalsH, { fill: c.soft });
+  const totalRows = [
+    ["Subtotal", money(totals.subtotal)],
+    [`GST (${Number(quotation.taxRate || 0)}%)`, money(totals.tax)],
+    ["Grand Total", money(totals.total)],
+    ["Advance Paid", money(totals.advancePayment)],
+    ["Payment Status", paymentStatusLabel(totals.paymentStatus)],
+  ];
+  let totalsY = y + 8.5;
+  pdf.setFontSize(7.7);
+  totalRows.forEach(([label, value]) => {
+    pdf.setFont("helvetica", "normal");
+    pdf.setTextColor(...c.ink);
+    pdf.text(label, totalsX + 6, totalsY);
+    pdf.setFont("helvetica", "bold");
+    pdf.setTextColor(...c.navyDeep);
+    pdf.text(value, totalsX + totalsW - 6, totalsY, { align: "right" });
+    totalsY += 6.8;
+  });
+  pdf.setDrawColor(...c.border);
+  pdf.setLineWidth(0.3);
+  pdf.line(totalsX + 6, totalsY - 2.8, totalsX + totalsW - 6, totalsY - 2.8);
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(9.3);
+  pdf.setTextColor(...c.teal);
+  pdf.text("Balance Due", totalsX + 6, totalsY + 4.5);
+  pdf.text(money(totals.balanceDue), totalsX + totalsW - 6, totalsY + 4.5, { align: "right" });
+
+  y += totalsH + 6;
+
+  // Terms & notes
+  const termsLh = lineHeightFor(7.3);
+  const termsLines = wrapText(quotation.terms || "-", contentWidth - 30);
+  const notesLines = wrapText(quotation.notes || "-", contentWidth - 30);
+  const notesCardH = 8 + termsLines.length * termsLh + 3 + notesLines.length * termsLh + 5;
+  ensureSpace(notesCardH + 6);
+  card(margin, y, contentWidth, notesCardH);
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(7.3);
+  pdf.setTextColor(...c.navyDeep);
+  pdf.text("Terms:", margin + 6, y + 8);
+  pdf.setFont("helvetica", "normal");
+  pdf.setTextColor(...c.ink);
+  pdf.text(termsLines, margin + 24, y + 8);
+  let notesY = y + 8 + termsLines.length * termsLh + 3;
+  pdf.setFont("helvetica", "bold");
+  pdf.setTextColor(...c.navyDeep);
+  pdf.text("Notes:", margin + 6, notesY);
+  pdf.setFont("helvetica", "normal");
+  pdf.setTextColor(...c.ink);
+  pdf.text(notesLines, margin + 24, notesY);
+  y += notesCardH + 5;
+
+  // Keep acceptance and authorization with the commercial quotation.
+  const signatureH = 24.5;
+  ensureSpace(signatureH);
+  const signatureGap = 6;
+  const signatureW = (contentWidth - signatureGap) / 2;
+  const signatureRightX = margin + signatureW + signatureGap;
+  card(margin, y, signatureW, signatureH, { fill: c.soft });
+  card(signatureRightX, y, signatureW, signatureH, { fill: c.soft });
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(6.8);
+  pdf.setTextColor(...c.muted);
+  pdf.text("CUSTOMER ACCEPTANCE", margin + 6, y + 6.5);
+  pdf.text("AUTHORIZED SIGNATURE", signatureRightX + 6, y + 6.5);
+  pdf.setFontSize(8.7);
+  pdf.setTextColor(...c.navy);
+  pdf.text(quotation.customerName || "Customer Name", margin + 6, y + 14);
+  pdf.setDrawColor(148, 163, 184);
+  pdf.setLineWidth(0.35);
+  pdf.line(margin + 6, y + 19.5, margin + signatureW - 6, y + 19.5);
+  if (signatureDataUrl) {
+    pdf.addImage(signatureDataUrl, "PNG", signatureRightX + 6, y + 8, 32, 10.5, undefined, "FAST");
+  }
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(8.2);
+  pdf.setTextColor(...c.navy);
+  pdf.text("Authorized Representative", signatureRightX + 6, y + 21.5);
+
+  // Features page
+  newPage("WHY CHOOSE MASSCLICK");
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(17);
+  pdf.setTextColor(...c.navy);
+  pdf.text("10 Key MassClick Features", margin, y);
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(8.6);
+  pdf.setTextColor(...c.muted);
+  pdf.text(
+    "Lead generation, digital presence, discovery, and business network advantages included with the quotation.",
+    margin,
+    y + 7
+  );
+  y += 16;
+
+  const cardGap = 6;
+  const cardW = (contentWidth - cardGap) / 2;
+  const cardPadX = 6;
+  const cardTextW = cardW - cardPadX * 2 - 6;
+  const titleLh = lineHeightFor(8.3);
+  const bodyLh = lineHeightFor(7.4);
+
+  const measureFeatureCard = (point) => {
+    const titleLines = wrapText(point.title, cardTextW);
+    const bodyLines = wrapText(point.text, cardTextW);
+    return {
+      titleLines,
+      bodyLines,
+      height: Math.max(30, 9 + titleLines.length * titleLh + 2 + bodyLines.length * bodyLh + 6),
+    };
+  };
+
+  for (let i = 0; i < whyChooseMassClick.length; i += 2) {
+    const left = whyChooseMassClick[i];
+    const right = whyChooseMassClick[i + 1];
+    const leftMeasure = measureFeatureCard(left);
+    const rightMeasure = right ? measureFeatureCard(right) : null;
+    const rowH = Math.max(leftMeasure.height, rightMeasure ? rightMeasure.height : 0);
+    ensureSpace(rowH + 6);
+
+    [
+      { point: left, measure: leftMeasure, col: 0, index: i },
+      right ? { point: right, measure: rightMeasure, col: 1, index: i + 1 } : null,
+    ]
+      .filter(Boolean)
+      .forEach(({ measure, col, index }) => {
+        const cardX = margin + col * (cardW + cardGap);
+        card(cardX, y, cardW, rowH, { fill: c.soft });
+        pdf.setFillColor(...c.paleOrange);
+        pdf.circle(cardX + 8, cardX ? y + 8 : y + 8, 4, "F");
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(8);
+        pdf.setTextColor(...c.navy);
+        pdf.text(String(index + 1), cardX + 8, y + 9.3, { align: "center" });
+        pdf.setFontSize(8.3);
+        pdf.text(measure.titleLines, cardX + 16, y + 8.5);
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(7.4);
+        pdf.setTextColor(...c.ink);
+        const bodyStartY = y + 8.5 + measure.titleLines.length * titleLh + 1;
+        pdf.text(measure.bodyLines, cardX + cardPadX, bodyStartY);
+      });
+
+    y += rowH + 6;
+  }
+
+  y += 4;
+  const noteLines = wrapText(importantNote, contentWidth - 12);
+  const noteLh = lineHeightFor(7.8);
+  const noteH = 10 + noteLines.length * noteLh + 6;
+  ensureSpace(noteH + 14);
+  card(margin, y, contentWidth, noteH, { fill: c.paleOrange, stroke: c.paleOrangeBorder });
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(8.4);
+  pdf.setTextColor(124, 45, 18);
+  pdf.text("Important Note", margin + 6, y + 9);
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(7.8);
+  pdf.text(noteLines, margin + 6, y + 16);
+
+  const totalPages = pdf.internal.getNumberOfPages();
+  for (let pageNo = 1; pageNo <= totalPages; pageNo += 1) {
+    pdf.setPage(pageNo);
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(7.2);
+    pdf.setTextColor(...c.muted);
+    pdf.text(`Page ${pageNo} of ${totalPages}`, pageWidth - margin, pageHeight - 7.5, { align: "right" });
+  }
 
   return pdf;
 };
