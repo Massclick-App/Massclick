@@ -157,6 +157,18 @@
   margin-top: 14px;
 }
 
+.advantages {
+  margin-top: 16px;
+  border: 1px solid #fed7aa;
+  border-radius: 8px;
+  padding: 16px;
+  background: #fffaf5;
+}
+
+.advantages .section-title {
+  margin-top: 3px;
+}
+
 .item-row {
   display: grid;
   grid-template-columns: minmax(160px, 1fr) 76px 108px;
@@ -172,6 +184,47 @@
   color: #9a3412;
   font-size: 0.86rem;
   font-weight: 700;
+}
+
+.document-advantages {
+  margin: 16px 0;
+  border: 1px solid #fed7aa;
+  border-radius: 8px;
+  padding: 14px;
+  background: #fffaf5;
+}
+
+.document-advantages h3 {
+  margin: 0 0 10px;
+  color: var(--quote-orange);
+  font-size: 0.92rem;
+}
+
+.advantage-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.advantage-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px solid #fed7aa;
+  border-radius: 7px;
+  padding: 10px;
+  background: #ffffff;
+}
+
+.advantage-grid span {
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.advantage-grid strong {
+  color: var(--quote-navy);
+  font-size: 0.9rem;
 }
 
 .payment-overview {
@@ -656,6 +709,23 @@
   font-size: 0.82rem;
   font-weight: 700;
   line-height: 1.45;
+}
+
+.language-label {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--quote-orange);
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.why-item .tamil-text {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #e2e8f0;
+  color: #334155;
+  line-height: 1.65;
 }
 
 .important-note {

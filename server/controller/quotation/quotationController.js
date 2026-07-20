@@ -74,12 +74,22 @@ const derivePaymentStatus = (advancePayment, total) => {
   return "part_paid";
 };
 
+const normalizeCount = (value, fallback, maximum) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(Math.max(Math.round(parsed), 0), maximum);
+};
+
 const normalizeQuotationPayload = (body = {}) => {
   const items = normalizeQuotationItems(body.items);
+  const requestedTaxRate = Number(body.taxRate);
+  const taxRate = Number.isFinite(requestedTaxRate)
+    ? Math.min(Math.max(requestedTaxRate, 0), 100)
+    : MASSCLICK_GST_RATE;
   const total = calculateQuotationTotal({
     items,
     discount: 0,
-    taxRate: MASSCLICK_GST_RATE,
+    taxRate,
   });
   const advancePayment = Math.min(Math.max(Number(body.advancePayment || 0), 0), total);
   const paymentMethod = String(body.paymentMethod || "not_selected").trim();
@@ -99,13 +109,16 @@ const normalizeQuotationPayload = (body = {}) => {
     validUntil: body.validUntil || null,
     notes: DEFAULT_NOTES,
     terms: DEFAULT_TERMS,
-    taxRate: MASSCLICK_GST_RATE,
+    taxRate,
     discount: 0,
     advancePayment,
     paymentMethod: PAYMENT_METHODS.has(paymentMethod) ? paymentMethod : "not_selected",
     paymentReference: String(body.paymentReference || "").trim(),
     paymentDueDate: body.paymentDueDate || null,
     paymentStatus: derivePaymentStatus(advancePayment, total),
+    digitalMarketingMonths: normalizeCount(body.digitalMarketingMonths, 1, 24),
+    youtubeVideoCount: normalizeCount(body.youtubeVideoCount, 1, 100),
+    websiteCount: normalizeCount(body.websiteCount, 1, 100),
     items,
     status: body.status || "draft",
   };

@@ -13,7 +13,6 @@ import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 import NotesIcon from "@mui/icons-material/Notes";
 import CampaignIcon from "@mui/icons-material/Campaign";
-import StorefrontIcon from "@mui/icons-material/Storefront";
 import VerifiedIcon from "@mui/icons-material/Verified";
 import EventAvailableIcon from "@mui/icons-material/EventAvailable";
 import TipsAndUpdatesIcon from "@mui/icons-material/TipsAndUpdates";
@@ -165,15 +164,8 @@ function FeedPost({ post, onLike, onShare, onComment }) {
           <div className={cx("business-avatar")}>
             {(post.businessName || "M").charAt(0).toUpperCase()}
           </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                marginBottom: "4px",
-              }}
-            >
+          <div className={cx("post-identity")}>
+            <div className={cx("post-name-row")}>
               <h2 className={cx("business-name")}>
                 {post.businessName || "MassClick Business"}
               </h2>
@@ -195,30 +187,10 @@ function FeedPost({ post, onLike, onShare, onComment }) {
         </div>
 
         {offerText && (
-          <div
-            className={cx("offer-badge")}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              justifyContent: "space-between",
-            }}
-          >
+          <div className={cx("offer-badge")}>
             <span>{offerText}</span>
             {isOfferExpiringSoon(post.offerEndsAt) && (
-              <span
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "4px",
-                  padding: "2px 6px",
-                  borderRadius: "4px",
-                  background: "rgba(220, 38, 38, 0.15)",
-                  color: "#dc2626",
-                  fontSize: "0.7rem",
-                  fontWeight: "800",
-                }}
-              >
+              <span className={cx("offer-countdown")}>
                 ⏱ {formatCountdownTime(post.offerEndsAt)}
               </span>
             )}
@@ -585,10 +557,10 @@ export default function MassclickFeedPage() {
                   now.
                 </p>
                 <div className={cx("hero-tags")}>
-                  <span className={cx("hero-tag")}>🎯 Offers</span>
-                  <span className={cx("hero-tag")}>📸 Photos</span>
-                  <span className={cx("hero-tag")}>🎉 Events</span>
-                  <span className={cx("hero-tag")}>📢 Announcements</span>
+                  <span className={cx("hero-tag")}><LocalOfferIcon /> Offers</span>
+                  <span className={cx("hero-tag")}><ImageIcon /> Photos</span>
+                  <span className={cx("hero-tag")}><EventAvailableIcon /> Events</span>
+                  <span className={cx("hero-tag")}><CampaignIcon /> Announcements</span>
                 </div>
               </div>
               <div className={cx("hero-action-card")}>
@@ -800,7 +772,7 @@ export default function MassclickFeedPage() {
                 <span className={cx("toolbar-label")}>Community feed</span>
                 <h2 className={cx("toolbar-title")}>Latest verified updates</h2>
               </div>
-              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+              <div className={cx("toolbar-filters")}>
                 <span className={cx("toolbar-count")}>{posts.length} posts</span>
                 {offerCount > 0 && (
                   <span

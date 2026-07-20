@@ -45,40 +45,76 @@ const MASSCLICK_PRODUCT_ITEM = {
 const MASSCLICK_GST_RATE = 18;
 
 const PRODUCT_INCLUSION_TEXT =
-  "Local business discovery, lead generation, service cards, MNI network access, and one free basic website.";
+  "Local business discovery, lead generation, service cards, and MNI network access.";
+
+const durationOptions = Array.from({ length: 24 }, (_, index) => index + 1);
+const videoCountOptions = Array.from({ length: 20 }, (_, index) => index + 1);
+
+const serviceAdvantagesText = (quotation) => {
+  const months = Number(quotation.digitalMarketingMonths || 0);
+  const videos = Number(quotation.youtubeVideoCount || 0);
+  const websites = Number(quotation.websiteCount || 0);
+  const values = [
+    months ? `Digital marketing: ${months} ${months === 1 ? "month" : "months"}` : null,
+    videos ? `YouTube: ${videos} ${videos === 1 ? "video" : "videos"}` : null,
+    websites ? `Websites: ${websites}` : null,
+  ].filter(Boolean);
+  return values.length ? values.join(" | ") : "No additional services selected";
+};
 
 const DEFAULT_TERMS =
   "MassClick product quotation. The listed product amount and GST are fixed. This quotation includes one free basic website.";
 
 const whyChooseMassClick = [
   {
-    title: "Google Search Lead Generation",
-    text: "MassClick indexed category pages help your business get discovered when customers search relevant keywords on Google. Customers can log in and connect directly, enabling two-way lead generation between customers and businesses.",
+    title: "Google Generated WhatsApp Leads",
+    text: "Receive genuine customer enquiries directly on your WhatsApp from users who discover your business through Google and MassClick.",
+    tamilText: "Google மற்றும் MassClick மூலம் உங்கள் வணிகத்தை கண்டுபிடிக்கும் வாடிக்கையாளர்களின் உண்மையான Lead-கள் நேரடியாக உங்கள் WhatsApp-க்கு வரும்.",
   },
-  
   {
-    title: "Instant Lead Notifications",
-    text: "Customer enquiries and search activities are delivered as notifications, allowing businesses to receive potential customer details quickly and respond without delay.",
+    title: "Website Search Based Generated Leads",
+    text: "When customers search for products or services on MassClick, matching businesses instantly receive qualified customer leads.",
+    tamilText: "MassClick-ல் வாடிக்கையாளர்கள் தேடும்போது, அதற்கு பொருந்தும் வணிகங்களுக்கு உடனடியாக Lead-கள் அனுப்பப்படும்.",
   },
-
   {
-    title: "Two-Way Lead Generation System",
-    text: "MassClick connects both customers and businesses. Customers discover suitable businesses, while businesses receive verified enquiries through a transparent two-way lead generation process.",
+    title: "Popular Categories & Trending Search Leads",
+    text: "Businesses listed in popular categories and trending searches gain more visibility and receive more customer enquiries.",
+    tamilText: "Popular Categories மற்றும் Trending Searches-ல் இடம்பெறும் வணிகங்களுக்கு அதிக பார்வையும் அதிக Lead-களும் கிடைக்கும்.",
   },
-
   {
-    title: "MNI - MassClick Network Intelligence",
-    text: "MNI enables business-to-business networking by connecting businesses with relevant categories, referral opportunities, partnerships, and local business communities.",
+    title: "MNI (MassClick Network India)",
+    text: "Connect with verified businesses across industries to create partnerships, referrals, and new business opportunities.",
+    tamilText: "பல்வேறு துறைகளில் உள்ள சரிபார்க்கப்பட்ட வணிகர்களுடன் இணைந்து புதிய வணிக வாய்ப்புகள் மற்றும் Referral-களை உருவாக்கலாம்.",
   },
-
   {
-    title: "Enquiry-Based Lead Generation",
-    text: "The Enquiry Now feature allows customers to submit requirements directly. These enquiries are matched with relevant businesses to create quality two-way leads and improve conversions.",
+    title: "Marketing Materials",
+    text: "Access ready-to-use marketing tools such as posters, brochures, digital visiting cards, and branding materials.",
+    tamilText: "Poster, Brochure, Digital Visiting Card போன்ற தொழில்முறை Marketing Materials-ஐ எளிதாக பயன்படுத்தலாம்.",
   },
-  
   {
-    title: "Service Card Lead Generation",
-    text: "Businesses can showcase services through dedicated service cards. Customers can enquire directly from these cards, generating targeted leads and improving customer engagement.",
+    title: "MassClick Feed",
+    text: "Share daily offers, discounts, updates, photos, and videos to engage customers and increase business visibility.",
+    tamilText: "தினசரி Offers, Discounts, Updates, Photos மற்றும் Videos-ஐ பகிர்ந்து அதிக வாடிக்கையாளர்களை ஈர்க்கலாம்.",
+  },
+  {
+    title: "Publicize",
+    text: "Promote your business profile across the MassClick platform to increase brand awareness and customer reach.",
+    tamilText: "MassClick முழுவதும் உங்கள் வணிகத்தை முன்னிலைப்படுத்தி Brand Awareness மற்றும் Customer Reach-ஐ அதிகரிக்கலாம்.",
+  },
+  {
+    title: "Enquiry Now Leads",
+    text: "Customers can send enquiries instantly through the Enquiry Now button, helping businesses respond quickly.",
+    tamilText: "\"Enquiry Now\" பொத்தான் மூலம் வாடிக்கையாளர்கள் உடனடியாக தொடர்புகொள்ளலாம்; வணிகர்கள் விரைவாக பதிலளிக்கலாம்.",
+  },
+  {
+    title: "Direct Customer Chats",
+    text: "Chat directly with customers to answer questions, share details, and close deals faster.",
+    tamilText: "வாடிக்கையாளர்களுடன் நேரடியாக Chat செய்து தகவல்களை பகிர்ந்து விரைவாக விற்பனையை நிறைவேற்றலாம்.",
+  },
+  {
+    title: "Knowledge Hub",
+    text: "Learn business strategies, marketing tips, and industry updates to grow your business with confidence.",
+    tamilText: "வணிக வளர்ச்சிக்கான Marketing Tips, Business Strategies மற்றும் Industry Updates-ஐ ஒரே இடத்தில் அறிந்து கொள்ளலாம்.",
   },
 ];
 
@@ -136,6 +172,9 @@ const createEmptyForm = () => ({
   paymentMethod: "not_selected",
   paymentReference: "",
   paymentDueDate: addDaysIso(7),
+  digitalMarketingMonths: 1,
+  youtubeVideoCount: 1,
+  websiteCount: 1,
   status: "draft",
   notes: DEFAULT_NOTES,
   terms: DEFAULT_TERMS,
@@ -203,12 +242,15 @@ const mapQuotationToForm = (quotation) => ({
   ...quotation,
   issueDate: toDateInput(quotation.issueDate),
   validUntil: toDateInput(quotation.validUntil),
-  taxRate: MASSCLICK_GST_RATE,
+  taxRate: Number(quotation.taxRate ?? MASSCLICK_GST_RATE),
   discount: 0,
   advancePayment: Number(quotation.advancePayment || 0),
   paymentMethod: quotation.paymentMethod || "not_selected",
   paymentReference: quotation.paymentReference || "",
   paymentDueDate: toDateInput(quotation.paymentDueDate),
+  digitalMarketingMonths: Number(quotation.digitalMarketingMonths ?? 1),
+  youtubeVideoCount: Number(quotation.youtubeVideoCount ?? 1),
+  websiteCount: Number(quotation.websiteCount ?? 1),
   quotationName: DEFAULT_QUOTATION_NAME,
   notes: DEFAULT_NOTES,
   terms: DEFAULT_TERMS,
@@ -219,12 +261,15 @@ const buildQuotationPayload = (source, quotationNo = "") => ({
   ...source,
   quotationName: DEFAULT_QUOTATION_NAME,
   quotationNo,
-  taxRate: MASSCLICK_GST_RATE,
+  taxRate: Math.min(Math.max(Number(source.taxRate || 0), 0), 100),
   discount: 0,
   advancePayment: Number(source.advancePayment || 0),
   paymentMethod: source.paymentMethod || "not_selected",
   paymentReference: String(source.paymentReference || "").trim(),
   paymentDueDate: source.paymentDueDate || null,
+  digitalMarketingMonths: Number(source.digitalMarketingMonths || 0),
+  youtubeVideoCount: Number(source.youtubeVideoCount || 0),
+  websiteCount: Number(source.websiteCount || 0),
   notes: DEFAULT_NOTES,
   terms: DEFAULT_TERMS,
   items: normalizePayloadItems(source.items),
@@ -382,7 +427,7 @@ const drawQuotationPdf = (quotation, logoDataUrl = "", signatureDataUrl = "") =>
   summaryY += boxLineHeight;
   pdf.text(`Product: ${quoteItem.description}`, summaryX, summaryY);
   summaryY += boxLineHeight;
-  pdf.text("Includes: 1 free website", summaryX, summaryY);
+  pdf.text(`Websites included: ${Number(quotation.websiteCount || 0)}`, summaryX, summaryY);
   summaryY += 7;
   pdf.setTextColor(...teal);
   pdf.setFont("helvetica", "bold");
@@ -412,7 +457,7 @@ const drawQuotationPdf = (quotation, logoDataUrl = "", signatureDataUrl = "") =>
   pdf.setTextColor(51, 65, 85);
   drawWrappedText(
     pdf,
-    PRODUCT_INCLUSION_TEXT,
+    `${PRODUCT_INCLUSION_TEXT} ${serviceAdvantagesText(quotation)}`,
     margin + 4,
     y + 6,
     100,
@@ -497,7 +542,7 @@ const drawQuotationPdf = (quotation, logoDataUrl = "", signatureDataUrl = "") =>
   pdf.line(margin, y + 13, pageWidth - margin, y + 13);
   pdf.setTextColor(...navy);
   pdf.setFontSize(18);
-  pdf.text("Why Choose MassClick?", margin, y + 26);
+  pdf.text("10 Key MassClick Features", margin, y + 26);
   pdf.setFont("helvetica", "normal");
   pdf.setFontSize(9);
   pdf.setTextColor(...muted);
@@ -507,11 +552,31 @@ const drawQuotationPdf = (quotation, logoDataUrl = "", signatureDataUrl = "") =>
   const cardGap = 6;
   const cardWidth = (contentWidth - cardGap) / 2;
   const cardHeight = 36;
+  let featurePageStartY = y;
   whyChooseMassClick.forEach((point, index) => {
-    const column = index % 2;
-    const row = Math.floor(index / 2);
+    if (index === 6) {
+      pdf.addPage();
+      pdf.setFillColor(250, 252, 255);
+      pdf.rect(0, 0, pageWidth, pageHeight, "F");
+      pdf.setFillColor(...navy);
+      pdf.rect(0, 0, pageWidth, 18, "F");
+      pdf.setFillColor(...orange);
+      pdf.rect(0, 18, pageWidth, 1.8, "F");
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(8);
+      pdf.text("MASSCLICK FEATURES", margin, 11.5);
+      pdf.text(quotation.quotationNo || "-", pageWidth - margin, 11.5, { align: "right" });
+      pdf.setTextColor(...navy);
+      pdf.setFontSize(16);
+      pdf.text("More Business Growth Features", margin, 34);
+      featurePageStartY = 44;
+    }
+    const pageIndex = index < 6 ? index : index - 6;
+    const column = pageIndex % 2;
+    const row = Math.floor(pageIndex / 2);
     const cardX = margin + column * (cardWidth + cardGap);
-    const cardY = y + row * (cardHeight + 6);
+    const cardY = featurePageStartY + row * (cardHeight + 6);
     pdf.setDrawColor(216, 224, 236);
     pdf.setFillColor(...soft);
     pdf.roundedRect(cardX, cardY, cardWidth, cardHeight, 3, 3, "FD");
@@ -530,7 +595,7 @@ const drawQuotationPdf = (quotation, logoDataUrl = "", signatureDataUrl = "") =>
     drawWrappedText(pdf, point.text, cardX + 6, cardY + 17, cardWidth - 12, 3.8);
   });
 
-  y += 3 * (cardHeight + 6) + 4;
+  y = featurePageStartY + 2 * (cardHeight + 6) + 4;
   pdf.setDrawColor(...orange);
   pdf.setFillColor(...paleOrange);
   pdf.roundedRect(margin, y, contentWidth, 26, 3, 3, "FD");
@@ -587,7 +652,7 @@ export default function Quotation() {
       ...form,
       quotationName: DEFAULT_QUOTATION_NAME,
       quotationNo: form.quotationNo || "Auto generated",
-      taxRate: MASSCLICK_GST_RATE,
+      taxRate: Number(form.taxRate || 0),
       discount: 0,
       items: normalizeFormItems(form.items),
       notes: DEFAULT_NOTES,
@@ -772,7 +837,6 @@ export default function Quotation() {
       ]);
       const pdf = drawQuotationPdf({
         ...savedQuotation,
-        taxRate: MASSCLICK_GST_RATE,
         discount: 0,
         items: normalizeFormItems(savedQuotation.items),
       }, logoDataUrl, signatureDataUrl);
@@ -803,7 +867,6 @@ export default function Quotation() {
         quotationName: DEFAULT_QUOTATION_NAME,
         notes: DEFAULT_NOTES,
         terms: DEFAULT_TERMS,
-        taxRate: MASSCLICK_GST_RATE,
         discount: 0,
         items: normalizeFormItems(quotation.items),
       }, logoDataUrl, signatureDataUrl);
@@ -827,25 +890,21 @@ export default function Quotation() {
         issueDateLabel: formatDate(quotation.issueDate),
         totalLabel: money(calculateTotals({
           ...quotation,
-          taxRate: MASSCLICK_GST_RATE,
           discount: 0,
           items: normalizeFormItems(quotation.items),
         }).total),
         balanceLabel: money(calculateTotals({
           ...quotation,
-          taxRate: MASSCLICK_GST_RATE,
           discount: 0,
           items: normalizeFormItems(quotation.items),
         }).balanceDue),
         advanceLabel: money(calculateTotals({
           ...quotation,
-          taxRate: MASSCLICK_GST_RATE,
           discount: 0,
           items: normalizeFormItems(quotation.items),
         }).advancePayment),
         paymentStatusLabel: paymentStatusLabel(calculateTotals({
           ...quotation,
-          taxRate: MASSCLICK_GST_RATE,
           discount: 0,
           items: normalizeFormItems(quotation.items),
         }).paymentStatus),
@@ -1011,8 +1070,10 @@ export default function Quotation() {
                   className={cx("input")}
                   type="number"
                   min="0"
+                  max="100"
+                  step="0.01"
                   value={form.taxRate}
-                  readOnly
+                  onChange={(event) => updateField("taxRate", event.target.value)}
                 />
               </label>
               <label className={cx("field")}>
@@ -1135,6 +1196,56 @@ export default function Quotation() {
               </div>
             </div>
 
+            <section className={cx("advantages")}>
+              <div>
+                <span className={cx("payment-kicker")}>Added Advantage</span>
+                <h2 className={cx("section-title")}>Included Digital Services</h2>
+              </div>
+              <div className={cx("form-grid")}>
+                <label className={cx("field")}>
+                  <span className={cx("label")}>Digital Marketing Duration</span>
+                  <select
+                    className={cx("select")}
+                    value={form.digitalMarketingMonths}
+                    onChange={(event) => updateField("digitalMarketingMonths", event.target.value)}
+                  >
+                    <option value="0">Not included</option>
+                    {durationOptions.map((months) => (
+                      <option key={months} value={months}>
+                        {months} {months === 1 ? "month" : "months"}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className={cx("field")}>
+                  <span className={cx("label")}>YouTube Videos</span>
+                  <select
+                    className={cx("select")}
+                    value={form.youtubeVideoCount}
+                    onChange={(event) => updateField("youtubeVideoCount", event.target.value)}
+                  >
+                    <option value="0">Not included</option>
+                    {videoCountOptions.map((count) => (
+                      <option key={count} value={count}>
+                        {count} {count === 1 ? "video" : "videos"}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className={cx("field", "field-wide")}>
+                  <span className={cx("label")}>Number of Websites</span>
+                  <input
+                    className={cx("input")}
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={form.websiteCount}
+                    onChange={(event) => updateField("websiteCount", event.target.value)}
+                  />
+                </label>
+              </div>
+            </section>
+
             <div className={cx("form-actions")}>
               <Button type="submit" variant="contained" startIcon={<SaveIcon />} disabled={saving}>
                 {saving ? "Saving..." : editingId ? "Update Quotation" : "Save Quotation"}
@@ -1189,7 +1300,7 @@ export default function Quotation() {
                   <h3>Commercial Summary</h3>
                   <p><strong>{preview.quotationName || DEFAULT_QUOTATION_NAME}</strong></p>
                   <p>Product: {previewProductItem.description}</p>
-                  <p>Includes: 1 free website</p>
+                  <p>Websites included: {Number(preview.websiteCount || 0)}</p>
                   <p>GST: {Number(preview.taxRate || 0)}%</p>
                   <p>Grand Total: <strong>{money(totals.total)}</strong></p>
                   <p>Advance Paid: <strong>{money(totals.advancePayment)}</strong></p>
@@ -1198,6 +1309,15 @@ export default function Quotation() {
                   <p>Payment Due: <strong>{formatDate(preview.paymentDueDate)}</strong></p>
                 </div>
               </div>
+
+              <section className={cx("document-advantages")}>
+                <h3>Added Advantages</h3>
+                <div className={cx("advantage-grid")}>
+                  <div><span>Digital Marketing</span><strong>{Number(preview.digitalMarketingMonths || 0)} {Number(preview.digitalMarketingMonths || 0) === 1 ? "month" : "months"}</strong></div>
+                  <div><span>YouTube Videos</span><strong>{Number(preview.youtubeVideoCount || 0)} {Number(preview.youtubeVideoCount || 0) === 1 ? "video" : "videos"}</strong></div>
+                  <div><span>Websites</span><strong>{Number(preview.websiteCount || 0)}</strong></div>
+                </div>
+              </section>
 
               <table className={cx("document-table")}>
                 <thead>
@@ -1214,7 +1334,7 @@ export default function Quotation() {
                       <td>
                         <strong>{item.description || "-"}</strong>
                         <span className={cx("line-description")}>
-                          {PRODUCT_INCLUSION_TEXT}
+                          {PRODUCT_INCLUSION_TEXT} {serviceAdvantagesText(preview)}
                         </span>
                       </td>
                       <td className={cx("number-cell")}>{Number(item.quantity || 0)}</td>
@@ -1259,12 +1379,15 @@ export default function Quotation() {
               </div>
 
               <div className={cx("why-section")}>
-                <h3>Why Choose MassClick?</h3>
+                <h3>10 Key MassClick Features</h3>
                 <div className={cx("why-grid")}>
                   {whyChooseMassClick.map((point, index) => (
                     <div className={cx("why-item")} key={point.title}>
                       <strong>{index + 1}. {point.title}</strong>
-                      <p>{point.text}</p>
+                      <p><span className={cx("language-label")}>English</span>{point.text}</p>
+                      <p className={cx("tamil-text")} lang="ta">
+                        <span className={cx("language-label")}>தமிழ்</span>{point.tamilText}
+                      </p>
                     </div>
                   ))}
                 </div>
