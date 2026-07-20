@@ -28,7 +28,7 @@ const policyData = [{
                     <li>Provide and personalize our services to you.</li>
                     <li>Communicate with you about your account and respond to your inquiries.</li>
                     <li>Send you promotional materials and updates about our services.</li>
-                    <li>Improve and optimize the Website's performance and user experience.</li>
+                    <li>Improve and optimize the Website&apos;s performance and user experience.</li>
                     <li>Analyze and track usage patterns to understand how Users interact with the Website.</li>
                     <li>Detect, investigate, and prevent fraudulent or unauthorized activities.</li>
                 </ul>
@@ -58,7 +58,7 @@ const policyData = [{
   id: 6,
   title: "7. Changes to this Policy",
   content: <>
-                <p>a. We may update this Policy from time to time. Any changes will be posted on this page with a revised "Effective Date." By continuing to use the Website after the updates are made, you accept the revised Policy.</p>
+                <p>a. We may update this Policy from time to time. Any changes will be posted on this page with a revised &quot;Effective Date.&quot; By continuing to use the Website after the updates are made, you accept the revised Policy.</p>
             </>
 }, {
   id: 7,
@@ -68,7 +68,15 @@ const policyData = [{
             </>
 }, {
   id: 8,
-  title: "9. Contact Us",
+  title: "9. Account and Data Deletion",
+  content: <>
+                <p>You can request permanent deletion of your Massclick account and associated personal data from our <a className={cx("privacy-link")} href="/deleteaccount">account deletion page</a>. We verify account ownership using an OTP sent to the registered mobile number.</p>
+                <p>Account profile data, contact details, favorites, search history, reviews, feedback, feed activity, notification tokens, and personal business-listing links are deleted as part of the request. Active-system deletion is targeted within seven days.</p>
+                <p>A minimal request record and residual encrypted backup copies may remain for up to 90 days. Payment, invoice, and tax records may be retained for up to eight financial years, or longer where an active legal, tax, fraud-prevention, or regulatory obligation requires it. Retained records are access-restricted and are not used for marketing.</p>
+            </>
+}, {
+  id: 9,
+  title: "10. Contact Us",
   content: <>
                 <p>a. If you have any questions, concerns, or requests regarding this Policy or the privacy practices of the Website, please contact us at support@massclick.in.</p>
                 <p>By using massclick.in, you acknowledge that you have read, understood, and agree to be bound by this Privacy Policy.</p>
@@ -119,7 +127,7 @@ const PrivacyPolicy = () => {
                 <div className={cx("privacy-header-wrapper")}>
                     <h2 className={cx("section-title-privacy")}>Our <span className={cx("highlight-text-privacy")}>Privacy Policy</span></h2>
                     <p className={cx("section-subtitle-privacy")}>
-                        This Privacy Policy ("Policy") explains how massclick.in ("Website") collects, uses, discloses, and protects the personal information of users ("Users" or "you") when using our Website. By accessing or using the Website, you consent to the collection, use, disclosure, and protection of your personal information as described in this Policy. If you do not agree with any part of this Policy, please refrain from using our Website.
+                        This Privacy Policy (&quot;Policy&quot;) explains how massclick.in (&quot;Website&quot;) collects, uses, discloses, and protects the personal information of users (&quot;Users&quot; or &quot;you&quot;) when using our Website. By accessing or using the Website, you consent to the collection, use, disclosure, and protection of your personal information as described in this Policy. If you do not agree with any part of this Policy, please refrain from using our Website.
                     </p>
                 </div>
 

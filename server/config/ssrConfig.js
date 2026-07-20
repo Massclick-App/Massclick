@@ -6,6 +6,7 @@ export const STATIC_PAGES = {
   portfolio:   { pageType: "portfolio",    title: "Portfolio | Massclick",                  description: "Explore the portfolio and work samples at Massclick.",                                keywords: "massclick, portfolio, projects" },
   terms:       { pageType: "terms",        title: "Terms & Conditions | Massclick",         description: "Read the terms and conditions of using Massclick services.",                         keywords: "massclick, terms and conditions, usage policy" },
   privacy:     { pageType: "privacy",      title: "Privacy Policy | Massclick",             description: "Learn how Massclick protects your privacy and handles your personal data.",           keywords: "massclick, privacy policy, data protection" },
+  deleteaccount:{ pageType: "accountDeletion", title: "Delete Your Massclick Account",       description: "Request deletion of your Massclick account and associated personal data.",            keywords: "massclick account deletion, delete account, delete user data" },
   refund:      { pageType: "refund",       title: "Refund Policy | Massclick",              description: "Understand Massclick's refund and cancellation policies.",                           keywords: "massclick, refund policy, cancellation" },
   enquiry:     { pageType: "enquiry",      title: "Contact Us | Massclick",                 description: "Get in touch with the Massclick team for any queries or support.",                   keywords: "massclick, contact, enquiry, support" },
   web:         { pageType: "web",          title: "Web Development Services | Massclick",   description: "Professional web development services to grow your business online.",                keywords: "massclick, web development, website design" },
@@ -17,5 +18,5 @@ export const STATIC_PAGES = {
 export const SKIP_SEO_ROUTES = new Set([
   "business", "dashboard", "admin", "write-review",
   "payment-status", "leads", "free-listing", "publicize",
-  "user", "deleteaccount",
+  "user",
 ]);

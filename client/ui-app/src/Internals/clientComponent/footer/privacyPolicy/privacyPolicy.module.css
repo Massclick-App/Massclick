@@ -143,6 +143,12 @@
     margin-bottom: 0 !important;
 }
 
+.privacy-link {
+    color: var(--color-primary);
+    font-weight: 700;
+    text-underline-offset: 3px;
+}
+
 
 /* ========================================================= */
 /* --- 3. RESPONSIVENESS --- */

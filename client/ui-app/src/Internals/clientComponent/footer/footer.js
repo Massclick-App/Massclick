@@ -40,7 +40,7 @@ const Footer = () => {
             <FooterLink to="/terms">Terms & Conditions</FooterLink>
             <FooterLink to="/privacy">Privacy Policy</FooterLink>
             <FooterLink to="/enquiry">Business Enquiries</FooterLink>
-            {/* <FooterLink to="/deleteaccount">Delete Account</FooterLink> */}
+            <FooterLink to="/deleteaccount">Delete Account</FooterLink>
           </ul>
         </div>
         <div className={cx("footer-section brand-section")}>

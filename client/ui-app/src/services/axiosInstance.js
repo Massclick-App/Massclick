@@ -26,6 +26,7 @@ const CUSTOMER_AUTH_PATHS = [
   /^\/api\/rating(\/|$)/,
   /^\/api\/reviews?(\/|$)/,
   /^\/api\/search(\/|$)/,
+  /^\/api\/account-deletion(\/|$)/,
 ];
 
 export const axiosInstance = axios.create({

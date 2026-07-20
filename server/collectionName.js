@@ -49,7 +49,8 @@ export const Collections = {
     MASSCLICKDOCUMENTS: 'massclick_documents',
     MASSCLICKFEEDPOSTS: 'massclick_feed_posts',
     USERFEEDBACKS: 'user_feedbacks',
-    WEBANALYTICSEVENT: 'web_analytics_events'
+    WEBANALYTICSEVENT: 'web_analytics_events',
+    ACCOUNTDELETIONREQUESTS: 'account_deletion_requests'
 };
 
 export const {
@@ -103,5 +104,6 @@ export const {
     MASSCLICKDOCUMENTS,
     MASSCLICKFEEDPOSTS,
     USERFEEDBACKS,
-    WEBANALYTICSEVENT
+    WEBANALYTICSEVENT,
+    ACCOUNTDELETIONREQUESTS
 } = Collections;

@@ -94,6 +94,13 @@ const POLICY_LIST = [
     ownership: "admin-managed",
   },
   {
+    key: "account.deletion.request",
+    method: "POST",
+    path: "/api/account-deletion/request",
+    allowedActorTypes: ["customer"],
+    ownership: "self-only",
+  },
+  {
     key: "fcm.web-register",
     method: "POST",
     path: "/api/fcm-token/web-register",
