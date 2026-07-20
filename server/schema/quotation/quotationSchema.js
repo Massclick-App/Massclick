@@ -27,7 +27,7 @@ const quotationSchema = new Schema(
     validUntil: { type: Date, default: null },
     notes: { type: String, trim: true, default: "" },
     terms: { type: String, trim: true, default: "" },
-    taxRate: { type: Number, default: 18, min: 0 },
+    taxRate: { type: Number, default: 18, min: 0, max: 100 },
     discount: { type: Number, default: 0, min: 0 },
     advancePayment: { type: Number, default: 0, min: 0 },
     paymentMethod: {
@@ -42,6 +42,9 @@ const quotationSchema = new Schema(
       enum: ["unpaid", "part_paid", "paid"],
       default: "unpaid",
     },
+    digitalMarketingMonths: { type: Number, default: 1, min: 0, max: 24 },
+    youtubeVideoCount: { type: Number, default: 1, min: 0, max: 100 },
+    websiteCount: { type: Number, default: 1, min: 0, max: 100 },
     items: {
       type: [quotationItemSchema],
       default: () => [
