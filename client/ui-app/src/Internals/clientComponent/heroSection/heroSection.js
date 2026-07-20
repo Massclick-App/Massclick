@@ -495,22 +495,16 @@ const HeroSection = React.memo(({
             handleSearch(undefined, chosen);
           }} />}
 
-            <MicIcon className={cx("input-adornment end")} aria-label="Start voice search" role="button" tabIndex={0} onClick={handleVoiceSearch} onKeyDown={event => {
-            if (event.key === "Enter" || event.key === " ") {
-              event.preventDefault();
-              handleVoiceSearch();
-            }
-          }} style={{
-            color: isListening ? "red" : "#ff7b00",
-            pointerEvents: isListening ? "none" : "auto"
-          }} />
+            <button type="button" className={cx("voice-search-button")} aria-label={isListening ? "Voice search is listening" : "Start voice search"} onClick={handleVoiceSearch} disabled={isListening}>
+              <MicIcon aria-hidden="true" />
+            </button>
 
           </div>
           {showVoiceModal && <div className={cx("voice-modal")}>
               <div className={cx("voice-box")}>
-                <div className={cx("voice-close")} onClick={() => setShowVoiceModal(false)}>
+                <button type="button" className={cx("voice-close")} aria-label="Close voice search" onClick={() => setShowVoiceModal(false)}>
                   ✕
-                </div>
+                </button>
                 <h3>Listening...</h3>
                 <div className={cx("voice-dots")}>
                   <span></span>

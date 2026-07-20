@@ -263,7 +263,7 @@ const CategoryBar = () => {
           <MenuIcon />
         </IconButton>
 
-        {!isLoggedIn ? <button className={cx("authButton loginButton")} onClick={() => setIsModalOpen(true)}>
+        {!isLoggedIn ? <button type="button" className={cx("authButton loginButton")} aria-label="Login or sign up" onClick={() => setIsModalOpen(true)}>
           <LoginIcon />
           <span className={cx("loginText")}>Login / Sign Up</span>
         </button> : <>

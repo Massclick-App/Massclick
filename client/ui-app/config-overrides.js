@@ -2,6 +2,11 @@ const path = require('path');
 const CompressionPlugin = require('compression-webpack-plugin');
 
 const exceljsDist = path.dirname(require.resolve('exceljs/dist/exceljs.min.js'));
+const sharedPublicMuiChunkNames = new Set([
+  'floating-buttons',
+  'mobile-home-dock',
+  'public-footer',
+]);
 
 function excludeExcelJsFromSourceMapLoader(rule) {
   if (!rule || typeof rule !== 'object') {
@@ -55,6 +60,19 @@ module.exports = function override(config, env) {
       // inside their own async chunk instead of being hoisted into the initial bundle.
       chunks: 'initial',
       cacheGroups: {
+        // These small public UI chunks share MUI's SvgIcon/material/system
+        // helpers. Extract only modules used by at least two of them; a broad
+        // async MUI group would make the mobile dock download components used
+        // only by unrelated pages and admin routes.
+        sharedPublicMui: {
+          test: /[\\/]node_modules[\\/]@mui[\\/](icons-material|material|system)[\\/]/,
+          chunks: (chunk) => sharedPublicMuiChunkNames.has(chunk.name),
+          minChunks: 2,
+          minSize: 0,
+          name: 'public-mui-shared',
+          priority: 30,
+          reuseExistingChunk: true,
+        },
         vendor: {
           test: /[\\/]node_modules[\\/]/,
           name: 'vendors',

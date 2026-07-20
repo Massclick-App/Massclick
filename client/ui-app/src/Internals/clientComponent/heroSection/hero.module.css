@@ -1,6 +1,7 @@
 .hero-section {
   --color-primary: #ff7b00;
   --color-primary-hover: #ff5a00;
+  --color-primary-text: #9a3412;
   --color-text-light: #f0f0f0;
   --color-text-dark: #333333;
   --brand-orange: #ff5a2c;
@@ -73,8 +74,18 @@
   position:absolute;
   right:15px;
   top:10px;
+  padding: 4px;
+  border: 0;
+  background: transparent;
+  color: #333333;
   cursor:pointer;
+  font: inherit;
   font-size:18px;
+}
+
+.voice-close:focus-visible {
+  outline: 2px solid var(--color-primary-text);
+  outline-offset: 2px;
 }
 
 .voice-dots span{
@@ -259,7 +270,7 @@
 }
 
 .hero-title-accent {
-  color: var(--color-primary);
+  color: var(--color-primary-text);
 }
 
 .hero-subtitle {
@@ -371,6 +382,42 @@
   cursor: pointer;
 }
 
+.voice-search-button {
+  position: absolute;
+  top: 50%;
+  right: 2px;
+  z-index: 1;
+  display: grid;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-primary-text);
+  cursor: pointer;
+  transform: translateY(-50%);
+  place-items: center;
+}
+
+.voice-search-button svg {
+  font-size: 21px;
+}
+
+.voice-search-button:hover {
+  background: rgba(154, 52, 18, 0.08);
+}
+
+.voice-search-button:focus-visible {
+  outline: 2px solid var(--color-primary-text);
+  outline-offset: 1px;
+}
+
+.voice-search-button:disabled {
+  color: #9f1239;
+  cursor: wait;
+}
+
 /**************************************/
 /*      SEARCH BUTTON (PRIMARY)       */
 /**************************************/
@@ -405,7 +452,7 @@
   position: relative;
   font-size: 0.88rem;
   font-weight: 600;
-  color: var(--color-primary);
+  color: var(--color-primary-text);
   transition: color 0.6s cubic-bezier(0.23, 1, 0.32, 1);
 }
 
@@ -697,7 +744,15 @@
   white-space: nowrap;
 }
 
-.trust-copy strong { font-weight: 800; }
+.trust-copy strong {
+  color: var(--brand-blue);
+  font-weight: 800;
+}
+
+.trust-card:nth-child(1) .trust-copy strong,
+.trust-card:nth-child(3) .trust-copy strong {
+  color: var(--color-primary-text);
+}
 .trust-copy small { color: #4b5563; line-height: 1.25; }
 
 @media (max-width: 767px) {

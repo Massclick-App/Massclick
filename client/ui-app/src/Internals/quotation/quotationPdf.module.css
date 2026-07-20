@@ -1,0 +1,726 @@
+.page {
+  position: relative;
+  width: 1050px;
+  height: 1485px;
+  overflow: hidden;
+  background: #ffffff;
+  color: #1c2b3f;
+  font-family: "Segoe UI", Roboto, Arial, sans-serif;
+  --pdf-navy: #0b1f3f;
+  --pdf-navy-deep: #071630;
+  --pdf-orange: #f4711d;
+  --pdf-ink: #1c2b3f;
+  --pdf-muted: #64748b;
+  --pdf-border: #e2e8f0;
+  --pdf-soft: #f8fafc;
+  --pdf-pale-orange: #fff4e9;
+  --pdf-pale-orange-border: #fde3c5;
+}
+
+.header {
+  position: relative;
+  height: 190px;
+  background: var(--pdf-navy);
+  overflow: hidden;
+}
+
+.headerShape {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.brand {
+  position: absolute;
+  left: 50px;
+  top: 38px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.brandLogo {
+  height: 62px;
+  width: auto;
+  object-fit: contain;
+}
+
+.brandTagline {
+  margin: 0;
+  color: #cbd5e1;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.headerTag {
+  position: absolute;
+  right: 60px;
+  top: 32px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--pdf-navy);
+  border-radius: 12px;
+  padding: 14px 22px;
+  box-shadow: 0 8px 18px rgba(11, 31, 63, 0.18);
+}
+
+.headerTagIcon {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: var(--pdf-orange);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  flex: 0 0 auto;
+}
+
+.headerTagIcon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.headerTagText {
+  display: flex;
+  flex-direction: column;
+}
+
+.headerTagLabel {
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.headerTagNo {
+  color: #cbd5e1;
+  font-size: 11px;
+  font-weight: 700;
+  margin-top: 2px;
+}
+
+.metaRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+  padding: 26px 50px 0;
+}
+
+.companyBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.companyName {
+  margin: 0 0 4px;
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--pdf-navy);
+}
+
+.companyLine {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--pdf-muted);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.companyLine svg {
+  width: 15px;
+  height: 15px;
+  color: var(--pdf-orange);
+  flex: 0 0 auto;
+}
+
+.metaRight {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+}
+
+.metaTable {
+  min-width: 230px;
+  border: 2px solid var(--pdf-border);
+  border-radius: 10px;
+  background: var(--pdf-soft);
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.metaTableRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.metaTableLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--pdf-muted);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.metaTableLabel::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--pdf-orange);
+  flex: 0 0 auto;
+}
+
+.metaTableValue {
+  color: var(--pdf-navy-deep);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.qrBox {
+  width: 128px;
+  border: 2px solid var(--pdf-border);
+  border-radius: 10px;
+  overflow: hidden;
+  text-align: center;
+  background: #ffffff;
+}
+
+.qrImage {
+  width: 96px;
+  height: 96px;
+  margin: 12px auto 10px;
+  display: block;
+}
+
+.qrCaption {
+  background: var(--pdf-navy);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.4;
+  padding: 7px 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.cardIconBadge {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--pdf-orange);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  flex: 0 0 auto;
+}
+
+.cardIconBadge svg {
+  width: 18px;
+  height: 18px;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 2px solid var(--pdf-border);
+}
+
+.cardHeader h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--pdf-navy);
+  letter-spacing: 0.4px;
+}
+
+.partyGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin: 24px 50px 0;
+}
+
+.partyCard {
+  border: 2px solid var(--pdf-border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.partyBody {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.partyName {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--pdf-navy-deep);
+}
+
+.partyLine {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--pdf-ink);
+  overflow-wrap: anywhere;
+}
+
+.summaryRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--pdf-ink);
+}
+
+.summaryRow span:first-child {
+  color: var(--pdf-muted);
+  font-weight: 700;
+}
+
+.balanceBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--pdf-navy);
+  padding: 13px 20px;
+  margin-top: 4px;
+}
+
+.balanceBarLabel {
+  color: #ffffff;
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.balanceBarValue {
+  color: var(--pdf-orange);
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.advantagesRow {
+  display: flex;
+  margin: 20px 50px 0;
+  border: 2px solid var(--pdf-border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.advantageItem {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+}
+
+.advantageItem + .advantageItem {
+  border-left: 2px solid var(--pdf-border);
+}
+
+.advantageIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--pdf-orange);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.advantageIcon svg {
+  width: 21px;
+  height: 21px;
+}
+
+.advantageLabel {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--pdf-muted);
+}
+
+.advantageValue {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--pdf-navy-deep);
+  margin-top: 2px;
+}
+
+.itemTableWrap {
+  margin: 22px 50px 0;
+  border: 2px solid var(--pdf-border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.itemTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.itemTable thead th {
+  background: var(--pdf-navy);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  text-align: left;
+  padding: 14px 16px;
+}
+
+.itemTable td {
+  padding: 16px;
+  border-top: 1px solid var(--pdf-border);
+  font-size: 14px;
+  vertical-align: top;
+  color: var(--pdf-ink);
+}
+
+.numCell {
+  text-align: right;
+  white-space: nowrap;
+  font-weight: 700;
+}
+
+.itemDescTitle {
+  display: block;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--pdf-navy-deep);
+  margin-bottom: 4px;
+}
+
+.itemDescText {
+  display: block;
+  color: var(--pdf-muted);
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.paymentGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin: 20px 50px 0;
+}
+
+.paymentCard {
+  border: 2px solid var(--pdf-border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--pdf-soft);
+}
+
+.paymentBody {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+
+.paymentRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--pdf-ink);
+}
+
+.paymentRow span:first-child {
+  color: var(--pdf-muted);
+  font-weight: 700;
+}
+
+.paymentRowHighlight {
+  background: var(--pdf-pale-orange);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin: -2px -10px;
+}
+
+.paymentRowHighlight span:last-child {
+  color: var(--pdf-orange);
+  font-weight: 800;
+}
+
+.noteGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin: 20px 50px 0;
+}
+
+.noteCard {
+  background: var(--pdf-pale-orange);
+  border: 2px solid var(--pdf-pale-orange-border);
+  border-radius: 12px;
+  padding: 16px 20px;
+}
+
+.noteCardFull {
+  margin: 20px 50px 0;
+}
+
+.noteHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.noteIcon {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--pdf-orange);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.noteIcon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.noteHeader h4 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 800;
+  color: #9a3412;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.noteCard p {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #6b3d1e;
+  font-weight: 600;
+}
+
+.acceptGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin: 22px 50px 0;
+}
+
+.acceptCard {
+  border: 2px solid var(--pdf-border);
+  border-radius: 12px;
+  padding: 16px 20px;
+  min-height: 118px;
+}
+
+.acceptName {
+  margin-top: 10px;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--pdf-navy-deep);
+}
+
+.acceptSignature {
+  height: 46px;
+  width: auto;
+  max-width: 150px;
+  object-fit: contain;
+  object-position: left center;
+  margin-top: 8px;
+  display: block;
+}
+
+.acceptCaption {
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--pdf-muted);
+}
+
+.footer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 68px;
+  background: var(--pdf-navy);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 50px;
+}
+
+.footerContacts {
+  display: flex;
+  align-items: center;
+  gap: 30px;
+}
+
+.footerContacts span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #ffffff;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.footerContacts svg {
+  width: 15px;
+  height: 15px;
+  color: var(--pdf-orange);
+}
+
+.footerThanks {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 260px;
+}
+
+.footerThanksShape {
+  position: absolute;
+  inset: 0;
+  left: 22px;
+  background: var(--pdf-orange);
+  transform: skewX(-14deg);
+  transform-origin: top left;
+}
+
+.footerThanksText {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 30px 0 44px;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.sectionIntro {
+  padding: 26px 50px 0;
+}
+
+.sectionIntro h2 {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--pdf-navy);
+}
+
+.sectionIntro p {
+  margin: 8px 0 0;
+  font-size: 13.5px;
+  color: var(--pdf-muted);
+  font-weight: 600;
+  max-width: 640px;
+}
+
+.featureGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 24px 50px 0;
+}
+
+.featureCard {
+  display: flex;
+  gap: 14px;
+  border: 2px solid var(--pdf-border);
+  border-radius: 12px;
+  padding: 16px 18px;
+  background: #ffffff;
+}
+
+.featureIcon {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--pdf-pale-orange);
+  border: 2px solid var(--pdf-pale-orange-border);
+  color: var(--pdf-orange);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.featureIcon svg {
+  width: 21px;
+  height: 21px;
+}
+
+.featureNumber {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--pdf-navy);
+  color: #ffffff;
+  font-size: 9.5px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.featureBody h4 {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--pdf-navy-deep);
+}
+
+.featureBody p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--pdf-ink);
+  font-weight: 600;
+}

@@ -15,7 +15,7 @@
     font: inherit; font-size: clamp(.6rem, 2.55vw, .72rem); font-weight: 550; line-height: 1.1; white-space: nowrap; cursor: pointer;
   }
   .dockItem > svg { width: 22px; height: 22px; }
-  .active { color: #ff7a00; font-weight: 700; }
+  .active { color: #9a3412; font-weight: 700; }
   .primaryItem { margin-top: -20px; }
   .primaryIcon {
     width: 50px; height: 50px; margin-bottom: 2px; border: 3px solid #fff; border-radius: 50%; display: grid; place-items: center;

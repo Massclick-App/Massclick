@@ -90,6 +90,7 @@ const FeaturedServicesSection = () => {
   };
   return <>
       <section className={cx("featured-services-container")}>
+        <h2 className={cx("section-heading")}>Featured services</h2>
 
         {orderedCategories.map((service, index) => {
         const altText = generateAltText(service.name, districtSlug);
