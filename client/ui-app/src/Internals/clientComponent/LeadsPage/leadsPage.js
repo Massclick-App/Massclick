@@ -54,6 +54,7 @@ function LeadRow({
       </div>
     </article>;
 }
+
 export default function LeadsPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -159,7 +160,7 @@ export default function LeadsPage() {
         }}>
             <h2>You are not a Business Person</h2>
             <p>Please create your Business Profile to view leads.</p>
-            <button className={cx("lp-btn lp-btn-primary")} onClick={() => navigate("/user/create-business")}>
+            <button className={cx("lp-btn lp-btn-primary")} onClick={() => navigate("/publicize")}>
               Create Business
             </button>
           </section>
