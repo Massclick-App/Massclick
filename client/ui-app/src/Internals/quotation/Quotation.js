@@ -1,5 +1,6 @@
 ﻿import { createScopedClassNames } from "../../utils/createScopedClassNames";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import QRCode from "qrcode";
 import { useDispatch, useSelector } from "react-redux";
 import {
   Alert,
@@ -27,11 +28,7 @@ import styles from "./quotation.module.css";
 import {
   MASSCLICK_PRODUCT_ITEM,
   MASSCLICK_GST_RATE,
-  PRODUCT_INCLUSION_TEXT,
-  serviceAdvantagesText,
   DEFAULT_TERMS,
-  whyChooseMassClick,
-  importantNote,
   DEFAULT_NOTES,
   DEFAULT_QUOTATION_NAME,
   paymentMethodOptions,
@@ -42,7 +39,8 @@ import {
   paymentStatusLabel,
   paymentMethodLabel,
 } from "./quotationUtils";
-import { generateQuotationPdf } from "./pdfExport";
+import { buildQrTarget, generateQuotationPdf } from "./pdfExport";
+import { QuotationPdfPage1, QuotationPdfPage2 } from "./QuotationPdfDocument";
 
 const cx = createScopedClassNames(styles);
 
@@ -125,6 +123,45 @@ const mapQuotationToForm = (quotation) => ({
   items: normalizeFormItems(quotation.items),
 });
 
+const PDF_PAGE_WIDTH = 1050;
+const PDF_PAGE_HEIGHT = 1485;
+
+function ScaledPdfPage({ children }) {
+  const wrapRef = useRef(null);
+  const [scale, setScale] = useState(0);
+
+  useEffect(() => {
+    const element = wrapRef.current;
+    if (!element) return undefined;
+    const updateScale = () => setScale(element.clientWidth / PDF_PAGE_WIDTH);
+    updateScale();
+    const observer = new ResizeObserver(updateScale);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div
+      ref={wrapRef}
+      style={{
+        width: "100%",
+        overflow: "hidden",
+        height: scale ? PDF_PAGE_HEIGHT * scale : "auto",
+      }}
+    >
+      <div
+        style={{
+          width: PDF_PAGE_WIDTH,
+          transform: `scale(${scale})`,
+          transformOrigin: "top left",
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
 const buildQuotationPayload = (source, quotationNo = "") => ({
   ...source,
   quotationName: DEFAULT_QUOTATION_NAME,
@@ -173,10 +210,30 @@ export default function Quotation() {
     [form]
   );
   const totals = useMemo(() => calculateTotals(preview), [preview]);
-  const previewProductItem = preview.items[0] || MASSCLICK_PRODUCT_ITEM;
   const paymentProgress = totals.total > 0
     ? Math.min(100, Math.round((totals.advancePayment / totals.total) * 100))
     : 0;
+
+  const [previewQr, setPreviewQr] = useState({ src: "", caption: "" });
+  useEffect(() => {
+    let isActive = true;
+    const target = buildQrTarget(preview);
+    QRCode.toDataURL(target.url, {
+      margin: 1,
+      width: 300,
+      color: { dark: "#0b1f3f", light: "#ffffff" },
+    })
+      .then((src) => {
+        if (isActive) setPreviewQr({ src, caption: target.caption });
+      })
+      .catch(() => {
+        if (isActive) setPreviewQr({ src: "", caption: target.caption });
+      });
+    return () => {
+      isActive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preview.businessPhone, preview.quotationNo]);
 
   const fetchQuotations = async (pageNo = 1, pageSize = 25, options = {}) => {
     try {
@@ -776,146 +833,19 @@ export default function Quotation() {
             </Button>
           </div>
           <div id="quotation-print-root" className={cx("panel", "print-panel", "preview")}>
-            <div className={cx("preview-document")}>
-              <div className={cx("document-header")}>
-                <div className={cx("brand")}>
-                  <img className={cx("brand-logo")} src={massclickLogo} alt="MassClick" />
-                  <span className={cx("brand-detail")}>{preview.businessAddress || "Tamil Nadu, India"}</span>
-                  <span className={cx("brand-detail")}>{preview.businessEmail || "support@massclick.in"}</span>
-                </div>
-                <div className={cx("document-title")}>
-                  <dl className={cx("quote-meta")}>
-                    <div><dt>Quotation No</dt><dd>{preview.quotationNo}</dd></div>
-                    <div><dt>Issue Date</dt><dd>{formatDate(preview.issueDate)}</dd></div>
-                    <div><dt>Valid Until</dt><dd>{formatDate(preview.validUntil)}</dd></div>
-                  </dl>
-                </div>
-              </div>
-
-              <div className={cx("party-grid")}>
-                <div className={cx("party-box")}>
-                  <h3>Bill To</h3>
-                  <p><strong>{preview.customerName || "Customer Name"}</strong></p>
-                  <p>{preview.customerPhone || "-"}</p>
-                  <p>{preview.customerEmail || "-"}</p>
-                  <p>{preview.customerAddress || "-"}</p>
-                </div>
-                <div className={cx("party-box")}>
-                  <h3>Commercial Summary</h3>
-                  <p><strong>{preview.quotationName || DEFAULT_QUOTATION_NAME}</strong></p>
-                  <p>Product: {previewProductItem.description}</p>
-                  <p>Websites included: {Number(preview.websiteCount || 0)}</p>
-                  <p>GST: {Number(preview.taxRate || 0)}%</p>
-                  <p>Grand Total: <strong>{money(totals.total)}</strong></p>
-                  <p>Advance Paid: <strong>{money(totals.advancePayment)}</strong></p>
-                  <p>Balance Due: <strong>{money(totals.balanceDue)}</strong></p>
-                  <p>Payment Status: <strong>{paymentStatusLabel(totals.paymentStatus)}</strong></p>
-                  <p>Payment Due: <strong>{formatDate(preview.paymentDueDate)}</strong></p>
-                </div>
-              </div>
-
-              <section className={cx("document-advantages")}>
-                <h3>Added Advantages</h3>
-                <div className={cx("advantage-grid")}>
-                  <div><span>Digital Marketing</span><strong>{Number(preview.digitalMarketingMonths || 0)} {Number(preview.digitalMarketingMonths || 0) === 1 ? "month" : "months"}</strong></div>
-                  <div><span>YouTube Videos</span><strong>{Number(preview.youtubeVideoCount || 0)} {Number(preview.youtubeVideoCount || 0) === 1 ? "video" : "videos"}</strong></div>
-                  <div><span>Websites</span><strong>{Number(preview.websiteCount || 0)}</strong></div>
-                </div>
-              </section>
-
-              <table className={cx("document-table")}>
-                <thead>
-                  <tr>
-                    <th>Product / Description</th>
-                    <th className={cx("number-cell")}>Qty</th>
-                    <th className={cx("number-cell")}>Unit Price</th>
-                    <th className={cx("number-cell")}>Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(preview.items || []).map((item, index) => (
-                    <tr key={`${index}-${item.description}`}>
-                      <td>
-                        <strong>{item.description || "-"}</strong>
-                        <span className={cx("line-description")}>
-                          {PRODUCT_INCLUSION_TEXT} {serviceAdvantagesText(preview)}
-                        </span>
-                      </td>
-                      <td className={cx("number-cell")}>{Number(item.quantity || 0)}</td>
-                      <td className={cx("number-cell")}>{money(item.unitPrice)}</td>
-                      <td className={cx("number-cell")}>
-                        {money(Number(item.quantity || 0) * Number(item.unitPrice || 0))}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-
-              <div className={cx("totals")}>
-                <div className={cx("totals-box")}>
-                  <div className={cx("total-row")}><span>Subtotal</span><strong>{money(totals.subtotal)}</strong></div>
-                  <div className={cx("total-row")}><span>Tax</span><strong>{money(totals.tax)}</strong></div>
-                  <div className={cx("total-row")}><span>Grand Total</span><strong>{money(totals.total)}</strong></div>
-                  <div className={cx("total-row")}><span>Advance Paid</span><strong>{money(totals.advancePayment)}</strong></div>
-                  <div className={cx("total-row")}><span>Payment Status</span><strong>{paymentStatusLabel(totals.paymentStatus)}</strong></div>
-                  <div className={cx("total-row", "grand-total")}><span>Balance Due</span><strong>{money(totals.balanceDue)}</strong></div>
-                </div>
-              </div>
-
-              <section className={cx("document-payment")}>
-                <div className={cx("document-payment-card")}>
-                  <span className={cx("document-payment-label")}>Payment Method</span>
-                  <strong className={cx("document-payment-value")}>{paymentMethodLabel(preview.paymentMethod)}</strong>
-                </div>
-                <div className={cx("document-payment-card")}>
-                  <span className={cx("document-payment-label")}>Payment Due Date</span>
-                  <strong className={cx("document-payment-value")}>{formatDate(preview.paymentDueDate)}</strong>
-                </div>
-                <div className={cx("document-payment-card")}>
-                  <span className={cx("document-payment-label")}>Reference</span>
-                  <strong className={cx("document-payment-value")}>{preview.paymentReference || "-"}</strong>
-                </div>
-              </section>
-
-              <div className={cx("notes")}>
-                <p><strong>Terms:</strong> {preview.terms || "-"}</p>
-                <p><strong>Notes:</strong> {preview.notes || "-"}</p>
-              </div>
-
-              <div className={cx("why-section")}>
-                <h3>10 Key MassClick Features</h3>
-                <div className={cx("why-grid")}>
-                  {whyChooseMassClick.map((point, index) => (
-                    <div className={cx("why-item")} key={point.title}>
-                      <strong>{index + 1}. {point.title}</strong>
-                      <p><span className={cx("language-label")}>English</span>{point.text}</p>
-                      <p className={cx("tamil-text")} lang="ta">
-                        <span className={cx("language-label")}>தமிழ்</span>{point.tamilText}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-                <div className={cx("important-note")}>
-                  <strong>Important Note:</strong> {importantNote}
-                </div>
-              </div>
-
-              <div className={cx("acceptance-grid")}>
-                <div>
-                  <span>Accepted By</span>
-                  <strong>{preview.customerName || "Customer Name"}</strong>
-                </div>
-                <div>
-                  <span>Authorized Signature</span>
-                  <img
-                    className={cx("signature-image")}
-                    src={authorizedSignature}
-                    alt="Authorized signature"
-                  />
-                  <strong>Authorized Representative</strong>
-                </div>
-              </div>
-            </div>
+            <ScaledPdfPage>
+              <QuotationPdfPage1
+                quotation={preview}
+                logoSrc={massclickLogo}
+                signatureSrc={authorizedSignature}
+                qrSrc={previewQr.src}
+                qrCaption={previewQr.caption}
+              />
+            </ScaledPdfPage>
+            <div style={{ height: 24 }} />
+            <ScaledPdfPage>
+              <QuotationPdfPage2 quotation={preview} logoSrc={massclickLogo} />
+            </ScaledPdfPage>
           </div>
         </div>
       </div>

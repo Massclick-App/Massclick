@@ -1,6 +1,6 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
-import jsPDF from "jspdf";
+import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
 import QRCode from "qrcode";
 import massclickLogo from "../../assets/MassClick_pvt_ltd.webp";
@@ -53,7 +53,7 @@ const imageUrlToDataUrl = async (url) => {
   }
 };
 
-const buildQrTarget = (quotation) => {
+export const buildQrTarget = (quotation) => {
   const phoneDigits = String(quotation.businessPhone || "").replace(/\D/g, "");
   if (phoneDigits) {
     const withCountryCode = phoneDigits.length === 10 ? `91${phoneDigits}` : phoneDigits;

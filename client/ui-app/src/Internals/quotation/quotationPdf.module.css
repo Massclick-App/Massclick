@@ -35,7 +35,7 @@
 .brand {
   position: absolute;
   left: 50px;
-  top: 38px;
+  top: 24px;
   z-index: 2;
   display: flex;
   flex-direction: column;
@@ -43,8 +43,13 @@
 }
 
 .brandLogo {
-  height: 62px;
-  width: auto;
+  display: block;
+  width: 280px;
+  height: 86px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: #ffffff;
+  box-shadow: 0 6px 16px rgba(7, 22, 48, 0.18);
   object-fit: contain;
 }
 
@@ -59,22 +64,48 @@
 
 .headerTag {
   position: absolute;
-  right: 60px;
-  top: 32px;
+  top: 0;
+  right: 0;
   z-index: 2;
+  width: 400px;
+  height: 118px;
+}
+
+.headerTagAccent {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 20px;
+  right: -60px;
+  background: var(--pdf-orange);
+  transform: skewX(-16deg);
+  transform-origin: top right;
+}
+
+.headerTagShape {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 36px;
+  right: -60px;
+  background: var(--pdf-navy);
+  transform: skewX(-16deg);
+  transform-origin: top right;
+}
+
+.headerTagContent {
+  position: absolute;
+  inset: 0;
   display: flex;
   align-items: center;
-  gap: 10px;
-  background: var(--pdf-navy);
-  border-radius: 12px;
-  padding: 14px 22px;
-  box-shadow: 0 8px 18px rgba(11, 31, 63, 0.18);
+  gap: 14px;
+  padding: 0 40px 0 86px;
 }
 
 .headerTagIcon {
-  width: 34px;
-  height: 34px;
-  border-radius: 9px;
+  width: 46px;
+  height: 46px;
+  border-radius: 10px;
   background: var(--pdf-orange);
   display: flex;
   align-items: center;
@@ -84,8 +115,8 @@
 }
 
 .headerTagIcon svg {
-  width: 20px;
-  height: 20px;
+  width: 26px;
+  height: 26px;
 }
 
 .headerTagText {
@@ -95,16 +126,16 @@
 
 .headerTagLabel {
   color: #ffffff;
-  font-size: 15px;
+  font-size: 21px;
   font-weight: 800;
   letter-spacing: 1px;
 }
 
 .headerTagNo {
-  color: #cbd5e1;
-  font-size: 11px;
-  font-weight: 700;
-  margin-top: 2px;
+  color: var(--pdf-orange);
+  font-size: 13px;
+  font-weight: 800;
+  margin-top: 3px;
 }
 
 .metaRow {
@@ -151,52 +182,62 @@
 }
 
 .metaTable {
-  min-width: 230px;
-  border: 2px solid var(--pdf-border);
-  border-radius: 10px;
-  background: var(--pdf-soft);
-  padding: 14px 18px;
+  position: relative;
+  min-width: 300px;
+  padding: 4px 0 4px 24px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 18px;
+}
+
+.metaTable::before {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--pdf-orange);
 }
 
 .metaTableRow {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
 }
 
+.metaTableRow::before {
+  content: "";
+  position: absolute;
+  left: -24px;
+  top: 50%;
+  margin-top: -4.5px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--pdf-orange);
+}
+
 .metaTableLabel {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--pdf-muted);
-  font-size: 10.5px;
+  color: var(--pdf-navy);
+  font-size: 11.5px;
   font-weight: 800;
   letter-spacing: 0.5px;
   text-transform: uppercase;
 }
 
-.metaTableLabel::before {
-  content: "";
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--pdf-orange);
-  flex: 0 0 auto;
-}
-
 .metaTableValue {
   color: var(--pdf-navy-deep);
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 800;
 }
 
 .qrBox {
   width: 128px;
-  border: 2px solid var(--pdf-border);
+  border: 2px solid var(--pdf-orange);
   border-radius: 10px;
   overflow: hidden;
   text-align: center;
@@ -224,7 +265,7 @@
 .cardIconBadge {
   width: 34px;
   height: 34px;
-  border-radius: 50%;
+  border-radius: 10px;
   background: var(--pdf-orange);
   display: flex;
   align-items: center;
@@ -242,8 +283,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 16px 20px;
-  border-bottom: 2px solid var(--pdf-border);
+  padding: 18px 20px 8px;
 }
 
 .cardHeader h3 {
@@ -251,7 +291,8 @@
   font-size: 14px;
   font-weight: 800;
   color: var(--pdf-navy);
-  letter-spacing: 0.4px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
 }
 
 .partyGrid {
@@ -286,6 +327,12 @@
   font-weight: 600;
   color: var(--pdf-ink);
   overflow-wrap: anywhere;
+}
+
+.partyBodyAccent {
+  margin: 4px 20px 18px;
+  padding: 4px 0 4px 16px;
+  border-left: 4px solid var(--pdf-orange);
 }
 
 .summaryRow {
@@ -442,7 +489,7 @@
   border: 2px solid var(--pdf-border);
   border-radius: 12px;
   overflow: hidden;
-  background: var(--pdf-soft);
+  background: #ffffff;
 }
 
 .paymentBody {
@@ -466,23 +513,75 @@
   font-weight: 700;
 }
 
-.paymentRowHighlight {
-  background: var(--pdf-pale-orange);
-  border-radius: 8px;
-  padding: 8px 10px;
-  margin: -2px -10px;
+.totalsCol {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
 }
 
-.paymentRowHighlight span:last-child {
+.totalsRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 18px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--pdf-ink);
+  border-bottom: 1px solid var(--pdf-border);
+}
+
+.totalsRow span:first-child {
+  font-weight: 600;
+}
+
+.totalsRow span:last-child {
+  font-weight: 800;
+  color: var(--pdf-navy-deep);
+}
+
+.totalsRowGrand {
+  background: var(--pdf-pale-orange);
+  border-bottom: none;
+  border-radius: 6px;
+}
+
+.totalsRowGrand span:first-child {
   color: var(--pdf-orange);
   font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
 }
 
-.noteGrid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
+.totalsRowGrand span:last-child {
+  color: var(--pdf-orange);
+}
+
+.balanceBarRounded {
+  border-radius: 8px;
+  margin-top: 10px;
+}
+
+.notePanel {
+  display: flex;
+  gap: 24px;
   margin: 20px 50px 0;
+  background: var(--pdf-pale-orange);
+  border: 2px solid var(--pdf-pale-orange-border);
+  border-radius: 12px;
+  padding: 18px 22px;
+}
+
+.noteCol {
+  flex: 1;
+  min-width: 0;
+}
+
+.noteDivider {
+  width: 2px;
+  border-radius: 1px;
+  background: var(--pdf-pale-orange-border);
+  flex: 0 0 auto;
 }
 
 .noteCard {
@@ -523,38 +622,70 @@
   margin: 0;
   font-size: 13px;
   font-weight: 800;
-  color: #9a3412;
+  color: var(--pdf-orange);
   text-transform: uppercase;
   letter-spacing: 0.4px;
 }
 
-.noteCard p {
-  margin: 8px 0 0;
+.noteCard p,
+.noteCol p {
+  margin: 10px 0 0;
   font-size: 13px;
   line-height: 1.55;
   color: #6b3d1e;
   font-weight: 600;
 }
 
-.acceptGrid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
+.acceptPanel {
+  display: flex;
+  gap: 24px;
   margin: 22px 50px 0;
-}
-
-.acceptCard {
   border: 2px solid var(--pdf-border);
   border-radius: 12px;
-  padding: 16px 20px;
-  min-height: 118px;
+  padding: 18px 22px;
+  min-height: 128px;
+}
+
+.acceptCol {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.acceptDivider {
+  width: 2px;
+  border-radius: 1px;
+  background: var(--pdf-border);
+  flex: 0 0 auto;
+}
+
+.acceptHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.acceptHeader h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--pdf-navy);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
 }
 
 .acceptName {
-  margin-top: 10px;
+  margin-top: 16px;
   font-size: 15px;
   font-weight: 800;
   color: var(--pdf-navy-deep);
+}
+
+.acceptLine {
+  margin-top: 28px;
+  max-width: 340px;
+  border-bottom: 2px solid var(--pdf-ink);
 }
 
 .acceptSignature {
@@ -579,7 +710,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  height: 68px;
+  height: 74px;
   background: var(--pdf-navy);
   display: flex;
   align-items: center;
@@ -590,7 +721,7 @@
 .footerContacts {
   display: flex;
   align-items: center;
-  gap: 30px;
+  gap: 18px;
 }
 
 .footerContacts span {
@@ -600,6 +731,16 @@
   color: #ffffff;
   font-size: 12.5px;
   font-weight: 700;
+}
+
+.footerContacts span + span::before {
+  content: "";
+  width: 2px;
+  height: 16px;
+  border-radius: 1px;
+  background: rgba(255, 255, 255, 0.3);
+  margin-right: 18px;
+  flex: 0 0 auto;
 }
 
 .footerContacts svg {
@@ -631,29 +772,31 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 30px 0 44px;
+  padding: 0 26px 0 48px;
   color: #ffffff;
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 800;
   letter-spacing: 0.4px;
+  line-height: 1.5;
   text-transform: uppercase;
-  white-space: nowrap;
+  text-align: center;
+  white-space: normal;
 }
 
 .sectionIntro {
-  padding: 26px 50px 0;
+  padding: 20px 50px 0;
 }
 
 .sectionIntro h2 {
   margin: 0;
-  font-size: 26px;
+  font-size: 22px;
   font-weight: 800;
   color: var(--pdf-navy);
 }
 
 .sectionIntro p {
-  margin: 8px 0 0;
-  font-size: 13.5px;
+  margin: 6px 0 0;
+  font-size: 12.5px;
   color: var(--pdf-muted);
   font-weight: 600;
   max-width: 640px;
@@ -662,23 +805,23 @@
 .featureGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  margin: 24px 50px 0;
+  gap: 12px;
+  margin: 16px 50px 0;
 }
 
 .featureCard {
   display: flex;
-  gap: 14px;
+  gap: 12px;
   border: 2px solid var(--pdf-border);
   border-radius: 12px;
-  padding: 16px 18px;
+  padding: 12px 14px;
   background: #ffffff;
 }
 
 .featureIcon {
   position: relative;
-  width: 42px;
-  height: 42px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   background: var(--pdf-pale-orange);
   border: 2px solid var(--pdf-pale-orange-border);
@@ -690,8 +833,8 @@
 }
 
 .featureIcon svg {
-  width: 21px;
-  height: 21px;
+  width: 19px;
+  height: 19px;
 }
 
 .featureNumber {
@@ -712,15 +855,34 @@
 
 .featureBody h4 {
   margin: 0 0 4px;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 800;
   color: var(--pdf-navy-deep);
 }
 
 .featureBody p {
   margin: 0;
-  font-size: 12px;
-  line-height: 1.5;
+  font-size: 11px;
+  line-height: 1.45;
   color: var(--pdf-ink);
   font-weight: 600;
+}
+
+.featureBody p + p {
+  margin-top: 6px;
+}
+
+.featureLang {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--pdf-orange);
+}
+
+.featureTamil {
+  font-size: 11px;
+  line-height: 1.55;
 }

@@ -1,4 +1,4 @@
-import jsPDF from "jspdf";
+import { jsPDF } from "jspdf";
 import massclickLogo from "../../assets/MassClick_pvt_ltd.webp";
 
 const REQUIRED = "REQUIRED";

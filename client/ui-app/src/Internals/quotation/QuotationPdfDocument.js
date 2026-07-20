@@ -72,12 +72,16 @@ export const QuotationPdfPage1 = ({ innerRef, quotation, logoSrc, signatureSrc, 
           <p className={cx("brandTagline")}>Discover &bull; Connect &bull; Grow</p>
         </div>
         <div className={cx("headerTag")}>
-          <div className={cx("headerTagIcon")}>
-            <DescriptionIcon />
-          </div>
-          <div className={cx("headerTagText")}>
-            <span className={cx("headerTagLabel")}>QUOTATION</span>
-            <span className={cx("headerTagNo")}>{quotation.quotationNo || "-"}</span>
+          <div className={cx("headerTagAccent")} />
+          <div className={cx("headerTagShape")} />
+          <div className={cx("headerTagContent")}>
+            <div className={cx("headerTagIcon")}>
+              <DescriptionIcon />
+            </div>
+            <div className={cx("headerTagText")}>
+              <span className={cx("headerTagLabel")}>QUOTATION</span>
+              <span className={cx("headerTagNo")}>{quotation.quotationNo || "-"}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -124,7 +128,7 @@ export const QuotationPdfPage1 = ({ innerRef, quotation, logoSrc, signatureSrc, 
             </div>
             <h3>Bill To</h3>
           </div>
-          <div className={cx("partyBody")}>
+          <div className={cx("partyBody", "partyBodyAccent")}>
             <span className={cx("partyName")}>{quotation.customerName || "Customer Name"}</span>
             <span className={cx("partyLine")}>{quotation.customerPhone || "-"}</span>
             <span className={cx("partyLine")}>{quotation.customerEmail || "-"}</span>
@@ -253,40 +257,36 @@ export const QuotationPdfPage1 = ({ innerRef, quotation, logoSrc, signatureSrc, 
             </div>
           </div>
         </div>
-        <div className={cx("paymentCard")}>
-          <div className={cx("cardHeader")}>
-            <div className={cx("cardIconBadge")}>
-              <QueryStatsIcon />
-            </div>
-            <h3>Amount Summary</h3>
+        <div className={cx("totalsCol")}>
+          <div className={cx("totalsRow")}>
+            <span>Subtotal</span>
+            <span>{money(totals.subtotal)}</span>
           </div>
-          <div className={cx("paymentBody")}>
-            <div className={cx("paymentRow")}>
-              <span>Subtotal</span>
-              <span>{money(totals.subtotal)}</span>
-            </div>
-            <div className={cx("paymentRow")}>
-              <span>Tax</span>
-              <span>{money(totals.tax)}</span>
-            </div>
-            <div className={cx("paymentRow", "paymentRowHighlight")}>
-              <span>Grand Total</span>
-              <span>{money(totals.total)}</span>
-            </div>
-            <div className={cx("paymentRow")}>
-              <span>Payment Status</span>
-              <span>{paymentStatusLabel(totals.paymentStatus)}</span>
-            </div>
+          <div className={cx("totalsRow")}>
+            <span>GST ({Number(quotation.taxRate || 0)}%)</span>
+            <span>{money(totals.tax)}</span>
           </div>
-          <div className={cx("balanceBar")}>
+          <div className={cx("totalsRow", "totalsRowGrand")}>
+            <span>Grand Total</span>
+            <span>{money(totals.total)}</span>
+          </div>
+          <div className={cx("totalsRow")}>
+            <span>Advance Paid</span>
+            <span>{money(totals.advancePayment)}</span>
+          </div>
+          <div className={cx("totalsRow")}>
+            <span>Payment Status</span>
+            <span>{paymentStatusLabel(totals.paymentStatus)}</span>
+          </div>
+          <div className={cx("balanceBar", "balanceBarRounded")}>
             <span className={cx("balanceBarLabel")}>Balance Due</span>
             <span className={cx("balanceBarValue")}>{money(totals.balanceDue)}</span>
           </div>
         </div>
       </div>
 
-      <div className={cx("noteGrid")}>
-        <div className={cx("noteCard")}>
+      <div className={cx("notePanel")}>
+        <div className={cx("noteCol")}>
           <div className={cx("noteHeader")}>
             <div className={cx("noteIcon")}>
               <EditNoteIcon />
@@ -295,7 +295,8 @@ export const QuotationPdfPage1 = ({ innerRef, quotation, logoSrc, signatureSrc, 
           </div>
           <p>{quotation.terms || "-"}</p>
         </div>
-        <div className={cx("noteCard")}>
+        <div className={cx("noteDivider")} />
+        <div className={cx("noteCol")}>
           <div className={cx("noteHeader")}>
             <div className={cx("noteIcon")}>
               <InfoIcon />
@@ -306,19 +307,20 @@ export const QuotationPdfPage1 = ({ innerRef, quotation, logoSrc, signatureSrc, 
         </div>
       </div>
 
-      <div className={cx("acceptGrid")}>
-        <div className={cx("acceptCard")}>
-          <div className={cx("cardHeader")}>
+      <div className={cx("acceptPanel")}>
+        <div className={cx("acceptCol")}>
+          <div className={cx("acceptHeader")}>
             <div className={cx("cardIconBadge")}>
               <EditNoteIcon />
             </div>
             <h3>Customer Acceptance</h3>
           </div>
           <div className={cx("acceptName")}>{quotation.customerName || "Customer Name"}</div>
-          <div className={cx("acceptCaption")}>Accepted By</div>
+          <div className={cx("acceptLine")} />
         </div>
-        <div className={cx("acceptCard")}>
-          <div className={cx("cardHeader")}>
+        <div className={cx("acceptDivider")} />
+        <div className={cx("acceptCol")}>
+          <div className={cx("acceptHeader")}>
             <div className={cx("cardIconBadge")}>
               <VerifiedUserIcon />
             </div>
@@ -362,12 +364,16 @@ export const QuotationPdfPage2 = ({ innerRef, quotation, logoSrc }) => (
         <p className={cx("brandTagline")}>Discover &bull; Connect &bull; Grow</p>
       </div>
       <div className={cx("headerTag")}>
-        <div className={cx("headerTagIcon")}>
-          <StarIcon />
-        </div>
-        <div className={cx("headerTagText")}>
-          <span className={cx("headerTagLabel")}>FEATURES</span>
-          <span className={cx("headerTagNo")}>{quotation.quotationNo || "-"}</span>
+        <div className={cx("headerTagAccent")} />
+        <div className={cx("headerTagShape")} />
+        <div className={cx("headerTagContent")}>
+          <div className={cx("headerTagIcon")}>
+            <StarIcon />
+          </div>
+          <div className={cx("headerTagText")}>
+            <span className={cx("headerTagLabel")}>FEATURES</span>
+            <span className={cx("headerTagNo")}>{quotation.quotationNo || "-"}</span>
+          </div>
         </div>
       </div>
     </div>
@@ -390,7 +396,14 @@ export const QuotationPdfPage2 = ({ innerRef, quotation, logoSrc }) => (
             </div>
             <div className={cx("featureBody")}>
               <h4>{point.title}</h4>
-              <p>{point.text}</p>
+              <p>
+                <span className={cx("featureLang")}>English</span>
+                {point.text}
+              </p>
+              <p className={cx("featureTamil")} lang="ta">
+                <span className={cx("featureLang")}>தமிழ்</span>
+                {point.tamilText}
+              </p>
             </div>
           </div>
         );
