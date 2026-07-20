@@ -334,7 +334,7 @@ export const QuotationPdfPage1 = ({ innerRef, quotation, logoSrc, signatureSrc, 
       <div className={cx("footer")}>
         <div className={cx("footerContacts")}>
           <span>
-            <LocalPhoneIcon /> {quotation.businessPhone || "+91 1234 5689 456"}
+            <LocalPhoneIcon /> {quotation.businessPhone || "+91 9789104201"}
           </span>
           <span>
             <EmailIcon /> {quotation.businessEmail || "support@massclick.in"}
@@ -423,7 +423,7 @@ export const QuotationPdfPage2 = ({ innerRef, quotation, logoSrc }) => (
     <div className={cx("footer")}>
       <div className={cx("footerContacts")}>
         <span>
-          <LocalPhoneIcon /> {quotation.businessPhone || "+91 1234 5689 456"}
+          <LocalPhoneIcon /> {quotation.businessPhone || "+91 9789104201"}
         </span>
         <span>
           <EmailIcon /> {quotation.businessEmail || "support@massclick.in"}
