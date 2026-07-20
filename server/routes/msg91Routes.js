@@ -1,7 +1,7 @@
 import express from 'express';
 import { requestOtp, verifyOtpAndLogin, updateOtpUser, viewOtpUser, viewAllOtpUsers, deleteOtpUser, logUserSearch  } from '../controller/msg91/msg91Controller.js';
-import { sendOtpAction, sendWhatsAppForLead, sendWhatsAppToLeadsBulk, verifyOtpAction,fakesendOtpAction, fakeverifyOtpAction} from '../controller/msg91/smsGatewayController.js';
-import { leadRateLimit, otpRateLimit } from '../middleware/rateLimitMiddleware.js';
+import { sendOtpAction, sendWhatsAppForLead, sendWhatsAppToLeadsBulk, verifyOtpAction } from '../controller/msg91/smsGatewayController.js';
+import { otpRateLimit } from '../middleware/rateLimitMiddleware.js';
 import { requireAdminAuth, requireAuthPolicy } from '../auth/authMiddleware.js';
 const router = express.Router();
 
@@ -11,10 +11,8 @@ router.use('/api/otp', otpRateLimit);
 
 router.post('/api/otp/send',  requestOtp);
 router.post('/api/otp/verify',  verifyOtpAndLogin);
-router.post('/api/otp_user/send-otp', sendOtpAction);
-router.post('/api/otp_user/verify-otp', verifyOtpAction);
-router.post('/api/otp_user/fake-send-otp', fakesendOtpAction);
-router.post('/api/otp_user/fake-verify-otp', fakeverifyOtpAction);
+router.post('/api/otp_user/send-otp', otpRateLimit, sendOtpAction);
+router.post('/api/otp_user/verify-otp', otpRateLimit, verifyOtpAction);
 router.put('/api/otp_user_update/:mobile', requireAuthPolicy('otp.profile.update'), updateOtpUser);
 router.get("/api/otp_user/:mobile", requireAuthPolicy('otp.profile.view'), viewOtpUser);
 router.get('/api/otp_users', requireAdminAuth('otp.profile.list'), viewAllOtpUsers);
