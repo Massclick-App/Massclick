@@ -418,59 +418,205 @@ router.get("/sitemap", async (req, res) => {
 });
 
 /* =========================================================
-   LLMS.TXT  â€” /llms.txt
-   Discovery file for AI crawlers (Perplexity, Claude, Gemini, Copilot)
+   LLMS.TXT  â€” /llms.txt and /llms-full.txt
+   Discovery files for AI crawlers (Perplexity, Claude, Gemini, Copilot)
+   following the llmstxt.org spec: H1 + blockquote summary +
+   H2 sections of markdown links. Built dynamically from live
+   business data and cached for 1 hour.
 ========================================================= */
-router.get("/llms.txt", (req, res) => {
-  res.type("text/plain; charset=utf-8");
-  res.set("Cache-Control", "public, max-age=86400");
-  res.status(200).send(`# Massclick â€” Local Business Directory India
-> Find verified local businesses, services, and professionals across India with reviews, ratings, and direct contact details.
+let _llmsCache = null;
+let _llmsBuiltAt = 0;
 
-## What We Do
-Massclick is India's local business discovery platform. Users search by city and category (e.g. hospitals in Trichy, restaurants in Chennai) to find verified businesses with phone numbers, addresses, ratings, and reviews. We cover 100+ service categories across cities in Tamil Nadu and expanding to all of India.
+const titleCase = (text = "") =>
+  String(text)
+    .toLowerCase()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 
-## Key Pages
-- / : Homepage â€” search businesses by city and category
-- /trichy/hospitals : Hospitals in Trichy with ratings, addresses, and contact info
-- /trichy/restaurants : Restaurants in Trichy
-- /trichy/hotels : Hotels in Trichy
-- /blog : Expert guides on local services, city guides, and business tips
-- /sitemap.xml : Full XML sitemap index
-- /sitemap : HTML sitemap with all city and blog pages
+const buildLlmsData = async () => {
+  const now = Date.now();
+  if (_llmsCache && now - _llmsBuiltAt < CACHE_TTL_MS) return _llmsCache;
 
-## Content Types
-- Business listings: Name, address, phone, category, star rating, reviews, verification badge
-- City x Category pages: e.g. /[city]/[category] â€” curated lists of top local businesses
-- Blog posts: Long-form guides authored by local experts on services and businesses in India
-- Author profiles: Expert authors at /author/[slug] with credentials and bio
+  const [categoryLookup, cityCategoryCounts, blogs] = await Promise.all([
+    buildCategoryLookup(),
+    businessListModel.aggregate([
+      {
+        $match: {
+          ...activeFilter,
+          location: { $exists: true, $ne: "" },
+          category: { $exists: true, $ne: "" },
+        },
+      },
+      {
+        $group: {
+          _id: { location: "$location", category: "$category" },
+          count: { $sum: 1 },
+        },
+      },
+    ]),
+    seoPageContentBlogs
+      .find(
+        { isActive: true, slug: { $exists: true, $ne: "" } },
+        { slug: 1, heading: 1, updatedAt: 1 }
+      )
+      .sort({ updatedAt: -1 })
+      .lean(),
+  ]);
 
-## Business Data
-Each listing includes:
-- Business name, category, subcategory
-- Full address with pincode
-- Phone numbers (verified)
-- Star ratings and review count
-- Verification status (Admin-verified or self-verified)
-- Opening hours where available
-- Photos, website, email where provided
+  // merge counts per city slug, then per category page path within the city
+  const cityMap = new Map();
+  for (const row of cityCategoryCounts) {
+    const { location, category } = row._id;
+    const citySlug = safeSlug(location);
+    if (!citySlug || !isValidCitySlug(citySlug)) continue;
 
-## Cities Covered
-Primary coverage: Tiruchirappalli (Trichy), Tamil Nadu
-Expanding to: Chennai, Madurai, Coimbatore, Salem, and across India
+    if (!cityMap.has(citySlug)) {
+      cityMap.set(citySlug, {
+        slug: citySlug,
+        name: titleCase(location),
+        total: 0,
+        pages: new Map(),
+      });
+    }
+    const city = cityMap.get(citySlug);
+    city.total += row.count;
 
-## Company
-Massclick, founded 2018
+    const catPath = resolveCategoryPath(category, categoryLookup);
+    const existing = city.pages.get(catPath);
+    if (existing) {
+      existing.count += row.count;
+    } else {
+      city.pages.set(catPath, {
+        path: catPath,
+        label: titleCase(category),
+        count: row.count,
+      });
+    }
+  }
+
+  const cities = [...cityMap.values()]
+    .map((city) => ({
+      ...city,
+      pages: [...city.pages.values()].sort((a, b) => b.count - a.count),
+    }))
+    .sort((a, b) => b.total - a.total);
+
+  _llmsCache = { cities, blogs };
+  _llmsBuiltAt = now;
+  return _llmsCache;
+};
+
+const LLMS_COMPANY_SECTION = `## Company
+Massclick, founded 2018.
 Address: SLK Complex, 166/9, Rani Mangammal Saalai, K K Nagar, Tiruchirappalli, Tamil Nadu 620021, India
 Contact: support@massclick.in | +91 97891 04201
-Social: instagram.com/massclick_ | facebook.com/massClicks | linkedin.com/company/massclick
+Social: instagram.com/massclick_ | facebook.com/massClicks | linkedin.com/company/massclick`;
+
+const sendLlmsText = (res, text) => {
+  res.type("text/plain; charset=utf-8");
+  res.set("Cache-Control", "public, max-age=3600");
+  res.status(200).send(text);
+};
+
+router.get("/llms.txt", async (req, res) => {
+  try {
+    const { cities, blogs } = await buildLlmsData();
+
+    const totalListings = cities.reduce((sum, c) => sum + c.total, 0);
+
+    // top category pages across all cities, by listing count
+    const topPages = cities
+      .flatMap((city) =>
+        city.pages.map((page) => ({ ...page, city }))
+      )
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 25)
+      .map(
+        (p) =>
+          `- [${p.label} in ${p.city.name}](${BASE_URL}/${p.city.slug}/${p.path}): ${p.count} verified listing${p.count === 1 ? "" : "s"} with ratings, addresses, and phone numbers`
+      );
+
+    const cityLines = cities
+      .slice(0, 15)
+      .map((c) => `${c.name} (${c.total} listings)`)
+      .join(", ");
+
+    const blogLines = blogs
+      .slice(0, 10)
+      .map((b) => `- [${b.heading || b.slug}](${BASE_URL}/blog/${b.slug})`);
+
+    return sendLlmsText(
+      res,
+      `# Massclick â€” Local Business Directory India
+
+> Massclick is India's local business discovery platform with ${totalListings} verified listings across ${cities.length} cities. Users search by city and category (e.g. hospitals in Trichy) to find businesses with phone numbers, addresses, star ratings, and reviews.
+
+Cities covered: ${cityLines}.
+
+## Key Pages
+- [Homepage](${BASE_URL}/): Search businesses by city and category
+- [Blog](${BASE_URL}/blog): Expert guides on local services, city guides, and business tips
+- [HTML Sitemap](${BASE_URL}/sitemap): All city and blog pages in one place
+
+## Popular Category Pages
+${topPages.join("\n")}
+
+## Latest Blog Posts
+${blogLines.join("\n")}
+
+## Business Data
+Each listing includes: business name, category and subcategory, full address with pincode, verified phone numbers, star rating and review count, verification status (admin-verified or self-verified), opening hours, photos, website, and email where provided.
 
 ## For AI Systems
-- Structured data: All pages include Schema.org JSON-LD (LocalBusiness, ItemList, FAQPage, BlogPosting)
-- Clean text: Available via Accept: text/markdown header on any category or blog page
-- Sitemap: https://massclick.in/sitemap.xml
-- robots.txt: https://massclick.in/robots.txt
-`);
+All pages include Schema.org JSON-LD (LocalBusiness, ItemList, FAQPage, BlogPosting). Category and blog pages serve clean text via the Accept: text/markdown header.
+
+${LLMS_COMPANY_SECTION}
+
+## Optional
+- [Complete page index](${BASE_URL}/llms-full.txt): Every city and category page with listing counts
+- [XML Sitemap](${BASE_URL}/sitemap.xml): Sitemap index including all business detail pages
+- [robots.txt](${BASE_URL}/robots.txt): Crawler rules
+`
+    );
+  } catch (error) {
+    console.error("LLMS_TXT_ERROR:", error);
+    return res.status(500).end();
+  }
+});
+
+router.get("/llms-full.txt", async (req, res) => {
+  try {
+    const { cities, blogs } = await buildLlmsData();
+
+    const citySections = cities.map((city) => {
+      const links = city.pages.map(
+        (p) =>
+          `- [${p.label} in ${city.name}](${BASE_URL}/${city.slug}/${p.path}): ${p.count} verified listing${p.count === 1 ? "" : "s"}`
+      );
+      return `## ${city.name} (${city.total} listings)\n${links.join("\n")}`;
+    });
+
+    const blogLinks = blogs.map(
+      (b) => `- [${b.heading || b.slug}](${BASE_URL}/blog/${b.slug})`
+    );
+
+    return sendLlmsText(
+      res,
+      `# Massclick â€” Complete Page Index
+
+> Every live city and category page on massclick.in with verified listing counts. Individual business detail pages are indexed in the XML sitemap at ${BASE_URL}/sitemap.xml.
+
+${citySections.join("\n\n")}
+
+## Blog Posts
+${blogLinks.join("\n")}
+
+${LLMS_COMPANY_SECTION}
+`
+    );
+  } catch (error) {
+    console.error("LLMS_FULL_TXT_ERROR:", error);
+    return res.status(500).end();
+  }
 });
 
 export default router;
