@@ -34,6 +34,7 @@ jobs:
           REACT_APP_GOOGLE_MAPS_KEY: ${{ secrets.REACT_APP_GOOGLE_MAPS_KEY }}
           GOOGLE_MAPS_KEY: ${{ secrets.GOOGLE_MAPS_KEY }}
           REACT_APP_WHATSAPP_COMMUNITY_URL: ${{ secrets.REACT_APP_WHATSAPP_COMMUNITY_URL }}
+          REACT_APP_GA_MEASUREMENT_ID: ${{ secrets.REACT_APP_GA_MEASUREMENT_ID }}
         run: CI=false npm run build
 
       - name: Setup SSH key
