@@ -71,6 +71,9 @@ const MobileFilterDrawer = lazy(() =>
     /* webpackChunkName: "mobile-filter-drawer" */ "./MobileFilterDrawer.js"
   )
 );
+const OTPLoginModel = lazy(() =>
+  import(/* webpackChunkName: "otp-modal" */ "../AddBusinessModel.js")
+);
 
 const cx = createScopedClassNames(styles);
 const DEFAULT_LOCATION = "Trichy";
@@ -339,6 +342,11 @@ const SearchResults = React.memo(
     const [viewMode, setViewMode] = useState("list");
     const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
     const filterDrawerHasOpenedRef = useRef(false);
+
+    // ─── Guest login prompt: open immediately on load for logged-out visitors ────
+    const [openLoginModal, setOpenLoginModal] = useState(
+      () => !localStorage.getItem("authUser"),
+    );
 
     // ─── Geo state (on-demand) ───────────────────────────────────────────────────
     const [userGeo, setUserGeo] = useState(null); // { lat, lng } or null
@@ -1455,6 +1463,15 @@ const SearchResults = React.memo(
               </Suspense>
             )}
           </div>
+
+          {openLoginModal && (
+            <Suspense fallback={null}>
+              <OTPLoginModel
+                open={true}
+                handleClose={() => setOpenLoginModal(false)}
+              />
+            </Suspense>
+          )}
         </div>
       </>
     );
