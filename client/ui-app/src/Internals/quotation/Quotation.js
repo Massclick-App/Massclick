@@ -55,6 +55,8 @@ const addDaysIso = (days) => {
 const durationOptions = Array.from({ length: 24 }, (_, index) => index + 1);
 const videoCountOptions = Array.from({ length: 20 }, (_, index) => index + 1);
 
+const editableMoneyValue = (value) => Math.round(Number(value || 0) * 100) / 100;
+
 const normalizePayloadItems = (items = []) =>
   normalizeFormItems(items).map((item) => ({
     description: String(item.description || MASSCLICK_PRODUCT_ITEM.description).trim(),
@@ -295,6 +297,36 @@ export default function Quotation() {
       items[index] = { ...items[index], [name]: value };
       return { ...current, items };
     });
+  };
+
+  const updatePaymentAmount = (name, value) => {
+    const amount = Math.max(Number(value || 0), 0);
+
+    if (name === "grandTotal") {
+      setForm((current) => {
+        const items = normalizeFormItems(current.items);
+        const taxMultiplier = 1 + (Number(current.taxRate || 0) / 100);
+        const otherSubtotal = items.slice(1).reduce(
+          (sum, item) => sum + Number(item.quantity || 0) * Number(item.unitPrice || 0),
+          0
+        );
+        const firstQuantity = Math.max(Number(items[0]?.quantity || 0), 1);
+        const targetSubtotal = taxMultiplier > 0 ? amount / taxMultiplier : amount;
+        items[0] = {
+          ...items[0],
+          unitPrice: Math.max((targetSubtotal - otherSubtotal) / firstQuantity, 0),
+        };
+        return { ...current, items };
+      });
+      return;
+    }
+
+    if (name === "paid") {
+      updateField("advancePayment", Math.min(amount, totals.total));
+      return;
+    }
+
+    updateField("advancePayment", Math.max(totals.total - Math.min(amount, totals.total), 0));
   };
 
   const resetForm = () => {
@@ -691,16 +723,51 @@ export default function Quotation() {
               </div>
               <div className={cx("payment-metrics")}>
                 <div className={cx("payment-metric")}>
-                  <span className={cx("payment-metric-label")}>Grand Total</span>
-                  <strong className={cx("payment-metric-value")}>{money(totals.total)}</strong>
+                  <label className={cx("payment-metric-label")} htmlFor="quotation-grand-total">Grand Total</label>
+                  <div className={cx("payment-metric-input-wrap")}>
+                    <span>Rs.</span>
+                    <input
+                      id="quotation-grand-total"
+                      className={cx("payment-metric-input")}
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={editableMoneyValue(totals.total)}
+                      onChange={(event) => updatePaymentAmount("grandTotal", event.target.value)}
+                    />
+                  </div>
                 </div>
                 <div className={cx("payment-metric")}>
-                  <span className={cx("payment-metric-label")}>Paid / Advance</span>
-                  <strong className={cx("payment-metric-value")}>{money(totals.advancePayment)}</strong>
+                  <label className={cx("payment-metric-label")} htmlFor="quotation-paid-amount">Paid / Advance</label>
+                  <div className={cx("payment-metric-input-wrap")}>
+                    <span>Rs.</span>
+                    <input
+                      id="quotation-paid-amount"
+                      className={cx("payment-metric-input")}
+                      type="number"
+                      min="0"
+                      max={totals.total}
+                      step="0.01"
+                      value={editableMoneyValue(totals.advancePayment)}
+                      onChange={(event) => updatePaymentAmount("paid", event.target.value)}
+                    />
+                  </div>
                 </div>
                 <div className={cx("payment-metric")}>
-                  <span className={cx("payment-metric-label")}>Pending Amount</span>
-                  <strong className={cx("payment-metric-value", "payment-metric-pending")}>{money(totals.balanceDue)}</strong>
+                  <label className={cx("payment-metric-label")} htmlFor="quotation-pending-amount">Pending Amount</label>
+                  <div className={cx("payment-metric-input-wrap", "payment-metric-pending")}>
+                    <span>Rs.</span>
+                    <input
+                      id="quotation-pending-amount"
+                      className={cx("payment-metric-input")}
+                      type="number"
+                      min="0"
+                      max={totals.total}
+                      step="0.01"
+                      value={editableMoneyValue(totals.balanceDue)}
+                      onChange={(event) => updatePaymentAmount("pending", event.target.value)}
+                    />
+                  </div>
                 </div>
               </div>
               <div className={cx("payment-progress-track")}>

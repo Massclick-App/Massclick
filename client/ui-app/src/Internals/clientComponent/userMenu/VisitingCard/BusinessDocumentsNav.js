@@ -10,6 +10,7 @@ const documentOptions = [
   { label: "Visiting Card", type: "visiting-card", path: "/user_marketing-materials" },
   { label: "Letterhead", type: "letterhead", path: "/user_marketing-materials?type=letterhead" },
   { label: "Quotation", type: "quotation", path: "/user_marketing-materials?type=quotation" },
+  { label: "Voucher", type: "voucher", path: "/user_marketing-materials?type=voucher" },
 ];
 
 export default function BusinessDocumentsNav() {
