@@ -86,10 +86,12 @@ root.render(
   </Provider>
 );
 
-// Marketing tags are never requested during passive page load. A real user
-// interaction only schedules them; the network requests begin when the browser
-// has idle time, keeping them out of initial rendering and LCP work.
+// Marketing tags are kept off the initial render/LCP path. They start on the
+// first real user interaction, or after a 6s idle fallback so sessions with
+// no interaction (bounces, bots) still get tracked.
+const MARKETING_IDLE_FALLBACK_MS = 6000;
 let marketingScriptsStarted = false;
+let marketingIdleFallbackTimer = null;
 
 const startMarketingScripts = () => {
   if (marketingScriptsStarted) {
@@ -100,6 +102,10 @@ const startMarketingScripts = () => {
   MARKETING_INTERACTION_EVENTS.forEach((eventName) => {
     window.removeEventListener(eventName, startMarketingScripts);
   });
+  if (marketingIdleFallbackTimer !== null) {
+    window.clearTimeout(marketingIdleFallbackTimer);
+    marketingIdleFallbackTimer = null;
+  }
   scheduleIdleCallback(loadDeferredScripts);
 };
 
@@ -109,6 +115,11 @@ MARKETING_INTERACTION_EVENTS.forEach((eventName) => {
     once: true,
   });
 });
+
+marketingIdleFallbackTimer = window.setTimeout(
+  startMarketingScripts,
+  MARKETING_IDLE_FALLBACK_MS,
+);
 
 reportWebVitals();
 

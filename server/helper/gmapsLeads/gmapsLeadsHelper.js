@@ -55,10 +55,16 @@ export const viewAllGmapsLeads = async ({
     if (status === "available") {
       query.imported_to_main = false;
       query.skip_import = false;
+      query.working = { $ne: true };
     } else if (status === "imported") {
       query.imported_to_main = true;
     } else if (status === "skipped") {
+      query.imported_to_main = false;
       query.skip_import = true;
+    } else if (status === "working") {
+      query.imported_to_main = false;
+      query.skip_import = false;
+      query.working = true;
     }
 
     if (min_rating && !isNaN(parseFloat(min_rating))) {
@@ -81,7 +87,7 @@ export const viewAllGmapsLeads = async ({
 
     const leads = await gmapsLeadsModel
       .find(query)
-      .sort({ rating: -1 })
+      .sort({ rating: -1, _id: 1 })
       .skip((pageNo - 1) * pageSize)
       .limit(pageSize)
       .lean();
@@ -114,33 +120,59 @@ export const viewAllGmapsLeads = async ({
  */
 export const getGmapsLeadsStats = async () => {
   try {
-    const [total, imported, skipped] = await Promise.all([
+    const [total, imported, skipped, working] = await Promise.all([
       gmapsLeadsModel.countDocuments({}),
       gmapsLeadsModel.countDocuments({ imported_to_main: true }),
-      gmapsLeadsModel.countDocuments({ skip_import: true }),
+      gmapsLeadsModel.countDocuments({ imported_to_main: { $ne: true }, skip_import: true }),
+      gmapsLeadsModel.countDocuments({
+        imported_to_main: { $ne: true },
+        skip_import: { $ne: true },
+        working: true,
+      }),
     ]);
 
-    const available = total - imported - skipped;
+    const available = total - imported - skipped - working;
 
-    return { total, available: available < 0 ? 0 : available, imported, skipped };
+    return { total, available: available < 0 ? 0 : available, imported, skipped, working };
   } catch (error) {
     console.error("Error in getGmapsLeadsStats:", error);
     throw error;
   }
 };
 
+// Maps a single high-level status to the underlying boolean flags.
+// Keeps imported_to_main / skip_import / working mutually exclusive.
+const STATUS_TO_FLAGS = {
+  available: { imported_to_main: false, skip_import: false, working: false },
+  imported: { imported_to_main: true, skip_import: false, working: false },
+  working: { imported_to_main: false, skip_import: false, working: true },
+  skipped: { imported_to_main: false, skip_import: true, working: false },
+};
+
 /**
- * Update status fields (imported_to_main / skip_import) by MongoDB _id.
+ * Update status by MongoDB _id.
+ * Accepts either { status: 'available'|'imported'|'working'|'skipped' }
+ * or the raw boolean flags directly (imported_to_main / skip_import / working).
  */
 export const updateGmapsLeadStatus = async (id, data) => {
   if (!ObjectId.isValid(id)) throw new Error("Invalid lead ID");
 
   const updateFields = {};
+
+  if (typeof data.status === "string") {
+    const flags = STATUS_TO_FLAGS[data.status];
+    if (!flags) throw new Error(`Invalid status: ${data.status}`);
+    Object.assign(updateFields, flags);
+  }
+
   if (typeof data.imported_to_main === "boolean") {
     updateFields.imported_to_main = data.imported_to_main;
   }
   if (typeof data.skip_import === "boolean") {
     updateFields.skip_import = data.skip_import;
+  }
+  if (typeof data.working === "boolean") {
+    updateFields.working = data.working;
   }
 
   const updated = await gmapsLeadsModel.findByIdAndUpdate(

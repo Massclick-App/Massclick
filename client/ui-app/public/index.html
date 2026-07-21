@@ -37,12 +37,38 @@
   <link rel="apple-touch-icon" href="%PUBLIC_URL%/apple-touch-icon.png" />
   <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <script>
+    // Mobile uses the system font stack, so avoid opening Google Font
+    // connections or downloading its stylesheet unless desktop Poppins is used.
+    if (window.matchMedia("(min-width: 768px)").matches) {
+      const fontStylesOrigin = document.createElement("link");
+      fontStylesOrigin.rel = "preconnect";
+      fontStylesOrigin.href = "https://fonts.googleapis.com";
+      document.head.appendChild(fontStylesOrigin);
+
+      const fontFilesOrigin = document.createElement("link");
+      fontFilesOrigin.rel = "preconnect";
+      fontFilesOrigin.href = "https://fonts.gstatic.com";
+      fontFilesOrigin.crossOrigin = "anonymous";
+      document.head.appendChild(fontFilesOrigin);
+
+      const fontStylesheet = document.createElement("link");
+      fontStylesheet.rel = "stylesheet";
+      fontStylesheet.href = "https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=optional";
+      fontStylesheet.media = "print";
+      fontStylesheet.addEventListener("load", () => {
+        fontStylesheet.media = "(min-width: 768px)";
+      });
+      document.head.appendChild(fontStylesheet);
+    }
+  </script>
+
+  <!-- Category and search routes need API data for their above-the-fold content.
+       Start the cross-origin DNS+TCP+TLS handshake while the HTML is parsed. -->
+  <link rel="preconnect" href="https://api.massclick.in" crossorigin>
 
   <!-- Font loading: display=optional avoids font-swap layout shifts (CLS) -->
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=optional" media="print" onload="this.media='all'">
-  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=optional"></noscript>
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=optional" media="(min-width: 768px)"></noscript>
 
   <!-- Preconnect to the S3 image origin: card/banner images (usually the LCP
        element) come from here, and the cold DNS+TCP+TLS handshake to
@@ -68,11 +94,12 @@
       --border-color: #e0e0e0;
       --border-radius: 8px;
       --shadow-sm: 0px 2px 8px rgba(0, 0, 0, 0.08);
+      --app-font-family: "Poppins", "Helvetica", "Arial", sans-serif;
       --home-header-reserved-height: 72px;
       --home-hero-reserved-height: 240px;
     }
     html, body {
-      font-family: "Poppins", "Helvetica", "Arial", sans-serif;
+      font-family: var(--app-font-family);
       margin: 0;
       padding: 0;
       color: var(--text-primary);
@@ -314,6 +341,7 @@
     }
     @media (max-width: 767px) {
       :root {
+        --app-font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
         --home-hero-reserved-height: 520px;
       }
       .home-route-shell__hero {

@@ -28,12 +28,20 @@ jobs:
       - name: Build project
         working-directory: client/ui-app
         env:
+          # Backend API base URL the frontend calls
           REACT_APP_API_URL: ${{ secrets.REACT_APP_API_URL }}
+          # OAuth client id used for login/token requests
           REACT_APP_OAUTH_CLIENT_ID: ${{ secrets.REACT_APP_OAUTH_CLIENT_ID }}
+          # OAuth client secret paired with the client id above
           REACT_APP_OAUTH_CLIENT_SECRET: ${{ secrets.REACT_APP_OAUTH_CLIENT_SECRET }}
+          # Google Maps JS API key (frontend-exposed, REACT_APP_ prefixed)
           REACT_APP_GOOGLE_MAPS_KEY: ${{ secrets.REACT_APP_GOOGLE_MAPS_KEY }}
+          # Same Maps key without the REACT_APP_ prefix, for build-time tooling that reads it unprefixed
           GOOGLE_MAPS_KEY: ${{ secrets.GOOGLE_MAPS_KEY }}
+          # Invite link shown for the WhatsApp community CTA
           REACT_APP_WHATSAPP_COMMUNITY_URL: ${{ secrets.REACT_APP_WHATSAPP_COMMUNITY_URL }}
+          # GA4 measurement id (G-XXXXXXX) — without this, GA4 never initializes in the prod build
+          REACT_APP_GA_MEASUREMENT_ID: ${{ secrets.REACT_APP_GA_MEASUREMENT_ID }}
         run: CI=false npm run build
 
       - name: Setup SSH key

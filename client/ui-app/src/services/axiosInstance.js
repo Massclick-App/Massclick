@@ -77,7 +77,7 @@ const isReloginRequest = (url) => getRequestPath(url) === '/oauth/relogin';
 const isCustomerAuthRequest = (pathname) => CUSTOMER_AUTH_PATHS.some((pattern) => pattern.test(pathname));
 
 const MAINTENANCE_BYPASS_PATHS = [
-  /^\/api\/app-version(\/|$)/,
+  /^\/api\/app\/version(\/|$)/,
   /^\/api\/admin\/system-settings(\/|$)/,
   /^\/api\/oauth(\/|$)/,
 ];

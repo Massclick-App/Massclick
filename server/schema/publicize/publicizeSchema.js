@@ -38,6 +38,16 @@ const publicizeSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    plan: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    listingType: {
+      type: String,
+      enum: ["free", "paid"],
+      default: "free",
+    },
     status: {
       type: String,
       enum: ["Pending", "Approved", "Rejected"],

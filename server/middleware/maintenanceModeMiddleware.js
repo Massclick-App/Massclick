@@ -6,7 +6,7 @@ const logger = createLogger("MAINTENANCE_MODE");
 
 // Endpoints that should NOT be blocked by maintenance mode
 const MAINTENANCE_WHITELIST = [
-  /^\/api\/app-version/i,
+  /^\/api\/app\/version/i,
   /^\/api\/admin\/system-settings/i,
   /^\/api\/oauth\//i,
   /^\/socket\.io\//i,

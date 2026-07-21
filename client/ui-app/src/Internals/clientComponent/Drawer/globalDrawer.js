@@ -16,7 +16,7 @@ import {
   getVisibleUserMenuItems,
   getUserMenuLabel,
   isBusinessPeopleUser,
-} from "../categoryBar.js";
+} from "./userMenuConfig.js";
 import { useNavigate } from "react-router-dom";
 import { styled } from "@mui/material/styles";
 

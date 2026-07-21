@@ -1,7 +1,10 @@
 .public-counter {
   box-sizing: border-box;
   width: min(1720px, calc(100% - clamp(2rem, 9vw, 12rem)));
-  min-height: 176px;
+  /* Keep the lazy-loading, data-loading, and populated states the same height.
+     The token is owned by the home layout because it reserves this section's
+     slot before the component chunk is available. */
+  min-height: var(--public-counter-reserved-height, 216px);
   margin: 0 auto;
   padding: clamp(1.1rem, 2vw, 1.65rem);
   border: 1px solid rgba(255, 111, 0, 0.18);
@@ -38,7 +41,6 @@
 @media (min-width: 1440px) {
   .public-counter {
     width: min(1720px, calc(100% - 10rem));
-    min-height: 184px;
   }
 
 }
@@ -288,7 +290,6 @@
   .public-counter {
     width: min(100% - 1rem, 520px);
     padding: 1rem;
-    min-height: auto;
   }
 
   .public-counter__main {
