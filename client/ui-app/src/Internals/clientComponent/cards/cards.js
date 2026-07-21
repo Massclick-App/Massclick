@@ -1,5 +1,5 @@
 import { createScopedClassNames } from "../../../utils/createScopedClassNames";
-import React, { lazy, Suspense, useEffect, useState } from "react";
+import React, { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
@@ -121,6 +121,7 @@ const Cards = ({
   cardVariant = "",
   compact = false,
   resultPosition = null,
+  prioritizeImage = index === 0,
   ...props
 }) => {
   const navigate = useNavigate();
@@ -131,6 +132,8 @@ const Cards = ({
     certificateType === "trust" || isTrusted ? "trust" : "verified"
   );
   const [chipsExpanded, setChipsExpanded] = useState(false);
+  const imageContainerRef = useRef(null);
+  const [shouldLoadImage, setShouldLoadImage] = useState(prioritizeImage);
   const favoriteIds = useSelector(state => state.favorites.favoriteIds);
   const togglingIds = useSelector(state => state.favorites.togglingIds);
   const user = getAuthUser();
@@ -144,6 +147,30 @@ const Cards = ({
       dispatch(fetchFavorites());
     }
   }, [isLoggedIn, businessId, dispatch]);
+
+  useEffect(() => {
+    if (prioritizeImage) {
+      setShouldLoadImage(true);
+      return undefined;
+    }
+
+    const imageContainer = imageContainerRef.current;
+    if (!imageContainer || typeof IntersectionObserver === "undefined") {
+      setShouldLoadImage(true);
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return;
+        setShouldLoadImage(true);
+        observer.disconnect();
+      },
+      { rootMargin: "300px 0px", threshold: 0.01 }
+    );
+    observer.observe(imageContainer);
+    return () => observer.disconnect();
+  }, [prioritizeImage]);
 
   const safeRating = getDisplayRating(rating);
   const safeReviews = getReviewCount(reviews);
@@ -387,25 +414,15 @@ const Cards = ({
 
           {/* Image */}
           <div className={cx("card-image-wrapper")}>
-            <div className={cx("card-image-container")}>
-              {index === 0 ? (
-                <img
-                  src={imageSrc || EMPTY_PIXEL}
-                  alt={title}
-                  decoding="async"
-                  loading="eager"
-                  fetchpriority="high"
-                  className={cx("card-image")}
-                />
-              ) : (
-                <img
-                  src={imageSrc || EMPTY_PIXEL}
-                  alt={title}
-                  decoding="async"
-                  loading={index < 3 ? "eager" : "lazy"}
-                  className={cx("card-image")}
-                />
-              )}
+            <div ref={imageContainerRef} className={cx("card-image-container")}>
+              <img
+                src={shouldLoadImage ? imageSrc || EMPTY_PIXEL : EMPTY_PIXEL}
+                alt={title}
+                decoding="async"
+                loading={prioritizeImage ? "eager" : "lazy"}
+                fetchPriority={prioritizeImage ? "high" : "low"}
+                className={cx("card-image")}
+              />
             </div>
 
             {/* Fav button */}

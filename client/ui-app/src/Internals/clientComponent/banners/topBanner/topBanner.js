@@ -88,11 +88,11 @@ const TopBannerAds = ({
       transition: "transform 0.5s ease-in-out"
     }}>
 
-        {bannerAds.map(ad => <a key={ad._id} href={ad.redirectUrl || "#"} target={ad.redirectUrl ? "_blank" : "_self"} rel="noopener noreferrer" className={cx("carousel-slide")}>
+        {bannerAds.map((ad, index) => <a key={ad._id} href={ad.redirectUrl || "#"} target={ad.redirectUrl ? "_blank" : "_self"} rel="noopener noreferrer" className={cx("carousel-slide")}>
             <div className={cx("banner-image-wrapper")}>
               <picture>
                 {ad.mobileImage && <source media="(max-width: 768px)" srcSet={ad.mobileImage} />}
-                <img src={ad.image} alt={ad.title || "Top banner"} width="1720" height="168" loading="eager" fetchpriority="high" decoding="async" />
+                <img src={ad.image} alt={ad.title || "Top banner"} width="1720" height="168" loading={index === 0 ? "eager" : "lazy"} fetchPriority={index === 0 ? "high" : "low"} decoding="async" />
               </picture>
 
             </div>

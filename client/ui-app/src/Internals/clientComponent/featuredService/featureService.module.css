@@ -9,6 +9,10 @@
   padding: 35px clamp(18px, 2.4vw, 44px) 20px;
   max-width: 1820px;
   width: 100%;
+  /* Match the DeferredHomeSection reservation while category data loads.
+     Without this, the mounted empty grid collapses to its padding and then
+     expands again when the API response arrives, moving every section below. */
+  min-height: var(--featured-services-reserved-height, 400px);
   margin: 0 auto;
   position: relative;
   z-index: 1;

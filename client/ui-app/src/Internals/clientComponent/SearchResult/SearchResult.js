@@ -1255,6 +1255,7 @@ const SearchResults = React.memo(
                               compact={isCompact}
                               index={idx}
                               resultPosition={idx + 1}
+                              prioritizeImage={idx === 0}
                             />
                           </div>
                         );
@@ -1349,6 +1350,7 @@ const SearchResults = React.memo(
                                   compact={isCompact}
                                   index={idx}
                                   resultPosition={idx + 1}
+                                  prioritizeImage={false}
                                 />
                               </div>
                             );

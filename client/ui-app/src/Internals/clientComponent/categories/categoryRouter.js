@@ -10,11 +10,16 @@ import axiosInstance from "../../../services/axiosInstance.js";
 const CategoriesPage = lazy(() =>
   import(/* webpackChunkName: "category-directory" */ "./categories.js")
 );
-const SearchResults = lazy(() =>
-  import(
-    /* webpackChunkName: "search" */ "../SearchResult/SearchResult.js"
-  )
-);
+let searchResultsModulePromise;
+const loadSearchResults = () => {
+  if (!searchResultsModulePromise) {
+    searchResultsModulePromise = import(
+      /* webpackChunkName: "search" */ "../SearchResult/SearchResult.js"
+    );
+  }
+  return searchResultsModulePromise;
+};
+const SearchResults = lazy(loadSearchResults);
 
 const formatText = (text = "") =>
   text
@@ -70,6 +75,9 @@ const CategoryRouter = () => {
         if (isSearchFlow && searchText) {
           setResolvedCategory(searchText);
 
+          // Fetch the route bundle alongside the data instead of creating an
+          // API -> JavaScript -> image waterfall on direct mobile visits.
+          loadSearchResults();
           const response = await dispatch(
             performSearch(
               searchText,
@@ -83,16 +91,10 @@ const CategoryRouter = () => {
           return;
         }
 
-        // Check if category has subcategories using API data
-        if (category && !subcategory && hasSubcategories(category)) {
-          setResolvedCategory(formatText(category));
-          return;
-        }
-
-
         if (subcategory) {
           const searchValue = subcategory.replace(/-/g, " ");
 
+          loadSearchResults();
           const response = await dispatch(
             performSearch(
               searchValue,
@@ -116,6 +118,7 @@ const CategoryRouter = () => {
 
 
         if (category) {
+          loadSearchResults();
           const response = await dispatch(
             performSearch(
               category,
@@ -152,11 +155,8 @@ const CategoryRouter = () => {
     isSearchFlow,
     searchText,
     passedCategoryName,
-    dispatch,
-    categories
+    dispatch
   ]);
-
-  if (!resolvedCategory) return null;
 
   if (
     !isSearchFlow &&
@@ -170,6 +170,8 @@ const CategoryRouter = () => {
       </Suspense>
     );
   }
+
+  if (!resolvedCategory) return null;
 
   return (
     <Suspense fallback={null}>
