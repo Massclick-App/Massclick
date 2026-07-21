@@ -1,9 +1,5 @@
 export const GA_TRACKING_ID = process.env.REACT_APP_GA_MEASUREMENT_ID;
 
-if (typeof window !== "undefined") {
-  console.log("[analytics] GA_TRACKING_ID at runtime:", GA_TRACKING_ID || "(missing — REACT_APP_GA_MEASUREMENT_ID was not set at build time)");
-}
-
 const TAG_QUEUE_INITIALIZED_FLAG = "__massclickGoogleTagQueueInitialized";
 const GA_QUEUE_CONFIGURED_FLAG = "__massclickGaQueueConfigured";
 
@@ -29,7 +25,6 @@ export const ensureGoogleTagQueue = () => {
     window.gtag("config", GA_TRACKING_ID, {
       send_page_view: false,
     });
-    console.log("[analytics] gtag config queued for GA4:", GA_TRACKING_ID);
   }
 
   return window.gtag;
@@ -40,7 +35,6 @@ export const ensureGoogleAnalyticsQueue = ensureGoogleTagQueue;
 export const pageview = (url) => {
   const gtag = ensureGoogleAnalyticsQueue();
   if (!gtag || !GA_TRACKING_ID) {
-    console.log("[analytics] pageview skipped for", url, "(no gtag or no GA_TRACKING_ID)");
     return;
   }
 
@@ -49,5 +43,4 @@ export const pageview = (url) => {
     page_location: `${window.location.origin}${url}`,
     page_title: document.title,
   });
-  console.log("[analytics] page_view queued:", url);
 };
