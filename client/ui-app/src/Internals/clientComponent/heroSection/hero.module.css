@@ -228,7 +228,8 @@
 
 .trust-count {
   display: inline-block;
-  min-width: 7ch;
+  width: 5rem;
+  flex: 0 0 5rem;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   text-align: center;

@@ -1,52 +1,26 @@
 import { createScopedClassNames } from "../../utils/createScopedClassNames";
-import React, { useState, useEffect, useMemo, lazy, Suspense } from "react";
+import React, { useState, useEffect, useMemo, useRef, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { viewOtpUser } from "../../redux/actions/otpAction.js";
 import { useDrawer } from "./Drawer/drawerContext.js";
-import { IconButton, Menu, MenuItem, Avatar } from "@mui/material";
 import PublishedWithChangesIcon from '@mui/icons-material/PublishedWithChanges';
-import Badge from "@mui/material/Badge";
-import { Notifications as NotificationsIcon, Mail as MailIcon, Menu as MenuIcon, AccountCircle as AccountCircleIcon, ExitToApp as ExitToAppIcon } from "@mui/icons-material";
+import { Notifications as NotificationsIcon, Mail as MailIcon, Menu as MenuIcon, AccountCircle as AccountCircleIcon } from "@mui/icons-material";
 import AppRegistrationIcon from '@mui/icons-material/AppRegistration';
 import LoginIcon from '@mui/icons-material/Login';
-import DashboardIcon from "@mui/icons-material/Dashboard";
-import BusinessCenterIcon from "@mui/icons-material/BusinessCenter";
-import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
-import EditIcon from "@mui/icons-material/Edit";
-import DescriptionIcon from "@mui/icons-material/Description";
-import HeadsetMicIcon from "@mui/icons-material/HeadsetMic";
-import PolicyIcon from "@mui/icons-material/Policy";
-import FeedbackIcon from "@mui/icons-material/Feedback";
-import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
-import FolderCopyIcon from "@mui/icons-material/FolderCopy";
 import DynamicFeedIcon from "@mui/icons-material/DynamicFeed";
 import { getDisplayableLeadNotifications } from "./leadsNotification/leadNotificationUtils.js";
 import { fetchMatchedLeads } from "../../redux/actions/leadsAction.js";
 import styles from "./categoryBar.module.css";
 
 const AddBusinessModal = lazy(() => import("./AddBusinessModel.js"));
-const DashboardPage = lazy(() => import("../clientComponent/userMenu/DashboardPage/Dashboard.js"));
-const FavoritesPage = lazy(() => import("../clientComponent/userMenu/FavouritePage/FavouritePage.js"));
-const EditProfilePage = lazy(() => import("../clientComponent/userMenu/EditProfile/EditProfilePage.js"));
-const VisitingCardPage = lazy(() => import("../clientComponent/userMenu/VisitingCard/VisitingCardPage.js"));
-const CustomerServicePage = lazy(() => import("../clientComponent/userMenu/CustomerService/CustomerServicePage.js"));
-const PolicyPage = lazy(() => import("../clientComponent/userMenu/PolicyPage/PolicyPage.js"));
-const FeedbackPage = lazy(() => import("../clientComponent/userMenu/FeedbackPage/FeedBackPage.js"));
-const HelpPage = lazy(() => import("../clientComponent/userMenu/HelpPage/HelpPage.js"));
 const LeadsNotificationModal = lazy(() => import("./leadsNotification/leadsNotification.js"));
-const MRPPage = lazy(() => import("./MRP/mrp.js"));
-const MassclickDocumentsPage = lazy(() => import("./userMenu/MassclickDocuments/MassclickDocumentsPage.js"));
-const MassclickFeedPage = lazy(() => import("./userMenu/MassclickFeed/MassclickFeedPage.js"));
+const QuickLinksMenu = lazy(() =>
+  import(
+    /* webpackChunkName: "quick-links-menu" */ "./quickLinksMenu/QuickLinksMenu.js"
+  )
+);
 const cx = createScopedClassNames(styles);
-export const isBusinessPeopleUser = (user = {}) => user?.businessPeople === true;
-
-export const getUserMenuLabel = (item, user = {}) => {
-  if (item.path === "/user_edit-profile" && isBusinessPeopleUser(user)) {
-    return "Edit Business";
-  }
-  return item.name.startsWith("User ") ? item.name.replace("User ", "") : item.name;
-};
 
 const categories = [{
   name: "Leads",
@@ -64,89 +38,14 @@ const categories = [{
   icon: <DynamicFeedIcon />
 }];
 
-export const userMenuItems = [{
-  name: "User Dashboard",
-  path: "/user_dashboard",
-  icon: <DashboardIcon color="action" />,
-  component: DashboardPage
-}, {
-  name: "User Edit Profile",
-  path: "/user_edit-profile",
-  icon: <EditIcon color="action" />,
-  component: EditProfilePage
-},
-// { name: "User Account", path: "/user_account", icon: <AccountBoxIcon color="action" />, component: AccountPage },
-{
-  name: "MNI",
-  path: "/user_mni",
-  icon: <BusinessCenterIcon color="action" />,
-  component: MRPPage,
-  businessPeopleOnly: true
-}, {
-  name: "Marketing Materials",
-  path: "/user_marketing-materials",
-  icon: <DescriptionIcon color="action" />,
-  component: VisitingCardPage,
-  businessPeopleOnly: true
-}, {
-  name: "Spotlight",
-  path: "/user_feed",
-  icon: <DynamicFeedIcon color="action" />,
-  component: MassclickFeedPage
-}, {
-  name: "Knowledge Hub",
-  path: "/user_massclick-documents",
-  icon: <FolderCopyIcon color="action" />,
-  component: MassclickDocumentsPage
-}, {
-  name: "User Favorites",
-  path: "/user_favorites",
-  icon: <FavoriteBorderIcon color="action" />,
-  component: FavoritesPage
-},
-// { name: "User Saved", path: "/user_saved", icon: <BookmarkBorderIcon color="action" />, component: SavedPage },
-// { name: "User My Transaction", path: "/user_my-transaction", icon: <AccountBalanceWalletIcon color="action" />, component: MyTransactionPage },
-// { name: "User Notifications", path: "/user_notifications", icon: <NotificationsActiveIcon color="action" />, component: NotificationsPage },
-{
-  name: "User Customer Service",
-  path: "/user_customer-service",
-  icon: <HeadsetMicIcon color="action" />,
-  component: CustomerServicePage
-},
-// { name: "User Investor Relations", path: "/user_investor-relations", icon: <TrendingUpIcon color="action" />, component: InvestorRelationsPage },
-{
-  name: "User Policy",
-  path: "/user_policy",
-  icon: <PolicyIcon color="action" />,
-  component: PolicyPage
-}, {
-  name: "User Feedback",
-  path: "/user_feedback",
-  icon: <FeedbackIcon color="action" />,
-  component: FeedbackPage
-}, {
-  name: "User Help",
-  path: "/user_help",
-  icon: <HelpOutlineIcon color="action" />,
-  component: HelpPage
-},
-// { name: "Change Language", isLanguageSwitch: true, icon: <LanguageIcon color="action" /> },
-{
-  name: "Logout",
-  isLogout: true,
-  path: "/",
-  icon: <ExitToAppIcon color="action" />
-}];
-
-export const getVisibleUserMenuItems = (user = {}) =>
-  userMenuItems.filter((item) => !item.businessPeopleOnly || isBusinessPeopleUser(user));
 const CategoryBar = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const {
     openDrawer
   } = useDrawer();
-  const [anchorEl, setAnchorEl] = useState(null);
+  const quickLinksButtonRef = useRef(null);
+  const [isQuickLinksOpen, setIsQuickLinksOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(() => !!localStorage.getItem("authToken"));
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
@@ -180,8 +79,6 @@ const CategoryBar = () => {
       dispatch(fetchMatchedLeads());
     }
   }, [dispatch]);
-  const handleMenuClick = event => setAnchorEl(event.currentTarget);
-  const handleMenuClose = () => setAnchorEl(null);
   const checkLogin = () => {
     const token = localStorage.getItem("authToken");
     setIsLoggedIn(!!token);
@@ -198,6 +95,7 @@ const CategoryBar = () => {
   }, []);
 
   const handleCategoryClick = name => {
+    setIsQuickLinksOpen(false);
     if (name === "Leads") {
       if (!localStorage.getItem("authUser")) {
         setIsModalOpen(true);
@@ -259,43 +157,63 @@ const CategoryBar = () => {
 
       <div className={cx("actionButtons")}>
 
-        <IconButton className={cx("mobileMenuButton")} onClick={handleMenuClick} aria-label="Open quick links menu">
-          <MenuIcon />
-        </IconButton>
+        <div className={cx("mobileMenuGroup")}>
+          <button
+            ref={quickLinksButtonRef}
+            type="button"
+            className={cx("mobileMenuButton")}
+            onClick={() => setIsQuickLinksOpen((open) => !open)}
+            aria-label="Open quick links menu"
+            aria-expanded={isQuickLinksOpen}
+            aria-controls={isQuickLinksOpen ? "quick-links-menu" : undefined}
+          >
+            <MenuIcon />
+          </button>
+          {isQuickLinksOpen && (
+            <Suspense fallback={null}>
+              <QuickLinksMenu
+                items={categories}
+                onClose={() => setIsQuickLinksOpen(false)}
+                onSelect={handleCategoryClick}
+                triggerRef={quickLinksButtonRef}
+              />
+            </Suspense>
+          )}
+        </div>
 
         {!isLoggedIn ? <button type="button" className={cx("authButton loginButton")} aria-label="Login or sign up" onClick={() => setIsModalOpen(true)}>
           <LoginIcon />
           <span className={cx("loginText")}>Login / Sign Up</span>
         </button> : <>
-          <IconButton onClick={openDrawer} className={cx("iconButtonPrimary")} aria-label="Open user menu">
-            <Avatar src={profileImageUrl} sx={{
-              width: 34,
-              height: 34,
-              bgcolor: 'secondary.main'
-            }}>
-              {userName ? userName[0].toUpperCase() : <AccountCircleIcon sx={{
-                color: 'white'
-              }} />}
-            </Avatar>
-          </IconButton>
+          <button type="button" onClick={openDrawer} className={cx("iconButtonPrimary")} aria-label="Open user menu">
+            <span className={cx("userAvatar")} aria-hidden="true">
+              {profileImageUrl ? (
+                <img
+                  className={cx("userAvatarImage")}
+                  src={profileImageUrl}
+                  alt=""
+                  width="34"
+                  height="34"
+                />
+              ) : userName ? (
+                userName[0].toUpperCase()
+              ) : (
+                <AccountCircleIcon />
+              )}
+            </span>
+          </button>
 
-          <IconButton className={cx("iconButtonPrimary")} onClick={() => setIsNotificationModalOpen(true)} aria-label="Open notifications">
-            <Badge badgeContent={notificationLeads.length} color="error">
+          <button type="button" className={cx("iconButtonPrimary")} onClick={() => setIsNotificationModalOpen(true)} aria-label="Open notifications">
+            <span className={cx("notificationIcon")} aria-hidden="true">
               <NotificationsIcon />
-            </Badge>
-          </IconButton>
+              {notificationLeads.length > 0 && (
+                <span className={cx("notificationBadge")}>{notificationLeads.length > 99 ? "99+" : notificationLeads.length}</span>
+              )}
+            </span>
+          </button>
         </>}
       </div>
     </div>
-
-    <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
-      {categories.map((category, index) => <MenuItem key={index} onClick={() => handleCategoryClick(category.name)}>
-        {category.icon}
-        <span style={{
-          marginLeft: 10
-        }}>{category.name}</span>
-      </MenuItem>)}
-    </Menu>
 
     {isModalOpen && (
       <Suspense fallback={null}>

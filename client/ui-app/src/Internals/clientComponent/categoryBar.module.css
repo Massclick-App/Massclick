@@ -160,10 +160,20 @@
     flex-shrink: 0;
 }
 
+.mobileMenuGroup {
+    position: relative;
+    display: flex;
+}
 
 .mobileMenuButton {
-    /* MUI's IconButton display rule is injected after this module. */
-    display: none !important;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
 }
 
 
@@ -199,14 +209,62 @@
 
 
 .iconButtonPrimary {
+    display: inline-grid;
     width: 44px;
     height: 44px;
     flex: 0 0 44px;
+    padding: 0;
+    border: 0;
     border-radius: 50%;
     background: rgba(0, 0, 0, .05);
     color: var(--text-secondary);
-
+    cursor: pointer;
     transition: var(--cb-transition);
+    place-items: center;
+}
+
+.userAvatar {
+    display: grid;
+    width: 34px;
+    height: 34px;
+    overflow: hidden;
+    border-radius: 50%;
+    background: var(--primary-color);
+    color: #fff;
+    font-size: .95rem;
+    font-weight: 700;
+    place-items: center;
+}
+
+.userAvatarImage {
+    display: block;
+    width: 34px;
+    height: 34px;
+    object-fit: cover;
+}
+
+.notificationIcon {
+    position: relative;
+    display: grid;
+    place-items: center;
+}
+
+.notificationBadge {
+    position: absolute;
+    top: -7px;
+    right: -10px;
+    display: grid;
+    min-width: 18px;
+    height: 18px;
+    padding-inline: 4px;
+    border: 2px solid #fff;
+    border-radius: 999px;
+    background: #d32f2f;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+    place-items: center;
 }
 
 
@@ -221,7 +279,7 @@ button:active {
     }
 
     .mobileMenuButton {
-        display: inline-flex !important;
+        display: inline-flex;
         width: 44px;
         height: 44px;
         border-radius: 50%;

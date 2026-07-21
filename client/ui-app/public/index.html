@@ -40,6 +40,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
+  <!-- Category and search routes need API data for their above-the-fold content.
+       Start the cross-origin DNS+TCP+TLS handshake while the HTML is parsed. -->
+  <link rel="preconnect" href="https://api.massclick.in" crossorigin>
+
   <!-- Font loading: display=optional avoids font-swap layout shifts (CLS) -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=optional" media="print" onload="this.media='all'">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=optional"></noscript>
