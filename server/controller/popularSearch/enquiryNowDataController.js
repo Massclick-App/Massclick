@@ -5,6 +5,8 @@ import {
 
 import { BAD_REQUEST } from "../../errorCodes.js";
 
+const getActor = (req) => req.authActor || req.authUser || req.user || {};
+
 export const addEnquiryNowDataAction = async (req, res) => {
   try {
     const {
@@ -12,13 +14,15 @@ export const addEnquiryNowDataAction = async (req, res) => {
       categorySlug,
       enquirySource = "Popular Searches",
 
-      userId,
-      userName,
-      mobileNumber1,
       mobileNumber2 = "",
-      email = "",
       businessName = "",
     } = req.body;
+
+    const actor = getActor(req);
+    const userId = actor.subjectId || actor.userId;
+    const userName = actor.userName || actor.name || "";
+    const mobileNumber1 = actor.mobile || actor.mobileNumber1 || "";
+    const email = actor.emailId || actor.email || "";
 
     if (!category || !userId || !mobileNumber1) {
       return res.status(400).send({ message: "Missing required fields" });

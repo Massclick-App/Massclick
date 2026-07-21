@@ -219,12 +219,13 @@ export const viewAllMassclickDocuments = async ({
   if (status === "inactive") query.isActive = false;
   if (section) query.section = { $regex: `^${escapeRegExp(section)}$`, $options: "i" };
   if (search) {
+    const safeSearch = escapeRegExp(search);
     query.$or = [
-      { title: { $regex: search, $options: "i" } },
-      { section: { $regex: search, $options: "i" } },
-      { fileName: { $regex: search, $options: "i" } },
-      { summary: { $regex: search, $options: "i" } },
-      { contentDetails: { $regex: search, $options: "i" } },
+      { title: { $regex: safeSearch, $options: "i" } },
+      { section: { $regex: safeSearch, $options: "i" } },
+      { fileName: { $regex: safeSearch, $options: "i" } },
+      { summary: { $regex: safeSearch, $options: "i" } },
+      { contentDetails: { $regex: safeSearch, $options: "i" } },
     ];
   }
 

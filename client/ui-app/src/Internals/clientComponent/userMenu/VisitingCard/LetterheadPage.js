@@ -115,7 +115,7 @@ const getBusinessProfile = (business = {}, storedUser = {}) => {
     website: business.website || "massclick.in",
     location: getBusinessAddress(business),
     category: business.category || "Business Services",
-    gst: business.gstNumber || business.gst || "",
+    gst: business.gstin || "",
     logoImage: getBusinessLogo(business),
   };
 };
