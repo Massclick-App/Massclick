@@ -71,6 +71,9 @@ const MobileFilterDrawer = lazy(() =>
     /* webpackChunkName: "mobile-filter-drawer" */ "./MobileFilterDrawer.js"
   )
 );
+const NoResultsRequestForm = lazy(() =>
+  import(/* webpackChunkName: "no-results-request" */ "./NoResultsRequestForm.js")
+);
 
 const cx = createScopedClassNames(styles);
 const DEFAULT_LOCATION = "Trichy";
@@ -1156,27 +1159,13 @@ const SearchResults = React.memo(
                   {!showInitialResultsSkeleton &&
                     !loading &&
                     results.length === 0 && (
-                      <div className={cx("no-results-container")}>
-                        <p className={cx("no-results-title")}>
-                          No results found 😔
-                        </p>
-                        {hasActiveFilters && (
-                          <button
-                            className={cx("go-home-button")}
-                            onClick={handleClearAllFilters}
-                          >
-                            Clear Filters
-                          </button>
-                        )}
-                        {!hasActiveFilters && (
-                          <button
-                            className={cx("go-home-button")}
-                            onClick={() => navigate("/")}
-                          >
-                            Go to Homepage
-                          </button>
-                        )}
-                      </div>
+                      <Suspense fallback={null}>
+                        <NoResultsRequestForm
+                          category={searchText}
+                          location={locationText}
+                          onClearFilters={hasActiveFilters ? handleClearAllFilters : null}
+                        />
+                      </Suspense>
                     )}
 
                   {showInitialResultsSkeleton ? (

@@ -26,12 +26,14 @@ import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
 import PlaceRoundedIcon from "@mui/icons-material/PlaceRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import SmartphoneRoundedIcon from "@mui/icons-material/SmartphoneRounded";
+import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import TaskAltRoundedIcon from "@mui/icons-material/TaskAltRounded";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { editBusinessList, getPendingBusinessList } from "../redux/actions/businessListAction";
 import { getAllEnquiry } from "../redux/actions/enquiryAction";
 import { getAllEventCreation } from "../redux/actions/eventAction";
+import { getSearchRequests, updateSearchRequestStatus } from "../redux/actions/searchRequestAction.js";
 import {
   fetchChatConversations,
   fetchChatUnreadCount,
@@ -44,9 +46,10 @@ const CATEGORY_META = {
   chat: { label: "CareChat", icon: ChatBubbleRoundedIcon },
   event: { label: "Events", icon: EventAvailableRoundedIcon },
   enquiry: { label: "Enquiries", icon: MailRoundedIcon },
+  searchRequest: { label: "Search Requests", icon: SearchRoundedIcon },
 };
 
-const CATEGORY_ORDER = ["all", "business", "chat", "event", "enquiry"];
+const CATEGORY_ORDER = ["all", "business", "chat", "event", "enquiry", "searchRequest"];
 const RECENT_DAYS = 7;
 const BRAND_ORANGE = "#ff6a00";
 const BRAND_NAVY = "#07145f";
@@ -114,6 +117,7 @@ export default function NotificationDropdown({ open, handleClose, onCountChange 
   } = useSelector((state) => state.businessListReducer);
   const { users = [] } = useSelector((state) => state.userReducer);
   const { enquiries = [], loading: enquiryLoading } = useSelector((state) => state.enquiryReducer);
+  const { requests: searchRequests = [], loading: searchRequestLoading } = useSelector((state) => state.searchRequests);
   const eventCreation = useSelector((state) => state.event?.eventCreation || {});
 
   const [activeFilter, setActiveFilter] = useState("all");
@@ -147,6 +151,7 @@ export default function NotificationDropdown({ open, handleClose, onCountChange 
     dispatch(getPendingBusinessList());
     dispatch(getAllEnquiry());
     dispatch(getAllEventCreation({ pageNo: 1, pageSize: 25, options: { sortBy: "createdAt", sortOrder: "desc" } }));
+    dispatch(getSearchRequests({ page: 1, limit: 100, status: "new" }));
     loadChatNotifications();
   }, [dispatch, loadChatNotifications]);
 
@@ -247,9 +252,27 @@ export default function NotificationDropdown({ open, handleClose, onCountChange 
         actionLabel: "View enquiry",
       }));
 
-    return [...businessItems, ...chatItems, ...eventItems, ...enquiryItems]
+    const searchRequestItems = searchRequests
+      .filter((request) => request.status === "new" && isRecent(request.createdAt))
+      .map((request) => ({
+        id: `search-request-${request._id}`,
+        category: "searchRequest",
+        raw: request,
+        title: request.fullName || "New search request",
+        subtitle: `${compact(request.category, "Requested service")} in ${compact(request.location, "No location")}`,
+        details: [
+          { icon: SmartphoneRoundedIcon, label: "Contact", value: request.contactNumber },
+          { icon: MailRoundedIcon, label: "Email", value: request.email },
+          { icon: SearchRoundedIcon, label: "Requirement", value: request.details },
+          { icon: AccessTimeRoundedIcon, label: "Submitted", value: formatTime(request.createdAt) },
+        ],
+        createdAt: request.createdAt,
+        actionLabel: "Mark contacted",
+      }));
+
+    return [...businessItems, ...chatItems, ...eventItems, ...enquiryItems, ...searchRequestItems]
       .sort((a, b) => (toDate(b.createdAt)?.getTime() || 0) - (toDate(a.createdAt)?.getTime() || 0));
-  }, [chatConversations, enquiries, eventCreation.data, pendingBusinessList]);
+  }, [chatConversations, enquiries, eventCreation.data, pendingBusinessList, searchRequests]);
 
   const counts = useMemo(() => ({
     all: notifications.length,
@@ -257,6 +280,7 @@ export default function NotificationDropdown({ open, handleClose, onCountChange 
     chat: chatUnreadCount || notifications.filter((item) => item.category === "chat").length,
     event: notifications.filter((item) => item.category === "event").length,
     enquiry: notifications.filter((item) => item.category === "enquiry").length,
+    searchRequest: notifications.filter((item) => item.category === "searchRequest").length,
   }), [chatUnreadCount, notifications]);
 
   useEffect(() => {
@@ -280,12 +304,23 @@ export default function NotificationDropdown({ open, handleClose, onCountChange 
     }, [])
   ), [filteredNotifications]);
 
-  const isLoading = pendingBusinessLoading || enquiryLoading || eventCreation.loading || chatLoading;
+  const isLoading = pendingBusinessLoading || enquiryLoading || eventCreation.loading || chatLoading || searchRequestLoading;
 
-  const runPrimaryAction = (item) => {
+  const runPrimaryAction = async (item) => {
     if (item.category === "business") return handleMakeLive(item.raw);
     if (item.category === "chat") return handleNavigate("/dashboard/customer-care");
     if (item.category === "event") return handleNavigate("/dashboard/event-creation");
+    if (item.category === "searchRequest") {
+      try {
+        setLoadingId(item.raw._id);
+        await dispatch(updateSearchRequestStatus(item.raw._id, "contacted"));
+        setToastMessage(`${item.raw.fullName || "Search request"} marked as contacted.`);
+        setToastOpen(true);
+      } finally {
+        setLoadingId(null);
+      }
+      return;
+    }
     return handleNavigate("/dashboard/enquiry");
   };
 

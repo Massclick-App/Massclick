@@ -6,6 +6,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { getPendingBusinessList } from "../redux/actions/businessListAction";
 import { getAllEnquiry } from "../redux/actions/enquiryAction";
 import { getAllEventCreation } from "../redux/actions/eventAction";
+import { getSearchRequests } from "../redux/actions/searchRequestAction.js";
 // import CustomDatePicker from "../components/customDatePicker";
 import NavbarBreadcrumbs from "./NavbarBreadCrump.js";
 import MenuButton from "./MenuButton";
@@ -34,6 +35,7 @@ useEffect(() => {
   dispatch(getPendingBusinessList());
   dispatch(getAllEnquiry());
   dispatch(getAllEventCreation({ pageNo: 1, pageSize: 25, options: { sortBy: "createdAt", sortOrder: "desc" } }));
+  dispatch(getSearchRequests({ page: 1, limit: 100, status: "new" }));
   fetchChatUnreadCount().then((data) => setChatUnreadCount(data?.admin || 0)).catch(() => setChatUnreadCount(0));
 
   const authSnapshot = getAuthSnapshot();
@@ -42,7 +44,7 @@ useEffect(() => {
 
   const ws = connectSocket(token);
 
-  const onBusinessPending = (data) => {
+  const onBusinessPending = () => {
     dispatch(getPendingBusinessList());
   };
   const onChatUnread = (data) => {
@@ -81,7 +83,10 @@ useEffect(() => {
   const recentEventCount = useSelector(
     (state) => (state.event?.eventCreation?.data || []).filter((item) => isRecent(item.createdAt)).length
   );
-  const notificationCount = modalCount ?? (pendingCount + chatUnreadCount + recentEnquiryCount + recentEventCount);
+  const recentSearchRequestCount = useSelector(
+    (state) => (state.searchRequests.requests || []).filter((item) => item.status === "new" && isRecent(item.createdAt)).length
+  );
+  const notificationCount = modalCount ?? (pendingCount + chatUnreadCount + recentEnquiryCount + recentEventCount + recentSearchRequestCount);
 
   const handleOpen = () => setOpen(true);
   const handleClose = () => {

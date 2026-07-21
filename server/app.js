@@ -61,6 +61,7 @@ import massclickFeedRoutes from "./routes/massclickFeedRoute.js";
 import userFeedbackRoutes from "./routes/userFeedbackRoutes.js";
 import webAnalyticsRoutes from "./routes/webAnalyticsRoute.js";
 import accountDeletionRoutes from "./routes/accountDeletionRoutes.js";
+import searchRequestRoutes from "./routes/searchRequestRoutes.js";
 import { startFCMScheduler } from "./scheduler/fcmScheduler.js";
 import { startKeywordRankCron } from "./cron/keywordRankCron.js";
 import { startS3CacheHeaderMigrationRecovery } from "./helper/mediaCleanup/s3CacheHeaderMigrationHelper.js";
@@ -159,6 +160,7 @@ app.use("/", massclickFeedRoutes);
 app.use("/", userFeedbackRoutes);
 app.use("/", webAnalyticsRoutes);
 app.use("/", accountDeletionRoutes);
+app.use("/", searchRequestRoutes);
 app.use(express.static(CLIENT_BUILD_PATH, {
   index: false,
   maxAge: "365d",

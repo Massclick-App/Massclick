@@ -41,6 +41,7 @@ import quotationReducer from './reducers/quotationReducer.js';
 import massclickDocumentsReducer from './reducers/massclickDocumentsReducer.js';
 import massclickFeedReducer from './reducers/massclickFeedReducer.js';
 import userFeedbackReducer from './reducers/userFeedbackReducer.js';
+import searchRequestReducer from './reducers/searchRequestReducer.js';
 
 const rootReducer = combineReducers({
   auth: authReducer,
@@ -84,6 +85,7 @@ const rootReducer = combineReducers({
   massclickDocuments: massclickDocumentsReducer,
   massclickFeed: massclickFeedReducer,
   userFeedback: userFeedbackReducer,
+  searchRequests: searchRequestReducer,
 });
 
 let storeInstance = null;
