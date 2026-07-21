@@ -16,27 +16,18 @@ const cx = createScopedClassNames(styles);
 
 // ─── Status helpers ──────────────────────────────────────────────────────────
 
+const STATUS_OPTIONS = [
+  { value: 'available', icon: '🟢', label: 'Available' },
+  { value: 'imported', icon: '🔵', label: 'Imported' },
+  { value: 'working', icon: '🟠', label: 'Working' },
+  { value: 'skipped', icon: '⚫', label: 'Skipped' },
+];
+
 function getLeadStatus(lead) {
   if (lead.imported_to_main) return 'imported';
   if (lead.skip_import) return 'skipped';
-  if (lead.hasMatch) return 'match';
+  if (lead.working) return 'working';
   return 'available';
-}
-
-function StatusBadge({ lead }) {
-  const s = getLeadStatus(lead);
-  const map = {
-    available: { cls: 'badge-available', icon: '🟢', text: 'Available' },
-    imported:  { cls: 'badge-imported',  icon: '🔵', text: 'Imported' },
-    skipped:   { cls: 'badge-skipped',   icon: '⚫', text: 'Skipped' },
-    match:     { cls: 'badge-match',     icon: '🟡', text: 'Has Match' },
-  };
-  const { cls, icon, text } = map[s];
-  return (
-    <span className={cx('badge', cls)}>
-      {icon} {text}
-    </span>
-  );
 }
 
 // ─── Main Component ──────────────────────────────────────────────────────────
@@ -118,17 +109,18 @@ export default function GmapsLeads() {
   };
 
   // ── Status actions ─────────────────────────────────────────────────────────
-  const handleStatusUpdate = useCallback(
-    async (lead, patch) => {
-      const key = `${lead._id}-${Object.keys(patch).join()}`;
-      setActionLoading((prev) => ({ ...prev, [key]: true }));
+  const handleStatusChange = useCallback(
+    async (lead, status) => {
+      if (status === getLeadStatus(lead)) return;
+      setActionLoading((prev) => ({ ...prev, [lead._id]: true }));
       try {
-        await dispatch(updateGmapsLeadStatus(lead._id, patch));
+        await dispatch(updateGmapsLeadStatus(lead._id, { status }));
         enqueueSnackbar('Status updated', { variant: 'success' });
+        dispatch(getGmapsLeadsStats());
       } catch {
         enqueueSnackbar('Failed to update status', { variant: 'error' });
       } finally {
-        setActionLoading((prev) => ({ ...prev, [key]: false }));
+        setActionLoading((prev) => ({ ...prev, [lead._id]: false }));
       }
     },
     [dispatch, enqueueSnackbar]
@@ -187,6 +179,13 @@ export default function GmapsLeads() {
           </div>
         </div>
         <div className={cx('stat-card')}>
+          <span className={cx('stat-icon')}>🟠</span>
+          <div>
+            <div className={cx('stat-label')}>Working</div>
+            <div className={cx('stat-value')}>{stats.working.toLocaleString()}</div>
+          </div>
+        </div>
+        <div className={cx('stat-card')}>
           <span className={cx('stat-icon')}>⚫</span>
           <div>
             <div className={cx('stat-label')}>Skipped</div>
@@ -239,6 +238,7 @@ export default function GmapsLeads() {
               <option value="all">All</option>
               <option value="available">🟢 Available</option>
               <option value="imported">🔵 Imported</option>
+              <option value="working">🟠 Working</option>
               <option value="skipped">⚫ Skipped</option>
             </select>
           </div>
@@ -349,9 +349,7 @@ export default function GmapsLeads() {
                 <tbody>
                   {leads.map((lead) => {
                     const status = getLeadStatus(lead);
-                    const canUse = status === 'available' || status === 'match';
-                    const canSkip = status === 'available' || status === 'match';
-                    const canReset = status === 'imported' || status === 'skipped';
+                    const canUse = status === 'available' || status === 'working';
 
                     return (
                       <tr key={lead._id}>
@@ -393,9 +391,24 @@ export default function GmapsLeads() {
                           {lead.phone ? lead.phone : <span className={cx('no-phone')}>—</span>}
                         </td>
 
-                        {/* Status */}
+                        {/* Status — editable action button */}
                         <td>
-                          <StatusBadge lead={lead} />
+                          <select
+                            className={cx('status-select', `status-select-${status}`)}
+                            value={status}
+                            disabled={!!actionLoading[lead._id]}
+                            onChange={(e) => handleStatusChange(lead, e.target.value)}
+                            title="Change status"
+                          >
+                            {STATUS_OPTIONS.map((opt) => (
+                              <option key={opt.value} value={opt.value}>
+                                {opt.icon} {opt.label}
+                              </option>
+                            ))}
+                          </select>
+                          {lead.hasMatch && status === 'available' && (
+                            <div className={cx('match-hint')}>⚠ possible match in listings</div>
+                          )}
                         </td>
 
                         {/* Actions */}
@@ -408,31 +421,6 @@ export default function GmapsLeads() {
                                 title="Pre-fill Business form with this data"
                               >
                                 Use Data
-                              </button>
-                            )}
-                            {canSkip && (
-                              <button
-                                className={cx('btn-skip')}
-                                disabled={actionLoading[`${lead._id}-skip_import`]}
-                                onClick={() => handleStatusUpdate(lead, { skip_import: true })}
-                                title="Mark as skipped"
-                              >
-                                Skip
-                              </button>
-                            )}
-                            {canReset && (
-                              <button
-                                className={cx('btn-reset')}
-                                disabled={actionLoading[`${lead._id}-imported_to_main,skip_import`]}
-                                onClick={() =>
-                                  handleStatusUpdate(lead, {
-                                    imported_to_main: false,
-                                    skip_import: false,
-                                  })
-                                }
-                                title="Reset to Available"
-                              >
-                                Reset
                               </button>
                             )}
                           </div>

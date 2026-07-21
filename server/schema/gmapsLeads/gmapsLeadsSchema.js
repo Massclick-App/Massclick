@@ -23,6 +23,7 @@ const gmapsLeadsSchema = new mongoose.Schema(
     details_fetched: { type: Boolean, default: false },
     imported_to_main: { type: Boolean, default: false },
     skip_import: { type: Boolean, default: false },
+    working: { type: Boolean, default: false },
     scraped_at: { type: Date, default: null },
     source: { type: String, default: "gmaps_scraper" },
   },
