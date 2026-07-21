@@ -17,6 +17,7 @@ export const loadGoogleAnalytics = () => {
     !ensureGoogleAnalyticsQueue() ||
     hasScript(`gtag/js?id=${GA_TRACKING_ID}`)
   ) {
+    console.log("[analytics] loadGoogleAnalytics skipped (no queue or already loaded)");
     return;
   }
 
@@ -24,7 +25,8 @@ export const loadGoogleAnalytics = () => {
   script.async = true;
   script.src = `https://www.googletagmanager.com/gtag/js?id=${GA_TRACKING_ID}`;
   script.dataset.massclickGa = "true";
-  script.onerror = () => {};
+  script.onerror = () => console.log("[analytics] gtag.js (GA4) failed to load");
+  script.onload = () => console.log("[analytics] gtag.js (GA4) loaded:", script.src);
 
   document.head.appendChild(script);
 };
@@ -32,15 +34,18 @@ export const loadGoogleAnalytics = () => {
 export const loadGoogleAds = () => {
   const gtag = ensureGoogleTagQueue();
   if (!gtag) {
+    console.log("[analytics] loadGoogleAds skipped (no gtag queue)");
     return;
   }
 
   if (!window[GOOGLE_ADS_CONFIGURED_FLAG]) {
     window[GOOGLE_ADS_CONFIGURED_FLAG] = true;
     gtag("config", GOOGLE_ADS_ID);
+    console.log("[analytics] gtag config queued for Ads:", GOOGLE_ADS_ID);
   }
 
   if (hasScript(`gtag/js?id=${GOOGLE_ADS_ID}`)) {
+    console.log("[analytics] Ads gtag.js already present, skipping load");
     return;
   }
 
@@ -49,13 +54,15 @@ export const loadGoogleAds = () => {
   script.src =
     `https://www.googletagmanager.com/gtag/js?id=${GOOGLE_ADS_ID}`;
   script.dataset.massclickGoogleAds = "true";
-  script.onerror = () => {};
+  script.onerror = () => console.log("[analytics] gtag.js (Ads) failed to load");
+  script.onload = () => console.log("[analytics] gtag.js (Ads) loaded — this also drains any queued GA4 config:", script.src);
 
   document.head.appendChild(script);
 };
 
 export const loadGoogleTagManager = () => {
   if (hasScript("gtm.js?id=GTM-KB44T7MH")) {
+    console.log("[analytics] GTM already present, skipping load");
     return;
   }
 
@@ -69,6 +76,8 @@ export const loadGoogleTagManager = () => {
   script.async = true;
   script.dataset.massclickGtm = "true";
   script.src = "https://www.googletagmanager.com/gtm.js?id=GTM-KB44T7MH";
+  script.onerror = () => console.log("[analytics] gtm.js failed to load");
+  script.onload = () => console.log("[analytics] gtm.js (GTM-KB44T7MH) loaded");
   document.head.appendChild(script);
 };
 

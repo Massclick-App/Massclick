@@ -93,12 +93,13 @@ const MARKETING_IDLE_FALLBACK_MS = 6000;
 let marketingScriptsStarted = false;
 let marketingIdleFallbackTimer = null;
 
-const startMarketingScripts = () => {
+const startMarketingScripts = (trigger) => {
   if (marketingScriptsStarted) {
     return;
   }
 
   marketingScriptsStarted = true;
+  console.log(`[analytics] marketing scripts triggered by: ${trigger}`);
   MARKETING_INTERACTION_EVENTS.forEach((eventName) => {
     window.removeEventListener(eventName, startMarketingScripts);
   });
@@ -110,14 +111,14 @@ const startMarketingScripts = () => {
 };
 
 MARKETING_INTERACTION_EVENTS.forEach((eventName) => {
-  window.addEventListener(eventName, startMarketingScripts, {
+  window.addEventListener(eventName, () => startMarketingScripts(eventName), {
     passive: true,
     once: true,
   });
 });
 
 marketingIdleFallbackTimer = window.setTimeout(
-  startMarketingScripts,
+  () => startMarketingScripts("idle-timeout"),
   MARKETING_IDLE_FALLBACK_MS,
 );
 
