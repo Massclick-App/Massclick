@@ -24,6 +24,7 @@ import MailRoundedIcon from "@mui/icons-material/MailRounded";
 import NotificationsActiveRoundedIcon from "@mui/icons-material/NotificationsActiveRounded";
 import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
 import PlaceRoundedIcon from "@mui/icons-material/PlaceRounded";
+import PhoneInTalkRoundedIcon from "@mui/icons-material/PhoneInTalkRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import SmartphoneRoundedIcon from "@mui/icons-material/SmartphoneRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
@@ -33,7 +34,7 @@ import { useNavigate } from "react-router-dom";
 import { editBusinessList, getPendingBusinessList } from "../redux/actions/businessListAction";
 import { getAllEnquiry } from "../redux/actions/enquiryAction";
 import { getAllEventCreation } from "../redux/actions/eventAction";
-import { getSearchRequests, updateSearchRequestStatus } from "../redux/actions/searchRequestAction.js";
+import { getSearchRequests } from "../redux/actions/searchRequestAction.js";
 import {
   fetchChatConversations,
   fetchChatUnreadCount,
@@ -267,7 +268,7 @@ export default function NotificationDropdown({ open, handleClose, onCountChange 
           { icon: AccessTimeRoundedIcon, label: "Submitted", value: formatTime(request.createdAt) },
         ],
         createdAt: request.createdAt,
-        actionLabel: "Mark contacted",
+        actionLabel: "Call customer",
       }));
 
     return [...businessItems, ...chatItems, ...eventItems, ...enquiryItems, ...searchRequestItems]
@@ -311,14 +312,8 @@ export default function NotificationDropdown({ open, handleClose, onCountChange 
     if (item.category === "chat") return handleNavigate("/dashboard/customer-care");
     if (item.category === "event") return handleNavigate("/dashboard/event-creation");
     if (item.category === "searchRequest") {
-      try {
-        setLoadingId(item.raw._id);
-        await dispatch(updateSearchRequestStatus(item.raw._id, "contacted"));
-        setToastMessage(`${item.raw.fullName || "Search request"} marked as contacted.`);
-        setToastOpen(true);
-      } finally {
-        setLoadingId(null);
-      }
+      const phone = String(item.raw.contactNumber || "").replace(/[^0-9+]/g, "");
+      if (phone) window.location.href = `tel:${phone}`;
       return;
     }
     return handleNavigate("/dashboard/enquiry");
@@ -484,9 +479,10 @@ export default function NotificationDropdown({ open, handleClose, onCountChange 
                     const meta = CATEGORY_META[item.category];
                     const Icon = meta.icon;
                     const expanded = expandedId === item.id;
+                    const isSearchRequest = item.category === "searchRequest";
 
                     return (
-                      <Box key={item.id} sx={{ bgcolor: "#ffffff" }}>
+                      <Box key={item.id} sx={{ bgcolor: "#ffffff", px: isSearchRequest ? 1 : 0, py: isSearchRequest ? 0.6 : 0 }}>
                         <ListItemButton
                           onClick={() => setExpandedId(expanded ? null : item.id)}
                           sx={{
@@ -494,13 +490,17 @@ export default function NotificationDropdown({ open, handleClose, onCountChange 
                             gap: 1.35,
                             px: 2,
                             py: 1.35,
-                            borderLeft: `3px solid ${expanded || item.unread ? BRAND_ORANGE : "transparent"}`,
-                            bgcolor: expanded ? "#fff8f2" : "#ffffff",
-                            "&:hover": { bgcolor: "#fff8f2" },
+                            borderLeft: `3px solid ${expanded || item.unread || isSearchRequest ? BRAND_ORANGE : "transparent"}`,
+                            borderRadius: isSearchRequest ? "12px 12px 0 0" : 0,
+                            border: isSearchRequest ? "1px solid #f3e2d4" : undefined,
+                            borderLeftWidth: isSearchRequest ? 4 : 3,
+                            borderLeftColor: expanded || item.unread || isSearchRequest ? BRAND_ORANGE : "transparent",
+                            bgcolor: expanded || isSearchRequest ? "#fffaf6" : "#ffffff",
+                            "&:hover": { bgcolor: isSearchRequest ? "#fff6ee" : "#fff8f2" },
                           }}
                         >
                           <Badge badgeContent={item.unread || 0} color="error" invisible={!item.unread}>
-                            <Avatar sx={{ bgcolor: "#fff3e8", color: BRAND_ORANGE, fontWeight: 900, width: 38, height: 38 }}>
+                            <Avatar sx={{ bgcolor: isSearchRequest ? "#ff6a00" : "#fff3e8", color: isSearchRequest ? "#fff" : BRAND_ORANGE, boxShadow: isSearchRequest ? "0 6px 14px rgba(255,106,0,.22)" : "none", fontWeight: 900, width: 38, height: 38 }}>
                               {Icon ? <Icon fontSize="small" /> : getInitials(item.title)}
                             </Avatar>
                           </Badge>
@@ -525,9 +525,9 @@ export default function NotificationDropdown({ open, handleClose, onCountChange 
                                 mt: 0.85,
                                 height: 21,
                                 borderRadius: "7px",
-                                bgcolor: "#f3f5fa",
-                                color: BRAND_NAVY,
-                                border: "1px solid #dfe5f0",
+                                bgcolor: isSearchRequest ? "#fff0e5" : "#f3f5fa",
+                                color: isSearchRequest ? "#c2410c" : BRAND_NAVY,
+                                border: isSearchRequest ? "1px solid #fed7aa" : "1px solid #dfe5f0",
                                 fontWeight: 800,
                               }}
                             />
@@ -535,8 +535,8 @@ export default function NotificationDropdown({ open, handleClose, onCountChange 
                         </ListItemButton>
 
                         {expanded && (
-                          <Box sx={{ px: 2, pb: 1.6, pl: { xs: 2, sm: 8 }, bgcolor: "#fff8f2" }}>
-                            <Stack gap={0.75} sx={{ mb: 1.35 }}>
+                          <Box sx={{ px: 2, pb: 1.6, pt: isSearchRequest ? 1.1 : 0, pl: { xs: 2, sm: 8 }, bgcolor: isSearchRequest ? "#fffaf6" : "#fff8f2", border: isSearchRequest ? "1px solid #f3e2d4" : 0, borderTop: 0, borderRadius: isSearchRequest ? "0 0 12px 12px" : 0 }}>
+                            <Stack gap={isSearchRequest ? 1 : 0.75} sx={{ mb: 1.35, p: isSearchRequest ? 1.25 : 0, bgcolor: isSearchRequest ? "#fff" : "transparent", border: isSearchRequest ? "1px solid #f1e8e0" : 0, borderRadius: isSearchRequest ? 2 : 0 }}>
                               {item.details.map(({ icon: DetailIcon, label, value }) => (
                                 <Stack key={label} direction="row" alignItems="center" gap={1}>
                                   <DetailIcon sx={{ color: BRAND_ORANGE, fontSize: 17 }} />
@@ -558,15 +558,15 @@ export default function NotificationDropdown({ open, handleClose, onCountChange 
                                 variant="contained"
                                 onClick={() => runPrimaryAction(item)}
                                 disabled={loadingId === item.raw._id}
-                                endIcon={item.category === "business" ? <TaskAltRoundedIcon /> : <OpenInNewRoundedIcon />}
+                                endIcon={item.category === "business" ? <TaskAltRoundedIcon /> : isSearchRequest ? <PhoneInTalkRoundedIcon /> : <OpenInNewRoundedIcon />}
                                 sx={{
                                   borderRadius: "8px",
                                   textTransform: "none",
                                   fontWeight: 900,
-                                  bgcolor: BRAND_ORANGE,
+                                  bgcolor: isSearchRequest ? BRAND_NAVY : BRAND_ORANGE,
                                   color: "#ffffff",
                                   boxShadow: "0 8px 18px rgba(255, 106, 0, 0.24)",
-                                  "&:hover": { bgcolor: "#e85f00" },
+                                  "&:hover": { bgcolor: isSearchRequest ? "#13247d" : "#e85f00" },
                                   "&:disabled": { bgcolor: "#f5b07b", color: "#ffffff" },
                                 }}
                               >
