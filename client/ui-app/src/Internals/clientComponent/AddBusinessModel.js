@@ -28,6 +28,63 @@ import { Link as RouterLink } from 'react-router-dom';
 import { Link as MuiLink } from '@mui/material';
 import { useSnackbar } from "../../components/snackbar/SnackbarProvider.js";
 
+const InstantTransition = React.forwardRef(function InstantTransition(
+    {
+        children,
+        in: isOpen,
+        onEnter,
+        onExited,
+        ...childProps
+    },
+    ref,
+) {
+    const transitionCallbacksRef = React.useRef({
+        onEnter,
+        onExited,
+    });
+
+    transitionCallbacksRef.current = {
+        onEnter,
+        onExited,
+    };
+
+    React.useLayoutEffect(() => {
+        const callbacks = transitionCallbacksRef.current;
+
+        if (isOpen) {
+            callbacks.onEnter?.();
+            return;
+        }
+
+        callbacks.onExited?.();
+    }, [isOpen]);
+
+    const forwardedChildProps = { ...childProps };
+    [
+        'addEndListener',
+        'appear',
+        'easing',
+        'enter',
+        'exit',
+        'mountOnEnter',
+        'nodeRef',
+        'onEntered',
+        'onEntering',
+        'onExit',
+        'onExiting',
+        'ownerState',
+        'timeout',
+        'unmountOnExit',
+    ].forEach((propName) => {
+        delete forwardedChildProps[propName];
+    });
+
+    return React.cloneElement(children, {
+        ...forwardedChildProps,
+        ref,
+    });
+});
+
 const LogoComponent = () => (
     <Box sx={{ mb: 3, textAlign: 'center' }}>
         <Typography
@@ -60,7 +117,7 @@ const LogoComponent = () => (
                 letterSpacing: '0.3px',
             }}
         >
-            India's Leading Local Search Engine
+            India&apos;s Leading Local Search Engine
         </Typography>
     </Box>
 );
@@ -68,6 +125,7 @@ const LogoComponent = () => (
 const OTPLoginModal = ({ open, handleClose, onMaybeLater }) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const [isDialogOpen, setIsDialogOpen] = React.useState(false);
     const [mobileNumber, setMobileNumber] = React.useState('');
     const [agreed, setAgreed] = React.useState(false);
 
@@ -85,6 +143,30 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater }) => {
         onMaybeLater?.();
         handleClose();
     };
+
+    React.useEffect(() => {
+        if (!open) {
+            setIsDialogOpen(false);
+            return undefined;
+        }
+
+        let openFrameId;
+        const layoutFrameId = window.requestAnimationFrame(() => {
+            // Leave one full rendering opportunity between the hidden mount and
+            // opening. MUI writes Modal.scrollTop on open; pre-laying out the
+            // subtree keeps that write from synchronously laying out the dialog.
+            openFrameId = window.requestAnimationFrame(() => {
+                setIsDialogOpen(true);
+            });
+        });
+
+        return () => {
+            window.cancelAnimationFrame(layoutFrameId);
+            if (openFrameId !== undefined) {
+                window.cancelAnimationFrame(openFrameId);
+            }
+        };
+    }, [open]);
 
     React.useEffect(() => {
         const storedMobile = localStorage.getItem("mobileNumber");
@@ -221,23 +303,24 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater }) => {
 
     return (
         <Dialog
-            open={open}
+            open={open && isDialogOpen}
             onClose={handleClose}
+            keepMounted
             maxWidth="sm"
             fullWidth={false}
             disableScrollLock
-            TransitionProps={{
-                appear: false,
+            slots={{
+                transition: InstantTransition,
             }}
-            BackdropProps={{
-                slotProps: {
-                    transition: {
-                        appear: false,
+            slotProps={{
+                backdrop: {
+                    slots: {
+                        transition: InstantTransition,
                     },
-                },
-                sx: {
-                    backdropFilter: 'blur(12px)',
-                    backgroundColor: 'rgba(15, 23, 42, 0.55)',
+                    sx: {
+                        backdropFilter: 'blur(12px)',
+                        backgroundColor: 'rgba(15, 23, 42, 0.55)',
+                    },
                 },
             }}
             sx={{
@@ -621,7 +704,7 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater }) => {
                                             },
                                         }}
                                     >
-                                        Didn't receive code? Resend OTP
+                                        Didn&apos;t receive code? Resend OTP
                                     </Link>
                                 )}
                             </Box>
