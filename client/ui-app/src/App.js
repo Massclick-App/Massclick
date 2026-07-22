@@ -86,6 +86,7 @@ const GlobalDrawer = lazy(() => import(/* webpackChunkName: "drawer" */ './Inter
 const SeoData = lazy(() => import(/* webpackChunkName: "admin-seo" */ './Internals/seoData/seoData.js'));
 const SeoPageContent = lazy(() => import(/* webpackChunkName: "admin-seo-content" */ './Internals/seoData/seoPageContent/seoPageContent.js'));
 const SeoPageContentBlogs = lazy(() => import(/* webpackChunkName: "admin-seo-blogs" */ './Internals/seoData/seoPageContentBlog/seoPageContentBlog.js'));
+const SeoTemplate = lazy(() => import(/* webpackChunkName: "admin-seo-templates" */ './Internals/seoData/seoTemplate/seoTemplate.js'));
 const AuthorMaster = lazy(() => import(/* webpackChunkName: "admin-author-master" */ './Internals/seoData/authorMaster/authorMaster.js'));
 const AdminDataAnalytics = lazy(() => import(/* webpackChunkName: "admin-data-analytics" */ './components/adminAnalytics/AdminDataAnalytics.js'));
 const UnifiedAnalytics = lazy(() => import(/* webpackChunkName: "admin-unified-analytics" */ './components/unifiedAnalytics/UnifiedAnalytics.js'));
@@ -295,6 +296,7 @@ function AppRoutes({
                 <Route path="seo" element={<SeoData />} />
                 <Route path="seopagecontent" element={<SeoPageContent />} />
                 <Route path="seopagecontentblogs" element={<SeoPageContentBlogs />} />
+                <Route path="seotemplates" element={<SeoTemplate />} />
                 <Route path="authors" element={<AuthorMaster />} />
                 <Route path="data-analytics" element={<AdminDataAnalytics />} />
                 <Route path="analytics-overview" element={<UnifiedAnalytics />} />

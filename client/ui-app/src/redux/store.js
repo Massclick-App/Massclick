@@ -17,6 +17,7 @@ import leadsReducer from './reducers/leadsReducer.js';
 import advertisementReducer from './reducers/advertisementReducer.js';
 import seoReducer from './reducers/seoReducer.js';
 import seoPageContentReducer from './reducers/seoPageContentReducer.js'
+import seoTemplateReducer from './reducers/seoTemplateReducer.js'
 import mrpReducer from './reducers/mrpReducer.js';
 import enquiryNowReducer from './reducers/popularSearchesReducer.js';
 import reviewReducer from './reducers/reviewReducer.js';
@@ -61,6 +62,7 @@ const rootReducer = combineReducers({
   advertisement: advertisementReducer,
   seoReducer,
   seoPageContentReducer,
+  seoTemplateReducer,
   seoPageContentBlogReducer,
   authorMasterReducer,
   mrp: mrpReducer,
