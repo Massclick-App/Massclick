@@ -103,3 +103,4 @@ client/ui-app/src/Internals/seoData/metaseoData.json
 /.claude
 /outputs
 /docs
+/server/migrations
