@@ -24,6 +24,9 @@
   box-shadow: 0 6px 22px rgba(15, 23, 42, 0.08);
   z-index: 1100;
   backdrop-filter: blur(8px);
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: clip;
 }
 
 .search-header-content {
@@ -424,6 +427,9 @@
     gap: 14px;
     justify-content: space-between;
     align-items: center;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   .logo-section {
@@ -455,6 +461,8 @@
     flex-direction: column;
     gap: 10px;
     margin-top: 6px;
+    min-width: 0;
+    max-width: 100%;
   }
 
   .cards-location-group,
@@ -463,6 +471,9 @@
     height: 50px;
     border-radius: 11px;
     box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   .cards-custom-input {
