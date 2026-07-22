@@ -39,8 +39,9 @@ export const getSearchRequests = ({ page = 1, limit = 25, status = "" } = {}) =>
   try {
     const params = new URLSearchParams({ page, limit, status });
     const response = await axiosInstance.get(`${API_URL}/admin/search-requests?${params.toString()}`);
-    dispatch({ type: FETCH_SEARCH_REQUESTS_SUCCESS, payload: response.data.data });
-    return response.data.data;
+    const result = response?.data?.data ?? response?.data;
+    dispatch({ type: FETCH_SEARCH_REQUESTS_SUCCESS, payload: result });
+    return result;
   } catch (error) {
     const payload = error.response?.data || { message: error.message };
     dispatch({ type: FETCH_SEARCH_REQUESTS_FAILURE, payload });

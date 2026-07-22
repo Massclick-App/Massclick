@@ -27,8 +27,19 @@ export default function searchRequestReducer(state = initialState, action) {
     case UPDATE_SEARCH_REQUEST_REQUEST:
     case DELETE_SEARCH_REQUEST_REQUEST:
       return { ...state, loading: true, error: null };
-    case FETCH_SEARCH_REQUESTS_SUCCESS:
-      return { ...state, loading: false, requests: action.payload.items || [], total: action.payload.total || 0, page: action.payload.page || 1, limit: action.payload.limit || 25, pages: action.payload.pages || 0 };
+    case FETCH_SEARCH_REQUESTS_SUCCESS: {
+      const payload = action.payload ?? {};
+      const requests = Array.isArray(payload) ? payload : Array.isArray(payload.items) ? payload.items : [];
+      return {
+        ...state,
+        loading: false,
+        requests,
+        total: payload.total ?? requests.length,
+        page: payload.page ?? 1,
+        limit: payload.limit ?? 25,
+        pages: payload.pages ?? 0,
+      };
+    }
     case FETCH_SEARCH_REQUEST_SUCCESS:
       return { ...state, loading: false, selectedRequest: action.payload };
     case UPDATE_SEARCH_REQUEST_SUCCESS:
