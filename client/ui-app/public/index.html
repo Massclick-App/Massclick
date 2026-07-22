@@ -54,7 +54,7 @@
 
       const fontStylesheet = document.createElement("link");
       fontStylesheet.rel = "stylesheet";
-      fontStylesheet.href = "https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=optional";
+      fontStylesheet.href = "https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=optional";
       fontStylesheet.media = "print";
       fontStylesheet.addEventListener("load", () => {
         fontStylesheet.media = "(min-width: 768px)";
@@ -68,7 +68,7 @@
   <link rel="preconnect" href="https://api.massclick.in" crossorigin>
 
   <!-- Font loading: display=optional avoids font-swap layout shifts (CLS) -->
-  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=optional" media="(min-width: 768px)"></noscript>
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=optional" media="(min-width: 768px)"></noscript>
 
   <!-- Preconnect to the S3 image origin: card/banner images (usually the LCP
        element) come from here, and the cold DNS+TCP+TLS handshake to
