@@ -255,6 +255,7 @@ function AppRoutes({
           <Route path="/user_visiting-card" element={<Navigate to="/user_marketing-materials" replace />} />
           <Route path="/user_letterhead" element={<Navigate to="/user_marketing-materials?type=letterhead" replace />} />
           <Route path="/user_quotation" element={<Navigate to="/user_marketing-materials?type=quotation" replace />} />
+          <Route path="/user_voucher" element={<Navigate to="/user_marketing-materials?type=voucher" replace />} />
           <Route path="/user_massclick-documents" element={<UserMassclickDocumentsPage />} />
           <Route path="/user_feed" element={<UserMassclickFeedPage />} />
           <Route path="/user_favorites" element={<UserFavoritesPage />} />
