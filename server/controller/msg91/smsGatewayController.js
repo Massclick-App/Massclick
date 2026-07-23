@@ -1,4 +1,4 @@
-import { fakesendOtp, sendOtp, verifyOtp, fakeverifyOtp } from "../../helper/msg91/smsGatewayHelper.js";
+import { fakesendOtp, sendOtp, sendMobileOtp, verifyOtp, fakeverifyOtp } from "../../helper/msg91/smsGatewayHelper.js";
 import jwt from "jsonwebtoken";
 import User from "../../model/msg91Model/usersModels.js";
 import { getSignedUrlByKey } from "../../s3Uploder.js";
@@ -66,7 +66,10 @@ const verifyGooglePlayReviewOtp = (providedOtp, expectedOtp) => {
   }
 };
 
-export const sendOtpAction = async (req, res) => {
+// Shared by the web and mobile send-OTP endpoints. They differ only in which
+// MSG91 template `sendRealOtp` puts the SMS on; every other rule (reviewer
+// bypass, dummy-OTP setting, isNewUser) has to stay identical between them.
+const handleSendOtp = async (req, res, sendRealOtp) => {
   const { phoneNumber } = req.body;
 
   if (!phoneNumber) {
@@ -103,7 +106,7 @@ export const sendOtpAction = async (req, res) => {
       existingUser = await User.findOne({ mobileNumber1: cleanNumber });
       const settings = await getSettings();
       result = settings.otp_real_enabled
-        ? await sendOtp(cleanNumber)
+        ? await sendRealOtp(cleanNumber)
         : await fakesendOtp(cleanNumber);
     }
 
@@ -117,7 +120,7 @@ export const sendOtpAction = async (req, res) => {
 
   } catch (error) {
 
-    console.error("Controller Error (sendOtpAction):", error.message);
+    console.error("Controller Error (handleSendOtp):", error.message);
 
     return res.status(500).json({
       success: false,
@@ -127,6 +130,13 @@ export const sendOtpAction = async (req, res) => {
 
   }
 };
+
+export const sendOtpAction = (req, res) => handleSendOtp(req, res, sendOtp);
+
+// Mobile app entry point. Same contract as sendOtpAction, but the SMS goes out
+// on the SMS Retriever template so the app can auto-fill the code.
+export const sendMobileOtpAction = (req, res) =>
+  handleSendOtp(req, res, sendMobileOtp);
 
 export const verifyOtpAction = async (req, res) => {
   try {
