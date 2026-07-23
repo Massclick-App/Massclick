@@ -1339,7 +1339,7 @@ export const updateBusinessListAction = async (req, res) => {
 };
 
 const SECTION_FIELD_MAPPING = {
-  'address': ['plotNumber', 'street', 'pincode', 'location', 'masterLocation', 'globalAddress'],
+  'address': ['businessName', 'plotNumber', 'street', 'pincode', 'location', 'masterLocation', 'globalAddress'],
   'contact': ['email', 'contact', 'contactList', 'whatsappNumber'],
   'business-info': ['gstin', 'experience'],
   'location-web': ['googleMap', 'geoLatitude', 'geoLongitude', 'website', 'geoLocation'],
