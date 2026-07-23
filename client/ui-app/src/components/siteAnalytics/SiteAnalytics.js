@@ -351,7 +351,10 @@ export default function SiteAnalytics() {
   const [exportError, setExportError] = useState("");
 
   const queryFilters = useMemo(() => {
-    const f = {};
+    // Pinned to the browser tracker so app traffic never lands in this panel.
+    // Server-side this also matches rows written before the platform field
+    // existed; mobile lives in its own App Analytics panel.
+    const f = { platform: "web" };
     if (filters.mode === "custom" && (filters.start || filters.end)) {
       if (filters.start) f.start = filters.start;
       if (filters.end) f.end = filters.end;
