@@ -152,12 +152,16 @@ function overviewSheet(workbook, { overview, meta, filters }) {
 
   const metrics = [
     ["Unique visitors", "visitors"],
+    ["New users", "newVisitors"],
     ["Sessions", "sessions"],
     ["Page views", "pageViews"],
     ["Pages / session", "pagesPerSession"],
+    ["Bounce rate (%)", "bounceRate"],
     ["Logged-in customers", "identifiedUsers"],
     ["Business views", "businessViews"],
     ["Interactions", "interactions"],
+    ["Leads", "leads"],
+    ["Form submissions", "formSubmissions"],
     ["Searches", "searches"],
     ["Result clicks", "resultClicks"],
   ];
@@ -199,11 +203,11 @@ export async function exportSiteAnalyticsWorkbook({ overview, trends, devices, p
     subtitle: "Per-day visitors, sessions, page views, business clicks, and searches (IST).",
     meta,
     filters,
-    headers: ["Date", "Visitors", "Sessions", "Page views", "Business clicks", "Searches"],
-    widths: [16, 14, 14, 14, 18, 14],
-    numeric: [2, 3, 4, 5, 6],
+    headers: ["Date", "Visitors", "New users", "Sessions", "Page views", "Bounce rate (%)", "Business views", "Business clicks", "Leads", "Form submissions", "Searches", "Result clicks"],
+    widths: [14, 12, 12, 12, 13, 15, 15, 15, 11, 17, 12, 13],
+    numeric: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
     data: trends,
-    map: (r) => [r.date, num(r.visitors), num(r.sessions), num(r.pageViews), num(r.businessClicks), num(r.searches)],
+    map: (r) => [r.date, num(r.visitors), num(r.newVisitors), num(r.sessions), num(r.pageViews), num(r.bounceRate), num(r.businessViews), num(r.businessClicks), num(r.leads), num(r.formSubmissions), num(r.searches), num(r.resultClicks)],
   });
 
   detailSheet(workbook, {

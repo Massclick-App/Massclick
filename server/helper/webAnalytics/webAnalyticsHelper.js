@@ -285,14 +285,37 @@ const resolveRange = (query = {}) => {
     return { start, end, previousStart, days, custom: false };
 };
 
-// device / browser filters apply to any event-level aggregation. Returns a new
-// $match object combining the time window with the optional dimension filters.
-const baseMatch = (start, end, query = {}) => {
-    const match = { ts: { $gte: start, $lt: end } };
+// The device / browser slice on its own, with no time bound. Used by the
+// first-seen lookups that must look further back than the active window.
+const dimensionMatch = (query = {}) => {
+    const match = {};
     if (query.device && DEVICE_TYPES.includes(query.device)) match.device = query.device;
     if (query.browser) match.browser = query.browser;
     return match;
 };
+
+// device / browser filters apply to any event-level aggregation. Returns a new
+// $match object combining the time window with the optional dimension filters.
+const baseMatch = (start, end, query = {}) => ({
+    ts: { $gte: start, $lt: end },
+    ...dimensionMatch(query),
+});
+
+// A visitor is "new" when their first-ever event (within the 90-day raw
+// retention window) falls inside the active range — so this deliberately looks
+// outside the window to tell a returning device from a first-time one.
+const countNewVisitors = async (start, end, query) => {
+    const scope = dimensionMatch(query);
+    const [row] = await webEventModel.aggregate([
+        ...(Object.keys(scope).length ? [{ $match: scope }] : []),
+        { $group: { _id: "$deviceId", firstSeen: { $min: "$ts" } } },
+        { $match: { firstSeen: { $gte: start, $lt: end } } },
+        { $count: "n" },
+    ]);
+    return row?.n || 0;
+};
+
+const percent = (part, whole) => (whole ? Math.round((part / whole) * 1000) / 10 : 0);
 
 const sortDir = (dir) => (dir === "asc" ? 1 : -1);
 
@@ -318,6 +341,31 @@ const overviewForRange = async (start, end, query) => {
                     { $group: { _id: "$userId" } },
                     { $count: "n" },
                 ],
+                // A bounce is a session that never got past its first page.
+                bounce: [
+                    {
+                        $group: {
+                            _id: "$sessionId",
+                            pageViews: { $sum: { $cond: [{ $eq: ["$type", "page_view"] }, 1, 0] } },
+                        },
+                    },
+                    {
+                        $group: {
+                            _id: null,
+                            sessions: { $sum: 1 },
+                            bounced: { $sum: { $cond: [{ $lte: ["$pageViews", 1] }, 1, 0] } },
+                        },
+                    },
+                ],
+                // Form submissions are enquiry-form clicks on a listing.
+                enquiries: [
+                    { $match: { type: "business_click", "biz.action": "enquiry" } },
+                    { $count: "n" },
+                ],
+                leads: [
+                    { $match: { type: "business_click", "biz.action": { $in: [...LEAD_ACTIONS] } } },
+                    { $count: "n" },
+                ],
             },
         },
     ]);
@@ -327,6 +375,7 @@ const overviewForRange = async (start, end, query) => {
 
     const sessions = result?.sessions?.[0]?.n || 0;
     const pageViews = counts.page_view || 0;
+    const bounce = result?.bounce?.[0] || { sessions: 0, bounced: 0 };
 
     return {
         pageViews,
@@ -338,18 +387,27 @@ const overviewForRange = async (start, end, query) => {
         interactions: counts.business_click || 0,
         searches: counts.search || 0,
         resultClicks: counts.search_result_click || 0,
+        bounceRate: percent(bounce.bounced, bounce.sessions),
+        formSubmissions: result?.enquiries?.[0]?.n || 0,
+        leads: result?.leads?.[0]?.n || 0,
     };
 };
 
 export const getOverview = async (query) => {
     const { start, end, previousStart, days } = resolveRange(query);
 
-    const [current, previous] = await Promise.all([
+    const [current, previous, newVisitors, previousNewVisitors] = await Promise.all([
         overviewForRange(start, end, query),
         overviewForRange(previousStart, start, query),
+        countNewVisitors(start, end, query),
+        countNewVisitors(previousStart, start, query),
     ]);
 
-    return { days, current, previous };
+    return {
+        days,
+        current: { ...current, newVisitors },
+        previous: { ...previous, newVisitors: previousNewVisitors },
+    };
 };
 
 export const getTrends = async (query) => {
@@ -358,39 +416,71 @@ export const getTrends = async (query) => {
         $dateToString: { format: "%Y-%m-%d", date: "$ts", timezone: DASHBOARD_TIMEZONE },
     };
 
-    const [result] = await webEventModel.aggregate([
-        { $match: baseMatch(start, end, query) },
-        {
-            $facet: {
-                bySession: [
-                    {
-                        $group: {
-                            _id: { day: dayExpr, sessionId: "$sessionId" },
-                            pageViews: { $sum: { $cond: [{ $eq: ["$type", "page_view"] }, 1, 0] } },
-                            businessClicks: { $sum: { $cond: [{ $eq: ["$type", "business_click"] }, 1, 0] } },
-                            searches: { $sum: { $cond: [{ $eq: ["$type", "search"] }, 1, 0] } },
+    const typeSum = (type) => ({ $sum: { $cond: [{ $eq: ["$type", type] }, 1, 0] } });
+    const scope = dimensionMatch(query);
+
+    const [[result], newVisitorRows] = await Promise.all([
+        webEventModel.aggregate([
+            { $match: baseMatch(start, end, query) },
+            {
+                $facet: {
+                    bySession: [
+                        {
+                            $group: {
+                                _id: { day: dayExpr, sessionId: "$sessionId" },
+                                pageViews: typeSum("page_view"),
+                                businessViews: typeSum("business_view"),
+                                businessClicks: typeSum("business_click"),
+                                searches: typeSum("search"),
+                                resultClicks: typeSum("search_result_click"),
+                                formSubmissions: {
+                                    $sum: { $cond: [{ $eq: ["$biz.action", "enquiry"] }, 1, 0] },
+                                },
+                                leads: {
+                                    $sum: { $cond: [{ $in: ["$biz.action", [...LEAD_ACTIONS]] }, 1, 0] },
+                                },
+                            },
                         },
-                    },
-                    {
-                        $group: {
-                            _id: "$_id.day",
-                            sessions: { $sum: 1 },
-                            pageViews: { $sum: "$pageViews" },
-                            businessClicks: { $sum: "$businessClicks" },
-                            searches: { $sum: "$searches" },
+                        {
+                            $group: {
+                                _id: "$_id.day",
+                                sessions: { $sum: 1 },
+                                pageViews: { $sum: "$pageViews" },
+                                businessViews: { $sum: "$businessViews" },
+                                businessClicks: { $sum: "$businessClicks" },
+                                searches: { $sum: "$searches" },
+                                resultClicks: { $sum: "$resultClicks" },
+                                formSubmissions: { $sum: "$formSubmissions" },
+                                leads: { $sum: "$leads" },
+                                bounced: { $sum: { $cond: [{ $lte: ["$pageViews", 1] }, 1, 0] } },
+                            },
                         },
-                    },
-                ],
-                byVisitor: [
-                    { $group: { _id: { day: dayExpr, deviceId: "$deviceId" } } },
-                    { $group: { _id: "$_id.day", visitors: { $sum: 1 } } },
-                ],
+                    ],
+                    byVisitor: [
+                        { $group: { _id: { day: dayExpr, deviceId: "$deviceId" } } },
+                        { $group: { _id: "$_id.day", visitors: { $sum: 1 } } },
+                    ],
+                },
             },
-        },
+        ]),
+        // New visitors per day: bucketed by each device's first-ever event, so
+        // this pipeline is deliberately not bounded by the active window.
+        webEventModel.aggregate([
+            ...(Object.keys(scope).length ? [{ $match: scope }] : []),
+            { $group: { _id: "$deviceId", firstSeen: { $min: "$ts" } } },
+            { $match: { firstSeen: { $gte: start, $lt: end } } },
+            {
+                $group: {
+                    _id: { $dateToString: { format: "%Y-%m-%d", date: "$firstSeen", timezone: DASHBOARD_TIMEZONE } },
+                    n: { $sum: 1 },
+                },
+            },
+        ]),
     ]);
 
     const sessionRows = new Map((result?.bySession || []).map((row) => [row._id, row]));
     const visitorRows = new Map((result?.byVisitor || []).map((row) => [row._id, row.visitors]));
+    const newVisitorsByDay = new Map((newVisitorRows || []).map((row) => [row._id, row.n]));
 
     // Emit a row for every calendar day in the window so charts render gapless.
     // Stepping forward from `start` covers both preset and custom ranges; IST
@@ -403,13 +493,22 @@ export const getTrends = async (query) => {
         if (seen.has(day)) continue;
         seen.add(day);
         const row = sessionRows.get(day);
+        const sessions = row?.sessions || 0;
+        const pageViews = row?.pageViews || 0;
         trend.push({
             date: day,
             visitors: visitorRows.get(day) || 0,
-            sessions: row?.sessions || 0,
-            pageViews: row?.pageViews || 0,
+            newVisitors: newVisitorsByDay.get(day) || 0,
+            sessions,
+            pageViews,
+            businessViews: row?.businessViews || 0,
             businessClicks: row?.businessClicks || 0,
             searches: row?.searches || 0,
+            resultClicks: row?.resultClicks || 0,
+            formSubmissions: row?.formSubmissions || 0,
+            leads: row?.leads || 0,
+            pagesPerSession: sessions ? Math.round((pageViews / sessions) * 100) / 100 : 0,
+            bounceRate: percent(row?.bounced || 0, sessions),
         });
     }
 
