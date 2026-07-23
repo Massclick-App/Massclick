@@ -1,4 +1,5 @@
 import OAuth2Server from 'oauth2-server';
+import { AsyncLocalStorage } from 'async_hooks';
 import oauthModel from '../model/oauthModel.js';
 import clientModel from '../model/clientModel.js';
 import { createHttpAuthMiddleware } from "../auth/authMiddleware.js";
@@ -7,11 +8,13 @@ import crypto from 'crypto';
 import { getRolePermissions } from "../auth/authRoles.js";
 
 // ── Request context store ─────────────────────────────────────────────────────
-let _currentRequestBody = {};
+// Scoped per async call chain so concurrent requests can't read each other's
+// device_id (a shared module-level variable here previously let request B's
+// body clobber request A's before A's oauthtoken.token() awaited down to
+// getUserFromClient).
+const requestContextStorage = new AsyncLocalStorage();
 
-export const setRequestContext = (body) => {
-  _currentRequestBody = body || {};
-};
+export const withRequestContext = (body, fn) => requestContextStorage.run(body || {}, fn);
 
 // ---------- OAuth2 Server Model Functions ----------
 
@@ -28,7 +31,7 @@ const getClient = async (clientId, clientSecret) => {
 };
 
 const getUserFromClient = async (client) => {
-  const deviceId = _currentRequestBody?.device_id || 'unknown';
+  const deviceId = requestContextStorage.getStore()?.device_id || 'unknown';
   return {
     userId: client.id,
     userName: client.clientId,
@@ -46,6 +49,11 @@ const saveToken = async (token, client, user) => {
   const tokenData = {
     accessToken: token.accessToken,
     accessTokenExpiresAt: token.accessTokenExpiresAt,
+    // Later of the two expiries, so the TTL index reaps once the session is
+    // truly done rather than at access-token expiry (which would delete
+    // admin sessions still eligible for refresh).
+    expiresAt: token.refreshTokenExpiresAt || token.accessTokenExpiresAt,
+    isClientCredential: isClientCredentials,
     client: {
       id: String(client.id),
       clientId: client.clientId,
@@ -69,12 +77,13 @@ const saveToken = async (token, client, user) => {
 
   if (isClientCredentials) {
     const deviceId = user?.deviceId || 'unknown';
-    await oauthModel.deleteOne({
-      'client.clientId': client.clientId,
-      deviceId,
-    });
-    const tokenInstance = new oauthModel({ ...tokenData, deviceId });
-    const saved = await tokenInstance.save();
+    // Atomic upsert instead of deleteOne+save: two concurrent requests from
+    // the same device can no longer both survive as separate rows.
+    const saved = await oauthModel.findOneAndUpdate(
+      { 'client.clientId': client.clientId, deviceId },
+      { $set: { ...tokenData, deviceId } },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
     return saved;
   }
 
