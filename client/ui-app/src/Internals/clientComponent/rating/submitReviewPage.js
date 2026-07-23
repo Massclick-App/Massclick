@@ -8,7 +8,7 @@ import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import { getBusinessDetailsById } from '../../../redux/actions/businessListAction';
 import { createReview } from '../../../redux/actions/reviewAction';
 import styles from "./submitReview.module.css";
-import StickySearchBar from '../CardsSearch/CardsSearch';
+import StickySearchBar from '../StickySearchBar/StickySearchBar';
 import Footer from '../footer/footer';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
