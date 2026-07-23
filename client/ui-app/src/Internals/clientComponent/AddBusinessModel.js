@@ -122,7 +122,7 @@ const LogoComponent = () => (
     </Box>
 );
 
-const OTPLoginModal = ({ open, handleClose, onMaybeLater }) => {
+const OTPLoginModal = ({ open, handleClose, onMaybeLater, onSuccess }) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const [isDialogOpen, setIsDialogOpen] = React.useState(false);
@@ -249,6 +249,7 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater }) => {
 
                 await registerWebFCMToken();
                 identify(getCustomerUser()?._id);
+                onSuccess?.(getCustomerUser());
                 handleClose();
             }
         } catch (error) {

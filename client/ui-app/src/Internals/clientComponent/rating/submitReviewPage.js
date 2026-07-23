@@ -19,6 +19,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import OTPLoginModal from '../AddBusinessModel';
 import Tooltip from "@mui/material/Tooltip";
 import { useSnackbar } from "../../../components/snackbar/SnackbarProvider.js";
+import { AUTH_STATE_EVENT, getAuthSnapshot } from "../../../auth/authStore.js";
 const cx = createScopedClassNames(styles);
 const labels = {
   0.5: 'Useless',
@@ -52,10 +53,47 @@ const WriteReviewPage = () => {
   const [ratingPhotos, setRatingPhotos] = useState([]);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [isReviewAuthenticated, setIsReviewAuthenticated] = useState(
+    () => Boolean(getAuthSnapshot().customer.token && getAuthSnapshot().customer.user?._id)
+  );
+  const [showLoginModal, setShowLoginModal] = useState(() => !isReviewAuthenticated);
+
+  useEffect(() => {
+    const syncAuthentication = () => {
+      const customer = getAuthSnapshot().customer;
+      const isAuthenticated = Boolean(customer.token && customer.user?._id);
+      setIsReviewAuthenticated(isAuthenticated);
+      if (isAuthenticated) setShowLoginModal(false);
+    };
+
+    window.addEventListener(AUTH_STATE_EVENT, syncAuthentication);
+    window.addEventListener("authChange", syncAuthentication);
+    return () => {
+      window.removeEventListener(AUTH_STATE_EVENT, syncAuthentication);
+      window.removeEventListener("authChange", syncAuthentication);
+    };
+  }, []);
   useEffect(() => {
     dispatch(getBusinessDetailsById(businessId));
   }, [dispatch, businessId]);
+
+  if (!isReviewAuthenticated) {
+    return <>
+      <StickySearchBar />
+      <main className={cx("review-login-gate")}>
+        <h1>Login to write a review</h1>
+        <p>Please verify your mobile number before accessing this review form.</p>
+        <button type="button" onClick={() => setShowLoginModal(true)}>Login / Sign Up</button>
+      </main>
+      <OTPLoginModal
+        open={showLoginModal}
+        handleClose={() => setShowLoginModal(false)}
+        onSuccess={() => setIsReviewAuthenticated(true)}
+      />
+      <Footer />
+    </>;
+  }
+
   if (businessDetailsLoading) {
     return <>
       <StickySearchBar />
@@ -145,6 +183,7 @@ const WriteReviewPage = () => {
     }
   };
   const isSubmitDisabled = isSubmitting || !rating || reviewText.length < 5;
+
   return <>
       <StickySearchBar /><br /><br /><br />
 
@@ -265,8 +304,8 @@ const WriteReviewPage = () => {
       </Dialog>
 
       <OTPLoginModal open={showLoginModal} handleClose={() => setShowLoginModal(false)} onSuccess={() => {
+      setIsReviewAuthenticated(true);
       setShowLoginModal(false);
-      handleSubmitReview();
     }} />
 
       <Footer />
