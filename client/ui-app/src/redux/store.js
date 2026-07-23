@@ -43,6 +43,7 @@ import massclickDocumentsReducer from './reducers/massclickDocumentsReducer.js';
 import massclickFeedReducer from './reducers/massclickFeedReducer.js';
 import userFeedbackReducer from './reducers/userFeedbackReducer.js';
 import searchRequestReducer from './reducers/searchRequestReducer.js';
+import massclickEventReducer from './reducers/massclickEventReducer.js';
 
 const rootReducer = combineReducers({
   auth: authReducer,
@@ -88,6 +89,7 @@ const rootReducer = combineReducers({
   massclickFeed: massclickFeedReducer,
   userFeedback: userFeedbackReducer,
   searchRequests: searchRequestReducer,
+  massclickEvents: massclickEventReducer,
 });
 
 let storeInstance = null;

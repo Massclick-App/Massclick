@@ -99,6 +99,7 @@ const MENU_SECTIONS = [
       { text: "EventCategory", icon: ClassIcon, path: "/dashboard/event-category" },
       { text: "EventCreation", icon: EmojiEventsIcon, path: "/dashboard/event-creation" },
       { text: "EventAdvertisement", icon: FeaturedVideoIcon, path: "/dashboard/event-advertisement" },
+      { text: "MassclickEvents", icon: EmojiEventsIcon, path: "/dashboard/massclick-events" },
     ],
   },
   {

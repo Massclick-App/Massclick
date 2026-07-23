@@ -26,6 +26,7 @@ export const PAGE_REGISTRY = [
   { path: '/dashboard/terms-conditions-data', label: 'Terms & Conditions' },
   { path: '/dashboard/fcm-marketing',       label: 'Push Notify' },
   { path: '/dashboard/event-location',      label: 'EventLocation' },
+  { path: '/dashboard/massclick-events',    label: 'MassclickEvents' },
   { path: '/dashboard/event-category',      label: 'EventCategory' },
   { path: '/dashboard/event-creation',      label: 'EventCreation' },
   { path: '/dashboard/event-advertisement', label: 'EventAdvertisement' },

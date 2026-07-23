@@ -109,3 +109,4 @@ export const {
     ACCOUNTDELETIONREQUESTS,
     SEARCHREQUESTS
 } = Collections;
+export const MASSCLICKEVENTS = "massclickevents";

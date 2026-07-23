@@ -42,8 +42,8 @@ const PublicUserCounter = lazy(
 const TwoWayAwareness = lazy(
   () => import("./twoWayAwareness/TwoWayAwareness.js"),
 );
-const EventCarousel = lazy(
-  () => import("./events/eventCarousel/eventCarousel.js"),
+const MassclickEvents = lazy(
+  () => import("./massclickEvents/MassclickEvents.js"),
 );
 const TrendingSearchesCarousel = lazy(
   () => import("./trendingSearch/trendingSearch"),
@@ -325,7 +325,7 @@ const LandingPage = React.memo(() => {
   const deferredSections = (
     <>
       <DeferredHomeSection minHeight={SECTION_HEIGHTS.events}>
-        <EventCarousel locationLabel={locationName} />
+        <MassclickEvents />
       </DeferredHomeSection>
 
       <DeferredHomeSection

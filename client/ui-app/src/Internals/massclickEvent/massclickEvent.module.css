@@ -1,0 +1,207 @@
+.massclickEvent-page {
+  width: 100%;
+  min-height: 100%;
+  padding: 0 16px;
+  background: #f8f9fb;
+  box-sizing: border-box;
+  font-family: "Inter", system-ui, sans-serif;
+}
+
+.massclickEvent-card {
+  width: 100%;
+  margin-bottom: 24px;
+  padding: 28px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 8px 28px rgba(15, 23, 42, 0.06);
+  box-sizing: border-box;
+}
+
+.massclickEvent-card h2 {
+  width: fit-content;
+  margin: 0 0 24px;
+  padding-bottom: 4px;
+  border-bottom: 3px solid #f97316;
+  color: #172033;
+  font-size: 1.5rem;
+  font-weight: 750;
+}
+
+.massclickEvent-tableTitle {
+  margin: 0 0 24px;
+  color: #172033;
+  font-size: 1.15rem;
+  font-weight: 750;
+  text-align: center;
+}
+
+.massclickEvent-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.massclickEvent-field--full {
+  grid-column: 1 / -1;
+}
+
+.massclickEvent-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.massclickEvent-upload small {
+  color: #667085;
+}
+
+.massclickEvent-uploadButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: fit-content;
+  min-height: 42px;
+  padding: 0 16px;
+  border-radius: 8px;
+  background: #f97316;
+  color: #fff;
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.massclickEvent-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.massclickEvent-previewGrid {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.massclickEvent-preview video,
+.massclickEvent-previewImage {
+  width: 180px;
+  height: 105px;
+  border-radius: 10px;
+  object-fit: cover;
+  background: #eef2f6;
+}
+
+.massclickEvent-preview button {
+  border: 0;
+  background: transparent;
+  color: #d92d20;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.massclickEvent-toggle {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #344054;
+  font-size: 0.88rem;
+  font-weight: 650;
+}
+
+.massclickEvent-toggle input {
+  width: 18px;
+  height: 18px;
+  accent-color: #f97316;
+}
+
+.massclickEvent-buttonGroup {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.massclickEvent-saveButton,
+.massclickEvent-cancelButton {
+  min-height: 42px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.massclickEvent-saveButton {
+  background: #f97316;
+  color: #fff;
+}
+
+.massclickEvent-saveButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.massclickEvent-cancelButton {
+  background: #eef1f5;
+  color: #344054;
+}
+
+.massclickEvent-tableTitle {
+  width: 100%;
+  margin-top: 0;
+}
+
+.massclickEvent-thumb {
+  display: block;
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: #edf1f5;
+}
+
+.massclickEvent-status {
+  display: inline-flex;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 750;
+}
+
+.massclickEvent-status--published {
+  background: #e7f8ef;
+  color: #087a45;
+}
+
+.massclickEvent-status--draft {
+  background: #f2f4f7;
+  color: #596579;
+}
+
+.massclickEvent-actions {
+  display: flex;
+  gap: 6px;
+}
+
+@media (max-width: 720px) {
+  .massclickEvent-page {
+    padding: 0 4px 24px;
+  }
+
+  .massclickEvent-card {
+    padding: 18px;
+  }
+
+  .massclickEvent-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .massclickEvent-field--full {
+    grid-column: auto;
+  }
+}

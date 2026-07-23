@@ -81,6 +81,8 @@ const EventCategory = lazy(() => import(/* webpackChunkName: "admin-event-catego
 const EventLocation = lazy(() => import(/* webpackChunkName: "admin-event-location" */ './components/eventLocation/eventLocation.js'));
 const EventAdvertisement = lazy(() => import(/* webpackChunkName: "admin-event-advertisement" */ './components/eventAdvertisement/eventAdvertisement.js'));
 const EventCreation = lazy(() => import(/* webpackChunkName: "admin-event-creation" */ './components/eventCreation/eventCreation.js'));
+const MassclickEvent = lazy(() => import('./Internals/massclickEvent/massclickEvent.js'));
+const MassclickEventDetails = lazy(() => import('./Internals/clientComponent/massclickEvents/MassclickEventDetails.js'));
 
 const GlobalDrawer = lazy(() => import(/* webpackChunkName: "drawer" */ './Internals/clientComponent/Drawer/globalDrawer.js'));
 const SeoData = lazy(() => import(/* webpackChunkName: "admin-seo" */ './Internals/seoData/seoData.js'));
@@ -280,6 +282,7 @@ function AppRoutes({
             path="/business/:location/:businessSlug/:id"
             element={<BusinessDetails />}
           />
+          <Route path="/massclick-events/:id" element={<MassclickEventDetails />} />
 
           <Route element={<PrivateRoute isAuthenticated={isAuthenticated} isReady={authReady} />}>
             <Route path="/dashboard" element={<Dashboard />}>
@@ -308,6 +311,7 @@ function AppRoutes({
                 <Route path="event-location" element={<EventLocation />} />
                 <Route path="event-advertisement" element={<EventAdvertisement />} />
                 <Route path="event-creation" element={<EventCreation />} />
+                <Route path="massclick-events" element={<MassclickEvent />} />
                 <Route path="mni-data" element={<MRPDatas />} />
                 <Route path="terms-conditions-data" element={<TermsAndConditionsDatas />} />
                 <Route path="fcm-marketing" element={<FCMMarketing />} />
