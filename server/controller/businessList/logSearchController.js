@@ -492,6 +492,22 @@ export const logSearchAction = async (req, res) => {
 
     const notifiedBusinesses = [];
 
+    // ── Persist the lead into each matched owner's leadsData[] FIRST ──────────
+    // This is intentionally independent of WhatsApp/FCM: whatever happens to
+    // the sends below, the owner's permanent lead inbox already has the lead.
+    // Dedupe: skip if this customer+search was already captured for that owner
+    // today (atomic guard inside the update query). One capture per owner.
+    const customerMobileRaw = userDetails.mobileNumber1 || "";
+    const customerMobile10 =
+      customerMobileRaw.startsWith("91") && customerMobileRaw.length === 12
+        ? customerMobileRaw.slice(2)
+        : customerMobileRaw;
+    const capturedSearchText = cleanSearchText || finalCategoryName;
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    // mobile10 -> true when a brand-new lead was appended by this request
+    const ownerNewLeadMap = new Map();
+
     for (const business of businesses) {
       const ownerMobile = extractIndianMobiles([
         business.contactList,
@@ -502,12 +518,61 @@ export const logSearchAction = async (req, res) => {
         ownerMobile.startsWith("91") && ownerMobile.length === 12
           ? ownerMobile.slice(2)
           : ownerMobile;
+      if (ownerNewLeadMap.has(mobile10)) continue; // one capture per owner
+      if (mobile10 === customerMobile10) continue; // never self-lead
+
+      try {
+        const captureResult = await userModel.updateOne(
+          {
+            mobileNumber1: mobile10,
+            leadsData: {
+              $not: {
+                $elemMatch: {
+                  mobileNumber1: customerMobileRaw,
+                  searchedUserText: capturedSearchText,
+                  createdAt: { $gte: startOfToday },
+                },
+              },
+            },
+          },
+          {
+            $push: {
+              leadsData: {
+                email: userDetails.email || "",
+                mobileNumber1: customerMobileRaw,
+                mobileNumber2: userDetails.mobileNumber2 || "",
+                searchedUserText: capturedSearchText,
+                time: new Date().toLocaleString("en-IN", {
+                  timeZone: "Asia/Kolkata",
+                }),
+                userName: userDetails.userName || "",
+                isWhatsappSend: false,
+                isReaded: false,
+                createdAt: new Date(),
+                readAt: null,
+              },
+            },
+          },
+        );
+        // modifiedCount 0 = owner has no OTP-user doc OR duplicate for today
+        ownerNewLeadMap.set(mobile10, captureResult.modifiedCount > 0);
+      } catch (err) {
+        console.error(
+          `[LeadCapture] failed to persist lead for owner ${mobile10}:`,
+          err.message,
+        );
+        ownerNewLeadMap.set(mobile10, false);
+      }
+
+      // Emit AFTER persistence so a client-side refetch sees the new lead.
       emitToRoom(
         buildRoom.business(mobile10),
         WS_EVENTS.LEAD_ANALYTICS_UPDATE,
         {
           category: finalCategoryName,
           location: normalizedLocation,
+          customerName: userDetails.userName || "",
+          newLead: ownerNewLeadMap.get(mobile10) === true,
           ts: new Date().toISOString(),
         },
       );
@@ -564,6 +629,36 @@ export const logSearchAction = async (req, res) => {
       }
     } else {
       console.log("[FCM] no valid owner mobiles — skipping FCM lookup");
+    }
+
+    // ── FCM lead alert — fully independent of WhatsApp ─────────────────────────
+    // Deliberately BEFORE the WhatsApp loop and outside its skip/disable logic:
+    // owners must get the in-app push even when WhatsApp is skipped, disabled
+    // in settings, or fails. One push per owner (not per matched business).
+    for (const [ownerMobile12, ownerTokens] of ownerUsersMap) {
+      const fcmTitle = "New Lead Alert 🔔";
+      const fcmBody = userDetails.userName
+        ? `${userDetails.userName} is looking for "${finalCategoryName}" in ${normalizedLocation}. Open the app to respond.`
+        : `Someone searched "${finalCategoryName}" in ${normalizedLocation}. Check your leads now!`;
+      const fcmData = {
+        type: "lead",
+        category: finalCategoryName,
+        location: normalizedLocation,
+      };
+      for (const tokenObj of ownerTokens) {
+        sendFCMNotification(tokenObj.token, fcmTitle, fcmBody, fcmData, {
+          channelId: "massclick_leads",
+        })
+          .then(() =>
+            console.log(`[FCM] lead push sent OK → ${ownerMobile12}`),
+          )
+          .catch((err) =>
+            console.error(
+              `[FCM] lead push failed → ${ownerMobile12}:`,
+              err.message,
+            ),
+          );
+      }
     }
 
     for (const business of businesses) {
@@ -646,39 +741,8 @@ export const logSearchAction = async (req, res) => {
           );
         }
 
-        // Send FCM push to this business owner's active devices (fire-and-forget)
-        const ownerTokens = ownerUsersMap.get(cleanMobile);
-        console.log(
-          `[FCM] ${business.businessName} (${cleanMobile}): tokens to notify=${ownerTokens?.length ?? 0}`,
-        );
-        if (ownerTokens && ownerTokens.length > 0) {
-          const fcmTitle = "New Lead Alert 🔔";
-          const fcmBody = `Someone searched "${finalCategoryName}" in ${normalizedLocation}. Check your leads now!`;
-          const fcmData = {
-            type: "lead",
-            category: finalCategoryName,
-            location: normalizedLocation,
-          };
-          for (const tokenObj of ownerTokens) {
-            console.log(
-              `[FCM] sending to token ${tokenObj.token.slice(0, 20)}... (platform: ${tokenObj.platform})`,
-            );
-            sendFCMNotification(tokenObj.token, fcmTitle, fcmBody, fcmData)
-              .then(() =>
-                console.log(`[FCM] push sent OK → ${business.businessName}`),
-              )
-              .catch((err) =>
-                console.error(
-                  `[FCM] push failed → ${business.businessName}:`,
-                  err.message,
-                ),
-              );
-          }
-        } else {
-          console.log(
-            `[FCM] no tokens for ${business.businessName} — push skipped`,
-          );
-        }
+        // (FCM lead push moved out of this loop — it now fires independently
+        // before the WhatsApp section, so skips/disables here can't block it.)
       }
     }
     const cleanCustomerMobile = extractIndianMobiles(

@@ -83,9 +83,15 @@ export const updateOtpUser = async (req, res) => {
     if (updateData.markRead) {
       const { leadId } = updateData.markRead;
 
+      // Mark as read and stamp readAt ONLY on the first read (readAt still null),
+      // so response-time metrics reflect the first response, not later re-opens.
+      // `{ readAt: null }` also matches legacy leads where the field is absent.
       await User.updateOne(
-        { mobileNumber1: mobile, "leadsData._id": leadId },
-        { $set: { "leadsData.$.isReaded": true } }
+        {
+          mobileNumber1: mobile,
+          leadsData: { $elemMatch: { _id: leadId, readAt: null } },
+        },
+        { $set: { "leadsData.$.isReaded": true, "leadsData.$.readAt": new Date() } }
       );
 
       delete updateData.markRead;
@@ -160,7 +166,9 @@ export const updateOtpUser = async (req, res) => {
             searchedUserText: lead.searchedUserText || "",
             time: lead.time || "",
             userName: lead.userName || "",
+            isWhatsappSend: false,
             isReaded: false,
+            createdAt: new Date(),
           });
         }
 
