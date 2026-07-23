@@ -5,7 +5,7 @@ import {
   oauthAuthentication,
   logoutUsers,
   oauthtoken,
-  setRequestContext,       // ✅ ADD
+  withRequestContext,
 } from "../helper/oauthHelper.js";
 import { logAuthAuditEvent } from "../auth/authAuditStore.js";
 import { resolveAuthActorFromToken } from "../auth/authResolver.js";
@@ -34,11 +34,9 @@ export const oauthAction = async (req, res) => {
 // ---------- CLIENT TOKEN ----------
 export const oauthClientAction = async (req, res) => {
   try {
-    setRequestContext(req.body);   // ✅ store before token() call
-
     const request = new OAuth2Server.Request(req);
     const response = new OAuth2Server.Response(res);
-    const token = await oauthtoken.token(request, response);
+    const token = await withRequestContext(req.body, () => oauthtoken.token(request, response));
     const actor = await resolveAuthActorFromToken(token.accessToken, { source: "oauth-client" });
     logAuthAuditEvent({
       eventType: "login",

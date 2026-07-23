@@ -202,11 +202,12 @@ const getValidMobileOrSkip = async (mobile, context = {}) => {
 // const MSG91_SENDER = process.env.MSG91_WHATSAPP_SENDER; 
 
 // Send OTP
-export const sendOtp = async (number) => {
+export const sendOtp = async (number, options = {}) => {
   try {
     const authKey = process.env.MSG91_AUTH_KEY;
-    const templateId = process.env.MSG91_TEMPLATE_ID;
-    const fallbackTemplateId = process.env.MSG91_TEMPLATE_ID_FALLBACK;
+    const templateId = options.templateId || process.env.MSG91_TEMPLATE_ID;
+    const fallbackTemplateId =
+      options.fallbackTemplateId ?? process.env.MSG91_TEMPLATE_ID_FALLBACK;
     const baseUrl = process.env.MSG91_BASE_URL;
 
     if (!authKey || !templateId || !baseUrl) {
@@ -264,6 +265,18 @@ export const sendOtp = async (number) => {
     throw error;
   }
 };
+
+// Send OTP for the mobile app.
+// The app auto-reads the OTP through the Android SMS Retriever API, which only
+// delivers a message that starts with "<#>" and ends with the app signature
+// hash. That copy lives in MSG91_TEMPLATE_ID_FALLBACK, so the app flow makes it
+// the primary template and drops back to the web template only if MSG91 rejects
+// it (auto-read is lost in that case, manual entry still works).
+export const sendMobileOtp = async (number) =>
+  sendOtp(number, {
+    templateId: process.env.MSG91_TEMPLATE_ID_FALLBACK,
+    fallbackTemplateId: process.env.MSG91_TEMPLATE_ID,
+  });
 
 // Verify OTP
 export const verifyOtp = async (number, otp) => {

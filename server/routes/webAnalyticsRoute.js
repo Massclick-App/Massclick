@@ -6,8 +6,10 @@ import {
     trendsAction,
     topPagesAction,
     topBusinessesAction,
+    campaignsAction,
     topSearchesAction,
     devicesAction,
+    appVersionsAction,
 } from "../controller/webAnalytics/webAnalyticsController.js";
 import { oauthAuthentication } from "../helper/oauthHelper.js";
 import { cacheMiddleware } from "../middleware/cacheMiddleware.js";
@@ -35,7 +37,9 @@ router.get("/api/site-events/overview", oauthAuthentication, cacheMiddleware({ e
 router.get("/api/site-events/trends", oauthAuthentication, cacheMiddleware({ expirySeconds: 300, keyPrefix: "wa-trends" }), trendsAction);
 router.get("/api/site-events/top-pages", oauthAuthentication, cacheMiddleware({ expirySeconds: 600, keyPrefix: "wa-top-pages" }), topPagesAction);
 router.get("/api/site-events/top-businesses", oauthAuthentication, cacheMiddleware({ expirySeconds: 600, keyPrefix: "wa-top-businesses" }), topBusinessesAction);
+router.get("/api/site-events/campaigns", oauthAuthentication, cacheMiddleware({ expirySeconds: 600, keyPrefix: "wa-campaigns" }), campaignsAction);
 router.get("/api/site-events/top-searches", oauthAuthentication, cacheMiddleware({ expirySeconds: 600, keyPrefix: "wa-top-searches" }), topSearchesAction);
 router.get("/api/site-events/devices", oauthAuthentication, cacheMiddleware({ expirySeconds: 600, keyPrefix: "wa-devices" }), devicesAction);
+router.get("/api/site-events/app-versions", oauthAuthentication, cacheMiddleware({ expirySeconds: 600, keyPrefix: "wa-app-versions" }), appVersionsAction);
 
 export default router;

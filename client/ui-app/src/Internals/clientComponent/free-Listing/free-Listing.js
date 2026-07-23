@@ -1,4 +1,4 @@
-import StickySearchBar from '../CardsSearch/CardsSearch';
+import StickySearchBar from '../StickySearchBar/StickySearchBar';
 export default function FreeListingPage() {
   return <>
     <StickySearchBar /><br /><br /><br /><br />

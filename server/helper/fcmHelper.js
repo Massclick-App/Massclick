@@ -10,7 +10,11 @@ const VAPID_PRIVATE_KEY = 'Jn4dwbWtoXCCm5ux-4_NUvdlmX8WDBiP5L13FYumzAs';
 
 webpush.setVapidDetails('mailto:admin@massclick.in', VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 
-export const sendFCMNotification = async (token, title, body, data = {}) => {
+export const sendFCMNotification = async (token, title, body, data = {}, options = {}) => {
+  // Android notification channel; defaults to the marketing channel for
+  // backward compatibility. Lead alerts pass { channelId: 'massclick_leads' }.
+  const channelId = options.channelId || 'massclick_marketing';
+
   // Web push subscription stored as JSON string
   if (typeof token === 'string' && token.startsWith('{')) {
     try {
@@ -38,7 +42,7 @@ export const sendFCMNotification = async (token, title, body, data = {}) => {
       token,
       notification: { title, body },
       data,
-      android: { notification: { channelId: 'massclick_marketing' } },
+      android: { notification: { channelId } },
     };
     const response = await admin.messaging().send(message);
     await logger.fcmDebug('FCM message sent successfully', { messageId: response, title, body });

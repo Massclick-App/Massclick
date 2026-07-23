@@ -62,6 +62,11 @@ const message91UsersSchema = new mongoose.Schema({
       userName: { type: String, default: "" },
       isWhatsappSend: { type: Boolean, default: false },
       isReaded: { type: Boolean, default: false },
+      // Real timestamps powering the owner dashboard's time-based lead metrics
+      // (today / this-week counts, own-lead trend, response time). Accrue from
+      // deploy forward; leads created earlier simply have these unset.
+      createdAt: { type: Date, default: Date.now },
+      readAt: { type: Date, default: null },
     },
   ],
   searchHistory: [
