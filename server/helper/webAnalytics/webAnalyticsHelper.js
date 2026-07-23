@@ -316,12 +316,21 @@ const resolveRange = (query = {}) => {
 // first-seen lookups that must look further back than the active window.
 const dimensionMatch = (query = {}) => {
     const match = {};
+    // Accepts one platform or a comma-separated list ("android,ios"), so the
+    // app dashboard can show every app platform in a single view.
+    //
     // Rows written before the platform field existed store nothing for it, and
     // aggregations never see mongoose defaults — so the web pin must also
     // match missing values ($in with null matches absent fields). No platform
     // param means no filter, which keeps pre-existing dashboard calls intact.
-    if (query.platform === "web") match.platform = { $in: ["web", null] };
-    else if (PLATFORMS.includes(query.platform)) match.platform = query.platform;
+    const platforms = String(query.platform || "")
+        .split(",")
+        .map((value) => value.trim())
+        .filter((value) => PLATFORMS.includes(value));
+    if (platforms.length) {
+        const values = platforms.includes("web") ? [...platforms, null] : platforms;
+        match.platform = values.length === 1 ? values[0] : { $in: values };
+    }
     if (query.device && DEVICE_TYPES.includes(query.device)) match.device = query.device;
     if (query.browser) match.browser = query.browser;
     return match;

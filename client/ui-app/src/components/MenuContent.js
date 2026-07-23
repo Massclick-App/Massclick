@@ -39,6 +39,7 @@ import FeaturedVideoIcon from "@mui/icons-material/FeaturedVideoOutlined";
 import TravelExploreIcon from "@mui/icons-material/TravelExploreOutlined";
 import MarkEmailReadIcon from "@mui/icons-material/MarkEmailReadOutlined";
 import QueryStatsRoundedIcon from "@mui/icons-material/QueryStatsOutlined";
+import PhoneIphoneRoundedIcon from "@mui/icons-material/PhoneIphoneRounded";
 import WebRoundedIcon from "@mui/icons-material/WebOutlined";
 import GroupsRoundedIcon from "@mui/icons-material/GroupsOutlined";
 import RequestQuoteIcon from "@mui/icons-material/RequestQuoteOutlined";
@@ -106,6 +107,7 @@ const MENU_SECTIONS = [
     items: [
       { text: "Analytics Overview", icon: AnalyticsRoundedIcon, path: "/dashboard/analytics-overview" },
       { text: "Site Analytics", icon: QueryStatsRoundedIcon, path: "/dashboard/site-analytics" },
+      { text: "App Analytics", icon: PhoneIphoneRoundedIcon, path: "/dashboard/app-analytics" },
       { text: "Category Coverage", icon: CategoryIcon, path: "/dashboard/data-analytics" },
       { text: "Google Analytics 4", icon: WebRoundedIcon, path: "/dashboard/ga4-analytics" },
       { text: "Google Search Console", icon: QueryStatsRoundedIcon, path: "/dashboard/gsc-analytics" },

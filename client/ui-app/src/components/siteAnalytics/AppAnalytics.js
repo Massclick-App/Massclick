@@ -1,4 +1,20 @@
-import React, { useCallback, useMemo, useState } from "react";
+// App Analytics — the mobile-app counterpart of SiteAnalytics.
+//
+// Reads the same /site-events endpoints, pinned to the app platforms, and
+// shares every presentational primitive with the web panel (see
+// ./shared/analyticsPrimitives.js) so the two pages stay consistent.
+//
+// Differences from the web panel, and why:
+//   • "Top Pages" reads as "Top Screens" — the app sends go_router paths.
+//   • Devices & browsers is replaced by Platform / App version / OS version:
+//     the app's User-Agent has no browser, and every app row classifies as
+//     device "mobile", so those two filters carry no signal here.
+//   • No Traffic Sources or campaign builder — the app has no referrer and no
+//     UTM landing params until deep linking ships (web-parity P1-15).
+//   • No Excel export yet: the shared workbook models a devices/browsers
+//     sheet and a campaigns sheet, neither of which the app produces.
+
+import React, { useMemo, useState } from "react";
 import {
   Alert, Box, Button, IconButton, InputAdornment, LinearProgress,
   MenuItem, Paper, TextField, ToggleButton, ToggleButtonGroup, Tooltip,
@@ -16,21 +32,15 @@ import DescriptionRoundedIcon from "@mui/icons-material/DescriptionRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import AdsClickRoundedIcon from "@mui/icons-material/AdsClickRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
-import FileDownloadRoundedIcon from "@mui/icons-material/FileDownloadRounded";
 import RestartAltRoundedIcon from "@mui/icons-material/RestartAltRounded";
 import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
-import DevicesRoundedIcon from "@mui/icons-material/DevicesRounded";
-import LanguageRoundedIcon from "@mui/icons-material/LanguageRounded";
+import PhoneIphoneRoundedIcon from "@mui/icons-material/PhoneIphoneRounded";
 import InsightsRoundedIcon from "@mui/icons-material/InsightsRounded";
 import ArticleRoundedIcon from "@mui/icons-material/ArticleRounded";
-import CampaignRoundedIcon from "@mui/icons-material/CampaignRounded";
 import {
   Bar, CartesianGrid, ComposedChart, Legend, Line,
   ResponsiveContainer, Tooltip as ChartTooltip, XAxis, YAxis,
 } from "recharts";
-import axiosInstance from "../../services/axiosInstance.js";
-import { exportSiteAnalyticsWorkbook } from "./siteAnalyticsWorkbook.js";
-import CampaignLinkBuilder from "./CampaignLinkBuilder.js";
 import {
   Donut, Metric, PanelHead, SectionTable,
   GRANULARITIES, PRESETS,
@@ -38,30 +48,15 @@ import {
   useFetch, styles,
 } from "./shared/analyticsPrimitives.js";
 
-const API_URL = process.env.REACT_APP_API_URL;
-const DEVICE_OPTIONS = [
-  { value: "", label: "All devices" },
-  { value: "mobile", label: "Mobile" },
-  { value: "tablet", label: "Tablet" },
-  { value: "desktop", label: "Desktop" },
-  { value: "other", label: "Other" },
+// "All app platforms" is a comma list the server turns into a $in — see
+// dimensionMatch in webAnalyticsHelper.js. Deliberately never includes "web".
+const ALL_APP = "android,ios";
+const PLATFORM_OPTIONS = [
+  { value: ALL_APP, label: "All app platforms" },
+  { value: "android", label: "Android" },
+  { value: "ios", label: "iOS" },
 ];
-// parseUserAgent on the server only ever emits this fixed set of labels.
-const BROWSER_OPTIONS = ["Chrome", "Safari", "Firefox", "Edge", "Opera", "Samsung", "Other"];
-const DEVICE_LABELS = { mobile: "Mobile", tablet: "Tablet", desktop: "Desktop", other: "Other" };
-
-function DeviceSplit({ url, filters, reloadToken }) {
-  const { data, loading, error } = useFetch(url, filters, reloadToken);
-  return <Paper elevation={0} className={styles.panel} sx={{ borderRadius: "16px" }}>
-    <PanelHead icon={DevicesRoundedIcon} tone="purple" title="Devices &amp; browsers" subtitle="See what devices and browsers your visitors use." />
-    {loading && <LinearProgress className={styles.tableLoading} />}
-    {error && <p className={styles.empty}>Could not load: {error}</p>}
-    <div className={styles.splitColumns}>
-      <Donut heading="Devices" rows={data?.devices} labelOf={(r) => DEVICE_LABELS[r.device] || r.device || "Other"} />
-      <Donut heading="Browsers" rows={data?.browsers} labelOf={(r) => r.browser || "Other"} />
-    </div>
-  </Paper>;
-}
+const PLATFORM_LABELS = { android: "Android", ios: "iOS", web: "Web" };
 
 const breakdownText = (row) => {
   const a = row.actions || {};
@@ -70,31 +65,42 @@ const breakdownText = (row) => {
     a.whatsapp ? `${number(a.whatsapp)} WhatsApp` : "",
     a.direction ? `${number(a.direction)} directions` : "",
     a.enquiry ? `${number(a.enquiry)} enquiries` : "",
-    a.showNumber ? `${number(a.showNumber)} number reveals` : "",
   ].filter(Boolean);
-  return parts.length ? parts.join(" · ") : "No clicks yet";
+  return parts.length ? parts.join(" · ") : "No taps yet";
 };
 
-export default function SiteAnalytics() {
-  const [filters, setFilters] = useState({ mode: "preset", days: 28, start: "", end: "", device: "", browser: "" });
+function PlatformSplit({ filters, reloadToken }) {
+  const { data, loading, error } = useFetch("/site-events/app-versions", filters, reloadToken);
+  return <Paper elevation={0} className={styles.panel} sx={{ borderRadius: "16px" }}>
+    <PanelHead
+      icon={PhoneIphoneRoundedIcon}
+      tone="purple"
+      title="Platform &amp; app version"
+      subtitle="Which builds your users are actually on — useful before forcing an update."
+    />
+    {loading && <LinearProgress className={styles.tableLoading} />}
+    {error && <p className={styles.empty}>Could not load: {error}</p>}
+    <div className={styles.splitColumns}>
+      <Donut heading="Platform" rows={data?.platforms} labelOf={(r) => PLATFORM_LABELS[r.platform] || r.platform || "Other"} />
+      <Donut heading="App version" rows={data?.appVersions} labelOf={(r) => r.appVersion || "Unknown"} />
+      <Donut heading="OS version" rows={data?.osVersions} labelOf={(r) => r.osVersion || "Unknown"} />
+    </div>
+  </Paper>;
+}
+
+export default function AppAnalytics() {
+  const [filters, setFilters] = useState({ mode: "preset", days: 28, start: "", end: "", platform: ALL_APP });
   const [granularity, setGranularity] = useState("day");
   const [reloadToken, setReloadToken] = useState(0);
-  const [exporting, setExporting] = useState(false);
-  const [exportError, setExportError] = useState("");
 
   const queryFilters = useMemo(() => {
-    // Pinned to the browser tracker so app traffic never lands in this panel.
-    // Server-side this also matches rows written before the platform field
-    // existed; mobile lives in its own App Analytics panel.
-    const f = { platform: "web" };
+    const f = { platform: filters.platform || ALL_APP };
     if (filters.mode === "custom" && (filters.start || filters.end)) {
       if (filters.start) f.start = filters.start;
       if (filters.end) f.end = filters.end;
     } else {
       f.days = filters.days;
     }
-    if (filters.device) f.device = filters.device;
-    if (filters.browser) f.browser = filters.browser;
     return f;
   }, [filters]);
 
@@ -108,7 +114,6 @@ export default function SiteAnalytics() {
   const trendRows = useMemo(() => trends.data?.trend || [], [trends.data]);
   const periodLabel = overview.data?.days ? `previous ${overview.data.days} days` : "previous period";
 
-  // Weekly / monthly buckets sum the daily figures.
   const chartData = useMemo(() => {
     const source = granularity === "day" ? trendRows : Object.values(trendRows.reduce((acc, row) => {
       const key = bucketOf(row.date, granularity);
@@ -126,100 +131,67 @@ export default function SiteAnalytics() {
     ? `${filters.start || "start"} → ${filters.end || "today"}`
     : `Last ${filters.days} day${filters.days === 1 ? "" : "s"}`;
 
-  const hasActiveFilter = filters.device || filters.browser || filters.mode === "custom";
-  const resetFilters = () => setFilters({ mode: "preset", days: 28, start: "", end: "", device: "", browser: "" });
+  const hasActiveFilter = filters.platform !== ALL_APP || filters.mode === "custom";
+  const resetFilters = () => setFilters({ mode: "preset", days: 28, start: "", end: "", platform: ALL_APP });
   const patch = (changes) => setFilters((prev) => ({ ...prev, ...changes }));
-
-  const handleExport = useCallback(async () => {
-    setExporting(true);
-    setExportError("");
-    try {
-      const big = { ...queryFilters, limit: 500, page: 1 };
-      const [pagesRes, bizRes, campaignsRes, searchRes, devicesRes] = await Promise.all([
-        axiosInstance.get(`${API_URL}/site-events/top-pages`, { params: big }),
-        axiosInstance.get(`${API_URL}/site-events/top-businesses`, { params: big }),
-        axiosInstance.get(`${API_URL}/site-events/campaigns`, { params: big }),
-        axiosInstance.get(`${API_URL}/site-events/top-searches`, { params: big }),
-        axiosInstance.get(`${API_URL}/site-events/devices`, { params: queryFilters }),
-      ]);
-      await exportSiteAnalyticsWorkbook({
-        overview: overview.data,
-        trends: trendRows,
-        devices: devicesRes.data,
-        pages: pagesRes.data?.pages || [],
-        businesses: bizRes.data?.businesses || [],
-        campaigns: campaignsRes.data?.campaigns || [],
-        searches: searchRes.data?.searches || [],
-        meta: { rangeLabel, generated: new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }) },
-        filters: [
-          { label: "Device", value: filters.device ? (DEVICE_LABELS[filters.device] || filters.device) : "All" },
-          { label: "Browser", value: filters.browser || "All" },
-        ],
-      });
-    } catch (err) {
-      setExportError(err?.response?.data?.message || err?.message || "Export failed. Please try again.");
-    } finally {
-      setExporting(false);
-    }
-  }, [queryFilters, overview.data, trendRows, rangeLabel, filters.device, filters.browser]);
 
   const anyLoading = overview.loading || trends.loading;
   const vs = `vs ${periodLabel}`;
 
   const metrics = [
     {
-      key: "visitors", icon: GroupsRoundedIcon, label: "Unique Visitors", tone: "blue", color: "#2563eb",
+      key: "visitors", icon: GroupsRoundedIcon, label: "Unique Devices", tone: "blue", color: "#2563eb",
       caption: `${number(current.identifiedUsers)} logged-in customers seen`,
-      help: "Distinct devices that fired at least one tracked event. Counted per device, not per person — the same person on a phone and a laptop counts twice.",
+      help: "Distinct app installs that fired at least one tracked event. Counted per install — a reinstall starts a new device.",
     },
     {
       key: "newVisitors", icon: PersonAddAlt1RoundedIcon, label: "New Users", tone: "indigo", color: "#4f46e5", caption: vs,
-      help: "Devices whose first-ever tracked event falls inside this period. Raw events are kept for 90 days, so someone returning after a longer gap counts as new again.",
+      help: "Installs whose first-ever tracked event falls inside this period. Raw events are kept for 90 days, so someone returning after a longer gap counts as new again.",
     },
     {
       key: "sessions", icon: LoginRoundedIcon, label: "Sessions", tone: "purple", color: "#7c3aed", caption: vs,
-      help: "Distinct browsing sessions. One visitor can start several sessions across the period.",
+      help: "A session ends after 30 minutes of inactivity, including time spent with the app backgrounded.",
     },
     {
-      key: "pageViews", icon: VisibilityRoundedIcon, label: "Page Views", tone: "orange", color: "#f97316", caption: vs,
-      help: "Every page view, including repeat views of the same page by the same visitor.",
+      key: "pageViews", icon: VisibilityRoundedIcon, label: "Screen Views", tone: "orange", color: "#f97316", caption: vs,
+      help: "Every screen opened, including repeat visits to the same screen in one session.",
     },
     {
-      key: "pagesPerSession", icon: LayersRoundedIcon, label: "Pages / Session", tone: "green", color: "#16a34a", caption: vs, format: "decimal",
-      help: "Page views divided by sessions. Higher means visitors browse deeper before leaving.",
+      key: "pagesPerSession", icon: LayersRoundedIcon, label: "Screens / Session", tone: "green", color: "#16a34a", caption: vs, format: "decimal",
+      help: "Screen views divided by sessions. Higher means users go deeper before leaving.",
     },
     {
       key: "bounceRate", icon: TrendingDownRoundedIcon, label: "Bounce Rate", tone: "red", color: "#e11d48", caption: vs, format: "percent", invert: true,
-      help: "Share of sessions that never got past their first page. Lower is better, so this card turns green when it falls.",
+      help: "Share of sessions that never got past their first screen. Lower is better, so this card turns green when it falls.",
     },
     {
       key: "businessViews", icon: StorefrontRoundedIcon, label: "Business Views", tone: "pink", color: "#db2777", caption: vs,
-      help: "Times a business listing was opened or shown in detail.",
+      help: "Business detail screens opened. Counted once per business per session.",
     },
     {
       key: "interactions", icon: TouchAppRoundedIcon, label: "Interactions", tone: "teal", color: "#0d9488", caption: vs, seriesKey: "businessClicks",
-      help: "Every click on a business listing — calls, WhatsApp, directions, enquiries and number reveals combined.",
+      help: "Every tap on a business action — calls, WhatsApp, directions and enquiries combined.",
     },
     {
       key: "leads", icon: PhoneInTalkRoundedIcon, label: "Leads", tone: "green", color: "#16a34a", caption: "Calls, WhatsApp & enquiries",
-      help: "Interactions that signal real buying intent: calls, WhatsApp and enquiry submissions. Directions and number reveals are excluded.",
+      help: "Taps that signal real buying intent: calls, WhatsApp and enquiries. Directions are excluded.",
     },
     {
-      key: "formSubmissions", icon: DescriptionRoundedIcon, label: "Form Submissions", tone: "indigo", color: "#4f46e5", caption: vs,
-      help: "Enquiry forms submitted from a business listing. These are also counted inside Leads.",
+      key: "formSubmissions", icon: DescriptionRoundedIcon, label: "Enquiries", tone: "indigo", color: "#4f46e5", caption: vs,
+      help: "Enquiry actions started from a business listing. These are also counted inside Leads.",
     },
     {
       key: "searches", icon: SearchRoundedIcon, label: "Searches", tone: "blue", color: "#2563eb", caption: vs,
-      help: "Searches run on the site — both typed queries and category browsing. The Top Searches table can split the two.",
+      help: "Searches run in the app — both typed queries and category browsing. The Top Searches table can split the two.",
     },
     {
-      key: "resultClicks", icon: AdsClickRoundedIcon, label: "Result Clicks", tone: "purple", color: "#7c3aed", caption: vs,
-      help: "Clicks on a business from a search results page. Compare against Searches to gauge how well results match intent.",
+      key: "resultClicks", icon: AdsClickRoundedIcon, label: "Result Taps", tone: "purple", color: "#7c3aed", caption: vs,
+      help: "Taps on a business from a results list. Compare against Searches to gauge how well results match intent.",
     },
   ];
 
-  const pageColumns = [
-    { key: "path", label: "Page", render: (r) => <span className={styles.mono} title={r.path}>{r.path || "/"}</span> },
+  const screenColumns = [
+    { key: "path", label: "Screen", render: (r) => <span className={styles.mono} title={r.path}>{r.path || "/"}</span> },
     { key: "views", label: "Views", numeric: true, sortable: true, width: 92, render: (r) => number(r.views) },
     { key: "sessions", label: "Sessions", numeric: true, sortable: true, width: 96, render: (r) => number(r.sessions) },
   ];
@@ -228,18 +200,9 @@ export default function SiteAnalytics() {
     { key: "name", label: "Business", render: (r) => <span className={styles.strongCell} title={r.name || r.businessId}>{r.name || r.businessId}</span> },
     { key: "views", label: "Views", numeric: true, sortable: true, width: 82, render: (r) => number(r.views) },
     {
-      key: "clicks", label: "Clicks", numeric: true, sortable: true, width: 82,
+      key: "clicks", label: "Taps", numeric: true, sortable: true, width: 82,
       render: (r) => <Tooltip title={breakdownText(r)} arrow><span className={styles.hintCell}>{number(r.clicks)}</span></Tooltip>,
     },
-    { key: "leads", label: "Leads", numeric: true, sortable: true, width: 82, render: (r) => number(r.leads) },
-  ];
-
-  const campaignColumns = [
-    { key: "source", label: "Source", render: (r) => <span className={styles.mono} title={r.source}>{r.source}</span> },
-    { key: "medium", label: "Medium", render: (r) => r.medium },
-    { key: "campaign", label: "Campaign", render: (r) => <span className={styles.strongCell} title={r.campaign}>{r.campaign}</span> },
-    { key: "sessions", label: "Sessions", numeric: true, sortable: true, width: 96, render: (r) => number(r.sessions) },
-    { key: "visitors", label: "Visitors", numeric: true, sortable: true, width: 92, render: (r) => number(r.visitors) },
     { key: "leads", label: "Leads", numeric: true, sortable: true, width: 82, render: (r) => number(r.leads) },
   ];
 
@@ -254,16 +217,13 @@ export default function SiteAnalytics() {
   return <Box className={styles.page}>
     <div className={styles.header}>
       <div>
-        <h1 className={styles.title}>Site analysis</h1>
-        <p className={styles.subtitle}>Monitor your website&apos;s performance and analytics in real time.</p>
+        <h1 className={styles.title}>App analysis</h1>
+        <p className={styles.subtitle}>How people use the Massclick mobile app, in real time.</p>
       </div>
       <div className={styles.headerActions}>
         <Tooltip title="Refresh data">
           <span><IconButton onClick={() => setReloadToken((n) => n + 1)} disabled={anyLoading} className={styles.refreshBtn}><RefreshRoundedIcon fontSize="small" /></IconButton></span>
         </Tooltip>
-        <Button variant="contained" disableElevation startIcon={<FileDownloadRoundedIcon />} onClick={handleExport} disabled={exporting || anyLoading} className={styles.exportBtn}>
-          {exporting ? "Preparing…" : "Export Report"}
-        </Button>
       </div>
     </div>
 
@@ -287,23 +247,11 @@ export default function SiteAnalytics() {
         </>
       )}
 
-      {/* displayEmpty is required: "" is the "all" value, and MUI renders a
-          blank select for any value that fails its isFilled() check. */}
       <TextField
-        select size="small" value={filters.device} onChange={(e) => patch({ device: e.target.value })} className={styles.field}
-        SelectProps={{ displayEmpty: true }}
-        InputProps={{ startAdornment: <InputAdornment position="start"><DevicesRoundedIcon fontSize="small" /></InputAdornment> }}
+        select size="small" value={filters.platform} onChange={(e) => patch({ platform: e.target.value })} className={styles.field}
+        InputProps={{ startAdornment: <InputAdornment position="start"><PhoneIphoneRoundedIcon fontSize="small" /></InputAdornment> }}
       >
-        {DEVICE_OPTIONS.map((o) => <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>)}
-      </TextField>
-
-      <TextField
-        select size="small" value={filters.browser} onChange={(e) => patch({ browser: e.target.value })} className={styles.field}
-        SelectProps={{ displayEmpty: true }}
-        InputProps={{ startAdornment: <InputAdornment position="start"><LanguageRoundedIcon fontSize="small" /></InputAdornment> }}
-      >
-        <MenuItem value="">All browsers</MenuItem>
-        {BROWSER_OPTIONS.map((b) => <MenuItem key={b} value={b}>{b}</MenuItem>)}
+        {PLATFORM_OPTIONS.map((o) => <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>)}
       </TextField>
 
       {hasActiveFilter && <Button size="small" startIcon={<RestartAltRoundedIcon />} onClick={resetFilters} className={styles.resetBtn}>Reset</Button>}
@@ -312,7 +260,6 @@ export default function SiteAnalytics() {
 
     {anyLoading && <LinearProgress className={styles.loading} />}
     {overview.error && <Alert severity="warning" className={styles.alert}>Overview could not load: {overview.error}</Alert>}
-    {exportError && <Alert severity="error" className={styles.alert} onClose={() => setExportError("")}>{exportError}</Alert>}
 
     <div className={styles.metrics}>
       {metrics.map((m) => <Metric
@@ -337,8 +284,8 @@ export default function SiteAnalytics() {
       <PanelHead
         icon={InsightsRoundedIcon}
         tone="blue"
-        title="Daily Traffic Overview"
-        subtitle={granularity === "day" ? "Visitors, page views and business clicks per day (IST)." : "Daily figures summed into buckets (IST)."}
+        title="Daily App Activity"
+        subtitle={granularity === "day" ? "Users, screen views and business taps per day (IST)." : "Daily figures summed into buckets (IST)."}
         action={<TextField select size="small" value={granularity} onChange={(e) => setGranularity(e.target.value)} className={styles.granularity}>
           {GRANULARITIES.map((g) => <MenuItem key={g.value} value={g.value}>{g.label}</MenuItem>)}
         </TextField>}
@@ -351,37 +298,28 @@ export default function SiteAnalytics() {
             <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "#98a2b3" }} axisLine={false} tickLine={false} width={38} />
             <ChartTooltip contentStyle={{ borderRadius: 12, border: "1px solid #e4e9f1", fontSize: 12, boxShadow: "0 8px 24px -12px rgb(16 42 67 / 35%)" }} />
             <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, paddingBottom: 8 }} verticalAlign="top" align="left" />
-            <Bar dataKey="pageViews" name="Page Views" fill="#bfdbfe" radius={[6, 6, 0, 0]} maxBarSize={26} />
-            <Bar dataKey="businessClicks" name="Business Clicks" fill="#fed7aa" radius={[6, 6, 0, 0]} maxBarSize={26} />
-            <Line type="monotone" dataKey="visitors" name="Unique Visitors" stroke="#2563eb" strokeWidth={2} dot={false} />
+            <Bar dataKey="pageViews" name="Screen Views" fill="#bfdbfe" radius={[6, 6, 0, 0]} maxBarSize={26} />
+            <Bar dataKey="businessClicks" name="Business Taps" fill="#fed7aa" radius={[6, 6, 0, 0]} maxBarSize={26} />
+            <Line type="monotone" dataKey="visitors" name="Unique Devices" stroke="#2563eb" strokeWidth={2} dot={false} />
             <Line type="monotone" dataKey="sessions" name="Sessions" stroke="#7c3aed" strokeWidth={2} dot={false} strokeDasharray="4 3" />
           </ComposedChart>
         </ResponsiveContainer>
       </div>
     </Paper>
 
-    <CampaignLinkBuilder />
-
     <div className={styles.grid}>
       <SectionTable
-        title="Traffic Sources" tone="indigo" icon={CampaignRoundedIcon}
-        url="/site-events/campaigns" filters={queryFilters} filterKey={filterKey} reloadToken={reloadToken}
-        rowsKey="campaigns" columns={campaignColumns} defaultSort="sessions" searchPlaceholder="Search source, medium, campaign…"
-        renderSummary={(data) => data ? `${number(data.total)} sources · ${number(data.totals?.sessions)} sessions · ${number(data.totals?.leads)} leads.` : "Where sessions came from — QR scans, banners, ads, referrals, or direct."}
-      />
-
-      <SectionTable
-        title="Top Pages" tone="blue" icon={ArticleRoundedIcon}
+        title="Top Screens" tone="blue" icon={ArticleRoundedIcon}
         url="/site-events/top-pages" filters={queryFilters} filterKey={filterKey} reloadToken={reloadToken}
-        rowsKey="pages" columns={pageColumns} defaultSort="views" searchPlaceholder="Search pages…"
-        renderSummary={(data) => data ? `${number(data.total)} paths · ${number(data.totals?.views)} views.` : "Pages your visitors love the most."}
+        rowsKey="pages" columns={screenColumns} defaultSort="views" searchPlaceholder="Search screens…"
+        renderSummary={(data) => data ? `${number(data.total)} screens · ${number(data.totals?.views)} views.` : "Screens your users open the most."}
       />
 
       <SectionTable
         title="Top Businesses" tone="pink" icon={StorefrontRoundedIcon}
         url="/site-events/top-businesses" filters={queryFilters} filterKey={filterKey} reloadToken={reloadToken}
         rowsKey="businesses" columns={businessColumns} defaultSort="views" searchPlaceholder="Search businesses…"
-        renderSummary={(data) => data ? `${number(data.total)} businesses · ${number(data.totals?.leads)} leads. Hover a click count for the breakdown.` : "Businesses getting the most attention."}
+        renderSummary={(data) => data ? `${number(data.total)} businesses · ${number(data.totals?.leads)} leads. Hover a tap count for the breakdown.` : "Businesses getting the most attention in the app."}
       />
 
       <SectionTable
@@ -389,7 +327,7 @@ export default function SiteAnalytics() {
         url="/site-events/top-searches" filters={queryFilters} filterKey={filterKey} reloadToken={reloadToken}
         rowsKey="searches" columns={searchColumns} defaultSort="count" searchPlaceholder="Search keywords…"
         extraDefaults={{ searchType: "", zeroOnly: false }}
-        renderSummary={(data) => data ? `${number(data.typedSearches)} typed · ${number(data.categorySearches)} category · ${number(data.total)} distinct.` : "Most searched keywords on your site."}
+        renderSummary={(data) => data ? `${number(data.typedSearches)} typed · ${number(data.categorySearches)} category · ${number(data.total)} distinct.` : "Most searched keywords in the app."}
         renderExtra={(extra, setExtra) => <div className={styles.searchControls}>
           <ToggleButtonGroup
             exclusive size="small" value={extra.searchType}
@@ -410,7 +348,7 @@ export default function SiteAnalytics() {
         </div>}
       />
 
-      <DeviceSplit url="/site-events/devices" filters={queryFilters} reloadToken={reloadToken} />
+      <PlatformSplit filters={queryFilters} reloadToken={reloadToken} />
     </div>
 
     <p className={styles.footnote}>All times are in Asia/Kolkata timezone</p>
