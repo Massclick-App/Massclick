@@ -106,6 +106,24 @@ const externalReferrer = () => {
     }
 };
 
+// QR codes and printed banners carry no referrer at all, so campaigns are
+// identified by ?utm_* params on the landing URL instead. Only read on the
+// session's first tracked event — same lifetime as externalReferrer().
+const UTM_KEYS = ["source", "medium", "campaign", "term", "content"];
+const landingUtm = () => {
+    try {
+        const params = new URLSearchParams(window.location.search);
+        const utm = {};
+        UTM_KEYS.forEach((key) => {
+            const value = params.get(`utm_${key}`);
+            if (value) utm[key] = value;
+        });
+        return Object.keys(utm).length ? utm : null;
+    } catch (_) {
+        return null;
+    }
+};
+
 const transmit = (body, preferBeacon) => {
     try {
         if (preferBeacon && window.navigator && typeof window.navigator.sendBeacon === "function") {
@@ -180,6 +198,8 @@ const track = (type, payload = {}) => {
             event.isNewSession = true;
             const referrer = externalReferrer();
             if (referrer) event.referrer = referrer;
+            const utm = landingUtm();
+            if (utm) event.utm = utm;
             pendingNewSession = false;
         }
 

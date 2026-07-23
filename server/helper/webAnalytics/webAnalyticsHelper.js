@@ -96,6 +96,16 @@ const sanitizeEvent = (raw, envelope, enrichment, nowMs) => {
         fp: enrichment.fp,
     };
 
+    if (isNewSession && raw.utm && typeof raw.utm === "object") {
+        doc.utm = {
+            source: capString(raw.utm.source, 80),
+            medium: capString(raw.utm.medium, 80),
+            campaign: capString(raw.utm.campaign, 80),
+            term: capString(raw.utm.term, 80),
+            content: capString(raw.utm.content, 80),
+        };
+    }
+
     if (BIZ_EVENT_TYPES.has(raw.type)) {
         const biz = raw.biz || {};
         if (typeof biz.businessId !== "string" || !OBJECT_ID_RE.test(biz.businessId)) return null;
@@ -645,6 +655,139 @@ export const getTopBusinesses = async (query) => {
             leads: result?.grand?.[0]?.leads || 0,
         },
         businesses: result?.data || [],
+    };
+};
+
+// ---------------------------------------------------------------------------
+// Traffic sources / campaigns
+// ---------------------------------------------------------------------------
+
+// Attributes each session to a source/medium/campaign. QR codes, printed
+// banners, and paid ads carry ?utm_* params on the landing URL (they have no
+// referrer at all); everything else falls back to the referring URL, or
+// "(direct)" when there's neither. $max in the first $group picks out the
+// single non-empty value stamped on the session's landing event — every other
+// event in the session stores "" for these fields.
+export const getCampaigns = async (query) => {
+    const { start, end, days } = resolveRange(query);
+    const limit = clampLimit(query.limit);
+    const page = clampPage(query.page);
+    const dir = sortDir(query.dir);
+    const sortField = ["sessions", "visitors", "leads"].includes(query.sort) ? query.sort : "sessions";
+    const q = typeof query.q === "string" ? query.q.trim() : "";
+
+    const [result] = await webEventModel.aggregate([
+        { $match: baseMatch(start, end, query) },
+        {
+            $group: {
+                _id: "$sessionId",
+                utmSource: { $max: { $ifNull: ["$utm.source", ""] } },
+                utmMedium: { $max: { $ifNull: ["$utm.medium", ""] } },
+                utmCampaign: { $max: { $ifNull: ["$utm.campaign", ""] } },
+                referrer: { $max: { $ifNull: ["$referrer", ""] } },
+                deviceId: { $first: "$deviceId" },
+                leads: { $sum: { $cond: [{ $in: ["$biz.action", [...LEAD_ACTIONS]] }, 1, 0] } },
+            },
+        },
+        {
+            $addFields: {
+                hasUtm: { $or: [{ $ne: ["$utmSource", ""] }, { $ne: ["$utmMedium", ""] }, { $ne: ["$utmCampaign", ""] }] },
+                hasReferrer: { $ne: ["$referrer", ""] },
+            },
+        },
+        {
+            $addFields: {
+                source: {
+                    $cond: [
+                        "$hasUtm",
+                        { $cond: [{ $ne: ["$utmSource", ""] }, "$utmSource", "(not set)"] },
+                        { $cond: ["$hasReferrer", "$referrer", "(direct)"] },
+                    ],
+                },
+                medium: {
+                    $cond: [
+                        "$hasUtm",
+                        { $cond: [{ $ne: ["$utmMedium", ""] }, "$utmMedium", "(not set)"] },
+                        { $cond: ["$hasReferrer", "referral", "(none)"] },
+                    ],
+                },
+                campaign: {
+                    $cond: ["$hasUtm", { $cond: [{ $ne: ["$utmCampaign", ""] }, "$utmCampaign", "(not set)"] }, "(direct)"],
+                },
+            },
+        },
+        ...(q
+            ? [
+                  {
+                      $match: {
+                          $or: [
+                              { source: { $regex: escapeRegex(q), $options: "i" } },
+                              { medium: { $regex: escapeRegex(q), $options: "i" } },
+                              { campaign: { $regex: escapeRegex(q), $options: "i" } },
+                          ],
+                      },
+                  },
+              ]
+            : []),
+        {
+            $group: {
+                _id: { source: "$source", medium: "$medium", campaign: "$campaign", deviceId: "$deviceId" },
+                sessions: { $sum: 1 },
+                leads: { $sum: "$leads" },
+            },
+        },
+        {
+            $group: {
+                _id: { source: "$_id.source", medium: "$_id.medium", campaign: "$_id.campaign" },
+                sessions: { $sum: "$sessions" },
+                visitors: { $sum: 1 },
+                leads: { $sum: "$leads" },
+            },
+        },
+        {
+            $facet: {
+                data: [
+                    { $sort: { [sortField]: dir, "_id.source": 1 } },
+                    { $skip: (page - 1) * limit },
+                    { $limit: limit },
+                    {
+                        $project: {
+                            _id: 0,
+                            source: "$_id.source",
+                            medium: "$_id.medium",
+                            campaign: "$_id.campaign",
+                            sessions: 1,
+                            visitors: 1,
+                            leads: 1,
+                        },
+                    },
+                ],
+                total: [{ $count: "n" }],
+                grand: [
+                    {
+                        $group: {
+                            _id: null,
+                            sessions: { $sum: "$sessions" },
+                            visitors: { $sum: "$visitors" },
+                            leads: { $sum: "$leads" },
+                        },
+                    },
+                ],
+            },
+        },
+    ]);
+
+    return {
+        days,
+        page,
+        limit,
+        total: result?.total?.[0]?.n || 0,
+        totals: {
+            sessions: result?.grand?.[0]?.sessions || 0,
+            visitors: result?.grand?.[0]?.visitors || 0,
+            leads: result?.grand?.[0]?.leads || 0,
+        },
+        campaigns: result?.data || [],
     };
 };
 

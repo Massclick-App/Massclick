@@ -4,6 +4,7 @@ import {
     getTrends,
     getTopPages,
     getTopBusinesses,
+    getCampaigns,
     getTopSearches,
     getDevices,
 } from "../../helper/webAnalytics/webAnalyticsHelper.js";
@@ -37,5 +38,6 @@ export const overviewAction = readHandler("overview", getOverview);
 export const trendsAction = readHandler("trends", getTrends);
 export const topPagesAction = readHandler("top-pages", getTopPages);
 export const topBusinessesAction = readHandler("top-businesses", getTopBusinesses);
+export const campaignsAction = readHandler("campaigns", getCampaigns);
 export const topSearchesAction = readHandler("top-searches", getTopSearches);
 export const devicesAction = readHandler("devices", getDevices);

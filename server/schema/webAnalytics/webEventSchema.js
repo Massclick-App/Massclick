@@ -27,6 +27,16 @@ const webEventSchema = new mongoose.Schema(
         path: { type: String, default: "" },
         // External referrer origin, only stored on a session's first page_view.
         referrer: { type: String, default: "" },
+        // Landing UTM params, only stored on a session's first page_view — this
+        // is how QR codes and offline banners (which have no referrer at all)
+        // get attributed to a campaign.
+        utm: {
+            source: { type: String, default: "" },
+            medium: { type: String, default: "" },
+            campaign: { type: String, default: "" },
+            term: { type: String, default: "" },
+            content: { type: String, default: "" },
+        },
         device: { type: String, enum: DEVICE_TYPES, default: "other" },
         browser: { type: String, default: "Other" },
         // Short hash of IP+UA for abuse analysis. Raw IP is never stored.

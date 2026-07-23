@@ -181,7 +181,7 @@ function overviewSheet(workbook, { overview, meta, filters }) {
 
 const DEVICE_LABELS = { mobile: "Mobile", tablet: "Tablet", desktop: "Desktop", other: "Other" };
 
-export async function exportSiteAnalyticsWorkbook({ overview, trends, devices, pages, businesses, searches, meta, filters = [] }) {
+export async function exportSiteAnalyticsWorkbook({ overview, trends, devices, pages, businesses, campaigns, searches, meta, filters = [] }) {
   const { Workbook } = await import("exceljs");
   const workbook = new Workbook();
   Object.assign(workbook, {
@@ -239,6 +239,20 @@ export async function exportSiteAnalyticsWorkbook({ overview, trends, devices, p
       const a = r.actions || {};
       return [i + 1, r.name || r.businessId, num(r.views), num(r.clicks), num(r.leads), num(a.call), num(a.whatsapp), num(a.direction), num(a.enquiry), num(a.showNumber)];
     },
+  });
+
+  detailSheet(workbook, {
+    name: "Traffic Sources",
+    color: C.blue,
+    title: "Traffic Sources",
+    subtitle: "Sessions attributed to each source/medium/campaign — QR scans, banners, ads, referrals, or direct.",
+    meta,
+    filters,
+    headers: ["Rank", "Source", "Medium", "Campaign", "Sessions", "Visitors", "Leads"],
+    widths: [8, 28, 16, 28, 12, 12, 10],
+    numeric: [1, 5, 6, 7],
+    data: campaigns,
+    map: (r, i) => [i + 1, r.source, r.medium, r.campaign, num(r.sessions), num(r.visitors), num(r.leads)],
   });
 
   detailSheet(workbook, {

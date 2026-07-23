@@ -29,12 +29,14 @@ import DevicesRoundedIcon from "@mui/icons-material/DevicesRounded";
 import LanguageRoundedIcon from "@mui/icons-material/LanguageRounded";
 import InsightsRoundedIcon from "@mui/icons-material/InsightsRounded";
 import ArticleRoundedIcon from "@mui/icons-material/ArticleRounded";
+import CampaignRoundedIcon from "@mui/icons-material/CampaignRounded";
 import {
   Area, AreaChart, Bar, CartesianGrid, Cell, ComposedChart, Legend, Line,
   Pie, PieChart, ResponsiveContainer, Tooltip as ChartTooltip, XAxis, YAxis,
 } from "recharts";
 import axiosInstance from "../../services/axiosInstance.js";
 import { exportSiteAnalyticsWorkbook } from "./siteAnalyticsWorkbook.js";
+import CampaignLinkBuilder from "./CampaignLinkBuilder.js";
 import styles from "./SiteAnalytics.module.css";
 
 const API_URL = process.env.REACT_APP_API_URL;
@@ -265,7 +267,7 @@ function SectionTable({
 
 // Stable-ish row key across the section's known id fields.
 function rowKey(row, index, rowsKey) {
-  return `${rowsKey}-${row.businessId || row.path || row.query || index}-${index}`;
+  return `${rowsKey}-${row.businessId || row.path || row.query || row.campaign || index}-${index}`;
 }
 
 function Donut({ heading, rows, labelOf }) {
@@ -398,9 +400,10 @@ export default function SiteAnalytics() {
     setExportError("");
     try {
       const big = { ...queryFilters, limit: 500, page: 1 };
-      const [pagesRes, bizRes, searchRes, devicesRes] = await Promise.all([
+      const [pagesRes, bizRes, campaignsRes, searchRes, devicesRes] = await Promise.all([
         axiosInstance.get(`${API_URL}/site-events/top-pages`, { params: big }),
         axiosInstance.get(`${API_URL}/site-events/top-businesses`, { params: big }),
+        axiosInstance.get(`${API_URL}/site-events/campaigns`, { params: big }),
         axiosInstance.get(`${API_URL}/site-events/top-searches`, { params: big }),
         axiosInstance.get(`${API_URL}/site-events/devices`, { params: queryFilters }),
       ]);
@@ -410,6 +413,7 @@ export default function SiteAnalytics() {
         devices: devicesRes.data,
         pages: pagesRes.data?.pages || [],
         businesses: bizRes.data?.businesses || [],
+        campaigns: campaignsRes.data?.campaigns || [],
         searches: searchRes.data?.searches || [],
         meta: { rangeLabel, generated: new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }) },
         filters: [
@@ -492,6 +496,15 @@ export default function SiteAnalytics() {
       key: "clicks", label: "Clicks", numeric: true, sortable: true, width: 82,
       render: (r) => <Tooltip title={breakdownText(r)} arrow><span className={styles.hintCell}>{number(r.clicks)}</span></Tooltip>,
     },
+    { key: "leads", label: "Leads", numeric: true, sortable: true, width: 82, render: (r) => number(r.leads) },
+  ];
+
+  const campaignColumns = [
+    { key: "source", label: "Source", render: (r) => <span className={styles.mono} title={r.source}>{r.source}</span> },
+    { key: "medium", label: "Medium", render: (r) => r.medium },
+    { key: "campaign", label: "Campaign", render: (r) => <span className={styles.strongCell} title={r.campaign}>{r.campaign}</span> },
+    { key: "sessions", label: "Sessions", numeric: true, sortable: true, width: 96, render: (r) => number(r.sessions) },
+    { key: "visitors", label: "Visitors", numeric: true, sortable: true, width: 92, render: (r) => number(r.visitors) },
     { key: "leads", label: "Leads", numeric: true, sortable: true, width: 82, render: (r) => number(r.leads) },
   ];
 
@@ -612,7 +625,16 @@ export default function SiteAnalytics() {
       </div>
     </Paper>
 
+    <CampaignLinkBuilder />
+
     <div className={styles.grid}>
+      <SectionTable
+        title="Traffic Sources" tone="indigo" icon={CampaignRoundedIcon}
+        url="/site-events/campaigns" filters={queryFilters} filterKey={filterKey} reloadToken={reloadToken}
+        rowsKey="campaigns" columns={campaignColumns} defaultSort="sessions" searchPlaceholder="Search source, medium, campaign…"
+        renderSummary={(data) => data ? `${number(data.total)} sources · ${number(data.totals?.sessions)} sessions · ${number(data.totals?.leads)} leads.` : "Where sessions came from — QR scans, banners, ads, referrals, or direct."}
+      />
+
       <SectionTable
         title="Top Pages" tone="blue" icon={ArticleRoundedIcon}
         url="/site-events/top-pages" filters={queryFilters} filterKey={filterKey} reloadToken={reloadToken}
