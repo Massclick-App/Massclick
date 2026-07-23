@@ -7,6 +7,7 @@ import {
     BUSINESS_ACTIONS,
     BUSINESS_SOURCES,
     DEVICE_TYPES,
+    PLATFORMS,
 } from "../../schema/webAnalytics/webEventSchema.js";
 
 const MAX_EVENTS_PER_BATCH = 25;
@@ -16,7 +17,8 @@ const DASHBOARD_TIMEZONE = "Asia/Kolkata";
 
 const BOT_UA_RE = /bot|crawl|spider|slurp|headless|lighthouse|prerender|phantom|puppeteer|playwright/i;
 // Lower bounds are loose: Math.random().toString(36) can emit short strings.
-const DEVICE_ID_RE = /^web_[a-z0-9]{4,60}$/i;
+// `web_` is the browser tracker; `app_` is the mobile tracker.
+const DEVICE_ID_RE = /^(web|app)_[a-z0-9]{4,60}$/i;
 const SESSION_ID_RE = /^s_[a-z0-9]{4,60}$/i;
 const OBJECT_ID_RE = /^[0-9a-f]{24}$/i;
 
@@ -88,6 +90,10 @@ const sanitizeEvent = (raw, envelope, enrichment, nowMs) => {
         sessionId: envelope.sessionId,
         deviceId: envelope.deviceId,
         userId: envelope.userId,
+        platform: envelope.platform,
+        appVersion: envelope.appVersion,
+        osVersion: envelope.osVersion,
+        deviceModel: envelope.deviceModel,
         isNewSession,
         path: capString(raw.path, 512),
         referrer: isNewSession ? capString(raw.referrer, 512) : "",
@@ -201,6 +207,13 @@ export const ingestEvents = async (req) => {
     if (typeof body.deviceId !== "string" || !DEVICE_ID_RE.test(body.deviceId)) return { inserted: 0 };
     if (typeof body.sessionId !== "string" || !SESSION_ID_RE.test(body.sessionId)) return { inserted: 0 };
 
+    // Platform and app build info are envelope-level: one device per batch.
+    // The web tracker sends none of these, so absent values collapse to the
+    // web defaults. App-only fields are dropped for web so a spoofed web
+    // batch can't smuggle them in.
+    const platform = PLATFORMS.includes(body.platform) ? body.platform : "web";
+    const isApp = platform !== "web";
+
     const envelope = {
         deviceId: body.deviceId,
         sessionId: body.sessionId,
@@ -208,6 +221,10 @@ export const ingestEvents = async (req) => {
             typeof body.userId === "string" && OBJECT_ID_RE.test(body.userId)
                 ? new mongoose.Types.ObjectId(body.userId)
                 : null,
+        platform,
+        appVersion: isApp ? capString(body.appVersion, 40) : "",
+        osVersion: isApp ? capString(body.osVersion, 40) : "",
+        deviceModel: isApp ? capString(body.deviceModel, 80) : "",
     };
 
     const { device, browser } = parseUserAgent(ua);
@@ -299,6 +316,12 @@ const resolveRange = (query = {}) => {
 // first-seen lookups that must look further back than the active window.
 const dimensionMatch = (query = {}) => {
     const match = {};
+    // Rows written before the platform field existed store nothing for it, and
+    // aggregations never see mongoose defaults — so the web pin must also
+    // match missing values ($in with null matches absent fields). No platform
+    // param means no filter, which keeps pre-existing dashboard calls intact.
+    if (query.platform === "web") match.platform = { $in: ["web", null] };
+    else if (PLATFORMS.includes(query.platform)) match.platform = query.platform;
     if (query.device && DEVICE_TYPES.includes(query.device)) match.device = query.device;
     if (query.browser) match.browser = query.browser;
     return match;
@@ -934,5 +957,49 @@ export const getDevices = async (query) => {
         days,
         devices: result?.devices || [],
         browsers: result?.browsers || [],
+    };
+};
+
+// The app panel's counterpart to getDevices: visitor split by platform and by
+// app version. Rows with no appVersion (all web traffic) are excluded from
+// the version facet rather than showing up as a giant "" bucket.
+export const getAppVersions = async (query) => {
+    const { start, end, days } = resolveRange(query);
+
+    const [result] = await webEventModel.aggregate([
+        { $match: baseMatch(start, end, query) },
+        {
+            $facet: {
+                platforms: [
+                    { $group: { _id: { platform: { $ifNull: ["$platform", "web"] }, deviceId: "$deviceId" } } },
+                    { $group: { _id: "$_id.platform", visitors: { $sum: 1 } } },
+                    { $sort: { visitors: -1 } },
+                    { $project: { _id: 0, platform: "$_id", visitors: 1 } },
+                ],
+                appVersions: [
+                    { $match: { appVersion: { $nin: ["", null] } } },
+                    { $group: { _id: { appVersion: "$appVersion", deviceId: "$deviceId" } } },
+                    { $group: { _id: "$_id.appVersion", visitors: { $sum: 1 } } },
+                    { $sort: { visitors: -1 } },
+                    { $limit: 12 },
+                    { $project: { _id: 0, appVersion: "$_id", visitors: 1 } },
+                ],
+                osVersions: [
+                    { $match: { osVersion: { $nin: ["", null] } } },
+                    { $group: { _id: { osVersion: "$osVersion", deviceId: "$deviceId" } } },
+                    { $group: { _id: "$_id.osVersion", visitors: { $sum: 1 } } },
+                    { $sort: { visitors: -1 } },
+                    { $limit: 12 },
+                    { $project: { _id: 0, osVersion: "$_id", visitors: 1 } },
+                ],
+            },
+        },
+    ]);
+
+    return {
+        days,
+        platforms: result?.platforms || [],
+        appVersions: result?.appVersions || [],
+        osVersions: result?.osVersions || [],
     };
 };

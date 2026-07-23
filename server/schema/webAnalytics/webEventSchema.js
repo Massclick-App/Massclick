@@ -15,6 +15,7 @@ export const EVENT_TYPES = [
 export const BUSINESS_ACTIONS = ["call", "whatsapp", "direction", "enquiry", "show_number"];
 export const BUSINESS_SOURCES = ["card", "detail"];
 export const DEVICE_TYPES = ["mobile", "tablet", "desktop", "other"];
+export const PLATFORMS = ["web", "android", "ios"];
 
 const webEventSchema = new mongoose.Schema(
     {
@@ -37,8 +38,16 @@ const webEventSchema = new mongoose.Schema(
             term: { type: String, default: "" },
             content: { type: String, default: "" },
         },
+        // Which client emitted the event. Rows written before this field
+        // existed store nothing — reads must treat a missing platform as
+        // "web" (aggregations bypass this default entirely).
+        platform: { type: String, enum: PLATFORMS, default: "web" },
         device: { type: String, enum: DEVICE_TYPES, default: "other" },
         browser: { type: String, default: "Other" },
+        // App-only dimensions — mobile's analogue of `browser`; empty on web.
+        appVersion: { type: String, default: "" },
+        osVersion: { type: String, default: "" },
+        deviceModel: { type: String, default: "" },
         // Short hash of IP+UA for abuse analysis. Raw IP is never stored.
         fp: { type: String, default: "" },
         biz: {
@@ -59,6 +68,7 @@ const webEventSchema = new mongoose.Schema(
 );
 
 webEventSchema.index({ type: 1, ts: -1 });
+webEventSchema.index({ platform: 1, ts: -1 });
 webEventSchema.index({ sessionId: 1, ts: -1 });
 webEventSchema.index(
     { "biz.businessId": 1, ts: -1 },
