@@ -6,6 +6,7 @@ import {
     EVENT_TYPES,
     BUSINESS_ACTIONS,
     BUSINESS_SOURCES,
+    DEVICE_TYPES,
 } from "../../schema/webAnalytics/webEventSchema.js";
 
 const MAX_EVENTS_PER_BATCH = 25;
@@ -222,15 +223,78 @@ export const ingestEvents = async (req) => {
 // Dashboard aggregations
 // ---------------------------------------------------------------------------
 
+const DAY_MS = 86400000;
+const MAX_TREND_DAYS = 366;
+
 const clampDays = (days) => Math.min(Math.max(parseInt(days, 10) || 28, 1), 365);
-const clampLimit = (limit, fallback = 10) => Math.min(Math.max(parseInt(limit, 10) || fallback, 1), 100);
+const clampLimit = (limit, fallback = 25, max = 500) =>
+    Math.min(Math.max(parseInt(limit, 10) || fallback, 1), max);
+const clampPage = (page) => Math.max(parseInt(page, 10) || 1, 1);
+
+// Escapes user text before it is used inside a MongoDB $regex, so a query like
+// "a.b" matches literally instead of as a wildcard.
+const escapeRegex = (value = "") => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const rangeForDays = (days) => {
     const end = new Date();
-    const start = new Date(end.getTime() - days * 86400000);
-    const previousStart = new Date(end.getTime() - 2 * days * 86400000);
+    const start = new Date(end.getTime() - days * DAY_MS);
+    const previousStart = new Date(end.getTime() - 2 * days * DAY_MS);
     return { start, end, previousStart };
 };
+
+const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
+const IST_UTC_OFFSET = "+05:30";
+
+// A bare "YYYY-MM-DD" from the dashboard is interpreted in IST — not UTC — so
+// a custom range lines up with the IST day buckets used for grouping. The end
+// date is inclusive, so it advances to the start of the next IST day.
+const parseBoundary = (value, { inclusiveEnd = false } = {}) => {
+    if (!value) return null;
+    const raw = String(value).trim();
+
+    if (DATE_ONLY_RE.test(raw)) {
+        const midnight = new Date(`${raw}T00:00:00${IST_UTC_OFFSET}`);
+        if (Number.isNaN(midnight.getTime())) return null;
+        return inclusiveEnd ? new Date(midnight.getTime() + DAY_MS) : midnight;
+    }
+
+    const parsed = new Date(raw);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+// Resolves the active window from either an explicit start/end pair (custom
+// range) or a preset day count. The comparison window is always the
+// equal-length span immediately before `start`, so period-over-period deltas
+// stay meaningful in both modes.
+const resolveRange = (query = {}) => {
+    const startBoundary = parseBoundary(query.start);
+    const endBoundary = parseBoundary(query.end, { inclusiveEnd: true });
+
+    if (startBoundary || endBoundary) {
+        const end = endBoundary || new Date();
+        let start = startBoundary || new Date(end.getTime() - 28 * DAY_MS);
+        if (start.getTime() >= end.getTime()) start = new Date(end.getTime() - DAY_MS);
+        const spanMs = end.getTime() - start.getTime();
+        const previousStart = new Date(start.getTime() - spanMs);
+        const days = Math.max(Math.round(spanMs / DAY_MS), 1);
+        return { start, end, previousStart, days, custom: true };
+    }
+
+    const days = clampDays(query.days);
+    const { start, end, previousStart } = rangeForDays(days);
+    return { start, end, previousStart, days, custom: false };
+};
+
+// device / browser filters apply to any event-level aggregation. Returns a new
+// $match object combining the time window with the optional dimension filters.
+const baseMatch = (start, end, query = {}) => {
+    const match = { ts: { $gte: start, $lt: end } };
+    if (query.device && DEVICE_TYPES.includes(query.device)) match.device = query.device;
+    if (query.browser) match.browser = query.browser;
+    return match;
+};
+
+const sortDir = (dir) => (dir === "asc" ? 1 : -1);
 
 const istDayFormatter = new Intl.DateTimeFormat("en-CA", {
     timeZone: DASHBOARD_TIMEZONE,
@@ -241,9 +305,9 @@ const istDayFormatter = new Intl.DateTimeFormat("en-CA", {
 
 // Distinct counts use two-stage $group -> $count (never $addToSet) so memory
 // stays bounded regardless of traffic volume.
-const overviewForRange = async (start, end) => {
+const overviewForRange = async (start, end, query) => {
     const [result] = await webEventModel.aggregate([
-        { $match: { ts: { $gte: start, $lt: end } } },
+        { $match: baseMatch(start, end, query) },
         {
             $facet: {
                 byType: [{ $group: { _id: "$type", n: { $sum: 1 } } }],
@@ -277,27 +341,25 @@ const overviewForRange = async (start, end) => {
     };
 };
 
-export const getOverview = async (days) => {
-    const safeDays = clampDays(days);
-    const { start, end, previousStart } = rangeForDays(safeDays);
+export const getOverview = async (query) => {
+    const { start, end, previousStart, days } = resolveRange(query);
 
     const [current, previous] = await Promise.all([
-        overviewForRange(start, end),
-        overviewForRange(previousStart, start),
+        overviewForRange(start, end, query),
+        overviewForRange(previousStart, start, query),
     ]);
 
-    return { days: safeDays, current, previous };
+    return { days, current, previous };
 };
 
-export const getTrends = async (days) => {
-    const safeDays = clampDays(days);
-    const { start, end } = rangeForDays(safeDays);
+export const getTrends = async (query) => {
+    const { start, end, days } = resolveRange(query);
     const dayExpr = {
         $dateToString: { format: "%Y-%m-%d", date: "$ts", timezone: DASHBOARD_TIMEZONE },
     };
 
     const [result] = await webEventModel.aggregate([
-        { $match: { ts: { $gte: start, $lt: end } } },
+        { $match: baseMatch(start, end, query) },
         {
             $facet: {
                 bySession: [
@@ -330,11 +392,16 @@ export const getTrends = async (days) => {
     const sessionRows = new Map((result?.bySession || []).map((row) => [row._id, row]));
     const visitorRows = new Map((result?.byVisitor || []).map((row) => [row._id, row.visitors]));
 
-    // Emit a row for every day in the window so charts render gapless.
+    // Emit a row for every calendar day in the window so charts render gapless.
+    // Stepping forward from `start` covers both preset and custom ranges; IST
+    // has no DST, so each 24h step advances the local date by exactly one.
     const trend = [];
-    const nowMs = Date.now();
-    for (let i = safeDays - 1; i >= 0; i -= 1) {
-        const day = istDayFormatter.format(new Date(nowMs - i * 86400000));
+    const seen = new Set();
+    const dayCount = Math.min(Math.max(Math.ceil((end.getTime() - start.getTime()) / DAY_MS), 1), MAX_TREND_DAYS);
+    for (let i = 0; i < dayCount; i += 1) {
+        const day = istDayFormatter.format(new Date(start.getTime() + i * DAY_MS));
+        if (seen.has(day)) continue;
+        seen.add(day);
         const row = sessionRows.get(day);
         trend.push({
             date: day,
@@ -346,41 +413,74 @@ export const getTrends = async (days) => {
         });
     }
 
-    return { days: safeDays, trend };
+    return { days, trend };
 };
 
-export const getTopPages = async (days, limit) => {
-    const safeDays = clampDays(days);
-    const { start, end } = rangeForDays(safeDays);
+export const getTopPages = async (query) => {
+    const { start, end, days } = resolveRange(query);
+    const limit = clampLimit(query.limit);
+    const page = clampPage(query.page);
+    const sortField = query.sort === "sessions" ? "sessions" : "views";
+    const dir = sortDir(query.dir);
+    const q = typeof query.q === "string" ? query.q.trim() : "";
 
-    const pages = await webEventModel.aggregate([
-        { $match: { type: "page_view", ts: { $gte: start, $lt: end } } },
+    const match = { ...baseMatch(start, end, query), type: "page_view" };
+    if (q) match.path = { $regex: escapeRegex(q), $options: "i" };
+
+    const [result] = await webEventModel.aggregate([
+        { $match: match },
         { $group: { _id: { path: "$path", sessionId: "$sessionId" }, n: { $sum: 1 } } },
         { $group: { _id: "$_id.path", views: { $sum: "$n" }, sessions: { $sum: 1 } } },
-        { $sort: { views: -1 } },
-        { $limit: clampLimit(limit) },
-        { $project: { _id: 0, path: "$_id", views: 1, sessions: 1 } },
+        {
+            $facet: {
+                data: [
+                    { $sort: { [sortField]: dir, _id: 1 } },
+                    { $skip: (page - 1) * limit },
+                    { $limit: limit },
+                    { $project: { _id: 0, path: "$_id", views: 1, sessions: 1 } },
+                ],
+                total: [{ $count: "n" }],
+                grand: [
+                    { $group: { _id: null, views: { $sum: "$views" }, sessions: { $sum: "$sessions" } } },
+                ],
+            },
+        },
     ]);
 
-    return { days: safeDays, pages };
+    return {
+        days,
+        page,
+        limit,
+        total: result?.total?.[0]?.n || 0,
+        totals: {
+            views: result?.grand?.[0]?.views || 0,
+            sessions: result?.grand?.[0]?.sessions || 0,
+        },
+        pages: result?.data || [],
+    };
 };
 
-export const getTopBusinesses = async (days, limit) => {
-    const safeDays = clampDays(days);
-    const { start, end } = rangeForDays(safeDays);
+export const getTopBusinesses = async (query) => {
+    const { start, end, days } = resolveRange(query);
+    const limit = clampLimit(query.limit);
+    const page = clampPage(query.page);
+    const dir = sortDir(query.dir);
+    const sortField = ["views", "clicks", "leads"].includes(query.sort) ? query.sort : "views";
+    const q = typeof query.q === "string" ? query.q.trim() : "";
+
+    const match = {
+        ...baseMatch(start, end, query),
+        type: { $in: ["business_view", "business_click"] },
+        "biz.businessId": { $exists: true },
+    };
+    if (q) match["biz.name"] = { $regex: escapeRegex(q), $options: "i" };
 
     const actionSum = (action) => ({
         $sum: { $cond: [{ $eq: ["$biz.action", action] }, 1, 0] },
     });
 
-    const businesses = await webEventModel.aggregate([
-        {
-            $match: {
-                type: { $in: ["business_view", "business_click"] },
-                "biz.businessId": { $exists: true },
-                ts: { $gte: start, $lt: end },
-            },
-        },
+    const [result] = await webEventModel.aggregate([
+        { $match: match },
         {
             $group: {
                 _id: "$biz.businessId",
@@ -394,120 +494,40 @@ export const getTopBusinesses = async (days, limit) => {
                 showNumber: actionSum("show_number"),
             },
         },
-        { $sort: { views: -1, clicks: -1 } },
-        { $limit: clampLimit(limit) },
-        {
-            $project: {
-                _id: 0,
-                businessId: "$_id",
-                name: 1,
-                views: 1,
-                clicks: 1,
-                actions: {
-                    call: "$call",
-                    whatsapp: "$whatsapp",
-                    direction: "$direction",
-                    enquiry: "$enquiry",
-                    showNumber: "$showNumber",
-                },
-            },
-        },
-    ]);
-
-    return { days: safeDays, businesses };
-};
-
-export const getTopSearches = async (days, limit) => {
-    const safeDays = clampDays(days);
-    const safeLimit = clampLimit(limit);
-    const { start, end } = rangeForDays(safeDays);
-
-    const [result] = await webEventModel.aggregate([
-        { $match: { type: "search", ts: { $gte: start, $lt: end } } },
+        // Leads mirror the ingest definition: call + whatsapp + enquiry.
+        { $addFields: { leads: { $add: ["$call", "$whatsapp", "$enquiry"] } } },
         {
             $facet: {
-                top: [
-                    {
-                        $group: {
-                            _id: {
-                                query: { $toLower: { $ifNull: ["$search.query", ""] } },
-                                location: { $ifNull: ["$search.location", ""] },
-                            },
-                            count: { $sum: 1 },
-                            typedCount: { $sum: { $cond: [{ $eq: ["$search.known", false] }, 1, 0] } },
-                            resultSum: { $sum: { $ifNull: ["$search.results", 0] } },
-                            resultCount: { $sum: { $cond: [{ $ne: ["$search.results", null] }, 1, 0] } },
-                            zeroResults: { $sum: { $cond: [{ $eq: ["$search.results", 0] }, 1, 0] } },
-                        },
-                    },
-                    { $sort: { "_id.query": 1, count: -1, "_id.location": 1 } },
-                    {
-                        $group: {
-                            _id: "$_id.query",
-                            count: { $sum: "$count" },
-                            typedCount: { $sum: "$typedCount" },
-                            resultSum: { $sum: "$resultSum" },
-                            resultCount: { $sum: "$resultCount" },
-                            zeroResults: { $sum: "$zeroResults" },
-                            topLocation: { $first: "$_id.location" },
-                        },
-                    },
-                    { $match: { _id: { $ne: "" } } },
-                    { $sort: { count: -1 } },
-                    { $limit: safeLimit },
+                data: [
+                    { $sort: { [sortField]: dir, views: -1, _id: 1 } },
+                    { $skip: (page - 1) * limit },
+                    { $limit: limit },
                     {
                         $project: {
                             _id: 0,
-                            query: "$_id",
-                            count: 1,
-                            typedCount: 1,
-                            avgResults: {
-                                $round: [
-                                    {
-                                        $cond: [
-                                            { $gt: ["$resultCount", 0] },
-                                            { $divide: ["$resultSum", "$resultCount"] },
-                                            0,
-                                        ],
-                                    },
-                                    1,
-                                ],
+                            businessId: "$_id",
+                            name: 1,
+                            views: 1,
+                            clicks: 1,
+                            leads: 1,
+                            actions: {
+                                call: "$call",
+                                whatsapp: "$whatsapp",
+                                direction: "$direction",
+                                enquiry: "$enquiry",
+                                showNumber: "$showNumber",
                             },
-                            zeroResults: 1,
-                            location: "$topLocation",
                         },
                     },
                 ],
-                zeroResult: [
-                    { $match: { "search.results": 0 } },
-                    {
-                        $group: {
-                            _id: {
-                                query: { $toLower: { $ifNull: ["$search.query", ""] } },
-                                location: { $ifNull: ["$search.location", ""] },
-                            },
-                            count: { $sum: 1 },
-                        },
-                    },
-                    { $sort: { "_id.query": 1, count: -1, "_id.location": 1 } },
-                    {
-                        $group: {
-                            _id: "$_id.query",
-                            count: { $sum: "$count" },
-                            topLocation: { $first: "$_id.location" },
-                        },
-                    },
-                    { $match: { _id: { $ne: "" } } },
-                    { $sort: { count: -1 } },
-                    { $limit: safeLimit },
-                    { $project: { _id: 0, query: "$_id", count: 1, location: "$topLocation" } },
-                ],
-                totals: [
+                total: [{ $count: "n" }],
+                grand: [
                     {
                         $group: {
                             _id: null,
-                            total: { $sum: 1 },
-                            typed: { $sum: { $cond: [{ $eq: ["$search.known", false] }, 1, 0] } },
+                            views: { $sum: "$views" },
+                            clicks: { $sum: "$clicks" },
+                            leads: { $sum: "$leads" },
                         },
                     },
                 ],
@@ -515,24 +535,140 @@ export const getTopSearches = async (days, limit) => {
         },
     ]);
 
-    const totals = result?.totals?.[0] || { total: 0, typed: 0 };
-
     return {
-        days: safeDays,
-        totalSearches: totals.total,
-        typedSearches: totals.typed,
-        categorySearches: totals.total - totals.typed,
-        searches: result?.top || [],
-        zeroResult: result?.zeroResult || [],
+        days,
+        page,
+        limit,
+        total: result?.total?.[0]?.n || 0,
+        totals: {
+            views: result?.grand?.[0]?.views || 0,
+            clicks: result?.grand?.[0]?.clicks || 0,
+            leads: result?.grand?.[0]?.leads || 0,
+        },
+        businesses: result?.data || [],
     };
 };
 
-export const getDevices = async (days) => {
-    const safeDays = clampDays(days);
-    const { start, end } = rangeForDays(safeDays);
+export const getTopSearches = async (query) => {
+    const { start, end, days } = resolveRange(query);
+    const limit = clampLimit(query.limit);
+    const page = clampPage(query.page);
+    const dir = sortDir(query.dir);
+    const sortField = ["count", "avgResults", "zeroResults"].includes(query.sort) ? query.sort : "count";
+    const q = typeof query.q === "string" ? query.q.trim() : "";
+    const zeroOnly = query.zeroOnly === "true" || query.zeroOnly === true;
+
+    // typed = the visitor typed a free-text query (known === false);
+    // category = the search came from browsing a known category (known === true).
+    const listMatch = { ...baseMatch(start, end, query), type: "search" };
+    if (query.searchType === "typed") listMatch["search.known"] = false;
+    else if (query.searchType === "category") listMatch["search.known"] = true;
+    if (zeroOnly) listMatch["search.results"] = 0;
+    if (q) listMatch["search.query"] = { $regex: escapeRegex(q), $options: "i" };
+
+    // Period totals ignore the list-level filters (type toggle / search text) so
+    // the typed-vs-category composition line always describes the whole window.
+    const totalsMatch = { ...baseMatch(start, end, query), type: "search" };
+
+    const [listResult, totalsRow] = await Promise.all([
+        webEventModel.aggregate([
+            { $match: listMatch },
+            {
+                $group: {
+                    _id: {
+                        query: { $toLower: { $ifNull: ["$search.query", ""] } },
+                        location: { $ifNull: ["$search.location", ""] },
+                    },
+                    count: { $sum: 1 },
+                    typedCount: { $sum: { $cond: [{ $eq: ["$search.known", false] }, 1, 0] } },
+                    resultSum: { $sum: { $ifNull: ["$search.results", 0] } },
+                    resultCount: { $sum: { $cond: [{ $ne: ["$search.results", null] }, 1, 0] } },
+                    zeroResults: { $sum: { $cond: [{ $eq: ["$search.results", 0] }, 1, 0] } },
+                },
+            },
+            { $sort: { "_id.query": 1, count: -1, "_id.location": 1 } },
+            {
+                $group: {
+                    _id: "$_id.query",
+                    count: { $sum: "$count" },
+                    typedCount: { $sum: "$typedCount" },
+                    resultSum: { $sum: "$resultSum" },
+                    resultCount: { $sum: "$resultCount" },
+                    zeroResults: { $sum: "$zeroResults" },
+                    topLocation: { $first: "$_id.location" },
+                },
+            },
+            { $match: { _id: { $ne: "" } } },
+            {
+                $addFields: {
+                    avgResults: {
+                        $round: [
+                            {
+                                $cond: [
+                                    { $gt: ["$resultCount", 0] },
+                                    { $divide: ["$resultSum", "$resultCount"] },
+                                    0,
+                                ],
+                            },
+                            1,
+                        ],
+                    },
+                },
+            },
+            {
+                $facet: {
+                    data: [
+                        { $sort: { [sortField]: dir, _id: 1 } },
+                        { $skip: (page - 1) * limit },
+                        { $limit: limit },
+                        {
+                            $project: {
+                                _id: 0,
+                                query: "$_id",
+                                count: 1,
+                                typedCount: 1,
+                                avgResults: 1,
+                                zeroResults: 1,
+                                location: "$topLocation",
+                            },
+                        },
+                    ],
+                    total: [{ $count: "n" }],
+                },
+            },
+        ]),
+        webEventModel.aggregate([
+            { $match: totalsMatch },
+            {
+                $group: {
+                    _id: null,
+                    total: { $sum: 1 },
+                    typed: { $sum: { $cond: [{ $eq: ["$search.known", false] }, 1, 0] } },
+                },
+            },
+        ]),
+    ]);
+
+    const result = listResult?.[0] || {};
+    const totals = totalsRow?.[0] || { total: 0, typed: 0 };
+
+    return {
+        days,
+        page,
+        limit,
+        total: result?.total?.[0]?.n || 0,
+        totalSearches: totals.total,
+        typedSearches: totals.typed,
+        categorySearches: totals.total - totals.typed,
+        searches: result?.data || [],
+    };
+};
+
+export const getDevices = async (query) => {
+    const { start, end, days } = resolveRange(query);
 
     const [result] = await webEventModel.aggregate([
-        { $match: { ts: { $gte: start, $lt: end } } },
+        { $match: baseMatch(start, end, query) },
         {
             $facet: {
                 devices: [
@@ -545,7 +681,7 @@ export const getDevices = async (days) => {
                     { $group: { _id: { browser: "$browser", deviceId: "$deviceId" } } },
                     { $group: { _id: "$_id.browser", visitors: { $sum: 1 } } },
                     { $sort: { visitors: -1 } },
-                    { $limit: 8 },
+                    { $limit: 12 },
                     { $project: { _id: 0, browser: "$_id", visitors: 1 } },
                 ],
             },
@@ -553,7 +689,7 @@ export const getDevices = async (days) => {
     ]);
 
     return {
-        days: safeDays,
+        days,
         devices: result?.devices || [],
         browsers: result?.browsers || [],
     };

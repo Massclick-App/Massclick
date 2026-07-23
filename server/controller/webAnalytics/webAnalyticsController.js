@@ -22,30 +22,20 @@ export const collectAction = async (req, res) => {
     res.status(204).end();
 };
 
-const daysHandler = (name, fn, defaultDays = 28) => async (req, res) => {
+// Every dashboard read now takes the same shape: the helper owns range,
+// filter, pagination, sort, and search parsing straight off the query string.
+const readHandler = (name, fn) => async (req, res) => {
     try {
-        const days = parseInt(req.query.days) || defaultDays;
-        res.send(await fn(days));
+        res.send(await fn(req.query));
     } catch (err) {
         await logger.error(`${name} controller failed`, err);
         res.status(500).send({ message: err.message });
     }
 };
 
-const daysLimitHandler = (name, fn, defaultDays = 28, defaultLimit = 10) => async (req, res) => {
-    try {
-        const days = parseInt(req.query.days) || defaultDays;
-        const limit = parseInt(req.query.limit) || defaultLimit;
-        res.send(await fn(days, limit));
-    } catch (err) {
-        await logger.error(`${name} controller failed`, err);
-        res.status(500).send({ message: err.message });
-    }
-};
-
-export const overviewAction = daysHandler("overview", getOverview);
-export const trendsAction = daysHandler("trends", getTrends);
-export const topPagesAction = daysLimitHandler("top-pages", getTopPages);
-export const topBusinessesAction = daysLimitHandler("top-businesses", getTopBusinesses);
-export const topSearchesAction = daysLimitHandler("top-searches", getTopSearches);
-export const devicesAction = daysHandler("devices", getDevices);
+export const overviewAction = readHandler("overview", getOverview);
+export const trendsAction = readHandler("trends", getTrends);
+export const topPagesAction = readHandler("top-pages", getTopPages);
+export const topBusinessesAction = readHandler("top-businesses", getTopBusinesses);
+export const topSearchesAction = readHandler("top-searches", getTopSearches);
+export const devicesAction = readHandler("devices", getDevices);
