@@ -150,6 +150,20 @@
   line-height: 1.25;
 }
 
+.metricInfo {
+  display: inline-flex;
+  flex-shrink: 0;
+  margin-left: auto;
+  color: #cbd5e1;
+  cursor: help;
+  transition: color 0.15s ease;
+}
+
+.metricInfo:hover,
+.metricInfo:focus-visible {
+  color: #2563eb;
+}
+
 .metricValueRow {
   display: flex;
   flex-wrap: wrap;

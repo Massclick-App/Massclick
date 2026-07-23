@@ -23,6 +23,7 @@ import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import ArrowUpwardRoundedIcon from "@mui/icons-material/ArrowUpwardRounded";
 import ArrowDownwardRoundedIcon from "@mui/icons-material/ArrowDownwardRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
 import DevicesRoundedIcon from "@mui/icons-material/DevicesRounded";
 import LanguageRoundedIcon from "@mui/icons-material/LanguageRounded";
@@ -108,13 +109,18 @@ function useDebounce(value, delay = 350) {
   return debounced;
 }
 
-function Metric({ icon: Icon, label, value, format, current, previous, invert, caption, tone, color, series, dataKey }) {
+function Metric({ icon: Icon, label, value, format, current, previous, invert, caption, tone, color, series, dataKey, help }) {
   const delta = deltaOf(current, previous, invert);
   const gradientId = `spark-${dataKey}`;
   return <Paper elevation={0} className={styles.metric} sx={{ borderRadius: "16px" }}>
     <div className={styles.metricTop}>
       <span className={`${styles.metricIcon} ${styles[tone]}`}><Icon fontSize="small" /></span>
       <span className={styles.metricLabel}>{label}</span>
+      <Tooltip title={help} arrow placement="top" enterTouchDelay={0} leaveTouchDelay={6000}>
+        <span className={styles.metricInfo} tabIndex={0} role="button" aria-label={`What ${label} tracks`}>
+          <InfoOutlinedIcon sx={{ fontSize: 15 }} />
+        </span>
+      </Tooltip>
     </div>
     <div className={styles.metricValueRow}>
       <strong className={styles.metricValue}>{formatValue(value, format)}</strong>
@@ -422,18 +428,55 @@ export default function SiteAnalytics() {
   const vs = `vs ${periodLabel}`;
 
   const metrics = [
-    { key: "visitors", icon: GroupsRoundedIcon, label: "Unique Visitors", tone: "blue", color: "#2563eb", caption: `${number(current.identifiedUsers)} logged-in customers seen` },
-    { key: "newVisitors", icon: PersonAddAlt1RoundedIcon, label: "New Users", tone: "indigo", color: "#4f46e5", caption: vs },
-    { key: "sessions", icon: LoginRoundedIcon, label: "Sessions", tone: "purple", color: "#7c3aed", caption: vs },
-    { key: "pageViews", icon: VisibilityRoundedIcon, label: "Page Views", tone: "orange", color: "#f97316", caption: vs },
-    { key: "pagesPerSession", icon: LayersRoundedIcon, label: "Pages / Session", tone: "green", color: "#16a34a", caption: vs, format: "decimal" },
-    { key: "bounceRate", icon: TrendingDownRoundedIcon, label: "Bounce Rate", tone: "red", color: "#e11d48", caption: vs, format: "percent", invert: true },
-    { key: "businessViews", icon: StorefrontRoundedIcon, label: "Business Views", tone: "pink", color: "#db2777", caption: vs },
-    { key: "interactions", icon: TouchAppRoundedIcon, label: "Interactions", tone: "teal", color: "#0d9488", caption: vs, seriesKey: "businessClicks" },
-    { key: "leads", icon: PhoneInTalkRoundedIcon, label: "Leads", tone: "green", color: "#16a34a", caption: "Calls, WhatsApp & enquiries" },
-    { key: "formSubmissions", icon: DescriptionRoundedIcon, label: "Form Submissions", tone: "indigo", color: "#4f46e5", caption: vs },
-    { key: "searches", icon: SearchRoundedIcon, label: "Searches", tone: "blue", color: "#2563eb", caption: vs },
-    { key: "resultClicks", icon: AdsClickRoundedIcon, label: "Result Clicks", tone: "purple", color: "#7c3aed", caption: vs },
+    {
+      key: "visitors", icon: GroupsRoundedIcon, label: "Unique Visitors", tone: "blue", color: "#2563eb",
+      caption: `${number(current.identifiedUsers)} logged-in customers seen`,
+      help: "Distinct devices that fired at least one tracked event. Counted per device, not per person — the same person on a phone and a laptop counts twice.",
+    },
+    {
+      key: "newVisitors", icon: PersonAddAlt1RoundedIcon, label: "New Users", tone: "indigo", color: "#4f46e5", caption: vs,
+      help: "Devices whose first-ever tracked event falls inside this period. Raw events are kept for 90 days, so someone returning after a longer gap counts as new again.",
+    },
+    {
+      key: "sessions", icon: LoginRoundedIcon, label: "Sessions", tone: "purple", color: "#7c3aed", caption: vs,
+      help: "Distinct browsing sessions. One visitor can start several sessions across the period.",
+    },
+    {
+      key: "pageViews", icon: VisibilityRoundedIcon, label: "Page Views", tone: "orange", color: "#f97316", caption: vs,
+      help: "Every page view, including repeat views of the same page by the same visitor.",
+    },
+    {
+      key: "pagesPerSession", icon: LayersRoundedIcon, label: "Pages / Session", tone: "green", color: "#16a34a", caption: vs, format: "decimal",
+      help: "Page views divided by sessions. Higher means visitors browse deeper before leaving.",
+    },
+    {
+      key: "bounceRate", icon: TrendingDownRoundedIcon, label: "Bounce Rate", tone: "red", color: "#e11d48", caption: vs, format: "percent", invert: true,
+      help: "Share of sessions that never got past their first page. Lower is better, so this card turns green when it falls.",
+    },
+    {
+      key: "businessViews", icon: StorefrontRoundedIcon, label: "Business Views", tone: "pink", color: "#db2777", caption: vs,
+      help: "Times a business listing was opened or shown in detail.",
+    },
+    {
+      key: "interactions", icon: TouchAppRoundedIcon, label: "Interactions", tone: "teal", color: "#0d9488", caption: vs, seriesKey: "businessClicks",
+      help: "Every click on a business listing — calls, WhatsApp, directions, enquiries and number reveals combined.",
+    },
+    {
+      key: "leads", icon: PhoneInTalkRoundedIcon, label: "Leads", tone: "green", color: "#16a34a", caption: "Calls, WhatsApp & enquiries",
+      help: "Interactions that signal real buying intent: calls, WhatsApp and enquiry submissions. Directions and number reveals are excluded.",
+    },
+    {
+      key: "formSubmissions", icon: DescriptionRoundedIcon, label: "Form Submissions", tone: "indigo", color: "#4f46e5", caption: vs,
+      help: "Enquiry forms submitted from a business listing. These are also counted inside Leads.",
+    },
+    {
+      key: "searches", icon: SearchRoundedIcon, label: "Searches", tone: "blue", color: "#2563eb", caption: vs,
+      help: "Searches run on the site — both typed queries and category browsing. The Top Searches table can split the two.",
+    },
+    {
+      key: "resultClicks", icon: AdsClickRoundedIcon, label: "Result Clicks", tone: "purple", color: "#7c3aed", caption: vs,
+      help: "Clicks on a business from a search results page. Compare against Searches to gauge how well results match intent.",
+    },
   ];
 
   const pageColumns = [
@@ -496,8 +539,11 @@ export default function SiteAnalytics() {
         </>
       )}
 
+      {/* displayEmpty is required: "" is the "all" value, and MUI renders a
+          blank select for any value that fails its isFilled() check. */}
       <TextField
         select size="small" value={filters.device} onChange={(e) => patch({ device: e.target.value })} className={styles.field}
+        SelectProps={{ displayEmpty: true }}
         InputProps={{ startAdornment: <InputAdornment position="start"><DevicesRoundedIcon fontSize="small" /></InputAdornment> }}
       >
         {DEVICE_OPTIONS.map((o) => <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>)}
@@ -505,6 +551,7 @@ export default function SiteAnalytics() {
 
       <TextField
         select size="small" value={filters.browser} onChange={(e) => patch({ browser: e.target.value })} className={styles.field}
+        SelectProps={{ displayEmpty: true }}
         InputProps={{ startAdornment: <InputAdornment position="start"><LanguageRoundedIcon fontSize="small" /></InputAdornment> }}
       >
         <MenuItem value="">All browsers</MenuItem>
@@ -529,6 +576,7 @@ export default function SiteAnalytics() {
         format={m.format}
         invert={m.invert}
         caption={m.caption}
+        help={m.help}
         value={current[m.key]}
         current={current[m.key]}
         previous={previous[m.key]}
