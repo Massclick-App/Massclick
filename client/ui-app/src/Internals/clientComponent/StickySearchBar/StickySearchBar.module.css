@@ -99,6 +99,42 @@
 }
 
 /* ================================ */
+/* DISTRICT TRIGGER (mobile)        */
+/* ================================ */
+
+.mobile-location-group {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.district-trigger-mobile {
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  box-sizing: border-box;
+  padding: 0 10px;
+  background: var(--bg-light);
+  border: 1.5px solid var(--border-light);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font: inherit;
+}
+
+.district-trigger-mobile .district-trigger-icon,
+.district-trigger-mobile .district-trigger-chevron {
+  font-size: 16px !important;
+}
+
+.district-trigger-mobile .district-trigger-text {
+  font-size: 0.8rem;
+}
+
+/* ================================ */
 /* SEARCH INPUT WRAPPER             */
 /* ================================ */
 
@@ -366,6 +402,64 @@
   font-size: 20px;
   flex-shrink: 0;
   left: 14px;
+}
+
+.cards-location-group .cards-custom-input {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+}
+
+.field-divider-web {
+  width: 1px;
+  height: 60%;
+  flex-shrink: 0;
+  background: #e5e7eb;
+}
+
+.district-trigger-web {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  max-width: 42%;
+  height: 100%;
+  padding: 0 10px 0 10px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+}
+
+.district-trigger-web:hover {
+  background: rgba(15, 23, 42, 0.04);
+}
+
+.district-trigger-icon {
+  font-size: 18px !important;
+  color: var(--brand);
+  flex-shrink: 0;
+}
+
+.district-trigger-text {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #646464;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.district-trigger-chevron {
+  font-size: 18px !important;
+  color: #888888;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.district-trigger-web--open .district-trigger-chevron,
+.district-trigger-mobile--open .district-trigger-chevron {
+  transform: rotate(180deg);
 }
 
 .input-adornment.start {

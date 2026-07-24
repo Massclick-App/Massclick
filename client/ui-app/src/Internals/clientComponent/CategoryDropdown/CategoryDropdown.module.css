@@ -70,28 +70,3 @@
   text-overflow: ellipsis;
 }
 
-.option-level-pills {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
-  margin-left: 8px;
-}
-
-.option-level-pill {
-  border: 1px solid var(--color-primary, #ff7b00);
-  background-color: transparent;
-  color: var(--color-primary, #ff7b00);
-  border-radius: 999px;
-  padding: 2px 8px;
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background-color 0.15s, color 0.15s;
-}
-
-.option-level-pill:hover {
-  background-color: var(--color-primary, #ff7b00);
-  color: #fff;
-}

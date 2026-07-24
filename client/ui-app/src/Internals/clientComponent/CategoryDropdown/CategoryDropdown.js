@@ -68,7 +68,7 @@ const CategoryDropdown = React.memo(({
                 const displayText = getOptionLabel(option);
                 return (
                   <div key={index} className={cx("option-item")} onClick={() => section.onSelect(option)}>
-                    {(section.label || "").toLowerCase().includes("location") ? (
+                    {(section.label || "").toLowerCase().includes("location") || (section.label || "").toLowerCase().includes("district") ? (
                       <LocationOnIcon className={cx("option-icon")} />
                     ) : section.label === "RECENT SEARCHES" ? (
                       <HistoryToggleOffIcon className={cx("option-icon")} />
@@ -82,23 +82,6 @@ const CategoryDropdown = React.memo(({
                         <span className={cx("option-text-sub")}>{option.subLabel || option.category || option.categoryName}</span>
                       )}
                     </span>
-                    {typeof option !== "string" && Array.isArray(option.levels) && option.levels.length > 0 && (
-                      <span className={cx("option-level-pills")}>
-                        {option.levels.map(lvl => (
-                          <button
-                            key={lvl.slug}
-                            type="button"
-                            className={cx("option-level-pill")}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              section.onSelect({ name: option.name, slug: lvl.slug });
-                            }}
-                          >
-                            {lvl.label}
-                          </button>
-                        ))}
-                      </span>
-                    )}
                   </div>
                 );
               })}

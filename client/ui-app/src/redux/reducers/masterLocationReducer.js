@@ -17,7 +17,11 @@ import {
 
   SEARCH_MASTER_LOCATION_REQUEST,
   SEARCH_MASTER_LOCATION_SUCCESS,
-  SEARCH_MASTER_LOCATION_FAILURE
+  SEARCH_MASTER_LOCATION_FAILURE,
+
+  FETCH_PUBLIC_DISTRICTS_REQUEST,
+  FETCH_PUBLIC_DISTRICTS_SUCCESS,
+  FETCH_PUBLIC_DISTRICTS_FAILURE
 } from "../actions/userActionTypes";
 
 const initialState = {
@@ -33,6 +37,11 @@ const initialState = {
   locationSearchResults: [],
   locationSearchLoading: false,
   locationSearchQuery: "",
+
+  // Storefront district picker options — fetched once and shared by every
+  // search bar via redux instead of each one hitting the endpoint itself.
+  districts: [],
+  districtsLoading: false,
 };
 
 export default function masterLocationReducer(state = initialState, action) {
@@ -107,6 +116,25 @@ export default function masterLocationReducer(state = initialState, action) {
         ...state,
         locationSearchLoading: false,
         locationSearchResults: [],
+      };
+
+    case FETCH_PUBLIC_DISTRICTS_REQUEST:
+      return {
+        ...state,
+        districtsLoading: true,
+      };
+
+    case FETCH_PUBLIC_DISTRICTS_SUCCESS:
+      return {
+        ...state,
+        districtsLoading: false,
+        districts: action.payload,
+      };
+
+    case FETCH_PUBLIC_DISTRICTS_FAILURE:
+      return {
+        ...state,
+        districtsLoading: false,
       };
 
     case FETCH_MASTER_LOCATION_FAILURE:

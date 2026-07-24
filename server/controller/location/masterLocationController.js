@@ -72,10 +72,23 @@ export const searchMasterLocationAction = async (req, res) => {
     try {
         const text = req.query.q || "";
         const limit = parseInt(req.query.limit) || 10;
-        const results = await searchMasterLocation(text, limit);
+        const district = req.query.district || "";
+        const results = await searchMasterLocation(text, limit, district);
         res.send({ data: results });
     } catch (error) {
         console.error("Master location search error:", error);
+        return res.status(BAD_REQUEST.code).send({ message: error.message });
+    }
+};
+
+// Public: every district that exists in the hierarchy, for the storefront's
+// district picker - no auth token needed, unlike distinct-values above.
+export const listPublicDistrictsAction = async (req, res) => {
+    try {
+        const districts = await listDistinctMasterLocationValues({ field: "district" });
+        res.send({ data: districts });
+    } catch (error) {
+        console.error("Public district list error:", error);
         return res.status(BAD_REQUEST.code).send({ message: error.message });
     }
 };

@@ -4,7 +4,8 @@ import {
   CREATE_MASTER_LOCATION_REQUEST, CREATE_MASTER_LOCATION_SUCCESS, CREATE_MASTER_LOCATION_FAILURE,
   EDIT_MASTER_LOCATION_REQUEST, EDIT_MASTER_LOCATION_SUCCESS, EDIT_MASTER_LOCATION_FAILURE,
   DELETE_MASTER_LOCATION_REQUEST, DELETE_MASTER_LOCATION_SUCCESS, DELETE_MASTER_LOCATION_FAILURE,
-  SEARCH_MASTER_LOCATION_REQUEST, SEARCH_MASTER_LOCATION_SUCCESS, SEARCH_MASTER_LOCATION_FAILURE
+  SEARCH_MASTER_LOCATION_REQUEST, SEARCH_MASTER_LOCATION_SUCCESS, SEARCH_MASTER_LOCATION_FAILURE,
+  FETCH_PUBLIC_DISTRICTS_REQUEST, FETCH_PUBLIC_DISTRICTS_SUCCESS, FETCH_PUBLIC_DISTRICTS_FAILURE
 } from "./userActionTypes.js";
 import { getClientToken } from "./clientAuthAction.js";
 
@@ -104,8 +105,9 @@ export const editMasterLocation = (id, locationData) => async (dispatch) => {
 };
 
 // Public: resolve free text ("srirangam", "kk nagar") to real masterlocations
-// docs (with hierarchyPath/level/slug) — no auth token needed.
-export const searchMasterLocations = (text, limit = 12) => async (dispatch) => {
+// docs (with hierarchyPath/level/slug) — no auth token needed. `district`
+// scopes the match to one district for better, non-colliding suggestions.
+export const searchMasterLocations = (text, limit = 12, district = "") => async (dispatch) => {
   const query = String(text || "").trim();
   dispatch({ type: SEARCH_MASTER_LOCATION_REQUEST, meta: { query } });
 
@@ -115,8 +117,10 @@ export const searchMasterLocations = (text, limit = 12) => async (dispatch) => {
   }
 
   try {
+    const params = new URLSearchParams({ q: query, limit: String(limit) });
+    if (district) params.set("district", district);
     const response = await axiosInstance.get(
-      `${API_URL}/masterlocation/search?q=${encodeURIComponent(query)}&limit=${limit}`
+      `${API_URL}/masterlocation/search?${params.toString()}`
     );
     const data = response.data?.data || [];
     dispatch({ type: SEARCH_MASTER_LOCATION_SUCCESS, payload: { data, query } });
@@ -124,6 +128,25 @@ export const searchMasterLocations = (text, limit = 12) => async (dispatch) => {
   } catch (error) {
     dispatch({
       type: SEARCH_MASTER_LOCATION_FAILURE,
+      payload: error.response?.data || error.message
+    });
+    return [];
+  }
+};
+
+// Public: every district that exists in the hierarchy, for the storefront's
+// district picker — no auth token needed.
+export const getPublicDistricts = () => async (dispatch) => {
+  dispatch({ type: FETCH_PUBLIC_DISTRICTS_REQUEST });
+
+  try {
+    const response = await axiosInstance.get(`${API_URL}/masterlocation/districts`);
+    const data = response.data?.data || [];
+    dispatch({ type: FETCH_PUBLIC_DISTRICTS_SUCCESS, payload: data });
+    return data;
+  } catch (error) {
+    dispatch({
+      type: FETCH_PUBLIC_DISTRICTS_FAILURE,
       payload: error.response?.data || error.message
     });
     return [];

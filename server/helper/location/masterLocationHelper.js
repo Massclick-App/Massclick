@@ -165,7 +165,7 @@ export const listDistinctMasterLocationValues = async ({ field, district, zone, 
 // Ranked exact > prefix > substring match first, so a term like "mettu" surfaces
 // "Mettur"/"Metturdam" (prefix hits) ahead of "Sundamettupudur" (mid-string hit)
 // instead of results being decided by which district's slug sorts first.
-export const searchMasterLocation = async (text, limit = 10) => {
+export const searchMasterLocation = async (text, limit = 10, district = "") => {
   const term = (text || "").toLowerCase().trim();
   if (!term) return [];
   const hierarchyTokens = term
@@ -181,18 +181,28 @@ export const searchMasterLocation = async (text, limit = 10) => {
     })),
   };
 
+  const matchStage = {
+    isActive: true,
+    $or: [
+      { keywords: term },
+      { keywords: { $regex: term, $options: "i" } },
+      { slug: { $regex: slugify(term), $options: "i" } },
+      { pincode: term },
+      hierarchyTokenMatch,
+    ],
+  };
+  // Scoping to the picked district gives better suggestions (no cross-district
+  // name collisions) — every doc carries its own `district` field regardless
+  // of level (a district-level doc's `district` field is itself), so this is
+  // a plain top-level filter alongside the text match.
+  const trimmedDistrict = (district || "").trim();
+  if (trimmedDistrict) {
+    matchStage.district = { $regex: `^${escapeRegex(trimmedDistrict)}$`, $options: "i" };
+  }
+
   return masterLocationModel.aggregate([
     {
-      $match: {
-        isActive: true,
-        $or: [
-          { keywords: term },
-          { keywords: { $regex: term, $options: "i" } },
-          { slug: { $regex: slugify(term), $options: "i" } },
-          { pincode: term },
-          hierarchyTokenMatch,
-        ],
-      },
+      $match: matchStage,
     },
     {
       $addFields: {

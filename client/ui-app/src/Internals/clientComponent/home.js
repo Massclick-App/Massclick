@@ -13,6 +13,7 @@ import {
   generateOrganizationSchema,
 } from "../../utils/seoSchemaGenerators";
 import { scheduleIdleCallback } from "../../utils/scheduleIdleCallback.js";
+import { DEFAULT_DISTRICT } from "../../utils/districtDefaults.js";
 import useRenderNearViewport from "../../hooks/useRenderNearViewport.js";
 import styles from "./homeLayout.module.css";
 const cx = createScopedClassNames(styles);
@@ -251,8 +252,17 @@ const LandingPage = React.memo(() => {
     robots: "index, follow",
   };
   const [isScrolled, setIsScrolled] = useState(false);
+  // `district` is the new authoritative scoping field (picked from a
+  // "SELECT DISTRICT" section inside the same location field's dropdown).
+  // `locationName` stays the effective location text other consumers
+  // (WeatherWidget, RelatedBlogs, business search) already read - it
+  // defaults to the district's own name and gets overwritten the moment
+  // the user picks a more specific locality, same as before the split.
+  const [district, setDistrict] = useState(
+    localStorage.getItem("selectedDistrict") || DEFAULT_DISTRICT,
+  );
   const [locationName, setLocationName] = useState(
-    localStorage.getItem("selectedLocation") || "Trichy",
+    localStorage.getItem("selectedLocation") || localStorage.getItem("selectedDistrict") || DEFAULT_DISTRICT,
   );
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryName, setCategoryName] = useState("");
@@ -412,6 +422,8 @@ const LandingPage = React.memo(() => {
           <Suspense fallback={null}>
             <StickySearchBar
               isScrolled={true}
+              district={district}
+              setDistrict={setDistrict}
               locationName={locationName}
               setLocationName={setLocationName}
               searchTerm={searchTerm}
@@ -425,6 +437,8 @@ const LandingPage = React.memo(() => {
         <main>
           <div ref={heroSectionRef}>
             <HeroSection
+              district={district}
+              setDistrict={setDistrict}
               locationName={locationName}
               setLocationName={setLocationName}
               searchTerm={searchTerm}

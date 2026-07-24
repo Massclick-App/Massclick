@@ -5,6 +5,8 @@ import { useNavigate } from "react-router-dom";
 import styles from "./StickySearchBar.module.css";
 import SearchIcon from "@mui/icons-material/Search";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
+import ApartmentIcon from "@mui/icons-material/Apartment";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import CloseIcon from "@mui/icons-material/Close";
 import LoginIcon from "@mui/icons-material/Login";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
@@ -14,23 +16,23 @@ import {
   logSearchActivity,
   performSearch
 } from "../../../redux/actions/businessListAction";
-import { searchMasterLocations } from "../../../redux/actions/masterLocationAction";
+import { searchMasterLocations, getPublicDistricts } from "../../../redux/actions/masterLocationAction";
+import { detectDistrict } from "../../../redux/actions/locationAction";
 import { logUserSearch } from "../../../redux/actions/otpAction";
 import { selectBackendSuggestions, selectBackendSuggestionsMeta, selectSearchLogs } from "../../../redux/selectors";
 import { shouldSendSearch } from "../../../utils/searchLock";
 import { navigateToSearchResult } from "../../../utils/searchResultNavigation";
 import { scheduleIdleCallback } from "../../../utils/scheduleIdleCallback.js";
+import { DEFAULT_DISTRICT, matchCanonicalDistrict } from "../../../utils/districtDefaults.js";
 import useMediaQuery from "../../../hooks/useMediaQuery.js";
 import { useDrawer } from "../Drawer/drawerContext";
 
 const cx = createScopedClassNames(styles);
-const DEFAULT_LOCATION = "Trichy";
 const SUGGESTION_PAGE_SIZE = 20;
 const MASTER_LOCATION_SUGGESTION_LIMIT = 25;
 const WEB_VIEW_MEDIA_QUERY = "(min-width: 769px)";
 const isMongoObjectId = value => /^[a-f\d]{24}$/i.test(String(value || "").trim());
 const LEVEL_DEPTH = { district: 0, zone: 1, ward: 2, locality: 3 };
-const LEVEL_LABEL = { district: "District", zone: "Zone", ward: "Ward", locality: "Locality" };
 
 const AddBusinessModel = lazy(() =>
   import(/* webpackChunkName: "otp-modal" */ "../AddBusinessModel")
@@ -48,8 +50,9 @@ const DeferredCategoryDropdown = (props) => (
 
 // Groups masterlocations search hits by name so a district/zone/ward that
 // shares its exact name with a child locality (the area's namesake place)
-// renders as one row with the other levels as pills, instead of several
-// identical-looking rows - mirrors heroSection's masterLocationSuggestions.
+// renders as one row instead of several identical-looking ones. The
+// broadest (highest) level present in the group is auto-picked as the
+// match - mirrors heroSection's masterLocationSuggestions.
 const buildMasterLocationSuggestions = (locationSearchResults) => {
   if (!Array.isArray(locationSearchResults) || locationSearchResults.length === 0) return [];
   const groups = new Map();
@@ -61,7 +64,7 @@ const buildMasterLocationSuggestions = (locationSearchResults) => {
     groups.get(key).push(loc);
   });
   return [...groups.values()].map(group => {
-    group.sort((a, b) => (LEVEL_DEPTH[b.level] ?? 0) - (LEVEL_DEPTH[a.level] ?? 0));
+    group.sort((a, b) => (LEVEL_DEPTH[a.level] ?? 0) - (LEVEL_DEPTH[b.level] ?? 0));
     const primary = group[0];
     const name = primary.locality || primary.ward || primary.zone || primary.district;
     const contextParts = [primary.ward, primary.zone, primary.district].filter(part => part && part.toLowerCase() !== String(name).toLowerCase());
@@ -69,18 +72,15 @@ const buildMasterLocationSuggestions = (locationSearchResults) => {
       _raw: primary,
       name,
       subLabel: [...new Set(contextParts)].join(", "),
-      slug: primary.slug,
-      levels: group.length > 1 ? [...group].reverse().map(loc => ({
-        level: loc.level,
-        label: LEVEL_LABEL[loc.level] || loc.level,
-        slug: loc.slug
-      })) : null
+      slug: primary.slug
     };
   });
 };
 
 const StickySearchBar = ({
   isScrolled = true,
+  district: propDistrict,
+  setDistrict: propSetDistrict,
   locationName: propLocationName,
   setLocationName: propSetLocationName,
   searchTerm: propSearchTerm,
@@ -95,21 +95,28 @@ const StickySearchBar = ({
   const searchInputRef = useRef(null);
   const barRef = useRef(null);
 
-  const [internalLocationName, setInternalLocationName] = useState(localStorage.getItem("selectedLocation") || DEFAULT_LOCATION);
+  const [internalDistrict, setInternalDistrict] = useState(localStorage.getItem("selectedDistrict") || DEFAULT_DISTRICT);
+  const [internalLocationName, setInternalLocationName] = useState(localStorage.getItem("selectedLocation") || localStorage.getItem("selectedDistrict") || DEFAULT_DISTRICT);
   const [internalSearchTerm, setInternalSearchTerm] = useState("");
   const [isFocused, setIsFocused] = useState(false);
   const [isSelectingLocation, setIsSelectingLocation] = useState(false);
+  const [showDistrictDropdown, setShowDistrictDropdown] = useState(false);
   const [locationInput, setLocationInput] = useState("");
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [debouncedLocation, setDebouncedLocation] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  // Raw geolocation-detected district text, resolved to a real dropdown
+  // value once the canonical district list (below) has loaded.
+  const [geoDetectedDistrict, setGeoDetectedDistrict] = useState(null);
   const isWebView = useMediaQuery(WEB_VIEW_MEDIA_QUERY, true);
   // Canonical masterlocations slug of a VERIFIED LOCATIONS pick. Cleared the
   // moment the user types/picks free text - mirrors heroSection's behavior
   // and shares the same localStorage key so both search bars stay in sync.
   const [masterLocationSlug, setMasterLocationSlug] = useState(() => localStorage.getItem("selectedLocationSlug") || "");
 
+  const district = propDistrict ?? internalDistrict;
+  const setDistrict = propSetDistrict ?? setInternalDistrict;
   const locationName = propLocationName ?? internalLocationName;
   const setLocationName = propSetLocationName ?? setInternalLocationName;
   const searchTerm = propSearchTerm ?? internalSearchTerm;
@@ -122,10 +129,10 @@ const StickySearchBar = ({
     page: backendSuggestionsPage,
     query: backendSuggestionsQuery
   } = useSelector(selectBackendSuggestionsMeta);
-  const { locationSearchResults = [] } = useSelector(state => state.masterLocationReducer) || {};
+  const { locationSearchResults = [], districts = [], districtsLoading = false } = useSelector(state => state.masterLocationReducer) || {};
   const locationSuggestionQuery = isWebView ? locationName : locationInput;
   const normalizeComparable = value => String(value || "").trim().replace(/\s+/g, " ").toLowerCase();
-  const hasPendingSearch = normalizeComparable(committedSearchTerm) !== normalizeComparable(searchTerm) || normalizeComparable(committedLocationName || DEFAULT_LOCATION) !== normalizeComparable(locationName || DEFAULT_LOCATION);
+  const hasPendingSearch = normalizeComparable(committedSearchTerm) !== normalizeComparable(searchTerm) || normalizeComparable(committedLocationName || district) !== normalizeComparable(locationName || district);
 
   const requestSuggestions = (query, {
     page = 1,
@@ -147,10 +154,84 @@ const StickySearchBar = ({
     });
   };
 
+  // Fetch the full district list once, shared across both search bars via
+  // redux (heroSection reads the same slice instead of re-fetching).
+  useEffect(() => {
+    if (districts.length > 0 || districtsLoading) return;
+    dispatch(getPublicDistricts());
+  }, [dispatch, districts.length, districtsLoading]);
+
+  // Auto-detect the district by geolocation on first visit (no saved
+  // district yet), same as heroSection. Only runs when this bar owns its
+  // own district state (e.g. rendered standalone on non-home pages) -
+  // when controlled by a parent (home.js + heroSection on the homepage),
+  // the parent already resolves it and running this here would fire a
+  // second geolocation prompt for the same shared value.
+  useEffect(() => {
+    if (propDistrict !== undefined) return undefined;
+    if (localStorage.getItem("selectedDistrict")) return undefined;
+    if (!navigator.geolocation) return undefined;
+
+    const idleHandle = scheduleIdleCallback(() => {
+      navigator.geolocation.getCurrentPosition(async ({ coords }) => {
+        try {
+          const result = await dispatch(detectDistrict({
+            latitude: coords.latitude,
+            longitude: coords.longitude
+          }));
+          const detected = String(result?.district || "").trim();
+          if (detected && detected.toLowerCase() !== "all districts") {
+            setGeoDetectedDistrict(detected);
+          }
+        } catch {
+          // Keep the DEFAULT_DISTRICT already in state on failure.
+        }
+      }, () => {
+        // Permission denied/unavailable - keep the DEFAULT_DISTRICT already in state.
+      }, {
+        enableHighAccuracy: true,
+        timeout: 10000
+      });
+    }, { timeout: 2500 });
+
+    return () => {
+      if (typeof window.cancelIdleCallback === "function") {
+        window.cancelIdleCallback(idleHandle);
+        return;
+      }
+      window.clearTimeout(idleHandle);
+    };
+  }, [dispatch, propDistrict]);
+
+  // Once both the detected text and the canonical district list are ready,
+  // resolve the match and apply it to district + the locality box (which
+  // mirrors the district until the user types something more specific).
+  useEffect(() => {
+    if (!geoDetectedDistrict || districts.length === 0) return;
+    const matched = matchCanonicalDistrict(geoDetectedDistrict, districts) || DEFAULT_DISTRICT;
+    setDistrict(matched);
+    setLocationName(matched);
+    localStorage.setItem("selectedDistrict", matched);
+    localStorage.setItem("selectedLocation", matched);
+    setGeoDetectedDistrict(null);
+  }, [geoDetectedDistrict, districts, setDistrict, setLocationName]);
+
+  // Keep locationReducer.selectedDistrict (read by the below-hero sections -
+  // trendingSearch, popularSearch, topTourist, popularCategories,
+  // serviceCard, featureService) in sync with the district dropdown.
+  // Declared (and therefore committed) before the locationName-persist
+  // effect below: the reducer itself writes localStorage["selectedLocation"]
+  // as a side effect (see locationReducer.js), and effects run in
+  // declaration order, so the locationName effect always has the last word
+  // and a saved specific locality never gets clobbered back to the district.
+  useEffect(() => {
+    localStorage.setItem("selectedDistrict", district);
+    dispatch({ type: "SET_SELECTED_DISTRICT", payload: district });
+  }, [dispatch, district]);
+
   useEffect(() => {
     localStorage.setItem("selectedLocation", locationName);
-    dispatch({ type: "SET_SELECTED_DISTRICT", payload: locationName });
-  }, [dispatch, locationName]);
+  }, [locationName]);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchTerm || ""), 200);
@@ -197,8 +278,8 @@ const StickySearchBar = ({
       limit: SUGGESTION_PAGE_SIZE,
       append: false
     }));
-    dispatch(searchMasterLocations(debouncedLocation.trim(), MASTER_LOCATION_SUGGESTION_LIMIT));
-  }, [debouncedLocation, dispatch, isSelectingLocation]);
+    dispatch(searchMasterLocations(debouncedLocation.trim(), MASTER_LOCATION_SUGGESTION_LIMIT, district));
+  }, [debouncedLocation, dispatch, isSelectingLocation, district]);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -206,6 +287,7 @@ const StickySearchBar = ({
         setIsFocused(false);
         setIsCategoryDropdownOpen(false);
         setIsSelectingLocation(false);
+        setShowDistrictDropdown(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -273,6 +355,18 @@ const StickySearchBar = ({
     handleSearch(undefined, undefined, chosen, slug);
   };
 
+  const handleDistrictChange = (value) => {
+    setDistrict(value);
+    localStorage.setItem("selectedDistrict", value);
+    // Changing district resets the locality box back to the district's own
+    // name - same starting point as a fresh geo-detect/default, typing
+    // narrows it further from there.
+    setLocationName(value);
+    localStorage.setItem("selectedLocation", value);
+    setMasterLocationSlug("");
+    localStorage.removeItem("selectedLocationSlug");
+  };
+
   const handleSelectCategory = (val) => {
     const chosen = typeof val === "string" ? val : String(val);
     setSearchTerm(chosen);
@@ -284,7 +378,7 @@ const StickySearchBar = ({
   const handleSearch = async (event, selectedTerm, selectedLocation, selectedLocationSlug) => {
     event?.preventDefault?.();
     const searchInput = (selectedTerm ?? searchTerm).trim();
-    const location = ((selectedLocation ?? locationName) || DEFAULT_LOCATION).trim();
+    const location = ((selectedLocation ?? locationName) || district).trim();
     const locationSlug = selectedLocationSlug ?? masterLocationSlug;
 
     if (!searchInput) {
@@ -390,17 +484,19 @@ const StickySearchBar = ({
               <LocationOnIcon className={cx("input-adornment", "start")} />
               <input
                 className={cx("cards-custom-input")}
-                placeholder="Enter location..."
-                value={locationName}
+                placeholder="Search for a location..."
+                value={locationName === district ? "" : locationName}
                 onChange={(e) => {
                   setLocationName(e.target.value);
                   setMasterLocationSlug("");
                   localStorage.removeItem("selectedLocationSlug");
                   setIsSelectingLocation(true);
+                  setShowDistrictDropdown(false);
                   setIsCategoryDropdownOpen(false);
                 }}
                 onFocus={() => {
                   setIsSelectingLocation(true);
+                  setShowDistrictDropdown(false);
                   setIsCategoryDropdownOpen(false);
                 }}
               />
@@ -417,6 +513,36 @@ const StickySearchBar = ({
                   hasMore: backendSuggestionsHasMore && backendSuggestionsQuery === locationName.trim(),
                   isLoadingMore: backendSuggestionsLoading && backendSuggestionsQuery === locationName.trim()
                 }]} />
+              )}
+
+              <span className={cx("field-divider-web")} aria-hidden="true" />
+
+              <button
+                type="button"
+                className={cx("district-trigger-web", showDistrictDropdown && "district-trigger-web--open")}
+                aria-haspopup="listbox"
+                aria-expanded={showDistrictDropdown}
+                aria-controls="district-options-web"
+                onClick={() => {
+                  setShowDistrictDropdown(open => !open);
+                  setIsSelectingLocation(false);
+                }}
+              >
+                <ApartmentIcon className={cx("district-trigger-icon")} />
+                <span className={cx("district-trigger-text")}>{district || "Select district"}</span>
+                <KeyboardArrowDownIcon className={cx("district-trigger-chevron")} />
+              </button>
+
+              {showDistrictDropdown && (
+                <DeferredCategoryDropdown
+                  id="district-options-web"
+                  label="SELECT DISTRICT"
+                  options={districts}
+                  onSelect={value => {
+                    handleDistrictChange(value);
+                    setShowDistrictDropdown(false);
+                  }}
+                />
               )}
             </div>
 
@@ -524,29 +650,58 @@ const StickySearchBar = ({
         )}
 
         {isSelectingLocation ? (
-          <div className={cx("search-input-wrapper")}>
-            <LocationOnIcon className={cx("search-input-icon location-icon")} />
-            <input
-              ref={searchInputRef}
-              type="text"
-              placeholder="Search location..."
-              value={locationInput}
-              onChange={e => setLocationInput(e.target.value)}
-              onFocus={() => setIsFocused(true)}
-              onKeyDown={e => e.key === "Enter" && locationInput && handleLocationChange(locationInput)}
-              className={cx("search-input")}
-              autoFocus
-            />
+          <div className={cx("mobile-location-group")}>
             <button
-              className={cx("location-back-btn")}
-              onClick={() => {
-                setIsSelectingLocation(false);
-                setLocationInput("");
-              }}
-              aria-label="Back to search"
+              type="button"
+              className={cx("district-trigger-mobile", showDistrictDropdown && "district-trigger-mobile--open")}
+              aria-haspopup="listbox"
+              aria-expanded={showDistrictDropdown}
+              aria-controls="district-options-mobile"
+              onClick={() => setShowDistrictDropdown(open => !open)}
             >
-              ← Back
+              <ApartmentIcon className={cx("district-trigger-icon")} />
+              <span className={cx("district-trigger-text")}>{district || "Select district"}</span>
+              <KeyboardArrowDownIcon className={cx("district-trigger-chevron")} />
             </button>
+            {showDistrictDropdown && (
+              <DeferredCategoryDropdown
+                id="district-options-mobile"
+                label="SELECT DISTRICT"
+                options={districts}
+                onSelect={value => {
+                  handleDistrictChange(value);
+                  setShowDistrictDropdown(false);
+                }}
+              />
+            )}
+
+            <div className={cx("search-input-wrapper")}>
+              <LocationOnIcon className={cx("search-input-icon location-icon")} />
+              <input
+                ref={searchInputRef}
+                type="text"
+                placeholder="Search location..."
+                value={locationInput}
+                onChange={e => setLocationInput(e.target.value)}
+                onFocus={() => {
+                  setIsFocused(true);
+                  setShowDistrictDropdown(false);
+                }}
+                onKeyDown={e => e.key === "Enter" && locationInput && handleLocationChange(locationInput)}
+                className={cx("search-input")}
+                autoFocus
+              />
+              <button
+                className={cx("location-back-btn")}
+                onClick={() => {
+                  setIsSelectingLocation(false);
+                  setLocationInput("");
+                }}
+                aria-label="Back to search"
+              >
+                ← Back
+              </button>
+            </div>
           </div>
         ) : (
           <div className={cx("search-input-wrapper")}>
@@ -574,7 +729,7 @@ const StickySearchBar = ({
         )}
       </header>
 
-      {isSelectingLocation && isFocused && (
+      {isSelectingLocation && isFocused && !showDistrictDropdown && (
         <DeferredCategoryDropdown sections={[{
           label: "VERIFIED LOCATIONS",
           options: masterLocationSuggestions,
