@@ -308,7 +308,9 @@ export const getLeadReport = ({ location, group = "A", category = "" } = {}) => 
     // ✅ fallback location logic
     if (!reportLocation) {
       const storedUser = localStorage.getItem("authUser");
-      const selectedLocation = localStorage.getItem("selectedLocation");
+      // selectedLocation is the specific searched place (may be empty when a
+      // whole district was searched); fall back to the district scope.
+      const selectedLocation = localStorage.getItem("selectedLocation") || localStorage.getItem("selectedDistrict");
 
       const businessLocation = storedUser
         ? JSON.parse(storedUser)?.businessLocation

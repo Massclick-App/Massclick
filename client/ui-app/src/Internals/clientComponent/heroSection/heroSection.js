@@ -220,21 +220,16 @@ const HeroSection = React.memo(({
   }, [dispatch]);
 
   // Once both the detected text and the canonical district list are ready,
-  // resolve the match and apply it to the district. The location field is
-  // only updated to match if the user hasn't already typed/picked their own
-  // location - detection must never overwrite a location the user searched.
+  // resolve the match and apply it to the district scope only. The location
+  // field is left untouched (empty by default) so detection sets the base
+  // district without ever overwriting a place the user might type.
   useEffect(() => {
     if (!geoDetectedDistrict || districts.length === 0) return;
     const matched = matchCanonicalDistrict(geoDetectedDistrict, districts) || DEFAULT_DISTRICT;
-    const locationUntouched = !locationName.trim() || locationName === district;
     setDistrict(matched);
     localStorage.setItem("selectedDistrict", matched);
-    if (locationUntouched) {
-      setLocationName(matched);
-      localStorage.setItem("selectedLocation", matched);
-    }
     setGeoDetectedDistrict(null);
-  }, [geoDetectedDistrict, districts, district, locationName, setDistrict, setLocationName]);
+  }, [geoDetectedDistrict, districts, setDistrict]);
   useEffect(() => {
     const handleClickOutside = e => {
       if (categoryRef.current && !categoryRef.current.contains(e.target)) {
@@ -380,7 +375,9 @@ const HeroSection = React.memo(({
     e?.preventDefault?.();
     const normalize = (text = "") => text.toLowerCase().trim().replace(/&/g, " and ").replace(/[-_]/g, " ").replace(/\s+/g, " ");
     let term = normalize(selectedTerm ?? searchTerm);
-    let location = normalize(locationName);
+    // An empty location field means "search the whole district" - fall back
+    // to the district scope so the URL still carries a location.
+    let location = normalize(locationName) || normalize(district);
 
     // 🔹 Remove location from term
     if (location && term.includes(location)) {
@@ -488,6 +485,14 @@ const HeroSection = React.memo(({
               const chosen = typeof val === "string" ? val : val.name;
               setLocationName(chosen);
               localStorage.setItem("selectedLocation", chosen);
+              // A verified pick knows which district it sits in - move the
+              // district pill to match so the searched place and the shown
+              // district stay consistent on the results page.
+              const pickedDistrict = typeof val === "object" && val._raw?.district ? val._raw.district : "";
+              if (pickedDistrict) {
+                setDistrict(pickedDistrict);
+                localStorage.setItem("selectedDistrict", pickedDistrict);
+              }
               // Verified picks carry the canonical slug; legacy text
               // suggestions don't and clear any previous one.
               const slug = typeof val === "object" && val.slug ? val.slug : "";
@@ -525,11 +530,13 @@ const HeroSection = React.memo(({
                 onSelect={value => {
                   setDistrict(value);
                   localStorage.setItem("selectedDistrict", value);
-                  // Picking a district resets the locality box back to the
-                  // district's own name - typing in the location field
-                  // narrows it further from there.
-                  setLocationName(value);
-                  localStorage.setItem("selectedLocation", value);
+                  // Switching district only changes the search scope - it
+                  // clears the location field (rather than stuffing the
+                  // district name into it) so the user can type a locality
+                  // within the new district. An empty field falls back to
+                  // the district at search time.
+                  setLocationName("");
+                  localStorage.removeItem("selectedLocation");
                   setMasterLocationSlug("");
                   localStorage.removeItem("selectedLocationSlug");
                   setShowDistrictDropdown(false);

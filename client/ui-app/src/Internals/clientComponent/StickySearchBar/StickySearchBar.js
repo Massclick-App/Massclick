@@ -96,7 +96,7 @@ const StickySearchBar = ({
   const barRef = useRef(null);
 
   const [internalDistrict, setInternalDistrict] = useState(localStorage.getItem("selectedDistrict") || DEFAULT_DISTRICT);
-  const [internalLocationName, setInternalLocationName] = useState(localStorage.getItem("selectedLocation") || localStorage.getItem("selectedDistrict") || DEFAULT_DISTRICT);
+  const [internalLocationName, setInternalLocationName] = useState(localStorage.getItem("selectedLocation") || "");
   const [internalSearchTerm, setInternalSearchTerm] = useState("");
   const [isFocused, setIsFocused] = useState(false);
   const [isSelectingLocation, setIsSelectingLocation] = useState(false);
@@ -204,21 +204,16 @@ const StickySearchBar = ({
   }, [dispatch, propDistrict]);
 
   // Once both the detected text and the canonical district list are ready,
-  // resolve the match and apply it to the district. The location field is
-  // only updated to match if the user hasn't already typed/picked their own
-  // location - detection must never overwrite a location the user searched.
+  // resolve the match and apply it to the district scope only. The location
+  // field is left untouched (empty by default) so detection sets the base
+  // district without ever overwriting a place the user might type.
   useEffect(() => {
     if (!geoDetectedDistrict || districts.length === 0) return;
     const matched = matchCanonicalDistrict(geoDetectedDistrict, districts) || DEFAULT_DISTRICT;
-    const locationUntouched = !locationName.trim() || locationName === district;
     setDistrict(matched);
     localStorage.setItem("selectedDistrict", matched);
-    if (locationUntouched) {
-      setLocationName(matched);
-      localStorage.setItem("selectedLocation", matched);
-    }
     setGeoDetectedDistrict(null);
-  }, [geoDetectedDistrict, districts, district, locationName, setDistrict, setLocationName]);
+  }, [geoDetectedDistrict, districts, setDistrict]);
 
   // Keep locationReducer.selectedDistrict (read by the below-hero sections -
   // trendingSearch, popularSearch, topTourist, popularCategories,
@@ -347,6 +342,14 @@ const StickySearchBar = ({
   const handleLocationChange = (loc) => {
     const chosen = typeof loc === "string" ? loc : (loc?.name || String(loc));
     setLocationName(chosen);
+    // A verified pick knows which district it sits in - move the district
+    // pill to match so the searched place and the shown district stay
+    // consistent on the results page.
+    const pickedDistrict = typeof loc === "object" && loc?._raw?.district ? loc._raw.district : "";
+    if (pickedDistrict) {
+      setDistrict(pickedDistrict);
+      localStorage.setItem("selectedDistrict", pickedDistrict);
+    }
     // Verified picks carry the canonical slug; legacy text suggestions
     // don't and clear any previous one - shared with heroSection.
     const slug = typeof loc === "object" && loc?.slug ? loc.slug : "";
@@ -362,11 +365,13 @@ const StickySearchBar = ({
   const handleDistrictChange = (value) => {
     setDistrict(value);
     localStorage.setItem("selectedDistrict", value);
-    // Changing district resets the locality box back to the district's own
-    // name - same starting point as a fresh geo-detect/default, typing
-    // narrows it further from there.
-    setLocationName(value);
-    localStorage.setItem("selectedLocation", value);
+    // Switching district only changes the search scope - it clears the
+    // location field (rather than stuffing the district name into it) so the
+    // user can type a locality within the new district. An empty field falls
+    // back to the district at search time.
+    setLocationName("");
+    setLocationInput("");
+    localStorage.removeItem("selectedLocation");
     setMasterLocationSlug("");
     localStorage.removeItem("selectedLocationSlug");
   };
@@ -643,7 +648,7 @@ const StickySearchBar = ({
         {isFocused && !isSelectingLocation && (
           <div className={cx("location-display")}>
             <LocationOnIcon className={cx("location-display-icon")} />
-            <span className={cx("location-display-text")}>{locationName}</span>
+            <span className={cx("location-display-text")}>{locationName || district}</span>
             <button
               className={cx("location-display-btn")}
               onClick={() => setIsSelectingLocation(true)}

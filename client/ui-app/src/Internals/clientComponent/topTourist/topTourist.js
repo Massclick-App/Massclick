@@ -13,7 +13,9 @@ const getLocationName = selectedDistrict => {
   if (selectedDistrict?.name) return selectedDistrict.name;
   if (selectedDistrict?.district) return selectedDistrict.district;
   if (selectedDistrict?.label) return selectedDistrict.label;
-  return localStorage.getItem("selectedLocation") || "Global";
+  // selectedLocation is the specific searched place (may be empty when the
+  // user searched a whole district); fall back to the district scope.
+  return localStorage.getItem("selectedLocation") || localStorage.getItem("selectedDistrict") || "Global";
 };
 const getTouristCategoryName = place => {
   const configuredCategory = place.categoryName || place.category || place.searchName;
