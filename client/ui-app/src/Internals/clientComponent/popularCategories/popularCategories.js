@@ -16,7 +16,7 @@ import {
   Utensils,
   Wrench,
 } from "lucide-react";
-import { navigateToSearchResult } from "../../../utils/searchResultNavigation";
+import { navigateToSearchResult, getEffectiveSearchLocation } from "../../../utils/searchResultNavigation";
 import { fetchPopularCategoryContent } from "../../../redux/actions/categoryAction";
 import styles from "./popularCategories.module.css";
 const cx = createScopedClassNames(styles);
@@ -184,9 +184,13 @@ const PopularCategoriesLink = () => {
       mobileNumber2: authUser?.mobileNumber2,
       email: authUser?.email,
     };
+    // Navigate to the specific location the user picked (falls back to the
+    // selected district only when the location field is empty).
+    const { location, masterLocationSlug } = getEffectiveSearchLocation(selectedDistrict);
     navigateToSearchResult({
       searchTerm: keyword,
-      location: selectedDistrict || "Global",
+      location,
+      masterLocationSlug,
       navigate,
       dispatch,
       isKnownCategory: false,
@@ -208,9 +212,13 @@ const PopularCategoriesLink = () => {
       mobileNumber2: authUser?.mobileNumber2,
       email: authUser?.email,
     };
+    // Navigate to the specific location the user picked (falls back to the
+    // selected district only when the location field is empty).
+    const { location, masterLocationSlug } = getEffectiveSearchLocation(selectedDistrict);
     navigateToSearchResult({
       searchTerm: categoryName,
-      location: selectedDistrict || "Global",
+      location,
+      masterLocationSlug,
       navigate,
       dispatch,
       isKnownCategory: true,

@@ -6,6 +6,7 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import { getTrendingCategories } from "../../../redux/actions/businessListAction";
+import { getEffectiveSearchLocation } from "../../../utils/searchResultNavigation";
 import styles from "./trendingSearch.module.css";
 const cx = createScopedClassNames(styles);
 const formatDisplayName = text => {
@@ -38,6 +39,10 @@ const TrendingSearchesCarousel = () => {
     selectedDistrict
   } = useSelector(s => s.locationReducer);
   const districtSlug = selectedDistrict?.slug || createSlug(selectedDistrict) || localStorage.getItem("selectedDistrictSlug") || "tiruchirappalli";
+  // Trending links route to the specific location the user picked (falls back
+  // to the district scope only when the location field is empty).
+  const { location: effectiveLocation } = getEffectiveSearchLocation(selectedDistrict);
+  const locationSlug = createSlug(effectiveLocation) || districtSlug;
   useEffect(() => {
     dispatch(getTrendingCategories());
   }, [dispatch]);
@@ -193,7 +198,7 @@ const TrendingSearchesCarousel = () => {
           <div className={cx("ts__track")} ref={carouselRef} onWheel={stopAutoScrollAfterUserInteraction} onTouchStart={stopAutoScrollAfterUserInteraction} onPointerDown={stopAutoScrollAfterUserInteraction} onMouseEnter={stopAutoScroll} onMouseLeave={startAutoScroll}>
             {trendingList.map((service, index) => {
             const categorySlug = createSlug(service.categoryName);
-            return <Link key={index} to={`/${districtSlug}/${categorySlug}`} className={cx("ts__card")}>
+            return <Link key={index} to={`/${locationSlug}/${categorySlug}`} className={cx("ts__card")}>
 
                   <div className={cx("ts__card-img-wrap")}>
                     <img src={service.categoryImageKey || service.categoryImages?.webCard || service.categoryImages?.webHero || ""} alt={formatDisplayName(service.categoryName)} className={cx("ts__card-img")} loading="lazy" decoding="async" width="144" height="144" />

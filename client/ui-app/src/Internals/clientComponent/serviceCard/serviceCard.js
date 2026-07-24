@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { Helmet } from "react-helmet-async";
 import { fetchServiceCards } from "../../../redux/actions/categoryAction";
-import { navigateToSearchResult } from "../../../utils/searchResultNavigation";
+import { navigateToSearchResult, getEffectiveSearchLocation } from "../../../utils/searchResultNavigation";
 import { Skeleton } from "@mui/material";
 import { getPlaceholderImage, handleImageError } from "../../../utils/placeholderImage";
 import { generateItemListSchema } from "../../../utils/seoSchemaGenerators";
@@ -70,7 +70,9 @@ const ServiceCardsGrid = () => {
   }, [selectedDistrict]);
   const handleClick = service => {
     const categoryName = service.name;
-    const locationName = selectedDistrict || "Global";
+    // Navigate to the specific location the user picked (falls back to the
+    // selected district only when the location field is empty).
+    const { location, masterLocationSlug } = getEffectiveSearchLocation(selectedDistrict);
     const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
     const userDetails = {
       userName: authUser?.userName,
@@ -80,7 +82,8 @@ const ServiceCardsGrid = () => {
     };
     navigateToSearchResult({
       searchTerm: categoryName,
-      location: locationName,
+      location,
+      masterLocationSlug,
       navigate,
       dispatch,
       isKnownCategory: true,

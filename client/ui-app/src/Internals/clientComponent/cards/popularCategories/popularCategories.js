@@ -9,7 +9,7 @@ import Skeleton from "@mui/material/Skeleton";
 import CloseIcon from "@mui/icons-material/Close";
 import SearchIcon from "@mui/icons-material/Search";
 import { fetchPopularCategories } from "../../../../redux/actions/categoryAction";
-import { navigateToSearchResult } from "../../../../utils/searchResultNavigation";
+import { navigateToSearchResult, getEffectiveSearchLocation } from "../../../../utils/searchResultNavigation";
 
 // Order is controlled via admin Category Display Settings → Popular tab.
 // The v2 API returns items pre-sorted; no client-side reorder needed.
@@ -69,9 +69,13 @@ const PopularCategoriesDrawer = ({
       mobileNumber2: authUser?.mobileNumber2,
       email: authUser?.email
     };
+    // Navigate to the specific location the user picked (falls back to the
+    // selected district only when the location field is empty).
+    const { location, masterLocationSlug } = getEffectiveSearchLocation(selectedDistrict);
     navigateToSearchResult({
       searchTerm: cat.name,
-      location: selectedDistrict || "Global",
+      location,
+      masterLocationSlug,
       navigate,
       dispatch,
       isKnownCategory: true,

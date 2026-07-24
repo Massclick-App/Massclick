@@ -5,18 +5,9 @@ import { useDispatch, useSelector } from 'react-redux';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import styles from "./topTourist.module.css";
 import { fetchTopTouristPlaces } from '../../../redux/actions/categoryAction';
-import { navigateToSearchResult } from "../../../utils/searchResultNavigation";
+import { navigateToSearchResult, getEffectiveSearchLocation } from "../../../utils/searchResultNavigation";
 const cx = createScopedClassNames(styles);
 const createSlug = (text = "") => String(text).toLowerCase().trim().replace(/&/g, "and").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-const getLocationName = selectedDistrict => {
-  if (typeof selectedDistrict === "string") return selectedDistrict;
-  if (selectedDistrict?.name) return selectedDistrict.name;
-  if (selectedDistrict?.district) return selectedDistrict.district;
-  if (selectedDistrict?.label) return selectedDistrict.label;
-  // selectedLocation is the specific searched place (may be empty when the
-  // user searched a whole district); fall back to the district scope.
-  return localStorage.getItem("selectedLocation") || localStorage.getItem("selectedDistrict") || "Global";
-};
 const getTouristCategoryName = place => {
   const configuredCategory = place.categoryName || place.category || place.searchName;
   if (configuredCategory) return configuredCategory;
@@ -35,8 +26,10 @@ const TopTourist = () => {
   const handlePlaceClick = (event, place) => {
     event.preventDefault();
     const categoryName = getTouristCategoryName(place);
-    const locationName = getLocationName(selectedDistrict);
     if (!categoryName) return;
+    // Navigate to the specific location the user picked (falls back to the
+    // selected district only when the location field is empty).
+    const { location, masterLocationSlug } = getEffectiveSearchLocation(selectedDistrict);
     const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
     const userDetails = {
       userName: authUser?.userName,
@@ -46,7 +39,8 @@ const TopTourist = () => {
     };
     navigateToSearchResult({
       searchTerm: categoryName,
-      location: locationName,
+      location,
+      masterLocationSlug,
       navigate,
       dispatch,
       isKnownCategory: true,
@@ -65,7 +59,7 @@ const TopTourist = () => {
         {topTouristPlaces.map((place, index) => {
           const imgSrc = place.imageUrl || null;
           const categoryName = getTouristCategoryName(place);
-          const locationName = getLocationName(selectedDistrict);
+          const { location: locationName } = getEffectiveSearchLocation(selectedDistrict);
           const href = place.path || `/${createSlug(locationName)}/${createSlug(categoryName)}`;
           return <Link key={index} to={href} className={cx("tourist-card")} onClick={event => handlePlaceClick(event, place)}>
                 {imgSrc && <div className={cx("tourist-img-wrapper")}>

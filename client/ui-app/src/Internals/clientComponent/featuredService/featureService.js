@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { fetchHomeCategories } from "../../../redux/actions/categoryAction";
 import { getPlaceholderImage, handleImageError } from "../../../utils/placeholderImage";
-import { navigateToSearchResult } from "../../../utils/searchResultNavigation";
+import { navigateToSearchResult, getEffectiveSearchLocation } from "../../../utils/searchResultNavigation";
 import styles from "./featureService.module.css";
 const cx = createScopedClassNames(styles);
 const PopularCategoriesDrawer = React.lazy(() => import("../cards/popularCategories/popularCategories.js"));
@@ -67,7 +67,9 @@ const FeaturedServicesSection = () => {
       return;
     }
     const categoryName = service.name;
-    const locationName = selectedDistrict || "Global";
+    // Navigate to the specific location the user picked (falls back to the
+    // selected district only when the location field is empty).
+    const { location, masterLocationSlug } = getEffectiveSearchLocation(selectedDistrict);
     const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
     const userDetails = {
       userName: authUser?.userName,
@@ -79,7 +81,8 @@ const FeaturedServicesSection = () => {
     // Use centralized navigation
     navigateToSearchResult({
       searchTerm: categoryName,
-      location: locationName,
+      location,
+      masterLocationSlug,
       navigate,
       dispatch,
       isKnownCategory: true,

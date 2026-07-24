@@ -30,6 +30,39 @@ export const normalizeSearchTerm = (text = "") => {
 };
 
 /**
+ * The effective place to search when the user activates a homepage entry
+ * point (featured service, popular category, trending chip, tourist card…).
+ * Returns the specific location the user typed/picked in the location field
+ * when there is one, otherwise the selected district scope. Mirrors the search
+ * bar's own fallback so clicking a card and searching the same picked location
+ * from the bar land on the same results page — instead of a card click always
+ * using the district and ignoring the location the user actually chose.
+ *
+ * @param {string|Object} districtFallback - Current district scope
+ *   (locationReducer.selectedDistrict); used only when no location is set.
+ * @returns {{ location: string, masterLocationSlug: string }}
+ */
+export const getEffectiveSearchLocation = (districtFallback = "") => {
+  const toName = (value) => {
+    if (!value) return "";
+    if (typeof value === "string") return value;
+    return value.name || value.district || value.label || "";
+  };
+  const selectedLocation = localStorage.getItem("selectedLocation") || "";
+  const location =
+    selectedLocation ||
+    toName(districtFallback) ||
+    localStorage.getItem("selectedDistrict") ||
+    "Global";
+  // The canonical slug belongs to a picked verified location only; never pair
+  // it with a district fallback, or an empty field would search the wrong node.
+  const masterLocationSlug = selectedLocation
+    ? localStorage.getItem("selectedLocationSlug") || ""
+    : "";
+  return { location, masterLocationSlug };
+};
+
+/**
  * Navigate to SearchResult with normalized data
  * @param {Object} config - Configuration object
  * @param {string} config.searchTerm - The search term or category name
