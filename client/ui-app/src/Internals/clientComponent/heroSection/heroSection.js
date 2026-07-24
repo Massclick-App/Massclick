@@ -220,17 +220,21 @@ const HeroSection = React.memo(({
   }, [dispatch]);
 
   // Once both the detected text and the canonical district list are ready,
-  // resolve the match and apply it to district + the locality box (which
-  // mirrors the district until the user types something more specific).
+  // resolve the match and apply it to the district. The location field is
+  // only updated to match if the user hasn't already typed/picked their own
+  // location - detection must never overwrite a location the user searched.
   useEffect(() => {
     if (!geoDetectedDistrict || districts.length === 0) return;
     const matched = matchCanonicalDistrict(geoDetectedDistrict, districts) || DEFAULT_DISTRICT;
+    const locationUntouched = !locationName.trim() || locationName === district;
     setDistrict(matched);
-    setLocationName(matched);
     localStorage.setItem("selectedDistrict", matched);
-    localStorage.setItem("selectedLocation", matched);
+    if (locationUntouched) {
+      setLocationName(matched);
+      localStorage.setItem("selectedLocation", matched);
+    }
     setGeoDetectedDistrict(null);
-  }, [geoDetectedDistrict, districts, setDistrict, setLocationName]);
+  }, [geoDetectedDistrict, districts, district, locationName, setDistrict, setLocationName]);
   useEffect(() => {
     const handleClickOutside = e => {
       if (categoryRef.current && !categoryRef.current.contains(e.target)) {
@@ -464,7 +468,7 @@ const HeroSection = React.memo(({
         <form className={cx("search-bar-container")} onSubmit={handleSearch}>
           <div className={cx("input-group location-group", (showLocationDropdown || showDistrictDropdown) && "dropdown-open")} ref={locationRef}>
             <LocationOnIcon className={cx("input-adornment start")} />
-            <input className={cx("custom-input")} role="combobox" aria-autocomplete="list" aria-controls="location-suggestions" aria-label="Search for a locality" placeholder="Search for a location..." aria-expanded={showLocationDropdown} autoComplete="address-level2" value={locationName === district ? "" : locationName} onChange={e => {
+            <input className={cx("custom-input")} role="combobox" aria-autocomplete="list" aria-controls="location-suggestions" aria-label="Search for a location" placeholder="Search for a location..." aria-expanded={showLocationDropdown} autoComplete="address-level2" value={locationName} onChange={e => {
             const value = e.target.value;
             setLocationName(value);
             localStorage.setItem("selectedLocation", value);

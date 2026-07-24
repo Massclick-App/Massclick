@@ -204,17 +204,21 @@ const StickySearchBar = ({
   }, [dispatch, propDistrict]);
 
   // Once both the detected text and the canonical district list are ready,
-  // resolve the match and apply it to district + the locality box (which
-  // mirrors the district until the user types something more specific).
+  // resolve the match and apply it to the district. The location field is
+  // only updated to match if the user hasn't already typed/picked their own
+  // location - detection must never overwrite a location the user searched.
   useEffect(() => {
     if (!geoDetectedDistrict || districts.length === 0) return;
     const matched = matchCanonicalDistrict(geoDetectedDistrict, districts) || DEFAULT_DISTRICT;
+    const locationUntouched = !locationName.trim() || locationName === district;
     setDistrict(matched);
-    setLocationName(matched);
     localStorage.setItem("selectedDistrict", matched);
-    localStorage.setItem("selectedLocation", matched);
+    if (locationUntouched) {
+      setLocationName(matched);
+      localStorage.setItem("selectedLocation", matched);
+    }
     setGeoDetectedDistrict(null);
-  }, [geoDetectedDistrict, districts, setDistrict, setLocationName]);
+  }, [geoDetectedDistrict, districts, district, locationName, setDistrict, setLocationName]);
 
   // Keep locationReducer.selectedDistrict (read by the below-hero sections -
   // trendingSearch, popularSearch, topTourist, popularCategories,
@@ -485,7 +489,7 @@ const StickySearchBar = ({
               <input
                 className={cx("cards-custom-input")}
                 placeholder="Search for a location..."
-                value={locationName === district ? "" : locationName}
+                value={locationName}
                 onChange={(e) => {
                   setLocationName(e.target.value);
                   setMasterLocationSlug("");
