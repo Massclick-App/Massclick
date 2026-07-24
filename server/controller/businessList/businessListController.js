@@ -3,7 +3,6 @@ import { BAD_REQUEST } from "../../errorCodes.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
 import { getObjectBufferByKey, getSignedUrlByKey } from "../../s3Uploder.js";
 import categoryModel from "../../model/category/categoryModel.js";
-import masterLocationModel from "../../model/locationModel/masterLocationModel.js";
 import userModel from "../../model/userModel.js";
 import { emitToRoom } from "../../websocket/roomManager.js";
 import { buildRoom, WS_EVENTS } from "../../websocket/constants.js";
@@ -864,7 +863,6 @@ export const mainSearchController = async (req, res) => {
     // the legacy exact-text fallback while linkage coverage grows.
     let resolvedLocation = null;
     let locationSearchScope = null;
-    let locationClauseIndex = -1;
     if (location) {
       resolvedLocation = await resolveLocationForSearch(location).catch((err) => {
         console.error("[Search] location resolve failed:", err.message);
@@ -940,7 +938,6 @@ export const mainSearchController = async (req, res) => {
             ],
           }
         : null;
-      locationClauseIndex = matchQuery.$and.length;
       matchQuery.$and.push({
         $or: [
           { "masterLocation.slug": slugPrefixRegex },
@@ -957,7 +954,6 @@ export const mainSearchController = async (req, res) => {
       // Nothing resolved — legacy behavior untouched.
       const locKey = location.toLowerCase().trim();
       const aliases = districtAliasMap[locKey] || [locKey];
-      locationClauseIndex = matchQuery.$and.length;
       matchQuery.$and.push({
         $or: aliases.map((l) => ({
           location: { $regex: `^${escapeRegex(normalize(l))}$`, $options: "i" }
@@ -1100,9 +1096,8 @@ export const mainSearchController = async (req, res) => {
       { $addFields: { _distanceSort: { $ifNull: ["$distance", 999999] } } }
     ] : [];
 
-    const runAggregation = async (matchQueryForRun) => {
     const pipeline = [
-      { $match: matchQueryForRun },
+      { $match: matchQuery },
       ...(term ? [{ $addFields: { textScore: { $meta: "textScore" } } }] : []),
       {
         $lookup: {
@@ -1200,68 +1195,10 @@ export const mainSearchController = async (req, res) => {
       businessListModel.aggregate(pipeline),
       usesComputedRatingFilter
         ? businessListModel.aggregate(totalPipeline)
-        : businessListModel.countDocuments(matchQueryForRun)
+        : businessListModel.countDocuments(matchQuery)
     ]);
-    return { results, total };
-    };
-
-    let { results, total } = await runAggregation(matchQuery);
+    const total = usesComputedRatingFilter ? totalResult[0]?.total || 0 : totalResult;
     console.log(`[Search] → ${results.length} results (total:${total} hasMore:${page * pageSize < total}) resolvedCategory:"${category || ""}" in ${Date.now() - t0}ms`);
-
-    // ── Nearby-pincode fallback ──────────────────────────
-    // A location search that comes up empty widens to businesses in
-    // neighboring pincodes (found via geo-proximity on masterlocations)
-    // instead of surfacing a dead end.
-    let isNearbySearch = false;
-    if (total === 0 && locationClauseIndex >= 0) {
-      const originCoordinates = resolvedLocation?.coordinates?.coordinates;
-      const hasOriginCoordinates =
-        Array.isArray(originCoordinates) &&
-        originCoordinates.length === 2 &&
-        !(originCoordinates[0] === 0 && originCoordinates[1] === 0);
-
-      if (hasOriginCoordinates) {
-        const triedPincodes = locationSearchScope?.pincodes?.length
-          ? locationSearchScope.pincodes
-          : (resolvedLocation?.pincode ? [resolvedLocation.pincode] : []);
-
-        const nearbyLocations = await masterLocationModel
-          .find({
-            isActive: true,
-            level: { $in: ["locality", "ward"] },
-            pincode: { $nin: triedPincodes, $ne: null },
-            coordinates: {
-              $nearSphere: {
-                $geometry: { type: "Point", coordinates: originCoordinates },
-                $maxDistance: 20000, // 20km
-              },
-            },
-          })
-          .limit(25)
-          .lean()
-          .catch((err) => {
-            console.error("[Search] nearby-pincode lookup failed:", err.message);
-            return [];
-          });
-
-        const nearbyPincodes = [
-          ...new Set(nearbyLocations.map((loc) => loc.pincode).filter(Boolean)),
-        ];
-
-        if (nearbyPincodes.length > 0) {
-          console.log(`[Search] no results for "${location}" — trying ${nearbyPincodes.length} nearby pincode(s)`);
-          const nearbyMatchQuery = { ...matchQuery, $and: [...(matchQuery.$and || [])] };
-          nearbyMatchQuery.$and[locationClauseIndex] = { pincode: { $in: nearbyPincodes } };
-
-          const nearbyResult = await runAggregation(nearbyMatchQuery);
-          if (nearbyResult.total > 0) {
-            ({ results, total } = nearbyResult);
-            isNearbySearch = true;
-            console.log(`[Search] → nearby-pincode fallback found ${nearbyResult.total} result(s)`);
-          }
-        }
-      }
-    }
 
     // Sign image URLs
     results.forEach((b) => {
@@ -1277,7 +1214,7 @@ export const mainSearchController = async (req, res) => {
       }
     });
 
-    res.send({ results, total, page, pageSize, hasMore: page * pageSize < total, resolvedCategory: category || null, isNearbySearch });
+    res.send({ results, total, page, pageSize, hasMore: page * pageSize < total, resolvedCategory: category || null });
 
   } catch (err) {
     console.error(err);
