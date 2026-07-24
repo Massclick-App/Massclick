@@ -67,6 +67,7 @@ const MENU_SECTIONS = [
       { text: "Business", icon: StorefrontIcon, path: "/dashboard/business" },
     ],
   },
+
   {
     label: "Content",
     items: [
@@ -80,6 +81,7 @@ const MENU_SECTIONS = [
       { text: "Authors", icon: CategoryIcon, path: "/dashboard/authors" },
     ],
   },
+
   {
     label: "Manage",
     items: [
@@ -93,6 +95,7 @@ const MENU_SECTIONS = [
       { text: "Notifications", icon: NotificationsIcon, path: "/dashboard/fcm-marketing" },
     ],
   },
+
   {
     label: "Events",
     items: [
@@ -103,6 +106,7 @@ const MENU_SECTIONS = [
       { text: "MassclickEvents", icon: EmojiEventsIcon, path: "/dashboard/massclick-events" },
     ],
   },
+
   {
     label: "Analytics",
     items: [
@@ -116,6 +120,7 @@ const MENU_SECTIONS = [
       { text: "Google Maps Leads", icon: TravelExploreIcon, path: "/dashboard/gmaps-leads" },
     ],
   },
+
   {
     label: "Settings",
     items: [
@@ -143,7 +148,7 @@ export default function SideMenu({ onItemClick, railCollapsed = false }) {
   const allowedPages =
     useSelector((state) => state.auth?.allowedPages) ||
     authSnapshot.admin.allowedPages;
-
+ 
   const isSuperAdmin = userRole === SUPERADMIN;
   const [chatUnread, setChatUnread] = useState(0);
   const [query, setQuery] = useState("");
@@ -434,7 +439,7 @@ export default function SideMenu({ onItemClick, railCollapsed = false }) {
             </Box>
           );
         }
-
+  
         return (
           <Box key={section.label} sx={{ mb: 0.25 }}>
             <ListItemButton
