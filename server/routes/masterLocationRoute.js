@@ -6,7 +6,6 @@ import {
     viewAllMasterLocationAction,
     searchMasterLocationAction,
     listDistinctMasterLocationValuesAction,
-    listPublicDistrictsAction,
     updateMasterLocationAction,
     deleteMasterLocationAction
 } from "../controller/location/masterLocationController.js"
@@ -22,7 +21,5 @@ router.put('/api/masterlocation/update/:id', oauthAuthentication, updateMasterLo
 router.delete('/api/masterlocation/delete/:id', oauthAuthentication, deleteMasterLocationAction);
 // Public: resolve search text ("kk nagar", "manaparai") to location docs/slugs
 router.get('/api/masterlocation/search', searchMasterLocationAction);
-// Public: every district that exists, for the storefront's district picker
-router.get('/api/masterlocation/districts', listPublicDistrictsAction);
 
 export default router;

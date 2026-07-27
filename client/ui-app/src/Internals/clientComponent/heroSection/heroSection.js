@@ -2,8 +2,6 @@ import { createScopedClassNames } from "../../../utils/createScopedClassNames";
 import React, { lazy, Suspense, useEffect, useState, useRef } from "react";
 import SearchIcon from "@mui/icons-material/Search";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
-import ApartmentIcon from "@mui/icons-material/Apartment";
-import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import MicIcon from "@mui/icons-material/Mic";
 import StorefrontRoundedIcon from "@mui/icons-material/StorefrontRounded";
 import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
@@ -11,12 +9,11 @@ import VerifiedUserRoundedIcon from "@mui/icons-material/VerifiedUserRounded";
 import GppGoodRoundedIcon from "@mui/icons-material/GppGoodRounded";
 import { useDispatch, useSelector } from "react-redux";
 import { getBackendSuggestions } from "../../../redux/actions/businessListAction";
-import { searchMasterLocations, getPublicDistricts } from "../../../redux/actions/masterLocationAction";
+import { searchMasterLocations } from "../../../redux/actions/masterLocationAction";
 import { fetchPublicUserCounter } from "../../../redux/actions/publicUserCounterAction.js";
 import { navigateToSearchResult } from "../../../utils/searchResultNavigation";
 import { detectDistrict } from "../../../redux/actions/locationAction";
 import { scheduleIdleCallback } from "../../../utils/scheduleIdleCallback.js";
-import { DEFAULT_DISTRICT, matchCanonicalDistrict } from "../../../utils/districtDefaults.js";
 import {
   formatCounterCount,
   getNextCounterRefreshDelay,
@@ -37,6 +34,7 @@ const DeferredCategoryDropdown = (props) => (
     <CategoryDropdown {...props} />
   </Suspense>
 );
+const DEFAULT_LOCATION = "Tiruchirappalli";
 const SUGGESTION_PAGE_SIZE = 20;
 const MASTER_LOCATION_SUGGESTION_LIMIT = 25;
 const isObjectId = s => /^[a-f\d]{24}$/i.test(String(s || "").trim());
@@ -54,8 +52,6 @@ const HeroSection = React.memo(({
   setSearchTerm,
   locationName,
   setLocationName,
-  district,
-  setDistrict,
   setCategoryName
 }) => {
   const dispatch = useDispatch();
@@ -64,7 +60,6 @@ const HeroSection = React.memo(({
   const locationRef = useRef(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [showLocationDropdown, setShowLocationDropdown] = useState(false);
-  const [showDistrictDropdown, setShowDistrictDropdown] = useState(false);
   // Canonical masterlocations slug of a VERIFIED LOCATIONS pick. Cleared the
   // moment the user types freely — then the server resolves the text itself.
   const [masterLocationSlug, setMasterLocationSlug] = useState(() => localStorage.getItem("selectedLocationSlug") || "");
@@ -72,15 +67,10 @@ const HeroSection = React.memo(({
   const [debouncedLocation, setDebouncedLocation] = useState("");
   const [showVoiceModal, setShowVoiceModal] = useState(false);
   const [counterNow, setCounterNow] = useState(Date.now());
-  // Raw geolocation-detected district text, resolved to a real dropdown
-  // value once the canonical district list (below) has loaded.
-  const [geoDetectedDistrict, setGeoDetectedDistrict] = useState(null);
   const businessState = useSelector(state => state.businessListReducer);
   const masterLocationState = useSelector(state => state.masterLocationReducer);
   const {
     locationSearchResults = [],
-    districts = [],
-    districtsLoading = false,
   } = masterLocationState || {};
   const publicCounterSettings = useSelector(state => state.publicUserCounter?.publicSettings);
   const publicUsersCount = publicCounterSettings ? getVisibleCounterCount(publicCounterSettings, counterNow) : null;
@@ -150,39 +140,24 @@ const HeroSection = React.memo(({
   const recognitionRef = useRef(null);
   const [isListening, setIsListening] = useState(false);
   const [voiceLang] = useState("en-IN");
-  // Keep locationReducer.selectedDistrict (read by the below-hero sections -
-  // trendingSearch, popularSearch, topTourist, popularCategories,
-  // serviceCard, featureService) in sync with the district dropdown. This
-  // now tracks the actual district rather than every locality keystroke.
-  // Declared (and therefore committed) before the locationName-persist
-  // effect below: the reducer itself writes localStorage["selectedLocation"]
-  // as a side effect (see locationReducer.js), and effects run in
-  // declaration order, so the locationName effect always has the last word
-  // and a saved specific locality never gets clobbered back to the district.
   useEffect(() => {
-    dispatch({ type: "SET_SELECTED_DISTRICT", payload: district });
-  }, [dispatch, district]);
-
-  useEffect(() => {
-    localStorage.setItem("selectedLocation", locationName);
-  }, [locationName]);
-
-  // Fetch the full district list once, shared across both search bars via
-  // redux (StickySearchBar reads the same slice instead of re-fetching).
-  useEffect(() => {
-    if (districts.length > 0 || districtsLoading) return;
-    dispatch(getPublicDistricts());
-  }, [dispatch, districts.length, districtsLoading]);
-
-  // Auto-detect the district by geolocation on first visit (no saved
-  // district yet). Only captures the raw detected text here - matching it
-  // against the canonical district list happens below, once that list has
-  // loaded, so a Google Geocoding quirk ("Tiruchirappalli District") still
-  // resolves to a real dropdown value instead of a dead option.
-  useEffect(() => {
-    if (localStorage.getItem("selectedDistrict")) return undefined;
-    if (!navigator.geolocation) return undefined;
-
+    const applyLocation = value => {
+      setLocationName(value);
+      localStorage.setItem("selectedLocation", value);
+      dispatch({
+        type: "SET_SELECTED_DISTRICT",
+        payload: value
+      });
+    };
+    const savedLocation = localStorage.getItem("selectedLocation");
+    if (savedLocation) {
+      applyLocation(savedLocation);
+      return;
+    }
+    if (!navigator.geolocation) {
+      applyLocation(DEFAULT_LOCATION);
+      return;
+    }
     const idleHandle = scheduleIdleCallback(() => {
       navigator.geolocation.getCurrentPosition(async ({
         coords
@@ -192,15 +167,14 @@ const HeroSection = React.memo(({
             latitude: coords.latitude,
             longitude: coords.longitude
           }));
-          const detected = String(result?.district || "").trim();
-          if (detected && detected.toLowerCase() !== "all districts") {
-            setGeoDetectedDistrict(detected);
-          }
+          const detectedDistrict = String(result?.district || "").trim();
+          const autoDistrict = detectedDistrict && detectedDistrict.toLowerCase() !== "all districts" ? detectedDistrict : DEFAULT_LOCATION;
+          applyLocation(autoDistrict);
         } catch {
-          // Keep the DEFAULT_DISTRICT already in state on failure.
+          applyLocation(DEFAULT_LOCATION);
         }
       }, () => {
-        // Permission denied/unavailable - keep the DEFAULT_DISTRICT already in state.
+        applyLocation(DEFAULT_LOCATION);
       }, {
         enableHighAccuracy: true,
         timeout: 10000
@@ -217,19 +191,7 @@ const HeroSection = React.memo(({
 
       window.clearTimeout(idleHandle);
     };
-  }, [dispatch]);
-
-  // Once both the detected text and the canonical district list are ready,
-  // resolve the match and apply it to the district scope only. The location
-  // field is left untouched (empty by default) so detection sets the base
-  // district without ever overwriting a place the user might type.
-  useEffect(() => {
-    if (!geoDetectedDistrict || districts.length === 0) return;
-    const matched = matchCanonicalDistrict(geoDetectedDistrict, districts) || DEFAULT_DISTRICT;
-    setDistrict(matched);
-    localStorage.setItem("selectedDistrict", matched);
-    setGeoDetectedDistrict(null);
-  }, [geoDetectedDistrict, districts, setDistrict]);
+  }, [dispatch, setLocationName]);
   useEffect(() => {
     const handleClickOutside = e => {
       if (categoryRef.current && !categoryRef.current.contains(e.target)) {
@@ -237,7 +199,6 @@ const HeroSection = React.memo(({
       }
       if (locationRef.current && !locationRef.current.contains(e.target)) {
         setShowLocationDropdown(false);
-        setShowDistrictDropdown(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -268,8 +229,8 @@ const HeroSection = React.memo(({
       limit: SUGGESTION_PAGE_SIZE,
       append: false
     }));
-    dispatch(searchMasterLocations(debouncedLocation.trim(), MASTER_LOCATION_SUGGESTION_LIMIT, district));
-  }, [debouncedLocation, dispatch, showLocationDropdown, district]);
+    dispatch(searchMasterLocations(debouncedLocation.trim(), MASTER_LOCATION_SUGGESTION_LIMIT));
+  }, [debouncedLocation, dispatch, showLocationDropdown]);
   const recentSearchOptions = [...new Set((searchLogs || []).map(log => log.categoryName ? log.categoryName.trim() : "").filter(name => name && !isObjectId(name)))];
   const suggestionCategories = (() => {
     if (!Array.isArray(backendSuggestions) || backendSuggestions.length === 0) return [];
@@ -311,13 +272,13 @@ const HeroSection = React.memo(({
   // subLabel shows the full remaining breadcrumb (ward > zone > district),
   // deduped against the bold name and against itself so no level repeats.
   // A district/zone/ward can share its exact name with a child locality
-  // (the area's namesake place) - those matches are grouped into one row,
-  // auto-picking the broadest (highest) level present in the group instead
-  // of several identical-looking rows each eating a slot in the capped
-  // result list.
+  // (the area's namesake place) - those matches are grouped into one row
+  // with the different levels shown as pills, instead of several
+  // identical-looking rows each eating a slot in the capped result list.
   const masterLocationSuggestions = (() => {
     if (!Array.isArray(locationSearchResults) || locationSearchResults.length === 0) return [];
     const levelDepth = { district: 0, zone: 1, ward: 2, locality: 3 };
+    const levelLabel = { district: "District", zone: "Zone", ward: "Ward", locality: "Locality" };
     const groups = new Map();
     locationSearchResults.forEach(loc => {
       const name = loc.locality || loc.ward || loc.zone || loc.district;
@@ -327,7 +288,7 @@ const HeroSection = React.memo(({
       groups.get(key).push(loc);
     });
     return [...groups.values()].map(group => {
-      group.sort((a, b) => (levelDepth[a.level] ?? 0) - (levelDepth[b.level] ?? 0));
+      group.sort((a, b) => (levelDepth[b.level] ?? 0) - (levelDepth[a.level] ?? 0));
       const primary = group[0];
       const name = primary.locality || primary.ward || primary.zone || primary.district;
       const contextParts = [primary.ward, primary.zone, primary.district].filter(part => part && part.toLowerCase() !== String(name).toLowerCase());
@@ -335,7 +296,12 @@ const HeroSection = React.memo(({
         _raw: primary,
         name,
         subLabel: [...new Set(contextParts)].join(", "),
-        slug: primary.slug
+        slug: primary.slug,
+        levels: group.length > 1 ? [...group].reverse().map(loc => ({
+          level: loc.level,
+          label: levelLabel[loc.level] || loc.level,
+          slug: loc.slug
+        })) : null
       };
     });
   })();
@@ -375,9 +341,7 @@ const HeroSection = React.memo(({
     e?.preventDefault?.();
     const normalize = (text = "") => text.toLowerCase().trim().replace(/&/g, " and ").replace(/[-_]/g, " ").replace(/\s+/g, " ");
     let term = normalize(selectedTerm ?? searchTerm);
-    // An empty location field means "search the whole district" - fall back
-    // to the district scope so the URL still carries a location.
-    let location = normalize(locationName) || normalize(district);
+    let location = normalize(locationName);
 
     // 🔹 Remove location from term
     if (location && term.includes(location)) {
@@ -463,20 +427,22 @@ const HeroSection = React.memo(({
       <div className={cx("hero-content hero-minimal")}>
 
         <form className={cx("search-bar-container")} onSubmit={handleSearch}>
-          <div className={cx("input-group location-group", (showLocationDropdown || showDistrictDropdown) && "dropdown-open")} ref={locationRef}>
+          <div className={cx("input-group location-group", showLocationDropdown && "dropdown-open")} ref={locationRef}>
             <LocationOnIcon className={cx("input-adornment start")} />
-            <input className={cx("custom-input")} role="combobox" aria-autocomplete="list" aria-controls="location-suggestions" aria-label="Search for a location" placeholder="Search for a location..." aria-expanded={showLocationDropdown} autoComplete="address-level2" value={locationName} onChange={e => {
+            <input className={cx("custom-input")} role="combobox" aria-autocomplete="list" aria-controls="location-suggestions" aria-label="Business location" aria-expanded={showLocationDropdown} autoComplete="address-level2" placeholder={locationName ? "Change location..." : "Detecting location..."} value={locationName} onChange={e => {
             const value = e.target.value;
             setLocationName(value);
             localStorage.setItem("selectedLocation", value);
             setMasterLocationSlug("");
             localStorage.removeItem("selectedLocationSlug");
+            dispatch({
+              type: "SET_SELECTED_DISTRICT",
+              payload: value
+            });
             setShowLocationDropdown(true);
-            setShowDistrictDropdown(false);
             setIsDropdownOpen(false);
           }} onFocus={() => {
             setShowLocationDropdown(true);
-            setShowDistrictDropdown(false);
             setIsDropdownOpen(false);
           }} />
 
@@ -485,64 +451,20 @@ const HeroSection = React.memo(({
               const chosen = typeof val === "string" ? val : val.name;
               setLocationName(chosen);
               localStorage.setItem("selectedLocation", chosen);
-              // A verified pick knows which district it sits in - move the
-              // district pill to match so the searched place and the shown
-              // district stay consistent on the results page.
-              const pickedDistrict = typeof val === "object" && val._raw?.district ? val._raw.district : "";
-              if (pickedDistrict) {
-                setDistrict(pickedDistrict);
-                localStorage.setItem("selectedDistrict", pickedDistrict);
-              }
               // Verified picks carry the canonical slug; legacy text
               // suggestions don't and clear any previous one.
               const slug = typeof val === "object" && val.slug ? val.slug : "";
               setMasterLocationSlug(slug);
               if (slug) localStorage.setItem("selectedLocationSlug", slug);
               else localStorage.removeItem("selectedLocationSlug");
+              dispatch({
+                type: "SET_SELECTED_DISTRICT",
+                payload: chosen
+              });
               setShowLocationDropdown(false);
             };
             return <DeferredCategoryDropdown id="location-suggestions" label="LOCATION SUGGESTIONS" options={combinedLocationOptions} onSelect={selectLocation} onReachEnd={() => maybeLoadMoreSuggestions(locationName.trim())} hasMore={backendSuggestionsHasMore && backendSuggestionsQuery === locationName.trim()} isLoadingMore={backendSuggestionsLoading && backendSuggestionsQuery === locationName.trim()} />;
           })()}
-
-            <span className={cx("field-divider")} aria-hidden="true" />
-
-            <button
-              type="button"
-              className={cx("district-trigger", showDistrictDropdown && "district-trigger--open")}
-              aria-haspopup="listbox"
-              aria-expanded={showDistrictDropdown}
-              aria-controls="district-options"
-              onClick={() => {
-                setShowDistrictDropdown(open => !open);
-                setShowLocationDropdown(false);
-              }}
-            >
-              <ApartmentIcon className={cx("district-trigger-icon")} />
-              <span className={cx("district-trigger-text")}>{district || "Select district"}</span>
-              <KeyboardArrowDownIcon className={cx("district-trigger-chevron")} />
-            </button>
-
-            {showDistrictDropdown && (
-              <DeferredCategoryDropdown
-                id="district-options"
-                label="SELECT DISTRICT"
-                options={districts}
-                onSelect={value => {
-                  setDistrict(value);
-                  localStorage.setItem("selectedDistrict", value);
-                  // Switching district only changes the search scope - it
-                  // clears the location field (rather than stuffing the
-                  // district name into it) so the user can type a locality
-                  // within the new district. An empty field falls back to
-                  // the district at search time.
-                  setLocationName("");
-                  localStorage.removeItem("selectedLocation");
-                  setMasterLocationSlug("");
-                  localStorage.removeItem("selectedLocationSlug");
-                  setShowDistrictDropdown(false);
-                }}
-              />
-            )}
           </div>
 
           <div className={cx("input-group search-group", isDropdownOpen && "dropdown-open")} ref={categoryRef}>

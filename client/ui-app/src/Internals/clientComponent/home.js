@@ -13,7 +13,6 @@ import {
   generateOrganizationSchema,
 } from "../../utils/seoSchemaGenerators";
 import { scheduleIdleCallback } from "../../utils/scheduleIdleCallback.js";
-import { DEFAULT_DISTRICT } from "../../utils/districtDefaults.js";
 import useRenderNearViewport from "../../hooks/useRenderNearViewport.js";
 import styles from "./homeLayout.module.css";
 const cx = createScopedClassNames(styles);
@@ -252,18 +251,9 @@ const LandingPage = React.memo(() => {
     robots: "index, follow",
   };
   const [isScrolled, setIsScrolled] = useState(false);
-  // `district` is the base scope (the district picker). `locationName` is
-  // the specific place typed/picked in the location field, and starts empty
-  // so the field shows its placeholder rather than the district's own name.
-  // Consumers that need an actual place read `effectiveLocation` below,
-  // which falls back to the district when the location field is empty.
-  const [district, setDistrict] = useState(
-    localStorage.getItem("selectedDistrict") || DEFAULT_DISTRICT,
-  );
   const [locationName, setLocationName] = useState(
-    localStorage.getItem("selectedLocation") || "",
+    localStorage.getItem("selectedLocation") || "Trichy",
   );
-  const effectiveLocation = locationName || district;
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryName, setCategoryName] = useState("");
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -359,7 +349,7 @@ const LandingPage = React.memo(() => {
       <DeferredHomeSection
         minHeight={SECTION_HEIGHTS.blogs}
       >
-        <RelatedBlogs location={effectiveLocation} />
+        <RelatedBlogs location={locationName} />
       </DeferredHomeSection>
 
       <DeferredHomeSection
@@ -422,8 +412,6 @@ const LandingPage = React.memo(() => {
           <Suspense fallback={null}>
             <StickySearchBar
               isScrolled={true}
-              district={district}
-              setDistrict={setDistrict}
               locationName={locationName}
               setLocationName={setLocationName}
               searchTerm={searchTerm}
@@ -437,8 +425,6 @@ const LandingPage = React.memo(() => {
         <main>
           <div ref={heroSectionRef}>
             <HeroSection
-              district={district}
-              setDistrict={setDistrict}
               locationName={locationName}
               setLocationName={setLocationName}
               searchTerm={searchTerm}
@@ -523,7 +509,7 @@ const LandingPage = React.memo(() => {
 
         {showWeatherWidget && (
           <Suspense fallback={null}>
-            <WeatherWidget locationName={effectiveLocation} />
+            <WeatherWidget locationName={locationName} />
           </Suspense>
         )}
       </div>

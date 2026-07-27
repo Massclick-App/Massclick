@@ -109,12 +109,7 @@ export default function locationReducer(state = initialState, action) {
       };
 
     case "SET_SELECTED_DISTRICT":
-      // District and the specific searched location are separate concerns
-      // now - the district picker owns `selectedDistrict`, the location
-      // field owns `selectedLocation`. This case must NOT touch
-      // `selectedLocation`, or setting the district (e.g. on the results
-      // page when the sticky bar re-syncs) would clobber the place the user
-      // actually searched back to the district.
+      localStorage.setItem("selectedLocation", action.payload);
       return {
         ...state,
         selectedDistrict: action.payload,
