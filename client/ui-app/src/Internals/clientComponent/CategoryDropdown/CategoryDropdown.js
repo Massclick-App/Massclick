@@ -82,23 +82,6 @@ const CategoryDropdown = React.memo(({
                         <span className={cx("option-text-sub")}>{option.subLabel || option.category || option.categoryName}</span>
                       )}
                     </span>
-                    {typeof option !== "string" && Array.isArray(option.levels) && option.levels.length > 0 && (
-                      <span className={cx("option-level-pills")}>
-                        {option.levels.map(lvl => (
-                          <button
-                            key={lvl.slug}
-                            type="button"
-                            className={cx("option-level-pill")}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              section.onSelect({ name: option.name, slug: lvl.slug });
-                            }}
-                          >
-                            {lvl.label}
-                          </button>
-                        ))}
-                      </span>
-                    )}
                   </div>
                 );
               })}

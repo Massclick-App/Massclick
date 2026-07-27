@@ -272,13 +272,12 @@ const HeroSection = React.memo(({
   // subLabel shows the full remaining breadcrumb (ward > zone > district),
   // deduped against the bold name and against itself so no level repeats.
   // A district/zone/ward can share its exact name with a child locality
-  // (the area's namesake place) - those matches are grouped into one row
-  // with the different levels shown as pills, instead of several
-  // identical-looking rows each eating a slot in the capped result list.
+  // (the area's namesake place) - those matches collapse into a single row,
+  // picking the broadest (highest) level present, instead of several
+  // identical-looking rows or a set of level pills.
   const masterLocationSuggestions = (() => {
     if (!Array.isArray(locationSearchResults) || locationSearchResults.length === 0) return [];
     const levelDepth = { district: 0, zone: 1, ward: 2, locality: 3 };
-    const levelLabel = { district: "District", zone: "Zone", ward: "Ward", locality: "Locality" };
     const groups = new Map();
     locationSearchResults.forEach(loc => {
       const name = loc.locality || loc.ward || loc.zone || loc.district;
@@ -288,7 +287,7 @@ const HeroSection = React.memo(({
       groups.get(key).push(loc);
     });
     return [...groups.values()].map(group => {
-      group.sort((a, b) => (levelDepth[b.level] ?? 0) - (levelDepth[a.level] ?? 0));
+      group.sort((a, b) => (levelDepth[a.level] ?? 0) - (levelDepth[b.level] ?? 0));
       const primary = group[0];
       const name = primary.locality || primary.ward || primary.zone || primary.district;
       const contextParts = [primary.ward, primary.zone, primary.district].filter(part => part && part.toLowerCase() !== String(name).toLowerCase());
@@ -296,12 +295,7 @@ const HeroSection = React.memo(({
         _raw: primary,
         name,
         subLabel: [...new Set(contextParts)].join(", "),
-        slug: primary.slug,
-        levels: group.length > 1 ? [...group].reverse().map(loc => ({
-          level: loc.level,
-          label: levelLabel[loc.level] || loc.level,
-          slug: loc.slug
-        })) : null
+        slug: primary.slug
       };
     });
   })();

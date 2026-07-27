@@ -30,7 +30,6 @@ const MASTER_LOCATION_SUGGESTION_LIMIT = 25;
 const WEB_VIEW_MEDIA_QUERY = "(min-width: 769px)";
 const isMongoObjectId = value => /^[a-f\d]{24}$/i.test(String(value || "").trim());
 const LEVEL_DEPTH = { district: 0, zone: 1, ward: 2, locality: 3 };
-const LEVEL_LABEL = { district: "District", zone: "Zone", ward: "Ward", locality: "Locality" };
 
 const AddBusinessModel = lazy(() =>
   import(/* webpackChunkName: "otp-modal" */ "../AddBusinessModel")
@@ -48,8 +47,9 @@ const DeferredCategoryDropdown = (props) => (
 
 // Groups masterlocations search hits by name so a district/zone/ward that
 // shares its exact name with a child locality (the area's namesake place)
-// renders as one row with the other levels as pills, instead of several
-// identical-looking rows - mirrors heroSection's masterLocationSuggestions.
+// collapses to a single row, picking the broadest (highest) level present
+// in the group - no zone/ward/locality level pills. Mirrors heroSection's
+// masterLocationSuggestions.
 const buildMasterLocationSuggestions = (locationSearchResults) => {
   if (!Array.isArray(locationSearchResults) || locationSearchResults.length === 0) return [];
   const groups = new Map();
@@ -61,7 +61,7 @@ const buildMasterLocationSuggestions = (locationSearchResults) => {
     groups.get(key).push(loc);
   });
   return [...groups.values()].map(group => {
-    group.sort((a, b) => (LEVEL_DEPTH[b.level] ?? 0) - (LEVEL_DEPTH[a.level] ?? 0));
+    group.sort((a, b) => (LEVEL_DEPTH[a.level] ?? 0) - (LEVEL_DEPTH[b.level] ?? 0));
     const primary = group[0];
     const name = primary.locality || primary.ward || primary.zone || primary.district;
     const contextParts = [primary.ward, primary.zone, primary.district].filter(part => part && part.toLowerCase() !== String(name).toLowerCase());
@@ -69,12 +69,7 @@ const buildMasterLocationSuggestions = (locationSearchResults) => {
       _raw: primary,
       name,
       subLabel: [...new Set(contextParts)].join(", "),
-      slug: primary.slug,
-      levels: group.length > 1 ? [...group].reverse().map(loc => ({
-        level: loc.level,
-        label: LEVEL_LABEL[loc.level] || loc.level,
-        slug: loc.slug
-      })) : null
+      slug: primary.slug
     };
   });
 };
