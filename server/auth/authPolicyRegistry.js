@@ -32,11 +32,14 @@ const POLICY_LIST = [
     adminOverride: true,
   },
   {
+    // Spotlight is public reading: guests browse with the publicClient token
+    // and get likedByMe=false (listMassclickFeedPosts tolerates a null
+    // actorId). Creating and interacting stay customer-only below.
     key: "massclick-feed.list",
     method: "GET",
     path: "/api/massclick-feed/posts",
-    allowedActorTypes: ["customer", "admin"],
-    ownership: "self-only",
+    allowedActorTypes: ["publicClient", "customer", "admin"],
+    ownership: "public-read",
     adminOverride: true,
   },
   {
