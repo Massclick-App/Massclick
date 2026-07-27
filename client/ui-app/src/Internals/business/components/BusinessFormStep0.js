@@ -562,7 +562,7 @@ const BusinessFormStep0 = ({
           <div className={cx("upload-panel")}>
             <div>
               <label className="form-input-label">Business Logo</label>
-              <p className={cx("upload-panel-copy")}>Upload a square logo (1:1 aspect ratio). We'll auto-crop it for you.</p>
+              <p className={cx("upload-panel-copy")}>Upload the logo in its natural shape. You can fine-tune the crop after selecting it.</p>
             </div>
             <div className={cx("upload-content")}>
               <Button variant="contained" startIcon={<CloudUploadIcon />} component="label" className={cx("upload-button")}>
@@ -571,7 +571,7 @@ const BusinessFormStep0 = ({
               </Button>
               {logoPreview && (
                 <div className={cx("logo-preview")}>
-                  <Avatar src={logoPreview} sx={{ width: 100, height: 100 }} />
+                  <img src={logoPreview} alt="Business logo preview" className={cx("logo-preview-image")} />
                   <Button size="small" onClick={handleLogoClear} sx={{ mt: 1 }}>Clear</Button>
                 </div>
               )}

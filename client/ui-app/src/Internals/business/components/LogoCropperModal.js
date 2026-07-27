@@ -23,6 +23,15 @@ const LogoCropperModal = ({
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+  const [aspect, setAspect] = useState(1);
+
+  // Follow the uploaded image's own proportions instead of forcing 1:1,
+  // so a wide/tall logo isn't chopped down to a square.
+  const handleMediaLoaded = ({ naturalWidth, naturalHeight }) => {
+    if (naturalWidth && naturalHeight) {
+      setAspect(naturalWidth / naturalHeight);
+    }
+  };
 
   const handleCropChange = (crop) => {
     setCrop(crop);
@@ -90,6 +99,7 @@ const LogoCropperModal = ({
     setCrop({ x: 0, y: 0 });
     setZoom(1);
     setCroppedAreaPixels(null);
+    setAspect(1);
     onClose();
   };
 
@@ -102,7 +112,7 @@ const LogoCropperModal = ({
           alignItems: "center",
         }}
       >
-        <span>Crop Logo (Square Format)</span>
+        <span>Crop Logo</span>
         <IconButton size="small" onClick={handleClose} disabled={isLoading}>
           ×
         </IconButton>
@@ -142,7 +152,8 @@ const LogoCropperModal = ({
                 image={image}
                 crop={crop}
                 zoom={zoom}
-                aspect={1}
+                aspect={aspect}
+                onMediaLoaded={handleMediaLoaded}
                 onCropChange={handleCropChange}
                 onCropComplete={handleCropComplete}
                 onZoomChange={handleZoomChange}
