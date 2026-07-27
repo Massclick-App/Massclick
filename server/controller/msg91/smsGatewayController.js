@@ -140,7 +140,7 @@ export const sendMobileOtpAction = (req, res) =>
 
 export const verifyOtpAction = async (req, res) => {
   try {
-    const { phoneNumber, otp, userName } = req.body;
+    const { phoneNumber, otp, userName, registeredFrom } = req.body;
 
     if (!phoneNumber || !otp) {
       return res.status(400).json({ success: false, message: "Missing phone number or OTP." });
@@ -175,13 +175,15 @@ export const verifyOtpAction = async (req, res) => {
 
       isNewUser = true;
 
+      const source = ["mobile", "web"].includes(registeredFrom) ? registeredFrom : "unknown";
       user = new User({
         userName: userName || (
           isReviewer
             ? process.env.GOOGLE_PLAY_REVIEW_NAME?.trim() || "Google Play Reviewer"
             : `User_${cleanNumber}`
         ),
-        mobileNumber1: cleanNumber
+        mobileNumber1: cleanNumber,
+        registeredFrom: source,
       });
 
     } else if (userName && userName !== user.userName) {
@@ -319,7 +321,7 @@ export const fakesendOtpAction = async (req, res) => {
 
 export const fakeverifyOtpAction = async (req, res) => {
   try {
-    const { phoneNumber, otp, userName } = req.body;
+    const { phoneNumber, otp, userName, registeredFrom } = req.body;
 
     if (!phoneNumber || !otp) {
       return res.status(400).json({ success: false, message: "Missing phone number or OTP." });
@@ -335,9 +337,11 @@ export const fakeverifyOtpAction = async (req, res) => {
 
       isNewUser = true;
 
+      const source = ["mobile", "web"].includes(registeredFrom) ? registeredFrom : "unknown";
       user = new User({
         userName: userName || `User_${cleanNumber}`,
-        mobileNumber1: cleanNumber
+        mobileNumber1: cleanNumber,
+        registeredFrom: source,
       });
 
     } else if (userName && userName !== user.userName) {

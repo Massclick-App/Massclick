@@ -41,7 +41,7 @@ export const verifyOtp = (mobile, otp, userName = "") => async (dispatch) => {
   try {
     const response = await axiosInstance.post(
       `${API_URL}/otp_user/verify-otp`,
-      { phoneNumber: mobile, otp, userName },
+      { phoneNumber: mobile, otp, userName, registeredFrom: 'web' },
       { headers: { "Content-Type": "application/json" } }
     );
 

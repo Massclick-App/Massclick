@@ -89,6 +89,7 @@ const message91UsersSchema = new mongoose.Schema({
     }
   ],
   profileCompleted: { type: Boolean, default: false },
+  registeredFrom: { type: String, enum: ["mobile", "web", "unknown"], default: "unknown" },
   lastLoginAt: { type: Date, default: null },
   loginCount: { type: Number, default: 0 },
   createdAt: { type: Date, default: Date.now },
