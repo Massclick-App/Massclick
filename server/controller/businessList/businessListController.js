@@ -8,7 +8,6 @@ import userModel from "../../model/userModel.js";
 import { emitToRoom } from "../../websocket/roomManager.js";
 import { buildRoom, WS_EVENTS } from "../../websocket/constants.js";
 import { getCache, setCache } from "../../utils/redisClient.js";
-import { enhanceSearchQuery, resolveCategory } from "../../utils/geminiQueryEnhancer.js";
 import { invalidateSearchCache, invalidateDashboardCache, invalidateCategoryCache } from "../../utils/cacheInvalidation.js";
 import { buildBusinessExportWorkbook } from "../../utils/businessExportXlsx.js";
 import { ensureBusinessCertificates, regenerateBusinessCertificates } from "../../helper/businessList/businessCertificateHelper.js";
@@ -813,43 +812,17 @@ export const mainSearchController = async (req, res) => {
     const escapeRegex = (text = "") => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
     // ── Category resolution ───────────────────────────────────────────────────
+    // Fast keyword/regex match against category names & keywords. If nothing
+    // matches, the term is left as-is and used for full-text search below.
     if (!category && term) {
-      // Step 1: fast keyword/regex match against category names & keywords
       const keywordMatch = await resolveCategoryIntent(term, escapeRegex);
       if (keywordMatch) {
         console.log(`[Search] category via keyword match: "${keywordMatch}" (term cleared)`);
         category = keywordMatch;
         term = "";
       } else {
-        // Step 2: keyword match failed — ask Gemini to pick from available categories
-        console.log(`[Search] keyword match failed for "${term}" — trying Gemini category resolver`);
-        const CAT_CACHE_KEY = "gemini:category_list";
-        let allCategories = await getCache(CAT_CACHE_KEY).catch(() => null);
-        if (!allCategories) {
-          allCategories = await categoryModel
-            .find({ isActive: true }, { category: 1, keywords: 1, _id: 0 })
-            .lean();
-          await setCache(CAT_CACHE_KEY, allCategories, 60 * 60 * 6).catch(() => {}); // 6h cache
-          console.log(`[Search] loaded ${allCategories.length} categories from DB (cached 6h)`);
-        } else {
-          console.log(`[Search] loaded ${allCategories.length} categories from cache`);
-        }
-
-        const geminiCategory = await resolveCategory(term, allCategories);
-        if (geminiCategory) {
-          console.log(`[Search] category via Gemini: "${geminiCategory}" (term cleared)`);
-          category = geminiCategory;
-          term = "";
-        } else {
-          console.log(`[Search] no category resolved — falling back to text search for "${term}"`);
-        }
+        console.log(`[Search] no category resolved — falling back to text search for "${term}"`);
       }
-    }
-
-    // ── Keyword expansion ─────────────────────────────────────────────────────
-    // Only runs when a free-text term remains after category resolution
-    if (term) {
-      term = await enhanceSearchQuery(term, category);
     }
 
     console.log(`[Search] final → term:"${term}" category:"${category}" location:"${location}" sort:${req.query.sortBy || "relevant"}`);
@@ -1290,6 +1263,48 @@ export const mainSearchController = async (req, res) => {
           ({ results, total } = widenedResult);
           isNearbySearch = true;
           console.log(`[Search] → nearby-pincode top-up found ${widenedResult.total} result(s) total`);
+        }
+      }
+
+      // Geo + pincode still came up thin — widen all the way out to the
+      // resolved location's district.
+      if (total < MIN_RESULTS) {
+        const districtName = resolvedLocation?.district;
+        if (districtName) {
+          const districtKey = normalize(districtName);
+          const districtNames = [
+            ...new Set(
+              [districtKey, ...(districtAliasMap[districtKey] || [])].filter(Boolean),
+            ),
+          ];
+          const originalLocationClause = matchQuery.$and[locationClauseIndex];
+          const districtMatchQuery = { ...matchQuery, $and: [...matchQuery.$and] };
+          districtMatchQuery.$and[locationClauseIndex] = {
+            $or: [
+              originalLocationClause,
+              {
+                $or: [
+                  {
+                    "masterLocation.district": {
+                      $regex: `^${escapeRegex(districtName)}$`,
+                      $options: "i",
+                    },
+                  },
+                  ...districtNames.map((name) => ({
+                    location: { $regex: `^${escapeRegex(name)}$`, $options: "i" },
+                  })),
+                ],
+              },
+            ],
+          };
+
+          console.log(`[Search] still only ${total} result(s) — widening to district "${districtName}"`);
+          const districtResult = await runAggregation(districtMatchQuery);
+          if (districtResult.total > total) {
+            ({ results, total } = districtResult);
+            isNearbySearch = true;
+            console.log(`[Search] → district-wide fallback found ${districtResult.total} result(s) total`);
+          }
         }
       }
     }
