@@ -1192,6 +1192,7 @@ export const mainSearchController = async (req, res) => {
     // (e.g. 600005 → 600000-600010).
     const MIN_RESULTS = 5;
     let isNearbySearch = false;
+    let fallbackTier = null;
     if (total < MIN_RESULTS && locationClauseIndex >= 0) {
       const triedPincodes = locationSearchScope?.pincodes?.length
         ? locationSearchScope.pincodes
@@ -1262,6 +1263,7 @@ export const mainSearchController = async (req, res) => {
         if (widenedResult.total > total) {
           ({ results, total } = widenedResult);
           isNearbySearch = true;
+          fallbackTier = "pincode";
           console.log(`[Search] → nearby-pincode top-up found ${widenedResult.total} result(s) total`);
         }
       }
@@ -1303,6 +1305,7 @@ export const mainSearchController = async (req, res) => {
           if (districtResult.total > total) {
             ({ results, total } = districtResult);
             isNearbySearch = true;
+            fallbackTier = "district";
             console.log(`[Search] → district-wide fallback found ${districtResult.total} result(s) total`);
           }
         }
@@ -1323,7 +1326,7 @@ export const mainSearchController = async (req, res) => {
       }
     });
 
-    res.send({ results, total, page, pageSize, hasMore: page * pageSize < total, resolvedCategory: category || null, isNearbySearch });
+    res.send({ results, total, page, pageSize, hasMore: page * pageSize < total, resolvedCategory: category || null, isNearbySearch, fallbackTier });
 
   } catch (err) {
     console.error(err);
