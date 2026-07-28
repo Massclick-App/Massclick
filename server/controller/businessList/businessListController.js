@@ -1209,23 +1209,30 @@ export const mainSearchController = async (req, res) => {
     let { results, total } = await runAggregation(matchQuery);
     console.log(`[Search] → ${results.length} results (total:${total} hasMore:${page * pageSize < total}) resolvedCategory:"${category || ""}" in ${Date.now() - t0}ms`);
 
-    // ── Nearby-pincode fallback ──────────────────────────
-    // A location search that comes up empty widens to businesses in
-    // neighboring pincodes (found via geo-proximity on masterlocations)
-    // instead of surfacing a dead end.
+    // ── Nearby-pincode top-up ─────────────────────────────────────────────────────
+    // A location search that comes up thin (< MIN_RESULTS) widens to include
+    // businesses in neighboring pincodes instead of surfacing a sparse page.
+    // Original matches are kept — the location clause is OR'd with the
+    // nearby-pincode clause, not replaced. Nearby candidates come from
+    // geo-proximity on masterlocations first; only if that finds nothing do
+    // we fall back to a numeric ±5 window on the pincode itself
+    // (e.g. 600005 → 600000-600010).
+    const MIN_RESULTS = 5;
     let isNearbySearch = false;
-    if (total === 0 && locationClauseIndex >= 0) {
+    if (total < MIN_RESULTS && locationClauseIndex >= 0) {
+      const triedPincodes = locationSearchScope?.pincodes?.length
+        ? locationSearchScope.pincodes
+        : (resolvedLocation?.pincode ? [resolvedLocation.pincode] : []);
+
       const originCoordinates = resolvedLocation?.coordinates?.coordinates;
       const hasOriginCoordinates =
         Array.isArray(originCoordinates) &&
         originCoordinates.length === 2 &&
         !(originCoordinates[0] === 0 && originCoordinates[1] === 0);
 
-      if (hasOriginCoordinates) {
-        const triedPincodes = locationSearchScope?.pincodes?.length
-          ? locationSearchScope.pincodes
-          : (resolvedLocation?.pincode ? [resolvedLocation.pincode] : []);
+      let nearbyPincodes = [];
 
+      if (hasOriginCoordinates) {
         const nearbyLocations = await masterLocationModel
           .find({
             isActive: true,
@@ -1241,25 +1248,48 @@ export const mainSearchController = async (req, res) => {
           .limit(25)
           .lean()
           .catch((err) => {
-            console.error("[Search] nearby-pincode lookup failed:", err.message);
+            console.error("[Search] nearby-pincode geo lookup failed:", err.message);
             return [];
           });
 
-        const nearbyPincodes = [
+        nearbyPincodes = [
           ...new Set(nearbyLocations.map((loc) => loc.pincode).filter(Boolean)),
         ];
+      }
 
-        if (nearbyPincodes.length > 0) {
-          console.log(`[Search] no results for "${location}" — trying ${nearbyPincodes.length} nearby pincode(s)`);
-          const nearbyMatchQuery = { ...matchQuery, $and: [...(matchQuery.$and || [])] };
-          nearbyMatchQuery.$and[locationClauseIndex] = { pincode: { $in: nearbyPincodes } };
+      // Geo found nothing (or there were no coordinates to search from) —
+      // fall back to a numeric window around the searched pincode itself.
+      if (nearbyPincodes.length === 0) {
+        const pincodeCenter = /^\d{6}$/.test(location)
+          ? location
+          : (/^\d{6}$/.test(resolvedLocation?.pincode || "") ? resolvedLocation.pincode : null);
 
-          const nearbyResult = await runAggregation(nearbyMatchQuery);
-          if (nearbyResult.total > 0) {
-            ({ results, total } = nearbyResult);
-            isNearbySearch = true;
-            console.log(`[Search] → nearby-pincode fallback found ${nearbyResult.total} result(s)`);
+        if (pincodeCenter) {
+          const centerNum = parseInt(pincodeCenter, 10);
+          const windowPincodes = [];
+          for (let offset = -5; offset <= 5; offset += 1) {
+            if (offset === 0) continue;
+            const candidate = centerNum + offset;
+            if (candidate < 100000 || candidate > 999999) continue;
+            windowPincodes.push(String(candidate));
           }
+          nearbyPincodes = windowPincodes.filter((p) => !triedPincodes.includes(p));
+        }
+      }
+
+      if (nearbyPincodes.length > 0) {
+        console.log(`[Search] only ${total} result(s) for "${location}" — topping up with ${nearbyPincodes.length} nearby pincode(s)`);
+        const originalLocationClause = matchQuery.$and[locationClauseIndex];
+        const widenedMatchQuery = { ...matchQuery, $and: [...matchQuery.$and] };
+        widenedMatchQuery.$and[locationClauseIndex] = {
+          $or: [originalLocationClause, { pincode: { $in: nearbyPincodes } }],
+        };
+
+        const widenedResult = await runAggregation(widenedMatchQuery);
+        if (widenedResult.total > total) {
+          ({ results, total } = widenedResult);
+          isNearbySearch = true;
+          console.log(`[Search] → nearby-pincode top-up found ${widenedResult.total} result(s) total`);
         }
       }
     }
