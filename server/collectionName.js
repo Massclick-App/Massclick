@@ -51,7 +51,8 @@ export const Collections = {
     USERFEEDBACKS: 'user_feedbacks',
     WEBANALYTICSEVENT: 'web_analytics_events',
     ACCOUNTDELETIONREQUESTS: 'account_deletion_requests',
-    SEARCHREQUESTS: 'search_requests'
+    SEARCHREQUESTS: 'search_requests',
+    LEGALDOCUMENTS: 'legal_documents'
 };
 
 export const {
@@ -107,6 +108,7 @@ export const {
     USERFEEDBACKS,
     WEBANALYTICSEVENT,
     ACCOUNTDELETIONREQUESTS,
-    SEARCHREQUESTS
+    SEARCHREQUESTS,
+    LEGALDOCUMENTS
 } = Collections;
 export const MASSCLICKEVENTS = "massclickevents";

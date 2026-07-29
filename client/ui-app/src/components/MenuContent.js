@@ -129,6 +129,7 @@ const MENU_SECTIONS = [
       { text: "Display", icon: CategoryIcon, path: "/dashboard/category-display" },
       { text: "Public Count", icon: GroupsRoundedIcon, path: "/dashboard/public-users-count" },
       { text: "Terms", icon: GavelIcon, path: "/dashboard/terms-conditions-data" },
+      { text: "Legal Documents", icon: GavelIcon, path: "/dashboard/legal-documents" },
       { text: "Auth Console", icon: SettingsIcon, path: "/dashboard/auth-console" },
       { text: "Config", icon: SettingsIcon, path: "/dashboard/system-settings" },
     ],

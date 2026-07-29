@@ -63,6 +63,7 @@ import webAnalyticsRoutes from "./routes/webAnalyticsRoute.js";
 import accountDeletionRoutes from "./routes/accountDeletionRoutes.js";
 import searchRequestRoutes from "./routes/searchRequestRoutes.js";
 import massclickEventRoute from "./routes/massclickEventRoute.js";
+import legalDocumentRoutes from "./routes/legalDocumentRoutes.js";
 import { startFCMScheduler } from "./scheduler/fcmScheduler.js";
 import { startKeywordRankCron } from "./cron/keywordRankCron.js";
 import { startS3CacheHeaderMigrationRecovery } from "./helper/mediaCleanup/s3CacheHeaderMigrationHelper.js";
@@ -163,6 +164,7 @@ app.use("/", webAnalyticsRoutes);
 app.use("/", accountDeletionRoutes);
 app.use("/", searchRequestRoutes);
 app.use("/", massclickEventRoute);
+app.use("/", legalDocumentRoutes);
 app.use(express.static(CLIENT_BUILD_PATH, {
   index: false,
   maxAge: "365d",

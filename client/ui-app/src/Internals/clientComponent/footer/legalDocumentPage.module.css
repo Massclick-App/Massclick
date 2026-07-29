@@ -1,0 +1,218 @@
+/* Shared presentation for the public legal pages (privacy, terms, refund). */
+
+.legal-section {
+  --color-primary: #ff6600;
+  --color-text-dark: #212529;
+  --color-text-grey: #495057;
+  --color-background-white: #ffffff;
+  --color-background-light: #f8f9fa;
+  --color-border-clean: #dee2e6;
+
+  padding: 80px 20px;
+  background-color: var(--color-background-white);
+  font-family: 'Inter', sans-serif;
+}
+
+.legal-header-wrapper {
+  max-width: 900px;
+  margin: 0 auto 44px auto;
+  text-align: center;
+}
+
+.legal-title {
+  font-size: 3rem;
+  font-weight: 800;
+  color: var(--color-text-dark);
+  margin: 0 0 14px;
+  line-height: 1.15;
+}
+
+.legal-title-highlight {
+  color: var(--color-primary);
+}
+
+.legal-subtitle {
+  font-size: 1.15rem;
+  line-height: 1.65;
+  color: var(--color-text-grey);
+  margin: 0;
+}
+
+.legal-meta {
+  margin: 16px 0 0;
+  font-size: 0.95rem;
+  color: var(--color-text-grey);
+  opacity: 0.85;
+}
+
+/* ── Accordion ───────────────────────────────────────────────────────────── */
+
+.legal-accordion-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  border: 1px solid var(--color-border-clean);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.legal-accordion-item {
+  border-bottom: 1px solid var(--color-border-clean);
+  background-color: var(--color-background-white);
+}
+
+.legal-accordion-item:last-child {
+  border-bottom: none;
+}
+
+.legal-accordion-header {
+  width: 100%;
+  padding: 20px 25px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.legal-accordion-header:hover {
+  background-color: var(--color-background-light);
+}
+
+.legal-accordion-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-text-dark);
+  margin: 0;
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.legal-accordion-number {
+  color: var(--color-primary);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.legal-accordion-icon {
+  color: var(--color-primary);
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.legal-accordion-item.open .legal-accordion-header {
+  background-color: var(--color-background-light);
+  box-shadow: inset 5px 0 0 0 var(--color-primary);
+  padding-left: 20px;
+}
+
+.legal-accordion-item.open .legal-accordion-title {
+  color: var(--color-primary);
+}
+
+/* Collapsed by height rather than display:none so the content stays in the
+   DOM for crawlers and in-page search. Sections run long, so the open height
+   is generous — a fixed small max-height silently truncates a policy. */
+.legal-accordion-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.45s ease-out, padding 0.45s ease-out;
+}
+
+.legal-accordion-item.open .legal-accordion-content {
+  max-height: 4000px;
+  padding: 0 25px 22px 25px;
+}
+
+.legal-accordion-body p,
+.legal-accordion-body ul,
+.legal-accordion-body ol {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--color-text-grey);
+  margin: 0 0 12px 0;
+}
+
+.legal-accordion-body ul,
+.legal-accordion-body ol {
+  padding-left: 25px;
+  margin-bottom: 16px;
+}
+
+.legal-accordion-body ul {
+  list-style-type: disc;
+}
+
+.legal-accordion-body ol {
+  list-style-type: decimal;
+}
+
+.legal-accordion-body li {
+  margin-bottom: 6px;
+}
+
+.legal-accordion-body h2,
+.legal-accordion-body h3,
+.legal-accordion-body h4 {
+  font-size: 1.05rem;
+  color: var(--color-text-dark);
+  margin: 18px 0 8px;
+}
+
+.legal-accordion-body strong {
+  color: var(--color-text-dark);
+}
+
+.legal-accordion-body a {
+  color: var(--color-primary);
+  font-weight: 600;
+  text-underline-offset: 3px;
+}
+
+.legal-accordion-body > :last-child {
+  margin-bottom: 0 !important;
+}
+
+.legal-contact {
+  max-width: 1000px;
+  margin: 28px auto 0;
+  text-align: center;
+  font-size: 1rem;
+  color: var(--color-text-grey);
+}
+
+.legal-link {
+  color: var(--color-primary);
+  font-weight: 700;
+  text-underline-offset: 3px;
+}
+
+@media (max-width: 500px) {
+  .legal-section {
+    padding: 48px 16px;
+  }
+
+  .legal-title {
+    font-size: 2rem;
+  }
+
+  .legal-accordion-header {
+    padding: 15px 20px;
+  }
+
+  .legal-accordion-title {
+    font-size: 1.05rem;
+  }
+
+  .legal-accordion-item.open .legal-accordion-content {
+    padding: 0 20px 16px 20px;
+  }
+
+  .legal-accordion-item.open .legal-accordion-header {
+    padding-left: 15px;
+  }
+}

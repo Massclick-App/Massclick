@@ -40,6 +40,7 @@ const Roles = lazy(() => import(/* webpackChunkName: "admin-roles" */ './Interna
 const Location = lazy(() => import(/* webpackChunkName: "admin-location" */ './Internals/location/Location.js'));
 const MasterLocation = lazy(() => import(/* webpackChunkName: "admin-master-location" */ './Internals/location/MasterLocation.js'));
 const TermsAndConditionsDatas = lazy(() => import(/* webpackChunkName: "admin-terms" */ './Internals/footersContents/termsAndConditions/termsAndConditions.js'));
+const LegalDocuments = lazy(() => import(/* webpackChunkName: "admin-legal-documents" */ './Internals/legalDocuments/legalDocuments.js'));
 const MainGrid = lazy(() => import(/* webpackChunkName: "admin-maingrid" */ './components/MainGrid.js'));
 
 const BusinessListing = lazy(() => import(/* webpackChunkName: "home" */ './Internals/clientComponent/home.js'));
@@ -316,6 +317,7 @@ function AppRoutes({
                 <Route path="massclick-events" element={<MassclickEvent />} />
                 <Route path="mni-data" element={<MRPDatas />} />
                 <Route path="terms-conditions-data" element={<TermsAndConditionsDatas />} />
+                <Route path="legal-documents" element={<LegalDocuments />} />
                 <Route path="fcm-marketing" element={<FCMMarketing />} />
                 <Route path="user" element={<User />} />
                 <Route path="roles" element={<Roles />} />

@@ -25,6 +25,7 @@ export const PAGE_REGISTRY = [
   { path: '/dashboard/feed',                label: 'Feed' },
   { path: '/dashboard/mni-data',            label: 'MNI Data' },
   { path: '/dashboard/terms-conditions-data', label: 'Terms & Conditions' },
+  { path: '/dashboard/legal-documents',     label: 'Legal Documents' },
   { path: '/dashboard/fcm-marketing',       label: 'Push Notify' },
   { path: '/dashboard/event-location',      label: 'EventLocation' },
   { path: '/dashboard/massclick-events',    label: 'MassclickEvents' },
