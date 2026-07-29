@@ -225,6 +225,9 @@ const getLocationLabel = (doc = {}) =>
   doc.hierarchyPath ||
   [doc.locality, doc.ward, doc.zone, doc.district].filter(Boolean).join(" > ");
 
+const getPublicLocationSlug = (doc = {}) =>
+  safeSlug(doc.locality || doc.ward || doc.zone || doc.district || "");
+
 const getLocationPriority = (level = "") => {
   if (level === "district") return "0.9";
   if (level === "zone") return "0.8";
@@ -376,7 +379,12 @@ const buildDistrictCategoryPages = async (districtDoc) => {
     );
 
     for (const locationDoc of locationDocs) {
-      const key = `${locationDoc.slug}/${categoryPath}`;
+      const publicLocationSlug = getPublicLocationSlug(locationDoc);
+      if (!publicLocationSlug || !isValidCitySlug(publicLocationSlug)) {
+        continue;
+      }
+
+      const key = `${publicLocationSlug}/${categoryPath}`;
       const existing = pages.get(key);
 
       if (existing) {
@@ -386,7 +394,7 @@ const buildDistrictCategoryPages = async (districtDoc) => {
       }
 
       pages.set(key, {
-        locationSlug: locationDoc.slug,
+        locationSlug: publicLocationSlug,
         locationLabel: getLocationLabel(locationDoc),
         locationLevel: locationDoc.level,
         categoryPath,
@@ -536,6 +544,7 @@ ${nodes.join("")}
 /* =========================================================
    LOCATION SITEMAP -- /sitemap-location-{districtslug}.xml
    Category pages for a district and its active descendant masterlocations.
+   Public URLs use the app route shape: /:final-place-slug/:category.
 ========================================================= */
 router.get("/sitemap-location-:districtslug.xml", async (req, res) => {
   try {
