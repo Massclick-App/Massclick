@@ -10,6 +10,7 @@ import {
     topSearchesAction,
     devicesAction,
     appVersionsAction,
+    visitorDetailsAction,
 } from "../controller/webAnalytics/webAnalyticsController.js";
 import { oauthAuthentication } from "../helper/oauthHelper.js";
 import { cacheMiddleware } from "../middleware/cacheMiddleware.js";
@@ -41,5 +42,6 @@ router.get("/api/site-events/campaigns", oauthAuthentication, cacheMiddleware({ 
 router.get("/api/site-events/top-searches", oauthAuthentication, cacheMiddleware({ expirySeconds: 600, keyPrefix: "wa-top-searches" }), topSearchesAction);
 router.get("/api/site-events/devices", oauthAuthentication, cacheMiddleware({ expirySeconds: 600, keyPrefix: "wa-devices" }), devicesAction);
 router.get("/api/site-events/app-versions", oauthAuthentication, cacheMiddleware({ expirySeconds: 600, keyPrefix: "wa-app-versions" }), appVersionsAction);
+router.get("/api/site-events/visitor-details", oauthAuthentication, visitorDetailsAction);
 
 export default router;

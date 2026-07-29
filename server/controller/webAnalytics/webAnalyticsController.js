@@ -8,6 +8,7 @@ import {
     getTopSearches,
     getDevices,
     getAppVersions,
+    getVisitorDetails,
 } from "../../helper/webAnalytics/webAnalyticsHelper.js";
 import { createLogger } from "../../utils/logger.js";
 
@@ -43,3 +44,4 @@ export const campaignsAction = readHandler("campaigns", getCampaigns);
 export const topSearchesAction = readHandler("top-searches", getTopSearches);
 export const devicesAction = readHandler("devices", getDevices);
 export const appVersionsAction = readHandler("app-versions", getAppVersions);
+export const visitorDetailsAction = readHandler("visitor-details", getVisitorDetails);

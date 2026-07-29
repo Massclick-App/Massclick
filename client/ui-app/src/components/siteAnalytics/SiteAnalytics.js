@@ -1,7 +1,9 @@
 import React, { useCallback, useMemo, useState } from "react";
 import {
-  Alert, Box, Button, IconButton, InputAdornment, LinearProgress,
-  MenuItem, Paper, TextField, ToggleButton, ToggleButtonGroup, Tooltip,
+  Alert, Box, Button, Chip, Dialog, DialogContent, DialogTitle, IconButton,
+  InputAdornment, LinearProgress, MenuItem, Paper, Table, TableBody, TableCell,
+  TableContainer, TableHead, TableRow, TextField, ToggleButton,
+  ToggleButtonGroup, Tooltip, Typography,
 } from "@mui/material";
 import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
 import PersonAddAlt1RoundedIcon from "@mui/icons-material/PersonAddAlt1Rounded";
@@ -24,6 +26,7 @@ import LanguageRoundedIcon from "@mui/icons-material/LanguageRounded";
 import InsightsRoundedIcon from "@mui/icons-material/InsightsRounded";
 import ArticleRoundedIcon from "@mui/icons-material/ArticleRounded";
 import CampaignRoundedIcon from "@mui/icons-material/CampaignRounded";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import {
   Bar, CartesianGrid, ComposedChart, Legend, Line,
   ResponsiveContainer, Tooltip as ChartTooltip, XAxis, YAxis,
@@ -49,6 +52,66 @@ const DEVICE_OPTIONS = [
 // parseUserAgent on the server only ever emits this fixed set of labels.
 const BROWSER_OPTIONS = ["Chrome", "Safari", "Firefox", "Edge", "Opera", "Samsung", "Other"];
 const DEVICE_LABELS = { mobile: "Mobile", tablet: "Tablet", desktop: "Desktop", other: "Other" };
+
+function VisitDetailsDialog({ drill, filters, onClose }) {
+  const params = useMemo(() => ({ ...filters, ...(drill?.params || {}), limit: 50 }), [filters, drill]);
+  const { data, loading, error } = useFetch("/site-events/visitor-details", params, drill?.key || "");
+  const visits = data?.visits || [];
+  const formatTime = (value) => value
+    ? new Date(value).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" })
+    : "—";
+
+  return <Dialog open={Boolean(drill)} onClose={onClose} fullWidth maxWidth="lg">
+    <DialogTitle sx={{ pr: 7 }}>
+      <Typography component="div" variant="h6" fontWeight={750}>Visitor details</Typography>
+      <Typography component="div" variant="body2" color="text.secondary">{drill?.label}</Typography>
+      <IconButton aria-label="Close visitor details" onClick={onClose} sx={{ position: "absolute", right: 14, top: 14 }}>
+        <CloseRoundedIcon />
+      </IconButton>
+    </DialogTitle>
+    <DialogContent dividers>
+      <Alert severity="info" sx={{ mb: 2 }}>
+        Location means the place selected or searched on MassClick. Exact GPS and raw IP addresses are not stored.
+      </Alert>
+      {loading && <LinearProgress sx={{ mb: 1 }} />}
+      {error && <Alert severity="error">Could not load visitor details: {error}</Alert>}
+      {!loading && !error && <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+        {number(data?.total)} visit session{data?.total === 1 ? "" : "s"} found. Showing the latest {number(visits.length)}.
+      </Typography>}
+      <TableContainer sx={{ maxHeight: 520, border: "1px solid #e4e9f1", borderRadius: 2 }}>
+        <Table stickyHeader size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell>Visit time (IST)</TableCell>
+              <TableCell>Visitor</TableCell>
+              <TableCell>Device</TableCell>
+              <TableCell>Browser</TableCell>
+              <TableCell>Place</TableCell>
+              <TableCell>Pages visited</TableCell>
+              <TableCell align="right">Events</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {visits.map((visit) => <TableRow key={visit.sessionId} hover>
+              <TableCell sx={{ whiteSpace: "nowrap" }}>{formatTime(visit.startedAt)}</TableCell>
+              <TableCell sx={{ whiteSpace: "nowrap" }}>{visit.visitor}</TableCell>
+              <TableCell><Chip size="small" label={DEVICE_LABELS[visit.device] || visit.device} /></TableCell>
+              <TableCell>{visit.browser || "Other"}</TableCell>
+              <TableCell>{visit.location || "Not selected"}</TableCell>
+              <TableCell sx={{ minWidth: 220, maxWidth: 360 }}>
+                <Tooltip title={(visit.pages || []).join(" • ") || "No page recorded"}>
+                  <span>{(visit.pages || []).slice(0, 3).join(", ") || "—"}{visit.pages?.length > 3 ? ` +${visit.pages.length - 3}` : ""}</span>
+                </Tooltip>
+              </TableCell>
+              <TableCell align="right">{number(visit.events)}</TableCell>
+            </TableRow>)}
+          </TableBody>
+        </Table>
+      </TableContainer>
+      {!loading && !visits.length && !error && <Typography align="center" color="text.secondary" sx={{ py: 4 }}>No visitor sessions found.</Typography>}
+    </DialogContent>
+  </Dialog>;
+}
 
 function DeviceSplit({ url, filters, reloadToken }) {
   const { data, loading, error } = useFetch(url, filters, reloadToken);
@@ -81,6 +144,7 @@ export default function SiteAnalytics() {
   const [reloadToken, setReloadToken] = useState(0);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState("");
+  const [drill, setDrill] = useState(null);
 
   const queryFilters = useMemo(() => {
     // Pinned to the browser tracker so app traffic never lands in this panel.
@@ -367,6 +431,11 @@ export default function SiteAnalytics() {
         title="Traffic Sources" tone="indigo" icon={CampaignRoundedIcon}
         url="/site-events/campaigns" filters={queryFilters} filterKey={filterKey} reloadToken={reloadToken}
         rowsKey="campaigns" columns={campaignColumns} defaultSort="sessions" searchPlaceholder="Search source, medium, campaign…"
+        onRowClick={(row) => setDrill({
+          key: `campaign-${row.source}-${row.medium}-${row.campaign}`,
+          label: `${row.source} / ${row.medium} / ${row.campaign}`,
+          params: { kind: "campaign", source: row.source, medium: row.medium, campaign: row.campaign },
+        })}
         renderSummary={(data) => data ? `${number(data.total)} sources · ${number(data.totals?.sessions)} sessions · ${number(data.totals?.leads)} leads.` : "Where sessions came from — QR scans, banners, ads, referrals, or direct."}
       />
 
@@ -374,6 +443,7 @@ export default function SiteAnalytics() {
         title="Top Pages" tone="blue" icon={ArticleRoundedIcon}
         url="/site-events/top-pages" filters={queryFilters} filterKey={filterKey} reloadToken={reloadToken}
         rowsKey="pages" columns={pageColumns} defaultSort="views" searchPlaceholder="Search pages…"
+        onRowClick={(row) => setDrill({ key: `page-${row.path}`, label: `Page: ${row.path || "/"}`, params: { kind: "page", path: row.path || "/" } })}
         renderSummary={(data) => data ? `${number(data.total)} paths · ${number(data.totals?.views)} views.` : "Pages your visitors love the most."}
       />
 
@@ -381,6 +451,7 @@ export default function SiteAnalytics() {
         title="Top Businesses" tone="pink" icon={StorefrontRoundedIcon}
         url="/site-events/top-businesses" filters={queryFilters} filterKey={filterKey} reloadToken={reloadToken}
         rowsKey="businesses" columns={businessColumns} defaultSort="views" searchPlaceholder="Search businesses…"
+        onRowClick={(row) => setDrill({ key: `business-${row.businessId}`, label: `Business: ${row.name || row.businessId}`, params: { kind: "business", businessId: row.businessId } })}
         renderSummary={(data) => data ? `${number(data.total)} businesses · ${number(data.totals?.leads)} leads. Hover a click count for the breakdown.` : "Businesses getting the most attention."}
       />
 
@@ -389,6 +460,7 @@ export default function SiteAnalytics() {
         url="/site-events/top-searches" filters={queryFilters} filterKey={filterKey} reloadToken={reloadToken}
         rowsKey="searches" columns={searchColumns} defaultSort="count" searchPlaceholder="Search keywords…"
         extraDefaults={{ searchType: "", zeroOnly: false }}
+        onRowClick={(row) => setDrill({ key: `search-${row.query}`, label: `Search: ${row.query}`, params: { kind: "search", searchQuery: row.query } })}
         renderSummary={(data) => data ? `${number(data.typedSearches)} typed · ${number(data.categorySearches)} category · ${number(data.total)} distinct.` : "Most searched keywords on your site."}
         renderExtra={(extra, setExtra) => <div className={styles.searchControls}>
           <ToggleButtonGroup
@@ -412,6 +484,7 @@ export default function SiteAnalytics() {
 
       <DeviceSplit url="/site-events/devices" filters={queryFilters} reloadToken={reloadToken} />
     </div>
+    {drill && <VisitDetailsDialog drill={drill} filters={queryFilters} onClose={() => setDrill(null)} />}
 
     <p className={styles.footnote}>All times are in Asia/Kolkata timezone</p>
   </Box>;

@@ -185,7 +185,7 @@ function rowKey(row, index, rowsKey) {
 export function SectionTable({
   title, subtitle, icon, tone, url, filters, filterKey, reloadToken,
   rowsKey, columns, defaultSort, searchPlaceholder = "Search…",
-  extraDefaults = {}, renderExtra, renderSummary,
+  extraDefaults = {}, renderExtra, renderSummary, onRowClick,
 }) {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
@@ -257,7 +257,13 @@ export function SectionTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, index) => <tr className={styles.row} key={rowKey(row, index, rowsKey)}>
+          {rows.map((row, index) => <tr
+            className={`${styles.row} ${onRowClick ? styles.clickableRow : ""}`}
+            key={rowKey(row, index, rowsKey)}
+            onClick={onRowClick ? () => onRowClick(row) : undefined}
+            onKeyDown={onRowClick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onRowClick(row); } } : undefined}
+            tabIndex={onRowClick ? 0 : undefined}
+          >
             {columns.map((col) => <td key={col.key} className={col.numeric ? styles.tdNum : ""}>
               {col.render(row, (page - 1) * limit + index)}
             </td>)}

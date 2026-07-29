@@ -360,6 +360,15 @@
   background: #fafcff;
 }
 
+.clickableRow {
+  cursor: pointer;
+}
+
+.clickableRow:focus {
+  outline: 2px solid #2563eb;
+  outline-offset: -2px;
+}
+
 .mono {
   display: inline-block;
   max-width: 260px;

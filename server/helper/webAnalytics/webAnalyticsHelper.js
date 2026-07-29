@@ -969,6 +969,109 @@ export const getDevices = async (query) => {
     };
 };
 
+// Session-level drill-down for the clickable analytics tables. Location is
+// the place selected/searched on MassClick; raw IP and GPS are not retained.
+export const getVisitorDetails = async (query = {}) => {
+    const { start, end, days } = resolveRange(query);
+    const limit = clampLimit(query.limit, 25, 100);
+    const page = clampPage(query.page);
+    const selectionMatch = baseMatch(start, end, query);
+    const kind = String(query.kind || "");
+
+    if (kind === "page" && query.path) selectionMatch.path = String(query.path);
+    else if (kind === "business" && OBJECT_ID_RE.test(String(query.businessId || ""))) {
+        selectionMatch["biz.businessId"] = new mongoose.Types.ObjectId(query.businessId);
+    } else if (kind === "search" && query.searchQuery) {
+        selectionMatch["search.query"] = { $regex: `^${escapeRegex(query.searchQuery)}$`, $options: "i" };
+    }
+
+    let selectedSessionIds;
+    if (kind === "campaign") {
+        const sessionRows = await webEventModel.aggregate([
+            { $match: baseMatch(start, end, query) },
+            {
+                $group: {
+                    _id: "$sessionId",
+                    utmSource: { $max: { $ifNull: ["$utm.source", ""] } },
+                    utmMedium: { $max: { $ifNull: ["$utm.medium", ""] } },
+                    utmCampaign: { $max: { $ifNull: ["$utm.campaign", ""] } },
+                    referrer: { $max: { $ifNull: ["$referrer", ""] } },
+                },
+            },
+            {
+                $addFields: {
+                    hasUtm: { $or: [{ $ne: ["$utmSource", ""] }, { $ne: ["$utmMedium", ""] }, { $ne: ["$utmCampaign", ""] }] },
+                    hasReferrer: { $ne: ["$referrer", ""] },
+                },
+            },
+            {
+                $addFields: {
+                    source: { $cond: ["$hasUtm", { $cond: [{ $ne: ["$utmSource", ""] }, "$utmSource", "(not set)"] }, { $cond: ["$hasReferrer", "$referrer", "(direct)"] }] },
+                    medium: { $cond: ["$hasUtm", { $cond: [{ $ne: ["$utmMedium", ""] }, "$utmMedium", "(not set)"] }, { $cond: ["$hasReferrer", "referral", "(none)"] }] },
+                    campaign: { $cond: ["$hasUtm", { $cond: [{ $ne: ["$utmCampaign", ""] }, "$utmCampaign", "(not set)"] }, "(direct)"] },
+                },
+            },
+            { $match: { source: String(query.source || ""), medium: String(query.medium || ""), campaign: String(query.campaign || "") } },
+            { $project: { _id: 1 } },
+            { $limit: 10000 },
+        ]);
+        selectedSessionIds = sessionRows.map((row) => row._id);
+    } else if (kind) {
+        const sessionRows = await webEventModel.aggregate([
+            { $match: selectionMatch },
+            { $group: { _id: "$sessionId" } },
+            { $limit: 10000 },
+        ]);
+        selectedSessionIds = sessionRows.map((row) => row._id);
+    }
+
+    const match = baseMatch(start, end, query);
+    if (selectedSessionIds) match.sessionId = { $in: selectedSessionIds };
+    const [result] = await webEventModel.aggregate([
+        { $match: match },
+        {
+            $group: {
+                _id: "$sessionId",
+                startedAt: { $min: "$ts" },
+                endedAt: { $max: "$ts" },
+                deviceId: { $first: "$deviceId" },
+                device: { $first: "$device" },
+                browser: { $first: "$browser" },
+                platform: { $first: { $ifNull: ["$platform", "web"] } },
+                pages: { $addToSet: "$path" },
+                locations: { $addToSet: "$search.location" },
+                events: { $sum: 1 },
+            },
+        },
+        { $sort: { startedAt: -1 } },
+        {
+            $facet: {
+                data: [{ $skip: (page - 1) * limit }, { $limit: limit }],
+                total: [{ $count: "n" }],
+            },
+        },
+    ]);
+
+    return {
+        days,
+        page,
+        limit,
+        total: result?.total?.[0]?.n || 0,
+        visits: (result?.data || []).map((row) => ({
+            sessionId: row._id,
+            visitor: row.deviceId ? `Visitor …${row.deviceId.slice(-6)}` : "Anonymous visitor",
+            startedAt: row.startedAt,
+            endedAt: row.endedAt,
+            device: row.device || "other",
+            browser: row.browser || "Other",
+            platform: row.platform || "web",
+            pages: (row.pages || []).filter(Boolean),
+            location: (row.locations || []).find(Boolean) || "",
+            events: row.events || 0,
+        })),
+    };
+};
+
 // The app panel's counterpart to getDevices: visitor split by platform and by
 // app version. Rows with no appVersion (all web traffic) are excluded from
 // the version facet rather than showing up as a giant "" bucket.
