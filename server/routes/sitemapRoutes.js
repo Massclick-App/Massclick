@@ -2,16 +2,18 @@ import express from "express";
 import businessListModel from "../model/businessList/businessListModel.js";
 import categoryModel from "../model/category/categoryModel.js";
 import categoryDisplaySettingsModel from "../model/categoryDisplaySettings/categoryDisplaySettingsModel.js";
+import masterLocationModel from "../model/locationModel/masterLocationModel.js";
 import { slugify } from "../slugify.js";
 import seoPageContentBlogs from "../model/seoModel/seoPageContentBlogModel.js";
 import { categoriesData } from "../utils/sub-categoriesData.js";
+import { STATIC_PAGES } from "../config/ssrConfig.js";
 
 const router = express.Router();
 
 /* =========================================================
    CONFIG
 ========================================================= */
-const BASE_URL = process.env.PUBLIC_BASE_URL || "https://massclick.in";
+const BASE_URL = String(process.env.PUBLIC_BASE_URL || "https://massclick.in").replace(/\/+$/, "");
 const LIMIT = 1000;
 
 /* =========================================================
@@ -44,20 +46,24 @@ const createUrlNode = ({
   `
   <url>
     <loc>${xmlEscape(loc)}</loc>
-    <lastmod>${lastmod}</lastmod>
-    <changefreq>${changefreq}</changefreq>
-    <priority>${priority}</priority>
+    ${lastmod ? `<lastmod>${lastmod}</lastmod>` : ""}
+    ${changefreq ? `<changefreq>${changefreq}</changefreq>` : ""}
+    ${priority ? `<priority>${priority}</priority>` : ""}
   </url>`;
 
-const createSitemapNode = (loc) =>
-  `
+const createSitemapNode = (input) => {
+  const loc = typeof input === "string" ? input : input.loc;
+  const lastmod = typeof input === "string" ? null : input.lastmod;
+  return `
   <sitemap>
     <loc>${xmlEscape(loc)}</loc>
+    ${lastmod ? `<lastmod>${lastmod}</lastmod>` : ""}
   </sitemap>`;
+};
 
 const sendXml = (res, xml) => {
   res.type("application/xml; charset=utf-8");
-  res.set("Cache-Control", "no-cache, no-store, must-revalidate");
+  res.set("Cache-Control", "public, max-age=3600");
   res.status(200).send(xml);
 };
 
@@ -65,6 +71,27 @@ const sendXml = (res, xml) => {
    DB FILTERS
 ========================================================= */
 const activeFilter = { isActive: true, businessesLive: true };
+
+const legacyLocationFilter = {
+  ...activeFilter,
+  category: { $exists: true, $ne: "" },
+  location: { $exists: true, $ne: "" },
+  $or: [
+    { "masterLocation.slug": { $exists: false } },
+    { "masterLocation.slug": null },
+    { "masterLocation.slug": "" },
+  ],
+};
+
+const STATIC_SITEMAP_PATHS = [
+  { path: "/", changefreq: "daily", priority: "1.0" },
+  ...Object.keys(STATIC_PAGES).map((path) => ({
+    path: `/${path}`,
+    changefreq: "monthly",
+    priority: "0.5",
+  })),
+  { path: "/sitemap", changefreq: "weekly", priority: "0.4" },
+];
 
 /* =========================================================
    CATEGORY LOOKUP FROM DB
@@ -175,28 +202,240 @@ const resolveCategoryPath = (category, lookup) => {
   return found.parentSlug ? `${found.parentSlug}/${found.slug}` : found.slug;
 };
 
-/* =========================================================
-   GET ALL ACTIVE CITY SLUGS (distinct, de-duped)
-========================================================= */
 // reject slugs that are pure numbers (pincodes, phone numbers, test data)
 const isValidCitySlug = (slug) => slug.length >= 3 && !/^\d+$/.test(slug);
 
-const getActiveCitySlugs = async () => {
-  const locations = await businessListModel.distinct("location", {
+const normalizeLocationPart = (value = "") =>
+  String(value || "").toLowerCase().trim();
+
+const LOCATION_LEVELS = ["district", "zone", "ward", "locality"];
+const LOCATION_KEY_FIELDS = {
+  district: ["district"],
+  zone: ["district", "zone"],
+  ward: ["district", "zone", "ward"],
+  locality: ["district", "zone", "ward", "locality"],
+};
+
+const locationKey = (doc = {}) => {
+  const fields = LOCATION_KEY_FIELDS[doc.level] || [];
+  return [doc.level, ...fields.map((field) => normalizeLocationPart(doc[field]))].join("|");
+};
+
+const getLocationLabel = (doc = {}) =>
+  doc.hierarchyPath ||
+  [doc.locality, doc.ward, doc.zone, doc.district].filter(Boolean).join(" > ");
+
+const getLocationPriority = (level = "") => {
+  if (level === "district") return "0.9";
+  if (level === "zone") return "0.8";
+  return "0.7";
+};
+
+const maxIsoDate = (first, second) => {
+  if (!first) return isoDate(second);
+  if (!second) return first;
+  return new Date(second) > new Date(first) ? isoDate(second) : first;
+};
+
+const getActiveDistrictDocs = async () => {
+  const districtNames = await businessListModel.distinct("masterLocation.district", {
     ...activeFilter,
-    location: { $exists: true, $ne: "" },
+    "masterLocation.district": { $exists: true, $nin: [null, ""] },
   });
 
-  const seen = new Set();
-  const result = [];
-  for (const loc of locations) {
-    const slug = safeSlug(loc);
-    if (slug && isValidCitySlug(slug) && !seen.has(slug)) {
-      seen.add(slug);
-      result.push({ raw: loc, slug });
+  if (districtNames.length === 0) return [];
+
+  return masterLocationModel
+    .find(
+      {
+        level: "district",
+        isActive: true,
+        district: { $in: districtNames },
+      },
+      { slug: 1, district: 1, hierarchyPath: 1, updatedAt: 1 }
+    )
+    .sort({ district: 1 })
+    .lean();
+};
+
+const findDistrictDocBySitemapSlug = async (districtSlug) => {
+  const slug = safeSlug(districtSlug);
+  if (!slug) return null;
+
+  const directMatch = await masterLocationModel
+    .findOne({ level: "district", isActive: true, slug })
+    .lean();
+  if (directMatch) return directMatch;
+
+  const nameMatch = await masterLocationModel
+    .find({ level: "district", isActive: true })
+    .lean();
+
+  const districtNameMatch = nameMatch.find((doc) => safeSlug(doc.district) === slug);
+  if (districtNameMatch) return districtNameMatch;
+
+  const legacyLocationMatches = await businessListModel
+    .find(
+      {
+        ...activeFilter,
+        location: { $exists: true, $ne: "" },
+        "masterLocation.district": { $exists: true, $nin: [null, ""] },
+      },
+      { location: 1, "masterLocation.district": 1 }
+    )
+    .lean();
+
+  const legacyMatch = legacyLocationMatches.find(
+    (business) => safeSlug(business.location) === slug
+  );
+
+  if (!legacyMatch?.masterLocation?.district) return null;
+
+  return masterLocationModel
+    .findOne({
+      level: "district",
+      isActive: true,
+      district: legacyMatch.masterLocation.district,
+    })
+    .lean();
+};
+
+const getLocationDocsByKeyForDistrict = async (districtDoc) => {
+  const docs = await masterLocationModel
+    .find(
+      {
+        isActive: true,
+        district: districtDoc.district,
+        level: { $in: LOCATION_LEVELS },
+      },
+      {
+        slug: 1,
+        state: 1,
+        district: 1,
+        zone: 1,
+        ward: 1,
+        locality: 1,
+        level: 1,
+        hierarchyPath: 1,
+        updatedAt: 1,
+      }
+    )
+    .lean();
+
+  return new Map(docs.map((doc) => [locationKey(doc), doc]));
+};
+
+const getAncestorLocationDocs = (masterLocation = {}, docsByKey) => {
+  const docs = [];
+
+  for (const level of LOCATION_LEVELS) {
+    const requiredFields = LOCATION_KEY_FIELDS[level];
+    const candidate = { ...masterLocation, level };
+    const hasRequiredFields = requiredFields.every((field) =>
+      Boolean(candidate[field])
+    );
+
+    if (!hasRequiredFields) continue;
+
+    const doc = docsByKey.get(locationKey(candidate));
+    if (doc?.slug) docs.push(doc);
+  }
+
+  return docs;
+};
+
+const buildDistrictCategoryPages = async (districtDoc) => {
+  const [categoryLookup, docsByKey, businesses] = await Promise.all([
+    buildCategoryLookup(),
+    getLocationDocsByKeyForDistrict(districtDoc),
+    businessListModel
+      .find(
+        {
+          ...activeFilter,
+          category: { $exists: true, $ne: "" },
+          "masterLocation.district": districtDoc.district,
+        },
+        {
+          category: 1,
+          updatedAt: 1,
+          masterLocation: 1,
+        }
+      )
+      .lean(),
+  ]);
+
+  const pages = new Map();
+
+  for (const business of businesses) {
+    const categoryPath = resolveCategoryPath(business.category, categoryLookup);
+    if (!categoryPath) continue;
+
+    const locationDocs = getAncestorLocationDocs(
+      business.masterLocation || {},
+      docsByKey
+    );
+
+    for (const locationDoc of locationDocs) {
+      const key = `${locationDoc.slug}/${categoryPath}`;
+      const existing = pages.get(key);
+
+      if (existing) {
+        existing.count += 1;
+        existing.lastmod = maxIsoDate(existing.lastmod, business.updatedAt);
+        continue;
+      }
+
+      pages.set(key, {
+        locationSlug: locationDoc.slug,
+        locationLabel: getLocationLabel(locationDoc),
+        locationLevel: locationDoc.level,
+        categoryPath,
+        categoryLabel: business.category,
+        count: 1,
+        lastmod: isoDate(business.updatedAt || locationDoc.updatedAt),
+      });
     }
   }
-  return result;
+
+  return [...pages.values()].sort(
+    (a, b) =>
+      a.locationSlug.localeCompare(b.locationSlug) ||
+      a.categoryPath.localeCompare(b.categoryPath)
+  );
+};
+
+const buildLegacyLocationCategoryPages = async () => {
+  const [categoryLookup, rows] = await Promise.all([
+    buildCategoryLookup(),
+    businessListModel.aggregate([
+      { $match: legacyLocationFilter },
+      {
+        $group: {
+          _id: { location: "$location", category: "$category" },
+          maxDate: { $max: "$updatedAt" },
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { "_id.location": 1, "_id.category": 1 } },
+    ]),
+  ]);
+
+  return rows
+    .map((row) => {
+      const locationSlug = safeSlug(row._id.location);
+      const categoryPath = resolveCategoryPath(row._id.category, categoryLookup);
+      if (!locationSlug || !isValidCitySlug(locationSlug) || !categoryPath) {
+        return null;
+      }
+
+      return {
+        locationSlug,
+        categoryPath,
+        count: row.count,
+        lastmod: isoDate(row.maxDate),
+      };
+    })
+    .filter(Boolean);
 };
 
 /* =========================================================
@@ -206,16 +445,24 @@ const getActiveCitySlugs = async () => {
 ========================================================= */
 router.get("/sitemap.xml", async (req, res) => {
   try {
-    const [cities, totalBusinesses] = await Promise.all([
-      getActiveCitySlugs(),
+    const [districts, totalBusinesses, hasLegacyLocationPages] = await Promise.all([
+      getActiveDistrictDocs(),
       businessListModel.countDocuments(activeFilter),
+      businessListModel.exists(legacyLocationFilter),
     ]);
 
-    const links = cities.map((c) =>
-      createSitemapNode(`${BASE_URL}/sitemap-city-${c.slug}.xml`)
-    );
+    const links = [
+      createSitemapNode(`${BASE_URL}/sitemap-static.xml`),
+      ...districts.map((district) =>
+        createSitemapNode(`${BASE_URL}/sitemap-location-${district.slug}.xml`)
+      ),
+    ];
 
-    const totalBusinessPages = Math.max(1, Math.ceil(totalBusinesses / LIMIT));
+    if (hasLegacyLocationPages) {
+      links.push(createSitemapNode(`${BASE_URL}/sitemap-legacy-locations.xml`));
+    }
+
+    const totalBusinessPages = Math.ceil(totalBusinesses / LIMIT);
     for (let i = 1; i <= totalBusinessPages; i++) {
       links.push(createSitemapNode(`${BASE_URL}/sitemap-business-${i}.xml`));
     }
@@ -239,49 +486,18 @@ ${links.join("")}
    Contains all category pages + all business pages for that city.
    Category URLs use real slugs from categoryModel (no hardcoded mapping).
 ========================================================= */
-router.get("/sitemap-city-:cityslug.xml", async (req, res) => {
+/* =========================================================
+   STATIC SITEMAP -- /sitemap-static.xml
+========================================================= */
+router.get("/sitemap-static.xml", async (req, res) => {
   try {
-    const citySlug = req.params.cityslug;
-
-    // Resolve the raw DB location string that matches this slug
-    const locations = await businessListModel.distinct("location", {
-      ...activeFilter,
-      location: { $exists: true, $ne: "" },
-    });
-
-    const matchedLocation = locations.find(
-      (loc) => safeSlug(loc) === citySlug
+    const nodes = STATIC_SITEMAP_PATHS.map((page) =>
+      createUrlNode({
+        loc: `${BASE_URL}${page.path}`,
+        changefreq: page.changefreq,
+        priority: page.priority,
+      })
     );
-
-    if (!matchedLocation) return res.status(404).end();
-
-    const [categoryLookup, categoryDates] = await Promise.all([
-      buildCategoryLookup(),
-      businessListModel.aggregate([
-        { $match: { ...activeFilter, location: matchedLocation } },
-        { $group: { _id: "$category", maxDate: { $max: "$updatedAt" } } },
-      ]),
-    ]);
-
-    const dateMap = new Map(
-      categoryDates.map((r) => [normalizeKey(r._id || ""), r.maxDate])
-    );
-    const staleDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-
-    const nodes = [];
-
-    for (const [catKey, { slug, parentSlug }] of categoryLookup) {
-      const catPath = parentSlug ? `${parentSlug}/${slug}` : slug;
-      const rawDate = dateMap.get(catKey);
-      nodes.push(
-        createUrlNode({
-          loc: `${BASE_URL}/${citySlug}/${catPath}`,
-          lastmod: rawDate ? isoDate(rawDate) : staleDate,
-          changefreq: "daily",
-          priority: "0.9",
-        })
-      );
-    }
 
     const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -290,7 +506,51 @@ ${nodes.join("")}
 
     return sendXml(res, xml);
   } catch (error) {
-    console.error("CITY_SITEMAP_ERROR:", error);
+    console.error("STATIC_SITEMAP_ERROR:", error);
+    return res.status(500).end();
+  }
+});
+
+const sendLocationSitemap = async (districtSlug, res) => {
+  const districtDoc = await findDistrictDocBySitemapSlug(districtSlug);
+  if (!districtDoc) return res.status(404).end();
+
+  const pages = await buildDistrictCategoryPages(districtDoc);
+  const nodes = pages.map((page) =>
+    createUrlNode({
+      loc: `${BASE_URL}/${page.locationSlug}/${page.categoryPath}`,
+      lastmod: page.lastmod,
+      changefreq: "daily",
+      priority: getLocationPriority(page.locationLevel),
+    })
+  );
+
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${nodes.join("")}
+</urlset>`;
+
+  return sendXml(res, xml);
+};
+
+/* =========================================================
+   LOCATION SITEMAP -- /sitemap-location-{districtslug}.xml
+   Category pages for a district and its active descendant masterlocations.
+========================================================= */
+router.get("/sitemap-location-:districtslug.xml", async (req, res) => {
+  try {
+    return sendLocationSitemap(req.params.districtslug, res);
+  } catch (error) {
+    console.error("LOCATION_SITEMAP_ERROR:", error);
+    return res.status(500).end();
+  }
+});
+
+router.get("/sitemap-city-:cityslug.xml", async (req, res) => {
+  try {
+    return sendLocationSitemap(req.params.cityslug, res);
+  } catch (error) {
+    console.error("CITY_SITEMAP_ALIAS_ERROR:", error);
     return res.status(500).end();
   }
 });
@@ -298,23 +558,68 @@ ${nodes.join("")}
 /* =========================================================
    BUSINESS SITEMAP  â€” /sitemap-business-{page}.xml
 ========================================================= */
+/* =========================================================
+   LEGACY LOCATION SITEMAP -- /sitemap-legacy-locations.xml
+   Free-text location fallback for live businesses that have not yet
+   been linked to masterlocations.
+========================================================= */
+router.get("/sitemap-legacy-locations.xml", async (req, res) => {
+  try {
+    const pages = await buildLegacyLocationCategoryPages();
+    const nodes = pages.map((page) =>
+      createUrlNode({
+        loc: `${BASE_URL}/${page.locationSlug}/${page.categoryPath}`,
+        lastmod: page.lastmod,
+        changefreq: "daily",
+        priority: "0.6",
+      })
+    );
+
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${nodes.join("")}
+</urlset>`;
+
+    return sendXml(res, xml);
+  } catch (error) {
+    console.error("LEGACY_LOCATION_SITEMAP_ERROR:", error);
+    return res.status(500).end();
+  }
+});
+
+/* =========================================================
+   BUSINESS DETAIL SITEMAP -- /sitemap-business-{page}.xml
+   Emits /business/:location/:businessSlug/:id URLs.
+========================================================= */
 router.get("/sitemap-business-:page.xml", async (req, res) => {
   try {
     const page = Math.max(Number(req.params.page) || 1, 1);
     const skip = (page - 1) * LIMIT;
 
     const businesses = await businessListModel
-      .find(activeFilter, { _id: 1, businessName: 1, location: 1, updatedAt: 1 })
+      .find(activeFilter, {
+        _id: 1,
+        businessName: 1,
+        name: 1,
+        slug: 1,
+        location: 1,
+        masterLocation: 1,
+        updatedAt: 1,
+      })
       .sort({ updatedAt: -1, _id: -1 })
       .skip(skip)
       .limit(LIMIT)
       .lean();
 
     const nodes = businesses.map((biz) => {
-      const citySlug = safeSlug(biz.location);
-      const businessSlug = safeSlug(biz.businessName || "business");
+      const locationSlug = safeSlug(
+        biz.location || biz.masterLocation?.district || "business"
+      );
+      const businessSlug = safeSlug(
+        biz.slug || biz.businessName || biz.name || "business"
+      );
       return createUrlNode({
-        loc: `${BASE_URL}/${citySlug}/${businessSlug}/${biz._id}`,
+        loc: `${BASE_URL}/business/${locationSlug}/${businessSlug}/${biz._id}`,
         lastmod: isoDate(biz.updatedAt),
         changefreq: "weekly",
         priority: "0.8",
@@ -373,8 +678,8 @@ ${nodes.join("")}
 ========================================================= */
 router.get("/sitemap", async (req, res) => {
   try {
-    const [cities, blogs] = await Promise.all([
-      getActiveCitySlugs(),
+    const [districts, blogs, hasLegacyLocationPages] = await Promise.all([
+      getActiveDistrictDocs(),
       seoPageContentBlogs
         .find(
           { isActive: true, slug: { $exists: true, $ne: "" } },
@@ -382,12 +687,24 @@ router.get("/sitemap", async (req, res) => {
         )
         .sort({ heading: 1 })
         .lean(),
+      businessListModel.exists(legacyLocationFilter),
     ]);
 
-    const cityLinks = cities.map(
-      (c) =>
-        `<li><a href="${BASE_URL}/sitemap-city-${c.slug}.xml">${xmlEscape(c.raw)}</a></li>`
+    const staticLinks = STATIC_SITEMAP_PATHS.map(
+      (page) =>
+        `<li><a href="${BASE_URL}${page.path}">${xmlEscape(page.path === "/" ? "Homepage" : page.path)}</a></li>`
     );
+
+    const locationLinks = districts.map(
+      (district) =>
+        `<li><a href="${BASE_URL}/sitemap-location-${district.slug}.xml">${xmlEscape(getLocationLabel(district))}</a></li>`
+    );
+
+    if (hasLegacyLocationPages) {
+      locationLinks.push(
+        `<li><a href="${BASE_URL}/sitemap-legacy-locations.xml">Legacy unlinked locations</a></li>`
+      );
+    }
 
     const blogLinks = blogs.map(
       (b) =>
@@ -405,8 +722,10 @@ router.get("/sitemap", async (req, res) => {
 </head>
 <body style="font-family: Arial, sans-serif; padding: 24px; line-height: 1.6;">
   <h1>Massclick HTML Sitemap</h1>
-  <h2>City Sitemaps</h2>
-  <ul>${cityLinks.join("")}</ul>
+  <h2>Static Pages</h2>
+  <ul>${staticLinks.join("")}</ul>
+  <h2>Location Sitemaps</h2>
+  <ul>${locationLinks.join("")}</ul>
   <h2>Blog Pages</h2>
   <ul>${blogLinks.join("")}</ul>
 </body>
