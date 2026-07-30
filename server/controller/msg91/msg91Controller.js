@@ -43,7 +43,7 @@ export const verifyOtpAndLogin = async (req, res) => {
         await user.save();
 
         const token = jwt.sign(
-            { userId: user._id, mobile: user.mobileNumber1 },
+            { userId: user._id, mobile: user.mobileNumber1, tokenVersion: user.tokenVersion || 0 },
             JWT_SECRET,
             { expiresIn: "100y" }
         );

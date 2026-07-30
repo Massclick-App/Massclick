@@ -1,6 +1,7 @@
 import express from "express";
 import { oauthAuthentication } from "../helper/oauthHelper.js";
 import {
+  blockMsg91RecipientAction,
   exportMsg91AnalyticsCsvAction,
   getMsg91AnalyticsAuditAction,
   getMsg91AnalyticsFailuresAction,
@@ -26,6 +27,7 @@ router.get("/api/admin/msg91-analytics/export-csv", oauthAuthentication, exportM
 router.get("/api/admin/msg91-analytics/recipients", oauthAuthentication, getMsg91AnalyticsRecipientsAction);
 router.put("/api/admin/msg91-analytics/recipients/:mobile/review", oauthAuthentication, reviewMsg91RecipientAction);
 router.put("/api/admin/msg91-analytics/recipients/:mobile/unsuppress", oauthAuthentication, unsuppressMsg91RecipientAction);
+router.put("/api/admin/msg91-analytics/recipients/:mobile/block", oauthAuthentication, blockMsg91RecipientAction);
 router.post("/api/msg91/webhook/status", msg91StatusWebhookAction);
 
 export default router;

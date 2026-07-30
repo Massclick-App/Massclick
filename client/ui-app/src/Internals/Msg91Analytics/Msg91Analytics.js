@@ -8,6 +8,7 @@ import {
   fetchMsg91Recipients,
   reviewMsg91Recipient,
   searchMsg91Businesses,
+  setMsg91RecipientBlock,
   unsuppressMsg91Recipient,
 } from "../../redux/actions/msg91AnalyticsAction.js";
 import styles from "./Msg91Analytics.module.css";
@@ -102,7 +103,7 @@ export default function Msg91Analytics() {
   const [filters, setFilters] = useState(initialFilters);
   const [appliedFilters, setAppliedFilters] = useState(initialFilters);
   const [expandedAuditId, setExpandedAuditId] = useState("");
-  const [recipientFilter, setRecipientFilter] = useState({ mobile: "", suppressed: "", invalid: "" });
+  const [recipientFilter, setRecipientFilter] = useState({ mobile: "", suppressed: "", invalid: "", blocked: "" });
   const [exportLoading, setExportLoading] = useState(false);
   const [filterOptions, setFilterOptions] = useState({ templates: [], locations: [], categories: [], mniGroups: [] });
   const [businessSearch, setBusinessSearch] = useState("");
@@ -115,7 +116,7 @@ export default function Msg91Analytics() {
   }, [dispatch, appliedFilters, auditPageSize]);
 
   useEffect(() => {
-    dispatch(fetchMsg91Recipients({ pageNo: 1, pageSize: 25, filters: { mobile: "", suppressed: "", invalid: "" } }));
+    dispatch(fetchMsg91Recipients({ pageNo: 1, pageSize: 25, filters: { mobile: "", suppressed: "", invalid: "", blocked: "" } }));
   }, [dispatch]);
 
   useEffect(() => {
@@ -194,6 +195,16 @@ export default function Msg91Analytics() {
 
   const loadRecipients = () => {
     dispatch(fetchMsg91Recipients({ pageNo: 1, pageSize: 25, filters: recipientFilter }));
+  };
+
+  // Cancelling the prompt aborts the block, so this doubles as the confirmation.
+  const handleBlockRecipient = (mobile) => {
+    const reason = window.prompt(
+      `Block ${mobile} from ALL WhatsApp?\n\nStops messages sent to this number, and messages sent to others when this number is the searching customer.\n\nReason:`,
+      "blocked_by_admin"
+    );
+    if (reason === null) return;
+    dispatch(setMsg91RecipientBlock(mobile, true, reason.trim() || "blocked_by_admin"));
   };
 
   const exportCsv = async () => {
@@ -629,6 +640,10 @@ export default function Msg91Analytics() {
             <option value="">Invalid: all</option>
             <option value="true">Invalid only</option>
           </select>
+          <select value={recipientFilter.blocked} onChange={(event) => setRecipientFilter((prev) => ({ ...prev, blocked: event.target.value }))} className="form-select-input">
+            <option value="">Blocked: all</option>
+            <option value="true">Blocked only</option>
+          </select>
           <button type="button" onClick={loadRecipients}>Load</button>
         </div>
         <div className={styles.tableWrap}>
@@ -641,6 +656,7 @@ export default function Msg91Analytics() {
                 <th>131026</th>
                 <th>131049</th>
                 <th>Suppressed Until</th>
+                <th>Blocked</th>
                 <th>Last Failure</th>
                 <th>Reviewed</th>
                 <th>Actions</th>
@@ -655,11 +671,17 @@ export default function Msg91Analytics() {
                   <td>{formatNumber(row.undeliverableCount)}</td>
                   <td>{formatNumber(row.ecosystemFailureCount)}</td>
                   <td>{formatDateTime(row.suppressedUntil)}</td>
+                  <td>{row.adminBlocked ? `Yes (${row.adminBlockedReason || "blocked"})` : "No"}</td>
                   <td>{row.lastFailureReason || "-"}</td>
                   <td>{row.reviewed ? "Yes" : "No"}</td>
                   <td className={styles.rowActions}>
                     <button type="button" onClick={() => dispatch(reviewMsg91Recipient(row.mobile))}>Review</button>
                     <button type="button" onClick={() => dispatch(unsuppressMsg91Recipient(row.mobile))}>Unsuppress</button>
+                    {row.adminBlocked ? (
+                      <button type="button" onClick={() => dispatch(setMsg91RecipientBlock(row.mobile, false))}>Unblock</button>
+                    ) : (
+                      <button type="button" onClick={() => handleBlockRecipient(row.mobile)}>Block</button>
+                    )}
                   </td>
                 </tr>
               ))}

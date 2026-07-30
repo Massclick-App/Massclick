@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 dotenv.config();
 import { createLogger } from "../../utils/logger.js";
 import {
+  findWhatsAppAdminBlock,
   markWhatsAppFailed,
   markWhatsAppSent,
   markWhatsAppSkipped,
@@ -192,6 +193,16 @@ const getValidMobileOrSkip = async (mobile, context = {}) => {
       normalized.reason
     );
     throw new Error(normalized.reason);
+  }
+
+  // Admin block, enforced for every template in both directions: the recipient
+  // itself, and the searching customer whose activity triggered this send. Every
+  // sender in this file funnels through here, which is what makes this cover the
+  // paths evaluateWhatsAppSend never sees (welcome, customer list, MNI, enquiry).
+  const adminBlock = await findWhatsAppAdminBlock(normalized.mobile, context.customerMobile);
+  if (adminBlock) {
+    await markWhatsAppSkipped({ ...context, recipientMobile: normalized.mobile }, adminBlock);
+    throw new Error(adminBlock);
   }
 
   return normalized.mobile;

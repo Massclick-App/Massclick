@@ -9,6 +9,12 @@ import {
   Divider,
   Grid,
   Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
   TextField,
   Typography,
 } from "@mui/material";
@@ -64,6 +70,11 @@ export default function AuthConsole() {
   const [tokenToInspect, setTokenToInspect] = useState("");
   const [inspection, setInspection] = useState(null);
   const [error, setError] = useState("");
+  const [customers, setCustomers] = useState([]);
+  const [customerTotal, setCustomerTotal] = useState(0);
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [customerNotice, setCustomerNotice] = useState("");
+  const [customerBusy, setCustomerBusy] = useState(false);
 
   const loadServerState = async () => {
     try {
@@ -81,13 +92,74 @@ export default function AuthConsole() {
     }
   };
 
+  // Customer sessions are stateless JWTs with no session row, so "log out" bumps
+  // the user's tokenVersion, invalidating every token already issued to them. They
+  // can log back in immediately; the new token carries the new version.
+  const loadCustomers = async (search = customerSearch) => {
+    try {
+      setError("");
+      const { data } = await axiosInstance.get(`${API_URL}/admin/auth/customers`, {
+        params: { search: search || undefined, limit: 100 },
+      });
+      setCustomers(data.customers || []);
+      setCustomerTotal(data.total || 0);
+    } catch (loadError) {
+      setError(loadError?.response?.data?.message || loadError?.message || "Failed to load customers");
+    }
+  };
+
   useEffect(() => {
     const sync = () => setBrowserState(getAuthDebugSnapshot());
     sync();
     window.addEventListener(AUTH_STATE_EVENT, sync);
     loadServerState();
+    loadCustomers("");
     return () => window.removeEventListener(AUTH_STATE_EVENT, sync);
   }, []);
+
+  const logoutCustomer = async (customer) => {
+    if (!window.confirm(`Log ${customer.userName || customer.mobileNumber1} out of all devices?`)) return;
+
+    try {
+      setCustomerBusy(true);
+      setError("");
+      const { data } = await axiosInstance.post(`${API_URL}/admin/auth/customers/logout`, {
+        mobile: customer.mobileNumber1,
+      });
+      setCustomerNotice(
+        `${data.customer.userName || data.customer.mobileNumber1} logged out (tokenVersion ${data.customer.tokenVersion})`
+      );
+      await loadCustomers();
+    } catch (logoutError) {
+      setError(logoutError?.response?.data?.message || logoutError?.message || "Failed to log out customer");
+    } finally {
+      setCustomerBusy(false);
+    }
+  };
+
+  const logoutAllCustomers = async () => {
+    if (
+      !window.confirm(
+        `Log out ALL ${customerTotal} customers on every device?\n\nThey stay registered and can log in again with OTP, but every existing session is invalidated.`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setCustomerBusy(true);
+      setError("");
+      const { data } = await axiosInstance.post(`${API_URL}/admin/auth/customers/logout-all`, {
+        confirm: true,
+      });
+      setCustomerNotice(`${data.loggedOut} customers logged out on all devices`);
+      await loadCustomers();
+    } catch (logoutError) {
+      setError(logoutError?.response?.data?.message || logoutError?.message || "Failed to log out customers");
+    } finally {
+      setCustomerBusy(false);
+    }
+  };
 
   const inspectToken = async () => {
     try {
@@ -202,6 +274,107 @@ export default function AuthConsole() {
               </Typography>
             </Box>
           ) : null}
+        </CardContent>
+      </Card>
+
+      <Card variant="outlined" sx={{ mb: 3 }}>
+        <CardContent>
+          <Stack
+            direction={{ xs: "column", md: "row" }}
+            justifyContent="space-between"
+            alignItems={{ xs: "stretch", md: "center" }}
+            spacing={1.5}
+            sx={{ mb: 1.5 }}
+          >
+            <Box>
+              <Typography variant="h6">Customer Sessions</Typography>
+              <Typography variant="body2" color="text.secondary">
+                Customer tokens are stateless, so logging out bumps their token version. They can
+                sign in again with OTP straight away — {customerTotal} customers total.
+              </Typography>
+            </Box>
+            <Button color="error" variant="outlined" onClick={logoutAllCustomers} disabled={customerBusy}>
+              Log out all customers
+            </Button>
+          </Stack>
+
+          {customerNotice ? (
+            <Alert severity="success" sx={{ mb: 2 }} onClose={() => setCustomerNotice("")}>
+              {customerNotice}
+            </Alert>
+          ) : null}
+
+          <Stack direction={{ xs: "column", md: "row" }} spacing={2} sx={{ mb: 2 }}>
+            <TextField
+              fullWidth
+              size="small"
+              label="Search by name or mobile"
+              value={customerSearch}
+              onChange={(event) => setCustomerSearch(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") loadCustomers();
+              }}
+            />
+            <Button variant="contained" onClick={() => loadCustomers()} disabled={customerBusy}>
+              Search
+            </Button>
+          </Stack>
+
+          <TableContainer sx={{ maxHeight: 420 }}>
+            <Table size="small" stickyHeader>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Name</TableCell>
+                  <TableCell>Mobile</TableCell>
+                  <TableCell>Type</TableCell>
+                  <TableCell>Sessions</TableCell>
+                  <TableCell>Last Login</TableCell>
+                  <TableCell align="right">Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {customers.map((customer) => (
+                  <TableRow key={customer.mobileNumber1} hover>
+                    <TableCell>{customer.userName || "-"}</TableCell>
+                    <TableCell>{customer.mobileNumber1}</TableCell>
+                    <TableCell>
+                      {customer.businessPeople ? (
+                        <Chip label="Business" size="small" color="primary" variant="outlined" />
+                      ) : (
+                        <Chip label="Customer" size="small" variant="outlined" />
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {customer.forcedLogout ? (
+                        <Chip
+                          label={`Logged out (v${customer.tokenVersion})`}
+                          size="small"
+                          color="warning"
+                        />
+                      ) : (
+                        <Chip label="Active" size="small" color="success" variant="outlined" />
+                      )}
+                    </TableCell>
+                    <TableCell>{customer.lastLoginAt || "never"}</TableCell>
+                    <TableCell align="right">
+                      <Button size="small" color="error" onClick={() => logoutCustomer(customer)} disabled={customerBusy}>
+                        Log out
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {!customers.length ? (
+                  <TableRow>
+                    <TableCell colSpan={6}>
+                      <Typography variant="body2" color="text.secondary">
+                        No customers match this search.
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                ) : null}
+              </TableBody>
+            </Table>
+          </TableContainer>
         </CardContent>
       </Card>
 

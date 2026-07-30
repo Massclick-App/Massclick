@@ -21,6 +21,14 @@ const whatsappRecipientHealthSchema = new mongoose.Schema(
     suppressedUntil: { type: Date, default: null, index: true },
     suppressReason: { type: String, default: "" },
     whatsappInvalid: { type: Boolean, default: false, index: true },
+    // Explicit admin block, deliberately separate from the automatic delivery-health
+    // suppression above: it never expires, is never set by the failure heuristics,
+    // and covers BOTH directions — nothing is sent to this number, and nothing is
+    // sent to anyone else on its behalf when it is the searching customer.
+    adminBlocked: { type: Boolean, default: false, index: true },
+    adminBlockedReason: { type: String, default: "" },
+    adminBlockedAt: { type: Date, default: null },
+    adminBlockedBy: { type: String, default: "" },
     reviewed: { type: Boolean, default: false, index: true },
     reviewedAt: { type: Date, default: null },
     reviewedBy: { type: String, default: "" },

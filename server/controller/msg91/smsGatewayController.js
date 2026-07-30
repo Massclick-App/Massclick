@@ -240,7 +240,10 @@ export const verifyOtpAction = async (req, res) => {
     }
 
     const token = jwt.sign(
-      { userId: user._id, mobile: user.mobileNumber1 },
+      // tokenVersion must be stamped on every customer token: buildCustomerActor
+      // rejects any token whose version trails the user's current one. Omitting it
+      // here would leave a force-logged-out user unable to log back in.
+      { userId: user._id, mobile: user.mobileNumber1, tokenVersion: user.tokenVersion || 0 },
       process.env.JWT_SECRET,
       { expiresIn: "999y" }
     );
@@ -389,7 +392,10 @@ export const fakeverifyOtpAction = async (req, res) => {
     }
 
     const token = jwt.sign(
-      { userId: user._id, mobile: user.mobileNumber1 },
+      // tokenVersion must be stamped on every customer token: buildCustomerActor
+      // rejects any token whose version trails the user's current one. Omitting it
+      // here would leave a force-logged-out user unable to log back in.
+      { userId: user._id, mobile: user.mobileNumber1, tokenVersion: user.tokenVersion || 0 },
       process.env.JWT_SECRET,
       { expiresIn: "999y" }
     );

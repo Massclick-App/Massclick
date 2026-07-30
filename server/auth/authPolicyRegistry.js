@@ -222,6 +222,30 @@ const POLICY_LIST = [
     allowedActorTypes: ["admin"],
     ownership: "admin-managed",
   },
+  {
+    key: "auth.admin.customer-sessions",
+    method: "GET",
+    path: "/api/admin/auth/customers",
+    allowedActorTypes: ["admin"],
+    ownership: "admin-managed",
+  },
+  {
+    // Force-logout of one customer: bumps tokenVersion, invalidating every JWT
+    // already issued to them. They can re-login immediately.
+    key: "auth.admin.customer-logout",
+    method: "POST",
+    path: "/api/admin/auth/customers/logout",
+    allowedActorTypes: ["admin"],
+    ownership: "admin-managed",
+  },
+  {
+    // Bulk force-logout of every customer. Requires { confirm: true } in the body.
+    key: "auth.admin.customer-logout-all",
+    method: "POST",
+    path: "/api/admin/auth/customers/logout-all",
+    allowedActorTypes: ["admin"],
+    ownership: "admin-managed",
+  },
 ];
 
 const POLICY_MAP = new Map(POLICY_LIST.map((policy) => [policy.key, Object.freeze(policy)]));

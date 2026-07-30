@@ -69,6 +69,13 @@ const buildCustomerActor = async (token, source) => {
       throw new AuthError("USER_NOT_FOUND", 401, { auditEventType: "invalid_token" });
     }
 
+    // Force-logout: a bumped tokenVersion invalidates every JWT issued before the
+    // bump. Tokens minted before this field existed carry no tokenVersion, so both
+    // sides coalesce to 0 and already-active sessions are unaffected.
+    if ((payload.tokenVersion ?? 0) !== (customer.tokenVersion ?? 0)) {
+      throw new AuthError("TOKEN_REVOKED", 401, { auditEventType: "revocation" });
+    }
+
     return {
       actorType: "customer",
       sessionType: "customerOtp",

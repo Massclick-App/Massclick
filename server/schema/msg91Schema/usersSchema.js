@@ -92,6 +92,10 @@ const message91UsersSchema = new mongoose.Schema({
   registeredFrom: { type: String, enum: ["mobile", "web", "unknown"], default: "unknown" },
   lastLoginAt: { type: Date, default: null },
   loginCount: { type: Number, default: 0 },
+  // Force-logout counter. Incrementing this invalidates every JWT already issued
+  // to the user, logging them out on all devices (customer tokens are stateless,
+  // so there is no session row to delete). Checked in buildCustomerActor.
+  tokenVersion: { type: Number, default: 0 },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });

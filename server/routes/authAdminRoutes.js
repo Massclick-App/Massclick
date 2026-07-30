@@ -4,6 +4,9 @@ import {
   authIntrospectAction,
   authOverviewAction,
   authSessionsAction,
+  customerLogoutAction,
+  customerLogoutAllAction,
+  customerSessionsAction,
 } from "../controller/authAdminController.js";
 import { requireAdminAuth } from "../auth/authMiddleware.js";
 
@@ -28,6 +31,21 @@ router.get(
   "/api/admin/auth/audit",
   requireAdminAuth("auth.admin.audit"),
   authAuditAction
+);
+router.get(
+  "/api/admin/auth/customers",
+  requireAdminAuth("auth.admin.customer-sessions"),
+  customerSessionsAction
+);
+router.post(
+  "/api/admin/auth/customers/logout",
+  requireAdminAuth("auth.admin.customer-logout"),
+  customerLogoutAction
+);
+router.post(
+  "/api/admin/auth/customers/logout-all",
+  requireAdminAuth("auth.admin.customer-logout-all"),
+  customerLogoutAllAction
 );
 
 export default router;

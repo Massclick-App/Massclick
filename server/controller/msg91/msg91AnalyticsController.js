@@ -5,7 +5,10 @@ import mrpModel from "../../model/MRP/mrpModel.js";
 import searchLogModel from "../../model/businessList/searchLogModel.js";
 import whatsappMessageAuditModel from "../../model/msg91Model/whatsappMessageAuditModel.js";
 import whatsappRecipientHealthModel from "../../model/msg91Model/whatsappRecipientHealthModel.js";
-import { updateWhatsAppDeliveryStatus } from "../../helper/msg91/whatsappReliabilityHelper.js";
+import {
+  normalizeWhatsAppMobile,
+  updateWhatsAppDeliveryStatus,
+} from "../../helper/msg91/whatsappReliabilityHelper.js";
 
 const STATUS_VALUES = ["queued", "sent", "delivered", "read", "failed", "hold", "skipped"];
 const SUCCESS_STATUSES = ["sent", "delivered", "read"];
@@ -1025,6 +1028,7 @@ export const getMsg91AnalyticsRecipientsAction = async (req, res) => {
     if (req.query.mobile) filter.mobile = { $regex: req.query.mobile.replace(/\D/g, ""), $options: "i" };
     if (req.query.suppressed === "true") filter.suppressedUntil = { $gt: new Date() };
     if (req.query.invalid === "true") filter.whatsappInvalid = true;
+    if (req.query.blocked === "true") filter.adminBlocked = true;
 
     const [list, total] = await Promise.all([
       whatsappRecipientHealthModel
@@ -1058,6 +1062,50 @@ export const reviewMsg91RecipientAction = async (req, res) => {
   }
 };
 
+// Explicit two-way admin block on a number: nothing is sent to it, and nothing is
+// sent to anyone else on its behalf when it is the searching customer. Unlike the
+// automatic delivery-health suppression this never expires, so it is only ever set
+// or cleared here (or by the Unsuppress action, which also lifts it).
+export const blockMsg91RecipientAction = async (req, res) => {
+  try {
+    const normalized = normalizeWhatsAppMobile(req.params.mobile);
+    if (!normalized.valid) {
+      return res.status(400).json({ success: false, message: normalized.reason });
+    }
+
+    const blocked = req.body?.blocked !== false;
+    const admin = req.authUser?.emailId || req.authUser?.email || "admin";
+
+    const doc = await whatsappRecipientHealthModel
+      .findOneAndUpdate(
+        { mobile: normalized.mobile },
+        {
+          $set: blocked
+            ? {
+                adminBlocked: true,
+                adminBlockedReason: String(req.body?.reason || "blocked_by_admin").slice(0, 200),
+                adminBlockedAt: new Date(),
+                adminBlockedBy: admin,
+              }
+            : {
+                adminBlocked: false,
+                adminBlockedReason: "",
+                adminBlockedAt: null,
+                adminBlockedBy: admin,
+              },
+        },
+        // upsert so a number with no delivery history yet can still be blocked
+        // pre-emptively rather than only after it has been messaged.
+        { new: true, upsert: true, setDefaultsOnInsert: true }
+      )
+      .lean();
+
+    return res.json({ success: true, data: doc });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 export const unsuppressMsg91RecipientAction = async (req, res) => {
   try {
     const mobile = req.params.mobile;
@@ -1068,6 +1116,12 @@ export const unsuppressMsg91RecipientAction = async (req, res) => {
           suppressedUntil: null,
           suppressReason: "",
           whatsappInvalid: false,
+          // Also lift an explicit admin block. Without this the button reports
+          // success while the number stays blocked, since adminBlocked is checked
+          // independently of the delivery-health fields above.
+          adminBlocked: false,
+          adminBlockedReason: "",
+          adminBlockedAt: null,
           reviewed: true,
           reviewedAt: new Date(),
           reviewedBy: req.authUser?.emailId || req.authUser?.email || "admin",

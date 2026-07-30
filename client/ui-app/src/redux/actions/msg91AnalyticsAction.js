@@ -144,6 +144,21 @@ export const unsuppressMsg91Recipient = (mobile) => async (dispatch) => {
   return response.data.data;
 };
 
+// Two-way block: stops messages to this number and messages triggered by it.
+// Pass blocked=false to lift it.
+export const setMsg91RecipientBlock =
+  (mobile, blocked = true, reason = "blocked_by_admin") =>
+  async (dispatch) => {
+    const response = await axiosInstance.put(
+      `${API_URL}/admin/msg91-analytics/recipients/${mobile}/block`,
+      { blocked, reason },
+      { headers: authHeaders() }
+    );
+
+    dispatch({ type: UPDATE_MSG91_RECIPIENT_SUCCESS, payload: response.data.data });
+    return response.data.data;
+  };
+
 export const exportMsg91AnalyticsCsv = async (filters = {}) => {
   const query = buildMsg91AnalyticsParams(filters);
   const response = await axiosInstance.get(

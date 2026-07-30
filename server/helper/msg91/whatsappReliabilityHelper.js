@@ -329,6 +329,37 @@ export const updateWhatsAppDeliveryStatus = async (payload = {}) => {
   return audit;
 };
 
+// Resolves an explicit admin block in EITHER direction with one query: messages
+// to this number, and messages triggered by it as the searching customer.
+// Returns a skip-reason string, or "" when nothing is blocked.
+export const findWhatsAppAdminBlock = async (recipientMobile, customerMobile) => {
+  const candidates = new Map();
+
+  const recipient = normalizeWhatsAppMobile(recipientMobile);
+  if (recipient.valid) candidates.set(recipient.mobile, "recipient_admin_blocked");
+
+  const customer = normalizeWhatsAppMobile(customerMobile);
+  if (customer.valid && !candidates.has(customer.mobile)) {
+    candidates.set(customer.mobile, "customer_admin_blocked");
+  }
+
+  if (!candidates.size) return "";
+
+  const blocked = await whatsappRecipientHealthModel
+    .find({ mobile: { $in: [...candidates.keys()] }, adminBlocked: true }, { mobile: 1 })
+    .lean();
+
+  if (!blocked.length) return "";
+
+  const blockedMobiles = new Set(blocked.map((row) => row.mobile));
+  // Insertion order puts the recipient first, so its reason wins when both apply.
+  for (const [mobile, reason] of candidates) {
+    if (blockedMobiles.has(mobile)) return reason;
+  }
+
+  return "";
+};
+
 export const evaluateWhatsAppSend = async ({
   mobile,
   template,
@@ -345,6 +376,14 @@ export const evaluateWhatsAppSend = async ({
   const settings = await getSettings();
   const health = await whatsappRecipientHealthModel.findOne({ mobile: normalized.mobile }).lean();
   const now = new Date();
+
+  // Explicit admin blocks come first and are always enforced — unlike the health
+  // guard below they are a deliberate decision, so they are intentionally NOT
+  // gated on whatsapp_recipient_health_guard_enabled. Covers both directions.
+  const adminBlock = await findWhatsAppAdminBlock(normalized.mobile, customerMobile);
+  if (adminBlock) {
+    return { allowed: false, mobile: normalized.mobile, skipReason: adminBlock };
+  }
 
   if (settings.whatsapp_recipient_health_guard_enabled !== false && health?.whatsappInvalid) {
     return { allowed: false, mobile: normalized.mobile, skipReason: "recipient_marked_invalid" };
