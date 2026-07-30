@@ -33,6 +33,14 @@ const getDateRange = (query = {}) => {
   return { from, to };
 };
 
+const applyRecipientBooleanFilter = (filter, field, value) => {
+  if (value === "true") {
+    filter[field] = true;
+  } else if (value === "false") {
+    filter[field] = { $ne: true };
+  }
+};
+
 const buildAuditQuery = (query = {}) => {
   const { from, to } = getDateRange(query);
   const filter = { createdAt: { $gte: from, $lte: to } };
@@ -995,7 +1003,11 @@ export const exportMsg91AnalyticsCsvAction = async (req, res) => {
     const enrichedRows = await enrichRowsWithBusinessMniDetails(rowsWithMniDetails);
     const fromStamp = from.toISOString().slice(0, 10);
     const toStamp = to.toISOString().slice(0, 10);
-    const reportTypeLabel = req.query.reportType === REPORT_TYPES.MNI_LEADS ? "MNI-Leads" : "BusinessSearchLeads";
+    const reportTypeLabel = req.query.reportType === REPORT_TYPES.MNI_LEADS
+      ? "MNI-Leads"
+      : req.query.reportType === REPORT_TYPES.BUSINESS_SEARCH_LEADS
+        ? "BusinessSearchLeads"
+        : "All-WhatsApp";
     const fileName = `${safeFilePart(selectedBusinessName)}-${reportTypeLabel}-${fromStamp}-to-${toStamp}-Leads-Report.xlsx`;
     const workbookBuffer = buildXlsxWorkbook({
       rows: enrichedRows,
@@ -1026,9 +1038,14 @@ export const getMsg91AnalyticsRecipientsAction = async (req, res) => {
     const filter = {};
 
     if (req.query.mobile) filter.mobile = { $regex: req.query.mobile.replace(/\D/g, ""), $options: "i" };
-    if (req.query.suppressed === "true") filter.suppressedUntil = { $gt: new Date() };
-    if (req.query.invalid === "true") filter.whatsappInvalid = true;
-    if (req.query.blocked === "true") filter.adminBlocked = true;
+    if (req.query.suppressed === "true") {
+      filter.suppressedUntil = { $gt: new Date() };
+    } else if (req.query.suppressed === "false") {
+      filter.$or = [{ suppressedUntil: null }, { suppressedUntil: { $exists: false } }, { suppressedUntil: { $lte: new Date() } }];
+    }
+    applyRecipientBooleanFilter(filter, "whatsappInvalid", req.query.invalid);
+    applyRecipientBooleanFilter(filter, "adminBlocked", req.query.blocked);
+    applyRecipientBooleanFilter(filter, "reviewed", req.query.reviewed);
 
     const [list, total] = await Promise.all([
       whatsappRecipientHealthModel
@@ -1096,6 +1113,49 @@ export const blockMsg91RecipientAction = async (req, res) => {
         },
         // upsert so a number with no delivery history yet can still be blocked
         // pre-emptively rather than only after it has been messaged.
+        { new: true, upsert: true, setDefaultsOnInsert: true }
+      )
+      .lean();
+
+    return res.json({ success: true, data: doc });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const setMsg91RecipientInvalidAction = async (req, res) => {
+  try {
+    const normalized = normalizeWhatsAppMobile(req.params.mobile);
+    if (!normalized.valid) {
+      return res.status(400).json({ success: false, message: normalized.reason });
+    }
+
+    const invalid = req.body?.invalid !== false;
+    const admin = req.authUser?.emailId || req.authUser?.email || "admin";
+    const reason = String(req.body?.reason || "manual_invalid_by_admin").slice(0, 200);
+
+    const doc = await whatsappRecipientHealthModel
+      .findOneAndUpdate(
+        { mobile: normalized.mobile },
+        {
+          $set: invalid
+            ? {
+                whatsappInvalid: true,
+                suppressReason: reason,
+                suppressedUntil: null,
+                reviewed: true,
+                reviewedAt: new Date(),
+                reviewedBy: admin,
+              }
+            : {
+                whatsappInvalid: false,
+                suppressReason: "",
+                suppressedUntil: null,
+                reviewed: true,
+                reviewedAt: new Date(),
+                reviewedBy: admin,
+              },
+        },
         { new: true, upsert: true, setDefaultsOnInsert: true }
       )
       .lean();

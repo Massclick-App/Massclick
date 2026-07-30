@@ -159,6 +159,19 @@ export const setMsg91RecipientBlock =
     return response.data.data;
   };
 
+export const setMsg91RecipientInvalid =
+  (mobile, invalid = true, reason = "manual_invalid_by_admin") =>
+  async (dispatch) => {
+    const response = await axiosInstance.put(
+      `${API_URL}/admin/msg91-analytics/recipients/${mobile}/invalid`,
+      { invalid, reason },
+      { headers: authHeaders() }
+    );
+
+    dispatch({ type: UPDATE_MSG91_RECIPIENT_SUCCESS, payload: response.data.data });
+    return response.data.data;
+  };
+
 export const exportMsg91AnalyticsCsv = async (filters = {}) => {
   const query = buildMsg91AnalyticsParams(filters);
   const response = await axiosInstance.get(

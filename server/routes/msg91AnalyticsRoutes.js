@@ -12,6 +12,7 @@ import {
   msg91StatusWebhookAction,
   reviewMsg91RecipientAction,
   searchMsg91AnalyticsBusinessesAction,
+  setMsg91RecipientInvalidAction,
   unsuppressMsg91RecipientAction,
 } from "../controller/msg91/msg91AnalyticsController.js";
 
@@ -28,6 +29,7 @@ router.get("/api/admin/msg91-analytics/recipients", oauthAuthentication, getMsg9
 router.put("/api/admin/msg91-analytics/recipients/:mobile/review", oauthAuthentication, reviewMsg91RecipientAction);
 router.put("/api/admin/msg91-analytics/recipients/:mobile/unsuppress", oauthAuthentication, unsuppressMsg91RecipientAction);
 router.put("/api/admin/msg91-analytics/recipients/:mobile/block", oauthAuthentication, blockMsg91RecipientAction);
+router.put("/api/admin/msg91-analytics/recipients/:mobile/invalid", oauthAuthentication, setMsg91RecipientInvalidAction);
 router.post("/api/msg91/webhook/status", msg91StatusWebhookAction);
 
 export default router;

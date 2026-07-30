@@ -1,6 +1,29 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
+  Activity,
+  AlertTriangle,
+  Ban,
+  BarChart3,
+  Building2,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  Download,
+  FileText,
+  Filter,
+  MapPin,
+  RefreshCw,
+  RotateCcw,
+  Search,
+  ShieldAlert,
+  ShieldCheck,
+  SlidersHorizontal,
+  Tags,
+  Users,
+  X,
+} from "lucide-react";
+import {
   exportMsg91AnalyticsCsv,
   fetchMsg91FilterOptions,
   fetchMsg91Audit,
@@ -9,6 +32,7 @@ import {
   reviewMsg91Recipient,
   searchMsg91Businesses,
   setMsg91RecipientBlock,
+  setMsg91RecipientInvalid,
   unsuppressMsg91Recipient,
 } from "../../redux/actions/msg91AnalyticsAction.js";
 import styles from "./Msg91Analytics.module.css";
@@ -17,6 +41,7 @@ const today = new Date();
 const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
 const toDateInput = (date) => date.toISOString().slice(0, 10);
+const cx = (...classes) => classes.filter(Boolean).join(" ");
 
 const initialFilters = {
   reportType: "business_search_leads",
@@ -34,11 +59,84 @@ const initialFilters = {
   customerMobile: "",
 };
 
+const initialRecipientFilter = {
+  mobile: "",
+  suppressed: "",
+  invalid: "",
+  blocked: "",
+  reviewed: "",
+};
+
 const statusOptions = ["queued", "sent", "delivered", "read", "failed", "hold", "skipped"];
+const sourceTypeOptions = ["search_lead", "customer_list", "mni", "enquiry", "welcome", "manual", "unknown"];
+const pageSizeOptions = [25, 50, 100];
 const reportTypeOptions = [
-  { value: "business_search_leads", label: "BusinessSearchLeads" },
+  { value: "business_search_leads", label: "Business Search" },
   { value: "mni_leads", label: "MNI Leads" },
+  { value: "", label: "All Sources" },
 ];
+const triStateOptions = [
+  { value: "", label: "Any" },
+  { value: "true", label: "Yes" },
+  { value: "false", label: "No" },
+];
+const workspaces = [
+  { id: "overview", label: "Overview", icon: BarChart3 },
+  { id: "audit", label: "Audit", icon: FileText },
+  { id: "recipients", label: "Recipients", icon: ShieldAlert },
+];
+const recipientPresets = [
+  { id: "all", label: "All", filters: initialRecipientFilter },
+  { id: "queue", label: "Review queue", filters: { ...initialRecipientFilter, reviewed: "false" } },
+  { id: "invalid", label: "Invalid", filters: { ...initialRecipientFilter, invalid: "true" } },
+  { id: "blocked", label: "Blocked", filters: { ...initialRecipientFilter, blocked: "true" } },
+  { id: "suppressed", label: "Suppressed", filters: { ...initialRecipientFilter, suppressed: "true" } },
+  {
+    id: "clean",
+    label: "Clean",
+    filters: { ...initialRecipientFilter, suppressed: "false", invalid: "false", blocked: "false" },
+  },
+];
+const recipientCommandConfig = {
+  block: {
+    title: "Block recipient",
+    detail: "This prevents WhatsApp sends to the number and sends triggered by this number as the searching customer.",
+    confirmLabel: "Block number",
+    defaultReason: "blocked_by_admin",
+    reasonLabel: "Block reason",
+    danger: true,
+    needsReason: true,
+  },
+  unblock: {
+    title: "Unblock recipient",
+    detail: "This clears only the explicit admin block. Automatic invalid or suppression flags remain separate.",
+    confirmLabel: "Unblock",
+  },
+  markInvalid: {
+    title: "Mark invalid",
+    detail: "This marks the WhatsApp number invalid so the recipient health guard skips it.",
+    confirmLabel: "Mark invalid",
+    defaultReason: "manual_invalid_by_admin",
+    reasonLabel: "Invalid reason",
+    danger: true,
+    needsReason: true,
+  },
+  clearInvalid: {
+    title: "Clear invalid flag",
+    detail: "This clears the invalid and temporary suppression flags without changing the admin block state.",
+    confirmLabel: "Clear invalid",
+  },
+  review: {
+    title: "Mark reviewed",
+    detail: "This records the row as reviewed by the current admin.",
+    confirmLabel: "Mark reviewed",
+  },
+  unsuppress: {
+    title: "Unsuppress recipient",
+    detail: "This clears suppression, invalid, and explicit block flags for the selected number.",
+    confirmLabel: "Unsuppress",
+  },
+};
 
 const businessLabel = (business = {}) => [
   business.businessName || business.name || "Unnamed business",
@@ -61,6 +159,10 @@ const formatDateTime = (value) => {
   });
 };
 
+const isRecipientSuppressed = (row = {}) => Boolean(
+  row.suppressedUntil && new Date(row.suppressedUntil) > new Date()
+);
+
 const statusClass = (status) => {
   if (["sent", "delivered", "read"].includes(status)) return styles.success;
   if (status === "failed") return styles.failed;
@@ -69,17 +171,65 @@ const statusClass = (status) => {
   return styles.neutral;
 };
 
-function Kpi({ label, value, note, tone = "default" }) {
+const recipientTone = (row = {}) => {
+  if (row.adminBlocked) return "blocked";
+  if (row.whatsappInvalid) return "invalid";
+  if (isRecipientSuppressed(row)) return "suppressed";
+  if (!row.reviewed && Number(row.failedCount || 0) > 0) return "review";
+  if (row.reviewed) return "reviewed";
+  return "healthy";
+};
+
+const recipientToneLabel = (row = {}) => {
+  const tone = recipientTone(row);
+  return {
+    blocked: "Blocked",
+    invalid: "Invalid",
+    suppressed: "Suppressed",
+    review: "Needs review",
+    reviewed: "Reviewed",
+    healthy: "Healthy",
+  }[tone];
+};
+
+function MetricCard({ label, value, note, tone = "default", icon: Icon }) {
   return (
-    <div className={`${styles.kpi} ${styles[tone] || ""}`}>
-      <span>{label}</span>
+    <div className={cx(styles.metricCard, styles[tone])}>
+      <div className={styles.metricTopline}>
+        {Icon && <Icon size={17} aria-hidden="true" />}
+        <span>{label}</span>
+      </div>
       <strong>{value}</strong>
       <small>{note}</small>
     </div>
   );
 }
 
-function TableEmpty({ text }) {
+function PanelTitle({ icon: Icon, title, meta, children }) {
+  return (
+    <div className={styles.panelTitle}>
+      <div className={styles.panelHeading}>
+        {Icon && <Icon size={17} aria-hidden="true" />}
+        <h3>{title}</h3>
+      </div>
+      <div className={styles.panelMeta}>
+        {meta && <span>{meta}</span>}
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function Field({ label, children, wide = false }) {
+  return (
+    <label className={cx(styles.field, wide && styles.fieldWide)}>
+      <span>{label}</span>
+      {children}
+    </label>
+  );
+}
+
+function EmptyState({ text }) {
   return <div className={styles.empty}>{text}</div>;
 }
 
@@ -95,20 +245,29 @@ export default function Msg91Analytics() {
     auditPageSize,
     recipients,
     recipientsTotal,
+    recipientsPageNo,
+    recipientsPageSize,
     loading,
     auditLoading,
     recipientsLoading,
     error,
   } = useSelector((state) => state.msg91Analytics);
+
+  const [activeWorkspace, setActiveWorkspace] = useState("overview");
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
   const [filters, setFilters] = useState(initialFilters);
   const [appliedFilters, setAppliedFilters] = useState(initialFilters);
   const [expandedAuditId, setExpandedAuditId] = useState("");
-  const [recipientFilter, setRecipientFilter] = useState({ mobile: "", suppressed: "", invalid: "", blocked: "" });
+  const [recipientFilter, setRecipientFilter] = useState(initialRecipientFilter);
   const [exportLoading, setExportLoading] = useState(false);
   const [filterOptions, setFilterOptions] = useState({ templates: [], locations: [], categories: [], mniGroups: [] });
   const [businessSearch, setBusinessSearch] = useState("");
   const [businessOptions, setBusinessOptions] = useState([]);
   const [businessLoading, setBusinessLoading] = useState(false);
+  const [selectedRecipientMobile, setSelectedRecipientMobile] = useState("");
+  const [manualMobile, setManualMobile] = useState("");
+  const [recipientCommand, setRecipientCommand] = useState(null);
+  const [commandLoading, setCommandLoading] = useState(false);
 
   useEffect(() => {
     dispatch(fetchMsg91Dashboard(appliedFilters));
@@ -116,7 +275,7 @@ export default function Msg91Analytics() {
   }, [dispatch, appliedFilters, auditPageSize]);
 
   useEffect(() => {
-    dispatch(fetchMsg91Recipients({ pageNo: 1, pageSize: 25, filters: { mobile: "", suppressed: "", invalid: "", blocked: "" } }));
+    dispatch(fetchMsg91Recipients({ pageNo: 1, pageSize: 25, filters: initialRecipientFilter }));
   }, [dispatch]);
 
   useEffect(() => {
@@ -139,8 +298,9 @@ export default function Msg91Analytics() {
             mniGroups: options.mniGroups || [],
           });
         }
-      } catch (optionError) {
-        }
+      } catch {
+        // Filter options are opportunistic; the main dashboard fetch still carries the page.
+      }
     };
 
     loadOptions();
@@ -156,7 +316,7 @@ export default function Msg91Analytics() {
       try {
         const businesses = await searchMsg91Businesses({ search: businessSearch, limit: 30 });
         if (!ignore) setBusinessOptions(businesses);
-      } catch (businessError) {
+      } catch {
         if (!ignore) setBusinessOptions([]);
       } finally {
         if (!ignore) setBusinessLoading(false);
@@ -169,14 +329,50 @@ export default function Msg91Analytics() {
     };
   }, [businessSearch]);
 
+  useEffect(() => {
+    if (!recipients.length) {
+      setSelectedRecipientMobile("");
+      return;
+    }
+
+    if (!selectedRecipientMobile || !recipients.some((row) => row.mobile === selectedRecipientMobile)) {
+      setSelectedRecipientMobile(recipients[0].mobile);
+    }
+  }, [recipients, selectedRecipientMobile]);
+
   const statusCounts = summary?.statusCounts || {};
   const templates = summary?.templates || [];
   const isMniMode = filters.reportType === "mni_leads";
-  const appliedIsMniMode = appliedFilters.reportType === "mni_leads";
+  const isAppliedMniMode = appliedFilters.reportType === "mni_leads";
   const maxDailyTotal = useMemo(
     () => Math.max(...(timeseries || []).map((row) => row.total || 0), 1),
     [timeseries]
   );
+  const selectedRecipient = useMemo(
+    () => recipients.find((row) => row.mobile === selectedRecipientMobile) || null,
+    [recipients, selectedRecipientMobile]
+  );
+  const activeFilterCount = useMemo(
+    () => Object.entries(filters).filter(([key, value]) => value !== "" && value !== initialFilters[key]).length,
+    [filters]
+  );
+  const activeRecipientPreset = useMemo(
+    () => recipientPresets.find((preset) =>
+      Object.keys(initialRecipientFilter).every((key) => recipientFilter[key] === preset.filters[key])
+    )?.id || "",
+    [recipientFilter]
+  );
+  const recipientPageStats = useMemo(() => ({
+    blocked: recipients.filter((row) => row.adminBlocked).length,
+    invalid: recipients.filter((row) => row.whatsappInvalid).length,
+    suppressed: recipients.filter(isRecipientSuppressed).length,
+    review: recipients.filter((row) => !row.reviewed && Number(row.failedCount || 0) > 0).length,
+  }), [recipients]);
+  const appliedModeCopy = isAppliedMniMode
+    ? "MNI WhatsApp leads by group, place, category, and delivery state."
+    : appliedFilters.reportType
+      ? "Business-search WhatsApp leads, failures, skips, delivery outcomes, and spend."
+      : "All MSG91 WhatsApp traffic across source types and delivery states.";
 
   const applyFilters = () => {
     setAppliedFilters(filters);
@@ -189,28 +385,30 @@ export default function Msg91Analytics() {
   };
 
   const changeAuditPage = (direction) => {
-    const nextPage = Math.max(1, auditPageNo + direction);
+    const totalPages = Math.max(1, Math.ceil(auditTotal / auditPageSize));
+    const nextPage = Math.min(totalPages, Math.max(1, auditPageNo + direction));
     dispatch(fetchMsg91Audit({ pageNo: nextPage, pageSize: auditPageSize, filters: appliedFilters }));
   };
 
-  const loadRecipients = () => {
-    dispatch(fetchMsg91Recipients({ pageNo: 1, pageSize: 25, filters: recipientFilter }));
+  const loadRecipients = (pageNo = 1, pageSize = recipientsPageSize || 25, nextFilters = recipientFilter) => {
+    dispatch(fetchMsg91Recipients({ pageNo, pageSize, filters: nextFilters }));
   };
 
-  // Cancelling the prompt aborts the block, so this doubles as the confirmation.
-  const handleBlockRecipient = (mobile) => {
-    const reason = window.prompt(
-      `Block ${mobile} from ALL WhatsApp?\n\nStops messages sent to this number, and messages sent to others when this number is the searching customer.\n\nReason:`,
-      "blocked_by_admin"
-    );
-    if (reason === null) return;
-    dispatch(setMsg91RecipientBlock(mobile, true, reason.trim() || "blocked_by_admin"));
+  const changeRecipientPage = (direction) => {
+    const totalPages = Math.max(1, Math.ceil(recipientsTotal / (recipientsPageSize || 25)));
+    const nextPage = Math.min(totalPages, Math.max(1, recipientsPageNo + direction));
+    loadRecipients(nextPage, recipientsPageSize || 25);
+  };
+
+  const applyRecipientPreset = (preset) => {
+    setRecipientFilter(preset.filters);
+    loadRecipients(1, recipientsPageSize || 25, preset.filters);
   };
 
   const exportCsv = async () => {
     setExportLoading(true);
     try {
-      const response = await exportMsg91AnalyticsCsv(filters);
+      const response = await exportMsg91AnalyticsCsv(appliedFilters);
       const disposition = response.headers?.["content-disposition"] || "";
       const fileNameMatch = disposition.match(/filename="?([^"]+)"?/i);
       const fileName = fileNameMatch?.[1] || `MassClick-Leads-Report-${Date.now()}.xlsx`;
@@ -248,186 +446,288 @@ export default function Msg91Analytics() {
     if (business) setBusinessSearch(businessLabel(business));
   };
 
-  return (
-    <div className={styles.page}>
-      <div className={styles.header}>
+  const openRecipientCommand = (type, mobile) => {
+    if (!mobile) return;
+    const config = recipientCommandConfig[type];
+    setRecipientCommand({
+      type,
+      mobile,
+      reason: config?.defaultReason || "",
+    });
+  };
+
+  const runRecipientCommand = async () => {
+    if (!recipientCommand) return;
+
+    const config = recipientCommandConfig[recipientCommand.type];
+    const reason = recipientCommand.reason?.trim() || config?.defaultReason || "";
+    setCommandLoading(true);
+    try {
+      if (recipientCommand.type === "block") {
+        await dispatch(setMsg91RecipientBlock(recipientCommand.mobile, true, reason));
+      } else if (recipientCommand.type === "unblock") {
+        await dispatch(setMsg91RecipientBlock(recipientCommand.mobile, false));
+      } else if (recipientCommand.type === "markInvalid") {
+        await dispatch(setMsg91RecipientInvalid(recipientCommand.mobile, true, reason));
+      } else if (recipientCommand.type === "clearInvalid") {
+        await dispatch(setMsg91RecipientInvalid(recipientCommand.mobile, false, "manual_invalid_cleared_by_admin"));
+      } else if (recipientCommand.type === "review") {
+        await dispatch(reviewMsg91Recipient(recipientCommand.mobile));
+      } else if (recipientCommand.type === "unsuppress") {
+        await dispatch(unsuppressMsg91Recipient(recipientCommand.mobile));
+      }
+
+      setRecipientCommand(null);
+      loadRecipients(recipientsPageNo || 1, recipientsPageSize || 25);
+    } catch (commandError) {
+      window.alert(commandError.response?.data?.message || commandError.message || "Recipient update failed.");
+    } finally {
+      setCommandLoading(false);
+    }
+  };
+
+  const renderFilterRail = () => (
+    <section className={styles.filterBar}>
+      <button
+        type="button"
+        className={styles.railHeader}
+        onClick={() => setFiltersExpanded((prev) => !prev)}
+        aria-expanded={filtersExpanded}
+      >
         <div>
-          <h1>MSG91 Analytics</h1>
-          <p>{appliedIsMniMode ? "MNI WhatsApp leads by business group, location, and category." : "Business search WhatsApp leads, failures, skips, and delivery outcomes."}</p>
+          <SlidersHorizontal size={18} aria-hidden="true" />
+          <span>Report Filters</span>
         </div>
-        <div className={styles.headerActions}>
-          <button type="button" onClick={exportCsv} disabled={exportLoading}>
-            {exportLoading ? "Exporting..." : "Export Excel"}
-          </button>
-          <button type="button" className={styles.primary} onClick={applyFilters}>Refresh</button>
+        <div className={styles.railHeaderMeta}>
+          <small>{activeFilterCount} active</small>
+          {filtersExpanded ? <ChevronUp size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
         </div>
-      </div>
+      </button>
 
-      {error && <div className={styles.error}>{error}</div>}
-
-      <section className={styles.kpiGrid}>
-        <Kpi label="Total Attempts" value={formatNumber(summary?.total)} note="All audit rows" />
-        <Kpi label="Success Rate" value={`${summary?.successRate || 0}%`} note="sent + delivered + read" tone="green" />
-        <Kpi label="Failed" value={formatNumber(statusCounts.failed)} note={`${summary?.failureRate || 0}% failure rate`} tone="red" />
-        <Kpi label="Skipped" value={formatNumber(statusCounts.skipped)} note="Guard prevented send" tone="amber" />
-        <Kpi label="Hold" value={formatNumber(statusCounts.hold)} note="Provider or policy hold" tone="violet" />
-        <Kpi label="Cost" value={`Rs ${formatMoney(summary?.cost?.totalCost)}`} note={`${formatNumber(summary?.cost?.chargedRows)} charged rows`} />
-      </section>
-
-      <section className={styles.filters}>
-        <label className="form-input-label">
-          Report Type
-          <select
-            value={filters.reportType}
-            onChange={(event) => {
-              setBusinessSearch("");
-              updateFilter("reportType", event.target.value);
-            }}
-            className="form-select-input"
-          >
+      {filtersExpanded && (
+      <div className={styles.filterRow}>
+        <div className={styles.fieldGroup}>
+          <span className={styles.groupTitle}>Report Mode</span>
+          <div className={styles.segmented}>
             {reportTypeOptions.map((type) => (
-              <option key={type.value} value={type.value}>{type.label}</option>
+              <button
+                key={type.label}
+                type="button"
+                className={cx(filters.reportType === type.value && styles.segmentActive)}
+                onClick={() => {
+                  setBusinessSearch("");
+                  updateFilter("reportType", type.value);
+                }}
+              >
+                {type.label}
+              </button>
             ))}
-          </select>
-        </label>
-        <label className="form-input-label">
-          From
-          <input type="date" value={filters.from} onChange={(event) => updateFilter("from", event.target.value)} className="form-text-input" />
-        </label>
-        <label className="form-input-label">
-          To
-          <input type="date" value={filters.to} onChange={(event) => updateFilter("to", event.target.value)} className="form-text-input" />
-        </label>
-        {!isMniMode && (
-          <label className="form-input-label">
-            Template
-            <select value={filters.template} onChange={(event) => updateFilter("template", event.target.value)} className="form-select-input">
-              <option value="">All templates</option>
-              {filterOptions.templates.map((template) => (
-                <option key={template} value={template}>{template}</option>
-              ))}
-            </select>
-          </label>
-        )}
-        <label className="form-input-label">
-          Status
-          <select value={filters.status} onChange={(event) => updateFilter("status", event.target.value)} className="form-select-input">
-            <option value="">All</option>
-            {statusOptions.map((status) => <option key={status} value={status}>{status}</option>)}
-          </select>
-        </label>
-        {!isMniMode && (
-          <>
-            <label className="form-input-label">
-              Failure
-              <input value={filters.failureReason} onChange={(event) => updateFilter("failureReason", event.target.value)} placeholder="131026" className="form-text-input" />
-            </label>
-            <label className={`${styles.wideFilter} form-input-label`}>
-              Business Person
-              <div className={styles.businessSearch}>
-                <input
-                  value={businessSearch}
-                  onChange={(event) => {
-                    setBusinessSearch(event.target.value);
-                    updateFilter("businessId", "");
-                  }}
-                  placeholder="Type business name, client ID, mobile, category, or location"
-                  className="form-text-input"
-                />
-                {filters.businessId && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      updateFilter("businessId", "");
-                      setBusinessSearch("");
-                    }}
-                  >
-                    Clear business
-                  </button>
-                )}
-                <select value={filters.businessId} onChange={(event) => selectBusiness(event.target.value)} className="form-select-input">
-                  <option value="">{businessLoading ? "Searching..." : "All matching businesses"}</option>
-                  {businessOptions.map((business) => (
-                    <option key={business._id} value={business._id}>
-                      {businessLabel(business)}
-                    </option>
+          </div>
+        </div>
+
+        <div className={styles.fieldGroup}>
+          <span className={styles.groupTitle}>Date Range</span>
+          <div className={styles.fieldRow}>
+            <Field label="From">
+              <input type="date" value={filters.from} onChange={(event) => updateFilter("from", event.target.value)} />
+            </Field>
+            <Field label="To">
+              <input type="date" value={filters.to} onChange={(event) => updateFilter("to", event.target.value)} />
+            </Field>
+          </div>
+        </div>
+
+        <div className={styles.fieldGroup}>
+          <span className={styles.groupTitle}>Delivery</span>
+          <div className={styles.fieldRow}>
+            <Field label="Status">
+              <select value={filters.status} onChange={(event) => updateFilter("status", event.target.value)}>
+                <option value="">All statuses</option>
+                {statusOptions.map((status) => <option key={status} value={status}>{status}</option>)}
+              </select>
+            </Field>
+            <Field label="Source">
+              <select
+                value={filters.sourceType}
+                disabled={Boolean(filters.reportType)}
+                onChange={(event) => updateFilter("sourceType", event.target.value)}
+              >
+                <option value="">All sources</option>
+                {sourceTypeOptions.map((sourceType) => <option key={sourceType} value={sourceType}>{sourceType}</option>)}
+              </select>
+            </Field>
+            {!isMniMode && (
+              <Field label="Template">
+                <select value={filters.template} onChange={(event) => updateFilter("template", event.target.value)}>
+                  <option value="">All templates</option>
+                  {filterOptions.templates.map((template) => (
+                    <option key={template} value={template}>{template}</option>
                   ))}
                 </select>
-              </div>
-            </label>
-          </>
-        )}
-        {isMniMode && (
-          <label className="form-input-label">
-            Business Group
-            <select value={filters.mniGroup} onChange={(event) => updateFilter("mniGroup", event.target.value)} className="form-select-input">
-              <option value="">All MNI groups</option>
-              {filterOptions.mniGroups.map((group) => (
-                <option key={group} value={group}>{group}</option>
-              ))}
-            </select>
-          </label>
-        )}
-        <label className="form-input-label">
-          Category
-          <select value={filters.category} onChange={(event) => updateFilter("category", event.target.value)} className="form-select-input">
-            <option value="">All categories</option>
-            {filterOptions.categories.map((category) => (
-              <option key={category} value={category}>{category}</option>
-            ))}
-          </select>
-        </label>
-        <label className="form-input-label">
-          Location
-          <select value={filters.location} onChange={(event) => updateFilter("location", event.target.value)} className="form-select-input">
-            <option value="">All locations</option>
-            {filterOptions.locations.map((location) => (
-              <option key={location} value={location}>{location}</option>
-            ))}
-          </select>
-        </label>
-        <label className="form-input-label">
-          Recipient
-          <input value={filters.recipientMobile} onChange={(event) => updateFilter("recipientMobile", event.target.value)} className="form-text-input" />
-        </label>
-        <label className="form-input-label">
-          Customer
-          <input value={filters.customerMobile} onChange={(event) => updateFilter("customerMobile", event.target.value)} className="form-text-input" />
-        </label>
-        <div className={styles.filterButtons}>
-          <button type="button" className={styles.primary} onClick={applyFilters}>Apply</button>
-          <button type="button" onClick={clearFilters}>Clear</button>
+              </Field>
+            )}
+            {!isMniMode && (
+              <Field label="Failure">
+                <input
+                  value={filters.failureReason}
+                  onChange={(event) => updateFilter("failureReason", event.target.value)}
+                  placeholder="Code or reason"
+                />
+              </Field>
+            )}
+          </div>
         </div>
+
+        <div className={cx(styles.fieldGroup, styles.fieldGroupWide)}>
+          <span className={styles.groupTitle}>Business Context</span>
+          <div className={styles.fieldRow}>
+            {!isMniMode && (
+              <Field label="Business Person" wide>
+                <div className={styles.businessSearch}>
+                  <div className={styles.searchInput}>
+                    <Search size={15} aria-hidden="true" />
+                    <input
+                      value={businessSearch}
+                      onChange={(event) => {
+                        setBusinessSearch(event.target.value);
+                        updateFilter("businessId", "");
+                      }}
+                      placeholder="Name, client ID, mobile"
+                    />
+                  </div>
+                  <select value={filters.businessId} onChange={(event) => selectBusiness(event.target.value)}>
+                    <option value="">{businessLoading ? "Searching..." : "All matching businesses"}</option>
+                    {businessOptions.map((business) => (
+                      <option key={business._id} value={business._id}>
+                        {businessLabel(business)}
+                      </option>
+                    ))}
+                  </select>
+                  {filters.businessId && (
+                    <button
+                      type="button"
+                      className={styles.clearInline}
+                      onClick={() => {
+                        updateFilter("businessId", "");
+                        setBusinessSearch("");
+                      }}
+                    >
+                      <X size={14} aria-hidden="true" />
+                      Clear
+                    </button>
+                  )}
+                </div>
+              </Field>
+            )}
+            {isMniMode && (
+              <Field label="Business Group">
+                <select value={filters.mniGroup} onChange={(event) => updateFilter("mniGroup", event.target.value)}>
+                  <option value="">All MNI groups</option>
+                  {filterOptions.mniGroups.map((group) => (
+                    <option key={group} value={group}>{group}</option>
+                  ))}
+                </select>
+              </Field>
+            )}
+            <Field label="Category">
+              <select value={filters.category} onChange={(event) => updateFilter("category", event.target.value)}>
+                <option value="">All categories</option>
+                {filterOptions.categories.map((category) => (
+                  <option key={category} value={category}>{category}</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Location">
+              <select value={filters.location} onChange={(event) => updateFilter("location", event.target.value)}>
+                <option value="">All locations</option>
+                {filterOptions.locations.map((location) => (
+                  <option key={location} value={location}>{location}</option>
+                ))}
+              </select>
+            </Field>
+          </div>
+        </div>
+
+        <div className={styles.fieldGroup}>
+          <span className={styles.groupTitle}>Mobiles</span>
+          <div className={styles.fieldRow}>
+            <Field label="Recipient">
+              <input value={filters.recipientMobile} onChange={(event) => updateFilter("recipientMobile", event.target.value)} placeholder="Recipient mobile" />
+            </Field>
+            <Field label="Customer">
+              <input value={filters.customerMobile} onChange={(event) => updateFilter("customerMobile", event.target.value)} placeholder="Customer mobile" />
+            </Field>
+          </div>
+        </div>
+
+        <div className={styles.railActions}>
+          <button type="button" className={styles.primaryButton} onClick={applyFilters}>
+            <Filter size={15} aria-hidden="true" />
+            Apply
+          </button>
+          <button type="button" className={styles.secondaryButton} onClick={clearFilters}>
+            <RotateCcw size={15} aria-hidden="true" />
+            Reset
+          </button>
+        </div>
+      </div>
+      )}
+    </section>
+  );
+
+  const renderRankList = (rows, totalKey = "total", emptyText = "No data for this filter.", className) => (
+    <div className={cx(styles.rankList, className)}>
+      {(rows || []).map((item, index) => (
+        <div key={`${item._id || item.mobile || "row"}-${index}`} className={styles.rankRow}>
+          <span>{item._id || item.mobile || "unknown"}</span>
+          <strong>{formatNumber(item[totalKey])}</strong>
+        </div>
+      ))}
+      {!(rows || []).length && <EmptyState text={emptyText} />}
+    </div>
+  );
+
+  const renderOverview = () => (
+    <div className={styles.workspaceStack}>
+      <div className={styles.workspaceHeader}>
+        <div>
+          <span>Overview</span>
+          <h2>Delivery performance</h2>
+        </div>
+        <small>{loading ? "Loading dashboard" : `${formatNumber(summary?.total)} attempts in view`}</small>
+      </div>
+
+      <section className={styles.metricGrid}>
+        <MetricCard icon={Activity} label="Total Attempts" value={formatNumber(summary?.total)} note="All audit rows" />
+        <MetricCard icon={ShieldCheck} label="Success Rate" value={`${summary?.successRate || 0}%`} note="sent + delivered + read" tone="green" />
+        <MetricCard icon={AlertTriangle} label="Failed" value={formatNumber(statusCounts.failed)} note={`${summary?.failureRate || 0}% failure rate`} tone="red" />
+        <MetricCard icon={Ban} label="Skipped" value={formatNumber(statusCounts.skipped)} note="Guard prevented send" tone="amber" />
+        <MetricCard icon={ShieldAlert} label="Hold" value={formatNumber(statusCounts.hold)} note="Provider or policy hold" tone="violet" />
+        <MetricCard icon={Download} label="Cost" value={`Rs ${formatMoney(summary?.cost?.totalCost)}`} note={`${formatNumber(summary?.cost?.chargedRows)} charged rows`} />
       </section>
 
-      <section className={styles.gridTwo}>
-        <div className={styles.panel}>
-          <div className={styles.panelTitle}>
-            <h2>Daily Trend</h2>
-            <span>{loading ? "Loading" : `${timeseries?.length || 0} days`}</span>
-          </div>
+      <section className={styles.overviewGrid}>
+        <div className={cx(styles.panel, styles.trendPanel)}>
+          <PanelTitle icon={BarChart3} title="Daily Trend" meta={`${timeseries?.length || 0} days`} />
           <div className={styles.trendList}>
             {(timeseries || []).length ? timeseries.map((row) => (
               <div key={row.date} className={styles.trendRow}>
                 <span>{row.date}</span>
-                <div className={styles.trendBar}>
+                <div className={styles.trendBar} aria-label={`${row.total || 0} attempts`}>
                   <i style={{ width: `${((row.success || 0) / maxDailyTotal) * 100}%` }} />
                   <b style={{ width: `${((row.failed || 0) / maxDailyTotal) * 100}%` }} />
                   <em style={{ width: `${((row.skipped || 0) / maxDailyTotal) * 100}%` }} />
                 </div>
                 <strong>{formatNumber(row.total)}</strong>
               </div>
-            )) : <TableEmpty text="No daily trend data for this filter." />}
+            )) : <EmptyState text="No daily trend data for this filter." />}
           </div>
         </div>
 
         <div className={styles.panel}>
-          <div className={styles.panelTitle}>
-            <h2>Failure Reasons</h2>
-            <span>Top 50</span>
-          </div>
-          <div className={styles.compactTable}>
-            <table>
+          <PanelTitle icon={AlertTriangle} title="Failure Reasons" meta="Top 50" />
+          <div className={styles.tableWrap}>
+            <table className={styles.dataTable}>
               <thead>
                 <tr>
                   <th>Code</th>
@@ -447,126 +747,118 @@ export default function Msg91Analytics() {
                 ))}
               </tbody>
             </table>
-            {!(failures || []).length && <TableEmpty text="No failed messages in this filter." />}
+            {!(failures || []).length && <EmptyState text="No failed messages in this filter." />}
           </div>
         </div>
       </section>
 
-      <section className={styles.gridThree}>
-        {appliedIsMniMode ? (
-          <div className={styles.panel}>
-            <div className={styles.panelTitle}><h2>Business Groups</h2></div>
-            <div className={styles.rankList}>
-              {(summary?.topGroups || []).map((item) => (
-                <div key={item._id || "unknown"}><span>{item._id || "unknown"}</span><strong>{formatNumber(item.total)}</strong></div>
-              ))}
-              {!(summary?.topGroups || []).length && <TableEmpty text="No MNI group data." />}
-            </div>
+      <section className={styles.insightGrid}>
+        {isAppliedMniMode ? (
+          <div className={cx(styles.panel, styles.thirdPanel)}>
+            <PanelTitle icon={Building2} title="Business Groups" />
+            {renderRankList(summary?.topGroups)}
           </div>
         ) : (
-          <>
-            <div className={styles.panel}>
-              <div className={styles.panelTitle}><h2>Template Performance</h2></div>
-              <div className={styles.compactTable}>
-                <table>
-                  <thead><tr><th>Template</th><th>Total</th><th>Success</th><th>Failed</th><th>Cost</th></tr></thead>
-                  <tbody>
-                    {templates.map((row) => (
-                      <tr key={row._id || "unknown"}>
-                        <td>{row._id || "unknown"}</td>
-                        <td>{formatNumber(row.total)}</td>
-                        <td>{formatNumber(row.success)}</td>
-                        <td>{formatNumber(row.failed)}</td>
-                        <td>Rs {formatMoney(row.cost)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {!templates.length && <TableEmpty text="No template data." />}
-              </div>
+          <div className={cx(styles.panel, styles.templatePanel)}>
+            <PanelTitle icon={FileText} title="Template Performance" />
+            <div className={styles.tableWrap}>
+              <table className={styles.dataTable}>
+                <thead>
+                  <tr>
+                    <th>Template</th>
+                    <th>Total</th>
+                    <th>Success</th>
+                    <th>Failed</th>
+                    <th>Cost</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {templates.map((row) => (
+                    <tr key={row._id || "unknown"}>
+                      <td>{row._id || "unknown"}</td>
+                      <td>{formatNumber(row.total)}</td>
+                      <td>{formatNumber(row.success)}</td>
+                      <td>{formatNumber(row.failed)}</td>
+                      <td>Rs {formatMoney(row.cost)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {!templates.length && <EmptyState text="No template data." />}
             </div>
-
-            <div className={styles.panel}>
-              <div className={styles.panelTitle}><h2>Lead Source</h2></div>
-              <div className={styles.rankList}>
-                {(summary?.sourceTypes || []).map((item) => (
-                  <div key={item._id || "unknown"}><span>{item._id || "unknown"}</span><strong>{formatNumber(item.total)}</strong></div>
-                ))}
-                {!(summary?.sourceTypes || []).length && <TableEmpty text="No source data." />}
-              </div>
-            </div>
-          </>
+          </div>
         )}
 
-        <div className={styles.panel}>
-          <div className={styles.panelTitle}><h2>Categories</h2></div>
-          <div className={styles.rankList}>
-            {(summary?.topCategories || []).map((item) => (
-              <div key={item._id}><span>{item._id}</span><strong>{formatNumber(item.total)}</strong></div>
-            ))}
-            {!(summary?.topCategories || []).length && <TableEmpty text="No category data." />}
+        {!isAppliedMniMode && (
+          <div className={cx(styles.panel, styles.thirdPanel)}>
+            <PanelTitle icon={Activity} title="Lead Source" />
+            {renderRankList(summary?.sourceTypes)}
           </div>
+        )}
+
+        <div className={cx(styles.panel, isAppliedMniMode ? styles.thirdPanel : styles.halfPanel)}>
+          <PanelTitle icon={Tags} title="Categories" />
+          {renderRankList(summary?.topCategories)}
         </div>
 
-        <div className={styles.panel}>
-          <div className={styles.panelTitle}><h2>Locations</h2></div>
-          <div className={styles.rankList}>
-            {(summary?.topLocations || []).map((item) => (
-              <div key={item._id}><span>{item._id}</span><strong>{formatNumber(item.total)}</strong></div>
-            ))}
-            {!(summary?.topLocations || []).length && <TableEmpty text="No location data." />}
+        <div className={cx(styles.panel, isAppliedMniMode ? styles.thirdPanel : styles.halfPanel)}>
+          <PanelTitle icon={MapPin} title="Locations" />
+          {renderRankList(summary?.topLocations)}
+        </div>
+
+        <div className={cx(styles.panel, styles.fullPanel)}>
+          <PanelTitle icon={Users} title="Recipient Risk" />
+          <div className={styles.riskColumns}>
+            <div className={styles.riskColumn}>
+              <h4>Repeated</h4>
+              {renderRankList(
+                summary?.topRecipients,
+                "totalAttempts",
+                "No repeated-recipient data.",
+                styles.riskList
+              )}
+            </div>
+            <div className={styles.riskColumn}>
+              <h4>Failing</h4>
+              {renderRankList(
+                summary?.topFailedRecipients,
+                "failedCount",
+                "No failing-number data.",
+                styles.riskList
+              )}
+            </div>
+            <div className={styles.riskColumn}>
+              <h4>Suppressed</h4>
+              <div className={cx(styles.rankList, styles.riskList)}>
+                {(summary?.topSuppressedRecipients || []).map((item) => (
+                  <div key={item.mobile} className={styles.suppressedRow}>
+                    <span>{item.mobile}</span>
+                    <small>{item.suppressReason || (item.whatsappInvalid ? "invalid" : "suppressed")}</small>
+                  </div>
+                ))}
+                {!(summary?.topSuppressedRecipients || []).length && <EmptyState text="No suppressed-number data." />}
+              </div>
+            </div>
           </div>
         </div>
       </section>
+    </div>
+  );
 
-      <section className={styles.gridThree}>
-        <div className={styles.panel}>
-          <div className={styles.panelTitle}><h2>Top Repeated Recipients</h2></div>
-          <div className={styles.rankList}>
-            {(summary?.topRecipients || []).map((item) => (
-              <div key={item.mobile}>
-                <span>{item.mobile}</span>
-                <strong>{formatNumber(item.totalAttempts)}</strong>
-              </div>
-            ))}
-            {!(summary?.topRecipients || []).length && <TableEmpty text="No repeated-recipient data." />}
-          </div>
+  const renderAudit = () => (
+    <div className={styles.workspaceStack}>
+      <div className={styles.workspaceHeader}>
+        <div>
+          <span>Investigation</span>
+          <h2>Message audit</h2>
         </div>
-
-        <div className={styles.panel}>
-          <div className={styles.panelTitle}><h2>Top Failing Numbers</h2></div>
-          <div className={styles.rankList}>
-            {(summary?.topFailedRecipients || []).map((item) => (
-              <div key={item.mobile}>
-                <span>{item.mobile}</span>
-                <strong>{formatNumber(item.failedCount)}</strong>
-              </div>
-            ))}
-            {!(summary?.topFailedRecipients || []).length && <TableEmpty text="No failing-number data." />}
-          </div>
-        </div>
-
-        <div className={styles.panel}>
-          <div className={styles.panelTitle}><h2>Top Suppressed Numbers</h2></div>
-          <div className={styles.rankList}>
-            {(summary?.topSuppressedRecipients || []).map((item) => (
-              <div key={item.mobile}>
-                <span>{item.mobile}</span>
-                <strong>{item.suppressReason || (item.whatsappInvalid ? "invalid" : "suppressed")}</strong>
-              </div>
-            ))}
-            {!(summary?.topSuppressedRecipients || []).length && <TableEmpty text="No suppressed-number data." />}
-          </div>
-        </div>
-      </section>
+        <small>{auditLoading ? "Loading rows" : `${formatNumber(auditTotal)} rows`}</small>
+      </div>
 
       <section className={styles.panel}>
-        <div className={styles.panelTitle}>
-          <h2>Message Audit</h2>
-          <span>{auditLoading ? "Loading" : `${formatNumber(auditTotal)} rows`}</span>
-        </div>
-        <div className={styles.tableWrap}>
-          <table className={styles.auditTable}>
+        <PanelTitle icon={FileText} title="Audit Rows" meta={`Page ${auditPageNo} of ${Math.max(1, Math.ceil(auditTotal / auditPageSize))}`} />
+        <div className={cx(styles.tableWrap, styles.compactTableWrap)}>
+          <table className={cx(styles.dataTable, styles.auditTable, styles.compactTable)}>
             <thead>
               <tr>
                 <th>Created</th>
@@ -585,11 +877,11 @@ export default function Msg91Analytics() {
             <tbody>
               {audit.map((row) => (
                 <React.Fragment key={row._id}>
-                  <tr onClick={() => setExpandedAuditId(expandedAuditId === row._id ? "" : row._id)}>
+                  <tr className={styles.clickableRow} onClick={() => setExpandedAuditId(expandedAuditId === row._id ? "" : row._id)}>
                     <td>{formatDateTime(row.createdAt)}</td>
                     <td>{row.templateName || "-"}</td>
                     <td>{row.sourceType || "-"}</td>
-                    <td><span className={`${styles.pill} ${statusClass(row.status)}`}>{row.status}</span></td>
+                    <td><span className={cx(styles.pill, statusClass(row.status))}>{row.status}</span></td>
                     <td>{row.recipientMobile || "-"}</td>
                     <td>{row.customerMobile || "-"}</td>
                     <td>{row.category || "-"}</td>
@@ -608,7 +900,7 @@ export default function Msg91Analytics() {
                           <div><strong>Read</strong><span>{formatDateTime(row.readAt)}</span></div>
                           <div><strong>Failed</strong><span>{formatDateTime(row.failedAt)}</span></div>
                         </div>
-                        <pre>{JSON.stringify(row.rawWebhookPayload || row.providerResponse || row.payloadPreview || {}, null, 2)}</pre>
+                        <pre className={styles.payloadBlock}>{JSON.stringify(row.rawWebhookPayload || row.providerResponse || row.payloadPreview || {}, null, 2)}</pre>
                       </td>
                     </tr>
                   )}
@@ -616,7 +908,7 @@ export default function Msg91Analytics() {
               ))}
             </tbody>
           </table>
-          {!audit.length && <TableEmpty text="No audit rows for this filter." />}
+          {!audit.length && <EmptyState text="No audit rows for this filter." />}
         </div>
         <div className={styles.pagination}>
           <button type="button" disabled={auditPageNo <= 1} onClick={() => changeAuditPage(-1)}>Previous</button>
@@ -624,72 +916,317 @@ export default function Msg91Analytics() {
           <button type="button" disabled={auditPageNo >= Math.ceil(auditTotal / auditPageSize)} onClick={() => changeAuditPage(1)}>Next</button>
         </div>
       </section>
+    </div>
+  );
 
-      <section className={styles.panel}>
-        <div className={styles.panelTitle}>
-          <h2>Recipient Health</h2>
-          <span>{recipientsLoading ? "Loading" : `${formatNumber(recipientsTotal)} rows`}</span>
+  const renderRecipientActions = (row, compact = false, iconOnly = false) => (
+    <div className={cx(styles.rowActions, compact && styles.rowActionsCompact, iconOnly && styles.rowActionsIconOnly)}>
+      <button type="button" title="Review" aria-label="Review" onClick={() => openRecipientCommand("review", row.mobile)}>
+        <CheckCircle2 size={14} aria-hidden="true" />
+        {!iconOnly && "Review"}
+      </button>
+      <button type="button" title="Unsuppress" aria-label="Unsuppress" onClick={() => openRecipientCommand("unsuppress", row.mobile)}>
+        <RotateCcw size={14} aria-hidden="true" />
+        {!iconOnly && "Unsuppress"}
+      </button>
+      {row.whatsappInvalid ? (
+        <button type="button" title="Clear invalid" aria-label="Clear invalid" onClick={() => openRecipientCommand("clearInvalid", row.mobile)}>
+          <ShieldCheck size={14} aria-hidden="true" />
+          {!iconOnly && "Clear invalid"}
+        </button>
+      ) : (
+        <button type="button" title="Mark invalid" aria-label="Mark invalid" className={styles.warningButton} onClick={() => openRecipientCommand("markInvalid", row.mobile)}>
+          <ShieldAlert size={14} aria-hidden="true" />
+          {!iconOnly && "Mark invalid"}
+        </button>
+      )}
+      {row.adminBlocked ? (
+        <button type="button" title="Unblock" aria-label="Unblock" onClick={() => openRecipientCommand("unblock", row.mobile)}>
+          <ShieldCheck size={14} aria-hidden="true" />
+          {!iconOnly && "Unblock"}
+        </button>
+      ) : (
+        <button type="button" title="Block" aria-label="Block" className={styles.dangerButton} onClick={() => openRecipientCommand("block", row.mobile)}>
+          <Ban size={14} aria-hidden="true" />
+          {!iconOnly && "Block"}
+        </button>
+      )}
+    </div>
+  );
+
+  const renderRecipients = () => (
+    <div className={styles.workspaceStack}>
+      <div className={styles.workspaceHeader}>
+        <div>
+          <span>Command Center</span>
+          <h2>Recipient health</h2>
         </div>
-        <div className={styles.recipientFilters}>
-          <input placeholder="Mobile" value={recipientFilter.mobile} onChange={(event) => setRecipientFilter((prev) => ({ ...prev, mobile: event.target.value }))} className="form-text-input" />
-          <select value={recipientFilter.suppressed} onChange={(event) => setRecipientFilter((prev) => ({ ...prev, suppressed: event.target.value }))} className="form-select-input">
-            <option value="">Suppressed: all</option>
-            <option value="true">Suppressed only</option>
-          </select>
-          <select value={recipientFilter.invalid} onChange={(event) => setRecipientFilter((prev) => ({ ...prev, invalid: event.target.value }))} className="form-select-input">
-            <option value="">Invalid: all</option>
-            <option value="true">Invalid only</option>
-          </select>
-          <select value={recipientFilter.blocked} onChange={(event) => setRecipientFilter((prev) => ({ ...prev, blocked: event.target.value }))} className="form-select-input">
-            <option value="">Blocked: all</option>
-            <option value="true">Blocked only</option>
-          </select>
-          <button type="button" onClick={loadRecipients}>Load</button>
-        </div>
-        <div className={styles.tableWrap}>
-          <table className={styles.auditTable}>
-            <thead>
-              <tr>
-                <th>Mobile</th>
-                <th>Attempts</th>
-                <th>Failed</th>
-                <th>131026</th>
-                <th>131049</th>
-                <th>Suppressed Until</th>
-                <th>Blocked</th>
-                <th>Last Failure</th>
-                <th>Reviewed</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recipients.map((row) => (
-                <tr key={row.mobile}>
-                  <td>{row.mobile}</td>
-                  <td>{formatNumber(row.totalAttempts)}</td>
-                  <td>{formatNumber(row.failedCount)}</td>
-                  <td>{formatNumber(row.undeliverableCount)}</td>
-                  <td>{formatNumber(row.ecosystemFailureCount)}</td>
-                  <td>{formatDateTime(row.suppressedUntil)}</td>
-                  <td>{row.adminBlocked ? `Yes (${row.adminBlockedReason || "blocked"})` : "No"}</td>
-                  <td>{row.lastFailureReason || "-"}</td>
-                  <td>{row.reviewed ? "Yes" : "No"}</td>
-                  <td className={styles.rowActions}>
-                    <button type="button" onClick={() => dispatch(reviewMsg91Recipient(row.mobile))}>Review</button>
-                    <button type="button" onClick={() => dispatch(unsuppressMsg91Recipient(row.mobile))}>Unsuppress</button>
-                    {row.adminBlocked ? (
-                      <button type="button" onClick={() => dispatch(setMsg91RecipientBlock(row.mobile, false))}>Unblock</button>
-                    ) : (
-                      <button type="button" onClick={() => handleBlockRecipient(row.mobile)}>Block</button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {!recipients.length && <TableEmpty text="No recipient-health rows." />}
-        </div>
+        <small>{recipientsLoading ? "Loading rows" : `${formatNumber(recipientsTotal)} recipients`}</small>
+      </div>
+
+      <section className={styles.healthStrip}>
+        <MetricCard icon={Users} label="Loaded" value={formatNumber(recipients.length)} note="Rows on this page" />
+        <MetricCard icon={Ban} label="Blocked" value={formatNumber(recipientPageStats.blocked)} note="Explicit admin block" tone="red" />
+        <MetricCard icon={ShieldAlert} label="Invalid" value={formatNumber(recipientPageStats.invalid)} note="Guard skips number" tone="amber" />
+        <MetricCard icon={AlertTriangle} label="Suppressed" value={formatNumber(recipientPageStats.suppressed)} note="Temporary hold active" tone="violet" />
+        <MetricCard icon={CheckCircle2} label="Review Queue" value={formatNumber(recipientPageStats.review)} note="Failed and unreviewed" tone="green" />
       </section>
+
+      <div className={styles.recipientLayout}>
+        <section className={styles.panel}>
+          <PanelTitle icon={ShieldAlert} title="Recipient Registry">
+            <div className={styles.presetBar}>
+              {recipientPresets.map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  className={cx(activeRecipientPreset === preset.id && styles.presetActive)}
+                  onClick={() => applyRecipientPreset(preset)}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+          </PanelTitle>
+
+          <div className={styles.recipientFilters}>
+            <Field label="Mobile">
+              <input
+                placeholder="Search mobile"
+                value={recipientFilter.mobile}
+                onChange={(event) => setRecipientFilter((prev) => ({ ...prev, mobile: event.target.value }))}
+              />
+            </Field>
+            <Field label="Suppressed">
+              <select value={recipientFilter.suppressed} onChange={(event) => setRecipientFilter((prev) => ({ ...prev, suppressed: event.target.value }))}>
+                {triStateOptions.map((option) => <option key={option.value || "any"} value={option.value}>{option.label}</option>)}
+              </select>
+            </Field>
+            <Field label="Invalid">
+              <select value={recipientFilter.invalid} onChange={(event) => setRecipientFilter((prev) => ({ ...prev, invalid: event.target.value }))}>
+                {triStateOptions.map((option) => <option key={option.value || "any"} value={option.value}>{option.label}</option>)}
+              </select>
+            </Field>
+            <Field label="Blocked">
+              <select value={recipientFilter.blocked} onChange={(event) => setRecipientFilter((prev) => ({ ...prev, blocked: event.target.value }))}>
+                {triStateOptions.map((option) => <option key={option.value || "any"} value={option.value}>{option.label}</option>)}
+              </select>
+            </Field>
+            <Field label="Reviewed">
+              <select value={recipientFilter.reviewed} onChange={(event) => setRecipientFilter((prev) => ({ ...prev, reviewed: event.target.value }))}>
+                {triStateOptions.map((option) => <option key={option.value || "any"} value={option.value}>{option.label}</option>)}
+              </select>
+            </Field>
+            <Field label="Rows">
+              <select value={recipientsPageSize || 25} onChange={(event) => loadRecipients(1, Number(event.target.value))}>
+                {pageSizeOptions.map((size) => <option key={size} value={size}>{size}</option>)}
+              </select>
+            </Field>
+            <div className={styles.recipientFilterActions}>
+              <button type="button" className={styles.primaryButton} onClick={() => loadRecipients(1)}>
+                <Filter size={15} aria-hidden="true" />
+                Load
+              </button>
+              <button
+                type="button"
+                className={styles.secondaryButton}
+                onClick={() => {
+                  setRecipientFilter(initialRecipientFilter);
+                  loadRecipients(1, recipientsPageSize || 25, initialRecipientFilter);
+                }}
+              >
+                <RotateCcw size={15} aria-hidden="true" />
+                Reset
+              </button>
+            </div>
+          </div>
+
+          <div className={cx(styles.tableWrap, styles.compactTableWrap)}>
+            <table className={cx(styles.dataTable, styles.recipientTable, styles.compactTable, styles.recipientCompactTable)}>
+              <thead>
+                <tr>
+                  <th>Status</th>
+                  <th>Mobile</th>
+                  <th>Attempts</th>
+                  <th>Failed</th>
+                  <th>131026</th>
+                  <th>131049</th>
+                  <th>Suppression</th>
+                  <th>Last Failure</th>
+                  <th>Reviewed</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recipients.map((row) => (
+                  <tr
+                    key={row.mobile}
+                    className={cx(styles.clickableRow, selectedRecipientMobile === row.mobile && styles.selectedRow)}
+                    onClick={() => setSelectedRecipientMobile(row.mobile)}
+                  >
+                    <td><span className={cx(styles.healthPill, styles[recipientTone(row)])}>{recipientToneLabel(row)}</span></td>
+                    <td>{row.mobile}</td>
+                    <td>{formatNumber(row.totalAttempts)}</td>
+                    <td>{formatNumber(row.failedCount)}</td>
+                    <td>{formatNumber(row.undeliverableCount)}</td>
+                    <td>{formatNumber(row.ecosystemFailureCount)}</td>
+                    <td>{formatDateTime(row.suppressedUntil)}</td>
+                    <td title={row.lastFailureReason || ""}>{row.lastFailureReason || "-"}</td>
+                    <td>{row.reviewed ? "Yes" : "No"}</td>
+                    <td onClick={(event) => event.stopPropagation()}>{renderRecipientActions(row, false, true)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {!recipients.length && <EmptyState text="No recipient-health rows." />}
+          </div>
+          <div className={styles.pagination}>
+            <button type="button" disabled={(recipientsPageNo || 1) <= 1} onClick={() => changeRecipientPage(-1)}>Previous</button>
+            <span>Page {recipientsPageNo || 1} of {Math.max(1, Math.ceil(recipientsTotal / (recipientsPageSize || 25)))}</span>
+            <button
+              type="button"
+              disabled={(recipientsPageNo || 1) >= Math.ceil(recipientsTotal / (recipientsPageSize || 25))}
+              onClick={() => changeRecipientPage(1)}
+            >
+              Next
+            </button>
+          </div>
+        </section>
+
+        <aside className={styles.sidePanel}>
+          <div className={styles.sideSection}>
+            <PanelTitle icon={Search} title="Manual Control" />
+            <Field label="Mobile">
+              <input value={manualMobile} onChange={(event) => setManualMobile(event.target.value)} placeholder="Enter mobile number" />
+            </Field>
+            <div className={styles.commandGrid}>
+              <button type="button" className={styles.warningButton} disabled={!manualMobile.trim()} onClick={() => openRecipientCommand("markInvalid", manualMobile)}>
+                <ShieldAlert size={14} aria-hidden="true" />
+                Mark invalid
+              </button>
+              <button type="button" className={styles.dangerButton} disabled={!manualMobile.trim()} onClick={() => openRecipientCommand("block", manualMobile)}>
+                <Ban size={14} aria-hidden="true" />
+                Block
+              </button>
+            </div>
+          </div>
+
+          <div className={styles.sideSection}>
+            <PanelTitle icon={Users} title="Selected Recipient" />
+            {selectedRecipient ? (
+              <>
+                <div className={styles.profileHeader}>
+                  <strong>{selectedRecipient.mobile}</strong>
+                  <span className={cx(styles.healthPill, styles[recipientTone(selectedRecipient)])}>{recipientToneLabel(selectedRecipient)}</span>
+                </div>
+                <div className={styles.profileGrid}>
+                  <div><span>Attempts</span><strong>{formatNumber(selectedRecipient.totalAttempts)}</strong></div>
+                  <div><span>Failed</span><strong>{formatNumber(selectedRecipient.failedCount)}</strong></div>
+                  <div><span>Last status</span><strong>{selectedRecipient.lastStatus || "-"}</strong></div>
+                  <div><span>Last attempt</span><strong>{formatDateTime(selectedRecipient.lastAttemptAt)}</strong></div>
+                  <div><span>Suppressed</span><strong>{formatDateTime(selectedRecipient.suppressedUntil)}</strong></div>
+                  <div><span>Block reason</span><strong>{selectedRecipient.adminBlockedReason || "-"}</strong></div>
+                  <div className={styles.profileWide}><span>Last failure</span><strong>{selectedRecipient.lastFailureReason || "-"}</strong></div>
+                </div>
+                {renderRecipientActions(selectedRecipient, true)}
+              </>
+            ) : (
+              <EmptyState text="Select a recipient to inspect it." />
+            )}
+          </div>
+        </aside>
+      </div>
+    </div>
+  );
+
+  const commandConfig = recipientCommand ? recipientCommandConfig[recipientCommand.type] : null;
+
+  return (
+    <div className={styles.page}>
+      <header className={styles.header}>
+        <div className={styles.titleBlock}>
+          <span className={styles.eyebrow}>
+            <Activity size={14} aria-hidden="true" />
+            MSG91 WhatsApp Ops
+          </span>
+          <h1>Analytics and recipient control</h1>
+          <p>{appliedModeCopy}</p>
+        </div>
+        <div className={styles.headerActions}>
+          <button type="button" className={styles.secondaryButton} onClick={exportCsv} disabled={exportLoading}>
+            <Download size={16} aria-hidden="true" />
+            {exportLoading ? "Exporting" : "Export Excel"}
+          </button>
+          <button type="button" className={styles.primaryButton} onClick={applyFilters}>
+            <RefreshCw size={16} aria-hidden="true" />
+            Refresh
+          </button>
+        </div>
+      </header>
+
+      <nav className={styles.workspaceTabs} aria-label="MSG91 analytics workspace">
+        {workspaces.map((workspace) => {
+          const Icon = workspace.icon;
+          return (
+            <button
+              key={workspace.id}
+              type="button"
+              className={cx(activeWorkspace === workspace.id && styles.tabActive)}
+              onClick={() => setActiveWorkspace(workspace.id)}
+            >
+              <Icon size={16} aria-hidden="true" />
+              {workspace.label}
+            </button>
+          );
+        })}
+      </nav>
+
+      {renderFilterRail()}
+
+      {error && <div className={styles.error}>{error}</div>}
+
+      <main className={styles.workspace}>
+        {activeWorkspace === "overview" && renderOverview()}
+        {activeWorkspace === "audit" && renderAudit()}
+        {activeWorkspace === "recipients" && renderRecipients()}
+      </main>
+
+      {recipientCommand && commandConfig && (
+        <div className={styles.modalBackdrop} role="presentation">
+          <div className={styles.commandModal} role="dialog" aria-modal="true" aria-labelledby="recipient-command-title">
+            <div className={styles.modalHeader}>
+              <div>
+                <span>{recipientCommand.mobile}</span>
+                <h3 id="recipient-command-title">{commandConfig.title}</h3>
+              </div>
+              <button type="button" className={styles.iconButton} onClick={() => setRecipientCommand(null)} aria-label="Close">
+                <X size={18} aria-hidden="true" />
+              </button>
+            </div>
+            <p>{commandConfig.detail}</p>
+            {commandConfig.needsReason && (
+              <Field label={commandConfig.reasonLabel}>
+                <input
+                  value={recipientCommand.reason}
+                  onChange={(event) => setRecipientCommand((prev) => ({ ...prev, reason: event.target.value }))}
+                  autoFocus
+                />
+              </Field>
+            )}
+            <div className={styles.modalActions}>
+              <button type="button" className={styles.secondaryButton} onClick={() => setRecipientCommand(null)}>Cancel</button>
+              <button
+                type="button"
+                className={cx(commandConfig.danger ? styles.dangerButton : styles.primaryButton)}
+                onClick={runRecipientCommand}
+                disabled={commandLoading}
+              >
+                {commandLoading ? "Saving" : commandConfig.confirmLabel}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
