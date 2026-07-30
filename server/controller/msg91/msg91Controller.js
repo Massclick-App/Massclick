@@ -17,7 +17,7 @@ export const requestOtp = async (req, res) => {
         const { mobile } = req.body;
         if (!mobile) return res.status(400).json({ success: false, message: "Mobile number required" });
 
-        const otp = await generateOtp(mobile);
+        await generateOtp(mobile);
         logAuthAuditEvent({
             eventType: "otp_sent",
             actor: null,
@@ -27,7 +27,7 @@ export const requestOtp = async (req, res) => {
             message: "OTP requested",
             metadata: { mobile },
         });
-        res.json({ success: true, message: "OTP sent successfully", otp });
+        res.json({ success: true, message: "OTP sent successfully" });
     } catch (err) {
         logAuthAuditEvent({
             eventType: "otp_send_failed",

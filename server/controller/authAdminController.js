@@ -10,7 +10,7 @@ import {
 } from "../auth/authAuditStore.js";
 import { resolveAuthActorFromToken } from "../auth/authResolver.js";
 import { WS_EVENTS, buildRoom } from "../websocket/constants.js";
-import { emitToRoom } from "../websocket/roomManager.js";
+import { emitToAdminSessions, emitToRoom } from "../websocket/roomManager.js";
 
 const ADMIN_OAUTH_QUERY = {
   refreshToken: { $exists: true, $ne: null },
@@ -43,6 +43,14 @@ const toDateOrNull = (value) => {
   if (!value) return null;
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const getIdQueryValues = (id) => {
+  const values = [String(id)];
+  if (mongoose.Types.ObjectId.isValid(id)) {
+    values.push(new mongoose.Types.ObjectId(id));
+  }
+  return values;
 };
 
 const getSessionStatus = (record) => {
@@ -250,11 +258,12 @@ export const adminUsersAction = async (req, res) => {
   ]);
 
   const userIds = users.map((user) => String(user._id));
+  const userIdQueryValues = userIds.flatMap(getIdQueryValues);
   const sessions = userIds.length
     ? await oauthModel
         .find({
           ...ADMIN_OAUTH_QUERY,
-          "user.userId": { $in: userIds },
+          "user.userId": { $in: userIdQueryValues },
         })
         .lean()
     : [];
@@ -391,10 +400,23 @@ export const authSessionRevokeAction = async (req, res) => {
     },
   });
 
+  let realtimeNotified = 0;
+  if (!isPublicClientSession(session)) {
+    realtimeNotified = await emitToAdminSessions(
+      WS_EVENTS.ADMIN_SESSION_REVOKED,
+      {
+        reason: "admin_session_revoked",
+        tokenId: sessionId,
+      },
+      { tokenId: sessionId }
+    );
+  }
+
   res.json({
     success: true,
     message: "Session revoked",
     revokedCurrentSession: req.authActor?.tokenId === sessionId,
+    realtimeNotified,
     session: mapSessionRecord({
       ...session,
       isRevoked: true,
@@ -419,9 +441,16 @@ export const adminUserLogoutAction = async (req, res) => {
 
   const result = await oauthModel.updateMany(
     {
-      ...ADMIN_OAUTH_QUERY,
-      "user.userId": adminUserId,
-      isRevoked: { $ne: true },
+      $and: [
+        ADMIN_OAUTH_QUERY,
+        { isRevoked: { $ne: true } },
+        {
+          $or: [
+            { "user.userId": { $in: getIdQueryValues(adminUserId) } },
+            { "user.userName": adminUser.userName || "" },
+          ],
+        },
+      ],
     },
     getRevocationPatch()
   );
@@ -440,6 +469,15 @@ export const adminUserLogoutAction = async (req, res) => {
     },
   });
 
+  const realtimeNotified = await emitToAdminSessions(
+    WS_EVENTS.ADMIN_SESSION_REVOKED,
+    {
+      reason: "admin_force_logout",
+      subjectId: adminUserId,
+    },
+    { subjectId: adminUserId }
+  );
+
   res.json({
     success: true,
     message: "Admin user logged out from active sessions",
@@ -450,6 +488,7 @@ export const adminUserLogoutAction = async (req, res) => {
     },
     matched: result.matchedCount,
     loggedOut: result.modifiedCount,
+    realtimeNotified,
   });
 };
 
@@ -497,6 +536,16 @@ export const adminUsersLogoutAllAction = async (req, res) => {
     metadata: { includeCurrent },
   });
 
+  const realtimeNotified = await emitToAdminSessions(
+    WS_EVENTS.ADMIN_SESSION_REVOKED,
+    {
+      reason: includeCurrent
+        ? "admin_force_logout_all"
+        : "admin_force_logout_all_except_current",
+    },
+    { excludeTokenId: includeCurrent ? null : req.authActor?.tokenId || null }
+  );
+
   res.json({
     success: true,
     message: includeCurrent
@@ -504,6 +553,7 @@ export const adminUsersLogoutAllAction = async (req, res) => {
       : "All other admin sessions logged out",
     matched: result.matchedCount,
     loggedOut: result.modifiedCount,
+    realtimeNotified,
     currentSessionIncluded: includeCurrent,
   });
 };

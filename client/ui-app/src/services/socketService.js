@@ -1,5 +1,11 @@
 import { io } from "socket.io-client";
-import { clearCustomerSession, getCustomerToken, updateAuthDebug } from "../auth/authStore.js";
+import {
+  clearAdminSession,
+  clearCustomerSession,
+  getAdminAccessToken,
+  getCustomerToken,
+  updateAuthDebug,
+} from "../auth/authStore.js";
 
 const WS_URL =
   process.env.REACT_APP_WS_URL ||
@@ -11,7 +17,16 @@ let getTokenFn = null;
 
 export const AUTH_EXPIRED_EVENT = "ws:auth:expired";
 export const CUSTOMER_SESSION_REVOKED_EVENT = "customer:session:revoked";
-const AUTH_FAILURE_MESSAGES = new Set(["AUTH_REQUIRED", "AUTH_EXPIRED", "INVALID_TOKEN", "TOKEN_REVOKED"]);
+export const ADMIN_SESSION_REVOKED_EVENT = "admin:session:revoked";
+const AUTH_FAILURE_MESSAGES = new Set([
+  "AUTH_REQUIRED",
+  "AUTH_EXPIRED",
+  "FORBIDDEN",
+  "INVALID_TOKEN",
+  "TOKEN_REVOKED",
+  "USER_INACTIVE",
+  "USER_LOCKED",
+]);
 
 const fireAuthExpired = () => {
   updateAuthDebug({
@@ -31,13 +46,33 @@ const getActiveSocketToken = () => {
   }
 };
 
-const handleSocketAuthExpired = ({ clearCustomer = false } = {}) => {
+const isAdminArea = () => {
+  if (typeof window === "undefined") return false;
+  return window.location.pathname === "/admin" || window.location.pathname.startsWith("/dashboard");
+};
+
+const handleSocketAuthExpired = ({ clearAdmin = false, clearCustomer = false } = {}) => {
+  if (clearAdmin && getActiveSocketToken() === getAdminAccessToken()) {
+    clearAdminSession();
+  }
   if (clearCustomer && getActiveSocketToken() === getCustomerToken()) {
     clearCustomerSession();
   }
   fireAuthExpired();
   socket?.io?.reconnection(false);
   socket?.disconnect();
+
+  if (clearAdmin && isAdminArea()) {
+    window.location.href = "/admin";
+  }
+};
+
+const getActiveSocketClearFlags = () => {
+  const activeToken = getActiveSocketToken();
+  return {
+    clearAdmin: Boolean(activeToken && activeToken === getAdminAccessToken()),
+    clearCustomer: Boolean(activeToken && activeToken === getCustomerToken()),
+  };
 };
 
 export const connectSocket = (token) => {
@@ -83,12 +118,16 @@ export const connectSocket = (token) => {
     updateAuthDebug({ websocket: { state: "connect_error", lastError: error.message } });
 
     if (AUTH_FAILURE_MESSAGES.has(error.message)) {
-      handleSocketAuthExpired({ clearCustomer: true });
+      handleSocketAuthExpired(getActiveSocketClearFlags());
     }
   });
 
   socket.on(CUSTOMER_SESSION_REVOKED_EVENT, () => {
     handleSocketAuthExpired({ clearCustomer: true });
+  });
+
+  socket.on(ADMIN_SESSION_REVOKED_EVENT, () => {
+    handleSocketAuthExpired({ clearAdmin: true });
   });
 
   socket.on("reconnect", () => {

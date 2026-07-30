@@ -166,16 +166,23 @@ const getStoredCustomerUser = () => {
   }
 };
 
-const getRealtimeSocketToken = (snapshot = getAuthSnapshot()) =>
-  snapshot?.admin?.accessToken ||
-  snapshot?.customer?.token ||
-  null;
+const getRealtimeSocketToken = (
+  snapshot = getAuthSnapshot(),
+  pathname = typeof window === "undefined" ? "" : window.location.pathname || ""
+) => {
+  const isAdminSurface = pathname === "/admin" || pathname.startsWith("/dashboard");
+
+  return isAdminSurface
+    ? snapshot?.admin?.accessToken || null
+    : snapshot?.customer?.token || snapshot?.admin?.accessToken || null;
+};
 
 function AppRoutes({
   isAuthenticated,
   authReady,
   showGlobalChrome,
   setIsAuthenticated,
+  setRealtimeSocketToken,
   openLoginModal,
   setOpenLoginModal,
 }) {
@@ -204,6 +211,10 @@ function AppRoutes({
     ['graphic', <GraphicDesign />],
     ['seo', <Seo />],
   ];
+
+  useEffect(() => {
+    setRealtimeSocketToken(getRealtimeSocketToken(getAuthSnapshot(), pathname));
+  }, [pathname, setRealtimeSocketToken]);
 
   return (
     <>
@@ -523,6 +534,7 @@ function App() {
               authReady={authReady}
               showGlobalChrome={showGlobalChrome}
               setIsAuthenticated={setIsAuthenticated}
+              setRealtimeSocketToken={setRealtimeSocketToken}
               openLoginModal={openLoginModal}
               setOpenLoginModal={setOpenLoginModal}
             />

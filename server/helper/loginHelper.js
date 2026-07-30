@@ -1,6 +1,8 @@
 import userModel from "../model/userModel.js";
 import oauthModel from '../model/oauthModel.js';
 import bcrypt from "bcrypt";
+import { WS_EVENTS } from "../websocket/constants.js";
+import { emitToAdminSessions } from "../websocket/roomManager.js";
 
 export const userValidation = async function (userName, password) {
     const trimmedUserName = userName.trim();
@@ -47,7 +49,34 @@ export const userValidation = async function (userName, password) {
         user.lastLoginAt = new Date();
         await user.save();
 
-        await oauthModel.deleteMany({ 'user.userName': trimmedUserName }).exec();
+        const now = new Date();
+        await oauthModel.updateMany(
+            {
+                isRevoked: { $ne: true },
+                $or: [
+                    { 'user.userId': user._id },
+                    { 'user.userId': String(user._id) },
+                    { 'user.userName': trimmedUserName },
+                ],
+            },
+            {
+                $set: {
+                    isRevoked: true,
+                    accessTokenExpiresAt: now,
+                    refreshTokenExpiresAt: now,
+                    expiresAt: now,
+                    lastUsedAt: now,
+                },
+            }
+        ).exec();
+        await emitToAdminSessions(
+            WS_EVENTS.ADMIN_SESSION_REVOKED,
+            {
+                reason: "admin_new_login",
+                subjectId: String(user._id),
+            },
+            { subjectId: String(user._id) }
+        );
 
         return user;
 

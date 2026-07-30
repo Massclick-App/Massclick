@@ -1,5 +1,4 @@
 import OAuth2Server from 'oauth2-server';
-import crypto from 'crypto';
 import { BAD_REQUEST, UNAUTHORIZED } from "../errorCodes.js";
 import {
   oauthAuthentication,
@@ -8,7 +7,9 @@ import {
   withRequestContext,
 } from "../helper/oauthHelper.js";
 import { logAuthAuditEvent } from "../auth/authAuditStore.js";
-import { resolveAuthActorFromToken } from "../auth/authResolver.js";
+import { extractBearerToken, resolveAuthActorFromToken } from "../auth/authResolver.js";
+import { WS_EVENTS } from "../websocket/constants.js";
+import { emitToAdminSessions } from "../websocket/roomManager.js";
 
 // ---------- PASSWORD LOGIN ----------
 export const oauthAction = async (req, res) => {
@@ -117,8 +118,7 @@ export const oauthToken = async (req, res) => {
 // ---------- LOGOUT ----------
 export const logoutAction = async (req, res) => {
   try {
-    const authHeader = req.headers.authorization;
-    const accessToken = authHeader?.split(" ")[1];
+    const accessToken = extractBearerToken(req.headers.authorization || "");
     if (!accessToken) {
       return res.status(UNAUTHORIZED.code).json({ error: "No token provided." });
     }
@@ -143,6 +143,16 @@ export const logoutAction = async (req, res) => {
       statusCode: 200,
       message: "Session token revoked",
     });
+    if (actor.actorType === "admin" && actor.tokenId) {
+      await emitToAdminSessions(
+        WS_EVENTS.ADMIN_SESSION_REVOKED,
+        {
+          reason: "admin_manual_logout",
+          tokenId: actor.tokenId,
+        },
+        { tokenId: actor.tokenId }
+      );
+    }
     res.status(200).json({ message: "Logout successful" });
   } catch (error) {
     return res.status(BAD_REQUEST.code).json({ error: error.message });

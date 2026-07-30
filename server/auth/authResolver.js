@@ -15,15 +15,22 @@ export class AuthError extends Error {
 
 export const extractBearerToken = (authorizationHeader = "") => {
   if (typeof authorizationHeader !== "string") return null;
-  return authorizationHeader.startsWith("Bearer ")
-    ? authorizationHeader.slice(7).trim()
-    : null;
+  const match = authorizationHeader.match(/^Bearer\s+(.+)$/i);
+  return match ? match[1].trim() : null;
 };
 
 const buildAdminActor = async (tokenRecord, source) => {
   const adminUser = await adminUserModel.findById(tokenRecord.user?.userId).lean();
   if (!adminUser) {
     throw new AuthError("USER_NOT_FOUND", 401, { auditEventType: "invalid_token" });
+  }
+
+  if (adminUser.isActive === false) {
+    throw new AuthError("USER_INACTIVE", 401, { auditEventType: "revocation" });
+  }
+
+  if (adminUser.isLocked) {
+    throw new AuthError("USER_LOCKED", 401, { auditEventType: "revocation" });
   }
 
   const role = adminUser.role || tokenRecord.user?.userRole || "admin";
@@ -123,9 +130,16 @@ export const resolveAuthActorFromToken = async (token, { source = "http" } = {})
     const isPublicClient =
       !oauthToken.refreshToken || oauthToken.user?.userRole === "client";
 
-    return isPublicClient
+    const actor = isPublicClient
       ? buildPublicClientActor(oauthToken, source)
-      : buildAdminActor(oauthToken, source);
+      : await buildAdminActor(oauthToken, source);
+
+    await oauthModel.updateOne(
+      { _id: oauthToken._id },
+      { $set: { lastUsedAt: new Date() } }
+    );
+
+    return actor;
   }
 
   return buildCustomerActor(token, source);

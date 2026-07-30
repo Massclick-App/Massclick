@@ -29,6 +29,7 @@ export const WS_EVENTS = {
   // ── App-wide system events ────────────────────────────────────────────────────
   APP_MAINTENANCE:       "app:maintenance",
   CUSTOMER_SESSION_REVOKED: "customer:session:revoked",
+  ADMIN_SESSION_REVOKED: "admin:session:revoked",
 
   // ── Reserved for future domains ───────────────────────────────────────────────
   // NOTIFICATION:       "notification"

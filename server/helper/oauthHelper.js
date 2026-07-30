@@ -2,6 +2,7 @@ import OAuth2Server from 'oauth2-server';
 import { AsyncLocalStorage } from 'async_hooks';
 import oauthModel from '../model/oauthModel.js';
 import clientModel from '../model/clientModel.js';
+import adminUserModel from "../model/userModel.js";
 import { createHttpAuthMiddleware } from "../auth/authMiddleware.js";
 import { userValidation } from '../helper/loginHelper.js';
 import crypto from 'crypto';
@@ -19,7 +20,13 @@ export const withRequestContext = (body, fn) => requestContextStorage.run(body |
 // ---------- OAuth2 Server Model Functions ----------
 
 const getAccessToken = (token) =>
-  oauthModel.findOne({ accessToken: token, isRevoked: { $ne: true } }).lean();
+  oauthModel
+    .findOneAndUpdate(
+      { accessToken: token, isRevoked: { $ne: true } },
+      { $set: { lastUsedAt: new Date() } },
+      { new: true }
+    )
+    .lean();
 
 const getClient = async (clientId, clientSecret) => {
   const client = await clientModel.findOne({ clientId, clientSecret }).lean();
@@ -55,6 +62,7 @@ const saveToken = async (token, client, user) => {
     // admin sessions still eligible for refresh).
     expiresAt: token.refreshTokenExpiresAt || token.accessTokenExpiresAt,
     isClientCredential: isClientCredentials,
+    isRevoked: false,
     client: {
       id: String(client.id),
       clientId: client.clientId,
@@ -112,6 +120,14 @@ const getRefreshToken = async (refreshToken) => {
   if (!token || token.isRevoked) return null;
   if (token.refreshTokenExpiresAt && token.refreshTokenExpiresAt <= new Date()) return null;
 
+  const isAdminRefresh = token.refreshToken && token.user?.userRole !== "client";
+  if (isAdminRefresh) {
+    const adminUser = await adminUserModel.findById(token.user?.userId).lean();
+    if (!adminUser || adminUser.isActive === false || adminUser.isLocked) {
+      return null;
+    }
+  }
+
   return {
     refreshToken: token.refreshToken,
     refreshTokenExpiresAt: token.refreshTokenExpiresAt,
@@ -125,8 +141,20 @@ const getRefreshToken = async (refreshToken) => {
 };
 
 const revokeToken = async (token) => {
-  const result = await oauthModel.deleteOne({ refreshToken: token.refreshToken });
-  return result.deletedCount > 0;
+  const now = new Date();
+  const result = await oauthModel.updateOne(
+    { refreshToken: token.refreshToken },
+    {
+      $set: {
+        isRevoked: true,
+        accessTokenExpiresAt: now,
+        refreshTokenExpiresAt: now,
+        expiresAt: now,
+        lastUsedAt: now,
+      },
+    }
+  );
+  return result.matchedCount > 0;
 };
 
 export const oauthtoken = new OAuth2Server({
@@ -156,8 +184,20 @@ export const logoutUsers = async (accessToken) => {
   try {
     const tokenRecord = await oauthModel.findOne({ accessToken }).lean();
     if (!tokenRecord) return false;
-    await oauthModel.deleteOne({ accessToken });
-    return true;
+    const now = new Date();
+    const result = await oauthModel.updateOne(
+      { _id: tokenRecord._id },
+      {
+        $set: {
+          isRevoked: true,
+          accessTokenExpiresAt: now,
+          refreshTokenExpiresAt: now,
+          expiresAt: now,
+          lastUsedAt: now,
+        },
+      }
+    );
+    return result.matchedCount > 0;
   } catch (error) {
     console.error("Logout cleanup error:", error);
     return false;
