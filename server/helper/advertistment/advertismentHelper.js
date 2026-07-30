@@ -13,11 +13,21 @@ const MOBILE_TOP_BANNER_RULES = {
   targetHeight: 240,
   aspectTolerance: 0.03,
 };
+// Native app hero banner — a taller, portrait-leaning crop matching the
+// Flutter results screen's full-bleed hero card (distinct from
+// MOBILE_TOP_BANNER_RULES, which is web's <768px responsive banner).
+const APP_TOP_BANNER_RULES = {
+  targetWidth: 1080,
+  targetHeight: 720,
+  aspectTolerance: 0.05,
+};
 const COMMON_TOP_BANNER_CATEGORY = "ALL_CATEGORIES";
 const TOP_BANNER_RATIO =
   TOP_BANNER_RULES.targetWidth / TOP_BANNER_RULES.targetHeight;
 const MOBILE_TOP_BANNER_RATIO =
   MOBILE_TOP_BANNER_RULES.targetWidth / MOBILE_TOP_BANNER_RULES.targetHeight;
+const APP_TOP_BANNER_RATIO =
+  APP_TOP_BANNER_RULES.targetWidth / APP_TOP_BANNER_RULES.targetHeight;
 const escapeRegExp = (value = "") =>
   value.toString().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -83,12 +93,18 @@ const cropTopBannerImage = (imageData) =>
 const cropMobileTopBannerImage = (imageData) =>
   cropBannerImage(imageData, MOBILE_TOP_BANNER_RULES, MOBILE_TOP_BANNER_RATIO);
 
+const cropAppTopBannerImage = (imageData) =>
+  cropBannerImage(imageData, APP_TOP_BANNER_RULES, APP_TOP_BANNER_RATIO);
+
 const addAdvertisementImageUrls = (ad) => {
   if (ad.bannerImageKey) {
     ad.bannerImage = getSignedUrlByKey(ad.bannerImageKey);
   }
   if (ad.mobileBannerImageKey) {
     ad.mobileBannerImage = getSignedUrlByKey(ad.mobileBannerImageKey);
+  }
+  if (ad.appBannerImageKey) {
+    ad.appBannerImage = getSignedUrlByKey(ad.appBannerImageKey);
   }
   return ad;
 };
@@ -122,8 +138,18 @@ export const createAdvertisement = async (reqBody = {}) => {
       );
       reqBody.mobileBannerImageKey = mobileUploadResult.key;
     }
+    if (reqBody.position === "TOP_BANNER" && reqBody.appBannerImage) {
+      reqBody.appBannerImage = await cropAppTopBannerImage(reqBody.appBannerImage);
+      const appUploadResult = await uploadImageToS3(
+        reqBody.appBannerImage,
+        `advertisements/banners/app-ad-${Date.now()}`,
+        { skipImageConversion: true }
+      );
+      reqBody.appBannerImageKey = appUploadResult.key;
+    }
     delete reqBody.bannerImage;
     delete reqBody.mobileBannerImage;
+    delete reqBody.appBannerImage;
 
     const ad = new advertismentModel(reqBody);
     const result = await ad.save();
@@ -246,8 +272,23 @@ export const updateAdvertisement = async (id, data) => {
     );
     data.mobileBannerImageKey = mobileUploadResult.key;
   }
+  if (
+    data.position === "TOP_BANNER" &&
+    data.appBannerImage &&
+    typeof data.appBannerImage === "string" &&
+    data.appBannerImage.startsWith("data:image")
+  ) {
+    data.appBannerImage = await cropAppTopBannerImage(data.appBannerImage);
+    const appUploadResult = await uploadImageToS3(
+      data.appBannerImage,
+      `advertisements/banners/app-ad-${Date.now()}`,
+      { skipImageConversion: true }
+    );
+    data.appBannerImageKey = appUploadResult.key;
+  }
   delete data.bannerImage;
   delete data.mobileBannerImage;
+  delete data.appBannerImage;
 
   const updatedAd = await advertismentModel.findByIdAndUpdate(
     id,

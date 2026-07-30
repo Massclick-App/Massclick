@@ -24,6 +24,13 @@ const advertistmentSchema = new mongoose.Schema(
       type: String,
     },
 
+    // Dedicated art for the native mobile app's hero banner — separate from
+    // mobileBannerImageKey (web's <768px responsive banner), which uses a
+    // different crop and doesn't read well in the app's rounded hero card.
+    appBannerImageKey: {
+      type: String,
+    },
+
     category: {
       type: String,
       required: true,

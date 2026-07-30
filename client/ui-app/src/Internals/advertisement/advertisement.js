@@ -27,10 +27,20 @@ const MOBILE_TOP_BANNER_RULES = {
   recommended: "720 x 240 px",
   label: "Optional mobile banner. Crop a separate image for phone screens."
 };
+const APP_TOP_BANNER_RULES = {
+  key: "app",
+  title: "App Top Banner",
+  targetWidth: 1080,
+  targetHeight: 720,
+  recommended: "1080 x 720 px",
+  label: "Optional dedicated banner for the Massclick mobile app's hero section — a taller crop than the web mobile banner."
+};
 const COMMON_TOP_BANNER_CATEGORY = "ALL_CATEGORIES";
 const COMMON_TOP_BANNER_LABEL = "All Categories";
 const getBannerRules = (cropType) => {
-  return cropType === "mobile" ? MOBILE_TOP_BANNER_RULES : TOP_BANNER_RULES;
+  if (cropType === "mobile") return MOBILE_TOP_BANNER_RULES;
+  if (cropType === "app") return APP_TOP_BANNER_RULES;
+  return TOP_BANNER_RULES;
 };
 const getImageDimensions = file => new Promise((resolve, reject) => {
   const image = new Image();
@@ -90,6 +100,7 @@ export default function AdvertisementPage() {
   const dispatch = useDispatch();
   const fileInputRef = useRef(null);
   const mobileFileInputRef = useRef(null);
+  const appFileInputRef = useRef(null);
   const {
     advertisements = [],
     total = 0,
@@ -106,6 +117,8 @@ export default function AdvertisementPage() {
   const [imageMeta, setImageMeta] = useState(null);
   const [mobilePreview, setMobilePreview] = useState(null);
   const [mobileImageMeta, setMobileImageMeta] = useState(null);
+  const [appPreview, setAppPreview] = useState(null);
+  const [appImageMeta, setAppImageMeta] = useState(null);
   const [cropperOpen, setCropperOpen] = useState(false);
   const [cropData, setCropData] = useState({
     image: null,
@@ -127,7 +140,8 @@ export default function AdvertisementPage() {
     startTime: "",
     endTime: "",
     bannerImage: "",
-    mobileBannerImage: ""
+    mobileBannerImage: "",
+    appBannerImage: ""
   });
   useEffect(() => {
     dispatch(getAllAdvertisements());
@@ -147,6 +161,7 @@ export default function AdvertisementPage() {
       const positionUpdates = name === "position" ? {
         bannerImage: "",
         mobileBannerImage: "",
+        appBannerImage: "",
         ...(value !== "TOP_BANNER" && prev.category === COMMON_TOP_BANNER_CATEGORY
           ? { category: "" }
           : {}
@@ -159,6 +174,8 @@ export default function AdvertisementPage() {
       setImageMeta(null);
       setMobilePreview(null);
       setMobileImageMeta(null);
+      setAppPreview(null);
+      setAppImageMeta(null);
       setCropperOpen(false);
       setCropData({
         image: null,
@@ -173,6 +190,7 @@ export default function AdvertisementPage() {
       });
       if (fileInputRef.current) fileInputRef.current.value = "";
       if (mobileFileInputRef.current) mobileFileInputRef.current.value = "";
+      if (appFileInputRef.current) appFileInputRef.current.value = "";
       setErrors(prev => {
         const next = {
           ...prev
@@ -277,11 +295,43 @@ export default function AdvertisementPage() {
     });
     setCropperOpen(true);
   };
+  const handleAppBannerImageChange = async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    let dimensions;
+    try {
+      dimensions = await getImageDimensions(file);
+    } catch (error) {
+      setErrors(prev => ({
+        ...prev,
+        appBannerImage: error.message
+      }));
+      return;
+    }
+
+    const sourceImage = await convertToBase64(file);
+    setAppImageMeta(dimensions);
+    setCropData({
+      image: sourceImage,
+      cropType: "app",
+      position: formData.position,
+      dimensions,
+      crop: {
+        x: 0,
+        y: 0
+      },
+      zoom: 1,
+      croppedAreaPixels: null
+    });
+    setCropperOpen(true);
+  };
+  const cropFieldName = cropType =>
+    cropType === "mobile" ? "mobileBannerImage" : cropType === "app" ? "appBannerImage" : "bannerImage";
   const handleTopBannerCropSave = async () => {
     if (!cropData.image || !cropData.croppedAreaPixels) {
       setErrors(prev => ({
         ...prev,
-        [cropData.cropType === "mobile" ? "mobileBannerImage" : "bannerImage"]: "Please adjust the banner crop before saving"
+        [cropFieldName(cropData.cropType)]: "Please adjust the banner crop before saving"
       }));
       return;
     }
@@ -297,6 +347,16 @@ export default function AdvertisementPage() {
         setFormData(p => ({
           ...p,
           mobileBannerImage: cropped.base64
+        }));
+      } else if (cropData.cropType === "app") {
+        setAppPreview(cropped.base64);
+        setAppImageMeta({
+          width: cropped.originalWidth,
+          height: cropped.originalHeight
+        });
+        setFormData(p => ({
+          ...p,
+          appBannerImage: cropped.base64
         }));
       } else {
         setPreview(cropped.base64);
@@ -315,13 +375,14 @@ export default function AdvertisementPage() {
         };
         delete next.bannerImage;
         delete next.mobileBannerImage;
+        delete next.appBannerImage;
         return next;
       });
       setCropperOpen(false);
     } catch (error) {
       setErrors(prev => ({
         ...prev,
-        [cropData.cropType === "mobile" ? "mobileBannerImage" : "bannerImage"]: error.message
+        [cropFieldName(cropData.cropType)]: error.message
       }));
     }
   };
@@ -329,6 +390,7 @@ export default function AdvertisementPage() {
     setCropperOpen(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
     if (mobileFileInputRef.current) mobileFileInputRef.current.value = "";
+    if (appFileInputRef.current) appFileInputRef.current.value = "";
   };
   const validateForm = () => {
     let err = {};
@@ -352,12 +414,15 @@ export default function AdvertisementPage() {
       startTime: "",
       endTime: "",
       bannerImage: "",
-      mobileBannerImage: ""
+      mobileBannerImage: "",
+      appBannerImage: ""
     });
     setPreview(null);
     setImageMeta(null);
     setMobilePreview(null);
     setMobileImageMeta(null);
+    setAppPreview(null);
+    setAppImageMeta(null);
     setCropperOpen(false);
     setCropData({
       image: null,
@@ -375,6 +440,7 @@ export default function AdvertisementPage() {
     setErrors({});
     if (fileInputRef.current) fileInputRef.current.value = "";
     if (mobileFileInputRef.current) mobileFileInputRef.current.value = "";
+    if (appFileInputRef.current) appFileInputRef.current.value = "";
   };
   const handleSubmit = e => {
     e.preventDefault();
@@ -397,12 +463,15 @@ export default function AdvertisementPage() {
       startTime: row.startTimeRaw,
       endTime: row.endTimeRaw,
       bannerImage: "",
-      mobileBannerImage: ""
+      mobileBannerImage: "",
+      appBannerImage: ""
     });
     setPreview(row.bannerImage || null);
     setMobilePreview(row.mobileBannerImage || null);
+    setAppPreview(row.appBannerImage || null);
     setImageMeta(null);
     setMobileImageMeta(null);
+    setAppImageMeta(null);
   };
   const handleDelete = row => {
     if (window.confirm(`Delete "${row.title}" ?`)) {
@@ -420,7 +489,8 @@ export default function AdvertisementPage() {
     startTimeRaw: ad.startTime?.slice(0, 16),
     endTimeRaw: ad.endTime?.slice(0, 16),
     bannerImage: ad.bannerImage,
-    mobileBannerImage: ad.mobileBannerImage
+    mobileBannerImage: ad.mobileBannerImage,
+    appBannerImage: ad.appBannerImage
   }));
   const columns = [{
     id: "title",
@@ -588,6 +658,26 @@ export default function AdvertisementPage() {
                     Selected mobile image: {mobileImageMeta.width} x {mobileImageMeta.height} px -> saved as {MOBILE_TOP_BANNER_RULES.recommended}
                   </span>}
                 {errors.mobileBannerImage && <span className={cx("form-error-text")}>{errors.mobileBannerImage}</span>}
+              </div>}
+
+            {needsMobileBanner && <div className={cx("mobile-banner-upload")}>
+                <label>App Banner Image</label>
+                <p className={cx("upload-guidance")}>{APP_TOP_BANNER_RULES.label}</p>
+                <div className={cx("upload-box")}>
+                  <button type="button" onClick={() => appFileInputRef.current.click()}>
+                    <CloudUploadIcon fontSize="small" />
+                    Upload App Image
+                  </button>
+                  <input ref={appFileInputRef} hidden type="file" accept="image/*" onChange={handleAppBannerImageChange} />
+                </div>
+                {appPreview && <div className={cx("banner-preview mobile-banner-preview")}>
+                    <span>App Preview</span>
+                    <img src={appPreview} alt="app preview" />
+                  </div>}
+                {appImageMeta && <span className={cx("image-meta")}>
+                    Selected app image: {appImageMeta.width} x {appImageMeta.height} px -> saved as {APP_TOP_BANNER_RULES.recommended}
+                  </span>}
+                {errors.appBannerImage && <span className={cx("form-error-text")}>{errors.appBannerImage}</span>}
               </div>}
           </div>
 
