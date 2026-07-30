@@ -19,14 +19,13 @@ export const withRequestContext = (body, fn) => requestContextStorage.run(body |
 
 // ---------- OAuth2 Server Model Functions ----------
 
+// Part of the oauth2-server model contract, reached only through its
+// authenticate() handler — which nothing calls: request auth runs through
+// createHttpAuthMiddleware -> resolveAuthActorFromToken. Kept so the model
+// stays complete, but deliberately a plain read. It briefly stamped lastUsedAt
+// via findOneAndUpdate, which was a write on a read path *and* unreachable.
 const getAccessToken = (token) =>
-  oauthModel
-    .findOneAndUpdate(
-      { accessToken: token, isRevoked: { $ne: true } },
-      { $set: { lastUsedAt: new Date() } },
-      { new: true }
-    )
-    .lean();
+  oauthModel.findOne({ accessToken: token, isRevoked: { $ne: true } }).lean();
 
 const getClient = async (clientId, clientSecret) => {
   const client = await clientModel.findOne({ clientId, clientSecret }).lean();

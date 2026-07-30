@@ -4,6 +4,10 @@ import adminUserModel from "../model/userModel.js";
 import otpUserModel from "../model/msg91Model/usersModels.js";
 import { getRolePermissions } from "./authRoles.js";
 
+// Floor on how often a session's lastUsedAt is rewritten. See the throttle in
+// resolveAuthActorFromToken.
+const LAST_USED_WRITE_INTERVAL_MS = 60 * 1000;
+
 export class AuthError extends Error {
   constructor(code, statusCode = 401, metadata = {}) {
     super(code);
@@ -134,10 +138,20 @@ export const resolveAuthActorFromToken = async (token, { source = "http" } = {})
       ? buildPublicClientActor(oauthToken, source)
       : await buildAdminActor(oauthToken, source);
 
-    await oauthModel.updateOne(
-      { _id: oauthToken._id },
-      { $set: { lastUsedAt: new Date() } }
-    );
+    // lastUsedAt feeds the auth console's "last seen" column, which nobody
+    // reads at finer than minute granularity. Stamping it on every request put
+    // a Mongo round-trip in front of every authenticated response, so it is
+    // throttled to at most one write a minute per session and never awaited —
+    // the response should not wait on bookkeeping, and a failed write here is
+    // not worth turning a good request into a 500.
+    const lastUsedAt = oauthToken.lastUsedAt?.getTime() ?? 0;
+    if (Date.now() - lastUsedAt >= LAST_USED_WRITE_INTERVAL_MS) {
+      oauthModel
+        .updateOne({ _id: oauthToken._id }, { $set: { lastUsedAt: new Date() } })
+        .catch((error) =>
+          console.error("lastUsedAt update failed:", error.message)
+        );
+    }
 
     return actor;
   }
