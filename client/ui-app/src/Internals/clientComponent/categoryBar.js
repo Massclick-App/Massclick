@@ -9,6 +9,7 @@ import { Notifications as NotificationsIcon, Mail as MailIcon, Menu as MenuIcon,
 import AppRegistrationIcon from '@mui/icons-material/AppRegistration';
 import LoginIcon from '@mui/icons-material/Login';
 import DynamicFeedIcon from "@mui/icons-material/DynamicFeed";
+import WorkOutlineRoundedIcon from "@mui/icons-material/WorkOutlineRounded";
 import { getDisplayableLeadNotifications } from "./leadsNotification/leadNotificationUtils.js";
 import { fetchMatchedLeads } from "../../redux/actions/leadsAction.js";
 import styles from "./categoryBar.module.css";
@@ -36,6 +37,9 @@ const categories = [{
 }, {
   name: "Spotlight",
   icon: <DynamicFeedIcon />
+}, {
+  name: "We're Hiring",
+  icon: <WorkOutlineRoundedIcon />
 }];
 
 const CategoryBar = () => {
@@ -126,6 +130,8 @@ const CategoryBar = () => {
         return;
       }
       navigate("/user_feed");
+    } else if (name === "We're Hiring") {
+      navigate("/careers");
     }
   };
   

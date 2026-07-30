@@ -37,11 +37,35 @@ const teamRoles = [
     title: "Rtn. Dr. AKS. K. Srinivasan",
     role: "Advisor",
     organization: "MassClick Technologies Private Limited",
-    description: "A distinguished civic and business leader providing experienced guidance to MassClick's leadership team.",
-    details: [
-      "Rotary District 3000 Public Image Officer, 2025–27",
-      "Director, RockCity Nidhi Ltd, Trichy",
-      "Director, Governing Council – PRCI",
+    description: "A respected civic, business and communications leader whose experience across professional institutions, public service and community organizations strengthens MassClick's leadership vision.",
+    sections: [
+      {
+        title: "Leadership & advisory",
+        items: [
+          "Director, Governing Council, PRCI",
+          "PRCI National Executive",
+          "Director, Rockcity Nidhi Ltd, Trichy",
+          "Advisor to Niraali Paramedical Institution, Mahalakshmi Group of Institutions and the Institute of Ophthalmology, Joseph Eye Hospital",
+        ],
+      },
+      {
+        title: "Professional & community service",
+        items: [
+          "Media Publicity Officer, Rotary Club of Tiruchirapalli, 2024–2027",
+          "Vice Chairman & Promotions, Pro Legal Trust",
+          "Chairman, India Red Cross Society, Srirangam Sub-Taluk",
+          "Professional Associate, Press Club of Bangalore",
+        ],
+      },
+      {
+        title: "Recognition & memberships",
+        items: [
+          "Chanakya Awardee — Humanitarian Award 2025",
+          "Ambassador Extraordinaire, Pachyderm Tales",
+          "Patron Member, Builders Association of India, Trichy Centre",
+          "Member, Rotary Club of Tiruchirapalli, RID 3000",
+        ],
+      },
     ],
   },
   {
@@ -51,8 +75,38 @@ const teamRoles = [
     title: "Rtn. U. Rubini",
     role: "Brand Ambassador",
     organization: "MassClick Technologies Private Limited",
-    description: "Representing MassClick's mission and helping our community discover the value of trusted local connections.",
-    details: ["Community engagement", "Brand advocacy", "Customer connection"],
+    description: "A finance professional, consultant and social activist representing MassClick through community leadership, public awareness and meaningful customer connections.",
+    sections: [
+      {
+        title: "Professional highlights",
+        items: [
+          "Finance Analyst & Consultant",
+          "Managing Director, Storia Portraits",
+          "Licensed Insurance Agent — life, health and general insurance solutions",
+          "Awareness Speaker, Professional Counsellor and Social Media Influencer",
+        ],
+      },
+      {
+        title: "Leadership & positions",
+        items: [
+          "President, E Save Social Welfare & Charitable Trust",
+          "State Co-ordinator, Global Social Welfare Protection Movement",
+          "Treasurer, Trichy Payaneettalar Iyakam",
+          "Board Committee Member, The Thiruchi Seva Sangam",
+          "Social Media Chairman, Rotary Club of Tiruchirapalli, 2025–2026",
+        ],
+      },
+      {
+        title: "Achievements & recognition",
+        items: [
+          "Food Adulteration Awareness — Consumer Association of India",
+          "FSSAI Food Safety Education Program",
+          "Bureau of Indian Standards — Consumer Protection",
+          "Southern Railway — Friend of Indian Railways",
+          "Safety Rights for All — Rights & Safety Awareness",
+        ],
+      },
+    ],
   },
 ];
 const values = [
@@ -350,9 +404,22 @@ const CareersPage = () => {
                 <small><Building2 size={17} />{activeProfile.organization}</small>
               </div>
               <p>{activeProfile.description}</p>
-              <ul>
-                {activeProfile.details.map((detail) => <li key={detail}><Check size={17} />{detail}</li>)}
-              </ul>
+              {activeProfile.sections ? (
+                <div className={cx("profile-sections")}>
+                  {activeProfile.sections.map((section) => (
+                    <section key={section.title}>
+                      <h3>{section.title}</h3>
+                      <ul>
+                        {section.items.map((detail) => <li key={detail}><Check size={17} />{detail}</li>)}
+                      </ul>
+                    </section>
+                  ))}
+                </div>
+              ) : (
+                <ul>
+                  {activeProfile.details.map((detail) => <li key={detail}><Check size={17} />{detail}</li>)}
+                </ul>
+              )}
               <button type="button" onClick={() => setActiveProfile(null)}>Close profile</button>
             </div>
           </div>

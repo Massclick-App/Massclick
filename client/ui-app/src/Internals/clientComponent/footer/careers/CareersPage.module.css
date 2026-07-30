@@ -1293,9 +1293,10 @@
 
 .profile-modal {
   position: relative;
-  width: min(960px, 100%);
-  max-height: min(680px, 92vh);
-  overflow: auto;
+  width: min(1080px, 100%);
+  height: min(760px, 92vh);
+  max-height: min(760px, 92vh);
+  overflow: hidden;
   display: grid;
   grid-template-columns: minmax(320px, 0.88fr) minmax(420px, 1.12fr);
   border: 1px solid rgba(255, 255, 255, 0.28);
@@ -1322,7 +1323,9 @@
 }
 
 .modal-image {
-  min-height: 570px;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
   background: #edf0f5;
 }
 
@@ -1335,7 +1338,11 @@
 }
 
 .modal-content {
-  align-self: center;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
   padding: clamp(38px, 5vw, 60px);
   background: linear-gradient(145deg, #fff, #fffaf7);
 }
@@ -1411,6 +1418,37 @@
   display: grid;
   gap: 10px;
   list-style: none;
+}
+
+.profile-sections {
+  margin-top: 22px;
+  display: grid;
+  gap: 20px;
+}
+
+.profile-sections section {
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.profile-sections section:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.profile-sections h3 {
+  margin: 0;
+  color: var(--navy);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+
+.profile-sections ul {
+  margin-top: 11px;
+  gap: 8px;
 }
 
 .modal-content li {
@@ -1787,18 +1825,25 @@
 
   .profile-modal {
     width: 100%;
+    height: 94vh;
     max-height: 94vh;
-    display: block;
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(220px, 32vh) minmax(0, 1fr);
     border-radius: 18px;
   }
 
   .modal-image {
-    height: 300px;
+    height: auto;
     min-height: 0;
   }
 
   .modal-content {
     padding: 28px 23px 32px;
+  }
+
+  .profile-sections {
+    gap: 17px;
   }
 
   .modal-content h2 {
