@@ -10,6 +10,7 @@ import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import CustomizedTable from "../../components/Table/CustomizedTable.js";
 import AdminViewTabs from "../../components/AdminViewTabs.js";
+import CustomerSessionsPanel from "./CustomerSessionsPanel.js";
 const cx = createScopedClassNames(styles);
 export default function User() {
   const dispatch = useDispatch();
@@ -368,6 +369,10 @@ export default function User() {
     }}>
         User Table
       </Typography>
+      <CustomerSessionsPanel
+        title="Customer Sessions"
+        description="Customer OTP users are listed here. Log out one customer or every customer without deleting their account."
+      />
       <Box sx={{
       width: "100%"
     }}>
