@@ -45,6 +45,7 @@ import userFeedbackReducer from './reducers/userFeedbackReducer.js';
 import searchRequestReducer from './reducers/searchRequestReducer.js';
 import massclickEventReducer from './reducers/massclickEventReducer.js';
 import legalDocumentsReducer from './reducers/legalDocumentsReducer.js';
+import hiringReducer from './reducers/hiringReducer.js';
 
 const rootReducer = combineReducers({
   auth: authReducer,
@@ -73,6 +74,7 @@ const rootReducer = combineReducers({
   publicize: publicizeReducer,
   termsAndConditions: termsAndConditionReducer,
   legalDocuments: legalDocumentsReducer,
+  hiring: hiringReducer,
   favorites: favoriteReducer,
   fcmMarketing: fcmMarketingReducer,
   systemSettings: systemSettingsReducer,
