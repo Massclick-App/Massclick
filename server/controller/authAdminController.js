@@ -7,6 +7,8 @@ import {
   summarizeAuthAuditEvents,
 } from "../auth/authAuditStore.js";
 import { resolveAuthActorFromToken } from "../auth/authResolver.js";
+import { WS_EVENTS, buildRoom } from "../websocket/constants.js";
+import { emitToRoom } from "../websocket/roomManager.js";
 
 const nowFilter = { $gt: new Date() };
 
@@ -146,6 +148,11 @@ export const customerLogoutAction = async (req, res) => {
     message: `Force logout: ${mobile} (tokenVersion=${customer.tokenVersion})`,
   });
 
+  emitToRoom(buildRoom.user(String(customer._id)), WS_EVENTS.CUSTOMER_SESSION_REVOKED, {
+    reason: "admin_force_logout",
+    tokenVersion: customer.tokenVersion,
+  });
+
   res.json({
     success: true,
     message: "Customer logged out on all devices",
@@ -181,6 +188,10 @@ export const customerLogoutAllAction = async (req, res) => {
     req,
     statusCode: 200,
     message: `Force logout ALL customers (${result.modifiedCount} sessions invalidated)`,
+  });
+
+  emitToRoom(buildRoom.customers(), WS_EVENTS.CUSTOMER_SESSION_REVOKED, {
+    reason: "admin_force_logout_all",
   });
 
   res.json({

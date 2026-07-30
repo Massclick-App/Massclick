@@ -24,6 +24,10 @@ export const registerCoreHandlers = (socket) => {
     rooms.push(buildRoom.adminChat());
   }
 
+  if (authType === "customer") {
+    rooms.push(buildRoom.customers());
+  }
+
   rooms.forEach((room) => {
     socket.join(room);
     addRoomToConnection(socket.id, room);

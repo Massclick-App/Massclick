@@ -1,6 +1,7 @@
 import axios from 'axios';
 import {
   clearAdminSession,
+  clearCustomerSession,
   getAdminAccessToken,
   getAdminRefreshToken,
   getCustomerToken,
@@ -75,6 +76,7 @@ const getRequestPath = (url) => {
 const isReloginRequest = (url) => getRequestPath(url) === '/oauth/relogin';
 
 const isCustomerAuthRequest = (pathname) => CUSTOMER_AUTH_PATHS.some((pattern) => pattern.test(pathname));
+const CUSTOMER_AUTH_ERROR_CODES = new Set(["AUTH_REQUIRED", "AUTH_EXPIRED", "INVALID_TOKEN", "TOKEN_REVOKED"]);
 
 const MAINTENANCE_BYPASS_PATHS = [
   /^\/api\/app\/version(\/|$)/,
@@ -247,6 +249,18 @@ axiosInstance.interceptors.response.use(
     }
 
     const originalRequest = error.config;
+    const requestPath = getRequestPath(originalRequest?.url);
+    const responseErrorCode = error.response?.data?.error || error.response?.data?.code;
+
+    if (
+      error.response?.status === 401 &&
+      isCustomerAuthRequest(requestPath) &&
+      CUSTOMER_AUTH_ERROR_CODES.has(responseErrorCode)
+    ) {
+      clearCustomerSession();
+      recordAuthFailure("customer-otp", error);
+      return Promise.reject(error);
+    }
 
     // Only retry once and if it's a 401
     if (error.response?.status === 401 && !originalRequest._retry) {

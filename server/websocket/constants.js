@@ -28,6 +28,7 @@ export const WS_EVENTS = {
 
   // ── App-wide system events ────────────────────────────────────────────────────
   APP_MAINTENANCE:       "app:maintenance",
+  CUSTOMER_SESSION_REVOKED: "customer:session:revoked",
 
   // ── Reserved for future domains ───────────────────────────────────────────────
   // NOTIFICATION:       "notification"
@@ -39,6 +40,7 @@ export const buildRoom = {
   // mobileNumber is always 10-digit (no 91 prefix) — matches userModel.mobileNumber1
   business: (mobile) => `business:${mobile}`,
   user:     (userId) => `user:${userId}`,
+  customers: ()      => `customers:global`,
   admin:    ()       => `admin:global`,
   adminChat: ()      => `admin:chat`,
   chat:     (id)     => `chat:${id}`,

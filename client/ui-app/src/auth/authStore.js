@@ -12,6 +12,7 @@ const STORAGE_KEYS = {
   customer: {
     token: "authToken",
     user: "authUser",
+    mobile: "mobileNumber",
   },
   publicClient: {
     accessToken: "clientAccessToken",
@@ -98,7 +99,7 @@ const buildCustomerSession = () => {
     isAuthenticated: Boolean(read(STORAGE_KEYS.customer.token)),
     token: read(STORAGE_KEYS.customer.token),
     user,
-    mobile: user?.mobileNumber1 || "",
+    mobile: user?.mobileNumber1 || read(STORAGE_KEYS.customer.mobile) || "",
   };
 };
 
@@ -180,6 +181,7 @@ export const clearAdminSession = () => {
 export const setCustomerSession = ({ token, user } = {}) => {
   write(STORAGE_KEYS.customer.token, token);
   write(STORAGE_KEYS.customer.user, JSON.stringify(user || null));
+  write(STORAGE_KEYS.customer.mobile, user?.mobileNumber1 || user?.mobile || "");
   emit("customer-session-updated");
 };
 

@@ -1,5 +1,5 @@
 import { io } from "socket.io-client";
-import { updateAuthDebug } from "../auth/authStore.js";
+import { clearCustomerSession, getCustomerToken, updateAuthDebug } from "../auth/authStore.js";
 
 const WS_URL =
   process.env.REACT_APP_WS_URL ||
@@ -10,6 +10,8 @@ let currentToken = null;
 let getTokenFn = null;
 
 export const AUTH_EXPIRED_EVENT = "ws:auth:expired";
+export const CUSTOMER_SESSION_REVOKED_EVENT = "customer:session:revoked";
+const AUTH_FAILURE_MESSAGES = new Set(["AUTH_REQUIRED", "AUTH_EXPIRED", "INVALID_TOKEN", "TOKEN_REVOKED"]);
 
 const fireAuthExpired = () => {
   updateAuthDebug({
@@ -19,6 +21,23 @@ const fireAuthExpired = () => {
     },
   });
   window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT));
+};
+
+const getActiveSocketToken = () => {
+  try {
+    return getTokenFn?.() || currentToken;
+  } catch {
+    return currentToken;
+  }
+};
+
+const handleSocketAuthExpired = ({ clearCustomer = false } = {}) => {
+  if (clearCustomer && getActiveSocketToken() === getCustomerToken()) {
+    clearCustomerSession();
+  }
+  fireAuthExpired();
+  socket?.io?.reconnection(false);
+  socket?.disconnect();
 };
 
 export const connectSocket = (token) => {
@@ -63,11 +82,13 @@ export const connectSocket = (token) => {
   socket.on("connect_error", (error) => {
     updateAuthDebug({ websocket: { state: "connect_error", lastError: error.message } });
 
-    if (error.message === "INVALID_TOKEN" || error.message === "AUTH_REQUIRED") {
-      socket.io.reconnection(false);
-      socket.disconnect();
-      fireAuthExpired();
+    if (AUTH_FAILURE_MESSAGES.has(error.message)) {
+      handleSocketAuthExpired({ clearCustomer: true });
     }
+  });
+
+  socket.on(CUSTOMER_SESSION_REVOKED_EVENT, () => {
+    handleSocketAuthExpired({ clearCustomer: true });
   });
 
   socket.on("reconnect", () => {
