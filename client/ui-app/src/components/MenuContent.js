@@ -46,6 +46,7 @@ import GroupsRoundedIcon from "@mui/icons-material/GroupsOutlined";
 import RequestQuoteIcon from "@mui/icons-material/RequestQuoteOutlined";
 import FolderCopyIcon from "@mui/icons-material/FolderCopyOutlined";
 import DynamicFeedIcon from "@mui/icons-material/DynamicFeedOutlined";
+import WorkOutlineRoundedIcon from "@mui/icons-material/WorkOutlineRounded";
 import { fetchChatUnreadCount, getAdminChatToken } from "../services/chatService";
 import { connectSocket } from "../services/socketService";
 import { getAuthSnapshot } from "../auth/authStore.js";
@@ -94,6 +95,7 @@ const MENU_SECTIONS = [
       { text: "Feed", icon: DynamicFeedIcon, path: "/dashboard/feed" },
       { text: "MNI", icon: StorefrontIcon, path: "/dashboard/mni-data" },
       { text: "Notifications", icon: NotificationsIcon, path: "/dashboard/fcm-marketing" },
+      { text: "Hiring", icon: WorkOutlineRoundedIcon, path: "/dashboard/hiring" },
     ],
   },
 

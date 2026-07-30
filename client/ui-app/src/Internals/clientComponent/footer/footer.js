@@ -29,6 +29,7 @@ const Footer = () => {
             <FooterLink to="/testimonials">Customer Stories</FooterLink>
             {/* <FooterLink to="/feedbacks">User Feedback</FooterLink> */}
             <FooterLink to="/customercare">Customer Support</FooterLink>
+            <FooterLink to="/careers">We&apos;re Hiring</FooterLink>
             {/* <FooterLink to="/refund">Refund Policy</FooterLink> */}
             {/* <FooterLink to="/portfolio">Media & Gallery</FooterLink> */}
           </ul>

@@ -64,6 +64,9 @@ const GraphicDesign = lazy(() => import(/* webpackChunkName: "footer-graphic" */
 const Seo = lazy(() => import(/* webpackChunkName: "footer-seo" */ './Internals/clientComponent/footer/seo/seo.js'));
 const DeleteAccount = lazy(() => import(/* webpackChunkName: "footer-delete" */ './Internals/clientComponent/footer/deleteAccount/deleteAccount.js'));
 const KnowledgeBasePage = lazy(() => import(/* webpackChunkName: "knowledge-base" */ "./Internals/clientComponent/footer/knowledgeBase/knowledgeBase.js"));
+const CareersPage = lazy(() => import(/* webpackChunkName: "footer-careers" */ "./Internals/clientComponent/footer/careers/CareersPage.js"));
+const JobResultsPage = lazy(() => import(/* webpackChunkName: "careers-jobs" */ "./Internals/clientComponent/footer/careers/JobResultsPage.js"));
+const JobApplicationPage = lazy(() => import(/* webpackChunkName: "careers-apply" */ "./Internals/clientComponent/footer/careers/JobApplicationPage.js"));
 
 const WriteReviewPage = lazy(() => import(/* webpackChunkName: "review" */ './Internals/clientComponent/rating/submitReviewPage.js'));
 const Profile = lazy(() => import(/* webpackChunkName: "profile" */ './Internals/Login/profile/profile.js'));
@@ -104,6 +107,7 @@ const GmapsLeads = lazy(() => import(/* webpackChunkName: "admin-gmaps-leads" */
 const Msg91Analytics = lazy(() => import(/* webpackChunkName: "admin-msg91-analytics" */ './Internals/Msg91Analytics/Msg91Analytics.js'));
 const AuthControl = lazy(() => import(/* webpackChunkName: "admin-auth-console" */ './Internals/AuthControl/AuthControl.js'));
 const PublicUserCounterAdmin = lazy(() => import(/* webpackChunkName: "admin-public-user-counter" */ './Internals/PublicUserCounter/PublicUserCounterAdmin.js'));
+const HiringAdmin = lazy(() => import(/* webpackChunkName: "admin-hiring" */ './Internals/Hiring/HiringAdmin.js'));
 const GscAnalytics = lazy(() => import(/* webpackChunkName: "admin-gsc" */ './Internals/gscAnalytics/gscAnalytics.js'));
 const Ga4Analytics = lazy(() => import(/* webpackChunkName: "admin-ga4" */ './Internals/ga4Analytics/ga4Analytics.js'));
 const Quotation = lazy(() => import(/* webpackChunkName: "admin-quotation" */ './Internals/quotation/Quotation.js'));
@@ -206,6 +210,7 @@ function AppRoutes({
     ['enquiry', <EnquiryNow />],
     ['deleteaccount', <DeleteAccount />],
     ['knowledgebase', <KnowledgeBasePage />],
+    ['careers', <CareersPage />],
     ['web', <WebDevSection />],
     ['digital', <DigitalMarketing />],
     ['graphic', <GraphicDesign />],
@@ -257,6 +262,8 @@ function AppRoutes({
           <Route path="/write-review/:businessId/:ratingValue" element={<WriteReviewPage />} />
           <Route path="/blog/:slug" element={<BlogDetail />} />
           <Route path="/author/:slug" element={<AuthorProfile />} />
+          <Route path="/careers/jobs" element={<JobResultsPage />} />
+          <Route path="/careers/jobs/:idOrSlug" element={<JobApplicationPage />} />
 
           <Route path="/user_dashboard" element={<UserDashboardPage />} />
           <Route path="/user_edit-profile" element={<UserEditProfilePage />} />
@@ -329,6 +336,7 @@ function AppRoutes({
                 <Route path="mni-data" element={<MRPDatas />} />
                 <Route path="terms-conditions-data" element={<TermsAndConditionsDatas />} />
                 <Route path="legal-documents" element={<LegalDocuments />} />
+                <Route path="hiring" element={<HiringAdmin />} />
                 <Route path="fcm-marketing" element={<FCMMarketing />} />
                 <Route path="user" element={<User />} />
                 <Route path="roles" element={<Roles />} />
