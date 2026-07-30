@@ -273,7 +273,7 @@ button:active {
 }
 
 
-@media (max-width: 1199px) {
+@media (max-width: 1279px) {
     .desktopNav {
         display: none;
     }
@@ -290,7 +290,7 @@ button:active {
     }
 }
 
-@media (min-width: 1200px) and (max-width: 1365px) {
+@media (min-width: 1280px) and (max-width: 1439px) {
     .categoryBarContent {
         padding-inline: 1.5rem;
         gap: .75rem;
@@ -302,8 +302,8 @@ button:active {
 
     .categoryButton {
         gap: .4rem;
-        padding-inline: .65rem;
-        font-size: .9rem;
+        padding-inline: .5rem;
+        font-size: .875rem;
     }
 
     .actionButtons {
