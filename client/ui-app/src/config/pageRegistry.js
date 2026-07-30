@@ -36,6 +36,6 @@ export const PAGE_REGISTRY = [
   { path: '/dashboard/roles',               label: 'Roles' },
   { path: '/dashboard/category-display',    label: 'Display' },
   { path: '/dashboard/public-users-count',  label: 'Public Count' },
-  { path: '/dashboard/auth-console',        label: 'Auth Console' },
+  { path: '/dashboard/auth-console',        label: 'Auth Control' },
   { path: '/dashboard/system-settings',     label: 'System Settings' },
 ];

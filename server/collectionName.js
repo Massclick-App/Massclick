@@ -52,7 +52,8 @@ export const Collections = {
     WEBANALYTICSEVENT: 'web_analytics_events',
     ACCOUNTDELETIONREQUESTS: 'account_deletion_requests',
     SEARCHREQUESTS: 'search_requests',
-    LEGALDOCUMENTS: 'legal_documents'
+    LEGALDOCUMENTS: 'legal_documents',
+    AUTHAUDITEVENTS: 'auth_audit_events'
 };
 
 export const {
@@ -109,6 +110,7 @@ export const {
     WEBANALYTICSEVENT,
     ACCOUNTDELETIONREQUESTS,
     SEARCHREQUESTS,
-    LEGALDOCUMENTS
+    LEGALDOCUMENTS,
+    AUTHAUDITEVENTS
 } = Collections;
 export const MASSCLICKEVENTS = "massclickevents";

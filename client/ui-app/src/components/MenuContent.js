@@ -31,6 +31,7 @@ import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownR
 import AnalyticsRoundedIcon from "@mui/icons-material/AnalyticsOutlined";
 import NotificationsIcon from "@mui/icons-material/NotificationsOutlined";
 import SettingsIcon from "@mui/icons-material/SettingsOutlined";
+import ManageAccountsIcon from "@mui/icons-material/ManageAccountsOutlined";
 import GavelIcon from "@mui/icons-material/GavelOutlined";
 import NavigationIcon from "@mui/icons-material/NavigationOutlined";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEventsOutlined";
@@ -130,7 +131,7 @@ const MENU_SECTIONS = [
       { text: "Public Count", icon: GroupsRoundedIcon, path: "/dashboard/public-users-count" },
       { text: "Terms", icon: GavelIcon, path: "/dashboard/terms-conditions-data" },
       { text: "Legal Documents", icon: GavelIcon, path: "/dashboard/legal-documents" },
-      { text: "Auth Console", icon: SettingsIcon, path: "/dashboard/auth-console" },
+      { text: "Auth Control", icon: ManageAccountsIcon, path: "/dashboard/auth-console" },
       { text: "Config", icon: SettingsIcon, path: "/dashboard/system-settings" },
     ],
   },
@@ -217,7 +218,6 @@ export default function SideMenu({ onItemClick, railCollapsed = false }) {
         prev[active.label] === true ? { ...prev, [active.label]: false } : prev
       );
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
 
   const q = query.trim().toLowerCase();

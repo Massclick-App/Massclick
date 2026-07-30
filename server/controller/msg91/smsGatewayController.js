@@ -110,6 +110,20 @@ const handleSendOtp = async (req, res, sendRealOtp) => {
         : await fakesendOtp(cleanNumber);
     }
 
+    logAuthAuditEvent({
+      eventType: "otp_sent",
+      actor: null,
+      source: "otp-send",
+      req,
+      statusCode: 200,
+      message: "OTP requested",
+      metadata: {
+        mobile: cleanNumber,
+        isNewUser: isReviewer ? false : !existingUser,
+        reviewerBypass: isReviewer,
+      },
+    });
+
     return res.status(200).json({
       success: true,
       message: "OTP sent successfully",
@@ -121,6 +135,18 @@ const handleSendOtp = async (req, res, sendRealOtp) => {
   } catch (error) {
 
     console.error("Controller Error (handleSendOtp):", error.message);
+
+    logAuthAuditEvent({
+      eventType: "otp_send_failed",
+      actor: null,
+      source: "otp-send",
+      req,
+      statusCode: error.statusCode || 500,
+      message: error.message || "OTP send failed",
+      metadata: {
+        mobile: normalizeIndianMobile(phoneNumber),
+      },
+    });
 
     return res.status(500).json({
       success: false,
@@ -276,6 +302,18 @@ export const verifyOtpAction = async (req, res) => {
       error.statusCode ||
       (upstreamStatus === 400 || upstreamStatus === 401 ? upstreamStatus : 500);
 
+    logAuthAuditEvent({
+      eventType: "login_failed",
+      actor: null,
+      source: "otp-login",
+      req,
+      statusCode,
+      message: error.message || "OTP verification failed",
+      metadata: {
+        mobile: normalizeIndianMobile(req.body?.phoneNumber),
+      },
+    });
+
     return res.status(statusCode).json({
       success: false,
       message: statusCode === 401 ? "Invalid OTP." : "OTP verification failed.",
@@ -423,6 +461,17 @@ export const fakeverifyOtpAction = async (req, res) => {
 
   } catch (error) {
     console.error("verifyOtpAction Error:", error);
+    logAuthAuditEvent({
+      eventType: "login_failed",
+      actor: null,
+      source: "otp-login",
+      req,
+      statusCode: 500,
+      message: error.message || "OTP verification failed",
+      metadata: {
+        mobile: normalizeIndianMobile(req.body?.phoneNumber),
+      },
+    });
     return res.status(500).json({
       success: false,
       message: "OTP verification failed.",

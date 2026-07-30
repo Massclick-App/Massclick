@@ -4,13 +4,12 @@ import { useSearchParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { getAllUsers, createUser, editUser, deleteUser } from "../../redux/actions/userAction.js";
 import { getAllRoles } from "../../redux/actions/rolesAction.js";
-import { Box, Button, CircularProgress, Typography, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, Avatar } from "@mui/material";
+import { Box, Button, CircularProgress, Typography, Dialog, DialogTitle, DialogContent, DialogActions, Avatar } from "@mui/material";
 import styles from "./user.module.css";
 import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import CustomizedTable from "../../components/Table/CustomizedTable.js";
 import AdminViewTabs from "../../components/AdminViewTabs.js";
-import CustomerSessionsPanel from "./CustomerSessionsPanel.js";
 const cx = createScopedClassNames(styles);
 export default function User() {
   const dispatch = useDispatch();
@@ -369,10 +368,6 @@ export default function User() {
     }}>
         User Table
       </Typography>
-      <CustomerSessionsPanel
-        title="Customer Sessions"
-        description="Customer OTP users are listed here. Log out one customer or every customer without deleting their account."
-      />
       <Box sx={{
       width: "100%"
     }}>

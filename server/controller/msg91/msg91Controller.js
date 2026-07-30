@@ -18,8 +18,26 @@ export const requestOtp = async (req, res) => {
         if (!mobile) return res.status(400).json({ success: false, message: "Mobile number required" });
 
         const otp = await generateOtp(mobile);
+        logAuthAuditEvent({
+            eventType: "otp_sent",
+            actor: null,
+            source: "otp-send",
+            req,
+            statusCode: 200,
+            message: "OTP requested",
+            metadata: { mobile },
+        });
         res.json({ success: true, message: "OTP sent successfully", otp });
     } catch (err) {
+        logAuthAuditEvent({
+            eventType: "otp_send_failed",
+            actor: null,
+            source: "otp-send",
+            req,
+            statusCode: 500,
+            message: err.message || "OTP send failed",
+            metadata: { mobile: req.body?.mobile || "" },
+        });
         res.status(500).json({ success: false, message: err.message });
     }
 };
@@ -64,6 +82,15 @@ export const verifyOtpAndLogin = async (req, res) => {
 
         res.json({ success: true, message: "Login successful", user: userObject, token });
     } catch (err) {
+        logAuthAuditEvent({
+            eventType: "login_failed",
+            actor: null,
+            source: "otp-login",
+            req,
+            statusCode: 400,
+            message: err.message || "OTP login failed",
+            metadata: { mobile: req.body?.mobile || "" },
+        });
         res.status(400).json({ success: false, message: err.message });
     }
 };

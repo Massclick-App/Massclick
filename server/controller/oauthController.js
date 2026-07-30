@@ -27,6 +27,17 @@ export const oauthAction = async (req, res) => {
     });
     return res.status(200).json(token);
   } catch (error) {
+    logAuthAuditEvent({
+      eventType: "login_failed",
+      actor: null,
+      source: "oauth-login",
+      req,
+      statusCode: 400,
+      message: error.message || "Admin login failed",
+      metadata: {
+        userName: req.body?.username || req.body?.userName || "",
+      },
+    });
     return res.status(400).json({ error: error.message });
   }
 };
@@ -48,6 +59,17 @@ export const oauthClientAction = async (req, res) => {
     });
     res.json(token);
   } catch (error) {
+    logAuthAuditEvent({
+      eventType: "login_failed",
+      actor: null,
+      source: "oauth-client",
+      req,
+      statusCode: 400,
+      message: error.message || "Public client token failed",
+      metadata: {
+        clientId: req.body?.client_id || "",
+      },
+    });
     return res.status(400).json({ error: error.message });
   }
 };
@@ -69,6 +91,14 @@ export const oauthReAction = async (req, res) => {
     });
     res.json(token);
   } catch (error) {
+    logAuthAuditEvent({
+      eventType: "refresh_failed",
+      actor: null,
+      source: "oauth-refresh",
+      req,
+      statusCode: 400,
+      message: error.message || "OAuth refresh failed",
+    });
     return res.status(400).json({ error: error.message });
   }
 };

@@ -18,7 +18,8 @@ export const withRequestContext = (body, fn) => requestContextStorage.run(body |
 
 // ---------- OAuth2 Server Model Functions ----------
 
-const getAccessToken = (token) => oauthModel.findOne({ accessToken: token }).lean();
+const getAccessToken = (token) =>
+  oauthModel.findOne({ accessToken: token, isRevoked: { $ne: true } }).lean();
 
 const getClient = async (clientId, clientSecret) => {
   const client = await clientModel.findOne({ clientId, clientSecret }).lean();
@@ -108,7 +109,9 @@ const getUser = async (userName, password) => {
 
 const getRefreshToken = async (refreshToken) => {
   const token = await oauthModel.findOne({ refreshToken }).lean();
-  if (!token) return null;
+  if (!token || token.isRevoked) return null;
+  if (token.refreshTokenExpiresAt && token.refreshTokenExpiresAt <= new Date()) return null;
+
   return {
     refreshToken: token.refreshToken,
     refreshTokenExpiresAt: token.refreshTokenExpiresAt,
