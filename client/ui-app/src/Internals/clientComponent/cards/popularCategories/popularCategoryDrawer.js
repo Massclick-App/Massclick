@@ -8,6 +8,7 @@ import StickySearchBar from '../../../StickySearchBar/StickySearchBar';
 import CardDesign from "../cards";
 import TopBannerAds from "../../banners/topBanner/topBanner";
 import { getBusinessByCategory } from "../../../../redux/actions/businessListAction";
+import { buildBusinessPath } from "../../../../utils/searchResultNavigation";
 
 /* ========================================= */
 /* SLUG → NORMAL TEXT CONVERTER */
@@ -24,10 +25,6 @@ const unslugify = text => {
 /* NORMAL TEXT → SLUG */
 /* Tiruchirappalli → tiruchirappalli */
 /* ========================================= */
-const createSlug = text => {
-  if (!text || typeof text !== "string") return "unknown";
-  return text.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-};
 const CategoryDynamicPage = () => {
   /* ========================================= */
   /* GET PARAMS FROM URL */
@@ -122,7 +119,13 @@ const CategoryDynamicPage = () => {
         const ratingValue = Number(business.averageRating);
         const averageRating = Number.isFinite(ratingValue) && ratingValue > 0 ? ratingValue : null;
         const totalRatings = typeof business.totalReviews === "number" ? business.totalReviews : 0;
-        const businessUrl = `/${createSlug(realDistrict)}/${createSlug(business.businessName)}/${business._id}`;
+        const businessUrl = buildBusinessPath({
+          districtSlug: district,
+          location: business.location,
+          businessSlug: business.slug,
+          businessName: business.businessName,
+          id: business._id,
+        });
         return <CardDesign key={business._id} businessId={business._id} title={business.businessName} phone={business.contact} whatsapp={business.whatsappNumber} address={business.location} details={`Experience: ${business.experience} | Category: ${business.category}`} imageSrc={business.bannerImage || getPlaceholderImage()} rating={averageRating} reviews={totalRatings} to={businessUrl} state={{
           id: business._id
         }} />;

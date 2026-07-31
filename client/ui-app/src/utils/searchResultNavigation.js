@@ -3,16 +3,110 @@
  * Ensures all flows to SearchResult have consistent, normalized data
  */
 
-const createSlug = (text = "") => {
+const DISTRICT_SLUG_ALIASES = {
+  tiruchirappalli: "trichy",
+  tiruchirapalli: "trichy",
+  tiruchy: "trichy",
+  trichy: "trichy",
+};
+
+export const createSlug = (text = "") => {
   if (!text) return "";
   if (typeof text === "object") {
-    text = text.slug || text.name || text.label || "";
+    text = text.slug || text.name || text.district || text.label || "";
   }
   return text
     .toLowerCase()
     .trim()
+    .replace(/&/g, "and")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
+};
+
+export const createDistrictSlug = (value = "") => {
+  const raw =
+    typeof value === "object"
+      ? value.districtSlug || value.urlAlias || value.district || value.name || value.label || ""
+      : value;
+  const slug = createSlug(raw);
+  return DISTRICT_SLUG_ALIASES[slug] || slug;
+};
+
+export const getLocationName = (value = "") => {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  return value.name || value.location || value.district || value.label || "";
+};
+
+export const getLocationContext = (value = {}) => {
+  const name = getLocationName(value);
+  const districtName =
+    typeof value === "object"
+      ? value.districtName || value.district || name
+      : name;
+  const districtSlug =
+    (typeof value === "object" && (value.districtSlug || value.urlAlias)) ||
+    localStorage.getItem("selectedLocationDistrictSlug") ||
+    localStorage.getItem("selectedDistrictSlug") ||
+    createDistrictSlug(districtName);
+
+  return {
+    name,
+    districtName,
+    districtSlug: createDistrictSlug(districtSlug),
+    locationSlug:
+      (typeof value === "object" && (value.publicLocationSlug || value.locationSlug)) ||
+      localStorage.getItem("selectedPublicLocationSlug") ||
+      "",
+    masterLocationSlug:
+      (typeof value === "object" && (value.masterLocationSlug || value.slug)) ||
+      localStorage.getItem("selectedLocationSlug") ||
+      "",
+  };
+};
+
+export const buildCategoryPath = ({
+  districtSlug = "",
+  locationSlug = "",
+  location = "",
+  category,
+  categorySlug,
+  subcategory,
+  subcategorySlug,
+  isDistrictScope = false,
+} = {}) => {
+  const resolvedDistrictSlug = createDistrictSlug(districtSlug);
+  const resolvedLocationSlug = createSlug(locationSlug || location);
+  const resolvedCategorySlug = createSlug(categorySlug || category);
+  const resolvedSubcategorySlug = createSlug(subcategorySlug || subcategory);
+  if (!resolvedCategorySlug) return "/";
+
+  if (resolvedDistrictSlug) {
+    const segments = isDistrictScope
+      ? [resolvedDistrictSlug, resolvedCategorySlug, resolvedSubcategorySlug]
+      : [resolvedDistrictSlug, resolvedLocationSlug, resolvedCategorySlug, resolvedSubcategorySlug];
+    return `/${segments.filter(Boolean).join("/")}`;
+  }
+
+  const legacyLocationSlug = resolvedLocationSlug;
+  return `/${[legacyLocationSlug, resolvedCategorySlug, resolvedSubcategorySlug].filter(Boolean).join("/")}`;
+};
+
+export const buildBusinessPath = ({
+  districtSlug = "",
+  locationSlug = "",
+  location = "",
+  businessSlug,
+  businessName,
+  id,
+} = {}) => {
+  const resolvedDistrictSlug = createDistrictSlug(districtSlug);
+  const resolvedLocationSlug = createSlug(locationSlug || location) || "business";
+  const resolvedBusinessSlug = createSlug(businessSlug || businessName) || "profile";
+  const segments = resolvedDistrictSlug
+    ? ["business", resolvedDistrictSlug, resolvedLocationSlug, resolvedBusinessSlug, id]
+    : ["business", resolvedLocationSlug, resolvedBusinessSlug, id];
+  return `/${segments.filter(Boolean).join("/")}`;
 };
 
 /**
@@ -43,23 +137,36 @@ export const normalizeSearchTerm = (text = "") => {
  * @returns {{ location: string, masterLocationSlug: string }}
  */
 export const getEffectiveSearchLocation = (districtFallback = "") => {
-  const toName = (value) => {
-    if (!value) return "";
-    if (typeof value === "string") return value;
-    return value.name || value.district || value.label || "";
-  };
   const selectedLocation = localStorage.getItem("selectedLocation") || "";
+  const fallbackContext = getLocationContext(districtFallback);
+  const selectedPublicLocationSlug = localStorage.getItem("selectedPublicLocationSlug") || "";
+  const selectedMasterLocationSlug = localStorage.getItem("selectedLocationSlug") || "";
+  const hasVerifiedLocation = Boolean(selectedPublicLocationSlug || selectedMasterLocationSlug);
   const location =
     selectedLocation ||
-    toName(districtFallback) ||
+    fallbackContext.name ||
     localStorage.getItem("selectedDistrict") ||
     "Global";
-  // The canonical slug belongs to a picked verified location only; never pair
-  // it with a district fallback, or an empty field would search the wrong node.
-  const masterLocationSlug = selectedLocation
-    ? localStorage.getItem("selectedLocationSlug") || ""
-    : "";
-  return { location, masterLocationSlug };
+  const districtName =
+    localStorage.getItem("selectedLocationDistrict") ||
+    fallbackContext.districtName ||
+    location;
+  const districtSlug =
+    localStorage.getItem("selectedLocationDistrictSlug") ||
+    fallbackContext.districtSlug ||
+    createDistrictSlug(districtName);
+
+  return {
+    location,
+    // The canonical slug belongs to a picked verified location only; never
+    // pair it with a district fallback, or an empty field would search the
+    // wrong node.
+    masterLocationSlug: hasVerifiedLocation ? selectedMasterLocationSlug : "",
+    locationSlug: hasVerifiedLocation ? selectedPublicLocationSlug || createSlug(location) : "",
+    districtName,
+    districtSlug,
+    isDistrictScope: !hasVerifiedLocation,
+  };
 };
 
 /**
@@ -77,6 +184,10 @@ export const getEffectiveSearchLocation = (districtFallback = "") => {
 export const navigateToSearchResult = ({
   searchTerm,
   location,
+  districtSlug = "",
+  districtName = "",
+  locationSlug = "",
+  isDistrictScope = false,
   // Canonical masterlocations slug (e.g. "tamil-nadu-salem-mettur") from a
   // verified-location pick. Sent to the search API instead of the free text,
   // so ambiguous names (two "Puthur"s) hit the exact node the user chose.
@@ -105,6 +216,11 @@ export const navigateToSearchResult = ({
 
     // Canonical location slug from a verified pick ("" when typed freely)
     masterLocationSlug,
+    districtSlug,
+    districtName,
+    locationSlug,
+    locationName: location,
+    isKnownCategory,
 
     // Display name - use raw input for UI display
     displayName: searchTerm,
@@ -132,7 +248,15 @@ export const navigateToSearchResult = ({
     timestamp: Date.now(),
   };
 
-  navigate(`/${slugLocation}/${slugTerm}`, {
+  const targetPath = buildCategoryPath({
+    districtSlug,
+    locationSlug,
+    location: normalizedLocation,
+    categorySlug: slugTerm,
+    isDistrictScope,
+  });
+
+  navigate(targetPath || `/${slugLocation}/${slugTerm}`, {
     state: navigationState,
   });
 };
@@ -158,6 +282,7 @@ export const extractSearchResultData = (locationState = {}, urlParams = {}) => {
     category,
     categoryName,
     searchText,
+    isKnownCategory: stateKnownCategory,
     district,
     districtSlug: stateDistrictSlug,
     districtName: stateDistrictName,
@@ -198,7 +323,7 @@ export const extractSearchResultData = (locationState = {}, urlParams = {}) => {
 
   // Determine if this is a known category or user search
   // If stateCategory is provided, it's a known category (sent as category parameter)
-  const isKnownCategory = Boolean(stateCategory || routeKnownCategory);
+  const isKnownCategory = Boolean(stateCategory || stateKnownCategory || routeKnownCategory);
 
   // Priority order for determining search term
   const finalSearchTerm =

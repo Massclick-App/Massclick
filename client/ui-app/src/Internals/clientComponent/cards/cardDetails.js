@@ -49,6 +49,7 @@ import GlobalSkeleton from "../globalSkeleton.js";
 import { addFavorite, removeFavorite, fetchFavorites, getAuthUser } from "../../../redux/actions/favoriteAction";
 import { generateLocalBusinessSchema, generateBreadcrumbSchema } from "../../../utils/seoSchemaGenerators";
 import { trackBusinessView, trackBusinessClick } from "../../../utils/webTracker.js";
+import { buildBusinessPath, buildCategoryPath } from "../../../utils/searchResultNavigation";
 import OTPLoginModal from "../AddBusinessModel.js";
 import PopularCategoriesLink from "../popularCategories/popularCategories.js";
 import massClickLogo from "../../../assets/mclogo.webp";
@@ -339,6 +340,28 @@ const BusinessDetail = React.memo(() => {
   const keywordLocationSlug = toSlug(business.location || location || "all");
   const keywordCategory = business.category || business.slug || "";
   const keywordCategorySlug = toSlug(keywordCategory);
+  const whatsappNumber = business.whatsappNumber || business.contactList || business.contact;
+  const locationSlug = location || toSlug(business.location || "business");
+  const businessPath = buildBusinessPath({
+    districtSlug: district,
+    locationSlug,
+    businessSlug: business.slug || businessSlug,
+    businessName: business.businessName,
+    id: business._id || id,
+  });
+  // Use DB location field for canonical to stay consistent regardless of how the user arrived
+  const canonicalLocationSlug = toSlug(business.location || location);
+  const canonicalPath = buildBusinessPath({
+    districtSlug: district,
+    locationSlug: canonicalLocationSlug,
+    businessSlug: business.slug || businessSlug,
+    businessName: business.businessName,
+    id: business._id || id,
+  });
+  const businessUrl = `https://massclick.in${businessPath}`;
+  const canonicalUrl = `https://massclick.in${canonicalPath}`;
+  const currentUrl = encodeURIComponent(canonicalUrl);
+  const currentTitle = encodeURIComponent(`Check out ${business.businessName}`);
   const handleGalleryFileSelection = async event => {
     if (!isBusinessImageUploadAllowed) {
       enqueueSnackbar("You are not the owner of this business. Upload is not allowed.", {
@@ -438,7 +461,7 @@ const BusinessDetail = React.memo(() => {
   };
   const handleCopyLink = e => {
     e.preventDefault();
-    const linkToCopy = window.location.href;
+    const linkToCopy = canonicalUrl;
     if (navigator.clipboard) {
       navigator.clipboard.writeText(linkToCopy).then(() => {
         alert("Link copied!");
@@ -554,7 +577,7 @@ const BusinessDetail = React.memo(() => {
     const shareData = {
       title: business.businessName,
       text: `Check out ${business.businessName} on MassClick`,
-      url: window.location.href
+      url: canonicalUrl
     };
     if (navigator.share) {
       try {
@@ -690,36 +713,26 @@ const BusinessDetail = React.memo(() => {
   };
   const copyBusinessLink = async () => {
     try {
-      await navigator.clipboard.writeText(window.location.href);
+      await navigator.clipboard.writeText(canonicalUrl);
       enqueueSnackbar("Business link copied.", { variant: "success" });
       setSidebarModal(null);
     } catch {
       enqueueSnackbar("Unable to copy the link.", { variant: "error" });
     }
   };
-  const currentUrl = encodeURIComponent(window.location.href);
-  const currentTitle = encodeURIComponent(`Check out ${business.businessName}`);
   const overviewHtml = business.businessDetails;
   const normalizeOverviewHtml = (html = "") => {
     return html.replace(/<p>\s*(<br\s*\/?>|&nbsp;)?\s*<\/p>/gi, "").replace(/<div>\s*(<br\s*\/?>|&nbsp;)?\s*<\/div>/gi, "").replace(/(<br\s*\/?>\s*){2,}/gi, "<br>").replace(/ style="[^"]*"/gi, "").replace(/width="[^"]*"/gi, "").replace(/height="[^"]*"/gi, "").trim();
   };
-  const whatsappNumber = business.whatsappNumber || business.contactList || business.contact;
-  const locationSlug = location || "";
-  const businessPathPrefix = district
-    ? `/business/${district}/${locationSlug}`
-    : `/business/${locationSlug}`;
-  // Use DB location field for canonical to stay consistent regardless of how the user arrived
-  const canonicalLocationSlug = toSlug(business.location || location);
-  const canonicalPathPrefix = district
-    ? `/business/${district}/${canonicalLocationSlug}`
-    : `/business/${canonicalLocationSlug}`;
-  const businessUrl = `https://massclick.in${businessPathPrefix}/${business.slug || businessSlug}/${business._id || id}`;
-  const canonicalUrl = `https://massclick.in${canonicalPathPrefix}/${business.slug || businessSlug}/${business._id || id}`;
 
   // Generate LocalBusiness schema with all available data
   const localBusinessSchema = generateLocalBusinessSchema({
     _id: business._id,
     businessName: business.businessName,
+    listingUrl: canonicalUrl,
+    districtSlug: district,
+    locationSlug: canonicalLocationSlug,
+    businessSlug: business.slug || businessSlug,
     description: business.description || business.businessDetails,
     images: [business.bannerImage, ...(galleryImageSrcs || [])].filter(Boolean),
     telephone: business.contact,
@@ -1255,11 +1268,19 @@ const BusinessDetail = React.memo(() => {
                 </div>
 
                 <div className={cx("business-CardDetails-keywordPills")}>
-                  {visibleKeywords.map(keyword => <Link key={keyword} to={`/${keywordLocationSlug}/${keywordCategorySlug || toSlug(keyword)}`} state={{
-                  category: keywordCategory || keyword
-                }} className={cx("business-CardDetails-keywordPill")}>
-                      {keyword}
-                    </Link>)}
+                  {visibleKeywords.map(keyword => {
+                    const keywordPath = buildCategoryPath({
+                      districtSlug: district,
+                      locationSlug: keywordLocationSlug,
+                      location: business.location || location,
+                      categorySlug: keywordCategorySlug || toSlug(keyword),
+                    });
+                    return <Link key={keyword} to={keywordPath} state={{
+                    category: keywordCategory || keyword
+                  }} className={cx("business-CardDetails-keywordPill")}>
+                        {keyword}
+                      </Link>;
+                  })}
                   {hasMoreKeywords && <button type="button" className={cx("business-CardDetails-keywordMoreBtn")} onClick={() => setShowAllKeywords(true)}>
                       More
                     </button>}

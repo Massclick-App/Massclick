@@ -7,7 +7,7 @@ import StickySearchBar from "../StickySearchBar/StickySearchBar";
 import { handleImageError } from "../../../utils/placeholderImage";
 import styles from "./categories.module.css";
 import { fetchHomeCategories, fetchSubCategories } from "../../../redux/actions/categoryAction";
-import { navigateToSearchResult } from "../../../utils/searchResultNavigation";
+import { buildCategoryPath, navigateToSearchResult } from "../../../utils/searchResultNavigation";
 import {
   formatUrlText,
   resolveDistrictRoute,
@@ -141,7 +141,11 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
     const itemSlug = sub.slug || slugFromText(sub.name);
 
     if (isDistrictLanding && districtSlug) {
-      navigate(`/${districtSlug}/${itemSlug}`, {
+      navigate(buildCategoryPath({
+        districtSlug,
+        categorySlug: itemSlug,
+        isDistrictScope: true,
+      }), {
         state: {
           category: sub.name,
           categoryName: sub.name,
@@ -153,11 +157,13 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
     }
 
     if (districtSlug) {
-      const pathSegments = locationSlug
-        ? [districtSlug, locationSlug, categorySlug, itemSlug]
-        : [districtSlug, categorySlug, itemSlug];
-
-      navigate(`/${pathSegments.filter(Boolean).join("/")}`, {
+      navigate(buildCategoryPath({
+        districtSlug,
+        locationSlug,
+        categorySlug,
+        subcategorySlug: itemSlug,
+        isDistrictScope: !locationSlug,
+      }), {
         state: {
           searchTerm: sub.name,
           displayName: sub.name,
@@ -188,10 +194,14 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
     });
   };
 
-  const categoryPathSegments = districtSlug
-    ? [districtSlug, locationSlug, categorySlug]
-    : [locationSlug, categorySlug];
-  const pagePath = `/${categoryPathSegments.filter(Boolean).join("/")}`;
+  const pagePath = isDistrictLanding
+    ? `/${districtSlug}`
+    : buildCategoryPath({
+        districtSlug,
+        locationSlug,
+        categorySlug,
+        isDistrictScope: Boolean(districtSlug && !locationSlug),
+      });
   const categoryPageUrl = `https://massclick.in${pagePath === "/" ? "" : pagePath}`;
   const fallbackSeo = isDistrictLanding
     ? {
@@ -241,9 +251,13 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
     filteredCategories.map((item, index) => ({
       position: index + 1,
       name: item.name,
-      url: isDistrictLanding
-        ? `https://massclick.in/${districtSlug}/${item.slug || slugFromText(item.name)}`
-        : `https://massclick.in${pagePath}/${item.slug || slugFromText(item.name)}`,
+      url: `https://massclick.in${buildCategoryPath({
+        districtSlug,
+        locationSlug,
+        categorySlug: isDistrictLanding ? item.slug || slugFromText(item.name) : categorySlug,
+        subcategorySlug: isDistrictLanding ? "" : item.slug || slugFromText(item.name),
+        isDistrictScope: isDistrictLanding || !locationSlug,
+      })}`,
       description: item.description,
       image: item.categoryImageKey || item.categoryImages?.webCard,
     })),

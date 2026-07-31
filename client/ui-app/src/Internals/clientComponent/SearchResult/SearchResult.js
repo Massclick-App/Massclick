@@ -31,7 +31,7 @@ import {
   logSearchActivity,
   fetchNearbyBusinesses,
 } from "../../../redux/actions/businessListAction";
-import { extractSearchResultData } from "../../../utils/searchResultNavigation";
+import { buildBusinessPath, buildCategoryPath, extractSearchResultData } from "../../../utils/searchResultNavigation";
 import { fetchSeoMeta } from "../../../redux/actions/seoAction.js";
 import { fetchSeoPageContentMeta } from "../../../redux/actions/seoPageContentAction.js";
 import { CLEAR_SEO_META } from "../../../redux/actions/userActionTypes.js";
@@ -297,10 +297,14 @@ const SearchResults = React.memo(
           if (cancelled) return;
           const expectedParentSlug = res.data?.parentSlug;
           if (expectedParentSlug && expectedParentSlug !== categorySlug) {
-            const targetSegments = districtSlug
-              ? [districtSlug, routeLocationSlug, expectedParentSlug, subcategorySlug]
-              : [routeLocationSlug || createSlug(locationText), expectedParentSlug, subcategorySlug];
-            setCategoryMismatchTarget(`/${targetSegments.filter(Boolean).join("/")}`);
+            setCategoryMismatchTarget(buildCategoryPath({
+              districtSlug,
+              locationSlug: routeLocationSlug,
+              location: locationText,
+              categorySlug: expectedParentSlug,
+              subcategorySlug,
+              isDistrictScope: Boolean(districtSlug && !routeLocationSlug),
+            }));
           }
         })
         .catch(() => {});
@@ -934,6 +938,7 @@ const SearchResults = React.memo(
       locationText,
       results.length,
       overallRating,
+      canonicalUrl,
     );
     const categoryBusinessSchema = {
       "@context": "https://schema.org",
@@ -1219,7 +1224,13 @@ const SearchResults = React.memo(
                           typeof business.totalReviews === "number"
                             ? business.totalReviews
                             : 0;
-                        const businessUrl = `/business/${createSlug(business.location)}/${createSlug(business.businessName)}/${business._id}`;
+                        const businessUrl = buildBusinessPath({
+                          districtSlug,
+                          location: business.location,
+                          businessSlug: business.slug,
+                          businessName: business.businessName,
+                          id: business._id,
+                        });
                         return (
                           <div
                             className={cx("business-card-wrapper")}
@@ -1318,7 +1329,13 @@ const SearchResults = React.memo(
                         {nearbyResults
                           .filter((b) => !results.some((r) => r._id === b._id))
                           .map((b, idx) => {
-                            const businessUrl = `/business/${createSlug(b.location)}/${createSlug(b.businessName)}/${b._id}`;
+                            const businessUrl = buildBusinessPath({
+                              districtSlug,
+                              location: b.location,
+                              businessSlug: b.slug,
+                              businessName: b.businessName,
+                              id: b._id,
+                            });
                             return (
                               <div className={cx("nearby-card")} key={b._id}>
                                 <CardDesign
