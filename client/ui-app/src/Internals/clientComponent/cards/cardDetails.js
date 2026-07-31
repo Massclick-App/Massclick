@@ -47,9 +47,10 @@ import ReviewList from "../rating/reviewList";
 import { getBusinessReviews } from "../../../redux/actions/reviewAction.js";
 import GlobalSkeleton from "../globalSkeleton.js";
 import { addFavorite, removeFavorite, fetchFavorites, getAuthUser } from "../../../redux/actions/favoriteAction";
-import { generateLocalBusinessSchema, generateBreadcrumbSchema } from "../../../utils/seoSchemaGenerators";
+import { generateLocalBusinessSchema } from "../../../utils/seoSchemaGenerators";
 import { trackBusinessView, trackBusinessClick } from "../../../utils/webTracker.js";
 import { buildBusinessPath, buildCategoryPath } from "../../../utils/searchResultNavigation";
+import { buildCrumbs, crumbsToJsonLd, crumbsToUiItems } from "../../../utils/breadcrumbs";
 import OTPLoginModal from "../AddBusinessModel.js";
 import PopularCategoriesLink from "../popularCategories/popularCategories.js";
 import massClickLogo from "../../../assets/mclogo.webp";
@@ -342,13 +343,6 @@ const BusinessDetail = React.memo(() => {
   const keywordCategorySlug = toSlug(keywordCategory);
   const whatsappNumber = business.whatsappNumber || business.contactList || business.contact;
   const locationSlug = location || toSlug(business.location || "business");
-  const businessPath = buildBusinessPath({
-    districtSlug: district,
-    locationSlug,
-    businessSlug: business.slug || businessSlug,
-    businessName: business.businessName,
-    id: business._id || id,
-  });
   // Use DB location field for canonical to stay consistent regardless of how the user arrived
   const canonicalLocationSlug = toSlug(business.location || location);
   const canonicalPath = buildBusinessPath({
@@ -358,7 +352,6 @@ const BusinessDetail = React.memo(() => {
     businessName: business.businessName,
     id: business._id || id,
   });
-  const businessUrl = `https://massclick.in${businessPath}`;
   const canonicalUrl = `https://massclick.in${canonicalPath}`;
   const currentUrl = encodeURIComponent(canonicalUrl);
   const currentTitle = encodeURIComponent(`Check out ${business.businessName}`);
@@ -762,17 +755,22 @@ const BusinessDetail = React.memo(() => {
     areaServed: business.location
   });
 
-  // Generate Breadcrumb schema
-  const breadcrumbSchema = generateBreadcrumbSchema([{
-    name: "Home",
-    url: "https://massclick.in"
-  }, {
-    name: business.location || locationSlug,
-    url: district ? `https://massclick.in/${district}/${locationSlug}` : `https://massclick.in/${locationSlug}`
-  }, {
-    name: business.businessName,
-    url: businessUrl
-  }]);
+  const breadcrumbCrumbs = district
+    ? buildCrumbs({
+        districtSlug: district,
+        locationSlug: canonicalLocationSlug,
+        locationName: business.location || locationSlug,
+        businessName: business.businessName,
+      })
+    : [
+        { name: "Home", path: "/" },
+        ...(canonicalLocationSlug
+          ? [{ name: business.location || locationSlug, path: `/${canonicalLocationSlug}` }]
+          : []),
+        { name: business.businessName, path: null },
+      ];
+  const breadcrumbSchema = crumbsToJsonLd(breadcrumbCrumbs, "https://massclick.in", canonicalPath);
+  const breadcrumbItems = crumbsToUiItems(breadcrumbCrumbs);
   return <>
       <Helmet>
         <link rel="canonical" href={canonicalUrl} />
@@ -849,15 +847,7 @@ const BusinessDetail = React.memo(() => {
         document.body
       )}
       <div className={cx("business-CardDetails-pageWrapper")}>
-        <Breadcrumbs items={[{
-        label: "Home",
-        link: "/"
-      }, {
-        label: business.location || locationSlug,
-        onClick: () => navigate(-1)
-      }, {
-        label: business.businessName
-      }]} />
+        <Breadcrumbs items={breadcrumbItems} />
         <main>
         <section className={cx("business-CardDetails-heroSection")}>
           <div className={cx("business-CardDetails-mainImageContainer")} onClick={() => {

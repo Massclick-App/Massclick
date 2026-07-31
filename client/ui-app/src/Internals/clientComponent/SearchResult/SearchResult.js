@@ -45,7 +45,6 @@ import axiosInstance from "../../../services/axiosInstance.js";
 import { getClientToken } from "../../../redux/actions/clientAuthAction.js";
 import {
   generateSearchResultsPageSchema,
-  generateBreadcrumbSchema,
   generateOrganizationSchema,
   generateWebsiteSchema,
   generateFAQSchema,
@@ -54,6 +53,7 @@ import { renderFaqAnswerWithLinks } from "../../../utils/renderFaqAnswerWithLink
 import useMediaQuery from "../../../hooks/useMediaQuery.js";
 import useRenderNearViewport from "../../../hooks/useRenderNearViewport.js";
 import { trackSearch } from "../../../utils/webTracker.js";
+import { buildCrumbs, crumbsToJsonLd, crumbsToUiItems } from "../../../utils/breadcrumbs";
 
 const Footer = lazy(() =>
   import(/* webpackChunkName: "public-footer" */ "../footer/footer.js")
@@ -88,6 +88,10 @@ const createSlug = (text = "") =>
     .replace(/&/g, "and")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
+const toDisplayText = (value = "") =>
+  String(value)
+    .replace(/-/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 const isActiveFilterValue = (value) =>
   Array.isArray(value)
     ? value.length > 0
@@ -264,7 +268,9 @@ const SearchResults = React.memo(
       location: locationText,
       masterLocationSlug,
       districtSlug,
+      districtName,
       routeLocationSlug,
+      routeLocationName,
       categorySlug,
       subcategorySlug,
       displayName,
@@ -285,9 +291,11 @@ const SearchResults = React.memo(
     // combinations. Parent/child pairing is admin-configurable (CategoryDisplaySettings),
     // so it's resolved from the API rather than a hardcoded map.
     const [categoryMismatchTarget, setCategoryMismatchTarget] = useState(null);
+    const [resolvedParentCategory, setResolvedParentCategory] = useState(null);
 
     useEffect(() => {
       setCategoryMismatchTarget(null);
+      setResolvedParentCategory(null);
       if (!categorySlug || !subcategorySlug) return;
 
       let cancelled = false;
@@ -296,6 +304,13 @@ const SearchResults = React.memo(
         .then((res) => {
           if (cancelled) return;
           const expectedParentSlug = res.data?.parentSlug;
+          const expectedParentName = res.data?.parentName;
+          if (expectedParentSlug) {
+            setResolvedParentCategory({
+              slug: expectedParentSlug,
+              name: expectedParentName || toDisplayText(expectedParentSlug),
+            });
+          }
           if (expectedParentSlug && expectedParentSlug !== categorySlug) {
             setCategoryMismatchTarget(buildCategoryPath({
               districtSlug,
@@ -346,6 +361,44 @@ const SearchResults = React.memo(
       : [locationSlug, ...canonicalSearchSegments];
     const canonicalPath = `/${canonicalPathSegments.filter(Boolean).join("/")}`;
     const canonicalUrl = `https://massclick.in${canonicalPath}`;
+    const breadcrumbCategorySlug = subcategorySlug
+      ? resolvedParentCategory?.slug || categorySlug
+      : categorySlug || searchSlug;
+    const breadcrumbCategoryName = subcategorySlug
+      ? resolvedParentCategory?.name || toDisplayText(breadcrumbCategorySlug)
+      : searchText;
+    const breadcrumbSubcategoryName = subcategorySlug
+      ? searchText || toDisplayText(subcategorySlug)
+      : "";
+    const breadcrumbCrumbs = districtSlug
+      ? buildCrumbs({
+          districtSlug,
+          districtName,
+          locationSlug,
+          locationName: routeLocationName || locationText,
+          categorySlug: breadcrumbCategorySlug,
+          categoryName: breadcrumbCategoryName,
+          subcategorySlug,
+          subcategoryName: breadcrumbSubcategoryName,
+        })
+      : [
+          { name: "Home", path: "/" },
+          ...(locationSlug
+            ? [{ name: locationText, path: `/${locationSlug}` }]
+            : []),
+          ...(subcategorySlug && breadcrumbCategorySlug
+            ? [{
+                name: breadcrumbCategoryName,
+                path: buildCategoryPath({
+                  locationSlug,
+                  categorySlug: breadcrumbCategorySlug,
+                }),
+              }]
+            : []),
+          { name: breadcrumbSubcategoryName || breadcrumbCategoryName || searchText, path: null },
+        ];
+    const breadcrumbSchema = crumbsToJsonLd(breadcrumbCrumbs, "https://massclick.in", canonicalPath);
+    const breadcrumbItems = crumbsToUiItems(breadcrumbCrumbs);
     const loading = useSelector(selectBusinessLoading);
     const error = useSelector(selectBusinessError);
     const { meta: seoMetaData } = useSelector(
@@ -956,20 +1009,6 @@ const SearchResults = React.memo(
         },
       }),
     };
-    const breadcrumbSchema = generateBreadcrumbSchema([
-      {
-        name: "Home",
-        url: "https://www.massclick.in",
-      },
-      {
-        name: locationText,
-        url: `https://www.massclick.in/${locationSlug}`,
-      },
-      {
-        name: searchText,
-        url: canonicalUrl,
-      },
-    ]);
     const websiteSchema = generateWebsiteSchema();
     const organizationSchema = generateOrganizationSchema();
     const faqSchema =
@@ -1032,21 +1071,7 @@ const SearchResults = React.memo(
             <div className={cx("page-spacing")} />
 
             <div className={cx("results-container content-section")}>
-              <Breadcrumbs
-                items={[
-                  {
-                    label: "Home",
-                    link: "/",
-                  },
-                  {
-                    label: locationText,
-                    onClick: () => window.location.reload(),
-                  },
-                  {
-                    label: searchText,
-                  },
-                ]}
-              />
+              <Breadcrumbs items={breadcrumbItems} />
               <div className={cx("results-heading")}>
                 <h1 className={cx("main-seo-heading")}>
                   Best {searchText} in {locationText}

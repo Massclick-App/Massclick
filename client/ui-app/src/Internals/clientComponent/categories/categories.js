@@ -17,9 +17,11 @@ import { fetchSeoMeta } from "../../../redux/actions/seoAction.js";
 import { fetchSeoPageContentMeta } from "../../../redux/actions/seoPageContentAction.js";
 import { CLEAR_SEO_META } from "../../../redux/actions/userActionTypes.js";
 import SeoMeta from "../seo/seoMeta.js";
-import { generateBreadcrumbSchema, generateItemListSchema } from "../../../utils/seoSchemaGenerators";
+import { generateItemListSchema } from "../../../utils/seoSchemaGenerators";
 import { renderFaqAnswerWithLinks } from "../../../utils/renderFaqAnswerWithLinks";
 import useRenderNearViewport from "../../../hooks/useRenderNearViewport.js";
+import Breadcrumbs from "../Breadcrumbs/Breadcrumbs.js";
+import { buildCrumbs, crumbsToJsonLd, crumbsToUiItems } from "../../../utils/breadcrumbs";
 
 const Footer = lazy(() =>
   import(/* webpackChunkName: "public-footer" */ "../footer/footer.js")
@@ -224,28 +226,26 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
     : null;
   const hasFaq = (seoContent?.faq || []).length > 0;
 
-  const breadcrumbItems = [{
-    name: "Home",
-    url: "https://massclick.in",
-  }];
-  if (districtSlug) {
-    breadcrumbItems.push({
-      name: districtName,
-      url: `https://massclick.in/${districtSlug}`,
-    });
-  } else if (locationSlug) {
-    breadcrumbItems.push({
-      name: locationLabel,
-      url: `https://massclick.in/${locationSlug}`,
-    });
-  }
-  if (!isDistrictLanding && categorySlug) {
-    breadcrumbItems.push({
-      name: categoryLabel,
-      url: categoryPageUrl,
-    });
-  }
-  const breadcrumbSchema = generateBreadcrumbSchema(breadcrumbItems);
+  const breadcrumbCrumbs = districtSlug
+    ? buildCrumbs({
+        districtSlug,
+        districtName,
+        locationSlug: isDistrictLanding ? "" : locationSlug,
+        locationName: locationLabel,
+        categorySlug: isDistrictLanding ? "" : categorySlug,
+        categoryName: categoryLabel,
+      })
+    : [
+        { name: "Home", path: "/" },
+        ...(locationSlug
+          ? [{ name: locationLabel, path: `/${locationSlug}` }]
+          : []),
+        ...(!isDistrictLanding && categorySlug
+          ? [{ name: categoryLabel, path: null }]
+          : []),
+      ];
+  const breadcrumbSchema = crumbsToJsonLd(breadcrumbCrumbs, "https://massclick.in", pagePath);
+  const breadcrumbItems = crumbsToUiItems(breadcrumbCrumbs);
 
   const itemListSchema = generateItemListSchema(
     filteredCategories.map((item, index) => ({
@@ -291,6 +291,11 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
       <div className={cx("category-page")}>
         <StickySearchBar />
         <div className={cx("category-container")}>
+          {breadcrumbItems.length > 0 && (
+            <div className={cx("category-breadcrumbs")}>
+              <Breadcrumbs items={breadcrumbItems} />
+            </div>
+          )}
           <div className={cx("category-header")}>
             <h1 className={cx("category-title")}>
               {isDistrictLanding ? `Explore Services in ${districtName}` : `${categoryLabel} in ${locationLabel}`}

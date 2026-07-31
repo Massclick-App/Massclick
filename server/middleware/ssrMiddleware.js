@@ -24,12 +24,16 @@ import {
   formatDisplayDate,
   sanitizeHtmlFragment,
   demoteH1Tags,
-  buildBreadcrumbSchema,
 } from "../utils/htmlUtils.js";
 import {
   getHomeRoutePreloadTags,
   renderHomeRouteShell,
 } from "../utils/homeRouteShell.mjs";
+import {
+  buildBlogCrumbs,
+  buildCrumbs,
+  crumbsToJsonLd,
+} from "../helper/seo/breadcrumbBuilder.js";
 
 const CLIENT_BUILD_PATH = process.env.REACT_BUILD_PATH;
 
@@ -196,7 +200,6 @@ export const resolveCategoryRouteContext = async (parts = []) => {
         districtSlug,
         ...(locationSlug ? { locationSlug } : {}),
       },
-      breadcrumbLocationUrl: `https://massclick.in/${[districtSlug, locationSlug].filter(Boolean).join("/")}`,
     };
   }
 
@@ -227,9 +230,69 @@ export const resolveCategoryRouteContext = async (parts = []) => {
     canonicalUrl: `https://massclick.in${canonicalPath}`,
     cacheKey: `${slugToText(locationSlug)}:${slugToText(searchCategorySlug)}`,
     businessLocationContext: { locationText: locationName },
-    breadcrumbLocationUrl: `https://massclick.in/${locationSlug}`,
   };
 };
+
+const buildCategoryBreadcrumbCrumbs = (route) => {
+  if (!route) return [];
+
+  if (route.districtDoc) {
+    return buildCrumbs({
+      districtDoc: route.districtDoc,
+      locationDoc: route.locationDoc,
+      category: route.categorySlug
+        ? {
+            name: route.subcategorySlug
+              ? titleCase(slugToText(route.categorySlug))
+              : route.categoryName,
+            slug: route.categorySlug,
+          }
+        : null,
+      subcategory: route.subcategorySlug
+        ? {
+            name: route.categoryName,
+            slug: route.subcategorySlug,
+          }
+        : null,
+    });
+  }
+
+  return [
+    { name: "Home", path: "/" },
+    ...(route.locationSlug
+      ? [{ name: route.locationName, path: `/${route.locationSlug}` }]
+      : []),
+    ...(route.subcategorySlug && route.categorySlug
+      ? [{
+          name: titleCase(slugToText(route.categorySlug)),
+          path: buildCategoryPath({
+            locationSlug: route.locationSlug,
+            categorySlug: route.categorySlug,
+          }),
+        }]
+      : []),
+    { name: route.categoryName, path: null },
+  ];
+};
+
+const absoluteCrumbUrl = (crumbPath = "/") =>
+  `https://massclick.in${crumbPath === "/" ? "/" : crumbPath}`;
+
+const renderBreadcrumbNavHtml = (crumbs = []) =>
+  `<nav aria-label="Breadcrumb" style="margin-bottom:12px">
+            ${crumbs.map((crumb) => (
+              crumb.path
+                ? `<a href="${escapeHtml(absoluteCrumbUrl(crumb.path))}">${escapeHtml(crumb.name)}</a>`
+                : `<span>${escapeHtml(crumb.name)}</span>`
+            )).join(" &gt;\n            ")}
+          </nav>`;
+
+const renderMarkdownBreadcrumb = (crumbs = []) =>
+  crumbs.map((crumb) => (
+    crumb.path
+      ? `[${crumb.name}](${absoluteCrumbUrl(crumb.path)})`
+      : crumb.name
+  )).join(" > ");
 
 export async function ssrMiddleware(req, res) {
   try {
@@ -374,24 +437,16 @@ export async function ssrMiddleware(req, res) {
         ? `${categoryName} in ${locationName}`
         : (seo?.title || fallbackTitle);
 
-    // TODO(Phase 7 of district URL migration): replace this compact legacy
-    // crumb shape with helper/seo/breadcrumbBuilder.js so district-scoped
-    // category pages include separate district and locality crumbs.
-    const breadcrumbItems = isBlogPage
-      ? [
-        { name: "Home", url: "https://massclick.in/" },
-        { name: "Blog", url: "https://massclick.in/blog" },
-        { name: blogDoc?.heading || h1, url: canonical }
-      ]
+    const breadcrumbCrumbs = isBlogPage
+      ? buildBlogCrumbs({ title: blogDoc?.heading || h1 })
       : isCategoryPage
-        ? [
-          { name: "Home", url: "https://massclick.in/" },
-          { name: locationName, url: categoryRoute.breadcrumbLocationUrl },
-          { name: categoryName, url: canonical }
-        ]
-        : [
-          { name: "Home", url: canonical }
-        ];
+        ? buildCategoryBreadcrumbCrumbs(categoryRoute)
+        : [{ name: "Home", path: null }];
+    const breadcrumbCurrentPath = isBlogPage
+      ? `/blog/${secondSegment}`
+      : isCategoryPage
+        ? categoryRoute.canonicalPath
+        : req.path || "/";
 
     const basePublisher = {
       "@type": "Organization",
@@ -564,7 +619,7 @@ export async function ssrMiddleware(req, res) {
       });
     }
 
-    schemaObjects.push(buildBreadcrumbSchema(breadcrumbItems));
+    schemaObjects.push(crumbsToJsonLd(breadcrumbCrumbs, "https://massclick.in", breadcrumbCurrentPath));
 
     const categoryIntroHtml = categoryContent
       ? `
@@ -608,11 +663,7 @@ export async function ssrMiddleware(req, res) {
     const serverContent = isBlogPage
       ? `
         <section style="padding:20px;font-family:Arial,sans-serif">
-          <nav aria-label="Breadcrumb" style="margin-bottom:12px">
-            <a href="https://massclick.in/">Home</a> &gt;
-            <a href="https://massclick.in/blog"> Blog</a> &gt;
-            <span>${escapeHtml(blogDoc?.heading || h1)}</span>
-          </nav>
+          ${renderBreadcrumbNavHtml(breadcrumbCrumbs)}
           <h1>${escapeHtml(blogDoc?.heading || h1)}</h1>
           ${blogDoc?.quickSummary ? `<div class="quick-answer"><strong>Quick Answer:</strong> ${escapeHtml(blogDoc.quickSummary)}</div>` : ""}
           <p>${description}</p>
@@ -627,11 +678,7 @@ export async function ssrMiddleware(req, res) {
       : isCategoryPage
         ? `
         <section style="padding:20px;font-family:Arial,sans-serif">
-          <nav aria-label="Breadcrumb" style="margin-bottom:12px">
-            <a href="https://massclick.in/">Home</a> &gt;
-            <a href="${escapeHtml(categoryRoute.breadcrumbLocationUrl)}"> ${escapeHtml(locationName)}</a> &gt;
-            <span>${escapeHtml(categoryName)}</span>
-          </nav>
+          ${renderBreadcrumbNavHtml(breadcrumbCrumbs)}
           <h1>${escapeHtml(h1)}</h1>
           <p>${description}</p>
           ${categoryIntroHtml}
@@ -734,7 +781,7 @@ export async function ssrMiddleware(req, res) {
     if (acceptsMarkdown) {
       const mdLines = [];
 
-      mdLines.push(`_${breadcrumbItems.map((b) => b.name).join(" > ")}_`, "");
+      mdLines.push(`_${renderMarkdownBreadcrumb(breadcrumbCrumbs)}_`, "");
       mdLines.push(`# ${h1}`, "", description, "");
 
       if (isBlogPage && blogDoc) {

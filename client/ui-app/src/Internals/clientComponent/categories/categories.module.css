@@ -33,6 +33,10 @@
   background: transparent;
 }
 
+.category-breadcrumbs {
+  padding: 24px var(--side-padding) 0 var(--side-padding);
+}
+
 @keyframes slideDown {
   from {
     opacity: 0;

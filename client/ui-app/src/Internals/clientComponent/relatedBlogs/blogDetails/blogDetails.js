@@ -8,8 +8,9 @@ import { fetchAllAuthors } from "../../../../redux/actions/authorMasterAction.js
 import { logSearchActivity } from "../../../../redux/actions/businessListAction";
 import { throttle } from "../../../../utils/throttle";
 import { getPlaceholderImage } from "../../../../utils/placeholderImage";
-import { generateArticleSchema, generateBreadcrumbSchema } from "../../../../utils/seoSchemaGenerators";
+import { generateArticleSchema } from "../../../../utils/seoSchemaGenerators";
 import { buildCategoryPath, createDistrictSlug } from "../../../../utils/searchResultNavigation";
+import { buildBlogCrumbs, crumbsToJsonLd, crumbsToUiItems } from "../../../../utils/breadcrumbs";
 import styles from "./blogDetails.module.css";
 import Navbar from "../relatedBlogNavbar/relatedBlogNavbar";
 import Breadcrumbs from "../../Breadcrumbs/Breadcrumbs";
@@ -569,17 +570,9 @@ const BlogDetail = () => {
     author: getAuthorData().name
   });
 
-  // Generate Breadcrumb schema
-  const breadcrumbSchema = generateBreadcrumbSchema([{
-    name: "Home",
-    url: "https://massclick.in"
-  }, {
-    name: blog.category,
-    url: getListingUrl(blog.category, blog.location)
-  }, {
-    name: blog.heading,
-    url: canonical
-  }]);
+  const breadcrumbCrumbs = buildBlogCrumbs({ title: blog.heading });
+  const breadcrumbSchema = crumbsToJsonLd(breadcrumbCrumbs, "https://massclick.in", `/blog/${slug}`);
+  const breadcrumbItems = crumbsToUiItems(breadcrumbCrumbs);
   return <>
     <OTPLoginModal
       open={openLoginModal}
@@ -614,15 +607,7 @@ const BlogDetail = () => {
 
         <section className={cx("blog-hero")}>
           <div className={cx("blog-hero-copy")}>
-            <Breadcrumbs items={[{
-              label: "Home",
-              link: "/"
-            }, {
-              label: blog.category,
-              link: getListingPath(blog.category, blog.location)
-            }, {
-              label: blog.heading
-            }]} />
+            <Breadcrumbs items={breadcrumbItems} />
 
             <div className={cx("blog-kicker")}>
               <span>
