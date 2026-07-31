@@ -1,10 +1,10 @@
 # District-Prefixed URL Restructure — Handoff
 
-Phases 0-7 are complete and committed. Stopped after Phase 7 — next up is Phase 8 (sitemap district prefixes). Phase 8 was read fresh but not implemented; no code changes for it are in progress. Everything committed so far is tested and working within the constraints noted below. This doc is self-contained — written so a fresh AI session (any tool) or a human engineer can resume without access to prior conversation history.
+Phases 0-11 are complete and committed. The planned district-prefixed URL migration code is done across the web repo and the mobile defensive-scope repo. Remaining items are deployment/prod/ops verification only, listed below. This doc is self-contained — written so a fresh AI session (any tool) or a human engineer can resume without access to prior conversation history.
 
 **Repo:** `D:\dev_abishek\massclick` — server (Express/Mongoose) at `server/`, client (React SPA) at `client/ui-app/`. Mobile app is a sibling repo at `D:\dev_abishek\massclick-mobile-app`.
 
-**Branch:** `dev`. All work so far is committed there, nothing pushed to remote, nothing merged to `main`/`prod`.
+**Branch:** `dev` for `D:\dev_abishek\massclick`; mobile work was committed on `D:\dev_abishek\massclick-mobile-app` branch `main`. Nothing has been pushed to remote, merged to `main`/`prod`, or verified in prod from this session.
 
 **Full original plan:** `C:\Users\USER\.claude\plans\c-users-user-claude-plans-fancy-orbiting-breezy-sprout.md` (Windows path, local to the machine this session ran on). This handoff doc reproduces everything load-bearing from it, but that file has the original phase-by-phase rationale in full prose if something here is ambiguous.
 
@@ -26,6 +26,10 @@ Target URL shapes:
 ## Commits so far (newest first)
 
 ```
+1888ce43 chore(location): remove stale district URL cleanup paths                         [Phase 11, DONE]
+85baee41 feat(location): redirect legacy public URLs                                     [Phase 10, DONE]
+4aaf57a6 feat(location): emit district-prefixed sitemap URLs                             [Phase 8, DONE]
+3f420405 docs(location): update district URL handoff through phase 7
 5684b82b feat(location): unify district breadcrumbs                                      [Phase 7, DONE]
 612e6dfe feat(location): make SSR and analytics district-aware                           [Phase 6, DONE]
 f96300da feat(location): migrate frontend links to district URL builders                 [Phase 5, DONE]
@@ -40,11 +44,17 @@ a499a5cc fix(leads): fail closed when a search location cannot be resolved      
 0c6490ba feat(sitemap): emit full location x category matrix + admin cache reset             [pre-existing, unrelated — see note below]
 ```
 
+Mobile sibling repo commit:
+
+```
+70c7203 feat(location): make mobile routes district-aware                                [Phase 9, DONE]
+```
+
 `0c6490ba` was **not written by this migration** — it was uncommitted work already sitting in the working tree when this session started (a sitemap cross-join restructure + admin cache endpoint). It got committed early in the session because it was blocking a clean `git status`, and in the process 16 double-encoded em-dashes were found and fixed in `sitemapRoutes.js` (2 of them were inside the `/llms.txt` output actually served to crawlers). Mentioned here only so nobody mistakes it for migration work when reading `git log`.
 
 ---
 
-## What's done (Phases 0–7 complete)
+## What's done (Phases 0–11 complete)
 
 ### Phase 0 — Fail-closed lead guard (standalone, shipped independently)
 Fixed a bug **unrelated to and predating this migration**, found while researching it: an unresolved search location normalized to the sentinel `"global"`, which then **disabled** the location filter on lead matching (`server/controller/businessList/logSearchController.js`) instead of blocking it — so an unresolvable location caused WhatsApp/FCM lead alerts to fan out to businesses **nationwide**, sorted by who pays the most. Six producers could already trigger this before any URL change. Now fails closed behind a `lead_guard_require_location` setting (default true, admin-toggleable in Settings → Lead Guards). Also added `district`/`masterLocationSlug` fields to `searchLogSchema.js`, currently unused by any writer except the guard itself.
@@ -127,32 +137,60 @@ Commit: `5684b82b feat(location): unify district breadcrumbs`
 - Business-detail SSR breadcrumbs remain explicitly deferred because business detail pages are still not SSR-rendered.
 - Verified with `node --check`, `git diff --check`, focused client ESLint (`--no-inline-config` to bypass a pre-existing missing hook-rule inline disable) and client/server pure-helper breadcrumb fixtures. Remaining known warning: `cardDetails.js` unused `err`.
 
-## Remaining work (Phases 8–11)
+### Phase 8 — Sitemap district prefixes (DONE)
 
-### Phase 8 — Sitemap district prefixes (mechanical, ships after Phase 5)
+Commit: `4aaf57a6 feat(location): emit district-prefixed sitemap URLs`
 
-`server/routes/sitemapRoutes.js` — thread the district's public slug into the location sitemap and business sitemap URLs. This file already got restructured once this session (the pre-existing `0c6490ba` commit) for the location×category cross-join — that work is unrelated to this migration but touches the same file, so read it fresh before editing. Phase 8 was started only as an inspection pass after Phase 7; no sitemap edits have been made yet.
+- `server/routes/sitemapRoutes.js` now emits district-prefixed URLs for location sitemap entries, business sitemap entries, HTML sitemap links, and LLM crawler output.
+- Verified with `node --check`, `git diff --check`, and a temporary DB-backed `server/verifyPhase8Sitemaps.mjs` script, then deleted before commit.
 
-### Phase 9 — Mobile app defensive scope
+### Phase 9 — Mobile app defensive scope (DONE)
 
-Sibling repo `D:\dev_abishek\massclick-mobile-app`. The Flutter router's only multi-segment route is `/:location/:category` — 3/4/5-segment district URLs hit `NotFoundScreen`. Minimum scope: a `go_router` redirect accepting the new shapes (especially `/business/:d/:l/:slug/:id`, the shape printed on physical visiting cards), update `marketing_profile.dart`'s fallback URL, fix the analytics path shape sent to the web-shared `/site-events` stream (including a pre-existing bug where un-slugged `currentCity` emits paths containing spaces), start sending `district` on `/businesslist/search` so mobile and web stop returning different results for the same query. Explicitly deferred: `assetlinks.json`/AASA/`autoVerify` (pre-existing gap, ops work, wrong time to add during a URL migration).
+Sibling repo commit: `70c7203 feat(location): make mobile routes district-aware`
 
-### Phase 10 — 301 redirects (ships LAST, staging first, never straight to prod)
+- Added district-aware route handling for category and business deep-link shapes, including `/business/:district/:location/:businessSlug/:id`.
+- Mobile search now serializes `district` for business search calls, normalizes analytics page paths, persists district/public slugs for verified locations and recents, and updates the marketing profile fallback URL.
+- Added focused tests in `test/business_search_repository_test.dart` and `test/district_url_migration_test.dart`; both passed with `flutter test test/business_search_repository_test.dart test/district_url_migration_test.dart`.
+- Explicitly still deferred: `assetlinks.json`, AASA, and Android `autoVerify` ops work.
 
-New `server/middleware/legacyUrlRedirectMiddleware.js`. **Single highest-risk line in the whole migration:** always try resolving the incoming path as new-style first and `next()` on success; only reinterpret as legacy if that fails. Backwards, this redirect-loops or misredirects every new-style request. QR codes baked into business certificates/visiting cards mean this redirect layer is **permanent infrastructure**, not a migration-window thing — put a comment saying so, someone will try to delete it in two years. Businesses without a QR yet get the new URL shape minted; existing QRs are never mass-regenerated (the idempotency check should accept either shape as current).
+### Phase 10 — 301 redirects (DONE)
 
-### Phase 11 — Cleanup (anytime, low priority)
+Commit: `85baee41 feat(location): redirect legacy public URLs`
 
-Delete two confirmed-dead code paths (`popularCategoryDrawer.js`'s unreferenced `CategoryDynamicPage`, `popularCategories.js`'s computed-but-never-used district-aware URL array) and leave a TODO on the confirmed-dormant `server/generateStaticPages.js`.
+- Added `server/middleware/legacyUrlRedirectMiddleware.js`, mounted after public API routes and before static/SSR handling.
+- The middleware first proves a request is already district-prefixed/new-style and only then reinterprets non-new-style paths as legacy. This avoids redirecting valid district URLs.
+- Legacy category paths redirect to `/:district/:location/:category[/subcategory]`; district-wide docs redirect to `/:district/:category[/subcategory]`.
+- Legacy business paths redirect to `/business/:district/:location/:businessSlug/:id`.
+- QR/certificate business-profile URL generation now mints the new shape for new QRs while accepting both legacy and new URL text as current for existing QR images.
+- Verified with `node --check`, `git diff --check`, and a temporary DB-backed `server/verifyPhase10LegacyRedirects.mjs` script, then deleted before commit.
+
+### Phase 11 — Cleanup (DONE)
+
+Commit: `1888ce43 chore(location): remove stale district URL cleanup paths`
+
+- Deleted the unreferenced `CategoryDynamicPage` code path at `client/ui-app/src/Internals/clientComponent/cards/popularCategories/popularCategoryDrawer.js`.
+- Confirmed no computed district-aware URL array remains in the popular-categories components.
+- Added a TODO to dormant `server/generateStaticPages.js` warning that it still writes legacy `/:location/:category` folders if someone revives it.
+- Verified with `node --check server/generateStaticPages.js`, `git diff --check`, and `rg` checks for removed/stale symbols.
+
+## Remaining work
+
+No planned migration code remains from Phases 0-11. Remaining items are operational:
+
+- Run the Phase 1 `server/scripts/backfillPublicLocationSlug.js` equivalent against prod before deploying routes that depend on `publicLocationSlug`/`urlAlias`.
+- Verify staging before prod, especially legacy 301 behavior and new-style non-redirect behavior. Do not deploy the redirect middleware straight to prod untested.
+- Run the Phase 0 prod investigation query if desired: `db.users.countDocuments({"leadsData.location":"global"})`.
+- Complete mobile deep-link ops later: `assetlinks.json`, AASA, and Android `autoVerify`.
+- Push/merge/deploy both repos when ready.
 
 ---
 
-## Conventions established this session — follow these in every remaining phase
+## Conventions established this session — follow these in future follow-up
 
 1. **`district` is always a URL slug, always optional, always resolved internally.** Every function that accepts it does `resolveDistrictBySlug(district)` (or composes via `resolveRouteLocation`) rather than expecting the caller to have pre-resolved it. Never accept a raw district *name* ("Tiruchirappalli") where a slug ("trichy") is expected, or vice versa — this exact confusion existed in the pre-migration `findBusinessesByCategory(category, district)` signature (where `district` was actually neither, just free text) and caused real design friction when fixing it.
 2. **`server/helper/location/locationSlug.js` is the single authority** for anything slug- or display-name-related on a masterlocation doc: `getPublicLocationSlug`, `computePublicLocationSlugs`, `getDistrictUrlSlug`, `getDistrictDisplayName`. Don't reimplement any of these a third time — grep for the function name first.
 3. **Two slugify implementations exist server-side and are NOT interchangeable**: `server/slugify.js` (canonical, used for all URL-facing slugs) vs the local one inside `locationResolver.js` (used only for free-text search matching against the full hierarchical `slug` field). Mixing them silently breaks matching. `urlSegmentClassifier.js` and the new resolver functions import `slugify` from `server/slugify.js` aliased as `publicSlugify` specifically to make this obvious at the call site.
-4. **`ssrMiddleware.js` has now been rewritten for Phase 6 and Phase 7.** Do not look for the old `TODO(Phase 6...)` placeholders; they were removed when SSR route classification, district-aware cache keys, analytics continuity, and breadcrumb rendering were completed. The remaining server-side public URL work is sitemap/redirect focused.
+4. **`ssrMiddleware.js` has now been rewritten for Phase 6 and Phase 7.** Do not look for the old `TODO(Phase 6...)` placeholders; they were removed when SSR route classification, district-aware cache keys, analytics continuity, and breadcrumb rendering were completed. The remaining work is deployment/prod verification and ops follow-up, not planned migration code.
 5. **Testing pattern**: never start the dev server or run `npm start`/`npm run build` without asking first (explicit standing user preference from before this session). Instead, write a throwaway `.mjs` script **inside `server/`** (not the OS temp dir — Node ESM resolves `node_modules` relative to the script's own location, not cwd, so a script outside `server/` can't `import` any package), connect to Mongo directly, invoke the controller/helper function with a hand-built fake `req`/`res`, inspect the result, disconnect, then delete the script before committing. Every phase in this session was verified this way against real `massClick_dev` data, not just syntax-checked. `git status --short` should be clean (no stray debug files) before every commit — check it.
 6. **Commit at phase boundaries, not mid-phase**, and only once the phase's own changes are individually syntax-checked (`node --check`) AND behaviorally verified against real data. Every commit message in this migration explains *why*, not just *what* — matches this repo's existing commit style, keep doing that.
 7. **Dev DB connection** (already used throughout, see `C:\Users\USER\.claude\projects\D--dev-abishek\memory\dev_database_connection.md` if that memory file is available in the new session): `mongodb://admin:Massclick123@127.0.0.1:27018/massClick_dev?authSource=admin`. Prod is a different host — never touch it without asking first, and nobody has run any of this session's verification queries against prod yet (see Phase 0's open item above).
@@ -160,21 +198,15 @@ Delete two confirmed-dead code paths (`popularCategoryDrawer.js`'s unreferenced 
 
 ---
 
-## Prompt to paste into a new session to continue
+## Prompt to paste into a new session for follow-up
 
 ```
-Continue the district-prefixed URL restructure for the Massclick repo at
-D:\dev_abishek\massclick (branch `dev`). Read
-D:\dev_abishek\massclick\DISTRICT_URL_MIGRATION_HANDOFF.md in full first —
-it has everything: what's done (Phases 0-7 complete, all committed and
-tested), full detail on Phases 8-11, and conventions you must follow to
-stay consistent with what's already committed (git log shows the commits).
-Verify against the dev MongoDB directly (connection string is in the
-handoff doc) using the same non-HTTP testing pattern used throughout —
-don't start the dev server without asking first. Start with Phase 8 and
-continue through Phase 11 in order, committing at each phase boundary the
-same way the existing commits do (check `git log --oneline -10` for the
-style). Phase 8 is sitemap-only; read `server/routes/sitemapRoutes.js` fresh
-before editing because it was recently restructured by the pre-existing
-`0c6490ba` sitemap matrix commit.
+Continue follow-up for the completed district-prefixed URL restructure.
+Read D:\dev_abishek\massclick\DISTRICT_URL_MIGRATION_HANDOFF.md in full
+first. Phases 0-11 are complete and committed in the web repo; Phase 9 is
+committed in D:\dev_abishek\massclick-mobile-app. No planned migration code
+remains. Focus only on the remaining operational items: prod slug backfill,
+staging/prod verification, mobile deep-link ops (assetlinks/AASA/autoVerify),
+and push/merge/deploy. Do not run prod commands or deploy without explicit
+approval.
 ```
