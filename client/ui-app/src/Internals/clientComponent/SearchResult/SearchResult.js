@@ -244,7 +244,7 @@ const SearchResultListSkeleton = ({ viewMode = "list" }) => {
 };
 
 const SearchResults = React.memo(
-  ({ initialResults, initialTotal, initialHasMore } = {}) => {
+  ({ initialResults, initialTotal, initialHasMore, routeContext = null } = {}) => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const urlParams = useParams();
@@ -254,19 +254,29 @@ const SearchResults = React.memo(
       targetRef: bottomSectionsRef,
       shouldRender: shouldRenderBottomSections,
     } = useRenderNearViewport();
+    const mergedRouteParams = useMemo(
+      () => ({ ...urlParams, ...(routeContext || {}) }),
+      [urlParams, routeContext],
+    );
 
     const {
       searchTerm,
       location: locationText,
       masterLocationSlug,
+      districtSlug,
+      routeLocationSlug,
+      categorySlug,
+      subcategorySlug,
       displayName,
       isKnownCategory,
       results: stateResults,
       logAlreadySent: stateLogSent,
-    } = extractSearchResultData(locationState.state || {}, urlParams);
+    } = extractSearchResultData(locationState.state || {}, mergedRouteParams);
     // Verified-location picks search by canonical slug (exact node); free text
     // goes through the server-side resolver. Display always uses locationText.
-    const apiLocation = masterLocationSlug || locationText;
+    const apiLocation = districtSlug
+      ? routeLocationSlug || ""
+      : masterLocationSlug || routeLocationSlug || locationText;
 
     // Guard against nonsensical /:location/:category/:subcategory URLs where
     // :category isn't the subcategory's real parent (e.g. beauty-and-spa/chairs-on-rent
@@ -274,27 +284,23 @@ const SearchResults = React.memo(
     // because :category is discarded below, which lets bots index infinite fake
     // combinations. Parent/child pairing is admin-configurable (CategoryDisplaySettings),
     // so it's resolved from the API rather than a hardcoded map.
-    const {
-      location: rawLocationParam,
-      category: categoryParam,
-      subcategory: subcategoryParam,
-    } = urlParams;
     const [categoryMismatchTarget, setCategoryMismatchTarget] = useState(null);
 
     useEffect(() => {
       setCategoryMismatchTarget(null);
-      if (!categoryParam || !subcategoryParam) return;
+      if (!categorySlug || !subcategorySlug) return;
 
       let cancelled = false;
       axiosInstance
-        .get(`/v2/category/parent-of/${encodeURIComponent(subcategoryParam)}`)
+        .get(`/v2/category/parent-of/${encodeURIComponent(subcategorySlug)}`)
         .then((res) => {
           if (cancelled) return;
           const expectedParentSlug = res.data?.parentSlug;
-          if (expectedParentSlug && expectedParentSlug !== categoryParam) {
-            setCategoryMismatchTarget(
-              `/${rawLocationParam}/${expectedParentSlug}/${subcategoryParam}`,
-            );
+          if (expectedParentSlug && expectedParentSlug !== categorySlug) {
+            const targetSegments = districtSlug
+              ? [districtSlug, routeLocationSlug, expectedParentSlug, subcategorySlug]
+              : [routeLocationSlug || createSlug(locationText), expectedParentSlug, subcategorySlug];
+            setCategoryMismatchTarget(`/${targetSegments.filter(Boolean).join("/")}`);
           }
         })
         .catch(() => {});
@@ -302,7 +308,7 @@ const SearchResults = React.memo(
       return () => {
         cancelled = true;
       };
-    }, [categoryParam, subcategoryParam, rawLocationParam]);
+    }, [categorySlug, districtSlug, locationText, routeLocationSlug, subcategorySlug]);
 
     useEffect(() => {
       if (categoryMismatchTarget) {
@@ -324,9 +330,18 @@ const SearchResults = React.memo(
       locationText || DEFAULT_LOCATION,
     );
 
-    const locationSlug = createSlug(locationText);
     const searchSlug = createSlug(normalizedSearchTerm);
-    const canonicalUrl = `https://massclick.in/${locationSlug}/${searchSlug}`;
+    const locationSlug = districtSlug
+      ? routeLocationSlug || ""
+      : createSlug(locationText);
+    const canonicalSearchSegments = subcategorySlug && categorySlug
+      ? [categorySlug, subcategorySlug]
+      : [searchSlug];
+    const canonicalPathSegments = districtSlug
+      ? [districtSlug, locationSlug, ...canonicalSearchSegments]
+      : [locationSlug, ...canonicalSearchSegments];
+    const canonicalPath = `/${canonicalPathSegments.filter(Boolean).join("/")}`;
+    const canonicalUrl = `https://massclick.in${canonicalPath}`;
     const loading = useSelector(selectBusinessLoading);
     const error = useSelector(selectBusinessError);
     const { meta: seoMetaData } = useSelector(
@@ -391,7 +406,7 @@ const SearchResults = React.memo(
       lastLoggedIdentityRef.current = stateLogSent
         ? getSearchLogIdentity(authUser)
         : null;
-    }, [normalizedSearchTerm, locationText, safeStateResults, stateLogSent]);
+    }, [normalizedSearchTerm, locationText, districtSlug, routeLocationSlug, safeStateResults, stateLogSent]);
 
     // Reset all pagination/search state when the search context changes
     useEffect(() => {
@@ -407,7 +422,7 @@ const SearchResults = React.memo(
       setResolvedCategory(null);
       setInitialSearchResolved(Boolean(safeStateResults));
       loadingPagesRef.current.clear();
-    }, [normalizedSearchTerm, locationText, safeStateResults]);
+    }, [normalizedSearchTerm, locationText, districtSlug, routeLocationSlug, safeStateResults]);
 
     // Reset pagination when filters or sort change (but not the search term itself)
     useEffect(() => {
@@ -492,6 +507,7 @@ const SearchResults = React.memo(
         if (Object.keys(cleanCategoryFilters).length > 0) {
           params.filters = JSON.stringify(cleanCategoryFilters);
         }
+        if (districtSlug) params.district = districtSlug;
         params.page = page;
         params.pageSize = 20;
         if (userGeo) {
@@ -500,12 +516,12 @@ const SearchResults = React.memo(
         }
         return params;
       },
-      [sortBy, activeFilters, userGeo],
+      [sortBy, activeFilters, userGeo, districtSlug],
     );
 
     const trackResolvedSearch = useCallback((resultsCount) => {
       const searchIdentity = locationState.key
-        || `${normalizedSearchTerm}|${locationText}|${isKnownCategory}`;
+        || `${districtSlug}|${routeLocationSlug}|${normalizedSearchTerm}|${locationText}|${isKnownCategory}`;
       if (trackedSearchRef.current === searchIdentity) return;
 
       trackSearch({
@@ -515,7 +531,7 @@ const SearchResults = React.memo(
         known: isKnownCategory,
       });
       trackedSearchRef.current = searchIdentity;
-    }, [isKnownCategory, locationState.key, locationText, normalizedSearchTerm]);
+    }, [districtSlug, isKnownCategory, locationState.key, locationText, normalizedSearchTerm, routeLocationSlug]);
 
     // ─── Initial load: use state results from navigation OR fetch from API ────────
     useEffect(() => {
@@ -575,6 +591,8 @@ const SearchResults = React.memo(
       normalizedSearchTerm,
       locationText,
       apiLocation,
+      districtSlug,
+      routeLocationSlug,
       isKnownCategory,
       dispatch,
       trackResolvedSearch,
@@ -632,6 +650,9 @@ const SearchResults = React.memo(
       sortBy,
       normalizedSearchTerm,
       locationText,
+      apiLocation,
+      districtSlug,
+      routeLocationSlug,
       isKnownCategory,
       userGeo,
       dispatch,
@@ -832,11 +853,14 @@ const SearchResults = React.memo(
       const seoParams = {
         pageType: "category",
         category: effectiveCategory.toLowerCase(),
-        location: locationText.toLowerCase(),
+        ...(districtSlug && !routeLocationSlug
+          ? {}
+          : { location: routeLocationSlug || locationText.toLowerCase() }),
+        ...(districtSlug ? { district: districtSlug } : {}),
       };
       dispatch({ type: CLEAR_SEO_META });
       dispatch(fetchSeoMeta(seoParams));
-    }, [dispatch, effectiveCategory, locationText]);
+    }, [dispatch, districtSlug, effectiveCategory, locationText, routeLocationSlug]);
 
     useEffect(() => {
       if (!effectiveCategory) return;
@@ -849,8 +873,8 @@ const SearchResults = React.memo(
     }, [dispatch, effectiveCategory, locationText]);
 
     const handleRetry = useCallback(() => {
-      dispatch(performSearch(searchText, apiLocation));
-    }, [dispatch, searchText, apiLocation]);
+      dispatch(performSearch(searchText, apiLocation, isKnownCategory, buildSearchParams(1)));
+    }, [dispatch, searchText, apiLocation, isKnownCategory, buildSearchParams]);
 
     if (categoryMismatchTarget) {
       return null;

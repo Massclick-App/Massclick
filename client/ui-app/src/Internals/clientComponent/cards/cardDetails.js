@@ -101,6 +101,7 @@ const FullScreenGallery = ({
 };
 const BusinessDetail = React.memo(() => {
   const {
+    district,
     location,
     businessSlug,
     id
@@ -190,10 +191,11 @@ const BusinessDetail = React.memo(() => {
     } else if (location && businessSlug) {
       dispatch(getBusinessDetailsBySlug({
         location,
-        slug: businessSlug
+        slug: businessSlug,
+        district
       }));
     }
-  }, [dispatch, id, location, businessSlug]);
+  }, [dispatch, id, district, location, businessSlug]);
   useEffect(() => {
     if (business?._id) {
       dispatch(getBusinessReviews(business._id));
@@ -703,10 +705,16 @@ const BusinessDetail = React.memo(() => {
   };
   const whatsappNumber = business.whatsappNumber || business.contactList || business.contact;
   const locationSlug = location || "";
+  const businessPathPrefix = district
+    ? `/business/${district}/${locationSlug}`
+    : `/business/${locationSlug}`;
   // Use DB location field for canonical to stay consistent regardless of how the user arrived
   const canonicalLocationSlug = toSlug(business.location || location);
-  const businessUrl = `https://massclick.in/business/${locationSlug}/${business.slug || businessSlug}/${business._id || id}`;
-  const canonicalUrl = `https://massclick.in/business/${canonicalLocationSlug}/${business.slug || businessSlug}/${business._id || id}`;
+  const canonicalPathPrefix = district
+    ? `/business/${district}/${canonicalLocationSlug}`
+    : `/business/${canonicalLocationSlug}`;
+  const businessUrl = `https://massclick.in${businessPathPrefix}/${business.slug || businessSlug}/${business._id || id}`;
+  const canonicalUrl = `https://massclick.in${canonicalPathPrefix}/${business.slug || businessSlug}/${business._id || id}`;
 
   // Generate LocalBusiness schema with all available data
   const localBusinessSchema = generateLocalBusinessSchema({
@@ -747,7 +755,7 @@ const BusinessDetail = React.memo(() => {
     url: "https://massclick.in"
   }, {
     name: business.location || locationSlug,
-    url: `https://massclick.in/${locationSlug}`
+    url: district ? `https://massclick.in/${district}/${locationSlug}` : `https://massclick.in/${locationSlug}`
   }, {
     name: business.businessName,
     url: businessUrl

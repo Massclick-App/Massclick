@@ -158,13 +158,47 @@ export const extractSearchResultData = (locationState = {}, urlParams = {}) => {
     category,
     categoryName,
     searchText,
+    district,
+    districtSlug: stateDistrictSlug,
+    districtName: stateDistrictName,
+    locationSlug: stateLocationSlug,
+    locationName: stateLocationName,
   } = locationState;
 
-  const { location: locParam, category: categoryParam, subcategory } = urlParams;
+  const {
+    district: districtParam,
+    districtSlug: paramDistrictSlug,
+    districtName: paramDistrictName,
+    location: locParam,
+    locationSlug: paramLocationSlug,
+    locationName: paramLocationName,
+    category: categoryParam,
+    categorySlug: paramCategorySlug,
+    subcategory,
+    subcategorySlug: paramSubcategorySlug,
+    isKnownCategory: routeKnownCategory,
+  } = urlParams;
+
+  const finalDistrictSlug = String(
+    stateDistrictSlug || district || paramDistrictSlug || districtParam || ""
+  );
+  const finalDistrictName =
+    stateDistrictName ||
+    paramDistrictName ||
+    (finalDistrictSlug ? finalDistrictSlug : "");
+  const routeLocationSlug = String(
+    stateLocationSlug || paramLocationSlug || locParam || ""
+  );
+  const routeLocationName =
+    stateLocationName ||
+    paramLocationName ||
+    (routeLocationSlug ? routeLocationSlug : "");
+  const categorySlug = paramCategorySlug || categoryParam || "";
+  const subcategorySlug = paramSubcategorySlug || subcategory || "";
 
   // Determine if this is a known category or user search
   // If stateCategory is provided, it's a known category (sent as category parameter)
-  const isKnownCategory = Boolean(stateCategory);
+  const isKnownCategory = Boolean(stateCategory || routeKnownCategory);
 
   // Priority order for determining search term
   const finalSearchTerm =
@@ -174,17 +208,27 @@ export const extractSearchResultData = (locationState = {}, urlParams = {}) => {
     categoryName ||
     searchText ||
     category ||
-    subcategory ||
-    categoryParam ||
+    subcategorySlug ||
+    categorySlug ||
     "";
 
   // Priority order for location
-  const finalLocation = location || locParam || "";
+  const finalLocation =
+    location ||
+    routeLocationName ||
+    (finalDistrictSlug ? finalDistrictName : "") ||
+    "";
 
   return {
     searchTerm: normalizeSearchTerm(finalSearchTerm),
     location: normalizeSearchTerm(finalLocation),
     masterLocationSlug: String(masterLocationSlug || ""),
+    districtSlug: finalDistrictSlug,
+    districtName: finalDistrictName,
+    routeLocationSlug,
+    routeLocationName,
+    categorySlug,
+    subcategorySlug,
     displayName: finalSearchTerm, // Keep original for display
     isKnownCategory, // Flag for API call routing
     results: Array.isArray(results) ? results : null,

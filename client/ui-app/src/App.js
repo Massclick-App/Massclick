@@ -135,6 +135,8 @@ const MobileHomeDock = lazy(() => import(/* webpackChunkName: "mobile-home-dock"
 const OTPLoginModal = lazy(() => import(/* webpackChunkName: "otp-modal" */ './Internals/clientComponent/AddBusinessModel.js'));
 
 const CategoryRouter = lazy(() => import(/* webpackChunkName: "category-router" */ './Internals/clientComponent/categories/categoryRouter.js'));
+const DistrictRouteResolver = lazy(() => import(/* webpackChunkName: "district-route-resolver" */ './Internals/clientComponent/categories/DistrictRouteResolver.js'));
+const CategoriesPage = lazy(() => import(/* webpackChunkName: "category-directory" */ './Internals/clientComponent/categories/categories.js'));
 const BlogDetail = lazy(() => import(/* webpackChunkName: "blog-detail" */ './Internals/clientComponent/relatedBlogs/blogDetails/blogDetails.js'));
 const MaintenanceOverlay = lazy(() => import(/* webpackChunkName: "maintenance" */ './components/MaintenanceOverlay.js'));
 
@@ -256,6 +258,7 @@ function AppRoutes({
           <Route path="/publicize" element={<PublicizePage />} />
           <Route path="/events" element={<EventCarousel />} />
           <Route path="/events/:eventSlug/:id" element={<EventDetails />} />
+          <Route path="/massclick-events/:id" element={<MassclickEventDetails />} />
           <Route path="/user/search-history" element={<LeadsCardHistory />} />
           <Route path="/business-enquiry" element={<BusinessEnquiry />} />
           <Route path="/payment-status/:transactionId" element={<PaymentStatus />} />
@@ -291,18 +294,25 @@ function AppRoutes({
             <Route key={path} path={path} element={element} />
           ))}
 
-          <Route path="/:location" element={<Navigate to="/" replace />} />
-          <Route path="/:location/:category" element={<CategoryRouter />} />
+          <Route path="/:district" element={<CategoriesPage mode="districtLanding" />} />
+          <Route path="/:district/:category" element={<CategoryRouter />} />
           <Route
-            path="/:location/:category/:subcategory"
+            path="/:district/:p2/:p3"
+            element={<DistrictRouteResolver />}
+          />
+          <Route
+            path="/:district/:location/:category/:subcategory"
             element={<SearchResults />}
           />
 
           <Route
+            path="/business/:district/:location/:businessSlug/:id"
+            element={<BusinessDetails />}
+          />
+          <Route
             path="/business/:location/:businessSlug/:id"
             element={<BusinessDetails />}
           />
-          <Route path="/massclick-events/:id" element={<MassclickEventDetails />} />
 
           <Route element={<PrivateRoute isAuthenticated={isAuthenticated} isReady={authReady} />}>
             <Route path="/dashboard" element={<Dashboard />}>
