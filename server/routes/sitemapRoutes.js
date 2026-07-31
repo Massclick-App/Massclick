@@ -4,6 +4,7 @@ import categoryModel from "../model/category/categoryModel.js";
 import categoryDisplaySettingsModel from "../model/categoryDisplaySettings/categoryDisplaySettingsModel.js";
 import masterLocationModel from "../model/locationModel/masterLocationModel.js";
 import { slugify } from "../slugify.js";
+import { getPublicLocationSlug } from "../helper/location/locationSlug.js";
 import seoPageContentBlogs from "../model/seoModel/seoPageContentBlogModel.js";
 import { categoriesData } from "../utils/sub-categoriesData.js";
 import { STATIC_PAGES } from "../config/ssrConfig.js";
@@ -241,8 +242,9 @@ const getLocationLabel = (doc = {}) =>
   doc.hierarchyPath ||
   [doc.locality, doc.ward, doc.zone, doc.district].filter(Boolean).join(" > ");
 
-const getPublicLocationSlug = (doc = {}) =>
-  safeSlug(doc.locality || doc.ward || doc.zone || doc.district || "");
+// Imported, not defined here: the same slug is now persisted on each
+// masterlocation doc as `publicLocationSlug`, and the sitemap must emit
+// exactly what the router resolves. See helper/location/locationSlug.js.
 
 const getLocationPriority = (level = "") => {
   if (level === "district") return "0.9";
