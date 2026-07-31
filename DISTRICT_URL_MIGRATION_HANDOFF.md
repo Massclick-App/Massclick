@@ -1,6 +1,6 @@
 # District-Prefixed URL Restructure — Handoff
 
-Stopped mid-Phase-3 to conserve session budget. Everything committed so far is tested and working. This doc is self-contained — written so a fresh AI session (any tool) or a human engineer can resume without access to prior conversation history.
+Phases 0-3 are complete. Stopped after Phase 3 — next up is Phase 4 (frontend routing), the highest-risk phase in the migration. Everything committed so far is tested and working. This doc is self-contained — written so a fresh AI session (any tool) or a human engineer can resume without access to prior conversation history.
 
 **Repo:** `D:\dev_abishek\massclick` — server (Express/Mongoose) at `server/`, client (React SPA) at `client/ui-app/`. Mobile app is a sibling repo at `D:\dev_abishek\massclick-mobile-app`.
 
@@ -26,18 +26,20 @@ Target URL shapes:
 ## Commits so far (newest first)
 
 ```
-8aa3ed69 feat(location): thread optional district param through search/business/SEO APIs   [Phase 3, PARTIAL]
-66a48fa4 feat(location): add district-URL resolver, segment classifier, and crumb builder   [Phase 2, DONE]
-9acc5884 feat(location): add district-aware public URL slugs for masterlocations            [Phase 1, DONE]
-a499a5cc fix(leads): fail closed when a search location cannot be resolved                  [Phase 0, DONE]
-0c6490ba feat(sitemap): emit full location x category matrix + admin cache reset            [pre-existing, unrelated — see note below]
+53f40fde feat(location): add GET /v2/location/resolve endpoint                              [Phase 3, DONE]
+00e5395d docs: add district URL migration handoff/continuation doc
+8aa3ed69 feat(location): thread optional district param through search/business/SEO APIs    [Phase 3]
+66a48fa4 feat(location): add district-URL resolver, segment classifier, and crumb builder    [Phase 2, DONE]
+9acc5884 feat(location): add district-aware public URL slugs for masterlocations             [Phase 1, DONE]
+a499a5cc fix(leads): fail closed when a search location cannot be resolved                   [Phase 0, DONE]
+0c6490ba feat(sitemap): emit full location x category matrix + admin cache reset             [pre-existing, unrelated — see note below]
 ```
 
 `0c6490ba` was **not written by this migration** — it was uncommitted work already sitting in the working tree when this session started (a sitemap cross-join restructure + admin cache endpoint). It got committed early in the session because it was blocking a clean `git status`, and in the process 16 double-encoded em-dashes were found and fixed in `sitemapRoutes.js` (2 of them were inside the `/llms.txt` output actually served to crawlers). Mentioned here only so nobody mistakes it for migration work when reading `git log`.
 
 ---
 
-## What's done (Phases 0–2 complete, Phase 3 ~90%)
+## What's done (Phases 0–3 complete)
 
 ### Phase 0 — Fail-closed lead guard (standalone, shipped independently)
 Fixed a bug **unrelated to and predating this migration**, found while researching it: an unresolved search location normalized to the sentinel `"global"`, which then **disabled** the location filter on lead matching (`server/controller/businessList/logSearchController.js`) instead of blocking it — so an unresolvable location caused WhatsApp/FCM lead alerts to fan out to businesses **nationwide**, sorted by who pays the most. Six producers could already trigger this before any URL change. Now fails closed behind a `lead_guard_require_location` setting (default true, admin-toggleable in Settings → Lead Guards). Also added `district`/`masterLocationSlug` fields to `searchLogSchema.js`, currently unused by any writer except the guard itself.
@@ -61,96 +63,18 @@ Fixed a bug **unrelated to and predating this migration**, found while researchi
 - `server/helper/seo/breadcrumbBuilder.js` + `client/ui-app/src/utils/breadcrumbs.js` (new, parallel files) — `buildCrumbs(...)` → `[{name, path}]` (site-relative paths, origin applied once at the JSON-LD boundary — this is what prevents the pre-existing www/non-www split in `SearchResult.js`'s old breadcrumb code), `crumbsToJsonLd`, `crumbsToUiItems`. **Not wired into any page yet — that's Phase 7.** Server version takes raw Mongoose docs; client version takes flat already-resolved strings (client has no DB access) — this divergence is deliberate and documented in both files' headers; what MUST stay identical between them is the crumb *sequencing logic*, not the function signature.
 - Converged the two pre-existing `BreadcrumbList` generators (`server/utils/htmlUtils.js`'s `buildBreadcrumbSchema` now takes `{name,url}` matching the client's `generateBreadcrumbSchema`, was `{name,item}`). Its one caller in `ssrMiddleware.js` updated — **mechanical rename only**, the segment-parsing logic feeding it stays positional, deliberately deferred to Phase 6 (see below).
 
-### Phase 3 — Backend district param support (~90% done)
+### Phase 3 — Backend district param support (DONE)
 
 Every endpoint below: `district` is always an optional URL slug (e.g. `"trichy"`), resolved internally, absent = pre-migration behavior byte-for-byte unchanged. **This convention must be preserved for anything added later — don't accept a raw district name anywhere.**
 
-Done:
 - `mainSearchController` (`server/controller/businessList/businessListController.js:~785`) — the actual collision fix. Verified directly: `location=anna-nagar` under `district=trichy` → 2,455 results (all Tiruchirappalli); under `district=dindigul` → 71 results (all Dindigul). Same text, disjoint sets.
 - `findBusinessesByCategory` (`server/helper/businessList/businessListHelper.js`) — signature changed from `(category, district)` (where `district` was actually free text, never a real district) to `(category, {locationText} | {districtSlug, locationSlug})`. Both call sites updated (`ssrMiddleware.js:176`, `businessListController.js`'s `viewBusinessByCategory`) — mechanical only, zero behavior change for existing callers.
 - `findBusinessBySlug` / `getBusinessBySlugAction` — optional `district`, filtered against `masterLocation.district`.
 - `getSeoMeta` (`server/helper/seo/seoHelper.js`) — `district` now part of the cache key (`seo-meta:...`). Without this, two districts sharing a location/category text would share a 24h-cached canonical — verified directly that `anna-nagar`+`trichy` and `anna-nagar`+`dindigul` now cache separately. `buildDynamicSeoMeta` (the fallback used for most long-tail pages) and `seoTemplateHelper.js`'s `renderSeoMetaFromTemplate` both prepend the district slug to the canonical when supplied.
 - `getV2ParentOfSubCategoryAction` (`server/controller/categoryDisplaySettings/categoryDisplaySettingsController.js`) — now also returns `parentName` alongside `parentSlug`, needed for Phase 7's subcategory breadcrumb (title-casing a slug client-side breaks on `&`, "and", acronyms).
+- `GET /api/v2/location/resolve` (new — `server/controller/location/masterLocationController.js`'s `resolveRouteLocationAction`, mounted in `server/routes/masterLocationRoute.js`) — wraps the classifier for Phase 4's `DistrictRouteResolver` to call. Accepts `district`, optional `p2`/`p3`; returns `{district, classification}` where `classification.type` is `"district"`, `"districtCategory"`, `"location"` (reshaped to flat `{slug, name, level}`, not the raw Mongoose doc), or `"unknown"` (no hard 404, matches the plan's best-effort fallback). Verified all seven cases directly against dev data, including the Phase 1 qualified-slug edge case (`anna-nagar-lalgudi` resolves correctly and returns its clean display name "Anna Nagar", not the internal qualified slug).
 
-**NOT done — the one remaining Phase 3 item:**
-
-A new `GET /v2/location/resolve` endpoint that wraps the classifier for the frontend's `DistrictRouteResolver` (Phase 4) to call when it hits the ambiguous `/:district/:p2/:p3` shape. Was mid-design when this session stopped. Sketch:
-
-```js
-// server/controller/location/masterLocationController.js — add:
-import { resolveDistrictBySlug } from "../../helper/location/locationResolver.js";
-import { classifyMiddleSegment } from "../../helper/location/urlSegmentClassifier.js";
-import { getDistrictUrlSlug, getDistrictDisplayName } from "../../helper/location/locationSlug.js";
-import { ownNameOf } from "../../helper/location/locationResolver.js";
-
-export const resolveRouteLocationAction = async (req, res) => {
-  try {
-    const { district, p2, p3 } = req.query;
-    if (!district) return res.status(400).json({ message: "district is required" });
-
-    const districtDoc = await resolveDistrictBySlug(district);
-    if (!districtDoc) return res.status(404).json({ message: "District not found" });
-
-    const districtSummary = {
-      slug: getDistrictUrlSlug(districtDoc),
-      name: getDistrictDisplayName(districtDoc),
-    };
-
-    if (!p2) {
-      return res.json({ district: districtSummary, classification: { type: "district" } });
-    }
-
-    const classification = await classifyMiddleSegment({ districtDoc, p2, p3 });
-
-    if (classification.type === "location") {
-      return res.json({
-        district: districtSummary,
-        classification: {
-          type: "location",
-          location: {
-            slug: classification.locationDoc.publicLocationSlug,
-            name: ownNameOf(classification.locationDoc),
-            level: classification.locationDoc.level,
-          },
-          categorySlug: classification.categorySlug,
-        },
-      });
-    }
-
-    return res.json({ district: districtSummary, classification });
-  } catch (error) {
-    console.error("resolveRouteLocationAction error:", error);
-    return res.status(500).json({ message: error.message });
-  }
-};
-```
-
-Register in `server/routes/masterLocationRoute.js` (public, no auth — matches the existing `/api/masterlocation/search` route right above it):
-```js
-router.get('/api/v2/location/resolve', resolveRouteLocationAction);
-```
-(Note the route file's existing routes are all under `/api/masterlocation/...` but the plan's convention for new v2 endpoints elsewhere in this codebase is `/api/v2/...` — matches `categoryDisplaySettingsRoutes.js`'s `/api/v2/category/...` pattern. Double check the client's `API_URL` base to confirm whether it should be `/api/v2/location/resolve` or `/v2/location/resolve` — grep `categoryRouter.js` for how it calls `/v2/category/home` and match that exactly.)
-
-**Test before considering Phase 3 done** (pattern used throughout this session — direct function invocation against dev DB, never via HTTP/npm start, per stored user preference not to run servers without asking):
-```bash
-cd server
-MONGO_URL="mongodb://admin:Massclick123@127.0.0.1:27018/massClick_dev?authSource=admin" node --input-type=module -e "
-import mongoose from 'mongoose';
-import dotenv from 'dotenv';
-import { resolveRouteLocationAction } from './controller/location/masterLocationController.js';
-dotenv.config();
-await mongoose.connect(process.env.MONGO_URL);
-const fakeRes = () => { const r={}; r.status=c=>{r.code=c;return r}; r.json=b=>{r.body=b;return r}; return r; };
-let res = fakeRes(); await resolveRouteLocationAction({query:{district:'trichy', p2:'srirangam', p3:'hotels'}}, res);
-console.log('location case:', JSON.stringify(res.body));
-res = fakeRes(); await resolveRouteLocationAction({query:{district:'trichy', p2:'hotels', p3:'luxury-hotels'}}, res);
-console.log('districtCategory case:', JSON.stringify(res.body));
-await mongoose.disconnect();
-"
-```
-Expect the first call to classify as `type:"location"` (Srirangam is a real zone in Trichy), the second as `type:"districtCategory"` (assuming "hotels" is a real top-level category slug — check with `db.categories.findOne({categoryType:"Primary Category"})` first if unsure which slug to use).
-
-Lower priority per the original plan, don't block on these: `getEnhancedSuggestionsController`, `viewBusinessByCategory` — neither builds canonical public URLs.
+Deferred (per original plan, don't block on these): `getEnhancedSuggestionsController`, `viewBusinessByCategory` — neither builds canonical public URLs.
 
 ---
 
@@ -231,16 +155,16 @@ Delete two confirmed-dead code paths (`popularCategoryDrawer.js`'s unreferenced 
 Continue the district-prefixed URL restructure for the Massclick repo at
 D:\dev_abishek\massclick (branch `dev`). Read
 D:\dev_abishek\massclick\DISTRICT_URL_MIGRATION_HANDOFF.md in full first —
-it has everything: what's done (Phases 0-2 complete, Phase 3 ~90%), the
-exact remaining Phase 3 item with a code sketch, full detail on Phases 4-11,
-and conventions you must follow to stay consistent with what's already
-committed (git log shows the commits). Verify against the dev MongoDB
-directly (connection string is in the handoff doc) using the same
-non-HTTP testing pattern used throughout — don't start the dev server
-without asking first. Finish Phase 3 (the /v2/location/resolve endpoint),
-commit it, then continue through Phase 4 onward in order, committing at
-each phase boundary the same way the existing commits do (check `git log
---oneline -10` for the style). Phase 4 is the highest-risk phase in the
-whole migration — read its section in the handoff doc carefully before
-touching anything.
+it has everything: what's done (Phases 0-3 complete, all committed and
+tested), full detail on Phases 4-11, and conventions you must follow to
+stay consistent with what's already committed (git log shows the commits).
+Verify against the dev MongoDB directly (connection string is in the
+handoff doc) using the same non-HTTP testing pattern used throughout —
+don't start the dev server without asking first. Start with Phase 4 and
+continue through Phase 11 in order, committing at each phase boundary the
+same way the existing commits do (check `git log --oneline -10` for the
+style). Phase 4 is the highest-risk phase in the whole migration — read its
+section in the handoff doc carefully before touching anything, especially
+the categoryRouter.js and SearchResult.js notes about not re-deriving
+meaning from raw useParams() position.
 ```
