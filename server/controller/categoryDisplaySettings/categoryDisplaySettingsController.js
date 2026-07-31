@@ -544,7 +544,21 @@ export const getV2ParentOfSubCategoryAction = async (req, res) => {
       subCatLookup[key].some((item) => cleanText(item.name) === targetName)
     ) || null;
 
-    return res.json({ parentSlug });
+    // parentSlug alone isn't enough to render a breadcrumb crumb — title-
+    // casing the slug client-side breaks on "&", "and", and acronyms
+    // (see the district URL migration's breadcrumb phase). subCategoryMapping
+    // only stores the parent's slug, not its display name, so look up the
+    // actual category doc for it — additive, only runs when parentSlug was
+    // found, and null (not an error) when that category doc doesn't exist,
+    // matching this endpoint's existing "best-effort, never throws" contract.
+    const parentCategoryDoc = parentSlug
+      ? await categoryModel.findOne({ slug: parentSlug, isActive: true }).lean()
+      : null;
+
+    return res.json({
+      parentSlug,
+      parentName: parentCategoryDoc?.category || null,
+    });
   } catch (error) {
     console.error("getV2ParentOfSubCategoryAction error:", error);
     return res.status(500).json({ message: error.message });

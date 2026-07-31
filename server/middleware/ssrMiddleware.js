@@ -173,9 +173,15 @@ export async function ssrMiddleware(req, res) {
         category: category
       });
 
+      // TODO(Phase 6 of district URL migration): pass { districtSlug,
+      // locationSlug } once firstSegment/secondSegment stop being positional
+      // location/category and become district/location — see
+      // findBusinessesByCategory's new signature in businessListHelper.js.
+      // Mechanical rename only for now (district-slug capability already
+      // exists in the helper, just not exercised from here yet).
       categoryBusinesses = cachedBusinesses || await findBusinessesByCategory(
         category,
-        location
+        { locationText: location }
       );
 
       // Set cache for fetched data

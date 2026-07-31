@@ -89,7 +89,15 @@ const buildTokens = async ({ categorySlug, location }) => {
 // buildDynamicSeoMeta fallback — only used when no curated seodatas doc
 // exists for the requested category+location (caller falls back further if
 // this returns null).
-export const renderSeoMetaFromTemplate = async ({ category, location }) => {
+// `district`, when supplied, is already a URL slug ("trichy") from the
+// district-prefixed scheme — prepended directly ahead of whatever
+// resolveLocationTokens already produces for `location`. Deliberately not
+// touching resolveLocationTokens itself: it resolves `location` against
+// district-level docs specifically (a pre-existing, separate concern from
+// this migration), and its output is reused as-is here, just given a
+// district prefix when one is known. Omitted, canonical building is
+// byte-for-byte the pre-migration behavior.
+export const renderSeoMetaFromTemplate = async ({ category, location, district }) => {
   try {
     const categorySlug = slugify(category);
 
@@ -101,9 +109,11 @@ export const renderSeoMetaFromTemplate = async ({ category, location }) => {
 
     const tokens = await buildTokens({ categorySlug, location });
 
-    const canonical = tokens.locationSlug
-      ? `https://massclick.in/${tokens.locationSlug}/${categorySlug}`
-      : `https://massclick.in/${categorySlug}`;
+    const canonical = district
+      ? `https://massclick.in/${slugify(district)}${tokens.locationSlug ? `/${tokens.locationSlug}` : ""}/${categorySlug}`
+      : tokens.locationSlug
+        ? `https://massclick.in/${tokens.locationSlug}/${categorySlug}`
+        : `https://massclick.in/${categorySlug}`;
 
     return {
       title: renderTemplateString(template.titleTemplate, tokens),

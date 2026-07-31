@@ -1,6 +1,5 @@
-import { getDistrictUrlSlug } from "../location/locationSlug.js";
+import { getDistrictUrlSlug, getDistrictDisplayName } from "../location/locationSlug.js";
 import { ownNameOf } from "../location/locationResolver.js";
-import { titleCase } from "../../utils/htmlUtils.js";
 
 // Single source of the breadcrumb TRAIL for the district-prefixed URL scheme.
 // Deliberately produces relative paths only ("/trichy/srirangam", never
@@ -19,15 +18,6 @@ import { titleCase } from "../../utils/htmlUtils.js";
 // the same field names on both sides so the logic can be copied verbatim.
 // If you change one, change the other and re-run the shared fixture table
 // (see the "Test coverage" section of the district URL restructure plan).
-
-// The district crumb prefers `urlAlias` ("Trichy") over the full official
-// district name ("Tiruchirappalli") — the URL itself is built from urlAlias
-// (getDistrictUrlSlug), and a crumb reading "Tiruchirappalli" while the
-// address bar says "/trichy" looks like a mismatch to a user, even though
-// both are correct. Falls back to the official name for the ~37 districts
-// with no alias.
-const districtCrumbName = (districtDoc) =>
-  districtDoc.urlAlias ? titleCase(districtDoc.urlAlias) : districtDoc.district;
 
 /**
  * @param {object} args
@@ -65,7 +55,7 @@ export const buildCrumbs = ({
   const crumbs = [{ name: "Home", path: "/" }];
 
   const districtPath = `/${getDistrictUrlSlug(districtDoc)}`;
-  crumbs.push({ name: districtCrumbName(districtDoc), path: districtPath });
+  crumbs.push({ name: getDistrictDisplayName(districtDoc), path: districtPath });
 
   let pathSoFar = districtPath;
 

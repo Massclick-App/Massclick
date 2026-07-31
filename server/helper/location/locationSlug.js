@@ -198,3 +198,25 @@ export const getDistrictUrlSlug = (doc = {}) => {
   if (alias) return slugify(alias);
   return slugify(String(doc.district || "").trim());
 };
+
+/**
+ * The district's DISPLAY name — for breadcrumb crumbs, API responses, and
+ * anywhere else a human-readable district label is needed. Prefers
+ * `urlAlias` title-cased ("Trichy") over the full official district name
+ * ("Tiruchirappalli"): the URL itself is built from urlAlias
+ * (getDistrictUrlSlug, above), and a label reading "Tiruchirappalli" while
+ * the address bar says "/trichy" looks like a mismatch to a user even though
+ * both are correct. Falls back to the official name for the ~37 districts
+ * with no alias.
+ *
+ * Single source for this rule — used by helper/seo/breadcrumbBuilder.js and
+ * the /v2/location/resolve endpoint. If you need this rule in a third place,
+ * import it from here rather than reimplementing it.
+ */
+export const getDistrictDisplayName = (doc = {}) => {
+  const alias = String(doc.urlAlias || "").trim();
+  if (alias) {
+    return alias.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+  return doc.district || "";
+};

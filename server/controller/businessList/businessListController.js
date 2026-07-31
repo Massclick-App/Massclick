@@ -14,6 +14,7 @@ import { ensureBusinessCertificates, regenerateBusinessCertificates } from "../.
 import {
   resolveLocationForSearch,
   resolveLocationSearchScope,
+  resolveRouteLocation,
 } from "../../helper/location/locationResolver.js";
 
 const ensureCertificatesForActivation = async (previousBusiness, business) => {
@@ -102,7 +103,7 @@ export const trackQrDownload = async (req, res) => {
 
 export const getBusinessBySlugAction = async (req, res) => {
   try {
-    const { location, slug } = req.query;
+    const { location, slug, district } = req.query;
 
     if (!location || !slug) {
       return res
@@ -110,7 +111,7 @@ export const getBusinessBySlugAction = async (req, res) => {
         .send({ message: "Location and slug are required" });
     }
 
-    const result = await findBusinessBySlug({ location, slug });
+    const result = await findBusinessBySlug({ location, slug, district });
 
     if (!result) {
       return res.status(404).send({ message: "Business not found" });
@@ -211,7 +212,7 @@ export const viewBusinessByCategory = async (req, res) => {
     if (!category)
       return res.status(400).send({ message: "Category is required" });
 
-    const result = await findBusinessesByCategory(category, district);
+    const result = await findBusinessesByCategory(category, { locationText: district });
 
     res.status(200).send(result);
 
@@ -783,7 +784,12 @@ export const getEnhancedSuggestionsController = async (req, res) => {
 
 export const mainSearchController = async (req, res) => {
   try {
-    let { term = "", location = "", category = "" } = req.query;
+    let { term = "", location = "", category = "", district = "" } = req.query;
+    // Preserved pre-normalize: resolveRouteLocation needs the URL-shaped
+    // segment ("srirangam"), not the free-text-normalized form used for
+    // regex fallback matching further down (which turns hyphens into spaces
+    // — fine for matching against free text, wrong for matching a slug).
+    const rawLocationParam = location;
 
     const normalize = (text = "") =>
       text.toLowerCase().trim().replace(/&/g, " and ").replace(/[-_]/g, " ").replace(/\s+/g, " ");
@@ -791,6 +797,11 @@ export const mainSearchController = async (req, res) => {
     term = normalize(term);
     location = normalize(location);
     category = normalize(category);
+    // district is left as-is, not run through the free-text normalize()
+    // above — it's a clean URL segment, not free text needing space
+    // -normalization for regex matching. resolveRouteLocation's own
+    // publicSlugify() does the actual comparison-safe normalization.
+    district = (district || "").trim();
 
     if (["all districts", "enter location manually"].includes(location)) {
       location = "";
@@ -838,7 +849,39 @@ export const mainSearchController = async (req, res) => {
     let resolvedLocation = null;
     let locationSearchScope = null;
     let locationClauseIndex = -1;
-    if (location) {
+    // Set only when an optional `district` param resolved to a real district
+    // doc. This is the actual fix for the cross-district name collision (390
+    // locality/ward/zone names shared by 2+ districts, e.g. "Anna Nagar" in
+    // 4): a bare `location=srirangam` is ambiguous on its own, but paired
+    // with `district=trichy` it disambiguates to one exact node instead of
+    // whatever resolveLocationForSearch's free-text ranking happens to pick.
+    let districtScopeDoc = null;
+
+    if (district) {
+      const routeResolution = await resolveRouteLocation({
+        districtSlug: district,
+        locationSlug: rawLocationParam,
+      }).catch((err) => {
+        console.error("[Search] district route resolve failed:", err.message);
+        return { districtDoc: null, locationDoc: null };
+      });
+      districtScopeDoc = routeResolution.districtDoc;
+      if (routeResolution.locationDoc) {
+        resolvedLocation = routeResolution.locationDoc;
+        locationSearchScope = await resolveLocationSearchScope(resolvedLocation).catch((err) => {
+          console.error("[Search] location scope expansion failed:", err.message);
+          return null;
+        });
+      }
+    }
+
+    // Legacy free-text path — completely unchanged behavior, and only runs
+    // when a district wasn't supplied (or didn't resolve to anything real).
+    // A caller sending both `district` and `location` never falls into this
+    // branch even if the location didn't resolve WITHIN that district —
+    // falling through to nationwide free-text matching would silently
+    // re-introduce the exact ambiguity `district` was sent to avoid.
+    if (!resolvedLocation && !districtScopeDoc && location) {
       resolvedLocation = await resolveLocationForSearch(location).catch((err) => {
         console.error("[Search] location resolve failed:", err.message);
         return null;
@@ -925,6 +968,22 @@ export const mainSearchController = async (req, res) => {
             })),
           },
         ],
+      });
+    } else if (districtScopeDoc) {
+      // District resolved but no location segment (district-wide
+      // /:district/:category), or the location segment didn't resolve to
+      // anything within this district — scope purely to the district via the
+      // already-denormalized masterLocation.district field. Deliberately
+      // does NOT fall back to nationwide free-text matching like the
+      // `else if (location)` legacy branch below: the caller already told us
+      // which district it means, and matching outside it would be wrong, not
+      // just imprecise.
+      locationClauseIndex = matchQuery.$and.length;
+      matchQuery.$and.push({
+        "masterLocation.district": {
+          $regex: `^${escapeRegex(districtScopeDoc.district)}$`,
+          $options: "i",
+        },
       });
     } else if (location) {
       // Nothing resolved — legacy behavior untouched.
