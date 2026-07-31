@@ -214,20 +214,26 @@ export async function ssrMiddleware(req, res) {
         ? `${categoryName} in ${locationName}`
         : (seo?.title || fallbackTitle);
 
+    // TODO(Phase 6/7 of district URL migration): rebuild from the segment
+    // classifier + helper/seo/breadcrumbBuilder.js instead of firstSegment,
+    // and add a district crumb. Deliberately left as positional for now —
+    // this touches the same lines Phase 6 rewrites; changing the logic twice
+    // isn't worth it. Only the field name changed here (item -> url), to
+    // converge with the client's generateBreadcrumbSchema shape.
     const breadcrumbItems = isBlogPage
       ? [
-        { name: "Home", item: "https://massclick.in/" },
-        { name: "Blog", item: "https://massclick.in/blog" },
-        { name: blogDoc?.heading || h1, item: canonical }
+        { name: "Home", url: "https://massclick.in/" },
+        { name: "Blog", url: "https://massclick.in/blog" },
+        { name: blogDoc?.heading || h1, url: canonical }
       ]
       : isCategoryPage
         ? [
-          { name: "Home", item: "https://massclick.in/" },
-          { name: locationName, item: `https://massclick.in/${firstSegment}` },
-          { name: categoryName, item: canonical }
+          { name: "Home", url: "https://massclick.in/" },
+          { name: locationName, url: `https://massclick.in/${firstSegment}` },
+          { name: categoryName, url: canonical }
         ]
         : [
-          { name: "Home", item: canonical }
+          { name: "Home", url: canonical }
         ];
 
     const basePublisher = {
