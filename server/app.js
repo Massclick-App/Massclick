@@ -13,6 +13,7 @@ import { apiRateLimit } from "./middleware/rateLimitMiddleware.js";
 import wellKnownRoutes from "./routes/wellKnownRoutes.js";
 import { ssrMiddleware } from "./middleware/ssrMiddleware.js";
 import { maintenanceModeMiddleware } from "./middleware/maintenanceModeMiddleware.js";
+import { legacyUrlRedirectMiddleware } from "./middleware/legacyUrlRedirectMiddleware.js";
 
 import userRoutes from "./routes/userRoutes.js";
 import userClientRoutes from "./routes/userClientRoute.js";
@@ -167,6 +168,7 @@ app.use("/", searchRequestRoutes);
 app.use("/", massclickEventRoute);
 app.use("/", legalDocumentRoutes);
 app.use("/", hiringRoutes);
+app.use(legacyUrlRedirectMiddleware);
 app.use(express.static(CLIENT_BUILD_PATH, {
   index: false,
   maxAge: "365d",

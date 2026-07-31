@@ -17,7 +17,11 @@ import categoryModel from "../../model/category/categoryModel.js";
 import gmapsLeadsModel from "../../model/gmapsLeads/gmapsLeadsModel.js";
 import enquiryModel from "../../model/enquiry/enquiryModel.js";
 import otpUserModel from "../../model/msg91Model/usersModels.js";
-import { slugify } from "../../slugify.js";
+import {
+  buildBusinessDetailsUrl,
+  getPublicBaseUrl,
+  isAcceptedBusinessDetailsUrl,
+} from "./businessPublicUrlHelper.js";
 
 const BUSINESS_PAYMENT_GST_RATE = 18;
 
@@ -80,23 +84,6 @@ export const copyKeywordsFromCategory = async (categoryName) => {
     console.error("Error copying keywords from category:", err.message);
     return [];
   }
-};
-
-const getPublicBaseUrl = () =>
-  String(process.env.PUBLIC_BASE_URL || "https://massclick.in").replace(
-    /\/+$/,
-    "",
-  );
-
-const buildBusinessDetailsUrl = (business = {}) => {
-  const businessId =
-    business?._id?.toString?.() || business?._id || business?.id || "";
-  const locationSlug = slugify(business.location || "business");
-  const businessSlug = slugify(
-    business.slug || business.businessName || business.name || "profile",
-  );
-
-  return `${getPublicBaseUrl()}/business/${locationSlug}/${businessSlug}/${businessId}`;
 };
 
 const buildReviewUrl = (business = {}) => {
@@ -169,10 +156,12 @@ const generateBusinessDetailsQrCode = async (businessDocument) => {
 const ensureBusinessDetailsQrCode = async (business = {}) => {
   if (!business?._id) return business;
 
-  const expectedQrText = buildBusinessDetailsUrl(business);
   const hasCurrentBusinessQr =
     business.businessProfileQrCode?.qrImageKey &&
-    business.businessProfileQrCode?.qrText === expectedQrText;
+    isAcceptedBusinessDetailsUrl(
+      business,
+      business.businessProfileQrCode?.qrText,
+    );
 
   if (hasCurrentBusinessQr) {
     business.businessProfileQrCode.qrImage = getSignedUrlByKey(
