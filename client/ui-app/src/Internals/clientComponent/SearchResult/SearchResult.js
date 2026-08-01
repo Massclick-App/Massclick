@@ -959,12 +959,17 @@ const SearchResults = React.memo(
       );
     }
 
+    // A search/category page with zero resolved results is either a legit
+    // empty area or an unresolvable category slug (e.g. a stray ObjectId
+    // falling through to this route) — either way it shouldn't be indexed
+    // under a manufactured "Best {slug} in {location}" title.
+    const hasResolvedResults = initialSearchResolved && totalResults > 0;
     const fallbackSeo = {
       title: `${searchText} in ${locationText} | Best ${searchText} Near You | Massclick`,
       description: `Find trusted ${searchText} in ${locationText}. View ratings, reviews, contact details and hire the best ${searchText} near you.`,
       keywords: `${searchText}, ${searchText} in ${locationText}, best ${searchText} ${locationText}, top ${searchText} ${locationText}`,
       canonical: canonicalUrl,
-      robots: "index, follow",
+      robots: hasResolvedResults ? "index, follow" : "noindex, follow",
     };
     const seoContent = seoPageContents?.[0];
     const sanitizedPageContent = seoContent?.pageContent

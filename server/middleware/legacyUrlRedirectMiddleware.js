@@ -146,6 +146,28 @@ const findLocationDocForBusiness = async (business = {}, legacyLocation = "") =>
   return resolveLocationForSearch(legacyLocation).catch(() => null);
 };
 
+const isLegacyBusinessIdPath = (parts = []) =>
+  parts[0] === "business" && parts.length === 2;
+
+const buildLegacyBusinessIdRedirect = async (parts = []) => {
+  if (!isLegacyBusinessIdPath(parts)) return null;
+
+  const [, businessId] = parts;
+  const business = await findBusinessForLegacyPath(businessId);
+  if (!business) return null;
+
+  const locationDoc = await findLocationDocForBusiness(business, business.location || "");
+  const districtName = locationDoc?.district || business.masterLocation?.district;
+  const districtDoc = await findDistrictDocByName(districtName);
+  if (!districtDoc) return null;
+
+  const districtSlug = getDistrictUrlSlug(districtDoc);
+  const locationSlug = getRouteLocationSlug(locationDoc, business.location || "");
+  const businessSlug = getBusinessSlug(business, "");
+
+  return `/business/${districtSlug}/${locationSlug}/${businessSlug}/${business._id}`;
+};
+
 const buildLegacyBusinessRedirect = async (parts = []) => {
   if (parts[0] !== "business" || parts.length !== 4) return null;
 
@@ -179,7 +201,9 @@ export const resolveLegacyRedirectTargetForPath = async (path = "") => {
   if (await resolvesAsNewStyle(parts)) return null;
 
   const target = parts[0] === "business"
-    ? await buildLegacyBusinessRedirect(parts)
+    ? (isLegacyBusinessIdPath(parts)
+        ? await buildLegacyBusinessIdRedirect(parts)
+        : await buildLegacyBusinessRedirect(parts))
     : await buildLegacyCategoryRedirect(parts);
 
   if (!target || samePath(path, target)) return null;
@@ -197,9 +221,23 @@ export const legacyUrlRedirectMiddleware = async (req, res, next) => {
     if (!shouldInspect(req)) return next();
 
     const target = await resolveLegacyRedirectTargetForPath(req.path || req.url);
-    if (!target) return next();
+    if (target) {
+      return res.redirect(REDIRECT_STATUS, appendOriginalQuery(req, target));
+    }
 
-    return res.redirect(REDIRECT_STATUS, appendOriginalQuery(req, target));
+    // Bare /business/<id> is the pre-migration business-detail URL shape
+    // (see git history); it no longer matches any route. Rather than let it
+    // fall through to the district/category router — which treats "business"
+    // as a district and the id as a category, producing an indexable
+    // "Best <id> in business" page for any random hex string — return 404
+    // outright so unmatched legacy/QR-code links stop getting (re)indexed.
+    const parts = pathParts(req.path || req.url);
+    if (isLegacyBusinessIdPath(parts)) {
+      res.setHeader("X-Robots-Tag", "noindex, nofollow");
+      return res.status(404).end();
+    }
+
+    return next();
   } catch (error) {
     console.error("LEGACY_URL_REDIRECT_ERROR:", error);
     return next();

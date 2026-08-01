@@ -36,7 +36,7 @@ const SeoMeta = ({ seoData, fallback }) => {
       <meta
         key="robots"
         name="robots"
-        content={meta.robots || "index, follow"}
+        content={meta.robots || "noindex, follow"}
       />
 
       {meta.canonical && (
