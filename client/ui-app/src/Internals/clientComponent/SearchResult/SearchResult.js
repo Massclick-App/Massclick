@@ -262,12 +262,6 @@ const SearchResults = React.memo(
       () => ({ ...urlParams, ...(routeContext || {}) }),
       [urlParams, routeContext],
     );
-    console.log("[DistrictNameDebug] SearchResult inputs", {
-      urlParams,
-      routeContext,
-      mergedRouteParams,
-      locationState: locationState.state,
-    });
 
     const {
       searchTerm,
@@ -284,12 +278,6 @@ const SearchResults = React.memo(
       results: stateResults,
       logAlreadySent: stateLogSent,
     } = extractSearchResultData(locationState.state || {}, mergedRouteParams);
-    console.log("[DistrictNameDebug] SearchResult extracted", {
-      districtSlug,
-      districtName,
-      routeLocationSlug,
-      routeLocationName,
-    });
     // Verified-location picks search by canonical slug (exact node); free text
     // goes through the server-side resolver. Display always uses locationText.
     const apiLocation = districtSlug
@@ -411,12 +399,6 @@ const SearchResults = React.memo(
         ];
     const breadcrumbSchema = crumbsToJsonLd(breadcrumbCrumbs, "https://massclick.in", canonicalPath);
     const breadcrumbItems = crumbsToUiItems(breadcrumbCrumbs);
-    console.log("[DistrictNameDebug] SearchResult breadcrumb built", {
-      districtSlug,
-      districtName,
-      breadcrumbCrumbs,
-      breadcrumbItems,
-    });
     const loading = useSelector(selectBusinessLoading);
     const error = useSelector(selectBusinessError);
     const { meta: seoMetaData } = useSelector(

@@ -42,19 +42,28 @@ export const isKnownTopLevelCategorySlug = async (slug) => {
  * @returns {Promise<
  *   | { type: "districtCategory", categorySlug: string, subcategorySlug: string|null }
  *   | { type: "location", locationDoc: object, categorySlug: string|null }
- *   | { type: "unknown" }
+ *   | { type: "unresolvedLocation", attemptedLocationText: string, categorySlug: string }
+ *   | { type: "unknown", attemptedText: string }
  * >}
  *
  * Resolution order matches the plan's design decision exactly:
  *   1. Is p2 a known top-level category slug? -> district-wide + subcategory.
  *   2. Else, does p2 resolve as a locality/ward/zone within the district?
  *      -> locality-specific.
- *   3. Neither -> "unknown". Deliberately not a hard 404 here — the caller
- *      decides what best-effort rendering means (matches today's existing
- *      behavior for an unrecognized segment); this function only classifies.
+ *   3. Neither, but p3 IS a known top-level category -> "unresolvedLocation".
+ *      p2 can only mean "category" or "location" in this URL shape, and step
+ *      1 already ruled out "category" — so a real category sitting in p3
+ *      means p2 was almost certainly a failed/mistyped location attempt
+ *      (e.g. someone typed the district's own name, found live via
+ *      /trichy/tiruchirappalli/hotels — "tiruchirappalli" isn't a locality
+ *      registered under itself). Falls back to the district-wide category in
+ *      p3 rather than the caller fabricating a fake category out of p2.
+ *   4. Neither, and p3 isn't a known category either -> genuine "unknown".
+ *      Deliberately not a hard 404 here — the caller decides what
+ *      best-effort rendering means; this function only classifies.
  */
 export const classifyMiddleSegment = async ({ districtDoc, p2, p3 } = {}) => {
-  if (!districtDoc || !p2) return { type: "unknown" };
+  if (!districtDoc || !p2) return { type: "unknown", attemptedText: p2 || "" };
 
   const isCategory = await isKnownTopLevelCategorySlug(p2);
   if (isCategory) {
@@ -66,5 +75,9 @@ export const classifyMiddleSegment = async ({ districtDoc, p2, p3 } = {}) => {
     return { type: "location", locationDoc, categorySlug: p3 || null };
   }
 
-  return { type: "unknown" };
+  if (p3 && (await isKnownTopLevelCategorySlug(p3))) {
+    return { type: "unresolvedLocation", attemptedLocationText: p2, categorySlug: p3 };
+  }
+
+  return { type: "unknown", attemptedText: p2 };
 };

@@ -322,24 +322,35 @@ export const extractSearchResultData = (locationState = {}, urlParams = {}) => {
     paramDistrictName ||
     stateDistrictName ||
     (finalDistrictSlug ? finalDistrictSlug : "");
+
+  // A district route was actually resolved (paramDistrictSlug is only ever
+  // set by buildDistrictCategoryContext/buildLocationCategoryContext once
+  // DistrictRouteResolver got a real answer from /v2/location/resolve) —
+  // as opposed to no district route existing at all (legacy free-text
+  // navigation, or the resolve call itself failing, both of which leave
+  // paramDistrictSlug "" via buildLegacyRouteContext). Only in the latter
+  // case should an empty paramLocationSlug fall through to navigation
+  // state: once a district IS resolved, "" is an authoritative "no location
+  // matched within this district" — not a signal to reach for whatever raw
+  // text the user originally typed into the location field, which was never
+  // validated against this district and can name a different node
+  // entirely, or nothing at all (see DistrictRouteResolver.js's
+  // "unresolvedLocation"/"unknown" handling). Without this gate, a stale
+  // state.locationSlug and a freshly-resolved paramLocationName (which
+  // falls back to the district's own name, by design — see
+  // buildDistrictCategoryContext's comment) get paired together into
+  // buildCrumbs/canonicalPath as if they described the same location, even
+  // though they came from two unrelated sources.
+  const hasResolvedDistrictContext = Boolean(paramDistrictSlug);
   const routeLocationSlug = String(
-    paramLocationSlug || locParam || stateLocationSlug || ""
+    paramLocationSlug ||
+      (hasResolvedDistrictContext ? "" : locParam || stateLocationSlug) ||
+      ""
   );
   const routeLocationName =
     paramLocationName ||
-    stateLocationName ||
+    (hasResolvedDistrictContext ? "" : stateLocationName) ||
     (routeLocationSlug ? routeLocationSlug : "");
-  console.log("[DistrictNameDebug] extractSearchResultData (post-fix: param* now wins over state*)", {
-    stateDistrictName,
-    paramDistrictName,
-    finalDistrictSlug,
-    finalDistrictName,
-    stateLocationName,
-    paramLocationName,
-    routeLocationName,
-    rawLocationState: locationState,
-    rawUrlParams: urlParams,
-  });
   const categorySlug = paramCategorySlug || categoryParam || "";
   const subcategorySlug = paramSubcategorySlug || subcategory || "";
 

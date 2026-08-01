@@ -19,10 +19,6 @@ export const resolveDistrictRoute = async ({ district, p2, p3 } = {}) => {
   if (p3) params.p3 = p3;
 
   const response = await axiosInstance.get("/v2/location/resolve", { params });
-  console.log("[DistrictNameDebug] resolveDistrictRoute API response", {
-    params,
-    data: response.data,
-  });
   return response.data;
 };
 
@@ -42,18 +38,37 @@ export const buildDistrictCategoryContext = ({
   district,
   category,
   subcategory,
+  // Defaults to the same "!subcategory" convention every existing caller
+  // relies on (a bare category with no subcategory is always a known
+  // top-level category by the time it reaches here). Callers passing
+  // unverified free text as `category` (e.g. DistrictRouteResolver's
+  // genuine-"unknown" fallback) must override this explicitly to false —
+  // otherwise the caller downstream would run an exact-category match
+  // against text that was never confirmed to BE a category.
+  isKnownCategory = !subcategory,
 } = {}) => {
   const context = {
     routeType: subcategory ? "districtSubcategory" : "districtCategory",
     districtSlug: district?.slug || "",
     districtName: district?.name || formatUrlText(district?.slug || ""),
     locationSlug: "",
+    // Intentionally NOT blanked to match locationSlug's emptiness: this is
+    // not "the name of the resolved location" (there isn't one), it's the
+    // display fallback for "no specific location, browsing the whole
+    // district" — CategoryRouter's overrideLocation prop reads it directly
+    // for exactly that. Blanking it would blank the location field on every
+    // ordinary district-wide category page (e.g. /trichy/hotels), not just
+    // the "unknown"/"unresolvedLocation" fallback paths this field was
+    // scrutinized for. The asymmetry with locationSlug is by design; what
+    // must NOT happen is pairing this locationName with a locationSlug from
+    // an unrelated source (e.g. stale navigation state) as if the two
+    // described the same resolved location — see extractSearchResultData in
+    // searchResultNavigation.js, which is where that pairing is guarded.
     locationName: district?.name || formatUrlText(district?.slug || ""),
     categorySlug: category || "",
     subcategorySlug: subcategory || "",
-    isKnownCategory: !subcategory,
+    isKnownCategory,
   };
-  console.log("[DistrictNameDebug] buildDistrictCategoryContext", { input: district, context });
   return context;
 };
 
@@ -74,10 +89,5 @@ export const buildLocationCategoryContext = ({
     subcategorySlug: subcategory || "",
     isKnownCategory: !subcategory,
   };
-  console.log("[DistrictNameDebug] buildLocationCategoryContext", {
-    inputDistrict: district,
-    inputLocation: location,
-    context,
-  });
   return context;
 };

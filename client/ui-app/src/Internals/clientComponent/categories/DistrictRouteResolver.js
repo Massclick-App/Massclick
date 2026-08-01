@@ -22,8 +22,6 @@ const DistrictRouteResolver = () => {
     let cancelled = false;
     setResolution(null);
 
-    console.log("[DistrictNameDebug] DistrictRouteResolver effect firing", { district, p2, p3 });
-
     resolveDistrictRoute({ district, p2, p3 })
       .then((data) => {
         if (cancelled) return;
@@ -33,11 +31,6 @@ const DistrictRouteResolver = () => {
           slug: district,
           name: formatUrlText(district),
         };
-        console.log("[DistrictNameDebug] DistrictRouteResolver classified", {
-          classification,
-          districtSummary,
-          usedApiDistrict: Boolean(data?.district),
-        });
 
         if (classification.type === "location") {
           setResolution({
@@ -63,22 +56,41 @@ const DistrictRouteResolver = () => {
           return;
         }
 
+        if (classification.type === "unresolvedLocation") {
+          // p2 didn't resolve as a location or category, but p3 IS a real
+          // category — p2 was almost certainly a failed/mistyped location
+          // (e.g. the district's own name). Render the district-wide
+          // category from p3 instead of fabricating a category out of p2 —
+          // matches how a genuine /:district/:category districtCategory
+          // renders (see server/helper/location/urlSegmentClassifier.js).
+          setResolution({
+            mode: "category",
+            routeContext: buildDistrictCategoryContext({
+              district: districtSummary,
+              category: classification.categorySlug,
+              subcategory: "",
+            }),
+          });
+          return;
+        }
+
+        // Genuine "unknown": neither p2 nor p3 resolved to anything real.
+        // Treat p2 as a free-text search term rather than a fabricated
+        // category, so the existing no-results UI can name what was
+        // actually typed. isKnownCategory must be forced false — p2 was
+        // never verified to be a real category.
         setResolution({
           mode: "search",
           routeContext: buildDistrictCategoryContext({
             district: districtSummary,
             category: p2,
-            subcategory: p3,
+            subcategory: "",
+            isKnownCategory: false,
           }),
         });
       })
-      .catch((error) => {
+      .catch(() => {
         if (cancelled) return;
-        console.log("[DistrictNameDebug] DistrictRouteResolver /v2/location/resolve FAILED — falling back to legacy context with empty districtName", {
-          district, p2, p3,
-          error: error?.message,
-          status: error?.response?.status,
-        });
         setResolution({
           mode: "search",
           routeContext: buildLegacyRouteContext({
@@ -95,8 +107,6 @@ const DistrictRouteResolver = () => {
   }, [district, p2, p3]);
 
   if (!resolution) return null;
-
-  console.log("[DistrictNameDebug] DistrictRouteResolver rendering", resolution);
 
   if (resolution.mode === "category") {
     return <CategoryRouter routeContext={resolution.routeContext} />;

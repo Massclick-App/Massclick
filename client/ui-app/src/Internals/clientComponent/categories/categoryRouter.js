@@ -48,14 +48,12 @@ const CategoryRouter = ({ routeContext = null } = {}) => {
     setPrefetchedResults(null);
 
     if (routeContext) {
-      console.log("[DistrictNameDebug] CategoryRouter using routeContext prop (from DistrictRouteResolver)", routeContext);
       setResolvedRouteContext(routeContext);
       return;
     }
 
     let cancelled = false;
     setResolvedRouteContext(null);
-    console.log("[DistrictNameDebug] CategoryRouter has NO routeContext prop — resolving its own via params.district", { params: params });
 
     resolveDistrictRoute({ district: params.district })
       .then((data) => {
@@ -65,14 +63,10 @@ const CategoryRouter = ({ routeContext = null } = {}) => {
           category: params.category,
           subcategory: params.subcategory,
         });
-        console.log("[DistrictNameDebug] CategoryRouter self-resolved routeContext", { apiData: data, built });
         setResolvedRouteContext(built);
       })
-      .catch((error) => {
+      .catch(() => {
         if (cancelled) return;
-        console.log("[DistrictNameDebug] CategoryRouter self-resolve FAILED — falling back to legacy context with empty districtName", {
-          params, error: error?.message, status: error?.response?.status,
-        });
         setResolvedRouteContext(buildLegacyRouteContext({
           location: params.district || params.location,
           category: params.category,
@@ -227,11 +221,6 @@ const CategoryRouter = ({ routeContext = null } = {}) => {
   }
 
   if (!resolvedCategory) return null;
-
-  console.log("[DistrictNameDebug] CategoryRouter rendering SearchResults with", {
-    resolvedRouteContext,
-    districtName: resolvedRouteContext?.districtName,
-  });
 
   return (
     <Suspense fallback={null}>

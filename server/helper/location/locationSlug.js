@@ -218,10 +218,5 @@ export const getDistrictDisplayName = (doc = {}) => {
   const result = alias
     ? alias.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
     : doc.district || "";
-  console.log("[DistrictNameDebug] getDistrictDisplayName", {
-    district: doc.district,
-    urlAlias: doc.urlAlias,
-    result,
-  });
   return result;
 };

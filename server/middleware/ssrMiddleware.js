@@ -120,7 +120,6 @@ const buildBusinessPath = ({ districtSlug = "", location = "", businessName = ""
 
 export const resolveCategoryRouteContext = async (parts = []) => {
   const [firstSegment, secondSegment, thirdSegment, fourthSegment] = parts;
-  console.log("[DistrictNameDebug] resolveCategoryRouteContext called", { parts });
   if (!firstSegment || !secondSegment) return null;
 
   const districtDoc = await resolveDistrictBySlug(firstSegment).catch(() => null);
@@ -128,12 +127,6 @@ export const resolveCategoryRouteContext = async (parts = []) => {
   if (districtDoc) {
     const districtSlug = getDistrictUrlSlug(districtDoc);
     const districtName = getDistrictDisplayName(districtDoc);
-    console.log("[DistrictNameDebug] resolveCategoryRouteContext resolved district", {
-      firstSegment,
-      districtSlug,
-      districtName,
-      rawDistrictDoc: { district: districtDoc.district, urlAlias: districtDoc.urlAlias },
-    });
     let locationDoc = null;
     let locationSlug = "";
     let categorySlug = "";
@@ -152,9 +145,24 @@ export const resolveCategoryRouteContext = async (parts = []) => {
         locationDoc = classification.locationDoc;
         locationSlug = locationDoc?.publicLocationSlug || secondSegment;
         categorySlug = classification.categorySlug || thirdSegment;
-      } else {
+      } else if (classification.type === "districtCategory") {
         categorySlug = classification.categorySlug || secondSegment;
         subcategorySlug = classification.subcategorySlug || thirdSegment || "";
+      } else if (classification.type === "unresolvedLocation") {
+        // secondSegment didn't resolve as a location or category, but
+        // thirdSegment is a real category — render the district-wide
+        // category page instead of fabricating a category out of
+        // secondSegment (see urlSegmentClassifier.js's "unresolvedLocation"
+        // doc comment for why this is the more likely intent).
+        categorySlug = classification.categorySlug;
+        subcategorySlug = "";
+      } else {
+        // Genuine "unknown" — neither segment resolved to anything real.
+        // Treat secondSegment as free text rather than a fabricated
+        // category; thirdSegment is discarded rather than misused as a
+        // subcategory of that fabrication.
+        categorySlug = secondSegment;
+        subcategorySlug = "";
       }
     } else {
       locationSlug = secondSegment;
@@ -189,12 +197,6 @@ export const resolveCategoryRouteContext = async (parts = []) => {
       categorySlug,
       subcategorySlug,
     ].filter(Boolean).join(":");
-
-    console.log("[DistrictNameDebug] resolveCategoryRouteContext returning", {
-      districtName,
-      locationName,
-      routeContextCacheKey,
-    });
 
     return {
       districtDoc,
@@ -269,10 +271,6 @@ const buildCategoryBreadcrumbCrumbs = (route) => {
             slug: route.subcategorySlug,
           }
         : null,
-    });
-    console.log("[DistrictNameDebug] SSR buildCategoryBreadcrumbCrumbs", {
-      districtDoc: { district: route.districtDoc.district, urlAlias: route.districtDoc.urlAlias },
-      crumbs,
     });
     return crumbs;
   }

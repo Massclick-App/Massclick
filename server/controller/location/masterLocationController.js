@@ -176,7 +176,8 @@ export const resolveRouteLocationAction = async (req, res) => {
             });
         }
 
-        // "districtCategory" and "unknown" are already client-shaped.
+        // "districtCategory", "unresolvedLocation", and "unknown" are already
+        // client-shaped (flat strings, no raw Mongoose doc to reshape).
         return res.send({ district: districtSummary, classification });
     } catch (error) {
         console.error("resolveRouteLocationAction error:", error);

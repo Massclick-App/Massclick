@@ -294,14 +294,6 @@ export const resolveDistrictBySlug = async (districtSlug) => {
   const byAlias = districts.find((d) => d.urlAlias && publicSlugify(d.urlAlias) === slug);
   const byName = !byAlias && districts.find((d) => publicSlugify(d.district) === slug);
   const result = byAlias || byName || null;
-  console.log("[DistrictNameDebug] resolveDistrictBySlug", {
-    input: districtSlug,
-    slug,
-    matchedVia: byAlias ? "urlAlias" : byName ? "district-name-fallback" : "no-match",
-    resultDistrict: result?.district,
-    resultUrlAlias: result?.urlAlias,
-    districtDocsCacheSize: districts.length,
-  });
   return result;
 };
 
