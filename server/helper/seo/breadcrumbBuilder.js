@@ -41,7 +41,12 @@ import { ownNameOf } from "../location/locationResolver.js";
  * @returns {Array<{name:string, path:string|null}>} `path` is site-relative
  *   ("/trichy/srirangam"), never absolute. The LAST crumb always has
  *   `path: null` — it represents the page currently being viewed, which a
- *   breadcrumb trail conventionally does not link to itself.
+ *   breadcrumb trail conventionally does not link to itself. The location
+ *   crumb ALSO always has `path: null` even when not terminal — there is no
+ *   /:district/:location landing page in this scheme, only
+ *   /:district/:category (unambiguous by definition) and
+ *   /:district/:location/:category (via the classifier), so a location-only
+ *   URL is not a page this app can render.
  */
 export const buildCrumbs = ({
   districtDoc,
@@ -61,7 +66,17 @@ export const buildCrumbs = ({
 
   if (locationDoc) {
     pathSoFar = `${pathSoFar}/${locationDoc.publicLocationSlug}`;
-    crumbs.push({ name: ownNameOf(locationDoc), path: pathSoFar });
+    // No dedicated /:district/:location landing page exists in this URL
+    // scheme — a bare two-segment path is DEFINED as /:district/:category
+    // with no exception (that's what keeps it unambiguous; see the
+    // classifier's design note on the 3-segment shape). Giving this crumb a
+    // real href sends the user into that exact misinterpretation: clicking
+    // it drops the category and the router treats the location slug as if
+    // it were a category slug instead. Label only, no link — pathSoFar
+    // still advances so the category crumb after it gets the correct full
+    // path. Matches the pre-migration breadcrumb, which never linked its
+    // middle "location" crumb either.
+    crumbs.push({ name: ownNameOf(locationDoc), path: null });
   }
 
   if (category) {
