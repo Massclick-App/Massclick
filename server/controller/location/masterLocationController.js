@@ -9,10 +9,9 @@ import {
 } from "../../helper/location/masterLocationHelper.js";
 import {
     resolveDistrictBySlug,
-    ownNameOf,
 } from "../../helper/location/locationResolver.js";
 import { classifyMiddleSegment } from "../../helper/location/urlSegmentClassifier.js";
-import { getDistrictUrlSlug, getDistrictDisplayName } from "../../helper/location/locationSlug.js";
+import { getDistrictUrlSlug, getDistrictDisplayName, getLocationDisplayName } from "../../helper/location/locationSlug.js";
 import { BAD_REQUEST, NOT_FOUND } from "../../errorCodes.js";
 
 export const addMasterLocationAction = async (req, res) => {
@@ -168,7 +167,7 @@ export const resolveRouteLocationAction = async (req, res) => {
                     type: "location",
                     location: {
                         slug: classification.locationDoc.publicLocationSlug,
-                        name: ownNameOf(classification.locationDoc),
+                        name: getLocationDisplayName(classification.locationDoc, districtSummary.name),
                         level: classification.locationDoc.level,
                     },
                     categorySlug: classification.categorySlug,

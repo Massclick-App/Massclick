@@ -1,5 +1,4 @@
-import { getDistrictUrlSlug, getDistrictDisplayName } from "../location/locationSlug.js";
-import { ownNameOf } from "../location/locationResolver.js";
+import { getDistrictUrlSlug, getDistrictDisplayName, getLocationDisplayName } from "../location/locationSlug.js";
 
 // Single source of the breadcrumb TRAIL for the district-prefixed URL scheme.
 // Deliberately produces relative paths only ("/trichy/srirangam", never
@@ -59,8 +58,9 @@ export const buildCrumbs = ({
 
   const crumbs = [{ name: "Home", path: "/" }];
 
+  const districtDisplayName = getDistrictDisplayName(districtDoc);
   const districtPath = `/${getDistrictUrlSlug(districtDoc)}`;
-  crumbs.push({ name: getDistrictDisplayName(districtDoc), path: districtPath });
+  crumbs.push({ name: districtDisplayName, path: districtPath });
 
   let pathSoFar = districtPath;
 
@@ -76,7 +76,7 @@ export const buildCrumbs = ({
     // still advances so the category crumb after it gets the correct full
     // path. Matches the pre-migration breadcrumb, which never linked its
     // middle "location" crumb either.
-    crumbs.push({ name: ownNameOf(locationDoc), path: null });
+    crumbs.push({ name: getLocationDisplayName(locationDoc, districtDisplayName), path: null });
   }
 
   if (category) {

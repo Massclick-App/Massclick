@@ -85,11 +85,35 @@ const ANCESTOR_CHAIN_BY_LEVEL = {
  * documented and already-agreed depth tie-break, has a clear deterministic
  * winner already. Only true same-level collisions get qualified.
  *
+ * A THIRD case, independent of both of the above: a node whose bare
+ * candidate slug is textually identical to its OWN district's URL slug —
+ * e.g. Salem district has both a "Salem" zone and a "Salem" locality (its
+ * own headquarters city), so the unqualified URL would read
+ * "/salem/salem/hotels", a doubled segment that looks broken even though
+ * both "Salem"s are real, distinct places. Verified against massClick_dev:
+ * 35 such nodes across 19 districts — common enough (district HQs are
+ * routinely named after the district) that it needed the same systematic
+ * treatment as the sibling-collision case above, not a one-off patch.
+ * Resolved with the same progressive ancestor-qualification strategy
+ * ("salem" locality + ward "Central Salem" -> "salem-central-salem"), with a
+ * level-word fallback ("-zone"/"-ward"/"-city") for the levels whose
+ * ancestor chain is empty (a zone has no parent within its own district to
+ * qualify with — see ANCESTOR_CHAIN_BY_LEVEL) or that still land back on the
+ * district's own slug even after exhausting it.
+ *
  * @param {Array<{_id, district, zone, ward, locality, level}>} docs - active
  *   masterlocation docs (plain objects, e.g. from .lean()).
+ * @param {Map<string,string>} [districtUrlSlugByDistrictName] - district
+ *   name -> its public URL slug (urlAlias-preferred, matching
+ *   getDistrictUrlSlug). Falls back to a plain slugify of the district name
+ *   per-entry when a district isn't in the map, so callers that don't have
+ *   district docs on hand (or districts with no alias) still get correct
+ *   behavior.
  * @returns {Map<string, string>} doc._id (stringified) -> final publicLocationSlug
  */
-export const computePublicLocationSlugs = (docs = []) => {
+const LEVEL_QUALIFIER_WORD = { locality: "city", ward: "ward", zone: "zone" };
+
+export const computePublicLocationSlugs = (docs = [], districtUrlSlugByDistrictName = new Map()) => {
   const result = new Map();
 
   const buildSlugAtDepth = (doc, base, depth) => {
@@ -114,11 +138,39 @@ export const computePublicLocationSlugs = (docs = []) => {
     return parts.join("-");
   };
 
-  // Group by district + level + candidate base slug.
+  const districtUrlSlugFor = (districtName) =>
+    districtUrlSlugByDistrictName.get(districtName) || slugify(String(districtName || "").trim());
+
+  // Disambiguates a candidate slug that exactly matches its own district's
+  // URL slug — see this function's header comment for why this is a real,
+  // common case and not a one-off. Applied ONCE per doc, before grouping, so
+  // everything downstream (the same-level sibling collision logic below)
+  // operates on top of the already-disambiguated base exactly as it would
+  // for any other candidate slug — including qualifying it further if it
+  // happens to still collide with a real sibling after this adjustment.
+  const disambiguateFromDistrict = (doc, base) => {
+    // A district-level doc's own candidate slug IS its district's slug by
+    // construction (getPublicLocationSlug falls through to doc.district when
+    // locality/ward/zone are all absent) — that's not a collision to
+    // resolve, it would corrupt every district's own publicLocationSlug into
+    // "<slug>-district" if not excluded here.
+    if (doc.level === "district") return base;
+    const districtSlug = districtUrlSlugFor(doc.district);
+    if (base !== districtSlug) return base;
+    const chain = ANCESTOR_CHAIN_BY_LEVEL[doc.level] || [];
+    for (let depth = 1; depth <= chain.length; depth++) {
+      const qualified = buildSlugAtDepth(doc, base, depth);
+      if (qualified !== districtSlug) return qualified;
+    }
+    return `${base}-${LEVEL_QUALIFIER_WORD[doc.level] || doc.level}`;
+  };
+
+  // Group by district + level + (district-disambiguated) candidate base slug.
   const baseGroups = new Map();
   for (const doc of docs) {
-    const base = getPublicLocationSlug(doc);
-    if (!base) continue;
+    const rawBase = getPublicLocationSlug(doc);
+    if (!rawBase) continue;
+    const base = disambiguateFromDistrict(doc, rawBase);
     const key = `${doc.district}||${doc.level}||${base}`;
     if (!baseGroups.has(key)) baseGroups.set(key, []);
     baseGroups.get(key).push({ doc, base });
@@ -219,4 +271,57 @@ export const getDistrictDisplayName = (doc = {}) => {
     ? alias.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
     : doc.district || "";
   return result;
+};
+
+const LOCATION_LEVEL_DISAMBIGUATOR = { locality: "City", ward: "Ward", zone: "Zone" };
+
+/**
+ * A masterlocation doc's DISPLAY name — for breadcrumb crumbs, SSR titles,
+ * and API responses (mirrors getDistrictDisplayName's role for districts).
+ * Single source for this rule; the bare-name fallback
+ * (`doc.locality || doc.ward || doc.zone || doc.district`) used to be
+ * reimplemented independently in breadcrumbBuilder.js, ssrMiddleware.js, and
+ * locationResolver.js's `ownNameOf` — consolidated here specifically because
+ * of the case below, which all three needed and none had.
+ *
+ * A node whose own name is textually identical to its district's display
+ * name (e.g. Salem district's "Salem" locality/zone — its own headquarters
+ * city, not a data error; verified against massClick_dev: 35 such nodes
+ * across 19 districts after the district-aware slug qualification in
+ * computePublicLocationSlugs) reads as a doubled, broken-looking breadcrumb
+ * ("Home > Salem > Salem > Hotels") even on a URL whose SLUG is already
+ * correctly disambiguated — the slug fix alone doesn't touch this doc's own
+ * name field. Disambiguated by:
+ *   1. A distinct `alternateNames` entry, if the data already has one (e.g.
+ *      "Salem City" — several of these 35 nodes already carry exactly this,
+ *      suggesting whoever entered the data anticipated the need).
+ *   2. Otherwise, append the level as a plain-English qualifier ("Salem
+ *      Zone") — always available, unlike the slug qualifier's ancestor
+ *      chain, since this only needs one word, not a real disambiguating
+ *      fact from the hierarchy.
+ *
+ * @param {object} doc - masterlocation doc: { level, district, zone, ward,
+ *   locality, alternateNames }.
+ * @param {string} [districtDisplayName] - result of
+ *   getDistrictDisplayName(districtDoc) for this doc's own district. Omit
+ *   only when no district context is available; the function still returns
+ *   the bare name, just without disambiguation.
+ */
+export const getLocationDisplayName = (doc = {}, districtDisplayName = "") => {
+  const ownName = doc.locality || doc.ward || doc.zone || doc.district || "";
+  if (
+    !districtDisplayName ||
+    ownName.trim().toLowerCase() !== districtDisplayName.trim().toLowerCase()
+  ) {
+    return ownName;
+  }
+
+  const alternates = Array.isArray(doc.alternateNames) ? doc.alternateNames : [];
+  const distinctAlternate = alternates.find(
+    (name) => name && name.trim().toLowerCase() !== districtDisplayName.trim().toLowerCase()
+  );
+  if (distinctAlternate) return distinctAlternate;
+
+  const qualifier = LOCATION_LEVEL_DISAMBIGUATOR[doc.level];
+  return qualifier ? `${ownName} ${qualifier}` : ownName;
 };

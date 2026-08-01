@@ -16,6 +16,7 @@ import {
 import {
   getDistrictDisplayName,
   getDistrictUrlSlug,
+  getLocationDisplayName,
 } from "../helper/location/locationSlug.js";
 import {
   escapeHtml,
@@ -93,9 +94,6 @@ const renderFaqAnswerHtmlWithLinks = (answer = "", links = []) => {
 
   return segments.join("");
 };
-
-const getLocationDocDisplayName = (doc = {}) =>
-  doc.locality || doc.ward || doc.zone || doc.district || slugToText(doc.publicLocationSlug || "");
 
 const buildCategoryPath = ({
   districtSlug = "",
@@ -178,7 +176,7 @@ export const resolveCategoryRouteContext = async (parts = []) => {
     if (!searchCategorySlug) return null;
 
     const locationName = locationDoc
-      ? getLocationDocDisplayName(locationDoc)
+      ? getLocationDisplayName(locationDoc, districtName) || slugToText(locationDoc.publicLocationSlug || "")
       : locationSlug
         ? titleCase(slugToText(locationSlug))
         : districtName;
