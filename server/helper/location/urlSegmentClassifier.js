@@ -1,5 +1,6 @@
 import categoryModel from "../../model/category/categoryModel.js";
 import { resolveLocationWithinDistrict } from "./locationResolver.js";
+import { isTopLevelCategoryName } from "../category/categoryHierarchyHelper.js";
 
 // Disambiguates the one ambiguous URL shape in the district-prefixed scheme:
 // /:district/:p2/:p3 is syntactically identical whether it means
@@ -16,18 +17,19 @@ import { resolveLocationWithinDistrict } from "./locationResolver.js";
 // client/ui-app/src/utils/breadcrumbs.js's header comment for why this is a
 // duplicated-by-convention pair, not a shared package.
 
-// A top-level category is one that itself has no parent — the DB models this
-// as categoryType "Primary Category" (see schema/category/categorySchema.js),
-// distinct from "Sub Category". A single indexed existence check; category
-// count is small enough that no separate cache layer is worth it here.
+// A top-level category is one that isn't registered as anyone's subcategory
+// — NOT categoryType "Primary Category". Verified against massClick_dev:
+// categoryType is set inconsistently (8 of 23 categories the rest of the app
+// already treats as top-level, including "Hotels", are tagged "Sub
+// Category"), so it cannot be trusted as a hierarchy flag. See
+// helper/category/categoryHierarchyHelper.js for the actual authoritative
+// source (subCategoryMapping — the same data getV2ParentOfSubCategoryAction
+// uses for the inverse question).
 export const isKnownTopLevelCategorySlug = async (slug) => {
   if (!slug) return false;
-  const hit = await categoryModel.exists({
-    slug,
-    categoryType: "Primary Category",
-    isActive: true,
-  });
-  return Boolean(hit);
+  const doc = await categoryModel.findOne({ slug, isActive: true }, { category: 1 }).lean();
+  if (!doc) return false;
+  return isTopLevelCategoryName(doc.category);
 };
 
 /**
