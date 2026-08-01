@@ -291,11 +291,18 @@ export const resolveDistrictBySlug = async (districtSlug) => {
   if (!slug) return null;
 
   const districts = await getAllDistrictDocs();
-  return (
-    districts.find((d) => d.urlAlias && publicSlugify(d.urlAlias) === slug) ||
-    districts.find((d) => publicSlugify(d.district) === slug) ||
-    null
-  );
+  const byAlias = districts.find((d) => d.urlAlias && publicSlugify(d.urlAlias) === slug);
+  const byName = !byAlias && districts.find((d) => publicSlugify(d.district) === slug);
+  const result = byAlias || byName || null;
+  console.log("[DistrictNameDebug] resolveDistrictBySlug", {
+    input: districtSlug,
+    slug,
+    matchedVia: byAlias ? "urlAlias" : byName ? "district-name-fallback" : "no-match",
+    resultDistrict: result?.district,
+    resultUrlAlias: result?.urlAlias,
+    districtDocsCacheSize: districts.length,
+  });
+  return result;
 };
 
 // Depth used only to break a WITHIN-district, cross-level tie (a zone and an

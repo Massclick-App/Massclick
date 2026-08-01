@@ -22,6 +22,8 @@ const DistrictRouteResolver = () => {
     let cancelled = false;
     setResolution(null);
 
+    console.log("[DistrictNameDebug] DistrictRouteResolver effect firing", { district, p2, p3 });
+
     resolveDistrictRoute({ district, p2, p3 })
       .then((data) => {
         if (cancelled) return;
@@ -31,6 +33,11 @@ const DistrictRouteResolver = () => {
           slug: district,
           name: formatUrlText(district),
         };
+        console.log("[DistrictNameDebug] DistrictRouteResolver classified", {
+          classification,
+          districtSummary,
+          usedApiDistrict: Boolean(data?.district),
+        });
 
         if (classification.type === "location") {
           setResolution({
@@ -65,8 +72,13 @@ const DistrictRouteResolver = () => {
           }),
         });
       })
-      .catch(() => {
+      .catch((error) => {
         if (cancelled) return;
+        console.log("[DistrictNameDebug] DistrictRouteResolver /v2/location/resolve FAILED — falling back to legacy context with empty districtName", {
+          district, p2, p3,
+          error: error?.message,
+          status: error?.response?.status,
+        });
         setResolution({
           mode: "search",
           routeContext: buildLegacyRouteContext({
@@ -83,6 +95,8 @@ const DistrictRouteResolver = () => {
   }, [district, p2, p3]);
 
   if (!resolution) return null;
+
+  console.log("[DistrictNameDebug] DistrictRouteResolver rendering", resolution);
 
   if (resolution.mode === "category") {
     return <CategoryRouter routeContext={resolution.routeContext} />;

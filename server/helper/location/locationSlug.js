@@ -215,8 +215,13 @@ export const getDistrictUrlSlug = (doc = {}) => {
  */
 export const getDistrictDisplayName = (doc = {}) => {
   const alias = String(doc.urlAlias || "").trim();
-  if (alias) {
-    return alias.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-  }
-  return doc.district || "";
+  const result = alias
+    ? alias.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+    : doc.district || "";
+  console.log("[DistrictNameDebug] getDistrictDisplayName", {
+    district: doc.district,
+    urlAlias: doc.urlAlias,
+    result,
+  });
+  return result;
 };

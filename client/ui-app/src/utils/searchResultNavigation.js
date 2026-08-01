@@ -311,6 +311,14 @@ export const extractSearchResultData = (locationState = {}, urlParams = {}) => {
     stateDistrictName ||
     paramDistrictName ||
     (finalDistrictSlug ? finalDistrictSlug : "");
+  console.log("[DistrictNameDebug] extractSearchResultData", {
+    stateDistrictName,
+    paramDistrictName,
+    finalDistrictSlug,
+    finalDistrictName,
+    rawLocationState: locationState,
+    rawUrlParams: urlParams,
+  });
   const routeLocationSlug = String(
     stateLocationSlug || paramLocationSlug || locParam || ""
   );

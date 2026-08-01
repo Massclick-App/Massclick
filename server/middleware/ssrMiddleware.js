@@ -120,6 +120,7 @@ const buildBusinessPath = ({ districtSlug = "", location = "", businessName = ""
 
 export const resolveCategoryRouteContext = async (parts = []) => {
   const [firstSegment, secondSegment, thirdSegment, fourthSegment] = parts;
+  console.log("[DistrictNameDebug] resolveCategoryRouteContext called", { parts });
   if (!firstSegment || !secondSegment) return null;
 
   const districtDoc = await resolveDistrictBySlug(firstSegment).catch(() => null);
@@ -127,6 +128,12 @@ export const resolveCategoryRouteContext = async (parts = []) => {
   if (districtDoc) {
     const districtSlug = getDistrictUrlSlug(districtDoc);
     const districtName = getDistrictDisplayName(districtDoc);
+    console.log("[DistrictNameDebug] resolveCategoryRouteContext resolved district", {
+      firstSegment,
+      districtSlug,
+      districtName,
+      rawDistrictDoc: { district: districtDoc.district, urlAlias: districtDoc.urlAlias },
+    });
     let locationDoc = null;
     let locationSlug = "";
     let categorySlug = "";
@@ -175,6 +182,20 @@ export const resolveCategoryRouteContext = async (parts = []) => {
       subcategorySlug,
     });
 
+    const routeContextCacheKey = [
+      "district",
+      districtSlug,
+      locationSlug || "all",
+      categorySlug,
+      subcategorySlug,
+    ].filter(Boolean).join(":");
+
+    console.log("[DistrictNameDebug] resolveCategoryRouteContext returning", {
+      districtName,
+      locationName,
+      routeContextCacheKey,
+    });
+
     return {
       districtDoc,
       districtSlug,
@@ -189,13 +210,7 @@ export const resolveCategoryRouteContext = async (parts = []) => {
       categoryText: slugToText(searchCategorySlug),
       canonicalPath,
       canonicalUrl: `https://massclick.in${canonicalPath}`,
-      cacheKey: [
-        "district",
-        districtSlug,
-        locationSlug || "all",
-        categorySlug,
-        subcategorySlug,
-      ].filter(Boolean).join(":"),
+      cacheKey: routeContextCacheKey,
       businessLocationContext: {
         districtSlug,
         ...(locationSlug ? { locationSlug } : {}),
@@ -237,7 +252,7 @@ const buildCategoryBreadcrumbCrumbs = (route) => {
   if (!route) return [];
 
   if (route.districtDoc) {
-    return buildCrumbs({
+    const crumbs = buildCrumbs({
       districtDoc: route.districtDoc,
       locationDoc: route.locationDoc,
       category: route.categorySlug
@@ -255,6 +270,11 @@ const buildCategoryBreadcrumbCrumbs = (route) => {
           }
         : null,
     });
+    console.log("[DistrictNameDebug] SSR buildCategoryBreadcrumbCrumbs", {
+      districtDoc: { district: route.districtDoc.district, urlAlias: route.districtDoc.urlAlias },
+      crumbs,
+    });
+    return crumbs;
   }
 
   return [

@@ -19,6 +19,10 @@ export const resolveDistrictRoute = async ({ district, p2, p3 } = {}) => {
   if (p3) params.p3 = p3;
 
   const response = await axiosInstance.get("/v2/location/resolve", { params });
+  console.log("[DistrictNameDebug] resolveDistrictRoute API response", {
+    params,
+    data: response.data,
+  });
   return response.data;
 };
 
@@ -38,16 +42,20 @@ export const buildDistrictCategoryContext = ({
   district,
   category,
   subcategory,
-} = {}) => ({
-  routeType: subcategory ? "districtSubcategory" : "districtCategory",
-  districtSlug: district?.slug || "",
-  districtName: district?.name || formatUrlText(district?.slug || ""),
-  locationSlug: "",
-  locationName: district?.name || formatUrlText(district?.slug || ""),
-  categorySlug: category || "",
-  subcategorySlug: subcategory || "",
-  isKnownCategory: !subcategory,
-});
+} = {}) => {
+  const context = {
+    routeType: subcategory ? "districtSubcategory" : "districtCategory",
+    districtSlug: district?.slug || "",
+    districtName: district?.name || formatUrlText(district?.slug || ""),
+    locationSlug: "",
+    locationName: district?.name || formatUrlText(district?.slug || ""),
+    categorySlug: category || "",
+    subcategorySlug: subcategory || "",
+    isKnownCategory: !subcategory,
+  };
+  console.log("[DistrictNameDebug] buildDistrictCategoryContext", { input: district, context });
+  return context;
+};
 
 export const buildLocationCategoryContext = ({
   district,
@@ -55,13 +63,21 @@ export const buildLocationCategoryContext = ({
   category,
   subcategory,
   routeType = subcategory ? "locationSubcategory" : "locationCategory",
-} = {}) => ({
-  routeType,
-  districtSlug: district?.slug || "",
-  districtName: district?.name || formatUrlText(district?.slug || ""),
-  locationSlug: location?.slug || "",
-  locationName: location?.name || formatUrlText(location?.slug || ""),
-  categorySlug: category || "",
-  subcategorySlug: subcategory || "",
-  isKnownCategory: !subcategory,
-});
+} = {}) => {
+  const context = {
+    routeType,
+    districtSlug: district?.slug || "",
+    districtName: district?.name || formatUrlText(district?.slug || ""),
+    locationSlug: location?.slug || "",
+    locationName: location?.name || formatUrlText(location?.slug || ""),
+    categorySlug: category || "",
+    subcategorySlug: subcategory || "",
+    isKnownCategory: !subcategory,
+  };
+  console.log("[DistrictNameDebug] buildLocationCategoryContext", {
+    inputDistrict: district,
+    inputLocation: location,
+    context,
+  });
+  return context;
+};
