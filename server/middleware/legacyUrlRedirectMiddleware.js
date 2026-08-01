@@ -9,6 +9,7 @@ import {
   getDistrictUrlSlug,
   getPublicLocationSlug,
 } from "../helper/location/locationSlug.js";
+import { classifyMiddleSegment } from "../helper/location/urlSegmentClassifier.js";
 import { slugify } from "../slugify.js";
 
 const REDIRECT_STATUS = 301;
@@ -190,6 +191,34 @@ const buildLegacyBusinessRedirect = async (parts = []) => {
   return `/business/${districtSlug}/${locationSlug}/${businessSlug}/${business._id}`;
 };
 
+// A district-prefixed 3-segment URL (/:district/:p2/:p3) whose middle
+// segment classifies as "unresolvedLocation" — p2 didn't resolve as a real
+// location or category, but p3 IS a real category (e.g. "/salem/salem/hotels":
+// Salem district's own name typed into the location field, not a locality
+// registered within itself). The app already renders this correctly as a
+// district-wide category page (see urlSegmentClassifier.js), but left as-is
+// the address bar keeps showing a URL shaped like a locality-specific page.
+// Distinct from resolveLegacyRedirectTargetForPath's other cases: this is a
+// NEW-style URL (resolvesAsNewStyle is true for it), not a pre-migration one.
+const resolveNewStyleCanonicalRedirectTarget = async (parts = [], path = "") => {
+  if (parts.length !== 3 || parts[0] === "business") return null;
+
+  const districtDoc = await resolveDistrictBySlug(parts[0]).catch(() => null);
+  if (!districtDoc) return null;
+
+  const classification = await classifyMiddleSegment({
+    districtDoc,
+    p2: parts[1],
+    p3: parts[2],
+  }).catch(() => null);
+  if (classification?.type !== "unresolvedLocation") return null;
+
+  const districtSlug = getDistrictUrlSlug(districtDoc);
+  const target = `/${districtSlug}/${classification.categorySlug}`;
+  if (samePath(path, target)) return null;
+  return target;
+};
+
 export const resolveLegacyRedirectTargetForPath = async (path = "") => {
   const parts = pathParts(path);
   if (parts.length === 0) return null;
@@ -198,7 +227,9 @@ export const resolveLegacyRedirectTargetForPath = async (path = "") => {
   // first prove the request is NOT already district-prefixed/new-style, then
   // reinterpret it as a legacy URL. Reversing these two steps would redirect
   // valid new URLs and can create loops.
-  if (await resolvesAsNewStyle(parts)) return null;
+  if (await resolvesAsNewStyle(parts)) {
+    return resolveNewStyleCanonicalRedirectTarget(parts, path);
+  }
 
   const target = parts[0] === "business"
     ? (isLegacyBusinessIdPath(parts)

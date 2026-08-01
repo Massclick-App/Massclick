@@ -1,5 +1,5 @@
 import React, { lazy, useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 import {
   buildDistrictCategoryContext,
@@ -16,6 +16,7 @@ const SearchResults = lazy(() =>
 
 const DistrictRouteResolver = () => {
   const { district, p2, p3 } = useParams();
+  const navigate = useNavigate();
   const [resolution, setResolution] = useState(null);
 
   useEffect(() => {
@@ -59,17 +60,16 @@ const DistrictRouteResolver = () => {
         if (classification.type === "unresolvedLocation") {
           // p2 didn't resolve as a location or category, but p3 IS a real
           // category — p2 was almost certainly a failed/mistyped location
-          // (e.g. the district's own name). Render the district-wide
-          // category from p3 instead of fabricating a category out of p2 —
-          // matches how a genuine /:district/:category districtCategory
-          // renders (see server/helper/location/urlSegmentClassifier.js).
-          setResolution({
-            mode: "category",
-            routeContext: buildDistrictCategoryContext({
-              district: districtSummary,
-              category: classification.categorySlug,
-              subcategory: "",
-            }),
+          // (e.g. the district's own name, "/salem/salem/hotels"). Redirect
+          // to the canonical district-wide category URL rather than
+          // rendering it in place at the 3-segment URL: leaving the browser
+          // there keeps the address bar showing a URL shaped like a
+          // locality-specific page when it isn't one, and there's already a
+          // fully-working /:district/:category route to hand off to.
+          // replace:true so this doesn't add a back-button entry for a URL
+          // the user never intentionally chose.
+          navigate(`/${districtSummary.slug}/${classification.categorySlug}`, {
+            replace: true,
           });
           return;
         }
@@ -104,7 +104,7 @@ const DistrictRouteResolver = () => {
     return () => {
       cancelled = true;
     };
-  }, [district, p2, p3]);
+  }, [district, p2, p3, navigate]);
 
   if (!resolution) return null;
 
