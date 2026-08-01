@@ -304,28 +304,42 @@ export const extractSearchResultData = (locationState = {}, urlParams = {}) => {
     isKnownCategory: routeKnownCategory,
   } = urlParams;
 
+  // Route-resolved (param*) wins over navigation state (state*) when both are
+  // present and disagree. `state` is populated by whatever component called
+  // navigate() as a hand-off optimization to skip a redundant API call — it
+  // can go stale (e.g. carrying a pre-migration district name someone typed
+  // into a search bar long before the district-prefixed URL scheme existed).
+  // `param*` on a district-prefixed URL comes from a live resolution against
+  // the current masterlocation data (DistrictRouteResolver's
+  // /v2/location/resolve call), so it is always at least as fresh. This still
+  // falls through to `state*` unchanged for legacy free-text-search
+  // navigations that have no district URL segment to resolve at all — those
+  // leave param* empty, so state* is used exactly as before.
   const finalDistrictSlug = String(
-    stateDistrictSlug || district || paramDistrictSlug || districtParam || ""
+    paramDistrictSlug || districtParam || stateDistrictSlug || district || ""
   );
   const finalDistrictName =
-    stateDistrictName ||
     paramDistrictName ||
+    stateDistrictName ||
     (finalDistrictSlug ? finalDistrictSlug : "");
-  console.log("[DistrictNameDebug] extractSearchResultData", {
+  const routeLocationSlug = String(
+    paramLocationSlug || locParam || stateLocationSlug || ""
+  );
+  const routeLocationName =
+    paramLocationName ||
+    stateLocationName ||
+    (routeLocationSlug ? routeLocationSlug : "");
+  console.log("[DistrictNameDebug] extractSearchResultData (post-fix: param* now wins over state*)", {
     stateDistrictName,
     paramDistrictName,
     finalDistrictSlug,
     finalDistrictName,
+    stateLocationName,
+    paramLocationName,
+    routeLocationName,
     rawLocationState: locationState,
     rawUrlParams: urlParams,
   });
-  const routeLocationSlug = String(
-    stateLocationSlug || paramLocationSlug || locParam || ""
-  );
-  const routeLocationName =
-    stateLocationName ||
-    paramLocationName ||
-    (routeLocationSlug ? routeLocationSlug : "");
   const categorySlug = paramCategorySlug || categoryParam || "";
   const subcategorySlug = paramSubcategorySlug || subcategory || "";
 
