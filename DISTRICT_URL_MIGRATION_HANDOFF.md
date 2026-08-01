@@ -164,6 +164,8 @@ Commit: `85baee41 feat(location): redirect legacy public URLs`
 - QR/certificate business-profile URL generation now mints the new shape for new QRs while accepting both legacy and new URL text as current for existing QR images.
 - Verified with `node --check`, `git diff --check`, and a temporary DB-backed `server/verifyPhase10LegacyRedirects.mjs` script, then deleted before commit.
 
+**Confirmed deviation from the original plan, found in a later independent verification pass.** The plan specified an explicit ambiguous-locality tie-break: "redirect to the district with the most live businesses at that locality node; ties break alphabetically." The shipped `buildLegacyCategoryRedirect` doesn't do this — it calls the pre-existing `resolveLocationForSearch` (the same fuzzy free-text/masterlocation-doc ranking used elsewhere in the app) and takes whichever district that returns. Live-tested: `/anna-nagar/hotels` → `/dindigul/anna-nagar/hotels`. Checked the business-count basis directly against `massClick_dev`: **zero** live businesses anywhere have a free-text `location` field literally matching "anna nagar" — so the redirect isn't landing on Dindigul because Dindigul has more businesses there, it's landing there because that's whatever `resolveLocationForSearch`'s doc-ranking (not business-count) surfaces first. Not a crash, not a loop (verified: feeding the output back in correctly returns `null`, no redirect), and it does always resolve to a real district — but it optimizes for a different thing than the plan asked for, and could send a legacy crawler/bookmark to a district with fewer or zero actual businesses at that node while a different candidate district has real content there. **Not yet assessed whether this needs fixing or is an acceptable simplification** — that's a call for whoever verifies this phase next.
+
 ### Phase 11 — Cleanup (DONE)
 
 Commit: `1888ce43 chore(location): remove stale district URL cleanup paths`
@@ -175,8 +177,9 @@ Commit: `1888ce43 chore(location): remove stale district URL cleanup paths`
 
 ## Remaining work
 
-No planned migration code remains from Phases 0-11. Remaining items are operational:
+Not just operational — there is one open **code** question found in a post-hoc verification pass (see the Phase 10 note above), plus the operational items:
 
+- **Decide on the Phase 10 tie-break deviation.** `buildLegacyCategoryRedirect` in `legacyUrlRedirectMiddleware.js` picks a district via `resolveLocationForSearch`'s existing fuzzy ranking, not the plan's specified "most live businesses at that node, then alphabetical." Confirmed live: `/anna-nagar/hotels` → `/dindigul/anna-nagar/hotels`, while zero live businesses anywhere have a free-text `location` exactly matching "anna nagar" — so the choice isn't business-count-driven at all. Not broken (no loop, always resolves to a real district) but not what was speced. Needs an explicit decision: ship as-is, or rewrite the tie-break to actually count live businesses per candidate district as originally planned.
 - Run the Phase 1 `server/scripts/backfillPublicLocationSlug.js` equivalent against prod before deploying routes that depend on `publicLocationSlug`/`urlAlias`.
 - Verify staging before prod, especially legacy 301 behavior and new-style non-redirect behavior. Do not deploy the redirect middleware straight to prod untested.
 - Run the Phase 0 prod investigation query if desired: `db.users.countDocuments({"leadsData.location":"global"})`.
@@ -198,15 +201,92 @@ No planned migration code remains from Phases 0-11. Remaining items are operatio
 
 ---
 
-## Prompt to paste into a new session for follow-up
+## Prompt to paste into a new session for follow-up (deployment/ops focus)
 
 ```
 Continue follow-up for the completed district-prefixed URL restructure.
 Read D:\dev_abishek\massclick\DISTRICT_URL_MIGRATION_HANDOFF.md in full
 first. Phases 0-11 are complete and committed in the web repo; Phase 9 is
 committed in D:\dev_abishek\massclick-mobile-app. No planned migration code
-remains. Focus only on the remaining operational items: prod slug backfill,
-staging/prod verification, mobile deep-link ops (assetlinks/AASA/autoVerify),
-and push/merge/deploy. Do not run prod commands or deploy without explicit
-approval.
+remains except one open question flagged in the "Remaining work" section
+(the Phase 10 tie-break deviation). Focus on the remaining operational
+items: prod slug backfill, staging/prod verification, mobile deep-link ops
+(assetlinks/AASA/autoVerify), and push/merge/deploy. Do not run prod
+commands or deploy without explicit approval.
+```
+
+---
+
+## Prompt to paste into a new session for INDEPENDENT VERIFICATION (audit, not continuation)
+
+Use this instead of the follow-up prompt above when the goal is to check whether the claimed work is actually correct, not to build anything further. A prior verification pass (see the Phase 10 note above) already found one real deviation from spec by not trusting the doc blindly — treat every claim below the same way.
+
+```
+Independently verify the district-prefixed URL restructure claimed complete
+in D:\dev_abishek\massclick\DISTRICT_URL_MIGRATION_HANDOFF.md (branch `dev`)
+and D:\dev_abishek\massclick-mobile-app (branch `main`, commit 70c7203).
+Read the handoff doc in full first, including the "Confirmed deviation from
+the original plan" note under Phase 10 and the "Remaining work" section —
+one real bug-shaped deviation from spec was already found this way in a
+prior pass (the ambiguous-locality redirect tie-break doesn't use business
+counts, contrary to what was planned), so treat every other claim in the
+doc with the same skepticism rather than trusting it. This is a read-only
+audit: do not push, merge, deploy, run prod commands, or touch prod without
+explicit user approval, and don't start the dev server or run
+npm start/npm run build without asking first — use the direct-DB-script
+testing pattern documented in the handoff doc's "Conventions" section
+instead (write a throwaway .mjs INSIDE server/, never in an OS temp dir).
+
+Specifically:
+
+1. For every phase 0-11, re-derive the verification independently rather
+   than trusting the doc's summary — several phases mention a temporary
+   DB-backed verify script that was "deleted before commit," so their
+   original evidence no longer exists and needs to be reproduced fresh
+   against massClick_dev (mongodb://admin:Massclick123@127.0.0.1:27018/
+   massClick_dev?authSource=admin).
+
+2. Priority order (highest risk first, per the original plan):
+   a. Phase 10's redirect middleware (server/middleware/
+      legacyUrlRedirectMiddleware.js) — the plan calls its ordering rule
+      "the single highest-risk line in the migration." Confirm: new-style
+      URLs never redirect (test at least /trichy/hotels and
+      /trichy/srirangam/hotels), legacy URLs redirect to the correct new
+      shape, redirecting a URL twice never loops, and specifically assess
+      the tie-break deviation already flagged — decide whether it needs
+      fixing to match the plan's "most live businesses, then alphabetical"
+      spec or is acceptable as shipped, and say which.
+   b. Phase 4's categoryRouter.js and SearchResult.js — the plan calls the
+      subcategory-grid-vs-results branch "the highest silent-wrong-page
+      risk in the migration." Confirm it now keys off classified route
+      context, not raw shifted useParams() position, for all five URL
+      shapes.
+   c. Phase 3's collision fix end to end through every later phase's
+      changes — pick a locality name that exists in 2+ districts (Anna
+      Nagar and Puthur both qualify) and confirm a full district-prefixed
+      request returns disjoint business sets per district, still true after
+      phases 4-11 touched the same code paths.
+
+3. Run a fresh `node --check` sweep over every server file touched across
+   all 11 phases (git log --stat per commit) and confirm none are stale.
+
+4. Check client-side lint state matches what the doc claims (only cardDetails.js's unused `err` and, per Phase 5's note, searchResultNavigation.js's
+   unused `dispatch`) — run the project's lint and see if anything else
+   crept in since.
+
+5. Actually run the mobile test suite (`flutter test
+   test/business_search_repository_test.dart
+   test/district_url_migration_test.dart` in
+   D:\dev_abishek\massclick-mobile-app) rather than trusting the commit
+   message's claim that it passed — nobody has re-run it since.
+
+6. Confirm `git status --short` is clean in both repos (aside from unrelated
+   pre-existing IDE noise in the mobile repo, e.g. .idea/* — that's not
+   migration-related and fine to leave).
+
+7. Report findings as a clear list: confirmed-correct, confirmed-deviation
+   (with the specific evidence), and unable-to-verify (with why). Do not
+   silently fix anything found wrong — report it and ask before changing
+   code, since this is meant to be an independent second opinion on work
+   already marked done.
 ```
