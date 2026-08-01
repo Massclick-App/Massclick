@@ -9,6 +9,7 @@ import {
   getV2MobileServiceCardsAction,
   getV2SubCategoriesAction,
   getV2ParentOfSubCategoryAction,
+  getV2DistrictCategoriesAction,
   getV2PopularSearchesAction,
   getV2TopTouristAction,
   getV2PopularCategoryContentAction,
@@ -22,6 +23,10 @@ const router = express.Router();
 const categoryCache = cacheMiddleware({ expirySeconds: 3600, keyPrefix: "category-v2" });
 const homeCategoryCache = cacheMiddleware({ expirySeconds: 7200, keyPrefix: "home-category-v2" });
 const homeMobileCategoryCache = cacheMiddleware({ expirySeconds: 7200, keyPrefix: "home-mobile-category-v2" });
+// Shorter TTL than the fixed home-categories list: this reflects live
+// business counts per district, which change as listings are added, paused,
+// or removed, not a curated set that only changes on an admin edit.
+const districtCategoryCache = cacheMiddleware({ expirySeconds: 900, keyPrefix: "district-category-v2" });
 
 // Admin CRUD
 router.get("/api/admin/category-display-settings", oauthAuthentication, getCategoryDisplaySettingsAction);
@@ -35,6 +40,9 @@ router.get("/api/v2/category/service-cards", homeCategoryCache, getV2ServiceCard
 router.get("/api/v2/category/mobile-service-cards", homeMobileCategoryCache, getV2MobileServiceCardsAction);
 router.get("/api/v2/category/sub/:parentSlug", categoryCache, getV2SubCategoriesAction);
 router.get("/api/v2/category/parent-of/:subcategorySlug", categoryCache, getV2ParentOfSubCategoryAction);
+// Categories with live businesses in a district, paginated. See
+// getV2DistrictCategoriesAction for why this is separate from /category/home.
+router.get("/api/v2/category/district", districtCategoryCache, getV2DistrictCategoriesAction);
 
 
 router.get("/api/v2/home/popular-searches",         homeCategoryCache, getV2PopularSearchesAction);

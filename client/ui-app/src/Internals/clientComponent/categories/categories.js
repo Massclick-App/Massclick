@@ -6,7 +6,7 @@ import { Helmet } from "react-helmet-async";
 import StickySearchBar from "../StickySearchBar/StickySearchBar";
 import { handleImageError } from "../../../utils/placeholderImage";
 import styles from "./categories.module.css";
-import { fetchHomeCategories, fetchSubCategories } from "../../../redux/actions/categoryAction";
+import { fetchDistrictCategories, resetDistrictCategories, fetchSubCategories } from "../../../redux/actions/categoryAction";
 import { buildCategoryPath, navigateToSearchResult } from "../../../utils/searchResultNavigation";
 import {
   formatUrlText,
@@ -20,6 +20,7 @@ import SeoMeta from "../seo/seoMeta.js";
 import { generateItemListSchema } from "../../../utils/seoSchemaGenerators";
 import { renderFaqAnswerWithLinks } from "../../../utils/renderFaqAnswerWithLinks";
 import useRenderNearViewport from "../../../hooks/useRenderNearViewport.js";
+import useInfiniteScrollTrigger from "../../../hooks/useInfiniteScrollTrigger.js";
 import Breadcrumbs from "../Breadcrumbs/Breadcrumbs.js";
 import { buildCrumbs, crumbsToJsonLd, crumbsToUiItems } from "../../../utils/breadcrumbs";
 
@@ -56,9 +57,14 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
     shouldRender: shouldRenderBottomSections,
   } = useRenderNearViewport();
   const {
-    homeCategories = [],
     subCategories = [],
     loading,
+    districtCategories = [],
+    districtCategoriesTotal = 0,
+    districtCategoriesPage = 0,
+    districtCategoriesHasMore = false,
+    districtCategoriesLoading = false,
+    districtCategoriesLoadingMore = false,
   } = useSelector((state) => state.categoryReducer);
   const {
     meta: seoMetaData,
@@ -75,7 +81,11 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
   const locationSlug = routeContext?.locationSlug || locationParam || "";
   const locationLabel = routeContext?.locationName || (districtSlug ? districtName : formatUrlText(locationSlug));
   const categoryLabel = categorySlug ? formatUrlText(categorySlug) : "Categories";
-  const listingItems = isDistrictLanding ? homeCategories : subCategories;
+  const listingItems = isDistrictLanding ? districtCategories : subCategories;
+  // Initial/replace load only — "load more" (districtCategoriesLoadingMore)
+  // must not trigger this, or every infinite-scroll page load would swap the
+  // whole grid for a spinner instead of appending below what's already shown.
+  const isInitialLoading = isDistrictLanding ? districtCategoriesLoading : loading;
 
   useEffect(() => {
     if (!isDistrictLanding || routeContext?.districtSlug) return;
@@ -100,15 +110,52 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
   }, [isDistrictLanding, routeContext?.districtSlug, districtParam]);
 
   useEffect(() => {
-    if (isDistrictLanding) {
-      dispatch(fetchHomeCategories());
-      return;
-    }
+    if (isDistrictLanding) return;
 
     if (categorySlug) {
       dispatch(fetchSubCategories(categorySlug));
     }
   }, [dispatch, isDistrictLanding, categorySlug]);
+
+  // Debounced so switching districts or typing in the search box doesn't
+  // fire a request per keystroke — only once typing pauses.
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  useEffect(() => {
+    if (!isDistrictLanding) return;
+    const timer = setTimeout(() => setDebouncedSearch(search), 350);
+    return () => clearTimeout(timer);
+  }, [isDistrictLanding, search]);
+
+  // Clears any previous district's results immediately on a district switch
+  // — Redux state is global and otherwise persists across route changes, so
+  // without this the previous district's categories would stay on screen
+  // until the new fetch resolves (a wrong-data flash, not just a stale one).
+  useEffect(() => {
+    if (!isDistrictLanding || !districtSlug) return;
+    dispatch(resetDistrictCategories());
+  }, [dispatch, isDistrictLanding, districtSlug]);
+
+  useEffect(() => {
+    if (!isDistrictLanding || !districtSlug) return;
+    dispatch(fetchDistrictCategories({ district: districtSlug, page: 1, search: debouncedSearch }));
+  }, [dispatch, isDistrictLanding, districtSlug, debouncedSearch]);
+
+  const handleLoadMoreCategories = () => {
+    if (!isDistrictLanding || !districtSlug || !districtCategoriesHasMore || districtCategoriesLoadingMore) {
+      return;
+    }
+    dispatch(fetchDistrictCategories({
+      district: districtSlug,
+      page: districtCategoriesPage + 1,
+      search: debouncedSearch,
+    }));
+  };
+
+  const infiniteScrollSentinelRef = useInfiniteScrollTrigger({
+    onLoadMore: handleLoadMoreCategories,
+    hasMore: isDistrictLanding && districtCategoriesHasMore,
+    loading: districtCategoriesLoadingMore || districtCategoriesLoading,
+  });
 
   useEffect(() => {
     if (!categorySlug || !locationLabel) return;
@@ -134,9 +181,16 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
     }));
   }, [dispatch, categorySlug, locationLabel]);
 
+  // District landing's listingItems are already server-filtered by
+  // debouncedSearch (see the fetch effect above) — re-filtering client-side
+  // here would double-apply the filter and, worse, apply the un-debounced
+  // `search` value against a list that was fetched for a possibly-stale
+  // debounced one, which reads as the grid "lagging" a keystroke behind.
   const filteredCategories = useMemo(
-    () => listingItems.filter((item) => item.name.toLowerCase().includes(search.toLowerCase())),
-    [search, listingItems],
+    () => isDistrictLanding
+      ? listingItems
+      : listingItems.filter((item) => item.name.toLowerCase().includes(search.toLowerCase())),
+    [search, listingItems, isDistrictLanding],
   );
 
   const handleClick = (sub) => {
@@ -312,24 +366,24 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
           </div>
 
           <div className={cx("category-content")}>
-            {loading && (
+            {isInitialLoading && (
               <div className={cx("category-loading")}>
                 <div className={cx("spinner")} />
                 <p>Loading {isDistrictLanding ? "categories" : "subcategories"}...</p>
               </div>
             )}
 
-            {!loading && filteredCategories.length === 0 && (
+            {!isInitialLoading && filteredCategories.length === 0 && (
               <div className={cx("category-empty")}>
                 <p className={cx("empty-text")}>No {isDistrictLanding ? "categories" : "subcategories"} found</p>
                 {search && <p className={cx("empty-subtext")}>Try a different search term</p>}
               </div>
             )}
 
-            {!loading && filteredCategories.length > 0 && (
+            {!isInitialLoading && filteredCategories.length > 0 && (
               <>
                 <p className={cx("category-count")}>
-                  {filteredCategories.length} {isDistrictLanding ? "categories" : "subcategories"} available
+                  {isDistrictLanding ? districtCategoriesTotal : filteredCategories.length} {isDistrictLanding ? "categories" : "subcategories"} available
                 </p>
                 <div className={cx("category-grid")}>
                   {filteredCategories.map((item, index) => (
@@ -365,6 +419,17 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
                     </div>
                   ))}
                 </div>
+
+                {isDistrictLanding && districtCategoriesHasMore && (
+                  <div ref={infiniteScrollSentinelRef} className={cx("category-scroll-sentinel")}>
+                    {districtCategoriesLoadingMore && (
+                      <div className={cx("category-loading-more")}>
+                        <div className={cx("spinner")} />
+                        <p>Loading more categories...</p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </>
             )}
           </div>
