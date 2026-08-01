@@ -82,7 +82,23 @@ export const buildCategoryPath = ({
   if (!resolvedCategorySlug) return "/";
 
   if (resolvedDistrictSlug) {
-    const segments = isDistrictScope
+    // A typed-free-text location that names the district itself (e.g.
+    // typing "tiruchirappalli"/"salem" into the location field, not a real
+    // locality) can never be a real locality here: computePublicLocationSlugs
+    // (server/helper/location/locationSlug.js) guarantees no locality/zone
+    // /ward's public slug is ever allowed to equal its own district's slug.
+    // Run the SAME alias-aware transform used for the district itself
+    // (createDistrictSlug, not the plain resolvedLocationSlug) so this also
+    // catches an alias case like "tiruchirappalli" -> "trichy", not just an
+    // exact string match like "salem" -> "salem". Building the district-wide
+    // URL directly instead of the doubled "/district/district/category"
+    // shape avoids a build-then-redirect flash — the server would otherwise
+    // 301 this exact case a moment later
+    // (legacyUrlRedirectMiddleware's unresolvedLocation redirect).
+    const isDistrictSelfMatch =
+      Boolean(resolvedLocationSlug) &&
+      createDistrictSlug(locationSlug || location) === resolvedDistrictSlug;
+    const segments = isDistrictScope || isDistrictSelfMatch
       ? [resolvedDistrictSlug, resolvedCategorySlug, resolvedSubcategorySlug]
       : [resolvedDistrictSlug, resolvedLocationSlug, resolvedCategorySlug, resolvedSubcategorySlug];
     return `/${segments.filter(Boolean).join("/")}`;
