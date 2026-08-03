@@ -28,6 +28,7 @@ const CUSTOMER_AUTH_PATHS = [
   /^\/api\/reviews?(\/|$)/,
   /^\/api\/search(\/|$)/,
   /^\/api\/account-deletion(\/|$)/,
+  /^\/api\/rewards(\/|$)/,
 ];
 
 export const axiosInstance = axios.create({
@@ -213,8 +214,17 @@ axiosInstance.interceptors.request.use(
         requestPath.startsWith('/api/chat') &&
         isAdminArea() &&
         Boolean(adminAccessToken);
+      const shouldPreferAdminRewardsToken =
+        requestPath.startsWith('/api/rewards/admin') &&
+        isAdminArea() &&
+        Boolean(adminAccessToken);
 
-      if (isCustomerAuthRequest(requestPath) && customerToken && !shouldPreferAdminChatToken) {
+      if (
+        isCustomerAuthRequest(requestPath) &&
+        customerToken &&
+        !shouldPreferAdminChatToken &&
+        !shouldPreferAdminRewardsToken
+      ) {
         config.headers.Authorization = `Bearer ${customerToken}`;
       } else if (adminAccessToken) {
         config.headers.Authorization = `Bearer ${adminAccessToken}`;

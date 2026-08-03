@@ -78,6 +78,7 @@ const MENU_SECTIONS = [
       { text: "Master Locations", icon: LocationOnIcon, path: "/dashboard/master-location" },
       { text: "SEO", icon: SearchIcon, path: "/dashboard/seo" },
       { text: "Pages", icon: ArticleIcon, path: "/dashboard/seopagecontent" },
+      { text: "Rewards Concept", icon: EmojiEventsIcon, path: "/dashboard/rewards-concept" },
       { text: "Blogs", icon: NewspaperIcon, path: "/dashboard/seopagecontentblogs" },
       { text: "SEO Templates", icon: ArticleIcon, path: "/dashboard/seotemplates" },
       { text: "Authors", icon: CategoryIcon, path: "/dashboard/authors" },
@@ -88,6 +89,8 @@ const MENU_SECTIONS = [
     label: "Manage",
     items: [
       { text: "Enquiries", icon: MailOutlineIcon, path: "/dashboard/enquiry" },
+      { text: "Rewards", icon: EmojiEventsIcon, path: "/dashboard/rewards" },
+      { text: "Reward Claims", icon: RequestQuoteIcon, path: "/dashboard/reward-claims" },
       { text: "Care Chat", icon: HeadsetMicIcon, path: "/dashboard/customer-care", badgeKey: "chat" },
       { text: "Ads", icon: NotificationsIcon, path: "/dashboard/advertisements" },
       { text: "Quotations", icon: RequestQuoteIcon, path: "/dashboard/quotation" },

@@ -79,6 +79,10 @@ const BusinessEnquiry = lazy(() => import(/* webpackChunkName: "business-enquiry
 const AuthorProfile = lazy(() => import(/* webpackChunkName: "author-profile" */ './Internals/clientComponent/authorProfile/authorProfile.js'));
 
 const EnquiryPage = lazy(() => import(/* webpackChunkName: "admin-enquiry" */ './Internals/enquiry-page/enquiry-page.js'));
+const RewardAdmin = lazy(() => import(/* webpackChunkName: "admin-rewards" */ './Internals/rewards/RewardAdmin.js'));
+const RewardsConceptPage = lazy(() => import(/* webpackChunkName: "admin-rewards-concept" */ './Internals/rewards/RewardsConceptPage.js'));
+const RewardClaimsAdmin = lazy(() => import(/* webpackChunkName: "admin-reward-claims" */ './Internals/rewards/RewardClaimsAdmin.js'));
+const RewardClaimPage = lazy(() => import(/* webpackChunkName: "reward-claim" */ './Internals/clientComponent/rewards/RewardClaimPage.js'));
 const AdminCustomerCareChat = lazy(() => import(/* webpackChunkName: "admin-customer-care-chat" */ './Internals/CustomerCareChat/AdminCustomerCareChat.js'));
 const AdvertisementPage = lazy(() => import(/* webpackChunkName: "admin-advertisement" */ './Internals/advertisement/advertisement.js'));
 const EventCategory = lazy(() => import(/* webpackChunkName: "admin-event-category" */ './components/eventCategory/eventCategory.js'));
@@ -125,6 +129,7 @@ const UserFeedbackPage = lazy(() => import(/* webpackChunkName: "user-feedback" 
 const UserHelpPage = lazy(() => import(/* webpackChunkName: "user-help" */ './Internals/clientComponent/userMenu/HelpPage/HelpPage.js'));
 const UserMassclickDocumentsPage = lazy(() => import(/* webpackChunkName: "user-documents" */ './Internals/clientComponent/userMenu/MassclickDocuments/MassclickDocumentsPage.js'));
 const UserMassclickFeedPage = lazy(() => import(/* webpackChunkName: "user-feed" */ './Internals/clientComponent/userMenu/MassclickFeed/MassclickFeedPage.js'));
+const UserRewardsPage = lazy(() => import(/* webpackChunkName: "user-rewards" */ './Internals/clientComponent/userMenu/Rewards/RewardsPage.js'));
 
 const FloatingButtons = lazy(() => import(/* webpackChunkName: "floating-buttons" */ './Internals/clientComponent/floating/floatingButtons.js'));
 const MobileHomeDock = lazy(() => import(/* webpackChunkName: "mobile-home-dock" */ './Internals/clientComponent/mobileHomeDock/MobileHomeDock.js'));
@@ -258,6 +263,7 @@ function AppRoutes({
           <Route path="/events/:eventSlug/:id" element={<EventDetails />} />
           <Route path="/user/search-history" element={<LeadsCardHistory />} />
           <Route path="/business-enquiry" element={<BusinessEnquiry />} />
+          <Route path="/claim-rewards" element={<RewardClaimPage />} />
           <Route path="/payment-status/:transactionId" element={<PaymentStatus />} />
           <Route path="/write-review/:businessId/:ratingValue" element={<WriteReviewPage />} />
           <Route path="/blog/:slug" element={<BlogDetail />} />
@@ -282,6 +288,7 @@ function AppRoutes({
           <Route path="/user_massclick-documents" element={<UserMassclickDocumentsPage />} />
           <Route path="/user_feed" element={<UserMassclickFeedPage />} />
           <Route path="/user_favorites" element={<UserFavoritesPage />} />
+          <Route path="/user_rewards" element={<UserRewardsPage />} />
           <Route path="/user_customer-service" element={<UserCustomerServicePage />} />
           <Route path="/user_policy" element={<UserPolicyPage />} />
           <Route path="/user_feedback" element={<UserFeedbackPage />} />
@@ -326,6 +333,9 @@ function AppRoutes({
                 <Route path="site-analytics" element={<SiteAnalytics />} />
                 <Route path="app-analytics" element={<AppAnalytics />} />
                 <Route path="enquiry" element={<EnquiryPage />} />
+                <Route path="rewards" element={<RewardAdmin />} />
+                <Route path="reward-claims" element={<RewardClaimsAdmin />} />
+                <Route path="rewards-concept" element={<RewardsConceptPage />} />
                 <Route path="customer-care" element={<AdminCustomerCareChat />} />
                 <Route path="advertisements" element={<AdvertisementPage />} />
                 <Route path="event-category" element={<EventCategory />} />

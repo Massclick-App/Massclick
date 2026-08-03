@@ -210,6 +210,7 @@ const CareersPage = () => {
       window.removeEventListener("keydown", closeOnEscape);
     };
   }, [activeProfile]);
+
   return (
     <div className={cx("page")}>
       <Helmet>
@@ -263,7 +264,7 @@ const CareersPage = () => {
                 <div className={cx("story-year")}>
                   <strong>2018</strong>
                   <span>Where our journey began</span>
-                </div>
+                </div> 
               </div>
               <div className={cx("story-copy")}>
                 <p className={cx("story-lead")}>

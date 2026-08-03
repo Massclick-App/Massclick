@@ -1,7 +1,6 @@
 import { createScopedClassNames } from "../../utils/createScopedClassNames";
 import React, { useState, useEffect, useRef } from "react";
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, Paper, Box } from "@mui/material";
-import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import styles from "./CustomizedTable.module.css";
 import useDebounce from "./useDebounce.js";
 import { throttle } from "../../utils/throttle.js";
@@ -25,12 +24,14 @@ const CustomizedTable = ({
   fetchData,
   enableStatusFilter = true,
   enableSearch = true,
+  searchPlaceholder = "Search records",
   initialSearchQuery = "",
   initialStatusFilter = "all",
   loading = false,
   onRowClick = null,
   statusOptions = null,
   renderEmpty = null,
+  refreshKey = 0,
 }) => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -72,7 +73,7 @@ const CustomizedTable = ({
       sortBy: sortConfig.orderBy,
       sortOrder: sortConfig.order,
     });
-  }, [page, rowsPerPage, debouncedSearch, statusFilter, sortConfig]);
+  }, [page, rowsPerPage, debouncedSearch, statusFilter, sortConfig, refreshKey]);
 
   const handleChangePage = (_, newPage) => setPage(newPage);
   const handleChangeRowsPerPage = e => {
@@ -131,7 +132,7 @@ const CustomizedTable = ({
                 ref={searchInputRef}
                 className={cx("cir-search__field")}
                 type="search"
-                placeholder="Search threads, contacts, replies"
+                placeholder={searchPlaceholder}
                 aria-label="Search"
                 value={searchQuery}
                 onChange={e => {
