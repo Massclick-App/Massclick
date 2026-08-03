@@ -38,6 +38,7 @@ import CustomizedTable from "../../components/Table/CustomizedTable.js";
 import Tooltip from "@mui/material/Tooltip";
 import styles from "./business.module.css";
 import GooglePlacesInput from "../../components/GooglePlacesInput/GooglePlacesInput";
+import { buildBusinessPath, createDistrictSlug } from "../../utils/searchResultNavigation";
 import AdminViewTabs from "../../components/AdminViewTabs.js";
 import BusinessFormStep0 from "./components/BusinessFormStep0";
 import BusinessFormStep1 from "./components/BusinessFormStep1";
@@ -76,7 +77,7 @@ const SECTION_ALL_FIELDS = {
   ],
   categorySeo: ["category", "keywords"],
   displaySeo: ["title", "description"],
-  searchSeo: ["seoTitle", "seoDescription", "slug"],
+  searchSeo: ["seoTitle", "seoDescription"],
 };
 const FORCE_BYPASS_BLOCKED_FIELDS = new Set(["businessName", "category", "location", "contact"]);
 const FREE_REQUIRED_FIELDS = new Set(["businessName", "category", "location", "contact"]);
@@ -380,7 +381,7 @@ const PAID_STEP_FIELD_MAP = {
     "businessDetails"
   ],
   1: ["kycDocuments"],
-  2: ["category", "keywords", "title", "description", "seoTitle", "seoDescription", "slug", "filters"]
+  2: ["category", "keywords", "title", "description", "seoTitle", "seoDescription", "filters"]
 };
 const FREE_STEP_FIELD_MAP = {
   0: ["businessName", "plotNumber", "street", "pincode", "location", "contact", "contactList", "geoLongitude", "geoLatitude", "bannerImage"],
@@ -491,7 +492,7 @@ const FORM_SECTION_FLOW = {
     {
       key: "displaySeo",
       title: "Display & SEO",
-      body: "Finish with SEO metadata, slug, and any required category filters."
+      body: "Finish with SEO metadata and any required category filters."
     },
     {
       key: "searchSeo",
@@ -768,7 +769,7 @@ const BusinessList = React.memo(() => {
     2: {
       categorySeo: ["category", "keywords"],
       keywordsTags: [],
-      displaySeo: ["title", "description", "seoTitle", "seoDescription", "slug", "filters"],
+      displaySeo: ["title", "description", "seoTitle", "seoDescription", "filters"],
       searchSeo: [],
       preview: []
     }
@@ -2219,7 +2220,8 @@ const BusinessList = React.memo(() => {
       { field: "description", label: "Display description", step: 1, required: true, example: "Fast electrical repair and installation services for homes and shops.", suggestion: "Summarize what the business offers." },
       { field: "seoTitle", label: "SEO title", step: 1, required: true, example: "Kumar Electricals - Electrician in Chennai", suggestion: "Keep it between 20 and 70 characters.", validate: value => passOrMessage(value.length >= 20 && value.length <= 70, "should be 20 to 70 characters.") },
       { field: "seoDescription", label: "SEO description", step: 1, required: true, example: "Book Kumar Electricals for wiring, inverter repair, and electrical services in Chennai.", suggestion: "Keep it between 50 and 170 characters.", validate: value => passOrMessage(value.length >= 50 && value.length <= 170, "should be 50 to 170 characters.") },
-      { field: "slug", label: "Slug", step: 1, required: true, example: "kumar-electricals-chennai", suggestion: "Use lowercase words separated by hyphens.", validate: value => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value) || "must use lowercase letters, numbers, and hyphens only." },
+      // No "slug" rule: the field is no longer editable (see BusinessFormStep2)
+      // and requiring it would block saving on an input that isn't rendered.
       ...socialRules,
       ...categoryFilterRules,
       ...openingHourRules
@@ -2727,7 +2729,7 @@ const BusinessList = React.memo(() => {
     'banner-details': ['bannerImage', 'logoImage', 'businessDetails'],
     'opening-hours': ['openingHours'],
     'category-seo': ['category', 'keywords'],
-    'display-seo': ['title', 'description', 'seoTitle', 'seoDescription', 'slug', 'filters'],
+    'display-seo': ['title', 'description', 'seoTitle', 'seoDescription', 'filters'],
     'kyc-documents': ['kycDocuments'],
   };
 
@@ -3315,6 +3317,7 @@ const BusinessList = React.memo(() => {
     title: bl.title || "",
     description: bl.description || "",
     slug: bl.slug || "",
+    publicId: bl.publicId || "",
     keywords: bl.keywords || [],
     restaurantOptions: bl.restaurantOptions || "",
     bannerImage: bl.bannerImage || null,
@@ -3371,6 +3374,7 @@ const BusinessList = React.memo(() => {
     title: bl.title || "",
     description: bl.description || "",
     slug: bl.slug || "",
+    publicId: bl.publicId || "",
     keywords: bl.keywords || [],
     restaurantOptions: bl.restaurantOptions || "",
     bannerImage: bl.bannerImage || null,
@@ -3600,7 +3604,8 @@ const BusinessList = React.memo(() => {
     { label: "Description", width: 50, value: row => row.description },
     { label: "SEO Title", width: 38, value: row => row.seoTitle },
     { label: "SEO Description", width: 50, value: row => row.seoDescription },
-    { label: "Slug", width: 32, value: row => row.slug },
+    { label: "SEO Slug (legacy)", width: 32, value: row => row.slug },
+    { label: "Public ID", width: 12, value: row => row.publicId },
     { label: "Business Details", width: 54, value: row => row.businessDetails },
     { label: "Website", width: 34, value: row => row.website },
     { label: "Google Map", width: 44, value: row => row.googleMap },
@@ -4461,7 +4466,7 @@ const BusinessList = React.memo(() => {
               {renderPreviewField("Display Description", formData.description)}
               {renderPreviewField("SEO Title", formData.seoTitle)}
               {renderPreviewField("SEO Description", formData.seoDescription)}
-              {renderPreviewField("Slug", formData.slug)}
+              {renderPreviewField("SEO Slug (legacy — not part of the URL)", formData.slug)}
             </Box>
 
             {renderPreviewField("Keywords & Tags", formData.keywords)}
@@ -5067,6 +5072,19 @@ const BusinessList = React.memo(() => {
         const categoryGroups = Array.isArray(row.mniDetails)
           ? row.mniDetails.map(i => i?.categoryGroup).filter(Boolean).join(", ") || "—"
           : "—";
+        // Built with the same builder the public site uses, so this always
+        // matches the canonical URL rather than drifting into a shape that
+        // only redirects. Empty when the business has no publicId or no
+        // resolved district — there is no live page to link to in that case.
+        const livePageDistrictSlug = createDistrictSlug(row.masterLocation?.district || "");
+        const livePagePath = livePageDistrictSlug && row.publicId
+          ? buildBusinessPath({
+            districtSlug: livePageDistrictSlug,
+            businessName: row.businessName,
+            publicId: row.publicId,
+          })
+          : "";
+        const livePageUrl = livePagePath ? `https://massclick.in${livePagePath}` : "";
         const socialLinks = [
           { label: "Website", value: row.website },
           { label: "Google Map", value: row.googleMap },
@@ -5334,6 +5352,39 @@ const BusinessList = React.memo(() => {
               </Box>
             </Box>
 
+            {/* Public URL identity. Read-only on purpose: publicId is what
+                actually resolves this business's page, and it is baked into
+                indexed URLs, printed QR codes and shared links — it must never
+                change. Shown here so a link reported by a customer
+                ("...-ug709i") can be traced back to a business. */}
+            <Box sx={{
+              px: 4,
+              py: 2,
+              bgcolor: "#f8fafc",
+              borderTop: "1px solid #e8ecf1",
+              display: "flex",
+              alignItems: "center",
+              gap: 2,
+              flexWrap: "wrap"
+            }}>
+              <Box>
+                <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 600, display: "block" }}>
+                  Public ID
+                </Typography>
+                <Typography sx={{ fontFamily: "monospace", fontSize: "0.95rem", fontWeight: 700, color: "#0f172a" }}>
+                  {row.publicId || "—"}
+                </Typography>
+              </Box>
+              {livePageUrl && (
+                <Typography
+                  variant="caption"
+                  sx={{ color: "#64748b", fontFamily: "monospace", wordBreak: "break-all", flex: 1, minWidth: "200px" }}
+                >
+                  {livePageUrl}
+                </Typography>
+              )}
+            </Box>
+
             {/* Actions Footer - Polished */}
             <Box sx={{
               p: 4,
@@ -5343,6 +5394,27 @@ const BusinessList = React.memo(() => {
               gap: 1.5,
               flexWrap: "wrap"
             }}>
+              {livePageUrl && (
+                <Button
+                  size="large"
+                  variant="outlined"
+                  startIcon={<OpenInNewRoundedIcon />}
+                  onClick={() => window.open(livePageUrl, "_blank", "noopener,noreferrer")}
+                  sx={{
+                    textTransform: "none",
+                    fontSize: "0.95rem",
+                    fontWeight: 600,
+                    flex: 1,
+                    minWidth: "120px",
+                    py: 1.2,
+                    borderColor: "#0f766e",
+                    color: "#0f766e",
+                    "&:hover": { bgcolor: "#ecfdf5", borderColor: "#0d5f59" }
+                  }}
+                >
+                  View live page
+                </Button>
+              )}
               <Button
                 size="large"
                 variant="outlined"

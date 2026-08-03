@@ -163,7 +163,7 @@ const BusinessFormStep2 = ({
               } else {
                 setCategoryKeywordSuggestions([]);
               }
-              updateLiveValidation(nextData, ["category", "keywords", "slug", "seoTitle", "seoDescription", "title", "description"]);
+              updateLiveValidation(nextData, ["category", "keywords", "seoTitle", "seoDescription", "title", "description"]);
               setCategorySearchInput("");
             }}
             onInputChange={handleCategorySearch}
@@ -454,19 +454,14 @@ const BusinessFormStep2 = ({
           {renderFieldError("seoDescription")}
         </div>
 
-        <div className={fieldClass("field-span-full")}>
-          <label className={cx("input-label")}>URL Slug</label>
-          <input
-            type="text"
-            name="slug"
-            className={getInputClassName("text-input", "slug")}
-            value={formData.slug}
-            onChange={handleChange}
-            placeholder="business-name-here"
-          />
-          {renderFieldError("slug")}
-        </div>
-
+{/* The "URL Slug" field that used to live here was removed: businesslists.slug
+    has not driven any URL since business URLs started being built from the
+    business name. Editing it changed nothing, while the label, placeholder and
+    placement all implied it controlled the address. The stored value is still
+    submitted untouched (see Business.js) because it is what lets already-printed
+    QR codes stay recognised — it is simply no longer editable. A business's URL
+    is now its name plus its permanent publicId, both shown read-only in the
+    business detail drawer. */}
         {categoryFilterConfig && categoryFilterConfig.length > 0 && (
           <>
             <div className={fieldClass("field-span-full")}>
@@ -812,12 +807,6 @@ const BusinessFormStep2 = ({
                 <div>
                   <small style={{ color: "#666", fontSize: "12px" }}>SEO Description</small>
                   <p style={{ margin: "4px 0 0 0", fontSize: "13px", lineHeight: "1.5", color: "#555" }}>{formData.seoDescription}</p>
-                </div>
-              )}
-              {formData.slug && (
-                <div>
-                  <small style={{ color: "#666", fontSize: "12px" }}>URL Slug</small>
-                  <p style={{ margin: "4px 0 0 0", fontSize: "13px", fontFamily: "monospace", background: "#f5f5f5", padding: "6px 10px", borderRadius: "4px" }}>{formData.slug}</p>
                 </div>
               )}
             </div>

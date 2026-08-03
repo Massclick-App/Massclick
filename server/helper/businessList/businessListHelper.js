@@ -1244,8 +1244,12 @@ export const updateBusinessList = async (id, data) => {
   /* ===============================
      5️⃣ UPDATE NORMAL FIELDS
   =============================== */
+  // publicId is permanent public identity — it is the part of a business's URL
+  // that actually resolves the page, and it is baked into indexed URLs, printed
+  // QR codes and shared links. Nothing reaching this update path may change it,
+  // so it is excluded here rather than trusted not to appear in `data`.
   Object.keys(data).forEach((key) => {
-    if (!["reviews", "averageRating", "clientId"].includes(key)) {
+    if (!["reviews", "averageRating", "clientId", "publicId"].includes(key)) {
       business[key] = data[key];
     }
   });
