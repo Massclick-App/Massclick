@@ -10,7 +10,7 @@ import {
 import { createScopedClassNames } from "../../../../utils/createScopedClassNames";
 import Footer from "../footer";
 import logo from "../../../../assets/mclogo.webp";
-import teamImage from "../../../../assets/hiringpage-img1.webp";
+import teamImage from "../../../../assets/aboutus.webp";
 import ceoImage from "../../../../assets/Ceo.webp";
 import advisorImage from "../../../../assets/advicers.webp";
 import ambassadorImage from "../../../../assets/ambassador.webp";
@@ -183,12 +183,6 @@ const CareersPage = () => {
   const [activeProfile, setActiveProfile] = useState(null);
   const [department, setDepartment] = useState("");
   const [location, setLocation] = useState("");
-  const scrollToSection = (event, sectionId, closeMenu = false) => {
-    event.preventDefault();
-    document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
-    window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
-    if (closeMenu) setMenuOpen(false);
-  };
   useEffect(() => {
     const previous = document.documentElement.style.scrollBehavior;
     document.documentElement.style.scrollBehavior = "smooth";
@@ -210,7 +204,6 @@ const CareersPage = () => {
       window.removeEventListener("keydown", closeOnEscape);
     };
   }, [activeProfile]);
-
   return (
     <div className={cx("page")}>
       <Helmet>
@@ -222,13 +215,13 @@ const CareersPage = () => {
         <div className={cx("nav-shell")}>
           <Link className={cx("brand")} to="/" aria-label="MassClick home"><img src={logo} alt="MassClick" /></Link>
           <nav className={cx("desktop-nav")} aria-label="Careers navigation">
-            {navItems.map(([label, id]) => <a key={id} href={`#${id}`} onClick={(event) => scrollToSection(event, id)}>{label}</a>)}
+            {navItems.map(([label, id]) => <a key={id} href={`#${id}`}>{label}</a>)}
           </nav>
-          <a className={cx("nav-cta")} href="#get-started" onClick={(event) => scrollToSection(event, "get-started")}>Register your business <ArrowRight size={17} /></a>
+          <a className={cx("nav-cta")} href="#get-started">Register your business <ArrowRight size={17} /></a>
           <button className={cx("menu-button")} type="button" onClick={() => setMenuOpen(!menuOpen)} aria-expanded={menuOpen} aria-label={menuOpen ? "Close navigation" : "Open navigation"}>{menuOpen ? <X /> : <Menu />}</button>
         </div>
         {menuOpen && <nav className={cx("mobile-nav")} aria-label="Mobile careers navigation">
-          {navItems.map(([label, id]) => <a key={id} href={`#${id}`} onClick={(event) => scrollToSection(event, id, true)}>{label}<ChevronRight size={18} /></a>)}
+          {navItems.map(([label, id]) => <a key={id} href={`#${id}`} onClick={() => setMenuOpen(false)}>{label}<ChevronRight size={18} /></a>)}
         </nav>}
       </header>
       <main>
@@ -239,8 +232,8 @@ const CareersPage = () => {
               <h1>Helping businesses<br /><em>get discovered</em> and grow.</h1>
               <p>One intelligent platform for local search visibility, verified business discovery and genuine customer lead generation across India.</p>
               <div className={cx("hero-actions")}>
-                <a className={cx("primary-button")} href="#get-started" onClick={(event) => scrollToSection(event, "get-started")}>Start growing today <ArrowRight size={19} /></a>
-                <a className={cx("text-button")} href="#story" onClick={(event) => scrollToSection(event, "story")}>Discover our story <ChevronRight size={18} /></a>
+                <a className={cx("primary-button")} href="#get-started">Start growing today <ArrowRight size={19} /></a>
+                <a className={cx("text-button")} href="#story">Discover our story <ChevronRight size={18} /></a>
               </div>
               <div className={cx("trust-row")}>
                 <div><strong>2018</strong><span>Our journey began</span></div>
@@ -249,7 +242,7 @@ const CareersPage = () => {
               </div>
             </div>
             <div className={cx("hero-visual")}>
-              <div className={cx("image-frame")}><img src={teamImage} alt="Business team reviewing digital growth insights" /></div>
+              <div className={cx("image-frame")}><img src={teamImage} alt="A team collaborating around business insights" /></div>
               <div className={cx("floating-card", "float-top")}><span className={cx("icon-box")}><Users size={20} /></span><span><small>One team</small><strong>Big ambitions</strong></span></div>
               <div className={cx("floating-card", "float-bottom")}><span className={cx("status-dot")} /><span><small>Built for business</small><strong>Visibility that drives growth</strong></span></div>
             </div>
@@ -264,7 +257,7 @@ const CareersPage = () => {
                 <div className={cx("story-year")}>
                   <strong>2018</strong>
                   <span>Where our journey began</span>
-                </div> 
+                </div>
               </div>
               <div className={cx("story-copy")}>
                 <p className={cx("story-lead")}>
@@ -314,52 +307,8 @@ const CareersPage = () => {
               <h2>Leadership, guidance and influence</h2>
               <p>Meet the people who shape our direction, strengthen our decisions and represent the MassClick promise.</p>
             </div>
-            <article className={cx("executive-feature")}>
-              <div className={cx("executive-main")}>
-                <span className={cx("ceo-image")}>
-                  <img src={teamRoles[0].image} alt={teamRoles[0].title} />
-                  <span className={cx("executive-badge")}>Executive leadership</span>
-                </span>
-                <div className={cx("ceo-content")}>
-                  <span className={cx("executive-kicker")}>Founder&apos;s office</span>
-                  <h3>{teamRoles[0].title}</h3>
-                  <span className={cx("role-name")}><BriefcaseBusiness size={16} />{teamRoles[0].role}</span>
-                  <span className={cx("role-organization")}><Building2 size={16} />{teamRoles[0].organization}</span>
-                  <p className={cx("ceo-description")}>Muruganantham leads MassClick with a clear belief: every credible local business deserves the technology and opportunity to be discovered, trusted and chosen.</p>
-                  <blockquote>“We are building an inclusive growth platform where better discovery creates meaningful business opportunity.”</blockquote>
-                  <button className={cx("executive-link")} type="button" onClick={() => setActiveProfile(teamRoles[0])}>
-                    Explore the CEO profile <ArrowRight size={17} />
-                  </button>
-                </div>
-              </div>
-              <div className={cx("leadership-principles")}>
-                <div className={cx("principles-intro")}>
-                  <small>Our leadership agenda</small>
-                  <strong>Building lasting value, responsibly.</strong>
-                </div>
-                <div>
-                  <span><Rocket size={19} /></span>
-                  <strong>Digital inclusion</strong>
-                  <p>Making modern discovery and growth tools accessible to businesses of every size.</p>
-                </div>
-                <div>
-                  <span><ShieldCheck size={19} /></span>
-                  <strong>Trust by design</strong>
-                  <p>Creating verified, transparent connections between businesses and customers.</p>
-                </div>
-                <div>
-                  <span><HeartHandshake size={19} /></span>
-                  <strong>Shared progress</strong>
-                  <p>Measuring success through stronger enterprises, communities and customer outcomes.</p>
-                </div>
-              </div>
-            </article>
-            <div className={cx("supporting-heading")}>
-              <div><span>Advisory &amp; representation</span><h3>Experience that strengthens our perspective</h3></div>
-              <p>Independent guidance and community leadership help us make thoughtful decisions and stay connected to the people we serve.</p>
-            </div>
-            <div className={cx("supporting-team-grid")}>
-              {[teamRoles[2], teamRoles[1]].map((profile) => (
+            <div className={cx("team-grid")}>
+              {teamRoles.map((profile, index) => (
                 <button
                   className={cx("team-card")}
                   type="button"
@@ -369,6 +318,7 @@ const CareersPage = () => {
                 >
                   <span className={cx("team-image")}>
                     <img src={profile.image} alt={profile.title} />
+                    <span className={cx("team-index")}>0{index + 1}</span>
                   </span>
                   <div className={cx("team-content")}>
                     <small>{profile.eyebrow}</small>

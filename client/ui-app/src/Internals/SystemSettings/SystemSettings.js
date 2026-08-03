@@ -4,10 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchSystemSettings, updateSystemSettings } from "../../redux/actions/systemSettingsAction.js";
 import { fetchRedisStatus, invalidateCache, clearAllCaches, fetchRedisKeys, deleteRedisKeys, fetchRedisInfo, flushRedisDb, deleteRedisPattern } from "../../redux/actions/cacheActions.js";
 import S3CacheHeaderMigrationCard from "./S3CacheHeaderMigrationCard.js";
-import axiosInstance from "../../services/axiosInstance.js";
 import styles from "./SystemSettings.module.css";
-
-const API_URL = process.env.REACT_APP_API_URL;
 
 // Icons
 const cx = createScopedClassNames(styles);
@@ -113,7 +110,6 @@ const FIELD_HELP = {
   lead_guard_anonymous_dedupe_enabled: "Prevents repeated anonymous searches from being logged too often.",
   lead_guard_user_dedupe_enabled: "Prevents the same customer from repeatedly triggering the same lead in a short window.",
   lead_guard_live_business_only: "When enabled, only businesses marked live are eligible for lead matching.",
-  lead_guard_require_location: "Blocks lead alerts when the search location could not be resolved. Turning this off makes an unresolved location match businesses in every district.",
   whatsapp_business_lead_daily_cap_enabled: "Limits how many WhatsApp lead alerts one business number can receive in a day.",
   whatsapp_business_lead_duplicate_guard_enabled: "Stops the same business receiving the same customer/category/location lead again on the same day.",
   whatsapp_business_lead_cooldown_enabled: "Adds a waiting period before the same business number can receive another lead WhatsApp.",
@@ -348,10 +344,6 @@ const TOGGLE_GROUPS = [{
     label: "Live Businesses Only",
     desc: "Send to active listings"
   }, {
-    key: "lead_guard_require_location",
-    label: "Require Location",
-    desc: "No alerts on unresolved location"
-  }, {
     key: "whatsapp_business_lead_daily_cap_enabled",
     label: "Daily Business Cap",
     desc: "Limit sends per business"
@@ -541,7 +533,7 @@ const SETTINGS_SECTIONS = [{
   description: "Search hygiene, duplicate protection, and send limits.",
   icon: GuardIcon,
   color: "#0ea5e9",
-  fieldKeys: ["lead_guard_search_text_required", "lead_guard_anonymous_dedupe_enabled", "lead_guard_user_dedupe_enabled", "lead_guard_live_business_only", "lead_guard_require_location", "whatsapp_business_lead_daily_cap_enabled", "whatsapp_business_lead_duplicate_guard_enabled", "whatsapp_business_lead_cooldown_enabled", "whatsapp_recipient_health_guard_enabled", ...GUARD_LIMIT_FIELDS.map(field => field.key)]
+  fieldKeys: ["lead_guard_search_text_required", "lead_guard_anonymous_dedupe_enabled", "lead_guard_user_dedupe_enabled", "lead_guard_live_business_only", "whatsapp_business_lead_daily_cap_enabled", "whatsapp_business_lead_duplicate_guard_enabled", "whatsapp_business_lead_cooldown_enabled", "whatsapp_recipient_health_guard_enabled", ...GUARD_LIMIT_FIELDS.map(field => field.key)]
 }, {
   key: "versions",
   label: "App Releases",
@@ -603,7 +595,6 @@ export default function SystemSettings() {
     severity: "success"
   });
   const [selectedCache, setSelectedCache] = useState("seo-meta");
-  const [sitemapRegenerating, setSitemapRegenerating] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
   const [selectedKeys, setSelectedKeys] = useState(new Set());
   const [keyNamespace, setKeyNamespace] = useState("all");
@@ -935,34 +926,6 @@ export default function SystemSettings() {
         message: "Clear failed",
         severity: "error"
       });
-    }
-  };
-  const handleRegenerateSitemap = async () => {
-    if (!window.confirm("Regenerate sitemap data now? This rebuilds the category/location data used by the XML sitemap instead of waiting for the hourly refresh.")) return;
-    setSitemapRegenerating(true);
-    try {
-      await axiosInstance.post(`${API_URL}/admin/cache/sitemap/regenerate`, {}, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("accessToken")}`
-        }
-      });
-      setSnack({
-        open: true,
-        message: "Sitemap data regenerated",
-        severity: "success"
-      });
-    } catch (err) {
-      setSnack({
-        open: true,
-        message: err.response?.data?.message || "Sitemap regenerate failed",
-        severity: "error"
-      });
-    } finally {
-      setSitemapRegenerating(false);
-      setTimeout(() => setSnack(s => ({
-        ...s,
-        open: false
-      })), 3000);
     }
   };
   if (loading || !local) {
@@ -1322,26 +1285,6 @@ export default function SystemSettings() {
                   </button>
                   <button className={cx("btn btn-secondary btn-sm")} onClick={handleClearAllCaches} disabled={cacheClearing}>
                     {cacheClearing ? "Clearing..." : "Clear All"}
-                  </button>
-                </div>
-              </div>
-            </div>
-            <div className={cx("compact-card panel-card")}>
-              <div className={cx("compact-card-header")}>
-                <div className={cx("compact-icon")} style={{
-                background: '#0f766e'
-              }}>
-                  <DatabaseIcon />
-                </div>
-                <div className={cx("compact-header-text")}>
-                  <div className={cx("compact-title")}>Regenerate Sitemap</div>
-                  <div className={cx("compact-subtitle")}>Rebuild the category/location data used by the XML sitemap right now, instead of waiting for the hourly auto-refresh</div>
-                </div>
-              </div>
-              <div className={cx("section-group")}>
-                <div className={cx("button-group")}>
-                  <button className={cx("btn btn-primary btn-sm")} onClick={handleRegenerateSitemap} disabled={sitemapRegenerating}>
-                    {sitemapRegenerating ? "Regenerating..." : "Regenerate Sitemap Data"}
                   </button>
                 </div>
               </div>

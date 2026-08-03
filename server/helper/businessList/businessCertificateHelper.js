@@ -9,7 +9,7 @@ import {
   uploadImageToS3,
 } from "../../s3Uploder.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
-import { buildBusinessDetailsUrl } from "./businessPublicUrlHelper.js";
+import { slugify } from "../../slugify.js";
 
 export const CERTIFICATE_TEMPLATE_VERSION = 13;
 const CERTIFICATE_FONT_FAMILY = "'Nirmala UI', 'Noto Sans Tamil', Latha, 'Arial Unicode MS', Arial, Helvetica, sans-serif";
@@ -60,12 +60,24 @@ const formatCertificateDate = (value = new Date()) => {
   });
 };
 
+const getBusinessId = (business = {}) =>
+  business?._id?.toString?.() || String(business?._id || business?.id || "");
+
+const getPublicBaseUrl = () =>
+  String(process.env.PUBLIC_BASE_URL || "https://massclick.in").replace(/\/+$/, "");
+
 const buildCertificateVerifyUrl = (business = {}) => {
   if (business.businessProfileQrCode?.qrText) {
     return business.businessProfileQrCode.qrText;
   }
 
-  return buildBusinessDetailsUrl(business);
+  const businessId = getBusinessId(business);
+  const locationSlug = slugify(business.location || "business");
+  const businessSlug = slugify(
+    business.slug || business.businessName || business.name || "profile",
+  );
+
+  return `${getPublicBaseUrl()}/business/${locationSlug}/${businessSlug}/${businessId}`;
 };
 
 const appendCertificateUrls = (business = {}) => {

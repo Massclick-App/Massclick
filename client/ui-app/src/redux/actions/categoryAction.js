@@ -7,9 +7,6 @@ import {
   BUSINESS_CATEGORYSEARCH_REQUEST, BUSINESS_CATEGORYSEARCH_SUCCESS, BUSINESS_CATEGORYSEARCH_FAILURE,
   FETCH_HOME_CATEGORY_REQUEST, FETCH_HOME_CATEGORY_SUCCESS, FETCH_HOME_CATEGORY_FAILURE,
   FETCH_SUB_CATEGORY_REQUEST, FETCH_SUB_CATEGORY_SUCCESS, FETCH_SUB_CATEGORY_FAILURE,
-  FETCH_DISTRICT_CATEGORIES_REQUEST, FETCH_DISTRICT_CATEGORIES_SUCCESS, FETCH_DISTRICT_CATEGORIES_FAILURE,
-  FETCH_DISTRICT_CATEGORIES_MORE_REQUEST, FETCH_DISTRICT_CATEGORIES_MORE_SUCCESS, FETCH_DISTRICT_CATEGORIES_MORE_FAILURE,
-  RESET_DISTRICT_CATEGORIES,
   FETCH_POPULAR_CATEGORY_REQUEST, FETCH_POPULAR_CATEGORY_SUCCESS, FETCH_POPULAR_CATEGORY_FAILURE,
   FETCH_SERVICE_CARDS_REQUEST, FETCH_SERVICE_CARDS_SUCCESS, FETCH_SERVICE_CARDS_FAILURE,
   FETCH_POPULAR_SEARCHES_REQUEST, FETCH_POPULAR_SEARCHES_SUCCESS, FETCH_POPULAR_SEARCHES_FAILURE,
@@ -170,36 +167,6 @@ export const fetchHomeCategories = () => async (dispatch) => {
     });
   }
 };
-
-// Categories with live businesses in a district, paginated. `page` > 1
-// dispatches the "MORE" variant so the reducer appends instead of replacing
-// — that's what makes this infinite scroll rather than a single fetch.
-export const fetchDistrictCategories = ({ district, page = 1, pageSize = 24, search = "" } = {}) =>
-  async (dispatch) => {
-    const isFirstPage = page <= 1;
-    dispatch({ type: isFirstPage ? FETCH_DISTRICT_CATEGORIES_REQUEST : FETCH_DISTRICT_CATEGORIES_MORE_REQUEST });
-
-    try {
-      const params = new URLSearchParams({ district, page: String(page), pageSize: String(pageSize) });
-      if (search) params.set("search", search);
-
-      const response = await axiosInstance.get(`${API_URL}/v2/category/district?${params.toString()}`);
-
-      dispatch({
-        type: isFirstPage ? FETCH_DISTRICT_CATEGORIES_SUCCESS : FETCH_DISTRICT_CATEGORIES_MORE_SUCCESS,
-        payload: response.data,
-      });
-      return response.data;
-    } catch (error) {
-      dispatch({
-        type: isFirstPage ? FETCH_DISTRICT_CATEGORIES_FAILURE : FETCH_DISTRICT_CATEGORIES_MORE_FAILURE,
-        payload: error.response?.data || error.message,
-      });
-      return null;
-    }
-  };
-
-export const resetDistrictCategories = () => ({ type: RESET_DISTRICT_CATEGORIES });
 
 export const fetchSubCategories = (parentId) => async (dispatch) => {
   try {

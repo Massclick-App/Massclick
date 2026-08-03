@@ -6,12 +6,6 @@ import {
   performSearch,
 } from "../../../redux/actions/businessListAction";
 import axiosInstance from "../../../services/axiosInstance.js";
-import {
-  buildDistrictCategoryContext,
-  buildLegacyRouteContext,
-  formatUrlText,
-  resolveDistrictRoute,
-} from "../../../utils/districtRouteResolution.js";
 
 const CategoriesPage = lazy(() =>
   import(/* webpackChunkName: "category-directory" */ "./categories.js")
@@ -27,57 +21,25 @@ const loadSearchResults = () => {
 };
 const SearchResults = lazy(loadSearchResults);
 
-const CategoryRouter = ({ routeContext = null } = {}) => {
-  const params = useParams();
+const formatText = (text = "") =>
+  text
+    .replace(/-/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+
+const CategoryRouter = () => {
+  const { location, category, subcategory } = useParams();
   const routerLocation = useLocation();
   const dispatch = useDispatch();
 
   const [resolvedCategory, setResolvedCategory] = useState(null);
   const [categories, setCategories] = useState([]);
   const [prefetchedResults, setPrefetchedResults] = useState(null);
-  const [resolvedRouteContext, setResolvedRouteContext] = useState(routeContext);
 
   const isSearchFlow = routerLocation.state?.isSearch;
   const searchText = routerLocation.state?.searchText;
   const passedCategoryName = routerLocation.state?.categoryName;
 
   const API_URL = process.env.REACT_APP_API_URL;
-
-  useEffect(() => {
-    setResolvedCategory(null);
-    setPrefetchedResults(null);
-
-    if (routeContext) {
-      setResolvedRouteContext(routeContext);
-      return;
-    }
-
-    let cancelled = false;
-    setResolvedRouteContext(null);
-
-    resolveDistrictRoute({ district: params.district })
-      .then((data) => {
-        if (cancelled) return;
-        const built = buildDistrictCategoryContext({
-          district: data?.district,
-          category: params.category,
-          subcategory: params.subcategory,
-        });
-        setResolvedRouteContext(built);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setResolvedRouteContext(buildLegacyRouteContext({
-          location: params.district || params.location,
-          category: params.category,
-          subcategory: params.subcategory,
-        }));
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [routeContext, params.district, params.location, params.category, params.subcategory]);
 
   // Fetch home categories on mount
   useEffect(() => {
@@ -102,18 +64,8 @@ const CategoryRouter = ({ routeContext = null } = {}) => {
 
   useEffect(() => {
     const loadCategory = async () => {
-      if (!resolvedRouteContext) return;
       setPrefetchedResults(null);
       try {
-        const {
-          districtSlug,
-          locationSlug,
-          categorySlug,
-          subcategorySlug,
-        } = resolvedRouteContext;
-        const searchLocation = districtSlug ? locationSlug || "" : locationSlug;
-        const searchExtraParams = districtSlug ? { district: districtSlug } : {};
-
         // If category name was passed directly from featured service, use it
         if (passedCategoryName) {
           setResolvedCategory(passedCategoryName);
@@ -129,9 +81,8 @@ const CategoryRouter = ({ routeContext = null } = {}) => {
           const response = await dispatch(
             performSearch(
               searchText,
-              searchLocation,
-              false,  // isKnownCategory: user search flow
-              searchExtraParams,
+              location,
+              false  // isKnownCategory: user search flow
             )
           );
 
@@ -140,16 +91,15 @@ const CategoryRouter = ({ routeContext = null } = {}) => {
           return;
         }
 
-        if (subcategorySlug) {
-          const searchValue = subcategorySlug.replace(/-/g, " ");
+        if (subcategory) {
+          const searchValue = subcategory.replace(/-/g, " ");
 
           loadSearchResults();
           const response = await dispatch(
             performSearch(
               searchValue,
-              searchLocation,
-              false,  // isKnownCategory: subcategory is flexible search
-              searchExtraParams,
+              location,
+              false  // isKnownCategory: subcategory is flexible search
             )
           );
 
@@ -159,7 +109,7 @@ const CategoryRouter = ({ routeContext = null } = {}) => {
           if (results.length > 0) {
             setResolvedCategory(results[0].category);
           } else {
-            setResolvedCategory(formatUrlText(subcategorySlug));
+            setResolvedCategory(formatText(subcategory));
           }
           setPrefetchedResults(payload);
 
@@ -167,14 +117,13 @@ const CategoryRouter = ({ routeContext = null } = {}) => {
         }
 
 
-        if (categorySlug) {
+        if (category) {
           loadSearchResults();
           const response = await dispatch(
             performSearch(
-              categorySlug,
-              searchLocation,
-              true,  // isKnownCategory: category from URL is always a known category
-              searchExtraParams,
+              category,
+              location,
+              true  // isKnownCategory: category from URL is always a known category
             )
           );
 
@@ -184,7 +133,7 @@ const CategoryRouter = ({ routeContext = null } = {}) => {
           if (results.length > 0) {
             setResolvedCategory(results[0].category);
           } else {
-            setResolvedCategory(formatUrlText(categorySlug));
+            setResolvedCategory(formatText(category));
           }
           setPrefetchedResults(payload);
 
@@ -192,7 +141,7 @@ const CategoryRouter = ({ routeContext = null } = {}) => {
         }
       } catch (error) {
         setResolvedCategory(
-          formatUrlText(resolvedRouteContext?.subcategorySlug || resolvedRouteContext?.categorySlug || "")
+          formatText(subcategory || category || "")
         );
       }
     };
@@ -200,7 +149,9 @@ const CategoryRouter = ({ routeContext = null } = {}) => {
     loadCategory();
 
   }, [
-    resolvedRouteContext,
+    location,
+    category,
+    subcategory,
     isSearchFlow,
     searchText,
     passedCategoryName,
@@ -209,13 +160,13 @@ const CategoryRouter = ({ routeContext = null } = {}) => {
 
   if (
     !isSearchFlow &&
-    resolvedRouteContext?.categorySlug &&
-    !resolvedRouteContext?.subcategorySlug &&
-    hasSubcategories(resolvedRouteContext.categorySlug)
+    category &&
+    !subcategory &&
+    hasSubcategories(category)
   ) {
     return (
       <Suspense fallback={null}>
-        <CategoriesPage routeContext={resolvedRouteContext} />
+        <CategoriesPage />
       </Suspense>
     );
   }
@@ -225,9 +176,8 @@ const CategoryRouter = ({ routeContext = null } = {}) => {
   return (
     <Suspense fallback={null}>
       <SearchResults
-        routeContext={resolvedRouteContext}
         overrideCategory={resolvedCategory}
-        overrideLocation={resolvedRouteContext?.locationName || formatUrlText(resolvedRouteContext?.locationSlug)}
+        overrideLocation={formatText(location)}
         initialResults={prefetchedResults?.results}
         initialTotal={prefetchedResults?.total}
         initialHasMore={prefetchedResults?.hasMore}

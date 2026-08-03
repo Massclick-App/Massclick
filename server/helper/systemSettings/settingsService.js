@@ -31,7 +31,6 @@ export const SYSTEM_SETTINGS_DEFAULTS = {
   lead_guard_user_dedupe_enabled: true,
   lead_guard_user_dedupe_minutes: 5,
   lead_guard_live_business_only: true,
-  lead_guard_require_location: true,
   whatsapp_business_lead_daily_cap_enabled: true,
   whatsapp_business_lead_daily_cap: 3,
   whatsapp_business_lead_duplicate_guard_enabled: true,

@@ -9,9 +9,6 @@ import { slugify } from "./slugify.js";
 
 dotenv.config();
 
-// TODO(location-migration): This generator is dormant and still writes legacy
-// /:location/:category folders. If static generation is revived, rebuild it on
-// the district-aware route resolver instead of using free-text location slugs.
 const BUILD_PATH =
 "/var/www/massclickQA/client/ui-app/build";
 

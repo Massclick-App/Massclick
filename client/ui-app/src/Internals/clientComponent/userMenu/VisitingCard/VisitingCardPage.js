@@ -11,7 +11,6 @@ import Footer from "../../footer/footer";
 import { findBusinessByMobile } from "../../../../redux/actions/businessListAction";
 import BusinessDocumentsNav from "./BusinessDocumentsNav";
 import { getBusinessLogo, imageToDataUrl } from "./documentImageUtils";
-import { buildBusinessPath, createDistrictSlug } from "../../../../utils/searchResultNavigation";
 import styles from "./VisitingCardPage.module.css";
 
 const cx = createScopedClassNames(styles);
@@ -85,15 +84,11 @@ const getPhoneNumbers = (business = {}, storedUser = {}) =>
 
 const getBusinessProfile = (business = {}, storedUser = {}) => {
   const businessId = getBusinessId(business);
-  const districtSlug = createDistrictSlug(business.masterLocation?.district || business.district || "");
+  const locationSlug = createSlug(business.location || "business");
+  const businessSlug = createSlug(business.slug || business.businessName || business.name || "profile");
   const origin = typeof window !== "undefined" ? window.location.origin : "https://massclick.in";
   const path = businessId
-    ? buildBusinessPath({
-        districtSlug,
-        location: business.location || "business",
-        businessSlug: business.slug || business.businessName || business.name,
-        id: businessId,
-      })
+    ? `/business/${locationSlug}/${businessSlug}/${businessId}`
     : "/user_edit-profile";
   const profileQrCode = business.businessProfileQrCode || {};
   const legacyProfileQrCode = business.qrCode?.qrText?.includes("/business/")

@@ -14,6 +14,7 @@ import { navigateToSearchResult, getEffectiveSearchLocation } from "../../../../
 // Order is controlled via admin Category Display Settings → Popular tab.
 // The v2 API returns items pre-sorted; no client-side reorder needed.
 const cx = createScopedClassNames(styles);
+const slugify = (text = "") => text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 const formatUiName = name => {
   if (!name) return "";
   return name.replace(/[-_]/g, " ").replace(/\b\w/g, char => char.toUpperCase()).trim();
@@ -46,8 +47,16 @@ const PopularCategoriesDrawer = ({
     const focusTimer = setTimeout(() => searchInputRef.current?.focus(), 150);
     return () => clearTimeout(focusTimer);
   }, [drawerOpen]);
+  const districtSlug = useMemo(() => slugify(selectedDistrict || "india"), [selectedDistrict]);
+  useEffect(() => {
+    if (!popularCategories.length) return;
+    const popularCategoryUrls = popularCategories.map(cat => {
+      const categorySlug = cat.slug || slugify(cat.name);
+      return `/${districtSlug}/${categorySlug}`;
+    });
+    }, [popularCategories, districtSlug]);
+
   // v2 API returns categories in admin-configured order — use directly.
-  const districtSlug = useMemo(() => getEffectiveSearchLocation(selectedDistrict).districtSlug || "india", [selectedDistrict]);
   const orderedCategories = useMemo(() => popularCategories, [popularCategories]);
   const filtered = useMemo(() => {
     return orderedCategories.filter(cat => cat.name.toLowerCase().includes(search.toLowerCase()));
@@ -62,10 +71,11 @@ const PopularCategoriesDrawer = ({
     };
     // Navigate to the specific location the user picked (falls back to the
     // selected district only when the location field is empty).
-    const locationContext = getEffectiveSearchLocation(selectedDistrict);
+    const { location, masterLocationSlug } = getEffectiveSearchLocation(selectedDistrict);
     navigateToSearchResult({
       searchTerm: cat.name,
-      ...locationContext,
+      location,
+      masterLocationSlug,
       navigate,
       dispatch,
       isKnownCategory: true,

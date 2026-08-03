@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import {
   SwipeableDrawer,
   Box,
@@ -11,8 +11,6 @@ import {
   Divider,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
-import StarsRoundedIcon from "@mui/icons-material/StarsRounded";
-import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
 import { useDrawer } from "./drawerContext";
 import {
   getVisibleUserMenuItems,
@@ -21,7 +19,6 @@ import {
 } from "./userMenuConfig.js";
 import { useNavigate } from "react-router-dom";
 import { styled } from "@mui/material/styles";
-import { fetchRewardWallet } from "../../../services/rewardService";
 
 const formatUiName = (name) => {
   if (!name) return "";
@@ -64,21 +61,6 @@ const EmailText = styled(Typography)(({ theme }) => ({
   color: "#777",
 }));
 
-const PointsCard = styled(Box)(() => ({
-  margin: "14px 16px 8px",
-  padding: "14px 16px",
-  borderRadius: "16px",
-  color: "#ffffff",
-  background: "linear-gradient(135deg, #0b2347 0%, #173b67 100%)",
-  boxShadow: "0 10px 24px rgba(11, 35, 71, 0.16)",
-  cursor: "pointer",
-  transition: "transform 160ms ease, box-shadow 160ms ease",
-  "&:hover": {
-    transform: "translateY(-1px)",
-    boxShadow: "0 13px 28px rgba(11, 35, 71, 0.22)",
-  },
-}));
-
 export default function GlobalDrawer() {
   const { isDrawerOpen, closeDrawer } = useDrawer();
   const navigate = useNavigate();
@@ -88,37 +70,7 @@ export default function GlobalDrawer() {
   const userEmail = authUser?.email || "No Email";
 
   const currentUser = authUser;
-  const customerKey =
-    localStorage.getItem("mobileNumber") ||
-    currentUser?.mobileNumber1 ||
-    currentUser?.mobile ||
-    currentUser?.contact ||
-    currentUser?._id ||
-    "";
-  const [rewardWallet, setRewardWallet] = useState(null);
-  const [rewardsLoading, setRewardsLoading] = useState(false);
   const visibleMenuItems = getVisibleUserMenuItems(currentUser);
-
-  useEffect(() => {
-    if (!isDrawerOpen || !customerKey) return undefined;
-
-    let active = true;
-    setRewardsLoading(true);
-    fetchRewardWallet(customerKey)
-      .then((wallet) => {
-        if (active) setRewardWallet(wallet);
-      })
-      .catch(() => {
-        if (active) setRewardWallet(null);
-      })
-      .finally(() => {
-        if (active) setRewardsLoading(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [customerKey, isDrawerOpen]);
 
   const handleLogout = () => {
     localStorage.removeItem("authToken");
@@ -226,66 +178,6 @@ export default function GlobalDrawer() {
           />
         </HeaderBox>
         <Divider />
-        {customerKey && (
-          <PointsCard
-            role="button"
-            tabIndex={0}
-            aria-label="Open my rewards wallet"
-            onClick={() => {
-              closeDrawer();
-              navigate("/user_rewards");
-            }}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                closeDrawer();
-                navigate("/user_rewards");
-              }
-            }}
-          >
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
-              <Box
-                sx={{
-                  width: 40,
-                  height: 40,
-                  display: "grid",
-                  placeItems: "center",
-                  borderRadius: "12px",
-                  color: "#ff9d2e",
-                  backgroundColor: "rgba(255, 255, 255, 0.1)",
-                }}
-              >
-                <StarsRoundedIcon />
-              </Box>
-              <Box sx={{ minWidth: 0, flexGrow: 1 }}>
-                <Typography sx={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.72)", fontWeight: 600 }}>
-                  AVAILABLE POINTS
-                </Typography>
-                <Box sx={{ display: "flex", alignItems: "baseline", gap: 0.75 }}>
-                  <Typography sx={{ fontSize: "1.45rem", lineHeight: 1.2, fontWeight: 800 }}>
-                    {rewardsLoading
-                      ? "—"
-                      : Number(rewardWallet?.availablePoints || 0).toLocaleString("en-IN")}
-                  </Typography>
-                  <Typography sx={{ fontSize: "0.78rem", color: "rgba(255,255,255,0.76)" }}>
-                    {rewardWallet?.tier || "Starter"} member
-                  </Typography>
-                </Box>
-              </Box>
-              <ArrowForwardRoundedIcon sx={{ color: "#ff9d2e" }} />
-            </Box>
-            <Box sx={{ display: "flex", justifyContent: "space-between", mt: 1.1, pt: 1.1, borderTop: "1px solid rgba(255,255,255,0.12)" }}>
-              <Typography sx={{ fontSize: "0.76rem", color: "rgba(255,255,255,0.72)" }}>
-                Lifetime earned
-              </Typography>
-              <Typography sx={{ fontSize: "0.78rem", fontWeight: 700 }}>
-                {rewardsLoading
-                  ? "—"
-                  : Number(rewardWallet?.lifetimeEarned || 0).toLocaleString("en-IN")} points
-              </Typography>
-            </Box>
-          </PointsCard>
-        )}
         <Box sx={{ flexGrow: 1, overflowY: "auto" }}>
           <List sx={{ padding: "10px 0" }}>
             {visibleMenuItems.map((item, index) => (

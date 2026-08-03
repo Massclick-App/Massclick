@@ -7,8 +7,7 @@ import {
     searchMasterLocationAction,
     listDistinctMasterLocationValuesAction,
     updateMasterLocationAction,
-    deleteMasterLocationAction,
-    resolveRouteLocationAction
+    deleteMasterLocationAction
 } from "../controller/location/masterLocationController.js"
 import { oauthAuthentication } from '../helper/oauthHelper.js';
 
@@ -22,11 +21,5 @@ router.put('/api/masterlocation/update/:id', oauthAuthentication, updateMasterLo
 router.delete('/api/masterlocation/delete/:id', oauthAuthentication, deleteMasterLocationAction);
 // Public: resolve search text ("kk nagar", "manaparai") to location docs/slugs
 router.get('/api/masterlocation/search', searchMasterLocationAction);
-// Public: district-prefixed URL scheme's ambiguous-segment classifier —
-// see resolveRouteLocationAction. Matches the /api/v2/category/... prefix
-// convention used by categoryDisplaySettingsRoutes.js for other new-scheme
-// endpoints, kept in this file rather than a new one since it's still
-// fundamentally a masterlocation lookup.
-router.get('/api/v2/location/resolve', resolveRouteLocationAction);
 
 export default router;

@@ -33,11 +33,6 @@ const FloatingButtons = ({ onRequireLogin }) => {
     }
   };
 
-  const handleClaimClick = () => {
-    if (localStorage.getItem("authToken")) navigate("/claim-rewards");
-    else onRequireLogin();
-  };
-
   return (
     <Box
       sx={{
@@ -60,7 +55,6 @@ const FloatingButtons = ({ onRequireLogin }) => {
         willChange: "transform",
       }}
     >
-      <Box onClick={handleClaimClick} sx={{ writingMode: "vertical-rl", transform: "rotate(180deg)", bgcolor: "#e66b0c", color: "#fff", px: 1.8, py: 2.1, fontSize: "0.82rem", fontWeight: 700, letterSpacing: "0.04em", cursor: "pointer", userSelect: "none", borderRadius: "10px 0 0 10px", boxShadow: "0 8px 24px rgba(0,0,0,.25)", transition: "all .25s ease", "&:hover": { bgcolor: "#c95605", transform: "rotate(180deg) translateX(-2px)" } }}><Typography fontSize="inherit" fontWeight="inherit">Claim Points</Typography></Box>
       <Box
         onClick={handlePublicizeClick}
         sx={{

@@ -266,16 +266,9 @@ seoPageContentBlogSchema.pre("validate", function (next) {
       .replace(/^-+|-+$/g, "");
   }
 
-  // Auto-populating canonicalUrl here used to write the pre-district-prefix
-  // shape (`https://massclick.in/${location}/${category}`, no district) into
-  // every new doc — a standing bug even before this migration, since nothing
-  // in the codebase reads doc.canonicalUrl at all (verified: no controller,
-  // helper, or client reads this field; it was write-only). Removed rather
-  // than made district-aware: a value nobody reads doesn't need to be
-  // correct, it needs to not exist. Canonical URLs for these pages are
-  // computed at read time in seoHelper.js, which IS wired up for the district
-  // scheme. The field itself is left on the schema (not dropped) in case
-  // something starts using it later, but it will stay empty until then.
+  if (!this.canonicalUrl && this.location && this.category) {
+    this.canonicalUrl = `https://massclick.in/${this.location}/${this.category}`;
+  }
 
   next();
 });

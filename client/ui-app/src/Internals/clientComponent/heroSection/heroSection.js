@@ -11,7 +11,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { getBackendSuggestions } from "../../../redux/actions/businessListAction";
 import { searchMasterLocations } from "../../../redux/actions/masterLocationAction";
 import { fetchPublicUserCounter } from "../../../redux/actions/publicUserCounterAction.js";
-import { createDistrictSlug, getEffectiveSearchLocation, navigateToSearchResult } from "../../../utils/searchResultNavigation";
+import { navigateToSearchResult } from "../../../utils/searchResultNavigation";
 import { detectDistrict } from "../../../redux/actions/locationAction";
 import { scheduleIdleCallback } from "../../../utils/scheduleIdleCallback.js";
 import {
@@ -146,13 +146,7 @@ const HeroSection = React.memo(({
       localStorage.setItem("selectedLocation", value);
       dispatch({
         type: "SET_SELECTED_DISTRICT",
-        payload: {
-          name: value,
-          districtName: value,
-          districtSlug: createDistrictSlug(value),
-          locationSlug: "",
-          masterLocationSlug: "",
-        }
+        payload: value
       });
     };
     const savedLocation = localStorage.getItem("selectedLocation");
@@ -301,10 +295,7 @@ const HeroSection = React.memo(({
         _raw: primary,
         name,
         subLabel: [...new Set(contextParts)].join(", "),
-        slug: primary.slug,
-        publicLocationSlug: primary.publicLocationSlug,
-        districtName: primary.district,
-        districtSlug: createDistrictSlug(primary.district)
+        slug: primary.slug
       };
     });
   })();
@@ -361,7 +352,6 @@ const HeroSection = React.memo(({
       searchTerm: cleanedTerm,
       location: location,
       masterLocationSlug,
-      ...getEffectiveSearchLocation(),
       navigate,
       dispatch,
       isKnownCategory: false,
@@ -439,18 +429,9 @@ const HeroSection = React.memo(({
             localStorage.setItem("selectedLocation", value);
             setMasterLocationSlug("");
             localStorage.removeItem("selectedLocationSlug");
-            localStorage.removeItem("selectedPublicLocationSlug");
-            localStorage.removeItem("selectedLocationDistrict");
-            localStorage.removeItem("selectedLocationDistrictSlug");
             dispatch({
               type: "SET_SELECTED_DISTRICT",
-              payload: {
-                name: value,
-                districtName: value,
-                districtSlug: createDistrictSlug(value),
-                locationSlug: "",
-                masterLocationSlug: "",
-              }
+              payload: value
             });
             setShowLocationDropdown(true);
             setIsDropdownOpen(false);
@@ -467,27 +448,12 @@ const HeroSection = React.memo(({
               // Verified picks carry the canonical slug; legacy text
               // suggestions don't and clear any previous one.
               const slug = typeof val === "object" && val.slug ? val.slug : "";
-              const publicLocationSlug = typeof val === "object" && val.publicLocationSlug ? val.publicLocationSlug : "";
-              const districtName = typeof val === "object" && val.districtName ? val.districtName : chosen;
-              const districtSlug = typeof val === "object" && val.districtSlug ? val.districtSlug : createDistrictSlug(districtName);
               setMasterLocationSlug(slug);
               if (slug) localStorage.setItem("selectedLocationSlug", slug);
               else localStorage.removeItem("selectedLocationSlug");
-              if (publicLocationSlug) localStorage.setItem("selectedPublicLocationSlug", publicLocationSlug);
-              else localStorage.removeItem("selectedPublicLocationSlug");
-              if (districtName) localStorage.setItem("selectedLocationDistrict", districtName);
-              else localStorage.removeItem("selectedLocationDistrict");
-              if (districtSlug) localStorage.setItem("selectedLocationDistrictSlug", districtSlug);
-              else localStorage.removeItem("selectedLocationDistrictSlug");
               dispatch({
                 type: "SET_SELECTED_DISTRICT",
-                payload: {
-                  name: chosen,
-                  districtName,
-                  districtSlug,
-                  locationSlug: publicLocationSlug,
-                  masterLocationSlug: slug,
-                }
+                payload: chosen
               });
               setShowLocationDropdown(false);
             };

@@ -29,14 +29,12 @@ import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import SmartphoneRoundedIcon from "@mui/icons-material/SmartphoneRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import TaskAltRoundedIcon from "@mui/icons-material/TaskAltRounded";
-import RedeemRoundedIcon from "@mui/icons-material/RedeemRounded";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { editBusinessList, getPendingBusinessList } from "../redux/actions/businessListAction";
 import { getAllEnquiry } from "../redux/actions/enquiryAction";
 import { getAllEventCreation } from "../redux/actions/eventAction";
 import { getSearchRequests } from "../redux/actions/searchRequestAction.js";
-import { fetchRewardClaims } from "../services/rewardService.js";
 import {
   fetchChatConversations,
   fetchChatUnreadCount,
@@ -50,10 +48,9 @@ const CATEGORY_META = {
   event: { label: "Events", icon: EventAvailableRoundedIcon },
   enquiry: { label: "Enquiries", icon: MailRoundedIcon },
   searchRequest: { label: "Search Requests", icon: SearchRoundedIcon },
-  rewardClaim: { label: "Reward Claims", icon: RedeemRoundedIcon },
 };
 
-const CATEGORY_ORDER = ["all", "rewardClaim", "business", "chat", "event", "enquiry", "searchRequest"];
+const CATEGORY_ORDER = ["all", "business", "chat", "event", "enquiry", "searchRequest"];
 const RECENT_DAYS = 7;
 const BRAND_ORANGE = "#ff6a00";
 const BRAND_NAVY = "#07145f";
@@ -132,8 +129,6 @@ export default function NotificationDropdown({ open, handleClose, onCountChange 
   const [loadingId, setLoadingId] = useState(null);
   const [toastOpen, setToastOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
-  const [rewardClaims, setRewardClaims] = useState([]);
-  const [rewardClaimsLoading, setRewardClaimsLoading] = useState(false);
 
   const getUserName = (id) => users.find((u) => u._id === id)?.userName || "Admin";
 
@@ -153,38 +148,17 @@ export default function NotificationDropdown({ open, handleClose, onCountChange 
     }
   }, []);
 
-  const loadRewardClaimNotifications = useCallback(async () => {
-    setRewardClaimsLoading(true);
-    try {
-      const result = await fetchRewardClaims({ status: "pending", page: 1, limit: 100 });
-      setRewardClaims(result?.data || []);
-    } catch {
-      setRewardClaims([]);
-    } finally {
-      setRewardClaimsLoading(false);
-    }
-  }, []);
-
   const loadNotifications = useCallback(() => {
     dispatch(getPendingBusinessList());
     dispatch(getAllEnquiry());
     dispatch(getAllEventCreation({ pageNo: 1, pageSize: 25, options: { sortBy: "createdAt", sortOrder: "desc" } }));
     dispatch(getSearchRequests({ page: 1, limit: 100, status: "new" }));
     loadChatNotifications();
-    loadRewardClaimNotifications();
-  }, [dispatch, loadChatNotifications, loadRewardClaimNotifications]);
+  }, [dispatch, loadChatNotifications]);
 
   useEffect(() => {
     if (open) loadNotifications();
   }, [loadNotifications, open]);
-
-  useEffect(() => {
-    const refreshRewardClaims = () => {
-      if (open) loadRewardClaimNotifications();
-    };
-    window.addEventListener("reward-claims:changed", refreshRewardClaims);
-    return () => window.removeEventListener("reward-claims:changed", refreshRewardClaims);
-  }, [loadRewardClaimNotifications, open]);
 
   const handleMakeLive = async (business) => {
     try {
@@ -215,23 +189,6 @@ export default function NotificationDropdown({ open, handleClose, onCountChange 
   };
 
   const notifications = useMemo(() => {
-    const rewardClaimItems = rewardClaims.map((claim) => ({
-      id: `reward-claim-${claim._id}`,
-      category: "rewardClaim",
-      raw: claim,
-      title: claim.businessName || "New reward claim",
-      subtitle: `${claim.customerName || claim.customerKey} claims ${Number(claim.projectedPoints || 0).toLocaleString("en-IN")} points`,
-      details: [
-        { icon: SmartphoneRoundedIcon, label: "Customer", value: claim.customerKey },
-        { icon: BusinessCenterRoundedIcon, label: "Business", value: claim.businessName },
-        { icon: RedeemRoundedIcon, label: "Expected points", value: `${Number(claim.projectedPoints || 0).toLocaleString("en-IN")} points` },
-        { icon: AccessTimeRoundedIcon, label: "Submitted", value: formatTime(claim.createdAt) },
-      ],
-      createdAt: claim.createdAt,
-      unread: 1,
-      actionLabel: "Review claim",
-    }));
-
     const businessItems = pendingBusinessList.map((business) => ({
       id: `business-${business._id}`,
       category: "business",
@@ -314,9 +271,9 @@ export default function NotificationDropdown({ open, handleClose, onCountChange 
         actionLabel: "Call customer",
       }));
 
-    return [...rewardClaimItems, ...businessItems, ...chatItems, ...eventItems, ...enquiryItems, ...searchRequestItems]
+    return [...businessItems, ...chatItems, ...eventItems, ...enquiryItems, ...searchRequestItems]
       .sort((a, b) => (toDate(b.createdAt)?.getTime() || 0) - (toDate(a.createdAt)?.getTime() || 0));
-  }, [chatConversations, enquiries, eventCreation.data, pendingBusinessList, rewardClaims, searchRequests]);
+  }, [chatConversations, enquiries, eventCreation.data, pendingBusinessList, searchRequests]);
 
   const counts = useMemo(() => ({
     all: notifications.length,
@@ -325,7 +282,6 @@ export default function NotificationDropdown({ open, handleClose, onCountChange 
     event: notifications.filter((item) => item.category === "event").length,
     enquiry: notifications.filter((item) => item.category === "enquiry").length,
     searchRequest: notifications.filter((item) => item.category === "searchRequest").length,
-    rewardClaim: notifications.filter((item) => item.category === "rewardClaim").length,
   }), [chatUnreadCount, notifications]);
 
   useEffect(() => {
@@ -349,13 +305,12 @@ export default function NotificationDropdown({ open, handleClose, onCountChange 
     }, [])
   ), [filteredNotifications]);
 
-  const isLoading = pendingBusinessLoading || enquiryLoading || eventCreation.loading || chatLoading || searchRequestLoading || rewardClaimsLoading;
+  const isLoading = pendingBusinessLoading || enquiryLoading || eventCreation.loading || chatLoading || searchRequestLoading;
 
   const runPrimaryAction = async (item) => {
     if (item.category === "business") return handleMakeLive(item.raw);
     if (item.category === "chat") return handleNavigate("/dashboard/customer-care");
     if (item.category === "event") return handleNavigate("/dashboard/event-creation");
-    if (item.category === "rewardClaim") return handleNavigate("/dashboard/reward-claims");
     if (item.category === "searchRequest") {
       const phone = String(item.raw.contactNumber || "").replace(/[^0-9+]/g, "");
       if (phone) window.location.href = `tel:${phone}`;

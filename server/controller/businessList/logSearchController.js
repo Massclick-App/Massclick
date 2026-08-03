@@ -152,8 +152,6 @@ export const logSearchAction = async (req, res) => {
     const {
       categoryName,
       location,
-      district,
-      masterLocationSlug,
       searchedUserText,
       userDetails,
       isKnownCategory = false,
@@ -179,12 +177,6 @@ export const logSearchAction = async (req, res) => {
       "all categories"
     ).toLowerCase();
     const normalizedLocation = location?.toLowerCase().trim() || "global";
-    // Both optional — callers predating the district-prefixed URL scheme send
-    // neither. Empty string rather than "global": these have no sentinel, an
-    // absent district simply means "not supplied".
-    const normalizedDistrict = district?.toLowerCase().trim() || "";
-    const normalizedMasterLocationSlug =
-      masterLocationSlug?.toLowerCase().trim() || "";
 
     const isValidUser =
       userDetails &&
@@ -290,8 +282,6 @@ export const logSearchAction = async (req, res) => {
           categoryName: finalCategoryName,
           searchedUserText: cleanSearchText,
           location: normalizedLocation,
-          district: normalizedDistrict,
-          masterLocationSlug: normalizedMasterLocationSlug,
           userDetails: [],
           whatsapp: false,
           isAnonymous: true,
@@ -344,8 +334,6 @@ export const logSearchAction = async (req, res) => {
         categoryName: finalCategoryName,
         searchedUserText: cleanSearchText,
         location: normalizedLocation,
-        district: normalizedDistrict,
-        masterLocationSlug: normalizedMasterLocationSlug,
         userDetails: [
           {
             userName: userDetails.userName,
@@ -357,29 +345,6 @@ export const logSearchAction = async (req, res) => {
         whatsapp: false,
         isAnonymous: false,
       }));
-
-    // ── Lead guard: never fan out on an unresolved location ───────────────────
-    // `normalizedLocation` falls back to "global" when the caller sent no usable
-    // location. The location filter further down is skipped for "global", which
-    // turned an unresolvable location into a nationwide broadcast: the query
-    // degrades to "any live business in this category", sorted by amountPaid, so
-    // the top-paying listings in the country received a lead for a search that
-    // happened somewhere else entirely.
-    //
-    // Fail closed instead. The searchLog row above is already written, so demand
-    // analytics and the admin lead view are unaffected — only the WhatsApp/FCM
-    // dispatch is suppressed.
-    if (
-      leadSettings.lead_guard_require_location !== false &&
-      normalizedLocation === "global"
-    ) {
-      return res.status(200).json({
-        success: true,
-        leadDispatched: false,
-        message: "Search logged; lead not dispatched because the location could not be resolved",
-        detectedCategory: finalCategoryName,
-      });
-    }
 
     const locationGroups = {
       trichy: ["trichy", "tiruchirappalli"],
@@ -432,28 +397,6 @@ export const logSearchAction = async (req, res) => {
         $or: aliases.map((l) => ({
           location: { $regex: `^${escapeRegex(normalize(l))}$`, $options: "i" },
         })),
-      });
-    }
-
-    // Narrow by district when the caller resolved one. The free-text `location`
-    // match above cannot disambiguate the 390 locality names shared across
-    // districts — "Srirangam" alone matches every Srirangam in the state.
-    // Businesses with no linked masterLocation are kept: they have no district
-    // to compare, and excluding them would silently drop leads for unlinked
-    // listings that the free-text match above already accepted.
-    if (normalizedDistrict) {
-      const districtAliases =
-        districtAliasMap[normalizedDistrict] || [normalizedDistrict];
-      searchMatchQuery.$and.push({
-        $or: [
-          ...districtAliases.map((d) => ({
-            "masterLocation.district": {
-              $regex: `^${escapeRegex(normalize(d))}$`,
-              $options: "i",
-            },
-          })),
-          { "masterLocation.district": { $in: [null, ""] } },
-        ],
       });
     }
 
@@ -692,17 +635,11 @@ export const logSearchAction = async (req, res) => {
     // Deliberately BEFORE the WhatsApp loop and outside its skip/disable logic:
     // owners must get the in-app push even when WhatsApp is skipped, disabled
     // in settings, or fails. One push per owner (not per matched business).
-    // "global" is an internal sentinel for "location unresolved", not a place.
-    // The guard above normally stops us reaching here with it, but an operator
-    // can disable that guard — never let the sentinel reach an owner's phone.
-    const locationLabel =
-      normalizedLocation === "global" ? "your area" : normalizedLocation;
-
     for (const [ownerMobile12, ownerTokens] of ownerUsersMap) {
       const fcmTitle = "New Lead Alert 🔔";
       const fcmBody = userDetails.userName
-        ? `${userDetails.userName} is looking for "${finalCategoryName}" in ${locationLabel}. Open the app to respond.`
-        : `Someone searched "${finalCategoryName}" in ${locationLabel}. Check your leads now!`;
+        ? `${userDetails.userName} is looking for "${finalCategoryName}" in ${normalizedLocation}. Open the app to respond.`
+        : `Someone searched "${finalCategoryName}" in ${normalizedLocation}. Check your leads now!`;
       const fcmData = {
         type: "lead",
         category: finalCategoryName,
@@ -1084,22 +1021,6 @@ export const sendEnquiryLead = async (req, res) => {
     // Otherwise, treat as category-level enquiry: find matching businesses and send
     const normalizedLocation = (location || "global").toLowerCase().trim();
     const categoryText = (category || "").toLowerCase().trim();
-
-    // Same fail-closed guard as logSearch: "global" disables the location filter
-    // below, which would broadcast this enquiry to businesses in every district.
-    // An enquiry with no resolvable location has no correct set of recipients.
-    if (
-      leadSettings.lead_guard_require_location !== false &&
-      normalizedLocation === "global"
-    ) {
-      return res.status(200).json({
-        success: true,
-        leadDispatched: false,
-        message: "Enquiry not sent because the location could not be resolved",
-        totalBusinesses: 0,
-        notifiedBusinesses: [],
-      });
-    }
 
     // const escapeRegex = (text = "") =>
     //   text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

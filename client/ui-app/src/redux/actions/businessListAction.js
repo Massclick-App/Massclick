@@ -878,7 +878,7 @@ export const getTrendingCategories = () => async (dispatch) => {
 };
 
 export const getBusinessDetailsBySlug =
-  ({ location, slug, district }) =>
+  ({ location, slug }) =>
   async (dispatch) => {
     dispatch({ type: FETCH_BUSINESS_BY_SLUG_REQUEST });
 
@@ -886,7 +886,7 @@ export const getBusinessDetailsBySlug =
       const response = await axiosInstance.get(
         `${API_URL}/business/by-slug`,
         {
-          params: { location, slug, district },
+          params: { location, slug },
         }
       );
 

@@ -25,7 +25,6 @@ export const WS_EVENTS = {
 
   // ── Business domain ───────────────────────────────────────────────────────────
   BUSINESS_PENDING:      "business:pending",
-  REWARD_CLAIM_CHANGED:  "reward:claim:changed",
 
   // ── App-wide system events ────────────────────────────────────────────────────
   APP_MAINTENANCE:       "app:maintenance",

@@ -67,7 +67,6 @@ export const updateSystemSettingsAction = async (req, res) => {
       "lead_guard_anonymous_dedupe_enabled",
       "lead_guard_user_dedupe_enabled",
       "lead_guard_live_business_only",
-      "lead_guard_require_location",
       "whatsapp_business_lead_daily_cap_enabled",
       "whatsapp_business_lead_duplicate_guard_enabled",
       "whatsapp_business_lead_cooldown_enabled",

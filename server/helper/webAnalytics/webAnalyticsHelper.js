@@ -2,8 +2,6 @@ import { createHash } from "crypto";
 import mongoose from "mongoose";
 import webEventModel from "../../model/webAnalytics/webEventModel.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
-import { classifyMiddleSegment } from "../location/urlSegmentClassifier.js";
-import { resolveDistrictBySlug } from "../location/locationResolver.js";
 import {
     EVENT_TYPES,
     BUSINESS_ACTIONS,
@@ -79,100 +77,6 @@ const clampTimestamp = (t, nowMs) => {
         return new Date(nowMs);
     }
     return new Date(n);
-};
-
-const normalizeTrackedPathname = (rawPath = "") => {
-    if (typeof rawPath !== "string") return "";
-
-    const raw = rawPath.trim();
-    if (!raw) return "";
-
-    let pathname = raw;
-    try {
-        if (/^[a-z][a-z\d+\-.]*:\/\//i.test(pathname)) {
-            pathname = new URL(pathname).pathname;
-        }
-    } catch {
-        pathname = raw;
-    }
-
-    pathname = pathname.split(/[?#]/)[0];
-    if (!pathname) return "/";
-
-    pathname = `/${pathname}`.replace(/\/+/g, "/");
-    if (pathname.length > 1) pathname = pathname.replace(/\/+$/g, "");
-    return pathname || "/";
-};
-
-const getCachedDistrictDoc = async (cache, districtSlug) => {
-    const key = `district:${districtSlug || ""}`;
-    if (cache.has(key)) return cache.get(key);
-
-    const districtDoc = await resolveDistrictBySlug(districtSlug).catch(() => null);
-    cache.set(key, districtDoc || null);
-    return districtDoc || null;
-};
-
-const getCachedMiddleSegmentClassification = async (cache, { districtDoc, districtSlug, p2, p3 }) => {
-    const districtKey = String(districtDoc?._id || districtSlug || "");
-    const key = `classification:${districtKey}:${p2 || ""}:${p3 || ""}`;
-    if (cache.has(key)) return cache.get(key);
-
-    const classification = await classifyMiddleSegment({ districtDoc, p2, p3 })
-        .catch(() => ({ type: "unknown" }));
-    cache.set(key, classification);
-    return classification;
-};
-
-export const normalizeAnalyticsPath = async (rawPath, cache = new Map()) => {
-    const pathname = normalizeTrackedPathname(rawPath);
-    if (!pathname || pathname === "/") return pathname;
-
-    const parts = pathname.split("/").filter(Boolean);
-    if (parts.length === 0) return "/";
-
-    if (parts[0] === "business" && parts.length >= 5) {
-        const districtDoc = await getCachedDistrictDoc(cache, parts[1]);
-        if (!districtDoc) return pathname;
-        return `/${["business", parts[2], parts[3], parts[4]].filter(Boolean).join("/")}`;
-    }
-
-    const districtDoc = await getCachedDistrictDoc(cache, parts[0]);
-    if (!districtDoc) return pathname;
-
-    if (parts.length === 2) return pathname;
-
-    if (parts.length === 3) {
-        const classification = await getCachedMiddleSegmentClassification(cache, {
-            districtDoc,
-            districtSlug: parts[0],
-            p2: parts[1],
-            p3: parts[2],
-        });
-
-        if (classification.type === "location") {
-            return `/${[parts[1], parts[2]].filter(Boolean).join("/")}`;
-        }
-
-        return pathname;
-    }
-
-    if (parts.length >= 4) {
-        const classification = await getCachedMiddleSegmentClassification(cache, {
-            districtDoc,
-            districtSlug: parts[0],
-            p2: parts[1],
-            p3: parts[2],
-        });
-
-        if (classification.type !== "location") {
-            return pathname;
-        }
-
-        return `/${[parts[1], parts[2], parts[3]].filter(Boolean).join("/")}`;
-    }
-
-    return pathname;
 };
 
 const sanitizeEvent = (raw, envelope, enrichment, nowMs) => {
@@ -327,14 +231,9 @@ export const ingestEvents = async (req) => {
     const enrichment = { device, browser, fp: requestFingerprint(req, ua) };
     const nowMs = Date.now();
 
-    const pathNormalizationCache = new Map();
-    const docs = (await Promise.all(events.map(async (raw) => {
-        if (!raw || typeof raw !== "object") return null;
-        if (!EVENT_TYPES.includes(raw.type)) return null;
-
-        const path = await normalizeAnalyticsPath(raw.path, pathNormalizationCache);
-        return sanitizeEvent({ ...raw, path }, envelope, enrichment, nowMs);
-    }))).filter(Boolean);
+    const docs = events
+        .map((raw) => sanitizeEvent(raw, envelope, enrichment, nowMs))
+        .filter(Boolean);
 
     if (docs.length === 0) return { inserted: 0 };
 

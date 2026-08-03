@@ -6,12 +6,19 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import { getTrendingCategories } from "../../../redux/actions/businessListAction";
-import { buildCategoryPath, getEffectiveSearchLocation } from "../../../utils/searchResultNavigation";
+import { getEffectiveSearchLocation } from "../../../utils/searchResultNavigation";
 import styles from "./trendingSearch.module.css";
 const cx = createScopedClassNames(styles);
 const formatDisplayName = text => {
   if (!text) return "";
   return text.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+};
+const createSlug = text => {
+  if (!text) return "unknown";
+  if (typeof text === "object") {
+    text = text.slug || text.name || text.categoryName || "";
+  }
+  return text.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "");
 };
 const TrendingSearchesCarousel = () => {
   const carouselRef = useRef(null);
@@ -31,9 +38,11 @@ const TrendingSearchesCarousel = () => {
   const {
     selectedDistrict
   } = useSelector(s => s.locationReducer);
+  const districtSlug = selectedDistrict?.slug || createSlug(selectedDistrict) || localStorage.getItem("selectedDistrictSlug") || "tiruchirappalli";
   // Trending links route to the specific location the user picked (falls back
   // to the district scope only when the location field is empty).
-  const locationContext = getEffectiveSearchLocation(selectedDistrict);
+  const { location: effectiveLocation } = getEffectiveSearchLocation(selectedDistrict);
+  const locationSlug = createSlug(effectiveLocation) || districtSlug;
   useEffect(() => {
     dispatch(getTrendingCategories());
   }, [dispatch]);
@@ -188,11 +197,8 @@ const TrendingSearchesCarousel = () => {
           {/* track */}
           <div className={cx("ts__track")} ref={carouselRef} onWheel={stopAutoScrollAfterUserInteraction} onTouchStart={stopAutoScrollAfterUserInteraction} onPointerDown={stopAutoScrollAfterUserInteraction} onMouseEnter={stopAutoScroll} onMouseLeave={startAutoScroll}>
             {trendingList.map((service, index) => {
-            const categoryPath = buildCategoryPath({
-              ...locationContext,
-              category: service.categoryName,
-            });
-            return <Link key={index} to={categoryPath} className={cx("ts__card")}>
+            const categorySlug = createSlug(service.categoryName);
+            return <Link key={index} to={`/${locationSlug}/${categorySlug}`} className={cx("ts__card")}>
 
                   <div className={cx("ts__card-img-wrap")}>
                     <img src={service.categoryImageKey || service.categoryImages?.webCard || service.categoryImages?.webHero || ""} alt={formatDisplayName(service.categoryName)} className={cx("ts__card-img")} loading="lazy" decoding="async" width="144" height="144" />

@@ -69,7 +69,7 @@ const FeaturedServicesSection = () => {
     const categoryName = service.name;
     // Navigate to the specific location the user picked (falls back to the
     // selected district only when the location field is empty).
-    const locationContext = getEffectiveSearchLocation(selectedDistrict);
+    const { location, masterLocationSlug } = getEffectiveSearchLocation(selectedDistrict);
     const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
     const userDetails = {
       userName: authUser?.userName,
@@ -81,7 +81,8 @@ const FeaturedServicesSection = () => {
     // Use centralized navigation
     navigateToSearchResult({
       searchTerm: categoryName,
-      ...locationContext,
+      location,
+      masterLocationSlug,
       navigate,
       dispatch,
       isKnownCategory: true,

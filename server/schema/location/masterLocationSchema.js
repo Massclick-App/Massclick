@@ -42,38 +42,6 @@ const masterLocationSchema = new mongoose.Schema({
         index: true,
     },
 
-    // Public URL segment for this node: usually the bare leaf name
-    // ("srirangam"), unlike `slug` above which is the full hierarchical path.
-    // When another node at the same level in the same district shares that
-    // bare name (e.g. 9 different "Anna Nagar" localities within
-    // Tiruchirappalli), it is qualified with the parent's name instead —
-    // "anna-nagar-ariyamangalam" — so every node still resolves to a unique
-    // URL. Denormalized so /trichy/srirangam/hotels resolves with one
-    // indexed lookup instead of a scan. Always written via
-    // computePublicLocationSlugs() in helper/location/locationSlug.js — that
-    // function is the single definition, it must be run over ALL active
-    // sibling docs at once (never derived for one doc in isolation, it
-    // cannot know about collisions that way), and this field must never be
-    // set by hand.
-    publicLocationSlug: {
-        type: String,
-        default: "",
-        lowercase: true,
-        trim: true,
-        index: true,
-    },
-
-    // District-level docs only. Publishes a district under a shorter commonly
-    // used name (Tiruchirappalli -> "trichy") without renaming the record.
-    // Empty on every other level; resolution falls back to slugify(district).
-    urlAlias: {
-        type: String,
-        default: "",
-        lowercase: true,
-        trim: true,
-        index: true,
-    },
-
     // Breadcrumb for UI display
     hierarchyPath: {
         type: String,
@@ -161,12 +129,5 @@ masterLocationSchema.index({ coordinates: "2dsphere" });
 // Compound indexes matching the collection's existing indexes
 masterLocationSchema.index({ level: 1, isActive: 1 });
 masterLocationSchema.index({ district: 1, zone: 1, ward: 1, locality: 1 });
-
-// Resolves /:district/:location/... in one lookup. Deliberately NOT unique:
-// a name can legitimately repeat at different levels within one district
-// (a ward and a locality inside it sharing a name), and the resolver breaks
-// that tie by depth. Uniqueness is asserted by the Phase 1 verification query,
-// not by the index.
-masterLocationSchema.index({ district: 1, publicLocationSlug: 1 });
 
 export default masterLocationSchema;

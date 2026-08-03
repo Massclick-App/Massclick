@@ -7,22 +7,15 @@ import { sortBusinessesForDefaultSearch } from "../../utils/businessSearchSort.j
 import {
   resolveLocationForSearch,
   resolveLocationSearchScope,
-  resolveRouteLocation,
-  resolveDistrictBySlug,
 } from "../location/locationResolver.js";
 import locationModel from "../../model/locationModel/locationModel.js";
-import masterLocationModel from "../../model/locationModel/masterLocationModel.js";
 import userModel from "../../model/userModel.js";
 import QRCode from "qrcode";
 import categoryModel from "../../model/category/categoryModel.js";
 import gmapsLeadsModel from "../../model/gmapsLeads/gmapsLeadsModel.js";
 import enquiryModel from "../../model/enquiry/enquiryModel.js";
 import otpUserModel from "../../model/msg91Model/usersModels.js";
-import {
-  buildBusinessDetailsUrl,
-  getPublicBaseUrl,
-  isAcceptedBusinessDetailsUrl,
-} from "./businessPublicUrlHelper.js";
+import { slugify } from "../../slugify.js";
 
 const BUSINESS_PAYMENT_GST_RATE = 18;
 
@@ -85,6 +78,23 @@ export const copyKeywordsFromCategory = async (categoryName) => {
     console.error("Error copying keywords from category:", err.message);
     return [];
   }
+};
+
+const getPublicBaseUrl = () =>
+  String(process.env.PUBLIC_BASE_URL || "https://massclick.in").replace(
+    /\/+$/,
+    "",
+  );
+
+const buildBusinessDetailsUrl = (business = {}) => {
+  const businessId =
+    business?._id?.toString?.() || business?._id || business?.id || "";
+  const locationSlug = slugify(business.location || "business");
+  const businessSlug = slugify(
+    business.slug || business.businessName || business.name || "profile",
+  );
+
+  return `${getPublicBaseUrl()}/business/${locationSlug}/${businessSlug}/${businessId}`;
 };
 
 const buildReviewUrl = (business = {}) => {
@@ -157,12 +167,10 @@ const generateBusinessDetailsQrCode = async (businessDocument) => {
 const ensureBusinessDetailsQrCode = async (business = {}) => {
   if (!business?._id) return business;
 
+  const expectedQrText = buildBusinessDetailsUrl(business);
   const hasCurrentBusinessQr =
     business.businessProfileQrCode?.qrImageKey &&
-    isAcceptedBusinessDetailsUrl(
-      business,
-      business.businessProfileQrCode?.qrText,
-    );
+    business.businessProfileQrCode?.qrText === expectedQrText;
 
   if (hasCurrentBusinessQr) {
     business.businessProfileQrCode.qrImage = getSignedUrlByKey(
@@ -320,41 +328,23 @@ export const createBusinessList = async (reqBody = {}) => {
   }
 };
 
-// `district`, if supplied, is a URL slug ("trichy") resolved internally via
-// resolveDistrictBySlug — same convention as every other district param in
-// this migration (mainSearchController, findBusinessesByCategory). Optional
-// and additive: `location` + `slug` alone still resolve exactly as before,
-// this just narrows further when a district is known, filtered against the
-// already-denormalized masterLocation.district field.
-export const findBusinessBySlug = async ({ location, slug, district }) => {
+export const findBusinessBySlug = async ({ location, slug }) => {
   try {
     const normalizedSlug = String(slug || "")
       .trim()
       .toLowerCase();
     const businessNamePattern = String(slug || "").replace(/-/g, " ");
-    const query = {
-      location: new RegExp(`^${location}$`, "i"),
-      $or: [
-        { slug: new RegExp(`^${normalizedSlug}$`, "i") },
-        { businessName: new RegExp(`^${businessNamePattern}$`, "i") },
-      ],
-      isActive: true,
-      businessesLive: true,
-    };
-
-    if (district) {
-      const districtDoc = await resolveDistrictBySlug(district).catch(() => null);
-      if (districtDoc) {
-        const escapeRegex = (value = "") =>
-          String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-        query["masterLocation.district"] = new RegExp(
-          `^${escapeRegex(districtDoc.district)}$`,
-          "i",
-        );
-      }
-    }
-
-    const business = await businessListModel.findOne(query).lean();
+    const business = await businessListModel
+      .findOne({
+        location: new RegExp(`^${location}$`, "i"),
+        $or: [
+          { slug: new RegExp(`^${normalizedSlug}$`, "i") },
+          { businessName: new RegExp(`^${businessNamePattern}$`, "i") },
+        ],
+        isActive: true,
+        businessesLive: true,
+      })
+      .lean();
 
     if (!business) return null;
 
@@ -389,22 +379,6 @@ export const viewBusinessList = async (id) => {
 
   const business = await businessListModel.findById(id).lean();
   if (!business) throw new Error("Business not found");
-
-  // Same resolution as mainSearchController's/nearbyBusinessesController's
-  // business-detail-URL fix: the free-text `location` field alone can be as
-  // coarse as the district name, so resolve this business's own
-  // collision-resolved publicLocationSlug via its linked
-  // masterLocation.locationId — used for this page's own canonical URL,
-  // share/copy links, and JSON-LD (see cardDetails.js).
-  if (business.masterLocation?.locationId) {
-    const resolvedLocation = await masterLocationModel
-      .findById(business.masterLocation.locationId, { publicLocationSlug: 1 })
-      .lean()
-      .catch(() => null);
-    if (resolvedLocation?.publicLocationSlug) {
-      business.publicLocationSlug = resolvedLocation.publicLocationSlug;
-    }
-  }
 
   if (business.bannerImageKey)
     business.bannerImage = getSignedUrlByKey(business.bannerImageKey);
@@ -467,23 +441,7 @@ export const viewAllBusiness = async () => {
   return updatedBusinesses;
 };
 
-// `locationContext` replaces the old bare `district` string param — it was
-// never actually a district, it was whatever free text a district-picker
-// dropdown sent, resolved fuzzily via resolveLocationForSearch. Now takes:
-//   - { locationText } — the old free-text path, behavior-preserving.
-//   - { districtSlug, locationSlug } — the district-prefixed URL path
-//     (/:district/:location/:category), resolved precisely via
-//     resolveRouteLocation instead of fuzzy free-text matching. This is the
-//     actual collision fix for this function, same pattern as
-//     mainSearchController in businessListController.js.
-// Both call sites (ssrMiddleware.js, businessListController.js's
-// viewBusinessByCategory) updated to this shape; see each for which path
-// they currently exercise.
-export const findBusinessesByCategory = async (category, locationContext = {}) => {
-  const { locationText, districtSlug, locationSlug } = locationContext;
-  const escapeRegex = (value = "") =>
-    String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
+export const findBusinessesByCategory = async (category, district) => {
   const matchQuery = {
     businessesLive: true,
     $or: [
@@ -493,132 +451,103 @@ export const findBusinessesByCategory = async (category, locationContext = {}) =
   };
   let resolvedLocation = null;
   let locationSearchScope = null;
-  let districtScopeDoc = null;
 
-  if (districtSlug) {
-    const routeResolution = await resolveRouteLocation({ districtSlug, locationSlug })
-      .catch(() => ({ districtDoc: null, locationDoc: null }));
-    districtScopeDoc = routeResolution.districtDoc;
-    if (routeResolution.locationDoc) {
-      resolvedLocation = routeResolution.locationDoc;
-      locationSearchScope = await resolveLocationSearchScope(resolvedLocation).catch(() => null);
-    }
-  }
+  if (
+    district &&
+    district !== "All Districts" &&
+    district !== "Enter location manually..."
+  ) {
+    resolvedLocation = await resolveLocationForSearch(district).catch(() => null);
 
-  const hasUsableLocationText =
-    locationText &&
-    locationText !== "All Districts" &&
-    locationText !== "Enter location manually...";
-
-  if (!resolvedLocation && !districtScopeDoc && hasUsableLocationText) {
-    resolvedLocation = await resolveLocationForSearch(locationText).catch(() => null);
     if (resolvedLocation?.slug) {
       locationSearchScope = await resolveLocationSearchScope(resolvedLocation)
         .catch(() => null);
-    }
-  }
-
-  if (resolvedLocation?.slug) {
-    const normalizeLocation = (value = "") =>
-      String(value)
-        .toLowerCase()
-        .trim()
-        .replace(/&/g, " and ")
-        .replace(/[-_]/g, " ")
-        .replace(/\s+/g, " ");
-    const fallbackNames = [
-      locationText || locationSlug,
-      resolvedLocation.locality,
-      resolvedLocation.ward,
-      resolvedLocation.zone,
-      ...(resolvedLocation.level === "district"
-        ? [resolvedLocation.district]
-        : []),
-      ...(resolvedLocation.alternateNames || []),
-    ]
-      .filter(Boolean)
-      .map(normalizeLocation);
-    const slugPrefixRegex = locationSearchScope?.slugPrefixRegex ||
-      new RegExp(`^${escapeRegex(resolvedLocation.slug)}(-|$)`);
-    const groupAddressRegexes = locationSearchScope?.searchGroupSlug
-      ? locationSearchScope.addressNames.map(
-          (name) => new RegExp(escapeRegex(name), "i"),
-        )
-      : [];
-    const groupDistrictMatches = [
-      {
-        "masterLocation.district": {
-          $regex: `^${escapeRegex(resolvedLocation.district || "")}$`,
-          $options: "i",
+      const escapeRegex = (value = "") =>
+        String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const normalizeLocation = (value = "") =>
+        String(value)
+          .toLowerCase()
+          .trim()
+          .replace(/&/g, " and ")
+          .replace(/[-_]/g, " ")
+          .replace(/\s+/g, " ");
+      const fallbackNames = [
+        district,
+        resolvedLocation.locality,
+        resolvedLocation.ward,
+        resolvedLocation.zone,
+        ...(resolvedLocation.level === "district"
+          ? [resolvedLocation.district]
+          : []),
+        ...(resolvedLocation.alternateNames || []),
+      ]
+        .filter(Boolean)
+        .map(normalizeLocation);
+      const slugPrefixRegex = locationSearchScope?.slugPrefixRegex ||
+        new RegExp(`^${escapeRegex(resolvedLocation.slug)}(-|$)`);
+      const groupAddressRegexes = locationSearchScope?.searchGroupSlug
+        ? locationSearchScope.addressNames.map(
+            (name) => new RegExp(escapeRegex(name), "i"),
+          )
+        : [];
+      const groupDistrictMatches = [
+        {
+          "masterLocation.district": {
+            $regex: `^${escapeRegex(resolvedLocation.district || "")}$`,
+            $options: "i",
+          },
         },
-      },
-      ...(locationSearchScope?.pincodes?.length
-        ? [{ pincode: { $in: locationSearchScope.pincodes } }]
-        : []),
-    ];
-    const groupedAddressMatch = groupAddressRegexes.length > 0
-      ? {
-          $and: [
-            { $or: groupDistrictMatches },
+        ...(locationSearchScope?.pincodes?.length
+          ? [{ pincode: { $in: locationSearchScope.pincodes } }]
+          : []),
+      ];
+      const groupedAddressMatch = groupAddressRegexes.length > 0
+        ? {
+            $and: [
+              { $or: groupDistrictMatches },
+              {
+                $or: groupAddressRegexes.flatMap((regex) => [
+                  { location: regex },
+                  { street: regex },
+                  { globalAddress: regex },
+                ]),
+              },
+            ],
+          }
+        : null;
+
+      matchQuery.$and = [
+        {
+          $or: [
             {
-              $or: groupAddressRegexes.flatMap((regex) => [
-                { location: regex },
-                { street: regex },
-                { globalAddress: regex },
-              ]),
+              "masterLocation.slug": slugPrefixRegex,
+            },
+            ...(groupedAddressMatch ? [groupedAddressMatch] : []),
+            {
+              "masterLocation.locationId": null,
+              $or: [...new Set(fallbackNames)].map((locationName) => ({
+                location: {
+                  $regex: `^${escapeRegex(locationName)}$`,
+                  $options: "i",
+                },
+              })),
             },
           ],
-        }
-      : null;
-
-    matchQuery.$and = [
-      {
-        $or: [
-          {
-            "masterLocation.slug": slugPrefixRegex,
-          },
-          ...(groupedAddressMatch ? [groupedAddressMatch] : []),
-          {
-            "masterLocation.locationId": null,
-            $or: [...new Set(fallbackNames)].map((locationName) => ({
-              location: {
-                $regex: `^${escapeRegex(locationName)}$`,
-                $options: "i",
-              },
-            })),
-          },
-        ],
-      },
-    ];
-  } else if (districtScopeDoc) {
-    // District resolved from the URL but no location resolved within it
-    // (district-wide, or an unresolvable location segment) — scope purely to
-    // the district. Deliberately does NOT fall through to the free-text
-    // "else" below: that path regexes raw typed text across several fields
-    // and doesn't confine results to a district at all, silently dropping
-    // the disambiguation this whole path exists to provide.
-    matchQuery.$and = [
-      {
-        "masterLocation.district": {
-          $regex: `^${escapeRegex(districtScopeDoc.district)}$`,
-          $options: "i",
         },
-      },
-    ];
-  } else if (hasUsableLocationText) {
-    // Nothing resolved from free text either — legacy last-resort: regex the
-    // raw typed text across several free-text fields directly.
-    matchQuery.$and = [
-      {
-        $or: [
-          { district: { $regex: locationText, $options: "i" } },
-          { location: { $regex: locationText, $options: "i" } },
-          { locationDetails: { $regex: locationText, $options: "i" } },
-          { street: { $regex: locationText, $options: "i" } },
-          { pincode: { $regex: locationText, $options: "i" } },
-        ],
-      },
-    ];
+      ];
+    } else {
+      matchQuery.$and = [
+        {
+          $or: [
+            { district: { $regex: district, $options: "i" } },
+            { location: { $regex: district, $options: "i" } },
+            { locationDetails: { $regex: district, $options: "i" } },
+            { street: { $regex: district, $options: "i" } },
+            { pincode: { $regex: district, $options: "i" } },
+          ],
+        },
+      ];
+    }
   }
 
   const businessList = await businessListModel.aggregate([
@@ -781,8 +710,7 @@ export const viewAllBusinessList = async ({
   if (category)
     query.category = { $regex: `^${escapeRegex(category)}$`, $options: "i" };
   if (location) query.location = getLocationQuery(location);
-  const normalizedPaymentStatus = String(paymentStatus || "").trim().toUpperCase();
-  if (["PAID", "SUCCESS"].includes(normalizedPaymentStatus)) {
+  if (paymentStatus === "paid") {
     query.$and = [
       ...(query.$and || []),
       {
@@ -793,7 +721,7 @@ export const viewAllBusinessList = async ({
         ],
       },
     ];
-  } else if (normalizedPaymentStatus === "PENDING") {
+  } else if (paymentStatus === "pending") {
     query.$and = [
       ...(query.$and || []),
       {
@@ -804,23 +732,6 @@ export const viewAllBusinessList = async ({
         ],
       },
     ];
-  } else if (normalizedPaymentStatus === "NO_STATUS") {
-    query.$and = [
-      ...(query.$and || []),
-      {
-        $or: [
-          { payment: { $exists: false } },
-          { payment: { $size: 0 } },
-          { "payment.paymentStatus": { $exists: false } },
-          { "payment.paymentStatus": { $in: [null, ""] } },
-        ],
-      },
-    ];
-  } else if (normalizedPaymentStatus) {
-    query["payment.paymentStatus"] = {
-      $regex: `^${escapeRegex(paymentStatus)}$`,
-      $options: "i",
-    };
   }
 
   if (createdFrom || createdTo) {
@@ -1619,31 +1530,6 @@ const buildMonthSeries = (rows = [], monthsBack = 12) => {
   return buckets;
 };
 
-const buildDaySeries = (rows = [], daysBack = 30) => {
-  const rowCounts = new Map(rows.map((row) => [row._id, row.count]));
-  const buckets = [];
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  for (let index = daysBack - 1; index >= 0; index -= 1) {
-    const date = new Date(today);
-    date.setDate(date.getDate() - index);
-    const key = [
-      date.getFullYear(),
-      String(date.getMonth() + 1).padStart(2, "0"),
-      String(date.getDate()).padStart(2, "0"),
-    ].join("-");
-    buckets.push({
-      key,
-      date: date.toISOString(),
-      label: date.toLocaleDateString("en-IN", { day: "2-digit", month: "short" }),
-      businesses: rowCounts.get(key) || 0,
-    });
-  }
-
-  return buckets;
-};
-
 const dashboardLocationNameExpression = {
   $switch: {
     branches: [
@@ -1661,7 +1547,7 @@ const dashboardLocationNameExpression = {
   },
 };
 
-export const getAdminAnalyticsReportHelper = async ({ role, userId, days = 30, location = "" }) => {
+export const getAdminAnalyticsReportHelper = async ({ role, userId, days = 28 }) => {
   const businessQuery = await buildDashboardQuery({ role, userId });
   const now = new Date();
   const startOfToday = new Date(now);
@@ -1674,14 +1560,6 @@ export const getAdminAnalyticsReportHelper = async ({ role, userId, days = 30, l
   const periodDays = Math.max(1, Math.min(Number(days) || 28, 365));
   const periodStart = new Date(now);
   periodStart.setDate(periodStart.getDate() - periodDays);
-  periodStart.setHours(0, 0, 0, 0);
-  const selectedLocation = String(location || "").trim();
-  const locationCondition = selectedLocation === "Trichy / Tiruchirappalli"
-    ? { $in: [/^trichy$/i, /^tiruchirappalli$/i] }
-    : { $regex: `^${selectedLocation.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" };
-  const dayTrendQuery = selectedLocation
-    ? { ...businessQuery, location: locationCondition }
-    : businessQuery;
 
   const [
     totalBusinesses,
@@ -1703,8 +1581,6 @@ export const getAdminAnalyticsReportHelper = async ({ role, userId, days = 30, l
     otpCustomerStats,
     otpSearchCategories,
     otpSearchLocations,
-    dailyBusinessRows,
-    locationOptions,
   ] = await Promise.all([
     businessListModel.countDocuments(businessQuery),
     businessListModel.countDocuments({
@@ -1857,23 +1733,6 @@ export const getAdminAnalyticsReportHelper = async ({ role, userId, days = 30, l
       { $group: { _id: { $ifNull: ["$searchHistory.location", "Global"] }, count: { $sum: 1 } } },
       { $sort: { count: -1 } }, { $limit: 10 },
     ]),
-    businessListModel.aggregate([
-      { $match: { ...dayTrendQuery, createdAt: { $gte: periodStart } } },
-      {
-        $group: {
-          _id: {
-            $dateToString: {
-              format: "%Y-%m-%d",
-              date: "$createdAt",
-              timezone: "Asia/Kolkata",
-            },
-          },
-          count: { $sum: 1 },
-        },
-      },
-      { $sort: { _id: 1 } },
-    ]),
-    businessListModel.distinct("location", businessQuery),
   ]);
 
   const activeUsers = userCounts.find((row) => row._id === true)?.count || 0;
@@ -1945,11 +1804,6 @@ export const getAdminAnalyticsReportHelper = async ({ role, userId, days = 30, l
       otpProfilesCompleted: otpSummary.profileCompleted || 0,
     },
     periodDays,
-    selectedLocation,
-    dailyBusinessTrend: buildDaySeries(dailyBusinessRows, periodDays),
-    locationOptions: locationOptions
-      .filter((value) => String(value || "").trim())
-      .sort((left, right) => left.localeCompare(right)),
     otpTopSearchCategories: otpSearchCategories.map((row) => ({ name: row._id || "General", count: row.count })),
     otpTopSearchLocations: otpSearchLocations.map((row) => ({ name: row._id || "Global", count: row.count })),
     monthlyTrend: buildMonthSeries(monthlyRows),

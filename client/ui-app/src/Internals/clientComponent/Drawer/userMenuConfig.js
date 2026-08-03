@@ -11,7 +11,6 @@ import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import FolderCopyIcon from "@mui/icons-material/FolderCopy";
 import DynamicFeedIcon from "@mui/icons-material/DynamicFeed";
 import ExitToAppIcon from "@mui/icons-material/ExitToApp";
-import RedeemIcon from "@mui/icons-material/Redeem";
 import { isBusinessPeopleUser } from "../../../utils/userUtils.js";
 
 export { isBusinessPeopleUser };
@@ -57,11 +56,6 @@ const userMenuItems = [
     name: "Knowledge Hub",
     path: "/user_massclick-documents",
     icon: <FolderCopyIcon color="action" />,
-  },
-  {
-    name: "Rewards",
-    path: "/user_rewards",
-    icon: <RedeemIcon color="action" />,
   },
   {
     name: "User Favorites",

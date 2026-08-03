@@ -28,11 +28,6 @@ export const demoteH1Tags = (value = "") => String(value)
   .replace(/<h1(\s[^>]*)?>/gi, "<h2>")
   .replace(/<\/h1>/gi, "</h2>");
 
-// Takes { name, url } items — the same shape as the client's
-// generateBreadcrumbSchema (client/ui-app/src/utils/seoSchemaGenerators.js).
-// The two used to disagree (this one read item.item, the client item.url) for
-// what was otherwise byte-identical output; converged onto `url` since that's
-// the more common convention and matches breadcrumbBuilder.js's crumbsToJsonLd.
 export const buildBreadcrumbSchema = (items = []) => ({
   "@context": "https://schema.org",
   "@type": "BreadcrumbList",
@@ -40,6 +35,6 @@ export const buildBreadcrumbSchema = (items = []) => ({
     "@type": "ListItem",
     position: index + 1,
     name: item.name,
-    item: item.url
+    item: item.item
   }))
 });

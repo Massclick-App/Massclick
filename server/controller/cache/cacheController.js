@@ -10,7 +10,6 @@ import {
 } from "../../utils/cacheStats.js";
 import { createLogger } from "../../utils/logger.js";
 import { isRedisConnected, getRedisClient } from "../../utils/redisClient.js";
-import { resetSitemapCaches } from "../../routes/sitemapRoutes.js";
 
 const logger = createLogger("CACHE");
 
@@ -464,31 +463,6 @@ export const getRedisKeysAction = async (req, res) => {
     });
   } catch (error) {
     await logger.error("getRedisKeysAction error", error);
-    return res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-// In-memory sitemap caches (category lookup, per-district location x category
-// matrix, llms.txt data) live inside sitemapRoutes.js and refresh on a 1-hour TTL.
-// This forces an immediate rebuild after a category or masterlocation change.
-export const regenerateSitemapCacheAction = async (req, res) => {
-  try {
-    const adminEmail = req.authUser?.email || "admin";
-
-    resetSitemapCaches();
-
-    await logger.warn(`Sitemap cache regenerated`, {
-      admin: adminEmail,
-      ip: req.ip,
-      timestamp: new Date().toISOString()
-    });
-
-    return res.status(200).json({
-      success: true,
-      message: "Sitemap caches cleared. Next sitemap request will rebuild fresh data."
-    });
-  } catch (error) {
-    await logger.error("regenerateSitemapCacheAction error", error);
     return res.status(500).json({ success: false, message: error.message });
   }
 };

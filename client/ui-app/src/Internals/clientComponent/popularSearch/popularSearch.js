@@ -11,7 +11,6 @@ import { fetchPopularSearches } from "../../../redux/actions/categoryAction";
 import { logSearchActivity, sendEnquiryLead } from "../../../redux/actions/businessListAction";
 import OTPLoginModal from "../AddBusinessModel";
 import Card from "./Card";
-import { getEffectiveSearchLocation } from "../../../utils/searchResultNavigation";
 const cx = createScopedClassNames(styles);
 const getAuthUser = () => JSON.parse(localStorage.getItem("authUser") || "null");
 const getErrorMessage = error => error?.response?.data?.message || error?.response?.data?.error || error?.response?.data || error?.message || "Something went wrong";
@@ -83,7 +82,7 @@ const CardCarousel = () => {
       if (!user?._id) return;
       setSubmittingCard(card.title);
       const categoryName = card.title;
-      const { location: locationName } = getEffectiveSearchLocation(selectedDistrict);
+      const locationName = selectedDistrict || "Global";
       const userDetails = {
         userName: user.userName,
         mobileNumber1: user.mobileNumber1,

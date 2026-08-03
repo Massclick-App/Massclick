@@ -4,7 +4,6 @@
  *
  * All functions return valid schema.org JSON-LD objects or null if data insufficient
  */
-import { buildBusinessPath, buildCategoryPath } from "./searchResultNavigation";
 
 /**
  * Generate LocalBusiness schema for single business detail pages
@@ -13,21 +12,11 @@ import { buildBusinessPath, buildCategoryPath } from "./searchResultNavigation";
  */
 export const generateLocalBusinessSchema = (business) => {
   if (!business?.businessName) return null;
-  const listingUrl =
-    business.listingUrl ||
-    `https://massclick.in${buildBusinessPath({
-      districtSlug: business.districtSlug,
-      locationSlug: business.locationSlug,
-      location: business.address?.locality || business.areaServed,
-      businessSlug: business.businessSlug,
-      businessName: business.businessName,
-      id: business._id,
-    })}`;
 
   const schema = {
     "@context": "https://schema.org",
     "@type": "LocalBusiness",
-    "@id": listingUrl,
+    "@id": `https://massclick.in/business/${business._id}`,
     name: business.businessName,
   };
 
@@ -292,10 +281,9 @@ export const generateItemListSchema = (items, listName, listDescription) => {
  * @param {string} location - Location name
  * @param {number} totalResults - Total number of results
  * @param {number} avgRating - Average rating across results
- * @param {string} pageUrl - Canonical SearchResults page URL
  * @returns {Object} Valid SearchResultsPage schema or null
  */
-export const generateSearchResultsPageSchema = (category, location, totalResults, avgRating, pageUrl) => {
+export const generateSearchResultsPageSchema = (category, location, totalResults, avgRating) => {
   if (!category || !location) return null;
 
   const schema = {
@@ -303,10 +291,7 @@ export const generateSearchResultsPageSchema = (category, location, totalResults
     "@type": "SearchResultsPage",
     name: `${category} in ${location}`,
     description: `Search results for ${category} in ${location}`,
-    url: pageUrl || `https://massclick.in${buildCategoryPath({
-      location,
-      category,
-    })}`,
+    url: `https://massclick.in/${location.toLowerCase()}/${category.toLowerCase()}`,
     mainEntity: {
       "@type": "LocalBusiness",
       name: `${category} Services in ${location}`,
