@@ -1754,6 +1754,7 @@ export const adminAnalyticsReportAction = async (req, res) => {
       role: userRole,
       userId,
       days: req.query.days,
+      location: req.query.location,
     });
 
     return res.send({

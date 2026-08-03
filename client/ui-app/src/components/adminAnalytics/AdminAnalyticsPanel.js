@@ -6,8 +6,11 @@ import {
   Button,
   Chip,
   Divider,
+  FormControl,
+  MenuItem,
   LinearProgress,
   Paper,
+  Select,
   Skeleton,
   Stack,
   Typography,
@@ -248,20 +251,27 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick }) {
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [trendDays, setTrendDays] = useState(30);
+  const [trendLocation, setTrendLocation] = useState("");
 
   const fetchReport = useCallback(async () => {
     setLoading(true);
     setError("");
 
     try {
-      const response = await axiosInstance.get(`${API_URL}/businesslist/admin-analytics-report`);
+      const response = await axiosInstance.get(`${API_URL}/businesslist/admin-analytics-report`, {
+        params: {
+          days: trendDays,
+          ...(trendLocation ? { location: trendLocation } : {}),
+        },
+      });
       setReport(response.data?.report || null);
     } catch (err) {
       setError(err.response?.data?.message || err.message || "Unable to load analytics report");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [trendDays, trendLocation]);
 
   useEffect(() => {
     fetchReport();
@@ -337,6 +347,28 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick }) {
     const payload = item?.activePayload?.[0]?.payload || item?.payload || item;
     const filter = getMonthFilter(payload);
     if (filter) onFilterClick?.(filter);
+  };
+
+  const handleDayClick = (item) => {
+    const payload = item?.activePayload?.[0]?.payload || item?.payload || item;
+    if (!payload?.date) return;
+    const start = new Date(payload.date);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+    end.setMilliseconds(end.getMilliseconds() - 1);
+    const selectedDateLabel = start.toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+    onFilterClick?.({
+      type: "dayLocation",
+      label: `${selectedDateLabel} | ${trendLocation || "All places"} | 12:00 am-11:59 pm`,
+      location: trendLocation,
+      createdFrom: start.toISOString(),
+      createdTo: end.toISOString(),
+    });
   };
 
   if (loading && !report) {
@@ -445,6 +477,85 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick }) {
         ))}
       </Box>
 
+      <Panel
+        title="Business count by place and day"
+        subtitle={`Daily businesses added during the last ${trendDays} days${trendLocation ? ` in ${trendLocation}` : " across all places"}`}
+        sx={{ mb: 2 }}
+        action={
+          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+            <FormControl size="small" sx={{ minWidth: 190 }}>
+              <Select
+                value={trendLocation}
+                onChange={(event) => setTrendLocation(event.target.value)}
+                displayEmpty
+                inputProps={{ "aria-label": "Filter business chart by place" }}
+              >
+                <MenuItem value="">All places</MenuItem>
+                {(report?.locationOptions || []).map((location) => (
+                  <MenuItem key={location} value={location}>{location}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            {[7, 30, 90].map((days) => (
+              <Button
+                key={days}
+                size="small"
+                variant={trendDays === days ? "contained" : "outlined"}
+                onClick={() => setTrendDays(days)}
+                sx={{
+                  minWidth: 48,
+                  textTransform: "none",
+                  fontWeight: 800,
+                  bgcolor: trendDays === days ? palette.orange : undefined,
+                  borderColor: trendDays === days ? palette.orange : palette.line,
+                  "&:hover": { bgcolor: trendDays === days ? "#cf5d0c" : "#fff7ed", borderColor: palette.orange },
+                }}
+              >
+                {days}d
+              </Button>
+            ))}
+          </Stack>
+        }
+      >
+        {report?.dailyBusinessTrend?.length ? (
+          <Box sx={{ height: 300 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={report.dailyBusinessTrend}
+                margin={{ top: 8, right: 12, left: -20, bottom: 0 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#edf1f6" />
+                <XAxis
+                  dataKey="label"
+                  tickLine={false}
+                  axisLine={false}
+                  minTickGap={trendDays === 90 ? 36 : 18}
+                  tick={{ fontSize: 11 }}
+                />
+                <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
+                <Tooltip
+                  formatter={(value) => [formatNumber(value), "Businesses"]}
+                  labelFormatter={(label) => `${label}${trendLocation ? ` · ${trendLocation}` : ""}`}
+                />
+                <Bar
+                  dataKey="businesses"
+                  fill={palette.orange}
+                  radius={[5, 5, 0, 0]}
+                  maxBarSize={28}
+                  cursor="pointer"
+                  onClick={handleDayClick}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </Box>
+        ) : (
+          <EmptyState label="No daily business data for this place" />
+        )}
+        <Typography sx={{ color: palette.muted, fontSize: 12, mt: 1 }}>
+          Click any bar to show those businesses in the table below.
+        </Typography>
+      </Panel>
+
       <Box
         sx={{
           display: "grid",
@@ -472,7 +583,6 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick }) {
                 <AreaChart
                   data={report.monthlyTrend}
                   margin={{ top: 8, right: 12, left: -20, bottom: 0 }}
-                  onClick={handleMonthClick}
                 >
                   <defs>
                     <linearGradient id="adminBusinessTrend" x1="0" y1="0" x2="0" y2="1">
@@ -492,6 +602,7 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick }) {
                     fill="url(#adminBusinessTrend)"
                     activeDot={{ r: 6 }}
                     cursor="pointer"
+                    onClick={handleMonthClick}
                   />
                 </AreaChart>
               </ResponsiveContainer>

@@ -781,7 +781,8 @@ export const viewAllBusinessList = async ({
   if (category)
     query.category = { $regex: `^${escapeRegex(category)}$`, $options: "i" };
   if (location) query.location = getLocationQuery(location);
-  if (paymentStatus === "paid") {
+  const normalizedPaymentStatus = String(paymentStatus || "").trim().toUpperCase();
+  if (["PAID", "SUCCESS"].includes(normalizedPaymentStatus)) {
     query.$and = [
       ...(query.$and || []),
       {
@@ -792,7 +793,7 @@ export const viewAllBusinessList = async ({
         ],
       },
     ];
-  } else if (paymentStatus === "pending") {
+  } else if (normalizedPaymentStatus === "PENDING") {
     query.$and = [
       ...(query.$and || []),
       {
@@ -803,6 +804,23 @@ export const viewAllBusinessList = async ({
         ],
       },
     ];
+  } else if (normalizedPaymentStatus === "NO_STATUS") {
+    query.$and = [
+      ...(query.$and || []),
+      {
+        $or: [
+          { payment: { $exists: false } },
+          { payment: { $size: 0 } },
+          { "payment.paymentStatus": { $exists: false } },
+          { "payment.paymentStatus": { $in: [null, ""] } },
+        ],
+      },
+    ];
+  } else if (normalizedPaymentStatus) {
+    query["payment.paymentStatus"] = {
+      $regex: `^${escapeRegex(paymentStatus)}$`,
+      $options: "i",
+    };
   }
 
   if (createdFrom || createdTo) {
@@ -1601,6 +1619,31 @@ const buildMonthSeries = (rows = [], monthsBack = 12) => {
   return buckets;
 };
 
+const buildDaySeries = (rows = [], daysBack = 30) => {
+  const rowCounts = new Map(rows.map((row) => [row._id, row.count]));
+  const buckets = [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  for (let index = daysBack - 1; index >= 0; index -= 1) {
+    const date = new Date(today);
+    date.setDate(date.getDate() - index);
+    const key = [
+      date.getFullYear(),
+      String(date.getMonth() + 1).padStart(2, "0"),
+      String(date.getDate()).padStart(2, "0"),
+    ].join("-");
+    buckets.push({
+      key,
+      date: date.toISOString(),
+      label: date.toLocaleDateString("en-IN", { day: "2-digit", month: "short" }),
+      businesses: rowCounts.get(key) || 0,
+    });
+  }
+
+  return buckets;
+};
+
 const dashboardLocationNameExpression = {
   $switch: {
     branches: [
@@ -1618,7 +1661,7 @@ const dashboardLocationNameExpression = {
   },
 };
 
-export const getAdminAnalyticsReportHelper = async ({ role, userId, days = 28 }) => {
+export const getAdminAnalyticsReportHelper = async ({ role, userId, days = 30, location = "" }) => {
   const businessQuery = await buildDashboardQuery({ role, userId });
   const now = new Date();
   const startOfToday = new Date(now);
@@ -1631,6 +1674,14 @@ export const getAdminAnalyticsReportHelper = async ({ role, userId, days = 28 })
   const periodDays = Math.max(1, Math.min(Number(days) || 28, 365));
   const periodStart = new Date(now);
   periodStart.setDate(periodStart.getDate() - periodDays);
+  periodStart.setHours(0, 0, 0, 0);
+  const selectedLocation = String(location || "").trim();
+  const locationCondition = selectedLocation === "Trichy / Tiruchirappalli"
+    ? { $in: [/^trichy$/i, /^tiruchirappalli$/i] }
+    : { $regex: `^${selectedLocation.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" };
+  const dayTrendQuery = selectedLocation
+    ? { ...businessQuery, location: locationCondition }
+    : businessQuery;
 
   const [
     totalBusinesses,
@@ -1652,6 +1703,8 @@ export const getAdminAnalyticsReportHelper = async ({ role, userId, days = 28 })
     otpCustomerStats,
     otpSearchCategories,
     otpSearchLocations,
+    dailyBusinessRows,
+    locationOptions,
   ] = await Promise.all([
     businessListModel.countDocuments(businessQuery),
     businessListModel.countDocuments({
@@ -1804,6 +1857,23 @@ export const getAdminAnalyticsReportHelper = async ({ role, userId, days = 28 })
       { $group: { _id: { $ifNull: ["$searchHistory.location", "Global"] }, count: { $sum: 1 } } },
       { $sort: { count: -1 } }, { $limit: 10 },
     ]),
+    businessListModel.aggregate([
+      { $match: { ...dayTrendQuery, createdAt: { $gte: periodStart } } },
+      {
+        $group: {
+          _id: {
+            $dateToString: {
+              format: "%Y-%m-%d",
+              date: "$createdAt",
+              timezone: "Asia/Kolkata",
+            },
+          },
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]),
+    businessListModel.distinct("location", businessQuery),
   ]);
 
   const activeUsers = userCounts.find((row) => row._id === true)?.count || 0;
@@ -1875,6 +1945,11 @@ export const getAdminAnalyticsReportHelper = async ({ role, userId, days = 28 })
       otpProfilesCompleted: otpSummary.profileCompleted || 0,
     },
     periodDays,
+    selectedLocation,
+    dailyBusinessTrend: buildDaySeries(dailyBusinessRows, periodDays),
+    locationOptions: locationOptions
+      .filter((value) => String(value || "").trim())
+      .sort((left, right) => left.localeCompare(right)),
     otpTopSearchCategories: otpSearchCategories.map((row) => ({ name: row._id || "General", count: row.count })),
     otpTopSearchLocations: otpSearchLocations.map((row) => ({ name: row._id || "Global", count: row.count })),
     monthlyTrend: buildMonthSeries(monthlyRows),
