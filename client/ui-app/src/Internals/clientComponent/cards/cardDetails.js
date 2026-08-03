@@ -346,7 +346,7 @@ const BusinessDetail = React.memo(() => {
   const businessKeywords = Array.from(new Set(rawKeywords.map(keyword => String(keyword).trim()).filter(Boolean)));
   const visibleKeywords = showAllKeywords ? businessKeywords : businessKeywords.slice(0, 10);
   const hasMoreKeywords = businessKeywords.length > visibleKeywords.length;
-  const keywordLocationSlug = toSlug(business.location || location || "all");
+  const keywordLocationSlug = business.publicLocationSlug || toSlug(business.location || location || "all");
   const keywordCategory = business.category || business.slug || "";
   const keywordCategorySlug = toSlug(keywordCategory);
   const whatsappNumber = business.whatsappNumber || business.contactList || business.contact;
@@ -358,6 +358,7 @@ const BusinessDetail = React.memo(() => {
   // canonicalize every business in the district to /business/<d>/<d>/...
   const canonicalLocationSlug =
     business.publicLocationSlug || toSlug(business.location || location);
+  const canonicalLocationPath = business.publicLocationPath || "";
   const canonicalPath = buildBusinessPath({
     districtSlug: district,
     locationSlug: canonicalLocationSlug,
@@ -784,6 +785,7 @@ const BusinessDetail = React.memo(() => {
           ? {}
           : {
               locationSlug: canonicalLocationSlug,
+              locationPath: canonicalLocationPath,
               locationName: crumbLocationName,
             }),
         businessName: business.businessName,
@@ -1288,6 +1290,7 @@ const BusinessDetail = React.memo(() => {
                     const keywordPath = buildCategoryPath({
                       districtSlug: district,
                       locationSlug: keywordLocationSlug,
+                      locationPath: canonicalLocationPath,
                       location: business.location || location,
                       categorySlug: keywordCategorySlug || toSlug(keyword),
                     });

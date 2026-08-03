@@ -16,6 +16,19 @@ import {
   resolveLocationSearchScope,
   resolveRouteLocation,
 } from "../../helper/location/locationResolver.js";
+import { getLocationUrlPath } from "../../helper/location/locationSlug.js";
+
+const attachPublicLocationPaths = (businesses = []) =>
+  businesses.map((business) => {
+    const resolvedLocation = Array.isArray(business._resolvedLocation)
+      ? business._resolvedLocation[0]
+      : null;
+    if (resolvedLocation) {
+      business.publicLocationPath = getLocationUrlPath(resolvedLocation);
+    }
+    delete business._resolvedLocation;
+    return business;
+  });
 
 const ensureCertificatesForActivation = async (previousBusiness, business) => {
   const businessWithCertificates = await ensureBusinessCertificates(business);
@@ -1232,7 +1245,17 @@ export const mainSearchController = async (req, res) => {
           localField: "masterLocation.locationId",
           foreignField: "_id",
           as: "_resolvedLocation",
-          pipeline: [{ $project: { _id: 0, publicLocationSlug: 1 } }],
+          pipeline: [{
+            $project: {
+              _id: 0,
+              district: 1,
+              zone: 1,
+              ward: 1,
+              locality: 1,
+              level: 1,
+              publicLocationSlug: 1,
+            },
+          }],
         },
       },
       {
@@ -1251,7 +1274,6 @@ export const mainSearchController = async (req, res) => {
           locationPriority: 0,
           textScore: 0,
           _distanceSort: 0,
-          _resolvedLocation: 0,
         },
       },
     ];
@@ -1267,7 +1289,7 @@ export const mainSearchController = async (req, res) => {
       .concat({ $count: "total" });
 
     const [results, totalResult] = await Promise.all([
-      businessListModel.aggregate(pipeline),
+      businessListModel.aggregate(pipeline).then(attachPublicLocationPaths),
       usesComputedRatingFilter
         ? businessListModel.aggregate(totalPipeline)
         : businessListModel.countDocuments(matchQueryForRun)
@@ -1480,7 +1502,17 @@ export const nearbyBusinessesController = async (req, res) => {
           localField: "masterLocation.locationId",
           foreignField: "_id",
           as: "_resolvedLocation",
-          pipeline: [{ $project: { _id: 0, publicLocationSlug: 1 } }],
+          pipeline: [{
+            $project: {
+              _id: 0,
+              district: 1,
+              zone: 1,
+              ward: 1,
+              locality: 1,
+              level: 1,
+              publicLocationSlug: 1,
+            },
+          }],
         },
       },
       {
@@ -1525,12 +1557,11 @@ export const nearbyBusinessesController = async (req, res) => {
           reviews: 0,
           activeReviews: 0,
           masterLocation: 0,
-          _resolvedLocation: 0,
         }
       }
     ];
 
-    const results = await businessListModel.aggregate(pipeline);
+    const results = attachPublicLocationPaths(await businessListModel.aggregate(pipeline));
     results.forEach((b) => {
       if (b.bannerImageKey) b.bannerImage = getSignedUrlByKey(b.bannerImageKey);
       if (b.logoImageKey) b.logoImage = getSignedUrlByKey(b.logoImageKey);

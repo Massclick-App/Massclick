@@ -1,4 +1,42 @@
-import { getDistrictUrlSlug, getDistrictDisplayName, getLocationDisplayName } from "../location/locationSlug.js";
+import {
+  getDistrictUrlSlug,
+  getDistrictDisplayName,
+  getLocationDisplayName,
+  getLocationUrlPath,
+} from "../location/locationSlug.js";
+import {
+  buildLocationCategoryPath,
+  buildLocationPath,
+} from "../location/locationUrl.js";
+
+const LOCATION_CRUMB_FIELDS_BY_LEVEL = {
+  zone: ["zone"],
+  ward: ["zone", "ward"],
+  locality: ["zone", "ward", "locality"],
+};
+
+const toTitleCase = (value = "") =>
+  String(value || "")
+    .replace(/-/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+
+const buildLocationCrumbs = ({ districtPath, districtDisplayName, locationDoc } = {}) => {
+  if (!locationDoc) return [];
+
+  const parts = getLocationUrlPath(locationDoc).split("/").filter(Boolean);
+  if (parts.length === 0) return [];
+
+  const fields = LOCATION_CRUMB_FIELDS_BY_LEVEL[locationDoc.level] || [];
+  const labels = fields.map((field) => locationDoc[field]).filter(Boolean);
+  if (labels.length > 0) {
+    labels[labels.length - 1] = getLocationDisplayName(locationDoc, districtDisplayName);
+  }
+
+  return parts.map((segment, index) => ({
+    name: labels[index] || toTitleCase(segment),
+    path: `${districtPath}/${parts.slice(0, index + 1).join("/")}`,
+  }));
+};
 
 // Single source of the breadcrumb TRAIL for the district-prefixed URL scheme.
 // Deliberately produces relative paths only ("/trichy/srirangam", never
@@ -39,13 +77,8 @@ import { getDistrictUrlSlug, getDistrictDisplayName, getLocationDisplayName } fr
  *   to build a path from here.
  * @returns {Array<{name:string, path:string|null}>} `path` is site-relative
  *   ("/trichy/srirangam"), never absolute. The LAST crumb always has
- *   `path: null` — it represents the page currently being viewed, which a
- *   breadcrumb trail conventionally does not link to itself. The location
- *   crumb ALSO always has `path: null` even when not terminal — there is no
- *   /:district/:location landing page in this scheme, only
- *   /:district/:category (unambiguous by definition) and
- *   /:district/:location/:category (via the classifier), so a location-only
- *   URL is not a page this app can render.
+ *   `path: null`; location crumbs link to their landing page unless the
+ *   location itself is the terminal crumb.
  */
 export const buildCrumbs = ({
   districtDoc,
@@ -65,27 +98,30 @@ export const buildCrumbs = ({
   let pathSoFar = districtPath;
 
   if (locationDoc) {
-    pathSoFar = `${pathSoFar}/${locationDoc.publicLocationSlug}`;
-    // No dedicated /:district/:location landing page exists in this URL
-    // scheme — a bare two-segment path is DEFINED as /:district/:category
-    // with no exception (that's what keeps it unambiguous; see the
-    // classifier's design note on the 3-segment shape). Giving this crumb a
-    // real href sends the user into that exact misinterpretation: clicking
-    // it drops the category and the router treats the location slug as if
-    // it were a category slug instead. Label only, no link — pathSoFar
-    // still advances so the category crumb after it gets the correct full
-    // path. Matches the pre-migration breadcrumb, which never linked its
-    // middle "location" crumb either.
-    crumbs.push({ name: getLocationDisplayName(locationDoc, districtDisplayName), path: null });
+    pathSoFar = buildLocationPath({ districtDoc, locationDoc });
+    const locationCrumbs = buildLocationCrumbs({
+      districtPath,
+      districtDisplayName,
+      locationDoc,
+    });
+    crumbs.push(...locationCrumbs);
   }
 
   if (category) {
-    pathSoFar = `${pathSoFar}/${category.slug}`;
+    pathSoFar = buildLocationCategoryPath({
+      districtDoc,
+      locationDoc,
+      categorySlug: category.slug,
+    });
     crumbs.push({ name: category.name, path: pathSoFar });
   }
 
   if (subcategory) {
-    pathSoFar = `${pathSoFar}/${subcategory.slug}`;
+    pathSoFar = buildLocationCategoryPath({
+      districtDoc,
+      locationDoc,
+      categorySlug: subcategory.slug,
+    });
     crumbs.push({ name: subcategory.name, path: pathSoFar });
   }
 

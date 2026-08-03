@@ -44,7 +44,6 @@ const LegalDocuments = lazy(() => import(/* webpackChunkName: "admin-legal-docum
 const MainGrid = lazy(() => import(/* webpackChunkName: "admin-maingrid" */ './components/MainGrid.js'));
 
 const BusinessListing = lazy(() => import(/* webpackChunkName: "home" */ './Internals/clientComponent/home.js'));
-const SearchResults = lazy(() => import(/* webpackChunkName: "search" */ './Internals/clientComponent/SearchResult/SearchResult.js'));
 const BusinessDetails = lazy(() => import(/* webpackChunkName: "business-detail" */ './Internals/clientComponent/cards/cardDetails.js'));
 const EventCarousel = lazy(() => import(/* webpackChunkName: "events" */ './Internals/clientComponent/events/eventCarousel/eventCarousel.js'));
 const EventDetails = lazy(() => import(/* webpackChunkName: "event-detail" */ './Internals/clientComponent/events/eventDetails/eventDetails.js'));
@@ -139,7 +138,6 @@ const MobileHomeDock = lazy(() => import(/* webpackChunkName: "mobile-home-dock"
 // const HomePopupAd = lazy(() => import(/* webpackChunkName: "home-popup-ad" */ './Internals/clientComponent/popup/HomePopupAd.js'));
 const OTPLoginModal = lazy(() => import(/* webpackChunkName: "otp-modal" */ './Internals/clientComponent/AddBusinessModel.js'));
 
-const CategoryRouter = lazy(() => import(/* webpackChunkName: "category-router" */ './Internals/clientComponent/categories/categoryRouter.js'));
 const DistrictRouteResolver = lazy(() => import(/* webpackChunkName: "district-route-resolver" */ './Internals/clientComponent/categories/DistrictRouteResolver.js'));
 const CategoriesPage = lazy(() => import(/* webpackChunkName: "category-directory" */ './Internals/clientComponent/categories/categories.js'));
 const BlogDetail = lazy(() => import(/* webpackChunkName: "blog-detail" */ './Internals/clientComponent/relatedBlogs/blogDetails/blogDetails.js'));
@@ -303,14 +301,17 @@ function AppRoutes({
           ))}
 
           <Route path="/:district" element={<CategoriesPage mode="districtLanding" />} />
-          <Route path="/:district/:category" element={<CategoryRouter />} />
+          <Route
+            path="/:district/:p2"
+            element={<DistrictRouteResolver />}
+          />
           <Route
             path="/:district/:p2/:p3"
             element={<DistrictRouteResolver />}
           />
           <Route
-            path="/:district/:location/:category/:subcategory"
-            element={<SearchResults />}
+            path="/:district/:p2/:p3/:p4"
+            element={<DistrictRouteResolver />}
           />
 
           {/* Current shape. The trailing segment is <name-slug>-<publicId>;

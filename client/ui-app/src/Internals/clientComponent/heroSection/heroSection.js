@@ -148,10 +148,11 @@ const HeroSection = React.memo(({
         type: "SET_SELECTED_DISTRICT",
         payload: {
           name: value,
-          districtName: value,
-          districtSlug: createDistrictSlug(value),
-          locationSlug: "",
-          masterLocationSlug: "",
+          districtName: localStorage.getItem("selectedLocationDistrict") || value,
+          districtSlug: localStorage.getItem("selectedLocationDistrictSlug") || createDistrictSlug(value),
+          locationSlug: localStorage.getItem("selectedPublicLocationSlug") || "",
+          locationPath: localStorage.getItem("selectedPublicLocationPath") || "",
+          masterLocationSlug: localStorage.getItem("selectedLocationSlug") || "",
         }
       });
     };
@@ -303,6 +304,7 @@ const HeroSection = React.memo(({
         subLabel: [...new Set(contextParts)].join(", "),
         slug: primary.slug,
         publicLocationSlug: primary.publicLocationSlug,
+        publicLocationPath: primary.publicLocationPath,
         districtName: primary.district,
         districtSlug: createDistrictSlug(primary.district)
       };
@@ -440,6 +442,7 @@ const HeroSection = React.memo(({
             setMasterLocationSlug("");
             localStorage.removeItem("selectedLocationSlug");
             localStorage.removeItem("selectedPublicLocationSlug");
+            localStorage.removeItem("selectedPublicLocationPath");
             localStorage.removeItem("selectedLocationDistrict");
             localStorage.removeItem("selectedLocationDistrictSlug");
             dispatch({
@@ -449,6 +452,7 @@ const HeroSection = React.memo(({
                 districtName: value,
                 districtSlug: createDistrictSlug(value),
                 locationSlug: "",
+                locationPath: "",
                 masterLocationSlug: "",
               }
             });
@@ -468,6 +472,7 @@ const HeroSection = React.memo(({
               // suggestions don't and clear any previous one.
               const slug = typeof val === "object" && val.slug ? val.slug : "";
               const publicLocationSlug = typeof val === "object" && val.publicLocationSlug ? val.publicLocationSlug : "";
+              const publicLocationPath = typeof val === "object" && val.publicLocationPath ? val.publicLocationPath : "";
               const districtName = typeof val === "object" && val.districtName ? val.districtName : chosen;
               const districtSlug = typeof val === "object" && val.districtSlug ? val.districtSlug : createDistrictSlug(districtName);
               setMasterLocationSlug(slug);
@@ -475,6 +480,8 @@ const HeroSection = React.memo(({
               else localStorage.removeItem("selectedLocationSlug");
               if (publicLocationSlug) localStorage.setItem("selectedPublicLocationSlug", publicLocationSlug);
               else localStorage.removeItem("selectedPublicLocationSlug");
+              if (publicLocationPath) localStorage.setItem("selectedPublicLocationPath", publicLocationPath);
+              else localStorage.removeItem("selectedPublicLocationPath");
               if (districtName) localStorage.setItem("selectedLocationDistrict", districtName);
               else localStorage.removeItem("selectedLocationDistrict");
               if (districtSlug) localStorage.setItem("selectedLocationDistrictSlug", districtSlug);
@@ -486,6 +493,7 @@ const HeroSection = React.memo(({
                   districtName,
                   districtSlug,
                   locationSlug: publicLocationSlug,
+                  locationPath: publicLocationPath,
                   masterLocationSlug: slug,
                 }
               });

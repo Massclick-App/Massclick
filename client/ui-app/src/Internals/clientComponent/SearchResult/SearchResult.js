@@ -270,6 +270,7 @@ const SearchResults = React.memo(
       districtSlug,
       districtName,
       routeLocationSlug,
+      routeLocationPath,
       routeLocationName,
       categorySlug,
       subcategorySlug,
@@ -281,7 +282,7 @@ const SearchResults = React.memo(
     // Verified-location picks search by canonical slug (exact node); free text
     // goes through the server-side resolver. Display always uses locationText.
     const apiLocation = districtSlug
-      ? routeLocationSlug || ""
+      ? routeLocationSlug || routeLocationPath || ""
       : masterLocationSlug || routeLocationSlug || locationText;
 
     // Guard against nonsensical /:location/:category/:subcategory URLs where
@@ -315,6 +316,7 @@ const SearchResults = React.memo(
             setCategoryMismatchTarget(buildCategoryPath({
               districtSlug,
               locationSlug: routeLocationSlug,
+              locationPath: routeLocationPath,
               location: locationText,
               categorySlug: expectedParentSlug,
               subcategorySlug,
@@ -327,7 +329,7 @@ const SearchResults = React.memo(
       return () => {
         cancelled = true;
       };
-    }, [categorySlug, districtSlug, locationText, routeLocationSlug, subcategorySlug]);
+    }, [categorySlug, districtSlug, locationText, routeLocationPath, routeLocationSlug, subcategorySlug]);
 
     useEffect(() => {
       if (categoryMismatchTarget) {
@@ -353,13 +355,15 @@ const SearchResults = React.memo(
     const locationSlug = districtSlug
       ? routeLocationSlug || ""
       : createSlug(locationText);
-    const canonicalSearchSegments = subcategorySlug && categorySlug
-      ? [categorySlug, subcategorySlug]
-      : [searchSlug];
-    const canonicalPathSegments = districtSlug
-      ? [districtSlug, locationSlug, ...canonicalSearchSegments]
-      : [locationSlug, ...canonicalSearchSegments];
-    const canonicalPath = `/${canonicalPathSegments.filter(Boolean).join("/")}`;
+    const canonicalPath = buildCategoryPath({
+      districtSlug,
+      locationSlug,
+      locationPath: routeLocationPath,
+      location: locationText,
+      categorySlug: categorySlug || searchSlug,
+      subcategorySlug,
+      isDistrictScope: Boolean(districtSlug && !locationSlug),
+    });
     const canonicalUrl = `https://massclick.in${canonicalPath}`;
     const breadcrumbCategorySlug = subcategorySlug
       ? resolvedParentCategory?.slug || categorySlug
@@ -375,6 +379,7 @@ const SearchResults = React.memo(
           districtSlug,
           districtName,
           locationSlug,
+          locationPath: routeLocationPath,
           locationName: routeLocationName || locationText,
           categorySlug: breadcrumbCategorySlug,
           categoryName: breadcrumbCategoryName,
@@ -391,6 +396,7 @@ const SearchResults = React.memo(
                 name: breadcrumbCategoryName,
                 path: buildCategoryPath({
                   locationSlug,
+                  locationPath: routeLocationPath,
                   categorySlug: breadcrumbCategorySlug,
                 }),
               }]
@@ -455,7 +461,21 @@ const SearchResults = React.memo(
       if (locationText) {
         localStorage.setItem("selectedLocation", locationText);
       }
-    }, [displayName, searchTerm, locationText]);
+      if (districtSlug) {
+        localStorage.setItem("selectedLocationDistrictSlug", districtSlug);
+        localStorage.setItem("selectedLocationDistrict", districtName || locationText);
+      }
+      if (routeLocationSlug) {
+        localStorage.setItem("selectedPublicLocationSlug", routeLocationSlug);
+      } else if (districtSlug) {
+        localStorage.removeItem("selectedPublicLocationSlug");
+      }
+      if (routeLocationPath) {
+        localStorage.setItem("selectedPublicLocationPath", routeLocationPath);
+      } else if (districtSlug) {
+        localStorage.removeItem("selectedPublicLocationPath");
+      }
+    }, [displayName, districtName, districtSlug, routeLocationPath, routeLocationSlug, searchTerm, locationText]);
 
     const lastLoggedIdentityRef = useRef(null);
     useEffect(() => {
@@ -463,7 +483,7 @@ const SearchResults = React.memo(
       lastLoggedIdentityRef.current = stateLogSent
         ? getSearchLogIdentity(authUser)
         : null;
-    }, [normalizedSearchTerm, locationText, districtSlug, routeLocationSlug, safeStateResults, stateLogSent]);
+    }, [normalizedSearchTerm, locationText, districtSlug, routeLocationPath, routeLocationSlug, safeStateResults, stateLogSent]);
 
     // Reset all pagination/search state when the search context changes
     useEffect(() => {
@@ -479,7 +499,7 @@ const SearchResults = React.memo(
       setResolvedCategory(null);
       setInitialSearchResolved(Boolean(safeStateResults));
       loadingPagesRef.current.clear();
-    }, [normalizedSearchTerm, locationText, districtSlug, routeLocationSlug, safeStateResults]);
+    }, [normalizedSearchTerm, locationText, districtSlug, routeLocationPath, routeLocationSlug, safeStateResults]);
 
     // Reset pagination when filters or sort change (but not the search term itself)
     useEffect(() => {
@@ -578,7 +598,7 @@ const SearchResults = React.memo(
 
     const trackResolvedSearch = useCallback((resultsCount) => {
       const searchIdentity = locationState.key
-        || `${districtSlug}|${routeLocationSlug}|${normalizedSearchTerm}|${locationText}|${isKnownCategory}`;
+        || `${districtSlug}|${routeLocationPath || routeLocationSlug}|${normalizedSearchTerm}|${locationText}|${isKnownCategory}`;
       if (trackedSearchRef.current === searchIdentity) return;
 
       trackSearch({
@@ -588,7 +608,7 @@ const SearchResults = React.memo(
         known: isKnownCategory,
       });
       trackedSearchRef.current = searchIdentity;
-    }, [districtSlug, isKnownCategory, locationState.key, locationText, normalizedSearchTerm, routeLocationSlug]);
+    }, [districtSlug, isKnownCategory, locationState.key, locationText, normalizedSearchTerm, routeLocationPath, routeLocationSlug]);
 
     // ─── Initial load: use state results from navigation OR fetch from API ────────
     useEffect(() => {
@@ -650,10 +670,15 @@ const SearchResults = React.memo(
       apiLocation,
       districtSlug,
       routeLocationSlug,
+      routeLocationPath,
       isKnownCategory,
       dispatch,
+      buildSearchParams,
+      initialHasMore,
+      initialResults,
+      initialTotal,
       trackResolvedSearch,
-    ]); // eslint-disable-line
+    ]);
 
     // ─── Re-fetch when filters / sort / geo change ───────────────────────────────
     const normalizedActiveFilters = useMemo(
@@ -710,10 +735,12 @@ const SearchResults = React.memo(
       apiLocation,
       districtSlug,
       routeLocationSlug,
+      routeLocationPath,
       isKnownCategory,
       userGeo,
       dispatch,
-    ]); // eslint-disable-line
+      buildSearchParams,
+    ]);
 
     // ─── Fetch filterConfig for this category ────────────────────────────────────
     useEffect(() => {
@@ -910,14 +937,14 @@ const SearchResults = React.memo(
       const seoParams = {
         pageType: "category",
         category: effectiveCategory.toLowerCase(),
-        ...(districtSlug && !routeLocationSlug
+        ...(districtSlug && !routeLocationSlug && !routeLocationPath
           ? {}
-          : { location: routeLocationSlug || locationText.toLowerCase() }),
+          : { location: routeLocationSlug || routeLocationPath || locationText.toLowerCase() }),
         ...(districtSlug ? { district: districtSlug } : {}),
       };
       dispatch({ type: CLEAR_SEO_META });
       dispatch(fetchSeoMeta(seoParams));
-    }, [dispatch, districtSlug, effectiveCategory, locationText, routeLocationSlug]);
+    }, [dispatch, districtSlug, effectiveCategory, locationText, routeLocationPath, routeLocationSlug]);
 
     useEffect(() => {
       if (!effectiveCategory) return;

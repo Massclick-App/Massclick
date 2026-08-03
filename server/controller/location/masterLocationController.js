@@ -11,7 +11,13 @@ import {
     resolveDistrictBySlug,
 } from "../../helper/location/locationResolver.js";
 import { classifyMiddleSegment } from "../../helper/location/urlSegmentClassifier.js";
-import { getDistrictUrlSlug, getDistrictDisplayName, getLocationDisplayName } from "../../helper/location/locationSlug.js";
+import {
+    getDistrictUrlSlug,
+    getDistrictDisplayName,
+    getLocationDisplayName,
+    getLocationUrlPath,
+    getLocationUrlSegment,
+} from "../../helper/location/locationSlug.js";
 import { BAD_REQUEST, NOT_FOUND } from "../../errorCodes.js";
 
 export const addMasterLocationAction = async (req, res) => {
@@ -78,7 +84,12 @@ export const searchMasterLocationAction = async (req, res) => {
         const text = req.query.q || "";
         const limit = parseInt(req.query.limit) || 10;
         const results = await searchMasterLocation(text, limit);
-        res.send({ data: results });
+        res.send({
+            data: results.map((location) => ({
+                ...location,
+                publicLocationPath: getLocationUrlPath(location),
+            })),
+        });
     } catch (error) {
         console.error("Master location search error:", error);
         return res.status(BAD_REQUEST.code).send({ message: error.message });
@@ -132,7 +143,7 @@ export const deleteMasterLocationAction = async (req, res) => {
 // display name.
 export const resolveRouteLocationAction = async (req, res) => {
     try {
-        const { district, p2, p3 } = req.query;
+        const { district, p2, p3, p4 } = req.query;
 
         if (!district) {
             return res.status(BAD_REQUEST.code).send({ message: "district is required" });
@@ -152,25 +163,29 @@ export const resolveRouteLocationAction = async (req, res) => {
             return res.send({ district: districtSummary, classification: { type: "district" } });
         }
 
-        const classification = await classifyMiddleSegment({ districtDoc, p2, p3 });
+        const classification = await classifyMiddleSegment({ districtDoc, p2, p3, p4 });
 
-        if (classification.type === "location") {
+        if (classification.type === "location" || classification.type === "locationLanding") {
             // Reshaped rather than passed through as-is: classifyMiddleSegment
             // returns the raw masterlocation doc (locationDoc) with every DB
             // field (coordinates, keywords, pincodes, timestamps, ...) — the
             // client only ever needs the same flat {slug, name, level} shape
             // its own breadcrumb/URL builders already work with (see
             // client/ui-app/src/utils/breadcrumbs.js).
+            const locationDoc = classification.locationDoc;
             return res.send({
                 district: districtSummary,
                 classification: {
-                    type: "location",
+                    type: classification.type,
                     location: {
-                        slug: classification.locationDoc.publicLocationSlug,
-                        name: getLocationDisplayName(classification.locationDoc, districtSummary.name),
-                        level: classification.locationDoc.level,
+                        slug: locationDoc.publicLocationSlug,
+                        path: getLocationUrlPath(locationDoc),
+                        targetSlug: getLocationUrlSegment(locationDoc),
+                        name: getLocationDisplayName(locationDoc, districtSummary.name),
+                        level: locationDoc.level,
                     },
                     categorySlug: classification.categorySlug,
+                    canonicalize: Boolean(classification.canonicalize),
                 },
             });
         }

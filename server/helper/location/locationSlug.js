@@ -25,6 +25,72 @@ import { slugify } from "../../slugify.js";
 export const getPublicLocationSlug = (doc = {}) =>
   slugify(String(doc.locality || doc.ward || doc.zone || doc.district || "").trim());
 
+const LOCATION_URL_FIELDS_BY_LEVEL = {
+  zone: ["zone"],
+  ward: ["zone", "ward"],
+  locality: ["zone", "ward", "locality"],
+};
+
+const TARGET_FIELD_BY_LEVEL = {
+  district: "district",
+  zone: "zone",
+  ward: "ward",
+  locality: "locality",
+};
+
+const NUMERIC_SUFFIX_RE = /-(\d+)$/;
+
+const getDuplicateNumericSuffix = (doc = {}, base = "") => {
+  const persisted = slugify(doc.publicLocationSlug || "");
+  if (!persisted || !base || persisted === base || !persisted.startsWith(`${base}-`)) {
+    return "";
+  }
+
+  const match = persisted.match(NUMERIC_SUFFIX_RE);
+  return match ? match[1] : "";
+};
+
+/**
+ * URL segment for a location node in the new hierarchy-path URL scheme.
+ *
+ * This intentionally does NOT use `publicLocationSlug` as the segment source:
+ * that field was collision-qualified for the old flat location slot
+ * (`anna-nagar-lalgudi`), while the new URL has real ancestor path segments
+ * and should use the bare leaf (`anna-nagar`). The only part retained from
+ * `publicLocationSlug` is a final numeric suffix for genuine duplicate
+ * documents, e.g. Salem's second "Edappadi" zone stays `edappadi-2`.
+ */
+export const getLocationUrlSegment = (doc = {}) => {
+  if (!doc || doc.level === "district") return "";
+
+  const field = TARGET_FIELD_BY_LEVEL[doc.level];
+  const base = slugify(String(doc[field] || "").trim());
+  if (!base) return "";
+
+  const numericSuffix = getDuplicateNumericSuffix(doc, base);
+  return numericSuffix ? `${base}-${numericSuffix}` : base;
+};
+
+export const getLocationUrlSegments = (doc = {}, { includeTarget = true } = {}) => {
+  const fields = LOCATION_URL_FIELDS_BY_LEVEL[doc.level] || [];
+  if (fields.length === 0) return [];
+
+  const sourceFields = includeTarget ? fields : fields.slice(0, -1);
+  const segments = sourceFields
+    .map((field) => slugify(String(doc[field] || "").trim()))
+    .filter(Boolean);
+
+  if (includeTarget) {
+    const target = getLocationUrlSegment(doc);
+    if (target) segments[segments.length - 1] = target;
+  }
+
+  return segments;
+};
+
+export const getLocationUrlPath = (doc = {}, options = {}) =>
+  getLocationUrlSegments(doc, options).join("/");
+
 // Ancestor fields available to qualify a collision, nearest first, for each
 // level. A locality can be qualified by its ward, then further by its zone if
 // ward alone still isn't enough; a ward only has zone left; a zone has

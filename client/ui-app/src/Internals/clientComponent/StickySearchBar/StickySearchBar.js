@@ -71,6 +71,7 @@ const buildMasterLocationSuggestions = (locationSearchResults) => {
       subLabel: [...new Set(contextParts)].join(", "),
       slug: primary.slug,
       publicLocationSlug: primary.publicLocationSlug,
+      publicLocationPath: primary.publicLocationPath,
       districtName: primary.district,
       districtSlug: createDistrictSlug(primary.district),
     };
@@ -167,6 +168,7 @@ const StickySearchBar = ({
         districtName: localStorage.getItem("selectedLocationDistrict") || locationName,
         districtSlug: localStorage.getItem("selectedLocationDistrictSlug") || createDistrictSlug(locationName),
         locationSlug: localStorage.getItem("selectedPublicLocationSlug") || "",
+        locationPath: localStorage.getItem("selectedPublicLocationPath") || "",
         masterLocationSlug: localStorage.getItem("selectedLocationSlug") || "",
       },
     });
@@ -295,6 +297,7 @@ const StickySearchBar = ({
     // don't and clear any previous one - shared with heroSection.
     const slug = typeof loc === "object" && loc?.slug ? loc.slug : "";
     const publicLocationSlug = typeof loc === "object" && loc?.publicLocationSlug ? loc.publicLocationSlug : "";
+    const publicLocationPath = typeof loc === "object" && loc?.publicLocationPath ? loc.publicLocationPath : "";
     const districtName = typeof loc === "object" && loc?.districtName ? loc.districtName : "";
     const districtSlug = typeof loc === "object" && loc?.districtSlug ? loc.districtSlug : "";
     setMasterLocationSlug(slug);
@@ -302,6 +305,8 @@ const StickySearchBar = ({
     else localStorage.removeItem("selectedLocationSlug");
     if (publicLocationSlug) localStorage.setItem("selectedPublicLocationSlug", publicLocationSlug);
     else localStorage.removeItem("selectedPublicLocationSlug");
+    if (publicLocationPath) localStorage.setItem("selectedPublicLocationPath", publicLocationPath);
+    else localStorage.removeItem("selectedPublicLocationPath");
     if (districtName) localStorage.setItem("selectedLocationDistrict", districtName);
     else localStorage.removeItem("selectedLocationDistrict");
     if (districtSlug) localStorage.setItem("selectedLocationDistrictSlug", districtSlug);
@@ -313,6 +318,7 @@ const StickySearchBar = ({
         districtName,
         districtSlug,
         locationSlug: publicLocationSlug,
+        locationPath: publicLocationPath,
         masterLocationSlug: slug,
       },
     });
@@ -447,6 +453,10 @@ const StickySearchBar = ({
                   setLocationName(e.target.value);
                   setMasterLocationSlug("");
                   localStorage.removeItem("selectedLocationSlug");
+                  localStorage.removeItem("selectedPublicLocationSlug");
+                  localStorage.removeItem("selectedPublicLocationPath");
+                  localStorage.removeItem("selectedLocationDistrict");
+                  localStorage.removeItem("selectedLocationDistrictSlug");
                   setIsSelectingLocation(true);
                   setIsCategoryDropdownOpen(false);
                 }}
