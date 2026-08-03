@@ -11,6 +11,7 @@ import {
   resolveDistrictBySlug,
 } from "../location/locationResolver.js";
 import locationModel from "../../model/locationModel/locationModel.js";
+import masterLocationModel from "../../model/locationModel/masterLocationModel.js";
 import userModel from "../../model/userModel.js";
 import QRCode from "qrcode";
 import categoryModel from "../../model/category/categoryModel.js";
@@ -388,6 +389,22 @@ export const viewBusinessList = async (id) => {
 
   const business = await businessListModel.findById(id).lean();
   if (!business) throw new Error("Business not found");
+
+  // Same resolution as mainSearchController's/nearbyBusinessesController's
+  // business-detail-URL fix: the free-text `location` field alone can be as
+  // coarse as the district name, so resolve this business's own
+  // collision-resolved publicLocationSlug via its linked
+  // masterLocation.locationId — used for this page's own canonical URL,
+  // share/copy links, and JSON-LD (see cardDetails.js).
+  if (business.masterLocation?.locationId) {
+    const resolvedLocation = await masterLocationModel
+      .findById(business.masterLocation.locationId, { publicLocationSlug: 1 })
+      .lean()
+      .catch(() => null);
+    if (resolvedLocation?.publicLocationSlug) {
+      business.publicLocationSlug = resolvedLocation.publicLocationSlug;
+    }
+  }
 
   if (business.bannerImageKey)
     business.bannerImage = getSignedUrlByKey(business.bannerImageKey);

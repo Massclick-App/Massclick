@@ -1256,6 +1256,13 @@ const SearchResults = React.memo(
                             : 0;
                         const businessUrl = buildBusinessPath({
                           districtSlug,
+                          // The business's own collision-resolved slug
+                          // (resolved server-side via its linked
+                          // masterLocation.locationId) — falls back to the
+                          // free-text location field only when a business
+                          // has no linked masterLocation, since that text
+                          // can be as coarse as the district name itself.
+                          locationSlug: business.publicLocationSlug,
                           location: business.location,
                           businessSlug: business.slug,
                           businessName: business.businessName,
@@ -1361,6 +1368,7 @@ const SearchResults = React.memo(
                           .map((b, idx) => {
                             const businessUrl = buildBusinessPath({
                               districtSlug,
+                              locationSlug: b.publicLocationSlug,
                               location: b.location,
                               businessSlug: b.slug,
                               businessName: b.businessName,

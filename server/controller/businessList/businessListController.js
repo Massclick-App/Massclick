@@ -1215,7 +1215,45 @@ export const mainSearchController = async (req, res) => {
       },
       { $skip: skip },
       { $limit: pageSize },
-      { $project: { reviews: 0, activeReviews: 0, verifiedPriority: 0, categoryPriority: 0, locationPriority: 0, textScore: 0, _distanceSort: 0 } }
+      // Resolve each result's OWN collision-resolved publicLocationSlug (the
+      // same field the whole district-URL scheme is built on — see
+      // helper/location/locationSlug.js), keyed off the already-linked
+      // masterLocation.locationId, so the client can build a business detail
+      // URL that names the business's real locality. Without this the
+      // client falls back to the free-text `location` field, which can be
+      // as coarse as the district name itself ("Trichy") for businesses
+      // whose location text was never cleaned up — producing a URL like
+      // /business/trichy/trichy/... that has lost all locality specificity.
+      // Only joined on the final paginated page (after $skip/$limit), not
+      // the full match set, to keep this cheap.
+      {
+        $lookup: {
+          from: "masterlocations",
+          localField: "masterLocation.locationId",
+          foreignField: "_id",
+          as: "_resolvedLocation",
+          pipeline: [{ $project: { _id: 0, publicLocationSlug: 1 } }],
+        },
+      },
+      {
+        $addFields: {
+          publicLocationSlug: {
+            $arrayElemAt: ["$_resolvedLocation.publicLocationSlug", 0],
+          },
+        },
+      },
+      {
+        $project: {
+          reviews: 0,
+          activeReviews: 0,
+          verifiedPriority: 0,
+          categoryPriority: 0,
+          locationPriority: 0,
+          textScore: 0,
+          _distanceSort: 0,
+          _resolvedLocation: 0,
+        },
+      },
     ];
 
     const usesComputedRatingFilter = Number.isFinite(minRatingValue) && minRatingValue > 0;
@@ -1422,11 +1460,32 @@ export const nearbyBusinessesController = async (req, res) => {
       { $limit: limit },
       {
         $project: {
-          businessName: 1, category: 1, location: 1, bannerImageKey: 1, logoImageKey: 1,
+          businessName: 1, category: 1, location: 1, masterLocation: 1, bannerImageKey: 1, logoImageKey: 1,
           verification: 1, badges: 1, certificates: 1,
           contact: 1, whatsappNumber: 1, filters: 1, experience: 1, slug: 1,
           distance: { $round: [{ $divide: ["$distanceMeters", 1000] }, 2] }
         }
+      },
+      // Same resolution as mainSearchController's business-detail-URL fix
+      // (see the comment there): the free-text `location` field alone can
+      // be as coarse as the district name, so resolve the business's own
+      // collision-resolved publicLocationSlug via its linked
+      // masterLocation.locationId.
+      {
+        $lookup: {
+          from: "masterlocations",
+          localField: "masterLocation.locationId",
+          foreignField: "_id",
+          as: "_resolvedLocation",
+          pipeline: [{ $project: { _id: 0, publicLocationSlug: 1 } }],
+        },
+      },
+      {
+        $addFields: {
+          publicLocationSlug: {
+            $arrayElemAt: ["$_resolvedLocation.publicLocationSlug", 0],
+          },
+        },
       },
       {
         $lookup: {
@@ -1461,7 +1520,9 @@ export const nearbyBusinessesController = async (req, res) => {
       {
         $project: {
           reviews: 0,
-          activeReviews: 0
+          activeReviews: 0,
+          masterLocation: 0,
+          _resolvedLocation: 0,
         }
       }
     ];

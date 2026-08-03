@@ -343,8 +343,13 @@ const BusinessDetail = React.memo(() => {
   const keywordCategorySlug = toSlug(keywordCategory);
   const whatsappNumber = business.whatsappNumber || business.contactList || business.contact;
   const locationSlug = location || toSlug(business.location || "business");
-  // Use DB location field for canonical to stay consistent regardless of how the user arrived
-  const canonicalLocationSlug = toSlug(business.location || location);
+  // Canonical stays consistent regardless of how the user arrived. Prefer
+  // the server-resolved collision-resolved publicLocationSlug (from the
+  // business's linked masterLocation) over the free-text `location` field —
+  // that text can be as coarse as the district name itself, which would
+  // canonicalize every business in the district to /business/<d>/<d>/...
+  const canonicalLocationSlug =
+    business.publicLocationSlug || toSlug(business.location || location);
   const canonicalPath = buildBusinessPath({
     districtSlug: district,
     locationSlug: canonicalLocationSlug,
@@ -755,11 +760,25 @@ const BusinessDetail = React.memo(() => {
     areaServed: business.location
   });
 
+  // A location crumb that just repeats the district is not a real locality —
+  // it means this business has no linked masterLocation and its free-text
+  // `location` is only as specific as the district itself. Omit the crumb
+  // rather than rendering "Home > Trichy > Trichy > <business>"; there is
+  // genuinely no locality level to show here.
+  const crumbLocationName = business.location || locationSlug || "";
+  const isDistrictEquivalentLocation =
+    !canonicalLocationSlug ||
+    toSlug(canonicalLocationSlug) === toSlug(district) ||
+    toSlug(crumbLocationName) === toSlug(district);
   const breadcrumbCrumbs = district
     ? buildCrumbs({
         districtSlug: district,
-        locationSlug: canonicalLocationSlug,
-        locationName: business.location || locationSlug,
+        ...(isDistrictEquivalentLocation
+          ? {}
+          : {
+              locationSlug: canonicalLocationSlug,
+              locationName: crumbLocationName,
+            }),
         businessName: business.businessName,
       })
     : [
