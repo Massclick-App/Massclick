@@ -16,3 +16,8 @@
 .trust-card { color: white; background: #162942; border: 0; }.trust-card h2 { margin-bottom: 8px; }.trust-card p { color: #c3cfdd; line-height: 1.6; }.trust-card ul { list-style: none; padding: 0; }.trust-card li { display: flex; gap: 8px; align-items: center; margin: 11px 0; }
 @media (max-width: 900px) { .hero { grid-template-columns: 1fr; padding: 28px; }.rewards-grid { grid-template-columns: repeat(2, 1fr); }.lower-grid { grid-template-columns: 1fr; } }
 @media (max-width: 520px) { .page { padding: 14px; }.rewards-grid { grid-template-columns: 1fr; }.progress-copy { align-items: flex-start; flex-direction: column; } }
+/* Unified responsive rewards experience */
+.page.page{width:100%;max-width:1240px;box-sizing:border-box;margin:clamp(78px,8vw,104px) auto 60px;padding:clamp(14px,2.5vw,30px)}
+.reward-card{min-width:0;box-shadow:0 12px 34px rgba(19,34,56,.05);transition:transform .2s ease,box-shadow .2s ease}.reward-card:hover{transform:translateY(-2px);box-shadow:0 18px 40px rgba(19,34,56,.09)}
+@media(max-width:1100px){.rewards-grid.rewards-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:520px){.page.page{margin-top:72px;padding:10px}.hero.hero{padding:24px 20px;border-radius:20px}.hero.hero h1{font-size:2.1rem}.points-card.points-card{padding:20px}.points-card.points-card strong{font-size:2.5rem}.reward-card.reward-card button{min-height:44px}.progress-card.progress-card,.activity.activity,.trust-card.trust-card{padding:19px 16px}.activity-row.activity-row{grid-template-columns:38px minmax(0,1fr) auto}.activity-row.activity-row b{font-size:.82rem}}

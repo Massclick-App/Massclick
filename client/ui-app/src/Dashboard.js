@@ -42,7 +42,7 @@ export default function Dashboard(props) {
   return (
     <AppTheme {...props} themeComponents={xThemeComponents}>
       <CssBaseline enableColorScheme />
-        <Box sx={{ display: 'flex' }}>
+        <Box sx={{ display: 'flex', width: '100%', minHeight: '100vh', minWidth: 0 }}>
        
         <SideMenu />
 
@@ -56,10 +56,22 @@ export default function Dashboard(props) {
                 ? `rgba(${theme.vars.palette.background.defaultChannel} / 1)`
                 : alpha(theme.palette.background.default, 1),
               overflow: 'auto',
-              p: 3,
+              minWidth: 0,
+              width: '100%',
+              p: { xs: 0, sm: 1.5, md: 2.5, xl: 3 },
             })}
           >
-            <Stack spacing={2} sx={{ alignItems: 'center', mx: 3, pb: 5, mt: { xs: 8, md: 0 } }}>
+            <Stack
+              spacing={2}
+              sx={{
+                width: '100%',
+                minWidth: 0,
+                alignItems: 'stretch',
+                mx: 0,
+                pb: 5,
+                mt: { xs: 8, md: 0 },
+              }}
+            >
               <Header />
               <Suspense fallback={<DashboardRouteFallback />}>
                 <Outlet />

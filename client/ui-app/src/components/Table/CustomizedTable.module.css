@@ -15,6 +15,7 @@
 /* ── Container ── */
 .custom-table-container {
   width: 100%;
+  min-width: 0;
   border-radius: 14px;
   overflow: hidden;
   background: var(--color-bg);
@@ -65,6 +66,7 @@
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+  min-width: 0;
 }
 
 /* ── Search box ── */
@@ -341,6 +343,10 @@
 }
 
 @media (max-width: 768px) {
+  .table-toolbar { padding: 14px; }
+  .toolbar-right, .cir-search { width: 100%; }
+  .filter-chips { width: 100%; overflow-x: auto; padding: 2px 0 5px; scrollbar-width: thin; }
+  .filter-chip { min-height: 36px; flex: 0 0 auto; }
   .custom-body-cell,
   .custom-header-cell {
     padding: 10px 12px;
@@ -370,9 +376,14 @@
   }
 
   .filter-chip {
-    padding: 4px 8px;
+    padding: 7px 11px;
     font-size: 0.7rem;
   }
+
+  .cir-search { height: 44px; padding-left: 14px; }
+  .cir-search__kbd { display: none; }
+  .pagination-wrapper { justify-content: center; padding: 4px; overflow-x: auto; }
+  .pagination-wrapper :global(.MuiTablePagination-toolbar) { min-width: max-content; padding: 0; }
 
   .selection-bar {
     flex-direction: column;
