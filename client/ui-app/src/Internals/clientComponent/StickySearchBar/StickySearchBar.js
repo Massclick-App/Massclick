@@ -18,7 +18,7 @@ import { searchMasterLocations } from "../../../redux/actions/masterLocationActi
 import { logUserSearch } from "../../../redux/actions/otpAction";
 import { selectBackendSuggestions, selectBackendSuggestionsMeta, selectSearchLogs } from "../../../redux/selectors";
 import { shouldSendSearch } from "../../../utils/searchLock";
-import { navigateToSearchResult } from "../../../utils/searchResultNavigation";
+import { createDistrictSlug, getEffectiveSearchLocation, navigateToSearchResult } from "../../../utils/searchResultNavigation";
 import { scheduleIdleCallback } from "../../../utils/scheduleIdleCallback.js";
 import useMediaQuery from "../../../hooks/useMediaQuery.js";
 import { useDrawer } from "../Drawer/drawerContext";
@@ -69,7 +69,10 @@ const buildMasterLocationSuggestions = (locationSearchResults) => {
       _raw: primary,
       name,
       subLabel: [...new Set(contextParts)].join(", "),
-      slug: primary.slug
+      slug: primary.slug,
+      publicLocationSlug: primary.publicLocationSlug,
+      districtName: primary.district,
+      districtSlug: createDistrictSlug(primary.district),
     };
   });
 };
@@ -157,7 +160,16 @@ const StickySearchBar = ({
 
   useEffect(() => {
     localStorage.setItem("selectedLocation", locationName);
-    dispatch({ type: "SET_SELECTED_DISTRICT", payload: locationName });
+    dispatch({
+      type: "SET_SELECTED_DISTRICT",
+      payload: {
+        name: locationName,
+        districtName: localStorage.getItem("selectedLocationDistrict") || locationName,
+        districtSlug: localStorage.getItem("selectedLocationDistrictSlug") || createDistrictSlug(locationName),
+        locationSlug: localStorage.getItem("selectedPublicLocationSlug") || "",
+        masterLocationSlug: localStorage.getItem("selectedLocationSlug") || "",
+      },
+    });
   }, [dispatch, locationName]);
 
   useEffect(() => {
@@ -282,9 +294,28 @@ const StickySearchBar = ({
     // Verified picks carry the canonical slug; legacy text suggestions
     // don't and clear any previous one - shared with heroSection.
     const slug = typeof loc === "object" && loc?.slug ? loc.slug : "";
+    const publicLocationSlug = typeof loc === "object" && loc?.publicLocationSlug ? loc.publicLocationSlug : "";
+    const districtName = typeof loc === "object" && loc?.districtName ? loc.districtName : "";
+    const districtSlug = typeof loc === "object" && loc?.districtSlug ? loc.districtSlug : "";
     setMasterLocationSlug(slug);
     if (slug) localStorage.setItem("selectedLocationSlug", slug);
     else localStorage.removeItem("selectedLocationSlug");
+    if (publicLocationSlug) localStorage.setItem("selectedPublicLocationSlug", publicLocationSlug);
+    else localStorage.removeItem("selectedPublicLocationSlug");
+    if (districtName) localStorage.setItem("selectedLocationDistrict", districtName);
+    else localStorage.removeItem("selectedLocationDistrict");
+    if (districtSlug) localStorage.setItem("selectedLocationDistrictSlug", districtSlug);
+    else localStorage.removeItem("selectedLocationDistrictSlug");
+    dispatch({
+      type: "SET_SELECTED_DISTRICT",
+      payload: {
+        name: chosen,
+        districtName,
+        districtSlug,
+        locationSlug: publicLocationSlug,
+        masterLocationSlug: slug,
+      },
+    });
     setIsSelectingLocation(false);
     setIsFocused(false);
     setLocationInput("");
@@ -363,6 +394,7 @@ const StickySearchBar = ({
       searchTerm: searchInput,
       location,
       masterLocationSlug: locationSlug,
+      ...getEffectiveSearchLocation(),
       navigate,
       dispatch,
       isKnownCategory: false,

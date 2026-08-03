@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { Helmet } from "react-helmet-async";
 import { fetchServiceCards } from "../../../redux/actions/categoryAction";
-import { navigateToSearchResult, getEffectiveSearchLocation } from "../../../utils/searchResultNavigation";
+import { buildCategoryPath, navigateToSearchResult, getEffectiveSearchLocation } from "../../../utils/searchResultNavigation";
 import { Skeleton } from "@mui/material";
 import { getPlaceholderImage, handleImageError } from "../../../utils/placeholderImage";
 import { generateItemListSchema } from "../../../utils/seoSchemaGenerators";
@@ -72,7 +72,7 @@ const ServiceCardsGrid = () => {
     const categoryName = service.name;
     // Navigate to the specific location the user picked (falls back to the
     // selected district only when the location field is empty).
-    const { location, masterLocationSlug } = getEffectiveSearchLocation(selectedDistrict);
+    const locationContext = getEffectiveSearchLocation(selectedDistrict);
     const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
     const userDetails = {
       userName: authUser?.userName,
@@ -82,8 +82,7 @@ const ServiceCardsGrid = () => {
     };
     navigateToSearchResult({
       searchTerm: categoryName,
-      location,
-      masterLocationSlug,
+      ...locationContext,
       navigate,
       dispatch,
       isKnownCategory: true,
@@ -116,7 +115,11 @@ const ServiceCardsGrid = () => {
     if (serviceCards.length === 0) return null;
     const allItems = serviceCards.map(item => ({
       name: item.name,
-      url: `https://massclick.in/search/${item.slug || item.name.toLowerCase().replace(/\s+/g, '-')}?location=${districtSlug}`,
+      url: `https://massclick.in${buildCategoryPath({
+        districtSlug,
+        categorySlug: item.slug || item.name,
+        isDistrictScope: true,
+      })}`,
       description: item.description || `Find ${item.name} services in ${districtSlug}`,
       image: item.categoryImages?.webCard || item.categoryImageKey || getPlaceholderImage()
     }));

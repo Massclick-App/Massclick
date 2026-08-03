@@ -9,9 +9,9 @@ import StickySearchBar from '../../../clientComponent/StickySearchBar/StickySear
 import Footer from "../../footer/footer";
 import Cards from "../../cards/cards";
 import { fetchFavorites, getAuthUser } from "../../../../redux/actions/favoriteAction";
+import { buildBusinessPath, createDistrictSlug } from "../../../../utils/searchResultNavigation";
 import styles from "./FavouritePage.module.css";
 const cx = createScopedClassNames(styles);
-const createSlug = (text = "") => text.toLowerCase().trim().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
 export default function FavoritesPage() {
   const dispatch = useDispatch();
   const {
@@ -72,9 +72,13 @@ export default function FavoritesPage() {
 
             {!loading && favorites.length > 0 && <div className={cx("fav-list")}>
                 {favorites.map((business, index) => {
-            const loc = createSlug(business.location || "");
-            const name = createSlug(business.businessName || "");
-            const businessUrl = `/business/${loc}/${name}/${business._id}`;
+            const businessUrl = buildBusinessPath({
+              districtSlug: createDistrictSlug(business.masterLocation?.district || business.district || ""),
+              location: business.location,
+              businessName: business.businessName,
+              publicId: business.publicId,
+              id: business._id
+            });
             const averageRating = Number(business.averageRating);
             const rating = Number.isFinite(averageRating) && averageRating > 0 ? averageRating : null;
             return <Cards key={business._id} businessId={business._id} index={index} title={business.businessName} phone={business.contact} whatsappNumber={business.whatsappNumber || business.contact} address={business.globalAddress || business.location} details={business.description} imageSrc={business.bannerImage || ""} rating={rating} reviews={business.totalReviews || 0} category={business.category} to={businessUrl} state={{

@@ -7,15 +7,23 @@ import { sortBusinessesForDefaultSearch } from "../../utils/businessSearchSort.j
 import {
   resolveLocationForSearch,
   resolveLocationSearchScope,
+  resolveRouteLocation,
+  resolveDistrictBySlug,
 } from "../location/locationResolver.js";
 import locationModel from "../../model/locationModel/locationModel.js";
+import masterLocationModel from "../../model/locationModel/masterLocationModel.js";
 import userModel from "../../model/userModel.js";
 import QRCode from "qrcode";
 import categoryModel from "../../model/category/categoryModel.js";
 import gmapsLeadsModel from "../../model/gmapsLeads/gmapsLeadsModel.js";
 import enquiryModel from "../../model/enquiry/enquiryModel.js";
 import otpUserModel from "../../model/msg91Model/usersModels.js";
-import { slugify } from "../../slugify.js";
+import {
+  buildBusinessDetailsUrl,
+  getPublicBaseUrl,
+  isAcceptedBusinessDetailsUrl,
+} from "./businessPublicUrlHelper.js";
+import { PUBLIC_ID_RE } from "./businessUrl.js";
 
 const BUSINESS_PAYMENT_GST_RATE = 18;
 
@@ -78,23 +86,6 @@ export const copyKeywordsFromCategory = async (categoryName) => {
     console.error("Error copying keywords from category:", err.message);
     return [];
   }
-};
-
-const getPublicBaseUrl = () =>
-  String(process.env.PUBLIC_BASE_URL || "https://massclick.in").replace(
-    /\/+$/,
-    "",
-  );
-
-const buildBusinessDetailsUrl = (business = {}) => {
-  const businessId =
-    business?._id?.toString?.() || business?._id || business?.id || "";
-  const locationSlug = slugify(business.location || "business");
-  const businessSlug = slugify(
-    business.slug || business.businessName || business.name || "profile",
-  );
-
-  return `${getPublicBaseUrl()}/business/${locationSlug}/${businessSlug}/${businessId}`;
 };
 
 const buildReviewUrl = (business = {}) => {
@@ -167,10 +158,12 @@ const generateBusinessDetailsQrCode = async (businessDocument) => {
 const ensureBusinessDetailsQrCode = async (business = {}) => {
   if (!business?._id) return business;
 
-  const expectedQrText = buildBusinessDetailsUrl(business);
   const hasCurrentBusinessQr =
     business.businessProfileQrCode?.qrImageKey &&
-    business.businessProfileQrCode?.qrText === expectedQrText;
+    isAcceptedBusinessDetailsUrl(
+      business,
+      business.businessProfileQrCode?.qrText,
+    );
 
   if (hasCurrentBusinessQr) {
     business.businessProfileQrCode.qrImage = getSignedUrlByKey(
@@ -328,23 +321,41 @@ export const createBusinessList = async (reqBody = {}) => {
   }
 };
 
-export const findBusinessBySlug = async ({ location, slug }) => {
+// `district`, if supplied, is a URL slug ("trichy") resolved internally via
+// resolveDistrictBySlug — same convention as every other district param in
+// this migration (mainSearchController, findBusinessesByCategory). Optional
+// and additive: `location` + `slug` alone still resolve exactly as before,
+// this just narrows further when a district is known, filtered against the
+// already-denormalized masterLocation.district field.
+export const findBusinessBySlug = async ({ location, slug, district }) => {
   try {
     const normalizedSlug = String(slug || "")
       .trim()
       .toLowerCase();
     const businessNamePattern = String(slug || "").replace(/-/g, " ");
-    const business = await businessListModel
-      .findOne({
-        location: new RegExp(`^${location}$`, "i"),
-        $or: [
-          { slug: new RegExp(`^${normalizedSlug}$`, "i") },
-          { businessName: new RegExp(`^${businessNamePattern}$`, "i") },
-        ],
-        isActive: true,
-        businessesLive: true,
-      })
-      .lean();
+    const query = {
+      location: new RegExp(`^${location}$`, "i"),
+      $or: [
+        { slug: new RegExp(`^${normalizedSlug}$`, "i") },
+        { businessName: new RegExp(`^${businessNamePattern}$`, "i") },
+      ],
+      isActive: true,
+      businessesLive: true,
+    };
+
+    if (district) {
+      const districtDoc = await resolveDistrictBySlug(district).catch(() => null);
+      if (districtDoc) {
+        const escapeRegex = (value = "") =>
+          String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        query["masterLocation.district"] = new RegExp(
+          `^${escapeRegex(districtDoc.district)}$`,
+          "i",
+        );
+      }
+    }
+
+    const business = await businessListModel.findOne(query).lean();
 
     if (!business) return null;
 
@@ -374,11 +385,43 @@ export const findBusinessBySlug = async ({ location, slug }) => {
     throw error;
   }
 };
-export const viewBusinessList = async (id) => {
-  if (!ObjectId.isValid(id)) throw new Error("Invalid business ID");
+/**
+ * Accepts either a raw ObjectId or a `publicId`.
+ *
+ * Phase B business URLs (/business/trichy/hexahub-homestay-a1b2c3) carry a
+ * publicId rather than an ObjectId, so the detail page resolves through the
+ * same endpoint with either identifier. ObjectId is tried first because it is
+ * unambiguous — a 24-char hex string can never be a publicId, which is always
+ * 6 chars of mixed letters and digits.
+ */
+export const viewBusinessList = async (identifier) => {
+  const isObjectId = ObjectId.isValid(identifier);
+  const publicId = String(identifier || "").trim().toLowerCase();
 
-  const business = await businessListModel.findById(id).lean();
+  if (!isObjectId && !PUBLIC_ID_RE.test(publicId)) {
+    throw new Error("Invalid business ID");
+  }
+
+  const business = await (isObjectId
+    ? businessListModel.findById(identifier).lean()
+    : businessListModel.findOne({ publicId }).lean());
   if (!business) throw new Error("Business not found");
+
+  // Same resolution as mainSearchController's/nearbyBusinessesController's
+  // business-detail-URL fix: the free-text `location` field alone can be as
+  // coarse as the district name, so resolve this business's own
+  // collision-resolved publicLocationSlug via its linked
+  // masterLocation.locationId — used for this page's own canonical URL,
+  // share/copy links, and JSON-LD (see cardDetails.js).
+  if (business.masterLocation?.locationId) {
+    const resolvedLocation = await masterLocationModel
+      .findById(business.masterLocation.locationId, { publicLocationSlug: 1 })
+      .lean()
+      .catch(() => null);
+    if (resolvedLocation?.publicLocationSlug) {
+      business.publicLocationSlug = resolvedLocation.publicLocationSlug;
+    }
+  }
 
   if (business.bannerImageKey)
     business.bannerImage = getSignedUrlByKey(business.bannerImageKey);
@@ -441,7 +484,23 @@ export const viewAllBusiness = async () => {
   return updatedBusinesses;
 };
 
-export const findBusinessesByCategory = async (category, district) => {
+// `locationContext` replaces the old bare `district` string param — it was
+// never actually a district, it was whatever free text a district-picker
+// dropdown sent, resolved fuzzily via resolveLocationForSearch. Now takes:
+//   - { locationText } — the old free-text path, behavior-preserving.
+//   - { districtSlug, locationSlug } — the district-prefixed URL path
+//     (/:district/:location/:category), resolved precisely via
+//     resolveRouteLocation instead of fuzzy free-text matching. This is the
+//     actual collision fix for this function, same pattern as
+//     mainSearchController in businessListController.js.
+// Both call sites (ssrMiddleware.js, businessListController.js's
+// viewBusinessByCategory) updated to this shape; see each for which path
+// they currently exercise.
+export const findBusinessesByCategory = async (category, locationContext = {}) => {
+  const { locationText, districtSlug, locationSlug } = locationContext;
+  const escapeRegex = (value = "") =>
+    String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
   const matchQuery = {
     businessesLive: true,
     $or: [
@@ -451,103 +510,132 @@ export const findBusinessesByCategory = async (category, district) => {
   };
   let resolvedLocation = null;
   let locationSearchScope = null;
+  let districtScopeDoc = null;
 
-  if (
-    district &&
-    district !== "All Districts" &&
-    district !== "Enter location manually..."
-  ) {
-    resolvedLocation = await resolveLocationForSearch(district).catch(() => null);
+  if (districtSlug) {
+    const routeResolution = await resolveRouteLocation({ districtSlug, locationSlug })
+      .catch(() => ({ districtDoc: null, locationDoc: null }));
+    districtScopeDoc = routeResolution.districtDoc;
+    if (routeResolution.locationDoc) {
+      resolvedLocation = routeResolution.locationDoc;
+      locationSearchScope = await resolveLocationSearchScope(resolvedLocation).catch(() => null);
+    }
+  }
 
+  const hasUsableLocationText =
+    locationText &&
+    locationText !== "All Districts" &&
+    locationText !== "Enter location manually...";
+
+  if (!resolvedLocation && !districtScopeDoc && hasUsableLocationText) {
+    resolvedLocation = await resolveLocationForSearch(locationText).catch(() => null);
     if (resolvedLocation?.slug) {
       locationSearchScope = await resolveLocationSearchScope(resolvedLocation)
         .catch(() => null);
-      const escapeRegex = (value = "") =>
-        String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const normalizeLocation = (value = "") =>
-        String(value)
-          .toLowerCase()
-          .trim()
-          .replace(/&/g, " and ")
-          .replace(/[-_]/g, " ")
-          .replace(/\s+/g, " ");
-      const fallbackNames = [
-        district,
-        resolvedLocation.locality,
-        resolvedLocation.ward,
-        resolvedLocation.zone,
-        ...(resolvedLocation.level === "district"
-          ? [resolvedLocation.district]
-          : []),
-        ...(resolvedLocation.alternateNames || []),
-      ]
-        .filter(Boolean)
-        .map(normalizeLocation);
-      const slugPrefixRegex = locationSearchScope?.slugPrefixRegex ||
-        new RegExp(`^${escapeRegex(resolvedLocation.slug)}(-|$)`);
-      const groupAddressRegexes = locationSearchScope?.searchGroupSlug
-        ? locationSearchScope.addressNames.map(
-            (name) => new RegExp(escapeRegex(name), "i"),
-          )
-        : [];
-      const groupDistrictMatches = [
-        {
-          "masterLocation.district": {
-            $regex: `^${escapeRegex(resolvedLocation.district || "")}$`,
-            $options: "i",
-          },
-        },
-        ...(locationSearchScope?.pincodes?.length
-          ? [{ pincode: { $in: locationSearchScope.pincodes } }]
-          : []),
-      ];
-      const groupedAddressMatch = groupAddressRegexes.length > 0
-        ? {
-            $and: [
-              { $or: groupDistrictMatches },
-              {
-                $or: groupAddressRegexes.flatMap((regex) => [
-                  { location: regex },
-                  { street: regex },
-                  { globalAddress: regex },
-                ]),
-              },
-            ],
-          }
-        : null;
-
-      matchQuery.$and = [
-        {
-          $or: [
-            {
-              "masterLocation.slug": slugPrefixRegex,
-            },
-            ...(groupedAddressMatch ? [groupedAddressMatch] : []),
-            {
-              "masterLocation.locationId": null,
-              $or: [...new Set(fallbackNames)].map((locationName) => ({
-                location: {
-                  $regex: `^${escapeRegex(locationName)}$`,
-                  $options: "i",
-                },
-              })),
-            },
-          ],
-        },
-      ];
-    } else {
-      matchQuery.$and = [
-        {
-          $or: [
-            { district: { $regex: district, $options: "i" } },
-            { location: { $regex: district, $options: "i" } },
-            { locationDetails: { $regex: district, $options: "i" } },
-            { street: { $regex: district, $options: "i" } },
-            { pincode: { $regex: district, $options: "i" } },
-          ],
-        },
-      ];
     }
+  }
+
+  if (resolvedLocation?.slug) {
+    const normalizeLocation = (value = "") =>
+      String(value)
+        .toLowerCase()
+        .trim()
+        .replace(/&/g, " and ")
+        .replace(/[-_]/g, " ")
+        .replace(/\s+/g, " ");
+    const fallbackNames = [
+      locationText || locationSlug,
+      resolvedLocation.locality,
+      resolvedLocation.ward,
+      resolvedLocation.zone,
+      ...(resolvedLocation.level === "district"
+        ? [resolvedLocation.district]
+        : []),
+      ...(resolvedLocation.alternateNames || []),
+    ]
+      .filter(Boolean)
+      .map(normalizeLocation);
+    const slugPrefixRegex = locationSearchScope?.slugPrefixRegex ||
+      new RegExp(`^${escapeRegex(resolvedLocation.slug)}(-|$)`);
+    const groupAddressRegexes = locationSearchScope?.searchGroupSlug
+      ? locationSearchScope.addressNames.map(
+          (name) => new RegExp(escapeRegex(name), "i"),
+        )
+      : [];
+    const groupDistrictMatches = [
+      {
+        "masterLocation.district": {
+          $regex: `^${escapeRegex(resolvedLocation.district || "")}$`,
+          $options: "i",
+        },
+      },
+      ...(locationSearchScope?.pincodes?.length
+        ? [{ pincode: { $in: locationSearchScope.pincodes } }]
+        : []),
+    ];
+    const groupedAddressMatch = groupAddressRegexes.length > 0
+      ? {
+          $and: [
+            { $or: groupDistrictMatches },
+            {
+              $or: groupAddressRegexes.flatMap((regex) => [
+                { location: regex },
+                { street: regex },
+                { globalAddress: regex },
+              ]),
+            },
+          ],
+        }
+      : null;
+
+    matchQuery.$and = [
+      {
+        $or: [
+          {
+            "masterLocation.slug": slugPrefixRegex,
+          },
+          ...(groupedAddressMatch ? [groupedAddressMatch] : []),
+          {
+            "masterLocation.locationId": null,
+            $or: [...new Set(fallbackNames)].map((locationName) => ({
+              location: {
+                $regex: `^${escapeRegex(locationName)}$`,
+                $options: "i",
+              },
+            })),
+          },
+        ],
+      },
+    ];
+  } else if (districtScopeDoc) {
+    // District resolved from the URL but no location resolved within it
+    // (district-wide, or an unresolvable location segment) — scope purely to
+    // the district. Deliberately does NOT fall through to the free-text
+    // "else" below: that path regexes raw typed text across several fields
+    // and doesn't confine results to a district at all, silently dropping
+    // the disambiguation this whole path exists to provide.
+    matchQuery.$and = [
+      {
+        "masterLocation.district": {
+          $regex: `^${escapeRegex(districtScopeDoc.district)}$`,
+          $options: "i",
+        },
+      },
+    ];
+  } else if (hasUsableLocationText) {
+    // Nothing resolved from free text either — legacy last-resort: regex the
+    // raw typed text across several free-text fields directly.
+    matchQuery.$and = [
+      {
+        $or: [
+          { district: { $regex: locationText, $options: "i" } },
+          { location: { $regex: locationText, $options: "i" } },
+          { locationDetails: { $regex: locationText, $options: "i" } },
+          { street: { $regex: locationText, $options: "i" } },
+          { pincode: { $regex: locationText, $options: "i" } },
+        ],
+      },
+    ];
   }
 
   const businessList = await businessListModel.aggregate([
@@ -1156,8 +1244,12 @@ export const updateBusinessList = async (id, data) => {
   /* ===============================
      5️⃣ UPDATE NORMAL FIELDS
   =============================== */
+  // publicId is permanent public identity — it is the part of a business's URL
+  // that actually resolves the page, and it is baked into indexed URLs, printed
+  // QR codes and shared links. Nothing reaching this update path may change it,
+  // so it is excluded here rather than trusted not to appear in `data`.
   Object.keys(data).forEach((key) => {
-    if (!["reviews", "averageRating", "clientId"].includes(key)) {
+    if (!["reviews", "averageRating", "clientId", "publicId"].includes(key)) {
       business[key] = data[key];
     }
   });

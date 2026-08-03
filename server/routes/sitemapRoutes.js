@@ -4,6 +4,14 @@ import categoryModel from "../model/category/categoryModel.js";
 import categoryDisplaySettingsModel from "../model/categoryDisplaySettings/categoryDisplaySettingsModel.js";
 import masterLocationModel from "../model/locationModel/masterLocationModel.js";
 import { slugify } from "../slugify.js";
+import {
+  getDistrictUrlSlug,
+  getPublicLocationSlug,
+} from "../helper/location/locationSlug.js";
+import {
+  getBusinessUrlSlug,
+  buildBusinessPath as buildCanonicalBusinessPath,
+} from "../helper/businessList/businessUrl.js";
 import seoPageContentBlogs from "../model/seoModel/seoPageContentBlogModel.js";
 import { categoriesData } from "../utils/sub-categoriesData.js";
 import { STATIC_PAGES } from "../config/ssrConfig.js";
@@ -15,6 +23,11 @@ const router = express.Router();
 ========================================================= */
 const BASE_URL = String(process.env.PUBLIC_BASE_URL || "https://massclick.in").replace(/\/+$/, "");
 const LIMIT = 1000;
+// Location x category pages are generated for every active masterlocation and every
+// active category regardless of whether a business exists there yet, so a single
+// district can produce well over the 50,000-URL sitemap protocol cap. Paginate safely
+// under that limit.
+const LOCATION_SITEMAP_LIMIT = 40000;
 
 /* =========================================================
    HELPERS
@@ -146,7 +159,7 @@ const buildCategoryLookup = async () => {
   const categories = await categoryModel.find({ isActive: true }).lean();
   const subCategoryMappings = await buildSubCategoryMappings();
 
-  // deduplicate â€” same as getAllUniqueCategoriesAction
+  // deduplicate — same as getAllUniqueCategoriesAction
   const uniqueMap = new Map();
   categories.forEach((item) => {
     const key = normalizeKey(item.category);
@@ -164,7 +177,7 @@ const buildCategoryLookup = async () => {
 
   const lookup = new Map();
 
-  // pass 1 â€” every DB category starts as a primary (no parent)
+  // pass 1 — every DB category starts as a primary (no parent)
   for (const [, item] of uniqueMap) {
     const key = normalizeKey(item.category);
     lookup.set(key, {
@@ -173,7 +186,7 @@ const buildCategoryLookup = async () => {
     });
   }
 
-  // pass 2 â€” re-map sub-categories with their real parent slug.
+  // pass 2 — re-map sub-categories with their real parent slug.
   // Runs after pass 1 so subs always override the null set above,
   // except for categories that are themselves configured as parent keys.
   for (const { parentSlug, subCategoryNames } of subCategoryMappings) {
@@ -191,6 +204,17 @@ const buildCategoryLookup = async () => {
   _categoryLookupCache = lookup;
   _categoryLookupBuiltAt = now;
   return lookup;
+};
+
+// Every distinct resolved category URL path (e.g. "hospitals/clinical-lab" or
+// "clinical-lab"), deduplicated — used to cross-join against every location.
+const getAllCategoryPaths = (lookup) => {
+  const paths = new Set();
+  for (const { slug, parentSlug } of lookup.values()) {
+    if (!slug) continue;
+    paths.add(parentSlug ? `${parentSlug}/${slug}` : slug);
+  }
+  return [...paths];
 };
 
 // Returns the URL path after the city: e.g. "hospitals/clinical-lab" or "clinical-lab"
@@ -225,8 +249,26 @@ const getLocationLabel = (doc = {}) =>
   doc.hierarchyPath ||
   [doc.locality, doc.ward, doc.zone, doc.district].filter(Boolean).join(" > ");
 
-const getPublicLocationSlug = (doc = {}) =>
-  safeSlug(doc.locality || doc.ward || doc.zone || doc.district || "");
+// Imported, not defined here: the same slug is now persisted on each
+// masterlocation doc as `publicLocationSlug`, and the sitemap must emit
+// exactly what the router resolves. See helper/location/locationSlug.js.
+const getSitemapLocationSlug = (doc = {}) => {
+  if (doc.level === "district") return "";
+  return doc.publicLocationSlug || getPublicLocationSlug(doc);
+};
+
+const isValidSitemapLocationDoc = (doc = {}) => {
+  const slug = getSitemapLocationSlug(doc);
+  return doc.level === "district" || (slug && isValidCitySlug(slug));
+};
+
+const buildDistrictCategoryPath = (districtSlug, entry = {}) => {
+  const segments =
+    entry.locationLevel === "district"
+      ? [districtSlug, entry.categoryPath]
+      : [districtSlug, entry.locationSlug, entry.categoryPath];
+  return `/${segments.filter(Boolean).join("/")}`;
+};
 
 const getLocationPriority = (level = "") => {
   if (level === "district") return "0.9";
@@ -234,39 +276,27 @@ const getLocationPriority = (level = "") => {
   return "0.7";
 };
 
-const maxIsoDate = (first, second) => {
-  if (!first) return isoDate(second);
-  if (!second) return first;
-  return new Date(second) > new Date(first) ? isoDate(second) : first;
-};
-
-const getActiveDistrictDocs = async () => {
-  const districtNames = await businessListModel.distinct("masterLocation.district", {
-    ...activeFilter,
-    "masterLocation.district": { $exists: true, $nin: [null, ""] },
-  });
-
-  if (districtNames.length === 0) return [];
-
-  return masterLocationModel
+// All active districts, regardless of whether any business exists there yet —
+// location/category sitemap pages are generated ahead of listings being added.
+const getActiveDistrictDocs = async () =>
+  masterLocationModel
     .find(
-      {
-        level: "district",
-        isActive: true,
-        district: { $in: districtNames },
-      },
-      { slug: 1, district: 1, hierarchyPath: 1, updatedAt: 1 }
+      { level: "district", isActive: true },
+      { slug: 1, district: 1, hierarchyPath: 1, updatedAt: 1, urlAlias: 1 }
     )
     .sort({ district: 1 })
     .lean();
-};
 
 const findDistrictDocBySitemapSlug = async (districtSlug) => {
   const slug = safeSlug(districtSlug);
   if (!slug) return null;
 
   const directMatch = await masterLocationModel
-    .findOne({ level: "district", isActive: true, slug })
+    .findOne({
+      level: "district",
+      isActive: true,
+      $or: [{ slug }, { urlAlias: slug }],
+    })
     .lean();
   if (directMatch) return directMatch;
 
@@ -274,7 +304,12 @@ const findDistrictDocBySitemapSlug = async (districtSlug) => {
     .find({ level: "district", isActive: true })
     .lean();
 
-  const districtNameMatch = nameMatch.find((doc) => safeSlug(doc.district) === slug);
+  const districtNameMatch = nameMatch.find(
+    (doc) =>
+      getDistrictUrlSlug(doc) === slug ||
+      safeSlug(doc.district) === slug ||
+      safeSlug(doc.slug) === slug
+  );
   if (districtNameMatch) return districtNameMatch;
 
   const legacyLocationMatches = await businessListModel
@@ -321,6 +356,7 @@ const getLocationDocsByKeyForDistrict = async (districtDoc) => {
         level: 1,
         hierarchyPath: 1,
         updatedAt: 1,
+        publicLocationSlug: 1,
       }
     )
     .lean();
@@ -328,88 +364,83 @@ const getLocationDocsByKeyForDistrict = async (districtDoc) => {
   return new Map(docs.map((doc) => [locationKey(doc), doc]));
 };
 
-const getAncestorLocationDocs = (masterLocation = {}, docsByKey) => {
-  const docs = [];
-
-  for (const level of LOCATION_LEVELS) {
-    const requiredFields = LOCATION_KEY_FIELDS[level];
-    const candidate = { ...masterLocation, level };
-    const hasRequiredFields = requiredFields.every((field) =>
-      Boolean(candidate[field])
-    );
-
-    if (!hasRequiredFields) continue;
-
-    const doc = docsByKey.get(locationKey(candidate));
-    if (doc?.slug) docs.push(doc);
-  }
-
-  return docs;
-};
-
+// Cross-joins every active location (district/zone/ward/locality) in this district
+// with every active category/subcategory, regardless of whether a business exists
+// for that pair yet. Business data is NOT used here on purpose — pages are emitted
+// for the full location x category matrix so crawlers can discover them ahead of
+// listings being added.
 const buildDistrictCategoryPages = async (districtDoc) => {
-  const [categoryLookup, docsByKey, businesses] = await Promise.all([
+  const [categoryLookup, docsByKey] = await Promise.all([
     buildCategoryLookup(),
     getLocationDocsByKeyForDistrict(districtDoc),
-    businessListModel
-      .find(
-        {
-          ...activeFilter,
-          category: { $exists: true, $ne: "" },
-          "masterLocation.district": districtDoc.district,
-        },
-        {
-          category: 1,
-          updatedAt: 1,
-          masterLocation: 1,
-        }
-      )
-      .lean(),
   ]);
 
+  const categoryPaths = getAllCategoryPaths(categoryLookup);
   const pages = new Map();
 
-  for (const business of businesses) {
-    const categoryPath = resolveCategoryPath(business.category, categoryLookup);
-    if (!categoryPath) continue;
+  for (const locationDoc of docsByKey.values()) {
+    if (!isValidSitemapLocationDoc(locationDoc)) continue;
+    const publicLocationSlug = getSitemapLocationSlug(locationDoc);
 
-    const locationDocs = getAncestorLocationDocs(
-      business.masterLocation || {},
-      docsByKey
-    );
+    const lastmod = isoDate(locationDoc.updatedAt);
 
-    for (const locationDoc of locationDocs) {
-      const publicLocationSlug = getPublicLocationSlug(locationDoc);
-      if (!publicLocationSlug || !isValidCitySlug(publicLocationSlug)) {
-        continue;
-      }
-
-      const key = `${publicLocationSlug}/${categoryPath}`;
-      const existing = pages.get(key);
-
-      if (existing) {
-        existing.count += 1;
-        existing.lastmod = maxIsoDate(existing.lastmod, business.updatedAt);
-        continue;
-      }
+    for (const categoryPath of categoryPaths) {
+      const key = `${locationDoc.level}:${publicLocationSlug || "district"}/${categoryPath}`;
+      if (pages.has(key)) continue;
 
       pages.set(key, {
         locationSlug: publicLocationSlug,
         locationLabel: getLocationLabel(locationDoc),
         locationLevel: locationDoc.level,
         categoryPath,
-        categoryLabel: business.category,
-        count: 1,
-        lastmod: isoDate(business.updatedAt || locationDoc.updatedAt),
+        lastmod,
       });
     }
   }
 
   return [...pages.values()].sort(
     (a, b) =>
-      a.locationSlug.localeCompare(b.locationSlug) ||
+      (a.locationSlug || "").localeCompare(b.locationSlug || "") ||
       a.categoryPath.localeCompare(b.categoryPath)
   );
+};
+
+// Cheap upper-bound page count (no per-entry objects, no dedup pass) used only to
+// size the sitemap index. The real, deduplicated list is built lazily per-district
+// in getDistrictCategoryPagesCached below, only when that district's sitemap file
+// is actually requested — building all districts' full matrices at once (~4M+
+// objects) would burn ~700MB of memory on a single /sitemap.xml hit.
+const estimateDistrictPageCount = async (districtDoc) => {
+  const [categoryLookup, docsByKey] = await Promise.all([
+    buildCategoryLookup(),
+    getLocationDocsByKeyForDistrict(districtDoc),
+  ]);
+
+  const categoryPathCount = getAllCategoryPaths(categoryLookup).length;
+  let validLocationCount = 0;
+  for (const doc of docsByKey.values()) {
+    if (isValidSitemapLocationDoc(doc)) validLocationCount++;
+  }
+
+  return categoryPathCount * validLocationCount;
+};
+
+// Per-district cross-join results are cached in memory (same TTL as the category
+// lookup) since building the full matrix on every request would be wasteful given
+// districts can produce 100k+ pages. Cleared via resetSitemapCaches().
+const _districtPagesCache = new Map();
+
+const getDistrictCategoryPagesCached = async (districtDoc) => {
+  const cacheKey = String(districtDoc._id || districtDoc.district);
+  const now = Date.now();
+  const cached = _districtPagesCache.get(cacheKey);
+  if (cached && now - cached.builtAt < CACHE_TTL_MS) {
+    return cached.pages;
+  }
+
+  const pages = await buildDistrictCategoryPages(districtDoc);
+  _districtPagesCache.set(cacheKey, { builtAt: now, pages });
+  return pages;
 };
 
 const buildLegacyLocationCategoryPages = async () => {
@@ -446,8 +477,109 @@ const buildLegacyLocationCategoryPages = async () => {
     .filter(Boolean);
 };
 
+const getBusinessSitemapContext = async (businesses = []) => {
+  const locationIds = [
+    ...new Set(
+      businesses
+        .map((biz) => biz.masterLocation?.locationId)
+        .filter(Boolean)
+        .map((id) => String(id))
+    ),
+  ];
+
+  const locationDocs = locationIds.length
+    ? await masterLocationModel
+        .find(
+          { _id: { $in: locationIds }, isActive: true },
+          {
+            slug: 1,
+            district: 1,
+            zone: 1,
+            ward: 1,
+            locality: 1,
+            level: 1,
+            publicLocationSlug: 1,
+            urlAlias: 1,
+          }
+        )
+        .lean()
+    : [];
+
+  const locationDocsById = new Map(
+    locationDocs.map((doc) => [String(doc._id), doc])
+  );
+
+  const districtNames = [
+    ...new Set(
+      [
+        ...businesses.map((biz) => biz.masterLocation?.district),
+        ...locationDocs.map((doc) => doc.district),
+      ]
+        .map((name) => String(name || "").trim())
+        .filter(Boolean)
+    ),
+  ];
+
+  const districtDocs = districtNames.length
+    ? await masterLocationModel
+        .find(
+          {
+            level: "district",
+            isActive: true,
+            district: { $in: districtNames },
+          },
+          { slug: 1, district: 1, urlAlias: 1 }
+        )
+        .lean()
+    : [];
+
+  const districtDocsByName = new Map(
+    districtDocs.map((doc) => [normalizeLocationPart(doc.district), doc])
+  );
+
+  return { locationDocsById, districtDocsByName };
+};
+
+const getBusinessLocationSlug = (biz = {}, locationDoc = null) => {
+  const publicLocationSlug = getSitemapLocationSlug(locationDoc || {});
+  const rawLocation =
+    publicLocationSlug ||
+    biz.location ||
+    biz.masterLocation?.locality ||
+    biz.masterLocation?.ward ||
+    biz.masterLocation?.zone ||
+    locationDoc?.locality ||
+    locationDoc?.ward ||
+    locationDoc?.zone ||
+    "business";
+
+  return safeSlug(rawLocation) || "business";
+};
+
+const buildBusinessSitemapPath = ({
+  biz = {},
+  locationDoc = null,
+  districtDoc = null,
+} = {}) => {
+  const districtSlug = districtDoc ? getDistrictUrlSlug(districtDoc) : "";
+
+  const canonical = buildCanonicalBusinessPath({ districtSlug, business: biz });
+  if (canonical) return canonical;
+
+  // Only reachable for a business with no publicId or no district context.
+  // The pre-Phase-B shape is the one that still resolves in that state, so
+  // emit it rather than advertising a URL crawlers cannot follow.
+  const businessSlug = getBusinessUrlSlug(biz);
+  const locationSlug = getBusinessLocationSlug(biz, locationDoc);
+  const segments = districtSlug
+    ? ["business", districtSlug, locationSlug, businessSlug, biz._id]
+    : ["business", locationSlug, businessSlug, biz._id];
+
+  return `/${segments.filter(Boolean).join("/")}`;
+};
+
 /* =========================================================
-   SITEMAP INDEX  â€” /sitemap.xml
+   SITEMAP INDEX  — /sitemap.xml
    Lists one sitemap-city-{slug}.xml per active city,
    paginated business sitemaps, and blog sitemap.
 ========================================================= */
@@ -459,12 +591,24 @@ router.get("/sitemap.xml", async (req, res) => {
       businessListModel.exists(legacyLocationFilter),
     ]);
 
-    const links = [
-      createSitemapNode(`${BASE_URL}/sitemap-static.xml`),
-      ...districts.map((district) =>
-        createSitemapNode(`${BASE_URL}/sitemap-location-${district.slug}.xml`)
-      ),
-    ];
+    const links = [createSitemapNode(`${BASE_URL}/sitemap-static.xml`)];
+
+    const districtPageCounts = await Promise.all(
+      districts.map(async (district) => {
+        const estimatedTotal = await estimateDistrictPageCount(district);
+        return Math.max(Math.ceil(estimatedTotal / LOCATION_SITEMAP_LIMIT), 1);
+      })
+    );
+
+    districts.forEach((district, index) => {
+      const totalPages = districtPageCounts[index];
+      const districtSlug = getDistrictUrlSlug(district);
+      for (let p = 1; p <= totalPages; p++) {
+        links.push(
+          createSitemapNode(`${BASE_URL}/sitemap-location-${districtSlug}-${p}.xml`)
+        );
+      }
+    });
 
     if (hasLegacyLocationPages) {
       links.push(createSitemapNode(`${BASE_URL}/sitemap-legacy-locations.xml`));
@@ -490,7 +634,7 @@ ${links.join("")}
 });
 
 /* =========================================================
-   PER-CITY SITEMAP  â€” /sitemap-city-{cityslug}.xml
+   PER-CITY SITEMAP  — /sitemap-city-{cityslug}.xml
    Contains all category pages + all business pages for that city.
    Category URLs use real slugs from categoryModel (no hardcoded mapping).
 ========================================================= */
@@ -519,17 +663,22 @@ ${nodes.join("")}
   }
 });
 
-const sendLocationSitemap = async (districtSlug, res) => {
+const sendLocationSitemap = async (districtSlug, pageParam, res) => {
   const districtDoc = await findDistrictDocBySitemapSlug(districtSlug);
   if (!districtDoc) return res.status(404).end();
 
-  const pages = await buildDistrictCategoryPages(districtDoc);
-  const nodes = pages.map((page) =>
+  const page = Math.max(Number(pageParam) || 1, 1);
+  const sitemapDistrictSlug = getDistrictUrlSlug(districtDoc);
+  const allPages = await getDistrictCategoryPagesCached(districtDoc);
+  const start = (page - 1) * LOCATION_SITEMAP_LIMIT;
+  const pages = allPages.slice(start, start + LOCATION_SITEMAP_LIMIT);
+
+  const nodes = pages.map((entry) =>
     createUrlNode({
-      loc: `${BASE_URL}/${page.locationSlug}/${page.categoryPath}`,
-      lastmod: page.lastmod,
+      loc: `${BASE_URL}${buildDistrictCategoryPath(sitemapDistrictSlug, entry)}`,
+      lastmod: entry.lastmod,
       changefreq: "daily",
-      priority: getLocationPriority(page.locationLevel),
+      priority: getLocationPriority(entry.locationLevel),
     })
   );
 
@@ -542,22 +691,44 @@ ${nodes.join("")}
 };
 
 /* =========================================================
-   LOCATION SITEMAP -- /sitemap-location-{districtslug}.xml
-   Category pages for a district and its active descendant masterlocations.
-   Public URLs use the app route shape: /:final-place-slug/:category.
+   LOCATION SITEMAP -- /sitemap-location-{districtslug}-{page}.xml
+   Full location x category matrix (every active masterlocation at every level
+   crossed with every active category), paginated under the 50k URL cap.
+   Public URLs use the district-prefixed route shape:
+   /:district/:category for district-wide pages, and
+   /:district/:final-place-slug/:category for nested location pages.
 ========================================================= */
-router.get("/sitemap-location-:districtslug.xml", async (req, res) => {
+router.get("/sitemap-location-:districtslug-:page.xml", async (req, res) => {
   try {
-    return sendLocationSitemap(req.params.districtslug, res);
+    return await sendLocationSitemap(req.params.districtslug, req.params.page, res);
   } catch (error) {
     console.error("LOCATION_SITEMAP_ERROR:", error);
     return res.status(500).end();
   }
 });
 
+// Back-compat alias for the pre-pagination URL shape (serves page 1).
+router.get("/sitemap-location-:districtslug.xml", async (req, res) => {
+  try {
+    return await sendLocationSitemap(req.params.districtslug, 1, res);
+  } catch (error) {
+    console.error("LOCATION_SITEMAP_ERROR:", error);
+    return res.status(500).end();
+  }
+});
+
+router.get("/sitemap-city-:cityslug-:page.xml", async (req, res) => {
+  try {
+    return sendLocationSitemap(req.params.cityslug, req.params.page, res);
+  } catch (error) {
+    console.error("CITY_SITEMAP_ALIAS_ERROR:", error);
+    return res.status(500).end();
+  }
+});
+
 router.get("/sitemap-city-:cityslug.xml", async (req, res) => {
   try {
-    return sendLocationSitemap(req.params.cityslug, res);
+    return await sendLocationSitemap(req.params.cityslug, 1, res);
   } catch (error) {
     console.error("CITY_SITEMAP_ALIAS_ERROR:", error);
     return res.status(500).end();
@@ -565,7 +736,7 @@ router.get("/sitemap-city-:cityslug.xml", async (req, res) => {
 });
 
 /* =========================================================
-   BUSINESS SITEMAP  â€” /sitemap-business-{page}.xml
+   BUSINESS SITEMAP  — /sitemap-business-{page}.xml
 ========================================================= */
 /* =========================================================
    LEGACY LOCATION SITEMAP -- /sitemap-legacy-locations.xml
@@ -598,7 +769,9 @@ ${nodes.join("")}
 
 /* =========================================================
    BUSINESS DETAIL SITEMAP -- /sitemap-business-{page}.xml
-   Emits /business/:location/:businessSlug/:id URLs.
+   Emits district-prefixed /business/:district/:location/:businessSlug/:id
+   URLs when a business has district context, with the legacy two-segment
+   shape retained only for unlinked records.
 ========================================================= */
 router.get("/sitemap-business-:page.xml", async (req, res) => {
   try {
@@ -606,11 +779,13 @@ router.get("/sitemap-business-:page.xml", async (req, res) => {
     const skip = (page - 1) * LIMIT;
 
     const businesses = await businessListModel
+      // No `slug` — see helper/businessList/businessUrl.js for why that field
+      // is not the business's URL slug and must not be read when building one.
       .find(activeFilter, {
         _id: 1,
         businessName: 1,
         name: 1,
-        slug: 1,
+        publicId: 1,
         location: 1,
         masterLocation: 1,
         updatedAt: 1,
@@ -620,15 +795,26 @@ router.get("/sitemap-business-:page.xml", async (req, res) => {
       .limit(LIMIT)
       .lean();
 
+    const { locationDocsById, districtDocsByName } =
+      await getBusinessSitemapContext(businesses);
+
     const nodes = businesses.map((biz) => {
-      const locationSlug = safeSlug(
-        biz.location || biz.masterLocation?.district || "business"
-      );
-      const businessSlug = safeSlug(
-        biz.slug || biz.businessName || biz.name || "business"
-      );
+      const locationId = biz.masterLocation?.locationId
+        ? String(biz.masterLocation.locationId)
+        : "";
+      const locationDoc = locationId ? locationDocsById.get(locationId) : null;
+      const districtName = locationDoc?.district || biz.masterLocation?.district;
+      const districtDoc =
+        locationDoc?.level === "district"
+          ? locationDoc
+          : districtDocsByName.get(normalizeLocationPart(districtName));
+
       return createUrlNode({
-        loc: `${BASE_URL}/business/${locationSlug}/${businessSlug}/${biz._id}`,
+        loc: `${BASE_URL}${buildBusinessSitemapPath({
+          biz,
+          locationDoc,
+          districtDoc,
+        })}`,
         lastmod: isoDate(biz.updatedAt),
         changefreq: "weekly",
         priority: "0.8",
@@ -648,7 +834,7 @@ ${nodes.join("")}
 });
 
 /* =========================================================
-   BLOG SITEMAP  â€” /sitemap-blog.xml
+   BLOG SITEMAP  — /sitemap-blog.xml
 ========================================================= */
 router.get("/sitemap-blog.xml", async (req, res) => {
   try {
@@ -683,7 +869,7 @@ ${nodes.join("")}
 });
 
 /* =========================================================
-   HTML SITEMAP  â€” /sitemap
+   HTML SITEMAP  — /sitemap
 ========================================================= */
 router.get("/sitemap", async (req, res) => {
   try {
@@ -706,7 +892,7 @@ router.get("/sitemap", async (req, res) => {
 
     const locationLinks = districts.map(
       (district) =>
-        `<li><a href="${BASE_URL}/sitemap-location-${district.slug}.xml">${xmlEscape(getLocationLabel(district))}</a></li>`
+        `<li><a href="${BASE_URL}/sitemap-location-${getDistrictUrlSlug(district)}-1.xml">${xmlEscape(getLocationLabel(district))}</a></li>`
     );
 
     if (hasLegacyLocationPages) {
@@ -746,7 +932,7 @@ router.get("/sitemap", async (req, res) => {
 });
 
 /* =========================================================
-   LLMS.TXT  â€” /llms.txt and /llms-full.txt
+   LLMS.TXT  — /llms.txt and /llms-full.txt
    Discovery files for AI crawlers (Perplexity, Claude, Gemini, Copilot)
    following the llmstxt.org spec: H1 + blockquote summary +
    H2 sections of markdown links. Built dynamically from live
@@ -758,25 +944,30 @@ let _llmsBuiltAt = 0;
 const titleCase = (text = "") =>
   String(text)
     .toLowerCase()
+    .replace(/-/g, " ")
     .replace(/\b\w/g, (c) => c.toUpperCase());
 
 const buildLlmsData = async () => {
   const now = Date.now();
   if (_llmsCache && now - _llmsBuiltAt < CACHE_TTL_MS) return _llmsCache;
 
-  const [categoryLookup, cityCategoryCounts, blogs] = await Promise.all([
+  const [categoryLookup, locationCategoryCounts, blogs] = await Promise.all([
     buildCategoryLookup(),
     businessListModel.aggregate([
       {
         $match: {
           ...activeFilter,
-          location: { $exists: true, $ne: "" },
           category: { $exists: true, $ne: "" },
         },
       },
       {
         $group: {
-          _id: { location: "$location", category: "$category" },
+          _id: {
+            district: "$masterLocation.district",
+            locationId: "$masterLocation.locationId",
+            location: "$location",
+            category: "$category",
+          },
           count: { $sum: 1 },
         },
       },
@@ -790,22 +981,99 @@ const buildLlmsData = async () => {
       .lean(),
   ]);
 
-  // merge counts per city slug, then per category page path within the city
-  const cityMap = new Map();
-  for (const row of cityCategoryCounts) {
-    const { location, category } = row._id;
-    const citySlug = safeSlug(location);
-    if (!citySlug || !isValidCitySlug(citySlug)) continue;
+  const locationIds = [
+    ...new Set(
+      locationCategoryCounts
+        .map((row) => row._id.locationId)
+        .filter(Boolean)
+        .map((id) => String(id))
+    ),
+  ];
+  const locationDocs = locationIds.length
+    ? await masterLocationModel
+        .find(
+          { _id: { $in: locationIds }, isActive: true },
+          {
+            district: 1,
+            zone: 1,
+            ward: 1,
+            locality: 1,
+            level: 1,
+            publicLocationSlug: 1,
+            urlAlias: 1,
+          }
+        )
+        .lean()
+    : [];
+  const locationDocsById = new Map(
+    locationDocs.map((doc) => [String(doc._id), doc])
+  );
+  const districtNames = [
+    ...new Set(
+      [
+        ...locationCategoryCounts.map((row) => row._id.district),
+        ...locationDocs.map((doc) => doc.district),
+      ]
+        .map((name) => String(name || "").trim())
+        .filter(Boolean)
+    ),
+  ];
+  const districtDocs = districtNames.length
+    ? await masterLocationModel
+        .find(
+          {
+            level: "district",
+            isActive: true,
+            district: { $in: districtNames },
+          },
+          { district: 1, urlAlias: 1 }
+        )
+        .lean()
+    : [];
+  const districtDocsByName = new Map(
+    districtDocs.map((doc) => [normalizeLocationPart(doc.district), doc])
+  );
 
-    if (!cityMap.has(citySlug)) {
-      cityMap.set(citySlug, {
-        slug: citySlug,
-        name: titleCase(location),
+  // Merge counts per public location page, then per category path within it.
+  const cityMap = new Map();
+  for (const row of locationCategoryCounts) {
+    const { category, location } = row._id;
+    const locationDoc = row._id.locationId
+      ? locationDocsById.get(String(row._id.locationId))
+      : null;
+    const districtName = locationDoc?.district || row._id.district;
+    const districtDoc = districtDocsByName.get(normalizeLocationPart(districtName));
+    const districtSlug = districtDoc ? getDistrictUrlSlug(districtDoc) : "";
+    const locationSlug = districtSlug
+      ? getSitemapLocationSlug(locationDoc || {})
+      : safeSlug(location);
+
+    if (districtSlug && locationSlug && !isValidCitySlug(locationSlug)) continue;
+    if (!districtSlug && (!locationSlug || !isValidCitySlug(locationSlug))) continue;
+
+    const hrefBase = districtSlug
+      ? `/${[districtSlug, locationSlug].filter(Boolean).join("/")}`
+      : `/${locationSlug}`;
+    const locationName =
+      locationDoc?.level === "district"
+        ? districtDoc?.urlAlias || districtDoc?.district || location
+        : locationDoc?.locality ||
+          locationDoc?.ward ||
+          locationDoc?.zone ||
+          location ||
+          districtDoc?.urlAlias ||
+          districtDoc?.district ||
+          "";
+
+    if (!cityMap.has(hrefBase)) {
+      cityMap.set(hrefBase, {
+        hrefBase,
+        name: titleCase(locationName),
         total: 0,
         pages: new Map(),
       });
     }
-    const city = cityMap.get(citySlug);
+    const city = cityMap.get(hrefBase);
     city.total += row.count;
 
     const catPath = resolveCategoryPath(category, categoryLookup);
@@ -860,7 +1128,7 @@ router.get("/llms.txt", async (req, res) => {
       .slice(0, 25)
       .map(
         (p) =>
-          `- [${p.label} in ${p.city.name}](${BASE_URL}/${p.city.slug}/${p.path}): ${p.count} verified listing${p.count === 1 ? "" : "s"} with ratings, addresses, and phone numbers`
+          `- [${p.label} in ${p.city.name}](${BASE_URL}${p.city.hrefBase}/${p.path}): ${p.count} verified listing${p.count === 1 ? "" : "s"} with ratings, addresses, and phone numbers`
       );
 
     const cityLines = cities
@@ -874,7 +1142,7 @@ router.get("/llms.txt", async (req, res) => {
 
     return sendLlmsText(
       res,
-      `# Massclick â€” Local Business Directory India
+      `# Massclick — Local Business Directory India
 
 > Massclick is India's local business discovery platform with ${totalListings} verified listings across ${cities.length} cities. Users search by city and category (e.g. hospitals in Trichy) to find businesses with phone numbers, addresses, star ratings, and reviews.
 
@@ -918,7 +1186,7 @@ router.get("/llms-full.txt", async (req, res) => {
     const citySections = cities.map((city) => {
       const links = city.pages.map(
         (p) =>
-          `- [${p.label} in ${city.name}](${BASE_URL}/${city.slug}/${p.path}): ${p.count} verified listing${p.count === 1 ? "" : "s"}`
+          `- [${p.label} in ${city.name}](${BASE_URL}${city.hrefBase}/${p.path}): ${p.count} verified listing${p.count === 1 ? "" : "s"}`
       );
       return `## ${city.name} (${city.total} listings)\n${links.join("\n")}`;
     });
@@ -929,7 +1197,7 @@ router.get("/llms-full.txt", async (req, res) => {
 
     return sendLlmsText(
       res,
-      `# Massclick â€” Complete Page Index
+      `# Massclick — Complete Page Index
 
 > Every live city and category page on massclick.in with verified listing counts. Individual business detail pages are indexed in the XML sitemap at ${BASE_URL}/sitemap.xml.
 
@@ -946,6 +1214,20 @@ ${LLMS_COMPANY_SECTION}
     return res.status(500).end();
   }
 });
+
+/* =========================================================
+   CACHE RESET — used by the admin "Regenerate Sitemap" action
+   (POST /api/admin/cache/sitemap/regenerate) so a category or
+   masterlocation change shows up immediately instead of waiting
+   for the 1-hour TTL.
+========================================================= */
+export const resetSitemapCaches = () => {
+  _categoryLookupCache = null;
+  _categoryLookupBuiltAt = 0;
+  _districtPagesCache.clear();
+  _llmsCache = null;
+  _llmsBuiltAt = 0;
+};
 
 export default router;
 

@@ -45,6 +45,9 @@ const TwoWayAwareness = lazy(
 const MassclickEvents = lazy(
   () => import("./massclickEvents/MassclickEvents.js"),
 );
+const EventCarousel = lazy(
+  () => import("./events/eventCarousel/eventCarousel.js"),
+);
 const TrendingSearchesCarousel = lazy(
   () => import("./trendingSearch/trendingSearch"),
 );
@@ -110,6 +113,7 @@ const SECTION_HEIGHTS = {
   featured: "var(--featured-services-reserved-height)",
   service: 420,
   events: 380,
+  localEvents: 460,
   trending: 290,
   popular: 330,
   tourist: 350,
@@ -326,6 +330,10 @@ const LandingPage = React.memo(() => {
     <>
       <DeferredHomeSection minHeight={SECTION_HEIGHTS.events}>
         <MassclickEvents />
+      </DeferredHomeSection>
+
+      <DeferredHomeSection minHeight={SECTION_HEIGHTS.localEvents}>
+        <EventCarousel locationLabel={locationName} />
       </DeferredHomeSection>
 
       <DeferredHomeSection

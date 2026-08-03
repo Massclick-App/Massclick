@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import SearchIcon from "@mui/icons-material/Search";
 import MenuIcon from "@mui/icons-material/Menu";
 import CloseIcon from "@mui/icons-material/Close";
+import { buildCategoryPath } from "../../../../utils/searchResultNavigation";
 import RestaurantIcon from "@mui/icons-material/Restaurant";
 import FlightTakeoffIcon from "@mui/icons-material/FlightTakeoff";
 import CheckroomIcon from "@mui/icons-material/Checkroom";
@@ -40,9 +41,11 @@ const Navbar = ({
   const [searchInput, setSearchInput] = useState("");
   const displayTags = Array.isArray(tags) && tags.length > 0 ? tags : ["Food & Beverage", "Travel & Tourism", "Beauty & Fashion", "Health & Fitness", "Recreation", "Education & Career"];
   const handleTagClick = tag => {
-    const locationSlug = (location || "trichy").toLowerCase().trim().replace(/\s+/g, "-");
-    const tagSlug = tag.toLowerCase().trim().replace(/\s+/g, "-");
-    window.location.href = `https://massclick.in/${locationSlug}/${tagSlug}`;
+    const listingPath = buildCategoryPath({
+      location: location || "trichy",
+      category: tag,
+    });
+    window.location.href = `https://massclick.in${listingPath}`;
   };
   const toggleMenu = () => setMenuOpen(open => !open);
   const handleSearchChange = value => {
@@ -135,7 +138,7 @@ const Navbar = ({
             handleTagClick(tag);
           }
         }}>
-              {/* <Icon className={cx("category-icon")} /> */}
+              <Icon className={cx("category-icon")} />
               <span>{tag}</span>
             </div>;
       })}

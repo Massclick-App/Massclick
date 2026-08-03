@@ -335,6 +335,7 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater, onSuccess }) => {
         <Dialog
             open={open && isDialogOpen}
             onClose={handleClose}
+            aria-labelledby="otp-login-dialog-title"
             keepMounted
             maxWidth="sm"
             fullWidth={false}
@@ -376,6 +377,7 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater, onSuccess }) => {
         >
             <IconButton
                 onClick={handleClose}
+                aria-label="Close"
                 sx={{
                     position: 'absolute',
                     right: 16,
@@ -425,6 +427,7 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater, onSuccess }) => {
                 </Box>
 
                 <Typography
+                    id="otp-login-dialog-title"
                     variant="h5"
                     sx={{
                         mt: 0,

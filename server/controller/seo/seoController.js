@@ -37,7 +37,7 @@ const normalizeSeoText = (text = "") =>
 
 export const getSeoMetaAction = async (req, res) => {
   try {
-    let { pageType, category, location } = req.query;
+    let { pageType, category, location, district } = req.query;
 
     if (!pageType) {
       return res.status(400).send({ message: "pageType is required" });
@@ -47,6 +47,9 @@ export const getSeoMetaAction = async (req, res) => {
       pageType: normalizeSeoText(pageType),
       category: category ? normalizeSeoText(category) : undefined,
       location: location ? normalizeSeoText(location) : undefined,
+      // Not run through normalizeSeoText — district is a URL slug ("trichy"),
+      // not free text; getSeoMeta handles its own minimal normalization.
+      district: district || undefined,
     });
 
     res.send(seoData);

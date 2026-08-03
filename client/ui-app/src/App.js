@@ -140,6 +140,8 @@ const MobileHomeDock = lazy(() => import(/* webpackChunkName: "mobile-home-dock"
 const OTPLoginModal = lazy(() => import(/* webpackChunkName: "otp-modal" */ './Internals/clientComponent/AddBusinessModel.js'));
 
 const CategoryRouter = lazy(() => import(/* webpackChunkName: "category-router" */ './Internals/clientComponent/categories/categoryRouter.js'));
+const DistrictRouteResolver = lazy(() => import(/* webpackChunkName: "district-route-resolver" */ './Internals/clientComponent/categories/DistrictRouteResolver.js'));
+const CategoriesPage = lazy(() => import(/* webpackChunkName: "category-directory" */ './Internals/clientComponent/categories/categories.js'));
 const BlogDetail = lazy(() => import(/* webpackChunkName: "blog-detail" */ './Internals/clientComponent/relatedBlogs/blogDetails/blogDetails.js'));
 const MaintenanceOverlay = lazy(() => import(/* webpackChunkName: "maintenance" */ './components/MaintenanceOverlay.js'));
 
@@ -261,6 +263,7 @@ function AppRoutes({
           <Route path="/publicize" element={<PublicizePage />} />
           <Route path="/events" element={<EventCarousel />} />
           <Route path="/events/:eventSlug/:id" element={<EventDetails />} />
+          <Route path="/massclick-events/:id" element={<MassclickEventDetails />} />
           <Route path="/user/search-history" element={<LeadsCardHistory />} />
           <Route path="/business-enquiry" element={<BusinessEnquiry />} />
           <Route path="/claim-rewards" element={<RewardClaimPage />} />
@@ -299,18 +302,35 @@ function AppRoutes({
             <Route key={path} path={path} element={element} />
           ))}
 
-          <Route path="/:location" element={<Navigate to="/" replace />} />
-          <Route path="/:location/:category" element={<CategoryRouter />} />
+          <Route path="/:district" element={<CategoriesPage mode="districtLanding" />} />
+          <Route path="/:district/:category" element={<CategoryRouter />} />
           <Route
-            path="/:location/:category/:subcategory"
+            path="/:district/:p2/:p3"
+            element={<DistrictRouteResolver />}
+          />
+          <Route
+            path="/:district/:location/:category/:subcategory"
             element={<SearchResults />}
           />
 
+          {/* Current shape. The trailing segment is <name-slug>-<publicId>;
+              the page resolves by the publicId and the slug is cosmetic. */}
+          <Route
+            path="/business/:district/:businessSegment"
+            element={<BusinessDetails />}
+          />
+          {/* Superseded shapes, kept live so already-indexed URLs and printed
+              QR codes still render while the server 301s them to the above.
+              Removing them would turn those redirects into dead ends for any
+              business that has no publicId yet. */}
+          <Route
+            path="/business/:district/:location/:businessSlug/:id"
+            element={<BusinessDetails />}
+          />
           <Route
             path="/business/:location/:businessSlug/:id"
             element={<BusinessDetails />}
           />
-          <Route path="/massclick-events/:id" element={<MassclickEventDetails />} />
 
           <Route element={<PrivateRoute isAuthenticated={isAuthenticated} isReady={authReady} />}>
             <Route path="/dashboard" element={<Dashboard />}>
