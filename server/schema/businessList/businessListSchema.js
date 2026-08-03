@@ -1,4 +1,5 @@
 import mongoose from "mongoose"
+import { generateUniquePublicId } from "../../helper/businessList/businessUrl.js";
 const { Schema } = mongoose;
 
 const paymentSchema = new mongoose.Schema({
@@ -136,6 +137,27 @@ const businessListSchema = new mongoose.Schema({
   clientId: { type: String, default: '', },
   name: { type: String, default: '', },
   businessName: { type: String, default: '', },
+  // Short, stable, public-facing identifier — the trailing chunk of a business
+  // detail URL (/business/trichy/hexahub-homestay-a1b2c3). Exists so the URL
+  // can carry the business name without the name having to be unique, and so
+  // renaming a business is a cosmetic slug change rather than a new identity.
+  //
+  // Deliberately NOT derived from _id: slicing an ObjectId gives no uniqueness
+  // guarantee (6 hex chars over ~10k businesses is roughly a 0.3% collision
+  // chance), and the full ObjectId leaks the document's creation timestamp.
+  // Generated randomly and retried against the unique index below instead —
+  // see generatePublicId in helper/businessList/businessUrl.js.
+  //
+  // The uniqueness index is declared below via schema.index() rather than
+  // here: it has to be a PARTIAL index, which the field-level shorthand can't
+  // express. `sparse` would be wrong — it only skips documents missing the
+  // field, not ones holding an explicit null, and this field defaults to null.
+  // With sparse, the second business written without a generated publicId
+  // would fail with a duplicate-key error on null.
+  publicId: {
+    type: String,
+    default: null,
+  },
   sourcePublicizeId: {
     type: Schema.Types.ObjectId,
     ref: 'publicize',
@@ -310,6 +332,15 @@ businessListSchema.index({ geoLocation: "2dsphere" });
 businessListSchema.index({ "masterLocation.slug": 1 });
 businessListSchema.index({ "masterLocation.district": 1, isActive: 1 });
 
+// Public URL identity. Partial rather than sparse so that documents holding a
+// null publicId (the field default, e.g. a pre-backfill doc or a bulk insert
+// that bypassed the assignPublicId hook) are excluded from the index entirely
+// instead of colliding with each other on null.
+businessListSchema.index(
+  { publicId: 1 },
+  { unique: true, partialFilterExpression: { publicId: { $type: "string" } } },
+);
+
 businessListSchema.pre("validate", function syncBusinessName(next) {
   if (!this.businessName && this.name) {
     this.businessName = this.name;
@@ -320,6 +351,21 @@ businessListSchema.pre("validate", function syncBusinessName(next) {
   }
 
   next();
+});
+
+// Mint a publicId for new documents so a business is URL-addressable the
+// moment it exists. Never overwrites one — a publicId is permanent public
+// identity; changing it would break every indexed URL and printed QR code for
+// that business.
+businessListSchema.pre("validate", async function assignPublicId(next) {
+  if (this.publicId) return next();
+
+  try {
+    this.publicId = await generateUniquePublicId(this.constructor);
+    return next();
+  } catch (error) {
+    return next(error);
+  }
 });
 
 export default businessListSchema;

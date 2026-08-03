@@ -8,7 +8,10 @@ import {
   getDistrictUrlSlug,
   getPublicLocationSlug,
 } from "../helper/location/locationSlug.js";
-import { getBusinessUrlSlug } from "../helper/businessList/businessUrl.js";
+import {
+  getBusinessUrlSlug,
+  buildBusinessPath as buildCanonicalBusinessPath,
+} from "../helper/businessList/businessUrl.js";
 import seoPageContentBlogs from "../model/seoModel/seoPageContentBlogModel.js";
 import { categoriesData } from "../utils/sub-categoriesData.js";
 import { STATIC_PAGES } from "../config/ssrConfig.js";
@@ -558,9 +561,16 @@ const buildBusinessSitemapPath = ({
   locationDoc = null,
   districtDoc = null,
 } = {}) => {
+  const districtSlug = districtDoc ? getDistrictUrlSlug(districtDoc) : "";
+
+  const canonical = buildCanonicalBusinessPath({ districtSlug, business: biz });
+  if (canonical) return canonical;
+
+  // Only reachable for a business with no publicId or no district context.
+  // The pre-Phase-B shape is the one that still resolves in that state, so
+  // emit it rather than advertising a URL crawlers cannot follow.
   const businessSlug = getBusinessUrlSlug(biz);
   const locationSlug = getBusinessLocationSlug(biz, locationDoc);
-  const districtSlug = districtDoc ? getDistrictUrlSlug(districtDoc) : "";
   const segments = districtSlug
     ? ["business", districtSlug, locationSlug, businessSlug, biz._id]
     : ["business", locationSlug, businessSlug, biz._id];
@@ -775,6 +785,7 @@ router.get("/sitemap-business-:page.xml", async (req, res) => {
         _id: 1,
         businessName: 1,
         name: 1,
+        publicId: 1,
         location: 1,
         masterLocation: 1,
         updatedAt: 1,

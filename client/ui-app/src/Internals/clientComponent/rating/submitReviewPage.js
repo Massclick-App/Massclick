@@ -134,6 +134,7 @@ const WriteReviewPage = () => {
       districtSlug: createDistrictSlug(business.masterLocation?.district || business.district || ""),
       location: business.location,
       businessName: business.businessName,
+      publicId: business.publicId,
       id: businessId,
     });
     setShowSuccessModal(false);

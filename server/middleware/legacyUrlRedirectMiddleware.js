@@ -10,7 +10,12 @@ import {
   getPublicLocationSlug,
 } from "../helper/location/locationSlug.js";
 import { classifyMiddleSegment } from "../helper/location/urlSegmentClassifier.js";
-import { getBusinessUrlSlug } from "../helper/businessList/businessUrl.js";
+import {
+  getBusinessUrlSlug,
+  buildBusinessPath,
+  parseBusinessUrlSegment,
+  PUBLIC_ID_RE,
+} from "../helper/businessList/businessUrl.js";
 import { slugify } from "../slugify.js";
 
 const REDIRECT_STATUS = 301;
@@ -37,6 +42,7 @@ const businessProjection = {
   _id: 1,
   businessName: 1,
   name: 1,
+  publicId: 1,
   location: 1,
   masterLocation: 1,
 };
@@ -85,17 +91,13 @@ const getRouteLocationSlug = (locationDoc = null, fallback = "") => {
   );
 };
 
-const isNewStyleBusinessPath = async (parts = []) => {
-  if (parts[0] !== "business" || parts.length < 5) return false;
-  const districtDoc = await resolveDistrictBySlug(parts[1]).catch(() => null);
-  if (!districtDoc) return false;
-
-  // Business detail pages are id-backed on the client, and older/newer
-  // generated links may carry either a publicLocationSlug or a free-text
-  // location slug as the location segment. District validity is the critical
-  // new-style discriminator; do not reinterpret it as legacy after this.
-  return true;
-};
+// The current shape is /business/:district/:slug-:publicId — three segments,
+// with the trailing segment carrying a well-formed publicId. Anything else
+// under /business is a superseded shape to be redirected.
+const isNewStyleBusinessPath = (parts = []) =>
+  parts[0] === "business" &&
+  parts.length === 3 &&
+  parseBusinessUrlSegment(parts[2]) !== null;
 
 const isNewStyleCategoryPath = async (parts = []) => {
   if (parts.length < 2 || parts.length > 4) return false;
@@ -107,6 +109,10 @@ const resolvesAsNewStyle = async (parts = []) => {
   if (parts[0] === "business") return isNewStyleBusinessPath(parts);
   return isNewStyleCategoryPath(parts);
 };
+
+// Business URLs are matched by shape alone (isNewStyleBusinessPath), so a
+// "business" first segment must never be handed to the category classifier —
+// it would try to resolve "business" as a district.
 
 const buildLegacyCategoryRedirect = async (parts = []) => {
   if (parts.length < 2 || parts.length > 3) return null;
@@ -133,6 +139,56 @@ const findBusinessForLegacyPath = async (id = "") => {
   return businessListModel.findById(id, businessProjection).lean();
 };
 
+const findBusinessByPublicId = async (publicId = "") => {
+  if (!PUBLIC_ID_RE.test(publicId)) return null;
+  return businessListModel.findOne({ publicId }, businessProjection).lean();
+};
+
+/**
+ * The one URL this business should be reachable at, or null when it cannot be
+ * built — no publicId (pre-backfill) or no resolvable district. Callers must
+ * fall back to the superseded shape in that case rather than redirecting to
+ * something unresolvable.
+ *
+ * The district segment comes from getDistrictUrlSlug, so it honours `urlAlias`
+ * ("Tiruchirappalli" -> "trichy"). Emitters without a district doc on hand
+ * (QR codes, certificates, emails) slugify the raw district name instead and
+ * therefore mint "tiruchirappalli"; those URLs land here and get 301'd to the
+ * aliased form on first request rather than persisting as duplicates.
+ */
+const buildCanonicalBusinessPath = async (business = {}) => {
+  const districtName = business.masterLocation?.district;
+  if (!districtName) return null;
+
+  const districtDoc = await findDistrictDocByName(districtName);
+  if (!districtDoc) return null;
+
+  return buildBusinessPath({
+    districtSlug: getDistrictUrlSlug(districtDoc),
+    business,
+  });
+};
+
+/**
+ * Superseded target, used only while a business still has no publicId. This is
+ * the shape Phase A produced; it remains resolvable because the client route
+ * for it is kept alongside the new one.
+ */
+const buildSupersededBusinessPath = async (business = {}, legacyLocation = "") => {
+  const locationDoc = await findLocationDocForBusiness(business, legacyLocation);
+  const districtName = locationDoc?.district || business.masterLocation?.district;
+  const districtDoc = await findDistrictDocByName(districtName);
+  if (!districtDoc) return null;
+
+  const districtSlug = getDistrictUrlSlug(districtDoc);
+  const locationSlug = getRouteLocationSlug(locationDoc, business.location || legacyLocation);
+  return `/business/${districtSlug}/${locationSlug}/${getBusinessUrlSlug(business)}/${business._id}`;
+};
+
+const buildBusinessTarget = async (business = {}, legacyLocation = "") =>
+  (await buildCanonicalBusinessPath(business)) ||
+  (await buildSupersededBusinessPath(business, legacyLocation));
+
 const findLocationDocForBusiness = async (business = {}, legacyLocation = "") => {
   const locationId = business.masterLocation?.locationId;
   if (locationId && mongoose.Types.ObjectId.isValid(locationId)) {
@@ -148,45 +204,32 @@ const findLocationDocForBusiness = async (business = {}, legacyLocation = "") =>
 const isLegacyBusinessIdPath = (parts = []) =>
   parts[0] === "business" && parts.length === 2;
 
+// /business/:id — the pre-district-migration shape, still live in printed QR
+// codes. Phase A had to 404 these because the id alone was ambiguous once the
+// router treated "business" as a district; now it resolves and redirects.
 const buildLegacyBusinessIdRedirect = async (parts = []) => {
   if (!isLegacyBusinessIdPath(parts)) return null;
 
-  const [, businessId] = parts;
-  const business = await findBusinessForLegacyPath(businessId);
+  const business = await findBusinessForLegacyPath(parts[1]);
   if (!business) return null;
 
-  const locationDoc = await findLocationDocForBusiness(business, business.location || "");
-  const districtName = locationDoc?.district || business.masterLocation?.district;
-  const districtDoc = await findDistrictDocByName(districtName);
-  if (!districtDoc) return null;
-
-  const districtSlug = getDistrictUrlSlug(districtDoc);
-  const locationSlug = getRouteLocationSlug(locationDoc, business.location || "");
-  const businessSlug = getBusinessUrlSlug(business);
-
-  return `/business/${districtSlug}/${locationSlug}/${businessSlug}/${business._id}`;
+  return buildBusinessTarget(business, business.location || "");
 };
 
+// /business/:location/:slug/:id (pre-district migration) and
+// /business/:district/:location/:slug/:id (Phase A). Both carry the ObjectId
+// last, which is what resolves them.
 const buildLegacyBusinessRedirect = async (parts = []) => {
-  if (parts[0] !== "business" || parts.length !== 4) return null;
+  if (parts[0] !== "business") return null;
+  if (parts.length !== 4 && parts.length !== 5) return null;
 
-  const [, legacyLocation, , businessId] = parts;
+  const businessId = parts[parts.length - 1];
+  const legacyLocation = parts.length === 5 ? parts[2] : parts[1];
+
   const business = await findBusinessForLegacyPath(businessId);
   if (!business) return null;
 
-  const locationDoc = await findLocationDocForBusiness(business, legacyLocation);
-  const districtName = locationDoc?.district || business.masterLocation?.district;
-  const districtDoc = await findDistrictDocByName(districtName);
-  if (!districtDoc) return null;
-
-  const districtSlug = getDistrictUrlSlug(districtDoc);
-  const locationSlug = getRouteLocationSlug(
-    locationDoc,
-    business.location || legacyLocation,
-  );
-  const businessSlug = getBusinessUrlSlug(business);
-
-  return `/business/${districtSlug}/${locationSlug}/${businessSlug}/${business._id}`;
+  return buildBusinessTarget(business, legacyLocation);
 };
 
 // A district-prefixed 3-segment URL (/:district/:p2/:p3) whose middle
@@ -198,37 +241,30 @@ const buildLegacyBusinessRedirect = async (parts = []) => {
 // the address bar keeps showing a URL shaped like a locality-specific page.
 // Distinct from resolveLegacyRedirectTargetForPath's other cases: this is a
 // NEW-style URL (resolvesAsNewStyle is true for it), not a pre-migration one.
-// A new-style /business/:district/:location/:businessSlug/:id whose slug
-// segment is not the canonical one. Routing resolves the page by :id alone, so
-// ANY string in that segment serves a 200 — which is how one business was
-// simultaneously reachable at .../hotels/<id> (emitters reading
-// businesslists.slug) and .../hexahub-homestay.../<id> (emitters reading
-// businessName), with nothing declaring which was real. 301 to the canonical
-// slug so already-indexed URLs, printed QR codes, and shared links self-heal
-// instead of accumulating as duplicates.
-//
-// Only the slug segment is canonicalized. The location segment still varies by
-// emitter (a resolved publicLocationSlug vs a slugified free-text `location`,
-// which for a district-linked business are legitimately different strings), so
-// validating it here would 301 links this app itself generates. Dropping that
-// segment is a separate change.
-//
-// No loop is possible: the target differs from its input in exactly one
-// segment, whose value equals getBusinessUrlSlug(business) by construction —
-// so feeding the target back through this function returns null at the
-// equality check below.
-const resolveNewStyleBusinessCanonicalRedirect = async (parts = [], path = "") => {
-  if (parts.length !== 5) return null;
 
-  const [, districtSlug, locationSlug, businessSlug, businessId] = parts;
-  const business = await findBusinessForLegacyPath(businessId);
+// A current-shape /business/:district/:slug-:publicId that isn't in canonical
+// form — a stale name slug after a rename, or a district segment that skipped
+// the urlAlias (QR, certificate and email links mint "tiruchirappalli" rather
+// than "trichy"; see buildCanonicalBusinessPath).
+//
+// The page resolves by publicId alone, so every variant serves a 200 and
+// nothing declares which one is real. Now that the location segment is gone
+// the WHOLE path can be canonicalized safely — in Phase A it could not,
+// because that segment legitimately differed between emitters and validating
+// it would have redirected the app's own links.
+//
+// No loop is possible: the target is buildCanonicalBusinessPath's output,
+// a pure function of the business document, so re-feeding it produces the same
+// string and exits at the equality check below.
+const resolveNewStyleBusinessCanonicalRedirect = async (parts = [], path = "") => {
+  const parsed = parseBusinessUrlSegment(parts[2]);
+  if (!parsed) return null;
+
+  const business = await findBusinessByPublicId(parsed.publicId);
   if (!business) return null;
 
-  const canonicalSlug = getBusinessUrlSlug(business);
-  if (businessSlug === canonicalSlug) return null;
-
-  const target = `/business/${districtSlug}/${locationSlug}/${canonicalSlug}/${business._id}`;
-  if (samePath(path, target)) return null;
+  const target = await buildCanonicalBusinessPath(business);
+  if (!target || samePath(path, target)) return null;
   return target;
 };
 
@@ -291,12 +327,12 @@ export const legacyUrlRedirectMiddleware = async (req, res, next) => {
       return res.redirect(REDIRECT_STATUS, appendOriginalQuery(req, target));
     }
 
-    // Bare /business/<id> is the pre-migration business-detail URL shape
-    // (see git history); it no longer matches any route. Rather than let it
-    // fall through to the district/category router — which treats "business"
-    // as a district and the id as a category, producing an indexable
-    // "Best <id> in business" page for any random hex string — return 404
-    // outright so unmatched legacy/QR-code links stop getting (re)indexed.
+    // A bare /business/<id> that got here did NOT resolve to a business above,
+    // so the id is stale or junk. Left to fall through it would reach the
+    // district/category router, which reads "business" as a district and the
+    // id as a category and renders an indexable "Best <id> in business" page
+    // for any random hex string. 404 outright instead. (A bare id that DOES
+    // resolve is redirected above and never reaches this line.)
     const parts = pathParts(req.path || req.url);
     if (isLegacyBusinessIdPath(parts)) {
       res.setHeader("X-Robots-Tag", "noindex, nofollow");

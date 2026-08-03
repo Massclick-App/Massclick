@@ -305,6 +305,16 @@ function AppRoutes({
             element={<SearchResults />}
           />
 
+          {/* Current shape. The trailing segment is <name-slug>-<publicId>;
+              the page resolves by the publicId and the slug is cosmetic. */}
+          <Route
+            path="/business/:district/:businessSegment"
+            element={<BusinessDetails />}
+          />
+          {/* Superseded shapes, kept live so already-indexed URLs and printed
+              QR codes still render while the server 301s them to the above.
+              Removing them would turn those redirects into dead ends for any
+              business that has no publicId yet. */}
           <Route
             path="/business/:district/:location/:businessSlug/:id"
             element={<BusinessDetails />}

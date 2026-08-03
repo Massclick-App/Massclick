@@ -1,7 +1,7 @@
 import nodemailer from 'nodemailer';
 import { getObjectBufferByKey } from '../../s3Uploder.js';
 import { ensureBusinessCertificates } from '../businessList/businessCertificateHelper.js';
-import { getBusinessUrlSlug } from '../businessList/businessUrl.js';
+import { buildBusinessDetailsPath } from '../businessList/businessPublicUrlHelper.js';
 
 const {
   INVOICE_EMAIL_HOST,
@@ -74,13 +74,11 @@ const slugifyEmailValue = (value = '') =>
 const getPublicBaseUrl = () =>
   String(process.env.PUBLIC_BASE_URL || 'https://massclick.in').replace(/\/+$/, '');
 
-const buildBusinessProfileUrl = (businessData = {}) => {
-  const businessId = businessData?._id?.toString?.() || businessData?._id || businessData?.id || '';
-  const locationSlug = slugifyEmailValue(businessData.location || 'business');
-  const businessSlug = getBusinessUrlSlug(businessData);
-
-  return `${getPublicBaseUrl()}/business/${locationSlug}/${businessSlug}/${businessId}`;
-};
+// Delegates to the shared builder so emailed links carry the same shape as
+// every other emitter. buildBusinessDetailsPath falls back to the pre-Phase-B
+// shape by itself when a business has no publicId yet.
+const buildBusinessProfileUrl = (businessData = {}) =>
+  `${getPublicBaseUrl()}${buildBusinessDetailsPath(businessData)}`;
 
 const detailRow = (label, value, isStrong = false) => `
   <tr>

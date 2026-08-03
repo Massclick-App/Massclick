@@ -92,6 +92,7 @@ const getBusinessProfile = (business = {}, storedUser = {}) => {
         districtSlug,
         location: business.location || "business",
         businessName: business.businessName || business.name,
+        publicId: business.publicId,
         id: businessId,
       })
     : "/user_edit-profile";

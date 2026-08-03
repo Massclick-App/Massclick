@@ -106,8 +106,16 @@ const BusinessDetail = React.memo(() => {
     district,
     location,
     businessSlug,
+    businessSegment,
     id
   } = useParams();
+  // Current URLs carry <name-slug>-<publicId> in one segment and no ObjectId.
+  // The publicId is the chunk after the last hyphen; viewBusinessList accepts
+  // either identifier, so the same fetch action serves both URL shapes.
+  const publicIdFromSegment = businessSegment
+    ? String(businessSegment).slice(String(businessSegment).lastIndexOf("-") + 1)
+    : "";
+  const businessIdentifier = id || publicIdFromSegment;
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const {
@@ -188,8 +196,8 @@ const BusinessDetail = React.memo(() => {
     };
   }, [showCertificate]);
   useEffect(() => {
-    if (id) {
-      dispatch(getBusinessDetailsById(id));
+    if (businessIdentifier) {
+      dispatch(getBusinessDetailsById(businessIdentifier));
     } else if (location && businessSlug) {
       dispatch(getBusinessDetailsBySlug({
         location,
@@ -197,7 +205,7 @@ const BusinessDetail = React.memo(() => {
         district
       }));
     }
-  }, [dispatch, id, district, location, businessSlug]);
+  }, [dispatch, businessIdentifier, district, location, businessSlug]);
   useEffect(() => {
     if (business?._id) {
       dispatch(getBusinessReviews(business._id));
@@ -354,6 +362,7 @@ const BusinessDetail = React.memo(() => {
     districtSlug: district,
     locationSlug: canonicalLocationSlug,
     businessName: business.businessName,
+    publicId: business.publicId,
     id: business._id || id,
   });
   const canonicalUrl = `https://massclick.in${canonicalPath}`;

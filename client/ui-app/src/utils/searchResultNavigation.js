@@ -138,14 +138,47 @@ export const createBusinessSlug = (businessName = "") => {
   return truncated || BUSINESS_SLUG_FALLBACK;
 };
 
+// Mirrors PUBLIC_ID_RE in server/helper/businessList/businessUrl.js: six
+// lowercase alphanumerics containing at least one letter AND one digit. The
+// mixed rule is what lets the trailing chunk of a URL segment be told apart
+// from an ordinary trailing word in the name slug.
+const PUBLIC_ID_RE = /^(?=[a-z0-9]*[a-z])(?=[a-z0-9]*\d)[a-z0-9]{6}$/;
+
+/**
+ * The single path segment identifying a business: `<name-slug>-<publicId>`.
+ * Returns "" when the business has no publicId, which callers must treat as
+ * "fall back to the previous URL shape" — see buildBusinessPath.
+ */
+export const buildBusinessSegment = ({ businessName, publicId } = {}) => {
+  const normalizedPublicId = String(publicId || "").trim().toLowerCase();
+  if (!PUBLIC_ID_RE.test(normalizedPublicId)) return "";
+  return `${createBusinessSlug(businessName)}-${normalizedPublicId}`;
+};
+
+/**
+ * Business detail path.
+ *
+ * Current shape is /business/:district/:slug-:publicId. When a business has no
+ * publicId yet — a record created before the backfill ran in this environment
+ * — the previous /business/:district/:location/:slug/:id shape is emitted
+ * instead, because that is the only one the server can still resolve in that
+ * state. Both are live routes; the server 301s the old one to the new.
+ */
 export const buildBusinessPath = ({
   districtSlug = "",
   locationSlug = "",
   location = "",
   businessName,
+  publicId,
   id,
 } = {}) => {
   const resolvedDistrictSlug = createDistrictSlug(districtSlug);
+  const segment = buildBusinessSegment({ businessName, publicId });
+
+  if (resolvedDistrictSlug && segment) {
+    return `/business/${resolvedDistrictSlug}/${segment}`;
+  }
+
   const resolvedLocationSlug = createSlug(locationSlug || location) || "business";
   const resolvedBusinessSlug = createBusinessSlug(businessName);
   const segments = resolvedDistrictSlug

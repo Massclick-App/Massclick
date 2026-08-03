@@ -4,7 +4,10 @@ import { getSeoMeta } from "../helper/seo/seoHelper.js";
 import { getSeoBlogMetaBySlug } from "../helper/seo/seoOnpageBlogHelper.js";
 import { getSeoPageContentMetaService } from "../helper/seo/seoPageContentHelper.js";
 import { findBusinessesByCategory } from "../helper/businessList/businessListHelper.js";
-import { getBusinessUrlSlug } from "../helper/businessList/businessUrl.js";
+import {
+  getBusinessUrlSlug,
+  buildBusinessPath as buildCanonicalBusinessPath,
+} from "../helper/businessList/businessUrl.js";
 import { appendDiscoveryLinkHeaders } from "../config/apiCatalog.js";
 import { STATIC_PAGES, SKIP_SEO_ROUTES } from "../config/ssrConfig.js";
 import { getCache, setCache } from "../utils/redisClient.js";
@@ -108,15 +111,19 @@ const buildCategoryPath = ({
   return `/${segments.filter(Boolean).join("/")}`;
 };
 
-const buildBusinessPath = ({ districtSlug = "", location = "", businessName = "", id = "" } = {}) => {
-  const locationSlug = slugify(location || "business");
-  // Must match getBusinessUrlSlug exactly (length cap included) or the
-  // canonical redirect in legacyUrlRedirectMiddleware.js will 301 every
-  // business link this SSR output emits.
-  const businessSlug = getBusinessUrlSlug({ businessName });
+// districtSlug here comes from getDistrictUrlSlug (alias-aware), so these
+// links are already in the canonical form the redirect middleware expects.
+// Falls back to the pre-Phase-B shape when the business has no publicId yet,
+// which is the only shape that can still be resolved in that state.
+const buildBusinessPath = ({ districtSlug = "", business = {} } = {}) => {
+  const canonical = buildCanonicalBusinessPath({ districtSlug, business });
+  if (canonical) return canonical;
+
+  const locationSlug = slugify(business.location || "business");
+  const businessSlug = getBusinessUrlSlug(business);
   const segments = districtSlug
-    ? ["business", districtSlug, locationSlug, businessSlug, id]
-    : ["business", locationSlug, businessSlug, id];
+    ? ["business", districtSlug, locationSlug, businessSlug, business._id]
+    : ["business", locationSlug, businessSlug, business._id];
   return `/${segments.filter(Boolean).join("/")}`;
 };
 
@@ -595,9 +602,7 @@ export async function ssrMiddleware(req, res) {
           itemListElement: categoryBusinesses.slice(0, 10).map((biz, i) => {
             const bizUrl = `https://massclick.in${buildBusinessPath({
               districtSlug: categoryRoute?.districtSlug,
-              location: biz.location,
-              businessName: biz.businessName,
-              id: biz._id,
+              business: biz,
             })}`;
             const itemObj = {
               "@type": "LocalBusiness",
@@ -710,9 +715,7 @@ export async function ssrMiddleware(req, res) {
               ${categoryBusinesses.slice(0, 10).map((biz) => {
                 const bizUrl = buildBusinessPath({
                   districtSlug: categoryRoute?.districtSlug,
-                  location: biz.location,
-                  businessName: biz.businessName,
-                  id: biz._id,
+                  business: biz,
                 });
                 const address = [biz.street, biz.location].filter(Boolean).join(", ");
                 const rating = biz.averageRating ? `&#9733; ${Number(biz.averageRating).toFixed(1)}` : "";
@@ -845,9 +848,7 @@ export async function ssrMiddleware(req, res) {
           categoryBusinesses.slice(0, 10).forEach((biz, i) => {
             const bizUrl = `https://massclick.in${buildBusinessPath({
               districtSlug: categoryRoute?.districtSlug,
-              location: biz.location,
-              businessName: biz.businessName,
-              id: biz._id,
+              business: biz,
             })}`;
             mdLines.push(`${i + 1}. **[${biz.businessName}](${bizUrl})**`);
             if (biz.street || biz.location) mdLines.push(`   - Address: ${biz.street || biz.location}`);

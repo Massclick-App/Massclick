@@ -1462,7 +1462,10 @@ export const nearbyBusinessesController = async (req, res) => {
         $project: {
           businessName: 1, category: 1, location: 1, masterLocation: 1, bannerImageKey: 1, logoImageKey: 1,
           verification: 1, badges: 1, certificates: 1,
-          contact: 1, whatsappNumber: 1, filters: 1, experience: 1, slug: 1,
+          // publicId is required to build this card's detail URL — an
+          // inclusion projection drops it silently otherwise, leaving every
+          // nearby card unlinkable.
+          contact: 1, whatsappNumber: 1, filters: 1, experience: 1, slug: 1, publicId: 1,
           distance: { $round: [{ $divide: ["$distanceMeters", 1000] }, 2] }
         }
       },

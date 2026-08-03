@@ -23,6 +23,7 @@ import {
   getPublicBaseUrl,
   isAcceptedBusinessDetailsUrl,
 } from "./businessPublicUrlHelper.js";
+import { PUBLIC_ID_RE } from "./businessUrl.js";
 
 const BUSINESS_PAYMENT_GST_RATE = 18;
 
@@ -384,10 +385,26 @@ export const findBusinessBySlug = async ({ location, slug, district }) => {
     throw error;
   }
 };
-export const viewBusinessList = async (id) => {
-  if (!ObjectId.isValid(id)) throw new Error("Invalid business ID");
+/**
+ * Accepts either a raw ObjectId or a `publicId`.
+ *
+ * Phase B business URLs (/business/trichy/hexahub-homestay-a1b2c3) carry a
+ * publicId rather than an ObjectId, so the detail page resolves through the
+ * same endpoint with either identifier. ObjectId is tried first because it is
+ * unambiguous — a 24-char hex string can never be a publicId, which is always
+ * 6 chars of mixed letters and digits.
+ */
+export const viewBusinessList = async (identifier) => {
+  const isObjectId = ObjectId.isValid(identifier);
+  const publicId = String(identifier || "").trim().toLowerCase();
 
-  const business = await businessListModel.findById(id).lean();
+  if (!isObjectId && !PUBLIC_ID_RE.test(publicId)) {
+    throw new Error("Invalid business ID");
+  }
+
+  const business = await (isObjectId
+    ? businessListModel.findById(identifier).lean()
+    : businessListModel.findOne({ publicId }).lean());
   if (!business) throw new Error("Business not found");
 
   // Same resolution as mainSearchController's/nearbyBusinessesController's

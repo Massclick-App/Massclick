@@ -1256,15 +1256,13 @@ const SearchResults = React.memo(
                             : 0;
                         const businessUrl = buildBusinessPath({
                           districtSlug,
-                          // The business's own collision-resolved slug
-                          // (resolved server-side via its linked
-                          // masterLocation.locationId) — falls back to the
-                          // free-text location field only when a business
-                          // has no linked masterLocation, since that text
-                          // can be as coarse as the district name itself.
+                          // locationSlug/location/id are only consumed by the
+                          // superseded-shape fallback, for a business with no
+                          // publicId yet. The current shape uses neither.
                           locationSlug: business.publicLocationSlug,
                           location: business.location,
                           businessName: business.businessName,
+                          publicId: business.publicId,
                           id: business._id,
                         });
                         return (
@@ -1370,6 +1368,7 @@ const SearchResults = React.memo(
                               locationSlug: b.publicLocationSlug,
                               location: b.location,
                               businessName: b.businessName,
+                              publicId: b.publicId,
                               id: b._id,
                             });
                             return (
