@@ -468,8 +468,8 @@ export const getRedisKeysAction = async (req, res) => {
   }
 };
 
-// In-memory sitemap caches (category lookup, per-district location x category
-// matrix, llms.txt data) live inside sitemapRoutes.js and refresh on a 1-hour TTL.
+// In-memory sitemap caches (category lookup, per-district live location/category
+// pages, llms.txt data) live inside sitemapRoutes.js and refresh on a 1-hour TTL.
 // This forces an immediate rebuild after a category or masterlocation change.
 export const regenerateSitemapCacheAction = async (req, res) => {
   try {

@@ -28,10 +28,9 @@ const router = express.Router();
 ========================================================= */
 const BASE_URL = String(process.env.PUBLIC_BASE_URL || "https://massclick.in").replace(/\/+$/, "");
 const LIMIT = 1000;
-// Location x category pages are generated for every active masterlocation and every
-// active category regardless of whether a business exists there yet, so a single
-// district can produce well over the 50,000-URL sitemap protocol cap. Paginate safely
-// under that limit.
+// Location x category pages are emitted only when live businesses exist for
+// that category inside the district/location subtree. Paginate safely under
+// the 50,000-URL sitemap protocol cap.
 const LOCATION_SITEMAP_LIMIT = 40000;
 
 /* =========================================================
@@ -211,18 +210,7 @@ const buildCategoryLookup = async () => {
   return lookup;
 };
 
-// Every distinct resolved category URL path (e.g. "hospitals/clinical-lab" or
-// "clinical-lab"), deduplicated — used to cross-join against every location.
-const getAllCategoryPaths = (lookup) => {
-  const paths = new Set();
-  for (const { slug } of lookup.values()) {
-    if (!slug) continue;
-    paths.add(slug);
-  }
-  return [...paths];
-};
-
-// Returns the URL path after the city: e.g. "hospitals/clinical-lab" or "clinical-lab"
+// Returns the category URL segment after the location path, e.g. "hotels".
 const resolveCategoryPath = (category, lookup) => {
   const key = normalizeKey(category);
   const found = lookup.get(key);
@@ -294,13 +282,13 @@ const getLocationPriority = (level = "") => {
   return "0.7";
 };
 
-// All active districts, regardless of whether any business exists there yet —
-// location/category sitemap pages are generated ahead of listings being added.
+// Active districts are filtered by estimateDistrictPageCount before they are
+// emitted into the sitemap index.
 const getActiveDistrictDocs = async () =>
   masterLocationModel
     .find(
       { level: "district", isActive: true },
-      { slug: 1, district: 1, hierarchyPath: 1, updatedAt: 1, urlAlias: 1 }
+      { slug: 1, district: 1, level: 1, hierarchyPath: 1, updatedAt: 1, urlAlias: 1 }
     )
     .sort({ district: 1 })
     .lean();
@@ -382,38 +370,117 @@ const getLocationDocsByKeyForDistrict = async (districtDoc) => {
   return new Map(docs.map((doc) => [locationKey(doc), doc]));
 };
 
-// Cross-joins every active location (district/zone/ward/locality) in this district
-// with every active category/subcategory, regardless of whether a business exists
-// for that pair yet. Business data is NOT used here on purpose — pages are emitted
-// for the full location x category matrix so crawlers can discover them ahead of
-// listings being added.
+const getLocationDocsById = (docsByKey = new Map()) =>
+  new Map(
+    [...docsByKey.values()]
+      .filter((doc) => doc?._id)
+      .map((doc) => [String(doc._id), doc])
+  );
+
+const getAncestorDocsForLocation = ({ districtDoc, locationDoc, docsByKey }) => {
+  const docs = [districtDoc];
+  if (!locationDoc || locationDoc.level === "district") return docs;
+
+  const district = districtDoc.district;
+
+  if (locationDoc.zone) {
+    const zoneDoc = docsByKey.get(locationKey({
+      level: "zone",
+      district,
+      zone: locationDoc.zone,
+    }));
+    if (zoneDoc) docs.push(zoneDoc);
+  }
+
+  if (locationDoc.level === "ward" || locationDoc.level === "locality") {
+    const wardDoc = docsByKey.get(locationKey({
+      level: "ward",
+      district,
+      zone: locationDoc.zone,
+      ward: locationDoc.ward,
+    }));
+    if (wardDoc) docs.push(wardDoc);
+  }
+
+  if (locationDoc.level === "locality") {
+    docs.push(locationDoc);
+  }
+
+  return docs.filter(Boolean);
+};
+
+const upsertSitemapPage = (pages, entry) => {
+  const key = `${entry.locationDoc.level}:${entry.locationPath || "district"}/${entry.categoryPath}`;
+  const existing = pages.get(key);
+  if (existing) {
+    const existingLastmod = new Date(existing.lastmod || 0).getTime();
+    const nextLastmod = new Date(entry.lastmod || 0).getTime();
+    if (nextLastmod > existingLastmod) existing.lastmod = entry.lastmod;
+    existing.count += entry.count || 0;
+    return;
+  }
+
+  pages.set(key, entry);
+};
+
+// Emits only live pages. A business linked to a locality contributes to the
+// locality's category page and each ancestor category page, matching the
+// search resolver's subtree behavior (`masterLocation.slug` prefix).
 const buildDistrictCategoryPages = async (districtDoc) => {
-  const [categoryLookup, docsByKey] = await Promise.all([
+  const [categoryLookup, docsByKey, liveRows] = await Promise.all([
     buildCategoryLookup(),
     getLocationDocsByKeyForDistrict(districtDoc),
+    businessListModel.aggregate([
+      {
+        $match: {
+          ...activeFilter,
+          category: { $exists: true, $ne: "" },
+          "masterLocation.district": districtDoc.district,
+        },
+      },
+      {
+        $group: {
+          _id: {
+            locationId: "$masterLocation.locationId",
+            category: "$category",
+          },
+          maxDate: { $max: "$updatedAt" },
+          count: { $sum: 1 },
+        },
+      },
+    ]),
   ]);
 
-  const categoryPaths = getAllCategoryPaths(categoryLookup);
+  const docsById = getLocationDocsById(docsByKey);
   const pages = new Map();
 
-  for (const locationDoc of docsByKey.values()) {
-    if (!isValidSitemapLocationDoc(locationDoc)) continue;
-    const publicLocationSlug = getSitemapLocationSlug(locationDoc);
-    const publicLocationPath = getSitemapLocationPath(locationDoc);
+  for (const row of liveRows) {
+    const categoryPath = resolveCategoryPath(row._id.category, categoryLookup);
+    if (!categoryPath) continue;
 
-    const lastmod = isoDate(locationDoc.updatedAt);
+    const locationDoc = row._id.locationId
+      ? docsById.get(String(row._id.locationId))
+      : null;
+    const candidateDocs = getAncestorDocsForLocation({
+      districtDoc,
+      locationDoc,
+      docsByKey,
+    });
 
-    for (const categoryPath of categoryPaths) {
-      const key = `${locationDoc.level}:${publicLocationPath || "district"}/${categoryPath}`;
-      if (pages.has(key)) continue;
+    for (const pageLocationDoc of candidateDocs) {
+      if (!isValidSitemapLocationDoc(pageLocationDoc)) continue;
+      const publicLocationSlug = getSitemapLocationSlug(pageLocationDoc);
+      const publicLocationPath = getSitemapLocationPath(pageLocationDoc);
+      const lastmod = isoDate(row.maxDate || pageLocationDoc.updatedAt);
 
-      pages.set(key, {
-        locationDoc,
+      upsertSitemapPage(pages, {
+        locationDoc: pageLocationDoc,
         locationSlug: publicLocationSlug,
         locationPath: publicLocationPath,
-        locationLabel: getLocationLabel(locationDoc),
-        locationLevel: locationDoc.level,
+        locationLabel: getLocationLabel(pageLocationDoc),
+        locationLevel: pageLocationDoc.level,
         categoryPath,
+        count: row.count || 0,
         lastmod,
       });
     }
@@ -426,29 +493,15 @@ const buildDistrictCategoryPages = async (districtDoc) => {
   );
 };
 
-// Cheap upper-bound page count (no per-entry objects, no dedup pass) used only to
-// size the sitemap index. The real, deduplicated list is built lazily per-district
-// in getDistrictCategoryPagesCached below, only when that district's sitemap file
-// is actually requested — building all districts' full matrices at once (~4M+
-// objects) would burn ~700MB of memory on a single /sitemap.xml hit.
+// Uses the same live-page builder as the sitemap files so the index cannot
+// advertise empty district sitemap pages.
 const estimateDistrictPageCount = async (districtDoc) => {
-  const [categoryLookup, docsByKey] = await Promise.all([
-    buildCategoryLookup(),
-    getLocationDocsByKeyForDistrict(districtDoc),
-  ]);
-
-  const categoryPathCount = getAllCategoryPaths(categoryLookup).length;
-  let validLocationCount = 0;
-  for (const doc of docsByKey.values()) {
-    if (isValidSitemapLocationDoc(doc)) validLocationCount++;
-  }
-
-  return categoryPathCount * validLocationCount;
+  const pages = await getDistrictCategoryPagesCached(districtDoc);
+  return pages.length;
 };
 
-// Per-district cross-join results are cached in memory (same TTL as the category
-// lookup) since building the full matrix on every request would be wasteful given
-// districts can produce 100k+ pages. Cleared via resetSitemapCaches().
+// Per-district live-page results are cached in memory (same TTL as the category
+// lookup). Cleared via resetSitemapCaches().
 const _districtPagesCache = new Map();
 
 const getDistrictCategoryPagesCached = async (districtDoc) => {
@@ -617,12 +670,13 @@ router.get("/sitemap.xml", async (req, res) => {
     const districtPageCounts = await Promise.all(
       districts.map(async (district) => {
         const estimatedTotal = await estimateDistrictPageCount(district);
-        return Math.max(Math.ceil(estimatedTotal / LOCATION_SITEMAP_LIMIT), 1);
+        return Math.ceil(estimatedTotal / LOCATION_SITEMAP_LIMIT);
       })
     );
 
     districts.forEach((district, index) => {
       const totalPages = districtPageCounts[index];
+      if (totalPages <= 0) return;
       const districtSlug = getDistrictUrlSlug(district);
       for (let p = 1; p <= totalPages; p++) {
         links.push(
@@ -713,11 +767,11 @@ ${nodes.join("")}
 
 /* =========================================================
    LOCATION SITEMAP -- /sitemap-location-{districtslug}-{page}.xml
-   Full location x category matrix (every active masterlocation at every level
-   crossed with every active category), paginated under the 50k URL cap.
+   Live location x category pages (category has at least one live business in
+   the district/location subtree), paginated under the 50k URL cap.
    Public URLs use the district-prefixed route shape:
    /:district/:category for district-wide pages, and
-   /:district/:final-place-slug/:category for nested location pages.
+   /:district/:ancestor-path/:category-in-target for nested location pages.
 ========================================================= */
 router.get("/sitemap-location-:districtslug-:page.xml", async (req, res) => {
   try {
