@@ -66,6 +66,7 @@ import searchRequestRoutes from "./routes/searchRequestRoutes.js";
 import massclickEventRoute from "./routes/massclickEventRoute.js";
 import legalDocumentRoutes from "./routes/legalDocumentRoutes.js";
 import hiringRoutes from "./routes/hiringRoutes.js";
+import rewardRoutes from "./routes/rewardRoutes.js";
 import { startFCMScheduler } from "./scheduler/fcmScheduler.js";
 import { startKeywordRankCron } from "./cron/keywordRankCron.js";
 import { startS3CacheHeaderMigrationRecovery } from "./helper/mediaCleanup/s3CacheHeaderMigrationHelper.js";
@@ -169,6 +170,8 @@ app.use("/", massclickEventRoute);
 app.use("/", legalDocumentRoutes);
 app.use("/", hiringRoutes);
 app.use(legacyUrlRedirectMiddleware);
+app.use("/", rewardRoutes);
+
 app.use(express.static(CLIENT_BUILD_PATH, {
   index: false,
   maxAge: "365d",

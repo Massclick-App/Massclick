@@ -65,6 +65,19 @@ export default function MainGrid() {
     return getUserDisplayName(user) || "—";
   };
 
+  const formatCreatedDateTime = (value) => {
+    if (!value) return "-";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "-";
+    return date.toLocaleString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
   const getTodayRange = () => {
     const start = new Date();
     start.setHours(0, 0, 0, 0);
@@ -95,6 +108,13 @@ export default function MainGrid() {
     if (filter.type === "month" && Number.isInteger(filter.monthIndex)) return getMonthRange(filter.monthIndex, filter.year);
     if (filter.type === "category" && filter.value) return { category: filter.value };
     if (filter.type === "location" && filter.value) return { location: filter.value };
+    if (filter.type === "dayLocation") {
+      return {
+        createdFrom: filter.createdFrom,
+        createdTo: filter.createdTo,
+        ...(filter.location ? { location: filter.location } : {}),
+      };
+    }
     if (filter.type === "payment" && filter.value) return { paymentStatus: filter.value };
     if (filter.type === "search" && filter.value) return { search: filter.value };
     return {};
@@ -177,6 +197,11 @@ export default function MainGrid() {
     { id: "businessName", label: "Business Name" },
     { id: "location", label: "Location Name" },
     { id: "category", label: "Category" },
+    {
+      id: "createdAt",
+      label: "Created date & time",
+      renderCell: (value) => formatCreatedDateTime(value),
+    },
     {
       id: "createdBy",
       label: "Created By",
@@ -392,6 +417,7 @@ export default function MainGrid() {
         <Box sx={{ width: "100%" }}>
           <CustomizedTable
             key={tableRefreshKey}
+            title={cardFilter.type === "all" ? "Data Table" : `Filtered Data — ${cardFilter.label}`}
             data={rows}
             total={total}
             columns={businessListTable}

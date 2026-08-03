@@ -55,7 +55,12 @@ export const Collections = {
     LEGALDOCUMENTS: 'legal_documents',
     AUTHAUDITEVENTS: 'auth_audit_events',
     JOBVACANCIES: 'job_vacancies',
-    JOBAPPLICATIONS: 'job_applications'
+    JOBAPPLICATIONS: 'job_applications',
+    REWARDWALLETS: 'reward_wallets',
+    REWARDTRANSACTIONS: 'reward_transactions',
+    REWARDRULES: 'reward_rules',
+    REWARDREDEMPTIONS: 'reward_redemptions',
+    REWARDCLAIMS: 'reward_claims'
 };
 
 export const {
@@ -115,6 +120,11 @@ export const {
     LEGALDOCUMENTS,
     AUTHAUDITEVENTS,
     JOBVACANCIES,
-    JOBAPPLICATIONS
+    JOBAPPLICATIONS,
+    REWARDWALLETS,
+    REWARDTRANSACTIONS,
+    REWARDRULES,
+    REWARDREDEMPTIONS,
+    REWARDCLAIMS
 } = Collections;
 export const MASSCLICKEVENTS = "massclickevents";
