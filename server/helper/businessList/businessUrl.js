@@ -71,7 +71,8 @@ export const PUBLIC_ID_RE = /^(?=[a-z0-9]*[a-z])(?=[a-z0-9]*\d)[a-z0-9]{6}$/;
 
 export const generatePublicId = () => {
   // Rejection-sample until the mixed letter+digit rule holds. At 6 chars the
-  // rule is satisfied by ~93% of random draws, so this effectively never loops
+  // rule is satisfied by 85.8% of random draws (36^6 minus the all-letter and
+  // all-digit sets), so this averages 1.17 draws and effectively never loops
   // more than once or twice.
   for (;;) {
     let candidate = "";
