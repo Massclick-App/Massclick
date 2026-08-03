@@ -91,7 +91,7 @@ const getBusinessProfile = (business = {}, storedUser = {}) => {
     ? buildBusinessPath({
         districtSlug,
         location: business.location || "business",
-        businessSlug: business.slug || business.businessName || business.name,
+        businessName: business.businessName || business.name,
         id: businessId,
       })
     : "/user_edit-profile";

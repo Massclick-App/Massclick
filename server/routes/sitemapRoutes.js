@@ -8,6 +8,7 @@ import {
   getDistrictUrlSlug,
   getPublicLocationSlug,
 } from "../helper/location/locationSlug.js";
+import { getBusinessUrlSlug } from "../helper/businessList/businessUrl.js";
 import seoPageContentBlogs from "../model/seoModel/seoPageContentBlogModel.js";
 import { categoriesData } from "../utils/sub-categoriesData.js";
 import { STATIC_PAGES } from "../config/ssrConfig.js";
@@ -557,9 +558,7 @@ const buildBusinessSitemapPath = ({
   locationDoc = null,
   districtDoc = null,
 } = {}) => {
-  const businessSlug =
-    safeSlug(biz.slug || biz.businessName || biz.name || "business") ||
-    "business";
+  const businessSlug = getBusinessUrlSlug(biz);
   const locationSlug = getBusinessLocationSlug(biz, locationDoc);
   const districtSlug = districtDoc ? getDistrictUrlSlug(districtDoc) : "";
   const segments = districtSlug
@@ -770,11 +769,12 @@ router.get("/sitemap-business-:page.xml", async (req, res) => {
     const skip = (page - 1) * LIMIT;
 
     const businesses = await businessListModel
+      // No `slug` — see helper/businessList/businessUrl.js for why that field
+      // is not the business's URL slug and must not be read when building one.
       .find(activeFilter, {
         _id: 1,
         businessName: 1,
         name: 1,
-        slug: 1,
         location: 1,
         masterLocation: 1,
         updatedAt: 1,

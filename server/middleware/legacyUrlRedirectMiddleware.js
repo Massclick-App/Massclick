@@ -10,6 +10,7 @@ import {
   getPublicLocationSlug,
 } from "../helper/location/locationSlug.js";
 import { classifyMiddleSegment } from "../helper/location/urlSegmentClassifier.js";
+import { getBusinessUrlSlug } from "../helper/businessList/businessUrl.js";
 import { slugify } from "../slugify.js";
 
 const REDIRECT_STATUS = 301;
@@ -30,11 +31,12 @@ const SKIP_PREFIXES = new Set([
   "favicon.ico",
 ]);
 
+// No `slug` — see helper/businessList/businessUrl.js for why that field is not
+// the business's URL slug and must not be read when building one.
 const businessProjection = {
   _id: 1,
   businessName: 1,
   name: 1,
-  slug: 1,
   location: 1,
   masterLocation: 1,
 };
@@ -82,10 +84,6 @@ const getRouteLocationSlug = (locationDoc = null, fallback = "") => {
     slugify(fallback || "business")
   );
 };
-
-const getBusinessSlug = (business = {}, fallback = "") =>
-  slugify(business.slug || business.businessName || business.name || fallback || "business") ||
-  "business";
 
 const isNewStyleBusinessPath = async (parts = []) => {
   if (parts[0] !== "business" || parts.length < 5) return false;
@@ -164,7 +162,7 @@ const buildLegacyBusinessIdRedirect = async (parts = []) => {
 
   const districtSlug = getDistrictUrlSlug(districtDoc);
   const locationSlug = getRouteLocationSlug(locationDoc, business.location || "");
-  const businessSlug = getBusinessSlug(business, "");
+  const businessSlug = getBusinessUrlSlug(business);
 
   return `/business/${districtSlug}/${locationSlug}/${businessSlug}/${business._id}`;
 };
@@ -172,7 +170,7 @@ const buildLegacyBusinessIdRedirect = async (parts = []) => {
 const buildLegacyBusinessRedirect = async (parts = []) => {
   if (parts[0] !== "business" || parts.length !== 4) return null;
 
-  const [, legacyLocation, legacyBusinessSlug, businessId] = parts;
+  const [, legacyLocation, , businessId] = parts;
   const business = await findBusinessForLegacyPath(businessId);
   if (!business) return null;
 
@@ -186,7 +184,7 @@ const buildLegacyBusinessRedirect = async (parts = []) => {
     locationDoc,
     business.location || legacyLocation,
   );
-  const businessSlug = getBusinessSlug(business, legacyBusinessSlug);
+  const businessSlug = getBusinessUrlSlug(business);
 
   return `/business/${districtSlug}/${locationSlug}/${businessSlug}/${business._id}`;
 };
@@ -200,8 +198,45 @@ const buildLegacyBusinessRedirect = async (parts = []) => {
 // the address bar keeps showing a URL shaped like a locality-specific page.
 // Distinct from resolveLegacyRedirectTargetForPath's other cases: this is a
 // NEW-style URL (resolvesAsNewStyle is true for it), not a pre-migration one.
+// A new-style /business/:district/:location/:businessSlug/:id whose slug
+// segment is not the canonical one. Routing resolves the page by :id alone, so
+// ANY string in that segment serves a 200 — which is how one business was
+// simultaneously reachable at .../hotels/<id> (emitters reading
+// businesslists.slug) and .../hexahub-homestay.../<id> (emitters reading
+// businessName), with nothing declaring which was real. 301 to the canonical
+// slug so already-indexed URLs, printed QR codes, and shared links self-heal
+// instead of accumulating as duplicates.
+//
+// Only the slug segment is canonicalized. The location segment still varies by
+// emitter (a resolved publicLocationSlug vs a slugified free-text `location`,
+// which for a district-linked business are legitimately different strings), so
+// validating it here would 301 links this app itself generates. Dropping that
+// segment is a separate change.
+//
+// No loop is possible: the target differs from its input in exactly one
+// segment, whose value equals getBusinessUrlSlug(business) by construction —
+// so feeding the target back through this function returns null at the
+// equality check below.
+const resolveNewStyleBusinessCanonicalRedirect = async (parts = [], path = "") => {
+  if (parts.length !== 5) return null;
+
+  const [, districtSlug, locationSlug, businessSlug, businessId] = parts;
+  const business = await findBusinessForLegacyPath(businessId);
+  if (!business) return null;
+
+  const canonicalSlug = getBusinessUrlSlug(business);
+  if (businessSlug === canonicalSlug) return null;
+
+  const target = `/business/${districtSlug}/${locationSlug}/${canonicalSlug}/${business._id}`;
+  if (samePath(path, target)) return null;
+  return target;
+};
+
 const resolveNewStyleCanonicalRedirectTarget = async (parts = [], path = "") => {
-  if (parts.length !== 3 || parts[0] === "business") return null;
+  if (parts[0] === "business") {
+    return resolveNewStyleBusinessCanonicalRedirect(parts, path);
+  }
+  if (parts.length !== 3) return null;
 
   const districtDoc = await resolveDistrictBySlug(parts[0]).catch(() => null);
   if (!districtDoc) return null;

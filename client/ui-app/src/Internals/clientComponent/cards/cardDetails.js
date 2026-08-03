@@ -353,7 +353,6 @@ const BusinessDetail = React.memo(() => {
   const canonicalPath = buildBusinessPath({
     districtSlug: district,
     locationSlug: canonicalLocationSlug,
-    businessSlug: business.slug || businessSlug,
     businessName: business.businessName,
     id: business._id || id,
   });
@@ -730,7 +729,6 @@ const BusinessDetail = React.memo(() => {
     listingUrl: canonicalUrl,
     districtSlug: district,
     locationSlug: canonicalLocationSlug,
-    businessSlug: business.slug || businessSlug,
     description: business.description || business.businessDetails,
     images: [business.bannerImage, ...(galleryImageSrcs || [])].filter(Boolean),
     telephone: business.contact,

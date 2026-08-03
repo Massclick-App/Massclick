@@ -75,7 +75,6 @@ export default function FavoritesPage() {
             const businessUrl = buildBusinessPath({
               districtSlug: createDistrictSlug(business.masterLocation?.district || business.district || ""),
               location: business.location,
-              businessSlug: business.slug,
               businessName: business.businessName,
               id: business._id
             });

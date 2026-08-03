@@ -1264,7 +1264,6 @@ const SearchResults = React.memo(
                           // can be as coarse as the district name itself.
                           locationSlug: business.publicLocationSlug,
                           location: business.location,
-                          businessSlug: business.slug,
                           businessName: business.businessName,
                           id: business._id,
                         });
@@ -1370,7 +1369,6 @@ const SearchResults = React.memo(
                               districtSlug,
                               locationSlug: b.publicLocationSlug,
                               location: b.location,
-                              businessSlug: b.slug,
                               businessName: b.businessName,
                               id: b._id,
                             });

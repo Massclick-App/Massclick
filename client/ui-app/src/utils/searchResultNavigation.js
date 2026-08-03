@@ -108,17 +108,46 @@ export const buildCategoryPath = ({
   return `/${[legacyLocationSlug, resolvedCategorySlug, resolvedSubcategorySlug].filter(Boolean).join("/")}`;
 };
 
+// Long enough for real business names, short enough to keep the URL readable.
+const MAX_BUSINESS_SLUG_LENGTH = 80;
+const BUSINESS_SLUG_FALLBACK = "business";
+
+/**
+ * The canonical business-slug segment for a business detail URL.
+ *
+ * Deliberately built from the business NAME only. `businesslists.slug` looks
+ * like it belongs here but holds category or SEO title text instead — "hotels",
+ * "Best CCTV Camera Installation and Dealers Near Me" — and never the
+ * business's own name. Every emitter used to prefer it, so no business URL
+ * contained the business name and 119 Trichy hotels differed only by ObjectId.
+ * That is why this takes a name, not a pre-made slug: passing `business.slug`
+ * in must stay impossible.
+ *
+ * Parallel implementation of server/helper/businessList/businessUrl.js
+ * (`getBusinessUrlSlug`) — this app cannot import server code. The two MUST
+ * produce byte-identical output, or the canonical redirect in
+ * legacyUrlRedirectMiddleware.js will 301 the links built here. Change one,
+ * change the other.
+ */
+export const createBusinessSlug = (businessName = "") => {
+  const slug = createSlug(businessName);
+  if (slug.length <= MAX_BUSINESS_SLUG_LENGTH) return slug || BUSINESS_SLUG_FALLBACK;
+  const cut = slug.slice(0, MAX_BUSINESS_SLUG_LENGTH);
+  const lastBoundary = cut.lastIndexOf("-");
+  const truncated = (lastBoundary > 0 ? cut.slice(0, lastBoundary) : cut).replace(/-+$/, "");
+  return truncated || BUSINESS_SLUG_FALLBACK;
+};
+
 export const buildBusinessPath = ({
   districtSlug = "",
   locationSlug = "",
   location = "",
-  businessSlug,
   businessName,
   id,
 } = {}) => {
   const resolvedDistrictSlug = createDistrictSlug(districtSlug);
   const resolvedLocationSlug = createSlug(locationSlug || location) || "business";
-  const resolvedBusinessSlug = createSlug(businessSlug || businessName) || "profile";
+  const resolvedBusinessSlug = createBusinessSlug(businessName);
   const segments = resolvedDistrictSlug
     ? ["business", resolvedDistrictSlug, resolvedLocationSlug, resolvedBusinessSlug, id]
     : ["business", resolvedLocationSlug, resolvedBusinessSlug, id];

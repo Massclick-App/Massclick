@@ -4,6 +4,7 @@ import { getSeoMeta } from "../helper/seo/seoHelper.js";
 import { getSeoBlogMetaBySlug } from "../helper/seo/seoOnpageBlogHelper.js";
 import { getSeoPageContentMetaService } from "../helper/seo/seoPageContentHelper.js";
 import { findBusinessesByCategory } from "../helper/businessList/businessListHelper.js";
+import { getBusinessUrlSlug } from "../helper/businessList/businessUrl.js";
 import { appendDiscoveryLinkHeaders } from "../config/apiCatalog.js";
 import { STATIC_PAGES, SKIP_SEO_ROUTES } from "../config/ssrConfig.js";
 import { getCache, setCache } from "../utils/redisClient.js";
@@ -109,7 +110,10 @@ const buildCategoryPath = ({
 
 const buildBusinessPath = ({ districtSlug = "", location = "", businessName = "", id = "" } = {}) => {
   const locationSlug = slugify(location || "business");
-  const businessSlug = slugify(businessName || "business");
+  // Must match getBusinessUrlSlug exactly (length cap included) or the
+  // canonical redirect in legacyUrlRedirectMiddleware.js will 301 every
+  // business link this SSR output emits.
+  const businessSlug = getBusinessUrlSlug({ businessName });
   const segments = districtSlug
     ? ["business", districtSlug, locationSlug, businessSlug, id]
     : ["business", locationSlug, businessSlug, id];

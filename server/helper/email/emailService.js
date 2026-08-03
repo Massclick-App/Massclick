@@ -1,6 +1,7 @@
 import nodemailer from 'nodemailer';
 import { getObjectBufferByKey } from '../../s3Uploder.js';
 import { ensureBusinessCertificates } from '../businessList/businessCertificateHelper.js';
+import { getBusinessUrlSlug } from '../businessList/businessUrl.js';
 
 const {
   INVOICE_EMAIL_HOST,
@@ -76,9 +77,7 @@ const getPublicBaseUrl = () =>
 const buildBusinessProfileUrl = (businessData = {}) => {
   const businessId = businessData?._id?.toString?.() || businessData?._id || businessData?.id || '';
   const locationSlug = slugifyEmailValue(businessData.location || 'business');
-  const businessSlug = slugifyEmailValue(
-    businessData.slug || businessData.businessName || businessData.name || 'profile',
-  );
+  const businessSlug = getBusinessUrlSlug(businessData);
 
   return `${getPublicBaseUrl()}/business/${locationSlug}/${businessSlug}/${businessId}`;
 };
