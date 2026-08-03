@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import { RewardWallet, RewardTransaction, RewardRule, RewardRedemption, RewardClaim } from "../../model/rewards/rewardModels.js";
 import categoryModel from "../../model/category/categoryModel.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
+import otpUserModel from "../../model/msg91Model/usersModels.js";
 
 export const REWARD_CATALOG = Object.freeze([
   { code: "MC100", name: "₹100 MassClick coupon", points: 200, valueInr: 100 },
@@ -13,6 +14,75 @@ export const REWARD_CATALOG = Object.freeze([
 const cleanKey = (value) => String(value || "").trim().toLowerCase();
 const monthStart = () => { const date = new Date(); return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1)); };
 export const tierFor = (points) => [{ name: "Diamond", min: 5000 }, { name: "Platinum", min: 1500 }, { name: "Gold", min: 700 }, { name: "Silver", min: 300 }, { name: "Bronze", min: 100 }].find((tier) => points >= tier.min)?.name || "Starter";
+export const WELCOME_BONUS_POINTS = 500;
+const syncUserRewardPoints = async (customerKey, wallet) => {
+  const key = cleanKey(customerKey);
+  if (!key) return;
+  const snapshot = wallet?.toObject ? wallet.toObject() : (wallet || {});
+  const now = new Date();
+  await otpUserModel.updateOne(
+    { mobileNumber1: key },
+    { $set: {
+      rewardPoints: {
+        availablePoints: Number(snapshot.availablePoints || 0),
+        lifetimeEarned: Number(snapshot.lifetimeEarned || 0),
+        lifetimeRedeemed: Number(snapshot.lifetimeRedeemed || 0),
+        tier: tierFor(Number(snapshot.lifetimeEarned || 0)),
+        lastSyncedAt: now,
+      },
+      updatedAt: now,
+    } }
+  );
+};
+
+export const awardWelcomeBonus = async (customerKey) => {
+  const key = cleanKey(customerKey);
+  if (!key) throw new Error("Customer identity is required for the welcome bonus");
+  const idempotencyKey = `welcome-bonus:${key}`;
+  const existing = await RewardTransaction.findOne({ idempotencyKey }).lean();
+  if (existing) {
+    const wallet = await RewardWallet.findOne({ customerKey: key }).lean();
+    await syncUserRewardPoints(key, wallet);
+    return { transaction: existing, wallet, duplicate: true };
+  }
+
+  let transaction;
+  try {
+    transaction = await RewardTransaction.create({
+      customerKey: key,
+      categoryKey: "welcome",
+      milestone: "welcome_bonus",
+      points: WELCOME_BONUS_POINTS,
+      status: "credited",
+      idempotencyKey,
+      description: "Welcome to MassClick — first login bonus",
+      metadata: { campaign: "otp_registration_welcome", version: 1 },
+      createdBy: "otp-registration",
+    });
+  } catch (error) {
+    if (error?.code === 11000) {
+      return {
+        transaction: await RewardTransaction.findOne({ idempotencyKey }).lean(),
+        wallet: await RewardWallet.findOne({ customerKey: key }).lean(),
+        duplicate: true,
+      };
+    }
+    throw error;
+  }
+
+  try {
+    const wallet = await RewardWallet.findOneAndUpdate(
+      { customerKey: key },
+      { $inc: { lifetimeEarned: WELCOME_BONUS_POINTS, availablePoints: WELCOME_BONUS_POINTS } },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+    await syncUserRewardPoints(key, wallet);
+    return { transaction, wallet, duplicate: false };
+  } catch (error) {
+    await RewardTransaction.deleteOne({ _id: transaction._id });
+    throw error;
+  }
+};
 
 export const getWallet = async (customerKey) => {
   const key = cleanKey(customerKey);
@@ -23,6 +93,7 @@ export const getWallet = async (customerKey) => {
     RewardRedemption.find({ customerKey: key }).sort({ createdAt: -1 }).limit(20).lean(),
   ]);
   const summary = wallet || { customerKey: key, lifetimeEarned: 0, lifetimeRedeemed: 0, availablePoints: 0 };
+  await syncUserRewardPoints(key, summary);
   return { ...summary, tier: tierFor(summary.lifetimeEarned), transactions, redemptions, catalog: REWARD_CATALOG };
 };
 
@@ -91,6 +162,7 @@ export const awardMilestone = async ({ customerKey, enquiryId, categoryKey, mile
     throw error;
   }
   const wallet = await RewardWallet.findOneAndUpdate({ customerKey: key }, { $inc: { lifetimeEarned: points, availablePoints: points } }, { upsert: true, new: true, setDefaultsOnInsert: true });
+  await syncUserRewardPoints(key, wallet);
   return { transaction, wallet, duplicate: false };
 };
 
@@ -166,9 +238,11 @@ export const redeemReward = async ({ customerKey, rewardCode }) => {
   try {
     const redemption = await RewardRedemption.create({ customerKey: key, rewardCode: reward.code, rewardName: reward.name, pointsCost: reward.points, valueInr: reward.valueInr });
     await RewardTransaction.create({ customerKey: key, milestone: "redemption", points: -reward.points, status: "debited", idempotencyKey: `redemption:${redemption._id}`, description: reward.name });
+    await syncUserRewardPoints(key, wallet);
     return { redemption, wallet };
   } catch (error) {
-    await RewardWallet.updateOne({ customerKey: key }, { $inc: { availablePoints: reward.points, lifetimeRedeemed: -reward.points } });
+    const restoredWallet = await RewardWallet.findOneAndUpdate({ customerKey: key }, { $inc: { availablePoints: reward.points, lifetimeRedeemed: -reward.points } }, { new: true });
+    await syncUserRewardPoints(key, restoredWallet);
     throw error;
   }
 };

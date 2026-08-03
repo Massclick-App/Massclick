@@ -99,6 +99,7 @@ const StickySearchBar = ({
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [debouncedLocation, setDebouncedLocation] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [authVersion, setAuthVersion] = useState(0);
   const isWebView = useMediaQuery(WEB_VIEW_MEDIA_QUERY, true);
   // Canonical masterlocations slug of a VERIFIED LOCATIONS pick. Cleared the
   // moment the user types/picks free text - mirrors heroSection's behavior
@@ -118,6 +119,18 @@ const StickySearchBar = ({
     query: backendSuggestionsQuery
   } = useSelector(selectBackendSuggestionsMeta);
   const { locationSearchResults = [] } = useSelector(state => state.masterLocationReducer) || {};
+  const refreshedAuthUser = useSelector(state => state.otp?.viewResponse);
+  let storedAuthUser = {};
+  try {
+    storedAuthUser = JSON.parse(localStorage.getItem("authUser") || "{}") || {};
+  } catch {
+    storedAuthUser = {};
+  }
+  const authUser = refreshedAuthUser && Object.keys(refreshedAuthUser).length > 0
+    ? refreshedAuthUser
+    : storedAuthUser;
+  const userName = authUser?.userName || authUser?.name || "";
+  const profileImageUrl = authUser?.userProfile || authUser?.profileImage || authUser?.avatar || "";
   const locationSuggestionQuery = isWebView ? locationName : locationInput;
   const normalizeComparable = value => String(value || "").trim().replace(/\s+/g, " ").toLowerCase();
   const hasPendingSearch = normalizeComparable(committedSearchTerm) !== normalizeComparable(searchTerm) || normalizeComparable(committedLocationName || DEFAULT_LOCATION) !== normalizeComparable(locationName || DEFAULT_LOCATION);
@@ -173,6 +186,16 @@ const StickySearchBar = ({
       window.clearTimeout(idleHandle);
     };
   }, [dispatch]);
+
+  useEffect(() => {
+    const refreshAuth = () => setAuthVersion(version => version + 1);
+    window.addEventListener("storage", refreshAuth);
+    window.addEventListener("authChange", refreshAuth);
+    return () => {
+      window.removeEventListener("storage", refreshAuth);
+      window.removeEventListener("authChange", refreshAuth);
+    };
+  }, []);
 
   useEffect(() => {
     if (!isCategoryDropdownOpen || !debouncedSearch.trim()) return;
@@ -351,6 +374,7 @@ const StickySearchBar = ({
 
   const goHome = () => navigate("/");
   const loggedIn = Boolean(localStorage.getItem("authToken"));
+  void authVersion;
   const handleOpenModal = () => setIsModalOpen(true);
   const handleCloseModal = () => setIsModalOpen(false);
 
@@ -486,7 +510,21 @@ const StickySearchBar = ({
                 onClick={openDrawer}
                 aria-label="Open user menu"
               >
-                <AccountCircleIcon sx={{ fontSize: 28 }} />
+                <span className={cx("user-avatar")} aria-hidden="true">
+                  {profileImageUrl ? (
+                    <img
+                      className={cx("user-avatar-image")}
+                      src={profileImageUrl}
+                      alt=""
+                      width="34"
+                      height="34"
+                    />
+                  ) : userName ? (
+                    userName[0].toUpperCase()
+                  ) : (
+                    <AccountCircleIcon sx={{ fontSize: 28 }} />
+                  )}
+                </span>
               </button>
             )}
           </div>

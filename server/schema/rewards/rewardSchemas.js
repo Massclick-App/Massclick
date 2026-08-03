@@ -34,7 +34,7 @@ export const rewardTransactionSchema = new Schema({
   customerKey: { type: String, required: true, trim: true },
   enquiryId: { type: Schema.Types.ObjectId, ref: "enquiry" },
   categoryKey: { type: String, trim: true, lowercase: true },
-  milestone: { type: String, enum: ["created", "accepted", "completed", "customer_confirmed", "adjustment", "redemption"], required: true },
+  milestone: { type: String, enum: ["welcome_bonus", "created", "accepted", "completed", "customer_confirmed", "adjustment", "redemption"], required: true },
   points: { type: Number, required: true },
   status: { type: String, enum: ["credited", "debited", "reversed"], required: true },
   idempotencyKey: { type: String, required: true },

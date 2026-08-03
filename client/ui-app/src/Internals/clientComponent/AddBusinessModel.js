@@ -132,6 +132,7 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater, onSuccess }) => {
     const [otpSent, setOtpSent] = React.useState(false);
     const [otpDigits, setOtpDigits] = React.useState(['', '', '', '']);
     const otpRefs = React.useRef([null, null, null, null]);
+    const userNameRef = React.useRef(null);
     const [userName, setUserName] = React.useState('');
     const [isNewUser, setIsNewUser] = React.useState(false);
     const [isLoading, setIsLoading] = React.useState(false);
@@ -223,7 +224,15 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater, onSuccess }) => {
         }
 
         if (newOtpDigits.every(digit => digit !== '')) {
-            handleVerifyOtp(newOtpDigits.join(''));
+            if (isNewUser) {
+                enqueueSnackbar("OTP entered. Please enter your name to continue.", {
+                    variant: "info",
+                    autoHideDuration: 3000,
+                });
+                window.requestAnimationFrame(() => userNameRef.current?.focus());
+            } else {
+                handleVerifyOtp(newOtpDigits.join(''));
+            }
         }
     };
 
@@ -237,14 +246,26 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater, onSuccess }) => {
         const finalOtp = otpValue || otpDigits.join('');
         if (finalOtp.length !== 4 || isLoading) return;
 
+        const normalizedUserName = userName.trim();
+        if (isNewUser && normalizedUserName.length < 2) {
+            enqueueSnackbar("Please enter your name to create your account.", {
+                variant: "warning",
+                autoHideDuration: 3000,
+            });
+            userNameRef.current?.focus();
+            return;
+        }
+
         setIsLoading(true);
         try {
-            const res = await dispatch(verifyOtp(mobileNumber, finalOtp, userName));
+            const res = await dispatch(verifyOtp(mobileNumber, finalOtp, normalizedUserName));
 
             if (res.token) {
-                enqueueSnackbar("Login successfully!", {
+                enqueueSnackbar(res.welcomeBonus?.awarded
+                    ? `Welcome to MassClick! ${res.welcomeBonus.points} bonus points have been added to your wallet.`
+                    : "Login successful!", {
                     variant: "success",
-                    autoHideDuration: 3000,
+                    autoHideDuration: res.welcomeBonus?.awarded ? 6000 : 3000,
                 });
 
                 await registerWebFCMToken();
@@ -256,7 +277,7 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater, onSuccess }) => {
             setOtpDigits(['', '', '', '']);
             otpRefs.current[0]?.focus();
 
-            enqueueSnackbar("Invalid OTP. Please try again.", {
+            enqueueSnackbar(error.response?.data?.message || "Invalid OTP. Please try again.", {
                 variant: "error",
                 autoHideDuration: 3000,
             });
@@ -269,7 +290,15 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater, onSuccess }) => {
         const digits = String(code || '').replace(/\D/g, '').slice(0, 4);
         if (digits.length !== 4) return;
         setOtpDigits(digits.split(''));
-        handleVerifyOtp(digits);
+        if (isNewUser) {
+            enqueueSnackbar("OTP entered. Please enter your name to continue.", {
+                variant: "info",
+                autoHideDuration: 3000,
+            });
+            window.requestAnimationFrame(() => userNameRef.current?.focus());
+        } else {
+            handleVerifyOtp(digits);
+        }
     };
 
     const autoFillRef = React.useRef(autoFillOtp);
@@ -711,14 +740,18 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater, onSuccess }) => {
                             </Box>
                         </Box>
 
-                        {isNewUser && (
+                        {isNewUser && otpDigits.join('').length === 4 && (
                             <Box sx={{ width: '100%', mb: 3 }}>
                                 <TextField
+                                    inputRef={userNameRef}
                                     fullWidth
-                                    placeholder="Choose a username"
+                                    label="Your name"
+                                    placeholder="Enter your full name"
+                                    required
                                     variant="outlined"
                                     value={userName}
-                                    onChange={(e) => setUserName(e.target.value.trim())}
+                                    onChange={(e) => setUserName(e.target.value)}
+                                    helperText="Required to create your new account"
                                     InputProps={{
                                         sx: {
                                             borderRadius: '12px',
@@ -756,18 +789,18 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater, onSuccess }) => {
                             fullWidth
                             variant="contained"
                             onClick={() => handleVerifyOtp()}
-                            disabled={otpDigits.join('').length < 4 || isLoading}
+                            disabled={otpDigits.join('').length < 4 || (isNewUser && userName.trim().length < 2) || isLoading}
                             sx={{
-                                background: otpDigits.join('').length === 4
+                                background: otpDigits.join('').length === 4 && (!isNewUser || userName.trim().length >= 2)
                                     ? 'linear-gradient(135deg, #FF7B00 0%, #FF6F00 100%)'
                                     : theme.palette.grey[300],
-                                color: otpDigits.join('').length === 4 ? 'white' : theme.palette.grey[500],
+                                color: otpDigits.join('').length === 4 && (!isNewUser || userName.trim().length >= 2) ? 'white' : theme.palette.grey[500],
                                 textTransform: 'none',
                                 fontSize: '1.05rem',
                                 fontWeight: 700,
                                 borderRadius: '30px',
                                 py: 1.6,
-                                boxShadow: otpDigits.join('').length === 4
+                                boxShadow: otpDigits.join('').length === 4 && (!isNewUser || userName.trim().length >= 2)
                                     ? '0 10px 30px rgba(255, 123, 0, 0.4)'
                                     : 'none',
                                 transition: 'all 0.3s ease',
@@ -776,7 +809,7 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater, onSuccess }) => {
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 '&:hover': {
-                                    ...(otpDigits.join('').length === 4 ? {
+                                    ...(otpDigits.join('').length === 4 && (!isNewUser || userName.trim().length >= 2) ? {
                                         background: 'linear-gradient(135deg, #E65100 0%, #FF7B00 100%)',
                                         transform: 'translateY(-2px)',
                                         boxShadow: '0 14px 35px rgba(255, 123, 0, 0.5)',
@@ -797,7 +830,7 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater, onSuccess }) => {
                             ) : (
                                 <>
                                     <LockIcon sx={{ fontSize: '1.2rem' }} />
-                                    Verify & Login
+                                    {isNewUser ? 'Create Account' : 'Verify & Login'}
                                 </>
                             )}
                         </Button>

@@ -273,6 +273,7 @@ function AppRoutes({
 
           <Route path="/user_dashboard" element={<UserDashboardPage />} />
           <Route path="/user_edit-profile" element={<UserEditProfilePage />} />
+          <Route path="/user_edit-user-profile" element={<UserEditProfilePage mode="user" />} />
           <Route
             path="/user_mni"
             element={isBusinessPeopleUser(getStoredCustomerUser()) ? <UserMRPPage /> : <Navigate to="/user_dashboard" replace />}
