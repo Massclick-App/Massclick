@@ -12,6 +12,7 @@ import FolderCopyIcon from "@mui/icons-material/FolderCopy";
 import DynamicFeedIcon from "@mui/icons-material/DynamicFeed";
 import ExitToAppIcon from "@mui/icons-material/ExitToApp";
 import RedeemIcon from "@mui/icons-material/Redeem";
+import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
 import { isBusinessPeopleUser } from "../../../utils/userUtils.js";
 
 export { isBusinessPeopleUser };
@@ -35,6 +36,12 @@ const userMenuItems = [
     name: "User Edit Profile",
     path: "/user_edit-profile",
     icon: <EditIcon color="action" />,
+  },
+  {
+    name: "Edit User Profile",
+    path: "/user_edit-user-profile",
+    icon: <PersonOutlineIcon color="action" />,
+    businessPeopleOnly: true,
   },
   {
     name: "MNI",
