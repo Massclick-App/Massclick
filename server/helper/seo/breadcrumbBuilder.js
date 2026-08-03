@@ -2,11 +2,41 @@ import {
   getDistrictUrlSlug,
   getDistrictDisplayName,
   getLocationDisplayName,
+  getLocationUrlPath,
 } from "../location/locationSlug.js";
 import {
   buildLocationCategoryPath,
   buildLocationPath,
 } from "../location/locationUrl.js";
+
+const LOCATION_CRUMB_FIELDS_BY_LEVEL = {
+  zone: ["zone"],
+  ward: ["zone", "ward"],
+  locality: ["zone", "ward", "locality"],
+};
+
+const toTitleCase = (value = "") =>
+  String(value || "")
+    .replace(/-/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+
+const buildLocationCrumbs = ({ districtPath, districtDisplayName, locationDoc } = {}) => {
+  if (!locationDoc) return [];
+
+  const parts = getLocationUrlPath(locationDoc).split("/").filter(Boolean);
+  if (parts.length === 0) return [];
+
+  const fields = LOCATION_CRUMB_FIELDS_BY_LEVEL[locationDoc.level] || [];
+  const labels = fields.map((field) => locationDoc[field]).filter(Boolean);
+  if (labels.length > 0) {
+    labels[labels.length - 1] = getLocationDisplayName(locationDoc, districtDisplayName);
+  }
+
+  return parts.map((segment, index) => ({
+    name: labels[index] || toTitleCase(segment),
+    path: `${districtPath}/${parts.slice(0, index + 1).join("/")}`,
+  }));
+};
 
 // Single source of the breadcrumb TRAIL for the district-prefixed URL scheme.
 // Deliberately produces relative paths only ("/trichy/srirangam", never
@@ -69,7 +99,12 @@ export const buildCrumbs = ({
 
   if (locationDoc) {
     pathSoFar = buildLocationPath({ districtDoc, locationDoc });
-    crumbs.push({ name: getLocationDisplayName(locationDoc, districtDisplayName), path: pathSoFar });
+    const locationCrumbs = buildLocationCrumbs({
+      districtPath,
+      districtDisplayName,
+      locationDoc,
+    });
+    crumbs.push(...locationCrumbs);
   }
 
   if (category) {

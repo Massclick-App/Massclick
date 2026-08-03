@@ -46,6 +46,25 @@ const locationCategoryPath = ({ districtPath, locationPath, locationSlug, catego
   return `${districtPath}/${[ancestors, `${category}-in-${target}`].filter(Boolean).join("/")}`;
 };
 
+const buildLocationCrumbs = ({
+  districtPath,
+  locationPath,
+  locationSlug,
+  locationName,
+} = {}) => {
+  const parts = pathSegments(locationPath || locationSlug);
+  if (parts.length === 0) return [];
+
+  return parts.map((segment, index) => {
+    const isTarget = index === parts.length - 1;
+    const path = `${districtPath}/${parts.slice(0, index + 1).join("/")}`;
+    return {
+      name: isTarget ? locationName || toTitleCase(segment) : toTitleCase(segment),
+      path,
+    };
+  });
+};
+
 /**
  * @param {object} args
  * @param {string} args.districtSlug - required; every trail here starts
@@ -95,13 +114,16 @@ export const buildCrumbs = ({
 
   let pathSoFar = districtPath;
   const resolvedLocationPath = pathSegments(locationPath || locationSlug).join("/");
+  const locationCrumbs = buildLocationCrumbs({
+    districtPath,
+    locationPath: resolvedLocationPath,
+    locationSlug,
+    locationName,
+  });
 
-  if (resolvedLocationPath) {
-    pathSoFar = `${districtPath}/${resolvedLocationPath}`;
-    crumbs.push({
-      name: locationName || toTitleCase(locationSlug || resolvedLocationPath.split("/").pop()),
-      path: pathSoFar,
-    });
+  if (locationCrumbs.length > 0) {
+    pathSoFar = locationCrumbs[locationCrumbs.length - 1].path;
+    crumbs.push(...locationCrumbs);
   }
 
   if (categorySlug) {
