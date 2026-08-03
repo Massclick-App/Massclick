@@ -1,6 +1,10 @@
 import masterLocationModel from "../../model/locationModel/masterLocationModel.js";
 import { searchMasterLocation } from "./masterLocationHelper.js";
 import { slugify as publicSlugify } from "../../slugify.js";
+import {
+  resolveLegacyLocationSlugWithinDistrict,
+  resolveLocationPathWithinDistrict,
+} from "./locationUrl.js";
 
 const slugify = (str) =>
   str.toLowerCase().trim().replace(/[^\w\s-]/g, "").replace(/[\s_]+/g, "-").replace(/^-+|-+$/g, "");
@@ -304,35 +308,17 @@ export const resolveDistrictBySlug = async (districtSlug) => {
 // wins as the most specific: someone typing a specific place name almost
 // always means the specific place, not the broader area that happens to
 // share its name.
-const WITHIN_DISTRICT_LEVEL_DEPTH = { locality: 3, ward: 2, zone: 1 };
-
 // One indexed query on {district, publicLocationSlug}. `districtDoc` must be
 // a resolved district doc (from resolveDistrictBySlug), not a raw slug — the
 // query matches on `district` (the plain name), not a slug, so the caller
 // having already resolved the district is what makes this safe.
 export const resolveLocationWithinDistrict = async (districtDoc, locationSlug) => {
   if (!districtDoc?.district || !locationSlug) return null;
-  const slug = publicSlugify(locationSlug);
-  if (!slug) return null;
 
-  const candidates = await masterLocationModel
-    .find({
-      district: districtDoc.district,
-      publicLocationSlug: slug,
-      level: { $in: ["zone", "ward", "locality"] },
-      isActive: true,
-    })
-    .lean();
+  const byPath = await resolveLocationPathWithinDistrict(districtDoc, locationSlug);
+  if (byPath) return byPath;
 
-  if (candidates.length === 0) return null;
-  if (candidates.length === 1) return candidates[0];
-
-  candidates.sort(
-    (a, b) =>
-      (WITHIN_DISTRICT_LEVEL_DEPTH[b.level] || 0) -
-      (WITHIN_DISTRICT_LEVEL_DEPTH[a.level] || 0)
-  );
-  return candidates[0];
+  return resolveLegacyLocationSlugWithinDistrict(districtDoc, publicSlugify(locationSlug));
 };
 
 // Composes the two above: resolves /:districtSlug[/:locationSlug] to their

@@ -75,17 +75,37 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
   } = useSelector((state) => state.seoPageContentReducer || {});
 
   const isDistrictLanding = mode === "districtLanding";
+  const isLocationLanding = mode === "locationLanding" || routeContext?.routeType === "locationLanding";
+  const isDirectoryLanding = isDistrictLanding || isLocationLanding;
   const categorySlug = routeContext?.categorySlug || categoryParam || "";
   const districtSlug = routeContext?.districtSlug || districtContext?.slug || "";
   const districtName = routeContext?.districtName || districtContext?.name || formatUrlText(districtSlug);
   const locationSlug = routeContext?.locationSlug || locationParam || "";
+  const locationPath = routeContext?.locationPath || "";
   const locationLabel = routeContext?.locationName || (districtSlug ? districtName : formatUrlText(locationSlug));
   const categoryLabel = categorySlug ? formatUrlText(categorySlug) : "Categories";
-  const listingItems = isDistrictLanding ? districtCategories : subCategories;
+  const listingItems = isDirectoryLanding ? districtCategories : subCategories;
   // Initial/replace load only — "load more" (districtCategoriesLoadingMore)
   // must not trigger this, or every infinite-scroll page load would swap the
   // whole grid for a spinner instead of appending below what's already shown.
-  const isInitialLoading = isDistrictLanding ? districtCategoriesLoading : loading;
+  const isInitialLoading = isDirectoryLanding ? districtCategoriesLoading : loading;
+
+  useEffect(() => {
+    if (!districtSlug) return;
+    localStorage.setItem("selectedLocation", locationLabel || districtName);
+    localStorage.setItem("selectedLocationDistrict", districtName);
+    localStorage.setItem("selectedLocationDistrictSlug", districtSlug);
+    if (locationSlug) {
+      localStorage.setItem("selectedPublicLocationSlug", locationSlug);
+    } else {
+      localStorage.removeItem("selectedPublicLocationSlug");
+    }
+    if (locationPath) {
+      localStorage.setItem("selectedPublicLocationPath", locationPath);
+    } else {
+      localStorage.removeItem("selectedPublicLocationPath");
+    }
+  }, [districtName, districtSlug, locationLabel, locationPath, locationSlug]);
 
   useEffect(() => {
     if (!isDistrictLanding || routeContext?.districtSlug) return;
@@ -110,42 +130,48 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
   }, [isDistrictLanding, routeContext?.districtSlug, districtParam]);
 
   useEffect(() => {
-    if (isDistrictLanding) return;
+    if (isDirectoryLanding) return;
 
     if (categorySlug) {
       dispatch(fetchSubCategories(categorySlug));
     }
-  }, [dispatch, isDistrictLanding, categorySlug]);
+  }, [dispatch, isDirectoryLanding, categorySlug]);
 
   // Debounced so switching districts or typing in the search box doesn't
   // fire a request per keystroke — only once typing pauses.
   const [debouncedSearch, setDebouncedSearch] = useState("");
   useEffect(() => {
-    if (!isDistrictLanding) return;
+    if (!isDirectoryLanding) return;
     const timer = setTimeout(() => setDebouncedSearch(search), 350);
     return () => clearTimeout(timer);
-  }, [isDistrictLanding, search]);
+  }, [isDirectoryLanding, search]);
 
   // Clears any previous district's results immediately on a district switch
   // — Redux state is global and otherwise persists across route changes, so
   // without this the previous district's categories would stay on screen
   // until the new fetch resolves (a wrong-data flash, not just a stale one).
   useEffect(() => {
-    if (!isDistrictLanding || !districtSlug) return;
+    if (!isDirectoryLanding || !districtSlug) return;
     dispatch(resetDistrictCategories());
-  }, [dispatch, isDistrictLanding, districtSlug]);
+  }, [dispatch, isDirectoryLanding, districtSlug, locationSlug]);
 
   useEffect(() => {
-    if (!isDistrictLanding || !districtSlug) return;
-    dispatch(fetchDistrictCategories({ district: districtSlug, page: 1, search: debouncedSearch }));
-  }, [dispatch, isDistrictLanding, districtSlug, debouncedSearch]);
+    if (!isDirectoryLanding || !districtSlug) return;
+    dispatch(fetchDistrictCategories({
+      district: districtSlug,
+      location: isLocationLanding ? locationSlug : "",
+      page: 1,
+      search: debouncedSearch,
+    }));
+  }, [dispatch, isDirectoryLanding, isLocationLanding, districtSlug, locationSlug, debouncedSearch]);
 
   const handleLoadMoreCategories = () => {
-    if (!isDistrictLanding || !districtSlug || !districtCategoriesHasMore || districtCategoriesLoadingMore) {
+    if (!isDirectoryLanding || !districtSlug || !districtCategoriesHasMore || districtCategoriesLoadingMore) {
       return;
     }
     dispatch(fetchDistrictCategories({
       district: districtSlug,
+      location: isLocationLanding ? locationSlug : "",
       page: districtCategoriesPage + 1,
       search: debouncedSearch,
     }));
@@ -153,7 +179,7 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
 
   const infiniteScrollSentinelRef = useInfiniteScrollTrigger({
     onLoadMore: handleLoadMoreCategories,
-    hasMore: isDistrictLanding && districtCategoriesHasMore,
+    hasMore: isDirectoryLanding && districtCategoriesHasMore,
     loading: districtCategoriesLoadingMore || districtCategoriesLoading,
   });
 
@@ -187,26 +213,31 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
   // `search` value against a list that was fetched for a possibly-stale
   // debounced one, which reads as the grid "lagging" a keystroke behind.
   const filteredCategories = useMemo(
-    () => isDistrictLanding
+    () => isDirectoryLanding
       ? listingItems
       : listingItems.filter((item) => item.name.toLowerCase().includes(search.toLowerCase())),
-    [search, listingItems, isDistrictLanding],
+    [search, listingItems, isDirectoryLanding],
   );
 
   const handleClick = (sub) => {
     const itemSlug = sub.slug || slugFromText(sub.name);
 
-    if (isDistrictLanding && districtSlug) {
+    if (isDirectoryLanding && districtSlug) {
       navigate(buildCategoryPath({
         districtSlug,
+        locationSlug,
+        locationPath,
         categorySlug: itemSlug,
-        isDistrictScope: true,
+        isDistrictScope: isDistrictLanding || !locationSlug,
       }), {
         state: {
           category: sub.name,
           categoryName: sub.name,
-          location: districtName,
+          location: isLocationLanding ? locationLabel : districtName,
           district: districtSlug,
+          locationSlug,
+          locationPath,
+          locationName: locationLabel,
         },
       });
       return;
@@ -216,6 +247,7 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
       navigate(buildCategoryPath({
         districtSlug,
         locationSlug,
+        locationPath,
         categorySlug,
         subcategorySlug: itemSlug,
         isDistrictScope: !locationSlug,
@@ -226,6 +258,7 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
           location: locationLabel,
           district: districtSlug,
           locationSlug,
+          locationPath,
           locationName: locationLabel,
         },
       });
@@ -255,16 +288,17 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
     : buildCategoryPath({
         districtSlug,
         locationSlug,
+        locationPath,
         categorySlug,
         isDistrictScope: Boolean(districtSlug && !locationSlug),
       });
   const categoryPageUrl = `https://massclick.in${pagePath === "/" ? "" : pagePath}`;
-  const fallbackSeo = isDistrictLanding
+  const fallbackSeo = isDirectoryLanding
     ? {
-        title: `Local Businesses in ${districtName} | Massclick`,
-        description: `Discover trusted businesses, services, and professionals in ${districtName} on Massclick.`,
-        keywords: `businesses in ${districtName}, ${districtName} local services, Massclick ${districtName}`,
-        canonical: `https://massclick.in/${districtSlug}`,
+        title: `Local Businesses in ${isLocationLanding ? locationLabel : districtName} | Massclick`,
+        description: `Discover trusted businesses, services, and professionals in ${isLocationLanding ? locationLabel : districtName} on Massclick.`,
+        keywords: `businesses in ${isLocationLanding ? locationLabel : districtName}, ${isLocationLanding ? locationLabel : districtName} local services, Massclick ${isLocationLanding ? locationLabel : districtName}`,
+        canonical: categoryPageUrl,
         robots: "index, follow",
       }
     : {
@@ -285,8 +319,9 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
         districtSlug,
         districtName,
         locationSlug: isDistrictLanding ? "" : locationSlug,
+        locationPath: isDistrictLanding ? "" : locationPath,
         locationName: locationLabel,
-        categorySlug: isDistrictLanding ? "" : categorySlug,
+        categorySlug: isDirectoryLanding ? "" : categorySlug,
         categoryName: categoryLabel,
       })
     : [
@@ -308,19 +343,20 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
       url: `https://massclick.in${buildCategoryPath({
         districtSlug,
         locationSlug,
-        categorySlug: isDistrictLanding ? item.slug || slugFromText(item.name) : categorySlug,
-        subcategorySlug: isDistrictLanding ? "" : item.slug || slugFromText(item.name),
+        locationPath,
+        categorySlug: isDirectoryLanding ? item.slug || slugFromText(item.name) : categorySlug,
+        subcategorySlug: isDirectoryLanding ? "" : item.slug || slugFromText(item.name),
         isDistrictScope: isDistrictLanding || !locationSlug,
       })}`,
       description: item.description,
       image: item.categoryImageKey || item.categoryImages?.webCard,
     })),
-    isDistrictLanding
-      ? `Categories in ${districtName}`
+    isDirectoryLanding
+      ? `Categories in ${isLocationLanding ? locationLabel : districtName}`
       : `${categoryLabel} subcategories in ${locationLabel}`,
     seoContent?.excerpt || (
-      isDistrictLanding
-        ? `Browse services in ${districtName}`
+      isDirectoryLanding
+        ? `Browse services in ${isLocationLanding ? locationLabel : districtName}`
         : `Browse ${categoryLabel} options in ${locationLabel}`
     ),
   );
@@ -329,7 +365,7 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
     return <Navigate to="/" replace />;
   }
 
-  if (isDistrictLanding && !districtSlug) {
+  if (isDirectoryLanding && !districtSlug) {
     return null;
   }
 
@@ -352,12 +388,12 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
           )}
           <div className={cx("category-header")}>
             <h1 className={cx("category-title")}>
-              {isDistrictLanding ? `Explore Services in ${districtName}` : `${categoryLabel} in ${locationLabel}`}
+              {isDirectoryLanding ? `Explore Services in ${isLocationLanding ? locationLabel : districtName}` : `${categoryLabel} in ${locationLabel}`}
             </h1>
 
             <input
               type="text"
-              placeholder={isDistrictLanding ? "Search categories..." : "Search subcategories..."}
+              placeholder={isDirectoryLanding ? "Search categories..." : "Search subcategories..."}
               className={cx("category-search")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -369,13 +405,13 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
             {isInitialLoading && (
               <div className={cx("category-loading")}>
                 <div className={cx("spinner")} />
-                <p>Loading {isDistrictLanding ? "categories" : "subcategories"}...</p>
+                <p>Loading {isDirectoryLanding ? "categories" : "subcategories"}...</p>
               </div>
             )}
 
             {!isInitialLoading && filteredCategories.length === 0 && (
               <div className={cx("category-empty")}>
-                <p className={cx("empty-text")}>No {isDistrictLanding ? "categories" : "subcategories"} found</p>
+                <p className={cx("empty-text")}>No {isDirectoryLanding ? "categories" : "subcategories"} found</p>
                 {search && <p className={cx("empty-subtext")}>Try a different search term</p>}
               </div>
             )}
@@ -383,7 +419,7 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
             {!isInitialLoading && filteredCategories.length > 0 && (
               <>
                 <p className={cx("category-count")}>
-                  {isDistrictLanding ? districtCategoriesTotal : filteredCategories.length} {isDistrictLanding ? "categories" : "subcategories"} available
+                  {isDirectoryLanding ? districtCategoriesTotal : filteredCategories.length} {isDirectoryLanding ? "categories" : "subcategories"} available
                 </p>
                 <div className={cx("category-grid")}>
                   {filteredCategories.map((item, index) => (
@@ -420,7 +456,7 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
                   ))}
                 </div>
 
-                {isDistrictLanding && districtCategoriesHasMore && (
+                {isDirectoryLanding && districtCategoriesHasMore && (
                   <div ref={infiniteScrollSentinelRef} className={cx("category-scroll-sentinel")}>
                     {districtCategoriesLoadingMore && (
                       <div className={cx("category-loading-more")}>
@@ -435,7 +471,7 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
           </div>
         </div>
 
-        {!isDistrictLanding && !seoContentLoading && (sanitizedPageContent || hasFaq) && (
+        {!isDirectoryLanding && !seoContentLoading && (sanitizedPageContent || hasFaq) && (
           <div className={cx("seo-outer-wrapper")}>
             <div className={cx("seo-article-wrapper")}>
               <article className={cx("seo-article")}>

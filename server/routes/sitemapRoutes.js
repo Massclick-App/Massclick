@@ -7,7 +7,12 @@ import { slugify } from "../slugify.js";
 import {
   getDistrictUrlSlug,
   getPublicLocationSlug,
+  getLocationUrlPath,
 } from "../helper/location/locationSlug.js";
+import {
+  buildLocationCategoryPath,
+  buildLocationPath,
+} from "../helper/location/locationUrl.js";
 import {
   getBusinessUrlSlug,
   buildBusinessPath as buildCanonicalBusinessPath,
@@ -210,9 +215,9 @@ const buildCategoryLookup = async () => {
 // "clinical-lab"), deduplicated — used to cross-join against every location.
 const getAllCategoryPaths = (lookup) => {
   const paths = new Set();
-  for (const { slug, parentSlug } of lookup.values()) {
+  for (const { slug } of lookup.values()) {
     if (!slug) continue;
-    paths.add(parentSlug ? `${parentSlug}/${slug}` : slug);
+    paths.add(slug);
   }
   return [...paths];
 };
@@ -223,7 +228,7 @@ const resolveCategoryPath = (category, lookup) => {
   const found = lookup.get(key);
 
   if (!found) return safeSlug(category) || "services";
-  return found.parentSlug ? `${found.parentSlug}/${found.slug}` : found.slug;
+  return found.slug;
 };
 
 // reject slugs that are pure numbers (pincodes, phone numbers, test data)
@@ -257,17 +262,30 @@ const getSitemapLocationSlug = (doc = {}) => {
   return doc.publicLocationSlug || getPublicLocationSlug(doc);
 };
 
+const getSitemapLocationPath = (doc = {}) => {
+  if (doc.level === "district") return "";
+  return getLocationUrlPath(doc);
+};
+
+const isValidLocationPath = (locationPath = "") =>
+  String(locationPath)
+    .split("/")
+    .filter(Boolean)
+    .every(isValidCitySlug);
+
 const isValidSitemapLocationDoc = (doc = {}) => {
-  const slug = getSitemapLocationSlug(doc);
-  return doc.level === "district" || (slug && isValidCitySlug(slug));
+  const locationPath = getSitemapLocationPath(doc);
+  return doc.level === "district" || (locationPath && isValidLocationPath(locationPath));
 };
 
 const buildDistrictCategoryPath = (districtSlug, entry = {}) => {
-  const segments =
-    entry.locationLevel === "district"
-      ? [districtSlug, entry.categoryPath]
-      : [districtSlug, entry.locationSlug, entry.categoryPath];
-  return `/${segments.filter(Boolean).join("/")}`;
+  return buildLocationCategoryPath({
+    districtSlug,
+    locationDoc: entry.locationDoc,
+    locationPath: entry.locationPath,
+    locationSlug: entry.locationSlug,
+    categorySlug: entry.categoryPath,
+  });
 };
 
 const getLocationPriority = (level = "") => {
@@ -381,15 +399,18 @@ const buildDistrictCategoryPages = async (districtDoc) => {
   for (const locationDoc of docsByKey.values()) {
     if (!isValidSitemapLocationDoc(locationDoc)) continue;
     const publicLocationSlug = getSitemapLocationSlug(locationDoc);
+    const publicLocationPath = getSitemapLocationPath(locationDoc);
 
     const lastmod = isoDate(locationDoc.updatedAt);
 
     for (const categoryPath of categoryPaths) {
-      const key = `${locationDoc.level}:${publicLocationSlug || "district"}/${categoryPath}`;
+      const key = `${locationDoc.level}:${publicLocationPath || "district"}/${categoryPath}`;
       if (pages.has(key)) continue;
 
       pages.set(key, {
+        locationDoc,
         locationSlug: publicLocationSlug,
+        locationPath: publicLocationPath,
         locationLabel: getLocationLabel(locationDoc),
         locationLevel: locationDoc.level,
         categoryPath,
@@ -400,7 +421,7 @@ const buildDistrictCategoryPages = async (districtDoc) => {
 
   return [...pages.values()].sort(
     (a, b) =>
-      (a.locationSlug || "").localeCompare(b.locationSlug || "") ||
+      (a.locationPath || a.locationSlug || "").localeCompare(b.locationPath || b.locationSlug || "") ||
       a.categoryPath.localeCompare(b.categoryPath)
   );
 };
@@ -1051,9 +1072,11 @@ const buildLlmsData = async () => {
     if (districtSlug && locationSlug && !isValidCitySlug(locationSlug)) continue;
     if (!districtSlug && (!locationSlug || !isValidCitySlug(locationSlug))) continue;
 
-    const hrefBase = districtSlug
-      ? `/${[districtSlug, locationSlug].filter(Boolean).join("/")}`
-      : `/${locationSlug}`;
+    const hrefBase = districtSlug && locationDoc
+      ? buildLocationPath({ districtDoc, districtSlug, locationDoc })
+      : districtSlug
+        ? `/${[districtSlug, locationSlug].filter(Boolean).join("/")}`
+        : `/${locationSlug}`;
     const locationName =
       locationDoc?.level === "district"
         ? districtDoc?.urlAlias || districtDoc?.district || location
@@ -1077,12 +1100,21 @@ const buildLlmsData = async () => {
     city.total += row.count;
 
     const catPath = resolveCategoryPath(category, categoryLookup);
+    const href = districtSlug && locationDoc
+      ? buildLocationCategoryPath({
+          districtDoc,
+          districtSlug,
+          locationDoc,
+          categorySlug: catPath,
+        })
+      : `${hrefBase}/${catPath}`;
     const existing = city.pages.get(catPath);
     if (existing) {
       existing.count += row.count;
     } else {
       city.pages.set(catPath, {
         path: catPath,
+        href,
         label: titleCase(category),
         count: row.count,
       });
@@ -1128,7 +1160,7 @@ router.get("/llms.txt", async (req, res) => {
       .slice(0, 25)
       .map(
         (p) =>
-          `- [${p.label} in ${p.city.name}](${BASE_URL}${p.city.hrefBase}/${p.path}): ${p.count} verified listing${p.count === 1 ? "" : "s"} with ratings, addresses, and phone numbers`
+          `- [${p.label} in ${p.city.name}](${BASE_URL}${p.href}): ${p.count} verified listing${p.count === 1 ? "" : "s"} with ratings, addresses, and phone numbers`
       );
 
     const cityLines = cities
@@ -1186,7 +1218,7 @@ router.get("/llms-full.txt", async (req, res) => {
     const citySections = cities.map((city) => {
       const links = city.pages.map(
         (p) =>
-          `- [${p.label} in ${city.name}](${BASE_URL}${city.hrefBase}/${p.path}): ${p.count} verified listing${p.count === 1 ? "" : "s"}`
+          `- [${p.label} in ${city.name}](${BASE_URL}${p.href}): ${p.count} verified listing${p.count === 1 ? "" : "s"}`
       );
       return `## ${city.name} (${city.total} listings)\n${links.join("\n")}`;
     });

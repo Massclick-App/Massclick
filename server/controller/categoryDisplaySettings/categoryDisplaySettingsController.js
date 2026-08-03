@@ -5,7 +5,11 @@ import { categoriesData } from "../../utils/sub-categoriesData.js";
 import { getCache, setCache } from "../../utils/redisClient.js";
 import { getSignedUrlByKey, uploadImageToS3 } from "../../s3Uploder.js";
 import { invalidateCategoryDisplaySettingsCache } from "../../utils/cacheInvalidation.js";
-import { resolveDistrictBySlug } from "../../helper/location/locationResolver.js";
+import {
+  resolveDistrictBySlug,
+  resolveLocationSearchScope,
+  resolveRouteLocation,
+} from "../../helper/location/locationResolver.js";
 import { getSubCategoryNameSet } from "../../helper/category/categoryHierarchyHelper.js";
 
 // ─── Fallback arrays (copied from categoryController.js) ──────────────────────
@@ -595,7 +599,7 @@ export const getV2ParentOfSubCategoryAction = async (req, res) => {
 // shown at this level.
 export const getV2DistrictCategoriesAction = async (req, res) => {
   try {
-    const { district, search = "" } = req.query;
+    const { district, location = "", search = "" } = req.query;
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const pageSize = Math.min(60, Math.max(1, parseInt(req.query.pageSize, 10) || 24));
 
@@ -607,6 +611,15 @@ export const getV2DistrictCategoriesAction = async (req, res) => {
     if (!districtDoc) {
       return res.status(404).json({ message: "District not found" });
     }
+    const locationDoc = location
+      ? (await resolveRouteLocation({ districtSlug: district, locationSlug: location }).catch(() => null))?.locationDoc
+      : null;
+    const locationScope = locationDoc
+      ? await resolveLocationSearchScope(locationDoc).catch(() => null)
+      : null;
+    const locationMatch = locationScope?.slugPrefixRegex
+      ? { "masterLocation.slug": locationScope.slugPrefixRegex }
+      : {};
 
     // Three independent, cheap lookups rather than a cross-collection
     // $lookup: business.category and categoryModel.category aren't reliably
@@ -623,6 +636,7 @@ export const getV2DistrictCategoriesAction = async (req, res) => {
             businessesLive: true,
             isActive: true,
             "masterLocation.district": districtDoc.district,
+            ...locationMatch,
           },
         },
         { $group: { _id: { $toLower: "$category" }, count: { $sum: 1 } } },

@@ -13,10 +13,11 @@ export const slugFromText = (text = "") =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
-export const resolveDistrictRoute = async ({ district, p2, p3 } = {}) => {
+export const resolveDistrictRoute = async ({ district, p2, p3, p4 } = {}) => {
   const params = { district };
   if (p2) params.p2 = p2;
   if (p3) params.p3 = p3;
+  if (p4) params.p4 = p4;
 
   const response = await axiosInstance.get("/v2/location/resolve", { params });
   return response.data;
@@ -28,6 +29,7 @@ export const buildLegacyRouteContext = ({ location, category, subcategory } = {}
   districtSlug: "",
   districtName: "",
   locationSlug: location || "",
+  locationPath: "",
   locationName: formatUrlText(location || ""),
   categorySlug: category || "",
   subcategorySlug: subcategory || "",
@@ -52,6 +54,7 @@ export const buildDistrictCategoryContext = ({
     districtSlug: district?.slug || "",
     districtName: district?.name || formatUrlText(district?.slug || ""),
     locationSlug: "",
+    locationPath: "",
     // Intentionally NOT blanked to match locationSlug's emptiness: this is
     // not "the name of the resolved location" (there isn't one), it's the
     // display fallback for "no specific location, browsing the whole
@@ -84,10 +87,12 @@ export const buildLocationCategoryContext = ({
     districtSlug: district?.slug || "",
     districtName: district?.name || formatUrlText(district?.slug || ""),
     locationSlug: location?.slug || "",
+    locationPath: location?.path || "",
+    locationTargetSlug: location?.targetSlug || "",
     locationName: location?.name || formatUrlText(location?.slug || ""),
     categorySlug: category || "",
     subcategorySlug: subcategory || "",
-    isKnownCategory: !subcategory,
+    isKnownCategory: Boolean(category) && !subcategory,
   };
   return context;
 };

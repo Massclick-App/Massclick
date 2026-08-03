@@ -9,6 +9,10 @@ import {
   getDistrictUrlSlug,
   getPublicLocationSlug,
 } from "../helper/location/locationSlug.js";
+import {
+  buildLocationCategoryPath,
+  buildLocationPath,
+} from "../helper/location/locationUrl.js";
 import { classifyMiddleSegment } from "../helper/location/urlSegmentClassifier.js";
 import {
   getBusinessUrlSlug,
@@ -125,13 +129,18 @@ const buildLegacyCategoryRedirect = async (parts = []) => {
   if (!districtDoc) return null;
 
   const districtSlug = getDistrictUrlSlug(districtDoc);
-  const locationSlug =
-    locationDoc.level === "district"
-      ? ""
-      : getRouteLocationSlug(locationDoc, legacyLocation);
-  const targetParts = [districtSlug, locationSlug, category, subcategory].filter(Boolean);
+  const finalCategorySlug = subcategory || category;
 
-  return `/${targetParts.join("/")}`;
+  if (locationDoc.level === "district") {
+    return buildLocationCategoryPath({ districtDoc, districtSlug, categorySlug: finalCategorySlug });
+  }
+
+  return buildLocationCategoryPath({
+    districtDoc,
+    districtSlug,
+    locationDoc,
+    categorySlug: finalCategorySlug,
+  });
 };
 
 const findBusinessForLegacyPath = async (id = "") => {
@@ -272,7 +281,7 @@ const resolveNewStyleCanonicalRedirectTarget = async (parts = [], path = "") => 
   if (parts[0] === "business") {
     return resolveNewStyleBusinessCanonicalRedirect(parts, path);
   }
-  if (parts.length !== 3) return null;
+  if (parts.length < 2 || parts.length > 4) return null;
 
   const districtDoc = await resolveDistrictBySlug(parts[0]).catch(() => null);
   if (!districtDoc) return null;
@@ -281,11 +290,40 @@ const resolveNewStyleCanonicalRedirectTarget = async (parts = [], path = "") => 
     districtDoc,
     p2: parts[1],
     p3: parts[2],
+    p4: parts[3],
   }).catch(() => null);
-  if (classification?.type !== "unresolvedLocation") return null;
 
   const districtSlug = getDistrictUrlSlug(districtDoc);
-  const target = `/${districtSlug}/${classification.categorySlug}`;
+  let target = null;
+
+  if (classification?.type === "location") {
+    target = buildLocationCategoryPath({
+      districtDoc,
+      districtSlug,
+      locationDoc: classification.locationDoc,
+      categorySlug: classification.categorySlug,
+    });
+  } else if (classification?.type === "locationLanding") {
+    target = buildLocationPath({
+      districtDoc,
+      districtSlug,
+      locationDoc: classification.locationDoc,
+    });
+  } else if (classification?.type === "districtCategory") {
+    target = buildLocationCategoryPath({
+      districtDoc,
+      districtSlug,
+      categorySlug: classification.subcategorySlug || classification.categorySlug,
+    });
+  } else if (classification?.type === "unresolvedLocation") {
+    target = buildLocationCategoryPath({
+      districtDoc,
+      districtSlug,
+      categorySlug: classification.categorySlug,
+    });
+  }
+
+  if (!target) return null;
   if (samePath(path, target)) return null;
   return target;
 };

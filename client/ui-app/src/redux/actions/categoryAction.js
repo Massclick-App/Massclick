@@ -174,13 +174,14 @@ export const fetchHomeCategories = () => async (dispatch) => {
 // Categories with live businesses in a district, paginated. `page` > 1
 // dispatches the "MORE" variant so the reducer appends instead of replacing
 // — that's what makes this infinite scroll rather than a single fetch.
-export const fetchDistrictCategories = ({ district, page = 1, pageSize = 24, search = "" } = {}) =>
+export const fetchDistrictCategories = ({ district, location = "", page = 1, pageSize = 24, search = "" } = {}) =>
   async (dispatch) => {
     const isFirstPage = page <= 1;
     dispatch({ type: isFirstPage ? FETCH_DISTRICT_CATEGORIES_REQUEST : FETCH_DISTRICT_CATEGORIES_MORE_REQUEST });
 
     try {
       const params = new URLSearchParams({ district, page: String(page), pageSize: String(pageSize) });
+      if (location) params.set("location", location);
       if (search) params.set("search", search);
 
       const response = await axiosInstance.get(`${API_URL}/v2/category/district?${params.toString()}`);

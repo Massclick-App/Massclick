@@ -10,6 +10,7 @@ import {
   resolveRouteLocation,
   resolveDistrictBySlug,
 } from "../location/locationResolver.js";
+import { getLocationUrlPath } from "../location/locationSlug.js";
 import locationModel from "../../model/locationModel/locationModel.js";
 import masterLocationModel from "../../model/locationModel/masterLocationModel.js";
 import userModel from "../../model/userModel.js";
@@ -415,11 +416,19 @@ export const viewBusinessList = async (identifier) => {
   // share/copy links, and JSON-LD (see cardDetails.js).
   if (business.masterLocation?.locationId) {
     const resolvedLocation = await masterLocationModel
-      .findById(business.masterLocation.locationId, { publicLocationSlug: 1 })
+      .findById(business.masterLocation.locationId, {
+        district: 1,
+        zone: 1,
+        ward: 1,
+        locality: 1,
+        level: 1,
+        publicLocationSlug: 1,
+      })
       .lean()
       .catch(() => null);
     if (resolvedLocation?.publicLocationSlug) {
       business.publicLocationSlug = resolvedLocation.publicLocationSlug;
+      business.publicLocationPath = getLocationUrlPath(resolvedLocation);
     }
   }
 
