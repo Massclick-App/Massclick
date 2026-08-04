@@ -20,7 +20,7 @@ import { buildBusinessDetailsUrl, getBusinessId } from "./businessPublicUrlHelpe
 // Because the plate is fixed, every field below sits in a fixed slot and
 // long values shrink to fit rather than pushing the layout down.
 
-export const CERTIFICATE_TEMPLATE_VERSION = 15;
+export const CERTIFICATE_TEMPLATE_VERSION = 16;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

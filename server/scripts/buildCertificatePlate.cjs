@@ -2,8 +2,8 @@
  * Builds a certificate plate from finished certificate artwork.
  *
  * The artwork we are given is a finished certificate — it has a business name,
- * category, location, QR and certificate number already rendered into it. The
- * plate is that same artwork with those five regions painted out, so the
+ * category, location, QR, certificate number and footer rule already rendered into it. The
+ * plate is that same artwork with those regions painted out, so the
  * generator can draw live values into them. Everything else (border, seal,
  * laurel, verification chips, headings, logo, signature, bottom band) stays
  * exactly as designed.
@@ -34,6 +34,9 @@ const REGIONS = [
   // Only the modules — the white box and its gold border stay on the plate.
   { name: "qrModules", x: 108, y: 1027, w: 104, h: 108, flat: [255, 255, 255] },
   { name: "footer", x: 262, y: 1224, w: 436, h: 42, stripX: 248 },
+  // Remove only the straight footer rule so the live certificate number does
+  // not look struck through; the decorative end marks remain on the artwork.
+  { name: "footerRule", x: 215, y: 1242, w: 534, h: 12, stripY: 1252 },
 ];
 
 const buildPatch = (region, at) => {
@@ -51,6 +54,16 @@ const buildPatch = (region, at) => {
       for (let col = 0; col < region.w; col++) buf.set(colour, (row * region.w + col) * 3);
     }
     return { buf, note: `column x=${region.stripX}` };
+  }
+
+  if (region.stripY !== undefined) {
+    // Stretch one clean row through the region so horizontal shading survives.
+    for (let row = 0; row < region.h; row++) {
+      for (let col = 0; col < region.w; col++) {
+        buf.set(at(region.x + col, region.stripY), (row * region.w + col) * 3);
+      }
+    }
+    return { buf, note: `row y=${region.stripY}` };
   }
 
   // Bridge: interpolate each row between the pixels just outside the region.
