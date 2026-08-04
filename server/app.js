@@ -1,3 +1,7 @@
+// Must stay first: it points fontconfig at our bundled certificate fonts, and
+// sharp/libvips initialises fontconfig when it loads, so any import that pulls
+// in sharp before this runs would lock in the host machine's fonts instead.
+import "./utils/fontBootstrap.js";
 import { createServer } from "http";
 import express from "express";
 import cors from "cors";

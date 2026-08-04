@@ -1,1 +1,4 @@
 node_modules/
+
+# Generated at boot by utils/fontBootstrap.js — carries absolute paths
+assets/fontconfig/
