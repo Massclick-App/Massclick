@@ -12,7 +12,8 @@ const cx = createScopedClassNames(styles);
 const PersonalDetails = ({
   formData,
   handleChange,
-  handleImageUpload
+  handleImageUpload,
+  personalOnly = false
 }) => <div className={cx("form-step-content")}>
     <h3>Your Profile Details</h3>
     <p className={cx("step-description")}>* Denotes mandatory fields</p>
@@ -51,18 +52,18 @@ const PersonalDetails = ({
         <input type="tel" value={formData.mobileNumber2 || ""} placeholder="Enter alternate number" onChange={e => handleChange(e, "mobileNumber2")} />
       </div>
 
-      <div className={cx("form-field")}>
+      {!personalOnly && <div className={cx("form-field")}>
         <label>Business Name</label>
         <input type="text" value={formData.businessName || ""} placeholder="Enter your business name" onChange={e => handleChange(e, "businessName")} />
-      </div>
-      <div className={cx("form-field")}>
+      </div>}
+      {!personalOnly && <div className={cx("form-field")}>
         <label>Business Category</label>
         <input type="text" value={formData.businessCategory?.category || ""} placeholder="Enter your Business Category" onChange={e => handleChange(e, "businessCategory")} />
-      </div>
-      <div className={cx("form-field")}>
+      </div>}
+      {!personalOnly && <div className={cx("form-field")}>
         <label>Business Location</label>
         <input type="text" value={formData.businessLocation || ""} onChange={e => handleChange(e, "businessLocation")} />
-      </div>
+      </div>}
 
       <div className={cx("form-field full-width image-upload-group")}>
         <div className={cx("image-preview")}>
@@ -217,7 +218,7 @@ const parseStoredUser = () => {
     return {};
   }
 };
-function MultiStepProfileForm() {
+function MultiStepProfileForm({ personalOnly = false }) {
   const dispatch = useDispatch();
   const storedMobile = localStorage.getItem("mobileNumber") || "";
   const steps = [{
@@ -416,7 +417,7 @@ function MultiStepProfileForm() {
               </Alert>}
 
             {loadingUser ? <div className={cx("business-edit-loading")}>Loading profile details...</div> : <form onSubmit={handleSubmit}>
-                <CurrentComponent formData={formData} handleChange={handleChange} handleArrayChange={handleArrayChange} handleImageUpload={handleImageUpload} />
+                <CurrentComponent formData={formData} handleChange={handleChange} handleArrayChange={handleArrayChange} handleImageUpload={handleImageUpload} personalOnly={personalOnly} />
 
                 <div className={cx("form-actions-footer")}>
                   {currentStep > 1 && <button type="button" className={cx("btn-secondary")} onClick={handleBack}>
@@ -435,9 +436,10 @@ function MultiStepProfileForm() {
       <Footer />
     </>;
 }
-export default function EditProfilePage() {
+export default function EditProfilePage({ mode = "auto" }) {
   const reduxUser = useSelector(state => state.otp?.viewResponse) || {};
   const storedUser = parseStoredUser();
   const isBusinessPeople = reduxUser?.businessPeople === true || storedUser?.businessPeople === true;
+  if (mode === "user") return <MultiStepProfileForm personalOnly />;
   return isBusinessPeople ? <EditBusinessPage /> : <MultiStepProfileForm />;
 }

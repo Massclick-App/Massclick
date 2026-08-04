@@ -20,8 +20,10 @@ import {
   isBusinessPeopleUser,
 } from "./userMenuConfig.js";
 import { useNavigate } from "react-router-dom";
+import { useDispatch } from "react-redux";
 import { styled } from "@mui/material/styles";
 import { fetchRewardWallet } from "../../../services/rewardService";
+import { userLogout } from "../../../redux/actions/otpAction.js";
 
 const formatUiName = (name) => {
   if (!name) return "";
@@ -82,6 +84,7 @@ const PointsCard = styled(Box)(() => ({
 export default function GlobalDrawer() {
   const { isDrawerOpen, closeDrawer } = useDrawer();
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
   const userName = authUser?.userName || "Guest User";
@@ -121,9 +124,7 @@ export default function GlobalDrawer() {
   }, [customerKey, isDrawerOpen]);
 
   const handleLogout = () => {
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("mobileNumber");
-    localStorage.removeItem("authUser");
+    dispatch(userLogout());
 
     closeDrawer();
     navigate("/");

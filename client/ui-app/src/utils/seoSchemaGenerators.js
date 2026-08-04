@@ -19,8 +19,8 @@ export const generateLocalBusinessSchema = (business) => {
       districtSlug: business.districtSlug,
       locationSlug: business.locationSlug,
       location: business.address?.locality || business.areaServed,
-      businessSlug: business.businessSlug,
       businessName: business.businessName,
+      publicId: business.publicId,
       id: business._id,
     })}`;
 

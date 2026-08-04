@@ -1,25 +1,65 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import sharp from "sharp";
 import QRCode from "qrcode";
 import {
   deleteObjectByKey,
-  getImageDataUrlByKey,
   getSignedUrlByKey,
   uploadImageToS3,
 } from "../../s3Uploder.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
-import { buildBusinessDetailsUrl } from "./businessPublicUrlHelper.js";
+import { buildBusinessDetailsUrl, getBusinessId } from "./businessPublicUrlHelper.js";
 
-export const CERTIFICATE_TEMPLATE_VERSION = 13;
-const CERTIFICATE_FONT_FAMILY = "'Nirmala UI', 'Noto Sans Tamil', Latha, 'Arial Unicode MS', Arial, Helvetica, sans-serif";
-const SERIF_FONT_FAMILY = "Georgia, 'Times New Roman', serif";
+// The certificate is a fixed artwork plate (border, seal, laurel, verification
+// chips, headings, bottom band — everything that never changes) with only the
+// per-business fields drawn on top. Hand-coding those ornaments as SVG paths
+// could only ever approximate the design; compositing the artwork itself makes
+// the output identical to the source design by construction.
+//
+// Because the plate is fixed, every field below sits in a fixed slot and
+// long values shrink to fit rather than pushing the layout down.
+
+export const CERTIFICATE_TEMPLATE_VERSION = 16;
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 // Kept inside server/ (not client/) so these ship with the backend deploy,
 // which packages only the server directory.
-const MASSCLICK_LOGO_PATH = path.resolve(__dirname, "../../assets/certificates/massclick-logo.png");
-const SIGNATURE_PATH = path.resolve(__dirname, "../../assets/certificates/signature.png");
+const ASSET_DIR = path.resolve(__dirname, "../../assets/certificates");
+
+// Bundled via fontconfig in utils/fontBootstrap.js. librsvg ignores @font-face,
+// so these names must match the family names of the fonts in assets/fonts.
+const SANS = "Noto Sans";
+const SANS_TAMIL = "Noto Sans Tamil";
+const TEXT_FONT_FAMILY = `'${SANS}', '${SANS_TAMIL}', sans-serif`;
+const SERIF_FONT_FAMILY = "'Noto Serif', serif";
+
+// Sampled from the plate so drawn text matches the artwork it sits on.
+const CERT_NAVY = "#07183f";
+const CERT_GOLD = "#c38a22";
+const CERT_PLAQUE_GOLD = "#f1d275";
+const CERT_FOOTER_GOLD = "#e5bd5a";
+
+// Design space. The plate is authored at 2x and rendered down to this box.
+const CERT_WIDTH = 720;
+const CERT_HEIGHT = 960;
+const RENDER_SCALE = 2;
+const CX = CERT_WIDTH / 2;
+
+// Every per-business field, in design-space coordinates. Tune here — nothing
+// else in this file carries layout numbers.
+// Slots are derived from the plate: each one is the region cleared by
+// scripts/buildCertificatePlate.cjs, so text can never collide with artwork.
+const LAYOUT = {
+  businessName: { cy: 456, maxWidth: 513, fontSize: 32, minFontSize: 17, lineHeight: 34, maxLines: 2, weight: 800, fill: CERT_NAVY, letterSpacing: -0.9 },
+  // The plaque itself is part of the plate; only its label is drawn.
+  category: { cy: 522, maxWidth: 258, fontSize: 18, minFontSize: 10.5, lineHeight: 18, maxLines: 1, weight: 700, fill: CERT_PLAQUE_GOLD, fontFamily: SERIF_FONT_FAMILY, letterSpacing: 0.3 },
+  location: { cy: 559, maxWidth: 262, fontSize: 19, minFontSize: 12, lineHeight: 21, maxLines: 2, weight: 800, fill: CERT_NAVY },
+  // The white box and its gold border are on the plate; only the code is drawn.
+  qr: { x: 81, y: 770, size: 78 },
+  footer: { cy: 933, maxWidth: 310, fontSize: 12, minFontSize: 8, lineHeight: 12, maxLines: 1, weight: 400, fill: CERT_FOOTER_GOLD, fontFamily: SERIF_FONT_FAMILY },
+};
 
 const escapeXml = (value) =>
   String(value ?? "")
@@ -29,18 +69,23 @@ const escapeXml = (value) =>
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&apos;");
 
-const readImageDataUrl = (filePath, label) => {
+const readAssetDataUrl = (fileName, label) => {
   try {
-    const buffer = fs.readFileSync(filePath);
-    return `data:image/png;base64,${buffer.toString("base64")}`;
+    const buffer = fs.readFileSync(path.join(ASSET_DIR, fileName));
+    const mime = fileName.endsWith(".png") ? "image/png" : "image/jpeg";
+    return `data:${mime};base64,${buffer.toString("base64")}`;
   } catch (error) {
-    console.warn(`Unable to read ${label} for certificate:`, error.message);
+    console.warn(`[Certificate] Unable to read ${label} (${fileName}):`, error.message);
     return "";
   }
 };
 
-const MASSCLICK_LOGO_DATA_URL = readImageDataUrl(MASSCLICK_LOGO_PATH, "MassClick logo");
-const SIGNATURE_DATA_URL = readImageDataUrl(SIGNATURE_PATH, "signature");
+// Read once at boot — the plates are a few hundred KB each and never change.
+// Authored at exactly the output resolution so rendering is a 1:1 blit.
+const PLATES = {
+  verified: readAssetDataUrl("plate-verified.jpg", "verified certificate plate"),
+  trust: readAssetDataUrl("plate-trust.jpg", "trust certificate plate"),
+};
 
 const slugifyCertificateValue = (value = "") =>
   String(value)
@@ -86,124 +131,136 @@ const appendCertificateUrls = (business = {}) => {
   return result;
 };
 
-const splitSvgTextLines = (value = "", maxChars = 28, maxLines = 2) => {
-  const words = String(value || "")
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-  const lines = [];
+// ---- fitting text into fixed slots -------------------------------------------
 
-  for (const word of words) {
-    if (lines.length === 0) {
-      lines.push(word);
-      continue;
+// Text has to fit slots on a fixed plate, so we need real widths, not an
+// average-glyph guess — that guess ignored letter-spacing and undershot
+// uppercase serif caps badly enough to run the category label through the
+// plaque's diamond markers. Instead, render each string once offscreen and
+// measure its ink. Width scales linearly with font size, so one measurement
+// per string covers every candidate size.
+const MEASURE_REF_SIZE = 64;
+const MEASURE_PAD = 40;
+const measureCache = new Map();
+
+const measureAdvanceRatio = async (text, fontFamily, weight) => {
+  const key = `${fontFamily}|${weight}|${text}`;
+  const cached = measureCache.get(key);
+  if (cached !== undefined) return cached;
+
+  const width = Math.ceil(String(text).length * MEASURE_REF_SIZE * 1.4) + MEASURE_PAD * 2;
+  const height = MEASURE_REF_SIZE * 3;
+  const probe = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+    <rect width="${width}" height="${height}" fill="#fff"/>
+    <text x="${MEASURE_PAD}" y="${MEASURE_REF_SIZE * 2}" font-family="${fontFamily}" font-size="${MEASURE_REF_SIZE}" font-weight="${weight}" fill="#000">${escapeXml(text)}</text>
+  </svg>`;
+
+  let ratio = String(text).length * 0.6; // only used if the probe render fails
+  try {
+    const { data, info } = await sharp(Buffer.from(probe), { density: 72 })
+      .greyscale()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+
+    let minX = info.width;
+    let maxX = -1;
+    for (let y = 0; y < info.height; y++) {
+      const row = y * info.width;
+      for (let x = 0; x < info.width; x++) {
+        if (data[row + x] < 200) {
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+        }
+      }
     }
 
-    const current = lines[lines.length - 1] || "";
-    const next = current ? `${current} ${word}` : word;
-
-    if (next.length <= maxChars) {
-      lines[lines.length - 1] = next;
-    } else if (lines.length < maxLines) {
-      lines.push(word);
-    } else {
-      lines[lines.length - 1] = `${current} ${word}`.trim();
+    if (maxX >= minX) {
+      ratio = (maxX - minX + 1) / MEASURE_REF_SIZE;
     }
+  } catch (error) {
+    console.warn("[Certificate] Text measurement failed, using estimate:", error.message);
   }
 
-  return lines.length ? lines.slice(0, maxLines) : ["Business"];
+  measureCache.set(key, ratio);
+  return ratio;
 };
 
-const textLinesMarkup = ({
-  lines,
-  x,
-  y,
-  lineHeight,
-  fontSize,
-  fontWeight,
-  fill,
-  fontFamily = CERTIFICATE_FONT_FAMILY,
-  letterSpacing,
-}) =>
-  lines
+// letter-spacing is an absolute length, so it does not scale with font size.
+const measureTextWidth = async (text, { fontSize, fontFamily, weight, letterSpacing = 0 }) => {
+  const ratio = await measureAdvanceRatio(text, fontFamily, weight);
+  const gaps = Math.max(0, String(text).length - 1);
+  return ratio * fontSize + gaps * letterSpacing;
+};
+
+// Split into `lineCount` lines at the word break that minimises the widest
+// line, so a two-line name reads balanced instead of 1-word / 5-word.
+const wrapToLines = (value, lineCount) => {
+  const words = String(value || "").trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return ["Business"];
+  if (lineCount <= 1 || words.length < lineCount) return [words.join(" ")];
+
+  let best = null;
+  const walk = (index, current, lines) => {
+    if (lines.length === lineCount - 1) {
+      const tail = words.slice(index).join(" ");
+      if (!tail) return;
+      const candidate = [...lines, tail];
+      const widest = Math.max(...candidate.map(l => l.length));
+      if (!best || widest < best.widest) best = { lines: candidate, widest };
+      return;
+    }
+    for (let i = index; i < words.length - (lineCount - lines.length - 1); i++) {
+      walk(i + 1, null, [...lines, words.slice(index, i + 1).join(" ")]);
+    }
+  };
+  walk(0, null, []);
+
+  return best ? best.lines : [words.join(" ")];
+};
+
+// Prefer fewer lines at full size; only add a line once shrinking would push
+// the text below its minimum readable size.
+const fitTextBlock = async (value, { maxWidth, fontSize, minFontSize, maxLines, weight, letterSpacing = 0, fontFamily = TEXT_FONT_FAMILY }) => {
+  let fallback = null;
+
+  for (let lineCount = 1; lineCount <= maxLines; lineCount++) {
+    const lines = wrapToLines(value, lineCount);
+    if (lines.length !== lineCount) continue;
+
+    const widths = await Promise.all(
+      lines.map(line => measureTextWidth(line, { fontSize, fontFamily, weight, letterSpacing })),
+    );
+    const widest = Math.max(...widths);
+
+    if (widest <= maxWidth) return { lines, fontSize };
+
+    // Widths scale linearly, so the fitting size follows directly.
+    const scaled = Math.floor((fontSize * (maxWidth / widest)) * 2) / 2;
+    if (scaled >= minFontSize) return { lines, fontSize: scaled };
+    if (!fallback) fallback = { lines, fontSize: minFontSize };
+  }
+
+  return fallback || { lines: wrapToLines(value, 1), fontSize: minFontSize };
+};
+
+// Vertically centre a block of lines on `cy` so a 1-line and a 2-line value
+// both sit in the middle of the same fixed slot.
+const textBlockMarkup = ({ lines, fontSize, cy, lineHeight, weight, fill, fontFamily = TEXT_FONT_FAMILY, letterSpacing }) => {
+  const firstBaseline = cy - ((lines.length - 1) * lineHeight) / 2 + fontSize * 0.35;
+
+  return lines
     .map(
       (line, index) =>
-        `<text x="${x}" y="${y + index * lineHeight}" text-anchor="middle" font-family="${fontFamily}" font-size="${fontSize}" font-weight="${fontWeight}" fill="${fill}"${letterSpacing ? ` letter-spacing="${letterSpacing}"` : ""}>${escapeXml(line)}</text>`,
+        `<text x="${CX}" y="${(firstBaseline + index * lineHeight).toFixed(2)}" text-anchor="middle" font-family="${fontFamily}" font-size="${fontSize}" font-weight="${weight}" fill="${fill}"${letterSpacing ? ` letter-spacing="${letterSpacing}"` : ""}>${escapeXml(line)}</text>`,
     )
     .join("\n  ");
-
-// ---- decorative building blocks --------------------------------------------
-
-const cornerMark = (x, y, hSign, vSign, color) => {
-  const len = 30;
-  return `
-    <path d="M${x} ${y + vSign * len} V${y} H${x + hSign * len}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" opacity="0.55"/>
-    <circle cx="${x}" cy="${y}" r="3" fill="${color}" opacity="0.7"/>`;
-};
-
-const sealMarkup = (cx, cy, primary, isTrust) => {
-  const bumpCount = 32;
-  const bumpR = 6;
-  const bumpOrbit = 62;
-  const bumps = Array.from({ length: bumpCount })
-    .map((_, i) => {
-      const angle = (i / bumpCount) * Math.PI * 2;
-      const x = cx + bumpOrbit * Math.cos(angle);
-      const y = cy + bumpOrbit * Math.sin(angle);
-      return `<circle cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="${bumpR}" fill="${primary}"/>`;
-    })
-    .join("");
-  const icon = isTrust
-    ? `<path d="M${cx} ${cy - 20} l14.5 5.8 v15.4 c0 11.4 -6.2 19.4 -14.5 23.2 c-8.3 -3.8 -14.5 -11.8 -14.5 -23.2 v-15.4 z" fill="#ffffff"/>
-       <circle cx="${cx}" cy="${cy - 2.5}" r="5.8" fill="${primary}"/>
-       <path d="M${cx} ${cy + 3.8} v9.4" stroke="${primary}" stroke-width="4.2" stroke-linecap="round"/>`
-    : `<path d="M${cx - 13.5} ${cy + 1} l9 9.5 l19 -21" fill="none" stroke="#ffffff" stroke-width="6.4" stroke-linecap="round" stroke-linejoin="round"/>`;
-
-  return `
-    ${bumps}
-    <circle cx="${cx}" cy="${cy}" r="52" fill="${primary}"/>
-    <circle cx="${cx}" cy="${cy}" r="46.5" fill="none" stroke="#f4c95d" stroke-width="1.6" opacity="0.85"/>
-    <circle cx="${cx}" cy="${cy}" r="40" fill="#ffffff" opacity="0.14"/>
-    ${icon}`;
-};
-
-const chipMarkup = (cx, cy, width, label) => {
-  const height = 32;
-  const x = cx - width / 2;
-  const y = cy - height / 2;
-  const checkX = x + 20;
-  return `
-    <rect x="${x}" y="${y}" width="${width}" height="${height}" rx="${height / 2}" fill="#f8fafc" stroke="#e2e8f0"/>
-    <circle cx="${checkX}" cy="${cy}" r="9" fill="#1f7a34"/>
-    <path d="M${checkX - 4.4} ${cy + 0.2} L${checkX - 1.2} ${cy + 3.4} L${checkX + 4.8} ${cy - 3.6}" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-    <text x="${checkX + 14}" y="${cy + 5}" font-family="${CERTIFICATE_FONT_FAMILY}" font-size="14" font-weight="700" fill="#1f2937">${escapeXml(label)}</text>`;
-};
-
-const watermarkDefs = (primary) => `
-    <pattern id="watermarkTile" width="260" height="190" patternUnits="userSpaceOnUse" patternTransform="rotate(-30)">
-      <text x="0" y="80" font-family="${SERIF_FONT_FAMILY}" font-size="26" font-weight="700" fill="${primary}" opacity="0.032">MASSCLICK</text>
-    </pattern>`;
-
-const SIGNATURE_ASPECT = 849 / 376;
-
-const signatureMarkup = (cx, bottomY, width) => {
-  const height = width / SIGNATURE_ASPECT;
-  const x = cx - width / 2;
-  const y = bottomY - height;
-
-  if (!SIGNATURE_DATA_URL) {
-    return `<path d="M${x} ${bottomY - height / 2} c5,-13 11,-13 15,-3 c4,10 8,-15 13,-6 c4,7 7,-11 12,-4 c4,5 6,4 9,-2"
-      fill="none" stroke="#1e293b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" opacity="0.75"/>`;
-  }
-
-  return `<image href="${escapeXml(SIGNATURE_DATA_URL)}" x="${x}" y="${y}" width="${width}" height="${height}" preserveAspectRatio="xMidYMid meet"/>`;
 };
 
 const qrMarkup = async ({ url, x, y, size, color }) => {
   try {
     const raw = await QRCode.toString(url, {
       type: "svg",
-      margin: 1,
+      margin: 0,
       color: { dark: color, light: "#00000000" },
     });
     const viewBoxMatch = raw.match(/viewBox="([^"]+)"/);
@@ -213,226 +270,72 @@ const qrMarkup = async ({ url, x, y, size, color }) => {
 
     return `<svg x="${x}" y="${y}" width="${size}" height="${size}" viewBox="${viewBoxMatch[1]}">${bodyMatch[1]}</svg>`;
   } catch (error) {
-    console.warn("Unable to build certificate QR code:", error.message);
+    console.warn("[Certificate] Unable to build QR code:", error.message);
     return "";
   }
 };
 
 // ---- main builder ------------------------------------------------------------
 
-const buildCertificateSvg = async (business = {}, type = "verified") => {
+export const buildCertificateSvg = async (business = {}, type = "verified") => {
   const isTrust = type === "trust";
+  const plate = PLATES[isTrust ? "trust" : "verified"];
+
   const rawBusinessName = business.businessName || business.name || "Business";
-  const rawLocation = business.globalAddress || business.location || "Business location verified by MassClick";
-  const businessNameLines = splitSvgTextLines(rawBusinessName, 26, 2);
-  const locationLines = splitSvgTextLines(rawLocation, 46, 2);
-  const accent = "#ff5a1f";
-  const trustBlue = "#00095c";
-  const primary = isTrust ? trustBlue : accent;
-  const soft = isTrust ? "#eef2ff" : "#fff7ed";
-  const statusCopy = isTrust
-    ? ["has been certified by MassClick as a", "Trusted business partner"]
-    : ["has successfully completed MassClick's", "business verification process"];
+  const rawLocation = business.location || business.globalAddress || "Business location verified by MassClick";
+  const category = (business.category || "").trim();
+  const categoryLabel = (category || (isTrust ? "TRUSTED BUSINESS" : "VERIFIED BUSINESS")).toUpperCase();
   const certNo = `MC-${isTrust ? "TRU" : "VER"}-${(getBusinessId(business) || "000000").slice(-6).toUpperCase()}`;
   const issuedDate = formatCertificateDate(business.certificates?.generatedAt || new Date());
-  const category = (business.category || "").trim();
-  const businessLogoDataUrl = business.logoImageKey
-    ? await getImageDataUrlByKey(business.logoImageKey)
-    : "";
 
-  // ---- vertical flow cursor: each block advances `cursor` past itself so
-  // longer/shorter business names and addresses never overlap the next block.
-  const CX = 360;
-  let cursor = 96;
+  const nameBlock = await fitTextBlock(rawBusinessName, LAYOUT.businessName);
+  const categoryBlock = await fitTextBlock(categoryLabel, LAYOUT.category);
+  const locationBlock = await fitTextBlock(rawLocation, LAYOUT.location);
+  const footerBlock = await fitTextBlock(
+    `Certificate No. ${certNo}  |  Issued ${issuedDate}`,
+    LAYOUT.footer,
+  );
 
-  const sealCy = cursor + 62;
-  const sealMarkupOut = sealMarkup(CX, sealCy, primary, isTrust);
-  cursor = sealCy + 62 + 26;
-
-  const titleY = cursor;
-  const titleMarkupOut = `<text x="${CX}" y="${titleY}" text-anchor="middle" font-family="${SERIF_FONT_FAMILY}" font-size="26" font-weight="700" letter-spacing="1.5" fill="#0f172a">CERTIFICATE OF ${isTrust ? "TRUST" : "VERIFICATION"}</text>`;
-  cursor += 22;
-
-  const ruleY = cursor;
-  const ruleMarkupOut = `
-    <line x1="256" y1="${ruleY}" x2="326" y2="${ruleY}" stroke="#e2e8f0" stroke-width="1.2"/>
-    <path d="M${CX} ${ruleY - 6} l6 6 l-6 6 l-6 -6 z" fill="${primary}" opacity="0.7"/>
-    <line x1="394" y1="${ruleY}" x2="464" y2="${ruleY}" stroke="#e2e8f0" stroke-width="1.2"/>`;
-  cursor += 28;
-
-  const certifyY = cursor;
-  const certifyMarkupOut = `<text x="${CX}" y="${certifyY}" text-anchor="middle" font-family="${SERIF_FONT_FAMILY}" font-style="italic" font-size="15" fill="#64748b">This is to certify that</text>`;
-  cursor += businessLogoDataUrl ? 20 : 44;
-
-  const businessLogoSize = 104;
-  const businessLogoInset = 8;
-  const businessLogoY = cursor;
-  const businessLogoMarkupOut = businessLogoDataUrl
-    ? `<circle cx="${CX}" cy="${businessLogoY + businessLogoSize / 2}" r="${businessLogoSize / 2 + 8}" fill="${soft}" opacity="0.9"/>
-       <rect x="${CX - businessLogoSize / 2}" y="${businessLogoY}" width="${businessLogoSize}" height="${businessLogoSize}" rx="18" fill="#ffffff" stroke="${primary}" stroke-opacity="0.3" stroke-width="1.5" filter="url(#logoShadow)"/>
-       <image href="${escapeXml(businessLogoDataUrl)}" x="${CX - businessLogoSize / 2 + businessLogoInset}" y="${businessLogoY + businessLogoInset}" width="${businessLogoSize - businessLogoInset * 2}" height="${businessLogoSize - businessLogoInset * 2}" preserveAspectRatio="xMidYMid meet"/>`
-    : "";
-  if (businessLogoDataUrl) {
-    cursor = businessLogoY + businessLogoSize + 30;
-  }
-
-  const nameLineHeight = 38;
-  const nameFontSize = businessNameLines.length > 1 ? 29 : 33;
-  const nameY = cursor;
-  const nameMarkupOut = textLinesMarkup({
-    lines: businessNameLines,
-    x: CX,
-    y: nameY,
-    lineHeight: nameLineHeight,
-    fontSize: nameFontSize,
-    fontWeight: 800,
-    fill: "#0f172a",
-  });
-  cursor = nameY + (businessNameLines.length - 1) * nameLineHeight + 30;
-
-  const chipWidth = Math.min(300, Math.max(120, category.length * 9 + 50));
-  const categoryY = cursor;
-  const categoryMarkupOut = category
-    ? `<rect x="${CX - chipWidth / 2}" y="${categoryY - 15}" width="${chipWidth}" height="30" rx="15" fill="${soft}"/>
-       <text x="${CX}" y="${categoryY + 5}" text-anchor="middle" font-family="${CERTIFICATE_FONT_FAMILY}" font-size="13" font-weight="700" letter-spacing="0.6" fill="${primary}">${escapeXml(category.toUpperCase())}</text>`
-    : "";
-  cursor += category ? 40 : 6;
-
-  const locationY = cursor;
-  const locationMarkupOut = textLinesMarkup({
-    lines: locationLines,
-    x: CX,
-    y: locationY,
-    lineHeight: 22,
-    fontSize: 16,
-    fontWeight: 600,
-    fill: "#475569",
-  });
-  cursor = locationY + (locationLines.length - 1) * 22 + 34;
-
-  const statementY = cursor;
-  const statementMarkupOut = statusCopy
-    .map(
-      (line, i) =>
-        `<text x="${CX}" y="${statementY + i * 21}" text-anchor="middle" font-family="${CERTIFICATE_FONT_FAMILY}" font-size="15" fill="#475569">${i === 1 ? `<tspan font-weight="800" fill="${primary}">${escapeXml(line)}</tspan>` : escapeXml(line)}</text>`,
-    )
-    .join("\n  ");
-  cursor = statementY + 21 + 30;
-
-  const starsMarkupOut = (() => {
-    if (!isTrust) return "";
-
-    const starPath = (cx, cy, r) => {
-      const points = Array.from({ length: 10 }).map((_, i) => {
-        const angle = -Math.PI / 2 + (i * Math.PI) / 5;
-        const rad = i % 2 === 0 ? r : r * 0.42;
-        return `${(cx + rad * Math.cos(angle)).toFixed(1)},${(cy + rad * Math.sin(angle)).toFixed(1)}`;
-      });
-      return `<polygon points="${points.join(" ")}" fill="#f4b400"/>`;
-    };
-    const out = Array.from({ length: 5 })
-      .map((_, i) => starPath(CX - 88 + i * 44, cursor, 11))
-      .join("");
-    cursor += 30;
-    return out;
-  })();
-
-  const dividerY = cursor;
-  const dividerMarkupOut = `
-    <line x1="150" y1="${dividerY}" x2="326" y2="${dividerY}" stroke="#e2e8f0" stroke-width="1.4"/>
-    <path d="M${CX} ${dividerY - 7} l7 7 l-7 7 l-7 -7 z" fill="${primary}" opacity="0.7"/>
-    <line x1="394" y1="${dividerY}" x2="570" y2="${dividerY}" stroke="#e2e8f0" stroke-width="1.4"/>`;
-  cursor += 40;
-
-  const checksRow1Y = cursor;
-  const checksRow2Y = checksRow1Y + 44;
-  const checksMarkupOut = `
-    ${chipMarkup(220, checksRow1Y, 190, "Business Proof")}
-    ${chipMarkup(500, checksRow1Y, 210, "Business Address")}
-    ${chipMarkup(220, checksRow2Y, 190, "Mobile Number")}
-    ${chipMarkup(500, checksRow2Y, 190, "Email ID")}`;
-  cursor = checksRow2Y + 40;
-
-  // Footer sits at a fixed baseline unless content overflows past it, so
-  // certificates for short and long business names stay visually consistent.
-  const footerRuleY = Math.max(cursor, 726);
-  const qrSize = 68;
-  const qrTop = footerRuleY + 24;
+  const qr = LAYOUT.qr;
   const qrSvg = await qrMarkup({
     url: buildCertificateVerifyUrl(business),
-    x: 84,
-    y: qrTop,
-    size: qrSize,
-    color: "#111827",
+    x: qr.x,
+    y: qr.y,
+    size: qr.size,
+    color: CERT_NAVY,
   });
-  const logoW = 170;
-  const logoH = logoW / (858 / 200);
-  const logoTop = footerRuleY + 30;
 
-  const sigCx = 600;
-  const sigImageBottomY = footerRuleY + 50;
-  const sigLineY = sigImageBottomY + 6;
-  const sigLabelY = sigLineY + 15;
-
-  const brandLogoMarkup = MASSCLICK_LOGO_DATA_URL
-    ? `<image href="${escapeXml(MASSCLICK_LOGO_DATA_URL)}" x="${CX - logoW / 2}" y="${logoTop}" width="${logoW}" height="${logoH}" preserveAspectRatio="xMidYMid meet"/>`
-    : "";
-
-  const footerMarkup = `
-    <line x1="60" y1="${footerRuleY}" x2="660" y2="${footerRuleY}" stroke="#e2e8f0" stroke-width="1"/>
-    ${qrSvg}
-    <text x="${84 + qrSize / 2}" y="${qrTop + qrSize + 17}" text-anchor="middle" font-family="${CERTIFICATE_FONT_FAMILY}" font-size="10" font-weight="700" letter-spacing="0.4" fill="#94a3b8">SCAN TO VERIFY</text>
-    ${brandLogoMarkup}
-    <text x="${CX}" y="${logoTop + logoH + 16}" text-anchor="middle" font-family="${CERTIFICATE_FONT_FAMILY}" font-size="11" fill="#94a3b8">www.massclick.in</text>
-    ${signatureMarkup(sigCx, sigImageBottomY, 112)}
-    <line x1="${sigCx - 50}" y1="${sigLineY}" x2="${sigCx + 50}" y2="${sigLineY}" stroke="#94a3b8" stroke-width="1"/>
-    <text x="${sigCx}" y="${sigLabelY}" text-anchor="middle" font-family="${CERTIFICATE_FONT_FAMILY}" font-size="10" font-weight="700" letter-spacing="0.4" fill="#94a3b8">AUTHORIZED SIGNATORY</text>
-    <text x="${CX}" y="${footerRuleY + 20 + qrSize + 42}" text-anchor="middle" font-family="${CERTIFICATE_FONT_FAMILY}" font-size="10" fill="#cbd5e1">Certificate No. ${certNo}  |  Issued ${issuedDate}</text>`;
+  // Without a plate the fields would render on transparency; a plain card keeps
+  // the certificate legible and makes the missing asset obvious.
+  const background = plate
+    ? `<image href="${escapeXml(plate)}" x="0" y="0" width="${CERT_WIDTH}" height="${CERT_HEIGHT}" preserveAspectRatio="xMidYMid slice"/>`
+    : `<rect width="${CERT_WIDTH}" height="${CERT_HEIGHT}" fill="#fffdf7"/>
+  <rect x="18" y="18" width="${CERT_WIDTH - 36}" height="${CERT_HEIGHT - 36}" fill="none" stroke="${CERT_GOLD}" stroke-width="4"/>`;
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="720" height="960" viewBox="0 0 720 960">
-  <defs>
-    <filter id="identityShadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="18" stdDeviation="24" flood-color="#0f172a" flood-opacity="0.10"/>
-    </filter>
-    <filter id="logoShadow" x="-30%" y="-30%" width="160%" height="160%">
-      <feDropShadow dx="0" dy="7" stdDeviation="8" flood-color="#0f172a" flood-opacity="0.16"/>
-    </filter>
-    <linearGradient id="pageGlow" x1="0" x2="1" y1="0" y2="1">
-      <stop offset="0" stop-color="${soft}"/>
-      <stop offset="0.42" stop-color="#ffffff"/>
-      <stop offset="1" stop-color="#f8fafc"/>
-    </linearGradient>
-    ${watermarkDefs(primary)}
-  </defs>
+<svg xmlns="http://www.w3.org/2000/svg" width="${CERT_WIDTH}" height="${CERT_HEIGHT}" viewBox="0 0 ${CERT_WIDTH} ${CERT_HEIGHT}">
+  ${background}
 
-  <rect width="720" height="960" fill="url(#pageGlow)"/>
-  <rect x="32" y="32" width="656" height="896" fill="url(#watermarkTile)"/>
-  <rect x="22" y="22" width="676" height="916" rx="6" fill="none" stroke="${primary}" stroke-opacity="0.35" stroke-width="1.6"/>
-  <rect x="32" y="32" width="656" height="896" rx="4" fill="none" stroke="#cbd5e1" stroke-width="1"/>
-  ${cornerMark(46, 46, 1, 1, primary)}
-  ${cornerMark(674, 46, -1, 1, primary)}
-  ${cornerMark(46, 914, 1, -1, primary)}
-  ${cornerMark(674, 914, -1, -1, primary)}
+  ${textBlockMarkup({ ...LAYOUT.businessName, ...nameBlock })}
 
-  <text x="${CX}" y="72" text-anchor="middle" font-family="${CERTIFICATE_FONT_FAMILY}" font-size="12.5" font-weight="700" letter-spacing="3" fill="#64748b">MASSCLICK BUSINESS VERIFICATION</text>
-  <line x1="300" y1="86" x2="420" y2="86" stroke="${primary}" stroke-opacity="0.4" stroke-width="1.2"/>
+  ${textBlockMarkup({ ...LAYOUT.category, ...categoryBlock })}
 
-  ${sealMarkupOut}
-  ${titleMarkupOut}
-  ${ruleMarkupOut}
-  ${certifyMarkupOut}
-  ${businessLogoMarkupOut}
-  ${nameMarkupOut}
-  ${categoryMarkupOut}
-  ${locationMarkupOut}
-  ${statementMarkupOut}
-  ${starsMarkupOut}
-  ${dividerMarkupOut}
-  ${checksMarkupOut}
-  ${footerMarkup}
+  ${textBlockMarkup({ ...LAYOUT.location, ...locationBlock })}
+
+  ${qrSvg}
+
+  ${textBlockMarkup({ ...LAYOUT.footer, ...footerBlock })}
 </svg>`;
 };
+
+// Rasterise on the server so every consumer gets the same pixels. Rendering in
+// the browser made the output depend on the viewer's installed fonts and on
+// whether their engine honoured SVG filters.
+export const renderCertificatePng = async (svg) =>
+  sharp(Buffer.from(svg, "utf8"), { density: 72 * RENDER_SCALE })
+    .resize(CERT_WIDTH * RENDER_SCALE, CERT_HEIGHT * RENDER_SCALE, { fit: "fill" })
+    .png({ compressionLevel: 9 })
+    .toBuffer();
 
 const uploadCertificateImage = async (business = {}, type = "verified") => {
   const businessId = getBusinessId(business);
@@ -440,20 +343,21 @@ const uploadCertificateImage = async (business = {}, type = "verified") => {
     business.businessName || business.name || businessId,
   );
   const svg = await buildCertificateSvg(business, type);
+  const png = await renderCertificatePng(svg);
   // Timestamped key: uploads set a 1-year Cache-Control and certificate URLs
   // are stable public URLs, so overwriting the same key leaves browsers
   // serving the stale cached file. A fresh key per regeneration busts that.
   const uploadResult = await uploadImageToS3(
-    Buffer.from(svg, "utf8"),
+    png,
     `businessList/certificates/${businessId}/${type}-${businessSlug}-${Date.now()}`,
     {
       skipImageConversion: true,
-      contentType: "image/svg+xml",
-      extension: "svg",
+      contentType: "image/png",
+      extension: "png",
     },
   );
 
-  console.log(`[CertificateRegenerate] Uploaded ${type} certificate SVG: ${uploadResult.key}`);
+  console.log(`[CertificateRegenerate] Uploaded ${type} certificate PNG: ${uploadResult.key}`);
 
   return uploadResult.key;
 };
@@ -601,8 +505,9 @@ export const regenerateBusinessCertificates = async (businessId) => {
       ? business.kycDocumentsKey.length
       : 0,
     kycTouched: false,
-    outputContentType: "image/svg+xml",
-    fontFamily: CERTIFICATE_FONT_FAMILY,
+    outputContentType: "image/png",
+    fontFamily: TEXT_FONT_FAMILY,
+    platesLoaded: { verified: !!PLATES.verified, trust: !!PLATES.trust },
     templateVersion: CERTIFICATE_TEMPLATE_VERSION,
   };
 

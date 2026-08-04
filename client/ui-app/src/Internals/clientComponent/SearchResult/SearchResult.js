@@ -262,6 +262,7 @@ const SearchResults = React.memo(
       () => ({ ...urlParams, ...(routeContext || {}) }),
       [urlParams, routeContext],
     );
+    const isLocationListing = mergedRouteParams.routeType === "locationListing";
 
     const {
       searchTerm,
@@ -270,6 +271,7 @@ const SearchResults = React.memo(
       districtSlug,
       districtName,
       routeLocationSlug,
+      routeLocationPath,
       routeLocationName,
       categorySlug,
       subcategorySlug,
@@ -281,7 +283,7 @@ const SearchResults = React.memo(
     // Verified-location picks search by canonical slug (exact node); free text
     // goes through the server-side resolver. Display always uses locationText.
     const apiLocation = districtSlug
-      ? routeLocationSlug || ""
+      ? routeLocationSlug || routeLocationPath || ""
       : masterLocationSlug || routeLocationSlug || locationText;
 
     // Guard against nonsensical /:location/:category/:subcategory URLs where
@@ -315,6 +317,7 @@ const SearchResults = React.memo(
             setCategoryMismatchTarget(buildCategoryPath({
               districtSlug,
               locationSlug: routeLocationSlug,
+              locationPath: routeLocationPath,
               location: locationText,
               categorySlug: expectedParentSlug,
               subcategorySlug,
@@ -327,7 +330,7 @@ const SearchResults = React.memo(
       return () => {
         cancelled = true;
       };
-    }, [categorySlug, districtSlug, locationText, routeLocationSlug, subcategorySlug]);
+    }, [categorySlug, districtSlug, locationText, routeLocationPath, routeLocationSlug, subcategorySlug]);
 
     useEffect(() => {
       if (categoryMismatchTarget) {
@@ -340,8 +343,8 @@ const SearchResults = React.memo(
       : Array.isArray(stateResults)
         ? stateResults
         : null;
-    const searchText = displayName;
-    const normalizedSearchTerm = searchTerm;
+    const searchText = isLocationListing ? "Businesses" : displayName;
+    const normalizedSearchTerm = isLocationListing ? "" : searchTerm;
     const [searchInput, setSearchInput] = useState(
       displayName || searchTerm || "",
     );
@@ -353,21 +356,29 @@ const SearchResults = React.memo(
     const locationSlug = districtSlug
       ? routeLocationSlug || ""
       : createSlug(locationText);
-    const canonicalSearchSegments = subcategorySlug && categorySlug
-      ? [categorySlug, subcategorySlug]
-      : [searchSlug];
-    const canonicalPathSegments = districtSlug
-      ? [districtSlug, locationSlug, ...canonicalSearchSegments]
-      : [locationSlug, ...canonicalSearchSegments];
-    const canonicalPath = `/${canonicalPathSegments.filter(Boolean).join("/")}`;
+    const canonicalPath = buildCategoryPath({
+      districtSlug,
+      locationSlug,
+      locationPath: routeLocationPath,
+      location: locationText,
+      categorySlug: isLocationListing ? "" : categorySlug || searchSlug,
+      subcategorySlug,
+      isDistrictScope: Boolean(districtSlug && !locationSlug),
+    });
     const canonicalUrl = `https://massclick.in${canonicalPath}`;
-    const breadcrumbCategorySlug = subcategorySlug
+    const breadcrumbCategorySlug = isLocationListing
+      ? ""
+      : subcategorySlug
       ? resolvedParentCategory?.slug || categorySlug
       : categorySlug || searchSlug;
-    const breadcrumbCategoryName = subcategorySlug
+    const breadcrumbCategoryName = isLocationListing
+      ? ""
+      : subcategorySlug
       ? resolvedParentCategory?.name || toDisplayText(breadcrumbCategorySlug)
       : searchText;
-    const breadcrumbSubcategoryName = subcategorySlug
+    const breadcrumbSubcategoryName = isLocationListing
+      ? ""
+      : subcategorySlug
       ? searchText || toDisplayText(subcategorySlug)
       : "";
     const breadcrumbCrumbs = districtSlug
@@ -375,6 +386,7 @@ const SearchResults = React.memo(
           districtSlug,
           districtName,
           locationSlug,
+          locationPath: routeLocationPath,
           locationName: routeLocationName || locationText,
           categorySlug: breadcrumbCategorySlug,
           categoryName: breadcrumbCategoryName,
@@ -391,6 +403,7 @@ const SearchResults = React.memo(
                 name: breadcrumbCategoryName,
                 path: buildCategoryPath({
                   locationSlug,
+                  locationPath: routeLocationPath,
                   categorySlug: breadcrumbCategorySlug,
                 }),
               }]
@@ -398,7 +411,56 @@ const SearchResults = React.memo(
           { name: breadcrumbSubcategoryName || breadcrumbCategoryName || searchText, path: null },
         ];
     const breadcrumbSchema = crumbsToJsonLd(breadcrumbCrumbs, "https://massclick.in", canonicalPath);
-    const breadcrumbItems = crumbsToUiItems(breadcrumbCrumbs);
+    // buildCrumbs() already folds the terminal category into its location
+    // crumb ("Hotels" + "Sembattu" -> "Hotels in Sembattu") whenever there's
+    // both a location and a category with no subcategory. When that fold
+    // happened, there's no separate trailing location crumb left to strip a
+    // link from below — doing so would instead wrongly strip the link off
+    // the nearest ANCESTOR location crumb (e.g. "Trichy Road").
+    const categoryFoldedIntoLocation =
+      !isLocationListing &&
+      Boolean(districtSlug) &&
+      Boolean(locationSlug || routeLocationPath) &&
+      Boolean(breadcrumbCategorySlug) &&
+      !subcategorySlug;
+    const breadcrumbItems = crumbsToUiItems(breadcrumbCrumbs).map((item, index) => {
+      const crumb = breadcrumbCrumbs[index];
+      const isTerminalLocationCrumb =
+        !categoryFoldedIntoLocation &&
+        !isLocationListing &&
+        Boolean(districtSlug) &&
+        Boolean(categorySlug || searchSlug || subcategorySlug) &&
+        index === breadcrumbCrumbs.length - 2 &&
+        crumb?.path;
+      const isLocationCrumb =
+        !isLocationListing &&
+        Boolean(districtSlug) &&
+        Boolean(categorySlug || searchSlug || subcategorySlug) &&
+        index > 1 &&
+        index < breadcrumbCrumbs.length - 1 &&
+        crumb?.path;
+
+      if (isTerminalLocationCrumb) {
+        const plainItem = { ...item };
+        delete plainItem.link;
+        delete plainItem.state;
+        return plainItem;
+      }
+
+      if (!isLocationCrumb) return item;
+
+      const locationPathForCrumb = String(crumb.path || "")
+        .replace(new RegExp(`^/${districtSlug}/?`), "")
+        .replace(/^\/+|\/+$/g, "");
+      const parentCategoryPath = buildCategoryPath({
+        districtSlug,
+        locationPath: locationPathForCrumb,
+        categorySlug: subcategorySlug || breadcrumbCategorySlug,
+        isDistrictScope: !locationPathForCrumb,
+      });
+
+      return { ...item, link: parentCategoryPath };
+    });
     const loading = useSelector(selectBusinessLoading);
     const error = useSelector(selectBusinessError);
     const { meta: seoMetaData } = useSelector(
@@ -413,7 +475,7 @@ const SearchResults = React.memo(
     const [filterConfig, setFilterConfig] = useState([]);
     const [resolvedCategory, setResolvedCategory] = useState(null);
     const effectiveCategory =
-      resolvedCategory || (isKnownCategory ? normalizedSearchTerm : null);
+      isLocationListing ? null : resolvedCategory || (isKnownCategory ? normalizedSearchTerm : null);
     const [sortBy, setSortBy] = useState("relevant");
     const [viewMode, setViewMode] = useState("list");
     const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
@@ -455,7 +517,21 @@ const SearchResults = React.memo(
       if (locationText) {
         localStorage.setItem("selectedLocation", locationText);
       }
-    }, [displayName, searchTerm, locationText]);
+      if (districtSlug) {
+        localStorage.setItem("selectedLocationDistrictSlug", districtSlug);
+        localStorage.setItem("selectedLocationDistrict", districtName || locationText);
+      }
+      if (routeLocationSlug) {
+        localStorage.setItem("selectedPublicLocationSlug", routeLocationSlug);
+      } else if (districtSlug) {
+        localStorage.removeItem("selectedPublicLocationSlug");
+      }
+      if (routeLocationPath) {
+        localStorage.setItem("selectedPublicLocationPath", routeLocationPath);
+      } else if (districtSlug) {
+        localStorage.removeItem("selectedPublicLocationPath");
+      }
+    }, [displayName, districtName, districtSlug, routeLocationPath, routeLocationSlug, searchTerm, locationText]);
 
     const lastLoggedIdentityRef = useRef(null);
     useEffect(() => {
@@ -463,7 +539,7 @@ const SearchResults = React.memo(
       lastLoggedIdentityRef.current = stateLogSent
         ? getSearchLogIdentity(authUser)
         : null;
-    }, [normalizedSearchTerm, locationText, districtSlug, routeLocationSlug, safeStateResults, stateLogSent]);
+    }, [normalizedSearchTerm, locationText, districtSlug, routeLocationPath, routeLocationSlug, safeStateResults, stateLogSent]);
 
     // Reset all pagination/search state when the search context changes
     useEffect(() => {
@@ -479,7 +555,7 @@ const SearchResults = React.memo(
       setResolvedCategory(null);
       setInitialSearchResolved(Boolean(safeStateResults));
       loadingPagesRef.current.clear();
-    }, [normalizedSearchTerm, locationText, districtSlug, routeLocationSlug, safeStateResults]);
+    }, [normalizedSearchTerm, locationText, districtSlug, routeLocationPath, routeLocationSlug, safeStateResults]);
 
     // Reset pagination when filters or sort change (but not the search term itself)
     useEffect(() => {
@@ -578,7 +654,7 @@ const SearchResults = React.memo(
 
     const trackResolvedSearch = useCallback((resultsCount) => {
       const searchIdentity = locationState.key
-        || `${districtSlug}|${routeLocationSlug}|${normalizedSearchTerm}|${locationText}|${isKnownCategory}`;
+        || `${districtSlug}|${routeLocationPath || routeLocationSlug}|${normalizedSearchTerm}|${locationText}|${isKnownCategory}`;
       if (trackedSearchRef.current === searchIdentity) return;
 
       trackSearch({
@@ -588,7 +664,7 @@ const SearchResults = React.memo(
         known: isKnownCategory,
       });
       trackedSearchRef.current = searchIdentity;
-    }, [districtSlug, isKnownCategory, locationState.key, locationText, normalizedSearchTerm, routeLocationSlug]);
+    }, [districtSlug, isKnownCategory, locationState.key, locationText, normalizedSearchTerm, routeLocationPath, routeLocationSlug]);
 
     // ─── Initial load: use state results from navigation OR fetch from API ────────
     useEffect(() => {
@@ -613,7 +689,7 @@ const SearchResults = React.memo(
         return;
       }
       if (safeStateResults && safeStateResults.length > 0) return;
-      if (!normalizedSearchTerm || !locationText) return;
+      if ((!normalizedSearchTerm && !isLocationListing) || !locationText) return;
 
       const requestId = ++requestIdRef.current;
       dispatch(
@@ -650,10 +726,16 @@ const SearchResults = React.memo(
       apiLocation,
       districtSlug,
       routeLocationSlug,
+      routeLocationPath,
       isKnownCategory,
+      isLocationListing,
       dispatch,
+      buildSearchParams,
+      initialHasMore,
+      initialResults,
+      initialTotal,
       trackResolvedSearch,
-    ]); // eslint-disable-line
+    ]);
 
     // ─── Re-fetch when filters / sort / geo change ───────────────────────────────
     const normalizedActiveFilters = useMemo(
@@ -665,7 +747,7 @@ const SearchResults = React.memo(
     );
 
     useEffect(() => {
-      if (!normalizedSearchTerm || !locationText) return;
+      if ((!normalizedSearchTerm && !isLocationListing) || !locationText) return;
       if (
         !hasActiveFilters &&
         sortBy === "relevant" &&
@@ -710,10 +792,13 @@ const SearchResults = React.memo(
       apiLocation,
       districtSlug,
       routeLocationSlug,
+      routeLocationPath,
       isKnownCategory,
+      isLocationListing,
       userGeo,
       dispatch,
-    ]); // eslint-disable-line
+      buildSearchParams,
+    ]);
 
     // ─── Fetch filterConfig for this category ────────────────────────────────────
     useEffect(() => {
@@ -737,7 +822,7 @@ const SearchResults = React.memo(
       async (page) => {
         if (loadingPagesRef.current.has(page)) return;
         if (!hasMore) return;
-        if (!normalizedSearchTerm || !locationText) return;
+        if ((!normalizedSearchTerm && !isLocationListing) || !locationText) return;
 
         const capturedVersion = searchVersionRef.current;
         loadingPagesRef.current.add(page);
@@ -786,6 +871,7 @@ const SearchResults = React.memo(
         apiLocation,
         buildSearchParams,
         effectiveCategory,
+        isLocationListing,
         dispatch,
       ],
     );
@@ -910,14 +996,14 @@ const SearchResults = React.memo(
       const seoParams = {
         pageType: "category",
         category: effectiveCategory.toLowerCase(),
-        ...(districtSlug && !routeLocationSlug
+        ...(districtSlug && !routeLocationSlug && !routeLocationPath
           ? {}
-          : { location: routeLocationSlug || locationText.toLowerCase() }),
+          : { location: routeLocationSlug || routeLocationPath || locationText.toLowerCase() }),
         ...(districtSlug ? { district: districtSlug } : {}),
       };
       dispatch({ type: CLEAR_SEO_META });
       dispatch(fetchSeoMeta(seoParams));
-    }, [dispatch, districtSlug, effectiveCategory, locationText, routeLocationSlug]);
+    }, [dispatch, districtSlug, effectiveCategory, locationText, routeLocationPath, routeLocationSlug]);
 
     useEffect(() => {
       if (!effectiveCategory) return;
@@ -930,8 +1016,8 @@ const SearchResults = React.memo(
     }, [dispatch, effectiveCategory, locationText]);
 
     const handleRetry = useCallback(() => {
-      dispatch(performSearch(searchText, apiLocation, isKnownCategory, buildSearchParams(1)));
-    }, [dispatch, searchText, apiLocation, isKnownCategory, buildSearchParams]);
+      dispatch(performSearch(normalizedSearchTerm, apiLocation, isKnownCategory, buildSearchParams(1)));
+    }, [dispatch, normalizedSearchTerm, apiLocation, isKnownCategory, buildSearchParams]);
 
     if (categoryMismatchTarget) {
       return null;
@@ -946,7 +1032,7 @@ const SearchResults = React.memo(
             searchTerm={searchInput}
             setSearchTerm={setSearchInput}
             committedLocationName={locationText}
-            committedSearchTerm={searchText}
+            committedSearchTerm={isLocationListing ? "" : searchText}
           />
           <div className={cx("no-results-container")}>
             <h1>
@@ -964,10 +1050,20 @@ const SearchResults = React.memo(
     // falling through to this route) — either way it shouldn't be indexed
     // under a manufactured "Best {slug} in {location}" title.
     const hasResolvedResults = initialSearchResolved && totalResults > 0;
+    const pageHeading = isLocationListing
+      ? `Businesses in ${locationText}`
+      : `Best ${searchText} in ${locationText}`;
+    const pageDescription = isLocationListing
+      ? `Discover trusted businesses in ${locationText}. Compare ratings, reviews and contact details to find the best near you.`
+      : `Discover trusted ${searchText} in ${locationText}. Compare ratings, reviews and contact details to find the best near you.`;
     const fallbackSeo = {
-      title: `${searchText} in ${locationText} | Best ${searchText} Near You | Massclick`,
-      description: `Find trusted ${searchText} in ${locationText}. View ratings, reviews, contact details and hire the best ${searchText} near you.`,
-      keywords: `${searchText}, ${searchText} in ${locationText}, best ${searchText} ${locationText}, top ${searchText} ${locationText}`,
+      title: isLocationListing
+        ? `Businesses in ${locationText} | Local Business Listings | Massclick`
+        : `${searchText} in ${locationText} | Best ${searchText} Near You | Massclick`,
+      description: pageDescription,
+      keywords: isLocationListing
+        ? `businesses in ${locationText}, local businesses ${locationText}, Massclick ${locationText}`
+        : `${searchText}, ${searchText} in ${locationText}, best ${searchText} ${locationText}, top ${searchText} ${locationText}`,
       canonical: canonicalUrl,
       robots: hasResolvedResults ? "index, follow" : "noindex, follow",
     };
@@ -1001,7 +1097,7 @@ const SearchResults = React.memo(
     const categoryBusinessSchema = {
       "@context": "https://schema.org",
       "@type": "LocalBusiness",
-      name: `${searchText} in ${locationText}`,
+      name: pageHeading,
       url: canonicalUrl,
       description: fallbackSeo.description,
       ...(overallRating && {
@@ -1067,7 +1163,7 @@ const SearchResults = React.memo(
             searchTerm={searchInput}
             setSearchTerm={setSearchInput}
             committedLocationName={locationText}
-            committedSearchTerm={searchText}
+            committedSearchTerm={isLocationListing ? "" : searchText}
           />
           <div className={cx("results-container banner-section")}>
             <TopBannerAds category={effectiveCategory} />
@@ -1079,14 +1175,14 @@ const SearchResults = React.memo(
               <Breadcrumbs items={breadcrumbItems} />
               <div className={cx("results-heading")}>
                 <h1 className={cx("main-seo-heading")}>
-                  Best {searchText} in {locationText}
+                  {pageHeading}
                 </h1>
                 <h2 className={cx("results-subheading")}>
-                  Discover trusted {searchText} in {locationText}. Compare
-                  ratings, reviews and contact details to find the best near
-                  you.
+                  {pageDescription}
                 </h2>
-                <CategoryPublicCounterBadge category={effectiveCategory} />
+                {effectiveCategory && (
+                  <CategoryPublicCounterBadge category={effectiveCategory} />
+                )}
 
                 <div className={cx("category-trust-badges")}>
                   <span className={cx("trust-badge")}>
@@ -1229,7 +1325,7 @@ const SearchResults = React.memo(
                     results.length === 0 && (
                       <Suspense fallback={null}>
                         <NoResultsRequestForm
-                          category={searchText}
+                          category={effectiveCategory || searchText}
                           location={locationText}
                           onClearFilters={hasActiveFilters ? handleClearAllFilters : null}
                         />
@@ -1256,16 +1352,13 @@ const SearchResults = React.memo(
                             : 0;
                         const businessUrl = buildBusinessPath({
                           districtSlug,
-                          // The business's own collision-resolved slug
-                          // (resolved server-side via its linked
-                          // masterLocation.locationId) — falls back to the
-                          // free-text location field only when a business
-                          // has no linked masterLocation, since that text
-                          // can be as coarse as the district name itself.
+                          // locationSlug/location/id are only consumed by the
+                          // superseded-shape fallback, for a business with no
+                          // publicId yet. The current shape uses neither.
                           locationSlug: business.publicLocationSlug,
                           location: business.location,
-                          businessSlug: business.slug,
                           businessName: business.businessName,
+                          publicId: business.publicId,
                           id: business._id,
                         });
                         return (
@@ -1370,8 +1463,8 @@ const SearchResults = React.memo(
                               districtSlug,
                               locationSlug: b.publicLocationSlug,
                               location: b.location,
-                              businessSlug: b.slug,
                               businessName: b.businessName,
+                              publicId: b.publicId,
                               id: b._id,
                             });
                             return (

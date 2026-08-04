@@ -4,20 +4,26 @@ import { getSeoMeta } from "../helper/seo/seoHelper.js";
 import { getSeoBlogMetaBySlug } from "../helper/seo/seoOnpageBlogHelper.js";
 import { getSeoPageContentMetaService } from "../helper/seo/seoPageContentHelper.js";
 import { findBusinessesByCategory } from "../helper/businessList/businessListHelper.js";
+import {
+  getBusinessUrlSlug,
+  buildBusinessPath as buildCanonicalBusinessPath,
+} from "../helper/businessList/businessUrl.js";
 import { appendDiscoveryLinkHeaders } from "../config/apiCatalog.js";
 import { STATIC_PAGES, SKIP_SEO_ROUTES } from "../config/ssrConfig.js";
 import { getCache, setCache } from "../utils/redisClient.js";
 import { slugify } from "../slugify.js";
 import { classifyMiddleSegment } from "../helper/location/urlSegmentClassifier.js";
-import {
-  resolveDistrictBySlug,
-  resolveLocationWithinDistrict,
-} from "../helper/location/locationResolver.js";
+import { resolveDistrictBySlug } from "../helper/location/locationResolver.js";
 import {
   getDistrictDisplayName,
   getDistrictUrlSlug,
   getLocationDisplayName,
+  getLocationUrlPath,
 } from "../helper/location/locationSlug.js";
+import {
+  buildLocationCategoryPath,
+  buildLocationPath,
+} from "../helper/location/locationUrl.js";
 import {
   escapeHtml,
   slugToText,
@@ -96,23 +102,46 @@ const renderFaqAnswerHtmlWithLinks = (answer = "", links = []) => {
 };
 
 const buildCategoryPath = ({
+  districtDoc = null,
   districtSlug = "",
   locationSlug = "",
+  locationPath = "",
+  locationDoc = null,
   categorySlug = "",
   subcategorySlug = "",
 } = {}) => {
-  const segments = districtSlug
-    ? [districtSlug, locationSlug, categorySlug, subcategorySlug]
-    : [locationSlug, categorySlug, subcategorySlug];
+  if (districtSlug || districtDoc) {
+    if (!categorySlug && !subcategorySlug) {
+      return buildLocationPath({ districtDoc, districtSlug, locationDoc });
+    }
+    return buildLocationCategoryPath({
+      districtDoc,
+      districtSlug,
+      locationDoc,
+      locationPath,
+      locationSlug,
+      categorySlug,
+      subcategorySlug,
+    });
+  }
+
+  const segments = [locationSlug, subcategorySlug || categorySlug];
   return `/${segments.filter(Boolean).join("/")}`;
 };
 
-const buildBusinessPath = ({ districtSlug = "", location = "", businessName = "", id = "" } = {}) => {
-  const locationSlug = slugify(location || "business");
-  const businessSlug = slugify(businessName || "business");
+// districtSlug here comes from getDistrictUrlSlug (alias-aware), so these
+// links are already in the canonical form the redirect middleware expects.
+// Falls back to the pre-Phase-B shape when the business has no publicId yet,
+// which is the only shape that can still be resolved in that state.
+const buildBusinessPath = ({ districtSlug = "", business = {} } = {}) => {
+  const canonical = buildCanonicalBusinessPath({ districtSlug, business });
+  if (canonical) return canonical;
+
+  const locationSlug = slugify(business.location || "business");
+  const businessSlug = getBusinessUrlSlug(business);
   const segments = districtSlug
-    ? ["business", districtSlug, locationSlug, businessSlug, id]
-    : ["business", locationSlug, businessSlug, id];
+    ? ["business", districtSlug, locationSlug, businessSlug, business._id]
+    : ["business", locationSlug, businessSlug, business._id];
   return `/${segments.filter(Boolean).join("/")}`;
 };
 
@@ -127,53 +156,41 @@ export const resolveCategoryRouteContext = async (parts = []) => {
     const districtName = getDistrictDisplayName(districtDoc);
     let locationDoc = null;
     let locationSlug = "";
+    let locationPath = "";
     let categorySlug = "";
     let subcategorySlug = "";
+    let isLocationLanding = false;
 
-    if (parts.length === 2) {
-      categorySlug = secondSegment;
-    } else if (parts.length === 3) {
-      const classification = await classifyMiddleSegment({
-        districtDoc,
-        p2: secondSegment,
-        p3: thirdSegment,
-      }).catch(() => ({ type: "unknown" }));
+    const classification = await classifyMiddleSegment({
+      districtDoc,
+      p2: secondSegment,
+      p3: thirdSegment,
+      p4: fourthSegment,
+    }).catch(() => ({ type: "unknown" }));
 
-      if (classification.type === "location") {
-        locationDoc = classification.locationDoc;
-        locationSlug = locationDoc?.publicLocationSlug || secondSegment;
-        categorySlug = classification.categorySlug || thirdSegment;
-      } else if (classification.type === "districtCategory") {
-        categorySlug = classification.categorySlug || secondSegment;
-        subcategorySlug = classification.subcategorySlug || thirdSegment || "";
-      } else if (classification.type === "unresolvedLocation") {
-        // secondSegment didn't resolve as a location or category, but
-        // thirdSegment is a real category — render the district-wide
-        // category page instead of fabricating a category out of
-        // secondSegment (see urlSegmentClassifier.js's "unresolvedLocation"
-        // doc comment for why this is the more likely intent).
-        categorySlug = classification.categorySlug;
-        subcategorySlug = "";
-      } else {
-        // Genuine "unknown" — neither segment resolved to anything real.
-        // Treat secondSegment as free text rather than a fabricated
-        // category; thirdSegment is discarded rather than misused as a
-        // subcategory of that fabrication.
-        categorySlug = secondSegment;
-        subcategorySlug = "";
-      }
+    if (classification.type === "location") {
+      locationDoc = classification.locationDoc;
+      locationSlug = locationDoc?.publicLocationSlug || "";
+      locationPath = locationDoc ? getLocationUrlPath(locationDoc) : "";
+      categorySlug = classification.categorySlug || "";
+    } else if (classification.type === "locationLanding") {
+      locationDoc = classification.locationDoc;
+      locationSlug = locationDoc?.publicLocationSlug || "";
+      locationPath = locationDoc ? getLocationUrlPath(locationDoc) : "";
+      isLocationLanding = true;
+    } else if (classification.type === "districtCategory") {
+      categorySlug = classification.subcategorySlug || classification.categorySlug || secondSegment;
+      subcategorySlug = "";
+    } else if (classification.type === "unresolvedLocation") {
+      categorySlug = classification.categorySlug;
+      subcategorySlug = "";
     } else {
-      locationSlug = secondSegment;
-      categorySlug = thirdSegment;
-      subcategorySlug = fourthSegment || "";
-      locationDoc = await resolveLocationWithinDistrict(districtDoc, locationSlug).catch(() => null);
-      if (locationDoc?.publicLocationSlug) {
-        locationSlug = locationDoc.publicLocationSlug;
-      }
+      categorySlug = secondSegment;
+      subcategorySlug = "";
     }
 
     const searchCategorySlug = subcategorySlug || categorySlug;
-    if (!searchCategorySlug) return null;
+    if (!searchCategorySlug && !isLocationLanding) return null;
 
     const locationName = locationDoc
       ? getLocationDisplayName(locationDoc, districtName) || slugToText(locationDoc.publicLocationSlug || "")
@@ -182,17 +199,22 @@ export const resolveCategoryRouteContext = async (parts = []) => {
         : districtName;
 
     const canonicalPath = buildCategoryPath({
+      districtDoc,
       districtSlug,
+      locationDoc,
       locationSlug,
+      locationPath,
       categorySlug,
       subcategorySlug,
-    });
+    }) || (isLocationLanding
+      ? buildLocationPath({ districtDoc, districtSlug, locationDoc })
+      : "/");
 
     const routeContextCacheKey = [
       "district",
       districtSlug,
-      locationSlug || "all",
-      categorySlug,
+      locationPath || locationSlug || "all",
+      isLocationLanding ? "landing" : categorySlug,
       subcategorySlug,
     ].filter(Boolean).join(":");
 
@@ -202,12 +224,14 @@ export const resolveCategoryRouteContext = async (parts = []) => {
       districtName,
       locationDoc,
       locationSlug,
+      locationPath,
       locationName,
       categorySlug,
       subcategorySlug,
       searchCategorySlug,
       categoryName: titleCase(slugToText(searchCategorySlug)),
       categoryText: slugToText(searchCategorySlug),
+      isLocationLanding,
       canonicalPath,
       canonicalUrl: `https://massclick.in${canonicalPath}`,
       cacheKey: routeContextCacheKey,
@@ -381,6 +405,7 @@ export async function ssrMiddleware(req, res) {
       categoryRoute = await resolveCategoryRouteContext(parts);
       const location = categoryRoute?.locationName || "";
       const category = categoryRoute?.categoryText || "";
+      const isLocationLandingPage = Boolean(categoryRoute?.isLocationLanding);
       const seoLocation = categoryRoute?.districtSlug && !categoryRoute?.locationSlug
         ? ""
         : categoryRoute?.locationSlug || location;
@@ -395,20 +420,20 @@ export async function ssrMiddleware(req, res) {
       ]);
 
       // Use cached data or fetch from database
-      seo = cachedSeo || (categoryRoute ? await getSeoMeta({
+      seo = cachedSeo || (categoryRoute && !isLocationLandingPage ? await getSeoMeta({
         pageType: "category",
         category,
         ...(seoLocation ? { location: seoLocation } : {}),
         ...(categoryRoute.districtSlug ? { district: categoryRoute.districtSlug } : {}),
       }) : null);
 
-      categoryContent = cachedContent || (categoryRoute ? await getSeoPageContentMetaService({
+      categoryContent = cachedContent || (categoryRoute && !isLocationLandingPage ? await getSeoPageContentMetaService({
         pageType: "category",
         location: location,
         category: category
       }) : null);
 
-      categoryBusinesses = cachedBusinesses || (categoryRoute ? await findBusinessesByCategory(
+      categoryBusinesses = cachedBusinesses || (categoryRoute && !isLocationLandingPage ? await findBusinessesByCategory(
         category,
         categoryRoute.businessLocationContext
       ) : []);
@@ -428,18 +453,31 @@ export async function ssrMiddleware(req, res) {
 
     const locationName = isCategoryPage ? categoryRoute.locationName : "";
     const categoryName = isCategoryPage ? categoryRoute.categoryName : "";
+    const isLocationLandingPage = Boolean(categoryRoute?.isLocationLanding);
 
     const title = escapeHtml(
       seo?.title ||
-      (isCategoryPage ? `${categoryName} in ${locationName} | Massclick` : fallbackTitle)
+      (isCategoryPage
+        ? isLocationLandingPage
+          ? `Local Businesses in ${locationName} | Massclick`
+          : `${categoryName} in ${locationName} | Massclick`
+        : fallbackTitle)
     );
     const description = escapeHtml(
       seo?.description ||
-      (isCategoryPage ? `Find the best ${categoryName} in ${locationName}. Verified listings, reviews, phone numbers, address and more on Massclick.` : fallbackDescription)
+      (isCategoryPage
+        ? isLocationLandingPage
+          ? `Discover trusted businesses, services, and professionals in ${locationName} on Massclick.`
+          : `Find the best ${categoryName} in ${locationName}. Verified listings, reviews, phone numbers, address and more on Massclick.`
+        : fallbackDescription)
     );
     const keywords = escapeHtml(
       seo?.keywords ||
-      (isCategoryPage ? `${categoryName}, ${locationName}, best ${categoryName} in ${locationName}` : fallbackKeywords)
+      (isCategoryPage
+        ? isLocationLandingPage
+          ? `businesses in ${locationName}, ${locationName} local services, Massclick ${locationName}`
+          : `${categoryName}, ${locationName}, best ${categoryName} in ${locationName}`
+        : fallbackKeywords)
     );
     const canonical = escapeHtml(
       isCategoryPage
@@ -450,7 +488,9 @@ export async function ssrMiddleware(req, res) {
     const h1 = isBlogPage
       ? (blogDoc?.heading || seo?.title || fallbackTitle)
       : isCategoryPage
-        ? `${categoryName} in ${locationName}`
+        ? isLocationLandingPage
+          ? `Local Businesses in ${locationName}`
+          : `${categoryName} in ${locationName}`
         : (seo?.title || fallbackTitle);
 
     const breadcrumbCrumbs = isBlogPage
@@ -591,9 +631,7 @@ export async function ssrMiddleware(req, res) {
           itemListElement: categoryBusinesses.slice(0, 10).map((biz, i) => {
             const bizUrl = `https://massclick.in${buildBusinessPath({
               districtSlug: categoryRoute?.districtSlug,
-              location: biz.location,
-              businessName: biz.businessName,
-              id: biz._id,
+              business: biz,
             })}`;
             const itemObj = {
               "@type": "LocalBusiness",
@@ -706,9 +744,7 @@ export async function ssrMiddleware(req, res) {
               ${categoryBusinesses.slice(0, 10).map((biz) => {
                 const bizUrl = buildBusinessPath({
                   districtSlug: categoryRoute?.districtSlug,
-                  location: biz.location,
-                  businessName: biz.businessName,
-                  id: biz._id,
+                  business: biz,
                 });
                 const address = [biz.street, biz.location].filter(Boolean).join(", ");
                 const rating = biz.averageRating ? `&#9733; ${Number(biz.averageRating).toFixed(1)}` : "";
@@ -841,9 +877,7 @@ export async function ssrMiddleware(req, res) {
           categoryBusinesses.slice(0, 10).forEach((biz, i) => {
             const bizUrl = `https://massclick.in${buildBusinessPath({
               districtSlug: categoryRoute?.districtSlug,
-              location: biz.location,
-              businessName: biz.businessName,
-              id: biz._id,
+              business: biz,
             })}`;
             mdLines.push(`${i + 1}. **[${biz.businessName}](${bizUrl})**`);
             if (biz.street || biz.location) mdLines.push(`   - Address: ${biz.street || biz.location}`);

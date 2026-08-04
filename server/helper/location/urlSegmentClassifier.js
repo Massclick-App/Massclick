@@ -1,6 +1,4 @@
-import categoryModel from "../../model/category/categoryModel.js";
-import { resolveLocationWithinDistrict } from "./locationResolver.js";
-import { isTopLevelCategoryName } from "../category/categoryHierarchyHelper.js";
+import { classifyLocationRouteSegments } from "./locationUrl.js";
 
 // Disambiguates the one ambiguous URL shape in the district-prefixed scheme:
 // /:district/:p2/:p3 is syntactically identical whether it means
@@ -25,13 +23,6 @@ import { isTopLevelCategoryName } from "../category/categoryHierarchyHelper.js";
 // helper/category/categoryHierarchyHelper.js for the actual authoritative
 // source (subCategoryMapping — the same data getV2ParentOfSubCategoryAction
 // uses for the inverse question).
-export const isKnownTopLevelCategorySlug = async (slug) => {
-  if (!slug) return false;
-  const doc = await categoryModel.findOne({ slug, isActive: true }, { category: 1 }).lean();
-  if (!doc) return false;
-  return isTopLevelCategoryName(doc.category);
-};
-
 /**
  * @param {object} args
  * @param {object} args.districtDoc - already-resolved district doc (from
@@ -62,22 +53,8 @@ export const isKnownTopLevelCategorySlug = async (slug) => {
  *      Deliberately not a hard 404 here — the caller decides what
  *      best-effort rendering means; this function only classifies.
  */
-export const classifyMiddleSegment = async ({ districtDoc, p2, p3 } = {}) => {
-  if (!districtDoc || !p2) return { type: "unknown", attemptedText: p2 || "" };
-
-  const isCategory = await isKnownTopLevelCategorySlug(p2);
-  if (isCategory) {
-    return { type: "districtCategory", categorySlug: p2, subcategorySlug: p3 || null };
-  }
-
-  const locationDoc = await resolveLocationWithinDistrict(districtDoc, p2);
-  if (locationDoc) {
-    return { type: "location", locationDoc, categorySlug: p3 || null };
-  }
-
-  if (p3 && (await isKnownTopLevelCategorySlug(p3))) {
-    return { type: "unresolvedLocation", attemptedLocationText: p2, categorySlug: p3 };
-  }
-
-  return { type: "unknown", attemptedText: p2 };
-};
+export const classifyMiddleSegment = async ({ districtDoc, p2, p3, p4 } = {}) =>
+  classifyLocationRouteSegments({
+    districtDoc,
+    segments: [p2, p3, p4].filter(Boolean),
+  });

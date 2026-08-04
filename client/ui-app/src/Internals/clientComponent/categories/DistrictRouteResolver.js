@@ -1,5 +1,5 @@
 import React, { lazy, useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 import {
   buildDistrictCategoryContext,
@@ -13,17 +13,24 @@ import CategoryRouter from "./categoryRouter.js";
 const SearchResults = lazy(() =>
   import(/* webpackChunkName: "search" */ "../SearchResult/SearchResult.js")
 );
+const CategoriesPage = lazy(() =>
+  import(/* webpackChunkName: "category-directory" */ "./categories.js")
+);
 
 const DistrictRouteResolver = () => {
-  const { district, p2, p3 } = useParams();
+  const { district, p2, p3, p4 } = useParams();
   const navigate = useNavigate();
+  const routerLocation = useLocation();
   const [resolution, setResolution] = useState(null);
+  const showBusinessListings =
+    Boolean(routerLocation.state?.showBusinessListings) ||
+    new URLSearchParams(routerLocation.search).get("view") === "businesses";
 
   useEffect(() => {
     let cancelled = false;
     setResolution(null);
 
-    resolveDistrictRoute({ district, p2, p3 })
+    resolveDistrictRoute({ district, p2, p3, p4 })
       .then((data) => {
         if (cancelled) return;
 
@@ -39,7 +46,19 @@ const DistrictRouteResolver = () => {
             routeContext: buildLocationCategoryContext({
               district: districtSummary,
               location: classification.location,
-              category: classification.categorySlug || p3,
+              category: classification.categorySlug || p4 || p3,
+            }),
+          });
+          return;
+        }
+
+        if (classification.type === "locationLanding") {
+          setResolution({
+            mode: showBusinessListings ? "search" : "locationLanding",
+            routeContext: buildLocationCategoryContext({
+              district: districtSummary,
+              location: classification.location,
+              routeType: showBusinessListings ? "locationListing" : "locationLanding",
             }),
           });
           return;
@@ -96,7 +115,7 @@ const DistrictRouteResolver = () => {
           routeContext: buildLegacyRouteContext({
             location: district,
             category: p2,
-            subcategory: p3,
+            subcategory: p4 || p3,
           }),
         });
       });
@@ -104,12 +123,16 @@ const DistrictRouteResolver = () => {
     return () => {
       cancelled = true;
     };
-  }, [district, p2, p3, navigate]);
+  }, [district, p2, p3, p4, navigate, routerLocation.search, showBusinessListings]);
 
   if (!resolution) return null;
 
   if (resolution.mode === "category") {
     return <CategoryRouter routeContext={resolution.routeContext} />;
+  }
+
+  if (resolution.mode === "locationLanding") {
+    return <CategoriesPage routeContext={resolution.routeContext} mode="locationLanding" />;
   }
 
   return <SearchResults routeContext={resolution.routeContext} />;

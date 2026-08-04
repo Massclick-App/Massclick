@@ -24,7 +24,7 @@ const teamRoles = [
     id: "ceo",
     image: ceoImage,
     eyebrow: "Leadership",
-    title: "Muruganantham",
+    title: "Muruganantham   M",
     role: "Chief Executive Officer",
     organization: "MassClick Technologies Private Limited",
     description: "Leading MassClick's vision, growth and commitment to building trusted digital connections for businesses across India.",
@@ -109,6 +109,7 @@ const teamRoles = [
     ],
   },
 ];
+
 const values = [
   {
     icon: Rocket,

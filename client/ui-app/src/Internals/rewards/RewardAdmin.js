@@ -43,13 +43,14 @@ export default function RewardAdmin() {
   const [editing, setEditing] = useState(null); const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(false);
   const [tableRules, setTableRules] = useState([]); const [tableTotal, setTableTotal] = useState(0);
-  const load = async () => {
+  const [deleteTarget, setDeleteTarget] = useState(null); const [deleting, setDeleting] = useState(false);
+  const load = useCallback(async () => {
     setLoading(true);
     try { const [ruleData, categoryData] = await Promise.all([fetchRewardRules(), fetchRewardCategoryOptions()]); setRules(ruleData); setCategories(categoryData); }
     catch (error) { setMessage(error.response?.data?.message || "Unable to load reward configuration."); }
     finally { setLoading(false); }
-  };
-  useEffect(() => { load(); }, []);
+  }, []);
+  useEffect(() => { load(); }, [load]);
   const configuredIds = useMemo(() => new Set(rules.map((rule) => String(rule.categoryId || "")).filter(Boolean)), [rules]);
   const availableCategories = categories.filter((category) => !configuredIds.has(String(category._id)) || String(category._id) === String(editing?.categoryId || ""));
   const selectedCategory = categories.find((category) => String(category._id) === String(editing?.categoryId || "")) || null;
@@ -72,17 +73,19 @@ export default function RewardAdmin() {
     finally { setSaving(false); }
   };
   const remove = useCallback(async (rule) => {
-    const confirmed = window.confirm(`Delete the ${rule.categoryName} reward policy? Historical claims and awarded points will be kept.`);
-    if (!confirmed) return;
+    setDeleting(true);
     setMessage("");
     try {
       await deleteRewardRule(rule._id);
       setMessage(`${rule.categoryName} reward policy deleted.`);
+      setDeleteTarget(null);
       await load();
     } catch (error) {
       setMessage(error.response?.data?.message || "Reward policy could not be deleted.");
+    } finally {
+      setDeleting(false);
     }
-  }, []);
+  }, [load]);
   const fetchTableData = useCallback((page, limit, filters = {}) => {
     const search = String(filters.search || "").trim().toLowerCase();
     const statusFilter = filters.status || "all";
@@ -113,8 +116,8 @@ export default function RewardAdmin() {
     { id: "monthlyCustomerCap", label: "Monthly cap", renderCell: (value) => `${format(value)} pts` },
     { id: "pointsExpireAfterDays", label: "Validity", renderCell: (value) => <span className={cx("table-validity")}><Clock3 size={14} />{value ? `${format(value)} days` : "No expiry"}</span> },
     { id: "enabled", label: "Status", renderCell: (_, rule) => <Chip size="small" icon={rule.enabled ? <CheckCircle2 size={14} /> : <PauseCircle size={14} />} label={rule.enabled ? "Active" : "Paused"} className={cx(rule.enabled ? "active-chip" : "paused-chip")} /> },
-    { id: "actions", label: "Actions", renderCell: (_, rule) => <div className={cx("table-actions")}><Button size="small" startIcon={<Edit3 size={15} />} onClick={() => setEditing({ ...emptyRule, ...rule })}>Edit</Button><Button size="small" color="error" startIcon={<Trash2 size={15} />} onClick={() => remove(rule)}>Delete</Button></div> },
-  ], [remove]);
+    { id: "actions", label: "Actions", renderCell: (_, rule) => <div className={cx("table-actions")}><Button size="small" startIcon={<Edit3 size={15} />} onClick={() => setEditing({ ...emptyRule, ...rule })}>Edit</Button><Button size="small" color="error" startIcon={<Trash2 size={15} />} onClick={() => setDeleteTarget(rule)}>Delete</Button></div> },
+  ], []);
 
   return <main className={cx("page")}>
     <header className={cx("hero")}><div><div className={cx("eyebrow")}><Sparkles size={15} /> LOYALTY OPERATIONS</div><h1>Rewards control centre</h1><p>Design sustainable earning policies across every MassClick category, with transparent caps and verified milestones.</p></div><Button variant="contained" startIcon={<Plus size={18} />} onClick={() => setEditing({ ...emptyRule })} className={cx("primary-action")}>Create reward policy</Button></header>
@@ -131,6 +134,12 @@ export default function RewardAdmin() {
     </section>
 
     {message && <div className={cx("toast")} role="status"><CheckCircle2 size={18} /> {message}<button onClick={() => setMessage("")} aria-label="Dismiss"><X size={17} /></button></div>}
+
+    <Dialog open={Boolean(deleteTarget)} onClose={() => !deleting && setDeleteTarget(null)} maxWidth="xs" fullWidth PaperProps={{ className: cx("delete-dialog") }}>
+      <DialogTitle className={cx("delete-dialog-title")}><span><Trash2 size={23} /></span><div><small>DELETE POLICY</small><h2>Remove reward policy?</h2><p>This stops future claims for the selected category.</p></div></DialogTitle>
+      <DialogContent className={cx("delete-dialog-content")}><div className={cx("delete-category")}><Award size={20} /><div><span>Selected category</span><strong>{deleteTarget?.categoryName}</strong><small>{deleteTarget?.categoryKey}</small></div></div><p><b>Historical data is protected.</b> Existing claims, customer wallet balances and awarded-point transactions will not be deleted.</p></DialogContent>
+      <DialogActions className={cx("delete-dialog-actions")}><Button onClick={() => setDeleteTarget(null)} disabled={deleting}>Cancel</Button><Button variant="contained" color="error" startIcon={<Trash2 size={17} />} onClick={() => remove(deleteTarget)} disabled={deleting}>{deleting ? "Deleting policy…" : "Delete policy"}</Button></DialogActions>
+    </Dialog>
 
     <Dialog open={Boolean(editing)} onClose={() => !saving && setEditing(null)} maxWidth="md" fullWidth PaperProps={{ className: cx("dialog-paper") }}>
       <DialogTitle className={cx("dialog-title")}><div><span className={cx("section-kicker")}>{editing?._id ? "EDIT POLICY" : "NEW POLICY"}</span><h2>{editing?._id ? editing.categoryName : "Create category reward policy"}</h2><p>Connect an existing category, define milestones, and protect your reward budget.</p></div><button onClick={() => setEditing(null)} aria-label="Close dialog"><X size={20} /></button></DialogTitle>

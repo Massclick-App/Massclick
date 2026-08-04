@@ -1,3 +1,6 @@
+// Reports at boot whether certificate fonts are resolving. It cannot fix them:
+// FONTCONFIG_FILE has to be set before the process starts (see the Dockerfile).
+import "./utils/fontBootstrap.js";
 import { createServer } from "http";
 import express from "express";
 import cors from "cors";
@@ -82,6 +85,13 @@ const MONGO_URI = process.env.MONGO_URL;
 const CLIENT_BUILD_PATH = process.env.REACT_BUILD_PATH;
 
 app.use((req, res, next) => {
+  if (
+    req.path.startsWith("/.well-known/") ||
+    req.path === "/apple-app-site-association"
+  ) {
+    return next();
+  }
+
   const host = req.headers.host || "";
   const protocol = req.headers["x-forwarded-proto"] || req.protocol;
 

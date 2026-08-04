@@ -9,6 +9,7 @@ const DISTRICT_SLUG_ALIASES = {
   tiruchy: "trichy",
   trichy: "trichy",
 };
+const LOCATION_CATEGORY_SEPARATOR = "-in-";
 
 export const createSlug = (text = "") => {
   if (!text) return "";
@@ -30,6 +31,29 @@ export const createDistrictSlug = (value = "") => {
       : value;
   const slug = createSlug(raw);
   return DISTRICT_SLUG_ALIASES[slug] || slug;
+};
+
+const pathSegments = (value = "") =>
+  String(value || "")
+    .split("/")
+    .map((part) => createSlug(part))
+    .filter(Boolean);
+
+export const buildLocationCategorySegment = ({
+  categorySlug = "",
+  subcategorySlug = "",
+  locationSlug = "",
+} = {}) => {
+  const finalCategorySlug = createSlug(subcategorySlug || categorySlug);
+  const targetLocationSlug = createSlug(locationSlug);
+  if (!finalCategorySlug || !targetLocationSlug) return "";
+  return `${finalCategorySlug}${LOCATION_CATEGORY_SEPARATOR}${targetLocationSlug}`;
+};
+
+export const buildLocationPath = ({ districtSlug = "", locationPath = "" } = {}) => {
+  const resolvedDistrictSlug = createDistrictSlug(districtSlug);
+  if (!resolvedDistrictSlug) return "/";
+  return `/${[resolvedDistrictSlug, pathSegments(locationPath).join("/")].filter(Boolean).join("/")}`;
 };
 
 export const getLocationName = (value = "") => {
@@ -58,6 +82,10 @@ export const getLocationContext = (value = {}) => {
       (typeof value === "object" && (value.publicLocationSlug || value.locationSlug)) ||
       localStorage.getItem("selectedPublicLocationSlug") ||
       "",
+    locationPath:
+      (typeof value === "object" && (value.publicLocationPath || value.locationPath)) ||
+      localStorage.getItem("selectedPublicLocationPath") ||
+      "",
     masterLocationSlug:
       (typeof value === "object" && (value.masterLocationSlug || value.slug)) ||
       localStorage.getItem("selectedLocationSlug") ||
@@ -68,6 +96,7 @@ export const getLocationContext = (value = {}) => {
 export const buildCategoryPath = ({
   districtSlug = "",
   locationSlug = "",
+  locationPath = "",
   location = "",
   category,
   categorySlug,
@@ -76,10 +105,18 @@ export const buildCategoryPath = ({
   isDistrictScope = false,
 } = {}) => {
   const resolvedDistrictSlug = createDistrictSlug(districtSlug);
-  const resolvedLocationSlug = createSlug(locationSlug || location);
+  const locationPathParts = pathSegments(locationPath);
+  const pathLocationSlug = locationPathParts[locationPathParts.length - 1] || "";
+  const locationAncestorPath = locationPathParts.slice(0, -1).join("/");
+  const resolvedLocationSlug = pathLocationSlug || createSlug(locationSlug || location);
   const resolvedCategorySlug = createSlug(categorySlug || category);
   const resolvedSubcategorySlug = createSlug(subcategorySlug || subcategory);
-  if (!resolvedCategorySlug) return "/";
+  const finalCategorySlug = resolvedSubcategorySlug || resolvedCategorySlug;
+  if (!finalCategorySlug) {
+    return resolvedDistrictSlug
+      ? buildLocationPath({ districtSlug: resolvedDistrictSlug, locationPath })
+      : "/";
+  }
 
   if (resolvedDistrictSlug) {
     // A typed-free-text location that names the district itself (e.g.
@@ -98,27 +135,93 @@ export const buildCategoryPath = ({
     const isDistrictSelfMatch =
       Boolean(resolvedLocationSlug) &&
       createDistrictSlug(locationSlug || location) === resolvedDistrictSlug;
-    const segments = isDistrictScope || isDistrictSelfMatch
-      ? [resolvedDistrictSlug, resolvedCategorySlug, resolvedSubcategorySlug]
-      : [resolvedDistrictSlug, resolvedLocationSlug, resolvedCategorySlug, resolvedSubcategorySlug];
+    const categoryLocationSegment = buildLocationCategorySegment({
+      categorySlug: finalCategorySlug,
+      locationSlug: resolvedLocationSlug,
+    });
+    const segments = isDistrictScope || isDistrictSelfMatch || !resolvedLocationSlug
+      ? [resolvedDistrictSlug, finalCategorySlug]
+      : [resolvedDistrictSlug, locationAncestorPath, categoryLocationSegment];
     return `/${segments.filter(Boolean).join("/")}`;
   }
 
   const legacyLocationSlug = resolvedLocationSlug;
-  return `/${[legacyLocationSlug, resolvedCategorySlug, resolvedSubcategorySlug].filter(Boolean).join("/")}`;
+  return `/${[legacyLocationSlug, finalCategorySlug].filter(Boolean).join("/")}`;
 };
 
+// Long enough for real business names, short enough to keep the URL readable.
+const MAX_BUSINESS_SLUG_LENGTH = 80;
+const BUSINESS_SLUG_FALLBACK = "business";
+
+/**
+ * The canonical business-slug segment for a business detail URL.
+ *
+ * Deliberately built from the business NAME only. `businesslists.slug` looks
+ * like it belongs here but holds category or SEO title text instead — "hotels",
+ * "Best CCTV Camera Installation and Dealers Near Me" — and never the
+ * business's own name. Every emitter used to prefer it, so no business URL
+ * contained the business name and 119 Trichy hotels differed only by ObjectId.
+ * That is why this takes a name, not a pre-made slug: passing `business.slug`
+ * in must stay impossible.
+ *
+ * Parallel implementation of server/helper/businessList/businessUrl.js
+ * (`getBusinessUrlSlug`) — this app cannot import server code. The two MUST
+ * produce byte-identical output, or the canonical redirect in
+ * legacyUrlRedirectMiddleware.js will 301 the links built here. Change one,
+ * change the other.
+ */
+export const createBusinessSlug = (businessName = "") => {
+  const slug = createSlug(businessName);
+  if (slug.length <= MAX_BUSINESS_SLUG_LENGTH) return slug || BUSINESS_SLUG_FALLBACK;
+  const cut = slug.slice(0, MAX_BUSINESS_SLUG_LENGTH);
+  const lastBoundary = cut.lastIndexOf("-");
+  const truncated = (lastBoundary > 0 ? cut.slice(0, lastBoundary) : cut).replace(/-+$/, "");
+  return truncated || BUSINESS_SLUG_FALLBACK;
+};
+
+// Mirrors PUBLIC_ID_RE in server/helper/businessList/businessUrl.js: six
+// lowercase alphanumerics containing at least one letter AND one digit. The
+// mixed rule is what lets the trailing chunk of a URL segment be told apart
+// from an ordinary trailing word in the name slug.
+const PUBLIC_ID_RE = /^(?=[a-z0-9]*[a-z])(?=[a-z0-9]*\d)[a-z0-9]{6}$/;
+
+/**
+ * The single path segment identifying a business: `<name-slug>-<publicId>`.
+ * Returns "" when the business has no publicId, which callers must treat as
+ * "fall back to the previous URL shape" — see buildBusinessPath.
+ */
+export const buildBusinessSegment = ({ businessName, publicId } = {}) => {
+  const normalizedPublicId = String(publicId || "").trim().toLowerCase();
+  if (!PUBLIC_ID_RE.test(normalizedPublicId)) return "";
+  return `${createBusinessSlug(businessName)}-${normalizedPublicId}`;
+};
+
+/**
+ * Business detail path.
+ *
+ * Current shape is /business/:district/:slug-:publicId. When a business has no
+ * publicId yet — a record created before the backfill ran in this environment
+ * — the previous /business/:district/:location/:slug/:id shape is emitted
+ * instead, because that is the only one the server can still resolve in that
+ * state. Both are live routes; the server 301s the old one to the new.
+ */
 export const buildBusinessPath = ({
   districtSlug = "",
   locationSlug = "",
   location = "",
-  businessSlug,
   businessName,
+  publicId,
   id,
 } = {}) => {
   const resolvedDistrictSlug = createDistrictSlug(districtSlug);
+  const segment = buildBusinessSegment({ businessName, publicId });
+
+  if (resolvedDistrictSlug && segment) {
+    return `/business/${resolvedDistrictSlug}/${segment}`;
+  }
+
   const resolvedLocationSlug = createSlug(locationSlug || location) || "business";
-  const resolvedBusinessSlug = createSlug(businessSlug || businessName) || "profile";
+  const resolvedBusinessSlug = createBusinessSlug(businessName);
   const segments = resolvedDistrictSlug
     ? ["business", resolvedDistrictSlug, resolvedLocationSlug, resolvedBusinessSlug, id]
     : ["business", resolvedLocationSlug, resolvedBusinessSlug, id];
@@ -156,6 +259,7 @@ export const getEffectiveSearchLocation = (districtFallback = "") => {
   const selectedLocation = localStorage.getItem("selectedLocation") || "";
   const fallbackContext = getLocationContext(districtFallback);
   const selectedPublicLocationSlug = localStorage.getItem("selectedPublicLocationSlug") || "";
+  const selectedPublicLocationPath = localStorage.getItem("selectedPublicLocationPath") || "";
   const selectedMasterLocationSlug = localStorage.getItem("selectedLocationSlug") || "";
   const hasVerifiedLocation = Boolean(selectedPublicLocationSlug || selectedMasterLocationSlug);
   const location =
@@ -179,6 +283,7 @@ export const getEffectiveSearchLocation = (districtFallback = "") => {
     // wrong node.
     masterLocationSlug: hasVerifiedLocation ? selectedMasterLocationSlug : "",
     locationSlug: hasVerifiedLocation ? selectedPublicLocationSlug || createSlug(location) : "",
+    locationPath: hasVerifiedLocation ? selectedPublicLocationPath : "",
     districtName,
     districtSlug,
     isDistrictScope: !hasVerifiedLocation,
@@ -203,6 +308,7 @@ export const navigateToSearchResult = ({
   districtSlug = "",
   districtName = "",
   locationSlug = "",
+  locationPath = "",
   isDistrictScope = false,
   // Canonical masterlocations slug (e.g. "tamil-nadu-salem-mettur") from a
   // verified-location pick. Sent to the search API instead of the free text,
@@ -235,6 +341,7 @@ export const navigateToSearchResult = ({
     districtSlug,
     districtName,
     locationSlug,
+    locationPath,
     locationName: location,
     isKnownCategory,
 
@@ -267,6 +374,7 @@ export const navigateToSearchResult = ({
   const targetPath = buildCategoryPath({
     districtSlug,
     locationSlug,
+    locationPath,
     location: normalizedLocation,
     categorySlug: slugTerm,
     isDistrictScope,
@@ -303,6 +411,7 @@ export const extractSearchResultData = (locationState = {}, urlParams = {}) => {
     districtSlug: stateDistrictSlug,
     districtName: stateDistrictName,
     locationSlug: stateLocationSlug,
+    locationPath: stateLocationPath,
     locationName: stateLocationName,
   } = locationState;
 
@@ -312,6 +421,7 @@ export const extractSearchResultData = (locationState = {}, urlParams = {}) => {
     districtName: paramDistrictName,
     location: locParam,
     locationSlug: paramLocationSlug,
+    locationPath: paramLocationPath,
     locationName: paramLocationName,
     category: categoryParam,
     categorySlug: paramCategorySlug,
@@ -363,6 +473,11 @@ export const extractSearchResultData = (locationState = {}, urlParams = {}) => {
       (hasResolvedDistrictContext ? "" : locParam || stateLocationSlug) ||
       ""
   );
+  const routeLocationPath = String(
+    paramLocationPath ||
+      (hasResolvedDistrictContext ? "" : stateLocationPath) ||
+      ""
+  );
   const routeLocationName =
     paramLocationName ||
     (hasResolvedDistrictContext ? "" : stateLocationName) ||
@@ -388,10 +503,12 @@ export const extractSearchResultData = (locationState = {}, urlParams = {}) => {
 
   // Priority order for location
   const finalLocation =
-    location ||
-    routeLocationName ||
-    (finalDistrictSlug ? finalDistrictName : "") ||
-    "";
+    hasResolvedDistrictContext
+      ? routeLocationName || finalDistrictName || ""
+      : location ||
+        routeLocationName ||
+        (finalDistrictSlug ? finalDistrictName : "") ||
+        "";
 
   return {
     searchTerm: normalizeSearchTerm(finalSearchTerm),
@@ -400,6 +517,7 @@ export const extractSearchResultData = (locationState = {}, urlParams = {}) => {
     districtSlug: finalDistrictSlug,
     districtName: finalDistrictName,
     routeLocationSlug,
+    routeLocationPath,
     routeLocationName,
     categorySlug,
     subcategorySlug,

@@ -9,6 +9,7 @@ import { getSettings } from "../../helper/systemSettings/settingsService.js";
 import { logAuthAuditEvent } from "../../auth/authAuditStore.js";
 import { resolveAuthActorFromToken } from "../../auth/authResolver.js";
 import { timingSafeEqual } from "node:crypto";
+import { awardWelcomeBonus, getWallet, tierFor, WELCOME_BONUS_POINTS } from "../../helper/rewards/rewardHelper.js";
 
 const normalizeIndianMobile = (value) => {
   const digits = String(value || "").replace(/\D/g, "");
@@ -201,15 +202,25 @@ export const verifyOtpAction = async (req, res) => {
 
       isNewUser = true;
 
+      const normalizedUserName = String(userName || "").trim();
+      if (!isReviewer && normalizedUserName.length < 2) {
+        return res.status(400).json({
+          success: false,
+          code: "NAME_REQUIRED",
+          message: "Please enter your name to create your account."
+        });
+      }
+
       const source = ["mobile", "web"].includes(registeredFrom) ? registeredFrom : "unknown";
       user = new User({
-        userName: userName || (
+        userName: normalizedUserName || (
           isReviewer
             ? process.env.GOOGLE_PLAY_REVIEW_NAME?.trim() || "Google Play Reviewer"
             : `User_${cleanNumber}`
         ),
         mobileNumber1: cleanNumber,
         registeredFrom: source,
+        welcomeBonusEligible: !isReviewer,
       });
 
     } else if (userName && userName !== user.userName) {
@@ -257,6 +268,42 @@ export const verifyOtpAction = async (req, res) => {
 
     await user.save();
 
+    let welcomeBonus = { awarded: false, points: 0 };
+    if (!isReviewer && user.welcomeBonusEligible && !user.welcomeBonusGrantedAt) {
+      try {
+        const bonusResult = await awardWelcomeBonus(user.mobileNumber1);
+        user.welcomeBonusEligible = false;
+        user.welcomeBonusGrantedAt = new Date();
+        user.rewardPoints = {
+          availablePoints: Number(bonusResult.wallet?.availablePoints || 0),
+          lifetimeEarned: Number(bonusResult.wallet?.lifetimeEarned || 0),
+          lifetimeRedeemed: Number(bonusResult.wallet?.lifetimeRedeemed || 0),
+          tier: tierFor(Number(bonusResult.wallet?.lifetimeEarned || 0)),
+          lastSyncedAt: new Date(),
+        };
+        await user.save();
+        welcomeBonus = { awarded: true, points: WELCOME_BONUS_POINTS };
+      } catch (bonusError) {
+        // Keep eligibility true so the next successful OTP login safely retries.
+        console.error("Welcome reward bonus failed:", bonusError.message);
+        welcomeBonus = { awarded: false, points: 0, pending: true };
+      }
+    }
+
+    try {
+      const walletSummary = await getWallet(user.mobileNumber1);
+      user.rewardPoints = {
+        availablePoints: Number(walletSummary.availablePoints || 0),
+        lifetimeEarned: Number(walletSummary.lifetimeEarned || 0),
+        lifetimeRedeemed: Number(walletSummary.lifetimeRedeemed || 0),
+        tier: walletSummary.tier || "Starter",
+        lastSyncedAt: new Date(),
+      };
+      await user.save();
+    } catch (walletSyncError) {
+      console.error("Customer reward summary sync failed:", walletSyncError.message);
+    }
+
     if (isNewUser && !isReviewer && settings?.whatsapp_login_welcome) {
       try {
         await sendLoginWelcomeMessage(user.mobileNumber1, user.userName);
@@ -292,7 +339,8 @@ export const verifyOtpAction = async (req, res) => {
       success: true,
       message: "OTP verified successfully",
       user: userObj,
-      token
+      token,
+      welcomeBonus
     });
 
   } catch (error) {

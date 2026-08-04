@@ -44,7 +44,6 @@ const LegalDocuments = lazy(() => import(/* webpackChunkName: "admin-legal-docum
 const MainGrid = lazy(() => import(/* webpackChunkName: "admin-maingrid" */ './components/MainGrid.js'));
 
 const BusinessListing = lazy(() => import(/* webpackChunkName: "home" */ './Internals/clientComponent/home.js'));
-const SearchResults = lazy(() => import(/* webpackChunkName: "search" */ './Internals/clientComponent/SearchResult/SearchResult.js'));
 const BusinessDetails = lazy(() => import(/* webpackChunkName: "business-detail" */ './Internals/clientComponent/cards/cardDetails.js'));
 const EventCarousel = lazy(() => import(/* webpackChunkName: "events" */ './Internals/clientComponent/events/eventCarousel/eventCarousel.js'));
 const EventDetails = lazy(() => import(/* webpackChunkName: "event-detail" */ './Internals/clientComponent/events/eventDetails/eventDetails.js'));
@@ -83,6 +82,7 @@ const RewardAdmin = lazy(() => import(/* webpackChunkName: "admin-rewards" */ '.
 const RewardsConceptPage = lazy(() => import(/* webpackChunkName: "admin-rewards-concept" */ './Internals/rewards/RewardsConceptPage.js'));
 const RewardClaimsAdmin = lazy(() => import(/* webpackChunkName: "admin-reward-claims" */ './Internals/rewards/RewardClaimsAdmin.js'));
 const RewardClaimPage = lazy(() => import(/* webpackChunkName: "reward-claim" */ './Internals/clientComponent/rewards/RewardClaimPage.js'));
+const RewardMembersPage = lazy(() => import(/* webpackChunkName: "reward-members" */ './Internals/clientComponent/rewards/RewardMembersPage.js'));
 const AdminCustomerCareChat = lazy(() => import(/* webpackChunkName: "admin-customer-care-chat" */ './Internals/CustomerCareChat/AdminCustomerCareChat.js'));
 const AdvertisementPage = lazy(() => import(/* webpackChunkName: "admin-advertisement" */ './Internals/advertisement/advertisement.js'));
 const EventCategory = lazy(() => import(/* webpackChunkName: "admin-event-category" */ './components/eventCategory/eventCategory.js'));
@@ -139,7 +139,6 @@ const MobileHomeDock = lazy(() => import(/* webpackChunkName: "mobile-home-dock"
 // const HomePopupAd = lazy(() => import(/* webpackChunkName: "home-popup-ad" */ './Internals/clientComponent/popup/HomePopupAd.js'));
 const OTPLoginModal = lazy(() => import(/* webpackChunkName: "otp-modal" */ './Internals/clientComponent/AddBusinessModel.js'));
 
-const CategoryRouter = lazy(() => import(/* webpackChunkName: "category-router" */ './Internals/clientComponent/categories/categoryRouter.js'));
 const DistrictRouteResolver = lazy(() => import(/* webpackChunkName: "district-route-resolver" */ './Internals/clientComponent/categories/DistrictRouteResolver.js'));
 const CategoriesPage = lazy(() => import(/* webpackChunkName: "category-directory" */ './Internals/clientComponent/categories/categories.js'));
 const BlogDetail = lazy(() => import(/* webpackChunkName: "blog-detail" */ './Internals/clientComponent/relatedBlogs/blogDetails/blogDetails.js'));
@@ -267,6 +266,7 @@ function AppRoutes({
           <Route path="/user/search-history" element={<LeadsCardHistory />} />
           <Route path="/business-enquiry" element={<BusinessEnquiry />} />
           <Route path="/claim-rewards" element={<RewardClaimPage />} />
+          <Route path="/reward-members" element={<Navigate to="/user_rewards#member-points" replace />} />
           <Route path="/payment-status/:transactionId" element={<PaymentStatus />} />
           <Route path="/write-review/:businessId/:ratingValue" element={<WriteReviewPage />} />
           <Route path="/blog/:slug" element={<BlogDetail />} />
@@ -276,6 +276,7 @@ function AppRoutes({
 
           <Route path="/user_dashboard" element={<UserDashboardPage />} />
           <Route path="/user_edit-profile" element={<UserEditProfilePage />} />
+          <Route path="/user_edit-user-profile" element={<UserEditProfilePage mode="user" />} />
           <Route
             path="/user_mni"
             element={isBusinessPeopleUser(getStoredCustomerUser()) ? <UserMRPPage /> : <Navigate to="/user_dashboard" replace />}
@@ -302,16 +303,29 @@ function AppRoutes({
           ))}
 
           <Route path="/:district" element={<CategoriesPage mode="districtLanding" />} />
-          <Route path="/:district/:category" element={<CategoryRouter />} />
+          <Route
+            path="/:district/:p2"
+            element={<DistrictRouteResolver />}
+          />
           <Route
             path="/:district/:p2/:p3"
             element={<DistrictRouteResolver />}
           />
           <Route
-            path="/:district/:location/:category/:subcategory"
-            element={<SearchResults />}
+            path="/:district/:p2/:p3/:p4"
+            element={<DistrictRouteResolver />}
           />
 
+          {/* Current shape. The trailing segment is <name-slug>-<publicId>;
+              the page resolves by the publicId and the slug is cosmetic. */}
+          <Route
+            path="/business/:district/:businessSegment"
+            element={<BusinessDetails />}
+          />
+          {/* Superseded shapes, kept live so already-indexed URLs and printed
+              QR codes still render while the server 301s them to the above.
+              Removing them would turn those redirects into dead ends for any
+              business that has no publicId yet. */}
           <Route
             path="/business/:district/:location/:businessSlug/:id"
             element={<BusinessDetails />}

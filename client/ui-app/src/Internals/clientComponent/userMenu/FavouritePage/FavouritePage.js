@@ -75,8 +75,8 @@ export default function FavoritesPage() {
             const businessUrl = buildBusinessPath({
               districtSlug: createDistrictSlug(business.masterLocation?.district || business.district || ""),
               location: business.location,
-              businessSlug: business.slug,
               businessName: business.businessName,
+              publicId: business.publicId,
               id: business._id
             });
             const averageRating = Number(business.averageRating);

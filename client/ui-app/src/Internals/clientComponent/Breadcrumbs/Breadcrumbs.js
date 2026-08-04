@@ -14,7 +14,7 @@ const Breadcrumbs = ({
   return <nav className={cx("breadcrumbs")} aria-label="Breadcrumb">
       <div className={cx("breadcrumbs-container")}>
         {items.map((item, index) => <div key={index} className={cx("breadcrumb-item")}>
-            {item.link ? <Link to={item.link} onClick={item.onClick} className={cx("breadcrumb-link")}>
+            {item.link ? <Link to={item.link} state={item.state} onClick={item.onClick} className={cx("breadcrumb-link")}>
                 {toPascalCase(item.label)}
               </Link> : item.onClick ? <button onClick={item.onClick} className={cx("breadcrumb-link breadcrumb-button")}>
                 {toPascalCase(item.label)}

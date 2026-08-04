@@ -1,1 +1,4 @@
 node_modules/
+
+# fonts.conf itself is committed; only the generated cache is local
+assets/fontconfig/cache/

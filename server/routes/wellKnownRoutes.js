@@ -10,6 +10,53 @@ import {
 
 const router = express.Router();
 
+const ANDROID_PACKAGE_NAME =
+  process.env.ANDROID_APP_LINK_PACKAGE_NAME || "com.massclick.massclick";
+const DEFAULT_ANDROID_SHA256_CERT_FINGERPRINTS = [
+  // Debug signing certificate used by local Android debug builds.
+  "F5:85:F4:C4:F2:38:1D:D4:B3:43:F8:E1:C4:E7:B3:4A:F8:55:04:6B:66:01:7E:8A:6D:BC:AF:F5:AC:49:43:61",
+  // Release upload key from android/app/massclick_prod.jks.
+  "4C:7D:AD:69:66:86:BC:26:66:8F:86:B6:90:68:2B:0F:7D:3C:48:F5:E5:87:95:E5:10:F0:42:82:C9:53:2C:73",
+  // Play App Signing certificate from Play Console.
+  "9A:46:79:C2:E4:63:C9:FD:21:7B:76:70:58:8B:D8:06:57:97:EB:E9:FA:75:02:11:1C:45:12:D0:F1:B2:59:52",
+];
+const IOS_BUNDLE_ID =
+  process.env.IOS_APP_LINK_BUNDLE_ID || "com.massclick.massclick";
+const IOS_TEAM_ID =
+  process.env.IOS_APP_LINK_TEAM_ID || process.env.APPLE_TEAM_ID;
+
+const splitCsv = (value) =>
+  String(value || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+const sendAssociationJson = (res, body) => {
+  res.type("application/json");
+  res.set("Cache-Control", "public, max-age=3600");
+  return res.status(200).send(JSON.stringify(body));
+};
+
+const sendMissingAssociationConfig = (res, message) => {
+  res.type("application/json");
+  res.set("Cache-Control", "no-store");
+  return res.status(503).send(JSON.stringify({ success: false, message }));
+};
+
+const androidSha256Fingerprints = () => [
+  ...new Set([
+    ...DEFAULT_ANDROID_SHA256_CERT_FINGERPRINTS,
+    ...splitCsv(process.env.ANDROID_APP_LINK_SHA256_CERT_FINGERPRINTS),
+  ]),
+];
+
+const iosAppIds = () => {
+  const configuredAppIds = splitCsv(process.env.IOS_APP_LINK_APP_IDS);
+  if (configuredAppIds.length > 0) return configuredAppIds;
+  if (!IOS_TEAM_ID) return [];
+  return [`${IOS_TEAM_ID}.${IOS_BUNDLE_ID}`];
+};
+
 router.get("/metrics", async (req, res) => {
   res.set("Content-Type", register.contentType);
   res.end(await register.metrics());
@@ -101,6 +148,61 @@ Sitemap: https://massclick.in/sitemap.xml
 router.get("/health", (req, res) => {
   res.status(200).json({ success: true, uptime: process.uptime() });
 });
+
+router.get("/.well-known/assetlinks.json", (req, res) => {
+  const fingerprints = androidSha256Fingerprints();
+  if (fingerprints.length === 0) {
+    return sendMissingAssociationConfig(
+      res,
+      "Set ANDROID_APP_LINK_SHA256_CERT_FINGERPRINTS to enable Android App Links."
+    );
+  }
+
+  return sendAssociationJson(res, [
+    {
+      relation: ["delegate_permission/common.handle_all_urls"],
+      target: {
+        namespace: "android_app",
+        package_name: ANDROID_PACKAGE_NAME,
+        sha256_cert_fingerprints: fingerprints,
+      },
+    },
+  ]);
+});
+
+const sendAppleAppSiteAssociation = (req, res) => {
+  const appIds = iosAppIds();
+  if (appIds.length === 0) {
+    return sendMissingAssociationConfig(
+      res,
+      "Set IOS_APP_LINK_TEAM_ID or IOS_APP_LINK_APP_IDS to enable iOS Universal Links."
+    );
+  }
+
+  return sendAssociationJson(res, {
+    applinks: {
+      apps: [],
+      details: [
+        {
+          appIDs: appIds,
+          components: [
+            {
+              "/": "/*",
+              comment: "Open Massclick app for supported web routes.",
+            },
+          ],
+          paths: ["*"],
+        },
+      ],
+    },
+  });
+};
+
+router.get(
+  "/.well-known/apple-app-site-association",
+  sendAppleAppSiteAssociation
+);
+router.get("/apple-app-site-association", sendAppleAppSiteAssociation);
 
 router.get(API_CATALOG_PATH, (req, res) => {
   const body = {

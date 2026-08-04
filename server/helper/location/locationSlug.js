@@ -25,6 +25,186 @@ import { slugify } from "../../slugify.js";
 export const getPublicLocationSlug = (doc = {}) =>
   slugify(String(doc.locality || doc.ward || doc.zone || doc.district || "").trim());
 
+const LOCATION_URL_FIELDS_BY_LEVEL = {
+  zone: ["zone"],
+  ward: ["zone", "ward"],
+  locality: ["zone", "ward", "locality"],
+};
+
+const TARGET_FIELD_BY_LEVEL = {
+  district: "district",
+  zone: "zone",
+  ward: "ward",
+  locality: "locality",
+};
+
+const NUMERIC_SUFFIX_RE = /-(\d+)$/;
+
+// True when a ward's own name is just its zone's name plus a suffix, e.g.
+// zone "Andimadam" + ward "Andimadam East" -> "andimadam-east" starts with
+// "andimadam-". A PREFIX match, deliberately not the exact-match case
+// computeLocationUrlParts already handles below (a ward literally named the
+// same as its zone) — that case is a separate, still-open collision type
+// documented in this file's header comment (the "Muthur" ward inside a
+// "Muthur" zone example) and is NOT touched here. Verified against
+// massClick_dev: 322 of 943 active wards fit this exact prefix pattern,
+// across 18 districts — as common as the district-collision case, not an
+// edge case.
+const isZoneNamePrefixOfWard = (doc = {}) => {
+  const zoneSlug = slugify(String(doc.zone || "").trim());
+  const wardSlug = slugify(String(doc.ward || "").trim());
+  return Boolean(zoneSlug && wardSlug && wardSlug !== zoneSlug && wardSlug.startsWith(`${zoneSlug}-`));
+};
+
+// Plain-English word appended to a colliding segment in the deprecated flat
+// publicLocationSlug scheme (computePublicLocationSlugs, further down). The
+// live hierarchy-path builder below does NOT use this — see
+// collapseLocationUrlChain's header for why an appended word was rejected
+// in favor of just omitting the redundant segment.
+const LEVEL_QUALIFIER_WORD = { locality: "city", ward: "ward", zone: "zone" };
+
+const getDuplicateNumericSuffix = (doc = {}, base = "") => {
+  const persisted = slugify(doc.publicLocationSlug || "");
+  if (!persisted || !base || persisted === base || !persisted.startsWith(`${base}-`)) {
+    return "";
+  }
+
+  const match = persisted.match(NUMERIC_SUFFIX_RE);
+  return match ? match[1] : "";
+};
+
+/**
+ * Computes both the ancestor segments and the target segment for a
+ * hierarchy-path URL, with an ancestor OMITTED (not qualified with a word)
+ * ONLY when its own bare name is identical to the DISTRICT — e.g. a
+ * district's headquarters zone/town is routinely named after the district
+ * itself (verified: 18 of 439 active zones on massClick_dev, e.g. Salem
+ * district's "Salem" zone), which bare would read "/salem/salem/...". An
+ * earlier version of this fix appended a level word ("-zone"/"-city") to
+ * disambiguate. Rejected per explicit product decision: real alternate-name
+ * data in this DB for this case is itself bureaucratic ("Salem
+ * Municipality", "Coimbatore Municipal Corporation" — 17 of 18 cases), so a
+ * synthetic suffix would read the same way. The redundant ancestor is
+ * simply left out of the path instead.
+ *
+ * Deliberately checks each ancestor against the district ONLY, never
+ * against its immediately preceding ancestor in general (a naive "collapse
+ * any adjacent duplicate" pass was tried and reverted — it also silently
+ * collapsed a ward matching its own zone's name, e.g. a "Muthur" ward
+ * inside a "Muthur" zone, which is a separate, NOT-yet-handled collision
+ * type; that made a ward's own page collide with an unrelated locality's
+ * page whenever both happened to reduce to the same short string).
+ *
+ * Deliberately does NOT also drop an ancestor for matching the TARGET (e.g.
+ * a "K.K. Nagar" ward immediately before a "K.K. Nagar" locality target) —
+ * tried that, reverted it. Verified on massClick_dev: 488 wards share a
+ * name with a child locality, and 430 of those wards have OTHER sibling
+ * localities carrying real, separate business data (e.g. the "K.K. Nagar"
+ * ward has 630 live businesses total but only 551 sit in the same-named
+ * "K.K. Nagar" locality specifically — the rest are in sibling localities
+ * or assigned to the ward directly). Omitting the ward there would make the
+ * ward's own page indistinguishable from the narrower locality's page and
+ * silently lose those other businesses' proper page. Unlike the
+ * district-collision case, this one is a real distinct-content collision,
+ * not a redundant name repeat — left as a known open item (visually
+ * repeats, e.g. ".../k-k-nagar/hotels-in-k-k-nagar", but each segment names
+ * a genuinely different, correctly-resolving place).
+ *
+ * The sibling-collision case (two DIFFERENT localities sharing a name in
+ * different wards) needs none of this: their ancestor path segments already
+ * differ, so the scheme's own "ancestors are real path segments now" design
+ * handles that for free.
+ *
+ * A second, independent ancestor omission lives here too: the ZONE segment
+ * is dropped when the WARD's own name is just the zone's name plus a suffix
+ * (a PREFIX match — "Andimadam" zone + "Andimadam East" ward — see
+ * isZoneNamePrefixOfWard). Same rationale as the district-collision case:
+ * "/ariyalur/andimadam/andimadam-east/..." repeats information the ward
+ * name already carries, so "/ariyalur/andimadam-east/..." loses nothing.
+ * Checked per-doc from that doc's own zone+ward fields only, same as the
+ * district check above — not against sibling wards, so a zone keeps the
+ * ancestor for whichever of its wards don't happen to share its name.
+ *
+ * This looked riskier than the district case at first: Salem has 5 pairs of
+ * docs (zones, and wards under them) that share a literal duplicate name —
+ * two separate "Attur" zone docs, two separate "Edappadi" zone docs, etc.
+ * (pre-existing duplicate-zone source data, already known — see
+ * DISTRICT_URL_MIGRATION_HANDOFF.md). Checked with a full before/after path
+ * sweep against the live model rather than reasoning about it in the
+ * abstract (this file's own history has already been burned twice by
+ * reasoning-only collision checks — see the two paragraphs above): none of
+ * those 5 pairs actually collide, before or after this change, because each
+ * duplicate's persisted `publicLocationSlug` already carries a numeric
+ * suffix from computePublicLocationSlugs ("attur" / "attur-2"), which
+ * getDuplicateNumericSuffix (above) picks up and carries into the target
+ * regardless of the ancestor chain — this feature and that mechanism don't
+ * interact. A "Thuraiyur Road" ward also exists under both a "Thuraiyur"
+ * zone and a "Musiri" zone in Tiruchirappalli, which looks like the same
+ * risk at a glance, but only the "Thuraiyur" one is a prefix match —
+ * "Musiri" is not a prefix of "Thuraiyur Road" — so its zone segment is
+ * correctly retained and the two never collide either. Full district-wide
+ * sweep (every active zone/ward/locality, before and after, via
+ * masterLocationModel + the real getLocationUrlPath) confirms zero new
+ * collisions and zero new resolveLocationPathWithinDistrict round-trip
+ * mismatches anywhere in any district.
+ *
+ * A node whose own name collides with the district AND has no surviving
+ * ancestor left to distinguish it (e.g. a "Salem" zone sitting directly
+ * under "Salem" district, with no ward/locality segment in play) has
+ * nothing left to show at all — it folds into the district's own page
+ * rather than repeating the district's name as its only segment. Confirmed
+ * safe for the sitemap: `isValidSitemapLocationDoc` in sitemapRoutes.js
+ * already rejects a doc whose location path is empty, so a folded zone
+ * simply doesn't get its own sitemap entry (its businesses still surface on
+ * the district-wide category page).
+ */
+const computeLocationUrlParts = (doc = {}) => {
+  const fields = LOCATION_URL_FIELDS_BY_LEVEL[doc.level] || [];
+  if (fields.length === 0) return { ancestors: [], target: "" };
+
+  const districtSlug = slugify(String(doc.district || "").trim());
+  const ancestorFields = fields.slice(0, -1);
+  const targetField = TARGET_FIELD_BY_LEVEL[doc.level];
+  const rawTarget = slugify(String(doc[targetField] || "").trim());
+  const numericSuffix = rawTarget ? getDuplicateNumericSuffix(doc, rawTarget) : "";
+  const target = rawTarget ? (numericSuffix ? `${rawTarget}-${numericSuffix}` : rawTarget) : "";
+
+  const dropZoneForWardPrefix = isZoneNamePrefixOfWard(doc);
+  const ancestors = ancestorFields
+    .map((field) => slugify(String(doc[field] || "").trim()))
+    .filter((name, index) => {
+      if (!name || name === districtSlug) return false;
+      if (ancestorFields[index] === "zone" && dropZoneForWardPrefix) return false;
+      return true;
+    });
+
+  const folded = ancestors.length === 0 && target === districtSlug;
+
+  return { ancestors, target: folded ? "" : target };
+};
+
+/**
+ * URL segment for a location node in the new hierarchy-path URL scheme —
+ * the doc's own leaf name (`anna-nagar`), not the deprecated flat
+ * `publicLocationSlug` (`anna-nagar-lalgudi`), since the new URL has real
+ * ancestor path segments instead. See computeLocationUrlParts for the
+ * redundant-name handling applied on top of the bare leaf.
+ */
+export const getLocationUrlSegment = (doc = {}) => {
+  if (!doc || doc.level === "district") return "";
+  return computeLocationUrlParts(doc).target;
+};
+
+export const getLocationUrlSegments = (doc = {}, { includeTarget = true } = {}) => {
+  if (!doc || !LOCATION_URL_FIELDS_BY_LEVEL[doc.level]) return [];
+  const { ancestors, target } = computeLocationUrlParts(doc);
+  if (!includeTarget) return ancestors;
+  return target ? [...ancestors, target] : ancestors;
+};
+
+export const getLocationUrlPath = (doc = {}, options = {}) =>
+  getLocationUrlSegments(doc, options).join("/");
+
 // Ancestor fields available to qualify a collision, nearest first, for each
 // level. A locality can be qualified by its ward, then further by its zone if
 // ward alone still isn't enough; a ward only has zone left; a zone has
@@ -111,8 +291,6 @@ const ANCESTOR_CHAIN_BY_LEVEL = {
  *   behavior.
  * @returns {Map<string, string>} doc._id (stringified) -> final publicLocationSlug
  */
-const LEVEL_QUALIFIER_WORD = { locality: "city", ward: "ward", zone: "zone" };
-
 export const computePublicLocationSlugs = (docs = [], districtUrlSlugByDistrictName = new Map()) => {
   const result = new Map();
 

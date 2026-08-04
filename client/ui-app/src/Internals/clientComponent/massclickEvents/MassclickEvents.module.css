@@ -1,15 +1,16 @@
 .section {
   --events-navy: #071a3d;
   --events-orange: #f46a1b;
-  width: min(calc(100% - clamp(20px, 4vw, 60px)), 1500px);
-  margin: clamp(30px, 4vw, 58px) auto;
-  padding: clamp(18px, 2vw, 26px) clamp(18px, 2.4vw, 34px) clamp(24px, 2.8vw, 38px);
+  max-width: var(--section-max-width);
+  margin: 0 auto;
+  padding: 28px var(--section-padding-h) 24px;
   overflow: hidden;
   border: 1px solid #fee0cf;
-  border-radius: 20px;
+  border-radius: var(--section-radius);
   background:
     radial-gradient(circle at 92% 22%, rgba(244, 106, 27, 0.11) 0 1.5px, transparent 2px) 0 0 / 18px 18px,
     linear-gradient(110deg, #fff8f3, #fff 72%);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
   box-sizing: border-box;
 }
 
@@ -307,7 +308,6 @@
 @keyframes shimmer { to { background-position: -300% 0; } }
 
 @media (min-width: 1700px) {
-  .section { width: min(calc(100% - 100px), 1640px); }
   .carousel { grid-template-columns: 450px minmax(0, 1fr); }
   .rail { grid-auto-columns: minmax(220px, 23%); }
 }
@@ -318,11 +318,6 @@
 }
 
 @media (max-width: 760px) {
-  .section {
-    width: calc(100% - 24px);
-    padding: 18px 16px 24px;
-    border-radius: 17px;
-  }
   .header { margin-bottom: 14px; }
   .viewAll { display: none; }
   .carousel {
@@ -354,7 +349,6 @@
 }
 
 @media (max-width: 440px) {
-  .section { width: calc(100% - 16px); padding-inline: 14px; }
   .header h2 { max-width: 280px; font-size: 1.08rem; }
   .header p { font-size: 0.7rem; }
   .featured { flex-basis: calc(100vw - 52px); height: 245px; }

@@ -20,6 +20,51 @@ const toTitleCase = (value = "") =>
     .replace(/-/g, " ")
     .replace(/\b\w/g, (c) => c.toUpperCase());
 
+const toSlug = (value = "") =>
+  String(value || "")
+    .toLowerCase()
+    .trim()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+const pathSegments = (value = "") =>
+  String(value || "")
+    .split("/")
+    .map(toSlug)
+    .filter(Boolean);
+
+const locationCategoryPath = ({ districtPath, locationPath, locationSlug, categorySlug } = {}) => {
+  const category = toSlug(categorySlug);
+  if (!category) return districtPath;
+
+  const parts = pathSegments(locationPath || locationSlug);
+  const target = parts[parts.length - 1] || "";
+  if (!target) return `${districtPath}/${category}`;
+
+  const ancestors = parts.slice(0, -1).join("/");
+  return `${districtPath}/${[ancestors, `${category}-in-${target}`].filter(Boolean).join("/")}`;
+};
+
+const buildLocationCrumbs = ({
+  districtPath,
+  locationPath,
+  locationSlug,
+  locationName,
+} = {}) => {
+  const parts = pathSegments(locationPath || locationSlug);
+  if (parts.length === 0) return [];
+
+  return parts.map((segment, index) => {
+    const isTarget = index === parts.length - 1;
+    const path = `${districtPath}/${parts.slice(0, index + 1).join("/")}`;
+    return {
+      name: isTarget ? locationName || toTitleCase(segment) : toTitleCase(segment),
+      path,
+    };
+  });
+};
+
 /**
  * @param {object} args
  * @param {string} args.districtSlug - required; every trail here starts
@@ -30,6 +75,7 @@ const toTitleCase = (value = "") =>
  *   districtSlug when omitted, matching the server's alias-preferred rule
  *   (the slug IS the alias when one exists).
  * @param {string} [args.locationSlug]
+ * @param {string} [args.locationPath]
  * @param {string} [args.locationName]
  * @param {string} [args.categorySlug]
  * @param {string} [args.categoryName]
@@ -43,17 +89,15 @@ const toTitleCase = (value = "") =>
  *   the category chain, so there's nothing meaningful to build a path from
  *   here.
  * @returns {Array<{name:string, path:string|null}>} `path` is site-relative,
- *   never absolute. The LAST crumb always has `path: null` — it represents
- *   the page currently being viewed. The location crumb ALSO always has
- *   `path: null` even when not terminal — there is no /:district/:location
- *   landing page in this scheme, only /:district/:category (unambiguous by
- *   definition) and /:district/:location/:category (via the classifier), so
- *   a location-only URL is not a page this app can render.
+ *   never absolute. The LAST crumb always has `path: null`; location crumbs
+ *   link to their landing page unless the location itself is the terminal
+ *   crumb.
  */
 export const buildCrumbs = ({
   districtSlug,
   districtName,
   locationSlug,
+  locationPath,
   locationName,
   categorySlug,
   categoryName,
@@ -69,28 +113,46 @@ export const buildCrumbs = ({
   crumbs.push({ name: districtName || toTitleCase(districtSlug), path: districtPath });
 
   let pathSoFar = districtPath;
+  const resolvedLocationPath = pathSegments(locationPath || locationSlug).join("/");
+  const locationCrumbs = buildLocationCrumbs({
+    districtPath,
+    locationPath: resolvedLocationPath,
+    locationSlug,
+    locationName,
+  });
 
-  if (locationSlug) {
-    pathSoFar = `${pathSoFar}/${locationSlug}`;
-    // No dedicated /:district/:location landing page exists in this URL
-    // scheme — a bare two-segment path is DEFINED as /:district/:category
-    // with no exception (that's what keeps it unambiguous). Giving this
-    // crumb a real href sends the user into that exact misinterpretation:
-    // clicking it drops the category and the router treats the location
-    // slug as if it were a category slug instead. Label only, no link —
-    // pathSoFar still advances so the category crumb after it gets the
-    // correct full path. Matches the pre-migration breadcrumb, which never
-    // linked its middle "location" crumb either.
-    crumbs.push({ name: locationName || toTitleCase(locationSlug), path: null });
+  if (locationCrumbs.length > 0) {
+    pathSoFar = locationCrumbs[locationCrumbs.length - 1].path;
+    crumbs.push(...locationCrumbs);
   }
 
   if (categorySlug) {
-    pathSoFar = `${pathSoFar}/${categorySlug}`;
-    crumbs.push({ name: categoryName || toTitleCase(categorySlug), path: pathSoFar });
+    pathSoFar = locationCategoryPath({
+      districtPath,
+      locationPath: resolvedLocationPath,
+      locationSlug,
+      categorySlug,
+    });
+    const categoryLabel = categoryName || toTitleCase(categorySlug);
+    // Fold the terminal category into its location crumb ("Hotels" + "Sembattu"
+    // -> "Hotels in Sembattu") instead of showing them as two separate crumbs.
+    // Only when category is the terminal crumb (no subcategory follows) and
+    // there's an actual location crumb to fold into.
+    if (locationCrumbs.length > 0 && !subcategorySlug) {
+      const lastLocationCrumb = crumbs[crumbs.length - 1];
+      crumbs[crumbs.length - 1] = { name: `${categoryLabel} in ${lastLocationCrumb.name}`, path: pathSoFar };
+    } else {
+      crumbs.push({ name: categoryLabel, path: pathSoFar });
+    }
   }
 
   if (subcategorySlug) {
-    pathSoFar = `${pathSoFar}/${subcategorySlug}`;
+    pathSoFar = locationCategoryPath({
+      districtPath,
+      locationPath: resolvedLocationPath,
+      locationSlug,
+      categorySlug: subcategorySlug,
+    });
     crumbs.push({ name: subcategoryName || toTitleCase(subcategorySlug), path: pathSoFar });
   }
 

@@ -71,6 +71,7 @@ const buildMasterLocationSuggestions = (locationSearchResults) => {
       subLabel: [...new Set(contextParts)].join(", "),
       slug: primary.slug,
       publicLocationSlug: primary.publicLocationSlug,
+      publicLocationPath: primary.publicLocationPath,
       districtName: primary.district,
       districtSlug: createDistrictSlug(primary.district),
     };
@@ -102,6 +103,7 @@ const StickySearchBar = ({
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [debouncedLocation, setDebouncedLocation] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [authVersion, setAuthVersion] = useState(0);
   const isWebView = useMediaQuery(WEB_VIEW_MEDIA_QUERY, true);
   // Canonical masterlocations slug of a VERIFIED LOCATIONS pick. Cleared the
   // moment the user types/picks free text - mirrors heroSection's behavior
@@ -121,6 +123,18 @@ const StickySearchBar = ({
     query: backendSuggestionsQuery
   } = useSelector(selectBackendSuggestionsMeta);
   const { locationSearchResults = [] } = useSelector(state => state.masterLocationReducer) || {};
+  const refreshedAuthUser = useSelector(state => state.otp?.viewResponse);
+  let storedAuthUser = {};
+  try {
+    storedAuthUser = JSON.parse(localStorage.getItem("authUser") || "{}") || {};
+  } catch {
+    storedAuthUser = {};
+  }
+  const authUser = refreshedAuthUser && Object.keys(refreshedAuthUser).length > 0
+    ? refreshedAuthUser
+    : storedAuthUser;
+  const userName = authUser?.userName || authUser?.name || "";
+  const profileImageUrl = authUser?.userProfile || authUser?.profileImage || authUser?.avatar || "";
   const locationSuggestionQuery = isWebView ? locationName : locationInput;
   const normalizeComparable = value => String(value || "").trim().replace(/\s+/g, " ").toLowerCase();
   const hasPendingSearch = normalizeComparable(committedSearchTerm) !== normalizeComparable(searchTerm) || normalizeComparable(committedLocationName || DEFAULT_LOCATION) !== normalizeComparable(locationName || DEFAULT_LOCATION);
@@ -154,6 +168,7 @@ const StickySearchBar = ({
         districtName: localStorage.getItem("selectedLocationDistrict") || locationName,
         districtSlug: localStorage.getItem("selectedLocationDistrictSlug") || createDistrictSlug(locationName),
         locationSlug: localStorage.getItem("selectedPublicLocationSlug") || "",
+        locationPath: localStorage.getItem("selectedPublicLocationPath") || "",
         masterLocationSlug: localStorage.getItem("selectedLocationSlug") || "",
       },
     });
@@ -185,6 +200,16 @@ const StickySearchBar = ({
       window.clearTimeout(idleHandle);
     };
   }, [dispatch]);
+
+  useEffect(() => {
+    const refreshAuth = () => setAuthVersion(version => version + 1);
+    window.addEventListener("storage", refreshAuth);
+    window.addEventListener("authChange", refreshAuth);
+    return () => {
+      window.removeEventListener("storage", refreshAuth);
+      window.removeEventListener("authChange", refreshAuth);
+    };
+  }, []);
 
   useEffect(() => {
     if (!isCategoryDropdownOpen || !debouncedSearch.trim()) return;
@@ -272,6 +297,7 @@ const StickySearchBar = ({
     // don't and clear any previous one - shared with heroSection.
     const slug = typeof loc === "object" && loc?.slug ? loc.slug : "";
     const publicLocationSlug = typeof loc === "object" && loc?.publicLocationSlug ? loc.publicLocationSlug : "";
+    const publicLocationPath = typeof loc === "object" && loc?.publicLocationPath ? loc.publicLocationPath : "";
     const districtName = typeof loc === "object" && loc?.districtName ? loc.districtName : "";
     const districtSlug = typeof loc === "object" && loc?.districtSlug ? loc.districtSlug : "";
     setMasterLocationSlug(slug);
@@ -279,6 +305,8 @@ const StickySearchBar = ({
     else localStorage.removeItem("selectedLocationSlug");
     if (publicLocationSlug) localStorage.setItem("selectedPublicLocationSlug", publicLocationSlug);
     else localStorage.removeItem("selectedPublicLocationSlug");
+    if (publicLocationPath) localStorage.setItem("selectedPublicLocationPath", publicLocationPath);
+    else localStorage.removeItem("selectedPublicLocationPath");
     if (districtName) localStorage.setItem("selectedLocationDistrict", districtName);
     else localStorage.removeItem("selectedLocationDistrict");
     if (districtSlug) localStorage.setItem("selectedLocationDistrictSlug", districtSlug);
@@ -290,6 +318,7 @@ const StickySearchBar = ({
         districtName,
         districtSlug,
         locationSlug: publicLocationSlug,
+        locationPath: publicLocationPath,
         masterLocationSlug: slug,
       },
     });
@@ -383,6 +412,7 @@ const StickySearchBar = ({
 
   const goHome = () => navigate("/");
   const loggedIn = Boolean(localStorage.getItem("authToken"));
+  void authVersion;
   const handleOpenModal = () => setIsModalOpen(true);
   const handleCloseModal = () => setIsModalOpen(false);
 
@@ -423,6 +453,10 @@ const StickySearchBar = ({
                   setLocationName(e.target.value);
                   setMasterLocationSlug("");
                   localStorage.removeItem("selectedLocationSlug");
+                  localStorage.removeItem("selectedPublicLocationSlug");
+                  localStorage.removeItem("selectedPublicLocationPath");
+                  localStorage.removeItem("selectedLocationDistrict");
+                  localStorage.removeItem("selectedLocationDistrictSlug");
                   setIsSelectingLocation(true);
                   setIsCategoryDropdownOpen(false);
                 }}
@@ -518,7 +552,21 @@ const StickySearchBar = ({
                 onClick={openDrawer}
                 aria-label="Open user menu"
               >
-                <AccountCircleIcon sx={{ fontSize: 28 }} />
+                <span className={cx("user-avatar")} aria-hidden="true">
+                  {profileImageUrl ? (
+                    <img
+                      className={cx("user-avatar-image")}
+                      src={profileImageUrl}
+                      alt=""
+                      width="34"
+                      height="34"
+                    />
+                  ) : userName ? (
+                    userName[0].toUpperCase()
+                  ) : (
+                    <AccountCircleIcon sx={{ fontSize: 28 }} />
+                  )}
+                </span>
               </button>
             )}
           </div>

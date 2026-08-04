@@ -106,8 +106,16 @@ const BusinessDetail = React.memo(() => {
     district,
     location,
     businessSlug,
+    businessSegment,
     id
   } = useParams();
+  // Current URLs carry <name-slug>-<publicId> in one segment and no ObjectId.
+  // The publicId is the chunk after the last hyphen; viewBusinessList accepts
+  // either identifier, so the same fetch action serves both URL shapes.
+  const publicIdFromSegment = businessSegment
+    ? String(businessSegment).slice(String(businessSegment).lastIndexOf("-") + 1)
+    : "";
+  const businessIdentifier = id || publicIdFromSegment;
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const {
@@ -188,8 +196,8 @@ const BusinessDetail = React.memo(() => {
     };
   }, [showCertificate]);
   useEffect(() => {
-    if (id) {
-      dispatch(getBusinessDetailsById(id));
+    if (businessIdentifier) {
+      dispatch(getBusinessDetailsById(businessIdentifier));
     } else if (location && businessSlug) {
       dispatch(getBusinessDetailsBySlug({
         location,
@@ -197,7 +205,7 @@ const BusinessDetail = React.memo(() => {
         district
       }));
     }
-  }, [dispatch, id, district, location, businessSlug]);
+  }, [dispatch, businessIdentifier, district, location, businessSlug]);
   useEffect(() => {
     if (business?._id) {
       dispatch(getBusinessReviews(business._id));
@@ -338,7 +346,7 @@ const BusinessDetail = React.memo(() => {
   const businessKeywords = Array.from(new Set(rawKeywords.map(keyword => String(keyword).trim()).filter(Boolean)));
   const visibleKeywords = showAllKeywords ? businessKeywords : businessKeywords.slice(0, 10);
   const hasMoreKeywords = businessKeywords.length > visibleKeywords.length;
-  const keywordLocationSlug = toSlug(business.location || location || "all");
+  const keywordLocationSlug = business.publicLocationSlug || toSlug(business.location || location || "all");
   const keywordCategory = business.category || business.slug || "";
   const keywordCategorySlug = toSlug(keywordCategory);
   const whatsappNumber = business.whatsappNumber || business.contactList || business.contact;
@@ -350,11 +358,12 @@ const BusinessDetail = React.memo(() => {
   // canonicalize every business in the district to /business/<d>/<d>/...
   const canonicalLocationSlug =
     business.publicLocationSlug || toSlug(business.location || location);
+  const canonicalLocationPath = business.publicLocationPath || "";
   const canonicalPath = buildBusinessPath({
     districtSlug: district,
     locationSlug: canonicalLocationSlug,
-    businessSlug: business.slug || businessSlug,
     businessName: business.businessName,
+    publicId: business.publicId,
     id: business._id || id,
   });
   const canonicalUrl = `https://massclick.in${canonicalPath}`;
@@ -730,7 +739,6 @@ const BusinessDetail = React.memo(() => {
     listingUrl: canonicalUrl,
     districtSlug: district,
     locationSlug: canonicalLocationSlug,
-    businessSlug: business.slug || businessSlug,
     description: business.description || business.businessDetails,
     images: [business.bannerImage, ...(galleryImageSrcs || [])].filter(Boolean),
     telephone: business.contact,
@@ -777,6 +785,7 @@ const BusinessDetail = React.memo(() => {
           ? {}
           : {
               locationSlug: canonicalLocationSlug,
+              locationPath: canonicalLocationPath,
               locationName: crumbLocationName,
             }),
         businessName: business.businessName,
@@ -1281,6 +1290,7 @@ const BusinessDetail = React.memo(() => {
                     const keywordPath = buildCategoryPath({
                       districtSlug: district,
                       locationSlug: keywordLocationSlug,
+                      locationPath: canonicalLocationPath,
                       location: business.location || location,
                       categorySlug: keywordCategorySlug || toSlug(keyword),
                     });

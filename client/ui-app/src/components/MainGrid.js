@@ -108,6 +108,13 @@ export default function MainGrid() {
     if (filter.type === "month" && Number.isInteger(filter.monthIndex)) return getMonthRange(filter.monthIndex, filter.year);
     if (filter.type === "category" && filter.value) return { category: filter.value };
     if (filter.type === "location" && filter.value) return { location: filter.value };
+    if (filter.type === "creator" && filter.value) {
+      return {
+        createdBy: filter.value,
+        ...(filter.createdFrom ? { createdFrom: filter.createdFrom } : {}),
+        ...(filter.createdTo ? { createdTo: filter.createdTo } : {}),
+      };
+    }
     if (filter.type === "dayLocation") {
       return {
         createdFrom: filter.createdFrom,
@@ -432,6 +439,7 @@ export default function MainGrid() {
                   category: cardParams.category || "",
                   location: cardParams.location || "",
                   paymentStatus: cardParams.paymentStatus || "",
+                  createdBy: cardParams.createdBy || "",
                   search: cardParams.search || options.search || "",
                   createdFrom: cardParams.createdFrom || "",
                   createdTo: cardParams.createdTo || "",
