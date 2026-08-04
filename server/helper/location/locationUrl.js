@@ -9,11 +9,18 @@ import {
 
 export const LOCATION_CATEGORY_SEPARATOR = "-in-";
 
-const LOCATION_LEVEL_BY_PATH_LENGTH = {
-  1: "zone",
-  2: "ward",
-  3: "locality",
-};
+// Segment count -> level still holds for the common case (locationSlug.js's
+// computeLocationUrlParts only ever SHORTENS a path, never reorders one),
+// and resolveLocationPathWithinDistrict below prefers it first — this is
+// what keeps a ward and a same-named child locality resolving to their own
+// separate pages even though their bare text can coincide (a ward-target
+// path is always 1 segment shorter than the matching locality's). It's only
+// a PREFERENCE, not a hard requirement: a zone matching its own district
+// folds away entirely (see computeLocationUrlParts), which shortens every
+// path beneath that zone by one segment, so a folded ward's own path is 1
+// segment instead of the normal 2 — resolveLocationPathWithinDistrict falls
+// back to matching any level once the expected one comes up empty.
+const MAX_LOCATION_PATH_SEGMENTS = 3;
 
 let categorySlugSetCache = null;
 let categorySlugSetCacheAt = 0;
@@ -182,21 +189,42 @@ export const invalidateLocationUrlCache = () => {
   locationUrlCache = new Map();
 };
 
-export const resolveLocationPathWithinDistrict = async (districtDoc, locationPath = "") => {
-  const segments = pathSegments(locationPath);
-  if (segments.length === 0 || segments.length > 3) return null;
+const LOCATION_LEVEL_BY_PATH_LENGTH = {
+  1: "zone",
+  2: "ward",
+  3: "locality",
+};
 
-  const expectedLevel = LOCATION_LEVEL_BY_PATH_LENGTH[segments.length];
-  if (!expectedLevel) return null;
-
-  const entriesByPath = await getLocationUrlEntriesForDistrict(districtDoc);
-  const candidates = (entriesByPath.get(segments.join("/")) || [])
-    .filter((doc) => doc.level === expectedLevel);
-
+const pickCandidate = (candidates = []) => {
   if (candidates.length === 0) return null;
   if (candidates.length === 1) return candidates[0];
+  // More than one active node collapsed to the identical path at the same
+  // level — a genuine data collision. Prefer the deepest level, consistent
+  // with this resolver's tie-break elsewhere
+  // (resolveLegacyLocationSlugWithinDistrict), then _id for stability.
+  const depth = { locality: 3, ward: 2, zone: 1 };
+  return [...candidates].sort(
+    (a, b) => (depth[b.level] || 0) - (depth[a.level] || 0) || String(a._id).localeCompare(String(b._id)),
+  )[0];
+};
 
-  return [...candidates].sort((a, b) => String(a._id).localeCompare(String(b._id)))[0];
+export const resolveLocationPathWithinDistrict = async (districtDoc, locationPath = "") => {
+  const segments = pathSegments(locationPath);
+  if (segments.length === 0 || segments.length > MAX_LOCATION_PATH_SEGMENTS) return null;
+
+  const entriesByPath = await getLocationUrlEntriesForDistrict(districtDoc);
+  const allCandidates = entriesByPath.get(segments.join("/")) || [];
+  if (allCandidates.length === 0) return null;
+
+  const expectedLevel = LOCATION_LEVEL_BY_PATH_LENGTH[segments.length];
+  const atExpectedLevel = allCandidates.filter((doc) => doc.level === expectedLevel);
+  if (atExpectedLevel.length) return pickCandidate(atExpectedLevel);
+
+  // No candidate at the length-implied level -- this path was shortened by
+  // district-collision folding (see computeLocationUrlParts in
+  // locationSlug.js), so the actual level no longer matches segment count.
+  // Fall back to whichever level the folded node actually is.
+  return pickCandidate(allCandidates);
 };
 
 export const classifyLocationRouteSegments = async ({ districtDoc, segments = [] } = {}) => {
