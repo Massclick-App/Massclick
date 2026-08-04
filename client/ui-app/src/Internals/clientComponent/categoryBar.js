@@ -46,6 +46,14 @@ const categories = [{
   icon: <WorkOutlineRoundedIcon />
 }];
 
+const readStoredAuthUser = () => {
+  try {
+    return JSON.parse(localStorage.getItem("authUser") || "{}") || {};
+  } catch {
+    return {};
+  }
+};
+
 const CategoryBar = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -56,26 +64,20 @@ const CategoryBar = () => {
   const [isQuickLinksOpen, setIsQuickLinksOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(() => !!localStorage.getItem("authToken"));
+  const [storedAuthUser, setStoredAuthUser] = useState(readStoredAuthUser);
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
   const otpState = useSelector(state => state.otp) || {};
   const {
     viewResponse
   } = otpState;
   const authUser = useSelector(state => state.otp?.viewResponse);
-  const storedAuthUser = useMemo(() => {
-    try {
-      return JSON.parse(localStorage.getItem("authUser") || "{}") || {};
-    } catch {
-      return {};
-    }
-  }, []);
-  // Redux is empty while the profile request is starting after a refresh.
-  // Keep rendering the persisted session user until the fresher response arrives.
-  const userData = (viewResponse && Object.keys(viewResponse).length > 0)
-    ? viewResponse
-    : (authUser && Object.keys(authUser).length > 0)
-      ? authUser
-      : storedAuthUser;
+  // The saved customer session is the active identity. Redux can still contain
+  // the profile fetched for a user who has since logged out.
+  const userData = Object.keys(storedAuthUser).length > 0
+    ? storedAuthUser
+    : (viewResponse && Object.keys(viewResponse).length > 0)
+      ? viewResponse
+      : authUser || {};
   const userName = userData?.userName || userData?.name || '';
   const profileImageUrl = userData?.userProfile || userData?.profileImage || userData?.avatar || "";
   const {
@@ -92,19 +94,20 @@ const CategoryBar = () => {
       dispatch(viewOtpUser(mobile));
       dispatch(fetchMatchedLeads());
     }
-  }, [dispatch]);
-  const checkLogin = () => {
+  }, [dispatch, isLoggedIn, storedAuthUser?.mobileNumber1]);
+  const syncCustomerSession = () => {
     const token = localStorage.getItem("authToken");
     setIsLoggedIn(!!token);
+    setStoredAuthUser(readStoredAuthUser());
   };
   
   useEffect(() => {
-    checkLogin();
-    window.addEventListener("storage", checkLogin);
-    window.addEventListener("authChange", checkLogin);
+    syncCustomerSession();
+    window.addEventListener("storage", syncCustomerSession);
+    window.addEventListener("authChange", syncCustomerSession);
     return () => {
-      window.removeEventListener("storage", checkLogin);
-      window.removeEventListener("authChange", checkLogin);
+      window.removeEventListener("storage", syncCustomerSession);
+      window.removeEventListener("authChange", syncCustomerSession);
     };
   }, []);
 

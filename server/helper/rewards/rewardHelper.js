@@ -3,6 +3,7 @@ import { RewardWallet, RewardTransaction, RewardRule, RewardRedemption, RewardCl
 import categoryModel from "../../model/category/categoryModel.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
 import otpUserModel from "../../model/msg91Model/usersModels.js";
+import { deleteObjectByKey, getSignedUrlByKey, uploadImageToS3 } from "../../s3Uploder.js";
 
 export const REWARD_CATALOG = Object.freeze([
   { code: "MC100", name: "₹100 MassClick coupon", points: 200, valueInr: 100 },
@@ -12,6 +13,41 @@ export const REWARD_CATALOG = Object.freeze([
   { code: "CB3500", name: "₹3,500 cashback", points: 5000, valueInr: 3500 },
 ]);
 const cleanKey = (value) => String(value || "").trim().toLowerCase();
+const CLAIM_EVIDENCE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "application/pdf"]);
+const CLAIM_EVIDENCE_MAX_FILES = 3;
+const CLAIM_EVIDENCE_MAX_SIZE = 5 * 1024 * 1024;
+const extensionFor = (file = {}) => {
+  const fromName = String(file.fileName || "").split(".").pop().toLowerCase();
+  if (/^(jpg|jpeg|png|webp|pdf)$/.test(fromName)) return fromName === "jpeg" ? "jpg" : fromName;
+  return { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "application/pdf": "pdf" }[file.fileType] || "bin";
+};
+const uploadClaimEvidence = async (customerKey, files = []) => {
+  if (!Array.isArray(files) || files.length === 0) return [];
+  if (files.length > CLAIM_EVIDENCE_MAX_FILES) throw new Error(`Upload a maximum of ${CLAIM_EVIDENCE_MAX_FILES} evidence files`);
+  const uploaded = [];
+  try {
+    for (const [index, file] of files.entries()) {
+      if (!CLAIM_EVIDENCE_TYPES.has(file?.fileType)) throw new Error("Evidence must be a JPG, PNG, WebP or PDF file");
+      if (!file?.fileData?.startsWith(`data:${file.fileType};base64,`)) throw new Error("Invalid evidence file data");
+      const size = Number(file.fileSize || 0);
+      if (!size || size > CLAIM_EVIDENCE_MAX_SIZE) throw new Error("Each evidence file must be 5 MB or smaller");
+      const result = await uploadImageToS3(
+        file.fileData,
+        `reward-claims/${cleanKey(customerKey)}/${Date.now()}-${index}-${Math.random().toString(36).slice(2, 8)}`,
+        { skipImageConversion: file.fileType === "application/pdf", contentType: file.fileType, extension: extensionFor(file) }
+      );
+      uploaded.push({ key: result.key, fileName: String(file.fileName || `Evidence ${index + 1}`).slice(0, 180), fileType: file.fileType, fileSize: size });
+    }
+    return uploaded;
+  } catch (error) {
+    await Promise.allSettled(uploaded.map((file) => deleteObjectByKey(file.key)));
+    throw error;
+  }
+};
+const withEvidenceUrls = (claim) => ({
+  ...claim,
+  evidenceFiles: (claim.evidenceFiles || []).map((file) => ({ ...file, url: getSignedUrlByKey(file.key, { signed: true, expiry: 900 }) })),
+});
 const monthStart = () => { const date = new Date(); return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1)); };
 export const tierFor = (points) => [{ name: "Diamond", min: 5000 }, { name: "Platinum", min: 1500 }, { name: "Gold", min: 700 }, { name: "Silver", min: 300 }, { name: "Bronze", min: 100 }].find((tier) => points >= tier.min)?.name || "Starter";
 export const WELCOME_BONUS_POINTS = 500;
@@ -137,6 +173,7 @@ export const saveRule = (data, updatedBy) => {
 };
 
 const milestoneField = { created: "basePoints", accepted: "acceptedBonus", completed: "completedBonus", customer_confirmed: "customerConfirmedBonus" };
+const EARNING_MILESTONES = Object.keys(milestoneField);
 export const awardMilestone = async ({ customerKey, enquiryId, categoryKey, milestone, idempotencyKey, pointsOverride, createdBy = "system" }) => {
   const key = cleanKey(customerKey); const category = cleanKey(categoryKey);
   if (!key || !category || !milestoneField[milestone]) throw new Error("Valid customer, category and milestone are required");
@@ -147,8 +184,14 @@ export const awardMilestone = async ({ customerKey, enquiryId, categoryKey, mile
   const rule = await RewardRule.findOne({ categoryKey: category, enabled: true }).lean();
   if (!rule) throw new Error("Rewards are not enabled for this category");
   const [earned, enquiryEarned] = await Promise.all([
-    RewardTransaction.aggregate([{ $match: { customerKey: key, status: "credited", createdAt: { $gte: monthStart() } } }, { $group: { _id: null, total: { $sum: "$points" } } }]),
-    enquiryId ? RewardTransaction.aggregate([{ $match: { enquiryId: new mongoose.Types.ObjectId(enquiryId), customerKey: key, status: "credited" } }, { $group: { _id: null, total: { $sum: "$points" } } }]) : [],
+    RewardTransaction.aggregate([
+      { $match: { customerKey: key, categoryKey: category, milestone: { $in: EARNING_MILESTONES }, status: "credited", points: { $gt: 0 }, createdAt: { $gte: monthStart() } } },
+      { $group: { _id: null, total: { $sum: "$points" } } },
+    ]),
+    enquiryId ? RewardTransaction.aggregate([
+      { $match: { enquiryId: new mongoose.Types.ObjectId(enquiryId), customerKey: key, categoryKey: category, milestone: { $in: EARNING_MILESTONES }, status: "credited", points: { $gt: 0 } } },
+      { $group: { _id: null, total: { $sum: "$points" } } },
+    ]) : [],
   ]);
   const remainingEnquiry = Math.max(0, rule.maxPointsPerEnquiry - (enquiryEarned[0]?.total || 0));
   const requestedPoints = pointsOverride === undefined ? rule[milestoneField[milestone]] : Math.max(0, Number(pointsOverride) || 0);
@@ -184,7 +227,9 @@ export const createRewardClaim = async (customerKey, data) => {
   const duplicateWindowEnd = new Date(transactionAt.getTime() + 60 * 60 * 1000);
   const duplicate = await RewardClaim.findOne({ customerKey: key, categoryId: data.categoryId, businessName: String(data.businessName || "").trim(), transactionAmount: Number(data.transactionAmount), transactionAt: { $gte: duplicateWindowStart, $lte: duplicateWindowEnd }, status: { $ne: "rejected" } }).lean();
   if (duplicate) throw new Error(`A similar claim already exists (${duplicate.claimNumber})`);
-  return RewardClaim.create({
+  const evidenceFiles = await uploadClaimEvidence(key, data.evidenceFiles);
+  try {
+    return await RewardClaim.create({
     claimNumber: claimNumber(), customerKey: key, customerName: data.customerName,
     categoryId: data.categoryId, categoryKey: rule.categoryKey, categoryName: rule.categoryName,
     locationId: mongoose.Types.ObjectId.isValid(data.locationId) ? data.locationId : null,
@@ -192,12 +237,55 @@ export const createRewardClaim = async (customerKey, data) => {
     businessId: data.businessId,
     businessName: data.businessName, transactionAmount: Number(data.transactionAmount),
     transactionAt, invoiceNumber: data.invoiceNumber, paymentMethod: data.paymentMethod,
-    notes: data.notes, consentConfirmed: true, projectedPoints: claimPoints(rule), status: "pending",
-  });
+      notes: data.notes, evidenceFiles, consentConfirmed: true, projectedPoints: claimPoints(rule), status: "pending",
+    });
+  } catch (error) {
+    await Promise.allSettled(evidenceFiles.map((file) => deleteObjectByKey(file.key)));
+    throw error;
+  }
 };
 
-export const listCustomerClaims = (customerKey) => RewardClaim.find({ customerKey: cleanKey(customerKey) }).sort({ createdAt: -1 }).limit(50).lean();
-export const listAllClaims = ({ status = "", page = 1, limit = 25, search = "", sortBy = "createdAt", sortOrder = "desc" } = {}) => {
+export const listRewardLeaderboard = async ({ page = 1, limit = 10 } = {}) => {
+  const safePage = Math.max(1, Number(page) || 1);
+  const safeLimit = Math.min(50, Math.max(1, Number(limit) || 10));
+  const [wallets, total] = await Promise.all([
+    RewardWallet.find({ lifetimeEarned: { $gt: 0 } }).sort({ lifetimeEarned: -1, updatedAt: 1, _id: 1 }).skip((safePage - 1) * safeLimit).limit(safeLimit).lean(),
+    RewardWallet.countDocuments({ lifetimeEarned: { $gt: 0 } }),
+  ]);
+  const users = await otpUserModel.find({ mobileNumber1: { $in: wallets.map((wallet) => wallet.customerKey) } }).select({ mobileNumber1: 1, userName: 1 }).lean();
+  const names = new Map(users.map((user) => [cleanKey(user.mobileNumber1), String(user.userName || "").trim()]));
+  return {
+    data: wallets.map((wallet, index) => ({
+      rank: (safePage - 1) * safeLimit + index + 1,
+      displayName: names.get(cleanKey(wallet.customerKey)) || "MassClick member",
+      memberKey: String(wallet._id),
+      lifetimeEarned: Number(wallet.lifetimeEarned || 0),
+      availablePoints: Number(wallet.availablePoints || 0),
+      tier: tierFor(Number(wallet.lifetimeEarned || 0)),
+    })),
+    total,
+    page: safePage,
+    limit: safeLimit,
+  };
+};
+
+// A public reward profile intentionally contains no phone number or contact data.
+// It provides the audit information shown in the community points directory.
+export const getRewardMemberProfile = async (memberKey) => {
+  if (!mongoose.Types.ObjectId.isValid(memberKey)) throw new Error("Invalid reward member");
+  const wallet = await RewardWallet.findById(memberKey).lean();
+  if (!wallet) throw new Error("Reward member not found");
+  const [user, claims, transactions, redemptions] = await Promise.all([
+    otpUserModel.findOne({ mobileNumber1: wallet.customerKey }).select({ userName: 1 }).lean(),
+    RewardClaim.find({ customerKey: wallet.customerKey }).select({ businessName: 1, categoryName: 1, locationName: 1, transactionAmount: 1, transactionAt: 1, projectedPoints: 1, awardedPoints: 1, status: 1 }).sort({ transactionAt: -1 }).limit(30).lean(),
+    RewardTransaction.find({ customerKey: wallet.customerKey }).select({ milestone: 1, points: 1, status: 1, description: 1, createdAt: 1 }).sort({ createdAt: -1 }).limit(30).lean(),
+    RewardRedemption.find({ customerKey: wallet.customerKey }).select({ rewardName: 1, pointsCost: 1, status: 1, createdAt: 1 }).sort({ createdAt: -1 }).limit(15).lean(),
+  ]);
+  return { displayName: String(user?.userName || "MassClick member").trim(), wallet: { availablePoints: Number(wallet.availablePoints || 0), lifetimeEarned: Number(wallet.lifetimeEarned || 0), lifetimeRedeemed: Number(wallet.lifetimeRedeemed || 0), tier: tierFor(Number(wallet.lifetimeEarned || 0)) }, claims, transactions, redemptions };
+};
+
+export const listCustomerClaims = async (customerKey) => (await RewardClaim.find({ customerKey: cleanKey(customerKey) }).sort({ createdAt: -1 }).limit(50).lean()).map(withEvidenceUrls);
+export const listAllClaims = async ({ status = "", page = 1, limit = 25, search = "", sortBy = "createdAt", sortOrder = "desc" } = {}) => {
   const query = status ? { status } : {};
   const safeSearch = String(search || "").trim().slice(0, 100).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   if (safeSearch) {
@@ -214,7 +302,7 @@ export const listAllClaims = ({ status = "", page = 1, limit = 25, search = "", 
   return Promise.all([
     RewardClaim.find(query).sort({ [field]: direction, _id: -1 }).skip((page - 1) * limit).limit(limit).lean(),
     RewardClaim.countDocuments(query),
-  ]).then(([data, total]) => ({ data, total, page, limit }));
+  ]).then(([data, total]) => ({ data: data.map(withEvidenceUrls), total, page, limit }));
 };
 export const reviewRewardClaim = async (claimId, { status, rejectionReason = "" }, reviewer) => {
   if (!mongoose.Types.ObjectId.isValid(claimId)) throw new Error("Invalid claim ID");
@@ -226,7 +314,9 @@ export const reviewRewardClaim = async (claimId, { status, rejectionReason = "" 
     const result = await awardMilestone({ customerKey: claim.customerKey, enquiryId: claim._id, categoryKey: claim.categoryKey, milestone: "customer_confirmed", pointsOverride: claim.projectedPoints, idempotencyKey: `claim:${claim._id}:approved`, createdBy: reviewer });
     claim.awardedPoints = result.transaction.points;
   }
-  claim.status = status; claim.rejectionReason = rejectionReason; claim.reviewedBy = reviewer; claim.reviewedAt = new Date();
+  const reviewerLabel = typeof reviewer === "object" ? reviewer?.label : reviewer;
+  const reviewerId = typeof reviewer === "object" ? reviewer?.id : "";
+  claim.status = status; claim.rejectionReason = rejectionReason; claim.reviewedBy = reviewerLabel || "Administrator"; claim.reviewedById = reviewerId || ""; claim.reviewedAt = new Date();
   return claim.save();
 };
 
