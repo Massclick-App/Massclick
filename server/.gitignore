@@ -1,4 +1,4 @@
 node_modules/
 
-# Generated at boot by utils/fontBootstrap.js — carries absolute paths
-assets/fontconfig/
+# fonts.conf itself is committed; only the generated cache is local
+assets/fontconfig/cache/

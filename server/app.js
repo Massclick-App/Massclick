@@ -1,6 +1,5 @@
-// Must stay first: it points fontconfig at our bundled certificate fonts, and
-// sharp/libvips initialises fontconfig when it loads, so any import that pulls
-// in sharp before this runs would lock in the host machine's fonts instead.
+// Reports at boot whether certificate fonts are resolving. It cannot fix them:
+// FONTCONFIG_FILE has to be set before the process starts (see the Dockerfile).
 import "./utils/fontBootstrap.js";
 import { createServer } from "http";
 import express from "express";

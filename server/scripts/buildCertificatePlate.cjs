@@ -23,12 +23,14 @@ const SRC_W = 960;
 const SRC_H = 1280;
 const OUT_SCALE = 1.5; // 1440x1920, the certificate render size
 
-// `flat` paints a solid colour. `sampleAt` averages a 20x20 patch of the same
-// surface and paints that, which hides seams on the subtly shaded paper.
+// `flat` paints a solid colour. `stripX` stretches one clean column across the
+// region. Otherwise the region is bridged: every row is interpolated between
+// the real pixels just outside its left and right edges, which matches the
+// paper's shading at the seams instead of stamping a flat patch over it.
 const REGIONS = [
-  { name: "businessName", x: 130, y: 568, w: 700, h: 94, sampleAt: [100, 600] },
+  { name: "businessName", x: 130, y: 568, w: 700, h: 94 },
   { name: "category", x: 304, y: 676, w: 352, h: 34, flat: [3, 19, 55] },
-  { name: "location", x: 300, y: 718, w: 360, h: 56, sampleAt: [700, 740] },
+  { name: "location", x: 300, y: 718, w: 360, h: 56 },
   // Only the modules — the white box and its gold border stay on the plate.
   { name: "qrModules", x: 108, y: 1027, w: 104, h: 108, flat: [255, 255, 255] },
   { name: "footer", x: 262, y: 1224, w: 436, h: 42, stripX: 248 },
@@ -51,21 +53,36 @@ const buildPatch = (region, at) => {
     return { buf, note: `column x=${region.stripX}` };
   }
 
-  const [sx, sy] = region.sampleAt;
-  const acc = [0, 0, 0];
-  let n = 0;
-  for (let y = sy; y < sy + 20; y++) {
-    for (let x = sx; x < sx + 20; x++) {
-      const p = at(x, y);
+  // Bridge: interpolate each row between the pixels just outside the region.
+  // Averaging a few columns either side keeps JPEG noise from streaking.
+  const GAP = 4;
+  const AVG = 3;
+  const edge = (x0, y) => {
+    const acc = [0, 0, 0];
+    for (let k = 0; k < AVG; k++) {
+      const p = at(x0 + k, y);
       acc[0] += p[0];
       acc[1] += p[1];
       acc[2] += p[2];
-      n++;
+    }
+    return acc.map(v => v / AVG);
+  };
+
+  for (let row = 0; row < region.h; row++) {
+    const y = region.y + row;
+    const left = edge(region.x - GAP - AVG, y);
+    const right = edge(region.x + region.w + GAP, y);
+    for (let col = 0; col < region.w; col++) {
+      const t = region.w === 1 ? 0 : col / (region.w - 1);
+      const px = [
+        Math.round(left[0] + (right[0] - left[0]) * t),
+        Math.round(left[1] + (right[1] - left[1]) * t),
+        Math.round(left[2] + (right[2] - left[2]) * t),
+      ];
+      buf.set(px, (row * region.w + col) * 3);
     }
   }
-  const colour = acc.map(v => Math.round(v / n));
-  for (let i = 0; i < region.w * region.h; i++) buf.set(colour, i * 3);
-  return { buf, note: `sampled ${colour}` };
+  return { buf, note: "bridged from both edges" };
 };
 
 const main = async () => {

@@ -1,63 +1,80 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import sharp from "sharp";
 
-// Certificates are rasterised server-side with sharp, whose SVG renderer
-// (librsvg) resolves fonts through fontconfig and *ignores* @font-face rules
-// embedded in the SVG. Left alone it picks up whatever the host OS has
-// installed, so the same certificate renders with different metrics on a
-// Windows dev box than on the Linux server.
+// Certificates are rasterised with sharp, whose SVG renderer (librsvg) resolves
+// fonts through fontconfig. Left to the host OS it picks up whatever happens to
+// be installed, so a certificate rendered on a Windows dev box and one rendered
+// on the Linux server come out with different metrics.
 //
-// Pointing fontconfig at a config that exposes only our bundled fonts makes
-// text rendering byte-identical everywhere. This must run before sharp is
-// loaded: libvips initialises fontconfig on load, so setting these variables
-// afterwards has no effect. Keep `import "./utils/fontBootstrap.js"` as the
-// first import in app.js.
+// assets/fontconfig/fonts.conf pins that down to the fonts we bundle, but it
+// only takes effect if FONTCONFIG_FILE is in the environment *before the
+// process starts* — fontconfig reads its environment during library load, so
+// assigning process.env here would be too late to matter. This module therefore
+// verifies rather than configures: it renders two families that look nothing
+// alike and checks they actually came out different.
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const CONF_FILE = path.resolve(__dirname, "../assets/fontconfig/fonts.conf");
 const FONT_DIR = path.resolve(__dirname, "../assets/fonts");
-const CONF_DIR = path.resolve(__dirname, "../assets/fontconfig");
-const CONF_FILE = path.join(CONF_DIR, "fonts.conf");
 
-const toFcPath = (value) => value.replace(/\\/g, "/");
+const probeSvg = (family) =>
+  `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="120">
+    <rect width="600" height="120" fill="#fff"/>
+    <text x="10" y="80" font-family="${family}" font-size="48" fill="#000">Massclick</text>
+  </svg>`;
 
-const writeFontConfig = () => {
-  const xml = `<?xml version="1.0"?>
-<!DOCTYPE fontconfig SYSTEM "fonts.dtd">
-<fontconfig>
-  <dir>${toFcPath(FONT_DIR)}</dir>
-  <cachedir>${toFcPath(path.join(CONF_DIR, "cache"))}</cachedir>
-</fontconfig>
-`;
+const inkSignature = async (family) => {
+  const { data } = await sharp(Buffer.from(probeSvg(family)), { density: 96 })
+    .greyscale()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
 
-  fs.mkdirSync(path.join(CONF_DIR, "cache"), { recursive: true });
-
-  // Rewrite only when the content changed; the file carries absolute paths so
-  // it cannot be committed, and a no-op write would bust the fontconfig cache
-  // on every boot.
-  const current = fs.existsSync(CONF_FILE) ? fs.readFileSync(CONF_FILE, "utf8") : "";
-  if (current !== xml) {
-    fs.writeFileSync(CONF_FILE, xml, "utf8");
-  }
+  let ink = 0;
+  for (let i = 0; i < data.length; i++) if (data[i] < 128) ink++;
+  return ink;
 };
 
-export const bootstrapCertificateFonts = () => {
+const explainFix = () => {
+  console.warn(
+    "[FontBootstrap] Certificate text will render in a fallback font and will " +
+      "not match the design.\n" +
+      `  Set FONTCONFIG_FILE=${CONF_FILE} in the environment before starting node.\n` +
+      "  It must be set by the shell or process manager — setting it in JS is too late.",
+  );
+};
+
+// Resolved by whoever needs to know; awaiting it is optional.
+export const certificateFontsReady = (async () => {
   try {
     if (!fs.existsSync(FONT_DIR) || !fs.readdirSync(FONT_DIR).some(f => /\.(ttf|otf)$/i.test(f))) {
-      console.warn(
-        `[FontBootstrap] No bundled fonts in ${FONT_DIR} — certificate text will fall back to host fonts and will not be reproducible across machines.`,
-      );
+      console.warn(`[FontBootstrap] No bundled fonts in ${FONT_DIR}.`);
       return false;
     }
 
-    writeFontConfig();
-    process.env.FONTCONFIG_FILE = CONF_FILE;
-    process.env.FONTCONFIG_PATH = CONF_DIR;
+    if (!process.env.FONTCONFIG_FILE) {
+      console.warn("[FontBootstrap] FONTCONFIG_FILE is not set.");
+      explainFix();
+      return false;
+    }
+
+    // A serif and a sans that resolve to the same glyphs mean neither resolved.
+    const [sans, serif] = await Promise.all([
+      inkSignature("Noto Sans"),
+      inkSignature("Noto Serif"),
+    ]);
+
+    if (sans === serif) {
+      console.warn("[FontBootstrap] Bundled fonts are not being resolved by fontconfig.");
+      explainFix();
+      return false;
+    }
+
+    console.log("[FontBootstrap] Certificate fonts resolved via", process.env.FONTCONFIG_FILE);
     return true;
   } catch (error) {
-    console.warn("[FontBootstrap] Unable to configure bundled fonts:", error.message);
+    console.warn("[FontBootstrap] Font verification failed:", error.message);
     return false;
   }
-};
-
-export const CERTIFICATE_FONTS_READY = bootstrapCertificateFonts();
+})();
