@@ -1,5 +1,5 @@
 import React, { lazy, useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 import {
   buildDistrictCategoryContext,
@@ -20,7 +20,11 @@ const CategoriesPage = lazy(() =>
 const DistrictRouteResolver = () => {
   const { district, p2, p3, p4 } = useParams();
   const navigate = useNavigate();
+  const routerLocation = useLocation();
   const [resolution, setResolution] = useState(null);
+  const showBusinessListings =
+    Boolean(routerLocation.state?.showBusinessListings) ||
+    new URLSearchParams(routerLocation.search).get("view") === "businesses";
 
   useEffect(() => {
     let cancelled = false;
@@ -50,11 +54,11 @@ const DistrictRouteResolver = () => {
 
         if (classification.type === "locationLanding") {
           setResolution({
-            mode: "locationLanding",
+            mode: showBusinessListings ? "search" : "locationLanding",
             routeContext: buildLocationCategoryContext({
               district: districtSummary,
               location: classification.location,
-              routeType: "locationLanding",
+              routeType: showBusinessListings ? "locationListing" : "locationLanding",
             }),
           });
           return;
@@ -119,7 +123,7 @@ const DistrictRouteResolver = () => {
     return () => {
       cancelled = true;
     };
-  }, [district, p2, p3, p4, navigate]);
+  }, [district, p2, p3, p4, navigate, routerLocation.search, showBusinessListings]);
 
   if (!resolution) return null;
 

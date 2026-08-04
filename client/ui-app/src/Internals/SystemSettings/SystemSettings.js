@@ -938,7 +938,7 @@ export default function SystemSettings() {
     }
   };
   const handleRegenerateSitemap = async () => {
-    if (!window.confirm("Regenerate sitemap data now? This rebuilds the category/location data used by the XML sitemap instead of waiting for the hourly refresh.")) return;
+    if (!window.confirm("Regenerate sitemap data now? This rebuilds the live category/location data used by the XML sitemap instead of waiting for the hourly refresh.")) return;
     setSitemapRegenerating(true);
     try {
       await axiosInstance.post(`${API_URL}/admin/cache/sitemap/regenerate`, {}, {
@@ -1200,7 +1200,7 @@ export default function SystemSettings() {
               <div className={cx("section-label")}>Release Notes</div>
               <div className={cx("form-field")}>
                 <label className={cx("label-with-help form-input-label")}>
-                  <span>What's new</span>
+                  <span>What&apos;s new</span>
                   <HelpHint text={FIELD_HELP.app_release_notes} />
                 </label>
                 <textarea className={cx(`form-textarea ${validationErrors.app_release_notes ? 'error' : ''}`)} value={local.app_release_notes ?? ""} onChange={e => setText("app_release_notes", e.target.value)} placeholder="Bug fixes and improvements..." rows={3} />
@@ -1335,7 +1335,7 @@ export default function SystemSettings() {
                 </div>
                 <div className={cx("compact-header-text")}>
                   <div className={cx("compact-title")}>Regenerate Sitemap</div>
-                  <div className={cx("compact-subtitle")}>Rebuild the category/location data used by the XML sitemap right now, instead of waiting for the hourly auto-refresh</div>
+                  <div className={cx("compact-subtitle")}>Rebuild the live category/location data used by the XML sitemap right now, instead of waiting for the hourly auto-refresh</div>
                 </div>
               </div>
               <div className={cx("section-group")}>
