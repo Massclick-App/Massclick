@@ -195,6 +195,7 @@ export const getAllBusinessList = ({
   paymentStatus = "",
   createdFrom = "",
   createdTo = "",
+  createdBy = "",
   sortBy = null,
   sortOrder = "asc",
 } = {}) => async (dispatch) => {
@@ -214,6 +215,7 @@ export const getAllBusinessList = ({
     if (paymentStatus) params.append("paymentStatus", paymentStatus);
     if (createdFrom) params.append("createdFrom", createdFrom);
     if (createdTo) params.append("createdTo", createdTo);
+    if (createdBy) params.append("createdBy", createdBy);
     if (sortBy) params.append("sortBy", sortBy);
     if (sortOrder) params.append("sortOrder", sortOrder);
 
