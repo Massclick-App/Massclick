@@ -1,5 +1,6 @@
 import masterLocationModel from "../../model/locationModel/masterLocationModel.js";
 import { searchMasterLocation } from "./masterLocationHelper.js";
+import { slugify as publicSlugify } from "../../slugify.js";
 
 const slugify = (str) =>
   str.toLowerCase().trim().replace(/[^\w\s-]/g, "").replace(/[\s_]+/g, "-").replace(/^-+|-+$/g, "");
@@ -235,3 +236,119 @@ export const buildMasterLocationBlock = (node, { confidence, source }) => ({
   source,
   linkedAt: new Date(),
 });
+
+// ─── District-prefixed URL resolution ──────────────────────────────────────
+// Resolves the /:district/:location segments of the district-prefixed URL
+// scheme (/:district/:location/:category) against the `urlAlias` and
+// `publicLocationSlug` fields written by
+// server/scripts/backfillPublicLocationSlug.js. Distinct from
+// resolveLocationForSearch() above: that function does fuzzy free-text
+// matching for the search bar and accepts anything; these are strict,
+// exact-match lookups for parsing an already-URL-shaped segment, and return
+// null on no match rather than falling back to a fuzzy guess — a URL segment
+// either names a real place or it doesn't.
+//
+// Uses `publicSlugify` (server/slugify.js), NOT the free-text `slugify` at
+// the top of this file. The two disagree on punctuation and ampersands (see
+// helper/location/locationSlug.js for examples), and `urlAlias` /
+// `publicLocationSlug` were written using server/slugify.js — comparing
+// against them with the wrong slugify would silently fail to match.
+
+let districtDocsCache = null;
+let districtDocsCacheAt = 0;
+const DISTRICT_CACHE_TTL_MS = 5 * 60 * 1000;
+
+// All active district-level docs, cached in-memory for a short TTL. Cheap to
+// hold entirely in memory — there are only ~38 — and this is read on every
+// request that touches a district-prefixed URL.
+export const getAllDistrictDocs = async () => {
+  const now = Date.now();
+  if (districtDocsCache && now - districtDocsCacheAt < DISTRICT_CACHE_TTL_MS) {
+    return districtDocsCache;
+  }
+  const docs = await masterLocationModel
+    .find({ level: "district", isActive: true })
+    .lean();
+  districtDocsCache = docs;
+  districtDocsCacheAt = now;
+  return docs;
+};
+
+// Call after any admin edit to a district doc (urlAlias change, activation
+// toggle) so the change is visible immediately instead of waiting out the TTL.
+export const invalidateDistrictDocsCache = () => {
+  districtDocsCache = null;
+  districtDocsCacheAt = 0;
+};
+
+// Matches `urlAlias` first (e.g. "trichy" -> Tiruchirappalli), then falls
+// back to the slugified district name. Re-slugifies the stored `urlAlias` at
+// comparison time rather than trusting it's already in canonical form —
+// cheap over ~38 in-memory docs, and protects against a hand-edited admin
+// value that isn't perfectly slugified.
+export const resolveDistrictBySlug = async (districtSlug) => {
+  const slug = publicSlugify(districtSlug || "");
+  if (!slug) return null;
+
+  const districts = await getAllDistrictDocs();
+  const byAlias = districts.find((d) => d.urlAlias && publicSlugify(d.urlAlias) === slug);
+  const byName = !byAlias && districts.find((d) => publicSlugify(d.district) === slug);
+  const result = byAlias || byName || null;
+  return result;
+};
+
+// Depth used only to break a WITHIN-district, cross-level tie (a zone and an
+// unrelated locality elsewhere in the district happening to share a
+// publicLocationSlug — same-level collisions are already resolved by
+// computePublicLocationSlugs at write time, see locationSlug.js). Locality
+// wins as the most specific: someone typing a specific place name almost
+// always means the specific place, not the broader area that happens to
+// share its name.
+const WITHIN_DISTRICT_LEVEL_DEPTH = { locality: 3, ward: 2, zone: 1 };
+
+// One indexed query on {district, publicLocationSlug}. `districtDoc` must be
+// a resolved district doc (from resolveDistrictBySlug), not a raw slug — the
+// query matches on `district` (the plain name), not a slug, so the caller
+// having already resolved the district is what makes this safe.
+export const resolveLocationWithinDistrict = async (districtDoc, locationSlug) => {
+  if (!districtDoc?.district || !locationSlug) return null;
+  const slug = publicSlugify(locationSlug);
+  if (!slug) return null;
+
+  const candidates = await masterLocationModel
+    .find({
+      district: districtDoc.district,
+      publicLocationSlug: slug,
+      level: { $in: ["zone", "ward", "locality"] },
+      isActive: true,
+    })
+    .lean();
+
+  if (candidates.length === 0) return null;
+  if (candidates.length === 1) return candidates[0];
+
+  candidates.sort(
+    (a, b) =>
+      (WITHIN_DISTRICT_LEVEL_DEPTH[b.level] || 0) -
+      (WITHIN_DISTRICT_LEVEL_DEPTH[a.level] || 0)
+  );
+  return candidates[0];
+};
+
+// Composes the two above: resolves /:districtSlug[/:locationSlug] to their
+// docs in one call. `locationSlug` is optional — omit it to resolve just the
+// district (the /:district and /:district/:category route shapes).
+// `locationDoc` resolves to null both when locationSlug was omitted AND when
+// it was supplied but didn't match anything; callers that need to
+// distinguish "no location in the URL" from "location segment didn't
+// resolve" should check locationSlug truthiness themselves before calling.
+export const resolveRouteLocation = async ({ districtSlug, locationSlug } = {}) => {
+  const districtDoc = await resolveDistrictBySlug(districtSlug);
+  if (!districtDoc) return { districtDoc: null, locationDoc: null };
+
+  const locationDoc = locationSlug
+    ? await resolveLocationWithinDistrict(districtDoc, locationSlug)
+    : null;
+
+  return { districtDoc, locationDoc };
+};

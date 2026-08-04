@@ -9,6 +9,7 @@ import {
   getRedisInfoAction,
   flushRedisDbAction,
   deleteRedisPatternAction,
+  regenerateSitemapCacheAction,
 } from "../controller/cache/cacheController.js";
 import { oauthAuthentication } from "../helper/oauthHelper.js";
 
@@ -25,6 +26,9 @@ router.post("/api/admin/cache/invalidate", oauthAuthentication, invalidateCacheA
 
 // Clear all caches (requires confirmation from UI)
 router.post("/api/admin/cache/clear-all", oauthAuthentication, invalidateAllCachesAction);
+
+// Force-rebuild the in-memory sitemap data (category lookup + location x category matrix)
+router.post("/api/admin/cache/sitemap/regenerate", oauthAuthentication, regenerateSitemapCacheAction);
 
 // List all Redis keys with TTL (optional ?pattern=* query param)
 router.get("/api/admin/redis/keys", oauthAuthentication, getRedisKeysAction);

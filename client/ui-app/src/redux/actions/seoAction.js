@@ -142,13 +142,13 @@ export const deleteSeo = (id) => async (dispatch) => {
 
 
 export const fetchSeoMeta =
-  ({ pageType, category, location }) =>
+  ({ pageType, category, location, district }) =>
     async (dispatch) => {
       dispatch({ type: FETCH_SEO_META_REQUEST });
 
       try {
         const response = await axiosInstance.get(`${API_URL}/seo/meta`, {
-          params: { pageType, category, location },
+          params: { pageType, category, location, district },
         });
 
         dispatch({

@@ -1,9 +1,12 @@
 import categoryDisplaySettingsModel from "../../model/categoryDisplaySettings/categoryDisplaySettingsModel.js";
 import categoryModel from "../../model/category/categoryModel.js";
+import businessListModel from "../../model/businessList/businessListModel.js";
 import { categoriesData } from "../../utils/sub-categoriesData.js";
 import { getCache, setCache } from "../../utils/redisClient.js";
 import { getSignedUrlByKey, uploadImageToS3 } from "../../s3Uploder.js";
 import { invalidateCategoryDisplaySettingsCache } from "../../utils/cacheInvalidation.js";
+import { resolveDistrictBySlug } from "../../helper/location/locationResolver.js";
+import { getSubCategoryNameSet } from "../../helper/category/categoryHierarchyHelper.js";
 
 // ─── Fallback arrays (copied from categoryController.js) ──────────────────────
 
@@ -544,9 +547,126 @@ export const getV2ParentOfSubCategoryAction = async (req, res) => {
       subCatLookup[key].some((item) => cleanText(item.name) === targetName)
     ) || null;
 
-    return res.json({ parentSlug });
+    // parentSlug alone isn't enough to render a breadcrumb crumb — title-
+    // casing the slug client-side breaks on "&", "and", and acronyms
+    // (see the district URL migration's breadcrumb phase). subCategoryMapping
+    // only stores the parent's slug, not its display name, so look up the
+    // actual category doc for it — additive, only runs when parentSlug was
+    // found, and null (not an error) when that category doc doesn't exist,
+    // matching this endpoint's existing "best-effort, never throws" contract.
+    const parentCategoryDoc = parentSlug
+      ? await categoryModel.findOne({ slug: parentSlug, isActive: true }).lean()
+      : null;
+
+    return res.json({
+      parentSlug,
+      parentName: parentCategoryDoc?.category || null,
+    });
   } catch (error) {
     console.error("getV2ParentOfSubCategoryAction error:", error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+// ─── V2: District-scoped category explorer ─────────────────────────────────
+// Categories that actually have live businesses in a given district — unlike
+// getHomeCategoriesAction's FEATURED_ORDER list above, which is a fixed,
+// curated 20-item set shown identically everywhere regardless of place, with
+// no relationship to what's actually available anywhere. Paginated for
+// infinite scroll: 443 categories carry categoryType "Primary Category"
+// alone, and a well-established district can plausibly have several dozen
+// with real listings — more than fits one screen, unlike the fixed home list.
+//
+// Top-level filtering deliberately does NOT use categoryType — verified
+// against massClick_dev that it's set inconsistently (8 of 23 categories the
+// rest of the app already treats as top-level, including "Hotels", are
+// tagged "Sub Category"). Uses isTopLevelCategoryName instead — see
+// helper/category/categoryHierarchyHelper.js for why that's the
+// authoritative source (subCategoryMapping, the same data
+// getV2ParentOfSubCategoryAction uses for the inverse question) and
+// helper/location/urlSegmentClassifier.js for the same fix applied to the
+// district-URL segment classifier, which had the identical bug.
+//
+// Counts are direct matches only: a business tagged with a genuine
+// subcategory name does not roll up into its parent's count here. This grid
+// is explicitly the top-level "explore" surface — matching the existing
+// page's own semantics, where subcategories are reached by drilling into a
+// primary category via categoryRouter.js's hasSubcategories branch, not
+// shown at this level.
+export const getV2DistrictCategoriesAction = async (req, res) => {
+  try {
+    const { district, search = "" } = req.query;
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const pageSize = Math.min(60, Math.max(1, parseInt(req.query.pageSize, 10) || 24));
+
+    if (!district) {
+      return res.status(400).json({ message: "district is required" });
+    }
+
+    const districtDoc = await resolveDistrictBySlug(district);
+    if (!districtDoc) {
+      return res.status(404).json({ message: "District not found" });
+    }
+
+    // Three independent, cheap lookups rather than a cross-collection
+    // $lookup: business.category and categoryModel.category aren't reliably
+    // the same case (spot-checked against massClick_dev: both happen to be
+    // lowercase today, but categoryModel.category has no `lowercase: true`
+    // constraint, so an admin-entered mixed-case name is valid data), and a
+    // case-insensitive $lookup needs a $toLower on both sides via an
+    // aggregation pipeline anyway. Joining in application code over a few
+    // hundred small category docs is simpler and just as fast.
+    const [counts, allCategories, subCategoryNames] = await Promise.all([
+      businessListModel.aggregate([
+        {
+          $match: {
+            businessesLive: true,
+            isActive: true,
+            "masterLocation.district": districtDoc.district,
+          },
+        },
+        { $group: { _id: { $toLower: "$category" }, count: { $sum: 1 } } },
+      ]),
+      categoryModel
+        .find({ isActive: true }, { category: 1, slug: 1, categoryImageKey: 1 })
+        .lean(),
+      getSubCategoryNameSet(),
+    ]);
+
+    const countByCategory = new Map(counts.map((c) => [c._id, c.count]));
+    const searchText = search.trim().toLowerCase();
+    const primaryCategories = allCategories.filter(
+      (cat) => !subCategoryNames.has(String(cat.category || "").toLowerCase().trim())
+    );
+
+    const withCounts = primaryCategories
+      .map((cat) => ({
+        _id: cat._id,
+        name: cat.category,
+        slug: cat.slug,
+        icon: cat.categoryImageKey ? `${S3_BASE_URL}${cat.categoryImageKey}` : null,
+        count: countByCategory.get(String(cat.category || "").toLowerCase().trim()) || 0,
+      }))
+      // Only categories with real presence in this district — an empty tile
+      // ("0 businesses") is not a useful "explore" result.
+      .filter((cat) => cat.count > 0 && (!searchText || cat.name.toLowerCase().includes(searchText)))
+      // Most-represented first: the natural ordering for "what's actually
+      // available here". Alphabetical only breaks count ties.
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+
+    const total = withCounts.length;
+    const start = (page - 1) * pageSize;
+    const categories = withCounts.slice(start, start + pageSize);
+
+    return res.json({
+      categories,
+      total,
+      page,
+      pageSize,
+      hasMore: start + categories.length < total,
+    });
+  } catch (error) {
+    console.error("getV2DistrictCategoriesAction error:", error);
     return res.status(500).json({ message: error.message });
   }
 };

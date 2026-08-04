@@ -51,6 +51,7 @@ const systemSettingsSchema = new mongoose.Schema(
     lead_guard_user_dedupe_enabled: { type: Boolean, default: true },
     lead_guard_user_dedupe_minutes: { type: Number, default: 5, min: 0 },
     lead_guard_live_business_only: { type: Boolean, default: true },
+    lead_guard_require_location: { type: Boolean, default: true },
     whatsapp_business_lead_daily_cap_enabled: { type: Boolean, default: true },
     whatsapp_business_lead_daily_cap: { type: Number, default: 3, min: 0 },
     whatsapp_business_lead_duplicate_guard_enabled: { type: Boolean, default: true },

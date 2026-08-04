@@ -33,6 +33,10 @@
   background: transparent;
 }
 
+.category-breadcrumbs {
+  padding: 24px var(--side-padding) 0 var(--side-padding);
+}
+
 @keyframes slideDown {
   from {
     opacity: 0;
@@ -186,6 +190,33 @@
 .category-loading p {
   color: #888;
   font-size: 0.9rem;
+  font-weight: 400;
+}
+
+/* INFINITE SCROLL — trigger + inline "loading more" state, smaller than the
+   full-page .category-loading above since the grid stays visible above it */
+.category-scroll-sentinel {
+  min-height: 40px;
+  width: 100%;
+}
+
+.category-loading-more {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 20px;
+  gap: 12px;
+}
+
+.category-loading-more .spinner {
+  width: 24px;
+  height: 24px;
+}
+
+.category-loading-more p {
+  color: #888;
+  font-size: 0.85rem;
   font-weight: 400;
 }
 

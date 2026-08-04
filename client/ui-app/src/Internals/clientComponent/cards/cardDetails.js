@@ -47,8 +47,10 @@ import ReviewList from "../rating/reviewList";
 import { getBusinessReviews } from "../../../redux/actions/reviewAction.js";
 import GlobalSkeleton from "../globalSkeleton.js";
 import { addFavorite, removeFavorite, fetchFavorites, getAuthUser } from "../../../redux/actions/favoriteAction";
-import { generateLocalBusinessSchema, generateBreadcrumbSchema } from "../../../utils/seoSchemaGenerators";
+import { generateLocalBusinessSchema } from "../../../utils/seoSchemaGenerators";
 import { trackBusinessView, trackBusinessClick } from "../../../utils/webTracker.js";
+import { buildBusinessPath, buildCategoryPath } from "../../../utils/searchResultNavigation";
+import { buildCrumbs, crumbsToJsonLd, crumbsToUiItems } from "../../../utils/breadcrumbs";
 import OTPLoginModal from "../AddBusinessModel.js";
 import PopularCategoriesLink from "../popularCategories/popularCategories.js";
 import massClickLogo from "../../../assets/mclogo.webp";
@@ -101,6 +103,7 @@ const FullScreenGallery = ({
 };
 const BusinessDetail = React.memo(() => {
   const {
+    district,
     location,
     businessSlug,
     id
@@ -190,10 +193,11 @@ const BusinessDetail = React.memo(() => {
     } else if (location && businessSlug) {
       dispatch(getBusinessDetailsBySlug({
         location,
-        slug: businessSlug
+        slug: businessSlug,
+        district
       }));
     }
-  }, [dispatch, id, location, businessSlug]);
+  }, [dispatch, id, district, location, businessSlug]);
   useEffect(() => {
     if (business?._id) {
       dispatch(getBusinessReviews(business._id));
@@ -337,6 +341,25 @@ const BusinessDetail = React.memo(() => {
   const keywordLocationSlug = toSlug(business.location || location || "all");
   const keywordCategory = business.category || business.slug || "";
   const keywordCategorySlug = toSlug(keywordCategory);
+  const whatsappNumber = business.whatsappNumber || business.contactList || business.contact;
+  const locationSlug = location || toSlug(business.location || "business");
+  // Canonical stays consistent regardless of how the user arrived. Prefer
+  // the server-resolved collision-resolved publicLocationSlug (from the
+  // business's linked masterLocation) over the free-text `location` field —
+  // that text can be as coarse as the district name itself, which would
+  // canonicalize every business in the district to /business/<d>/<d>/...
+  const canonicalLocationSlug =
+    business.publicLocationSlug || toSlug(business.location || location);
+  const canonicalPath = buildBusinessPath({
+    districtSlug: district,
+    locationSlug: canonicalLocationSlug,
+    businessSlug: business.slug || businessSlug,
+    businessName: business.businessName,
+    id: business._id || id,
+  });
+  const canonicalUrl = `https://massclick.in${canonicalPath}`;
+  const currentUrl = encodeURIComponent(canonicalUrl);
+  const currentTitle = encodeURIComponent(`Check out ${business.businessName}`);
   const handleGalleryFileSelection = async event => {
     if (!isBusinessImageUploadAllowed) {
       enqueueSnackbar("You are not the owner of this business. Upload is not allowed.", {
@@ -436,7 +459,7 @@ const BusinessDetail = React.memo(() => {
   };
   const handleCopyLink = e => {
     e.preventDefault();
-    const linkToCopy = window.location.href;
+    const linkToCopy = canonicalUrl;
     if (navigator.clipboard) {
       navigator.clipboard.writeText(linkToCopy).then(() => {
         alert("Link copied!");
@@ -552,7 +575,7 @@ const BusinessDetail = React.memo(() => {
     const shareData = {
       title: business.businessName,
       text: `Check out ${business.businessName} on MassClick`,
-      url: window.location.href
+      url: canonicalUrl
     };
     if (navigator.share) {
       try {
@@ -688,30 +711,26 @@ const BusinessDetail = React.memo(() => {
   };
   const copyBusinessLink = async () => {
     try {
-      await navigator.clipboard.writeText(window.location.href);
+      await navigator.clipboard.writeText(canonicalUrl);
       enqueueSnackbar("Business link copied.", { variant: "success" });
       setSidebarModal(null);
     } catch {
       enqueueSnackbar("Unable to copy the link.", { variant: "error" });
     }
   };
-  const currentUrl = encodeURIComponent(window.location.href);
-  const currentTitle = encodeURIComponent(`Check out ${business.businessName}`);
   const overviewHtml = business.businessDetails;
   const normalizeOverviewHtml = (html = "") => {
     return html.replace(/<p>\s*(<br\s*\/?>|&nbsp;)?\s*<\/p>/gi, "").replace(/<div>\s*(<br\s*\/?>|&nbsp;)?\s*<\/div>/gi, "").replace(/(<br\s*\/?>\s*){2,}/gi, "<br>").replace(/ style="[^"]*"/gi, "").replace(/width="[^"]*"/gi, "").replace(/height="[^"]*"/gi, "").trim();
   };
-  const whatsappNumber = business.whatsappNumber || business.contactList || business.contact;
-  const locationSlug = location || "";
-  // Use DB location field for canonical to stay consistent regardless of how the user arrived
-  const canonicalLocationSlug = toSlug(business.location || location);
-  const businessUrl = `https://massclick.in/business/${locationSlug}/${business.slug || businessSlug}/${business._id || id}`;
-  const canonicalUrl = `https://massclick.in/business/${canonicalLocationSlug}/${business.slug || businessSlug}/${business._id || id}`;
 
   // Generate LocalBusiness schema with all available data
   const localBusinessSchema = generateLocalBusinessSchema({
     _id: business._id,
     businessName: business.businessName,
+    listingUrl: canonicalUrl,
+    districtSlug: district,
+    locationSlug: canonicalLocationSlug,
+    businessSlug: business.slug || businessSlug,
     description: business.description || business.businessDetails,
     images: [business.bannerImage, ...(galleryImageSrcs || [])].filter(Boolean),
     telephone: business.contact,
@@ -741,17 +760,36 @@ const BusinessDetail = React.memo(() => {
     areaServed: business.location
   });
 
-  // Generate Breadcrumb schema
-  const breadcrumbSchema = generateBreadcrumbSchema([{
-    name: "Home",
-    url: "https://massclick.in"
-  }, {
-    name: business.location || locationSlug,
-    url: `https://massclick.in/${locationSlug}`
-  }, {
-    name: business.businessName,
-    url: businessUrl
-  }]);
+  // A location crumb that just repeats the district is not a real locality —
+  // it means this business has no linked masterLocation and its free-text
+  // `location` is only as specific as the district itself. Omit the crumb
+  // rather than rendering "Home > Trichy > Trichy > <business>"; there is
+  // genuinely no locality level to show here.
+  const crumbLocationName = business.location || locationSlug || "";
+  const isDistrictEquivalentLocation =
+    !canonicalLocationSlug ||
+    toSlug(canonicalLocationSlug) === toSlug(district) ||
+    toSlug(crumbLocationName) === toSlug(district);
+  const breadcrumbCrumbs = district
+    ? buildCrumbs({
+        districtSlug: district,
+        ...(isDistrictEquivalentLocation
+          ? {}
+          : {
+              locationSlug: canonicalLocationSlug,
+              locationName: crumbLocationName,
+            }),
+        businessName: business.businessName,
+      })
+    : [
+        { name: "Home", path: "/" },
+        ...(canonicalLocationSlug
+          ? [{ name: business.location || locationSlug, path: `/${canonicalLocationSlug}` }]
+          : []),
+        { name: business.businessName, path: null },
+      ];
+  const breadcrumbSchema = crumbsToJsonLd(breadcrumbCrumbs, "https://massclick.in", canonicalPath);
+  const breadcrumbItems = crumbsToUiItems(breadcrumbCrumbs);
   return <>
       <Helmet>
         <link rel="canonical" href={canonicalUrl} />
@@ -828,15 +866,7 @@ const BusinessDetail = React.memo(() => {
         document.body
       )}
       <div className={cx("business-CardDetails-pageWrapper")}>
-        <Breadcrumbs items={[{
-        label: "Home",
-        link: "/"
-      }, {
-        label: business.location || locationSlug,
-        onClick: () => navigate(-1)
-      }, {
-        label: business.businessName
-      }]} />
+        <Breadcrumbs items={breadcrumbItems} />
         <main>
         <section className={cx("business-CardDetails-heroSection")}>
           <div className={cx("business-CardDetails-mainImageContainer")} onClick={() => {
@@ -1247,11 +1277,19 @@ const BusinessDetail = React.memo(() => {
                 </div>
 
                 <div className={cx("business-CardDetails-keywordPills")}>
-                  {visibleKeywords.map(keyword => <Link key={keyword} to={`/${keywordLocationSlug}/${keywordCategorySlug || toSlug(keyword)}`} state={{
-                  category: keywordCategory || keyword
-                }} className={cx("business-CardDetails-keywordPill")}>
-                      {keyword}
-                    </Link>)}
+                  {visibleKeywords.map(keyword => {
+                    const keywordPath = buildCategoryPath({
+                      districtSlug: district,
+                      locationSlug: keywordLocationSlug,
+                      location: business.location || location,
+                      categorySlug: keywordCategorySlug || toSlug(keyword),
+                    });
+                    return <Link key={keyword} to={keywordPath} state={{
+                    category: keywordCategory || keyword
+                  }} className={cx("business-CardDetails-keywordPill")}>
+                        {keyword}
+                      </Link>;
+                  })}
                   {hasMoreKeywords && <button type="button" className={cx("business-CardDetails-keywordMoreBtn")} onClick={() => setShowAllKeywords(true)}>
                       More
                     </button>}

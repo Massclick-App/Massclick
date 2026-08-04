@@ -186,11 +186,10 @@ const PopularCategoriesLink = () => {
     };
     // Navigate to the specific location the user picked (falls back to the
     // selected district only when the location field is empty).
-    const { location, masterLocationSlug } = getEffectiveSearchLocation(selectedDistrict);
+    const locationContext = getEffectiveSearchLocation(selectedDistrict);
     navigateToSearchResult({
       searchTerm: keyword,
-      location,
-      masterLocationSlug,
+      ...locationContext,
       navigate,
       dispatch,
       isKnownCategory: false,
@@ -214,11 +213,10 @@ const PopularCategoriesLink = () => {
     };
     // Navigate to the specific location the user picked (falls back to the
     // selected district only when the location field is empty).
-    const { location, masterLocationSlug } = getEffectiveSearchLocation(selectedDistrict);
+    const locationContext = getEffectiveSearchLocation(selectedDistrict);
     navigateToSearchResult({
       searchTerm: categoryName,
-      location,
-      masterLocationSlug,
+      ...locationContext,
       navigate,
       dispatch,
       isKnownCategory: true,

@@ -7,7 +7,12 @@ import {
     updateMasterLocation,
     deleteMasterLocation
 } from "../../helper/location/masterLocationHelper.js";
-import { BAD_REQUEST } from "../../errorCodes.js";
+import {
+    resolveDistrictBySlug,
+} from "../../helper/location/locationResolver.js";
+import { classifyMiddleSegment } from "../../helper/location/urlSegmentClassifier.js";
+import { getDistrictUrlSlug, getDistrictDisplayName, getLocationDisplayName } from "../../helper/location/locationSlug.js";
+import { BAD_REQUEST, NOT_FOUND } from "../../errorCodes.js";
 
 export const addMasterLocationAction = async (req, res) => {
     try {
@@ -109,6 +114,72 @@ export const deleteMasterLocationAction = async (req, res) => {
         res.send({ message: "Location deleted successfully", location });
     } catch (error) {
         console.error(error);
+        return res.status(BAD_REQUEST.code).send({ message: error.message });
+    }
+};
+
+// Public: resolves the district-prefixed URL scheme's one genuinely ambiguous
+// segment. /:district/:p2/:p3 is syntactically identical whether it means
+// "district-wide category + subcategory" or "locality-specific category" —
+// GET ?district=<slug>&p2=<segment>&p3=<segment> classifies which, via
+// helper/location/urlSegmentClassifier.js (must be the SAME classification
+// this endpoint returns as the server's own SSR renders, or a hard-refreshed
+// page and its client-side navigation would disagree on what a URL means).
+// Used by the client's DistrictRouteResolver component.
+//
+// `district` alone (no p2) resolves just the district — for the bare
+// /:district landing page confirming the district exists and getting its
+// display name.
+export const resolveRouteLocationAction = async (req, res) => {
+    try {
+        const { district, p2, p3 } = req.query;
+
+        if (!district) {
+            return res.status(BAD_REQUEST.code).send({ message: "district is required" });
+        }
+
+        const districtDoc = await resolveDistrictBySlug(district);
+        if (!districtDoc) {
+            return res.status(NOT_FOUND.code).send({ message: "District not found" });
+        }
+
+        const districtSummary = {
+            slug: getDistrictUrlSlug(districtDoc),
+            name: getDistrictDisplayName(districtDoc),
+        };
+
+        if (!p2) {
+            return res.send({ district: districtSummary, classification: { type: "district" } });
+        }
+
+        const classification = await classifyMiddleSegment({ districtDoc, p2, p3 });
+
+        if (classification.type === "location") {
+            // Reshaped rather than passed through as-is: classifyMiddleSegment
+            // returns the raw masterlocation doc (locationDoc) with every DB
+            // field (coordinates, keywords, pincodes, timestamps, ...) — the
+            // client only ever needs the same flat {slug, name, level} shape
+            // its own breadcrumb/URL builders already work with (see
+            // client/ui-app/src/utils/breadcrumbs.js).
+            return res.send({
+                district: districtSummary,
+                classification: {
+                    type: "location",
+                    location: {
+                        slug: classification.locationDoc.publicLocationSlug,
+                        name: getLocationDisplayName(classification.locationDoc, districtSummary.name),
+                        level: classification.locationDoc.level,
+                    },
+                    categorySlug: classification.categorySlug,
+                },
+            });
+        }
+
+        // "districtCategory", "unresolvedLocation", and "unknown" are already
+        // client-shaped (flat strings, no raw Mongoose doc to reshape).
+        return res.send({ district: districtSummary, classification });
+    } catch (error) {
+        console.error("resolveRouteLocationAction error:", error);
         return res.status(BAD_REQUEST.code).send({ message: error.message });
     }
 };

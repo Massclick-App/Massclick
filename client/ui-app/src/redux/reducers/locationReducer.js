@@ -23,6 +23,27 @@ import {
   DETECT_DISTRICT_SUCCESS,
   DETECT_DISTRICT_FAILURE
 } from "../actions/userActionTypes";
+import { createDistrictSlug, getLocationName } from "../../utils/searchResultNavigation.js";
+
+const toSelectedDistrictContext = (payload) => {
+  const name = getLocationName(payload);
+  const districtName =
+    typeof payload === "object"
+      ? payload.districtName || payload.district || name
+      : name;
+  const districtSlug =
+    typeof payload === "object" && payload.districtSlug
+      ? payload.districtSlug
+      : createDistrictSlug(districtName);
+
+  return {
+    ...(typeof payload === "object" ? payload : {}),
+    name,
+    districtName,
+    districtSlug,
+    slug: districtSlug,
+  };
+};
 
 const initialState = {
   location: [],
@@ -99,21 +120,29 @@ export default function locationReducer(state = initialState, action) {
         error: null,
       };
 
-    case DETECT_DISTRICT_SUCCESS:
+    case DETECT_DISTRICT_SUCCESS: {
+      const detectedDistrictContext = toSelectedDistrictContext(action.payload);
       return {
         ...state,
         loading: false,
         detectedDistrict: action.payload,
-        selectedDistrict: state.selectedDistrict || action.payload,
+        selectedDistrict: state.selectedDistrict || detectedDistrictContext,
         error: null,
       };
+    }
 
-    case "SET_SELECTED_DISTRICT":
-      localStorage.setItem("selectedLocation", action.payload);
+    case "SET_SELECTED_DISTRICT": {
+      const selectedDistrictContext = toSelectedDistrictContext(action.payload);
+      localStorage.setItem("selectedLocation", selectedDistrictContext.name || "");
+      localStorage.setItem("selectedDistrict", selectedDistrictContext.districtName || selectedDistrictContext.name || "");
+      if (selectedDistrictContext.districtSlug) {
+        localStorage.setItem("selectedDistrictSlug", selectedDistrictContext.districtSlug);
+      }
       return {
         ...state,
-        selectedDistrict: action.payload,
+        selectedDistrict: selectedDistrictContext,
       };
+    }
 
 
     case FETCH_LOCATION_FAILURE:

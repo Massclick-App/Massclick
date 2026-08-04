@@ -10,6 +10,7 @@ import AppRegistrationIcon from '@mui/icons-material/AppRegistration';
 import LoginIcon from '@mui/icons-material/Login';
 import DynamicFeedIcon from "@mui/icons-material/DynamicFeed";
 import WorkOutlineRoundedIcon from "@mui/icons-material/WorkOutlineRounded";
+import RedeemRoundedIcon from "@mui/icons-material/RedeemRounded";
 import { getDisplayableLeadNotifications } from "./leadsNotification/leadNotificationUtils.js";
 import { fetchMatchedLeads } from "../../redux/actions/leadsAction.js";
 import styles from "./categoryBar.module.css";
@@ -24,6 +25,9 @@ const QuickLinksMenu = lazy(() =>
 const cx = createScopedClassNames(styles);
 
 const categories = [{
+  name: "Claim Points",
+  icon: <RedeemRoundedIcon />
+}, {
   name: "Leads",
   icon: <MailIcon />
 },
@@ -100,7 +104,13 @@ const CategoryBar = () => {
 
   const handleCategoryClick = name => {
     setIsQuickLinksOpen(false);
-    if (name === "Leads") {
+    if (name === "Claim Points") {
+      if (!localStorage.getItem("authUser")) {
+        setIsModalOpen(true);
+        return;
+      }
+      navigate("/claim-rewards");
+    } else if (name === "Leads") {
       if (!localStorage.getItem("authUser")) {
         setIsModalOpen(true);
         return;

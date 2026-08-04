@@ -20,6 +20,7 @@ import OTPLoginModal from '../AddBusinessModel';
 import Tooltip from "@mui/material/Tooltip";
 import { useSnackbar } from "../../../components/snackbar/SnackbarProvider.js";
 import { AUTH_STATE_EVENT, getAuthSnapshot } from "../../../auth/authStore.js";
+import { buildBusinessPath, createDistrictSlug } from "../../../utils/searchResultNavigation";
 const cx = createScopedClassNames(styles);
 const labels = {
   0.5: 'Useless',
@@ -129,12 +130,15 @@ const WriteReviewPage = () => {
   // const locationSlug = business.location.toLowerCase().replace(/\s+/g, '-');
 
   const handleModalClose = () => {
-    const businessNameSlug = business.businessName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "");
-    const addressSlug = business.street?.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "") || "unknown";
-    const locationSlug = business.location.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "");
-    const businessSlug = `${businessNameSlug}-${addressSlug}`;
+    const businessPath = buildBusinessPath({
+      districtSlug: createDistrictSlug(business.masterLocation?.district || business.district || ""),
+      location: business.location,
+      businessSlug: business.slug,
+      businessName: business.businessName,
+      id: businessId,
+    });
     setShowSuccessModal(false);
-    navigate(`/business/${locationSlug}/${businessSlug}/${businessId}`);
+    navigate(businessPath);
   };
   const handlePhotoUpload = event => {
     const files = Array.from(event.target.files);

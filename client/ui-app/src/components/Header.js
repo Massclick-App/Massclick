@@ -14,6 +14,7 @@ import OptionsMenu from "./OptionsMenu.js";
 import NotificationModal from "./notificationModel.js";
 import { connectSocket } from "../services/socketService.js";
 import { fetchChatUnreadCount } from "../services/chatService.js";
+import { fetchRewardClaims } from "../services/rewardService.js";
 import { getAuthSnapshot } from "../auth/authStore.js";
 
 const RECENT_DAYS = 7;
@@ -30,6 +31,7 @@ export default function Header() {
   const [open, setOpen] = useState(false);
   const [chatUnreadCount, setChatUnreadCount] = useState(0);
   const [modalCount, setModalCount] = useState(null);
+  const [pendingRewardClaimCount, setPendingRewardClaimCount] = useState(0);
 
 useEffect(() => {
   dispatch(getPendingBusinessList());
@@ -37,6 +39,10 @@ useEffect(() => {
   dispatch(getAllEventCreation({ pageNo: 1, pageSize: 25, options: { sortBy: "createdAt", sortOrder: "desc" } }));
   dispatch(getSearchRequests({ page: 1, limit: 100, status: "new" }));
   fetchChatUnreadCount().then((data) => setChatUnreadCount(data?.admin || 0)).catch(() => setChatUnreadCount(0));
+  const loadRewardClaimCount = () => fetchRewardClaims({ status: "pending", page: 1, limit: 1 })
+    .then((data) => setPendingRewardClaimCount(data?.total || 0))
+    .catch(() => setPendingRewardClaimCount(0));
+  loadRewardClaimCount();
 
   const authSnapshot = getAuthSnapshot();
   const token = authSnapshot.admin.accessToken;
@@ -53,6 +59,10 @@ useEffect(() => {
   const onChatChanged = () => {
     fetchChatUnreadCount().then((data) => setChatUnreadCount(data?.admin || 0)).catch(() => {});
   };
+  const onRewardClaimChanged = () => {
+    loadRewardClaimCount();
+    window.dispatchEvent(new Event("reward-claims:changed"));
+  };
 
   // Wait for socket connection before joining room
   if (ws.connected) {
@@ -66,11 +76,13 @@ useEffect(() => {
   ws.on("business:pending", onBusinessPending);
   ws.on("chat:unread:count", onChatUnread);
   ws.on("chat:conversation:updated", onChatChanged);
+  ws.on("reward:claim:changed", onRewardClaimChanged);
 
   return () => {
     ws.off("business:pending", onBusinessPending);
     ws.off("chat:unread:count", onChatUnread);
     ws.off("chat:conversation:updated", onChatChanged);
+    ws.off("reward:claim:changed", onRewardClaimChanged);
   };
 }, [dispatch]);
 
@@ -86,7 +98,7 @@ useEffect(() => {
   const recentSearchRequestCount = useSelector(
     (state) => (state.searchRequests.requests || []).filter((item) => item.status === "new" && isRecent(item.createdAt)).length
   );
-  const notificationCount = modalCount ?? (pendingCount + chatUnreadCount + recentEnquiryCount + recentEventCount + recentSearchRequestCount);
+  const notificationCount = modalCount ?? (pendingCount + pendingRewardClaimCount + chatUnreadCount + recentEnquiryCount + recentEventCount + recentSearchRequestCount);
 
   const handleOpen = () => setOpen(true);
   const handleClose = () => {

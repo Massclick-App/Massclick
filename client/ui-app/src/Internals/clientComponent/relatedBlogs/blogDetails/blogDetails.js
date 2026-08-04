@@ -8,7 +8,9 @@ import { fetchAllAuthors } from "../../../../redux/actions/authorMasterAction.js
 import { logSearchActivity } from "../../../../redux/actions/businessListAction";
 import { throttle } from "../../../../utils/throttle";
 import { getPlaceholderImage } from "../../../../utils/placeholderImage";
-import { generateArticleSchema, generateBreadcrumbSchema } from "../../../../utils/seoSchemaGenerators";
+import { generateArticleSchema } from "../../../../utils/seoSchemaGenerators";
+import { buildCategoryPath, createDistrictSlug } from "../../../../utils/searchResultNavigation";
+import { buildBlogCrumbs, crumbsToJsonLd, crumbsToUiItems } from "../../../../utils/breadcrumbs";
 import styles from "./blogDetails.module.css";
 import Navbar from "../relatedBlogNavbar/relatedBlogNavbar";
 import Breadcrumbs from "../../Breadcrumbs/Breadcrumbs";
@@ -299,6 +301,19 @@ const BlogDetail = () => {
     }
     return items;
   }, [blog]);
+  const getListingPath = (categoryValue = "", locationValue = "") => {
+    const districtSlug = createDistrictSlug(blog?.districtSlug || blog?.district || "");
+    const hasListingLocation = Boolean(locationValue || blog?.location);
+    const listingLocation = hasListingLocation ? locationValue || blog?.location : "trichy";
+    return buildCategoryPath({
+      districtSlug,
+      location: listingLocation,
+      category: categoryValue || blog?.category || "services",
+      isDistrictScope: Boolean(districtSlug && !hasListingLocation),
+    });
+  };
+  const getListingUrl = (categoryValue = "", locationValue = "") =>
+    `https://massclick.in${getListingPath(categoryValue, locationValue)}`;
   const scrollToSection = useCallback(id => {
     const el = document.getElementById(id);
     if (!el) return;
@@ -328,9 +343,9 @@ const BlogDetail = () => {
         location = parts[parts.length - 2];
       }
       if (!location) {
-        location = (blog?.location || "trichy").toLowerCase().replace(/\s+/g, "-");
+        location = blog?.location || "trichy";
       }
-      const url = `https://massclick.in/${location}/${category}`;
+      const url = getListingUrl(category, location);
       window.open(url, "_blank");
       return;
     }
@@ -345,9 +360,7 @@ const BlogDetail = () => {
     category = category.replace(/near.*$/g, "").replace(/best|top|cheap|low|price/g, "").trim();
     if (!category) category = blog?.category || "services";
     if (!location) location = blog?.location || "trichy";
-    category = category.replace(/\s+/g, "-");
-    location = location.replace(/\s+/g, "-");
-    const url = `https://massclick.in/${location}/${category}`;
+    const url = getListingUrl(category, location);
     window.open(url, "_blank");
   };
   const ssrMeta = typeof window !== "undefined" ? window.__SSR_SEO__ : null;
@@ -557,17 +570,9 @@ const BlogDetail = () => {
     author: getAuthorData().name
   });
 
-  // Generate Breadcrumb schema
-  const breadcrumbSchema = generateBreadcrumbSchema([{
-    name: "Home",
-    url: "https://massclick.in"
-  }, {
-    name: blog.category,
-    url: `https://massclick.in/${blog.location}/${blog.category}`
-  }, {
-    name: blog.heading,
-    url: canonical
-  }]);
+  const breadcrumbCrumbs = buildBlogCrumbs({ title: blog.heading });
+  const breadcrumbSchema = crumbsToJsonLd(breadcrumbCrumbs, "https://massclick.in", `/blog/${slug}`);
+  const breadcrumbItems = crumbsToUiItems(breadcrumbCrumbs);
   return <>
     <OTPLoginModal
       open={openLoginModal}
@@ -602,15 +607,7 @@ const BlogDetail = () => {
 
         <section className={cx("blog-hero")}>
           <div className={cx("blog-hero-copy")}>
-            <Breadcrumbs items={[{
-              label: "Home",
-              link: "/"
-            }, {
-              label: blog.category,
-              link: `/${(blog.location || "trichy").toLowerCase().replace(/\s+/g, "-")}/${(blog.category || "services").toLowerCase().replace(/\s+/g, "-")}`
-            }, {
-              label: blog.heading
-            }]} />
+            <Breadcrumbs items={breadcrumbItems} />
 
             <div className={cx("blog-kicker")}>
               <span>
@@ -841,9 +838,7 @@ const BlogDetail = () => {
                 Use Massclick to compare local options faster and move from reading to action.
               </p>
               <button type="button" onClick={() => {
-                const locationSlug = (blog.location || "trichy").toLowerCase().trim().replace(/\s+/g, "-");
-                const categorySlug = (blog.category || "services").toLowerCase().trim().replace(/\s+/g, "-");
-                window.open(`https://massclick.in/${locationSlug}/${categorySlug}`, "_blank");
+                window.open(getListingUrl(blog.category || "services", blog.location || "trichy"), "_blank");
               }}>
                 Explore Listings
               </button>
@@ -855,9 +850,7 @@ const BlogDetail = () => {
               <div className={cx("tag-list")}>
 
                 {blog?.tags?.length > 0 ? blog.tags.map((tag, index) => <span key={index} onClick={() => {
-                  const locationSlug = (blog.location || "trichy").toLowerCase().trim().replace(/\s+/g, "-");
-                  const categorySlug = (blog.category || tag).toLowerCase().trim().replace(/\s+/g, "-");
-                  window.location.href = `https://massclick.in/${locationSlug}/${categorySlug}`;
+                  window.location.href = getListingUrl(blog.category || tag, blog.location || "trichy");
                 }}>
                   {tag}
                 </span>) : <>
