@@ -3309,7 +3309,9 @@ const BusinessList = React.memo(() => {
     gstin: bl.gstin || "-",
     whatsappNumber: bl.whatsappNumber || "-",
     experience: bl.experience || "-",
-    location: bl.location || "-",
+    location: [bl.masterLocation?.ward, bl.masterLocation?.district]
+      .filter(Boolean)
+      .join(", ") || bl.location || "-",
     masterLocation: bl.masterLocation || null,
     category: bl.category || "-",
     seoTitle: bl.seoTitle || "",
