@@ -86,6 +86,13 @@ const MONGO_URI = process.env.MONGO_URL;
 const CLIENT_BUILD_PATH = process.env.REACT_BUILD_PATH;
 
 app.use((req, res, next) => {
+  if (
+    req.path.startsWith("/.well-known/") ||
+    req.path === "/apple-app-site-association"
+  ) {
+    return next();
+  }
+
   const host = req.headers.host || "";
   const protocol = req.headers["x-forwarded-proto"] || req.protocol;
 
