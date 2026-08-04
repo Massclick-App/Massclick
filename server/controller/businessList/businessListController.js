@@ -175,6 +175,7 @@ export const viewAllBusinessListAction = async (req, res) => {
     const paymentStatus = (req.query.paymentStatus || "").trim();
     const createdFrom = (req.query.createdFrom || "").trim();
     const createdTo = (req.query.createdTo || "").trim();
+    const createdBy = (req.query.createdBy || "").trim();
     const sortBy = req.query.sortBy || "createdAt";
     const sortOrder = req.query.sortOrder === "asc" ? "asc" : "desc";
 
@@ -191,6 +192,7 @@ export const viewAllBusinessListAction = async (req, res) => {
       paymentStatus,
       createdFrom,
       createdTo,
+      createdBy,
       sortBy,
       sortOrder
     });
@@ -1789,6 +1791,9 @@ export const adminAnalyticsReportAction = async (req, res) => {
       userId,
       days: req.query.days,
       location: req.query.location,
+      createdBy: req.query.createdBy,
+      dateFrom: req.query.dateFrom,
+      dateTo: req.query.dateTo,
     });
 
     return res.send({

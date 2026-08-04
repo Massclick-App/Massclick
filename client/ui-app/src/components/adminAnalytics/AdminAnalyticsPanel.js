@@ -13,6 +13,7 @@ import {
   Select,
   Skeleton,
   Stack,
+  TextField,
   Typography,
 } from "@mui/material";
 import AnalyticsRoundedIcon from "@mui/icons-material/AnalyticsRounded";
@@ -72,6 +73,25 @@ const compactDate = (value) => {
     day: "2-digit",
     month: "short",
   });
+};
+
+const toDateInputValue = (date) => date.toISOString().slice(0, 10);
+
+const getDateRange = (preset, customFrom, customTo) => {
+  if (preset === "all") return {};
+  if (preset === "custom") {
+    const dateFrom = customFrom ? new Date(`${customFrom}T00:00:00`).toISOString() : "";
+    const dateTo = customTo ? new Date(`${customTo}T23:59:59.999`).toISOString() : "";
+    return { ...(dateFrom ? { dateFrom } : {}), ...(dateTo ? { dateTo } : {}) };
+  }
+  const dayCount = Number(preset);
+  if (!Number.isFinite(dayCount)) return {};
+  const end = new Date();
+  const start = new Date();
+  start.setDate(start.getDate() - (dayCount - 1));
+  start.setHours(0, 0, 0, 0);
+  end.setHours(23, 59, 59, 999);
+  return { dateFrom: start.toISOString(), dateTo: end.toISOString() };
 };
 
 const isSameFilter = (activeFilter, filter) => {
@@ -253,6 +273,14 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick }) {
   const [error, setError] = useState("");
   const [trendDays, setTrendDays] = useState(30);
   const [trendLocation, setTrendLocation] = useState("");
+  const [creatorId, setCreatorId] = useState("");
+  const [datePreset, setDatePreset] = useState("all");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
+  const dateRange = useMemo(
+    () => getDateRange(datePreset, customFrom, customTo),
+    [datePreset, customFrom, customTo],
+  );
 
   const fetchReport = useCallback(async () => {
     setLoading(true);
@@ -263,6 +291,8 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick }) {
         params: {
           days: trendDays,
           ...(trendLocation ? { location: trendLocation } : {}),
+          ...(creatorId ? { createdBy: creatorId } : {}),
+          ...dateRange,
         },
       });
       setReport(response.data?.report || null);
@@ -271,7 +301,7 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick }) {
     } finally {
       setLoading(false);
     }
-  }, [trendDays, trendLocation]);
+  }, [trendDays, trendLocation, creatorId, dateRange]);
 
   useEffect(() => {
     fetchReport();
@@ -371,6 +401,24 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick }) {
     });
   };
 
+  const handleCreatorClick = (item) => {
+    if (!item?.userId || item.userId === "unassigned") return;
+    setCreatorId(item.userId);
+    onFilterClick?.({
+      type: "creator",
+      label: `Created by: ${item.name}${datePreset === "all" ? "" : ` | ${dateRangeLabel}`}`,
+      value: item.userId,
+      createdFrom: dateRange.dateFrom,
+      createdTo: dateRange.dateTo,
+    });
+  };
+
+  const dateRangeLabel = datePreset === "all"
+    ? "All time"
+    : datePreset === "custom"
+      ? "Custom date range"
+      : `Last ${datePreset} days`;
+
   if (loading && !report) {
     return (
       <Box sx={{ width: "100%" }}>
@@ -454,6 +502,55 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick }) {
         </Alert>
       )}
 
+      <Panel
+        title="Listing performance filters"
+        subtitle={`Business metrics and creator counts are scoped to ${dateRangeLabel.toLowerCase()}.`}
+        sx={{ mb: 2 }}
+        action={
+          <Button
+            size="small"
+            onClick={() => {
+              setCreatorId("");
+              setDatePreset("all");
+              setCustomFrom("");
+              setCustomTo("");
+            }}
+            disabled={!creatorId && datePreset === "all"}
+            sx={{ textTransform: "none", fontWeight: 800, color: palette.orange }}
+          >
+            Reset filters
+          </Button>
+        }
+      >
+        <Stack direction={{ xs: "column", md: "row" }} spacing={1.25}>
+          <FormControl size="small" sx={{ minWidth: { xs: "100%", md: 250 } }}>
+            <Select value={creatorId} displayEmpty onChange={(event) => setCreatorId(event.target.value)} inputProps={{ "aria-label": "Filter analytics by creator" }}>
+              <MenuItem value="">All creators</MenuItem>
+              {(report?.creatorOptions || []).map((creator) => (
+                <MenuItem key={creator.userId} value={creator.userId}>
+                  {creator.name}{creator.email ? ` — ${creator.email}` : ""}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl size="small" sx={{ minWidth: { xs: "100%", md: 170 } }}>
+            <Select value={datePreset} onChange={(event) => setDatePreset(event.target.value)} inputProps={{ "aria-label": "Select analytics date range" }}>
+              <MenuItem value="all">All time</MenuItem>
+              <MenuItem value="7">Last 7 days</MenuItem>
+              <MenuItem value="30">Last 30 days</MenuItem>
+              <MenuItem value="90">Last 90 days</MenuItem>
+              <MenuItem value="custom">Custom range</MenuItem>
+            </Select>
+          </FormControl>
+          {datePreset === "custom" && (
+            <>
+              <TextField size="small" label="From" type="date" value={customFrom} onChange={(event) => setCustomFrom(event.target.value)} InputLabelProps={{ shrink: true }} />
+              <TextField size="small" label="To" type="date" value={customTo} onChange={(event) => setCustomTo(event.target.value)} inputProps={{ max: toDateInputValue(new Date()) }} InputLabelProps={{ shrink: true }} />
+            </>
+          )}
+        </Stack>
+      </Panel>
+
       <Box
         sx={{
           display: "grid",
@@ -476,6 +573,43 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick }) {
           />
         ))}
       </Box>
+
+      <Panel
+        title="Businesses created by user"
+        subtitle="Ranked by business creations in the selected date range. Select a user to drill into their listings."
+        sx={{ mb: 2 }}
+      >
+        {report?.userPerformance?.length ? (
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(3, minmax(0, 1fr))" }, gap: 1.25 }}>
+            {report.userPerformance.map((item) => {
+              const selected = creatorId === item.userId;
+              const isClickable = item.userId !== "unassigned";
+              return (
+                <Box
+                  key={item.userId}
+                  component={isClickable ? "button" : "div"}
+                  type={isClickable ? "button" : undefined}
+                  onClick={isClickable ? () => handleCreatorClick(item) : undefined}
+                  sx={{ border: `1px solid ${selected ? palette.orange : palette.line}`, borderRadius: 1.5, p: 1.5, bgcolor: selected ? "#fff7ed" : "#fff", textAlign: "left", font: "inherit", ...(isClickable ? clickableSx(selected) : {}) }}
+                >
+                  <Stack direction="row" justifyContent="space-between" spacing={1} alignItems="flex-start">
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography noWrap sx={{ color: palette.ink, fontSize: 14, fontWeight: 850 }}>{item.name}</Typography>
+                      <Typography noWrap sx={{ color: palette.muted, fontSize: 12, mt: 0.25 }}>{item.email || "No email available"}</Typography>
+                    </Box>
+                    <Chip size="small" label={formatNumber(item.businesses)} sx={{ bgcolor: "#fff3e8", color: palette.orange, fontWeight: 850 }} />
+                  </Stack>
+                  <Typography sx={{ color: palette.muted, fontSize: 12, mt: 1 }}>
+                    {formatNumber(item.liveBusinesses)} live · {formatNumber(item.activeBusinesses)} active
+                  </Typography>
+                </Box>
+              );
+            })}
+          </Box>
+        ) : (
+          <EmptyState label="No businesses created in this date range" />
+        )}
+      </Panel>
 
       <Panel
         title="Business count by place and day"

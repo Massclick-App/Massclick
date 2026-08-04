@@ -774,6 +774,7 @@ export const viewAllBusinessList = async ({
   paymentStatus,
   createdFrom,
   createdTo,
+  createdBy,
   sortBy,
   sortOrder,
 }) => {
@@ -853,6 +854,10 @@ export const viewAllBusinessList = async ({
     query.createdAt = {};
     if (createdFrom) query.createdAt.$gte = new Date(createdFrom);
     if (createdTo) query.createdAt.$lte = new Date(createdTo);
+  }
+
+  if (createdBy && mongoose.Types.ObjectId.isValid(createdBy)) {
+    query.createdBy = new mongoose.Types.ObjectId(createdBy);
   }
 
   const searchableFields = [
@@ -1691,8 +1696,33 @@ const dashboardLocationNameExpression = {
   },
 };
 
-export const getAdminAnalyticsReportHelper = async ({ role, userId, days = 30, location = "" }) => {
-  const businessQuery = await buildDashboardQuery({ role, userId });
+const withCreatedAtRange = (query, range = {}) => {
+  const existingRange = query.createdAt || {};
+  const createdAt = { ...existingRange };
+
+  if (range.$gte && (!createdAt.$gte || range.$gte > createdAt.$gte)) createdAt.$gte = range.$gte;
+  if (range.$lte && (!createdAt.$lte || range.$lte < createdAt.$lte)) createdAt.$lte = range.$lte;
+
+  return { ...query, ...(Object.keys(createdAt).length ? { createdAt } : {}) };
+};
+
+export const getAdminAnalyticsReportHelper = async ({ role, userId, days = 30, location = "", createdBy = "", dateFrom = "", dateTo = "" }) => {
+  const accessQuery = await buildDashboardQuery({ role, userId });
+  const selectedCreatorId = String(createdBy || "").trim();
+  const parsedDateFrom = dateFrom ? new Date(dateFrom) : null;
+  const parsedDateTo = dateTo ? new Date(dateTo) : null;
+  const createdAt = {};
+
+  if (parsedDateFrom && !Number.isNaN(parsedDateFrom.getTime())) createdAt.$gte = parsedDateFrom;
+  if (parsedDateTo && !Number.isNaN(parsedDateTo.getTime())) createdAt.$lte = parsedDateTo;
+
+  const businessQuery = {
+    ...accessQuery,
+    ...(selectedCreatorId && mongoose.Types.ObjectId.isValid(selectedCreatorId)
+      ? { createdBy: new mongoose.Types.ObjectId(selectedCreatorId) }
+      : {}),
+    ...(Object.keys(createdAt).length ? { createdAt } : {}),
+  };
   const now = new Date();
   const startOfToday = new Date(now);
   startOfToday.setHours(0, 0, 0, 0);
@@ -1735,6 +1765,8 @@ export const getAdminAnalyticsReportHelper = async ({ role, userId, days = 30, l
     otpSearchLocations,
     dailyBusinessRows,
     locationOptions,
+    userPerformance,
+    creatorOptions,
   ] = await Promise.all([
     businessListModel.countDocuments(businessQuery),
     businessListModel.countDocuments({
@@ -1745,14 +1777,8 @@ export const getAdminAnalyticsReportHelper = async ({ role, userId, days = 30, l
       ...businessQuery,
       businessesLive: true,
     }),
-    businessListModel.countDocuments({
-      ...businessQuery,
-      createdAt: { $gte: startOfToday },
-    }),
-    businessListModel.countDocuments({
-      ...businessQuery,
-      createdAt: { $gte: startOfThirtyDays },
-    }),
+    businessListModel.countDocuments(withCreatedAtRange(businessQuery, { $gte: startOfToday })),
+    businessListModel.countDocuments(withCreatedAtRange(businessQuery, { $gte: startOfThirtyDays })),
     userModel.aggregate([{ $group: { _id: "$isActive", count: { $sum: 1 } } }]),
     categoryModel.aggregate([
       { $group: { _id: "$isActive", count: { $sum: 1 } } },
@@ -1830,12 +1856,7 @@ export const getAdminAnalyticsReportHelper = async ({ role, userId, days = 30, l
     ]),
     businessListModel.aggregate([
       {
-        $match: {
-          ...businessQuery,
-          createdAt: {
-            $gte: new Date(now.getFullYear(), now.getMonth() - 11, 1),
-          },
-        },
+        $match: withCreatedAtRange(businessQuery, { $gte: new Date(now.getFullYear(), now.getMonth() - 11, 1) }),
       },
       {
         $group: {
@@ -1888,7 +1909,7 @@ export const getAdminAnalyticsReportHelper = async ({ role, userId, days = 30, l
       { $sort: { count: -1 } }, { $limit: 10 },
     ]),
     businessListModel.aggregate([
-      { $match: { ...dayTrendQuery, createdAt: { $gte: periodStart } } },
+      { $match: withCreatedAtRange(dayTrendQuery, { $gte: periodStart }) },
       {
         $group: {
           _id: {
@@ -1904,6 +1925,38 @@ export const getAdminAnalyticsReportHelper = async ({ role, userId, days = 30, l
       { $sort: { _id: 1 } },
     ]),
     businessListModel.distinct("location", businessQuery),
+    businessListModel.aggregate([
+      { $match: businessQuery },
+      { $group: {
+        _id: "$createdBy",
+        businesses: { $sum: 1 },
+        liveBusinesses: { $sum: { $cond: [{ $eq: ["$businessesLive", true] }, 1, 0] } },
+        activeBusinesses: { $sum: { $cond: [{ $eq: ["$activeBusinesses", true] }, 1, 0] } },
+        lastCreatedAt: { $max: "$createdAt" },
+      } },
+      { $lookup: { from: "users", localField: "_id", foreignField: "_id", as: "user" } },
+      { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
+      { $project: {
+        _id: 0,
+        userId: "$_id",
+        name: { $ifNull: ["$user.userName", "Unassigned / deleted user"] },
+        email: { $ifNull: ["$user.emailId", ""] },
+        businesses: 1,
+        liveBusinesses: 1,
+        activeBusinesses: 1,
+        lastCreatedAt: 1,
+      } },
+      { $sort: { businesses: -1, name: 1 } },
+      { $limit: 12 },
+    ]),
+    businessListModel.aggregate([
+      { $match: { ...accessQuery, createdBy: { $ne: null } } },
+      { $group: { _id: "$createdBy" } },
+      { $lookup: { from: "users", localField: "_id", foreignField: "_id", as: "user" } },
+      { $unwind: "$user" },
+      { $project: { _id: 0, userId: "$_id", name: "$user.userName", email: "$user.emailId" } },
+      { $sort: { name: 1 } },
+    ]),
   ]);
 
   const activeUsers = userCounts.find((row) => row._id === true)?.count || 0;
@@ -1976,6 +2029,9 @@ export const getAdminAnalyticsReportHelper = async ({ role, userId, days = 30, l
     },
     periodDays,
     selectedLocation,
+    selectedCreatorId,
+    dateFrom: parsedDateFrom && !Number.isNaN(parsedDateFrom.getTime()) ? parsedDateFrom.toISOString() : null,
+    dateTo: parsedDateTo && !Number.isNaN(parsedDateTo.getTime()) ? parsedDateTo.toISOString() : null,
     dailyBusinessTrend: buildDaySeries(dailyBusinessRows, periodDays),
     locationOptions: locationOptions
       .filter((value) => String(value || "").trim())
@@ -1996,12 +2052,17 @@ export const getAdminAnalyticsReportHelper = async ({ role, userId, days = 30, l
       count: row.count,
       amount: row.amount,
     })),
+    userPerformance: userPerformance.map((row) => ({
+      ...row,
+      userId: row.userId ? String(row.userId) : "unassigned",
+    })),
+    creatorOptions: creatorOptions.map((row) => ({
+      ...row,
+      userId: String(row.userId),
+    })),
     recentBusinesses,
     yearToDate: {
-      businesses: await businessListModel.countDocuments({
-        ...businessQuery,
-        createdAt: { $gte: startOfYear },
-      }),
+      businesses: await businessListModel.countDocuments(withCreatedAtRange(businessQuery, { $gte: startOfYear })),
     },
   };
 };
