@@ -411,9 +411,22 @@ const SearchResults = React.memo(
           { name: breadcrumbSubcategoryName || breadcrumbCategoryName || searchText, path: null },
         ];
     const breadcrumbSchema = crumbsToJsonLd(breadcrumbCrumbs, "https://massclick.in", canonicalPath);
+    // buildCrumbs() already folds the terminal category into its location
+    // crumb ("Hotels" + "Sembattu" -> "Hotels in Sembattu") whenever there's
+    // both a location and a category with no subcategory. When that fold
+    // happened, there's no separate trailing location crumb left to strip a
+    // link from below — doing so would instead wrongly strip the link off
+    // the nearest ANCESTOR location crumb (e.g. "Trichy Road").
+    const categoryFoldedIntoLocation =
+      !isLocationListing &&
+      Boolean(districtSlug) &&
+      Boolean(locationSlug || routeLocationPath) &&
+      Boolean(breadcrumbCategorySlug) &&
+      !subcategorySlug;
     const breadcrumbItems = crumbsToUiItems(breadcrumbCrumbs).map((item, index) => {
       const crumb = breadcrumbCrumbs[index];
       const isTerminalLocationCrumb =
+        !categoryFoldedIntoLocation &&
         !isLocationListing &&
         Boolean(districtSlug) &&
         Boolean(categorySlug || searchSlug || subcategorySlug) &&

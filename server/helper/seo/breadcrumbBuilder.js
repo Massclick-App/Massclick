@@ -96,10 +96,11 @@ export const buildCrumbs = ({
   crumbs.push({ name: districtDisplayName, path: districtPath });
 
   let pathSoFar = districtPath;
+  let locationCrumbs = [];
 
   if (locationDoc) {
     pathSoFar = buildLocationPath({ districtDoc, locationDoc });
-    const locationCrumbs = buildLocationCrumbs({
+    locationCrumbs = buildLocationCrumbs({
       districtPath,
       districtDisplayName,
       locationDoc,
@@ -113,7 +114,17 @@ export const buildCrumbs = ({
       locationDoc,
       categorySlug: category.slug,
     });
-    crumbs.push({ name: category.name, path: pathSoFar });
+    // Fold the terminal category into its location crumb ("Hotels" + "Sembattu"
+    // -> "Hotels in Sembattu") instead of showing them as two separate crumbs.
+    // Only when category is the terminal crumb (no subcategory follows) and
+    // there's an actual location crumb to fold into. Keep in sync with the
+    // client mirror in client/ui-app/src/utils/breadcrumbs.js.
+    if (locationCrumbs.length > 0 && !subcategory) {
+      const lastLocationCrumb = crumbs[crumbs.length - 1];
+      crumbs[crumbs.length - 1] = { name: `${category.name} in ${lastLocationCrumb.name}`, path: pathSoFar };
+    } else {
+      crumbs.push({ name: category.name, path: pathSoFar });
+    }
   }
 
   if (subcategory) {

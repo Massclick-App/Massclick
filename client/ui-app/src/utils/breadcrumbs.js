@@ -133,7 +133,17 @@ export const buildCrumbs = ({
       locationSlug,
       categorySlug,
     });
-    crumbs.push({ name: categoryName || toTitleCase(categorySlug), path: pathSoFar });
+    const categoryLabel = categoryName || toTitleCase(categorySlug);
+    // Fold the terminal category into its location crumb ("Hotels" + "Sembattu"
+    // -> "Hotels in Sembattu") instead of showing them as two separate crumbs.
+    // Only when category is the terminal crumb (no subcategory follows) and
+    // there's an actual location crumb to fold into.
+    if (locationCrumbs.length > 0 && !subcategorySlug) {
+      const lastLocationCrumb = crumbs[crumbs.length - 1];
+      crumbs[crumbs.length - 1] = { name: `${categoryLabel} in ${lastLocationCrumb.name}`, path: pathSoFar };
+    } else {
+      crumbs.push({ name: categoryLabel, path: pathSoFar });
+    }
   }
 
   if (subcategorySlug) {
