@@ -35,9 +35,11 @@ const SANS_TAMIL = "Noto Sans Tamil";
 const TEXT_FONT_FAMILY = `'${SANS}', '${SANS_TAMIL}', sans-serif`;
 const SERIF_FONT_FAMILY = "'Noto Serif', serif";
 
-const CERT_NAVY = "#000b33";
+// Sampled from the plate so drawn text matches the artwork it sits on.
+const CERT_NAVY = "#07183f";
 const CERT_GOLD = "#c38a22";
-const CERT_GOLD_LIGHT = "#f3d371";
+const CERT_PLAQUE_GOLD = "#f1d275";
+const CERT_FOOTER_GOLD = "#e5bd5a";
 
 // Design space. The plate is authored at 2x and rendered down to this box.
 const CERT_WIDTH = 720;
@@ -47,14 +49,16 @@ const CX = CERT_WIDTH / 2;
 
 // Every per-business field, in design-space coordinates. Tune here — nothing
 // else in this file carries layout numbers.
+// Slots are derived from the plate: each one is the region cleared by
+// scripts/buildCertificatePlate.cjs, so text can never collide with artwork.
 const LAYOUT = {
-  businessName: { cy: 452, maxWidth: 540, fontSize: 36, minFontSize: 22, lineHeight: 37, maxLines: 2, weight: 850, fill: CERT_NAVY },
-  // textClearance: the diamond markers sit 36 in from each end of the plaque,
-  // so the label needs ~50 of clearance either side to stay clear of them.
-  categoryPlaque: { cy: 516, minWidth: 260, maxWidth: 430, fontSize: 19, minFontSize: 12, letterSpacing: 1.4, textClearance: 100 },
-  location: { cy: 562, maxWidth: 430, fontSize: 17, minFontSize: 12, lineHeight: 22, maxLines: 2, weight: 800, fill: CERT_NAVY },
-  qr: { x: 78, y: 758, size: 88, padding: 8 },
-  footer: { cy: 934, fontSize: 12, fill: CERT_GOLD_LIGHT },
+  businessName: { cy: 456, maxWidth: 513, fontSize: 32, minFontSize: 17, lineHeight: 34, maxLines: 2, weight: 800, fill: CERT_NAVY, letterSpacing: -0.9 },
+  // The plaque itself is part of the plate; only its label is drawn.
+  category: { cy: 522, maxWidth: 258, fontSize: 18, minFontSize: 10.5, lineHeight: 18, maxLines: 1, weight: 700, fill: CERT_PLAQUE_GOLD, fontFamily: SERIF_FONT_FAMILY, letterSpacing: 0.3 },
+  location: { cy: 559, maxWidth: 262, fontSize: 19, minFontSize: 12, lineHeight: 21, maxLines: 2, weight: 800, fill: CERT_NAVY },
+  // The white box and its gold border are on the plate; only the code is drawn.
+  qr: { x: 81, y: 770, size: 78 },
+  footer: { cy: 933, maxWidth: 310, fontSize: 12, minFontSize: 8, lineHeight: 12, maxLines: 1, weight: 400, fill: CERT_FOOTER_GOLD, fontFamily: SERIF_FONT_FAMILY },
 };
 
 const escapeXml = (value) =>
@@ -68,7 +72,8 @@ const escapeXml = (value) =>
 const readAssetDataUrl = (fileName, label) => {
   try {
     const buffer = fs.readFileSync(path.join(ASSET_DIR, fileName));
-    return `data:image/png;base64,${buffer.toString("base64")}`;
+    const mime = fileName.endsWith(".png") ? "image/png" : "image/jpeg";
+    return `data:${mime};base64,${buffer.toString("base64")}`;
   } catch (error) {
     console.warn(`[Certificate] Unable to read ${label} (${fileName}):`, error.message);
     return "";
@@ -76,9 +81,10 @@ const readAssetDataUrl = (fileName, label) => {
 };
 
 // Read once at boot — the plates are a few hundred KB each and never change.
+// Authored at exactly the output resolution so rendering is a 1:1 blit.
 const PLATES = {
-  verified: readAssetDataUrl("plate-verified.png", "verified certificate plate"),
-  trust: readAssetDataUrl("plate-trust.png", "trust certificate plate"),
+  verified: readAssetDataUrl("plate-verified.jpg", "verified certificate plate"),
+  trust: readAssetDataUrl("plate-trust.jpg", "trust certificate plate"),
 };
 
 const slugifyCertificateValue = (value = "") =>
@@ -250,28 +256,6 @@ const textBlockMarkup = ({ lines, fontSize, cy, lineHeight, weight, fill, fontFa
     .join("\n  ");
 };
 
-// ---- the one ornament we still draw ------------------------------------------
-
-const smallDiamond = (cx, cy, size = 5, fill = CERT_GOLD) =>
-  `<path d="M${cx} ${cy - size} l${size} ${size} l-${size} ${size} l-${size} -${size} z" fill="${fill}"/>`;
-
-// The category plaque is drawn rather than baked into the plate because its
-// width tracks the label length.
-const plaqueMarkup = (cy, width, label, fontSize, letterSpacing) => {
-  const height = 41;
-  const x = CX - width / 2;
-  const y = cy - height / 2;
-
-  return `
-    <g filter="url(#softShadow)">
-      <path d="M${x + 22} ${y} H${x + width - 22} L${x + width} ${cy} L${x + width - 22} ${y + height} H${x + 22} L${x} ${cy} Z" fill="${CERT_NAVY}" stroke="${CERT_GOLD_LIGHT}" stroke-width="2"/>
-      <path d="M${x + 31} ${y + 6} H${x + width - 31} L${x + width - 12} ${cy} L${x + width - 31} ${y + height - 6} H${x + 31} L${x + 12} ${cy} Z" fill="none" stroke="${CERT_GOLD}" stroke-width="1"/>
-      ${smallDiamond(x + 36, cy, 4, CERT_GOLD_LIGHT)}
-      ${smallDiamond(x + width - 36, cy, 4, CERT_GOLD_LIGHT)}
-      <text x="${CX}" y="${cy + fontSize * 0.36}" text-anchor="middle" font-family="${SERIF_FONT_FAMILY}" font-size="${fontSize}" font-weight="700" letter-spacing="${letterSpacing}" fill="${CERT_GOLD_LIGHT}">${escapeXml(label)}</text>
-    </g>`;
-};
-
 const qrMarkup = async ({ url, x, y, size, color }) => {
   try {
     const raw = await QRCode.toString(url, {
@@ -305,37 +289,19 @@ export const buildCertificateSvg = async (business = {}, type = "verified") => {
   const issuedDate = formatCertificateDate(business.certificates?.generatedAt || new Date());
 
   const nameBlock = await fitTextBlock(rawBusinessName, LAYOUT.businessName);
+  const categoryBlock = await fitTextBlock(categoryLabel, LAYOUT.category);
   const locationBlock = await fitTextBlock(rawLocation, LAYOUT.location);
-
-  // Grow the plaque to fit its label, then shrink the label if the plaque has
-  // hit its maximum width.
-  const plaqueCfg = LAYOUT.categoryPlaque;
-  const plaqueTextOptions = {
-    fontSize: plaqueCfg.fontSize,
-    fontFamily: SERIF_FONT_FAMILY,
-    weight: 700,
-    letterSpacing: plaqueCfg.letterSpacing,
-  };
-  const labelWidth = await measureTextWidth(categoryLabel, plaqueTextOptions);
-  const plaqueWidth = Math.min(
-    plaqueCfg.maxWidth,
-    Math.max(plaqueCfg.minWidth, labelWidth + plaqueCfg.textClearance),
+  const footerBlock = await fitTextBlock(
+    `Certificate No. ${certNo}  |  Issued ${issuedDate}`,
+    LAYOUT.footer,
   );
-  const availableLabelWidth = plaqueWidth - plaqueCfg.textClearance;
-  const plaqueFontSize =
-    labelWidth <= availableLabelWidth
-      ? plaqueCfg.fontSize
-      : Math.max(
-          plaqueCfg.minFontSize,
-          Math.floor(plaqueCfg.fontSize * (availableLabelWidth / labelWidth) * 2) / 2,
-        );
 
   const qr = LAYOUT.qr;
   const qrSvg = await qrMarkup({
     url: buildCertificateVerifyUrl(business),
-    x: qr.x + qr.padding,
-    y: qr.y + qr.padding,
-    size: qr.size - qr.padding * 2,
+    x: qr.x,
+    y: qr.y,
+    size: qr.size,
     color: CERT_NAVY,
   });
 
@@ -348,24 +314,17 @@ export const buildCertificateSvg = async (business = {}, type = "verified") => {
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${CERT_WIDTH}" height="${CERT_HEIGHT}" viewBox="0 0 ${CERT_WIDTH} ${CERT_HEIGHT}">
-  <defs>
-    <filter id="softShadow" x="-25%" y="-35%" width="150%" height="180%">
-      <feDropShadow dx="0" dy="5" stdDeviation="4" flood-color="#00051f" flood-opacity="0.14"/>
-    </filter>
-  </defs>
-
   ${background}
 
   ${textBlockMarkup({ ...LAYOUT.businessName, ...nameBlock })}
 
-  ${plaqueMarkup(plaqueCfg.cy, plaqueWidth, categoryLabel, plaqueFontSize, plaqueCfg.letterSpacing)}
+  ${textBlockMarkup({ ...LAYOUT.category, ...categoryBlock })}
 
   ${textBlockMarkup({ ...LAYOUT.location, ...locationBlock })}
 
-  <rect x="${qr.x}" y="${qr.y}" width="${qr.size}" height="${qr.size}" rx="8" fill="#ffffff" stroke="${CERT_GOLD}" stroke-width="1.5"/>
   ${qrSvg}
 
-  <text x="${CX}" y="${LAYOUT.footer.cy}" text-anchor="middle" font-family="${TEXT_FONT_FAMILY}" font-size="${LAYOUT.footer.fontSize}" font-weight="700" fill="${LAYOUT.footer.fill}">Certificate No. ${escapeXml(certNo)}  |  Issued ${escapeXml(issuedDate)}</text>
+  ${textBlockMarkup({ ...LAYOUT.footer, ...footerBlock })}
 </svg>`;
 };
 
