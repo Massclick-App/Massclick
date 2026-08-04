@@ -1,11 +1,17 @@
-import { awardMilestone, createRewardClaim, deleteRule, getWallet, listAllClaims, listCustomerClaims, listRewardBusinesses, listRewardBusinessLocations, listRewardCategoryOptions, listRules, redeemReward, reviewRewardClaim, REWARD_CATALOG, saveRule } from "../../helper/rewards/rewardHelper.js";
+import { awardMilestone, createRewardClaim, deleteRule, getRewardMemberProfile, getWallet, listAllClaims, listCustomerClaims, listRewardBusinesses, listRewardBusinessLocations, listRewardCategoryOptions, listRewardLeaderboard, listRules, redeemReward, reviewRewardClaim, REWARD_CATALOG, saveRule } from "../../helper/rewards/rewardHelper.js";
 import { emitToRoom } from "../../websocket/roomManager.js";
 import { buildRoom, WS_EVENTS } from "../../websocket/constants.js";
 const respond = (res, work) => work.then((data) => res.send(data)).catch((error) => res.status(400).send({ message: error.message }));
 const actorKey = (req) => req.authActor?.mobile || (req.authActor?.actorType === "customer" ? req.authActor?.subjectId : null) || req.params.customerKey || req.body.customerKey;
+const reviewerIdentity = (actor = {}) => ({
+  id: String(actor.subjectId || ""),
+  label: actor.userName || actor.emailId || actor.email || "Administrator",
+});
 export const requireAdmin = (req, res, next) => req.authActor?.actorType === "admin" ? next() : res.status(403).send({ message: "Administrator access required" });
 export const rewardCatalogAction = (req, res) => res.send(REWARD_CATALOG);
 export const walletAction = (req, res) => respond(res, getWallet(actorKey(req)));
+export const leaderboardAction = (req, res) => respond(res, listRewardLeaderboard({ page: req.query.page, limit: req.query.limit }));
+export const rewardMemberAction = (req, res) => respond(res, getRewardMemberProfile(req.params.memberKey));
 export const redeemAction = (req, res) => respond(res, redeemReward({ customerKey: actorKey(req), rewardCode: req.body.rewardCode }));
 export const rulesAction = (req, res) => respond(res, listRules());
 export const categoryOptionsAction = (req, res) => respond(res, listRewardCategoryOptions());
@@ -39,7 +45,7 @@ export const allClaimsAction = (req, res) => respond(res, listAllClaims({
 }));
 export const reviewClaimAction = async (req, res) => {
   try {
-    const claim = await reviewRewardClaim(req.params.id, req.body, req.authActor?.email || req.authActor?.subjectId || "admin");
+    const claim = await reviewRewardClaim(req.params.id, req.body, reviewerIdentity(req.authActor));
     emitToRoom(buildRoom.admin(), WS_EVENTS.REWARD_CLAIM_CHANGED, {
       action: "reviewed",
       claimId: claim._id,

@@ -1,6 +1,6 @@
 import express from "express";
 import { createHttpAuthMiddleware } from "../auth/authMiddleware.js";
-import { allClaimsAction, awardAction, businessLocationsAction, categoryOptionsAction, claimBusinessesAction, createClaimAction, customerClaimsAction, deleteRuleAction, redeemAction, requireAdmin, reviewClaimAction, rewardCatalogAction, rulesAction, saveRuleAction, walletAction } from "../controller/rewards/rewardController.js";
+import { allClaimsAction, awardAction, businessLocationsAction, categoryOptionsAction, claimBusinessesAction, createClaimAction, customerClaimsAction, deleteRuleAction, leaderboardAction, redeemAction, requireAdmin, reviewClaimAction, rewardCatalogAction, rewardMemberAction, rulesAction, saveRuleAction, walletAction } from "../controller/rewards/rewardController.js";
 const router = express.Router();
 const catalogAuth = createHttpAuthMiddleware({ allowedActorTypes: ["admin", "customer", "publicClient"], source: "rewards-http" });
 const walletAuth = createHttpAuthMiddleware({ allowedActorTypes: ["admin", "customer"], source: "rewards-http" });
@@ -8,6 +8,8 @@ router.get("/api/rewards/catalog", catalogAuth, rewardCatalogAction);
 router.get("/api/rewards/business-locations", businessLocationsAction);
 router.get("/api/rewards/businesses", claimBusinessesAction);
 router.get("/api/rewards/wallet", walletAuth, walletAction);
+router.get("/api/rewards/leaderboard", walletAuth, leaderboardAction);
+router.get("/api/rewards/members/:memberKey", walletAuth, rewardMemberAction);
 router.get("/api/rewards/wallet/:customerKey", walletAuth, walletAction);
 router.post("/api/rewards/redeem", walletAuth, redeemAction);
 router.post("/api/rewards/claims", walletAuth, createClaimAction);

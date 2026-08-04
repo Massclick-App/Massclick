@@ -6,6 +6,8 @@ export const fetchRewardWallet = async (customerKey) => {
   const response = await axiosInstance.get(`${API_URL}/rewards/wallet/${encodeURIComponent(customerKey)}`);
   return response.data;
 };
+export const fetchRewardLeaderboard = async ({ page = 1, limit = 10 } = {}) => (await axiosInstance.get(`${API_URL}/rewards/leaderboard`, { params: { page, limit } })).data;
+export const fetchRewardMemberProfile = async (memberKey) => (await axiosInstance.get(`${API_URL}/rewards/members/${encodeURIComponent(memberKey)}`)).data;
 
 export const requestRewardRedemption = async (customerKey, rewardCode) => {
   const response = await axiosInstance.post(`${API_URL}/rewards/redeem`, { customerKey, rewardCode });
