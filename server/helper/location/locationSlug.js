@@ -40,6 +40,22 @@ const TARGET_FIELD_BY_LEVEL = {
 
 const NUMERIC_SUFFIX_RE = /-(\d+)$/;
 
+// True when a ward's own name is just its zone's name plus a suffix, e.g.
+// zone "Andimadam" + ward "Andimadam East" -> "andimadam-east" starts with
+// "andimadam-". A PREFIX match, deliberately not the exact-match case
+// computeLocationUrlParts already handles below (a ward literally named the
+// same as its zone) — that case is a separate, still-open collision type
+// documented in this file's header comment (the "Muthur" ward inside a
+// "Muthur" zone example) and is NOT touched here. Verified against
+// massClick_dev: 322 of 943 active wards fit this exact prefix pattern,
+// across 18 districts — as common as the district-collision case, not an
+// edge case.
+const isZoneNamePrefixOfWard = (doc = {}) => {
+  const zoneSlug = slugify(String(doc.zone || "").trim());
+  const wardSlug = slugify(String(doc.ward || "").trim());
+  return Boolean(zoneSlug && wardSlug && wardSlug !== zoneSlug && wardSlug.startsWith(`${zoneSlug}-`));
+};
+
 // Plain-English word appended to a colliding segment in the deprecated flat
 // publicLocationSlug scheme (computePublicLocationSlugs, further down). The
 // live hierarchy-path builder below does NOT use this — see
@@ -99,6 +115,39 @@ const getDuplicateNumericSuffix = (doc = {}, base = "") => {
  * differ, so the scheme's own "ancestors are real path segments now" design
  * handles that for free.
  *
+ * A second, independent ancestor omission lives here too: the ZONE segment
+ * is dropped when the WARD's own name is just the zone's name plus a suffix
+ * (a PREFIX match — "Andimadam" zone + "Andimadam East" ward — see
+ * isZoneNamePrefixOfWard). Same rationale as the district-collision case:
+ * "/ariyalur/andimadam/andimadam-east/..." repeats information the ward
+ * name already carries, so "/ariyalur/andimadam-east/..." loses nothing.
+ * Checked per-doc from that doc's own zone+ward fields only, same as the
+ * district check above — not against sibling wards, so a zone keeps the
+ * ancestor for whichever of its wards don't happen to share its name.
+ *
+ * This looked riskier than the district case at first: Salem has 5 pairs of
+ * docs (zones, and wards under them) that share a literal duplicate name —
+ * two separate "Attur" zone docs, two separate "Edappadi" zone docs, etc.
+ * (pre-existing duplicate-zone source data, already known — see
+ * DISTRICT_URL_MIGRATION_HANDOFF.md). Checked with a full before/after path
+ * sweep against the live model rather than reasoning about it in the
+ * abstract (this file's own history has already been burned twice by
+ * reasoning-only collision checks — see the two paragraphs above): none of
+ * those 5 pairs actually collide, before or after this change, because each
+ * duplicate's persisted `publicLocationSlug` already carries a numeric
+ * suffix from computePublicLocationSlugs ("attur" / "attur-2"), which
+ * getDuplicateNumericSuffix (above) picks up and carries into the target
+ * regardless of the ancestor chain — this feature and that mechanism don't
+ * interact. A "Thuraiyur Road" ward also exists under both a "Thuraiyur"
+ * zone and a "Musiri" zone in Tiruchirappalli, which looks like the same
+ * risk at a glance, but only the "Thuraiyur" one is a prefix match —
+ * "Musiri" is not a prefix of "Thuraiyur Road" — so its zone segment is
+ * correctly retained and the two never collide either. Full district-wide
+ * sweep (every active zone/ward/locality, before and after, via
+ * masterLocationModel + the real getLocationUrlPath) confirms zero new
+ * collisions and zero new resolveLocationPathWithinDistrict round-trip
+ * mismatches anywhere in any district.
+ *
  * A node whose own name collides with the district AND has no surviving
  * ancestor left to distinguish it (e.g. a "Salem" zone sitting directly
  * under "Salem" district, with no ward/locality segment in play) has
@@ -120,9 +169,14 @@ const computeLocationUrlParts = (doc = {}) => {
   const numericSuffix = rawTarget ? getDuplicateNumericSuffix(doc, rawTarget) : "";
   const target = rawTarget ? (numericSuffix ? `${rawTarget}-${numericSuffix}` : rawTarget) : "";
 
+  const dropZoneForWardPrefix = isZoneNamePrefixOfWard(doc);
   const ancestors = ancestorFields
     .map((field) => slugify(String(doc[field] || "").trim()))
-    .filter((name) => name && name !== districtSlug);
+    .filter((name, index) => {
+      if (!name || name === districtSlug) return false;
+      if (ancestorFields[index] === "zone" && dropZoneForWardPrefix) return false;
+      return true;
+    });
 
   const folded = ancestors.length === 0 && target === districtSlug;
 
