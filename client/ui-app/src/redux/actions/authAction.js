@@ -53,8 +53,9 @@ export const login = (userName, password) => async (dispatch) => {
     });
 
     // Save credential for Android App Links credential sharing
-    if (navigator.credentials) {
+    if (navigator.credentials && window.PasswordCredential) {
       try {
+        // eslint-disable-next-line no-undef
         const credential = new PasswordCredential({
           id: userName,
           password: password,
