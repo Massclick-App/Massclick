@@ -10,12 +10,28 @@ import { logAuthAuditEvent } from "../../auth/authAuditStore.js";
 import { resolveAuthActorFromToken } from "../../auth/authResolver.js";
 import { timingSafeEqual } from "node:crypto";
 import { awardWelcomeBonus, getWallet, tierFor, WELCOME_BONUS_POINTS } from "../../helper/rewards/rewardHelper.js";
+import { parsePhoneNumberFromString } from "libphonenumber-js/max";
 
 const normalizeIndianMobile = (value) => {
   const digits = String(value || "").replace(/\D/g, "");
   return digits.length === 12 && digits.startsWith("91")
     ? digits.slice(2)
     : digits;
+};
+
+// Indian users keep the existing 10-digit database identity for backwards
+// compatibility. Other countries use their full E.164 digits so two users in
+// different countries can never collide.
+const normalizeLoginMobile = (value) => {
+  const raw = String(value || "").trim();
+  const phone = parsePhoneNumberFromString(raw, raw.startsWith("+") ? undefined : "IN");
+  if (!phone?.isValid()) return null;
+
+  return {
+    country: phone.country,
+    cleanNumber: phone.country === "IN" ? phone.nationalNumber : phone.number.slice(1),
+    msg91Number: phone.number.slice(1),
+  };
 };
 
 const createHttpError = (message, statusCode) => {
@@ -42,7 +58,8 @@ const getGooglePlayReviewConfig = () => {
 };
 
 const getGooglePlayReviewRequest = (phoneNumber) => {
-  const cleanNumber = normalizeIndianMobile(phoneNumber);
+  const normalized = normalizeLoginMobile(phoneNumber);
+  const cleanNumber = normalized?.cleanNumber || "";
   const config = getGooglePlayReviewConfig();
   const isReviewer = Boolean(config.phone) && cleanNumber === config.phone;
 
@@ -53,7 +70,7 @@ const getGooglePlayReviewRequest = (phoneNumber) => {
     );
   }
 
-  return { cleanNumber, config, isReviewer };
+  return { ...normalized, cleanNumber, config, isReviewer };
 };
 
 const verifyGooglePlayReviewOtp = (providedOtp, expectedOtp) => {
@@ -81,13 +98,13 @@ const handleSendOtp = async (req, res, sendRealOtp) => {
   }
 
   try {
-    const { cleanNumber, isReviewer } =
+    const { cleanNumber, msg91Number, isReviewer } =
       getGooglePlayReviewRequest(phoneNumber);
 
-    if (!/^\d{10}$/.test(cleanNumber)) {
+    if (!msg91Number) {
       return res.status(400).json({
         success: false,
-        message: "Invalid phone number. Must be 10 digits."
+        message: "Enter a valid mobile number for the selected country."
       });
     }
 
@@ -107,8 +124,8 @@ const handleSendOtp = async (req, res, sendRealOtp) => {
       existingUser = await User.findOne({ mobileNumber1: cleanNumber });
       const settings = await getSettings();
       result = settings.otp_real_enabled
-        ? await sendRealOtp(cleanNumber)
-        : await fakesendOtp(cleanNumber);
+        ? await sendRealOtp(msg91Number)
+        : await fakesendOtp(msg91Number);
     }
 
     logAuthAuditEvent({
@@ -173,13 +190,13 @@ export const verifyOtpAction = async (req, res) => {
       return res.status(400).json({ success: false, message: "Missing phone number or OTP." });
     }
 
-    const { cleanNumber, config, isReviewer } =
+    const { cleanNumber, msg91Number, country, config, isReviewer } =
       getGooglePlayReviewRequest(phoneNumber);
 
-    if (!/^\d{10}$/.test(cleanNumber)) {
+    if (!msg91Number) {
       return res.status(400).json({
         success: false,
-        message: "Invalid phone number. Must be 10 digits."
+        message: "Enter a valid mobile number for the selected country."
       });
     }
 
@@ -189,9 +206,9 @@ export const verifyOtpAction = async (req, res) => {
     } else {
       settings = await getSettings();
       if (settings.otp_real_enabled) {
-        await verifyOtp(cleanNumber, otp.trim());
+        await verifyOtp(msg91Number, otp.trim());
       } else {
-        await fakeverifyOtp(cleanNumber, otp.trim());
+        await fakeverifyOtp(msg91Number, otp.trim());
       }
     }
 
@@ -242,12 +259,12 @@ export const verifyOtpAction = async (req, res) => {
     }
 
     const mobileRegex = new RegExp(`\\b${cleanNumber}\\b`);
-    const matchedBusiness = await businessListModel.findOne({
+    const matchedBusiness = country === "IN" ? await businessListModel.findOne({
       $or: [
         { contact: cleanNumber },
         { contactList: { $regex: mobileRegex } }
       ]
-    }).lean();
+    }).lean() : null;
 
 
     if (matchedBusiness) {
