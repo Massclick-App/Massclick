@@ -9,19 +9,17 @@
  * exactly as designed.
  *
  * Usage:
- *   node server/scripts/buildCertificatePlate.cjs <source-artwork> <output.jpg>
+ *   node server/scripts/buildCertificatePlate.cjs <source-artwork> <output.jpg> [verified|trust]
  *
- * The regions below are in the 1086x1448 reference artwork coordinate space.
- * They are scaled to the actual source image, so a same-ratio redraw at a
- * different resolution can still be cut. If the artwork is ever redrawn,
- * re-check the regions visually before trusting the output.
+ * Region coordinates are kept per template in that template's reference
+ * artwork coordinate space. They are scaled to the actual source image, so a
+ * same-ratio redraw at a different resolution can still be cut. If the artwork
+ * is ever redrawn, re-check the regions visually before trusting the output.
  */
 
 const path = require("path");
 const sharp = require("sharp");
 
-const REF_W = 1086;
-const REF_H = 1448;
 const OUT_W = 1440;
 const OUT_H = 1920;
 
@@ -29,19 +27,43 @@ const OUT_H = 1920;
 // region. Otherwise the region is bridged: every row is interpolated between
 // the real pixels just outside its left and right edges, which matches the
 // paper's shading at the seams instead of stamping a flat patch over it.
-const REGIONS = [
-  { name: "businessLogo", x: 394, y: 642, w: 298, h: 202 },
-  { name: "businessName", x: 254, y: 828, w: 578, h: 78 },
-  { name: "category", x: 385, y: 924, w: 322, h: 42, flat: [3, 19, 55] },
-  { name: "location", x: 390, y: 977, w: 306, h: 48 },
-  // Only the modules — the white box and its gold border stay on the plate.
-  { name: "qrModules", x: 116, y: 1199, w: 128, h: 130, flat: [255, 255, 255] },
-  { name: "footer", x: 285, y: 1405, w: 520, h: 36, stripY: 1445 },
-];
+const TEMPLATE_CONFIGS = {
+  verified: {
+    refW: 1086,
+    refH: 1448,
+    regions: [
+      { name: "businessLogo", x: 394, y: 642, w: 298, h: 202 },
+      { name: "stars", x: 466, y: 155, w: 156, h: 48 },
+      { name: "businessName", x: 254, y: 828, w: 578, h: 78 },
+      { name: "category", x: 385, y: 924, w: 322, h: 42, flat: [3, 19, 55] },
+      { name: "location", x: 390, y: 977, w: 306, h: 48 },
+      // Only the modules; the white box and its gold border stay on the plate.
+      { name: "qrModules", x: 116, y: 1199, w: 128, h: 130, flat: [255, 255, 255] },
+      { name: "footer", x: 285, y: 1405, w: 520, h: 36, stripY: 1445 },
+    ],
+  },
+  trust: {
+    refW: 1122,
+    refH: 1402,
+    regions: [
+      { name: "businessLogo", x: 430, y: 608, w: 264, h: 160 },
+      { name: "businessName", x: 300, y: 720, w: 520, h: 96 },
+      { name: "category", x: 360, y: 820, w: 402, h: 54, flat: [2, 29, 55] },
+      { name: "location", x: 455, y: 878, w: 220, h: 42 },
+      { name: "qrModules", x: 118, y: 1119, w: 113, h: 111, flat: [255, 255, 255] },
+      { name: "footer", x: 250, y: 1342, w: 648, h: 58, stripY: 1398 },
+    ],
+  },
+};
 
-const scaleRegion = (region, sourceWidth, sourceHeight) => {
-  const scaleX = sourceWidth / REF_W;
-  const scaleY = sourceHeight / REF_H;
+const inferTemplate = (source, output, explicitTemplate) => {
+  const hint = `${explicitTemplate || ""} ${source || ""} ${output || ""}`.toLowerCase();
+  return hint.includes("trust") ? "trust" : "verified";
+};
+
+const scaleRegion = (region, sourceWidth, sourceHeight, template) => {
+  const scaleX = sourceWidth / template.refW;
+  const scaleY = sourceHeight / template.refH;
   const scaled = {
     ...region,
     x: Math.round(region.x * scaleX),
@@ -120,15 +142,17 @@ const buildPatch = (region, at) => {
 };
 
 const main = async () => {
-  const [source, output] = process.argv.slice(2);
+  const [source, output, explicitTemplate] = process.argv.slice(2);
   if (!source || !output) {
-    console.error("usage: node buildCertificatePlate.cjs <source-artwork> <output.jpg>");
+    console.error("usage: node buildCertificatePlate.cjs <source-artwork> <output.jpg> [verified|trust]");
     process.exit(1);
   }
 
+  const templateName = inferTemplate(source, output, explicitTemplate);
+  const template = TEMPLATE_CONFIGS[templateName];
   const meta = await sharp(source).metadata();
-  if (Math.abs((meta.width / meta.height) - (REF_W / REF_H)) > 0.001) {
-    console.error(`source must use the ${REF_W}:${REF_H} certificate ratio, got ${meta.width}x${meta.height}`);
+  if (Math.abs((meta.width / meta.height) - (template.refW / template.refH)) > 0.001) {
+    console.error(`source must use the ${template.refW}:${template.refH} ${templateName} certificate ratio, got ${meta.width}x${meta.height}`);
     process.exit(1);
   }
 
@@ -138,8 +162,8 @@ const main = async () => {
     return [data[i], data[i + 1], data[i + 2]];
   };
 
-  const patches = REGIONS.map((referenceRegion) => {
-    const region = scaleRegion(referenceRegion, meta.width, meta.height);
+  const patches = template.regions.map((referenceRegion) => {
+    const region = scaleRegion(referenceRegion, meta.width, meta.height, template);
     const { buf, note } = buildPatch(region, at);
     console.log(`  ${region.name.padEnd(13)} ${note}`);
     return {
