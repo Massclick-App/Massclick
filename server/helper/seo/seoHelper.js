@@ -158,6 +158,11 @@ export const createSeo = async (data) => {
       data.locationKey = locationKey;
     }
 
+    // Ensure district is normalized if provided
+    if (data.district) {
+      data.district = String(data.district).toLowerCase().trim();
+    }
+
     const seo = await seoModel.create(data);
 
     return seo;
@@ -237,19 +242,22 @@ export const getSeoMeta = async ({ pageType, category, location, district }) => 
       : null;
 
     // ===============================
-    // 🔥 1. EXACT MATCH (CATEGORY + LOCATION)
+    // 🔥 1. EXACT MATCH (CATEGORY + LOCATION + DISTRICT)
     // ===============================
     if (safeCategory && safeLocation) {
-      await logger.seoDebug('Step 1: Trying EXACT match', { pageType: safePageType, category: safeCategory, location: safeLocation });
-      seo = await seoModel.findOne({
+      const query1 = {
         pageType: safePageType,
         category: safeCategory,
         location: safeLocation,
         isActive: true,
-      }).lean();
+      };
+      if (safeDistrict) query1.district = safeDistrict;
+
+      await logger.seoDebug('Step 1: Trying EXACT match', { pageType: safePageType, category: safeCategory, location: safeLocation, district: safeDistrict });
+      seo = await seoModel.findOne(query1).lean();
 
       if (seo) {
-        await logger.seoDebug('Step 1: FOUND', { title: seo.title, category: seo.category, location: seo.location });
+        await logger.seoDebug('Step 1: FOUND', { title: seo.title, category: seo.category, location: seo.location, district: seo.district });
         await setCache(cacheKey, seo, 86400); // Cache for 24 hours
         return seo;
       }
@@ -257,19 +265,22 @@ export const getSeoMeta = async ({ pageType, category, location, district }) => 
     }
 
     // ===============================
-    // 🔥 2. FLEXIBLE MATCH (CATEGORY + LOCATION)
+    // 🔥 2. FLEXIBLE MATCH (CATEGORY + LOCATION + DISTRICT)
     // ===============================
     if (safeCategory && safeLocation) {
-      await logger.seoDebug('Step 2: Trying FLEXIBLE match', { pageType: safePageType, categoryRegex: flexibleCategory, locationRegex: flexibleLocation });
-      seo = await seoModel.findOne({
+      const query2 = {
         pageType: safePageType,
         category: { $regex: flexibleCategory, $options: "i" },
         location: { $regex: flexibleLocation, $options: "i" },
         isActive: true,
-      }).lean();
+      };
+      if (safeDistrict) query2.district = safeDistrict;
+
+      await logger.seoDebug('Step 2: Trying FLEXIBLE match', { pageType: safePageType, categoryRegex: flexibleCategory, locationRegex: flexibleLocation, district: safeDistrict });
+      seo = await seoModel.findOne(query2).lean();
 
       if (seo) {
-        await logger.seoDebug('Step 2: FOUND', { title: seo.title, category: seo.category, location: seo.location });
+        await logger.seoDebug('Step 2: FOUND', { title: seo.title, category: seo.category, location: seo.location, district: seo.district });
         await setCache(cacheKey, seo, 86400); // Cache for 24 hours
         return seo;
       }
@@ -277,18 +288,21 @@ export const getSeoMeta = async ({ pageType, category, location, district }) => 
     }
 
     // ===============================
-    // 🔥 3. CATEGORY ONLY (ONLY if NO location given)
+    // 🔥 3. CATEGORY ONLY (ONLY if NO location given, but WITH district if provided)
     // ===============================
     if (safeCategory && !safeLocation) {
-      await logger.seoDebug('Step 3: Trying CATEGORY ONLY (no location given)', { pageType: safePageType, category: safeCategory });
-      seo = await seoModel.findOne({
+      const query3 = {
         pageType: safePageType,
         category: safeCategory,
         isActive: true,
-      }).lean();
+      };
+      if (safeDistrict) query3.district = safeDistrict;
+
+      await logger.seoDebug('Step 3: Trying CATEGORY ONLY (no location given)', { pageType: safePageType, category: safeCategory, district: safeDistrict });
+      seo = await seoModel.findOne(query3).lean();
 
       if (seo) {
-        await logger.seoDebug('Step 3: FOUND', { title: seo.title, category: seo.category, location: seo.location });
+        await logger.seoDebug('Step 3: FOUND', { title: seo.title, category: seo.category, location: seo.location, district: seo.district });
         await setCache(cacheKey, seo, 86400); // Cache for 24 hours
         return seo;
       }
@@ -296,18 +310,21 @@ export const getSeoMeta = async ({ pageType, category, location, district }) => 
     }
 
     // ===============================
-    // 🔥 4. FLEXIBLE CATEGORY ONLY
+    // 🔥 4. FLEXIBLE CATEGORY ONLY (WITH district if provided)
     // ===============================
     if (safeCategory && !safeLocation) {
-      await logger.seoDebug('Step 4: Trying FLEXIBLE CATEGORY ONLY (no location given)', { pageType: safePageType, categoryRegex: flexibleCategory });
-      seo = await seoModel.findOne({
+      const query4 = {
         pageType: safePageType,
         category: { $regex: flexibleCategory, $options: "i" },
         isActive: true,
-      }).lean();
+      };
+      if (safeDistrict) query4.district = safeDistrict;
+
+      await logger.seoDebug('Step 4: Trying FLEXIBLE CATEGORY ONLY (no location given)', { pageType: safePageType, categoryRegex: flexibleCategory, district: safeDistrict });
+      seo = await seoModel.findOne(query4).lean();
 
       if (seo) {
-        await logger.seoDebug('Step 4: FOUND', { title: seo.title, category: seo.category, location: seo.location });
+        await logger.seoDebug('Step 4: FOUND', { title: seo.title, category: seo.category, location: seo.location, district: seo.district });
         await setCache(cacheKey, seo, 86400); // Cache for 24 hours
         return seo;
       }
@@ -404,12 +421,23 @@ export const updateSeo = async (id, data) => {
     data.locationKey = locationKey;
   }
 
-  const exists = await seoModel.findOne({
+  // Ensure district is normalized if provided
+  if (data.district) {
+    data.district = String(data.district).toLowerCase().trim();
+  }
+
+  const duplicateQuery = {
     _id: { $ne: id },
     pageType: data.pageType,
     category: data.category,
     locationKey: data.locationKey
-  });
+  };
+
+  if (data.district) {
+    duplicateQuery.district = data.district;
+  }
+
+  const exists = await seoModel.findOne(duplicateQuery);
 
   if (exists)
     throw new Error("SEO already exists for this category and location");

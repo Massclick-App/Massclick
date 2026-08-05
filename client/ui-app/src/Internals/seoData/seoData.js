@@ -29,6 +29,7 @@ export default function SeoData() {
   const [formData, setFormData] = useState({
     pageType: "",
     location: "",
+    district: "",
     title: "",
     description: "",
     keywords: "",
@@ -107,6 +108,7 @@ export default function SeoData() {
       pageType: "",
       category: "",
       location: "",
+      district: "",
       title: "",
       description: "",
       keywords: "",
@@ -156,6 +158,7 @@ export default function SeoData() {
       pageType: row.pageType || "",
       category: row.category || "",
       location: row.location || "",
+      district: row.district || "",
       title: row.title || "",
       description: row.description || "",
       keywords: row.keywords || "",
@@ -194,6 +197,7 @@ export default function SeoData() {
     pageType: seo.pageType,
     category: seo.category || "",
     location: seo.location || "",
+    district: seo.district || "",
     title: seo.title || "",
     description: seo.description || "",
     keywords: seo.keywords || "",
@@ -209,6 +213,9 @@ export default function SeoData() {
   }, {
     id: "location",
     label: "Location"
+  }, {
+    id: "district",
+    label: "District"
   }, {
     id: "title",
     label: "Meta Title"
@@ -230,6 +237,10 @@ export default function SeoData() {
     name: "pageType"
   },
   // { label: "Category", name: "category" },
+  {
+    label: "District",
+    name: "district"
+  },
   {
     label: "Meta Title",
     name: "title"
