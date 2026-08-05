@@ -21,7 +21,7 @@ import { buildBusinessDetailsUrl, getBusinessId } from "./businessPublicUrlHelpe
 // Because the plate is fixed, every field below sits in a fixed slot and
 // long values shrink to fit rather than pushing the layout down.
 
-export const CERTIFICATE_TEMPLATE_VERSION = 17;
+export const CERTIFICATE_TEMPLATE_VERSION = 18;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -40,6 +40,7 @@ const SERIF_FONT_FAMILY = "'Noto Serif', serif";
 const CERT_NAVY = "#07183f";
 const CERT_GOLD = "#c38a22";
 const CERT_PLAQUE_GOLD = "#f1d275";
+const CERT_TRUST_ORANGE = "#ff8a2a";
 const CERT_FOOTER_GOLD = "#e5bd5a";
 const CERT_PAPER = "#fffdf7";
 
@@ -53,15 +54,25 @@ const CX = CERT_WIDTH / 2;
 // else in this file carries layout numbers.
 // Slots are derived from the plate: each one is the region cleared by
 // scripts/buildCertificatePlate.cjs, so text can never collide with artwork.
-const LAYOUT = {
-  businessLogo: { cx: CX, cy: 495, maxLogoWidth: 72, maxLogoHeight: 74, paddingX: 17, paddingY: 13, minFrameWidth: 96, minFrameHeight: 88, maxFrameWidth: 134, maxFrameHeight: 112 },
-  businessName: { cy: 574, maxWidth: 438, fontSize: 26, minFontSize: 15, lineHeight: 28, maxLines: 2, weight: 800, fill: CERT_NAVY, letterSpacing: -0.7 },
-  // The plaque itself is part of the plate; only its label is drawn.
-  category: { cy: 625, maxWidth: 275, fontSize: 17, minFontSize: 10.5, lineHeight: 18, maxLines: 1, weight: 700, fill: CERT_PLAQUE_GOLD, fontFamily: SERIF_FONT_FAMILY, letterSpacing: 0.3 },
-  location: { cy: 662, maxWidth: 245, fontSize: 17, minFontSize: 11, lineHeight: 19, maxLines: 2, weight: 800, fill: CERT_NAVY },
-  // The white box and its gold border are on the plate; only the code is drawn.
-  qr: { x: 79, y: 797, size: 82 },
-  footer: { cy: 943, maxWidth: 360, fontSize: 12, minFontSize: 8, lineHeight: 12, maxLines: 1, weight: 400, fill: CERT_FOOTER_GOLD, fontFamily: SERIF_FONT_FAMILY },
+const CERTIFICATE_LAYOUTS = {
+  verified: {
+    businessLogo: { cx: CX, cy: 495, maxLogoWidth: 72, maxLogoHeight: 74, paddingX: 17, paddingY: 13, minFrameWidth: 96, minFrameHeight: 88, maxFrameWidth: 134, maxFrameHeight: 112 },
+    businessName: { cy: 574, maxWidth: 438, fontSize: 26, minFontSize: 15, lineHeight: 28, maxLines: 2, weight: 800, fill: CERT_NAVY, letterSpacing: -0.7 },
+    // The plaque itself is part of the plate; only its label is drawn.
+    category: { cy: 625, maxWidth: 275, fontSize: 17, minFontSize: 10.5, lineHeight: 18, maxLines: 1, weight: 700, fill: CERT_PLAQUE_GOLD, fontFamily: SERIF_FONT_FAMILY, letterSpacing: 0.3 },
+    location: { cy: 662, maxWidth: 245, fontSize: 17, minFontSize: 11, lineHeight: 19, maxLines: 2, weight: 800, fill: CERT_NAVY },
+    // The white box and its gold border are on the plate; only the code is drawn.
+    qr: { x: 79, y: 797, size: 82 },
+    footer: { cy: 943, maxWidth: 360, fontSize: 12, minFontSize: 8, lineHeight: 12, maxLines: 1, weight: 400, fill: CERT_FOOTER_GOLD, fontFamily: SERIF_FONT_FAMILY },
+  },
+  trust: {
+    businessLogo: { cx: CX, cy: 467, maxLogoWidth: 62, maxLogoHeight: 66, paddingX: 15, paddingY: 12, minFrameWidth: 86, minFrameHeight: 78, maxFrameWidth: 116, maxFrameHeight: 96, frameStyle: "trust" },
+    businessName: { cy: 527, maxWidth: 410, fontSize: 29, minFontSize: 15, lineHeight: 30, maxLines: 2, weight: 700, fill: CERT_NAVY, fontFamily: SERIF_FONT_FAMILY, letterSpacing: -0.4 },
+    category: { cy: 579, maxWidth: 292, fontSize: 18, minFontSize: 10.5, lineHeight: 18, maxLines: 1, weight: 700, fill: CERT_TRUST_ORANGE, fontFamily: SERIF_FONT_FAMILY, letterSpacing: 0.3 },
+    location: { cy: 614, maxWidth: 220, fontSize: 17, minFontSize: 11, lineHeight: 19, maxLines: 2, weight: 700, fill: CERT_NAVY, fontFamily: SERIF_FONT_FAMILY },
+    qr: { x: 76, y: 766, size: 74 },
+    footer: { cy: 937, maxWidth: 390, fontSize: 12, minFontSize: 8, lineHeight: 12, maxLines: 1, weight: 400, fill: CERT_FOOTER_GOLD, fontFamily: SERIF_FONT_FAMILY },
+  },
 };
 
 const escapeXml = (value) =>
@@ -366,6 +377,23 @@ const logoFrameMarkup = ({ x, y, width, height, cx, cy }) => {
   </g>`;
 };
 
+const trustLogoFrameMarkup = ({ x, y, width, height, cx, cy }) => {
+  const radius = 4;
+  const corner = 10;
+  const left = x.toFixed(2);
+  const top = y.toFixed(2);
+  const right = (x + width).toFixed(2);
+  const bottom = (y + height).toFixed(2);
+
+  return `<g>
+    <rect x="${left}" y="${top}" width="${width.toFixed(2)}" height="${height.toFixed(2)}" rx="${radius}" fill="${CERT_PAPER}" stroke="${CERT_GOLD}" stroke-width="1.2"/>
+    <rect x="${(x + 3).toFixed(2)}" y="${(y + 3).toFixed(2)}" width="${(width - 6).toFixed(2)}" height="${(height - 6).toFixed(2)}" rx="${radius}" fill="none" stroke="${CERT_GOLD}" stroke-width="0.7"/>
+    <path d="M ${left} ${(y + corner).toFixed(2)} v -${corner} h ${corner} M ${(x + width - corner).toFixed(2)} ${top} h ${corner} v ${corner} M ${right} ${(y + height - corner).toFixed(2)} v ${corner} h -${corner} M ${(x + corner).toFixed(2)} ${bottom} h -${corner} v -${corner}" fill="none" stroke="${CERT_GOLD}" stroke-width="1.4"/>
+    <path d="M ${(x - 9).toFixed(2)} ${cy.toFixed(2)} c 6 -4 6 -10 0 -14 m 0 14 c 6 4 6 10 0 14 M ${(x + width + 9).toFixed(2)} ${cy.toFixed(2)} c -6 -4 -6 -10 0 -14 m 0 14 c -6 4 -6 10 0 14" fill="none" stroke="${CERT_GOLD}" stroke-width="0.9"/>
+    <path d="M ${(cx - 15).toFixed(2)} ${(y - 4).toFixed(2)} h 9 l 6 -4 l 6 4 h 9 M ${(cx - 15).toFixed(2)} ${(y + height + 4).toFixed(2)} h 9 l 6 4 l 6 -4 h 9" fill="none" stroke="${CERT_GOLD}" stroke-width="0.9"/>
+  </g>`;
+};
+
 const businessLogoMarkup = async (business = {}, layout) => {
   const logo = await prepareLogoImage(await resolveBusinessLogoDataUrl(business), layout);
   const drawWidth = logo?.drawWidth || Math.min(layout.maxLogoWidth, 44);
@@ -381,7 +409,11 @@ const businessLogoMarkup = async (business = {}, layout) => {
     String(business.businessName || business.name || "M").trim().charAt(0).toUpperCase() || "M",
   );
 
-  return `${logoFrameMarkup({ x: frameX, y: frameY, width: frameWidth, height: frameHeight, cx: layout.cx, cy: layout.cy })}
+  const frameSvg = layout.frameStyle === "trust"
+    ? trustLogoFrameMarkup({ x: frameX, y: frameY, width: frameWidth, height: frameHeight, cx: layout.cx, cy: layout.cy })
+    : logoFrameMarkup({ x: frameX, y: frameY, width: frameWidth, height: frameHeight, cx: layout.cx, cy: layout.cy });
+
+  return `${frameSvg}
   ${logo
     ? `<image href="${escapeXml(logo.dataUrl)}" x="${logoX.toFixed(2)}" y="${logoY.toFixed(2)}" width="${drawWidth.toFixed(2)}" height="${drawHeight.toFixed(2)}" preserveAspectRatio="xMidYMid meet"/>`
     : `<text x="${layout.cx}" y="${(layout.cy + 14).toFixed(2)}" text-anchor="middle" font-family="${TEXT_FONT_FAMILY}" font-size="40" font-weight="800" fill="${CERT_NAVY}">${fallbackInitial}</text>`}`;
@@ -391,25 +423,26 @@ const businessLogoMarkup = async (business = {}, layout) => {
 
 export const buildCertificateSvg = async (business = {}, type = "verified") => {
   const isTrust = type === "trust";
+  const layout = CERTIFICATE_LAYOUTS[isTrust ? "trust" : "verified"];
   const plate = PLATES[isTrust ? "trust" : "verified"];
 
   const rawBusinessName = business.businessName || business.name || "Business";
   const rawLocation = business.location || business.globalAddress || "Business location verified by MassClick";
   const category = (business.category || "").trim();
   const categoryLabel = (category || (isTrust ? "TRUSTED BUSINESS" : "VERIFIED BUSINESS")).toUpperCase();
-  const certNo = `MC-${isTrust ? "TRU" : "VER"}-${(getBusinessId(business) || "000000").slice(-6).toUpperCase()}`;
+  const certNo = `MC-${isTrust ? "TRUST" : "VER"}-${(getBusinessId(business) || "000000").slice(-6).toUpperCase()}`;
   const issuedDate = formatCertificateDate(business.certificates?.generatedAt || new Date());
 
-  const nameBlock = await fitTextBlock(rawBusinessName, LAYOUT.businessName);
-  const categoryBlock = await fitTextBlock(categoryLabel, LAYOUT.category);
-  const locationBlock = await fitTextBlock(rawLocation, LAYOUT.location);
-  const logoSvg = await businessLogoMarkup(business, LAYOUT.businessLogo);
+  const nameBlock = await fitTextBlock(rawBusinessName, layout.businessName);
+  const categoryBlock = await fitTextBlock(categoryLabel, layout.category);
+  const locationBlock = await fitTextBlock(rawLocation, layout.location);
+  const logoSvg = await businessLogoMarkup(business, layout.businessLogo);
   const footerBlock = await fitTextBlock(
     `Certificate No. ${certNo}  |  Issued ${issuedDate}`,
-    LAYOUT.footer,
+    layout.footer,
   );
 
-  const qr = LAYOUT.qr;
+  const qr = layout.qr;
   const qrSvg = await qrMarkup({
     url: buildCertificateVerifyUrl(business),
     x: qr.x,
@@ -431,15 +464,15 @@ export const buildCertificateSvg = async (business = {}, type = "verified") => {
 
   ${logoSvg}
 
-  ${textBlockMarkup({ ...LAYOUT.businessName, ...nameBlock })}
+  ${textBlockMarkup({ ...layout.businessName, ...nameBlock })}
 
-  ${textBlockMarkup({ ...LAYOUT.category, ...categoryBlock })}
+  ${textBlockMarkup({ ...layout.category, ...categoryBlock })}
 
-  ${textBlockMarkup({ ...LAYOUT.location, ...locationBlock })}
+  ${textBlockMarkup({ ...layout.location, ...locationBlock })}
 
   ${qrSvg}
 
-  ${textBlockMarkup({ ...LAYOUT.footer, ...footerBlock })}
+  ${textBlockMarkup({ ...layout.footer, ...footerBlock })}
 </svg>`;
 };
 
