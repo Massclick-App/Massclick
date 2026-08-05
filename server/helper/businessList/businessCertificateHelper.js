@@ -21,7 +21,7 @@ import { buildBusinessDetailsUrl, getBusinessId } from "./businessPublicUrlHelpe
 // Because the plate is fixed, every field below sits in a fixed slot and
 // long values shrink to fit rather than pushing the layout down.
 
-export const CERTIFICATE_TEMPLATE_VERSION = 18;
+export const CERTIFICATE_TEMPLATE_VERSION = 19;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -56,6 +56,7 @@ const CX = CERT_WIDTH / 2;
 // scripts/buildCertificatePlate.cjs, so text can never collide with artwork.
 const CERTIFICATE_LAYOUTS = {
   verified: {
+    stars: { cx: CX, cy: 120, count: 5, outerRadius: 8, innerRadius: 3.4, spacing: 20, fill: CERT_GOLD },
     businessLogo: { cx: CX, cy: 495, maxLogoWidth: 72, maxLogoHeight: 74, paddingX: 17, paddingY: 13, minFrameWidth: 96, minFrameHeight: 88, maxFrameWidth: 134, maxFrameHeight: 112 },
     businessName: { cy: 574, maxWidth: 438, fontSize: 26, minFontSize: 15, lineHeight: 28, maxLines: 2, weight: 800, fill: CERT_NAVY, letterSpacing: -0.7 },
     // The plaque itself is part of the plate; only its label is drawn.
@@ -289,6 +290,31 @@ const qrMarkup = async ({ url, x, y, size, color }) => {
   }
 };
 
+const starPoints = ({ cx, cy, outerRadius, innerRadius }) => {
+  const points = [];
+  const startAngle = -Math.PI / 2;
+
+  for (let i = 0; i < 10; i++) {
+    const radius = i % 2 === 0 ? outerRadius : innerRadius;
+    const angle = startAngle + (i * Math.PI) / 5;
+    points.push(`${(cx + Math.cos(angle) * radius).toFixed(2)},${(cy + Math.sin(angle) * radius).toFixed(2)}`);
+  }
+
+  return points.join(" ");
+};
+
+const starsMarkup = (layout) => {
+  if (!layout) return "";
+
+  const firstX = layout.cx - ((layout.count - 1) * layout.spacing) / 2;
+  return `<g>
+    ${Array.from({ length: layout.count }, (_, index) => {
+      const cx = firstX + index * layout.spacing;
+      return `<polygon points="${starPoints({ ...layout, cx })}" fill="${layout.fill}" stroke="#a96f13" stroke-width="0.6"/>`;
+    }).join("\n    ")}
+  </g>`;
+};
+
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
 const dataUrlToBuffer = (dataUrl = "") => {
@@ -436,6 +462,7 @@ export const buildCertificateSvg = async (business = {}, type = "verified") => {
   const nameBlock = await fitTextBlock(rawBusinessName, layout.businessName);
   const categoryBlock = await fitTextBlock(categoryLabel, layout.category);
   const locationBlock = await fitTextBlock(rawLocation, layout.location);
+  const starsSvg = starsMarkup(layout.stars);
   const logoSvg = await businessLogoMarkup(business, layout.businessLogo);
   const footerBlock = await fitTextBlock(
     `Certificate No. ${certNo}  |  Issued ${issuedDate}`,
@@ -461,6 +488,8 @@ export const buildCertificateSvg = async (business = {}, type = "verified") => {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${CERT_WIDTH}" height="${CERT_HEIGHT}" viewBox="0 0 ${CERT_WIDTH} ${CERT_HEIGHT}">
   ${background}
+
+  ${starsSvg}
 
   ${logoSvg}
 

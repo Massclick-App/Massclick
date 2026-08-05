@@ -33,6 +33,7 @@ const TEMPLATE_CONFIGS = {
     refH: 1448,
     regions: [
       { name: "businessLogo", x: 394, y: 642, w: 298, h: 202 },
+      { name: "stars", x: 466, y: 155, w: 156, h: 48 },
       { name: "businessName", x: 254, y: 828, w: 578, h: 78 },
       { name: "category", x: 385, y: 924, w: 322, h: 42, flat: [3, 19, 55] },
       { name: "location", x: 390, y: 977, w: 306, h: 48 },
