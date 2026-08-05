@@ -5,6 +5,7 @@ import sharp from "sharp";
 import QRCode from "qrcode";
 import {
   deleteObjectByKey,
+  getImageDataUrlByKey,
   getSignedUrlByKey,
   uploadImageToS3,
 } from "../../s3Uploder.js";
@@ -20,7 +21,7 @@ import { buildBusinessDetailsUrl, getBusinessId } from "./businessPublicUrlHelpe
 // Because the plate is fixed, every field below sits in a fixed slot and
 // long values shrink to fit rather than pushing the layout down.
 
-export const CERTIFICATE_TEMPLATE_VERSION = 16;
+export const CERTIFICATE_TEMPLATE_VERSION = 17;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -40,6 +41,7 @@ const CERT_NAVY = "#07183f";
 const CERT_GOLD = "#c38a22";
 const CERT_PLAQUE_GOLD = "#f1d275";
 const CERT_FOOTER_GOLD = "#e5bd5a";
+const CERT_PAPER = "#fffdf7";
 
 // Design space. The plate is authored at 2x and rendered down to this box.
 const CERT_WIDTH = 720;
@@ -52,13 +54,14 @@ const CX = CERT_WIDTH / 2;
 // Slots are derived from the plate: each one is the region cleared by
 // scripts/buildCertificatePlate.cjs, so text can never collide with artwork.
 const LAYOUT = {
-  businessName: { cy: 456, maxWidth: 513, fontSize: 32, minFontSize: 17, lineHeight: 34, maxLines: 2, weight: 800, fill: CERT_NAVY, letterSpacing: -0.9 },
+  businessLogo: { cx: CX, cy: 495, maxLogoWidth: 72, maxLogoHeight: 74, paddingX: 17, paddingY: 13, minFrameWidth: 96, minFrameHeight: 88, maxFrameWidth: 134, maxFrameHeight: 112 },
+  businessName: { cy: 574, maxWidth: 438, fontSize: 26, minFontSize: 15, lineHeight: 28, maxLines: 2, weight: 800, fill: CERT_NAVY, letterSpacing: -0.7 },
   // The plaque itself is part of the plate; only its label is drawn.
-  category: { cy: 522, maxWidth: 258, fontSize: 18, minFontSize: 10.5, lineHeight: 18, maxLines: 1, weight: 700, fill: CERT_PLAQUE_GOLD, fontFamily: SERIF_FONT_FAMILY, letterSpacing: 0.3 },
-  location: { cy: 559, maxWidth: 262, fontSize: 19, minFontSize: 12, lineHeight: 21, maxLines: 2, weight: 800, fill: CERT_NAVY },
+  category: { cy: 625, maxWidth: 275, fontSize: 17, minFontSize: 10.5, lineHeight: 18, maxLines: 1, weight: 700, fill: CERT_PLAQUE_GOLD, fontFamily: SERIF_FONT_FAMILY, letterSpacing: 0.3 },
+  location: { cy: 662, maxWidth: 245, fontSize: 17, minFontSize: 11, lineHeight: 19, maxLines: 2, weight: 800, fill: CERT_NAVY },
   // The white box and its gold border are on the plate; only the code is drawn.
-  qr: { x: 81, y: 770, size: 78 },
-  footer: { cy: 933, maxWidth: 310, fontSize: 12, minFontSize: 8, lineHeight: 12, maxLines: 1, weight: 400, fill: CERT_FOOTER_GOLD, fontFamily: SERIF_FONT_FAMILY },
+  qr: { x: 79, y: 797, size: 82 },
+  footer: { cy: 943, maxWidth: 360, fontSize: 12, minFontSize: 8, lineHeight: 12, maxLines: 1, weight: 400, fill: CERT_FOOTER_GOLD, fontFamily: SERIF_FONT_FAMILY },
 };
 
 const escapeXml = (value) =>
@@ -275,6 +278,115 @@ const qrMarkup = async ({ url, x, y, size, color }) => {
   }
 };
 
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+
+const dataUrlToBuffer = (dataUrl = "") => {
+  const match = String(dataUrl).match(/^data:([\w/+.-]+);base64,(.+)$/);
+  if (!match) return null;
+
+  return {
+    contentType: match[1],
+    buffer: Buffer.from(match[2], "base64"),
+  };
+};
+
+const resolveBusinessLogoDataUrl = async (business = {}) => {
+  if (typeof business.logoImageData === "string" && business.logoImageData.startsWith("data:image/")) {
+    return business.logoImageData;
+  }
+
+  if (typeof business.logoImage === "string" && business.logoImage.startsWith("data:image/")) {
+    return business.logoImage;
+  }
+
+  if (!business.logoImageKey) {
+    return "";
+  }
+
+  try {
+    return await getImageDataUrlByKey(business.logoImageKey);
+  } catch (error) {
+    console.warn("[Certificate] Unable to load business logo for certificate:", error.message);
+    return "";
+  }
+};
+
+const prepareLogoImage = async (logoDataUrl, layout) => {
+  const parsed = dataUrlToBuffer(logoDataUrl);
+  if (!parsed) return null;
+
+  try {
+    const metadata = await sharp(parsed.buffer).rotate().metadata();
+    if (!metadata.width || !metadata.height) return null;
+
+    const scale = Math.min(
+      layout.maxLogoWidth / metadata.width,
+      layout.maxLogoHeight / metadata.height,
+    );
+    const drawWidth = Math.max(1, metadata.width * scale);
+    const drawHeight = Math.max(1, metadata.height * scale);
+    const png = await sharp(parsed.buffer)
+      .rotate()
+      .resize({
+        width: Math.round(drawWidth * RENDER_SCALE),
+        height: Math.round(drawHeight * RENDER_SCALE),
+        fit: "contain",
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+      })
+      .png()
+      .toBuffer();
+
+    return {
+      dataUrl: `data:image/png;base64,${png.toString("base64")}`,
+      drawWidth,
+      drawHeight,
+    };
+  } catch (error) {
+    console.warn("[Certificate] Unable to prepare business logo for certificate:", error.message);
+    return null;
+  }
+};
+
+const logoFrameMarkup = ({ x, y, width, height, cx, cy }) => {
+  const radius = 9;
+  const midLeft = x - 8;
+  const midRight = x + width + 8;
+  const midY = cy;
+  const topY = y - 5;
+  const bottomY = y + height + 5;
+
+  return `<g>
+    <rect x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${width.toFixed(2)}" height="${height.toFixed(2)}" rx="${radius}" fill="${CERT_PAPER}" stroke="${CERT_GOLD}" stroke-width="1.6"/>
+    <rect x="${(x + 3).toFixed(2)}" y="${(y + 3).toFixed(2)}" width="${(width - 6).toFixed(2)}" height="${(height - 6).toFixed(2)}" rx="${radius - 2}" fill="none" stroke="${CERT_NAVY}" stroke-width="0.8"/>
+    <rect x="${(x + 5.5).toFixed(2)}" y="${(y + 5.5).toFixed(2)}" width="${(width - 11).toFixed(2)}" height="${(height - 11).toFixed(2)}" rx="${radius - 4}" fill="none" stroke="${CERT_GOLD}" stroke-width="0.8"/>
+    <path d="M ${midLeft.toFixed(2)} ${midY.toFixed(2)} h -9 m 9 0 c -5 -4 -5 -9 0 -13 m 0 13 c -5 4 -5 9 0 13" fill="none" stroke="${CERT_GOLD}" stroke-width="1"/>
+    <path d="M ${midRight.toFixed(2)} ${midY.toFixed(2)} h 9 m -9 0 c 5 -4 5 -9 0 -13 m 0 13 c 5 4 5 9 0 13" fill="none" stroke="${CERT_GOLD}" stroke-width="1"/>
+    <path d="M ${(cx - 18).toFixed(2)} ${topY.toFixed(2)} h 12 l 6 -5 l 6 5 h 12" fill="none" stroke="${CERT_GOLD}" stroke-width="1"/>
+    <path d="M ${(cx - 18).toFixed(2)} ${bottomY.toFixed(2)} h 12 l 6 5 l 6 -5 h 12" fill="none" stroke="${CERT_GOLD}" stroke-width="1"/>
+  </g>`;
+};
+
+const businessLogoMarkup = async (business = {}, layout) => {
+  const logo = await prepareLogoImage(await resolveBusinessLogoDataUrl(business), layout);
+  const drawWidth = logo?.drawWidth || Math.min(layout.maxLogoWidth, 44);
+  const drawHeight = logo?.drawHeight || Math.min(layout.maxLogoHeight, 44);
+  const frameWidth = clamp(drawWidth + layout.paddingX * 2, layout.minFrameWidth, layout.maxFrameWidth);
+  const frameHeight = clamp(drawHeight + layout.paddingY * 2, layout.minFrameHeight, layout.maxFrameHeight);
+  const frameX = layout.cx - frameWidth / 2;
+  const frameY = layout.cy - frameHeight / 2;
+  const logoX = layout.cx - drawWidth / 2;
+  const logoY = layout.cy - drawHeight / 2;
+
+  const fallbackInitial = escapeXml(
+    String(business.businessName || business.name || "M").trim().charAt(0).toUpperCase() || "M",
+  );
+
+  return `${logoFrameMarkup({ x: frameX, y: frameY, width: frameWidth, height: frameHeight, cx: layout.cx, cy: layout.cy })}
+  ${logo
+    ? `<image href="${escapeXml(logo.dataUrl)}" x="${logoX.toFixed(2)}" y="${logoY.toFixed(2)}" width="${drawWidth.toFixed(2)}" height="${drawHeight.toFixed(2)}" preserveAspectRatio="xMidYMid meet"/>`
+    : `<text x="${layout.cx}" y="${(layout.cy + 14).toFixed(2)}" text-anchor="middle" font-family="${TEXT_FONT_FAMILY}" font-size="40" font-weight="800" fill="${CERT_NAVY}">${fallbackInitial}</text>`}`;
+};
+
 // ---- main builder ------------------------------------------------------------
 
 export const buildCertificateSvg = async (business = {}, type = "verified") => {
@@ -291,6 +403,7 @@ export const buildCertificateSvg = async (business = {}, type = "verified") => {
   const nameBlock = await fitTextBlock(rawBusinessName, LAYOUT.businessName);
   const categoryBlock = await fitTextBlock(categoryLabel, LAYOUT.category);
   const locationBlock = await fitTextBlock(rawLocation, LAYOUT.location);
+  const logoSvg = await businessLogoMarkup(business, LAYOUT.businessLogo);
   const footerBlock = await fitTextBlock(
     `Certificate No. ${certNo}  |  Issued ${issuedDate}`,
     LAYOUT.footer,
@@ -315,6 +428,8 @@ export const buildCertificateSvg = async (business = {}, type = "verified") => {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${CERT_WIDTH}" height="${CERT_HEIGHT}" viewBox="0 0 ${CERT_WIDTH} ${CERT_HEIGHT}">
   ${background}
+
+  ${logoSvg}
 
   ${textBlockMarkup({ ...LAYOUT.businessName, ...nameBlock })}
 

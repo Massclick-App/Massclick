@@ -2,42 +2,63 @@
  * Builds a certificate plate from finished certificate artwork.
  *
  * The artwork we are given is a finished certificate — it has a business name,
- * category, location, QR, certificate number and footer rule already rendered into it. The
+ * logo, category, location, QR and certificate number already rendered into it. The
  * plate is that same artwork with those regions painted out, so the
  * generator can draw live values into them. Everything else (border, seal,
- * laurel, verification chips, headings, logo, signature, bottom band) stays
+ * laurel, verification chips, headings, signature, bottom band) stays
  * exactly as designed.
  *
  * Usage:
  *   node server/scripts/buildCertificatePlate.cjs <source-artwork> <output.jpg>
  *
- * The regions below are in the source artwork's own 960x1280 coordinate space.
- * If the artwork is ever redrawn, re-check them against a row-ink profile
- * before trusting the output — and always eyeball the result.
+ * The regions below are in the 1086x1448 reference artwork coordinate space.
+ * They are scaled to the actual source image, so a same-ratio redraw at a
+ * different resolution can still be cut. If the artwork is ever redrawn,
+ * re-check the regions visually before trusting the output.
  */
 
 const path = require("path");
 const sharp = require("sharp");
 
-const SRC_W = 960;
-const SRC_H = 1280;
-const OUT_SCALE = 1.5; // 1440x1920, the certificate render size
+const REF_W = 1086;
+const REF_H = 1448;
+const OUT_W = 1440;
+const OUT_H = 1920;
 
 // `flat` paints a solid colour. `stripX` stretches one clean column across the
 // region. Otherwise the region is bridged: every row is interpolated between
 // the real pixels just outside its left and right edges, which matches the
 // paper's shading at the seams instead of stamping a flat patch over it.
 const REGIONS = [
-  { name: "businessName", x: 130, y: 568, w: 700, h: 94 },
-  { name: "category", x: 304, y: 676, w: 352, h: 34, flat: [3, 19, 55] },
-  { name: "location", x: 300, y: 718, w: 360, h: 56 },
+  { name: "businessLogo", x: 394, y: 642, w: 298, h: 202 },
+  { name: "businessName", x: 254, y: 828, w: 578, h: 78 },
+  { name: "category", x: 385, y: 924, w: 322, h: 42, flat: [3, 19, 55] },
+  { name: "location", x: 390, y: 977, w: 306, h: 48 },
   // Only the modules — the white box and its gold border stay on the plate.
-  { name: "qrModules", x: 108, y: 1027, w: 104, h: 108, flat: [255, 255, 255] },
-  { name: "footer", x: 262, y: 1224, w: 436, h: 42, stripX: 248 },
-  // Remove only the straight footer rule so the live certificate number does
-  // not look struck through; the decorative end marks remain on the artwork.
-  { name: "footerRule", x: 215, y: 1242, w: 534, h: 12, stripY: 1252 },
+  { name: "qrModules", x: 116, y: 1199, w: 128, h: 130, flat: [255, 255, 255] },
+  { name: "footer", x: 285, y: 1405, w: 520, h: 36, stripY: 1445 },
 ];
+
+const scaleRegion = (region, sourceWidth, sourceHeight) => {
+  const scaleX = sourceWidth / REF_W;
+  const scaleY = sourceHeight / REF_H;
+  const scaled = {
+    ...region,
+    x: Math.round(region.x * scaleX),
+    y: Math.round(region.y * scaleY),
+    w: Math.round(region.w * scaleX),
+    h: Math.round(region.h * scaleY),
+  };
+
+  if (region.stripX !== undefined) {
+    scaled.stripX = Math.round(region.stripX * scaleX);
+  }
+  if (region.stripY !== undefined) {
+    scaled.stripY = Math.round(region.stripY * scaleY);
+  }
+
+  return scaled;
+};
 
 const buildPatch = (region, at) => {
   const buf = Buffer.alloc(region.w * region.h * 3);
@@ -106,8 +127,8 @@ const main = async () => {
   }
 
   const meta = await sharp(source).metadata();
-  if (meta.width !== SRC_W || meta.height !== SRC_H) {
-    console.error(`source must be ${SRC_W}x${SRC_H}, got ${meta.width}x${meta.height}`);
+  if (Math.abs((meta.width / meta.height) - (REF_W / REF_H)) > 0.001) {
+    console.error(`source must use the ${REF_W}:${REF_H} certificate ratio, got ${meta.width}x${meta.height}`);
     process.exit(1);
   }
 
@@ -117,7 +138,8 @@ const main = async () => {
     return [data[i], data[i + 1], data[i + 2]];
   };
 
-  const patches = REGIONS.map((region) => {
+  const patches = REGIONS.map((referenceRegion) => {
+    const region = scaleRegion(referenceRegion, meta.width, meta.height);
     const { buf, note } = buildPatch(region, at);
     console.log(`  ${region.name.padEnd(13)} ${note}`);
     return {
@@ -132,7 +154,7 @@ const main = async () => {
   // patches have to land in their own pass at the source resolution first.
   const patched = await sharp(source).composite(patches).png().toBuffer();
   await sharp(patched)
-    .resize(Math.round(SRC_W * OUT_SCALE), Math.round(SRC_H * OUT_SCALE), { kernel: "lanczos3" })
+    .resize(OUT_W, OUT_H, { kernel: "lanczos3" })
     .jpeg({ quality: 92, chromaSubsampling: "4:4:4" })
     .toFile(output);
 

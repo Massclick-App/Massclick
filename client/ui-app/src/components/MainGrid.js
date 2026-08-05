@@ -21,6 +21,7 @@ import AdminAnalyticsPanel from './adminAnalytics/AdminAnalyticsPanel.js';
 import BusinessCard from './businessCard/businessCard.js';
 import CustomizedTable from './Table/CustomizedTable.js';
 import { createPhonePePayment } from '../redux/actions/phonePayAction.js';
+import BusinessDetailsDialog from './businessDetails/BusinessDetailsDialog.js';
 
 const PREMIUM_MEMBERSHIP_BASE_AMOUNT = 24000;
 
@@ -32,6 +33,7 @@ export default function MainGrid() {
   );
   const [cardFilter, setCardFilter] = React.useState({ type: "all", label: "Total Businesses" });
   const [tableRefreshKey, setTableRefreshKey] = React.useState(0);
+  const [detailRow, setDetailRow] = React.useState(null);
   const tableSectionRef = useRef(null);
   const [activeStatus, setActiveStatus] = React.useState(
     businessList.reduce((acc, b) => {
@@ -143,6 +145,7 @@ export default function MainGrid() {
   }, [dispatch]);
 
   const rows = businessList.map((bl) => ({
+    ...bl,
     _id: bl._id,
     id: bl._id,
     clientId: bl.clientId || "-",
@@ -171,6 +174,7 @@ export default function MainGrid() {
     activeBusinesses: bl.activeBusinesses ?? bl.isActive ?? false,
     createdAt: bl.createdAt || null,
     createdBy: bl.createdBy,
+    createdByDisplay: getCreatedByDisplayName(bl.createdBy),
     payment: bl.payment || [],
 
     qrImage: bl.qrCode?.qrImage || null,
@@ -192,6 +196,23 @@ export default function MainGrid() {
       return;
     }
     dispatch(createPhonePePayment(amount, userId, businessId));
+  };
+
+  const handleQrDownload = async (row) => {
+    if (!row?.qrImage) return;
+    try {
+      const link = document.createElement("a");
+      link.href = row.qrImage;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      await dispatch(trackQrDownload(row._id));
+      enqueueSnackbar("QR downloaded successfully", { variant: "success" });
+    } catch {
+      enqueueSnackbar("Download failed", { variant: "error" });
+    }
   };
 
   const businessListTable = [
@@ -428,6 +449,7 @@ export default function MainGrid() {
             data={rows}
             total={total}
             columns={businessListTable}
+            onRowClick={setDetailRow}
             fetchData={(pageNo, pageSize, options = {}) => {
               const cardParams = getCardFilterParams();
               dispatch(
@@ -452,6 +474,12 @@ export default function MainGrid() {
 
         </Box>
       </Grid>
+      <BusinessDetailsDialog
+        open={Boolean(detailRow)}
+        row={detailRow}
+        onClose={() => setDetailRow(null)}
+        onDownloadQr={handleQrDownload}
+      />
     </Box>
   );
 }
