@@ -103,6 +103,15 @@ const CustomizedTable = ({
     return value ?? "-";
   };
 
+  const handleRowClick = (event, row) => {
+    if (!onRowClick) return;
+
+    // Controls rendered inside a row keep their own behaviour (download,
+    // payment, status, links, etc.) instead of also opening row details.
+    if (event.target.closest("button, a, input, select, textarea, [role='button'], [data-no-row-click]")) return;
+    onRowClick(row);
+  };
+
   return (
     <Paper className={cx(`custom-table-container ${isScrolled ? "table-scrolled" : ""}`)}>
 
@@ -207,7 +216,15 @@ const CustomizedTable = ({
                 <TableRow
                   key={row._id ?? row.id ?? `${page}-${rowIndex}`}
                   className={cx(`custom-row ${onRowClick ? "clickable-row" : ""}`)}
-                  onClick={onRowClick ? () => onRowClick(row) : undefined}
+                  onClick={onRowClick ? event => handleRowClick(event, row) : undefined}
+                  onKeyDown={onRowClick ? event => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      handleRowClick(event, row);
+                    }
+                  } : undefined}
+                  tabIndex={onRowClick ? 0 : undefined}
+                  aria-label={onRowClick ? `View details for ${row.businessName || row.clientId || "record"}` : undefined}
                 >
                   {columns.map(col => (
                     <TableCell key={col.id} className={cx("custom-body-cell")}>
