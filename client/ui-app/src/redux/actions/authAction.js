@@ -52,6 +52,22 @@ export const login = (userName, password) => async (dispatch) => {
       user,
     });
 
+    // Save credential for Android App Links credential sharing
+    if (navigator.credentials) {
+      try {
+        const credential = new PasswordCredential({
+          id: userName,
+          password: password,
+          name: user.userName || userName,
+        });
+        navigator.credentials.store(credential).catch(err =>
+          console.warn('Failed to save credential:', err)
+        );
+      } catch (err) {
+        console.warn('Credential Manager not available:', err);
+      }
+    }
+
     dispatch({
       type: LOGIN_SUCCESS,
       payload: { user, accessToken, refreshToken },
