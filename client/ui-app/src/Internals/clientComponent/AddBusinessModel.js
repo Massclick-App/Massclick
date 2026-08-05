@@ -27,6 +27,8 @@ import { useDispatch } from "react-redux";
 import { Link as RouterLink } from 'react-router-dom';
 import { Link as MuiLink } from '@mui/material';
 import { useSnackbar } from "../../components/snackbar/SnackbarProvider.js";
+import PhoneInput, { isValidPhoneNumber, parsePhoneNumber } from "react-phone-number-input";
+import "react-phone-number-input/style.css";
 
 const InstantTransition = React.forwardRef(function InstantTransition(
     {
@@ -86,7 +88,7 @@ const InstantTransition = React.forwardRef(function InstantTransition(
 });
 
 const LogoComponent = () => (
-    <Box sx={{ mb: 3, textAlign: 'center' }}>
+    <Box sx={{ mb: { xs: 2, sm: 3 }, textAlign: 'center', '@media (max-height: 760px)': { mb: 1.5 } }}>
         <Typography
             variant="h4"
             component="div"
@@ -96,8 +98,9 @@ const LogoComponent = () => (
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
                 backgroundClip: 'text',
-                fontSize: '2.2rem',
+                fontSize: { xs: '1.8rem', sm: '2.2rem' },
                 letterSpacing: '-0.5px',
+                '@media (max-height: 700px)': { fontSize: '1.65rem' },
             }}
         >
             MassClick<sup style={{ fontSize: '0.45em', marginLeft: '4px' }}>TM</sup>
@@ -106,15 +109,17 @@ const LogoComponent = () => (
             width: '80px',
             height: '3px',
             background: 'linear-gradient(90deg, #FF7B00 0%, #FF6F00 100%)',
-            margin: '12px auto 16px',
+            margin: { xs: '9px auto 12px', sm: '12px auto 16px' },
             borderRadius: '2px',
+            '@media (max-height: 700px)': { margin: '7px auto 9px' },
         }} />
         <Typography
             variant="body2"
             sx={{
                 color: '#64748b',
-                fontSize: '0.95rem',
+                fontSize: { xs: '0.78rem', sm: '0.95rem' },
                 letterSpacing: '0.3px',
+                whiteSpace: 'nowrap',
             }}
         >
             India&apos;s Leading Local Search Engine
@@ -171,8 +176,17 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater, onSuccess }) => {
 
     React.useEffect(() => {
         const storedMobile = localStorage.getItem("mobileNumber");
-        if (storedMobile) setMobileNumber(storedMobile);
+        if (storedMobile) {
+            setMobileNumber(storedMobile.length === 10 ? `+91${storedMobile}` : `+${storedMobile}`);
+        }
     }, []);
+
+    const isMobileNumberValid = Boolean(mobileNumber && isValidPhoneNumber(mobileNumber));
+    const getStoredMobile = (value) => {
+        const phone = parsePhoneNumber(value);
+        if (!phone) return String(value || '').replace(/\D/g, '');
+        return phone.country === 'IN' ? phone.nationalNumber : phone.number.slice(1);
+    };
 
     React.useEffect(() => {
         let interval;
@@ -183,14 +197,14 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater, onSuccess }) => {
     }, [resendTimer]);
 
     const handleSendOtp = async () => {
-        if (!agreed || mobileNumber.length !== 10) return;
+        if (!agreed || !isMobileNumberValid) return;
         setIsLoading(true);
         try {
             const res = await dispatch(sendOtp(mobileNumber));
             setOtpSent(true);
             setIsNewUser(res.isNewUser);
             setResendTimer(60);
-            localStorage.setItem("mobileNumber", mobileNumber);
+            localStorage.setItem("mobileNumber", getStoredMobile(mobileNumber));
         } catch (error) {
             enqueueSnackbar("Failed to send OTP. Please try again.", {
                 variant: "error",
@@ -268,6 +282,7 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater, onSuccess }) => {
                     autoHideDuration: res.welcomeBonus?.awarded ? 6000 : 3000,
                 });
 
+                localStorage.setItem("mobileNumber", res.user?.mobileNumber1 || getStoredMobile(mobileNumber));
                 await registerWebFCMToken();
                 identify(getCustomerUser()?._id);
                 onSuccess?.(getCustomerUser());
@@ -357,18 +372,35 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater, onSuccess }) => {
             sx={{
                 "& .MuiDialog-container": {
                     alignItems: isMobile ? 'flex-end' : 'center',
+                    padding: { xs: 0, sm: 2, md: 3 },
+                    '@media (max-height: 700px) and (min-width: 600px)': {
+                        paddingBlock: 1,
+                    },
                 },
                 "& .MuiDialog-paper": {
                     borderRadius: isMobile ? '24px 24px 0 0' : "24px",
                     boxShadow: "0 25px 60px rgba(0, 0, 0, 0.2)",
-                    p: { xs: 3, sm: 5 },
+                    boxSizing: 'border-box',
+                    p: { xs: '24px clamp(20px, 6vw, 28px)', sm: 4, md: 5 },
                     m: isMobile ? 0 : undefined,
-                    width: isMobile ? '100%' : '440px',
-                    maxHeight: isMobile ? '85vh' : '90vh',
+                    width: isMobile ? '100%' : 'clamp(400px, 38vw, 460px)',
+                    maxWidth: isMobile ? '100%' : 'calc(100vw - 32px)',
+                    maxHeight: isMobile
+                        ? 'min(92dvh, 760px)'
+                        : 'calc(100dvh - clamp(16px, 5vh, 64px))',
                     overflowY: 'auto',
+                    overscrollBehavior: 'contain',
+                    scrollbarGutter: 'stable',
                     transition: 'all 0.3s ease-in-out',
                     background: 'linear-gradient(145deg, #ffffff 0%, #fff8f3 100%)',
                     position: 'relative',
+                    '@media (max-height: 760px)': {
+                        p: { xs: '20px clamp(18px, 5vw, 24px)', sm: 3 },
+                    },
+                    '@media (max-height: 620px) and (min-width: 600px)': {
+                        borderRadius: '18px',
+                        p: 2.25,
+                    },
                 },
                 "& .MuiBackdrop-root": {
                     transition: 'all 0.3s ease-in-out',
@@ -380,8 +412,9 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater, onSuccess }) => {
                 aria-label="Close"
                 sx={{
                     position: 'absolute',
-                    right: 16,
-                    top: 16,
+                    right: { xs: 10, sm: 14 },
+                    top: { xs: 10, sm: 14 },
+                    zIndex: 1,
                     color: theme.palette.grey[500],
                     transition: 'all 0.2s ease',
                     '&:hover': {
@@ -405,7 +438,14 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater, onSuccess }) => {
             >
                 <LogoComponent />
 
-                <Box sx={{ display: 'flex', gap: 1, mb: 3, alignItems: 'center', justifyContent: 'center' }}>
+                <Box sx={{
+                    display: 'flex',
+                    gap: 1,
+                    mb: { xs: 2, sm: 3 },
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    '@media (max-height: 700px)': { mb: 1.25 },
+                }}>
                     <Box
                         sx={{
                             width: 8,
@@ -434,7 +474,9 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater, onSuccess }) => {
                         mb: 1,
                         fontWeight: 700,
                         color: '#0b1a4a',
-                        fontSize: '1.75rem',
+                        fontSize: { xs: '1.45rem', sm: '1.75rem' },
+                        textAlign: 'center',
+                        '@media (max-height: 700px)': { fontSize: '1.35rem' },
                     }}
                 >
                     {otpSent ? 'Verify OTP' : 'Welcome Back!'}
@@ -442,10 +484,12 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater, onSuccess }) => {
                 <Typography
                     variant="body1"
                     sx={{
-                        mb: 2,
+                        mb: { xs: 1.5, sm: 2 },
                         color: '#64748b',
-                        fontSize: '0.95rem',
+                        fontSize: { xs: '0.84rem', sm: '0.95rem' },
                         textAlign: 'center',
+                        lineHeight: 1.5,
+                        '@media (max-height: 700px)': { mb: 1.25, fontSize: '0.8rem' },
                     }}
                 >
                     {otpSent
@@ -458,8 +502,8 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater, onSuccess }) => {
                         <Box
                             sx={{
                                 width: '100%',
-                                mb: 3,
-                                p: 1.6,
+                                mb: { xs: 2, sm: 3 },
+                                p: { xs: 1.25, sm: 1.6 },
                                 boxSizing: 'border-box',
                                 border: '1px solid rgba(255, 123, 0, 0.2)',
                                 borderRadius: '12px',
@@ -469,7 +513,7 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater, onSuccess }) => {
                             <Typography
                                 sx={{
                                     color: '#9a3412',
-                                    fontSize: '0.78rem',
+                                    fontSize: { xs: '0.72rem', sm: '0.78rem' },
                                     fontWeight: 700,
                                     lineHeight: 1.55,
                                     textAlign: 'center',
@@ -481,7 +525,8 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater, onSuccess }) => {
                             </Typography>
                         </Box>
 
-                        <Box sx={{ width: '100%', mb: 3 }}>
+                        <Box sx={{ width: '100%', mb: { xs: 2, sm: 3 }, '@media (max-height: 700px)': { mb: 1.5 } }}>
+                            {false && (
                             <TextField
                                 fullWidth
                                 placeholder="Enter Mobile Number"
@@ -547,9 +592,34 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater, onSuccess }) => {
                                     },
                                 }}
                             />
+                            )}
+                            <Box sx={{
+                                border: '2px solid #e2e8f0', borderRadius: '12px', px: 1.75,
+                                py: 1.45, transition: 'all 0.2s ease', backgroundColor: '#fff',
+                                '&:hover': { borderColor: '#FF7B00' },
+                                '&:focus-within': { borderColor: '#FF7B00', boxShadow: '0 0 0 4px rgba(255, 123, 0, 0.12)' },
+                                '& .PhoneInputCountry': { borderRight: '2px solid #FF7B00', pr: 1.5, mr: 1.5 },
+                                '& .PhoneInputCountrySelect': { cursor: 'pointer' },
+                                '& .PhoneInputInput': { border: 0, outline: 0, fontSize: '1.05rem', fontWeight: 500, fontFamily: 'Poppins, sans-serif', minWidth: 0 },
+                            }}>
+                                <PhoneInput
+                                    international
+                                    defaultCountry="IN"
+                                    countryCallingCodeEditable={false}
+                                    placeholder="Enter mobile number"
+                                    value={mobileNumber}
+                                    onChange={(value) => setMobileNumber(value || '')}
+                                    autoComplete="tel"
+                                />
+                            </Box>
+                            {mobileNumber && !isMobileNumberValid && (
+                                <Typography sx={{ color: '#d32f2f', fontSize: '0.75rem', mt: 0.75, ml: 0.5 }}>
+                                    Enter a valid mobile number for the selected country.
+                                </Typography>
+                            )}
                         </Box>
 
-                        <Box sx={{ mb: 4, width: '100%' }}>
+                        <Box sx={{ mb: { xs: 2.5, sm: 4 }, width: '100%', '@media (max-height: 700px)': { mb: 1.5 } }}>
                             <FormControlLabel
                                 control={
                                     <Checkbox
@@ -567,7 +637,7 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater, onSuccess }) => {
                                     />
                                 }
                                 label={
-                                    <Typography variant="body2" sx={{ color: '#64748b', ml: 0.5 }}>
+                                    <Typography variant="body2" sx={{ color: '#64748b', ml: 0.5, fontSize: { xs: '0.78rem', sm: '0.875rem' }, lineHeight: 1.45 }}>
                                         I agree to{' '}
                                         <MuiLink
                                             component={RouterLink}
@@ -605,18 +675,18 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater, onSuccess }) => {
                             fullWidth
                             variant="contained"
                             onClick={handleSendOtp}
-                            disabled={!agreed || mobileNumber.length < 10 || isLoading}
+                            disabled={!agreed || !isMobileNumberValid || isLoading}
                             sx={{
-                                background: agreed && mobileNumber.length === 10
+                                background: agreed && isMobileNumberValid
                                     ? 'linear-gradient(135deg, #FF7B00 0%, #FF6F00 100%)'
                                     : theme.palette.grey[300],
-                                color: agreed && mobileNumber.length === 10 ? 'white' : theme.palette.grey[500],
+                                color: agreed && isMobileNumberValid ? 'white' : theme.palette.grey[500],
                                 textTransform: 'none',
                                 fontSize: '1.05rem',
                                 fontWeight: 700,
                                 borderRadius: '30px',
-                                py: 1.6,
-                                boxShadow: agreed && mobileNumber.length === 10
+                                py: { xs: 1.35, sm: 1.6 },
+                                boxShadow: agreed && isMobileNumberValid
                                     ? '0 10px 30px rgba(255, 123, 0, 0.4)'
                                     : 'none',
                                 transition: 'all 0.3s ease',
@@ -625,7 +695,7 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater, onSuccess }) => {
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 '&:hover': {
-                                    ...(agreed && mobileNumber.length === 10 ? {
+                                    ...(agreed && isMobileNumberValid ? {
                                         background: 'linear-gradient(135deg, #E65100 0%, #FF7B00 100%)',
                                         transform: 'translateY(-2px)',
                                         boxShadow: '0 14px 35px rgba(255, 123, 0, 0.5)',
@@ -657,7 +727,7 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater, onSuccess }) => {
                             <Box
                                 sx={{
                                     display: 'flex',
-                                    gap: 2,
+                                    gap: { xs: 1, sm: 2 },
                                     justifyContent: 'center',
                                     mb: 3,
                                 }}
@@ -683,8 +753,8 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater, onSuccess }) => {
                                         }}
                                         variant="outlined"
                                         sx={{
-                                            width: '56px',
-                                            height: '60px',
+                                            width: { xs: 'clamp(48px, 15vw, 56px)', sm: '56px' },
+                                            height: { xs: '54px', sm: '60px' },
                                             '& .MuiOutlinedInput-root': {
                                                 width: '100%',
                                                 height: '100%',
@@ -845,13 +915,16 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater, onSuccess }) => {
                     variant="body2"
                     onClick={handleMaybeLater}
                     sx={{
-                        mt: 3,
-                        mb: 2,
+                        mt: { xs: 2, sm: 3 },
+                        mb: { xs: 1, sm: 2 },
                         color: '#94a3b8',
                         textDecoration: 'none',
                         transition: 'color 0.2s ease',
                         '&:hover': { color: '#FF7B00' },
                         fontWeight: 500,
+                        fontSize: { xs: '0.78rem', sm: '0.875rem' },
+                        textAlign: 'center',
+                        '@media (max-height: 700px)': { mt: 1.25, mb: 0.75 },
                     }}
                 >
                     Maybe Later — remind me on the home page
@@ -865,7 +938,7 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater, onSuccess }) => {
                         alignItems: 'center',
                         gap: 0.8,
                         justifyContent: 'center',
-                        fontSize: '0.85rem',
+                        fontSize: { xs: '0.75rem', sm: '0.85rem' },
                     }}
                 >
                     🔒 Secure & spam-free login

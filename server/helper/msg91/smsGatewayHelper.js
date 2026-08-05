@@ -226,15 +226,15 @@ export const sendOtp = async (number, options = {}) => {
     }
 
     const cleanNumber = number.replace(/\D/g, "");
-    if (cleanNumber.length !== 10) {
-      throw new Error("Invalid phone number. Must be 10 digits.");
+    if (!/^\d{8,15}$/.test(cleanNumber)) {
+      throw new Error("Invalid international phone number.");
     }
 
     const sendWithTemplate = async (template_id) => {
       const response = await axios.post(
         baseUrl,
         {
-          mobile: `91${cleanNumber}`,
+          mobile: cleanNumber,
           template_id
         },
         {
@@ -300,8 +300,8 @@ export const verifyOtp = async (number, otp) => {
     }
 
     const cleanNumber = number.replace(/\D/g, "");
-    if (cleanNumber.length !== 10) {
-      throw new Error("Invalid phone number. Must be 10 digits.");
+    if (!/^\d{8,15}$/.test(cleanNumber)) {
+      throw new Error("Invalid international phone number.");
     }
 
     if (!otp) {
@@ -311,7 +311,7 @@ export const verifyOtp = async (number, otp) => {
     const response = await axios.post(
       verifyUrl,
       {
-        mobile: `91${cleanNumber}`,
+        mobile: cleanNumber,
         otp: otp
       },
       {
@@ -340,8 +340,8 @@ export const verifyOtp = async (number, otp) => {
 export const fakesendOtp = async (number) => {
   try {
     const cleanNumber = number.replace(/\D/g, "");
-    if (cleanNumber.length !== 10) {
-      throw new Error("Invalid phone number. Must be 10 digits.");
+    if (!/^\d{8,15}$/.test(cleanNumber)) {
+      throw new Error("Invalid international phone number.");
     }
 
     console.log(`[DUMMY] OTP would be sent to ${cleanNumber}`);
@@ -352,7 +352,7 @@ export const fakesendOtp = async (number) => {
       apiResponse: {
         type: "success",
         message: "OTP sent successfully (DUMMY MODE)",
-        mobile: `91${cleanNumber}`
+        mobile: cleanNumber
       }
     };
   } catch (error) {
@@ -365,8 +365,8 @@ export const fakesendOtp = async (number) => {
 export const fakeverifyOtp = async (number, otp) => {
   try {
     const cleanNumber = number.replace(/\D/g, "");
-    if (cleanNumber.length !== 10) {
-      throw new Error("Invalid phone number. Must be 10 digits.");
+    if (!/^\d{8,15}$/.test(cleanNumber)) {
+      throw new Error("Invalid international phone number.");
     }
 
     if (!otp) {
@@ -381,7 +381,7 @@ export const fakeverifyOtp = async (number, otp) => {
       apiResponse: {
         type: "success",
         message: "OTP verified successfully (DUMMY MODE)",
-        mobile: `91${cleanNumber}`
+        mobile: cleanNumber
       }
     };
   } catch (error) {
