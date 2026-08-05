@@ -39,6 +39,12 @@ const seoSchema = new mongoose.Schema(
       index: true
     },
 
+    district: {
+      type: String,
+      set: normalizeKey,
+      index: true
+    },
+
     title: {
       type: String,
       required: true,
@@ -76,11 +82,13 @@ seoSchema.index(
   {
     pageType: 1,
     category: 1,
-    locationKey: 1
+    locationKey: 1,
+    district: 1
   },
   {
     unique: true,
-    name: "unique_seo_per_location_category"
+    sparse: true,
+    name: "unique_seo_per_location_category_district"
   }
 );
 
