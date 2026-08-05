@@ -222,6 +222,16 @@
   cursor: pointer;
 }
 
+.clickable-row:hover .custom-body-cell,
+.clickable-row:focus-visible .custom-body-cell {
+  background: var(--color-hover);
+}
+
+.clickable-row:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
 /* ── Loading skeleton ── */
 @keyframes shimmer {
   0%   { background-position: -600px 0; }
