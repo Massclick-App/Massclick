@@ -9,19 +9,17 @@ import { getAllLocation, createLocation } from "../../redux/actions/locationActi
 import { getAllCategory, businessCategorySearch } from "../../redux/actions/categoryAction";
 import { getAllUsersClient, getUserClientSuggestion } from "../../redux/actions/userClientAction.js";
 import { getAllUsers } from "../../redux/actions/userAction.js";
-import SkipNextIcon from '@mui/icons-material/SkipNext';
 import BusinessCenterIcon from '@mui/icons-material/BusinessCenter';
 import PrivacyTipIcon from '@mui/icons-material/PrivacyTip';
 import CategoryIcon from '@mui/icons-material/Category';
 import VerifiedUserIcon from "@mui/icons-material/VerifiedUser";
 import {
   Box, Button, Typography, CircularProgress, IconButton, Avatar, Dialog, DialogTitle, DialogContent, DialogActions,
-  Drawer, Divider, Chip
+  Chip
 } from "@mui/material";
 import { useSnackbar } from '../../components/snackbar/SnackbarProvider.js';
 import PropTypes from 'prop-types';
 import { styled } from '@mui/material/styles';
-import StepConnector, { stepConnectorClasses } from '@mui/material/StepConnector';
 import CollectionsBookmarkOutlinedIcon from '@mui/icons-material/CollectionsBookmarkOutlined';
 import { EyeOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import TravelExploreIcon from '@mui/icons-material/TravelExplore';
@@ -37,7 +35,6 @@ import { updateGmapsLeadStatus, clearGmapsLeadImport, setGmapsLeadToImport } fro
 import CustomizedTable from "../../components/Table/CustomizedTable.js";
 import Tooltip from "@mui/material/Tooltip";
 import styles from "./business.module.css";
-import GooglePlacesInput from "../../components/GooglePlacesInput/GooglePlacesInput";
 import { buildBusinessPath, createDistrictSlug } from "../../utils/searchResultNavigation";
 import AdminViewTabs from "../../components/AdminViewTabs.js";
 import BusinessFormStep0 from "./components/BusinessFormStep0";
@@ -82,7 +79,6 @@ const SECTION_ALL_FIELDS = {
 const FORCE_BYPASS_BLOCKED_FIELDS = new Set(["businessName", "category", "location", "contact"]);
 const FREE_REQUIRED_FIELDS = new Set(["businessName", "category", "location", "contact"]);
 const BUSINESS_LOCAL_DRAFT_KEY = "massclick.business.createDraft";
-const DEMO_PNG_DATA_URL = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9s0qDbgAAAAASUVORK5CYII=";
 const ORANGE_PRIMARY = '#FF8C00';
 const ORANGE_HOVER = '#D97800';
 const BUSINESS_PAYMENT_GST_RATE = 18;
@@ -291,31 +287,7 @@ const QuillEditor = ({
       <div ref={editorRef} />
     </div>;
 };
-const ColorlibConnector = styled(StepConnector)(({
-  theme
-}) => ({
-  [`&.${stepConnectorClasses.alternativeLabel}`]: {
-    top: 22
-  },
-  [`&.${stepConnectorClasses.active}`]: {
-    [`& .${stepConnectorClasses.line}`]: {
-      backgroundImage: `linear-gradient( 95deg, ${ORANGE_PRIMARY} 0%, ${ORANGE_HOVER} 50%, #FFB643 100%)`
-    }
-  },
-  [`&.${stepConnectorClasses.completed}`]: {
-    [`& .${stepConnectorClasses.line}`]: {
-      backgroundImage: `linear-gradient( 95deg, ${ORANGE_PRIMARY} 0%, ${ORANGE_HOVER} 50%, #FFB643 100%)`
-    }
-  },
-  [`& .${stepConnectorClasses.line}`]: {
-    height: 3,
-    border: 0,
-    backgroundColor: '#eaeaf0',
-    borderRadius: 1
-  }
-}));
 const ColorlibStepIconRoot = styled('div')(({
-  theme,
   ownerState
 }) => ({
   backgroundColor: '#ccc',
@@ -361,7 +333,6 @@ ColorlibStepIcon.propTypes = {
   icon: PropTypes.node
 };
 const steps = ["Business Details", "Category", "Privacy Settings"];
-const SEARCH_REFRESH_DELAY = 350;
 const PAID_STEP_FIELD_MAP = {
   0: [
     "businessName",
@@ -525,7 +496,6 @@ const BusinessList = React.memo(() => {
   const {
     users = []
   } = useSelector(state => state.userReducer || {});
-  const [showCategorySuggest, setShowCategorySuggest] = useState(false);
   const [showLocationSuggest, setShowLocationSuggest] = useState(false);
   const [locationSuggestions, setLocationSuggestions] = useState([]);
   const {
@@ -540,7 +510,6 @@ const BusinessList = React.memo(() => {
   const {
     leadToImport = null
   } = useSelector(state => state.gmapsLeadsReducer || {});
-  const fileInputRef = useRef();
   const [businessvalue, setBusinessValue] = useState("");
   const [editMode, setEditMode] = useState(false);
   const [activeView, setActiveView] = useState("list");
@@ -590,7 +559,6 @@ const BusinessList = React.memo(() => {
   });
   const appliedFiltersRef = useRef({ searchTerm: "", category: "", location: "", paymentStatus: "all", liveStatus: "" });
   const [tableRefreshKey, setTableRefreshKey] = useState(0);
-  const tableRefreshTimerRef = useRef(null);
 
   // ===== GMaps Picker State =====
   const [gmapsPickerOpen, setGmapsPickerOpen] = useState(false);
@@ -791,7 +759,7 @@ const BusinessList = React.memo(() => {
     });
   };
 
-  const getSectionIsDisabled = (step, sectionKey) => {
+  const getSectionIsDisabled = () => {
     // All sections are fully accessible - no locking
     return false;
   };
@@ -919,29 +887,6 @@ const BusinessList = React.memo(() => {
       businessFormRef.current?.requestSubmit?.();
       return;
     }
-  };
-  
-  const renderSectionAdvanceButton = (step, sectionKey) => {
-    const navigation = getSectionNavigation(step, sectionKey);
-    const currentStep = SECTION_TO_STEP[activeSection];
-
-    if (!navigation || currentStep >= steps.length - 1) {
-      return null;
-    }
-
-    return (
-      <div className={cx("col-span-all", "section-nav-row")}>
-        <button
-          type="button"
-          className={cx("step-nav-button", "section-next-button")}
-          onClick={() => handleSectionAdvance(step, sectionKey)}
-          disabled={navigation.type === "submit" && loading}
-        >
-          <span>{navigation.label}</span>
-          <SkipNextIcon fontSize="small" />
-        </button>
-      </div>
-    );
   };
   const handleGalleryImageChange = e => {
     const files = Array.from(e.target.files);
@@ -1113,7 +1058,6 @@ const BusinessList = React.memo(() => {
     ...createEmptyBusinessFormData()
   });
   const [categoryFilterConfig, setCategoryFilterConfig] = useState([]);
-  const [filterConfigLoading, setFilterConfigLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
   const [forceBypassedFields, setForceBypassedFields] = useState([]);
   const [listingMode, setListingMode] = useState(LISTING_MODE.FREE);
@@ -1138,10 +1082,8 @@ const BusinessList = React.memo(() => {
     aspect: 1,
     croppedAreaPixels: null,
   });
-  const [demoSubmitting, setDemoSubmitting] = useState(false);
   const [hoveredPaidButtonId, setHoveredPaidButtonId] = useState(null); // Track which paid button is being hovered
   const [markingPaidId, setMarkingPaidId] = useState(null); // Business id currently being marked as paid
-  const [badgeUpdateLoading, setBadgeUpdateLoading] = useState(false);
   const [postCreatePaidStatus, setPostCreatePaidStatus] = useState("idle");
   const [postCreateBusinessName, setPostCreateBusinessName] = useState("");
   const [stepValidationTriggered, setStepValidationTriggered] = useState({});
@@ -1153,7 +1095,6 @@ const BusinessList = React.memo(() => {
     tone: "info"
   });
   const businessFormRef = useRef(null);
-  const sectionRefs = useRef({});
   const [deleteDialog, setDeleteDialog] = useState({
     open: false,
     id: null
@@ -1392,7 +1333,10 @@ const BusinessList = React.memo(() => {
   // Images and file uploads are excluded to stay within the localStorage quota;
   // restoreDraftFromLocal expects the rest of the form under `formData`.
   const buildBusinessDraftPayload = useCallback((data, activeStep = 0) => {
-    const { bannerImage, logoImage, kycDocuments, ...serializableFormData } = data || {};
+    const serializableFormData = { ...(data || {}) };
+    delete serializableFormData.bannerImage;
+    delete serializableFormData.logoImage;
+    delete serializableFormData.kycDocuments;
     return {
       savedAt: new Date().toISOString(),
       activeStep,
@@ -2107,45 +2051,6 @@ const BusinessList = React.memo(() => {
       }
     });
   }, []);
-  const buildDemoSvgMarkup = useCallback((headline, subline) => `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
-  <defs>
-    <linearGradient id="demoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#fff7ed" />
-      <stop offset="100%" stop-color="#fed7aa" />
-    </linearGradient>
-  </defs>
-  <rect width="1200" height="630" fill="url(#demoGradient)" />
-  <rect x="56" y="56" width="1088" height="518" rx="28" fill="#ffffff" opacity="0.95" />
-  <text x="100" y="250" fill="#9a3412" font-family="Arial, sans-serif" font-size="42" font-weight="700">${headline}</text>
-  <text x="100" y="320" fill="#7c2d12" font-family="Arial, sans-serif" font-size="28">${subline}</text>
-  <text x="100" y="420" fill="#ea580c" font-family="Arial, sans-serif" font-size="22">MassClick automated demo asset</text>
-</svg>`, []);
-  const buildDemoImageAsset = useCallback((filename, headline, subline) => {
-    const svgMarkup = buildDemoSvgMarkup(headline, subline);
-    const file = new File([svgMarkup], filename, {
-      type: "image/svg+xml"
-    });
-    file.preview = URL.createObjectURL(file);
-    return {
-      file,
-      dataUrl: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgMarkup)}`
-    };
-  }, [buildDemoSvgMarkup]);
-  const buildDemoDataUrlAsset = useCallback((filename, dataUrl) => {
-    const [meta, base64Payload] = String(dataUrl || "").split(",");
-    const mimeType = meta?.match(/data:(.*?);base64/)?.[1] || "application/octet-stream";
-    const binary = atob(base64Payload || "");
-    const bytes = Uint8Array.from(binary, char => char.charCodeAt(0));
-    const file = new File([bytes], filename, {
-      type: mimeType
-    });
-    file.preview = URL.createObjectURL(file);
-    return {
-      file,
-      dataUrl
-    };
-  }, []);
   const passOrMessage = (condition, message) => condition ? true : message;
   const getBusinessValidationRules = (data, {
     bannerPreview = preview,
@@ -2423,9 +2328,6 @@ const BusinessList = React.memo(() => {
     return () => clearTimeout(timer);
   }, [sideSuggestion.open, sideSuggestion.title, sideSuggestion.body]);
   const selectedKeywordValues = Array.isArray(formData.keywords) ? formData.keywords : [];
-  const availableKeywordSuggestions = categoryKeywordSuggestions.filter(keyword => !selectedKeywordValues.some(
-    selectedKeyword => String(selectedKeyword).toLowerCase() === String(keyword).toLowerCase()
-  ));
   const addKeywordToForm = keyword => {
     const cleanKeyword = normalizeText(keyword);
     if (!cleanKeyword) return;
@@ -2564,12 +2466,10 @@ const BusinessList = React.memo(() => {
       return;
     }
 
-    setFilterConfigLoading(true);
     const slug = found?.slug || catSlug;
     axiosInstance.get(`/category/${encodeURIComponent(slug)}/filters`)
       .then(res => setCategoryFilterConfig(Array.isArray(res.data) ? res.data : []))
-      .catch(() => setCategoryFilterConfig([]))
-      .finally(() => setFilterConfigLoading(false));
+      .catch(() => setCategoryFilterConfig([]));
   }, [formData.category, searchCategory, category]); // eslint-disable-line
 
   const handleFilterChange = useCallback((key, value) => {
@@ -3096,162 +2996,6 @@ const BusinessList = React.memo(() => {
       setIsSavingBusiness(false);
     }
   };
-  const updateBadgesOnly = async () => {
-    if (!editId) {
-      enqueueSnackbar("Please save the business first before updating badges.", {
-        variant: "warning"
-      });
-      return;
-    }
-
-    setBadgeUpdateLoading(true);
-    try {
-      const payload = {
-        badges: {
-          ...formData.badges,
-          isTrust: !!(formData.badges?.isTrust || formData.badges?.isTrusted),
-        },
-        verification: formData.verification
-      };
-
-      const updatedBusiness = await dispatch(updateBusinessBadges(editId, payload));
-      setFormData(prev => ({
-        ...prev,
-        badges: {
-          ...prev.badges,
-          ...(updatedBusiness?.badges || payload.badges),
-        },
-        verification: {
-          ...prev.verification,
-          ...(updatedBusiness?.verification || payload.verification),
-        },
-      }));
-      enqueueSnackbar("Badges updated successfully!", {
-        variant: "success"
-      });
-      dispatch(getAllBusinessList());
-    } catch (err) {
-      if (err.response?.data?.message) {
-        enqueueSnackbar(err.response.data.message, {
-          variant: "error"
-        });
-      } else {
-        enqueueSnackbar("Error updating badges. Please try again.", {
-          variant: "error"
-        });
-      }
-    } finally {
-      setBadgeUpdateLoading(false);
-    }
-  };
-  const handleCreateDemoBusiness = async () => {
-    if (editMode || loading || demoSubmitting) {
-      return;
-    }
-
-    setDemoSubmitting(true);
-
-    const uniqueSuffix = `${Date.now()}`.slice(-6);
-    const demoLocation = normalizeText(location?.[0]?.city || location?.[0]?.district || "Chennai");
-    const demoCategory = `Demo Services ${uniqueSuffix}`;
-    const demoBusinessName = `MassClick Demo Business ${uniqueSuffix}`;
-    const demoTitle = `${demoBusinessName} in ${demoLocation}`;
-    const demoSeoDescription = `Automated demo listing for ${demoBusinessName} in ${demoLocation}, created to verify the business create flow end to end.`;
-    const demoBanner = buildDemoImageAsset(`business-demo-banner-${uniqueSuffix}.svg`, demoBusinessName, `${demoLocation} demo listing`);
-    const demoKyc = buildDemoDataUrlAsset(`business-demo-kyc-${uniqueSuffix}.png`, DEMO_PNG_DATA_URL);
-    const demoOpeningHours = defaultOpeningHours.map(hour => ({
-      ...hour,
-      open: "09:00",
-      close: "18:00",
-      isClosed: false,
-      is24Hours: false
-    }));
-    const demoBusinessDetails = `<p>${demoBusinessName} is an automated sample business created from the admin panel to verify the create, validation, and payment workflow.</p>`;
-    const demoFormData = {
-      ...createEmptyBusinessFormData(),
-      clientId: `DEMO-${uniqueSuffix} - Codex Test`,
-      businessName: demoBusinessName,
-      plotNumber: "12A",
-      street: "Demo Street",
-      pincode: "600001",
-      globalAddress: `12A Demo Street, ${demoLocation}, Tamil Nadu 600001`,
-      email: `demo.business.${uniqueSuffix}@massclick.test`,
-      contact: `90001${uniqueSuffix}`,
-      contactList: `90002${uniqueSuffix}`,
-      gstin: "33ABCDE1234F1Z5",
-      whatsappNumber: `90003${uniqueSuffix}`,
-      experience: "5",
-      location: demoLocation,
-      category: demoCategory,
-      keywords: ["demo business", "test listing", "massclick automation"],
-      slug: `massclick-demo-business-${uniqueSuffix}`,
-      seoTitle: `${demoBusinessName} | Demo listing`,
-      seoDescription: demoSeoDescription,
-      title: demoTitle,
-      description: "Auto-generated demo listing used to verify the business onboarding flow.",
-      bannerImage: demoBanner.dataUrl,
-      googleMap: "https://maps.google.com/?q=13.0827,80.2707",
-      website: `https://demo-${uniqueSuffix}.massclick.test`,
-      facebook: `https://facebook.com/massclick-demo-${uniqueSuffix}`,
-      instagram: `https://instagram.com/massclick_demo_${uniqueSuffix}`,
-      youtube: `https://youtube.com/@massclickdemo${uniqueSuffix}`,
-      pinterest: `https://pinterest.com/massclickdemo${uniqueSuffix}`,
-      twitter: `https://x.com/massclickdemo${uniqueSuffix}`,
-      linkedin: `https://linkedin.com/company/massclick-demo-${uniqueSuffix}`,
-      businessDetails: demoBusinessDetails,
-      openingHours: demoOpeningHours,
-      geoLocation: {
-        type: "Point",
-        coordinates: ["80.2707", "13.0827"]
-      },
-      filters: {},
-      badges: {
-        isFeatured: false,
-        isSponsored: false,
-        isTrending: false,
-        isTrust: false,
-        priorityScore: 0,
-      },
-      verification: {
-        isVerified: false,
-        verificationType: "ADMIN",
-      },
-    };
-
-    revokePreviewUrls(kycFiles);
-    setEditMode(false);
-    setEditId(null);
-    setDuplicateBypassSignature("");
-    setFieldErrors({});
-    setForceBypassedFields([]);
-    setWarnLevel(0);
-    setWarnDialog(false);
-    setDuplicateReview({
-      open: false,
-      matches: [],
-      signature: "",
-      action: "save"
-    });
-    setCategoryKeywordSuggestions([]);
-    setInputKeyword("");
-    setPreview(demoBanner.dataUrl);
-    setBusinessValue(demoBusinessDetails);
-    setFormData(demoFormData);
-    setKycFiles([demoKyc.file]);
-    setActiveSection("categorySeo");
-
-    try {
-      await saveBusiness({
-        draftFormData: demoFormData,
-        draftBusinessDetails: demoBusinessDetails,
-        draftKycFiles: [demoKyc.file],
-        skipDuplicateCheck: true
-      });
-    } finally {
-      setDemoSubmitting(false);
-    }
-  };
-
   const handleSubmit = async e => {
     e.preventDefault();
     await saveBusiness();
@@ -3353,69 +3097,6 @@ const BusinessList = React.memo(() => {
     certificates: bl.certificates || {},
   }));
 
-  const mapBusinessToRow = (bl, index = 0) => ({
-    id: bl._id || index,
-    _id: bl._id,
-    clientId: bl.clientId || "-",
-    businessName: bl.businessName || "-",
-    plotNumber: bl.plotNumber || "-",
-    street: bl.street || "-",
-    pincode: bl.pincode || "-",
-    globalAddress: bl.globalAddress || "-",
-    email: bl.email || "-",
-    contact: bl.contact || "-",
-    contactList: bl.contactList || "-",
-    gstin: bl.gstin || "-",
-    whatsappNumber: bl.whatsappNumber || "-",
-    experience: bl.experience || "-",
-    location: bl.location || "-",
-    masterLocation: bl.masterLocation || null,
-    category: bl.category || "-",
-    seoTitle: bl.seoTitle || "",
-    seoDescription: bl.seoDescription || "",
-    title: bl.title || "",
-    description: bl.description || "",
-    slug: bl.slug || "",
-    publicId: bl.publicId || "",
-    keywords: bl.keywords || [],
-    restaurantOptions: bl.restaurantOptions || "",
-    bannerImage: bl.bannerImage || null,
-    logoImage: bl.logoImage || null,
-    businessImages: bl.businessImages || [],
-    googleMap: bl.googleMap || "-",
-    geoLocation: bl.geoLocation || {
-      type: "Point",
-      coordinates: ["", ""]
-    },
-    website: bl.website || "-",
-    facebook: bl.facebook || "-",
-    instagram: bl.instagram || "-",
-    youtube: bl.youtube || "-",
-    pinterest: bl.pinterest || "-",
-    twitter: bl.twitter || "-",
-    linkedin: bl.linkedin || "-",
-    businessDetails: bl.businessDetails || "-",
-    openingHours: bl.openingHours || defaultOpeningHours,
-    filters: bl.filters && typeof bl.filters === "object" ? bl.filters : {},
-    mniDetails: bl.mniDetails || [],
-    payment: bl.payment || [],
-    createdBy: bl.createdBy,
-    createdAt: bl.createdAt || null,
-    updatedAt: bl.updatedAt || null,
-    qrText: bl.qrCode?.qrText || "",
-    qrImage: bl.qrCode?.qrImage || null,
-    qrDownloads: bl.qrDownloads || [],
-    amountPaid: bl.amountPaid || false,
-    paidDate: bl.paidDate || null,
-    activeBusinesses: bl.activeBusinesses,
-    businessesLive: bl.businessesLive,
-    isActive: bl.isActive,
-    kycDocuments: bl.kycDocuments || [],
-    badges: bl.badges || { isFeatured: false, isSponsored: false, isTrending: false, isTrust: false, priorityScore: 0 },
-    verification: bl.verification || { isVerified: false, verificationType: "ADMIN" },
-    certificates: bl.certificates || {},
-  });
-
   const getRowsMatchingAppliedFilters = rowList => rowList.filter(row => {
     const {
       searchTerm: appliedSearchTerm,
@@ -3475,299 +3156,6 @@ const BusinessList = React.memo(() => {
   const locationOptions = toSortedUniqueTextOptions(
     location.map(l => l?.city || l?.district || l?.location || l?.name)
   );
-
-  const removeInvalidXmlChars = value => Array.from(String(value ?? ""))
-    .map(char => {
-      const code = char.charCodeAt(0);
-      return (code < 32 && code !== 9 && code !== 10 && code !== 13) ? " " : char;
-    })
-    .join("");
-
-  const xmlEscape = value => removeInvalidXmlChars(value)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
-
-  const stripExportHtml = value => String(value ?? "")
-    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, " ")
-    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, " ")
-    .replace(/<[^>]*>/g, " ")
-    .replace(/&nbsp;/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  const cleanExportValue = value => {
-    if (value == null || value === "") return "";
-    if (Array.isArray(value)) return value.map(cleanExportValue).filter(Boolean).join(", ");
-    if (typeof value === "boolean") return value ? "Yes" : "No";
-    if (typeof value === "object") return Object.entries(value)
-      .filter(([, nestedValue]) => nestedValue != null && nestedValue !== "")
-      .map(([key, nestedValue]) => `${key}: ${cleanExportValue(nestedValue)}`)
-      .join("; ");
-    return stripExportHtml(value);
-  };
-
-  const formatExportDate = value => {
-    const rawValue = value?.$date || value;
-    if (!rawValue) return "";
-    const date = new Date(rawValue);
-    if (Number.isNaN(date.getTime())) return "";
-    return date.toLocaleString("en-IN", {
-      timeZone: "Asia/Kolkata",
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true
-    });
-  };
-
-  const formatOpeningHours = hours => {
-    if (!Array.isArray(hours) || hours.length === 0) return "";
-    return hours.map(hour => {
-      if (hour?.isClosed) return `${hour.day}: Closed`;
-      if (hour?.is24Hours) return `${hour.day}: 24 Hours`;
-      return `${hour?.day || ""}: ${hour?.open || "-"} to ${hour?.close || "-"}`;
-    }).join("\n");
-  };
-
-  const formatPayments = payments => {
-    if (!Array.isArray(payments) || payments.length === 0) return "";
-    return payments.map(payment => {
-      const amount = payment.totalAmount || payment.amount || "";
-      const status = payment.paymentStatus || payment.status || "";
-      const paidOn = formatExportDate(payment.paymentDate);
-      return [status, amount ? `Rs. ${amount}` : "", paidOn].filter(Boolean).join(" | ");
-    }).join("\n");
-  };
-
-  const formatMniDetails = details => {
-    if (!Array.isArray(details) || details.length === 0) return "";
-    return details.map(item => [
-      item?.categoryGroup ? `Group: ${item.categoryGroup}` : "",
-      item?.categoryGroupLocation ? `Location: ${item.categoryGroupLocation}` : "",
-      item?.leadsCount != null ? `Leads: ${item.leadsCount}` : "",
-      Array.isArray(item?.leadsCategory) && item.leadsCategory.length ? `Lead Categories: ${item.leadsCategory.join(", ")}` : ""
-    ].filter(Boolean).join(" | ")).join("\n");
-  };
-
-  const getCoordinate = (row, index) => {
-    const value = row.geoLocation?.coordinates?.[index];
-    return value == null || value === "" ? "" : value;
-  };
-
-  const getExcelColumnName = index => {
-    let columnIndex = index + 1;
-    let columnName = "";
-    while (columnIndex > 0) {
-      const remainder = (columnIndex - 1) % 26;
-      columnName = String.fromCharCode(65 + remainder) + columnName;
-      columnIndex = Math.floor((columnIndex - 1) / 26);
-    }
-    return columnName;
-  };
-
-  const exportColumns = [
-    { label: "S.No", width: 7, value: (_, index) => index + 1, style: 4 },
-    { label: "Client ID", width: 34, value: row => row.clientId },
-    { label: "Business Name", width: 34, value: row => row.businessName },
-    { label: "Category", width: 24, value: row => row.category },
-    { label: "Location", width: 22, value: row => row.location },
-    { label: "Plot No", width: 14, value: row => row.plotNumber },
-    { label: "Street", width: 38, value: row => row.street },
-    { label: "Pincode", width: 14, value: row => row.pincode },
-    { label: "Full Address", width: 46, value: row => row.globalAddress },
-    { label: "Contact", width: 17, value: row => row.contact },
-    { label: "Contact List", width: 18, value: row => row.contactList },
-    { label: "WhatsApp", width: 17, value: row => row.whatsappNumber },
-    { label: "Email", width: 28, value: row => row.email },
-    { label: "GSTIN", width: 20, value: row => row.gstin },
-    { label: "Experience", width: 14, value: row => row.experience },
-    { label: "Payment Status", width: 16, value: row => isBusinessPaid(row) ? "Paid" : "Pending" },
-    { label: "Paid Date", width: 22, value: row => formatExportDate(row.paidDate) },
-    { label: "Payment History", width: 34, value: row => formatPayments(row.payment) },
-    { label: "Live", width: 10, value: row => row.businessesLive },
-    { label: "Active", width: 10, value: row => row.activeBusinesses },
-    { label: "Verified", width: 12, value: row => row.verification?.isVerified },
-    { label: "Verification Type", width: 18, value: row => row.verification?.verificationType },
-    { label: "Featured", width: 12, value: row => row.badges?.isFeatured },
-    { label: "Sponsored", width: 12, value: row => row.badges?.isSponsored },
-    { label: "Trending", width: 12, value: row => row.badges?.isTrending },
-    { label: "Priority Score", width: 14, value: row => row.badges?.priorityScore, style: 4 },
-    { label: "Created By", width: 24, value: row => getCreatedByDisplayName(row.createdBy) },
-    { label: "Created At", width: 22, value: row => formatExportDate(row.createdAt) },
-    { label: "Updated At", width: 22, value: row => formatExportDate(row.updatedAt) },
-    { label: "Opening Hours", width: 42, value: row => formatOpeningHours(row.openingHours) },
-    { label: "Keywords", width: 38, value: row => row.keywords },
-    { label: "Title", width: 34, value: row => row.title },
-    { label: "Description", width: 50, value: row => row.description },
-    { label: "SEO Title", width: 38, value: row => row.seoTitle },
-    { label: "SEO Description", width: 50, value: row => row.seoDescription },
-    { label: "SEO Slug (legacy)", width: 32, value: row => row.slug },
-    { label: "Public ID", width: 12, value: row => row.publicId },
-    { label: "Business Details", width: 54, value: row => row.businessDetails },
-    { label: "Website", width: 34, value: row => row.website },
-    { label: "Google Map", width: 44, value: row => row.googleMap },
-    { label: "Facebook", width: 28, value: row => row.facebook },
-    { label: "Instagram", width: 28, value: row => row.instagram },
-    { label: "YouTube", width: 28, value: row => row.youtube },
-    { label: "Pinterest", width: 28, value: row => row.pinterest },
-    { label: "Twitter", width: 28, value: row => row.twitter },
-    { label: "LinkedIn", width: 28, value: row => row.linkedin },
-    { label: "Longitude", width: 14, value: row => getCoordinate(row, 0), style: 4 },
-    { label: "Latitude", width: 14, value: row => getCoordinate(row, 1), style: 4 },
-    { label: "Category Group / MNI", width: 42, value: row => formatMniDetails(row.mniDetails) },
-    { label: "Category Filters", width: 42, value: row => row.filters },
-    { label: "QR Review Link", width: 48, value: row => row.qrText },
-    { label: "QR Downloads", width: 16, value: row => row.qrDownloads?.length || 0, style: 4 },
-  ];
-
-  const getCrcTable = () => Array.from({ length: 256 }, (_, index) => {
-    let value = index;
-    for (let bit = 0; bit < 8; bit += 1) {
-      value = (value & 1) ? (0xedb88320 ^ (value >>> 1)) : (value >>> 1);
-    }
-    return value >>> 0;
-  });
-
-  const crc32 = bytes => {
-    const crcTable = getCrcTable();
-    let crc = 0xffffffff;
-    for (let index = 0; index < bytes.length; index += 1) {
-      crc = crcTable[(crc ^ bytes[index]) & 0xff] ^ (crc >>> 8);
-    }
-    return (crc ^ 0xffffffff) >>> 0;
-  };
-
-  const createZip = files => {
-    const encoder = new TextEncoder();
-    const parts = [];
-    const centralParts = [];
-    let offset = 0;
-
-    const pushUint16 = (target, value) => {
-      target.push(value & 0xff, (value >>> 8) & 0xff);
-    };
-    const pushUint32 = (target, value) => {
-      target.push(value & 0xff, (value >>> 8) & 0xff, (value >>> 16) & 0xff, (value >>> 24) & 0xff);
-    };
-
-    files.forEach(file => {
-      const nameBytes = encoder.encode(file.name);
-      const dataBytes = encoder.encode(file.content);
-      const checksum = crc32(dataBytes);
-      const localHeader = [];
-
-      pushUint32(localHeader, 0x04034b50);
-      pushUint16(localHeader, 20);
-      pushUint16(localHeader, 0);
-      pushUint16(localHeader, 0);
-      pushUint16(localHeader, 0);
-      pushUint16(localHeader, 0);
-      pushUint32(localHeader, checksum);
-      pushUint32(localHeader, dataBytes.length);
-      pushUint32(localHeader, dataBytes.length);
-      pushUint16(localHeader, nameBytes.length);
-      pushUint16(localHeader, 0);
-
-      parts.push(new Uint8Array(localHeader), nameBytes, dataBytes);
-
-      const centralHeader = [];
-      pushUint32(centralHeader, 0x02014b50);
-      pushUint16(centralHeader, 20);
-      pushUint16(centralHeader, 20);
-      pushUint16(centralHeader, 0);
-      pushUint16(centralHeader, 0);
-      pushUint16(centralHeader, 0);
-      pushUint16(centralHeader, 0);
-      pushUint32(centralHeader, checksum);
-      pushUint32(centralHeader, dataBytes.length);
-      pushUint32(centralHeader, dataBytes.length);
-      pushUint16(centralHeader, nameBytes.length);
-      pushUint16(centralHeader, 0);
-      pushUint16(centralHeader, 0);
-      pushUint16(centralHeader, 0);
-      pushUint16(centralHeader, 0);
-      pushUint32(centralHeader, 0);
-      pushUint32(centralHeader, offset);
-      centralParts.push(new Uint8Array(centralHeader), nameBytes);
-
-      offset += localHeader.length + nameBytes.length + dataBytes.length;
-    });
-
-    const centralSize = centralParts.reduce((sum, part) => sum + part.length, 0);
-    const centralOffset = offset;
-    const endRecord = [];
-    pushUint32(endRecord, 0x06054b50);
-    pushUint16(endRecord, 0);
-    pushUint16(endRecord, 0);
-    pushUint16(endRecord, files.length);
-    pushUint16(endRecord, files.length);
-    pushUint32(endRecord, centralSize);
-    pushUint32(endRecord, centralOffset);
-    pushUint16(endRecord, 0);
-
-    return new Blob([...parts, ...centralParts, new Uint8Array(endRecord)], {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    });
-  };
-
-  const buildWorkbookBlob = dataRows => {
-    const sheetRows = [
-      `<row r="1" ht="24" customHeight="1">${exportColumns.map((column, index) => `<c r="${getExcelColumnName(index)}1" s="1" t="inlineStr"><is><t>${xmlEscape(column.label)}</t></is></c>`).join("")}</row>`,
-      ...dataRows.map((row, rowIndex) => {
-        const excelRow = rowIndex + 2;
-        const cells = exportColumns.map((column, colIndex) => {
-          const cellRef = `${getExcelColumnName(colIndex)}${excelRow}`;
-          const rawValue = column.value(row, rowIndex);
-          const value = cleanExportValue(rawValue);
-          const style = column.style || 2;
-          return `<c r="${cellRef}" s="${style}" t="inlineStr"><is><t>${xmlEscape(value)}</t></is></c>`;
-        }).join("");
-        return `<row r="${excelRow}" ht="42" customHeight="1">${cells}</row>`;
-      })
-    ].join("");
-
-    const lastColumn = getExcelColumnName(exportColumns.length - 1);
-    const worksheet = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-  <sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>
-  <sheetFormatPr defaultRowHeight="18"/>
-  <cols>${exportColumns.map((column, index) => `<col min="${index + 1}" max="${index + 1}" width="${column.width}" customWidth="1"/>`).join("")}</cols>
-  <sheetData>${sheetRows}</sheetData>
-  <autoFilter ref="A1:${lastColumn}${Math.max(dataRows.length + 1, 1)}"/>
-</worksheet>`;
-
-    const styles = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-  <fonts count="2"><font><sz val="10"/><name val="Calibri"/></font><font><b/><sz val="10"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font></fonts>
-  <fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFF8C00"/><bgColor indexed="64"/></patternFill></fill></fills>
-  <borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style="thin"><color rgb="FFD9E2EC"/></left><right style="thin"><color rgb="FFD9E2EC"/></right><top style="thin"><color rgb="FFD9E2EC"/></top><bottom style="thin"><color rgb="FFD9E2EC"/></bottom><diagonal/></border></borders>
-  <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-  <cellXfs count="5">
-    <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
-    <xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
-    <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>
-    <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="top" wrapText="1"/></xf>
-    <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="top" wrapText="1"/></xf>
-  </cellXfs>
-  <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
-</styleSheet>`;
-
-    return createZip([
-      { name: "[Content_Types].xml", content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/><Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/></Types>` },
-      { name: "_rels/.rels", content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/></Relationships>` },
-      { name: "docProps/core.xml", content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:title>MassClick Business Export</dc:title><dc:creator>MassClick Admin</dc:creator><dcterms:created xsi:type="dcterms:W3CDTF">${new Date().toISOString()}</dcterms:created></cp:coreProperties>` },
-      { name: "docProps/app.xml", content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes"><Application>MassClick</Application></Properties>` },
-      { name: "xl/workbook.xml", content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Business Directory" sheetId="1" r:id="rId1"/></sheets></workbook>` },
-      { name: "xl/_rels/workbook.xml.rels", content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>` },
-      { name: "xl/styles.xml", content: styles },
-      { name: "xl/worksheets/sheet1.xml", content: worksheet },
-    ]);
-  };
 
   const downloadBlob = (blob, filename) => {
     const url = URL.createObjectURL(blob);
@@ -4085,32 +3473,6 @@ const BusinessList = React.memo(() => {
       </Box>
     )
   }];
-  const SectionHeader = ({
-    icon: Icon,
-    title,
-    subtitle,
-    isCollapsed = false,
-    isDisabled = false,
-    onToggleCollapse = null
-  }) => <div className={cx("section-header", isDisabled && "disabled", isCollapsed && "collapsed")}>
-      <button
-        type="button"
-        className={cx("section-header-button")}
-        onClick={onToggleCollapse}
-        disabled={isDisabled}
-        aria-expanded={!isCollapsed}
-      >
-        {Icon && <Icon className={cx("section-icon")} />}
-        <div className={cx("section-title-group")}>
-          <h3 className={cx("section-title")}>{title}</h3>
-          {subtitle && <p className={cx("section-subtitle")}>{subtitle}</p>}
-        </div>
-        <span className={cx("section-collapse-icon")}>
-          {isCollapsed ? '▼' : '▲'}
-        </span>
-      </button>
-      {isDisabled && <div className={cx("section-disabled-overlay")}>Complete previous section to unlock</div>}
-    </div>;
   const handleListingModeChange = (nextMode) => {
     if (listingMode === nextMode) {
       return;
@@ -4345,7 +3707,7 @@ const BusinessList = React.memo(() => {
       return (
         <Box sx={{ p: 3, maxWidth: 1000, mx: "auto" }}>
           <Typography variant="h5" sx={{ mb: 3, fontWeight: 600, color: "#333" }}>
-            📋 Complete Form Preview
+            Complete Form Preview
           </Typography>
 
           {/* STEP 0: Business Information */}
@@ -4441,7 +3803,7 @@ const BusinessList = React.memo(() => {
                     )}
                     <Box sx={{ p: 1.5 }}>
                       <Typography variant="caption" sx={{ display: "block", fontWeight: 600, mb: 0.5 }}>
-                        📄 {file.name}
+                        {file.name}
                       </Typography>
                       <Typography variant="caption" sx={{ color: "#999" }}>
                         {(file.size / 1024).toFixed(2)} KB
@@ -4480,7 +3842,7 @@ const BusinessList = React.memo(() => {
               onClick={() => handleSectionChange("searchSeo")}
               sx={{ flex: 1 }}
             >
-              ← Back to Edit
+              ? Back to Edit
             </Button>
             <Button
               variant="contained"
@@ -4886,7 +4248,7 @@ const BusinessList = React.memo(() => {
               {bypassableFieldErrorCount > 0 && (
                 <div className={cx("validation-actions")}>
                   <button type="button" className={cx("warn-save-button")} onClick={() => setWarnDialog(true)} disabled={loading}>
-                    {warnLevel > 0 ? `⚠️ Warning ${warnLevel}/3 — Save with warnings` : "Save with warnings"}
+                    {warnLevel > 0 ? `Warning ${warnLevel}/3 — Save with warnings` : "Save with warnings"}
                   </button>
                   <span className={cx("force-bypass-note")}>
                     businessName, category &amp; location still need valid values.
@@ -4954,7 +4316,7 @@ const BusinessList = React.memo(() => {
     {activeView === "success" && successData && (
       <div className={cx("success-screen-container")}>
         <div className={cx("success-screen-card")}>
-          <div className={cx("success-icon")}>✅</div>
+          <div className={cx("success-icon")}>✓</div>
           <h1 className={cx("success-title")}>Business Created Successfully!</h1>
 
           <div className={cx("success-details")}>
@@ -4962,12 +4324,12 @@ const BusinessList = React.memo(() => {
 
             {successData.isPaid ? (
               <div className={cx("success-paid-badge")}>
-                <span className={cx("paid-badge-icon")}>💳</span>
+                <span className={cx("paid-badge-icon")}>Paid</span>
                 <span>This is a PAID Business</span>
               </div>
             ) : (
               <div className={cx("success-free-badge")}>
-                <span className={cx("free-badge-icon")}>🆓</span>
+                <span className={cx("free-badge-icon")}>Free</span>
                 <span>This is a FREE Business</span>
               </div>
             )}
@@ -5002,7 +4364,7 @@ const BusinessList = React.memo(() => {
       <div className={cx("table-section")}>
         <div className={cx("table-header")}>
           <Typography variant="h6" className={cx("table-title")}>
-            📋 Business Directory
+            Business Directory
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Typography variant="body2" className={cx("table-count")}>
@@ -5197,7 +4559,7 @@ const BusinessList = React.memo(() => {
                 )}
                 {row.badges?.isFeatured && (
                   <Box sx={{ px: 2, py: 0.7, borderRadius: "12px", bgcolor: "#fff8e1", color: "#b8860b", fontSize: "0.8rem", fontWeight: 700 }}>
-                    ★ Featured
+                    ? Featured
                   </Box>
                 )}
                 {row.badges?.isSponsored && (
@@ -5207,7 +4569,7 @@ const BusinessList = React.memo(() => {
                 )}
                 {row.badges?.isTrending && (
                   <Box sx={{ px: 2, py: 0.7, borderRadius: "12px", bgcolor: "#fef2f2", color: "#c41e3a", fontSize: "0.8rem", fontWeight: 700 }}>
-                    🔥 Trending
+                    Trending
                   </Box>
                 )}
               </Box>
@@ -5321,7 +4683,7 @@ const BusinessList = React.memo(() => {
                       bgcolor: isPaid ? "#d1fae5" : "#fef3c7",
                       color: isPaid ? "#065f46" : "#92400e"
                     }}>
-                      {isPaid ? "✓ Paid" : "⏳ Pending"}
+                      {isPaid ? "? Paid" : "? Pending"}
                     </Box>
                     {!isPaid && (
                       <Button size="small" variant="contained" onClick={handleMarkPaid}
@@ -5792,7 +5154,7 @@ const BusinessList = React.memo(() => {
         {selectedImageUrl ? (
           <img
             src={selectedImageUrl}
-            alt="Business Image"
+            alt="Business preview"
             style={{
               maxWidth: "100%",
               maxHeight: "600px",
@@ -5825,7 +5187,7 @@ const BusinessList = React.memo(() => {
 
     <Dialog open={warnDialog} onClose={() => setWarnDialog(false)} maxWidth="xs" fullWidth>
       <DialogTitle sx={{ color: "#D97800", fontWeight: 700 }}>
-        ⚠️ {warnMessages[warnLevel + 1]?.title}
+        {warnMessages[warnLevel + 1]?.title}
       </DialogTitle>
       <DialogContent>
         <Typography variant="body2">{warnMessages[warnLevel + 1]?.body}</Typography>
@@ -5984,9 +5346,9 @@ const BusinessList = React.memo(() => {
       </DialogActions>
     </Dialog>
 
-    {/* ════════════════════════════════════════
+    {/* ----------------------------------------
           GMaps Leads Picker Dialog
-      ════════════════════════════════════════ */}
+      ---------------------------------------- */}
     <Dialog
       open={gmapsPickerOpen}
       onClose={() => setGmapsPickerOpen(false)}
@@ -6015,7 +5377,7 @@ const BusinessList = React.memo(() => {
           {/* Search input */}
           <input
             type="text"
-            placeholder="🔍  Search by name…"
+            placeholder="Search by name..."
             value={pickerFilters.search}
             onChange={e => setPickerFilters(prev => ({ ...prev, search: e.target.value }))}
             onKeyDown={e => { if (e.key === 'Enter') { setPickerPage(1); fetchPickerLeads(1, pickerFilters); } }}
@@ -6041,9 +5403,9 @@ const BusinessList = React.memo(() => {
             style={{ height: 36, border: '1.5px solid #e2e2e2', borderRadius: 8, padding: '0 10px', fontSize: '0.87rem', color: '#333', background: '#fff', outline: 'none', minWidth: 110, cursor: 'pointer' }}
           >
             <option value="">Any Rating</option>
-            <option value="3">3★ and up</option>
-            <option value="4">4★ and up</option>
-            <option value="4.5">4.5★ and up</option>
+            <option value="3">3? and up</option>
+            <option value="4">4? and up</option>
+            <option value="4.5">4.5? and up</option>
           </select>
 
           {/* Status */}
@@ -6053,9 +5415,9 @@ const BusinessList = React.memo(() => {
             style={{ height: 36, border: '1.5px solid #e2e2e2', borderRadius: 8, padding: '0 10px', fontSize: '0.87rem', color: '#333', background: '#fff', outline: 'none', minWidth: 120, cursor: 'pointer' }}
           >
             <option value="all">All Status</option>
-            <option value="available">🟢 Available</option>
-            <option value="imported">🔵 Imported</option>
-            <option value="skipped">⚫ Skipped</option>
+            <option value="available">Available</option>
+            <option value="imported">Imported</option>
+            <option value="skipped">? Skipped</option>
           </select>
 
           {/* Has Phone toggle */}
@@ -6066,7 +5428,7 @@ const BusinessList = React.memo(() => {
               onChange={e => setPickerFilters(prev => ({ ...prev, has_phone: e.target.checked }))}
               style={{ accentColor: '#ff8c42', width: 15, height: 15, cursor: 'pointer' }}
             />
-            📞 Has Phone
+            Has Phone
           </label>
 
           {/* Search button */}
@@ -6075,7 +5437,7 @@ const BusinessList = React.memo(() => {
             disabled={pickerLoading}
             style={{ height: 36, background: pickerLoading ? '#f0b07a' : '#ff8c42', color: '#fff', border: 'none', borderRadius: 8, padding: '0 20px', fontSize: '0.87rem', fontWeight: 600, cursor: pickerLoading ? 'not-allowed' : 'pointer', transition: 'background 0.18s', whiteSpace: 'nowrap' }}
           >
-            {pickerLoading ? 'Loading…' : 'Search'}
+            {pickerLoading ? 'Loading...' : 'Search'}
           </button>
 
         </Box>
@@ -6086,7 +5448,7 @@ const BusinessList = React.memo(() => {
         {pickerLoading ? (
           <Box sx={{ p: 4, textAlign: 'center', color: '#aaa' }}>
             <CircularProgress size={28} sx={{ color: '#ff8c42' }} />
-            <Typography sx={{ mt: 1.5, fontSize: '0.9rem' }}>Loading leads…</Typography>
+            <Typography sx={{ mt: 1.5, fontSize: '0.9rem' }}>Loading leads...</Typography>
           </Box>
         ) : pickerLeads.length === 0 ? (
           <Box sx={{ p: 4, textAlign: 'center', color: '#ccc', fontSize: '0.95rem' }}>
@@ -6106,7 +5468,7 @@ const BusinessList = React.memo(() => {
                 const isImported = lead.imported_to_main;
                 const isSkipped = lead.skip_import;
                 const hasMatch = lead.hasMatch;
-                const statusLabel = isImported ? '🔵 Imported' : isSkipped ? '⚫ Skipped' : hasMatch ? '🟡 Has Match' : '🟢 Available';
+                const statusLabel = isImported ? 'Imported' : isSkipped ? 'Skipped' : hasMatch ? 'Has Match' : 'Available';
                 return (
                   <tr key={lead._id} style={{ borderBottom: '1px solid #f7f7f7', transition: 'background 0.15s' }}
                     onMouseEnter={e => e.currentTarget.style.background = '#fdf5ef'}
@@ -6149,9 +5511,9 @@ const BusinessList = React.memo(() => {
           {pickerTotal.toLocaleString()} results
         </Typography>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Button size="small" disabled={pickerPage <= 1} onClick={() => { const p = pickerPage - 1; setPickerPage(p); fetchPickerLeads(p, pickerFilters); }} sx={{ textTransform: 'none', color: '#555' }}>← Prev</Button>
+          <Button size="small" disabled={pickerPage <= 1} onClick={() => { const p = pickerPage - 1; setPickerPage(p); fetchPickerLeads(p, pickerFilters); }} sx={{ textTransform: 'none', color: '#555' }}>? Prev</Button>
           <Typography variant="body2" sx={{ px: 1 }}>Page {pickerPage} of {Math.ceil(pickerTotal / 15) || 1}</Typography>
-          <Button size="small" disabled={pickerPage >= Math.ceil(pickerTotal / 15)} onClick={() => { const p = pickerPage + 1; setPickerPage(p); fetchPickerLeads(p, pickerFilters); }} sx={{ textTransform: 'none', color: '#555' }}>Next →</Button>
+          <Button size="small" disabled={pickerPage >= Math.ceil(pickerTotal / 15)} onClick={() => { const p = pickerPage + 1; setPickerPage(p); fetchPickerLeads(p, pickerFilters); }} sx={{ textTransform: 'none', color: '#555' }}>Next ?</Button>
           <Button size="small" onClick={() => { navigate('/dashboard/gmaps-leads'); setGmapsPickerOpen(false); }} startIcon={<TravelExploreIcon />} sx={{ ml: 2, textTransform: 'none', color: '#ff8c42' }}>
             Full Page
           </Button>

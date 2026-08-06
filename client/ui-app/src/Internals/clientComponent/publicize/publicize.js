@@ -9,12 +9,8 @@ import {
   BarChart3,
   Building2,
   Check,
-  CheckCircle2,
-  ChevronRight,
-  CreditCard,
   Globe2,
   Headphones,
-  IdCard,
   Image,
   ListChecks,
   MapPin,
@@ -173,33 +169,6 @@ const premiumFeatures = [
     icon: Globe2,
     title: "Universal Listing",
     description: "Keep business information organized, current, and ready for discovery.",
-  },
-];
-
-const paymentOptions = [
-  {
-    icon: WalletCards,
-    title: "UPI AutoPay",
-    description: "Monthly auto debit with one year commitment.",
-    badge: "Additional 20% off",
-  },
-  {
-    icon: ReceiptText,
-    title: "1 Year Upfront Payment",
-    description: "Pay once and keep the listing active through the year.",
-    badge: "Save more",
-  },
-  {
-    icon: CreditCard,
-    title: "Cards AutoPay",
-    description: "All major bank cards supported for monthly auto debit.",
-    badge: "Fast setup",
-  },
-  {
-    icon: IdCard,
-    title: "0% Interest EMI",
-    description: "Split the subscription through supported credit and debit cards.",
-    badge: "No cost EMI",
   },
 ];
 

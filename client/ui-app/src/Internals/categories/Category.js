@@ -480,11 +480,11 @@ export default function Category() {
   const [dupMode, setDupMode] = useState("exact");
   const [allCatsCache, setAllCatsCache] = useState([]);
   const [businessUsage, setBusinessUsage] = useState({});
-  const [lookupFilters, setLookupFilters] = useState({
+  const lookupFilters = {
     type: "all",
     subType: "all",
     filters: "all",
-  });
+  };
   const [createWarning, setCreateWarning] = useState({
     open: false,
     matches: [],
@@ -1293,9 +1293,6 @@ export default function Category() {
       isActive: cat.isActive,
       filterConfig: cat.filterConfig || [],
     }));
-  const subCategoryLookupOptions = [
-    ...new Set(rows.map((row) => row.subCategoryType).filter(Boolean)),
-  ].sort();
   const hasLookupFilter =
     lookupFilters.type !== "all" ||
     lookupFilters.subType !== "all" ||
@@ -1455,15 +1452,6 @@ export default function Category() {
     (formData.categoryImage ? 1 : 0) +
     (formData.liveImage ? 1 : 0);
   const filterDraftHelp = FILTER_TYPE_COPY[filterDraft.type] || "";
-  const primaryCategoryCount = rows.filter(
-    (row) => row.categoryType === "Primary Category",
-  ).length;
-  const subCategoryCount = rows.filter(
-    (row) => row.categoryType === "Sub Category",
-  ).length;
-  const rowsWithFiltersCount = rows.filter(
-    (row) => Array.isArray(row.filterConfig) && row.filterConfig.length > 0,
-  ).length;
   return (
     <div className={cx("category-page-container")}>
       <AdminViewTabs

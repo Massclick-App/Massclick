@@ -15,7 +15,11 @@ const LeadsCardHistory = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const leadsUsers = Array.isArray(location.state?.leadsUsers) ? location.state.leadsUsers : [];
+  const routeLeadsUsers = location.state?.leadsUsers;
+  const leadsUsers = useMemo(
+    () => (Array.isArray(routeLeadsUsers) ? routeLeadsUsers : []),
+    [routeLeadsUsers],
+  );
   const [openModal, setOpenModal] = useState(false);
   const [modalType, setModalType] = useState("");
   const [selectedUser, setSelectedUser] = useState(null);

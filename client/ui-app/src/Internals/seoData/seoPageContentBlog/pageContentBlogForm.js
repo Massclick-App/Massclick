@@ -351,7 +351,7 @@ export default function SeoPageContentForm({
     if (formData.contentBlocks && formData.contentBlocks.length > 0) {
       setContentBlocks(formData.contentBlocks);
     }
-  }, [editingId]);
+  }, [editingId, formData.contentBlocks]);
 
   // Sync category input when editing or form data changes
   useEffect(() => {

@@ -73,11 +73,13 @@ const CategoryBar = () => {
   const authUser = useSelector(state => state.otp?.viewResponse);
   // The saved customer session is the active identity. Redux can still contain
   // the profile fetched for a user who has since logged out.
-  const userData = Object.keys(storedAuthUser).length > 0
-    ? storedAuthUser
-    : (viewResponse && Object.keys(viewResponse).length > 0)
-      ? viewResponse
-      : authUser || {};
+  const userData = useMemo(() => (
+    Object.keys(storedAuthUser).length > 0
+      ? storedAuthUser
+      : (viewResponse && Object.keys(viewResponse).length > 0)
+        ? viewResponse
+        : authUser || {}
+  ), [authUser, storedAuthUser, viewResponse]);
   const userName = userData?.userName || userData?.name || '';
   const profileImageUrl = userData?.userProfile || userData?.profileImage || userData?.avatar || "";
   const {

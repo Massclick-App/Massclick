@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { viewAllSeoPageContent, createSeoPageContent, updateSeoPageContent, deleteSeoPageContent } from "../../../redux/actions/seoPageContentAction.js";
 import { getAllLocation, createLocation } from "../../../redux/actions/locationAction.js";
-import { Box, CircularProgress, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, Button } from "@mui/material";
+import { Box, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, Button } from "@mui/material";
 import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";

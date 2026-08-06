@@ -124,12 +124,12 @@ export default function UnifiedAnalytics() {
     return (data.queries || []).filter((row) => String(row.query || "").toLowerCase().includes(filter));
   }, [data.queries, googleQuery]);
   const chartData = useMemo(() => filteredCategories.slice(0, 8), [filteredCategories]);
-  const exportSectionsOptions = [
+  const exportSectionsOptions = useMemo(() => [
     { id: "categories", label: "Most searched categories" },
     { id: "visitorLocations", label: "Visitor locations" },
     { id: "customerLocations", label: "Customer search locations" },
     { id: "queries", label: "Google search queries" },
-  ];
+  ], []);
   const filters = useMemo(
     () => [
       { label: "Period", value: `Last ${days} days` },
@@ -141,7 +141,7 @@ export default function UnifiedAnalytics() {
           .map((key) => exportSectionsOptions.find((item) => item.id === key)?.label || key)
           .join(", ") },
     ],
-    [days, category, visitorLocation, customerLocation, googleQuery, selectedSections],
+    [days, category, visitorLocation, customerLocation, googleQuery, selectedSections, exportSectionsOptions],
   );
 
   const openFilters = () => {

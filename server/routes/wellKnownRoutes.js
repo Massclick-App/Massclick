@@ -160,7 +160,10 @@ router.get("/.well-known/assetlinks.json", (req, res) => {
 
   return sendAssociationJson(res, [
     {
-      relation: ["delegate_permission/common.handle_all_urls"],
+      relation: [
+        "delegate_permission/common.handle_all_urls",
+        "delegate_permission/common.get_login_creds",
+      ],
       target: {
         namespace: "android_app",
         package_name: ANDROID_PACKAGE_NAME,

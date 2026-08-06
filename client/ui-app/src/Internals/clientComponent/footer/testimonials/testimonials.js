@@ -1,4 +1,4 @@
-﻿import { createScopedClassNames } from "../../../../utils/createScopedClassNames";
+import { createScopedClassNames } from "../../../../utils/createScopedClassNames";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import styles from "./testimonials.module.css";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
