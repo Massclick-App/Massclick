@@ -1613,6 +1613,7 @@ const SECTION_FIELD_MAPPING = {
   'location-web': ['googleMap', 'geoLatitude', 'geoLongitude', 'website', 'geoLocation'],
   'social-media': ['facebook', 'instagram', 'youtube', 'pinterest', 'twitter', 'linkedin'],
   'banner-details': ['bannerImage', 'logoImage', 'businessDetails'],
+  'gallery-images': ['businessImages'],
   'opening-hours': ['openingHours'],
   'category-seo': ['category', 'keywords'],
   'display-seo': ['title', 'description', 'seoTitle', 'seoDescription', 'slug', 'filters'],

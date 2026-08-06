@@ -7,7 +7,7 @@ import { Link, useParams, useNavigate } from "react-router-dom";
 import { getPlaceholderImage } from "../../../utils/placeholderImage";
 import { useDispatch, useSelector } from "react-redux";
 import { useSnackbar } from "notistack";
-import { getBusinessDetailsById, getBusinessDetailsBySlug, editBusinessList, sendEnquiryLead, sendBusinessInfo } from "../../../redux/actions/businessListAction";
+import { getBusinessDetailsById, getBusinessDetailsBySlug, editBusinessSection, sendEnquiryLead, sendBusinessInfo, fetchNearbyBusinesses } from "../../../redux/actions/businessListAction";
 import { createUserFeedback } from "../../../redux/actions/userFeedbackAction";
 import styles from "./cardDetails.module.css";
 import UserRatingWidget from "../rating/rating";
@@ -139,7 +139,8 @@ const BusinessDetail = React.memo(() => {
   const authUser = getAuthUser();
   const currentUserPhone = normalizePhone(storedMobileNumber) || normalizePhone(authUser?.mobileNumber1) || normalizePhone(authUser?.mobileNumber2);
   const businessOwnerPhone = normalizePhone(business?.contactList || business?.contact || "");
-  const isBusinessImageUploadAllowed = !!authUser && !!currentUserPhone && currentUserPhone === businessOwnerPhone;
+  const phonesMatch = currentUserPhone && businessOwnerPhone && currentUserPhone.slice(-10) === businessOwnerPhone.slice(-10);
+  const isBusinessImageUploadAllowed = !!authUser && !!phonesMatch;
   useEffect(() => {
     if (isFavLoggedIn && business?._id && favoriteIds.length === 0) {
       dispatch(fetchFavorites());
@@ -181,6 +182,7 @@ const BusinessDetail = React.memo(() => {
   const [newGalleryImages, setNewGalleryImages] = useState([]);
   const [isUploadingImages, setIsUploadingImages] = useState(false);
   const [uploadError, setUploadError] = useState("");
+  const [nearbyBusinesses, setNearbyBusinesses] = useState([]);
   const fileInputRef = useRef(null);
   const overviewRef = useRef(null);
   const quickInfoRef = useRef(null);
@@ -227,6 +229,24 @@ const BusinessDetail = React.memo(() => {
       trackBusinessView(business._id, business.businessName);
     }
   }, [business?._id, business?.businessName]);
+  useEffect(() => {
+    const coordinates = business?.geoLocation?.coordinates;
+    if (!business?._id || !Array.isArray(coordinates) || coordinates.length < 2 || (!coordinates[0] && !coordinates[1])) {
+      setNearbyBusinesses([]);
+      return;
+    }
+    let active = true;
+    dispatch(fetchNearbyBusinesses({
+      lat: coordinates[1],
+      lng: coordinates[0],
+      category: business.category,
+      limit: 6
+    })).then(result => {
+      if (!active) return;
+      setNearbyBusinesses((result?.data || []).filter(item => item?._id !== business._id).slice(0, 5));
+    });
+    return () => { active = false; };
+  }, [dispatch, business?._id, business?.category, business?.geoLocation?.coordinates]);
   if (businessDetailsLoading) {
     return <>
         <StickySearchBar />
@@ -259,6 +279,7 @@ const BusinessDetail = React.memo(() => {
   const firstImage = business.bannerImage || galleryImageSrcs[0] || null;
   const bannerImageSrc = mainImage || firstImage || fallbackImage;
   const businessLogoSrc = business.logoImage || firstImage || "";
+  const galleryDisplayImages = Array.from(new Set([business.bannerImage, ...galleryImageSrcs].filter(Boolean)));
   const bannerIndex = mainImage ? Math.max(galleryImageSrcs.indexOf(mainImage), 0) : 0;
   const website = business.website;
   const formattedWebsite = website && website.startsWith("http") ? website : `https://${website}`;
@@ -344,6 +365,9 @@ const BusinessDetail = React.memo(() => {
   ].filter(Boolean);
   const rawKeywords = Array.isArray(business.keywords) ? business.keywords : typeof business.keywords === "string" ? business.keywords.split(",") : [];
   const businessKeywords = Array.from(new Set(rawKeywords.map(keyword => String(keyword).trim()).filter(Boolean)));
+  const displayServices = Array.isArray(business.services) && business.services.length > 0
+    ? business.services
+    : businessKeywords.slice(0, 4);
   const visibleKeywords = showAllKeywords ? businessKeywords : businessKeywords.slice(0, 10);
   const hasMoreKeywords = businessKeywords.length > visibleKeywords.length;
   const keywordLocationSlug = business.publicLocationSlug || toSlug(business.location || location || "all");
@@ -379,6 +403,13 @@ const BusinessDetail = React.memo(() => {
     }
     const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
+    const invalidFile = files.find(file => !file.type.startsWith("image/") || file.size > 5 * 1024 * 1024);
+    if (invalidFile) {
+      setUploadError("Please select image files smaller than 5 MB each.");
+      enqueueSnackbar("Please select image files smaller than 5 MB each.", { variant: "warning" });
+      if (event.target) event.target.value = "";
+      return;
+    }
     try {
       const images = await Promise.all(files.map(file => new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -416,7 +447,7 @@ const BusinessDetail = React.memo(() => {
     setIsUploadingImages(true);
     setUploadError("");
     try {
-      await dispatch(editBusinessList(business._id, {
+      await dispatch(editBusinessSection(business._id, "gallery-images", {
         businessImages: newGalleryImages
       }));
       setNewGalleryImages([]);
@@ -447,8 +478,11 @@ const BusinessDetail = React.memo(() => {
   };
   const getGoogleMapSrc = iframeString => {
     if (!iframeString) return null;
-    const match = iframeString.match(/src="([^"]+)"/);
-    return match ? match[1] : null;
+    const value = String(iframeString).trim();
+    const match = value.match(/src=["']([^"']+)["']/i);
+    if (match?.[1]) return match[1];
+    if (/^https?:\/\//i.test(value)) return value;
+    return null;
   };
   const handleCopyAddress = () => {
     if (!fullAddress) return;
@@ -874,16 +908,18 @@ const BusinessDetail = React.memo(() => {
         </div>,
         document.body
       )}
-      <div className={cx("business-CardDetails-pageWrapper")}>
+      <div className={cx("business-CardDetails-pageWrapper business-CardDetails-v2")}>
         <Breadcrumbs items={breadcrumbItems} />
         <main>
-        <section className={cx("business-CardDetails-heroSection")}>
-          <div className={cx("business-CardDetails-mainImageContainer")} onClick={() => {
-            if (galleryImageSrcs.length > 0) {
-              setCurrentSlideIndex(bannerIndex);
+        <section className={cx("business-CardDetails-heroSection", galleryDisplayImages.length === 1 && "business-CardDetails-heroSection--single")}>
+          <div className={cx("business-CardDetails-mainImageContainer", galleryDisplayImages.length === 1 && "business-CardDetails-mainImageContainer--single")} onClick={() => {
+            if (galleryDisplayImages.length > 0) {
+              const selectedIndex = galleryDisplayImages.indexOf(bannerImageSrc);
+              setCurrentSlideIndex(selectedIndex >= 0 ? selectedIndex : 0);
               setShowFullGallery(true);
             }
           }}>
+            {galleryDisplayImages.length === 1 && <img src={bannerImageSrc} alt="" aria-hidden="true" className={cx("business-CardDetails-v2SingleBackdrop")} />}
             <img key={business?._id || business?.bannerImage} src={bannerImageSrc} alt={business?.businessName} className={cx("business-CardDetails-bannerImage")} loading="eager" fetchpriority="high" width="1200" height="600" />
             <div className={cx("business-CardDetails-heroGradient")} />
             <div className={cx("business-CardDetails-heroMeta")}>
@@ -915,12 +951,16 @@ const BusinessDetail = React.memo(() => {
             </div>
           </div>
 
-          {galleryImageSrcs.length > 0 && <div className={cx("business-CardDetails-thumbnails")}>
-              {galleryImageSrcs.map((src, index) => <img key={index} src={src || getPlaceholderImage()} alt={`${business.businessName} ${index + 1}`} className={cx("business-CardDetails-thumbnail" + (bannerIndex === index ? " business-CardDetails-thumbnail--active" : ""))} onClick={() => {
+          {galleryDisplayImages.length > 1 && <div className={cx("business-CardDetails-thumbnails")}>
+              {galleryDisplayImages.slice(1).map((src, index) => <img key={index} src={src || getPlaceholderImage()} alt={`${business.businessName} ${index + 1}`} className={cx("business-CardDetails-thumbnail" + (bannerIndex === index ? " business-CardDetails-thumbnail--active" : ""))} onClick={() => {
               setMainImage(src);
-              setCurrentSlideIndex(index);
+              setCurrentSlideIndex(index + 1);
               setShowFullGallery(true);
             }} />)}
+              {galleryDisplayImages.length > 4 && <button type="button" className={cx("business-CardDetails-v2GalleryCount")} onClick={() => {
+                setCurrentSlideIndex(3);
+                setShowFullGallery(true);
+              }}><strong>+{galleryDisplayImages.length - 4}</strong><span>View all photos</span></button>}
             </div>}
         </section>
 
@@ -941,6 +981,11 @@ const BusinessDetail = React.memo(() => {
                     Claim this business
                   </button>
                 </span>
+              </div>
+
+              <div className={cx("business-CardDetails-v2TopReview")}>
+                <span>Tap to rate</span>
+                <UserRatingWidget key={`top-rating-${business._id}`} businessId={business._id} initialValue={0} currentRatings={business.ratings || []} compact />
               </div>
 
               {statusBadges.length > 0 && <div className={cx("business-CardDetails-statusRow")}>
@@ -970,6 +1015,14 @@ const BusinessDetail = React.memo(() => {
                       WhatsApp
                     </a>}
 
+                  {website && <a className={cx("business-CardDetails-btn business-CardDetails-v2WebsiteBtn")} href={formattedWebsite} target="_blank" rel="noopener noreferrer">
+                      <LanguageIcon /> Website
+                    </a>}
+
+                  <a className={cx("business-CardDetails-btn business-CardDetails-v2DirectionsBtn")} href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(fullAddress)}`} target="_blank" rel="noopener noreferrer">
+                    <DirectionsIcon /> Directions
+                  </a>
+
                   <button className={cx(`business-CardDetails-iconBtn business-CardDetails-favBtn${favoriteIds.includes(business._id) ? " business-CardDetails-favBtn--active" : ""}${togglingIds.includes(business._id) ? " business-CardDetails-favBtn--loading" : ""}`)} title={favoriteIds.includes(business._id) ? "Remove from favorites" : "Add to favorites"} onClick={e => {
                     e.stopPropagation();
                     if (!isFavLoggedIn) {
@@ -990,12 +1043,14 @@ const BusinessDetail = React.memo(() => {
                       fontSize: 20,
                       color: "#ef4444"
                     }} />}
+                    <span>Save</span>
                   </button>
 
                   <span className={cx("business-CardDetails-iconBtn business-CardDetails-shareBtn")} title="Share" onClick={() => setShowShareOptions(prev => !prev)}>
                     <ShareIcon style={{
                       fontSize: 20
                     }} />
+                    <span>Share</span>
                     {showShareOptions && <div className={cx("business-CardDetails-sharePopup")}>
                         <a href={`https://wa.me/?text=${currentTitle}%20${currentUrl}`} target="_blank" rel="noopener noreferrer">
                           <WhatsAppIcon style={{
@@ -1039,10 +1094,16 @@ const BusinessDetail = React.memo(() => {
 
             <div className={cx("business-CardDetails-tabContent")}>
               <section ref={overviewRef} className={cx("business-CardDetails-overviewCard")}>
-                <h2>Overview</h2>
+                <h2>About {business.businessName}</h2>
                 <div className={cx("business-CardDetails-overviewText")} dangerouslySetInnerHTML={{
                   __html: normalizeOverviewHtml(overviewHtml)
                 }} />
+                <div className={cx("business-CardDetails-v2Metrics")}>
+                  <div><strong>{business.experience ? `${business.experience}+` : "New"}</strong><span>Years in Business</span></div>
+                  <div><strong>Active</strong><span>Business Listing</span></div>
+                  <div><strong>{displayedAverageRating}<StarIcon /></strong><span>Customer Rating</span></div>
+                  <div><strong>{isVerified ? "100%" : "Listed"}</strong><span>{isVerified ? "Verified Business" : "MassClick Business"}</span></div>
+                </div>
               </section>
               <section ref={quickInfoRef} className={cx("business-CardDetails-infoBlock")}>
                 <h2>Quick Info</h2>
@@ -1100,15 +1161,18 @@ const BusinessDetail = React.memo(() => {
 
               <section ref={servicesRef} className={cx("business-CardDetails-infoBlock")}>
                 <h2>Services</h2>
-                {business.services && business.services.length > 0 ? <ul className={cx("business-CardDetails-servicesList")}>
-                    {business.services.map((service, idx) => <li key={idx} className={cx("business-CardDetails-servicePill")}>
+                {displayServices.length > 0 ? <ul className={cx("business-CardDetails-servicesList")}>
+                    {displayServices.map((service, idx) => <li key={idx} className={cx("business-CardDetails-servicePill")}>
                         {service}
                       </li>)}
                   </ul> : <p>Services information is not available.</p>}
               </section>
 
               <section ref={photosRef} className={cx("business-CardDetails-photosSection")}>
-                <h2>Photos</h2>
+                <div className={cx("business-CardDetails-v2PhotoHead")}>
+                  <h2>Photo Gallery</h2>
+                  <button type="button" onClick={() => { setCurrentSlideIndex(0); setShowFullGallery(true); }}>View All Photos ({galleryDisplayImages.length})</button>
+                </div>
                 <div className={cx("business-CardDetails-uploadSection")}>
                   <input type="file" ref={fileInputRef} multiple accept="image/*" style={{
                     display: "none"
@@ -1127,50 +1191,77 @@ const BusinessDetail = React.memo(() => {
                     {newGalleryImages.map((src, idx) => <img key={idx} src={src} alt={`Selected upload ${idx + 1}`} className={cx("business-CardDetails-uploadPreviewItem")} />)}
                   </div>}
                 {uploadError && <p className={cx("business-CardDetails-uploadError")}>{uploadError}</p>}
-                {galleryImageSrcs.length > 0 ? <div className={cx("business-CardDetails-photoGrid")}>
-                    {galleryImageSrcs.map((src, index) => <img key={index} src={src || getPlaceholderImage()} alt={`${business.businessName} ${index + 1}`} className={cx("business-CardDetails-photoItem")} onClick={() => {
+                {galleryDisplayImages.length > 0 ? <div className={cx("business-CardDetails-photoGrid")}>
+                    {galleryDisplayImages.map((src, index) => <img key={index} src={src || getPlaceholderImage()} alt={`${business.businessName} ${index + 1}`} className={cx("business-CardDetails-photoItem")} onClick={() => {
                     setCurrentSlideIndex(index);
                     setShowFullGallery(true);
                   }} />)}
                   </div> : <p>No photos uploaded yet.</p>}
               </section>
               <section ref={reviewsRef} className={cx("business-CardDetails-reviewsSection")}>
-                <h2>Reviews & Ratings</h2>
+                <h2>Customer Reviews &amp; Ratings</h2>
 
-                <div className={cx("business-CardDetails-startReview")}>
-                  <UserRatingWidget businessId={business._id} initialValue={averageRatingValue || 0} />
+                <div className={cx("business-CardDetails-v2ReviewSummary")}>
+                  <div className={cx("business-CardDetails-v2ReviewScore")}>
+                    <strong>{averageRatingValue ? averageRatingValue.toFixed(1) : "New"}</strong>
+                    <div>{[1, 2, 3, 4, 5].map(star => <StarIcon key={star} />)}</div>
+                    <span>{effectiveTotalReview ? `(${effectiveTotalReview} reviews)` : "Be the first to review"}</span>
+                    <button type="button" onClick={handleRateClick}>Write a Review</button>
+                  </div>
+                  <div className={cx("business-CardDetails-v2RatingBars")}>
+                    {[5, 4, 3, 2, 1].map((rating, index) => {
+                      const ratingCount = loadedReviewRatings.filter(value => Math.round(value) === rating).length;
+                      const percentage = loadedReviewRatings.length ? Math.round((ratingCount / loadedReviewRatings.length) * 100) : index === 0 ? 100 : 0;
+                      return <div key={rating}>
+                          <span>{rating} <StarIcon /></span>
+                          <i><b style={{ width: `${percentage}%` }} /></i>
+                          <em>{percentage}%</em>
+                        </div>;
+                    })}
+                  </div>
+                  <div className={cx("business-CardDetails-startReview")}>
+                    <span>Rate your experience</span>
+                    <UserRatingWidget businessId={business._id} initialValue={averageRatingValue || 0} />
+                  </div>
                 </div>
 
                 <ReviewList businessId={business._id} />
               </section>
             </div>
 
-            {business.googleMap && <div className={cx("business-CardDetails-mapWrapper")}>
-                <iframe src={getGoogleMapSrc(business.googleMap)} width="100%" height="320" style={{
-                border: 0
-              }} allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade" title="Business Location" />
-              </div>}
           </div>
 
           <aside className={cx("business-CardDetails-rightSidebar")}>
             <div className={cx("business-CardDetails-sidebarCard")}>
               <div className={cx("business-CardDetails-sidebarHero")}>
                 <span className={cx("business-CardDetails-sidebarKicker")}>
-                  Business contact
+                  Get In Touch
                 </span>
                 <h3>{business.businessName}</h3>
                 <p>{business.category || "Local business"}</p>
                 {statusBadges.length > 0 && <div className={cx("business-CardDetails-statusRow business-CardDetails-statusRow--sidebar")}>
                     {statusBadges.map(renderStatusBadge)}
                   </div>}
+                <div className={cx("business-CardDetails-v2OpenStatus")}><span>● Open Now</span><small>{getTodayHours()}</small></div>
                 <button onClick={handleShowNumberClick} className={cx("business-CardDetails-sidebarPrimaryBtn")}>
                   <PhoneIcon />
-                  Show Number
+                  Call Now
                 </button>
                 {whatsappNumber && <a className={cx("business-CardDetails-sidebarWhatsAppBtn")} href={`https://wa.me/${whatsappNumber}?text=${currentTitle}%20${currentUrl}`} target="_blank" rel="noopener noreferrer" onClick={() => trackBusinessClick(business?._id, business?.businessName, "whatsapp", "detail")}>
                     <WhatsAppIcon />
                     WhatsApp
                   </a>}
+                {website && <a className={cx("business-CardDetails-v2SideLink")} href={formattedWebsite} target="_blank" rel="noopener noreferrer"><LanguageIcon /> Website</a>}
+                <a className={cx("business-CardDetails-v2SideLink")} href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(fullAddress)}`} target="_blank" rel="noopener noreferrer"><DirectionsIcon /> Directions</a>
+                <div className={cx("business-CardDetails-v2SideActions")}>
+                  <button type="button" onClick={e => {
+                    e.stopPropagation();
+                    if (!isFavLoggedIn) return setShowLoginModal(true);
+                    favoriteIds.includes(business._id) ? dispatch(removeFavorite(business._id)) : dispatch(addFavorite(business._id));
+                  }}><FavoriteBorderIcon /><span>Save</span></button>
+                  <button type="button" onClick={handleShare}><ShareIcon /><span>Share</span></button>
+                  <button type="button" onClick={() => openSidebarAction("info")}><NoteAltIcon /><span>Report</span></button>
+                </div>
               </div>
 
               <h3 className={cx("business-CardDetails-sidebarTitle")}>
@@ -1270,6 +1361,54 @@ const BusinessDetail = React.memo(() => {
               </ul>
             </div>
 
+            <section className={cx("business-CardDetails-v2SideCard business-CardDetails-v2BusinessInfo")}>
+              <h3>Business Information</h3>
+              <dl>
+                <div><LocationOnIcon /><dt>Address</dt><dd>{fullAddress}</dd></div>
+                <div><PhoneIcon /><dt>Phone</dt><dd><button type="button" onClick={handleShowNumberClick}>{business.contact || "Show Number"}</button></dd></div>
+                <div><EmailIcon /><dt>Email</dt><dd>{business.email || "Not provided"}</dd></div>
+                <div><LanguageIcon /><dt>Website</dt><dd>{website ? <a href={formattedWebsite} target="_blank" rel="noopener noreferrer">{website}</a> : "Not provided"}</dd></div>
+                <div><AccessTimeIcon /><dt>Established</dt><dd>{business.establishedYear || (business.createdAt ? new Date(business.createdAt).getFullYear() : "Not provided")}</dd></div>
+                <div><SpaIcon /><dt>Experience</dt><dd>{business.experience ? `${business.experience}+ years` : "Not provided"}</dd></div>
+                <div><LocalOfferIcon /><dt>Category</dt><dd>{business.category || "Local business"}</dd></div>
+              </dl>
+              {(isVerified || isTrusted) && <div className={cx("business-CardDetails-v2InfoBadge")}><CheckCircleIcon /> MassClick verified business</div>}
+            </section>
+
+            <section className={cx("business-CardDetails-v2SideCard business-CardDetails-v2HoursCard")}>
+              <h3>Business Hours</h3>
+              <div className={cx("business-CardDetails-v2HoursList")}>
+                {(getFullHoursList().length ? getFullHoursList() : daysOfWeek.map(day => ({ day, isClosed: true }))).map(hour => <div key={hour.day}>
+                    <span>{hour.day}</span>
+                    <strong className={cx(hour.isClosed ? "business-CardDetails-v2Closed" : "business-CardDetails-v2Open")}>
+                      {hour.isClosed ? "Closed" : hour.is24Hours ? "Open 24 hours" : `${hour.open} - ${hour.close}`}
+                    </strong>
+                  </div>)}
+              </div>
+              <button type="button" onClick={() => openSidebarAction("timings")}>Suggest updated timings</button>
+            </section>
+
+            <section className={cx("business-CardDetails-v2SideCard business-CardDetails-v2TrustCard")}>
+              <div>
+                <h3>Verified &amp; Trusted</h3>
+                <ul>
+                  <li><CheckCircleIcon /> Business identity verified</li>
+                  <li><CheckCircleIcon /> Address information checked</li>
+                  <li><CheckCircleIcon /> Contact details reviewed</li>
+                  <li><CheckCircleIcon /> Listed on MassClick</li>
+                </ul>
+              </div>
+              <WorkspacePremiumRoundedIcon className={cx("business-CardDetails-v2Medal")} />
+              <p>Trusted local business</p>
+            </section>
+
+            <section className={cx("business-CardDetails-v2SideCard business-CardDetails-v2EnquiryCard")}>
+              <h3>Need More Information?</h3>
+              <p>We’re here to help you connect with this business.</p>
+              <button type="button" onClick={() => openSidebarAction("enquiry")}><EmailIcon /> Send Enquiry</button>
+              <button type="button" onClick={() => openSidebarAction("info")}><PhoneIcon /> Request Callback</button>
+            </section>
+
             {businessKeywords.length > 0 && <div className={cx("business-CardDetails-keywordsCard")}>
                 <div className={cx("business-CardDetails-keywordsHeader")}>
                   <span className={cx("business-CardDetails-keywordsIcon")}>
@@ -1309,17 +1448,91 @@ const BusinessDetail = React.memo(() => {
         </div>
         </main>
 
-        <div className={cx("business-CardDetails-lowerSections")}>
+        <section className={cx("business-CardDetails-mapSection")}>
+          <h2>Location</h2>
+          <div className={cx("business-CardDetails-mapWrapper")}>
+            <iframe src={getGoogleMapSrc(business.googleMap) || `https://maps.google.com/maps?q=${encodeURIComponent(`${business.businessName}, ${fullAddress}`)}&z=15&output=embed`} width="100%" height="220" style={{ border: 0 }} allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade" title="Business Location" />
+            <div className={cx("business-CardDetails-v2MapLabel")}>
+              <strong>{business.businessName}</strong>
+              <span>{fullAddress}</span>
+              <a href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(fullAddress)}`} target="_blank" rel="noopener noreferrer"><DirectionsIcon /> Get Directions</a>
+            </div>
+          </div>
+        </section>
+
+        <section className={cx("business-CardDetails-v2BottomGrid")}>
+          <div className={cx("business-CardDetails-v2FaqCard")}>
+            <div className={cx("business-CardDetails-v2SectionHead")}><h2>Frequently Asked Questions</h2></div>
+            {[`What are the opening and closing times?`, `How can I contact ${business.businessName}?`, `Where is ${business.businessName} located?`, `Can I send an enquiry online?`].map((question, index) => <details key={question}>
+                <summary>{question}</summary>
+                <p>{index === 0 ? getTodayHours() : index === 1 ? `Use Call Now or WhatsApp to contact the business directly.` : index === 2 ? fullAddress : `Yes. Use the Send Enquiry button and the business will receive your request.`}</p>
+              </details>)}
+          </div>
+
+          <div className={cx("business-CardDetails-v2NearbyCard")}>
+            <div className={cx("business-CardDetails-v2SectionHead")}><h2>Nearby Businesses</h2></div>
+            <div className={cx("business-CardDetails-v2NearbyList")}>
+              {(nearbyBusinesses.length ? nearbyBusinesses : [business]).map(item => {
+                const nearbyPath = item._id === business._id ? canonicalPath : buildBusinessPath({
+                  districtSlug: district,
+                  locationSlug: item.publicLocationSlug || toSlug(item.location || location),
+                  businessName: item.businessName,
+                  publicId: item.publicId,
+                  id: item._id
+                });
+                const nearbyImage = item.bannerImage || item.businessImages?.[0] || fallbackImage;
+                return <Link to={nearbyPath} key={item._id || item.businessName} className={cx("business-CardDetails-v2NearbyItem")}>
+                    <img src={nearbyImage} alt={item.businessName} loading="lazy" />
+                    <strong>{item.businessName}</strong>
+                    <span><StarIcon /> {Number(item.averageRating || 0).toFixed(1)} · {item.location || "Nearby"}</span>
+                  </Link>;
+              })}
+            </div>
+          </div>
+        </section>
+
+        <div className={cx("business-CardDetails-lowerSections business-CardDetails-v2DiscoverySections")}>
           <PopularCategoriesLink />
         </div>
+
       </div>
 
+      <nav className={cx("business-CardDetails-bottomActionRail")} aria-label="Business actions">
+        <button type="button" onClick={handleShowNumberClick}>
+          <PhoneIcon />
+          <span>Call Now</span>
+        </button>
+        {whatsappNumber && <a href={`https://wa.me/${whatsappNumber}?text=${currentTitle}%20${currentUrl}`} target="_blank" rel="noopener noreferrer" onClick={() => trackBusinessClick(business?._id, business?.businessName, "whatsapp", "detail")}>
+            <WhatsAppIcon />
+            <span>WhatsApp</span>
+          </a>}
+        <button type="button" className={cx("business-CardDetails-bottomActionRailPrimary")} onClick={() => openSidebarAction("enquiry")}>
+          <EmailIcon />
+          <span>Send Enquiry</span>
+        </button>
+        {fullAddress && <a href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(fullAddress)}`} target="_blank" rel="noopener noreferrer" onClick={() => trackBusinessClick(business?._id, business?.businessName, "direction", "detail")}>
+            <DirectionsIcon />
+            <span>Directions</span>
+          </a>}
+        <button type="button" onClick={handleShare}>
+          <ShareIcon />
+          <span>Share</span>
+        </button>
+      </nav>
+
       {showContactModal && <SimpleModal title={`Contact for ${business.businessName}`} onClose={() => setShowContactModal(false)}>
-          <p>{business.contact || "N/A"}</p>
+          <div className={cx("business-CardDetails-v2ContactNumber")}>
+            <span>Business phone number</span>
+            <strong>{business.contact || "Not available"}</strong>
+          </div>
           <div className={cx("business-CardDetails-modalActions")}>
             {business.contact && <a href={`tel:${business.contact}`} className={cx("business-CardDetails-btn business-CardDetails-btn--primary")} onClick={() => trackBusinessClick(business?._id, business?.businessName, "call", "detail")}>
                 <PhoneIcon />
                 Call Now
+              </a>}
+            {whatsappNumber && <a href={`https://wa.me/${normalizePhone(whatsappNumber)}?text=${currentTitle}%20${currentUrl}`} target="_blank" rel="noopener noreferrer" className={cx("business-CardDetails-btn business-CardDetails-btn--whatsapp")}>
+                <WhatsAppIcon />
+                WhatsApp
               </a>}
             <button className={cx("business-CardDetails-btn business-CardDetails-btn--secondary")} onClick={handleCopyContact}>
               <ContentCopyIcon />
@@ -1403,7 +1616,7 @@ const BusinessDetail = React.memo(() => {
           </form>
         </SimpleModal>}
 
-      {showFullGallery && <FullScreenGallery images={galleryImageSrcs} initialIndex={currentSlideIndex} onClose={() => setShowFullGallery(false)} />}
+      {showFullGallery && <FullScreenGallery images={galleryDisplayImages} initialIndex={currentSlideIndex} onClose={() => setShowFullGallery(false)} />}
 
       <Footer />
       <OTPLoginModal open={showLoginModal} handleClose={() => setShowLoginModal(false)} />

@@ -31,6 +31,7 @@ router.put('/api/businesslist/:id/business-info', oauthAuthentication, updateBus
 router.put('/api/businesslist/:id/location-web', oauthAuthentication, updateBusinessSectionAction);
 router.put('/api/businesslist/:id/social-media', oauthAuthentication, updateBusinessSectionAction);
 router.put('/api/businesslist/:id/banner-details', oauthAuthentication, updateBusinessSectionAction);
+router.put('/api/businesslist/:id/gallery-images', oauthAuthentication, updateBusinessSectionAction);
 router.put('/api/businesslist/:id/opening-hours', oauthAuthentication, updateBusinessSectionAction);
 router.put('/api/businesslist/:id/category-seo', oauthAuthentication, updateBusinessSectionAction);
 router.put('/api/businesslist/:id/display-seo', oauthAuthentication, updateBusinessSectionAction);
