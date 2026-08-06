@@ -8,7 +8,7 @@ import { createScopedClassNames } from "../../../utils/createScopedClassNames";
 import styles from "./authorProfile.module.css";
 import Navbar from "../relatedBlogs/relatedBlogNavbar/relatedBlogNavbar.js";
 import Footer from "../footer/footer.js";
-import { CircularProgress, Box } from "@mui/material";
+import { CircularProgress } from "@mui/material";
 import { Link } from "react-router-dom";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import EmailIcon from "@mui/icons-material/Email";

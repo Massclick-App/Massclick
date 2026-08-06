@@ -307,7 +307,7 @@ class InputValidator {
       }
 
       // Check for special char spam
-      if (/[!@#$%^&*()_+=\[\]{};':"\\|,.<>?/]{3,}/.test(clean)) {
+      if (/[!@#$%^&*()_+=[\]{};':"\\|,.<>?/]{3,}/.test(clean)) {
         errors.push(`Keyword "${keyword}" contains too many special characters`);
         return;
       }

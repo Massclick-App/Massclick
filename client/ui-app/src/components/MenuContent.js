@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Badge,
   Box,
@@ -208,16 +208,12 @@ export default function SideMenu({ onItemClick, railCollapsed = false }) {
     };
   }, []);
 
-  const hasAccess = (path) => {
-    if (path === "/dashboard") return true;
-    if (isSuperAdmin) return true;
-    return allowedPages.includes(path);
-  };
-
-  const filteredSections = MENU_SECTIONS.map((section) => ({
+  const filteredSections = useMemo(() => MENU_SECTIONS.map((section) => ({
     ...section,
-    items: section.items.filter((item) => hasAccess(item.path)),
-  })).filter((section) => section.items.length > 0);
+    items: section.items.filter(
+      (item) => item.path === "/dashboard" || isSuperAdmin || allowedPages.includes(item.path)
+    ),
+  })).filter((section) => section.items.length > 0), [allowedPages, isSuperAdmin]);
 
   // Auto-expand the section containing the active route.
   useEffect(() => {
@@ -229,7 +225,7 @@ export default function SideMenu({ onItemClick, railCollapsed = false }) {
         prev[active.label] === true ? { ...prev, [active.label]: false } : prev
       );
     }
-  }, [location.pathname]);
+  }, [filteredSections, location.pathname]);
 
   const q = query.trim().toLowerCase();
   const searching = q.length > 0 && !railCollapsed;

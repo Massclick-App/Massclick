@@ -90,7 +90,7 @@ const CategoryRouter = ({ routeContext = null } = {}) => {
       }
     };
     fetchCategories();
-  }, []);
+  }, [API_URL]);
 
   const hasSubcategories = (cat) => {
     if (!cat) return false;

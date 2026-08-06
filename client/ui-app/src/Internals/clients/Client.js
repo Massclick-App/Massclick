@@ -35,7 +35,6 @@ export default function UserClients() {
   });
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
-  const [tableRefreshKey, setTableRefreshKey] = useState(0);
   const [tableQuery, setTableQuery] = useState({
     pageNo: 1,
     pageSize: 10,
@@ -145,7 +144,6 @@ export default function UserClients() {
     };
   };
   const refreshCurrentPage = () => {
-    setTableRefreshKey(prev => prev + 1);
     dispatch(getAllUsersClient({
       pageNo: currentPageNo,
       pageSize: currentPageSize,

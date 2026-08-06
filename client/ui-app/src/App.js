@@ -82,7 +82,6 @@ const RewardAdmin = lazy(() => import(/* webpackChunkName: "admin-rewards" */ '.
 const RewardsConceptPage = lazy(() => import(/* webpackChunkName: "admin-rewards-concept" */ './Internals/rewards/RewardsConceptPage.js'));
 const RewardClaimsAdmin = lazy(() => import(/* webpackChunkName: "admin-reward-claims" */ './Internals/rewards/RewardClaimsAdmin.js'));
 const RewardClaimPage = lazy(() => import(/* webpackChunkName: "reward-claim" */ './Internals/clientComponent/rewards/RewardClaimPage.js'));
-const RewardMembersPage = lazy(() => import(/* webpackChunkName: "reward-members" */ './Internals/clientComponent/rewards/RewardMembersPage.js'));
 const AdminCustomerCareChat = lazy(() => import(/* webpackChunkName: "admin-customer-care-chat" */ './Internals/CustomerCareChat/AdminCustomerCareChat.js'));
 const AdvertisementPage = lazy(() => import(/* webpackChunkName: "admin-advertisement" */ './Internals/advertisement/advertisement.js'));
 const EventCategory = lazy(() => import(/* webpackChunkName: "admin-event-category" */ './components/eventCategory/eventCategory.js'));

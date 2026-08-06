@@ -1,6 +1,5 @@
 import { createScopedClassNames } from "../../../../utils/createScopedClassNames";
 import React, { useEffect } from "react";
-import { Helmet } from "react-helmet-async";
 import styles from "./knowledgeBase.module.css";
 import Footer from '../footer';
 import StickySearchBar from '../../../clientComponent/StickySearchBar/StickySearchBar';
@@ -9,7 +8,6 @@ import { fetchSeoMeta } from "../../../../redux/actions/seoAction";
 import { useDispatch, useSelector } from "react-redux";
 import SearchIcon from '@mui/icons-material/Search';
 import BusinessIcon from '@mui/icons-material/Business';
-import SecurityIcon from '@mui/icons-material/Security';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import ContactSupportIcon from '@mui/icons-material/ContactSupport';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
