@@ -1,5 +1,5 @@
 import { createScopedClassNames } from "../../../utils/createScopedClassNames";
-import React, { useRef, useState, useEffect, useMemo } from "react";
+import React, { useRef, useState, useEffect, useMemo, useCallback } from "react";
 import styles from "./CardCarousel.module.css";
 import { useDispatch, useSelector } from "react-redux";
 import Snackbar from "@mui/material/Snackbar";
@@ -69,16 +69,7 @@ const CardCarousel = () => {
       behavior: "smooth"
     });
   };
-  const handleEnquireClick = card => {
-    const authUser = getAuthUser();
-    if (!authUser?._id) {
-      setPendingCard(card);
-      setIsLoginOpen(true);
-      return;
-    }
-    proceedEnquiry(card, authUser);
-  };
-  const proceedEnquiry = async (card, user = getAuthUser()) => {
+  const proceedEnquiry = useCallback(async (card, user = getAuthUser()) => {
     try {
       if (!user?._id) return;
       setSubmittingCard(card.title);
@@ -118,6 +109,15 @@ const CardCarousel = () => {
     } finally {
       setSubmittingCard(null);
     }
+  }, [dispatch, selectedDistrict]);
+  const handleEnquireClick = card => {
+    const authUser = getAuthUser();
+    if (!authUser?._id) {
+      setPendingCard(card);
+      setIsLoginOpen(true);
+      return;
+    }
+    proceedEnquiry(card, authUser);
   };
   useEffect(() => {
     const onAuthChange = () => {
@@ -130,7 +130,7 @@ const CardCarousel = () => {
     };
     window.addEventListener("authChange", onAuthChange);
     return () => window.removeEventListener("authChange", onAuthChange);
-  }, [pendingCard, selectedDistrict]);
+  }, [pendingCard, proceedEnquiry]);
   return <>
       <section className={cx("popular-search")}>
         <div className={cx("popular-search__header")}>

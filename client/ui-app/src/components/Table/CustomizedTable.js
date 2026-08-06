@@ -42,6 +42,7 @@ const CustomizedTable = ({
   const [isScrolled, setIsScrolled] = useState(false);
   const throttledScrollRef = useRef(null);
   const searchInputRef = useRef(null);
+  const fetchDataRef = useRef(fetchData);
 
   const resolvedStatusOptions = statusOptions ?? DEFAULT_STATUS_OPTIONS;
 
@@ -65,9 +66,10 @@ const CustomizedTable = ({
 
   useEffect(() => { setSearchQuery(initialSearchQuery); }, [initialSearchQuery]);
   useEffect(() => { setStatusFilter(initialStatusFilter); }, [initialStatusFilter]);
+  useEffect(() => { fetchDataRef.current = fetchData; }, [fetchData]);
 
   useEffect(() => {
-    fetchData(page + 1, rowsPerPage, {
+    fetchDataRef.current?.(page + 1, rowsPerPage, {
       search: debouncedSearch,
       status: statusFilter,
       sortBy: sortConfig.orderBy,

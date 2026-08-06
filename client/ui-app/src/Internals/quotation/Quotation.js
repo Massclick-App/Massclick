@@ -1,4 +1,4 @@
-﻿import { createScopedClassNames } from "../../utils/createScopedClassNames";
+import { createScopedClassNames } from "../../utils/createScopedClassNames";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { useDispatch, useSelector } from "react-redux";

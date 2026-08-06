@@ -6,7 +6,7 @@ import { useDispatch, useSelector } from "react-redux";
 import SeoPageContentForm from "./pageContentBlogForm";
 import { viewAllSeoPageContentBlogs, createSeoPageContentBlogs, updateSeoPageContentBlogs, deleteSeoPageContentBlogs } from "../../../redux/actions/seoPageContentBlogAction";
 import { getAllLocation, createLocation } from "../../../redux/actions/locationAction.js";
-import { Box, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, Button, Chip } from "@mui/material";
+import { Box, Dialog, DialogTitle, DialogContent, DialogActions, Button, Chip } from "@mui/material";
 import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import CustomizedTable from "../../../components/Table/CustomizedTable";

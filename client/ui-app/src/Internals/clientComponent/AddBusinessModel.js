@@ -81,6 +81,13 @@ const InstantTransition = React.forwardRef(function InstantTransition(
         delete forwardedChildProps[propName];
     });
 
+    // MUI's Modal waits for the transition to finish before removing its
+    // children. This transition completes immediately, so do not leave the
+    // dialog/backdrop child mounted for a closed frame.
+    if (!isOpen) {
+        return null;
+    }
+
     return React.cloneElement(children, {
         ...forwardedChildProps,
         ref,
@@ -351,7 +358,6 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater, onSuccess }) => {
             open={open && isDialogOpen}
             onClose={handleClose}
             aria-labelledby="otp-login-dialog-title"
-            keepMounted
             maxWidth="sm"
             fullWidth={false}
             disableScrollLock

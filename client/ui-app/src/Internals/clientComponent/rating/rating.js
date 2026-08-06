@@ -22,6 +22,7 @@ const CUSTOM_STAR_COLOR = '#FF8C00';
 export default function UserRatingWidget({
     businessId,
     initialValue = 0,
+    compact = false,
 }) {
     const navigate = useNavigate();
 
@@ -51,6 +52,26 @@ export default function UserRatingWidget({
     setValue(newValue);
     navigate(`/write-review/${businessId}/${newValue}`);
   };
+    const ratingControl = <Rating
+        name={compact ? "user-rating-input-compact" : "user-rating-input"}
+        value={value}
+        precision={0.5}
+        onChange={handleRatingChange}
+        onChangeActive={(event, newHover) => setHover(newHover)}
+        emptyIcon={<StarIcon style={{ opacity: compact ? 0.55 : 0.2 }} fontSize="inherit" />}
+        size={compact ? "small" : "large"}
+        sx={{
+            '& .MuiRating-icon': {
+                fontSize: compact ? '1.65rem' : '2rem',
+                marginInline: compact ? '1px' : '1px',
+            },
+            '& .MuiRating-iconFilled, & .MuiRating-iconHover': { color: CUSTOM_STAR_COLOR },
+            '& .MuiRating-iconEmpty': { color: compact ? '#b4bfd0' : '#cbd5e1' },
+        }}
+    />;
+
+    if (compact) return <>{ratingControl}<OTPLoginModel open={showLoginModal} handleClose={() => setShowLoginModal(false)} /></>;
+
     return (
         <>
             <Box sx={{
@@ -67,29 +88,7 @@ export default function UserRatingWidget({
                 py: 1.5,
             }}>
                 <p style={{ margin: '0 0 6px 0', fontSize: '13px', fontWeight: 800, color: '#c2410c', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Start your review</p>
-                <Rating
-                    name="user-rating-input"
-                    value={value}
-                    precision={0.5}
-                    onChange={handleRatingChange}
-
-                    onChangeActive={(event, newHover) => setHover(newHover)}
-
-                    emptyIcon={<StarIcon style={{ opacity: 0.2 }} fontSize="inherit" />}
-                    size="large"
-                    sx={{
-                        '& .MuiRating-icon': {
-                            fontSize: '2rem',
-                            marginInline: '1px',
-                        },
-                        '& .MuiRating-iconFilled, & .MuiRating-iconHover': {
-                            color: CUSTOM_STAR_COLOR,
-                        },
-                        '& .MuiRating-iconEmpty': {
-                            color: '#cbd5e1',
-                        },
-                    }}
-                />
+                {ratingControl}
 
                 {value !== null && (
                     <Box sx={{
