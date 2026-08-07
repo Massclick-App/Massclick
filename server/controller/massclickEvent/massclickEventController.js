@@ -30,7 +30,12 @@ export const viewMassclickEventAction = async (req, res) => {
 };
 export const uploadMassclickEventMediaAction = async (req, res) => {
   try {
-    const data = await uploadMassclickEventMedia(req.body);
+    const isBinaryUpload = Buffer.isBuffer(req.body);
+    const data = await uploadMassclickEventMedia(isBinaryUpload ? {
+      fileBuffer: req.body,
+      mediaType: req.query.mediaType,
+      contentType: req.headers["content-type"],
+    } : req.body);
     res.status(201).send({ success: true, data });
   } catch (error) { console.error("uploadMassclickEventMediaAction error:", error); fail(res, error); }
 };

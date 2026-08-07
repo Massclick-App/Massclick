@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Alert, Avatar, CircularProgress, IconButton } from "@mui/material";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
@@ -17,6 +17,8 @@ import { createScopedClassNames } from "../../utils/createScopedClassNames.js";
 import styles from "./massclickEvent.module.css";
 
 const cx = createScopedClassNames(styles);
+const MAX_MEDIA_ITEMS = 50;
+const MAX_PARALLEL_UPLOADS = 3;
 const emptyForm = {
   title: "",
   description: "",
@@ -47,11 +49,17 @@ export default function MassclickEvent() {
   const [uploading, setUploading] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [formError, setFormError] = useState("");
+  const reservedMediaCount = useRef(0);
+  const uploadQueue = useRef(Promise.resolve());
+  const pendingUploadBatches = useRef(0);
+  const formGeneration = useRef(0);
 
   const resetForm = () => {
+    formGeneration.current += 1;
     setFormData(emptyForm);
     setEditId(null);
     setFormError("");
+    reservedMediaCount.current = 0;
   };
 
   const handleChange = (event) => {
@@ -65,32 +73,56 @@ export default function MassclickEvent() {
   const handleMediaUpload = async (event) => {
     const files = Array.from(event.target.files || []);
     if (!files.length) return;
-    setUploading(true);
-    setFormError("");
-    try {
-      const uploadedItems = [];
-      for (const file of files) {
-        const mediaType = file.type.startsWith("video/") ? "video" : "image";
-        const maxSize = mediaType === "video" ? 40 : 10;
-        if (file.size > maxSize * 1024 * 1024) throw new Error(`${file.name} exceeds the ${maxSize}MB limit`);
-        const fileData = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
-        uploadedItems.push(await dispatch(uploadMassclickEventMedia(fileData, mediaType)));
-      }
-      setFormData((current) => {
-        const mediaItems = [...(current.mediaItems || []), ...uploadedItems];
-        return { ...current, media: current.media || mediaItems[0], mediaItems };
-      });
-    } catch (uploadError) {
-      setFormError(uploadError.response?.data?.message || uploadError.message);
-    } finally {
-      setUploading(false);
-    }
     event.target.value = "";
+    setFormError("");
+    const availableSlots = MAX_MEDIA_ITEMS - reservedMediaCount.current;
+    if (files.length > availableSlots) {
+      setFormError(`You can add ${Math.max(availableSlots, 0)} more file(s); each event supports up to ${MAX_MEDIA_ITEMS}.`);
+      return;
+    }
+    const invalidFile = files.find((file) => {
+      const mediaType = file.type.startsWith("video/") ? "video" : file.type.startsWith("image/") ? "image" : "";
+      const maxSize = mediaType === "video" ? 40 : 10;
+      return !mediaType || !file.size || file.size > maxSize * 1024 * 1024;
+    });
+    if (invalidFile) {
+      setFormError(`${invalidFile.name} must be a non-empty image (max 10MB) or video (max 40MB).`);
+      return;
+    }
+
+    reservedMediaCount.current += files.length;
+    const batchGeneration = formGeneration.current;
+    pendingUploadBatches.current += 1;
+    setUploading(true);
+    uploadQueue.current = uploadQueue.current.catch(() => {}).then(async () => {
+      const uploadedItems = [];
+      const failures = [];
+      let nextIndex = 0;
+      const uploadNext = async () => {
+        while (nextIndex < files.length) {
+          const file = files[nextIndex++];
+          const mediaType = file.type.startsWith("video/") ? "video" : "image";
+          try {
+            uploadedItems.push(await dispatch(uploadMassclickEventMedia(file, mediaType)));
+          } catch (uploadError) {
+            failures.push(`${file.name}: ${uploadError.response?.data?.message || uploadError.message}`);
+          }
+        }
+      };
+      await Promise.all(Array.from({ length: Math.min(MAX_PARALLEL_UPLOADS, files.length) }, uploadNext));
+      if (batchGeneration !== formGeneration.current) return;
+      reservedMediaCount.current -= failures.length;
+      if (uploadedItems.length) {
+        setFormData((current) => {
+          const mediaItems = [...(current.mediaItems || []), ...uploadedItems];
+          return { ...current, media: current.media || mediaItems[0], mediaItems };
+        });
+      }
+      if (failures.length) setFormError(failures.join("; "));
+    }).finally(() => {
+      pendingUploadBatches.current = Math.max(0, pendingUploadBatches.current - 1);
+      if (!pendingUploadBatches.current) setUploading(false);
+    });
   };
 
   const handleSubmit = async (event) => {
@@ -111,6 +143,7 @@ export default function MassclickEvent() {
   };
 
   const handleEdit = (row) => {
+    formGeneration.current += 1;
     setEditId(row.id);
     setFormData({
       title: row.title,
@@ -124,6 +157,7 @@ export default function MassclickEvent() {
       media: row.media,
       mediaItems: row.mediaItems || [row.media].filter(Boolean),
     });
+    reservedMediaCount.current = (row.mediaItems?.length ? row.mediaItems : [row.media].filter(Boolean)).length;
     setActiveView("form");
   };
 
@@ -245,10 +279,10 @@ export default function MassclickEvent() {
                 <label className="form-input-label">Image or Video *</label>
                 <label className={cx("massclickEvent-uploadButton")}>
                   <CloudUploadIcon />
-                  <span>{uploading ? "Uploading..." : "Choose Images / Videos"}</span>
-                  <input type="file" hidden multiple disabled={uploading} accept="image/*,video/mp4,video/webm,video/quicktime" onChange={handleMediaUpload} />
+                  <span>{uploading ? "Add More (uploading...)" : "Choose Images / Videos"}</span>
+                  <input type="file" hidden multiple accept="image/*,video/*" onChange={handleMediaUpload} />
                 </label>
-                <small>Images up to 10MB; videos up to 40MB</small>
+                <small>1–50 files total. Images up to 10MB; videos up to 40MB. You can add more while uploads continue.</small>
               </div>
               {formData.mediaItems?.length > 0 && (
                 <div className={cx("massclickEvent-previewGrid")}>
@@ -257,6 +291,7 @@ export default function MassclickEvent() {
                       {media.mediaType === "video" ? <video src={media.mediaUrl} controls /> : <Avatar className={cx("massclickEvent-previewImage")} src={media.mediaUrl} variant="rounded" />}
                       <button type="button" onClick={() => setFormData((current) => {
                         const mediaItems = current.mediaItems.filter((_, itemIndex) => itemIndex !== index);
+                        reservedMediaCount.current = Math.max(0, reservedMediaCount.current - 1);
                         return { ...current, mediaItems, media: mediaItems[0] || null };
                       })}>Remove</button>
                     </div>

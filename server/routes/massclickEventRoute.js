@@ -14,7 +14,12 @@ const router = express.Router();
 router.get("/api/massclick-events", listPublicMassclickEventsAction);
 router.get("/api/massclick-events/view/:id", viewMassclickEventAction);
 router.get("/api/massclick-events/admin", requireAdminAuth(), listMassclickEventsAction);
-router.post("/api/massclick-events/media", requireAdminAuth(), uploadMassclickEventMediaAction);
+router.post(
+  "/api/massclick-events/media",
+  requireAdminAuth(),
+  express.raw({ type: ["image/*", "video/*", "application/octet-stream"], limit: "40mb" }),
+  uploadMassclickEventMediaAction,
+);
 router.post("/api/massclick-events", requireAdminAuth(), createMassclickEventAction);
 router.put("/api/massclick-events/:id", requireAdminAuth(), updateMassclickEventAction);
 router.delete("/api/massclick-events/:id", requireAdminAuth(), deleteMassclickEventAction);

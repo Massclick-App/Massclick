@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Autocomplete, Button, Checkbox, CircularProgress, Dialog, DialogContent, DialogTitle, FormControl, InputAdornment, InputLabel, MenuItem, Pagination, Select, TextField } from "@mui/material";
 import { CheckCircle2, Crown, FileText, Gift, History, Info, MapPin, Medal, ReceiptText, Sparkles, Store, Trophy, UploadCloud, UsersRound, X } from "lucide-react";
 import StickySearchBar from "../StickySearchBar/StickySearchBar";
 import Footer from "../footer/footer";
 import { createScopedClassNames } from "../../../utils/createScopedClassNames";
-import { createRewardClaim, fetchMyRewardClaims, fetchRewardBusinesses, fetchRewardBusinessLocations, fetchRewardCategoryOptions, fetchRewardLeaderboard } from "../../../services/rewardService";
+import { createRewardClaim, fetchMyRewardClaims, fetchRewardBusinesses, fetchRewardBusinessLocations, fetchRewardCategoryOptions, fetchRewardLeaderboard, fetchRewardMemberProfile } from "../../../services/rewardService";
+import MemberProfileDialog from "./MemberProfileDialog";
 import styles from "./RewardClaimPage.module.css";
 
 const cx = createScopedClassNames(styles);
@@ -35,6 +36,8 @@ export default function RewardClaimPage() {
   const [submitting, setSubmitting] = useState(false);
   const [leaders, setLeaders] = useState([]);
   const [leaderboard, setLeaderboard] = useState({ open: false, data: [], total: 0, page: 1, loading: false });
+  const [memberDetail, setMemberDetail] = useState(null);
+  const [memberDetailLoading, setMemberDetailLoading] = useState(false);
 
   useEffect(() => {
     fetchRewardCategoryOptions().then(setCategories).catch(() => setMessage("Categories could not be loaded."));
@@ -55,6 +58,36 @@ export default function RewardClaimPage() {
       setLeaderboard((current) => ({ ...current, loading: false }));
     }
   };
+
+  const openMember = useCallback(async (member) => {
+    setMemberDetail({ member, profile: null });
+    setMemberDetailLoading(true);
+    try { setMemberDetail({ member, profile: await fetchRewardMemberProfile(member.memberKey) }); }
+    catch { setMemberDetail({ member, profile: { error: "Reward activity could not be loaded." } }); }
+    finally { setMemberDetailLoading(false); }
+  }, []);
+
+  useEffect(() => {
+    const bindings = [];
+    const connectRows = (className, data) => {
+      document.querySelectorAll(`.${className}`).forEach((list) => {
+        Array.from(list.children).forEach((row, index) => {
+          const member = data[index];
+          if (!member || row.classList.contains(styles["leader-empty"])) return;
+          const activate = () => openMember(member);
+          const keydown = (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); activate(); } };
+          row.classList.add(styles["leader-row"]);
+          row.setAttribute("role", "button"); row.setAttribute("tabindex", "0");
+          row.setAttribute("aria-label", `View reward profile for ${member.displayName}`);
+          row.addEventListener("click", activate); row.addEventListener("keydown", keydown);
+          bindings.push(() => { row.removeEventListener("click", activate); row.removeEventListener("keydown", keydown); });
+        });
+      });
+    };
+    connectRows(styles["leader-list"], leaders);
+    connectRows(styles["leader-dialog-list"], leaderboard.data);
+    return () => bindings.forEach((remove) => remove());
+  }, [leaders, leaderboard.data, openMember]);
 
   useEffect(() => {
     if (!form.categoryName) { setLocations([]); return; }
@@ -140,5 +173,5 @@ export default function RewardClaimPage() {
     </form><aside className={cx("side-column")}><article className={cx("process-card")}><div className={cx("card-title")}><div><span>FILTER LOGIC</span><h2>Exact business match</h2></div><Store size={26} /></div><p>Category selects stored business locations. Location then selects live businesses.</p></article><article className={cx("leader-card")}><div className={cx("leader-head")}><div><span>COMMUNITY LEADERBOARD</span><h2>Top points earners</h2><p>Highest lifetime points across verified MassClick members.</p></div><Trophy size={25} /></div><div className={cx("leader-list")}>{leaders.length ? leaders.map((leader) => <div key={`${leader.rank}-${leader.displayName}`}><span className={cx(`rank rank-${leader.rank}`)}>{leader.rank <= 3 ? <Medal size={16} /> : leader.rank}</span><i>{leader.displayName.slice(0, 1).toUpperCase()}</i><div><b>{leader.displayName}</b><small>{leader.tier} member</small></div><strong>{leader.lifetimeEarned.toLocaleString("en-IN")} pts</strong></div>) : <div className={cx("leader-empty")}>No ranked members yet.</div>}</div><button className={cx("all-points-button")} type="button" onClick={() => navigate("/reward-members")}><UsersRound size={17} /> Check all user points</button></article></aside></section>
     <section className={cx("history")}><div className={cx("card-title")}><div><span>YOUR CLAIMS</span><h2>Recent confirmations</h2></div><History size={25} /></div>{!claims.length ? <p className={cx("empty")}>Your submitted transactions will appear here.</p> : <div className={cx("claim-list")}>{claims.map((claim) => <article key={claim._id}><div><strong>{claim.businessName}</strong><span>{claim.categoryName + " - " + claim.locationName}</span></div><div><b>₹{Number(claim.transactionAmount).toLocaleString("en-IN")}</b><span>{claim.claimNumber}</span></div><div className={cx("status status-" + claim.status)}>{claim.status === "approved" && <CheckCircle2 size={15} />}{labels[claim.status]}</div><strong className={cx("points")}>{claim.status === "approved" ? "+" + claim.awardedPoints : claim.projectedPoints + " expected"}</strong></article>)}</div>}</section>
     <Dialog open={leaderboard.open} onClose={() => setLeaderboard((current) => ({ ...current, open: false }))} maxWidth="sm" fullWidth PaperProps={{ className: cx("leader-dialog") }}><DialogTitle className={cx("leader-dialog-title")}><div><span><Crown size={16} /> MASSCLICK COMMUNITY</span><h2>All user points</h2><p>Members ranked by verified lifetime points.</p></div><Button onClick={() => setLeaderboard((current) => ({ ...current, open: false }))}>Close</Button></DialogTitle><DialogContent className={cx("leader-dialog-content")}><div className={cx("leader-dialog-list")}>{leaderboard.loading ? <div className={cx("leader-loading")}><CircularProgress size={25} /> Loading rankings...</div> : leaderboard.data.map((leader) => <div key={`${leader.rank}-${leader.displayName}`}><span className={cx(`rank rank-${leader.rank}`)}>{leader.rank <= 3 ? <Medal size={17} /> : leader.rank}</span><i>{leader.displayName.slice(0, 1).toUpperCase()}</i><div><b>{leader.displayName}</b><small>{leader.tier} member · {leader.availablePoints.toLocaleString("en-IN")} available</small></div><strong>{leader.lifetimeEarned.toLocaleString("en-IN")} pts</strong></div>)}</div>{leaderboard.total > 10 && <Pagination count={Math.ceil(leaderboard.total / 10)} page={leaderboard.page} onChange={(_, page) => loadLeaderboard(page)} color="primary" className={cx("leader-pagination")} />}</DialogContent></Dialog>
-  </main><Footer /></>;
+  </main><MemberProfileDialog detail={memberDetail} loading={memberDetailLoading} onClose={() => setMemberDetail(null)} /><Footer /></>;
 }

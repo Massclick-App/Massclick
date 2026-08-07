@@ -81,12 +81,12 @@ export const deleteMassclickEvent = (eventId) => async (dispatch) => {
   }
 };
 
-export const uploadMassclickEventMedia = (fileData, mediaType, thumbnailData = "") => async (dispatch) => {
+export const uploadMassclickEventMedia = (file, mediaType) => async (dispatch) => {
   const token = await authToken(dispatch);
   const response = await axiosInstance.post(
-    `${API_URL}/massclick-events/media`,
-    { fileData, mediaType, thumbnailData },
-    { headers: { Authorization: `Bearer ${token}` } },
+    `${API_URL}/massclick-events/media?${new URLSearchParams({ mediaType }).toString()}`,
+    file,
+    { headers: { Authorization: `Bearer ${token}`, "Content-Type": file.type || "application/octet-stream" } },
   );
   return response.data.data;
 };

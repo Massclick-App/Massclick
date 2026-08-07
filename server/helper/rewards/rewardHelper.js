@@ -276,12 +276,26 @@ export const getRewardMemberProfile = async (memberKey) => {
   const wallet = await RewardWallet.findById(memberKey).lean();
   if (!wallet) throw new Error("Reward member not found");
   const [user, claims, transactions, redemptions] = await Promise.all([
-    otpUserModel.findOne({ mobileNumber1: wallet.customerKey }).select({ userName: 1 }).lean(),
+    otpUserModel.findOne({ mobileNumber1: wallet.customerKey }).select({ userName: 1, title: 1, businessPeople: 1, businessName: 1, businessLocation: 1, businessCategory: 1, profileCompleted: 1, registeredFrom: 1, createdAt: 1 }).lean(),
     RewardClaim.find({ customerKey: wallet.customerKey }).select({ businessName: 1, categoryName: 1, locationName: 1, transactionAmount: 1, transactionAt: 1, projectedPoints: 1, awardedPoints: 1, status: 1 }).sort({ transactionAt: -1 }).limit(30).lean(),
     RewardTransaction.find({ customerKey: wallet.customerKey }).select({ milestone: 1, points: 1, status: 1, description: 1, createdAt: 1 }).sort({ createdAt: -1 }).limit(30).lean(),
     RewardRedemption.find({ customerKey: wallet.customerKey }).select({ rewardName: 1, pointsCost: 1, status: 1, createdAt: 1 }).sort({ createdAt: -1 }).limit(15).lean(),
   ]);
-  return { displayName: String(user?.userName || "MassClick member").trim(), wallet: { availablePoints: Number(wallet.availablePoints || 0), lifetimeEarned: Number(wallet.lifetimeEarned || 0), lifetimeRedeemed: Number(wallet.lifetimeRedeemed || 0), tier: tierFor(Number(wallet.lifetimeEarned || 0)) }, claims, transactions, redemptions };
+  return {
+    displayName: String(user?.userName || "MassClick member").trim(),
+    member: {
+      title: String(user?.title || "").trim(),
+      isBusinessPerson: Boolean(user?.businessPeople),
+      businessName: String(user?.businessName || "").trim(),
+      businessLocation: String(user?.businessLocation || "").trim(),
+      businessCategory: String(user?.businessCategory?.category || "").trim(),
+      profileCompleted: Boolean(user?.profileCompleted),
+      registeredFrom: String(user?.registeredFrom || "unknown"),
+      joinedAt: user?.createdAt || null,
+    },
+    wallet: { availablePoints: Number(wallet.availablePoints || 0), lifetimeEarned: Number(wallet.lifetimeEarned || 0), lifetimeRedeemed: Number(wallet.lifetimeRedeemed || 0), tier: tierFor(Number(wallet.lifetimeEarned || 0)) },
+    claims, transactions, redemptions,
+  };
 };
 
 export const listCustomerClaims = async (customerKey) => (await RewardClaim.find({ customerKey: cleanKey(customerKey) }).sort({ createdAt: -1 }).limit(50).lean()).map(withEvidenceUrls);

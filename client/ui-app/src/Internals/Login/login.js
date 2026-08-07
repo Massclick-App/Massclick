@@ -54,7 +54,7 @@ export default function Login({
             <div className={cx("corp-stat-card")}>
               <div className={cx("stat-icon")}>🌍</div>
               <div>
-                <span className={cx("stat-number")}>5k+</span>
+                <span className={cx("stat-number")}>50k+</span>
                 <span className={cx("stat-label")}>Clients globally</span>
               </div>
             </div>
