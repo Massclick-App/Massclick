@@ -96,7 +96,7 @@ useEffect(() => {
     (state) => (state.event?.eventCreation?.data || []).filter((item) => isRecent(item.createdAt)).length
   );
   const recentSearchRequestCount = useSelector(
-    (state) => (state.searchRequests.requests || []).filter((item) => item.status === "new" && isRecent(item.createdAt)).length
+    (state) => (state.searchRequests.requests || []).filter((item) => item.status === "new" && item.isRead !== true && isRecent(item.createdAt)).length
   );
   const notificationCount = modalCount ?? (pendingCount + pendingRewardClaimCount + chatUnreadCount + recentEnquiryCount + recentEventCount + recentSearchRequestCount);
 

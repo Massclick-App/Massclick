@@ -97,6 +97,7 @@ const MENU_SECTIONS = [
     label: "Manage",
     items: [
       { text: "Enquiries", icon: MailOutlineIcon, path: "/dashboard/enquiry" },
+      { text: "Search Requests", icon: SearchIcon, path: "/dashboard/search-requests" },
       { text: "Care Chat", icon: HeadsetMicIcon, path: "/dashboard/customer-care", badgeKey: "chat" },
       { text: "Ads", icon: NotificationsIcon, path: "/dashboard/advertisements" },
       { text: "Quotations", icon: RequestQuoteIcon, path: "/dashboard/quotation" },

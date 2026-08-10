@@ -77,8 +77,15 @@ const compactDate = (value) => {
 
 const toDateInputValue = (date) => date.toISOString().slice(0, 10);
 
-const getDateRange = (preset, customFrom, customTo) => {
+const getDateRange = (preset, customFrom, customTo, selectedDay) => {
   if (preset === "all") return {};
+  if (preset === "day") {
+    if (!selectedDay) return {};
+    return {
+      dateFrom: new Date(`${selectedDay}T00:00:00`).toISOString(),
+      dateTo: new Date(`${selectedDay}T23:59:59.999`).toISOString(),
+    };
+  }
   if (preset === "custom") {
     const dateFrom = customFrom ? new Date(`${customFrom}T00:00:00`).toISOString() : "";
     const dateTo = customTo ? new Date(`${customTo}T23:59:59.999`).toISOString() : "";
@@ -275,11 +282,12 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick }) {
   const [trendLocation, setTrendLocation] = useState("");
   const [creatorId, setCreatorId] = useState("");
   const [datePreset, setDatePreset] = useState("all");
+  const [selectedDay, setSelectedDay] = useState(toDateInputValue(new Date()));
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
   const dateRange = useMemo(
-    () => getDateRange(datePreset, customFrom, customTo),
-    [datePreset, customFrom, customTo],
+    () => getDateRange(datePreset, customFrom, customTo, selectedDay),
+    [datePreset, customFrom, customTo, selectedDay],
   );
 
   const fetchReport = useCallback(async () => {
@@ -415,6 +423,14 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick }) {
 
   const dateRangeLabel = datePreset === "all"
     ? "All time"
+    : datePreset === "day"
+      ? selectedDay
+        ? new Date(`${selectedDay}T00:00:00`).toLocaleDateString("en-IN", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        })
+        : "Specific day"
     : datePreset === "custom"
       ? "Custom date range"
       : `Last ${datePreset} days`;
@@ -512,6 +528,7 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick }) {
             onClick={() => {
               setCreatorId("");
               setDatePreset("all");
+              setSelectedDay(toDateInputValue(new Date()));
               setCustomFrom("");
               setCustomTo("");
             }}
@@ -536,12 +553,24 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick }) {
           <FormControl size="small" sx={{ minWidth: { xs: "100%", md: 170 } }}>
             <Select value={datePreset} onChange={(event) => setDatePreset(event.target.value)} inputProps={{ "aria-label": "Select analytics date range" }}>
               <MenuItem value="all">All time</MenuItem>
+              <MenuItem value="day">Specific day</MenuItem>
               <MenuItem value="7">Last 7 days</MenuItem>
               <MenuItem value="30">Last 30 days</MenuItem>
               <MenuItem value="90">Last 90 days</MenuItem>
               <MenuItem value="custom">Custom range</MenuItem>
             </Select>
           </FormControl>
+          {datePreset === "day" && (
+            <TextField
+              size="small"
+              label="Select day"
+              type="date"
+              value={selectedDay}
+              onChange={(event) => setSelectedDay(event.target.value)}
+              inputProps={{ max: toDateInputValue(new Date()) }}
+              InputLabelProps={{ shrink: true }}
+            />
+          )}
           {datePreset === "custom" && (
             <>
               <TextField size="small" label="From" type="date" value={customFrom} onChange={(event) => setCustomFrom(event.target.value)} InputLabelProps={{ shrink: true }} />

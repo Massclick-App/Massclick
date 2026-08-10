@@ -34,10 +34,10 @@ export const createSearchRequest = (requestData) => async (dispatch) => {
   }
 };
 
-export const getSearchRequests = ({ page = 1, limit = 25, status = "" } = {}) => async (dispatch) => {
+export const getSearchRequests = ({ page = 1, limit = 25, status = "", read = "", search = "", sortBy = "", sortOrder = "" } = {}) => async (dispatch) => {
   dispatch({ type: FETCH_SEARCH_REQUESTS_REQUEST });
   try {
-    const params = new URLSearchParams({ page, limit, status });
+    const params = new URLSearchParams({ page, limit, status, read, search, sortBy, sortOrder });
     const response = await axiosInstance.get(`${API_URL}/admin/search-requests?${params.toString()}`);
     const result = response?.data?.data ?? response?.data;
     dispatch({ type: FETCH_SEARCH_REQUESTS_SUCCESS, payload: result });
@@ -45,6 +45,20 @@ export const getSearchRequests = ({ page = 1, limit = 25, status = "" } = {}) =>
   } catch (error) {
     const payload = error.response?.data || { message: error.message };
     dispatch({ type: FETCH_SEARCH_REQUESTS_FAILURE, payload });
+    throw error;
+  }
+};
+
+export const markSearchRequestRead = (id) => async (dispatch) => {
+  dispatch({ type: UPDATE_SEARCH_REQUEST_REQUEST });
+  try {
+    const response = await axiosInstance.patch(`${API_URL}/admin/search-requests/${id}/read`);
+    const request = response.data.data || response.data;
+    dispatch({ type: UPDATE_SEARCH_REQUEST_SUCCESS, payload: request });
+    return request;
+  } catch (error) {
+    const payload = error.response?.data || { message: error.message };
+    dispatch({ type: UPDATE_SEARCH_REQUEST_FAILURE, payload });
     throw error;
   }
 };

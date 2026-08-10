@@ -297,7 +297,7 @@ export default function NotificationDropdown({ open, handleClose, onCountChange 
       }));
 
     const searchRequestItems = searchRequests
-      .filter((request) => request.status === "new" && isRecent(request.createdAt))
+      .filter((request) => request.status === "new" && request.isRead !== true && isRecent(request.createdAt))
       .map((request) => ({
         id: `search-request-${request._id}`,
         category: "searchRequest",
@@ -311,7 +311,7 @@ export default function NotificationDropdown({ open, handleClose, onCountChange 
           { icon: AccessTimeRoundedIcon, label: "Submitted", value: formatTime(request.createdAt) },
         ],
         createdAt: request.createdAt,
-        actionLabel: "Call customer",
+        actionLabel: "View requests",
       }));
 
     return [...rewardClaimItems, ...businessItems, ...chatItems, ...eventItems, ...enquiryItems, ...searchRequestItems]
@@ -356,11 +356,7 @@ export default function NotificationDropdown({ open, handleClose, onCountChange 
     if (item.category === "chat") return handleNavigate("/dashboard/customer-care");
     if (item.category === "event") return handleNavigate("/dashboard/event-creation");
     if (item.category === "rewardClaim") return handleNavigate("/dashboard/reward-claims");
-    if (item.category === "searchRequest") {
-      const phone = String(item.raw.contactNumber || "").replace(/[^0-9+]/g, "");
-      if (phone) window.location.href = `tel:${phone}`;
-      return;
-    }
+    if (item.category === "searchRequest") return handleNavigate("/dashboard/search-requests");
     return handleNavigate("/dashboard/enquiry");
   };
 

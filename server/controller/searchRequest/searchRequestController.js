@@ -1,6 +1,6 @@
 import {
   createSearchRequest, deleteSearchRequest, getSearchRequest,
-  listSearchRequests, updateSearchRequestStatus,
+  listSearchRequests, markSearchRequestRead, updateSearchRequestStatus,
 } from "../../helper/searchRequest/searchRequestHelper.js";
 
 const requiredFields = ["fullName", "contactNumber", "email", "category", "location", "details"];
@@ -37,6 +37,10 @@ export const getSearchRequestAction = async (req, res) => {
 };
 export const updateSearchRequestAction = async (req, res) => {
   try { return res.send({ success: true, message: "Status updated", data: await updateSearchRequestStatus(req.params.id, req.body.status) }); }
+  catch (error) { return res.status(400).send({ success: false, message: error.message }); }
+};
+export const markSearchRequestReadAction = async (req, res) => {
+  try { return res.send({ success: true, message: "Search request marked as read", data: await markSearchRequestRead(req.params.id) }); }
   catch (error) { return res.status(400).send({ success: false, message: error.message }); }
 };
 export const deleteSearchRequestAction = async (req, res) => {

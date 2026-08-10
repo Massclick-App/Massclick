@@ -10,11 +10,13 @@ const searchRequestSchema = new mongoose.Schema(
     details: { type: String, required: true, trim: true, minlength: 10, maxlength: 2000 },
     source: { type: String, trim: true, default: "search-no-results" },
     status: { type: String, enum: ["new", "contacted", "completed", "cancelled"], default: "new" },
+    isRead: { type: Boolean, default: false },
   },
   { timestamps: true },
 );
 
 searchRequestSchema.index({ createdAt: -1 });
 searchRequestSchema.index({ status: 1, createdAt: -1 });
+searchRequestSchema.index({ isRead: 1, createdAt: -1 });
 
 export default searchRequestSchema;

@@ -18,6 +18,7 @@ export const PAGE_REGISTRY = [
   { path: '/dashboard/seotemplates',        label: 'SEO Templates' },
   { path: '/dashboard/authors',             label: 'Authors' },
   { path: '/dashboard/enquiry',             label: 'Enquiry' },
+  { path: '/dashboard/search-requests',      label: 'Search Requests' },
   { path: '/dashboard/customer-care',       label: 'Care Chat' },
   { path: '/dashboard/advertisements',      label: 'Advertisements' },
   { path: '/dashboard/quotation',           label: 'Quotations' },

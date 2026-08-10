@@ -78,6 +78,7 @@ const BusinessEnquiry = lazy(() => import(/* webpackChunkName: "business-enquiry
 const AuthorProfile = lazy(() => import(/* webpackChunkName: "author-profile" */ './Internals/clientComponent/authorProfile/authorProfile.js'));
 
 const EnquiryPage = lazy(() => import(/* webpackChunkName: "admin-enquiry" */ './Internals/enquiry-page/enquiry-page.js'));
+const SearchRequestsAdmin = lazy(() => import(/* webpackChunkName: "admin-search-requests" */ './Internals/searchRequests/SearchRequestsAdmin.js'));
 const RewardAdmin = lazy(() => import(/* webpackChunkName: "admin-rewards" */ './Internals/rewards/RewardAdmin.js'));
 const RewardsConceptPage = lazy(() => import(/* webpackChunkName: "admin-rewards-concept" */ './Internals/rewards/RewardsConceptPage.js'));
 const RewardClaimsAdmin = lazy(() => import(/* webpackChunkName: "admin-reward-claims" */ './Internals/rewards/RewardClaimsAdmin.js'));
@@ -356,6 +357,7 @@ function AppRoutes({
                 <Route path="site-analytics" element={<SiteAnalytics />} />
                 <Route path="app-analytics" element={<AppAnalytics />} />
                 <Route path="enquiry" element={<EnquiryPage />} />
+                <Route path="search-requests" element={<SearchRequestsAdmin />} />
                 <Route path="rewards" element={<RewardAdmin />} />
                 <Route path="reward-claims" element={<RewardClaimsAdmin />} />
                 <Route path="rewards-concept" element={<RewardsConceptPage />} />
