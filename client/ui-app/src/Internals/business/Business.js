@@ -30,7 +30,7 @@ import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded';
 import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined';
 import AutorenewRoundedIcon from '@mui/icons-material/AutorenewRounded';
-import { checkPhonePeStatus, createPhonePePayment } from "../../redux/actions/phonePayAction.js";
+import { createPhonePePayment } from "../../redux/actions/phonePayAction.js";
 import { updateGmapsLeadStatus, clearGmapsLeadImport, setGmapsLeadToImport } from "../../redux/actions/gmapsLeadsAction";
 import CustomizedTable from "../../components/Table/CustomizedTable.js";
 import Tooltip from "@mui/material/Tooltip";
@@ -1389,7 +1389,6 @@ const BusinessList = React.memo(() => {
     dispatch(businessCategorySearch(""));
     dispatch(getAllUsersClient());
     dispatch(getAllUsers({ pageNo: 1, pageSize: 1000 }));
-    dispatch(checkPhonePeStatus());
   }, [dispatch]);
 
   // ===== GMaps Lead Pre-fill =====

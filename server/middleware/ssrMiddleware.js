@@ -334,14 +334,32 @@ const renderMarkdownBreadcrumb = (crumbs = []) =>
       : crumb.name
   )).join(" > ");
 
+let cachedIndexHtml = null;
+let cachedIndexMtimeMs = null;
+
+function readIndexHtmlCached(indexPath) {
+  let stat;
+  try {
+    stat = fs.statSync(indexPath);
+  } catch {
+    return null;
+  }
+  if (cachedIndexHtml === null || cachedIndexMtimeMs !== stat.mtimeMs) {
+    cachedIndexHtml = fs.readFileSync(indexPath, "utf8");
+    cachedIndexMtimeMs = stat.mtimeMs;
+  }
+  return cachedIndexHtml;
+}
+
 export async function ssrMiddleware(req, res) {
   try {
     const indexPath = path.join(CLIENT_BUILD_PATH, "index.html");
-    if (!fs.existsSync(indexPath)) {
+    const cachedHtml = readIndexHtmlCached(indexPath);
+    if (cachedHtml === null) {
       return res.status(404).send("Build not found");
     }
 
-    let html = fs.readFileSync(indexPath, "utf8");
+    let html = cachedHtml;
     const parts = req.path.split("/").filter(Boolean);
 
     const firstSegment = parts[0] || "";
