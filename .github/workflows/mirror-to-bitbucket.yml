@@ -2,13 +2,15 @@ name: Mirror to Bitbucket
 
 # Keeps the Bitbucket backup (massclick_dev/massclick_web) in step with GitHub.
 # GitHub stays the source of truth; Bitbucket is a read-only mirror.
-# Deliberately scoped to dev + prod — feature branches are not mirrored.
+# Scoped to main, dev, prod and dev-abishek — other feature branches are not mirrored.
 
 on:
   push:
     branches:
+      - main
       - dev
       - prod
+      - dev-abishek
   workflow_dispatch:
     inputs:
       branch:
@@ -17,9 +19,10 @@ on:
         default: 'dev'
         type: choice
         options:
+          - main
           - dev
           - prod
-          - main
+          - dev-abishek
 
 # Serialise per branch so two quick pushes can't race each other to Bitbucket.
 concurrency:
