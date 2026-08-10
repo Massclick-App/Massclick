@@ -5010,6 +5010,20 @@ const BusinessList = React.memo(() => {
 
           setDownloadingDocumentKeys(currentKeys => [...currentKeys, downloadKey]);
           setDocumentDownloadProgress(currentProgress => ({ ...currentProgress, [downloadKey]: 0 }));
+          // The API prepares the S3 object before response bytes start arriving.
+          // Show steady preparation progress, but never claim completion until
+          // Axios confirms that the complete response has been received.
+          const preparationTimer = window.setInterval(() => {
+            setDocumentDownloadProgress(currentProgress => {
+              const currentValue = currentProgress[downloadKey] ?? 0;
+              if (currentValue >= 90) return currentProgress;
+              const increment = currentValue < 30 ? 4 : currentValue < 65 ? 2 : 1;
+              return {
+                ...currentProgress,
+                [downloadKey]: Math.min(90, currentValue + increment)
+              };
+            });
+          }, 400);
           try {
             await downloadBusinessDocument({
               businessId: documentsDialog.data?._id,
@@ -5019,10 +5033,13 @@ const BusinessList = React.memo(() => {
               fallbackUrl: documentItem.url,
               onProgress: value => setDocumentDownloadProgress(currentProgress => ({
                 ...currentProgress,
-                [downloadKey]: value
+                [downloadKey]: value === 100
+                  ? 100
+                  : Math.max(currentProgress[downloadKey] ?? 0, Math.min(value, 99))
               }))
             });
           } finally {
+            window.clearInterval(preparationTimer);
             window.setTimeout(() => {
               setDownloadingDocumentKeys(currentKeys => currentKeys.filter(key => key !== downloadKey));
               setDocumentDownloadProgress(currentProgress => {
