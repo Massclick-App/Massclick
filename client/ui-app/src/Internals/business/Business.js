@@ -15,7 +15,7 @@ import CategoryIcon from '@mui/icons-material/Category';
 import VerifiedUserIcon from "@mui/icons-material/VerifiedUser";
 import {
   Box, Button, Typography, CircularProgress, IconButton, Avatar, Dialog, DialogTitle, DialogContent, DialogActions,
-  Chip
+  Chip, LinearProgress
 } from "@mui/material";
 import { useSnackbar } from '../../components/snackbar/SnackbarProvider.js';
 import PropTypes from 'prop-types';
@@ -531,6 +531,8 @@ const BusinessList = React.memo(() => {
     open: false,
     data: null
   });
+  const [downloadingDocumentKeys, setDownloadingDocumentKeys] = useState([]);
+  const [documentDownloadProgress, setDocumentDownloadProgress] = useState({});
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [inputKeyword, setInputKeyword] = useState("");
   const [categoryKeywordSuggestions, setCategoryKeywordSuggestions] = useState([]);
@@ -3239,7 +3241,8 @@ const BusinessList = React.memo(() => {
     type,
     index,
     name,
-    fallbackUrl = ""
+    fallbackUrl = "",
+    onProgress
   }) => {
     const params = new URLSearchParams({ type });
     if (Number.isInteger(index)) params.append("index", String(index));
@@ -3247,8 +3250,21 @@ const BusinessList = React.memo(() => {
     try {
       const response = await axiosInstance.get(
         `${process.env.REACT_APP_API_URL}/businesslist/documents/${businessId}/download?${params.toString()}`,
-        { responseType: "blob" }
+        {
+          responseType: "blob",
+          // The production server may need to wake up and then retrieve the
+          // original object from S3. The shared 20-second API timeout is too
+          // short for that download path.
+          timeout: 120000,
+          onDownloadProgress: progressEvent => {
+            const total = progressEvent.total;
+            if (total > 0) {
+              onProgress?.(Math.min(100, Math.round((progressEvent.loaded * 100) / total)));
+            }
+          }
+        }
       );
+      onProgress?.(100);
       const extension = (fallbackUrl.split("?")[0].match(/\.(\w+)$/) || [])[1] || "bin";
       const fallbackName = `${name || "Business Document"}.${extension}`;
       let filename = getDownloadFilename(response.headers?.["content-disposition"], fallbackName);
@@ -4988,13 +5004,35 @@ const BusinessList = React.memo(() => {
         ].filter(Boolean);
         const documents = [...certificateDocuments, ...kycDocuments];
 
-        const handleDownloadDocument = async documentItem => downloadBusinessDocument({
-          businessId: documentsDialog.data?._id,
-          type: documentItem.downloadType,
-          index: documentItem.downloadIndex,
-          name: documentItem.name,
-          fallbackUrl: documentItem.url
-        });
+        const handleDownloadDocument = async documentItem => {
+          const downloadKey = `${documentItem.downloadType}-${documentItem.downloadIndex ?? "certificate"}`;
+          if (downloadingDocumentKeys.includes(downloadKey)) return;
+
+          setDownloadingDocumentKeys(currentKeys => [...currentKeys, downloadKey]);
+          setDocumentDownloadProgress(currentProgress => ({ ...currentProgress, [downloadKey]: 0 }));
+          try {
+            await downloadBusinessDocument({
+              businessId: documentsDialog.data?._id,
+              type: documentItem.downloadType,
+              index: documentItem.downloadIndex,
+              name: documentItem.name,
+              fallbackUrl: documentItem.url,
+              onProgress: value => setDocumentDownloadProgress(currentProgress => ({
+                ...currentProgress,
+                [downloadKey]: value
+              }))
+            });
+          } finally {
+            window.setTimeout(() => {
+              setDownloadingDocumentKeys(currentKeys => currentKeys.filter(key => key !== downloadKey));
+              setDocumentDownloadProgress(currentProgress => {
+                const nextProgress = { ...currentProgress };
+                delete nextProgress[downloadKey];
+                return nextProgress;
+              });
+            }, 600);
+          }
+        };
 
         return (
           <>
@@ -5044,6 +5082,9 @@ const BusinessList = React.memo(() => {
                     const isImage = isPreviewableBusinessDocumentImage(url);
                     const isPdf = isBusinessPdfDocument(url);
                     const isCertificate = kind === "CERT";
+                    const documentDownloadKey = `${documentItem.downloadType}-${documentItem.downloadIndex ?? "certificate"}`;
+                    const isThisDocumentDownloading = downloadingDocumentKeys.includes(documentDownloadKey);
+                    const downloadProgress = documentDownloadProgress[documentDownloadKey] ?? 0;
 
                     return (
                       <Box
@@ -5136,6 +5177,7 @@ const BusinessList = React.memo(() => {
                             variant="contained"
                             fullWidth
                             disableElevation
+                            disabled={isThisDocumentDownloading}
                             endIcon={<FileDownloadOutlinedIcon fontSize="small" />}
                             onClick={() => handleDownloadDocument(documentItem)}
                             sx={{
@@ -5145,9 +5187,27 @@ const BusinessList = React.memo(() => {
                               "&:hover": { bgcolor: "#0d5f59" }
                             }}
                           >
-                            Download
+                            {isThisDocumentDownloading ? "Downloading..." : "Download"}
                           </Button>
                         </Box>
+                        {isThisDocumentDownloading && (
+                          <Box sx={{ mt: 0.25 }}>
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5, fontSize: "0.75rem" }}>
+                              Downloading document…
+                            </Typography>
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                              <LinearProgress
+                                variant="determinate"
+                                value={downloadProgress}
+                                aria-label={`Downloading ${name}`}
+                                sx={{ flex: 1, height: 7, borderRadius: 4 }}
+                              />
+                              <Typography variant="body2" color="text.secondary" sx={{ minWidth: 36, fontSize: "0.75rem" }}>
+                                {`${Math.round(downloadProgress)}%`}
+                              </Typography>
+                            </Box>
+                          </Box>
+                        )}
                       </Box>
                     );
                   })}
