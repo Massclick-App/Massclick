@@ -10,7 +10,7 @@ export function metricsMiddleware(req, res, next) {
     const durationNs = process.hrtime.bigint() - startTime;
     const durationSec = Number(durationNs) / 1e9;
 
-    const route = req.route?.path ?? req.path ?? "unknown";
+    const route = req.route?.path ?? "unmatched";
     const labels = {
       method: req.method,
       route,
