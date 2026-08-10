@@ -1,0 +1,78 @@
+name: Mirror to Bitbucket
+
+# Keeps the Bitbucket backup (massclick_dev/massclick_web) in step with GitHub.
+# GitHub stays the source of truth; Bitbucket is a read-only mirror.
+# Deliberately scoped to dev + prod — feature branches are not mirrored.
+
+on:
+  push:
+    branches:
+      - dev
+      - prod
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to mirror'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - prod
+          - main
+
+# Serialise per branch so two quick pushes can't race each other to Bitbucket.
+concurrency:
+  group: mirror-bitbucket-${{ github.event.inputs.branch || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    if: github.repository == 'Massclick-App/Massclick'
+
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          # fetch-depth: 0 is required — you cannot push from a shallow clone.
+          fetch-depth: 0
+          ref: ${{ github.event.inputs.branch || github.ref_name }}
+
+      - name: Push to Bitbucket
+        env:
+          BB_TOKEN: ${{ secrets.BITBUCKET_ACCESS_TOKEN }}
+          BRANCH: ${{ github.event.inputs.branch || github.ref_name }}
+        run: |
+          if [ -z "$BB_TOKEN" ]; then
+            echo "::error::BITBUCKET_ACCESS_TOKEN secret is not set. Create a Bitbucket"
+            echo "::error::Repository Access Token with repository:write and add it here."
+            exit 1
+          fi
+
+          # Non-forcing on purpose: if GitHub history is rewritten, this fails loudly
+          # rather than silently overwriting the backup. Change to +HEAD:... to force.
+          git push "https://x-token-auth:${BB_TOKEN}@bitbucket.org/massclick_dev/massclick_web.git" \
+            "HEAD:refs/heads/${BRANCH}"
+
+          echo "✅ Mirrored ${BRANCH} → Bitbucket ($(git rev-parse --short HEAD))"
+
+      - name: Discord notification on failure
+        if: failure()
+        run: |
+          curl -X POST ${{ secrets.DISCORD_WEBHOOK }} \
+            -H 'Content-Type: application/json' \
+            -d '{
+              "content": "⚠️ **Bitbucket Mirror Failed**",
+              "embeds": [{
+                "color": 16776960,
+                "title": "Backup mirror is out of sync",
+                "description": "GitHub is unaffected — only the Bitbucket backup did not update.",
+                "fields": [
+                  {"name": "Branch", "value": "${{ github.event.inputs.branch || github.ref_name }}", "inline": true},
+                  {"name": "Commit", "value": "${{ github.sha }}", "inline": true},
+                  {"name": "Likely cause", "value": "Workspace user limit, expired token, or rewritten history", "inline": false},
+                  {"name": "Logs", "value": "[View run](https://github.com/Massclick-App/Massclick/actions/runs/${{ github.run_id }})", "inline": false}
+                ]
+              }]
+            }'
