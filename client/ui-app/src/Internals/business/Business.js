@@ -3247,7 +3247,13 @@ const BusinessList = React.memo(() => {
     try {
       const response = await axiosInstance.get(
         `${process.env.REACT_APP_API_URL}/businesslist/documents/${businessId}/download?${params.toString()}`,
-        { responseType: "blob" }
+        {
+          responseType: "blob",
+          // The production server may need to wake up and then retrieve the
+          // original object from S3. The shared 20-second API timeout is too
+          // short for that download path.
+          timeout: 120000
+        }
       );
       const extension = (fallbackUrl.split("?")[0].match(/\.(\w+)$/) || [])[1] || "bin";
       const fallbackName = `${name || "Business Document"}.${extension}`;
