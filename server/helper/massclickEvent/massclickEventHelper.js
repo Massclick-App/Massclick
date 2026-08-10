@@ -1,4 +1,5 @@
 import { ObjectId } from "mongodb";
+import { randomUUID } from "crypto";
 import massclickEventModel from "../../model/massclickEvent/massclickEventModel.js";
 import { getSignedUrlByKey, uploadImageToS3 } from "../../s3Uploder.js";
 
@@ -20,21 +21,28 @@ const serialize = (item) => {
   };
 };
 
-export const uploadMassclickEventMedia = async ({ fileData, mediaType, thumbnailData }) => {
+export const uploadMassclickEventMedia = async ({ fileData, fileBuffer, mediaType, contentType, thumbnailData }) => {
   const limits = { image: 10 * 1024 * 1024, video: 40 * 1024 * 1024 };
   if (!limits[mediaType]) throw new Error("Media type must be image or video");
-  const match = typeof fileData === "string" && fileData.match(/^data:([\w/+.-]+);base64,(.+)$/);
-  if (!match || !match[1].startsWith(`${mediaType}/`)) throw new Error(`A valid ${mediaType} data URL is required`);
-  if (Buffer.byteLength(match[2], "base64") > limits[mediaType]) throw new Error(`${mediaType} file is too large`);
+  const isBinary = Buffer.isBuffer(fileBuffer);
+  const match = !isBinary && typeof fileData === "string" && fileData.match(/^data:([\w/+.-]+);base64,(.+)$/);
+  const mimeType = isBinary ? contentType : match?.[1];
+  if (!mimeType?.startsWith(`${mediaType}/`)) throw new Error(`A valid ${mediaType} file is required`);
+  const fileSize = isBinary ? fileBuffer.length : Buffer.byteLength(match[2], "base64");
+  if (!fileSize) throw new Error("The selected file is empty");
+  if (fileSize > limits[mediaType]) throw new Error(`${mediaType} file is too large`);
 
   const uploaded = await uploadImageToS3(
-    fileData,
-    `massclick-events/${mediaType}s/${Date.now()}`,
-    { skipImageConversion: mediaType === "video" },
+    isBinary ? fileBuffer : fileData,
+    `massclick-events/${mediaType}s/${Date.now()}-${randomUUID()}`,
+    {
+      skipImageConversion: mediaType === "video",
+      ...(isBinary ? { contentType: mimeType, extension: mimeType.split("/")[1] } : {}),
+    },
   );
   let thumbnailKey = "";
   if (thumbnailData?.startsWith("data:image/")) {
-    const thumbnail = await uploadImageToS3(thumbnailData, `massclick-events/thumbnails/${Date.now()}`);
+    const thumbnail = await uploadImageToS3(thumbnailData, `massclick-events/thumbnails/${Date.now()}-${randomUUID()}`);
     thumbnailKey = thumbnail.key;
   }
   return serialize({ media: { mediaType, mediaKey: uploaded.key, thumbnailKey } }).media;
@@ -76,6 +84,7 @@ export const saveMassclickEvent = async (id, data) => {
         .filter((item) => item?.mediaKey)
         .map(({ mediaType, mediaKey, thumbnailKey = "" }) => ({ mediaType, mediaKey, thumbnailKey }))
     : [];
+  if (mediaItems.length > 50) throw new Error("A MassClick event can contain at most 50 media files");
   const primaryMedia = data.media?.mediaKey
     ? { mediaType: data.media.mediaType, mediaKey: data.media.mediaKey, thumbnailKey: data.media.thumbnailKey || "" }
     : mediaItems[0];
