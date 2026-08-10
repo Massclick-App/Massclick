@@ -1613,9 +1613,6 @@ const BusinessList = React.memo(() => {
         businessName: updatedBusiness?.businessName || row.businessName || row.name || "Business",
         items: traceItems
       });
-      console.groupCollapsed("[CertificateRegenerate] Frontend trace");
-      console.table(traceItems);
-      console.groupEnd();
       if (detailRow?._id === row._id) {
         setDetailRow(prev => ({
           ...prev,
@@ -3171,10 +3168,28 @@ const BusinessList = React.memo(() => {
     const link = document.createElement("a");
     link.href = url;
     link.download = filename;
+    link.style.display = "none";
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    // Keep the object URL alive until the browser has accepted the download.
+    // Revoking it synchronously can cancel downloads in Chrome/Edge.
+    window.setTimeout(() => {
+      link.remove();
+      URL.revokeObjectURL(url);
+    }, 1000);
+  };
+
+  const getBlobErrorMessage = async (error, fallback) => {
+    const responseData = error.response?.data;
+    if (responseData instanceof Blob) {
+      try {
+        const payload = JSON.parse(await responseData.text());
+        return payload?.message || fallback;
+      } catch (_) {
+        return fallback;
+      }
+    }
+    return responseData?.message || error.message || fallback;
   };
 
   const replaceFileExtension = (filename, extension) => {
@@ -3249,7 +3264,8 @@ const BusinessList = React.memo(() => {
       downloadBlob(downloadData, filename);
       enqueueSnackbar(`${name || "Document"} downloaded${isCertificateDownload ? " as PNG" : ""}`, { variant: "success" });
     } catch (error) {
-      enqueueSnackbar(error.response?.data?.message || error.message || "Download failed.", { variant: "error" });
+      const message = await getBlobErrorMessage(error, "Download failed.");
+      enqueueSnackbar(message, { variant: "error" });
     }
   };
 
