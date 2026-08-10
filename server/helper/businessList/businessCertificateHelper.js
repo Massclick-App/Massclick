@@ -534,8 +534,6 @@ const uploadCertificateImage = async (business = {}, type = "verified") => {
     },
   );
 
-  console.log(`[CertificateRegenerate] Uploaded ${type} certificate PNG: ${uploadResult.key}`);
-
   return uploadResult.key;
 };
 
@@ -694,8 +692,6 @@ export const regenerateBusinessCertificates = async (businessId) => {
     throw error;
   }
 
-  console.log("[CertificateRegenerate] Starting regenerate:", trace);
-
   const deleteTrace = await deleteCertificateKeys([
     currentCertificates.verifiedCertificateKey,
     currentCertificates.trustCertificateKey,
@@ -736,7 +732,5 @@ export const regenerateBusinessCertificates = async (businessId) => {
   const result = appendCertificateUrls(business);
   trace.newVerifiedCertificateUrl = result.certificates?.verifiedCertificateUrl || "";
   trace.newTrustCertificateUrl = result.certificates?.trustCertificateUrl || "";
-  console.log("[CertificateRegenerate] Completed regenerate:", trace);
-
   return { business: result, trace };
 };
