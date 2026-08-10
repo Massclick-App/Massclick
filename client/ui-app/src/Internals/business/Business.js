@@ -520,6 +520,7 @@ const BusinessList = React.memo(() => {
   useEffect(() => {
     }, [activeView, editMode, businessList, successData]);
   const [newGalleryImages, setNewGalleryImages] = useState([]);
+  const [isGalleryUploading, setIsGalleryUploading] = useState(false);
   const [createdBusinessId, setCreatedBusinessId] = useState(null);
   const [createUserId, setCreateUserId] = useState(null);
   const [galleryDialog, setGalleryDialog] = useState({
@@ -890,6 +891,8 @@ const BusinessList = React.memo(() => {
   };
   const handleGalleryImageChange = e => {
     const files = Array.from(e.target.files);
+    // Allow the same files to be selected again after a failed upload.
+    e.target.value = "";
     const readers = files.map(file => {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -903,12 +906,14 @@ const BusinessList = React.memo(() => {
     });
   };
   const handleUploadGalleryImages = async () => {
-    if (!galleryDialog.data?._id) return;
+    if (!galleryDialog.data?._id || newGalleryImages.length === 0 || isGalleryUploading) return;
+    setIsGalleryUploading(true);
     try {
-      const uploadPayload = {
-        businessImages: newGalleryImages.length > 0 ? newGalleryImages : null
-      };
-      const updatedBusiness = await dispatch(editBusinessList(galleryDialog.data._id, uploadPayload));
+      const updatedBusiness = await dispatch(editBusinessSection(
+        galleryDialog.data._id,
+        "gallery-images",
+        { businessImages: newGalleryImages }
+      ));
       setGalleryDialog(prev => ({
         ...prev,
         data: {
@@ -919,8 +924,13 @@ const BusinessList = React.memo(() => {
       setNewGalleryImages([]);
       handleCloseGallery();
       await dispatch(getAllBusinessList());
+      enqueueSnackbar("Gallery images uploaded successfully.", { variant: "success" });
     } catch (err) {
-      }
+      const message = err.response?.data?.message || err.message || "Gallery upload failed. Please try again.";
+      enqueueSnackbar(message, { variant: "error" });
+    } finally {
+      setIsGalleryUploading(false);
+    }
   };
   const defaultOpeningHours = [{
     day: "Monday",
@@ -5341,8 +5351,10 @@ const BusinessList = React.memo(() => {
         </Button>
       </DialogContent>
       <DialogActions>
-        <Button onClick={handleCloseGallery} color="secondary">Close</Button>
-        <Button onClick={handleUploadGalleryImages} color="primary" variant="contained" disabled={newGalleryImages.length === 0}>Upload</Button>
+        <Button onClick={handleCloseGallery} color="secondary" disabled={isGalleryUploading}>Close</Button>
+        <Button onClick={handleUploadGalleryImages} color="primary" variant="contained" disabled={newGalleryImages.length === 0 || isGalleryUploading}>
+          {isGalleryUploading ? <><CircularProgress size={18} color="inherit" sx={{ mr: 1 }} />Uploading...</> : "Upload"}
+        </Button>
       </DialogActions>
     </Dialog>
 
