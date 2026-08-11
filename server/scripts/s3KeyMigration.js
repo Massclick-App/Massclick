@@ -47,6 +47,7 @@ import mongoose from "mongoose";
 import AWS from "aws-sdk";
 
 import { SCOPES, registryCollections, validateRegistry } from "../utils/s3ScopeRegistry.js";
+import { extractS3Key, getByPath } from "../utils/s3KeyUtils.js";
 
 dotenv.config({ path: fileURLToPath(new URL("../.env", import.meta.url)) });
 
@@ -75,33 +76,6 @@ const die = (message) => {
 };
 
 // ------------------------------------------------- key/value classification
-
-// Derived from helper/mediaCleanup/s3WebpMigrationHelper.js:226, with a fix that
-// version does not have. 0.1 stays read-only and touches no shipped file; step 0.3
-// extracts one shared copy into utils/s3KeyUtils.js and repoints this import along
-// with the three helpers that carry the broken one.
-//
-// THE FIX: the shipped version strips the base URL exactly once. Real data has the
-// base URL prepended up to FOUR times —
-//   https://<bucket>.s3.../https://<bucket>.s3.../https://<bucket>.s3.../businessList/banners/x.jpg
-// (54 such values in seopagecontentblogs.businessDetails[].bannerImage). One pass
-// leaves a still-doubled string, which then resolves to nothing. Strip until stable.
-const extractS3Key = (value) => {
-  if (!value || typeof value !== "string") return "";
-  let current = value.trim();
-  if (!current) return "";
-  for (let i = 0; i < 8 && /^https?:\/\//i.test(current); i += 1) {
-    let next;
-    try {
-      next = new URL(current).pathname.replace(/^\/+/, "");
-    } catch {
-      return current;
-    }
-    if (!next || next === current) return current;
-    current = next;
-  }
-  return current.split("?")[0];
-};
 
 const OBJECT_EXT =
   /\.(jpe?g|png|webp|gif|svg|avif|bmp|tiff?|pdf|mp4|mov|webm|mkv|docx?|xlsx?|pptx?|csv|zip|txt|heic|html?)$/i;
@@ -136,9 +110,6 @@ const classify = (raw) => {
   if (!OBJECT_EXT.test(bare)) return { shape: "junk", key: bare };
   return { shape: "key", key: bare };
 };
-
-const getByPath = (obj, fieldPath) =>
-  fieldPath.split(".").reduce((acc, part) => (acc === null || acc === undefined ? acc : acc[part]), obj);
 
 /**
  * Every stored reference on one document for one registry field, as

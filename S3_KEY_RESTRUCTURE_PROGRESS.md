@@ -70,7 +70,7 @@ objects, same field shapes, same volume.
 | 0.0 | Create this progress file | ✅ DONE | commit `b30e02e8` |
 | 0.1 | **`scan` both DBs — read-only, first thing** | ⏸ AWAITING REVIEW | baseline recorded below · `_migrations/s3-key-restructure/scan-2026-08-11-*.json` |
 | 0.2 | S3 versioning + access logging | ✅ **DONE** | versioning `Enabled`, logging on its own bucket, noncurrent-90d lifecycle — all verified 2026-08-11 |
-| 0.3 | `setByPath` array fix + extract shared utils | ⬜ | array round-trip fixture passes |
+| 0.3 | `setByPath` array fix + extract shared utils | ✅ DONE | `node server/scripts/verifyS3KeyUtils.js` → 31/31 green |
 | 0.4 | `assetUrl` cache-buster | ⬜ | real-browser warm-cache test |
 | 0.5 | Base-URL extraction (15 literals) | ⬜ | smoke clean both envs |
 | 0.6 | `ratingPhotos` fix + quarantine | ⬜ | quarantine report reviewed |
@@ -205,6 +205,70 @@ against a bad loop or a misread manifest. Do not pre-grant these to save a round
 
 ---
 
+## 0.3 — shared key utils, three bugs fixed
+
+`server/utils/s3KeyUtils.js` is now the only copy of `extractS3Key` / `getByPath` / `setByPath` /
+`isWebpKey` / `toWebpKey`. Repointed: `s3WebpMigrationHelper.js`, `businessWebpMigrationHelper.js`,
+`categoryHelper.js`, and `s3KeyMigration.js` (which carried a fourth copy from 0.1).
+
+**Gate:** `node server/scripts/verifyS3KeyUtils.js` → **31/31 green**. Reads nothing, writes nothing.
+Re-run it after any change to the utils.
+
+The plan expected one bug here. There were three.
+
+### Bug 1 — `setByPath` collapsed arrays into objects (the known one)
+
+Missing path segments were created as `{}`, so `"mediaItems.0.mediaKey"` produced
+`{ mediaItems: { "0": {…} } }`. Fixed: a missing segment whose *next* segment is numeric is created as
+`[]`, and an existing container is never replaced.
+
+### Bug 2 — `extractS3Key` stripped a repeated base URL only once (found in 0.1)
+
+Real data has the base prepended up to four times; one pass returned a still-doubled string that matched
+no object. Now strips until stable (bounded at 8), and normalises a leading `/` — no S3 key has one.
+
+### Bug 3 — `$set` was replacing whole subdocuments. **THIS ONE HAS ALREADY FIRED.**
+
+All three helpers built their update document with `setByPath`, so a change to `qrCode.qrImageKey`
+became `$set: { qrCode: { qrImageKey } }` — which **replaces the entire `qrCode` subdocument**,
+discarding `qrText` and `createdAt`.
+
+Measured on live data, not inferred:
+
+```
+massClick       qrCode.qrImageKey 7,294   missing qrText 4,442   missing createdAt 4,442
+massClick_dev   qrCode.qrImageKey 6,881   missing qrText 4,443   missing createdAt 4,443
+
+cross-tab, massClick:
+  webp  + no qrText   4,442      <- every single loss is a webp key
+  webp  + has qrText  1,558
+  other + no qrText       0      <- no non-webp document lost anything
+```
+
+Zero losses among non-webp keys is conclusive: the WebP migration did this.
+
+Fixed by `setUpdatePath(updates, path, value)` → `updates[path] = value`, giving
+`$set: { "qrCode.qrImageKey": k }`, which touches only the leaf. This also makes
+`$set: { "mediaItems.0.mediaKey": k }` correct, so it fixes bug 1 at the call sites too.
+
+**The damage is bounded and self-healing.** `qrText` is derived, not user-entered —
+`buildReviewUrl(business)` at [businessListHelper.js:112](server/helper/businessList/businessListHelper.js:112).
+`ensureReviewQrCode` compares stored `qrText` against the expected value, so a missing one triggers
+regeneration on next view, which rewrites all three fields and re-uploads to the **same deterministic
+key** (no orphan). Only `createdAt` is unrecoverable, and it is decorative.
+
+**Open decision for the user:** whether to repair the 4,442 + 4,443 documents in a single pass rather
+than waiting for each business to be viewed. It is a DB write, so it needs a scoped backup first and is
+listed as open question 4 below. Not urgent, and **not** a blocker for anything else in Phase 0.
+
+### One behaviour change worth knowing
+
+`categoryHelper` previously stored `""` when a URL failed to parse; the shared helper returns the raw
+value instead, because a shared utility should not silently discard data. The old behaviour is preserved
+exactly where it belongs — at that write call site, via `toStorableKey()`.
+
+---
+
 ## Active run
 
 ```
@@ -275,6 +339,7 @@ Also: **never `move`.** Copy, verify, rewrite, soak, then sweep. The bucket is s
 | 1b | Log-bucket lifecycle `expire-logs-90d` | ✅ **RESOLVED 2026-08-11** — all of 0.2 now verified |
 | 2 | SSH tunnel to `127.0.0.1:27018` | ✅ **UP** — verified 2026-08-11, both DBs reachable, full scan completed over it |
 | 3 | 0.1 baseline needs user review before 0.2+ proceeds | **AWAITING USER** |
+| 4 | Repair the 4,442 (prod) / 4,443 (dev) businesses whose `qrCode.qrText` + `createdAt` were wiped by bug 3? Self-heals on view; a bulk repair is a DB write needing a `--collections businesslists` backup first | **USER DECISION** — not blocking |
 
 ---
 
@@ -389,6 +454,7 @@ banner. Each needs one newKey per owning document — 75 extra byte-copies, whic
 
 | Date | What happened |
 |---|---|
+| 2026-08-11 | **0.3 done, gate green (31/31).** Extracted `server/utils/s3KeyUtils.js` as the single copy and repointed all four callers. Found **three** bugs where the plan expected one — and bug 3 had already fired: building the `$set` payload with `setByPath` meant `$set: {qrCode:{qrImageKey}}` replaced the whole subdocument, wiping `qrText` and `createdAt` on **4,442 prod / 4,443 dev** businesses. Proven by cross-tab: every loss is a `.webp` key, zero losses among non-webp. Damage is bounded — `qrText` is derived and self-heals on next view against a deterministic key. Bulk repair left as a user decision (open question 4). |
 | 2026-08-11 | **0.2 complete.** Access logging repointed off the asset bucket onto `massclick-access-logs` (caught at 0 delivered logs, before it could contaminate the orphan accounting). Applied `expire-noncurrent-90d` to `massclickdev` by API rather than console — explicit JSON means the "expire current versions" footgun is absent rather than unticked — and read it back: `rules expiring CURRENT versions: 0`. Side effect worth knowing: `undelete` now works for 90 days after the sweep, not 30. Log-bucket lifecycle still needs one IAM ARN. |
 | 2026-08-11 | **0.2 gate met.** User enabled bucket versioning and granted the IAM user read-only bucket-config permissions, so `getBucketVersioning` → `{Status:"Enabled"}` is now verified from this machine instead of taken on trust. Risk 5 retired; the sweep is reversible. Two follow-ups left with the user: access logging currently targets `massclickdev` itself (would contaminate the migration's own orphan accounting — caught at 0 delivered logs), and no lifecycle rule exists yet. Neither blocks 0.3. |
 | 2026-08-11 | **0.1 done, awaiting review.** Verified the tunnel. Built `server/utils/s3ScopeRegistry.js` (20 collections / 47 fields / new `arrayOfObjects` kind) and the read-only `scan` + `collections` subcommands of `server/scripts/s3KeyMigration.js`. Scanned both DBs against the live bucket. **Gate result: DBs are clones (95.68% `_id` overlap, one-directional), 45/46 pre-existing broken refs, 13% orphans, 0 genuine cross-DB conflicts — the plan holds unchanged.** Found two things the plan had wrong: six non-existent collection names in the backup list, and a second live defect in `extractS3Key` (strips a repeated base URL only once; real data has it 4×) to fold into 0.3. `ratingPhotos` turns out to be inline base64, not injected keys — 0.6 grows. |
