@@ -1,6 +1,95 @@
 import businessListModel from "../../model/businessList/businessListModel.js";
 import businessReviewModel from "../../model/businessReview/businessReviewModel.js";
 import mongoose from "mongoose";
+import { uploadImageToS3 } from "../../s3Uploder.js";
+
+/** At most this many photos per review. */
+const MAX_RATING_PHOTOS = 10;
+/** Per-photo ceiling, matching the reward-claim evidence cap in rewardSchemas.js. */
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+
+/** Every review photo for a business lives under this prefix and nowhere else. */
+const reviewPhotoPrefix = (businessId) => `businessList/reviews/${businessId}/`;
+
+/**
+ * Turn whatever the request body supplied into a safe list of S3 keys.
+ *
+ * Step 0.6 of the S3 key restructure. This path previously wrote
+ * `ratingPhotos: ratingPhotos || []` — the raw request body — straight to the
+ * document, with two consequences:
+ *
+ *   1. INJECTION. An external caller could store arbitrary strings, or another
+ *      business's keys, in a field that is rendered as an image URL
+ *      (businessListHelper.js:1352 maps every entry through getSignedUrlByKey).
+ *   2. UNBOUNDED DOCUMENTS. Callers sent base64 data URIs and they were stored
+ *      inline. Live data at 2026-08-11: 20.4 MB of base64 across 4 prod documents,
+ *      the largest 11.30 MB — 71% of MongoDB's hard 16 MB per-document limit. A few
+ *      more photos on that review and every write to it fails BSONObjectTooLarge.
+ *
+ * Base64 is uploaded and replaced by its key, matching what businessListHelper.js:1062
+ * already does for the embedded-review path. A caller-supplied string is accepted only
+ * if it is a bare key already under THIS business's prefix. Everything else is dropped.
+ *
+ * NOTE FOR PHASE 1: the prefix test is the interim form of this check. Once
+ * `isCanonicalKey()` and `entityPrefix()` land in utils/s3ObjectKeys.js (1.1) this
+ * becomes isCanonicalKey(value) && value.startsWith(entityPrefix("businesses", businessId)).
+ */
+const sanitizeRatingPhotos = async ({ businessId, ratingPhotos }) => {
+  if (!Array.isArray(ratingPhotos) || ratingPhotos.length === 0) return [];
+
+  const prefix = reviewPhotoPrefix(businessId);
+  const accepted = [];
+  const rejected = [];
+  const candidates = ratingPhotos.slice(0, MAX_RATING_PHOTOS);
+
+  for (let i = 0; i < candidates.length; i += 1) {
+    const entry = candidates[i];
+
+    if (typeof entry !== "string" || !entry.trim()) {
+      rejected.push("non-string");
+      continue;
+    }
+
+    const value = entry.trim();
+
+    if (value.startsWith("data:image/")) {
+      const payload = value.slice(value.indexOf(",") + 1);
+      // 4 base64 chars encode 3 bytes; close enough to reject oversized uploads.
+      if (Math.floor((payload.length * 3) / 4) > MAX_PHOTO_BYTES) {
+        rejected.push("oversized base64");
+        continue;
+      }
+      const uploadResult = await uploadImageToS3(
+        value,
+        `${prefix}photo-${Date.now()}-${i}`,
+      );
+      accepted.push(uploadResult.key);
+      continue;
+    }
+
+    // A pre-uploaded key is only trusted when it already belongs to this business.
+    if (
+      value.startsWith(prefix) &&
+      !value.includes("..") &&
+      !/^https?:/i.test(value)
+    ) {
+      accepted.push(value);
+      continue;
+    }
+
+    rejected.push(value.slice(0, 80));
+  }
+
+  const dropped = rejected.length + Math.max(0, ratingPhotos.length - MAX_RATING_PHOTOS);
+  if (dropped) {
+    console.warn(
+      `[reviewHelper] dropped ${dropped} rating photo(s) for business ${businessId}:`,
+      rejected.slice(0, 5),
+    );
+  }
+
+  return accepted;
+};
 
 const normalizeMobile = (value = "") => {
   const digits = String(value || "").replace(/\D/g, "");
@@ -96,6 +185,8 @@ export const addReviewHelper = async ({ businessId, reviewData }) => {
     throw new Error("This mobile number already reviewed this business");
   }
 
+  const safeRatingPhotos = await sanitizeRatingPhotos({ businessId, ratingPhotos });
+
   const review = await businessReviewModel.create({
     businessId,
     userId: userObjectId,
@@ -104,7 +195,7 @@ export const addReviewHelper = async ({ businessId, reviewData }) => {
     rating: Number(rating),
     ratingExperience,
     ratingLove: ratingLove || [],
-    ratingPhotos: ratingPhotos || [],
+    ratingPhotos: safeRatingPhotos,
     status: "ACTIVE"
   });
 

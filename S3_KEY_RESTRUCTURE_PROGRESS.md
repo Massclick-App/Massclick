@@ -73,7 +73,7 @@ objects, same field shapes, same volume.
 | 0.3 | `setByPath` array fix + extract shared utils | ✅ DONE | `node server/scripts/verifyS3KeyUtils.js` → 31/31 green |
 | 0.4 | `assetUrl` cache-buster | 🟡 CODE DONE | `verifyAssetUrl.js` 22/22 · **warm-cache browser check outstanding (user)** |
 | 0.5 | Base-URL extraction (15 literals) | ✅ DONE | 15 → 0 · `checkPublicImageUrls.js` dev diff clean (exit 0) |
-| 0.6 | `ratingPhotos` fix + quarantine | ⬜ | quarantine report reviewed |
+| 0.6 | `ratingPhotos` fix + quarantine | 🟡 CODE DONE | write path fixed · **report below awaits review, no DB write yet** |
 | 0.7 | `flush-caches` incl. prerender purge | ⬜ | prerendered page reflects a changed image |
 | 0.8 | Deploy 0.3–0.7 dev → prod | ⬜ | smoke clean; **all 9 risks retired** |
 | 1.1–1.4 | Registry, idGen, enforcement, ~50 call sites | ⬜ | lint gate passes |
@@ -411,6 +411,76 @@ is worth hundreds of milliseconds.
 
 ---
 
+## 0.6 — `ratingPhotos`
+
+Two halves. **The code half is done. The data half is a DB write and is waiting on the user.**
+
+### Write path — fixed
+
+[reviewHelper.js](server/helper/reviewHelper/reviewHelper.js) wrote `ratingPhotos: ratingPhotos || []`
+— the raw request body — into a field that is rendered as an image URL
+([businessListHelper.js:1352](server/helper/businessList/businessListHelper.js:1352) maps every entry
+through `getSignedUrlByKey`). It was the only unvalidated writer; the embedded-review path at
+[businessListHelper.js:1062](server/helper/businessList/businessListHelper.js:1062) already did it right.
+
+`sanitizeRatingPhotos()` now uploads base64 and keeps the key, accepts a caller-supplied string **only**
+if it is a bare key already under `businessList/reviews/<businessId>/`, and drops everything else.
+Caps: 10 photos per review, 5 MB each (matching the reward-claim evidence cap).
+
+*Phase 1 note:* the prefix test is interim. Once `isCanonicalKey()` and `entityPrefix()` land in 1.1 it
+becomes `isCanonicalKey(v) && v.startsWith(entityPrefix("businesses", businessId))`.
+
+### The stored data is NOT what the plan assumed — and it is an availability risk
+
+The plan expected injected keys. Every stored entry is an **inline base64 data URI** — real reviewer
+photos that were never uploaded:
+
+```
+massClick       4 docs   50 entries   20.4 MB    all base64 (48 jpeg, 2 png)
+massClick_dev   2 docs   48 entries   19.6 MB    all base64
+
+per-document BSON size, massClick:
+  6a585f04c7da42a59f09a846   11.30 MB   45 photos   71% of MongoDB's 16 MB limit
+  6a33707dd6b69cb12cc48bf0    8.28 MB    3 photos   52%
+  6a6c5359eee7d95aff33aeec    0.42 MB    1 photo     3%
+  6a6c764beee7d95aff33f13e    0.40 MB    1 photo     2%
+```
+
+**One review document is at 71% of MongoDB's hard 16 MB per-document limit.** A few more photos and
+every write to it fails with `BSONObjectTooLarge` — including `updateBusinessRatingSummary`. Every read
+of that business's reviews also ships 11 MB. This is a bigger problem than the injection defect.
+
+So the repair **uploads and replaces** rather than quarantining: quarantining would discard customer
+photos, and uploading collapses those documents from megabytes to a few hundred bytes. Only entries that
+are neither a valid data URI nor a key under the owning business's prefix are dropped, and every dropped
+value is recorded.
+
+### ⏳ USER DECISION — `server/scripts/fixRatingPhotos.js`
+
+Dry-run reports: `_migrations/s3-key-restructure/ratingphotos-2026-08-11-*-dryrun.json`
+
+```
+massClick       4 docs   50 to upload   0 kept   0 dropped
+massClick_dev   2 docs   48 to upload   0 kept   0 dropped
+```
+
+Nothing would be lost — every entry uploads cleanly, counts unchanged.
+
+**Run PROD first, then re-clone dev.** Same reasoning as the `qrText` repair (open question 4):
+repairing dev before a re-clone throws the work away. These two repairs should be done in one sitting.
+
+```bash
+node db-backups/backup.js --db massClick --prod --collections businessreviews \
+  --label pre-rating-photos-quarantine --reason "0.6 ratingPhotos: upload inline base64"
+
+node server/scripts/fixRatingPhotos.js --uri=<prod> --commit
+```
+
+The update filters on the old array value, so a second run matches zero documents. Bucket versioning is
+on, so the ~50 new objects are reversible.
+
+---
+
 ## Active run
 
 ```
@@ -496,6 +566,7 @@ Also: **never `move`.** Copy, verify, rewrite, soak, then sweep. The bucket is s
 | 2 | SSH tunnel to `127.0.0.1:27018` | ✅ **UP** — verified 2026-08-11, both DBs reachable, full scan completed over it |
 | 3 | 0.1 baseline needs user review before 0.2+ proceeds | **AWAITING USER** |
 | 4 | Repair the 4,442 (prod) / 4,443 (dev) businesses whose `qrCode.qrText` + `createdAt` were wiped by bug 3? Self-heals on view; a bulk repair is a DB write needing a `--collections businesslists` backup first. **If done at all, do prod FIRST then re-clone** — repairing dev before a re-clone is wasted | **USER DECISION** — not blocking |
+| 7 | **Run `fixRatingPhotos.js --commit` on prod?** 50 inline-base64 photos / 20.4 MB, one doc at **71% of the 16 MB BSON limit**. Dry-run shows nothing lost. Needs a `businessreviews` backup first. **Do prod, then re-clone dev** — same sitting as open question 4 | **USER DECISION** — mild urgency (availability risk) |
 | 6 | Add GitHub repository **variable** `REACT_APP_ASSET_BASE_URL` = `https://massclickdev.s3.ap-southeast-2.amazonaws.com` (Settings → Secrets and variables → Actions → Variables). Build still succeeds without it; only the `index.html` preconnect degrades | **USER ACTION** — not blocking |
 | 5 | **Prod is under active data entry.** User is waiting for it to settle, then re-cloning prod → dev (stated 2026-08-11). Fine before `plan`, **destructive between `plan` and R.9** — see "Do NOT do" rule 5. Re-run `scan` on dev afterwards to refresh the baseline. Blocks nothing: 0.4–0.7 are code only and touch no database | **WAITING ON PROD — tell Claude when the clone happens** |
 
@@ -632,6 +703,7 @@ massClick refs         31,789       31,843       +54
 
 | Date | What happened |
 |---|---|
+| 2026-08-11 | **0.6 code done; data repair awaiting approval.** Fixed the unvalidated `ratingPhotos` write path — it was the only writer that trusted the request body, and the field renders as an image URL. Measured the stored data and it is **not** the injected keys the plan assumed: 50 prod entries / 20.4 MB of **inline base64**, with one review document at **11.30 MB — 71% of MongoDB's hard 16 MB limit**, i.e. a few photos from being unwritable. Repair therefore uploads-and-replaces instead of quarantining. Built `fixRatingPhotos.js` (dry-run default) and ran it on both DBs: nothing would be lost. Prod `--commit` needs a backup and the user's go-ahead, and should be paired with the `qrText` repair before the re-clone. |
 | 2026-08-11 | **0.5 done.** 15 hardcoded bucket URLs → 0 (2 of the 9 server ones were dead code). Client now reads `REACT_APP_ASSET_BASE_URL` with the literal as a default so an unset var cannot break a build. Found and fixed the **client-side twin of 0.3's repeated-prefix bug** — and `checkPublicImageUrls.js` caught **prod serving a doubled URL to real users** on `/seopagecontentblog/viewall`. Built that checker (also the R.5/R.9 diff tool) and captured dev + prod baselines: 632/635 and 657/662 assets resolve, every failure a pre-existing `businessDetails[].bannerImage` verified against the 0.1 missing list. `--compare` validated end-to-end: newly broken 0, exit 0. **User action: add the `REACT_APP_ASSET_BASE_URL` repo variable.** |
 | 2026-08-11 | **0.4 code done, 22/22 mechanism gate green; browser check still owed by the user.** Built `server/utils/assetUrl.js`. Key finding that scoped it: **31 of the 32 upload paths end in `Date.now()`**, so only `businessList/qr/review-<id>` is deterministic today — the one-year `max-age` is mostly a risk *Phase 1 creates*, which is why 0.4 precedes it. Wired the five review-QR render paths only; the rest belong in 1.4 behind the lint gate. Verified the version fallback on real dev data across all three cases (createdAt present / wiped by 0.3 bug 3 / absent). |
 | 2026-08-11 | **0.3 done, gate green (31/31).** Extracted `server/utils/s3KeyUtils.js` as the single copy and repointed all four callers. Found **three** bugs where the plan expected one — and bug 3 had already fired: building the `$set` payload with `setByPath` meant `$set: {qrCode:{qrImageKey}}` replaced the whole subdocument, wiping `qrText` and `createdAt` on **4,442 prod / 4,443 dev** businesses. Proven by cross-tab: every loss is a `.webp` key, zero losses among non-webp. Damage is bounded — `qrText` is derived and self-heals on next view against a deterministic key. Bulk repair left as a user decision (open question 4). |
