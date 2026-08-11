@@ -1,7 +1,7 @@
 # S3 Key Restructure — Progress
 
 **Last updated:** 2026-08-11 by Claude · **Active runId:** none
-**Current step:** 0.1 · **Status:** IN PROGRESS — registry not yet written, no code committed for 0.1
+**Current step:** 0.1 · **Status:** ⏸ AWAITING USER REVIEW of the baseline below (gate)
 **Plan:** `C:\Users\USER\.claude\plans\give-me-a-full-serene-whisper.md`
 
 ---
@@ -68,7 +68,7 @@ objects, same field shapes, same volume.
 | # | Step | Status | Gate / evidence |
 |---|---|---|---|
 | 0.0 | Create this progress file | ✅ DONE | commit `b30e02e8` |
-| 0.1 | **`scan` both DBs — read-only, first thing** | 🔄 IN PROGRESS | baseline recorded; **replan if DBs diverged or orphans dominate** |
+| 0.1 | **`scan` both DBs — read-only, first thing** | ⏸ AWAITING REVIEW | baseline recorded below · `_migrations/s3-key-restructure/scan-2026-08-11-*.json` |
 | 0.2 | S3 versioning + access logging | ⬜ **USER ACTION** | `get-bucket-versioning` → `Enabled` |
 | 0.3 | `setByPath` array fix + extract shared utils | ⬜ | array round-trip fixture passes |
 | 0.4 | `assetUrl` cache-buster | ⬜ | real-browser warm-cache test |
@@ -144,6 +144,22 @@ Command form (always scope with `--collections`; `--prod` is mandatory for db `m
 node db-backups/backup.js --db <name> [--prod] --collections <a,b> --label <slug> --reason "<why>"
 ```
 
+**Get the collection list from the tool, never by hand** — the plan's hand-written list had six
+non-existent names (see 0.1 finding 1):
+
+```bash
+node server/scripts/s3KeyMigration.js collections
+```
+
+Verified 2026-08-11, all 20 exist in both DBs:
+
+```
+advertisments,authormasters,businesslists,businessreviews,categories,categorydisplaysettings,
+eventadvertisements,eventcategories,eventcreations,eventlocations,fcmcampaigns,job_applications,
+massclick_documents,massclick_feed_posts,massclickevents,msgusers,reward_claims,
+seopagecontentblogs,trackedkeywords,users
+```
+
 ---
 
 ## ⛔ Do NOT do — ordering rules a fresh session will otherwise break
@@ -169,28 +185,115 @@ Also: **never `move`.** Copy, verify, rewrite, soak, then sweep. The bucket is s
 | # | Item | Status |
 |---|---|---|
 | 1 | S3 bucket versioning (0.2) needs AWS console access — no AWS CLI on this machine, and the current IAM user (`arn:aws:iam::647066518489:user/Muruganantham`) lacks `s3:ListAllMyBuckets` | **BLOCKED ON USER** |
-| 2 | SSH tunnel to `127.0.0.1:27018` — status unverified. `scan` (0.1) cannot run without it. `ECONNREFUSED` means ask the user to reconnect | **UNVERIFIED** |
+| 2 | SSH tunnel to `127.0.0.1:27018` | ✅ **UP** — verified 2026-08-11, both DBs reachable, full scan completed over it |
+| 3 | 0.1 baseline needs user review before 0.2+ proceeds | **AWAITING USER** |
 
 ---
 
-## Where 0.1 stands (for whoever picks this up)
+## 0.1 — THE BASELINE (gate: awaiting user review)
 
-**No code written yet.** Established so far:
+Read-only. Nothing was written to either database or to S3. Reproduce with:
 
-- Mongoose **schemas** live in `server/schema/**`; **models** in `server/model/**` are thin wrappers. The
-  registry must import from `server/model/**`.
-- The existing registry to copy the shape from is `SUPPORTED_SCOPES` at
-  [s3WebpMigrationHelper.js:44-202](server/helper/mediaCleanup/s3WebpMigrationHelper.js) — entries carry
-  `{scopeKey, scopeLabel, folderPrefix, progressKey, projection, buildQuery, model, fields[{path,kind}], invalidate[]}`.
-  It covers only 6 scopes and its `kind` taxonomy is `single | array | object`.
-- **It needs a fourth kind, `arrayOfObjects` (with an `itemPath`)**, which nothing in the repo has today.
-  Required for `certificates.*`, `businessDetails[].bannerImageKey`, `mediaItems[].mediaKey`,
-  `evidenceFiles[].key`, `popularSearchCards[].imageKey`, `topTouristPlaces[].imageKey`,
-  `history[].screenshotKey`.
-- Collection names must be confirmed against `db.getCollectionNames()` before use — mongoose
-  pluralisation of `advertistment` (sic) and the msg91 models is not obvious.
+```bash
+node server/scripts/s3KeyMigration.js scan --uri=<db> --compare-uri=<other> --out=<report.json>
+```
 
-**Next action:** build the registry covering all ~20 collections, then the read-only `scan` subcommand.
+Built in this step: `server/utils/s3ScopeRegistry.js` (20 collections, 47 declared fields) and the
+`scan` + `collections` subcommands of `server/scripts/s3KeyMigration.js`.
+
+### The four gate numbers
+
+| Question | Answer | Verdict |
+|---|---|---|
+| **Are the two DBs clones?** | **95.68% `_id` overlap** across the 20 registry collections (10,879 shared of 11,370). Divergence is **one-directional** — prod is simply ahead. | ✅ **Yes.** Plan holds. |
+| **How many references are broken today?** | **prod 45 · dev 46** — of ~31.6k / ~29.6k. **This is the baseline `verify` must match, not zero.** | ✅ Negligible |
+| **Do orphans dominate?** | **4,744 objects · 582 MB · 13.0%** of the bucket unreferenced by *either* DB. | ✅ No. 87% is live. |
+| **How much is a bare key vs a URL vs junk?** | **99.6% bare key**, 87 `url-ours`, 50 junk. | ✅ As assumed |
+
+### Full baseline — 2026-08-11
+
+```
+bucket massclickdev                          36,384 objects
+                                    massClick (prod)    massClick_dev
+  total references                       31,789            29,738
+  distinct keys                          31,635            29,601
+  referenced AND present                 31,590            29,555
+  referenced but MISSING                     45                46   <- pre-existing breakage
+  intra-DB fan-out (1 key, N docs)           75                59
+  valueShape  key                        31,652            29,603
+              url-ours                       87                87
+              junk                           50                48
+
+  keys referenced by BOTH DBs            29,549
+  prod-only 2,086 · dev-only 52
+  referenced by either DB                31,687
+  present but UNREFERENCED (orphans)      4,744   582 MB   13.0%
+```
+
+**Missing keys are concentrated, not scattered:** 51 of them are
+`seopagecontentblogs.businessDetails[].bannerImage` (a denormalised copy of a business banner that was
+later replaced), plus 1–2 certificate SVGs. No other collection has a single broken reference.
+
+### `conflicts.jsonl` will be empty — measured, not assumed
+
+The plan says a large conflict count is a stop signal. It was pre-computed rather than left to `plan`:
+
+```
+keys whose owner set differs across the two DBs:  16
+  one side a strict superset (same entity)        16   <- NOT conflicts
+  genuine disagreement                             0   <- the real conflicts.jsonl
+```
+
+All 16 are prod holding one *extra* reference (a newer SEO blog citing a business banner dev hasn't got).
+The `(entity, entityId, purpose)` mapping agrees everywhere. **Zero cross-DB splits.** The "shared
+identity is the overwhelming majority" assumption is confirmed at 100%.
+
+Intra-DB fan-out (75 in prod) is a different thing and is expected: 68 are one business banner referenced
+by both `businesslists` and a `seopagecontentblogs.businessDetails[]` entry, 7 are two blogs sharing one
+banner. Each needs one newKey per owning document — 75 extra byte-copies, which is noise against 31.6k.
+
+### Findings that change other steps
+
+1. **The plan's backup `--collections` list is wrong — six names do not exist.** `advertistments`,
+   `jobapplications`, `rewardclaims`, `massclickfeedposts`, `massclickdocuments`, `homesections`.
+   The real names are `advertisments` (one 't'), `job_applications`, `reward_claims`,
+   `massclick_feed_posts`, `massclick_documents`, and **there is no home-sections collection at all** —
+   those cards live in `categorydisplaysettings.popularSearchCards[]` / `.topTouristPlaces[]`.
+   *Never hand-type this list again:* `node server/scripts/s3KeyMigration.js collections` emits it, and
+   `validateRegistry()` refuses to scan if the registry and the live DB disagree.
+
+2. **`extractS3Key` is broken for repeatedly-prefixed URLs — a second live defect in the same helper as
+   the `setByPath` bug.** [s3WebpMigrationHelper.js:226](server/helper/mediaCleanup/s3WebpMigrationHelper.js)
+   strips the base URL **once**. Real data has it prepended **four times**:
+   `https://<bucket>.s3.../https://<bucket>.s3.../https://<bucket>.s3.../businessList/banners/x.jpg`
+   One pass leaves a still-doubled string that resolves to nothing. **Fold this fix into 0.3** alongside
+   the `setByPath` extraction — same file, same commit. The scan already carries a corrected copy.
+
+3. **`ratingPhotos` is worse than the plan assumed.** Plan 0.6 anticipated injected *keys*. Reality: all
+   48–50 entries are **inline base64 data URIs** stored directly in the documents — no S3 object exists.
+   0.6 must upload-and-replace, not just validate. None of them are migration input.
+
+4. **`certificates.trustCertificateKey` has 3 rows in both DBs** despite the trust variant being
+   unstarted. Worth a look during 0.6.
+
+5. **14 declared fields have zero rows today** — `fcmcampaigns.imageUrl`, `job_applications.resumeKey`,
+   `reward_claims.evidenceFiles[].key`, `trackedkeywords.history[].screenshotKey`, all `thumbnailKey`s,
+   `massclick_documents.mediaItems/videoLinks/imageLinks`, `categories.liveImageKey`,
+   `advertisments.appBannerImageKey`, `authormasters.profileImage`, `businessreviews.userProfileImage`.
+   They are declared in the registry anyway so a row appearing before the run is not silently skipped.
+   **Consequence: `evidenceFiles[]` and `history[]` will have no live coverage during the rehearsals** —
+   the `arrayOfObjects` kind gets exercised by `mediaItems[]`, `businessDetails[]` and the two
+   `categorydisplaysettings` arrays instead.
+
+### What this baseline does NOT cover
+
+- Orphan counts are "unreferenced by either **database**". Per the plan's own rule, that is *not* the
+  same as unreferenced — printed QR codes, emailed certificates and prerendered HTML are not in Mongo.
+  Nothing here licenses a delete.
+- `businessList/qr` is the largest orphan prefix (1,812 objects, 38% of all orphans) — consistent with
+  [businessListHelper.js:141](server/helper/businessList/businessListHelper.js:141) appending a timestamp
+  to the profile QR and orphaning one object per regeneration, which 1.4 fixes. **These are exactly the
+  objects most likely to be referenced by something printed.**
 
 ---
 
@@ -198,4 +301,5 @@ Also: **never `move`.** Copy, verify, rewrite, soak, then sweep. The bucket is s
 
 | Date | What happened |
 |---|---|
+| 2026-08-11 | **0.1 done, awaiting review.** Verified the tunnel. Built `server/utils/s3ScopeRegistry.js` (20 collections / 47 fields / new `arrayOfObjects` kind) and the read-only `scan` + `collections` subcommands of `server/scripts/s3KeyMigration.js`. Scanned both DBs against the live bucket. **Gate result: DBs are clones (95.68% `_id` overlap, one-directional), 45/46 pre-existing broken refs, 13% orphans, 0 genuine cross-DB conflicts — the plan holds unchanged.** Found two things the plan had wrong: six non-existent collection names in the backup list, and a second live defect in `extractS3Key` (strips a repeated base URL only once; real data has it 4×) to fold into 0.3. `ratingPhotos` turns out to be inline base64, not injected keys — 0.6 grows. |
 | 2026-08-11 | Plan written and approved. Explored bucket (36,187 objects / 1,774 MB), mapped all S3 fields across ~20 schemas, verified 4 latent defects: `setByPath` array corruption in 3 shipped helpers, unvalidated `ratingPhotos` write, 15 hardcoded dev-bucket URLs, stale S3 backup (June, 63 failures). Progress file created and committed (`b30e02e8`). Started 0.1 — confirmed model/schema layout, no code written. Session ended here. |
