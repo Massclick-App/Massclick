@@ -455,6 +455,27 @@ photos, and uploading collapses those documents from megabytes to a few hundred 
 are neither a valid data URI nor a key under the owning business's prefix are dropped, and every dropped
 value is recorded.
 
+### ⚠️ THE REPAIR CANNOT RUN BEFORE THE READ PATH IS DEPLOYED
+
+Caught by the user asking whether the data repair is safe while the code is undeployed. It was not.
+
+`getReviewsHelper` returned `ratingPhotos` **raw** — no key→URL conversion anywhere — and
+[reviewCard.js:44](client/ui-app/src/Internals/clientComponent/rating/reviewCard.js:44) renders
+`<img src={photo} />` directly off the stored value. So:
+
+| stored value | old code renders | result |
+|---|---|---|
+| `data:image/jpeg;base64,…` | `<img src="data:…">` | works (but ships 11 MB) |
+| `businessList/reviews/…webp` | `<img src="businessList/reviews/…">` | **resolved against the site origin → 404** |
+
+Running the repair first would have 404'd every review photo on the live site.
+
+Fixed by making the read path tolerate **both** shapes — `toPhotoUrls()` passes a `data:` URI through
+untouched, passes an absolute URL through, and builds a URL from a bare key. So the page is correct
+before, during and after the repair, and the repair needs no flag day and stays rollback-safe.
+
+**Ordering rule: deploy 0.8, then run the repair.** Not the other way round.
+
 ### ⏳ USER DECISION — `server/scripts/fixRatingPhotos.js`
 
 Dry-run reports: `_migrations/s3-key-restructure/ratingphotos-2026-08-11-*-dryrun.json`
@@ -566,7 +587,7 @@ Also: **never `move`.** Copy, verify, rewrite, soak, then sweep. The bucket is s
 | 2 | SSH tunnel to `127.0.0.1:27018` | ✅ **UP** — verified 2026-08-11, both DBs reachable, full scan completed over it |
 | 3 | 0.1 baseline needs user review before 0.2+ proceeds | **AWAITING USER** |
 | 4 | Repair the 4,442 (prod) / 4,443 (dev) businesses whose `qrCode.qrText` + `createdAt` were wiped by bug 3? Self-heals on view; a bulk repair is a DB write needing a `--collections businesslists` backup first. **If done at all, do prod FIRST then re-clone** — repairing dev before a re-clone is wasted | **USER DECISION** — not blocking |
-| 7 | **Run `fixRatingPhotos.js --commit` on prod?** 50 inline-base64 photos / 20.4 MB, one doc at **71% of the 16 MB BSON limit**. Dry-run shows nothing lost. Needs a `businessreviews` backup first. **Do prod, then re-clone dev** — same sitting as open question 4 | **USER DECISION** — mild urgency (availability risk) |
+| 7 | **Run `fixRatingPhotos.js --commit` on prod?** 50 inline-base64 photos / 20.4 MB, one doc at **71% of the 16 MB BSON limit**. Dry-run shows nothing lost. Needs a `businessreviews` backup first. **BLOCKED UNTIL 0.8 IS DEPLOYED** — the key→URL read path must ship first or every review photo 404s. Then prod, then re-clone dev, alongside open question 4 | **USER DECISION** — blocked on 0.8 |
 | 6 | Add GitHub repository **variable** `REACT_APP_ASSET_BASE_URL` = `https://massclickdev.s3.ap-southeast-2.amazonaws.com` (Settings → Secrets and variables → Actions → Variables). Build still succeeds without it; only the `index.html` preconnect degrades | **USER ACTION** — not blocking |
 | 5 | **Prod is under active data entry.** User is waiting for it to settle, then re-cloning prod → dev (stated 2026-08-11). Fine before `plan`, **destructive between `plan` and R.9** — see "Do NOT do" rule 5. Re-run `scan` on dev afterwards to refresh the baseline. Blocks nothing: 0.4–0.7 are code only and touch no database | **WAITING ON PROD — tell Claude when the clone happens** |
 

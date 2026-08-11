@@ -1,7 +1,7 @@
 import businessListModel from "../../model/businessList/businessListModel.js";
 import businessReviewModel from "../../model/businessReview/businessReviewModel.js";
 import mongoose from "mongoose";
-import { uploadImageToS3 } from "../../s3Uploder.js";
+import { uploadImageToS3, getSignedUrlByKey } from "../../s3Uploder.js";
 
 /** At most this many photos per review. */
 const MAX_RATING_PHOTOS = 10;
@@ -205,6 +205,30 @@ export const addReviewHelper = async ({ businessId, reviewData }) => {
 };
 
 
+/**
+ * Render stored ratingPhotos for the client.
+ *
+ * TOLERATES BOTH SHAPES DELIBERATELY. Until fixRatingPhotos.js has run, stored values
+ * are inline base64 data URIs; afterwards they are bare S3 keys. Handling both means
+ * the repair needs no flag day and can be rolled back without breaking the page.
+ *
+ * This matters because nothing else converts them: getReviewsHelper previously returned
+ * ratingPhotos raw and reviewCard.js renders `<img src={photo} />` directly. Replacing
+ * base64 with keys WITHOUT this would make the browser resolve "businessList/reviews/..."
+ * against the site origin and 404 every review photo.
+ */
+const toPhotoUrls = (photos) => {
+  if (!Array.isArray(photos)) return [];
+  return photos.filter(Boolean).map((value) => {
+    if (typeof value !== "string") return "";
+    const v = value.trim();
+    if (!v) return "";
+    if (v.startsWith("data:")) return v;        // not yet migrated - pass through
+    if (/^https?:\/\//i.test(v)) return v;      // already absolute
+    return getSignedUrlByKey(v);                // a bare key - build the URL
+  }).filter(Boolean);
+};
+
 export const getReviewsHelper = async ({
   businessId,
   sortBy = "latest",
@@ -228,7 +252,10 @@ export const getReviewsHelper = async ({
   ]);
 
   return {
-    reviews,
+    reviews: reviews.map((review) => ({
+      ...review,
+      ratingPhotos: toPhotoUrls(review.ratingPhotos),
+    })),
     total,
     hasMore: skip + reviews.length < total,
     page
