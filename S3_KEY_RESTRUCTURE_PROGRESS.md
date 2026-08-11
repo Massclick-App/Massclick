@@ -69,7 +69,7 @@ objects, same field shapes, same volume.
 |---|---|---|---|
 | 0.0 | Create this progress file | ✅ DONE | commit `b30e02e8` |
 | 0.1 | **`scan` both DBs — read-only, first thing** | ⏸ AWAITING REVIEW | baseline recorded below · `_migrations/s3-key-restructure/scan-2026-08-11-*.json` |
-| 0.2 | S3 versioning + access logging | ⬜ **USER ACTION** | `get-bucket-versioning` → `Enabled` |
+| 0.2 | S3 versioning + access logging | 🟡 MOSTLY DONE | **versioning `Enabled` ✅ verified 2026-08-11**; 2 follow-ups below |
 | 0.3 | `setByPath` array fix + extract shared utils | ⬜ | array round-trip fixture passes |
 | 0.4 | `assetUrl` cache-buster | ⬜ | real-browser warm-cache test |
 | 0.5 | Base-URL extraction (15 literals) | ⬜ | smoke clean both envs |
@@ -116,6 +116,50 @@ objects, same field shapes, same volume.
 | S.2 | Fresh S3 download + `pre-s3-key-sweep` snapshot | day 30 | ⬜ |
 | S.3 | `sweep --commit` (excludes orphans) | ~15 min | ⬜ |
 | S.4 | Orphan review | ≥30 days after S.3 | ⬜ |
+
+---
+
+## 0.2 — S3 bucket controls
+
+The IAM user `Muruganantham` was granted read-only bucket-config permissions
+(`GetBucketVersioning`, `GetBucketLogging`, `GetLifecycleConfiguration`, `ListAllMyBuckets`) on
+2026-08-11, so this is now machine-verifiable rather than taken on trust. It deliberately holds **no**
+write permission on bucket settings — the irreversible switches stay on the user's side of the gate.
+
+Re-verify at any time (no AWS CLI on this machine; the SDK reads the same API):
+
+```bash
+node -e "const A=require('aws-sdk');require('dotenv').config({path:'server/.env'});A.config.update({accessKeyId:process.env.AWS_ACCESS_KEY_ID,secretAccessKey:process.env.AWS_SECRET_ACCESS_KEY,region:process.env.AWS_REGION});new A.S3().getBucketVersioning({Bucket:'massclickdev'}).promise().then(r=>console.log(r))"
+```
+
+| Control | State | Verified |
+|---|---|---|
+| **Bucket versioning** | **`Enabled`** | ✅ 2026-08-11, `getBucketVersioning` → `{Status:"Enabled"}` |
+| Server access logging | ⚠️ enabled but **target is `massclickdev` itself** (prefix `server-access-logging/`) | needs repointing — see below |
+| Lifecycle rule | ❌ none (`NoSuchLifecycleConfiguration`) | outstanding |
+
+**Versioning being on is the actual 0.2 gate and it is met.** The sweep is now reversible; risk 5 is
+retired. The two items below are follow-ups, not blockers for 0.3+.
+
+### ⚠️ Access logging must not target the asset bucket
+
+`TargetBucket` is `massclickdev` — the bucket logs into itself. Beyond the obvious feedback loop, this
+**corrupts this migration's own accounting**: log objects land inside the bucket `scan` reconciles, so
+they would be counted as unreferenced objects, inflate the orphan number, bloat the pre-sweep full
+download, and look to `sweep` like deletable keys.
+
+Caught before any log was delivered — **0 objects under `server-access-logging/` at 2026-08-11**.
+Fix: create `massclick-access-logs` in `ap-southeast-2` and repoint the target (the account had only
+one bucket, which is why it was self-pointed).
+
+**If it is ever left self-pointing, `scan`/`plan`/`sweep` must exclude the `server-access-logging/`
+prefix explicitly** — do not rely on it being empty.
+
+### Lifecycle rule still outstanding
+
+Versioning is on as of 2026-08-11, so noncurrent versions are accumulating with nothing expiring them.
+Management tab → Lifecycle rules → **"Permanently delete noncurrent versions of objects"** after 90 days.
+**Never "Expire current versions of objects"** — that deletes the live images.
 
 ---
 
@@ -184,7 +228,8 @@ Also: **never `move`.** Copy, verify, rewrite, soak, then sweep. The bucket is s
 
 | # | Item | Status |
 |---|---|---|
-| 1 | S3 bucket versioning (0.2) needs AWS console access — no AWS CLI on this machine, and the current IAM user (`arn:aws:iam::647066518489:user/Muruganantham`) lacks `s3:ListAllMyBuckets` | **BLOCKED ON USER** |
+| 1 | S3 bucket versioning (0.2) | ✅ **RESOLVED 2026-08-11** — user enabled versioning; IAM user granted read-only bucket-config perms, so it is now verified rather than assumed |
+| 1a | Repoint access logging off `massclickdev` onto its own bucket, + create the noncurrent-version lifecycle rule | **USER ACTION** (not blocking 0.3+) |
 | 2 | SSH tunnel to `127.0.0.1:27018` | ✅ **UP** — verified 2026-08-11, both DBs reachable, full scan completed over it |
 | 3 | 0.1 baseline needs user review before 0.2+ proceeds | **AWAITING USER** |
 
@@ -301,5 +346,6 @@ banner. Each needs one newKey per owning document — 75 extra byte-copies, whic
 
 | Date | What happened |
 |---|---|
+| 2026-08-11 | **0.2 gate met.** User enabled bucket versioning and granted the IAM user read-only bucket-config permissions, so `getBucketVersioning` → `{Status:"Enabled"}` is now verified from this machine instead of taken on trust. Risk 5 retired; the sweep is reversible. Two follow-ups left with the user: access logging currently targets `massclickdev` itself (would contaminate the migration's own orphan accounting — caught at 0 delivered logs), and no lifecycle rule exists yet. Neither blocks 0.3. |
 | 2026-08-11 | **0.1 done, awaiting review.** Verified the tunnel. Built `server/utils/s3ScopeRegistry.js` (20 collections / 47 fields / new `arrayOfObjects` kind) and the read-only `scan` + `collections` subcommands of `server/scripts/s3KeyMigration.js`. Scanned both DBs against the live bucket. **Gate result: DBs are clones (95.68% `_id` overlap, one-directional), 45/46 pre-existing broken refs, 13% orphans, 0 genuine cross-DB conflicts — the plan holds unchanged.** Found two things the plan had wrong: six non-existent collection names in the backup list, and a second live defect in `extractS3Key` (strips a repeated base URL only once; real data has it 4×) to fold into 0.3. `ratingPhotos` turns out to be inline base64, not injected keys — 0.6 grows. |
 | 2026-08-11 | Plan written and approved. Explored bucket (36,187 objects / 1,774 MB), mapped all S3 fields across ~20 schemas, verified 4 latent defects: `setByPath` array corruption in 3 shipped helpers, unvalidated `ratingPhotos` write, 15 hardcoded dev-bucket URLs, stale S3 backup (June, 63 failures). Progress file created and committed (`b30e02e8`). Started 0.1 — confirmed model/schema layout, no code written. Session ended here. |
