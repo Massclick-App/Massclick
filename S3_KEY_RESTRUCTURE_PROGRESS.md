@@ -137,7 +137,7 @@ node -e "const A=require('aws-sdk');require('dotenv').config({path:'server/.env'
 | **Bucket versioning** | **`Enabled`** | ✅ `getBucketVersioning` → `{Status:"Enabled"}` |
 | Server access logging | → `massclick-access-logs`, prefix `""` | ✅ `getBucketLogging` |
 | Lifecycle — `massclickdev` | `expire-noncurrent-90d` | ✅ read back after apply, see below |
-| Lifecycle — `massclick-access-logs` | ❌ none | blocked: IAM lacks `PutLifecycleConfiguration` on that ARN |
+| Lifecycle — `massclick-access-logs` | `expire-logs-90d` | ✅ read back after apply |
 
 **Risk 5 is retired.** Every delete is now a delete-marker and the sweep is reversible in minutes.
 
@@ -174,24 +174,34 @@ download, and look to `sweep` like deletable keys. Caught at **0 delivered log o
 **If logging is ever repointed at the asset bucket, `scan`/`plan`/`sweep` must exclude the log prefix
 explicitly** — do not rely on it being empty.
 
-### Outstanding (housekeeping, blocks nothing)
+The two rules are deliberately **inverted**, and a future editor must keep them that way:
 
-Log-bucket lifecycle needs `s3:PutLifecycleConfiguration` on `arn:aws:s3:::massclick-access-logs` — the
-IAM policy's `WriteLifecycle` statement currently lists only `massclickdev`, though `ReadBucketConfig`
-covers both. Then apply `Expiration: { Days: 90 }` (expiring *current* objects **is** correct there —
-logs are not versioned). Until then access logs accumulate forever.
+```
+massclickdev            noncurrent: 90d    current: none    <- live images must NEVER expire
+massclick-access-logs   noncurrent: none   current: 90d     <- logs are unversioned
+```
 
-### IAM stance
+### IAM stance — least privilege is load-bearing here, not ceremony
 
-The user granted read-only bucket-config perms plus `PutLifecycleConfiguration`. Deliberately **not**
-requested, and should not be:
+Granted: read-only bucket-config on both buckets, `ListAllMyBuckets`, `PutLifecycleConfiguration` on
+both. The user offered broader access; it was **declined on purpose**. Nothing more is needed until S.3.
 
-- `s3:PutBucketVersioning` — could turn versioning *off*, i.e. disable the one control the whole
-  rollback story rests on. Only the user should be able to.
-- object delete perms (`DeleteObject*`, `DeleteObjectVersion`) — nothing is deleted before S.3, 30+ days
-  out. The cleanest enforcement of that rule is the tooling being unable to.
-- sweep-time perms (`ListBucketVersions`, `GetObjectVersion`, `DeleteObjectVersion`) — request at S.3,
-  not before.
+Everything between here and the end of Track B — rehearsals, `copy`, `verify-s3`, the full download,
+both rewrites — runs on the existing application credentials, which already have object read/write.
+
+Request at S.3, **not before**:
+
+- `s3:DeleteObject` — `sweep`
+- `s3:ListBucketVersions`, `s3:GetObjectVersion`, `s3:DeleteObjectVersion` — `undelete`
+
+Never request:
+
+- `s3:PutBucketVersioning` — could switch off the control the entire rollback story rests on.
+
+**The reasoning is about bugs, not intentions.** "Do NOT do" rule 2 says delete nothing before the
+30-day soak. The sweep code will be new, unrehearsed against 36k real objects, and running at the point
+where everyone has stopped paying close attention. A policy that *cannot* delete enforces that rule even
+against a bad loop or a misread manifest. Do not pre-grant these to save a round trip.
 
 ---
 
@@ -262,7 +272,7 @@ Also: **never `move`.** Copy, verify, rewrite, soak, then sweep. The bucket is s
 |---|---|---|
 | 1 | S3 bucket versioning (0.2) | ✅ **RESOLVED 2026-08-11** — user enabled versioning; IAM user granted read-only bucket-config perms, so it is now verified rather than assumed |
 | 1a | Access logging repointed to `massclick-access-logs`; `expire-noncurrent-90d` applied to `massclickdev` | ✅ **RESOLVED 2026-08-11** |
-| 1b | Log-bucket lifecycle — IAM `WriteLifecycle` lists only `massclickdev`; needs `arn:aws:s3:::massclick-access-logs` too | **USER ACTION** — housekeeping, blocks nothing |
+| 1b | Log-bucket lifecycle `expire-logs-90d` | ✅ **RESOLVED 2026-08-11** — all of 0.2 now verified |
 | 2 | SSH tunnel to `127.0.0.1:27018` | ✅ **UP** — verified 2026-08-11, both DBs reachable, full scan completed over it |
 | 3 | 0.1 baseline needs user review before 0.2+ proceeds | **AWAITING USER** |
 
