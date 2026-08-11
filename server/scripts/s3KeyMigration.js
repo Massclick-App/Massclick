@@ -4,7 +4,7 @@
  * See S3_KEY_RESTRUCTURE_PROGRESS.md at the repo root for where this sits in the
  * plan, and the "Do NOT do" ordering rules before changing anything here.
  *
- * Subcommands (only `scan` and `collections` exist so far — step 0.1):
+ * Subcommands (steps 0.1 and 0.7 so far):
  *
  *   scan          READ-ONLY baseline. Touches nothing. Reports, per database:
  *                 every referenced S3 key by scope/collection/field, which of
@@ -13,6 +13,10 @@
  *                 --compare-uri — whether the two databases are clones.
  *   collections   Print the collection list the registry covers, for --collections
  *                 on db-backups/backup.js so the two can never drift.
+ *   flush-caches  Purge every cache that could keep serving an old key after a
+ *                 rewrite. Dry run by default; --commit clears. Calls every
+ *                 invalidator in utils/cacheInvalidation.js by reflection, so a
+ *                 newly added one is picked up without editing this file.
  *
  * Everything here is dry-run by default; nothing writes without --commit, and
  * `scan` has no --commit at all because it has nothing to write.
@@ -48,6 +52,13 @@ import AWS from "aws-sdk";
 
 import { SCOPES, registryCollections, validateRegistry } from "../utils/s3ScopeRegistry.js";
 import { extractS3Key, getByPath } from "../utils/s3KeyUtils.js";
+import {
+  initRedis,
+  getRedisClient,
+  isRedisConnected,
+  clearAllCache,
+} from "../utils/redisClient.js";
+import * as cacheInvalidation from "../utils/cacheInvalidation.js";
 
 dotenv.config({ path: fileURLToPath(new URL("../.env", import.meta.url)) });
 
@@ -65,6 +76,8 @@ const URI = flag("uri");
 const COMPARE_URI = flag("compare-uri");
 const OUT = flag("out");
 const SKIP_S3 = has("no-s3");
+/** Nothing in this CLI writes anything without this. `scan` ignores it entirely. */
+const COMMIT = has("commit");
 
 const BUCKET = process.env.AWS_S3_BUCKET_MASSCLICK;
 
@@ -353,6 +366,137 @@ const cmdCollections = () => {
   console.log(`\nFor db-backups/backup.js --collections\n`);
 };
 
+/**
+ * Purge every cache that could keep serving an old image key after a rewrite.
+ *
+ * Step 0.7. A correct database behind a stale cache still serves broken images, and
+ * discovering that during a prod rewrite is the worst possible time — hence it is built
+ * and proven now rather than at R.4.
+ *
+ * Dry run by default: reports what is cached and what would be cleared. `--commit`
+ * actually clears.
+ *
+ * The invalidator list is derived by reflection over utils/cacheInvalidation.js rather
+ * than hardcoded, so an invalidator added later is picked up without editing this file.
+ */
+const cmdFlushCaches = async () => {
+  const FULL = has("full");
+
+  console.log(`\n=== flush-caches ===`);
+  console.log(`redis:  ${process.env.REDIS_URL || "redis://127.0.0.1:6379"}`);
+  console.log(`mode:   ${COMMIT ? "COMMIT (will clear)" : "DRY RUN (nothing cleared)"}\n`);
+
+  await initRedis();
+  if (!isRedisConnected()) {
+    die(
+      "Redis is not reachable.\n" +
+        "  Nothing was cleared. A rewrite must not proceed while the cache cannot be purged —\n" +
+        "  a correct database behind a stale cache still serves the old image keys.",
+    );
+  }
+
+  const client = getRedisClient();
+
+  const snapshot = async () => {
+    const keys = await client.keys("*");
+    const byPrefix = {};
+    for (const key of keys) {
+      const prefix = key.includes(":") ? `${key.slice(0, key.indexOf(":"))}:*` : key;
+      byPrefix[prefix] = (byPrefix[prefix] || 0) + 1;
+    }
+    return { total: keys.length, byPrefix };
+  };
+
+  const before = await snapshot();
+  console.log(`  cached keys: ${before.total}`);
+  for (const [prefix, count] of Object.entries(before.byPrefix).sort((a, b) => b[1] - a[1]).slice(0, 25)) {
+    console.log(`    ${pad(prefix, 44)}${num(count, 7)}`);
+  }
+
+  const invalidators = Object.entries(cacheInvalidation)
+    .filter(([name, fn]) => name.startsWith("invalidate") && typeof fn === "function")
+    .sort(([a], [b]) => a.localeCompare(b));
+
+  console.log(`\n  invalidators found in cacheInvalidation.js: ${invalidators.length}`);
+  for (const [name] of invalidators) console.log(`    ${name}`);
+
+  if (!COMMIT) {
+    console.log(`\n  DRY RUN — nothing cleared. Re-run with --commit.\n`);
+  } else {
+    console.log();
+    for (const [name, fn] of invalidators) {
+      const ok = await fn();
+      console.log(`    ${ok ? "ok  " : "FAIL"} ${name}`);
+    }
+
+    if (FULL) {
+      // flushDb removes EVERYTHING in the database, not just cache entries. Only for a
+      // recovery situation where a targeted invalidation is not trusted.
+      console.log(`\n  --full: flushing the entire Redis database...`);
+      console.log(`    ${(await clearAllCache()) ? "ok" : "FAILED"}`);
+    }
+
+    const after = await snapshot();
+    console.log(`\n  cached keys: ${before.total} -> ${after.total}  (cleared ${before.total - after.total})`);
+    if (after.total) {
+      console.log(`  remaining:`);
+      for (const [prefix, count] of Object.entries(after.byPrefix).sort((a, b) => b[1] - a[1]).slice(0, 15)) {
+        console.log(`    ${pad(prefix, 44)}${num(count, 7)}`);
+      }
+      console.log(
+        `\n  Remaining keys are not necessarily a failure — anything written between the two\n` +
+          `  snapshots, and any non-cache key, will still be here. Re-run to confirm it settles.`,
+      );
+    }
+  }
+
+  // --- prerendered HTML -----------------------------------------------------
+  //
+  // Redis invalidation does not cover prerendered HTML: a crawler-facing snapshot
+  // holds fully-rendered <img> tags with the OLD keys baked in.
+  //
+  // As of 2026-08-11 nothing in this repo puts prerender in the request path.
+  // `prerender-node` (the Express middleware) is in package.json but is imported
+  // nowhere, and app.js never references it. prerenderServer.js exists but is a
+  // standalone service, is not started by anything here, and hardcodes a Windows
+  // Chrome path. If prerendering is in fact enabled at the nginx layer, it is outside
+  // this repository and this command cannot see it.
+  const purgeUrl = process.env.PRERENDER_PURGE_URL;
+  console.log(`\n  prerendered HTML:`);
+  if (!purgeUrl) {
+    console.log(`    SKIPPED — no PRERENDER_PURGE_URL configured.`);
+    console.log(`    Nothing in this repo wires prerender-node into the request path:`);
+    console.log(`      - prerender-node is a dependency but is imported nowhere`);
+    console.log(`      - app.js never references it`);
+    console.log(`      - prerenderServer.js is standalone and started by nothing here`);
+    console.log(`    If prerendering IS enabled at the infra layer, set PRERENDER_PURGE_URL`);
+    console.log(`    (and optionally PRERENDER_PURGE_TOKEN) and re-run. See progress file 0.7.`);
+  } else if (!COMMIT) {
+    console.log(`    DRY RUN — would POST ${purgeUrl}`);
+  } else {
+    try {
+      const res = await fetch(purgeUrl, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          ...(process.env.PRERENDER_PURGE_TOKEN
+            ? { authorization: `Bearer ${process.env.PRERENDER_PURGE_TOKEN}` }
+            : {}),
+        },
+        body: JSON.stringify({ reason: "s3-key-restructure" }),
+      });
+      console.log(`    ${res.ok ? "ok  " : "FAIL"} POST ${purgeUrl} -> ${res.status}`);
+      if (!res.ok) process.exitCode = 1;
+    } catch (error) {
+      console.log(`    FAIL POST ${purgeUrl} -> ${error.message}`);
+      process.exitCode = 1;
+    }
+  }
+
+  console.log();
+  await client.quit().catch(() => {});
+};
+
 const cmdScan = async () => {
   if (!URI) die("scan requires --uri=... (no default, so prod cannot be hit by accident).");
 
@@ -616,10 +760,13 @@ const main = async () => {
     case "scan":
       await cmdScan();
       break;
+    case "flush-caches":
+      await cmdFlushCaches();
+      break;
     default:
       die(
         `Unknown subcommand "${SUBCOMMAND || "(none)"}".\n` +
-          `Available so far: scan, collections\n\n` +
+          `Available so far: scan, collections, flush-caches\n\n` +
           `  node scripts/s3KeyMigration.js scan --uri=... [--compare-uri=...] [--out=...] [--no-s3]`,
       );
   }

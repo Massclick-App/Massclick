@@ -74,7 +74,7 @@ objects, same field shapes, same volume.
 | 0.4 | `assetUrl` cache-buster | 🟡 CODE DONE | `verifyAssetUrl.js` 22/22 · **warm-cache browser check outstanding (user)** |
 | 0.5 | Base-URL extraction (15 literals) | ✅ DONE | 15 → 0 · `checkPublicImageUrls.js` dev diff clean (exit 0) |
 | 0.6 | `ratingPhotos` fix + quarantine | 🟡 CODE DONE | write path fixed · **report below awaits review, no DB write yet** |
-| 0.7 | `flush-caches` incl. prerender purge | ⬜ | prerendered page reflects a changed image |
+| 0.7 | `flush-caches` incl. prerender purge | 🟡 CODE DONE | needs one run against a real Redis · **prerender premise disproved, see below** |
 | 0.8 | Deploy 0.3–0.7 dev → prod | ⬜ | smoke clean; **all 9 risks retired** |
 | 1.1–1.4 | Registry, idGen, enforcement, ~50 call sites | ⬜ | lint gate passes |
 | 1.5 | Deploy Phase 1 dev → prod | ⬜ | smoke clean; **new uploads now canonical** |
@@ -502,6 +502,63 @@ on, so the ~50 new objects are reversible.
 
 ---
 
+## 0.7 — `flush-caches`
+
+```bash
+node server/scripts/s3KeyMigration.js flush-caches            # dry run: what is cached
+node server/scripts/s3KeyMigration.js flush-caches --commit   # clear it
+node server/scripts/s3KeyMigration.js flush-caches --commit --full   # also flushDb
+```
+
+Calls every invalidator in `utils/cacheInvalidation.js` **by reflection**, not from a hardcoded list, so
+one added later is picked up without editing the CLI. Verified it finds all 7:
+
+```
+invalidateAdvertisementCache · invalidateCategoryCache · invalidateCategoryDisplaySettingsCache
+invalidateDashboardCache · invalidateReviewCache · invalidateSearchCache · invalidateSeoCache
+```
+
+Reports cached-key counts by prefix before and after, so a flush that silently did nothing is visible.
+**If Redis is unreachable it exits non-zero and refuses to continue** — a rewrite must not proceed when
+the cache cannot be purged, because a correct database behind a stale cache still serves old keys.
+
+### ⚠️ Risk 6's premise does not hold — prerender is not in the request path
+
+The plan says prerendered HTML escapes Redis invalidation. **Nothing in this repo puts prerender in the
+request path at all:**
+
+- `prerender-node` (the Express middleware) is in `package.json` but is **imported nowhere**
+- `app.js` never references it
+- `prerenderServer.js` exists but is a standalone service, started by nothing in the repo, and hardcodes
+  `C:\Program Files\Google\Chrome\...` — a Windows path, on a Linux-deployed server
+
+So either prerendering is not deployed, or it is wired at the nginx layer, outside this repository. The
+backend deploy runs `/home/admin/scripts/backend.sh`, which is not in the repo, so this cannot be
+resolved from here.
+
+`flush-caches` handles both outcomes: it POSTs to `PRERENDER_PURGE_URL` when that is set (with an
+optional `PRERENDER_PURGE_TOKEN`), and otherwise prints an explicit SKIPPED with the reasoning above
+rather than quietly passing.
+
+**USER: confirm whether prerendering is enabled on the server.** If it is not, risk 6 is retired by
+non-existence. If it is, set `PRERENDER_PURGE_URL` and the existing code covers it.
+
+### ⏳ OUTSTANDING — one run against a real Redis
+
+Redis is not reachable from this machine (only Mongo is tunnelled on 27018), so the flush itself is
+unproven. Run it on the server, or open a second tunnel:
+
+```bash
+ssh -L 6379:127.0.0.1:6379 <server>          # then:
+node server/scripts/s3KeyMigration.js flush-caches           # expect a non-zero key count
+node server/scripts/s3KeyMigration.js flush-caches --commit  # expect it to drop
+```
+
+**Gate:** the before/after counts move, and a second `--commit` reports ~0 cleared. Cheap to fold into
+the 0.8 deploy.
+
+---
+
 ## Active run
 
 ```
@@ -587,6 +644,8 @@ Also: **never `move`.** Copy, verify, rewrite, soak, then sweep. The bucket is s
 | 2 | SSH tunnel to `127.0.0.1:27018` | ✅ **UP** — verified 2026-08-11, both DBs reachable, full scan completed over it |
 | 3 | 0.1 baseline needs user review before 0.2+ proceeds | **AWAITING USER** |
 | 4 | Repair the 4,442 (prod) / 4,443 (dev) businesses whose `qrCode.qrText` + `createdAt` were wiped by bug 3? Self-heals on view; a bulk repair is a DB write needing a `--collections businesslists` backup first. **If done at all, do prod FIRST then re-clone** — repairing dev before a re-clone is wasted | **USER DECISION** — not blocking |
+| 8 | **Is prerendering actually enabled on the server?** Nothing in this repo wires `prerender-node` into the request path. If it is not deployed, risk 6 is retired by non-existence; if it is (nginx layer), set `PRERENDER_PURGE_URL` and `flush-caches` already covers it | **USER — needs a look at the server** |
+| 9 | Run `flush-caches --commit` once against a real Redis (unreachable from this machine — only Mongo is tunnelled). Fold into the 0.8 deploy | **USER / at 0.8** |
 | 7 | **Run `fixRatingPhotos.js --commit` on prod?** 50 inline-base64 photos / 20.4 MB, one doc at **71% of the 16 MB BSON limit**. Dry-run shows nothing lost. Needs a `businessreviews` backup first. **BLOCKED UNTIL 0.8 IS DEPLOYED** — the key→URL read path must ship first or every review photo 404s. Then prod, then re-clone dev, alongside open question 4 | **USER DECISION** — blocked on 0.8 |
 | 6 | Add GitHub repository **variable** `REACT_APP_ASSET_BASE_URL` = `https://massclickdev.s3.ap-southeast-2.amazonaws.com` (Settings → Secrets and variables → Actions → Variables). Build still succeeds without it; only the `index.html` preconnect degrades | **USER ACTION** — not blocking |
 | 5 | **Prod is under active data entry.** User is waiting for it to settle, then re-cloning prod → dev (stated 2026-08-11). Fine before `plan`, **destructive between `plan` and R.9** — see "Do NOT do" rule 5. Re-run `scan` on dev afterwards to refresh the baseline. Blocks nothing: 0.4–0.7 are code only and touch no database | **WAITING ON PROD — tell Claude when the clone happens** |
@@ -724,6 +783,7 @@ massClick refs         31,789       31,843       +54
 
 | Date | What happened |
 |---|---|
+| 2026-08-11 | **0.7 code done.** `flush-caches` added to the migration CLI — dry-run by default, discovers invalidators by reflection (verified: all 7), reports cached-key counts before/after, and refuses to run at all if Redis is unreachable. **Risk 6's premise turns out to be wrong:** `prerender-node` is a dependency but is imported nowhere, `app.js` never references it, and `prerenderServer.js` is standalone with a hardcoded Windows Chrome path. Either prerendering is not deployed or it lives in nginx outside this repo. The command handles both — POSTs to `PRERENDER_PURGE_URL` when set, otherwise prints an explicit SKIPPED. Two user items: confirm whether prerender is deployed, and run the flush once against a real Redis (not reachable from this machine). |
 | 2026-08-11 | **0.6 code done; data repair awaiting approval.** Fixed the unvalidated `ratingPhotos` write path — it was the only writer that trusted the request body, and the field renders as an image URL. Measured the stored data and it is **not** the injected keys the plan assumed: 50 prod entries / 20.4 MB of **inline base64**, with one review document at **11.30 MB — 71% of MongoDB's hard 16 MB limit**, i.e. a few photos from being unwritable. Repair therefore uploads-and-replaces instead of quarantining. Built `fixRatingPhotos.js` (dry-run default) and ran it on both DBs: nothing would be lost. Prod `--commit` needs a backup and the user's go-ahead, and should be paired with the `qrText` repair before the re-clone. |
 | 2026-08-11 | **0.5 done.** 15 hardcoded bucket URLs → 0 (2 of the 9 server ones were dead code). Client now reads `REACT_APP_ASSET_BASE_URL` with the literal as a default so an unset var cannot break a build. Found and fixed the **client-side twin of 0.3's repeated-prefix bug** — and `checkPublicImageUrls.js` caught **prod serving a doubled URL to real users** on `/seopagecontentblog/viewall`. Built that checker (also the R.5/R.9 diff tool) and captured dev + prod baselines: 632/635 and 657/662 assets resolve, every failure a pre-existing `businessDetails[].bannerImage` verified against the 0.1 missing list. `--compare` validated end-to-end: newly broken 0, exit 0. **User action: add the `REACT_APP_ASSET_BASE_URL` repo variable.** |
 | 2026-08-11 | **0.4 code done, 22/22 mechanism gate green; browser check still owed by the user.** Built `server/utils/assetUrl.js`. Key finding that scoped it: **31 of the 32 upload paths end in `Date.now()`**, so only `businessList/qr/review-<id>` is deterministic today — the one-year `max-age` is mostly a risk *Phase 1 creates*, which is why 0.4 precedes it. Wired the five review-QR render paths only; the rest belong in 1.4 behind the lint gate. Verified the version fallback on real dev data across all three cases (createdAt present / wiped by 0.3 bug 3 / absent). |
