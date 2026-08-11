@@ -326,6 +326,20 @@ These four look like harmless optimisations from cold. They are not.
 4. **Do not re-run `plan` on an existing runId.** ULIDs are generated once and persisted; re-planning
    invalidates every logged copy. A new plan means a new runId.
 
+5. **Do not re-clone prod → dev between `plan` and R.9.** The user re-clones dev from prod periodically
+   (stated 2026-08-11). Before the run this is *helpful* — it pushes `_id` overlap from 95.68% toward
+   100% and makes the dev rehearsal a truer stand-in. Inside the run window it is destructive in three
+   ways that are not obvious from the code:
+   - a re-clone after **R.3** overwrites dev's rewritten keys with prod's old ones, silently undoing the
+     rewrite and invalidating the **R.6 soak** that gates the prod rewrite;
+   - `applied-massClick_dev.jsonl` then describes documents that no longer exist in that state, so
+     **`reverse` no longer works** — the rollback disappears exactly when it would be needed;
+   - the manifest records owners by `docId`, and a re-clone changes which documents exist.
+
+   **Safe windows:** any time before `plan`, or after R.9. **Unsafe:** everything in between.
+   **After any re-clone, re-run `scan` on dev** — the baseline miss count is what `verify` is checked
+   against, and a stale one makes R.5 either fail spuriously or hide a real regression.
+
 Also: **never `move`.** Copy, verify, rewrite, soak, then sweep. The bucket is shared.
 
 ---
@@ -339,7 +353,8 @@ Also: **never `move`.** Copy, verify, rewrite, soak, then sweep. The bucket is s
 | 1b | Log-bucket lifecycle `expire-logs-90d` | ✅ **RESOLVED 2026-08-11** — all of 0.2 now verified |
 | 2 | SSH tunnel to `127.0.0.1:27018` | ✅ **UP** — verified 2026-08-11, both DBs reachable, full scan completed over it |
 | 3 | 0.1 baseline needs user review before 0.2+ proceeds | **AWAITING USER** |
-| 4 | Repair the 4,442 (prod) / 4,443 (dev) businesses whose `qrCode.qrText` + `createdAt` were wiped by bug 3? Self-heals on view; a bulk repair is a DB write needing a `--collections businesslists` backup first | **USER DECISION** — not blocking |
+| 4 | Repair the 4,442 (prod) / 4,443 (dev) businesses whose `qrCode.qrText` + `createdAt` were wiped by bug 3? Self-heals on view; a bulk repair is a DB write needing a `--collections businesslists` backup first. **If done at all, do prod FIRST then re-clone** — repairing dev before a re-clone is wasted | **USER DECISION** — not blocking |
+| 5 | User intends to re-clone prod → dev "later" (stated 2026-08-11). Fine before `plan`, **destructive between `plan` and R.9** — see "Do NOT do" rule 5. Re-run `scan` on dev afterwards to refresh the baseline | **TIMING — tell Claude when it happens** |
 
 ---
 
