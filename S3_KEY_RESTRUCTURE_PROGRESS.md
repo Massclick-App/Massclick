@@ -1,7 +1,7 @@
 # S3 Key Restructure — Progress
 
 **Last updated:** 2026-08-11 by Claude · **Active runId:** none
-**Current step:** 0.0 · **Status:** IN PROGRESS
+**Current step:** 0.1 · **Status:** IN PROGRESS — registry not yet written, no code committed for 0.1
 **Plan:** `C:\Users\USER\.claude\plans\give-me-a-full-serene-whisper.md`
 
 ---
@@ -67,8 +67,8 @@ objects, same field shapes, same volume.
 
 | # | Step | Status | Gate / evidence |
 |---|---|---|---|
-| 0.0 | Create this progress file | 🔄 IN PROGRESS | committed before any other work |
-| 0.1 | **`scan` both DBs — read-only, first thing** | ⬜ | baseline recorded; **replan if DBs diverged or orphans dominate** |
+| 0.0 | Create this progress file | ✅ DONE | commit `b30e02e8` |
+| 0.1 | **`scan` both DBs — read-only, first thing** | 🔄 IN PROGRESS | baseline recorded; **replan if DBs diverged or orphans dominate** |
 | 0.2 | S3 versioning + access logging | ⬜ **USER ACTION** | `get-bucket-versioning` → `Enabled` |
 | 0.3 | `setByPath` array fix + extract shared utils | ⬜ | array round-trip fixture passes |
 | 0.4 | `assetUrl` cache-buster | ⬜ | real-browser warm-cache test |
@@ -169,6 +169,28 @@ Also: **never `move`.** Copy, verify, rewrite, soak, then sweep. The bucket is s
 | # | Item | Status |
 |---|---|---|
 | 1 | S3 bucket versioning (0.2) needs AWS console access — no AWS CLI on this machine, and the current IAM user (`arn:aws:iam::647066518489:user/Muruganantham`) lacks `s3:ListAllMyBuckets` | **BLOCKED ON USER** |
+| 2 | SSH tunnel to `127.0.0.1:27018` — status unverified. `scan` (0.1) cannot run without it. `ECONNREFUSED` means ask the user to reconnect | **UNVERIFIED** |
+
+---
+
+## Where 0.1 stands (for whoever picks this up)
+
+**No code written yet.** Established so far:
+
+- Mongoose **schemas** live in `server/schema/**`; **models** in `server/model/**` are thin wrappers. The
+  registry must import from `server/model/**`.
+- The existing registry to copy the shape from is `SUPPORTED_SCOPES` at
+  [s3WebpMigrationHelper.js:44-202](server/helper/mediaCleanup/s3WebpMigrationHelper.js) — entries carry
+  `{scopeKey, scopeLabel, folderPrefix, progressKey, projection, buildQuery, model, fields[{path,kind}], invalidate[]}`.
+  It covers only 6 scopes and its `kind` taxonomy is `single | array | object`.
+- **It needs a fourth kind, `arrayOfObjects` (with an `itemPath`)**, which nothing in the repo has today.
+  Required for `certificates.*`, `businessDetails[].bannerImageKey`, `mediaItems[].mediaKey`,
+  `evidenceFiles[].key`, `popularSearchCards[].imageKey`, `topTouristPlaces[].imageKey`,
+  `history[].screenshotKey`.
+- Collection names must be confirmed against `db.getCollectionNames()` before use — mongoose
+  pluralisation of `advertistment` (sic) and the msg91 models is not obvious.
+
+**Next action:** build the registry covering all ~20 collections, then the read-only `scan` subcommand.
 
 ---
 
@@ -176,4 +198,4 @@ Also: **never `move`.** Copy, verify, rewrite, soak, then sweep. The bucket is s
 
 | Date | What happened |
 |---|---|
-| 2026-08-11 | Plan written and approved. Explored bucket (36,187 objects / 1,774 MB), mapped all S3 fields across ~20 schemas, verified 4 latent defects: `setByPath` array corruption in 3 shipped helpers, unvalidated `ratingPhotos` write, 15 hardcoded dev-bucket URLs, stale S3 backup (June, 63 failures). Progress file created. |
+| 2026-08-11 | Plan written and approved. Explored bucket (36,187 objects / 1,774 MB), mapped all S3 fields across ~20 schemas, verified 4 latent defects: `setByPath` array corruption in 3 shipped helpers, unvalidated `ratingPhotos` write, 15 hardcoded dev-bucket URLs, stale S3 backup (June, 63 failures). Progress file created and committed (`b30e02e8`). Started 0.1 — confirmed model/schema layout, no code written. Session ended here. |
