@@ -1,7 +1,21 @@
 # S3 Key Restructure — Progress
 
 **Last updated:** 2026-08-11 by Claude · **Active runId:** none
-**Current step:** 0.1 · **Status:** ⏸ AWAITING USER REVIEW of the baseline below (gate)
+**Current step:** 0.8 (deploy) · **Status:** 0.1–0.7 code complete; **0.8 is the next action and it is the user's**
+
+### Everything Phase 0 built — one place
+
+```bash
+node server/scripts/verifyS3KeyUtils.js                     # 0.3 gate   31/31
+node server/scripts/verifyAssetUrl.js                       # 0.4 gate   22/22
+node server/scripts/s3KeyMigration.js collections           # 0.1  registry -> backup list
+node server/scripts/s3KeyMigration.js scan --uri=… --compare-uri=…   # 0.1  baseline
+node server/scripts/s3KeyMigration.js flush-caches [--commit]        # 0.7
+node server/scripts/checkPublicImageUrls.js --api=… [--compare=…]    # 0.5  no-broken-images
+node server/scripts/fixRatingPhotos.js --uri=… [--commit]            # 0.6  data repair
+```
+
+New modules: `utils/s3ScopeRegistry.js` · `utils/s3KeyUtils.js` · `utils/assetUrl.js`
 **Plan:** `C:\Users\USER\.claude\plans\give-me-a-full-serene-whisper.md`
 
 ---
@@ -75,7 +89,7 @@ objects, same field shapes, same volume.
 | 0.5 | Base-URL extraction (15 literals) | ✅ DONE | 15 → 0 · `checkPublicImageUrls.js` dev diff clean (exit 0) |
 | 0.6 | `ratingPhotos` fix + quarantine | 🟡 CODE DONE | write path fixed · **report below awaits review, no DB write yet** |
 | 0.7 | `flush-caches` incl. prerender purge | 🟡 CODE DONE | needs one run against a real Redis · **prerender premise disproved, see below** |
-| 0.8 | Deploy 0.3–0.7 dev → prod | ⬜ | smoke clean; **all 9 risks retired** |
+| 0.8 | Deploy 0.3–0.7 dev → prod | ⬜ **NEXT — USER** | smoke clean; see the 0.8 checklist below |
 | 1.1–1.4 | Registry, idGen, enforcement, ~50 call sites | ⬜ | lint gate passes |
 | 1.5 | Deploy Phase 1 dev → prod | ⬜ | smoke clean; **new uploads now canonical** |
 | 2.1–2.2 | Scope registry + `s3KeyMigration.js` (reverse/resume/doctor) | ⬜ | — |
@@ -556,6 +570,50 @@ node server/scripts/s3KeyMigration.js flush-caches --commit  # expect it to drop
 
 **Gate:** the before/after counts move, and a second `--commit` reports ~0 cleared. Cheap to fold into
 the 0.8 deploy.
+
+---
+
+## 0.8 — the deploy, and the order everything after it must happen in
+
+Phase 0 code is complete and committed on `dev`. **Nothing below is code work; it is all sequencing,
+and the order matters.** Three of the outstanding gates can only close on a deployed environment, which
+is why they were left rather than faked.
+
+### Step order — do not reorder
+
+| # | Action | Why here |
+|---|---|---|
+| 1 | Deploy `dev` → dev environment | — |
+| 2 | `flush-caches --commit` on the dev server | closes 0.7's gate; needs a real Redis |
+| 3 | `checkPublicImageUrls --api=<dev> --compare=imgcheck-2026-08-11-dev.json` | must print **NEWLY broken: 0** |
+| 4 | Warm-cache browser check on a review QR | closes 0.4's gate; needs a real browser |
+| 5 | Deploy to **prod** | — |
+| 6 | `checkPublicImageUrls --api=<prod> --compare=imgcheck-2026-08-11-prod.json` | must print **NEWLY broken: 0** |
+| 7 | **Backup**, then `fixRatingPhotos --uri=<prod> --commit` | **must be after 5** — see 0.6 |
+| 8 | *(optional)* `qrText` repair on prod | open question 4 |
+| 9 | Re-clone prod → dev | after 7 and 8, or their work is discarded |
+| 10 | `scan` dev again | refresh the baseline the re-clone invalidated |
+
+Steps 7 and 8 are the two prod data repairs; they belong in one sitting, and both must land **before**
+step 9 or the next clone throws them away.
+
+### Risk register after Phase 0
+
+| # | Risk | State |
+|---|---|---|
+| 1 | one-year `Cache-Control` | code done; **browser check outstanding** (step 4) |
+| 2 | half-created records | not started — belongs to 1.4 |
+| 3 | the two DBs may not be clones | ✅ retired — 95.68% overlap, 0 genuine conflicts |
+| 4 | `setByPath` array corruption | ✅ retired — 31/31 gate |
+| 5 | 63 objects unrestorable | ✅ retired — bucket versioning `Enabled` |
+| 6 | prerender HTML not invalidated | **premise disproved** — prerender is not in the request path; confirm on the server |
+| 7 | torn final line in an append-only log | not started — belongs to 2.2 `doctor` |
+| 8 | tunnel drops mid-rewrite | not started — belongs to 2.2 |
+| 9 | signed-URL fields unreachable by the smoke script | ✅ handled — documented exclusions, covered by `verify` + manual download |
+
+**Three bugs were found that were not on the risk register at all**, all of which had already fired:
+the `$set` subdocument wipe (4,442 prod documents), `extractS3Key` mis-parsing repeated prefixes (live
+on prod today), and `ratingPhotos` at 71% of the BSON limit.
 
 ---
 
