@@ -22,7 +22,7 @@ import { cacheMiddleware } from "../middleware/cacheMiddleware.js";
 
 const router = express.Router();
 
-const seoMetaCache = cacheMiddleware({ expirySeconds: 3600, keyPrefix: 'seo-meta' });
+const seoMetaCache = cacheMiddleware({ expirySeconds: 3600, keyPrefix: 'seo-meta:v2' });
 const seoPageContentCache = cacheMiddleware({ expirySeconds: 3600, keyPrefix: 'seo-page-content' });
 const seoBlogCache = cacheMiddleware({ expirySeconds: 7200, keyPrefix: 'seo-blog' });
 

@@ -2,6 +2,7 @@ import seoTemplateModel from "../../model/seoModel/seoTemplateModel.js";
 import categoryModel from "../../model/category/categoryModel.js";
 import masterLocationModel from "../../model/locationModel/masterLocationModel.js";
 import { slugify } from "../../slugify.js";
+import { buildLocationCategoryPath } from "../location/locationUrl.js";
 import {
   renderTemplateString,
   renderFaqTemplate,
@@ -126,7 +127,11 @@ export const renderSeoMetaFromTemplate = async ({ category, location, district }
     const tokens = await buildTokens({ categorySlug, location });
 
     const canonical = district
-      ? `https://massclick.in/${slugify(district)}${tokens.locationSlug ? `/${tokens.locationSlug}` : ""}/${categorySlug}`
+      ? `https://massclick.in${buildLocationCategoryPath({
+          districtSlug: district,
+          locationSlug: tokens.locationUrl || tokens.locationSlug,
+          categorySlug,
+        })}`
       : tokens.locationSlug
         ? `https://massclick.in/${tokens.locationSlug}/${categorySlug}`
         : `https://massclick.in/${categorySlug}`;

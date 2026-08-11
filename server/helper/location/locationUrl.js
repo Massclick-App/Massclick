@@ -131,7 +131,7 @@ export const buildLocationCategoryPath = ({
     ? getLocationUrlSegment(locationDoc)
     : slugify(locationPathParts.slice(-1)[0] || locationSlug || "");
 
-  if (!resolvedLocationSlug) {
+  if (!resolvedLocationSlug || resolvedLocationSlug === resolvedDistrictSlug) {
     return `/${[resolvedDistrictSlug, finalCategorySlug].filter(Boolean).join("/")}`;
   }
 
