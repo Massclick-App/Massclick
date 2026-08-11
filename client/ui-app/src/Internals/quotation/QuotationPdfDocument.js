@@ -61,7 +61,7 @@ export const QuotationPdfPage1 = ({ innerRef, quotation, logoSrc, signatureSrc, 
   const totals = calculateTotals(quotation);
 
   return (
-    <div className={cx("page")} ref={innerRef}>
+    <div className={cx("page", "pageFirst")} ref={innerRef}>
       <div className={cx("header")}>
         <svg className={cx("headerShape")} viewBox="0 0 1050 190" preserveAspectRatio="none">
           <polygon points="462,0 1050,0 1050,190 336,190" fill="#f4711d" />
@@ -242,10 +242,6 @@ export const QuotationPdfPage1 = ({ innerRef, quotation, logoSrc, signatureSrc, 
             <div className={cx("paymentRow")}>
               <span>Method</span>
               <span>{paymentMethodLabel(quotation.paymentMethod)}</span>
-            </div>
-            <div className={cx("paymentRow")}>
-              <span>Due Date</span>
-              <span>{formatDate(quotation.paymentDueDate)}</span>
             </div>
             <div className={cx("paymentRow")}>
               <span>Paid / Advance</span>

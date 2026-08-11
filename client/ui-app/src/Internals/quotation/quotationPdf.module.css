@@ -886,3 +886,123 @@
   font-size: 11px;
   line-height: 1.55;
 }
+
+/* Keep every quotation section inside page one and clear of the fixed footer. */
+.pageFirst .header {
+  height: 150px;
+}
+
+.pageFirst .brand {
+  top: 16px;
+  gap: 7px;
+}
+
+.pageFirst .brandLogo {
+  width: 240px;
+  height: 68px;
+}
+
+.pageFirst .headerTag {
+  height: 104px;
+}
+
+.pageFirst .metaRow {
+  padding-top: 16px;
+}
+
+.pageFirst .metaTable {
+  gap: 12px;
+}
+
+.pageFirst .qrBox {
+  width: 110px;
+}
+
+.pageFirst .qrImage {
+  width: 76px;
+  height: 76px;
+  margin: 8px auto 6px;
+}
+
+.pageFirst .partyGrid {
+  margin-top: 14px;
+}
+
+.pageFirst .cardHeader {
+  padding: 12px 16px 6px;
+}
+
+.pageFirst .partyBody {
+  padding: 10px 16px;
+  gap: 5px;
+}
+
+.pageFirst .partyBodyAccent {
+  margin: 2px 16px 12px;
+}
+
+.pageFirst .balanceBar {
+  padding: 9px 16px;
+}
+
+.pageFirst .advantagesRow,
+.pageFirst .itemTableWrap,
+.pageFirst .paymentGrid,
+.pageFirst .notePanel,
+.pageFirst .acceptPanel {
+  margin-top: 12px;
+}
+
+.pageFirst .advantageItem {
+  padding: 11px 16px;
+}
+
+.pageFirst .itemTable thead th,
+.pageFirst .itemTable td {
+  padding: 10px 13px;
+}
+
+.pageFirst .paymentBody {
+  padding: 10px 16px;
+  gap: 8px;
+}
+
+.pageFirst .totalsRow {
+  padding: 8px 16px;
+}
+
+.pageFirst .balanceBarRounded {
+  margin-top: 7px;
+}
+
+.pageFirst .notePanel {
+  padding: 12px 18px;
+}
+
+.pageFirst .noteCol p {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.pageFirst .acceptPanel {
+  min-height: 108px;
+  padding: 12px 18px;
+}
+
+.pageFirst .acceptName {
+  margin-top: 10px;
+}
+
+.pageFirst .acceptLine {
+  margin-top: 20px;
+}
+
+.pageFirst .acceptSignature {
+  height: 40px;
+  margin-top: 5px;
+}
+
+.pageFirst .acceptCaption {
+  margin-top: 4px;
+}

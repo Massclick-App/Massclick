@@ -782,10 +782,6 @@ export default function Quotation() {
                   <strong className={cx("payment-detail-value")}>{paymentMethodLabel(form.paymentMethod)}</strong>
                 </div>
                 <div className={cx("payment-detail")}>
-                  <span className={cx("payment-detail-label")}>Due Date</span>
-                  <strong className={cx("payment-detail-value")}>{formatDate(form.paymentDueDate)}</strong>
-                </div>
-                <div className={cx("payment-detail")}>
                   <span className={cx("payment-detail-label")}>Reference</span>
                   <strong className={cx("payment-detail-value")}>{form.paymentReference || "-"}</strong>
                 </div>
