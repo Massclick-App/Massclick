@@ -71,7 +71,7 @@ objects, same field shapes, same volume.
 | 0.1 | **`scan` both DBs — read-only, first thing** | ⏸ AWAITING REVIEW | baseline recorded below · `_migrations/s3-key-restructure/scan-2026-08-11-*.json` |
 | 0.2 | S3 versioning + access logging | ✅ **DONE** | versioning `Enabled`, logging on its own bucket, noncurrent-90d lifecycle — all verified 2026-08-11 |
 | 0.3 | `setByPath` array fix + extract shared utils | ✅ DONE | `node server/scripts/verifyS3KeyUtils.js` → 31/31 green |
-| 0.4 | `assetUrl` cache-buster | ⬜ | real-browser warm-cache test |
+| 0.4 | `assetUrl` cache-buster | 🟡 CODE DONE | `verifyAssetUrl.js` 22/22 · **warm-cache browser check outstanding (user)** |
 | 0.5 | Base-URL extraction (15 literals) | ⬜ | smoke clean both envs |
 | 0.6 | `ratingPhotos` fix + quarantine | ⬜ | quarantine report reviewed |
 | 0.7 | `flush-caches` incl. prerender purge | ⬜ | prerendered page reflects a changed image |
@@ -266,6 +266,74 @@ listed as open question 4 below. Not urgent, and **not** a blocker for anything 
 `categoryHelper` previously stored `""` when a URL failed to parse; the shared helper returns the raw
 value instead, because a shared utility should not silently discard data. The old behaviour is preserved
 exactly where it belongs — at that write call site, via `toStorableKey()`.
+
+---
+
+## 0.4 — `assetUrl` cache-buster
+
+`server/utils/assetUrl.js`. **Gate part 1:** `node server/scripts/verifyAssetUrl.js` → **22/22 green**.
+**Gate part 2 is a manual browser check and is still outstanding** — see below.
+
+### The finding that scoped this step
+
+Of the **32 upload paths in the codebase, 31 end in `Date.now()`** — they can never be overwritten, so
+they have no staleness problem. Exactly one key is deterministic today:
+
+```
+businessList/qr/review-${businessId}
+```
+
+So the one-year `max-age` is **mostly a risk Phase 1 creates**, not one that exists now — which is
+precisely why 0.4 is scheduled before it. `assetUrl` was therefore built and proven in full, but wired
+only to the five review-QR render paths in `businessListHelper.js`. **The remaining stable purposes get
+wired in 1.4, as each becomes deterministic, enforced by the 1.3 lint gate.** Wiring all 151
+`getSignedUrlByKey` call sites now would be churn against keys that cannot go stale.
+
+The live exposure it closes: regenerating a review QR overwrites the object, so anyone holding the
+cached image kept the **old QR, pointing at the old review URL, for up to a year**. 0.3 made
+regeneration more frequent (the `qrText` self-heal), which raised that exposure.
+
+### Why versioning the URL, and not just changing the header
+
+The 36,000+ objects already in the bucket carry their stored `Cache-Control` forever. Changing
+[s3Uploder.js:66](server/s3Uploder.js:66) would only affect future uploads. Versioning the URL is the
+only fix that covers objects already written.
+
+### Design notes worth not re-deriving
+
+- **The token must be deterministic.** A token that changes per render (`Date.now()`, a random value)
+  defeats caching rather than busting it.
+- **Version source is `qrCode.createdAt`, falling back to the document's `updatedAt`.** `createdAt`
+  changes exactly when the QR is regenerated, so unrelated edits don't needlessly bust the cache. The
+  fallback exists because 0.3's bug 3 wiped `createdAt` on ~4,400 businesses. Verified on real dev data:
+
+  ```
+  createdAt present  -> …/review-695c9e34….png?v=mrx3vjo5
+  createdAt wiped    -> …/review-698c20c2….webp?v=mrg8ep6x   (updatedAt fallback)
+  neither available  -> …/review-x.png                        (plain, unchanged)
+  ```
+
+- **Signed URLs are never versioned.** aws-sdk v2 emits SigV2 here, which signs only the canonicalised
+  resource — so an extra parameter would survive *today*. The rule still holds: SigV4 signs the whole
+  query string and is the modern default, so an SDK upgrade would silently start returning
+  `SignatureDoesNotMatch`. Signed URLs are unique per signature and already expire, so there is no
+  staleness problem worth that risk.
+- **Adopting `assetUrl` with no version is a no-op** — byte-identical to `getSignedUrlByKey`, asserted in
+  the gate. Safe to adopt incrementally at a call site that has no version to hand.
+
+### ⏳ OUTSTANDING — the warm-cache browser check (user)
+
+This cannot be verified from Node: `curl` and `fetch` have no stale copy to be wrong about, so they
+would pass whether or not the fix works. It needs a real browser that has genuinely cached the old bytes.
+
+1. Open any business profile with a review QR. Note the `?v=` on the QR image URL.
+2. Load it again — normal reload, **DevTools cache disabled OFF**. Confirm the image is served from cache
+   (Network tab: "(disk cache)" / "(memory cache)").
+3. Change something that regenerates the QR (edit the business so `buildReviewUrl` changes), reload.
+4. **PASS:** the `?v=` token changed AND the new QR renders. **FAIL:** the old QR image persists.
+
+Until this passes, treat 0.4 as unproven — it is the mechanism the whole deterministic-key design in
+Phase 1 depends on.
 
 ---
 
@@ -489,6 +557,7 @@ massClick refs         31,789       31,843       +54
 
 | Date | What happened |
 |---|---|
+| 2026-08-11 | **0.4 code done, 22/22 mechanism gate green; browser check still owed by the user.** Built `server/utils/assetUrl.js`. Key finding that scoped it: **31 of the 32 upload paths end in `Date.now()`**, so only `businessList/qr/review-<id>` is deterministic today — the one-year `max-age` is mostly a risk *Phase 1 creates*, which is why 0.4 precedes it. Wired the five review-QR render paths only; the rest belong in 1.4 behind the lint gate. Verified the version fallback on real dev data across all three cases (createdAt present / wiped by 0.3 bug 3 / absent). |
 | 2026-08-11 | **0.3 done, gate green (31/31).** Extracted `server/utils/s3KeyUtils.js` as the single copy and repointed all four callers. Found **three** bugs where the plan expected one — and bug 3 had already fired: building the `$set` payload with `setByPath` meant `$set: {qrCode:{qrImageKey}}` replaced the whole subdocument, wiping `qrText` and `createdAt` on **4,442 prod / 4,443 dev** businesses. Proven by cross-tab: every loss is a `.webp` key, zero losses among non-webp. Damage is bounded — `qrText` is derived and self-heals on next view against a deterministic key. Bulk repair left as a user decision (open question 4). |
 | 2026-08-11 | **0.2 complete.** Access logging repointed off the asset bucket onto `massclick-access-logs` (caught at 0 delivered logs, before it could contaminate the orphan accounting). Applied `expire-noncurrent-90d` to `massclickdev` by API rather than console — explicit JSON means the "expire current versions" footgun is absent rather than unticked — and read it back: `rules expiring CURRENT versions: 0`. Side effect worth knowing: `undelete` now works for 90 days after the sweep, not 30. Log-bucket lifecycle still needs one IAM ARN. |
 | 2026-08-11 | **0.2 gate met.** User enabled bucket versioning and granted the IAM user read-only bucket-config permissions, so `getBucketVersioning` → `{Status:"Enabled"}` is now verified from this machine instead of taken on trust. Risk 5 retired; the sweep is reversible. Two follow-ups left with the user: access logging currently targets `massclickdev` itself (would contaminate the migration's own orphan accounting — caught at 0 delivered logs), and no lifecycle rule exists yet. Neither blocks 0.3. |
