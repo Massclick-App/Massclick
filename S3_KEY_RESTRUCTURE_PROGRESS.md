@@ -69,7 +69,7 @@ objects, same field shapes, same volume.
 |---|---|---|---|
 | 0.0 | Create this progress file | ✅ DONE | commit `b30e02e8` |
 | 0.1 | **`scan` both DBs — read-only, first thing** | ⏸ AWAITING REVIEW | baseline recorded below · `_migrations/s3-key-restructure/scan-2026-08-11-*.json` |
-| 0.2 | S3 versioning + access logging | 🟡 MOSTLY DONE | **versioning `Enabled` ✅ verified 2026-08-11**; 2 follow-ups below |
+| 0.2 | S3 versioning + access logging | ✅ **DONE** | versioning `Enabled`, logging on its own bucket, noncurrent-90d lifecycle — all verified 2026-08-11 |
 | 0.3 | `setByPath` array fix + extract shared utils | ⬜ | array round-trip fixture passes |
 | 0.4 | `assetUrl` cache-buster | ⬜ | real-browser warm-cache test |
 | 0.5 | Base-URL extraction (15 literals) | ⬜ | smoke clean both envs |
@@ -134,32 +134,64 @@ node -e "const A=require('aws-sdk');require('dotenv').config({path:'server/.env'
 
 | Control | State | Verified |
 |---|---|---|
-| **Bucket versioning** | **`Enabled`** | ✅ 2026-08-11, `getBucketVersioning` → `{Status:"Enabled"}` |
-| Server access logging | ⚠️ enabled but **target is `massclickdev` itself** (prefix `server-access-logging/`) | needs repointing — see below |
-| Lifecycle rule | ❌ none (`NoSuchLifecycleConfiguration`) | outstanding |
+| **Bucket versioning** | **`Enabled`** | ✅ `getBucketVersioning` → `{Status:"Enabled"}` |
+| Server access logging | → `massclick-access-logs`, prefix `""` | ✅ `getBucketLogging` |
+| Lifecycle — `massclickdev` | `expire-noncurrent-90d` | ✅ read back after apply, see below |
+| Lifecycle — `massclick-access-logs` | ❌ none | blocked: IAM lacks `PutLifecycleConfiguration` on that ARN |
 
-**Versioning being on is the actual 0.2 gate and it is met.** The sweep is now reversible; risk 5 is
-retired. The two items below are follow-ups, not blockers for 0.3+.
+**Risk 5 is retired.** Every delete is now a delete-marker and the sweep is reversible in minutes.
 
-### ⚠️ Access logging must not target the asset bucket
+### The lifecycle rule on `massclickdev`, and why it was applied by API
 
-`TargetBucket` is `massclickdev` — the bucket logs into itself. Beyond the obvious feedback loop, this
-**corrupts this migration's own accounting**: log objects land inside the bucket `scan` reconciles, so
-they would be counted as unreferenced objects, inflate the orphan number, bloat the pre-sweep full
-download, and look to `sweep` like deletable keys.
+```json
+{ "ID": "expire-noncurrent-90d", "Status": "Enabled", "Filter": { "Prefix": "" },
+  "NoncurrentVersionExpiration": { "NoncurrentDays": 90 },
+  "AbortIncompleteMultipartUpload": { "DaysAfterInitiation": 7 } }
+```
 
-Caught before any log was delivered — **0 objects under `server-access-logging/` at 2026-08-11**.
-Fix: create `massclick-access-logs` in `ap-southeast-2` and repoint the target (the account had only
-one bucket, which is why it was self-pointed).
+Applied via `putBucketLifecycleConfiguration`, not the console, deliberately: in the console UI
+*"Expire current versions of objects"* sits directly beside *"Permanently delete noncurrent versions"*
+and reads almost identically — and the first one deletes the live images on a timer. Sending explicit
+JSON means the destructive option is **absent**, not merely unticked. Read back after applying:
 
-**If it is ever left self-pointing, `scan`/`plan`/`sweep` must exclude the `server-access-logging/`
-prefix explicitly** — do not rely on it being empty.
+```
+rules expiring CURRENT versions: 0
+```
 
-### Lifecycle rule still outstanding
+**Any future edit to this rule must re-assert that count is 0.**
 
-Versioning is on as of 2026-08-11, so noncurrent versions are accumulating with nothing expiring them.
-Management tab → Lifecycle rules → **"Permanently delete noncurrent versions of objects"** after 90 days.
-**Never "Expire current versions of objects"** — that deletes the live images.
+**Bonus the plan did not assume:** noncurrent versions survive 90 days, so `undelete` works for **90
+days after the sweep**, not the 30 the soak plan implies.
+
+### Access logging — resolved, but note the failure mode
+
+Logging was initially pointed at **`massclickdev` itself** (the account had only one bucket). Beyond the
+feedback loop, that **corrupts this migration's own accounting**: log objects land inside the bucket
+`scan` reconciles, so they would count as unreferenced, inflate the orphan number, bloat the pre-sweep
+download, and look to `sweep` like deletable keys. Caught at **0 delivered log objects**; now targets
+`massclick-access-logs`.
+
+**If logging is ever repointed at the asset bucket, `scan`/`plan`/`sweep` must exclude the log prefix
+explicitly** — do not rely on it being empty.
+
+### Outstanding (housekeeping, blocks nothing)
+
+Log-bucket lifecycle needs `s3:PutLifecycleConfiguration` on `arn:aws:s3:::massclick-access-logs` — the
+IAM policy's `WriteLifecycle` statement currently lists only `massclickdev`, though `ReadBucketConfig`
+covers both. Then apply `Expiration: { Days: 90 }` (expiring *current* objects **is** correct there —
+logs are not versioned). Until then access logs accumulate forever.
+
+### IAM stance
+
+The user granted read-only bucket-config perms plus `PutLifecycleConfiguration`. Deliberately **not**
+requested, and should not be:
+
+- `s3:PutBucketVersioning` — could turn versioning *off*, i.e. disable the one control the whole
+  rollback story rests on. Only the user should be able to.
+- object delete perms (`DeleteObject*`, `DeleteObjectVersion`) — nothing is deleted before S.3, 30+ days
+  out. The cleanest enforcement of that rule is the tooling being unable to.
+- sweep-time perms (`ListBucketVersions`, `GetObjectVersion`, `DeleteObjectVersion`) — request at S.3,
+  not before.
 
 ---
 
@@ -229,7 +261,8 @@ Also: **never `move`.** Copy, verify, rewrite, soak, then sweep. The bucket is s
 | # | Item | Status |
 |---|---|---|
 | 1 | S3 bucket versioning (0.2) | ✅ **RESOLVED 2026-08-11** — user enabled versioning; IAM user granted read-only bucket-config perms, so it is now verified rather than assumed |
-| 1a | Repoint access logging off `massclickdev` onto its own bucket, + create the noncurrent-version lifecycle rule | **USER ACTION** (not blocking 0.3+) |
+| 1a | Access logging repointed to `massclick-access-logs`; `expire-noncurrent-90d` applied to `massclickdev` | ✅ **RESOLVED 2026-08-11** |
+| 1b | Log-bucket lifecycle — IAM `WriteLifecycle` lists only `massclickdev`; needs `arn:aws:s3:::massclick-access-logs` too | **USER ACTION** — housekeeping, blocks nothing |
 | 2 | SSH tunnel to `127.0.0.1:27018` | ✅ **UP** — verified 2026-08-11, both DBs reachable, full scan completed over it |
 | 3 | 0.1 baseline needs user review before 0.2+ proceeds | **AWAITING USER** |
 
@@ -346,6 +379,7 @@ banner. Each needs one newKey per owning document — 75 extra byte-copies, whic
 
 | Date | What happened |
 |---|---|
+| 2026-08-11 | **0.2 complete.** Access logging repointed off the asset bucket onto `massclick-access-logs` (caught at 0 delivered logs, before it could contaminate the orphan accounting). Applied `expire-noncurrent-90d` to `massclickdev` by API rather than console — explicit JSON means the "expire current versions" footgun is absent rather than unticked — and read it back: `rules expiring CURRENT versions: 0`. Side effect worth knowing: `undelete` now works for 90 days after the sweep, not 30. Log-bucket lifecycle still needs one IAM ARN. |
 | 2026-08-11 | **0.2 gate met.** User enabled bucket versioning and granted the IAM user read-only bucket-config permissions, so `getBucketVersioning` → `{Status:"Enabled"}` is now verified from this machine instead of taken on trust. Risk 5 retired; the sweep is reversible. Two follow-ups left with the user: access logging currently targets `massclickdev` itself (would contaminate the migration's own orphan accounting — caught at 0 delivered logs), and no lifecycle rule exists yet. Neither blocks 0.3. |
 | 2026-08-11 | **0.1 done, awaiting review.** Verified the tunnel. Built `server/utils/s3ScopeRegistry.js` (20 collections / 47 fields / new `arrayOfObjects` kind) and the read-only `scan` + `collections` subcommands of `server/scripts/s3KeyMigration.js`. Scanned both DBs against the live bucket. **Gate result: DBs are clones (95.68% `_id` overlap, one-directional), 45/46 pre-existing broken refs, 13% orphans, 0 genuine cross-DB conflicts — the plan holds unchanged.** Found two things the plan had wrong: six non-existent collection names in the backup list, and a second live defect in `extractS3Key` (strips a repeated base URL only once; real data has it 4×) to fold into 0.3. `ratingPhotos` turns out to be inline base64, not injected keys — 0.6 grows. |
 | 2026-08-11 | Plan written and approved. Explored bucket (36,187 objects / 1,774 MB), mapped all S3 fields across ~20 schemas, verified 4 latent defects: `setByPath` array corruption in 3 shipped helpers, unvalidated `ratingPhotos` write, 15 hardcoded dev-bucket URLs, stale S3 backup (June, 63 failures). Progress file created and committed (`b30e02e8`). Started 0.1 — confirmed model/schema layout, no code written. Session ended here. |
