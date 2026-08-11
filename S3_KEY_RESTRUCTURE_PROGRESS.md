@@ -72,7 +72,7 @@ objects, same field shapes, same volume.
 | 0.2 | S3 versioning + access logging | ✅ **DONE** | versioning `Enabled`, logging on its own bucket, noncurrent-90d lifecycle — all verified 2026-08-11 |
 | 0.3 | `setByPath` array fix + extract shared utils | ✅ DONE | `node server/scripts/verifyS3KeyUtils.js` → 31/31 green |
 | 0.4 | `assetUrl` cache-buster | 🟡 CODE DONE | `verifyAssetUrl.js` 22/22 · **warm-cache browser check outstanding (user)** |
-| 0.5 | Base-URL extraction (15 literals) | ⬜ | smoke clean both envs |
+| 0.5 | Base-URL extraction (15 literals) | ✅ DONE | 15 → 0 · `checkPublicImageUrls.js` dev diff clean (exit 0) |
 | 0.6 | `ratingPhotos` fix + quarantine | ⬜ | quarantine report reviewed |
 | 0.7 | `flush-caches` incl. prerender purge | ⬜ | prerendered page reflects a changed image |
 | 0.8 | Deploy 0.3–0.7 dev → prod | ⬜ | smoke clean; **all 9 risks retired** |
@@ -337,6 +337,80 @@ Phase 1 depends on.
 
 ---
 
+## 0.5 — hardcoded base URLs removed, and the image checker
+
+**15 literals → 0.** Server 9, client 6 files.
+
+| Where | Was | Now |
+|---|---|---|
+| `categoryController.js` ×7 | `const S3_BASE_URL = "https://massclickdev.s3…"` | `getSignedUrlByKey(key)` — env-derived, already imported |
+| `categoryDisplaySettingsController.js` ×2 | same | same |
+| `imageUrlHelper.js` | hardcoded const | `ASSET_BASE_URL` from `REACT_APP_ASSET_BASE_URL`, literal as default |
+| `CategoryDisplaySettings.js`, `topBanner.js` ×2, `mrpInsights.js` | inline literals | import from `imageUrlHelper` |
+| `public/index.html` preconnect | hardcoded | `%REACT_APP_ASSET_BASE_URL%` |
+| `ci-frontend-deploy.yml` | — | added as a repository **variable** (not a secret) |
+
+**Two of the nine server constants were dead code** — declared at `categoryController.js` 600 and 721
+and never referenced.
+
+### The client had the same repeated-prefix bug as the server
+
+`normalizeImageUrl` removed exactly one duplicated base URL, the same defect fixed server-side in 0.3.
+Now collapses any depth. Verified against real values:
+
+```
+doubled (live prod response)   -> …/businessList/banners/banner-1766578459445.jpg
+quadrupled (live DB value)     -> …/businessList/banners/banner-1768806705739.jpg
+external host                  -> unchanged
+```
+
+**PROD IS SERVING A DOUBLED URL TO USERS RIGHT NOW** — `/seopagecontentblog/viewall` returns
+`https://<host>/https://<host>/businessList/banners/…` for two entries. So this was never theoretical.
+Note the client fix stops the *doubling*, but those two objects are also genuinely absent from the
+bucket (they are in the 45/46 baseline), so they stay broken until the underlying data is fixed.
+
+### `server/scripts/checkPublicImageUrls.js` (new)
+
+Hits the real API, walks every JSON response for S3 references, HEADs each, reports non-200 with the
+endpoint and JSON path. Read-only. Also the R.5 / R.9 before-and-after diff tool.
+
+```bash
+node server/scripts/checkPublicImageUrls.js --api=https://dev-api.massclick.in/api --out=before.json
+node server/scripts/checkPublicImageUrls.js --api=... --compare=before.json     # must exit 0
+```
+
+**Results 2026-08-11** (baselines saved to `_migrations/s3-key-restructure/imgcheck-2026-08-11-*.json`):
+
+```
+dev   17/17 endpoints 2xx   632/635 assets resolve   3 broken
+prod  17/17 endpoints 2xx   657/662 assets resolve   5 broken
+```
+
+Every broken asset is `seopagecontentblog.businessDetails[].bannerImage`, and all three on dev were
+**verified present in the 0.1 scan's missing list** — pre-existing, not caused by this work.
+
+**The gate is the diff, not zero.** Standalone the script exits 1 while any pre-existing breakage
+remains; `--compare` against a baseline is the real check, and it was validated end-to-end:
+`NEWLY broken: 0`, exit 0.
+
+**Two endpoints are excluded because they require auth** (`/massclick-feed/posts`,
+`/massclick-documents/viewall` → 401), as are the signed-URL-only résumé and reward-evidence paths.
+Those are covered by `verify`'s HeadObject pass plus one manual download each — that is how risk 9 is
+retired. The exclusion is documented in the script so nobody re-adds them and gets a red run.
+
+### ⏳ USER ACTION — set the GitHub repository variable
+
+`REACT_APP_ASSET_BASE_URL` must be added as a repository **variable** (Settings → Secrets and variables
+→ Actions → Variables), value `https://massclickdev.s3.ap-southeast-2.amazonaws.com`. A **variable, not
+a secret**: it is a public hostname that ships in the bundle anyway, and masking it only makes build
+logs harder to read.
+
+If it is left unset the build still succeeds — `imageUrlHelper.js` defaults to the same literal — but
+the `index.html` preconnect degrades to a no-op, losing the LCP head-start that the comment there says
+is worth hundreds of milliseconds.
+
+---
+
 ## Active run
 
 ```
@@ -422,6 +496,7 @@ Also: **never `move`.** Copy, verify, rewrite, soak, then sweep. The bucket is s
 | 2 | SSH tunnel to `127.0.0.1:27018` | ✅ **UP** — verified 2026-08-11, both DBs reachable, full scan completed over it |
 | 3 | 0.1 baseline needs user review before 0.2+ proceeds | **AWAITING USER** |
 | 4 | Repair the 4,442 (prod) / 4,443 (dev) businesses whose `qrCode.qrText` + `createdAt` were wiped by bug 3? Self-heals on view; a bulk repair is a DB write needing a `--collections businesslists` backup first. **If done at all, do prod FIRST then re-clone** — repairing dev before a re-clone is wasted | **USER DECISION** — not blocking |
+| 6 | Add GitHub repository **variable** `REACT_APP_ASSET_BASE_URL` = `https://massclickdev.s3.ap-southeast-2.amazonaws.com` (Settings → Secrets and variables → Actions → Variables). Build still succeeds without it; only the `index.html` preconnect degrades | **USER ACTION** — not blocking |
 | 5 | **Prod is under active data entry.** User is waiting for it to settle, then re-cloning prod → dev (stated 2026-08-11). Fine before `plan`, **destructive between `plan` and R.9** — see "Do NOT do" rule 5. Re-run `scan` on dev afterwards to refresh the baseline. Blocks nothing: 0.4–0.7 are code only and touch no database | **WAITING ON PROD — tell Claude when the clone happens** |
 
 ---
@@ -557,6 +632,7 @@ massClick refs         31,789       31,843       +54
 
 | Date | What happened |
 |---|---|
+| 2026-08-11 | **0.5 done.** 15 hardcoded bucket URLs → 0 (2 of the 9 server ones were dead code). Client now reads `REACT_APP_ASSET_BASE_URL` with the literal as a default so an unset var cannot break a build. Found and fixed the **client-side twin of 0.3's repeated-prefix bug** — and `checkPublicImageUrls.js` caught **prod serving a doubled URL to real users** on `/seopagecontentblog/viewall`. Built that checker (also the R.5/R.9 diff tool) and captured dev + prod baselines: 632/635 and 657/662 assets resolve, every failure a pre-existing `businessDetails[].bannerImage` verified against the 0.1 missing list. `--compare` validated end-to-end: newly broken 0, exit 0. **User action: add the `REACT_APP_ASSET_BASE_URL` repo variable.** |
 | 2026-08-11 | **0.4 code done, 22/22 mechanism gate green; browser check still owed by the user.** Built `server/utils/assetUrl.js`. Key finding that scoped it: **31 of the 32 upload paths end in `Date.now()`**, so only `businessList/qr/review-<id>` is deterministic today — the one-year `max-age` is mostly a risk *Phase 1 creates*, which is why 0.4 precedes it. Wired the five review-QR render paths only; the rest belong in 1.4 behind the lint gate. Verified the version fallback on real dev data across all three cases (createdAt present / wiped by 0.3 bug 3 / absent). |
 | 2026-08-11 | **0.3 done, gate green (31/31).** Extracted `server/utils/s3KeyUtils.js` as the single copy and repointed all four callers. Found **three** bugs where the plan expected one — and bug 3 had already fired: building the `$set` payload with `setByPath` meant `$set: {qrCode:{qrImageKey}}` replaced the whole subdocument, wiping `qrText` and `createdAt` on **4,442 prod / 4,443 dev** businesses. Proven by cross-tab: every loss is a `.webp` key, zero losses among non-webp. Damage is bounded — `qrText` is derived and self-heals on next view against a deterministic key. Bulk repair left as a user decision (open question 4). |
 | 2026-08-11 | **0.2 complete.** Access logging repointed off the asset bucket onto `massclick-access-logs` (caught at 0 delivered logs, before it could contaminate the orphan accounting). Applied `expire-noncurrent-90d` to `massclickdev` by API rather than console — explicit JSON means the "expire current versions" footgun is absent rather than unticked — and read it back: `rules expiring CURRENT versions: 0`. Side effect worth knowing: `undelete` now works for 90 days after the sweep, not 30. Log-bucket lifecycle still needs one IAM ARN. |

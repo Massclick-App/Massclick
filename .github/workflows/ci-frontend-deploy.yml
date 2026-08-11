@@ -42,6 +42,12 @@ jobs:
           REACT_APP_WHATSAPP_COMMUNITY_URL: ${{ secrets.REACT_APP_WHATSAPP_COMMUNITY_URL }}
           # GA4 measurement id (G-XXXXXXX) — without this, GA4 never initializes in the prod build
           REACT_APP_GA_MEASUREMENT_ID: ${{ secrets.REACT_APP_GA_MEASUREMENT_ID }}
+          # S3 asset host, e.g. https://massclickdev.s3.ap-southeast-2.amazonaws.com
+          # A repository VARIABLE, not a secret — it is a public hostname that ships in
+          # the bundle anyway, and masking it in build logs only makes failures harder to
+          # read. src/utils/imageUrlHelper.js defaults to the dev bucket if this is unset,
+          # so an unset var cannot break the build — it just serves dev images.
+          REACT_APP_ASSET_BASE_URL: ${{ vars.REACT_APP_ASSET_BASE_URL }}
         run: CI=false npm run build
 
       - name: Setup SSH key

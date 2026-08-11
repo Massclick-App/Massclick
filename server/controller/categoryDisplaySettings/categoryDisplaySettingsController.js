@@ -62,7 +62,6 @@ const FALLBACK_SERVICE_SECTIONS_MOBILE = [
 
 const normalize = (name) => name.toLowerCase().replace(/s$/, "").trim();
 
-const S3_BASE_URL = "https://massclickdev.s3.ap-southeast-2.amazonaws.com/";
 
 /** Build a parentSlug → [{ name }] lookup from DB settings or fall back to hardcoded. */
 const buildSubCatLookup = (settings) => {
@@ -220,8 +219,8 @@ export const getV2HomeCategoriesAction = async (req, res) => {
             _id: found._id,
             name: found.category,
             slug: found.slug,
-            icon: found.categoryImageKey ? `${S3_BASE_URL}${found.categoryImageKey}` : null,
-            liveImage: found.liveImageKey ? `${S3_BASE_URL}${found.liveImageKey}` : null,
+            icon: found.categoryImageKey ? getSignedUrlByKey(found.categoryImageKey) : null,
+            liveImage: found.liveImageKey ? getSignedUrlByKey(found.liveImageKey) : null,
             hasSubcategories,
             subCategoryCount,
           }
@@ -264,8 +263,8 @@ export const getV2MobileHomeCategoriesAction = async (req, res) => {
             _id: found._id,
             name: found.category,
             slug: found.slug,
-            icon: found.categoryImageKey ? `${S3_BASE_URL}${found.categoryImageKey}` : null,
-            liveImage: found.liveImageKey ? `${S3_BASE_URL}${found.liveImageKey}` : null,
+            icon: found.categoryImageKey ? getSignedUrlByKey(found.categoryImageKey) : null,
+            liveImage: found.liveImageKey ? getSignedUrlByKey(found.liveImageKey) : null,
             hasSubcategories,
             subCategoryCount,
           }
@@ -315,8 +314,8 @@ export const getV2PopularCategoriesAction = async (req, res) => {
             _id: found._id,
             name: found.category,
             slug: found.slug,
-            icon: found.categoryImageKey ? `${S3_BASE_URL}${found.categoryImageKey}` : null,
-            liveImage: found.liveImageKey ? `${S3_BASE_URL}${found.liveImageKey}` : null,
+            icon: found.categoryImageKey ? getSignedUrlByKey(found.categoryImageKey) : null,
+            liveImage: found.liveImageKey ? getSignedUrlByKey(found.liveImageKey) : null,
             hasSubcategories,
             subCategoryCount,
           }
@@ -463,7 +462,6 @@ export const getV2SubCategoriesAction = async (req, res) => {
     const settings = await categoryDisplaySettingsModel.findOne().lean();
     const subCatLookup = buildSubCatLookup(settings);
 
-    const BASE_URL = "https://massclickdev.s3.ap-southeast-2.amazonaws.com/";
 
     const normalizeSlug = (text = "") =>
       text.toLowerCase().trim().replace(/[-_\s]+/g, " ");
@@ -502,8 +500,8 @@ export const getV2SubCategoriesAction = async (req, res) => {
           _id: item._id,
           name: item.category,
           slug: item.slug,
-          icon: item.categoryImageKey ? `${BASE_URL}${item.categoryImageKey}` : "",
-          liveImage: item.liveImageKey ? `${BASE_URL}${item.liveImageKey}` : null,
+          icon: item.categoryImageKey ? getSignedUrlByKey(item.categoryImageKey) : "",
+          liveImage: item.liveImageKey ? getSignedUrlByKey(item.liveImageKey) : null,
         }))
       );
     }
@@ -658,7 +656,7 @@ export const getV2DistrictCategoriesAction = async (req, res) => {
         _id: cat._id,
         name: cat.category,
         slug: cat.slug,
-        icon: cat.categoryImageKey ? `${S3_BASE_URL}${cat.categoryImageKey}` : null,
+        icon: cat.categoryImageKey ? getSignedUrlByKey(cat.categoryImageKey) : null,
         count: countByCategory.get(String(cat.category || "").toLowerCase().trim()) || 0,
       }))
       // Only categories with real presence in this district — an empty tile

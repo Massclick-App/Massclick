@@ -74,7 +74,12 @@
        element) come from here, and the cold DNS+TCP+TLS handshake to
        ap-southeast-2 otherwise delays the LCP fetch by hundreds of ms.
        No crossorigin: <img> fetches are non-CORS, so the connection must match. -->
-  <link rel="preconnect" href="https://massclickdev.s3.ap-southeast-2.amazonaws.com" />
+  <!-- CRA substitutes %REACT_APP_ASSET_BASE_URL% at build time. Unlike the JS side
+       (src/utils/imageUrlHelper.js) this cannot carry a fallback, so if the var is
+       unset the tag degrades to a no-op preconnect: images still load correctly, the
+       LCP head-start is just lost. Set REACT_APP_ASSET_BASE_URL as a repository
+       VARIABLE in GitHub Actions to keep it. -->
+  <link rel="preconnect" href="%REACT_APP_ASSET_BASE_URL%" />
 
   <!-- DNS Prefetch for critical services -->
   <link rel="dns-prefetch" href="//www.googletagmanager.com" />
