@@ -354,7 +354,7 @@ Also: **never `move`.** Copy, verify, rewrite, soak, then sweep. The bucket is s
 | 2 | SSH tunnel to `127.0.0.1:27018` | ✅ **UP** — verified 2026-08-11, both DBs reachable, full scan completed over it |
 | 3 | 0.1 baseline needs user review before 0.2+ proceeds | **AWAITING USER** |
 | 4 | Repair the 4,442 (prod) / 4,443 (dev) businesses whose `qrCode.qrText` + `createdAt` were wiped by bug 3? Self-heals on view; a bulk repair is a DB write needing a `--collections businesslists` backup first. **If done at all, do prod FIRST then re-clone** — repairing dev before a re-clone is wasted | **USER DECISION** — not blocking |
-| 5 | User intends to re-clone prod → dev "later" (stated 2026-08-11). Fine before `plan`, **destructive between `plan` and R.9** — see "Do NOT do" rule 5. Re-run `scan` on dev afterwards to refresh the baseline | **TIMING — tell Claude when it happens** |
+| 5 | **Prod is under active data entry.** User is waiting for it to settle, then re-cloning prod → dev (stated 2026-08-11). Fine before `plan`, **destructive between `plan` and R.9** — see "Do NOT do" rule 5. Re-run `scan` on dev afterwards to refresh the baseline. Blocks nothing: 0.4–0.7 are code only and touch no database | **WAITING ON PROD — tell Claude when the clone happens** |
 
 ---
 
@@ -452,6 +452,26 @@ banner. Each needs one newKey per owning document — 75 extra byte-copies, whic
    **Consequence: `evidenceFiles[]` and `history[]` will have no live coverage during the rehearsals** —
    the `arrayOfObjects` kind gets exercised by `mediaItems[]`, `businessDetails[]` and the two
    `categorydisplaysettings` arrays instead.
+
+### The baseline is a MOVING TARGET — prod is under active data entry
+
+Two scans an hour apart on 2026-08-11 measured the drift directly:
+
+```
+                       09:34        10:38      delta
+bucket objects         36,384       36,437       +53
+massClick refs         31,789       31,843       +54
+```
+
+~50 new objects/hour of real traffic. Consequences:
+
+- **Re-run `scan` shortly before the run.** `verify` at R.5 compares the miss count against *a*
+  baseline; comparing against a stale one either fails spuriously or hides a real regression.
+- The invariants are what's stable, not the absolutes. **Genuine cross-DB conflicts: 0** and
+  **missing: 45** both held across the two runs; only the totals moved.
+- This is the concrete argument for **"Do NOT do" rule 1**: the path registry must ship before `plan`,
+  so new uploads land on canonical keys and fall outside the manifest. Against a prod adding ~50
+  objects an hour, a manifest built too early is stale before it runs.
 
 ### What this baseline does NOT cover
 
