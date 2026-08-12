@@ -1,19 +1,25 @@
 # S3 Key Restructure — Progress
 
-**Last updated:** 2026-08-11 by Claude · **Active runId:** none
-**Current step:** 1.3 · **Status:** Phase 0 COMPLETE and deployed to dev+prod · 1.1+1.2 done · **1.3 is the next action**
+**Last updated:** 2026-08-12 by Claude · **Active runId:** none
+**Current step:** 1.4 · **Status:** Phase 0 COMPLETE and deployed to dev+prod · 1.1+1.2+1.3 done · **1.4 (migrate 51 call sites) is the next action**
 
-### Everything Phase 0 built — one place
+### Everything Phase 0 + 1.3 built — one place
+
+Run every gate from `server/` — dotenv loads `server/.env` from cwd, so running from the
+repo root throws `AWS S3 bucket not configured in env` (verified 2026-08-12):
 
 ```bash
-node server/scripts/verifyS3KeyUtils.js                     # 0.3 gate   31/31
-node server/scripts/verifyAssetUrl.js                       # 0.4 gate   22/22
-node server/scripts/verifyS3ObjectKeys.js                   # 1.1+1.2    63/63
-node server/scripts/s3KeyMigration.js collections           # 0.1  registry -> backup list
-node server/scripts/s3KeyMigration.js scan --uri=… --compare-uri=…   # 0.1  baseline
-node server/scripts/s3KeyMigration.js flush-caches [--commit]        # 0.7
-node server/scripts/checkPublicImageUrls.js --api=… [--compare=…]    # 0.5  no-broken-images
-node server/scripts/fixRatingPhotos.js --uri=… [--commit]            # 0.6  data repair
+cd server
+node scripts/verifyS3KeyUtils.js                            # 0.3 gate   31/31
+node scripts/verifyAssetUrl.js                               # 0.4 gate   22/22
+node scripts/verifyS3ObjectKeys.js                           # 1.1+1.2    63/63
+node scripts/verifyS3PathEnforcement.js                       # 1.3 a+c    22/22
+node scripts/lintS3Paths.js                                   # 1.3 b      EXPECTED TO FAIL until 1.4 — 51 sites/22 files, 0 bucket leaks
+node scripts/s3KeyMigration.js collections                    # 0.1  registry -> backup list
+node scripts/s3KeyMigration.js scan --uri=… --compare-uri=…   # 0.1  baseline
+node scripts/s3KeyMigration.js flush-caches [--commit]         # 0.7
+node scripts/checkPublicImageUrls.js --api=… [--compare=…]     # 0.5  no-broken-images
+node scripts/fixRatingPhotos.js --uri=… [--commit]              # 0.6  data repair
 ```
 
 New modules: `utils/s3ScopeRegistry.js` · `utils/s3KeyUtils.js` · `utils/assetUrl.js` · `utils/s3ObjectKeys.js` · `utils/idGen.js`
@@ -93,8 +99,8 @@ objects, same field shapes, same volume.
 | 0.8 | Deploy 0.3–0.7 dev → prod | 🟡 DEV DONE | dev `e24522c6` verified: flush ok, image diff **NEWLY broken 0** · **needs redeploy for `fb515f29`** · prod untouched |
 | 1.1 | `s3ObjectKeys.js` path registry | ✅ DONE | `verifyS3ObjectKeys.js` → 63/63 |
 | 1.2 | `idGen.js` ULID | ✅ DONE | same gate |
-| 1.3 | Enforcement: chokepoint + lint + `deleteEntityAssets` | ⬜ **NEXT** | lint reports 0 legacy call sites |
-| 1.4 | Migrate 51 call sites across 21 files | ⬜ | lint gate passes, then flip mode to strict |
+| 1.3 | Enforcement: chokepoint + lint + `deleteEntityAssets` | 🟡 **SHIPPED IN WARN MODE** | `verifyS3PathEnforcement.js` 22/22 · `lintS3Paths.js` finds 51 sites/22 files (correctly FAILING — that's 1.4's list, not a bug) |
+| 1.4 | Migrate 51 call sites across 22 files | ⬜ **NEXT** | lint gate passes 0/0, then flip `S3_PATH_MODE=strict` as the final commit |
 | 1.5 | Deploy Phase 1 dev → prod | ⬜ | smoke clean; **new uploads now canonical** |
 | 2.1–2.2 | Scope registry + `s3KeyMigration.js` (reverse/resume/doctor) | ⬜ | — |
 | 2.3 | Monitoring card + 5 admin endpoints (no `/start`) | ⬜ | stale lease shows the warning, not progress |
@@ -786,30 +792,79 @@ stable+seq  {entity}/{entityId}/{purpose}/{seq}      only categories/variant, 6 
 Keys carry **no extension** — `uploadImageToS3` appends it at [s3Uploder.js:59](server/s3Uploder.js:59),
 since only it knows whether sharp converted the buffer to webp.
 
-### 1.3 — NEXT. Three pieces, and one decision already taken
+### 1.3 — DONE 2026-08-12, shipped in `warn` mode
 
-1. **`resolveUploadPath()` in `s3Uploder.js`** — accepts a branded token, or a plain string only
-   if `isCanonicalKey()` passes. Route `const s3Key = ...` at line 59 through it.
-2. **`server/scripts/lintS3Paths.js`** — fails on any `uploadImageToS3(` whose 2nd argument is a
-   template literal or concatenation, and on `massclickdev.s3` outside `.env`. It should also
-   **enumerate the remaining legacy call sites**, since that list is 1.4's burndown.
-3. **`deleteEntityAssets(entity, entityId)`** — cascade delete via `entityPrefix()`. Must refuse
-   to delete anything that is not under the canonical prefix.
+All three pieces landed in one commit alongside this update.
 
-**DECISION — enforcement ships in `warn` mode first.** There are **51 call sites across 21 files**
-still passing legacy template literals. A chokepoint that throws today breaks every image upload
-in the app the moment it is deployed, and dev/prod are being deployed on the user's own schedule.
-So: `S3_PATH_MODE` env var, default `warn` (log every offender with its call site, keep working),
-**flipped to `strict` as the final commit of 1.4** once the lint script reports zero legacy sites.
-**Until that flip the plan's "bypass impossible" requirement is NOT met** — do not mark 1.3 as
-fully retiring anything.
+1. **`resolveUploadPath()` in `server/s3Uploder.js`** — accepts a branded `s3Path()` token
+   (returns `.key`), or a plain string only if `isCanonicalKey()` passes. `const s3Key = ...`
+   at what was line 59 now routes through it. `S3_PATH_MODE` env var, default `warn`: a legacy
+   string still uploads (return unchanged) but logs one warning per distinct `(path, call site)`
+   pair via `console.warn`, naming the offending path and the caller's stack frame. `strict`
+   throws instead. An unrecognised `S3_PATH_MODE` value throws at import time.
+2. **`server/scripts/lintS3Paths.js`** — static, read-only scan of `server/` and
+   `client/ui-app/src`. Fails on any `uploadImageToS3(` call whose 2nd argument is a template
+   literal or a string concatenation, including a one-hop back-reference when the argument is a
+   bare identifier assigned one line earlier (`trackedKeywordHelper.js`, `fcmAdminController.js`,
+   `categoryDisplaySettingsController.js` all build the path into a variable first — a plain
+   per-call-site check alone would have missed these 3). Also fails on the literal
+   `massclickdev.s3` outside two documented exceptions: the 0.5 fallback default in
+   `imageUrlHelper.js`, and a synthetic base URL used only as fixture input inside
+   `verifyS3KeyUtils.js`'s own tests. **Run it — it is *expected* to exit 1 right now: 51 legacy
+   call sites across 22 files, 0 bucket-literal leaks.** That list is 1.4's todo, not a defect in
+   this script.
+3. **`deleteEntityAssets(entity, entityId)`** in `server/s3Uploder.js` — cascade delete via
+   `entityPrefix()`, which throws for a malformed entity/entityId *before* any AWS call, so a bad
+   call fails closed with no network involved. Every key S3 lists under that prefix is then
+   re-checked with `belongsToEntity()` (a real registry parse, not a bare string-prefix test),
+   and the **whole page is refused — nothing deleted — if even one key fails to parse** as owned
+   by that entity. Nothing calls this yet; 1.4/2.x wires it up. Not reversible the way a key
+   rewrite is — only S3 versioning (0.2, Enabled) makes a delete undoable, via `undelete`.
 
-⚠️ A first attempt at 1.3 was reverted: a Python heredoc mangled an escape and left
-`s3Uploder.js` syntactically broken. It is restored from git and imports cleanly. **Edit that file
-with the Edit tool, not a heredoc** — it has mixed CRLF/LF endings (106 CRLF / 38 LF) and is
-imported by everything.
+**New gate:** `server/scripts/verifyS3PathEnforcement.js` — 22/22 green. Proves warn-mode
+does-not-throw + logs once (deduped by call site, not just by path — verified by exercising the
+*same* logging call twice via a loop, since two textually different call expressions on one line
+are, correctly, two different call sites), strict-mode throws, and `deleteEntityAssets`'s guard
+rejects before any network call. Reads nothing, writes nothing, no S3, no database.
 
-### 1.4 — the call-site inventory
+**DECISION (already taken, held): enforcement ships in `warn` mode first.** A chokepoint that
+throws today breaks every image upload the moment it deploys, and dev/prod deploy on the user's
+own schedule. `S3_PATH_MODE` defaults to `warn`; **flip to `strict` only as the final commit of
+1.4**, once `lintS3Paths.js` reports 0/0. **Until that flip the plan's "bypass impossible"
+requirement is NOT met** — 1.3 does not retire anything by itself; it makes bypass *visible*.
+
+**Two things worth knowing for a fresh session:**
+
+- **`lintS3Paths.js` found one real call site the hand-written inventory below had missed**:
+  `server/scripts/fixRatingPhotos.js:128` (the 0.6 repair script, mirroring
+  `reviewHelper.js:62`'s `${prefix}photo-${Date.now()}-${i}` shape exactly). The doc's original
+  "51 across 21 files" prose was actually 50 across 21 in the hand count — the static scanner is
+  now the source of truth at **51 across 22 files**, and the table below is corrected to match.
+- **`/server/scripts` is entirely gitignored** (`.gitignore:87`). The existing gate scripts
+  (`verifyS3KeyUtils.js`, `verifyAssetUrl.js`, etc.) are tracked only because a past session ran
+  `git add -f` on each one individually. **A new script in that directory needs the same
+  `git add -f`, or it silently never gets committed** — `git status` shows nothing wrong, there is
+  no untracked-file warning, it just isn't there. Hit this for both new 1.3 scripts.
+
+⚠️ **A real CRLF-churn incident, distinct from the earlier heredoc one:** editing
+`server/s3Uploder.js` with the Edit tool (correctly, no heredoc) still normalised the whole file
+to uniform CRLF, flipping the ~38 lines that were originally bare LF (the tail: `getImageDataUrlByKey`,
+`getObjectBufferByKey`, `deleteObjectByKey`) even though their content never changed. First
+`git diff --numstat` read `159 insertions(+) 40 deletions(-)` against ~110 real new lines — the
+tell. Fixed by reconstructing the file in Node (`latin1` round-trip to stay byte-exact, since the
+file is UTF-8 and em-dashes are multi-byte): current head (genuinely new content) + the ORIGINAL
+bytes for the untouched tail (sliced straight from `git show HEAD:...`, not re-typed) + the new
+`deleteEntityAssets` block. Final diff: 121 insertions / 2 deletions — exactly the real change.
+**Lesson: after ANY edit to a mixed-EOL file, check `git diff --numstat` before moving on — not
+just "is it a big number" but "does insertions-minus-deletions roughly equal what I actually
+typed." A `sed` pipeline is not safe for this repair either**: on this machine `sed` piping
+through `/tmp` silently stripped every `\r`, corrupting a first repair attempt — use Node with
+explicit `latin1` reads/writes on files addressed by their real Windows path instead.
+
+### 1.4 — the call-site inventory (corrected: 51 sites / 22 files — see above)
+
+Regenerate with `node scripts/lintS3Paths.js --json=<path>` for the exact per-line list; this
+table is the by-file rollup for tracking burndown.
 
 ```
 helper/businessList/businessListHelper.js          11      helper/rewards/rewardHelper.js               1
@@ -823,6 +878,7 @@ helper/event/eventCreationHelper.js                 2      helper/businessList/b
 helper/event/eventAdvertisementHelper.js            2      controller/msg91/msg91Controller.js          1
 controller/fcmAdminController.js                    1      controller/category/categoryImageController.js 1
 controller/categoryDisplaySettings/categoryDisplaySettingsController.js 1
+scripts/fixRatingPhotos.js (found by lintS3Paths.js, not in the original hand count)         1
 ```
 
 **Ordering rule for 1.4, from the plan:** where an upload precedes document creation, always
@@ -1057,6 +1113,7 @@ massClick refs         31,789       31,843       +54
 
 | Date | What happened |
 |---|---|
+| 2026-08-12 | **1.3 done, shipped in `warn` mode.** `resolveUploadPath()` chokepoint in `s3Uploder.js` (token or canonical string passes through; legacy string warns once per call site and keeps working; strict mode throws — controlled by `S3_PATH_MODE`, default `warn`). `deleteEntityAssets(entity, entityId)` cascade delete, refuses the whole page if any listed key fails `belongsToEntity()`. `lintS3Paths.js` static scanner — found **51 legacy call sites across 22 files** (one more than the hand-written inventory: `scripts/fixRatingPhotos.js:128`, mirroring `reviewHelper.js`'s pattern), 0 bucket-literal leaks; it is *correctly* failing right now, that failure IS 1.4's todo list. New gate `verifyS3PathEnforcement.js`, 22/22, all four gates plus the new one re-run clean. **Two process gotchas hit and fixed:** the Edit tool normalised `s3Uploder.js`'s mixed CRLF/LF to uniform CRLF, corrupting `git diff --numstat` with ~40 lines of pure line-ending noise — repaired via a byte-exact Node/`latin1` reconstruction pulling the original bytes back from `git show HEAD:...` (a `sed`-based first attempt silently stripped all `\r` and made it worse); and `/server/scripts` is entirely gitignored, so both new scripts needed `git add -f` or they'd have been silently left uncommitted. |
 | 2026-08-11 | **0.7 code done.** `flush-caches` added to the migration CLI — dry-run by default, discovers invalidators by reflection (verified: all 7), reports cached-key counts before/after, and refuses to run at all if Redis is unreachable. **Risk 6's premise turns out to be wrong:** `prerender-node` is a dependency but is imported nowhere, `app.js` never references it, and `prerenderServer.js` is standalone with a hardcoded Windows Chrome path. Either prerendering is not deployed or it lives in nginx outside this repo. The command handles both — POSTs to `PRERENDER_PURGE_URL` when set, otherwise prints an explicit SKIPPED. Two user items: confirm whether prerender is deployed, and run the flush once against a real Redis (not reachable from this machine). |
 | 2026-08-11 | **0.6 code done; data repair awaiting approval.** Fixed the unvalidated `ratingPhotos` write path — it was the only writer that trusted the request body, and the field renders as an image URL. Measured the stored data and it is **not** the injected keys the plan assumed: 50 prod entries / 20.4 MB of **inline base64**, with one review document at **11.30 MB — 71% of MongoDB's hard 16 MB limit**, i.e. a few photos from being unwritable. Repair therefore uploads-and-replaces instead of quarantining. Built `fixRatingPhotos.js` (dry-run default) and ran it on both DBs: nothing would be lost. Prod `--commit` needs a backup and the user's go-ahead, and should be paired with the `qrText` repair before the re-clone. |
 | 2026-08-11 | **0.5 done.** 15 hardcoded bucket URLs → 0 (2 of the 9 server ones were dead code). Client now reads `REACT_APP_ASSET_BASE_URL` with the literal as a default so an unset var cannot break a build. Found and fixed the **client-side twin of 0.3's repeated-prefix bug** — and `checkPublicImageUrls.js` caught **prod serving a doubled URL to real users** on `/seopagecontentblog/viewall`. Built that checker (also the R.5/R.9 diff tool) and captured dev + prod baselines: 632/635 and 657/662 assets resolve, every failure a pre-existing `businessDetails[].bannerImage` verified against the 0.1 missing list. `--compare` validated end-to-end: newly broken 0, exit 0. **User action: add the `REACT_APP_ASSET_BASE_URL` repo variable.** |
