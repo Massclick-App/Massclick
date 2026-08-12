@@ -6,7 +6,7 @@ const whatsappMessageAuditSchema = new mongoose.Schema(
     messageType: { type: String, default: "template" },
     sourceType: {
       type: String,
-      enum: ["search_lead", "customer_list", "mni", "enquiry", "welcome", "manual", "unknown"],
+      enum: ["search_lead", "customer_list", "mni", "enquiry", "welcome", "manual", "search_request_completed", "unknown"],
       default: "unknown",
       index: true,
     },
