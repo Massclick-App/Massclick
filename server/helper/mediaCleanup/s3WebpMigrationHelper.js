@@ -18,6 +18,13 @@ import {
   invalidateSearchCache,
   invalidateSeoCache,
 } from "../../utils/cacheInvalidation.js";
+import {
+  extractS3Key,
+  getByPath,
+  isWebpKey,
+  setUpdatePath,
+  toWebpKey,
+} from "../../utils/s3KeyUtils.js";
 
 dotenv.config({
   path: fileURLToPath(new URL("../../.env", import.meta.url)),
@@ -222,56 +229,6 @@ export const getSupportedWebpMigrationScopes = () =>
     scopeDescription: scope.scopeDescription,
     folderPrefix: scope.folderPrefix,
   }));
-
-const extractS3Key = (value) => {
-  if (!value || typeof value !== "string") return "";
-  const trimmed = value.trim();
-  if (!trimmed) return "";
-
-  if (!trimmed.startsWith("http")) {
-    return trimmed;
-  }
-
-  try {
-    if (trimmed.includes("/https://")) {
-      const match = trimmed.match(/\/https:\/\/[^/]+\/(.+?)(?:\?|$)/);
-      if (match?.[1]) return match[1];
-    }
-
-    const urlObj = new URL(trimmed);
-    return urlObj.pathname.replace(/^\/+/, "");
-  } catch {
-    return trimmed;
-  }
-};
-
-const isWebpKey = (value) => {
-  const key = extractS3Key(value).toLowerCase();
-  return key.endsWith(".webp");
-};
-
-const toWebpKey = (value) => {
-  const key = extractS3Key(value);
-  if (!key) return "";
-  if (key.toLowerCase().endsWith(".webp")) return key;
-  return key.replace(/\.[^.\/]+$/, "") + ".webp";
-};
-
-const getByPath = (obj, path) =>
-  path.split(".").reduce((acc, part) => (acc ? acc[part] : undefined), obj);
-
-const setByPath = (obj, path, value) => {
-  const parts = path.split(".");
-  let cursor = obj;
-  for (let i = 0; i < parts.length - 1; i += 1) {
-    const part = parts[i];
-    if (!cursor[part] || typeof cursor[part] !== "object") {
-      cursor[part] = {};
-    }
-    cursor = cursor[part];
-  }
-  cursor[parts[parts.length - 1]] = value;
-};
 
 const incrementFailureBucket = (bucket, failure) => {
   if (bucket.length < 25) {
@@ -499,7 +456,7 @@ const processDocument = async (doc, jobRecord, cache, scopeConfig) => {
       }
 
       if (fieldChanged) {
-        setByPath(updates, field.path, nextValues);
+        setUpdatePath(updates, field.path, nextValues);
         changedPaths.push(field.path);
       }
       continue;
@@ -539,7 +496,7 @@ const processDocument = async (doc, jobRecord, cache, scopeConfig) => {
       }
 
       if (fieldChanged) {
-        setByPath(updates, field.path, nextObject);
+        setUpdatePath(updates, field.path, nextObject);
         changedPaths.push(field.path);
       }
       continue;
@@ -561,7 +518,7 @@ const processDocument = async (doc, jobRecord, cache, scopeConfig) => {
     });
 
     if (changed) {
-      setByPath(updates, field.path, nextValue);
+      setUpdatePath(updates, field.path, nextValue);
       changedPaths.push(field.path);
     }
     if (deleteSource) {
@@ -577,7 +534,7 @@ const processDocument = async (doc, jobRecord, cache, scopeConfig) => {
     return { changed: false, failures: failedEntries };
   }
 
-  setByPath(updates, "updatedAt", new Date());
+  setUpdatePath(updates, "updatedAt", new Date());
   await scopeConfig.model.updateOne({ _id: doc._id }, { $set: updates });
 
   if (scopeConfig.progressKey === "businesses") {

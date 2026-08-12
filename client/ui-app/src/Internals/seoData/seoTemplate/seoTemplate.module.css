@@ -170,6 +170,206 @@
   font-weight: 600;
 }
 
+.editor-title p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.editor-title code {
+  background: #f3f4f6;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 1px 6px;
+}
+
+.table-section-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.small-primary-button,
+.table-controls button,
+.table-column-actions button {
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.small-primary-button {
+  padding: 8px 14px;
+  white-space: nowrap;
+}
+
+.empty-helper {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.table-editor {
+  margin-top: 18px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  background: #fbfdff;
+}
+
+.table-editor-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.table-editor-header h4 {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.98rem;
+}
+
+.table-editor-header span {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.danger-text-button {
+  align-self: flex-start;
+  border: 0;
+  background: transparent;
+  color: #dc2626;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.table-options {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  gap: 14px;
+  margin-top: 16px;
+  align-items: end;
+}
+
+.table-options label {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.table-options input[type="text"],
+.table-options label > input:not([type]) {
+  display: block;
+  width: 100%;
+  height: 40px;
+  margin-top: 6px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  box-sizing: border-box;
+  font: inherit;
+  padding: 8px 10px;
+}
+
+.checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+}
+
+.checkbox-field input {
+  width: 16px;
+  height: 16px;
+}
+
+.table-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.table-controls button {
+  padding: 7px 11px;
+}
+
+.table-grid-scroll {
+  margin-top: 14px;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.table-grid {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+}
+
+.table-grid td {
+  border: 1px solid #e5e7eb;
+  padding: 8px;
+  vertical-align: top;
+}
+
+.table-grid textarea {
+  display: block;
+  width: 100%;
+  min-height: 58px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  box-sizing: border-box;
+  color: var(--text);
+  font: inherit;
+  line-height: 1.35;
+  padding: 8px;
+  resize: vertical;
+}
+
+.table-grid textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(255, 140, 0, 0.12);
+}
+
+.table-row-actions {
+  width: 44px;
+  text-align: center;
+}
+
+.table-row-actions button {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 14px;
+  background: #fee2e2;
+  color: #b91c1c;
+  cursor: pointer;
+}
+
+.table-row-actions button:disabled,
+.table-column-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.table-column-actions td {
+  text-align: center;
+  background: #f8fafc;
+}
+
+.table-column-actions button {
+  padding: 6px 9px;
+  font-size: 0.78rem;
+}
+
 .editor-wrapper {
   margin-top: 14px;
   border: 1px solid var(--border);
@@ -253,6 +453,39 @@
   color: var(--text);
 }
 
+.preview-body [data-seo-table] {
+  margin: 14px 0;
+  overflow-x: auto;
+}
+
+.preview-body [data-seo-table] table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+}
+
+.preview-body [data-seo-table] caption {
+  caption-side: top;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding-bottom: 8px;
+  text-align: left;
+}
+
+.preview-body [data-seo-table] th,
+.preview-body [data-seo-table] td {
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.preview-body [data-seo-table] th {
+  background: #f8fafc;
+  color: var(--text);
+}
+
 .action-bar {
   position: sticky;
   bottom: 0;
@@ -333,6 +566,13 @@
 
   .editor-card {
     padding: 18px;
+  }
+
+  .table-section-title,
+  .table-editor-header,
+  .table-options {
+    grid-template-columns: 1fr;
+    flex-direction: column;
   }
 
   .editor-wrapper :global(.ql-container) {

@@ -3,6 +3,7 @@ import businessListModel from "../../model/businessList/businessListModel.js";
 import SearchLogModel from "../../model/businessList/searchLogModel.js";
 import mongoose from "mongoose";
 import { uploadImageToS3, getSignedUrlByKey, getImageDataUrlByKey } from "../../s3Uploder.js";
+import { assetUrl } from "../../utils/assetUrl.js";
 import { sortBusinessesForDefaultSearch } from "../../utils/businessSearchSort.js";
 import {
   resolveLocationForSearch,
@@ -156,6 +157,24 @@ const generateBusinessDetailsQrCode = async (businessDocument) => {
   };
 };
 
+/**
+ * Public URL for a REVIEW QR image, cache-busted.
+ *
+ * `businessList/qr/review-<businessId>` is the only deterministic upload key in the
+ * codebase today — every other path ends in `Date.now()`. Regenerating a review QR
+ * therefore OVERWRITES the object, and uploads carry `max-age=31536000`, so without a
+ * version parameter anyone holding the cached image keeps the old QR — pointing at the
+ * old review URL — for up to a year.
+ *
+ * `qrCode.createdAt` is the precise signal: it changes exactly when the QR is
+ * regenerated, so the cache is busted then and not on unrelated edits. It falls back to
+ * the document's `updatedAt` because bug 3 in step 0.3 wiped `createdAt` on ~4,400
+ * businesses; those repopulate it the first time this function regenerates their QR.
+ * With neither available `assetUrl` returns the plain URL, exactly as before.
+ */
+const reviewQrUrl = (qrCode, documentUpdatedAt) =>
+  assetUrl(qrCode?.qrImageKey, { version: qrCode?.createdAt || documentUpdatedAt });
+
 const ensureBusinessDetailsQrCode = async (business = {}) => {
   if (!business?._id) return business;
 
@@ -201,7 +220,7 @@ const ensureReviewQrCode = async (business = {}) => {
     business.qrCode?.qrImageKey && business.qrCode?.qrText === expectedQrText;
 
   if (hasCurrentReviewQr) {
-    business.qrCode.qrImage = getSignedUrlByKey(business.qrCode.qrImageKey);
+    business.qrCode.qrImage = reviewQrUrl(business.qrCode, business.updatedAt);
     return business;
   }
 
@@ -216,7 +235,7 @@ const ensureReviewQrCode = async (business = {}) => {
       qrText: qrCode.qrText,
       qrImageKey: qrCode.qrImageKey,
       createdAt: qrCode.createdAt,
-      qrImage: getSignedUrlByKey(qrCode.qrImageKey),
+      qrImage: reviewQrUrl(qrCode, businessDocument.updatedAt),
     },
   };
 };
@@ -308,7 +327,7 @@ export const createBusinessList = async (reqBody = {}) => {
 
     const result = savedBusiness.toObject();
 
-    result.qrCode.qrImage = getSignedUrlByKey(savedBusiness.qrCode.qrImageKey);
+    result.qrCode.qrImage = reviewQrUrl(savedBusiness.qrCode, savedBusiness.updatedAt);
     result.businessProfileQrCode.qrImage = getSignedUrlByKey(
       savedBusiness.businessProfileQrCode.qrImageKey,
     );
@@ -960,7 +979,7 @@ export const viewAllBusinessList = async ({
         );
       }
       if (business.qrCode?.qrImageKey) {
-        business.qrCode.qrImage = getSignedUrlByKey(business.qrCode.qrImageKey);
+        business.qrCode.qrImage = reviewQrUrl(business.qrCode, business.updatedAt);
       }
 
       if (business.businessProfileQrCode?.qrImageKey) {
@@ -1315,7 +1334,7 @@ export const updateBusinessList = async (id, data) => {
   }
 
   if (result.qrCode?.qrImageKey) {
-    result.qrCode.qrImage = getSignedUrlByKey(result.qrCode.qrImageKey);
+    result.qrCode.qrImage = reviewQrUrl(result.qrCode, business.updatedAt);
   }
 
   if (result.businessProfileQrCode?.qrImageKey) {

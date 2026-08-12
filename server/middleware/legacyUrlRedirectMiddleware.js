@@ -153,6 +153,29 @@ const findBusinessByPublicId = async (publicId = "") => {
   return businessListModel.findOne({ publicId }, businessProjection).lean();
 };
 
+const findLocationDocForBusiness = async (business = {}, legacyLocation = "") => {
+  const locationId = business.masterLocation?.locationId;
+  if (locationId && mongoose.Types.ObjectId.isValid(locationId)) {
+    const linked = await masterLocationModel
+      .findOne({ _id: locationId, isActive: true })
+      .lean();
+    if (linked) return linked;
+  }
+
+  return resolveLocationForSearch(legacyLocation).catch(() => null);
+};
+
+const findDistrictDocForBusiness = async (business = {}, legacyLocation = "") => {
+  const directDistrictDoc = await findDistrictDocByName(
+    business.masterLocation?.district,
+  );
+  if (directDistrictDoc) return directDistrictDoc;
+
+  const locationDoc = await findLocationDocForBusiness(business, legacyLocation);
+  if (locationDoc?.level === "district") return locationDoc;
+  return findDistrictDocByName(locationDoc?.district);
+};
+
 /**
  * The one URL this business should be reachable at, or null when it cannot be
  * built — no publicId (pre-backfill) or no resolvable district. Callers must
@@ -165,11 +188,8 @@ const findBusinessByPublicId = async (publicId = "") => {
  * therefore mint "tiruchirappalli"; those URLs land here and get 301'd to the
  * aliased form on first request rather than persisting as duplicates.
  */
-const buildCanonicalBusinessPath = async (business = {}) => {
-  const districtName = business.masterLocation?.district;
-  if (!districtName) return null;
-
-  const districtDoc = await findDistrictDocByName(districtName);
+const buildCanonicalBusinessPath = async (business = {}, legacyLocation = "") => {
+  const districtDoc = await findDistrictDocForBusiness(business, legacyLocation);
   if (!districtDoc) return null;
 
   return buildBusinessPath({
@@ -195,20 +215,8 @@ const buildSupersededBusinessPath = async (business = {}, legacyLocation = "") =
 };
 
 const buildBusinessTarget = async (business = {}, legacyLocation = "") =>
-  (await buildCanonicalBusinessPath(business)) ||
+  (await buildCanonicalBusinessPath(business, legacyLocation)) ||
   (await buildSupersededBusinessPath(business, legacyLocation));
-
-const findLocationDocForBusiness = async (business = {}, legacyLocation = "") => {
-  const locationId = business.masterLocation?.locationId;
-  if (locationId && mongoose.Types.ObjectId.isValid(locationId)) {
-    const linked = await masterLocationModel
-      .findOne({ _id: locationId, isActive: true })
-      .lean();
-    if (linked) return linked;
-  }
-
-  return resolveLocationForSearch(legacyLocation).catch(() => null);
-};
 
 const isLegacyBusinessIdPath = (parts = []) =>
   parts[0] === "business" && parts.length === 2;

@@ -927,6 +927,45 @@ section.seo-header-content.premium-section {
   font-weight: 800;
 }
 
+.seo-page-content [data-seo-table] {
+  margin: 18px 0 20px;
+  overflow-x: auto;
+}
+
+.seo-page-content [data-seo-table] table {
+  width: 100%;
+  min-width: min(620px, 100%);
+  border-collapse: collapse;
+  border: 1px solid #dbe2ea;
+  background: #ffffff;
+}
+
+.seo-page-content [data-seo-table] caption {
+  caption-side: top;
+  padding: 0 0 10px;
+  color: #10233f;
+  font-weight: 800;
+  text-align: left;
+}
+
+.seo-page-content [data-seo-table] th,
+.seo-page-content [data-seo-table] td {
+  border: 1px solid #dbe2ea;
+  padding: 11px 13px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.seo-page-content [data-seo-table] th {
+  background: #f8fafc;
+  color: #10233f;
+  font-weight: 800;
+}
+
+.seo-page-content [data-seo-table] td {
+  color: #475569;
+}
+
 .seo-page-content *:last-child {
   margin-bottom: 0;
 }

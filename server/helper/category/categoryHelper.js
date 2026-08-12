@@ -1,27 +1,19 @@
 import { ObjectId } from "mongodb";
 import categoryModel from "../../model/category/categoryModel.js";
 import { uploadImageToS3, getSignedUrlByKey } from "../../s3Uploder.js";
+import { extractS3Key } from "../../utils/s3KeyUtils.js";
 
-// Extract S3 key from signed URL or malformed double-signed URL
-const extractS3Key = (value) => {
-  if (!value || typeof value !== "string") return "";
-  if (!value.startsWith("http")) return value; // Already a key
-
-  try {
-    // Handle malformed double-signed URLs
-    if (value.includes("/https://")) {
-      const match = value.match(/\/https:\/\/[^/]+\/(.+?)(?:\?|$)/);
-      if (match?.[1]) return match[1];
-    }
-
-    // Handle normal signed URLs: extract path after domain
-    const urlObj = new URL(value);
-    let path = urlObj.pathname.startsWith("/") ? urlObj.pathname.slice(1) : urlObj.pathname;
-    return path || "";
-  } catch (err) {
+// Narrow the shared extractS3Key for a WRITE path: if the result still looks like
+// a URL it failed to parse, and storing it would persist a key that can never
+// resolve. The shared helper deliberately returns the raw value rather than
+// discarding data; this call site is where it is right to drop it.
+const toStorableKey = (value) => {
+  const key = extractS3Key(value);
+  if (/^https?:\/\//i.test(key)) {
     console.error("Failed to extract S3 key from:", value);
     return "";
   }
+  return key;
 };
 
 
@@ -70,7 +62,7 @@ export const createCategory = async (reqBody = {}) => {
               categoryImages[variant] = "";
             } else {
               // Extract S3 key from any URL format (signed, unsigned, or malformed)
-              const key = extractS3Key(imageData);
+              const key = toStorableKey(imageData);
               categoryImages[variant] = key;
             }
           }
@@ -115,7 +107,7 @@ export const createCategory = async (reqBody = {}) => {
             categoryImages[variant] = "";
           } else {
             // Extract S3 key from any URL format (signed, unsigned, or malformed)
-            const key = extractS3Key(imageData);
+            const key = toStorableKey(imageData);
             categoryImages[variant] = key;
           }
         }
@@ -294,7 +286,7 @@ export const updateCategory = async (id, data) => {
             categoryImages[variant] = "";
           } else {
             // Extract S3 key from any URL format (signed, unsigned, or malformed)
-            const key = extractS3Key(imageData);
+            const key = toStorableKey(imageData);
             categoryImages[variant] = key;
           }
         }

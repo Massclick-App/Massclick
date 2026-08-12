@@ -2,7 +2,12 @@ import seoTemplateModel from "../../model/seoModel/seoTemplateModel.js";
 import categoryModel from "../../model/category/categoryModel.js";
 import masterLocationModel from "../../model/locationModel/masterLocationModel.js";
 import { slugify } from "../../slugify.js";
-import { renderTemplateString, renderFaqTemplate } from "./templateRenderer.js";
+import { buildLocationCategoryPath } from "../location/locationUrl.js";
+import {
+  renderTemplateString,
+  renderFaqTemplate,
+  buildTableTokens,
+} from "./templateRenderer.js";
 
 const titleCase = (text = "") =>
   text
@@ -32,7 +37,7 @@ const ensureCategoryExists = async (categorySlug) => {
 // so templates never accidentally source zone data from the wrong level.
 export const resolveLocationTokens = async (locationText) => {
   if (!locationText) {
-    return { location: null, locationSlug: null, zone1: null, zone2: null };
+    return { location: null, locationSlug: null, locationUrl: null, zone1: null, zone2: null };
   }
 
   const districtDoc = await masterLocationModel
@@ -47,6 +52,9 @@ export const resolveLocationTokens = async (locationText) => {
     return {
       location: titleCase(locationText),
       locationSlug: slugify(locationText),
+      // Non-district text (a zone/locality segment like "srirangam") is
+      // already its own URL segment once slugified.
+      locationUrl: slugify(locationText),
       zone1: null,
       zone2: null,
     };
@@ -66,6 +74,15 @@ export const resolveLocationTokens = async (locationText) => {
   return {
     location: titleCase(districtDoc.district),
     locationSlug: districtDoc.slug || slugify(districtDoc.district),
+    // The public URL segment for this district, for template authors writing
+    // links. Deliberately NOT locationSlug: that is the internal hierarchy
+    // slug ("tamil-nadu-tiruchirappalli"), which is not a routable segment.
+    // Mirrors the district-URL scheme's own precedence — urlAlias ("trichy")
+    // wins over publicLocationSlug ("tiruchirappalli") where one is seeded.
+    locationUrl:
+      districtDoc.urlAlias ||
+      districtDoc.publicLocationSlug ||
+      slugify(districtDoc.district),
     zone1: zoneDocs[0] ? titleCase(zoneDocs[0].zone) : null,
     zone2: zoneDocs[1] ? titleCase(zoneDocs[1].zone) : null,
   };
@@ -110,7 +127,11 @@ export const renderSeoMetaFromTemplate = async ({ category, location, district }
     const tokens = await buildTokens({ categorySlug, location });
 
     const canonical = district
-      ? `https://massclick.in/${slugify(district)}${tokens.locationSlug ? `/${tokens.locationSlug}` : ""}/${categorySlug}`
+      ? `https://massclick.in${buildLocationCategoryPath({
+          districtSlug: district,
+          locationSlug: tokens.locationUrl || tokens.locationSlug,
+          categorySlug,
+        })}`
       : tokens.locationSlug
         ? `https://massclick.in/${tokens.locationSlug}/${categorySlug}`
         : `https://massclick.in/${categorySlug}`;
@@ -147,12 +168,20 @@ export const renderSeoPageContentFromTemplate = async ({ category, location }) =
 
     const tokens = await buildTokens({ categorySlug, location });
 
+    // Table tokens are added only on this path, never in renderSeoMetaFromTemplate —
+    // a {table1} left in a title/description must stay empty rather than inject
+    // markup into a meta tag.
+    const contentTokens = {
+      ...tokens,
+      ...buildTableTokens(template.tableTemplate, tokens),
+    };
+
     return {
       pageType: "category",
       category: categorySlug,
       location: location || null,
-      headerContent: renderTemplateString(template.headerTemplate, tokens),
-      pageContent: renderTemplateString(template.bodyTemplate, tokens),
+      headerContent: renderTemplateString(template.headerTemplate, contentTokens),
+      pageContent: renderTemplateString(template.bodyTemplate, contentTokens),
       faq: renderFaqTemplate(template.faqTemplate || [], tokens),
       generated: true,
       templateVersion: template.templateVersion,
@@ -237,6 +266,7 @@ export const updateSeoTemplate = async (id, data) => {
     "headerTemplate",
     "bodyTemplate",
     "faqTemplate",
+    "tableTemplate",
   ].some((field) => Object.prototype.hasOwnProperty.call(data, field));
 
   // MongoDB update documents can't mix plain field:value pairs with operator

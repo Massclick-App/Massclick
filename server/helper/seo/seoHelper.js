@@ -6,15 +6,41 @@ import { getCache, setCache } from "../../utils/redisClient.js";
 import { createLogger } from "../../utils/logger.js";
 import { slugify } from "../../slugify.js";
 import { renderSeoMetaFromTemplate } from "./seoTemplateHelper.js";
-
+import { buildLocationCategoryPath } from "../location/locationUrl.js";
 const logger = createLogger("SEO");
-
+const SEO_META_CACHE_VERSION = "v2";
 const titleCase = (text = "") =>
   text
     .split(/[\s-]+/)
     .filter(Boolean)
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
+
+const buildCanonicalUrl = ({ category = "", location = "", district = "" } = {}) => {
+  const districtSlug = slugify(district || "");
+  const locationSlug = slugify(location || "");
+  const categorySlug = slugify(category || "");
+
+  if (districtSlug && categorySlug) {
+    return `https://massclick.in${buildLocationCategoryPath({
+      districtSlug,
+      locationSlug,
+      categorySlug,
+    })}`;
+  }
+
+  if (districtSlug && locationSlug) {
+    const districtLocationPath = `/${[districtSlug, locationSlug !== districtSlug ? locationSlug : ""]
+      .filter(Boolean)
+      .join("/")}`;
+    return `https://massclick.in${districtLocationPath}`;
+  }
+
+  if (districtSlug) return `https://massclick.in/${districtSlug}`;
+
+  const parts = [locationSlug, categorySlug].filter(Boolean);
+  return parts.length ? `https://massclick.in/${parts.join("/")}` : "https://massclick.in";
+};
 
 // Builds accurate SEO meta for the exact requested category/location when no
 // curated entry exists — never guesses with a mismatched category/location record,
@@ -32,17 +58,12 @@ const buildDynamicSeoMeta = ({ category, location, district }) => {
   const categoryTitle = category ? titleCase(category) : null;
   const locationTitle = location ? titleCase(location) : null;
 
-  const canonicalPath = (...segments) => {
-    const parts = [district, ...segments].filter(Boolean).map((s) => slugify(String(s)));
-    return `https://massclick.in/${parts.join("/")}`;
-  };
-
   if (categoryTitle && locationTitle) {
     return {
       title: `Best ${categoryTitle} in ${locationTitle} | Massclick`,
       description: `Find trusted ${categoryTitle} in ${locationTitle}. Compare ratings, reviews and contact details to find the best near you.`,
       keywords: `${categoryTitle}, ${categoryTitle} in ${locationTitle}, best ${categoryTitle} ${locationTitle}`,
-      canonical: canonicalPath(location, category),
+      canonical: buildCanonicalUrl({ location, category, district }),
       robots: "index, follow",
       generated: true,
     };
@@ -53,7 +74,7 @@ const buildDynamicSeoMeta = ({ category, location, district }) => {
       title: `Best ${categoryTitle} | Massclick`,
       description: `Find trusted ${categoryTitle} near you on Massclick.`,
       keywords: `${categoryTitle}, best ${categoryTitle}`,
-      canonical: canonicalPath(category),
+      canonical: buildCanonicalUrl({ category, district }),
       robots: "index, follow",
       generated: true,
     };
@@ -64,7 +85,7 @@ const buildDynamicSeoMeta = ({ category, location, district }) => {
       title: `Local Businesses in ${locationTitle} | Massclick`,
       description: `Discover trusted local businesses and services in ${locationTitle} on Massclick.`,
       keywords: `businesses in ${locationTitle}, ${locationTitle} local services`,
-      canonical: canonicalPath(location),
+      canonical: buildCanonicalUrl({ location, district }),
       robots: "index, follow",
       generated: true,
     };
@@ -73,7 +94,7 @@ const buildDynamicSeoMeta = ({ category, location, district }) => {
   return {
     title: "Massclick - Local Business Search Platform",
     description: "Find trusted local businesses, services, and professionals near you on Massclick.",
-    canonical: district ? canonicalPath() : "https://massclick.in",
+    canonical: buildCanonicalUrl({ district }),
     robots: "index, follow",
     generated: true,
   };
@@ -207,6 +228,20 @@ export const getSeoMeta = async ({ pageType, category, location, district }) => 
     // slug ("trichy"), not free text. Kept as-is for the cache key and for
     // buildDynamicSeoMeta's canonical building.
     const safeDistrict = district ? String(district).toLowerCase().trim() : null;
+    const applyResolvedCanonical = (seoDoc) => {
+      if (!seoDoc || safePageType !== "category" || !safeDistrict || !safeCategory) {
+        return seoDoc;
+      }
+
+      return {
+        ...seoDoc,
+        canonical: buildCanonicalUrl({
+          category: safeCategory,
+          location: safeLocation,
+          district: safeDistrict,
+        }),
+      };
+    };
 
     await logger.seoDebug('Query:', { pageType, category, location, district, safePageType, safeCategory, safeLocation, safeDistrict });
 
@@ -214,13 +249,13 @@ export const getSeoMeta = async ({ pageType, category, location, district }) => 
     // of this key: without it, two districts sharing a location/category
     // text (e.g. "Anna Nagar" in 4 districts) would read and write the same
     // cached canonical for 24h, handing one district's URL to another's page.
-    const cacheKey = `seo-meta:${safePageType}${safeCategory ? `:${safeCategory}` : ""}${safeLocation ? `:${safeLocation}` : ""}${safeDistrict ? `:${safeDistrict}` : ""}`;
+    const cacheKey = `seo-meta:${SEO_META_CACHE_VERSION}:${safePageType}${safeCategory ? `:${safeCategory}` : ""}${safeLocation ? `:${safeLocation}` : ""}${safeDistrict ? `:${safeDistrict}` : ""}`;
 
     // Try to get from cache first
     const cachedSeo = await getCache(cacheKey);
     if (cachedSeo) {
       await logger.seoDebug('Cache HIT for key:', { cacheKey });
-      return cachedSeo;
+      return applyResolvedCanonical(cachedSeo);
     }
     await logger.seoDebug('Cache MISS for key:', { cacheKey });
 
@@ -258,8 +293,9 @@ export const getSeoMeta = async ({ pageType, category, location, district }) => 
 
       if (seo) {
         await logger.seoDebug('Step 1: FOUND', { title: seo.title, category: seo.category, location: seo.location, district: seo.district });
-        await setCache(cacheKey, seo, 86400); // Cache for 24 hours
-        return seo;
+        const resolvedSeo = applyResolvedCanonical(seo);
+        await setCache(cacheKey, resolvedSeo, 86400); // Cache for 24 hours
+        return resolvedSeo;
       }
       await logger.seoDebug('Step 1: NOT found');
     }
@@ -281,8 +317,9 @@ export const getSeoMeta = async ({ pageType, category, location, district }) => 
 
       if (seo) {
         await logger.seoDebug('Step 2: FOUND', { title: seo.title, category: seo.category, location: seo.location, district: seo.district });
-        await setCache(cacheKey, seo, 86400); // Cache for 24 hours
-        return seo;
+        const resolvedSeo = applyResolvedCanonical(seo);
+        await setCache(cacheKey, resolvedSeo, 86400); // Cache for 24 hours
+        return resolvedSeo;
       }
       await logger.seoDebug('Step 2: NOT found');
     }
@@ -303,8 +340,9 @@ export const getSeoMeta = async ({ pageType, category, location, district }) => 
 
       if (seo) {
         await logger.seoDebug('Step 3: FOUND', { title: seo.title, category: seo.category, location: seo.location, district: seo.district });
-        await setCache(cacheKey, seo, 86400); // Cache for 24 hours
-        return seo;
+        const resolvedSeo = applyResolvedCanonical(seo);
+        await setCache(cacheKey, resolvedSeo, 86400); // Cache for 24 hours
+        return resolvedSeo;
       }
       await logger.seoDebug('Step 3: NOT found');
     }
@@ -325,8 +363,9 @@ export const getSeoMeta = async ({ pageType, category, location, district }) => 
 
       if (seo) {
         await logger.seoDebug('Step 4: FOUND', { title: seo.title, category: seo.category, location: seo.location, district: seo.district });
-        await setCache(cacheKey, seo, 86400); // Cache for 24 hours
-        return seo;
+        const resolvedSeo = applyResolvedCanonical(seo);
+        await setCache(cacheKey, resolvedSeo, 86400); // Cache for 24 hours
+        return resolvedSeo;
       }
       await logger.seoDebug('Step 4: NOT found');
     }

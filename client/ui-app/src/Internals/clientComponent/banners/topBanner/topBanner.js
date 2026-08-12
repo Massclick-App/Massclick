@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { getAdvertisementByCategory } from "../../../../redux/actions/advertisementAction";
 import styles from "./topBanner.module.css";
 import defaultBanner from "../../../../assets/new_banner.webp";
+import { assetUrl } from "../../../../utils/imageUrlHelper";
 const cx = createScopedClassNames(styles);
 const SLIDE_INTERVAL = 2000;
 const COMMON_TOP_BANNER_CATEGORY = "ALL_CATEGORIES";
@@ -53,8 +54,8 @@ const TopBannerAds = ({
       const imageKey = ad.bannerImageKey;
       return ad.isActive && !ad.isDeleted && ad.position === "TOP_BANNER" && (normalizeCategory(ad.category) === normalizeCategory(category) || isCommonTopBanner(ad.category)) && imageKey;
     }).map(ad => {
-      const baseUrl = `https://massclickdev.s3.ap-southeast-2.amazonaws.com/${ad.bannerImageKey}`;
-      const mobileBaseUrl = ad.mobileBannerImageKey ? `https://massclickdev.s3.ap-southeast-2.amazonaws.com/${ad.mobileBannerImageKey}` : null;
+      const baseUrl = assetUrl(ad.bannerImageKey);
+      const mobileBaseUrl = ad.mobileBannerImageKey ? assetUrl(ad.mobileBannerImageKey) : null;
       return {
         ...ad,
         image: ad.bannerImage || baseUrl,

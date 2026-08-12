@@ -9,6 +9,13 @@ import {
   invalidateDashboardCache,
   invalidateSearchCache,
 } from "../../utils/cacheInvalidation.js";
+import {
+  extractS3Key,
+  getByPath,
+  isWebpKey,
+  setUpdatePath,
+  toWebpKey,
+} from "../../utils/s3KeyUtils.js";
 
 dotenv.config({
   path: fileURLToPath(new URL("../../.env", import.meta.url)),
@@ -40,56 +47,6 @@ const activeJobIds = new Set();
 const STOPPED_STATUS = new Set(["paused", "cancelled", "completed", "completed_with_errors", "failed"]);
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-const extractS3Key = (value) => {
-  if (!value || typeof value !== "string") return "";
-  const trimmed = value.trim();
-  if (!trimmed) return "";
-
-  if (!trimmed.startsWith("http")) {
-    return trimmed;
-  }
-
-  try {
-    if (trimmed.includes("/https://")) {
-      const match = trimmed.match(/\/https:\/\/[^/]+\/(.+?)(?:\?|$)/);
-      if (match?.[1]) return match[1];
-    }
-
-    const urlObj = new URL(trimmed);
-    return urlObj.pathname.replace(/^\/+/, "");
-  } catch {
-    return trimmed;
-  }
-};
-
-const isWebpKey = (value) => {
-  const key = extractS3Key(value).toLowerCase();
-  return key.endsWith(".webp");
-};
-
-const toWebpKey = (value) => {
-  const key = extractS3Key(value);
-  if (!key) return "";
-  if (key.toLowerCase().endsWith(".webp")) return key;
-  return key.replace(/\.[^.\/]+$/, "") + ".webp";
-};
-
-const getByPath = (obj, path) =>
-  path.split(".").reduce((acc, part) => (acc ? acc[part] : undefined), obj);
-
-const setByPath = (obj, path, value) => {
-  const parts = path.split(".");
-  let cursor = obj;
-  for (let i = 0; i < parts.length - 1; i += 1) {
-    const part = parts[i];
-    if (!cursor[part] || typeof cursor[part] !== "object") {
-      cursor[part] = {};
-    }
-    cursor = cursor[part];
-  }
-  cursor[parts[parts.length - 1]] = value;
-};
 
 const incrementFailureBucket = (bucket, failure) => {
   if (bucket.length < 25) {
@@ -342,7 +299,7 @@ const processBusiness = async (business, job, cache) => {
       }
 
       if (fieldChanged) {
-        setByPath(updates, field.path, nextValues);
+        setUpdatePath(updates, field.path, nextValues);
         changedPaths.push(field.path);
       }
       continue;
@@ -362,7 +319,7 @@ const processBusiness = async (business, job, cache) => {
     job.progress.imagesScanned += 1;
 
     if (cache.has(sourceKey)) {
-      setByPath(updates, field.path, cache.get(sourceKey));
+      setUpdatePath(updates, field.path, cache.get(sourceKey));
       changedPaths.push(field.path);
       job.progress.imagesConverted += 1;
       if (job.options.deleteOriginals) {
@@ -377,7 +334,7 @@ const processBusiness = async (business, job, cache) => {
         job.options.retryCount
       );
       cache.set(sourceKey, converted.webpKey);
-      setByPath(updates, field.path, converted.webpKey);
+      setUpdatePath(updates, field.path, converted.webpKey);
       changedPaths.push(field.path);
       job.progress.imagesConverted += 1;
       if (job.options.deleteOriginals && !converted.skipped) {
@@ -400,7 +357,7 @@ const processBusiness = async (business, job, cache) => {
     return { changed: false, failures: failedEntries };
   }
 
-  setByPath(updates, "updatedAt", new Date());
+  setUpdatePath(updates, "updatedAt", new Date());
   await businessListModel.updateOne(
     { _id: business._id },
     { $set: updates }

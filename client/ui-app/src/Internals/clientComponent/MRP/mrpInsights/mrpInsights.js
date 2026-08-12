@@ -3,6 +3,7 @@ import { getBusinessProfileByPhone } from "../../../../redux/actions/mrpAction.j
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import styles from "./mrpInsights.module.css";
+import { ASSET_BASE_URL } from "../../../../utils/imageUrlHelper";
 const cx = createScopedClassNames(styles);
 export default function MNILeadsInsights({
   view
@@ -28,7 +29,7 @@ export default function MNILeadsInsights({
       setError(err.message);
     }
   }, [dispatch, view]);
-  const S3_URL = "https://massclickdev.s3.ap-southeast-2.amazonaws.com";
+  const S3_URL = ASSET_BASE_URL;
   const formatPhone = phone => {
     const clean = phone?.toString().replace(/\D/g, "").slice(-10) || "N/A";
     return clean.replace(/(\d{5})(\d{5})/, "$1-$2");

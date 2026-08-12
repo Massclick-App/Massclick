@@ -201,7 +201,6 @@ export const getHomeCategoriesAction = async (req, res) => {
       ])
     );
 
-    const S3_BASE_URL = "https://massclickdev.s3.ap-southeast-2.amazonaws.com/";
 
     const ordered = FEATURED_ORDER.map((name) => {
 
@@ -213,10 +212,10 @@ export const getHomeCategoriesAction = async (req, res) => {
           name: found.category,
           slug: found.slug,
           icon: found.categoryImageKey
-            ? `${S3_BASE_URL}${found.categoryImageKey}`
+            ? getSignedUrlByKey(found.categoryImageKey)
             : null,
           liveImage: found.liveImageKey
-            ? `${S3_BASE_URL}${found.liveImageKey}`
+            ? getSignedUrlByKey(found.liveImageKey)
             : null
         }
         : {
@@ -277,7 +276,6 @@ export const getMobileHomeCategoriesAction = async (req, res) => {
       ])
     );
 
-    const S3_BASE_URL = "https://massclickdev.s3.ap-southeast-2.amazonaws.com/";
 
     const ordered = FEATURED_ORDER.map((name) => {
 
@@ -294,10 +292,10 @@ export const getMobileHomeCategoriesAction = async (req, res) => {
           name: found.category,
           slug: found.slug,
           icon: found.categoryImageKey
-            ? `${S3_BASE_URL}${found.categoryImageKey}`
+            ? getSignedUrlByKey(found.categoryImageKey)
             : null,
           liveImage: found.liveImageKey
-            ? `${S3_BASE_URL}${found.liveImageKey}`
+            ? getSignedUrlByKey(found.liveImageKey)
             : null,
           hasSubcategories,
           subCategoryCount
@@ -327,8 +325,6 @@ export const getSubCategoriesAction = async (req, res) => {
   try {
     const { parentId } = req.params;
 
-    const BASE_URL =
-      "https://massclickdev.s3.ap-southeast-2.amazonaws.com/";
 
     const normalize = (text = "") =>
       text.toLowerCase().trim().replace(/[-_\s]+/g, " ");
@@ -389,10 +385,10 @@ export const getSubCategoriesAction = async (req, res) => {
           name: item.category,
           slug: item.slug,
           icon: item.categoryImageKey
-            ? `${BASE_URL}${item.categoryImageKey}`
+            ? getSignedUrlByKey(item.categoryImageKey)
             : "",
           liveImage: item.liveImageKey
-            ? `${BASE_URL}${item.liveImageKey}`
+            ? getSignedUrlByKey(item.liveImageKey)
             : null,
         }))
       );
@@ -496,7 +492,6 @@ export const getPopularCategoriesAction = async (req, res) => {
       ])
     );
 
-    const S3_BASE_URL = "https://massclickdev.s3.ap-southeast-2.amazonaws.com/";
 
     const ordered = POPULAR_ORDER.map((name) => {
 
@@ -513,10 +508,10 @@ export const getPopularCategoriesAction = async (req, res) => {
           name: found.category,
           slug: found.slug,
           icon: found.categoryImageKey
-            ? `${S3_BASE_URL}${found.categoryImageKey}`
+            ? getSignedUrlByKey(found.categoryImageKey)
             : null,
           liveImage: found.liveImageKey
-            ? `${S3_BASE_URL}${found.liveImageKey}`
+            ? getSignedUrlByKey(found.liveImageKey)
             : null,
           hasSubcategories,
           subCategoryCount
@@ -597,7 +592,6 @@ export const getServiceCardsAction = async (req, res) => {
       ])
     );
 
-    const S3_BASE_URL = "https://massclickdev.s3.ap-southeast-2.amazonaws.com/";
 
     const result = [];
 
@@ -718,7 +712,6 @@ export const getMobileServiceCardsAction = async (req, res) => {
       ])
     );
 
-    const S3_BASE_URL = "https://massclickdev.s3.ap-southeast-2.amazonaws.com/";
 
     const result = [];
 
@@ -784,7 +777,6 @@ export const getMobileServiceCardsAction = async (req, res) => {
 
 export const getAllUniqueCategoriesAction = async (req, res) => {
   try {
-    const S3_BASE_URL = "https://massclickdev.s3.ap-southeast-2.amazonaws.com/";
 
     const categories = await categoryModel.find({ isActive: true }).lean();
 
@@ -834,10 +826,10 @@ export const getAllUniqueCategoriesAction = async (req, res) => {
                 name: found.category,
                 slug: found.slug,
                 icon: found.categoryImageKey
-                  ? `${S3_BASE_URL}${found.categoryImageKey}`
+                  ? getSignedUrlByKey(found.categoryImageKey)
                   : "",
                 liveImage: found.liveImageKey
-                  ? `${S3_BASE_URL}${found.liveImageKey}`
+                  ? getSignedUrlByKey(found.liveImageKey)
                   : null,
               }
               : {
@@ -854,10 +846,10 @@ export const getAllUniqueCategoriesAction = async (req, res) => {
           name: item.category,
           slug: item.slug,
           icon: item.categoryImageKey
-            ? `${S3_BASE_URL}${item.categoryImageKey}`
+            ? getSignedUrlByKey(item.categoryImageKey)
             : "",
           liveImage: item.liveImageKey
-            ? `${S3_BASE_URL}${item.liveImageKey}`
+            ? getSignedUrlByKey(item.liveImageKey)
             : null,
           subs,
         };

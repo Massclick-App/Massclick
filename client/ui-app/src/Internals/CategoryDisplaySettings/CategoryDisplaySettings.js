@@ -25,6 +25,7 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import CloudUploadOutlinedIcon from "@mui/icons-material/CloudUploadOutlined";
 import BrokenImageOutlinedIcon from "@mui/icons-material/BrokenImageOutlined";
+import { ASSET_BASE_URL } from "../../utils/imageUrlHelper";
 
 // ── Tokens ───────────────────────────────────────────────────────────────────
 const cx = createScopedClassNames(styles);
@@ -639,7 +640,7 @@ function ViewToggle({
 }
 
 // ── Image uploader ───────────────────────────────────────────────────────────
-const S3_BASE = "https://massclickdev.s3.ap-southeast-2.amazonaws.com/";
+const S3_BASE = `${ASSET_BASE_URL}/`;
 function ImageUploader({
   imageKey,
   onUploaded,
