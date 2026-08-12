@@ -40,6 +40,7 @@ import dotenv from "dotenv";
 import mongoose from "mongoose";
 
 import { uploadImageToS3 } from "../s3Uploder.js";
+import { s3Keys } from "../utils/s3ObjectKeys.js";
 
 dotenv.config({ path: fileURLToPath(new URL("../.env", import.meta.url)) });
 
@@ -125,14 +126,16 @@ for (const doc of docs) {
     if (verdict.action === "upload") {
       uploads += 1;
       if (COMMIT) {
-        const uploadResult = await uploadImageToS3(value, `${prefix}photo-${Date.now()}-${i}`);
+        // Canonical key (step 1.4) — matches the live write path in reviewHelper.js,
+        // not the legacy `prefix` used above only to recognise already-good entries.
+        const uploadResult = await uploadImageToS3(value, s3Keys.business.reviewPhoto(doc.businessId));
         next.push(uploadResult.key);
         entries.push({ index: i, ...verdict, key: uploadResult.key });
       } else {
         // Push the placeholder too, so the dry-run's before/after counts reflect what
         // --commit would actually produce. Without this the report reads as though the
         // photos are being deleted.
-        const placeholder = `${prefix}photo-<ts>-${i}.webp`;
+        const placeholder = `businesses/${doc.businessId}/review-photo/<ulid>`;
         next.push(placeholder);
         entries.push({ index: i, ...verdict, key: placeholder });
       }
